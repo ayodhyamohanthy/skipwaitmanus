@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowLeft, BriefcaseBusiness, CreditCard, LayoutDashboard, UsersRound } from "lucide-react";
 import { Link } from "wouter";
-import { AccountMenu } from "@/components/AccountMenu";
 import { Button } from "@/components/kit/button";
 
 // The live employer tools are separate routes, so the kit's view switcher
@@ -17,7 +16,7 @@ export function EmployerFrame({ companyName, withNav, children }: { companyName?
   return <div data-skipwait-screen="employer-dashboard" className="min-h-screen bg-muted">
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background px-5 py-3">
       <div className="flex min-w-0 items-center gap-3"><Link href="/" className="wordmark shrink-0">SkipWait<span className="brand-dot">.</span></Link><span className="min-w-0 truncate rounded-full bg-muted px-3 py-1 text-xs font-semibold">{companyName ? `EMPLOYER · ${companyName.toUpperCase()}` : "EMPLOYER"}</span></div>
-      <div className="flex items-center gap-2"><Button variant="ghost" size="sm" asChild><Link href="/for-companies"><ArrowLeft />For companies</Link></Button><AccountMenu /></div>
+      <Button variant="ghost" size="sm" asChild><Link href="/for-companies"><ArrowLeft />For companies</Link></Button>
     </header>
     <div className={`mx-auto grid max-w-6xl gap-4 p-5 ${withNav ? "md:grid-cols-[200px_minmax(0,1fr)]" : ""}`}>
       {withNav && <nav aria-label="Employer tools" className="flex gap-1 overflow-x-auto md:flex-col">{EMPLOYER_VIEWS.map(([label, Icon, href]) => {

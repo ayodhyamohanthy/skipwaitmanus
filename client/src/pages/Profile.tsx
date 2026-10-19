@@ -1,26 +1,19 @@
 import { ArrowRight, ShieldCheck, UserRound } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Link } from "wouter";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { PrivacyControls, type ProfileRole } from "@/components/profile/PrivacyControls";
-import { ProfileForm, type ProfileFormState } from "@/components/profile/ProfileForm";
+import { ProfileForm } from "@/components/profile/ProfileForm";
+import { ProfileLinkSheet } from "@/components/profile/ProfileLinkSheet";
 import { asProfileVisibility } from "@/components/profile/VisibilityOptions";
 
-type Profile = { headline: string | null; currentTitle: string | null; location: string | null; bio: string | null; skills: string | null; openTo: string | null; company: string | null; workEmailDomain: string | null; workEmailVerifiedAt: string | null; handle: string | null; profileVisibility: string };
-
-const EMPTY_FORM: ProfileFormState = { headline: "", currentTitle: "", location: "", bio: "", skills: "", openToText: "", handle: "", profileVisibility: "private" };
-
-function openToTextFromStored(raw: string | null | undefined): string {
-  if (!raw) return "";
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed.filter((role): role is string => typeof role === "string").join(", ");
-  } catch { /* fall through to plain text */ }
-  return raw;
-}
+// The kit form edits the headline only; the other profile columns are left
+// untouched because PUT /api/profile/me is a partial update.
+type Profile = { headline: string | null; company: string | null; workEmailDomain: string | null; workEmailVerifiedAt: string | null; handle: string | null; profileVisibility: string };
 
 function Heading({ children }: { children?: ReactNode }) {
   return (
@@ -37,14 +30,19 @@ export default function Profile() {
   const [role, setRole] = useState<ProfileRole>("seeker");
   const [displayName, setDisplayName] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [form, setForm] = useState<ProfileFormState>(EMPTY_FORM);
+  const [headline, setHeadline] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [referrerNamed, setReferrerNamed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  // /profile?focus=handle (Verify, referrer setup) asks for the profile handle.
+  // The kit /profile has no handle field, so the handle sheet opens with its
+  // input focused once the current handle is known.
+  const [linkSheet, setLinkSheet] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("focus") === "handle");
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkError, setLinkError] = useState("");
 
   const load = async () => {
     if (!isSignedIn) return;
@@ -57,49 +55,39 @@ export default function Profile() {
       setDisplayName(payload.displayName ?? "");
       const current = payload.profile;
       setProfile(current ?? null);
-      setForm({
-        headline: current?.headline ?? "",
-        currentTitle: current?.currentTitle ?? "",
-        location: current?.location ?? "",
-        bio: current?.bio ?? "",
-        skills: current?.skills ?? "",
-        openToText: openToTextFromStored(current?.openTo ?? null),
-        handle: current?.handle ?? "",
-        profileVisibility: asProfileVisibility(current?.profileVisibility),
-      });
+      setHeadline(current?.headline ?? "");
+      setLoaded(true);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load your profile"); setLoadFailed(true); }
     finally { setLoading(false); }
   };
 
   useEffect(() => { void load(); }, [fetchToken, isSignedIn]);
 
-  // Referrer naming decides the referrer privacy line; anonymous is the
-  // server default, so a failed read keeps the anonymous wording.
-  useEffect(() => {
-    if (!isSignedIn || role !== "referrer") return;
-    let active = true;
-    void (async () => {
-      try {
-        const token = await fetchToken();
-        const response = await fetch("/api/referrer-preferences", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        const payload = await readApiJson<{ preferences?: { referrerVisibility?: string } }>(response, "We could not load your referrer settings");
-        if (active && response.ok) setReferrerNamed(payload.preferences?.referrerVisibility === "named");
-      } catch { /* keep the default anonymous wording */ }
-    })();
-    return () => { active = false; };
-  }, [fetchToken, isSignedIn, role]);
-
   const save = async () => {
     setSaving(true); setError(""); setSaved(false);
     try {
       const token = await fetchToken();
-      const response = await fetch("/api/profile/me", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ ...form, openTo: form.openToText.split(",").map(role => role.trim()).filter(role => role.length > 0), handle: form.handle.trim() === "" ? null : form.handle }) });
+      const response = await fetch("/api/profile/me", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ headline }) });
       const payload = await readApiJson<{ profile?: Profile | null; error?: string }>(response, "We could not save your profile");
       if (!response.ok) throw new Error(payload.error || "We could not save your profile");
       setProfile(payload.profile ?? null);
       setSaved(true);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not save your profile"); }
     finally { setSaving(false); }
+  };
+
+  const closeLinkSheet = useCallback(() => { setLinkSheet(false); setLinkError(""); }, []);
+  const saveHandle = async (handle: string) => {
+    setLinkBusy(true); setLinkError("");
+    try {
+      const token = await fetchToken();
+      const response = await fetch("/api/profile/me", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ handle }) });
+      const payload = await readApiJson<{ profile?: Profile | null; error?: string }>(response, "We could not save your profile link");
+      if (!response.ok) throw new Error(payload.error || "We could not save your profile link");
+      if (payload.profile) setProfile(payload.profile);
+      setLinkSheet(false);
+    } catch (reason) { setLinkError(reason instanceof Error ? reason.message : "We could not save your profile link"); }
+    finally { setLinkBusy(false); }
   };
 
   if (!isSignedIn) {
@@ -112,7 +100,6 @@ export default function Profile() {
   }
 
   const verifiedCompany = profile?.workEmailVerifiedAt ? (profile.company || profile.workEmailDomain) : null;
-  const copyLink = () => { void navigator.clipboard?.writeText(`https://skipwait.me/p/${form.handle.trim().toLowerCase()}`); setCopied(true); setTimeout(() => setCopied(false), 1500); };
   return (
     <main data-skipwait-screen="profile" className="page-content profile-page">
       <Heading>
@@ -129,7 +116,7 @@ export default function Profile() {
       </div>
 
       {loading ? (
-        <div className="workspace-empty slim" role="status"><p>Loading your profile…</p></div>
+        <LoadingNote>Loading your profile…</LoadingNote>
       ) : loadFailed ? (
         <div className="workspace-empty slim" role="alert">
           <p className="font-semibold text-destructive">{error}</p>
@@ -140,20 +127,18 @@ export default function Profile() {
           <ProfileForm
             role={role}
             displayName={displayName}
-            form={form}
-            onField={(field, value) => { setForm(current => ({ ...current, [field]: value })); setSaved(false); }}
-            onVisibility={value => { setForm(current => ({ ...current, profileVisibility: value })); setSaved(false); }}
+            headline={headline}
+            onHeadline={value => { setHeadline(value); setSaved(false); }}
             verifiedCompany={verifiedCompany}
             saving={saving}
             saved={saved}
             error={error}
-            copied={copied}
-            onCopy={copyLink}
             onSave={() => { void save(); }}
           />
-          <PrivacyControls role={role} visibility={asProfileVisibility(profile?.profileVisibility)} referrerNamed={referrerNamed} verifiedDomain={verifiedCompany} />
+          <PrivacyControls role={role} visibility={asProfileVisibility(profile?.profileVisibility)} />
         </section>
       )}
+      {linkSheet && loaded ? <ProfileLinkSheet current={profile?.handle ?? null} busy={linkBusy} error={linkError} onClose={closeLinkSheet} onSubmit={handle => { void saveHandle(handle); }} /> : null}
     </main>
   );
 }

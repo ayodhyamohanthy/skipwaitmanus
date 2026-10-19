@@ -1,7 +1,9 @@
 import { ArrowRight, BadgeCheck, CalendarClock, Clock3, Inbox, Pause, Play, ShieldCheck } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Heading, Panel } from "@/components/kit/preview-kit";
@@ -26,7 +28,7 @@ export default function ReferrerHome() {
     return (
       <main data-skipwait-screen="referrer-home-sign-in" className="page-content">
         <Heading eyebrow="REFERRER HOME" title="Your daily referrer view" text="New asks, capacity, and your private record — after you verify a work email." />
-        <SignInButton className={buttonVariants()}>Sign in</SignInButton>
+        <Link href={referrerSignInHref("/referrer-home")} className={buttonVariants()}>Sign in with work email</Link>
       </main>
     );
   }
@@ -39,7 +41,7 @@ export default function ReferrerHome() {
     <div className="flex flex-wrap items-center gap-2">
       {view.verified ? <span className="flex items-center gap-1 text-sm"><BadgeCheck className="size-4 text-primary" />Verified · {company?.name ?? "work email"}</span> : null}
       <Button variant="outline" size="sm" asChild><Link href="/queue">Queue &amp; settings</Link></Button>
-      {view.verified ? null : <Button variant="ghost" size="sm" asChild><Link href="/verify">Become a referrer</Link></Button>}
+      <Button variant="ghost" size="sm" asChild><Link href="/verify">Become a referrer</Link></Button>
     </div>
   ) : undefined;
 
@@ -48,7 +50,7 @@ export default function ReferrerHome() {
       <Heading eyebrow={`REFERRER HOME${company ? ` · ${company.name}` : ""}`} title={greetingFor(new Date(nowMs).getHours())} text={SUBTITLE} aside={aside} />
 
       <div className="mt-5">
-      {home.isPending ? <p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your referrer day…</p> : home.isError ? (
+      {home.isPending ? <LoadingNote>Loading your referrer day…</LoadingNote> : home.isError ? (
         <Panel tone="muted" className="text-center">
           <h2 className="text-xl font-semibold">We could not load your referrer day.</h2>
           <p role="alert" className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{home.error.message || "Check your connection and try again."}</p>
@@ -62,7 +64,7 @@ export default function ReferrerHome() {
         </Panel>
       ) : (
         <>
-          {view.reverifyDue ? <Panel tone="accent" className="mb-4 flex flex-wrap items-center justify-between gap-3"><span role="status" className="flex items-center gap-2"><CalendarClock />Re-verify your {company?.name ?? "work"} email soon to keep receiving asks.</span><Button asChild size="sm"><Link href="/verify">Re-verify</Link></Button></Panel> : null}
+          {view.reverifyDue ? <Panel tone="accent" className="mb-4 flex flex-wrap items-center justify-between gap-3"><span role="status" className="flex items-center gap-2"><CalendarClock />{reverifyCopy(company?.name ?? "work", view.reverifyDaysLeft)}</span><Button asChild size="sm"><Link href="/verify">Re-verify</Link></Button></Panel> : null}
           {view.paused ? <Panel tone="muted" className="mb-4 flex flex-wrap items-center justify-between gap-3"><span role="status" className="flex items-center gap-2"><Pause />New asks are paused. Open conversations still work.</span><Button size="sm" disabled={pause.isPending} onClick={() => setPaused(false)}><Play />{pause.isPending ? "Resuming…" : "Resume"}</Button></Panel> : null}
           {pause.isError ? <p role="alert" className="mb-4 text-sm font-semibold text-destructive">{pause.error.message || "We could not update your pause setting. Try again."}</p> : null}
 
@@ -84,4 +86,10 @@ export default function ReferrerHome() {
       </div>
     </main>
   );
+}
+
+/** Kit copy: "Re-verify your Wipro email within 5 days to keep receiving asks." */
+export function reverifyCopy(company: string, daysLeft: number | null): string {
+  if (daysLeft === null || daysLeft <= 0) return `Re-verify your ${company} email now to keep receiving asks.`;
+  return `Re-verify your ${company} email within ${daysLeft} ${daysLeft === 1 ? "day" : "days"} to keep receiving asks.`;
 }

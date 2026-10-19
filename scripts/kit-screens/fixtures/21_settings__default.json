@@ -1,0 +1,9 @@
+{
+  "signedIn": false,
+  "routes": [],
+  "actions": [
+    {
+      "waitFor": "text=Language & region"
+    }
+  ]
+}

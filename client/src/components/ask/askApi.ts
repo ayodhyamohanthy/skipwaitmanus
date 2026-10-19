@@ -1,17 +1,19 @@
-// Response boundary for the live /ask send path. The send and open-ask
-// payloads are parsed with Zod before they drive the confirmation screen, and
-// transport failures get plain copy instead of a raw browser error string.
+// Response boundary for the live /ask send path. The send payload (with the
+// seeker's open-ask slots) and the typed slot-cap refusal are parsed with Zod
+// before they drive the screen, and transport failures get plain copy instead
+// of a raw browser error string.
 import { z } from "zod";
+import { SLOT_CAP_REACHED, openAskSlotsSchema, slotCapReachedSchema, type SlotCapReached } from "@shared/openAskSlots";
 import type { SentAsk } from "@/components/ask/AskSent";
 
 const sendAskResponseSchema = z.object({
   requestId: z.number().int().positive(),
   companyDomain: z.string().nullish(),
   coverageStatus: z.string().nullish(),
-});
-
-const myAsksResponseSchema = z.object({
-  requests: z.array(z.object({ status: z.string() })),
+  // A personal-link ask (D-017) goes to the link's owner alone; anything but true reads as an ordinary ask.
+  fastTrack: z.boolean().nullish().catch(null),
+  // Informational: a missing or malformed count hides the line, never fakes one.
+  slots: openAskSlotsSchema.nullish().catch(null),
 });
 
 // Written by the job-link company confirmation step; browser storage is untrusted.
@@ -24,13 +26,14 @@ export function parseSentAsk(payload: Record<string, unknown>): SentAsk | null {
   const parsed = sendAskResponseSchema.safeParse(payload);
   if (!parsed.success) return null;
   const companyDomain = parsed.data.companyDomain?.trim() || null;
-  return { requestId: parsed.data.requestId, companyDomain, waitingForCoverage: parsed.data.coverageStatus === "waiting_for_company_coverage" };
+  return { requestId: parsed.data.requestId, companyDomain, waitingForCoverage: parsed.data.coverageStatus === "waiting_for_company_coverage", fastTrack: parsed.data.fastTrack === true, slots: parsed.data.slots ?? null };
 }
 
-/** Pending asks from /api/company-referrals/mine; null when the list cannot be read. */
-export function countOpenAsks(payload: Record<string, unknown>): number | null {
-  const parsed = myAsksResponseSchema.safeParse(payload);
-  return parsed.success ? parsed.data.requests.filter(request => request.status === "pending").length : null;
+/** The server's 409 "all open slots in use" refusal, or null for any other response. */
+export function parseSlotCapReached(status: number, payload: Record<string, unknown>): SlotCapReached | null {
+  if (status !== 409 || payload.code !== SLOT_CAP_REACHED) return null;
+  const parsed = slotCapReachedSchema.safeParse(payload);
+  return parsed.success ? parsed.data : null;
 }
 
 /** The confirmed employer domain, only when it was confirmed for exactly this job link. */

@@ -1,26 +1,30 @@
 // Kit v4 /work card (app/src/routes/work.tsx `.work-card`) for one live work
-// item. Management tools (pin, visibility, delete) render only in "My view".
-import { ArrowRight, FileText, Globe, Lock, Pin, Trash2 } from "lucide-react";
+// item. The title is the outbound link; in "My view" the thumbnail opens the
+// edit sheet (edit and remove) and the tools row carries pin and visibility.
+import { FileText, Globe, Lock, Pin } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { WORK_VISIBILITY_LABELS, workKindLabel, type WorkItem } from "./workItems";
 
 export type WorkPatch = { readonly pinned?: boolean; readonly visibleOnProfile?: boolean };
 
-export function WorkCard({ item, manage, busy, onPatch, onRemove }: {
+export function WorkCard({ item, manage, busy, onPatch, onEdit }: {
   item: WorkItem;
   manage: boolean;
   busy: boolean;
   onPatch: (patch: WorkPatch) => void;
-  onRemove: () => void;
+  onEdit: () => void;
 }) {
   const VisIcon = item.visibleOnProfile ? Globe : Lock;
   return (
     <article className={`work-card ${item.pinned ? "pinned" : ""}`}>
-      <div className="work-thumb h-auto!" aria-hidden="true"><FileText />{item.pinned ? <span className="pin-flag"><Pin />Pinned</span> : null}</div>
+      <div className="work-thumb">
+        <FileText aria-hidden="true" />
+        {item.pinned ? <span className="pin-flag"><Pin aria-hidden="true" />Pinned</span> : null}
+        {manage ? <button type="button" className="absolute inset-0 cursor-pointer" aria-label={`Edit ${item.title}`} disabled={busy} onClick={onEdit} /> : null}
+      </div>
       <div className="work-body">
         <span className="eyebrow">{workKindLabel(item.kind)}{item.source ? ` · from ${item.source}` : ""}</span>
-        <h3>{item.title}</h3>
-        {item.url ? <a href={item.url} target="_blank" rel="noreferrer" className="text-link">Open link <ArrowRight className="size-3" /></a> : null}
+        <h3>{item.url ? <a href={item.url} target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:underline">{item.title}</a> : item.title}</h3>
         <span className="vis-chip"><VisIcon />{item.visibleOnProfile ? WORK_VISIBILITY_LABELS.visible : WORK_VISIBILITY_LABELS.hidden}</span>
       </div>
       {manage ? (
@@ -30,7 +34,6 @@ export function WorkCard({ item, manage, busy, onPatch, onRemove }: {
             <option value="visible">{WORK_VISIBILITY_LABELS.visible}</option>
             <option value="hidden">{WORK_VISIBILITY_LABELS.hidden}</option>
           </select>
-          <Button variant="ghost" size="icon" disabled={busy} aria-label={`Delete ${item.title}`} onClick={onRemove} className="text-destructive"><Trash2 /></Button>
         </div>
       ) : null}
     </article>

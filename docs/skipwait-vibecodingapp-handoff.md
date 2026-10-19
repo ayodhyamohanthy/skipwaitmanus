@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-036, D-046, D-058, D-067).
+
 # skipwait.me — VibeCodingApp Build Handoff
 
 **Purpose.** This document is the build specification for recreating **skipwait.me**, a mobile-first private job-referral product. Upload this file to VibeCodingApp if it accepts project briefs, then paste the master prompt in the next section into its chat. Build the product in small verified milestones; do not replace core privacy rules with placeholders.

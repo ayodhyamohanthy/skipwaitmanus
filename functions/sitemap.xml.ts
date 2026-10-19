@@ -7,6 +7,7 @@ export const STATIC_ROUTES: Array<{ path: string; changefreq: string; priority: 
   { path: "/", changefreq: "daily", priority: "1.0" },
   { path: "/wall", changefreq: "hourly", priority: "0.9" },
   { path: "/jobs", changefreq: "daily", priority: "0.9" },
+  { path: "/explore", changefreq: "weekly", priority: "0.7" },
   { path: "/premium", changefreq: "weekly", priority: "0.7" },
   { path: "/plans", changefreq: "weekly", priority: "0.6" },
   { path: "/pricing", changefreq: "weekly", priority: "0.6" },

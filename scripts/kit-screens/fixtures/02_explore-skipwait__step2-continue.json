@@ -1,8 +1,5 @@
 {
   "signedIn": false,
-  "routes": [
-    { "method": "GET", "path": "/api/jobs", "match": "exact", "status": 200, "body": { "jobs": [] } }
-  ],
   "actions": [
     { "click": "button:has-text('Ask for a referral')" },
     { "waitFor": ".request-dialog #job-url" },
@@ -10,5 +7,8 @@
     { "click": ".request-dialog button:has-text('Continue')" },
     { "waitFor": ".request-dialog #fit-note" },
     { "wait": 200 }
+  ],
+  "routes": [
+    { "method": "GET", "path": "/api/companies/skipwait", "match": "exact", "status": 200, "body": { "company": { "slug": "skipwait", "name": "SkipWait", "initials": "SW", "industry": "Technology", "location": "Global · Remote", "functions": ["Engineering", "Product", "Design"], "blurb": "Build the platform making warm introductions more accessible.", "domains": ["skipwait.me"], "openToReferrals": true } } }
   ]
 }

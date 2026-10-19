@@ -2,6 +2,10 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { registerAssistantRoutes, type AssistantRouteDeps } from "./assistantRoutes";
+import { AssistantPlanRequiredError, OpenAskSlotCapError } from "./planGates";
+import { assistantAccessSchema } from "../shared/assistant";
+import { openAskSlots, slotCapReachedSchema } from "../shared/openAskSlots";
+import { resolvePlanEntitlements } from "../shared/planEntitlements";
 
 function setup(deps: Partial<AssistantRouteDeps>) {
   const app = express();
@@ -53,12 +57,24 @@ describe("assistant access routes", () => {
     }
   });
 
-  it("reports plan access honestly", async () => {
-    const app = setup({ getAssistantAccessPlan: async () => "pro" });
-    const free = await authed(app).get("/api/assistants/access");
-    expect(free.body).toEqual({ plan: "pro", hasAccess: false });
-    const paid = setup({ getAssistantAccessPlan: async () => "max" });
-    expect((await authed(paid).get("/api/assistants/access")).body).toEqual({ plan: "max", hasAccess: true });
+  it("reports the plan entitlement honestly and never caches it", async () => {
+    const app = setup({ getAssistantAccess: async () => ({ plan: "start", planLabel: "Start", tier: "start", hasAccess: false }) });
+    const start = await authed(app).get("/api/assistants/access");
+    expect(start.body).toEqual({ plan: "start", planLabel: "Start", tier: "start", hasAccess: false });
+    expect(start.headers["cache-control"]).toBe("private, no-store");
+    expect(assistantAccessSchema.safeParse(start.body).success).toBe(true);
+    // D-067: a retired plan id is not an entitled plan, so it can never be reported as one.
+    expect(assistantAccessSchema.safeParse({ ...start.body, plan: "max" }).success).toBe(false);
+    const paid = setup({ getAssistantAccess: async () => ({ plan: "land_focus", planLabel: "Land Focus", tier: "land", hasAccess: true }) });
+    expect((await authed(paid).get("/api/assistants/access")).body).toEqual({ plan: "land_focus", planLabel: "Land Focus", tier: "land", hasAccess: true });
+  });
+
+  it("asks the access check about the signed-in caller only", async () => {
+    const access = vi.fn(async (userId: number) => ({ plan: "land_focus" as const, planLabel: "Land Focus", tier: "land" as const, hasAccess: userId === 7 }));
+    const app = setup({ getAssistantAccess: access });
+    expect((await authed(app).get("/api/assistants/access?userId=8")).body.hasAccess).toBe(true);
+    expect(access).toHaveBeenCalledWith(7);
+    expect(access).not.toHaveBeenCalledWith(8);
   });
 
   it("connects, lists, and disconnects through injected deps", async () => {
@@ -85,10 +101,21 @@ describe("assistant access routes", () => {
     expect((await authed(validation).post("/api/assistants/connections").send({})).status).toBe(400);
     const ownership = setup({ disconnectAssistant: async () => { throw new Error("This assistant is not connected to your account"); } });
     expect((await authed(ownership).delete("/api/assistants/connections/9")).status).toBe(404);
-    const plan = setup({ connectAssistant: async () => { throw new Error("Assistants are part of the max plan. Upgrade to connect."); } });
+    const plan = setup({ connectAssistant: async () => { throw new AssistantPlanRequiredError(); } });
     const gated = await authed(plan).post("/api/assistants/connections").send({ provider: "chatgpt" });
     expect(gated.status).toBe(402);
-    expect(gated.body.error).toMatch(/max plan/);
+    expect(gated.body.error).toBe("Assistants are part of Land and Concierge, which are not on sale yet, so ChatGPT, Claude and your own tools cannot connect to this account.");
+    const tokens = setup({ createAssistantToken: async () => { throw new AssistantPlanRequiredError(); } });
+    expect((await authed(tokens).post("/api/assistants/tokens").send({ name: "Tracker" })).status).toBe(402);
+  });
+
+  it("returns the typed slot-cap body when an approved ask would pass the plan's open-ask cap", async () => {
+    const slots = openAskSlots(resolvePlanEntitlements(null), 3);
+    const app = setup({ decideAssistantApproval: async () => { throw new OpenAskSlotCapError(slots); } });
+    const response = await authed(app).post("/api/assistants/approvals/1/decision").send({ decision: "approved" });
+    expect(response.status).toBe(409);
+    expect(slotCapReachedSchema.parse(response.body)).toMatchObject({ code: "slot_cap_reached", slots: { open: 3, cap: 3, full: true, planLabel: "Free", nextPlan: null } });
+    expect(response.body.error).toBe("All 3 slots are in use. Wait for an answer or withdraw an ask.");
   });
 
   it("creates tokens and shows the plaintext once", async () => {

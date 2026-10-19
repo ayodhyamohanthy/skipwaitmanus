@@ -7,15 +7,17 @@ import { useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
-import { LAUNCH_COMPANIES } from "@/lib/companies";
+import { findListedCompanyByName, useCompanyDirectory } from "@/lib/companyDirectory";
 import { requestCompany, type TokenSource } from "./referrerData";
 
 export function CompanyRequestPanel({ fetchToken, onOtherPath }: { fetchToken: TokenSource; onOtherPath: () => void }) {
+  const directory = useCompanyDirectory();
+  const companies = directory.data?.companies ?? [];
   const [company, setCompany] = useState("");
   const [tooShort, setTooShort] = useState(false);
   const request = useMutation({ mutationFn: (name: string) => requestCompany(fetchToken, name) });
   const name = company.trim();
-  const listed = LAUNCH_COMPANIES.find(item => item.name.toLowerCase() === name.toLowerCase());
+  const listed = findListedCompanyByName(companies, name, "exact");
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (listed || request.isPending) return;
@@ -41,7 +43,8 @@ export function CompanyRequestPanel({ fetchToken, onOtherPath }: { fetchToken: T
       <span className="eyebrow">SEEKER DEMAND</span>
       <h2>Tell us where you want to work.</h2>
       <p>Your interest helps prioritize where to welcome verified referrers next. It does not create a referral request.</p>
-      <label>Company name<input value={company} maxLength={160} onChange={event => { setCompany(event.target.value); setTooShort(false); if (request.isError) request.reset(); }} placeholder="Search or enter a company" list="launch-companies" autoComplete="organization" aria-invalid={tooShort} /><datalist id="launch-companies">{LAUNCH_COMPANIES.map(item => <option key={item.slug} value={item.name} />)}</datalist></label>
+      <label>Company name<input value={company} maxLength={160} onChange={event => { setCompany(event.target.value); setTooShort(false); if (request.isError) request.reset(); }} placeholder="Search or enter a company" list="launch-companies" autoComplete="organization" aria-invalid={tooShort} /><datalist id="launch-companies">{companies.map(item => <option key={item.slug} value={item.name} />)}</datalist></label>
+      {directory.isError ? <p className="text-muted-foreground">We couldn’t load the companies already on SkipWait, so suggestions are off. You can still send your request.</p> : null}
       {listed ? <p className="flex items-start gap-2"><Building2 className="mt-1 size-4 shrink-0" /><span>{listed.name} already has a door on SkipWait. <Link href={`/explore/${listed.slug}`} className="text-link">Open it</Link></span></p> : null}
       {tooShort ? <p role="alert" className="font-semibold text-destructive">Name the company you want to see.</p> : null}
       {request.isError ? <p role="alert" className="font-semibold text-destructive">{request.error.message || "We could not save this request. Try again."}</p> : null}

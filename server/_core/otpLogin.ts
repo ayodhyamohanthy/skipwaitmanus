@@ -1,10 +1,11 @@
 import { COOKIE_NAME } from "@shared/const";
+import { OTP_RESEND_COOLDOWN_SECONDS, OtpLockedError } from "../otpPolicy";
 import type { Express, Request, Response } from "express";
 import { resolveTrustedClientIp } from "./trustedClientIp";
 import * as db from "../db";
 import { isWorkEmailDomain } from "../db";
 import { getSessionCookieOptions } from "./cookies";
-import { sdk } from "./sdk";
+import { sdk, SESSION_ACCESS_TTL_MS } from "./sdk";
 import { workEmailOtpService } from "../workEmailOtp";
 
 /**
@@ -38,7 +39,7 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
       const result = await workEmailOtpService.sendCode(email, { ip: resolveTrustedClientIp(req) });
       if (!result.sent) console.warn("[OTP] send failed:", result.reason, "| zepto key len:", (process.env.ZEPTOMAIL_API_KEY || "").length, "| from:", process.env.ZEPTOMAIL_FROM_EMAIL);
       if (result.sent) return res.json({ sent: true });
-      if (result.reason === "rate_limited") { res.set("Retry-After", "600"); return res.status(429).json({ error: "Too many code requests. Wait before trying again.", retryAfterSeconds: 600 }); }
+      if (result.reason === "rate_limited") { const retryAfterSeconds = result.retryAfterSeconds ?? 600; res.set("Retry-After", String(retryAfterSeconds)); return res.status(429).json({ error: retryAfterSeconds <= OTP_RESEND_COOLDOWN_SECONDS ? "Wait a moment before requesting another code." : "Too many code requests. Wait before trying again.", retryAfterSeconds }); }
       if (result.reason === "invalid_domain") return res.status(400).json({ error: "Enter a deliverable work email address" });
       if (result.reason === "not_configured") return res.status(503).json({ error: "Email delivery is not configured yet" });
       return res.status(502).json({ error: "We could not deliver the code. Try again shortly." });
@@ -59,7 +60,9 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
         return res.status(400).json({ error: "That code could not be verified. Check the latest code and try again." });
       }
       const openId = `workemail_${email}`;
-      const account = await db.resolveLoginIdentity({ provider: "work_email_otp", subject: email, openId, email, emailVerified: true, name: email.split("@")[0], loginMethod: "otp_work_email" });
+      // No display name from the address: its local part plus the company rebuilds the work
+      // email, and a referrer stays anonymous until they accept. Existing names are untouched.
+      const account = await db.resolveLoginIdentity({ provider: "work_email_otp", subject: email, openId, email, emailVerified: true, name: null, loginMethod: "otp_work_email" });
       // Do not refresh profile, sign-in timestamps, or identity state for a
       // suspended account. Keep this response generic to avoid account-state
       // disclosure from the OTP endpoint.
@@ -67,9 +70,10 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
       const existingProfile = await db.getVerifiedWorkEmailAccess(account.id).catch(() => undefined);
       if (!existingProfile?.workEmailDomain) await db.saveVerifiedWorkEmail(account.id, email).catch(() => undefined);
       const token = await sdk.createSessionToken(openId, { name: account.name ?? email });
-      res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
+      res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: SESSION_ACCESS_TTL_MS });
       res.json({ signedIn: true, role: account.role, email });
     } catch (error) {
+      if (error instanceof OtpLockedError) { res.set("Retry-After", String(error.retryAfterSeconds)); return res.status(429).json({ error: "Too many tries. Try again later.", retryAfterSeconds: error.retryAfterSeconds, lockedUntil: error.lockedUntil.toISOString() }); }
       if (error instanceof Error && error.message === "ACCOUNT_NOT_ACTIVE") return res.status(403).json({ error: "We could not complete sign-in." });
       res.status(500).json({ error: "We could not verify the code" });
     }

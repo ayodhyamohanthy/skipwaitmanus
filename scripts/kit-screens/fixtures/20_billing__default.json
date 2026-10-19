@@ -22,7 +22,7 @@
       "status": 200,
       "body": {
         "summary": {
-          "plan": "pro",
+          "plan": "start",
           "monthlyAllowance": 10,
           "monthlyCreditsRemaining": 7,
           "purchasedCreditsRemaining": 2,
@@ -33,7 +33,46 @@
           "totalAvailable": 9,
           "cycleKey": "2026-10",
           "subscriptionStatus": "active",
-          "subscriptionCurrentTermEnd": "2026-11-06T00:00:00.000Z"
+          "subscriptionCurrentTermEnd": "2026-11-06T00:00:00.000Z",
+          "ledger": {
+            "balance": 9,
+            "buckets": {
+              "cycle": 7,
+              "carriedOver": 0,
+              "trial": 0,
+              "welcome": 0,
+              "purchased": 2,
+              "promo": 0
+            },
+            "creditsPerMonth": 10,
+            "carryover": 1,
+            "cycle": {
+              "key": "2026-10",
+              "startsAt": "2026-10-06T00:00:00.000Z",
+              "endsAt": "2026-11-06T00:00:00.000Z",
+              "granted": 10,
+              "used": 3
+            },
+            "planCreditsRemaining": 7,
+            "nextExpiry": {
+              "credits": 7,
+              "expiresAt": "2026-12-06T00:00:00.000Z"
+            },
+            "planCreditsExpiringSoon": null,
+            "welcome": {
+              "granted": false,
+              "credits": 0,
+              "remaining": 0
+            }
+          },
+          "slots": {
+            "plan": "start",
+            "planLabel": "Start",
+            "open": 4,
+            "cap": 8,
+            "full": false,
+            "nextPlan": null
+          }
         }
       }
     },

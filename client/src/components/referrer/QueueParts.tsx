@@ -6,14 +6,9 @@ import type { ReactNode } from "react";
 import { Link } from "wouter";
 import { ArrowRight, Check, Clock3, EyeOff, type LucideIcon } from "lucide-react";
 import { StatusPill } from "@/components/kit/status-pill";
+import { companyIdentityOf } from "@shared/companies";
+import { functionEyebrow, type JobFunction } from "@shared/jobFunctions";
 import { companyInitial } from "./ClaimedReview";
-
-export type InboxScope = "new" | "saved" | "completed";
-export const INBOX_SCOPES: ReadonlyArray<{ readonly id: InboxScope; readonly label: string }> = [
-  { id: "new", label: "New" },
-  { id: "saved", label: "Saved" },
-  { id: "completed", label: "Done" },
-];
 
 export const displayRef = (id: number) => `Ref-${1000 + id}`;
 
@@ -25,26 +20,6 @@ export function QueueGuidance() {
       <p>Review the role and context. Accept only if you’re comfortable making the introduction through your company’s process.</p>
       <Link href="/safety">Safety and boundaries <ArrowRight /></Link>
     </aside>
-  );
-}
-
-export function ScopeTabs({ scope, newCount, onSelect }: { scope: InboxScope; newCount: number; onSelect: (scope: InboxScope) => void }) {
-  return (
-    <div role="tablist" aria-label="Company inbox views" className="inline-flex gap-1 rounded-[10px] bg-muted p-1">
-      {INBOX_SCOPES.map(item => (
-        <button
-          key={item.id}
-          type="button"
-          role="tab"
-          aria-selected={scope === item.id}
-          onClick={() => onSelect(item.id)}
-          className={`inline-flex min-h-10 items-center gap-1.5 rounded-[7px] px-4 text-[13px] font-semibold ${scope === item.id ? "bg-background text-foreground shadow-[0_1px_4px_color-mix(in_oklch,var(--foreground)_13%,transparent)]" : "text-muted-foreground hover:text-foreground"}`}
-        >
-          {item.label}
-          {item.id === "new" && newCount > 0 ? <span aria-label={`${newCount} new private request${newCount === 1 ? "" : "s"}`} className="min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-center text-[10px] leading-none text-primary-foreground">{newCount > 99 ? "99+" : newCount}</span> : null}
-        </button>
-      ))}
-    </div>
   );
 }
 
@@ -60,21 +35,21 @@ export function QueuePanel({ icon: Icon, title, text, label, children }: { icon:
   );
 }
 
-export type QueueCardRequest = { id: number; companyDomain: string; targetRoleUrl: string | null; compensation?: string | null; attachmentCount: number };
+export type QueueCardRequest = { jobTitle?: string | null; id: number; companyDomain: string; companyName?: string | null; companyInitials?: string | null; jobFunction?: JobFunction | null; targetRoleUrl: string | null; compensation?: string | null; attachmentCount: number };
 
-export function QueueRequestCard({ request, badge, expiry, expiryUrgent, detail, actions }: {
+/** One routed request in the kit queue card ("PRODUCT · WIPRO"). The role link and the seeker's note stay inside the opened request. */
+export function QueueRequestCard({ request, badge, expiry, expiryUrgent, footer }: {
   request: QueueCardRequest;
   badge: string;
   expiry: string | null;
   expiryUrgent: boolean;
-  detail: string;
-  actions: ReactNode;
+  footer: ReactNode;
 }) {
   return (
     <article aria-label={`Private request ${displayRef(request.id)}`} className="queue-card min-w-0">
       <header>
         <span className="company-mark" aria-hidden="true">{companyInitial(request.companyDomain)}</span>
-        <div className="min-w-0"><span className="eyebrow block truncate">{request.companyDomain} · {displayRef(request.id)}</span><h2>Private request</h2></div>
+        <div className="min-w-0"><span className="eyebrow block truncate">{functionEyebrow(request.jobFunction, companyIdentityOf(request).name)}</span><h2>{request.jobTitle?.trim() || "Private request"}</h2></div>
         <StatusPill status={badge} />
       </header>
       <div className="identity-locked"><EyeOff /><span><strong>Your identity stays hidden</strong><small>Shared only if you accept the request</small></span></div>
@@ -84,9 +59,7 @@ export function QueueRequestCard({ request, badge, expiry, expiryUrgent, detail,
         {request.compensation ? <span>{request.compensation}</span> : null}
         {expiry ? <span className={expiryUrgent ? "text-destructive" : undefined}><Clock3 />{expiry}</span> : null}
       </div>
-      <RoleLink url={request.targetRoleUrl} />
-      <p className="my-[23px] text-sm leading-[1.7] text-muted-foreground">{detail}</p>
-      <footer>{actions}</footer>
+      <div className="mt-[23px]">{footer}</div>
     </article>
   );
 }

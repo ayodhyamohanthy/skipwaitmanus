@@ -8,8 +8,11 @@ import { KIND_SHORT, STATUS_META } from "./consoleMeta";
 
 type Props = {
   app: DeveloperApp;
+  /** From the URL (?details=1): open the credentials view even while the app is in review, rejected or suspended. */
+  showDetails: boolean;
   working: boolean;
   error: string;
+  onOpenDetails: () => void;
   onSubmitForReview: () => void;
   onSaveWebhook: (url: string) => void;
   onEditAndResubmit: () => void;
@@ -17,21 +20,20 @@ type Props = {
 
 const STATS = [["Connected users", "Shown once live"], ["Asks sent via app", "Shown once live"], ["Approval rate", "Shown once live"]] as const;
 
-export function AppDetails({ app, working, error, onSubmitForReview, onSaveWebhook, onEditAndResubmit }: Props) {
-  // In review, rejected and suspended apps open on their status; credentials stay one tap away.
-  const [showDetails, setShowDetails] = useState(false);
+export function AppDetails({ app, showDetails, working, error, onOpenDetails, onSubmitForReview, onSaveWebhook, onEditAndResubmit }: Props) {
+  // In review, rejected and suspended apps open on their status (kit panels); the details view is its own URL.
   const [webhook, setWebhook] = useState(app.webhookUrl ?? "");
   const [copied, setCopied] = useState(false);
   const errorLine = error ? <p role="alert" className="mt-4 flex items-start gap-2 text-sm text-destructive"><CircleAlert className="mt-0.5 size-4 shrink-0" />{error}</p> : null;
 
   if (app.status === "in_review" && !showDetails) {
-    return <Panel className="text-center"><Clock className="mx-auto size-8" /><h1 className="mt-3 text-2xl font-semibold">{app.name} is in review</h1><p className="mt-2 text-sm text-muted-foreground">Review for send and profile permissions usually takes 2–5 business days.</p><Button className="mt-4" onClick={() => setShowDetails(true)}>Open test credentials</Button></Panel>;
+    return <Panel className="text-center"><Clock className="mx-auto size-8" /><h1 className="mt-3 text-2xl font-semibold">{app.name} is in review</h1><p className="mt-2 text-sm text-muted-foreground">Review for send and profile permissions usually takes 2–5 business days.</p><Button className="mt-4" onClick={onOpenDetails}>Open test credentials</Button></Panel>;
   }
   if (app.status === "rejected" && !showDetails) {
-    return <Panel><ShieldAlert className="size-8 text-destructive" /><h1 className="mt-3 text-2xl font-semibold">Changes needed</h1><ul className="mt-2 list-disc space-y-1 pl-5 text-sm">{app.rejectReasons.length > 0 ? app.rejectReasons.map(reason => <li key={reason}>{reason}</li>) : <li>Our team asked for changes. Check your email for details.</li>}</ul><div className="mt-4 flex flex-wrap gap-2"><Button onClick={onEditAndResubmit}>Edit and resubmit</Button><Button variant="ghost" onClick={() => setShowDetails(true)}>Open app details</Button></div></Panel>;
+    return <Panel><ShieldAlert className="size-8 text-destructive" /><h1 className="mt-3 text-2xl font-semibold">Changes needed</h1><ul className="mt-2 list-disc space-y-1 pl-5 text-sm">{app.rejectReasons.length > 0 ? app.rejectReasons.map(reason => <li key={reason}>{reason}</li>) : <li>Our team asked for changes. Check your email for details.</li>}</ul><Button className="mt-4" onClick={onEditAndResubmit}>Edit and resubmit</Button></Panel>;
   }
   if (app.status === "suspended" && !showDetails) {
-    return <Panel><ShieldAlert className="size-8 text-destructive" /><h1 className="mt-3 text-2xl font-semibold">App suspended</h1><p className="mt-2 text-sm text-muted-foreground">Our safety team suspended this app. Reply to the safety team to appeal.</p><div className="mt-4 flex flex-wrap gap-2"><Button variant="outline" asChild><Link href="/help">Contact safety team</Link></Button><Button variant="ghost" onClick={() => setShowDetails(true)}>Open app details</Button></div></Panel>;
+    return <Panel><ShieldAlert className="size-8 text-destructive" /><h1 className="mt-3 text-2xl font-semibold">App suspended</h1><p className="mt-2 text-sm text-muted-foreground">Our safety team suspended this app. Reply to the safety team to appeal.</p><Button variant="outline" className="mt-4" asChild><Link href="/help">Contact safety team</Link></Button></Panel>;
   }
 
   const copyClientId = async () => {
@@ -46,7 +48,7 @@ export function AppDetails({ app, working, error, onSubmitForReview, onSaveWebho
       <Panel className="mt-6"><h2 className="font-semibold">Credentials</h2><div className="mt-3 space-y-3 text-sm"><div><small className="text-muted-foreground">Client ID</small><div className="flex gap-2"><code className="flex-1 truncate rounded-xl bg-muted px-3 py-2">{app.clientId}</code><Button variant="outline" size="sm" onClick={() => { void copyClientId(); }}><Copy />{copied ? "Copied" : "Copy"}</Button></div></div><div><small className="text-muted-foreground">Client secret</small><div className="flex gap-2"><code className="flex-1 rounded-xl bg-muted px-3 py-2 text-muted-foreground">Not issued yet</code></div></div></div></Panel>
       <div className="mt-4 grid gap-4 sm:grid-cols-3">{STATS.map(([label, hint]) => <Panel key={label}><small className="text-muted-foreground">{label}</small><strong className="block text-lg">—</strong><small className="text-muted-foreground">{hint}</small></Panel>)}</div>
       <Panel className="mt-4"><h2 className="font-semibold">Webhooks</h2><input className={field} value={webhook} onChange={event => setWebhook(event.target.value)} placeholder="https://instinct.app/hooks/skipwait" aria-label="Webhook URL" /><p className="mt-2 text-xs text-muted-foreground">Events are not sent yet. When they are, each one is signed: verify the signature header before trusting it.</p><Button variant="outline" size="sm" className="mt-3" disabled={working} onClick={() => onSaveWebhook(webhook.trim())}>{working ? "Saving…" : "Save webhook"}</Button></Panel>
-      <Panel tone="muted" className="mt-4 text-sm"><strong>Limits:</strong> per user, the same open-request limits as the SkipWait app, and 120 requests/min per token. Members on Max can connect; each ask still needs their own approval.</Panel>
+      <Panel tone="muted" className="mt-4 text-sm"><strong>Limits:</strong> per user, the same open-request limits as the SkipWait app, and 120 requests/min per token. Members on Land and Concierge can connect; each ask still needs their own approval.</Panel>
     </>
   );
 }

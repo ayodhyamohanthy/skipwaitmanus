@@ -1,6 +1,6 @@
 // Kit v4 /p/:handle "Work" section (app/src/routes/p.$handle.tsx) over the
 // live, owner-filtered work items the public-profile API returns.
-import { ArrowRight, Eye, EyeOff, Github, Globe, Pin } from "lucide-react";
+import { Eye, EyeOff, Github, Globe, Pin } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { isGithubSource, workKindLabel, type WorkItem } from "./workItems";
@@ -23,8 +23,7 @@ export function PublicWorkGrid({ items, isOwner }: { items: readonly WorkItem[];
                 {item.pinned ? <span className="flex items-center gap-1 text-foreground"><Pin className="size-3.5" />Pinned</span> : null}
               </div>
               <span className="eyebrow">{workKindLabel(item.kind).toUpperCase()}</span>
-              <h3 className="mt-1 text-lg font-semibold">{item.title}</h3>
-              {item.url ? <a href={item.url} target="_blank" rel="noreferrer" className="text-link text-sm">Open link <ArrowRight className="size-3" /></a> : null}
+              <h3 className="mt-1 text-lg font-semibold">{item.url ? <a href={item.url} target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:underline">{item.title}</a> : item.title}</h3>
               {isOwner ? <p className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">{item.visibleOnProfile ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}{item.visibleOnProfile ? "Visible on profile" : "Only visible to you"}</p> : null}
             </article>
           ))}

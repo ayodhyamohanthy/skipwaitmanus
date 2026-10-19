@@ -1,8 +1,13 @@
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, BadgeCheck, Check } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
-import type { LaunchCompany } from "@/lib/companies";
+import { fetchProfileHandle, fetchReferrerPreferences, type TokenSource } from "@/components/referrer-home/referrerData";
+import type { PublicCompany } from "@/lib/companyDirectory";
+
+/** What the verify frame needs to name the company; absent while the directory loads. */
+type VerifyCompany = Pick<PublicCompany, "name" | "initials">;
 
 const STEP_LABELS = ["Company", "Work email", "Code", "Verified"] as const;
 
@@ -32,7 +37,7 @@ export function VerifyProgress({ stepIndex }: { stepIndex: number }) {
 }
 
 /** Page frame shared by every state: heading, the step card, and the kit aside. */
-export function VerifyLayout({ screen, company, busy, children }: { screen: string; company: LaunchCompany; busy?: boolean; children: ReactNode }) {
+export function VerifyLayout({ screen, company, busy, children }: { screen: string; company: VerifyCompany | undefined; busy?: boolean; children: ReactNode }) {
   return (
     <main data-skipwait-screen={screen} className="page-content" aria-busy={busy || undefined}>
       <VerifyHeading />
@@ -44,14 +49,15 @@ export function VerifyLayout({ screen, company, busy, children }: { screen: stri
   );
 }
 
-export function VerifyAside({ company }: { company: LaunchCompany }) {
+export function VerifyAside({ company }: { company: VerifyCompany | undefined }) {
+  const name = company?.name ?? "your company";
   return (
     <aside className="space-y-4">
-      <div className="rounded-3xl bg-muted p-5"><span className="eyebrow">WHY A CODE?</span><p className="mt-2 text-sm">It proves you can receive email at {company.name} today. It doesn&apos;t prove your role or that {company.name} endorses SkipWait.</p></div>
+      <div className="rounded-3xl bg-muted p-5"><span className="eyebrow">WHY A CODE?</span><p className="mt-2 text-sm">It proves you can receive email at {name} today. It doesn&apos;t prove your role or that {name} endorses SkipWait.</p></div>
       <div className="rounded-3xl border border-border p-5 text-sm">
         <span className="eyebrow">WE STORE</span>
         <ul className="mt-2 space-y-2">
-          <li className="flex gap-2"><Check className="size-4 shrink-0 text-primary" />Your work email, kept private</li>
+          <li className="flex gap-2"><Check className="size-4 shrink-0 text-primary" />A one-way fingerprint of your email</li>
           <li className="flex gap-2"><Check className="size-4 shrink-0 text-primary" />Company and verification date</li>
           <li className="flex gap-2"><Check className="size-4 shrink-0 text-primary" />Never the code or your inbox</li>
         </ul>
@@ -61,7 +67,19 @@ export function VerifyAside({ company }: { company: LaunchCompany }) {
   );
 }
 
-export function VerifiedPanel({ company }: { company: LaunchCompany }) {
+/** Where "View my profile" goes: the public page when a handle exists, else the handle field. */
+export function profileHref(handle: string | null | undefined): string {
+  return handle ? `/p/${encodeURIComponent(handle)}` : "/profile?focus=handle";
+}
+
+/**
+ * Kit verified panel. The badge line names the referrer's primary function
+ * (first saved job area) only when one is saved; neither read blocks the panel.
+ */
+export function VerifiedPanel({ company, getToken }: { company: VerifyCompany; getToken: TokenSource }) {
+  const preferences = useQuery({ queryKey: ["verify", "referrer-preferences"], queryFn: () => fetchReferrerPreferences(getToken), retry: false, staleTime: 60_000 });
+  const handle = useQuery({ queryKey: ["verify", "profile-handle"], queryFn: () => fetchProfileHandle(getToken), retry: false, staleTime: 60_000 });
+  const primaryFunction = preferences.data?.preferAreas[0];
   return (
     <div className="text-center">
       <span className="mx-auto mb-4 grid size-20 place-items-center rounded-full bg-accent"><BadgeCheck className="size-10 text-primary" /></span>
@@ -71,12 +89,12 @@ export function VerifiedPanel({ company }: { company: LaunchCompany }) {
         <span className="eyebrow">WHAT SEEKERS SEE</span>
         <div className="mt-3 flex items-center gap-3">
           <span className="company-mark">{company.initials}</span>
-          <span><strong className="flex items-center gap-1">Someone at {company.name} <BadgeCheck className="size-4 text-primary" /></strong><small className="text-muted-foreground">Verified via work email</small></span>
+          <span><strong className="flex items-center gap-1">Someone at {company.name} <BadgeCheck className="size-4 text-primary" /></strong><small className="text-muted-foreground">Verified via work email{primaryFunction ? ` · ${primaryFunction}` : ""}</small></span>
         </div>
       </div>
       <p className="mt-4 text-sm text-muted-foreground">Your badge stays on your account. Verify again here if your work email changes.</p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <Button variant="outline" asChild><Link href="/profile">View my profile</Link></Button>
+        <Button variant="outline" asChild><Link href={profileHref(handle.data)}>View my profile</Link></Button>
         <Button asChild><Link href="/referrer-setup">Set up referring <ArrowRight /></Link></Button>
       </div>
     </div>

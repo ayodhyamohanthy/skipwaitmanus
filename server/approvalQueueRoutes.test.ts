@@ -77,8 +77,29 @@ describe("unified admin approval queue routes", () => {
     expect((await request(app).post("/api/admin/approval-queue/referral_request/501/decision").set("x-test-user", "admin").send({ decision: "maybe" })).status).toBe(400);
   });
 
+  it("refuses an administrator's approval of a request an employee claimed with 409 and the plain reason (D-012 item 3)", async () => {
+    const { AdminCannotAcceptClaimedReferralError, ADMIN_CANNOT_ACCEPT_CLAIMED_ERROR } = await import("./adminReferralApproval");
+    const activity: Array<{ action: string }> = [];
+    const app = buildApp(minimalDeps({ resolveAdminApproval: async () => { throw new AdminCannotAcceptClaimedReferralError(); }, recordActivity: async entry => { activity.push(entry); } }));
+    const response = await request(app).post("/api/admin/approval-queue/referral_request/501/decision").set("x-test-user", "admin").send({ decision: "approved" });
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ error: ADMIN_CANNOT_ACCEPT_CLAIMED_ERROR });
+    expect(activity.some(entry => entry.action === "admin.approval_approved")).toBe(false);
+  });
+
   it("reports a missing record as 404", async () => {
     const app = buildApp(minimalDeps({ resolveAdminApproval: async () => { throw new Error("This referral request could not be found"); } }));
     expect((await request(app).post("/api/admin/approval-queue/referral_request/999/decision").set("x-test-user", "admin").send({ decision: "rejected" })).status).toBe(404);
+  });
+
+  it("returns an approval of a refund-parked payment as 409 with the plain refusal, not 500 (P0-refund-review)", async () => {
+    const { PaymentReviewRefusedError } = await import("./paymentRefundReview");
+    const message = "This payment's credits were already added before it was refunded, so it cannot be credited again or rejected. Take back the unused credits, or keep them and close it.";
+    const activity: Array<{ action: string }> = [];
+    const app = buildApp(minimalDeps({ resolveAdminApproval: async () => { throw new PaymentReviewRefusedError(message); }, recordActivity: async entry => { activity.push(entry); } }));
+    const response = await request(app).post("/api/admin/approval-queue/payment/33/decision").set("x-test-user", "admin").send({ decision: "approved" });
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ error: message });
+    expect(activity.some(entry => entry.action === "admin.approval_approved")).toBe(false);
   });
 });

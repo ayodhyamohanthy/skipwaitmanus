@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { landingSnapshot, PUBLIC_PAGES, publicSnapshots } from "./prerender-public-pages";
 import { breadcrumbsHtml, faqJsonLd, homeLinks, renderPublicPage } from "./prerenderSeo";
-import { LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_H1, LANDING_SUMMARY } from "../shared/landingContent";
+import { LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_H1, LANDING_HERO_LEAD, LANDING_SUMMARY } from "../shared/landingContent";
 import { breadcrumbsFor, canonicalUrl, PUBLIC_ROUTES, publicRoute } from "../shared/publicRoutes";
+import { LAUNCH_COMPANY_SEED } from "../shared/companyDirectorySeed";
 
 const template =
   '<html><head><title>skipwait.me — Job Referrals</title><meta name="description" content="previous copy" /><link rel="canonical" href="https://skipwait.me/" /><meta property="og:title" content="previous og title" /><meta property="og:description" content="previous og copy" /><meta property="og:url" content="https://skipwait.me/" /><meta name="twitter:title" content="previous twitter title" /><meta name="twitter:description" content="previous twitter copy" /></head><body><div id="root"></div></body></html>';
@@ -120,7 +121,7 @@ describe("crawlable landing and public snapshots", () => {
   it("writes the landing heading, summary, both role entry points, and every explore link", () => {
     const html = landingSnapshot(policyLinks);
     expect(html).toContain(`<h1>${LANDING_H1}</h1>`);
-    expect(html).toContain(LANDING_SUMMARY);
+    expect(html).toContain(LANDING_HERO_LEAD);
     expect(html).toContain('href="/start"');
     expect(html).toContain('href="/referrer"');
     for (const link of ["/jobs", "/wall", "/referrer", "/premium", "/pricing", "/about", "/contact", "/support"]) expect(html).toContain(`href="${link}"`);
@@ -148,7 +149,7 @@ describe("crawlable landing and public snapshots", () => {
 
   it("prepares one snapshot per public screen that needs a session or API data", () => {
     const snapshots = publicSnapshots();
-    expect(snapshots.map(snapshot => snapshot.route)).toEqual(["/jobs", "/wall", "/premium", "/plans", "/referrer", "/employer"]);
+    expect(snapshots.map(snapshot => snapshot.route)).toEqual(["/jobs", "/explore", "/wall", "/premium", "/plans", "/referrer", "/employer"]);
     for (const snapshot of snapshots) {
       expect(snapshot.markup).toContain("<h1>");
       expect(snapshot.title).toBe(publicRoute(snapshot.route)!.title);
@@ -157,10 +158,45 @@ describe("crawlable landing and public snapshots", () => {
     }
   });
 
+  it("describes /explore with the launch companies the page lists, and links every company page", () => {
+    const explore = publicSnapshots().find(snapshot => snapshot.route === "/explore")!;
+    const names = new Intl.ListFormat("en-US", { type: "conjunction" }).format(LAUNCH_COMPANY_SEED.map(company => company.name));
+    expect(explore.description).toBe(`Find people open to referral requests at ${names}.`);
+    expect(explore.markup).toContain("<h1>Where would you love to work next?</h1>");
+    for (const company of LAUNCH_COMPANY_SEED) expect(explore.markup).toContain(`href="/explore/${company.slug}"`);
+    expect(landingSnapshot(policyLinks)).toContain('href="/explore"');
+  });
+
   it("never publishes a person, an address, or a fabricated claim in a snapshot", () => {
     const serialized = JSON.stringify(publicSnapshots());
     expect(serialized).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
     expect(serialized).not.toMatch(/\bRef-\d+/i);
     expect(serialized).not.toMatch(/Sarah was just|fast-tracked|hiring guarantee|just got hired/i);
+  });
+});
+
+// D-067: the monthly Pro and Max plans are removed completely, and /plans now
+// shows Free and credits (the D-046 passes are 30/90-day, not monthly plans).
+describe("D-067: no crawlable copy names a removed plan", () => {
+  const RETIRED_NAME = /\bPro\b|\bMax\b|₹599|₹1,299|\$7\b|\$15\b/;
+  const MONTHLY_PLANS = /\bmonthly (?:referral )?plans?\b/i;
+
+  it("the landing snapshot, every public snapshot, route title and description, and the landing links", () => {
+    const copy = [
+      landingSnapshot(policyLinks),
+      ...publicSnapshots().flatMap(snapshot => [snapshot.markup, snapshot.title, snapshot.description]),
+      ...PUBLIC_ROUTES.flatMap(entry => [entry.title, entry.description]),
+      ...LANDING_EXPLORE.flatMap(link => [link.label, link.summary]),
+    ];
+    for (const line of copy) {
+      expect(line).not.toMatch(RETIRED_NAME);
+      expect(line).not.toMatch(MONTHLY_PLANS);
+    }
+  });
+
+  it("titles /plans as the page does, and the /cancellations description keeps the page's paid-plan section", () => {
+    expect(route("/plans").title).toBe("Plans and credits");
+    expect(LANDING_EXPLORE.find(link => link.href === "/plans")?.label).toBe("Plans and credits");
+    expect(route("/cancellations").description).toBe("How to cancel a referral request, a paid plan, or a credit purchase, and when any money comes back.");
   });
 });

@@ -1,5 +1,9 @@
 import express, { type Express, type Request } from "express";
-import { createWorkItem, deleteWorkItem, getMyProfile, getPublicProfileByHandle, getReferrerPreferences, listMyWorkItems, normalizeProfileHandle, updateMyProfile, updateReferrerPreferences, updateWorkItem } from "./db";
+import { createWorkItem, deleteWorkItem, getMyProfile, getPublicProfileByHandle, getReferrerHome, getReferrerPreferences, listMyWorkItems, normalizeProfileHandle, updateMyProfile, updateReferrerPreferences, updateWorkItem } from "./db";
+import { seekerSetupPatchSchema } from "../shared/seekerSetup";
+import { getSeekerSetup, SeekerSetupResumeError, updateSeekerSetup } from "./seekerSetup";
+import { referrerAreasInputSchema, referrerLevelsInputSchema } from "../shared/jobFunctions";
+import { PlanLimitError } from "./planGates";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type Identity = { account: Account };
@@ -15,7 +19,10 @@ export type ProfileRouteDeps = {
   deleteWorkItem?: typeof deleteWorkItem;
   getPublicProfileByHandle?: typeof getPublicProfileByHandle;
   getReferrerPreferences?: typeof getReferrerPreferences;
+  getReferrerHome?: typeof getReferrerHome;
   updateReferrerPreferences?: typeof updateReferrerPreferences;
+  getSeekerSetup?: typeof getSeekerSetup;
+  updateSeekerSetup?: typeof updateSeekerSetup;
 };
 
 const itemId = (raw: string) => {
@@ -42,6 +49,33 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
     } catch { res.status(500).json({ error: "We could not load your profile" }); }
   });
 
+  // Seeker setup answers (/onboarding). Owner-only: the user id always comes from
+  // the session, never from the request.
+  app.get("/api/profile/setup", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to view your setup" });
+      res.set("Cache-Control", "private, no-store");
+      res.json(await (deps.getSeekerSetup ?? getSeekerSetup)(identity.account.id));
+    } catch { res.status(500).json({ error: "We could not load your setup" }); }
+  });
+
+  app.patch("/api/profile/setup", express.json(), async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to save your setup" });
+      const parsed = seekerSetupPatchSchema.safeParse(req.body ?? {});
+      if (!parsed.success) return res.status(400).json({ error: "Check your setup answers and try again" });
+      const result = await (deps.updateSeekerSetup ?? updateSeekerSetup)(identity.account.id, parsed.data);
+      record({ actorUserId: identity.account.id, action: "profile.setup_updated", outcome: "success", resourceType: "profile" });
+      res.set("Cache-Control", "private, no-store");
+      res.json(result);
+    } catch (error) {
+      if (error instanceof SeekerSetupResumeError) return res.status(400).json({ error: error.message });
+      res.status(500).json({ error: "We could not save your setup" });
+    }
+  });
+
   app.put("/api/profile/me", express.json(), async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
@@ -54,7 +88,7 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
         bio: body.bio as string | undefined,
         skills: body.skills as string | undefined,
         openTo: body.openTo as unknown,
-        handle: (body.handle as string | null | undefined) ?? undefined,
+        handle: body.handle === null ? null : typeof body.handle === "string" ? body.handle : undefined,
         profileVisibility: body.profileVisibility as string | undefined,
       });
       record({ actorUserId: identity.account.id, action: "profile.updated", outcome: "success", resourceType: "profile" });
@@ -85,11 +119,27 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
     } catch { res.status(500).json({ error: "We could not load your referrer settings" }); }
   });
 
+  // Read model only (queue task 18 PR 1): capacity used this month and routing state. Changes no routing.
+  app.get("/api/referrer/home", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to view your referrer home" });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ home: await (deps.getReferrerHome ?? getReferrerHome)(identity.account.id) });
+    } catch { res.status(500).json({ error: "We could not load your referrer home" }); }
+  });
+
   app.put("/api/referrer-preferences", express.json(), async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to change your referrer settings" });
       const body = (req.body ?? {}) as Record<string, unknown>;
+      // Job areas and levels are validated against the shared taxonomy: listed values, each once.
+      for (const [field, schema] of [["preferAreas", referrerAreasInputSchema], ["preferLevels", referrerLevelsInputSchema]] as const) {
+        if (body[field] === undefined) continue;
+        const checked = schema.safeParse(body[field]);
+        if (!checked.success) return res.status(400).json({ error: checked.error.issues[0]?.message ?? "Choose from the list" });
+      }
       const save = deps.updateReferrerPreferences ?? updateReferrerPreferences;
       const preferences = await save(identity.account.id, {
         referralCapacity: body.referralCapacity,
@@ -118,6 +168,8 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
       record({ actorUserId: identity.account.id, action: "work_item.created", outcome: "success", resourceType: "work_item", resourceId: item.id });
       res.status(201).json({ item });
     } catch (error) {
+      // The plan's showcase limit (shared/planEntitlements.ts): typed so the Work screen can show the cap.
+      if (error instanceof PlanLimitError) return res.status(409).json({ error: error.message, code: error.code, limit: error.limit, cap: error.cap });
       const message = error instanceof Error ? error.message : "We could not add this work";
       res.status(/title|kind|link|up to 20|string/i.test(message) ? 400 : 500).json({ error: message });
     }
@@ -134,6 +186,7 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
       res.set("Cache-Control", "private, no-store");
       res.json({ item });
     } catch (error) {
+      if (error instanceof PlanLimitError) return res.status(409).json({ error: error.message, code: error.code, limit: error.limit, cap: error.cap });
       const message = error instanceof Error ? error.message : "We could not update this work";
       res.status(/not in your account/i.test(message) ? 404 : /title|kind|link|string/i.test(message) ? 400 : 500).json({ error: message });
     }

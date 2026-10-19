@@ -1,27 +1,29 @@
 import { Bell, BellOff, CheckCheck } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { SignInButton, useAuth, useUser } from "@/_core/auth";
+import { SignInButton, useAuth } from "@/_core/auth";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Heading, Panel } from "@/components/kit/preview-kit";
 import { NotificationGroups } from "@/components/alerts/NotificationGroups";
 import { SavedAlerts } from "@/components/alerts/SavedAlerts";
 import { notificationListSchema, orderNotifications, type NotificationItem } from "@/components/alerts/notifications";
 import { usePersistFn } from "@/hooks/usePersistFn";
+import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { readApiJson } from "@/lib/apiResponse";
 
 const TABS = ["Notifications", "Saved alerts"] as const;
 const FILTERS = ["All", "Unread"] as const;
 const LOAD_ERROR = "We could not load your alerts";
 const NETWORK_ERROR = "We could not reach SkipWait. Check your connection and try again.";
-const PERSONAL_DOMAINS = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "proton.me"];
 const HEADING = { eyebrow: "STAY IN THE LOOP", title: "Alerts", text: "Only things that need you. No marketing, no “you might like”." } as const;
+// Kit visual height, 44px tap target: a transparent ::before stretched past the control's edges.
+const HIT_AREA_Y = "relative before:absolute before:inset-x-0";
 
 export default function Alerts() {
   const [, go] = useLocation();
   const { isLoaded, isSignedIn, userId, getToken } = useAuth();
-  const { user } = useUser();
   const fetchToken = usePersistFn(getToken);
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<(typeof TABS)[number]>("Notifications");
@@ -48,12 +50,13 @@ export default function Alerts() {
     },
   });
 
-  const hasVerifiedWorkEmail = Boolean(user?.emailAddresses?.some(address => {
-    const domain = address.emailAddress.trim().toLowerCase().split("@")[1];
-    return address.verification?.status === "verified" && domain && !PERSONAL_DOMAINS.includes(domain);
-  }));
+  // Referral and message alerts follow the server's verified-referrer verdict (shared predicate), never the
+  // session's own emails: a Google sign-in that verified a work email by code is a referrer. Only a server
+  // "not verified" opens the seeker's /requests; while the check runs or after it fails they open /inbox,
+  // which serves both the asking and the referring side.
+  const access = useReferrerAccess();
   const destinationFor = (item: NotificationItem) =>
-    item.category === "status" ? "/requests" : item.category === "system" ? "/settings" : hasVerifiedWorkEmail ? "/inbox" : "/requests";
+    item.category === "status" ? "/requests" : item.category === "system" ? "/settings" : access.status === "unverified" ? "/requests" : "/inbox";
 
   const stampRead = (ids: readonly number[]) => {
     if (!ids.length) return;
@@ -96,11 +99,12 @@ export default function Alerts() {
   const ordered = useMemo(() => orderNotifications(notifications.data ?? []), [notifications.data]);
   const shown = filter === "All" ? ordered : ordered.filter(item => !item.readAt);
   const unread = ordered.filter(item => !item.readAt).length;
+  const markAllIdle = !unread || openingId !== null;
   const loading = isSignedIn && notifications.isFetching && !notifications.data;
   const loadError = notifications.isError && !notifications.isFetching ? notifications.error.message : "";
 
   if (!isLoaded) {
-    return <main data-skipwait-screen="alerts" className="page-content"><Heading {...HEADING} /><p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your alerts…</p></main>;
+    return <main data-skipwait-screen="alerts" className="page-content"><Heading {...HEADING} /><LoadingNote>Loading your alerts…</LoadingNote></main>;
   }
 
   if (!isSignedIn) {
@@ -134,14 +138,15 @@ export default function Alerts() {
           <div className="my-4 flex items-center justify-between gap-2">
             <div className="flex rounded-full bg-muted p-1 text-sm" role="group" aria-label="Show">
               {FILTERS.map(value => (
-                <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} className={`min-h-11 rounded-full px-4 md:min-h-9 ${filter === value ? "bg-background font-semibold shadow-sm" : "text-muted-foreground"}`}>{value}</button>
+                <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} className={`${HIT_AREA_Y} min-h-9 rounded-full px-4 before:-inset-y-1 ${filter === value ? "bg-background font-semibold shadow-sm" : "text-muted-foreground"}`}>{value}</button>
               ))}
             </div>
-            <Button variant="ghost" size="sm" className="min-h-11 md:min-h-8" disabled={!unread || openingId !== null} onClick={() => { void markAllRead(); }}><CheckCheck />Mark all read</Button>
+            {/* aria-disabled, not the native attribute: the kit draws an idle ghost here, and the global :disabled fill would paint a grey pill. */}
+            <Button variant="ghost" size="sm" className={`${HIT_AREA_Y} before:-inset-y-1.5 aria-disabled:cursor-not-allowed aria-disabled:hover:bg-transparent`} aria-disabled={markAllIdle || undefined} onClick={() => { if (!markAllIdle) void markAllRead(); }}><CheckCheck />Mark all read</Button>
           </div>
 
           {actionNotice ? <p role="status" className="mb-4 text-sm text-muted-foreground">{actionNotice}</p> : null}
-          {loading ? <p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your alerts…</p> : null}
+          {loading ? <LoadingNote>Loading your alerts…</LoadingNote> : null}
           {loadError ? (
             <div role="alert" className="mb-4 rounded-3xl border border-destructive/30 bg-destructive/10 p-4 text-sm">
               {loadError} <button type="button" className="font-semibold underline" onClick={() => { void notifications.refetch(); }}>Try again</button>
@@ -152,7 +157,7 @@ export default function Alerts() {
             <Panel tone="muted" className="text-center">
               <BellOff className="mx-auto mb-3 size-8" />
               <h2 className="text-lg font-semibold">{filter === "Unread" && ordered.length > 0 ? "You're all caught up." : "No notifications yet."}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">When a referrer replies or a new one opens at a company you&apos;re waiting on, it lands here.</p>
+              <p className="mt-1 text-sm text-muted-foreground">When a referrer replies or a new one opens at your alert companies, it lands here.</p>
               <Button asChild className="mt-4"><Link href="/explore">Explore companies</Link></Button>
             </Panel>
           ) : null}

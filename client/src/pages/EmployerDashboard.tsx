@@ -8,6 +8,10 @@ import { EmployerFrame, EmployerSkeleton } from "@/components/employer/EmployerF
 import { EmployerOverview } from "@/components/employer/EmployerOverview";
 import { fetchEmployerAccount, fetchEmployerActivity, openEmployerAccount } from "@/components/employer/employerData";
 import { applySeo } from "@/lib/seo";
+import { FREE_ASKS_CHIP } from "@shared/moneyCopy";
+
+/** D-063 for employers: what a company can never buy, and both money facts. */
+const REFERRALS_NOT_FOR_SALE = `Employers never buy referrals: seekers get ${FREE_ASKS_CHIP} and use credits for more, and referrers are never paid.`;
 
 const ACCOUNT_KEY = ["employer", "account"] as const;
 const ACTIVITY_KEY = ["employer", "activity"] as const;
@@ -21,7 +25,7 @@ export default function EmployerDashboard() {
   useEffect(() => {
     // Public employer entry point: it keeps its own title instead of inheriting
     // whatever screen the visitor came from.
-    applySeo({ title: "Hire on skipwait.me", description: "Sponsor roles to opt-in job seekers, unlock anonymized opt-in talent, and manage a self-serve promotion budget. The seeker-referrer loop stays free.", path: "/employer" });
+    applySeo({ title: "Hire on skipwait.me", description: `Sponsor roles to opt-in job seekers, unlock anonymized opt-in talent, and manage a self-serve promotion budget. ${REFERRALS_NOT_FOR_SALE}`, path: "/employer" });
   }, []);
 
   const accountQuery = useQuery({ queryKey: ACCOUNT_KEY, queryFn: fetchEmployerAccount, enabled: isLoaded && isSignedIn, retry: false });
@@ -43,8 +47,8 @@ export default function EmployerDashboard() {
     return <EmployerFrame withNav={false}><section className="mx-auto w-full max-w-xl rounded-3xl bg-background p-6">
       <span className="grid size-12 place-items-center rounded-2xl bg-muted"><Sparkles className="size-5" /></span>
       <h1 className="mt-5 text-3xl font-semibold">Become an employer on skipwait.me</h1>
-      <p className="mt-2 text-muted-foreground">Sponsor your open roles to the top of seeker feeds, unlock anonymized opt-in talent with credits, and keep the seeker-referrer loop free for everyone.</p>
-      <ul className="mt-4 space-y-2 text-sm"><li className="flex items-start gap-2"><BadgeCheck className="mt-0.5 size-4 shrink-0 text-primary" />Priority placement in role feeds and search</li><li className="flex items-start gap-2"><UsersRound className="mt-0.5 size-4 shrink-0 text-primary" />Talent discovery — only seekers who opted in</li><li className="flex items-start gap-2"><BarChart3 className="mt-0.5 size-4 shrink-0 text-primary" />Self-serve promotion budget, pay per unlock</li></ul>
+      <p className="mt-2 text-muted-foreground">Sponsor your open roles as a clearly labeled featured listing and unlock anonymized opt-in talent with credits. {REFERRALS_NOT_FOR_SALE}</p>
+      <ul className="mt-4 space-y-2 text-sm"><li className="flex items-start gap-2"><BadgeCheck className="mt-0.5 size-4 shrink-0 text-primary" />Featured listing, clearly labeled — never above employee posts</li><li className="flex items-start gap-2"><UsersRound className="mt-0.5 size-4 shrink-0 text-primary" />Talent discovery — only seekers who opted in</li><li className="flex items-start gap-2"><BarChart3 className="mt-0.5 size-4 shrink-0 text-primary" />Self-serve promotion budget, pay per unlock</li></ul>
       <label className="mt-6 block text-sm font-medium">Company name<input value={companyName} onChange={event => setCompanyName(event.target.value)} placeholder="Acme Robotics" className={field} /></label>
       {startError && <p role="alert" className="mt-3 rounded-xl bg-muted p-3 text-sm text-destructive">{startError}</p>}
       <Button type="button" className="mt-5 h-12 w-full" disabled={start.isPending || !companyName.trim()} onClick={() => start.mutate()}>{start.isPending ? <LoaderCircle className="animate-spin" /> : null}Get started</Button>

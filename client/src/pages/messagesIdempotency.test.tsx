@@ -264,14 +264,14 @@ describe("Messages idempotent send", () => {
     }
   });
 
-  it("preserves the draft on 402", async () => {
+  it("preserves the draft when the member follow rule refuses a send", async () => {
     setupFetch({
-      post: () => ({ ok: false, status: 402, json: async () => ({ error: "Direct messaging is a premium feature.", upgrade: true }) }),
+      post: () => ({ ok: false, status: 403, json: async () => ({ reason: "mutual_follow_required", error: "You can message this member once you follow each other." }) }),
     });
     render(<Messages />);
     await openThread(22);
-    await typeAndSend("Prose before pro");
-    await waitFor(() => expect(screen.getAllByText(/Direct messaging is for members/).length).toBeGreaterThan(0));
-    expect((screen.getByLabelText("Message") as HTMLInputElement).value).toBe("Prose before pro");
+    await typeAndSend("Prose before following");
+    await waitFor(() => expect(screen.getAllByText(/Follow each other to message/).length).toBeGreaterThan(0));
+    expect((screen.getByLabelText("Message") as HTMLInputElement).value).toBe("Prose before following");
   });
 });

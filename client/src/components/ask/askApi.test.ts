@@ -1,22 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { ASK_NETWORK_ERROR, askErrorMessage, confirmedDomainFor, countOpenAsks, parseSentAsk } from "./askApi";
+import { ASK_NETWORK_ERROR, askErrorMessage, confirmedDomainFor, parseSentAsk, parseSlotCapReached } from "./askApi";
+
+const slots = { plan: "free", planLabel: "Free", open: 3, cap: 3, full: true, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 } } as const;
 
 describe("ask send boundary", () => {
   it("accepts a created or replayed ask and normalizes optional fields", () => {
-    expect(parseSentAsk({ requestId: 9, companyDomain: "wipro.com", coverageStatus: "covered", extra: true })).toEqual({ requestId: 9, companyDomain: "wipro.com", waitingForCoverage: false });
-    expect(parseSentAsk({ requestId: 12, companyDomain: " ", coverageStatus: "waiting_for_company_coverage" })).toEqual({ requestId: 12, companyDomain: null, waitingForCoverage: true });
-    expect(parseSentAsk({ requestId: 3, companyDomain: null })).toEqual({ requestId: 3, companyDomain: null, waitingForCoverage: false });
+    expect(parseSentAsk({ requestId: 9, companyDomain: "wipro.com", coverageStatus: "covered", slots, extra: true })).toEqual({ requestId: 9, companyDomain: "wipro.com", waitingForCoverage: false, fastTrack: false, slots });
+    expect(parseSentAsk({ requestId: 12, companyDomain: " ", coverageStatus: "waiting_for_company_coverage" })).toEqual({ requestId: 12, companyDomain: null, waitingForCoverage: true, fastTrack: false, slots: null });
+    // A malformed slot count hides the line; it never blocks confirming a created ask.
+    expect(parseSentAsk({ requestId: 3, companyDomain: null, slots: { open: "3" } })).toEqual({ requestId: 3, companyDomain: null, waitingForCoverage: false, fastTrack: false, slots: null });
+    // A personal-link ask (D-017) is flagged so the sent screen names who will see it; anything but true reads as false.
+    expect(parseSentAsk({ requestId: 14, companyDomain: "tcs.com", coverageStatus: "covered", fastTrack: true })).toEqual({ requestId: 14, companyDomain: "tcs.com", waitingForCoverage: false, fastTrack: true, slots: null });
+    expect(parseSentAsk({ requestId: 15, companyDomain: "tcs.com", fastTrack: "yes" })).toEqual({ requestId: 15, companyDomain: "tcs.com", waitingForCoverage: false, fastTrack: false, slots: null });
   });
 
   it("rejects payloads that do not prove an ask was created", () => {
     for (const payload of [{}, { requestId: "9" }, { requestId: 0 }, { requestId: 1.5 }, { error: "nope" }]) expect(parseSentAsk(payload)).toBeNull();
   });
 
-  it("counts only pending asks and returns null for an unreadable list", () => {
-    expect(countOpenAsks({ requests: [{ status: "pending" }, { status: "approved" }, { status: "pending" }] })).toBe(2);
-    expect(countOpenAsks({ requests: [] })).toBe(0);
-    expect(countOpenAsks({ requests: [{ id: 1 }] })).toBeNull();
-    expect(countOpenAsks({ error: "We could not load your referral requests" })).toBeNull();
+  it("recognizes only the typed 409 slot-cap refusal", () => {
+    const body = { error: "All 3 slots are in use. Wait for an answer, withdraw an ask, or get more slots with Momentum (15).", code: "slot_cap_reached", slots };
+    expect(parseSlotCapReached(409, body)).toEqual(body);
+    expect(parseSlotCapReached(400, body)).toBeNull();
+    expect(parseSlotCapReached(409, { error: "This submission key was already used for a different referral request" })).toBeNull();
+    expect(parseSlotCapReached(409, { ...body, slots: { ...slots, cap: "3" } })).toBeNull();
   });
 
   it("forwards a confirmed domain only for the exact confirmed link", () => {

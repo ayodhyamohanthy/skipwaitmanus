@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "wouter";
-import { ArrowLeft, ArrowRight, Crown, MessageSquare, Send } from "lucide-react";
-import { useAuth } from "@/_core/auth";
+import { Link } from "wouter";
+import { ArrowLeft, ArrowRight, MessageSquare, Send, UserPlus } from "lucide-react";
+import { DM_REFERRER_ACCEPTANCE_ERROR, parseDmFollowRequired, parseDmSendBlock, type DmFollowRequired, type DmSendBlock } from "@shared/directMessages";
+import { SignInButton, useAuth } from "@/_core/auth";
+import { buttonVariants } from "@/components/kit/button";
+import { Panel } from "@/components/kit/preview-kit";
+import { ReferrerRuleCard } from "@/components/messages/ReferrerRuleCard";
 import { readApiJson } from "@/lib/apiResponse";
 import {
   DM_SEND_WORKFLOW,
@@ -25,27 +29,44 @@ function relativeTime(iso: string) {
   return `${Math.round(hours / 24)}d`;
 }
 
-function PaywallCard() {
-  return <div data-skipwait-screen="dm-paywall" className="rounded-xl border border-[#e5e5e5] bg-[#f5f5f5] p-5">
-    <span className="grid h-11 w-11 place-items-center rounded-xl bg-white text-black"><Crown className="h-5 w-5" /></span>
-    <h2 className="mt-4 text-xl font-semibold tracking-[-.02em] text-black">Direct messaging is for members</h2>
-    <p className="mt-2 text-sm leading-6 text-black">Pro members can message verified referrers directly and get answers faster. Pro includes 10 referral credits monthly — the core referral loop stays free for everyone. Or follow each other to message free — many referrers follow back.</p>
-    <Link href="/premium?role=job_seeker" className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-4 py-3 text-sm font-bold text-white">Upgrade to Pro</Link>
+// After a 403 the composer is replaced by the rule, so the refused text is
+// shown read-only (copyable) instead of staying in a hidden draft that the
+// next conversation's composer would inherit.
+function UnsentText({ text }: { text: string }) {
+  return <div data-skipwait-unsent="draft" className="mt-3">
+    <p className="text-xs font-semibold text-[#505050]">Not sent. Copy your text if you want to keep it; it clears when you leave this chat.</p>
+    <p className="mt-1.5 max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-[#e5e5e5] bg-white px-3 py-2.5 text-sm leading-6 text-black">{text}</p>
+  </div>;
+}
+
+// A member writing to another member (neither a verified referrer) with no
+// chat yet needs a mutual follow; no plan opens it (D-067), so there is no
+// upgrade path. The composer and the draft stay for when they follow each other.
+function FollowRuleCard({ rule }: { rule: DmFollowRequired }) {
+  return <div data-skipwait-screen="dm-follow-rule" role="status" className="pb-2">
+    <Panel tone="muted">
+      <span className="grid h-11 w-11 place-items-center rounded-xl bg-background text-foreground"><UserPlus className="h-5 w-5" aria-hidden="true" /></span>
+      <h2 className="mt-4 text-xl font-semibold tracking-[-.02em] text-foreground">Follow each other to message</h2>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{rule.error}</p>
+    </Panel>
   </div>;
 }
 
 export default function Messages() {
   const { isSignedIn, getToken } = useAuth();
-  const [location, navigate] = useLocation();
   const [threads, setThreads] = useState<DmThreadSummary[] | null>(null);
   const [thread, setThread] = useState<DmThread | null>(null);
   const [threadError, setThreadError] = useState("");
   const [listError, setListError] = useState("");
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
-  const [paywalled, setPaywalled] = useState(false);
+  const [followRule, setFollowRule] = useState<DmFollowRequired | null>(null);
+  const [sendBlock, setSendBlock] = useState<DmSendBlock | null>(null);
+  const [unsent, setUnsent] = useState("");
   const composerRef = useRef<HTMLInputElement>(null);
   const inFlightRef = useRef(false);
+  /** The conversation on screen, so a late answer for another one is not shown here. */
+  const openCounterpartRef = useRef<number | null>(null);
 
   const authedFetch = async (path: string, init?: RequestInit) => {
     const token = await getToken();
@@ -64,12 +85,15 @@ export default function Messages() {
   }, [isSignedIn]);
 
   const openThread = async (counterpartUserId: number) => {
-    setThreadError(""); setPaywalled(false);
+    // A draft belongs to one conversation: never carry it into another.
+    setThreadError(""); setFollowRule(null); setSendBlock(null); setDraft(""); setUnsent("");
+    openCounterpartRef.current = counterpartUserId;
     try {
       const response = await authedFetch(`/api/dms/threads/${counterpartUserId}`);
-      const payload = await readApiJson<{ thread?: DmThread; error?: string }>(response, "We could not open this conversation");
+      const payload = await readApiJson<{ thread?: DmThread; sendBlock?: unknown; error?: string }>(response, "We could not open this conversation");
       if (!response.ok) throw new Error(payload.error || "We could not open this conversation");
       setThread(payload.thread ?? null);
+      setSendBlock(parseDmSendBlock(payload.sendBlock));
       const pending = readPendingSend(DM_SEND_WORKFLOW, { recipientKey: String(counterpartUserId) });
       if (pending) setDraft(current => (current === "" ? pending.body : current));
     } catch (reason) { setThreadError(reason instanceof Error ? reason.message : "We could not open this conversation"); }
@@ -81,7 +105,7 @@ export default function Messages() {
     const normalized = normalizeMessageBody(draft);
     if (!normalized) return;
     inFlightRef.current = true;
-    setSending(true); setThreadError(""); setPaywalled(false);
+    setSending(true); setThreadError(""); setFollowRule(null);
     try {
       const { record: attempt } = beginPendingSend({ workflow: DM_SEND_WORKFLOW, recipientKey: String(recipientUserId), body: normalized });
       const response = await authedFetch(`/api/dms/threads/${recipientUserId}`, {
@@ -102,7 +126,14 @@ export default function Messages() {
         composerRef.current?.focus();
         return;
       }
-      if (response.status === 402) { setPaywalled(true); return; }
+      const block = response.status === 403 ? parseDmSendBlock(payload) : null;
+      if (block) {
+        clearPendingSend(DM_SEND_WORKFLOW);
+        if (openCounterpartRef.current === recipientUserId) { setUnsent(attempt.body); setDraft(""); setSendBlock(block); }
+        return;
+      }
+      const memberRule = response.status === 403 ? parseDmFollowRequired(payload) : null;
+      if (memberRule) { if (openCounterpartRef.current === recipientUserId) setFollowRule(memberRule); return; }
       if (response.status === 409) {
         clearPendingSend(DM_SEND_WORKFLOW);
         setThreadError("That send changed while retrying, so we kept your text and did not send a duplicate. Review it and send again to start a fresh attempt.");
@@ -120,31 +151,31 @@ export default function Messages() {
     finally { inFlightRef.current = false; setSending(false); }
   };
 
-  if (!isSignedIn) return <main data-skipwait-screen="messages" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center"><Link href="/" className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link></header><section className="flex min-h-0 flex-1 flex-col justify-center gap-5"><h1 className="text-[2.35rem] font-semibold leading-[.96] tracking-[-.02em]">Direct messages</h1><PaywallCard /></section></div></main>;
+  if (!isSignedIn) return <main data-skipwait-screen="messages" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center"><Link href="/" className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link></header><section className="flex min-h-0 flex-1 flex-col justify-center gap-5"><h1 className="text-[2.35rem] font-semibold leading-[.96] tracking-[-.02em]">Direct messages</h1><Panel tone="muted"><h2 className="text-xl font-semibold tracking-[-.02em] text-foreground">Sign in to see your messages</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{DM_REFERRER_ACCEPTANCE_ERROR}</p><SignInButton className={buttonVariants({ className: "mt-4 h-11 w-full" })}>Sign in</SignInButton></Panel></section></div></main>;
 
   return <main data-skipwait-screen="messages" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col">
-    <header className="flex h-10 shrink-0 items-center justify-between">{thread ? <button type="button" onClick={() => { setThread(null); setThreadError(""); setPaywalled(false); }} className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />All chats</button> : <Link href="/" className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link>}{!thread && <button type="button" onClick={() => navigate("/wall")} className="text-sm font-bold text-black">New chat</button>}</header>
+    <header className="flex h-10 shrink-0 items-center justify-between">{thread ? <button type="button" onClick={() => { openCounterpartRef.current = null; setThread(null); setThreadError(""); setFollowRule(null); setSendBlock(null); setDraft(""); setUnsent(""); }} className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />All chats</button> : <Link href="/" className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link>}</header>
     {thread ? <section className="flex min-h-0 flex-1 flex-col">
       <h1 className="pt-4 text-lg font-semibold tracking-[-.02em] text-black">{thread.counterpartLabel}</h1>
       <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pb-3" data-skipwait-thread="open">
         {thread.messages.map(message => <div key={message.id} className={`flex ${message.isMine ? "justify-end" : "justify-start"}`}><p className={`${message.isMine ? "bg-[#141414] text-white" : "bg-white text-black border border-[#e5e5e5]"} max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-6`}>{message.body}</p></div>)}
       </div>
-      {paywalled && <PaywallCard />}
+      {followRule ? <FollowRuleCard rule={followRule} /> : null}
       {threadError && <p role="alert" className="pb-2 text-xs font-semibold text-[#B91C1C]">{threadError}</p>}
-      <footer className="shrink-0 border-t border-[#e5e5e5] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+      {sendBlock ? <div className="shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"><ReferrerRuleCard block={sendBlock} />{unsent ? <UnsentText text={unsent} /> : null}</div> : <footer className="shrink-0 border-t border-[#e5e5e5] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
         <form className="flex items-center gap-2" onSubmit={event => { event.preventDefault(); void send(); }}>
           <label className="sr-only" htmlFor="dm-draft">Message</label>
           <input ref={composerRef} id="dm-draft" value={draft} onChange={event => setDraft(event.target.value)} placeholder="Write a message" maxLength={3000} className="h-11 flex-1 rounded-lg border border-[#e5e5e5] bg-white px-3 text-sm text-black outline-none focus:border-[#141414] focus:bg-[#f5f5f5]/40" />
           <button type="submit" disabled={sending || !draft.trim()} aria-label="Send message" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[#141414] text-white"><Send className="h-4 w-4" /></button>
         </form>
-      </footer>
+      </footer>}
     </section> : <section className="flex min-h-0 flex-1 flex-col pt-4">
       {listError && <p role="alert" className="pb-3 text-xs font-semibold text-[#B91C1C]">{listError}</p>}
       {threads === null ? <div className="h-24 animate-pulse rounded-xl border border-[#e5e5e5] bg-white" /> : threads.length === 0 ? <div className="flex flex-1 flex-col justify-center">
         <span className="grid h-14 w-14 place-items-center rounded-2xl bg-[#f5f5f5] text-black"><MessageSquare className="h-7 w-7" /></span>
         <h1 className="mt-5 text-[2rem] font-semibold leading-[1] tracking-[-.02em]">Your chats live here.</h1>
-        <p className="mt-3 text-sm leading-6 text-[#505050]">Direct messages with referrers appear in this inbox. Referral-request conversations stay in <Link href="/requests" className="font-semibold text-black underline-offset-2 hover:underline">My requests</Link>.</p>
-        <Link href="/wall" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-4 py-3 text-sm font-bold text-white">Find referrers <ArrowRight className="h-4 w-4" /></Link>
+        <p className="mt-3 text-sm leading-6 text-[#505050]">Messages with a referrer open after they accept your request. Referral-request conversations stay in <Link href="/requests" className="font-semibold text-black underline-offset-2 hover:underline">My requests</Link>.</p>
+        <Link href="/ask" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-4 py-3 text-sm font-bold text-white">Ask for a referral <ArrowRight className="h-4 w-4" /></Link>
       </div> : <ul className="min-h-0 flex-1 divide-y divide-[#e5e5e5] overflow-y-auto" data-skipwait-thread-list="open">
         {threads.map(item => <li key={item.counterpartUserId}><button type="button" onClick={() => { void openThread(item.counterpartUserId); }} className="flex w-full items-start gap-3 py-3.5 text-left">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f5f5f5] text-black"><MessageSquare className="h-4 w-4" /></span>

@@ -1,4 +1,5 @@
 import { ArrowRight, BadgeCheck, Copy, Link2, LockKeyhole, MapPin, Share2 } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { useAuth } from "@/_core/auth";
@@ -14,11 +15,9 @@ type PublicProfile = {
   isOwner?: boolean;
   displayName?: string;
   headline?: string | null;
-  currentTitle?: string | null;
   location?: string | null;
-  bio?: string | null;
-  skills?: string | null;
   openTo?: string[] | null;
+  company?: string | null;
   verifiedWork?: { domain: string | null; verifiedAt: string } | null;
   handle?: string | null;
   workItems?: WorkItem[];
@@ -34,6 +33,9 @@ export default function PublicProfile() {
   const [copied, setCopied] = useState(false);
   const [savingVisibility, setSavingVisibility] = useState(false);
   const [visibilityError, setVisibilityError] = useState("");
+  // Owner-only "You | Visitor" switch: Visitor renders exactly what the API
+  // gives a non-owner (no owner panel, private gate, profile-visible pieces).
+  const [viewAs, setViewAs] = useState<"you" | "visitor">("you");
 
   const refresh = async () => {
     if (!handle) return;
@@ -96,16 +98,27 @@ export default function PublicProfile() {
     if (typeof navigator.share === "function") { void navigator.share({ title: profile?.displayName ?? "SkipWait profile", url: publicUrl }).catch(() => undefined); return; }
     copyLink();
   };
+  const ownsPage = profile?.visible === true && profile.isOwner === true;
+  const asOwner = ownsPage && viewAs === "you";
+  const gated = missing || (profile !== null && !profile.visible) || (ownsPage && !asOwner && profile.visibility === "private");
+  const shownItems = (profile?.workItems ?? []).filter(item => asOwner || item.visibleOnProfile);
+  const referrerCompany = profile?.verifiedWork ? (profile.company || profile.verifiedWork.domain) : null;
 
   return (
     <div data-skipwait-screen="public-profile" className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4">
         <Link href="/" className="wordmark" aria-label="skipwait.me home">SkipWait<span className="brand-dot">.</span></Link>
-        {profile?.visible && profile.isOwner ? <Link href="/profile" className="text-link text-sm">Manage profile</Link> : null}
+        {ownsPage ? (
+          <div className="flex rounded-full bg-muted p-1 text-sm" role="tablist" aria-label="View as">
+            {(["you", "visitor"] as const).map(option => (
+              <button key={option} type="button" role="tab" aria-selected={viewAs === option} onClick={() => setViewAs(option)} className={`min-h-10 rounded-full px-4 ${viewAs === option ? "bg-background font-semibold shadow-sm" : "text-muted-foreground"}`}>{option === "you" ? "You" : "Visitor"}</button>
+            ))}
+          </div>
+        ) : null}
       </header>
       <main className="mx-auto max-w-5xl px-5 pb-16">
-        {loading ? <p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading this profile…</p> : null}
-        {!loading && (missing || (profile && !profile.visible)) ? (
+        {loading ? <LoadingNote>Loading this profile…</LoadingNote> : null}
+        {!loading && gated ? (
           <section className="rounded-3xl bg-muted p-10 text-center">
             <LockKeyhole className="mx-auto mb-3 size-8" />
             <h1 className="text-2xl font-semibold">This profile is private.</h1>
@@ -113,9 +126,9 @@ export default function PublicProfile() {
             <Button asChild className="mt-6"><Link href="/explore">Explore companies <ArrowRight /></Link></Button>
           </section>
         ) : null}
-        {profile?.visible ? (
+        {profile?.visible && !gated ? (
           <>
-            {profile.isOwner ? (
+            {asOwner ? (
               <section className="mb-6 rounded-3xl border border-border p-5" aria-label="Manage profile visibility">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0"><span className="eyebrow">WHO CAN SEE THIS</span><p className="mt-1 flex items-center gap-2 text-sm"><Link2 className="size-4 shrink-0" /><span className="truncate">skipwait.me/p/{profile.handle}</span></p></div>
@@ -132,7 +145,7 @@ export default function PublicProfile() {
               <span className="grid size-24 shrink-0 place-items-center rounded-full bg-accent text-3xl font-semibold text-accent-foreground" aria-hidden="true">{initials}</span>
               <div className="min-w-0 flex-1">
                 <h1 className="text-3xl font-semibold sm:text-4xl">{profile.displayName}</h1>
-                {(profile.currentTitle || profile.headline) ? <p className="mt-1 text-lg">{[profile.currentTitle, profile.headline].filter(Boolean).join(" · ")}</p> : null}
+                {profile.headline ? <p className="mt-1 text-lg">{profile.headline}</p> : null}
                 {(profile.location || profile.verifiedWork) ? (
                   <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                     {profile.location ? <span className="flex items-center gap-1"><MapPin className="size-4" />{profile.location}</span> : null}
@@ -140,11 +153,10 @@ export default function PublicProfile() {
                   </p>
                 ) : null}
               </div>
+              {!asOwner && referrerCompany ? <Button asChild><Link href="/explore">Ask for a referral at {referrerCompany} <ArrowRight /></Link></Button> : null}
             </section>
             {profile.openTo && profile.openTo.length > 0 ? <ul className="mt-5 flex flex-wrap gap-2" aria-label="Open to">{profile.openTo.map(role => <li key={role} className="rounded-full bg-muted px-3 py-1.5 text-sm">Open to: {role}</li>)}</ul> : null}
-            {profile.bio ? <p className="mt-5 max-w-2xl leading-7">{profile.bio}</p> : null}
-            {profile.skills ? <p className="mt-3 text-sm text-muted-foreground">{profile.skills}</p> : null}
-            <PublicWorkGrid items={profile.workItems ?? []} isOwner={profile.isOwner === true} />
+            <PublicWorkGrid items={shownItems} isOwner={asOwner} />
             <p className="mt-12 text-center text-sm text-muted-foreground">No feed. No followers. No likes. Just work. · <Link href="/" className="text-link">Make your own on SkipWait</Link></p>
           </>
         ) : null}

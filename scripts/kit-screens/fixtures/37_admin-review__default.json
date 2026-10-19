@@ -96,7 +96,7 @@
       "body": {
         "reports": [
           {
-            "id": 1048,
+            "id": 2048,
             "reporterUserId": 90,
             "reason": "Asked for or offered money",
             "details": "They asked for ₹5,000 to push my profile.",
@@ -108,7 +108,7 @@
             "updatedAt": "2026-10-08T03:52:00.000Z"
           },
           {
-            "id": 1045,
+            "id": 2045,
             "reporterUserId": 91,
             "reason": "Spam or repeated asks",
             "details": "Same note text 14 times in one hour.",

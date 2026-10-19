@@ -68,7 +68,7 @@ function buildApp() {
       const owner = [...profiles.values()].find(p => p.handle === handle);
       if (!owner) return undefined;
       if (owner.profileVisibility === "private" && viewerUserId !== owner.userId) return { visible: false as const, visibility: owner.profileVisibility };
-      return { visible: true as const, visibility: owner.profileVisibility, isOwner: viewerUserId === owner.userId, displayName: `User ${owner.userId}`, headline: owner.headline, currentTitle: null, location: null, bio: null, skills: null, company: null, verifiedWork: null, handle: owner.handle, workItems: items.filter(item => item.userId === owner.userId && (viewerUserId === owner.userId || item.visibleOnProfile)) };
+      return { visible: true as const, visibility: owner.profileVisibility, isOwner: viewerUserId === owner.userId, displayName: `User ${owner.userId}`, headline: owner.headline, location: null, company: null, verifiedWork: null, handle: owner.handle, workItems: items.filter(item => item.userId === owner.userId && (viewerUserId === owner.userId || item.visibleOnProfile)) };
     },
   };
   registerProfileRoutes(app, deps);
@@ -84,6 +84,15 @@ describe("profile and work showcase routes", () => {
     expect(saved.status).toBe(200);
     expect(saved.body.profile).toMatchObject({ headline: "Engineer", handle: "ravi-k", profileVisibility: "public" });
     expect(saved.body.profile).not.toHaveProperty("admin");
+  });
+
+  it("clears a handle on an explicit null and leaves it alone when the field is absent", async () => {
+    const app = buildApp();
+    const kept = await request(app).put("/api/profile/me").set("x-test-user", "11").send({ headline: "Lead designer" });
+    expect(kept.body.profile).toMatchObject({ headline: "Lead designer", handle: "asha-r" });
+    const cleared = await request(app).put("/api/profile/me").set("x-test-user", "11").send({ handle: null });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.profile.handle).toBeNull();
   });
 
   it("rejects bad handles, reserved words, taken handles, and bad visibility", async () => {

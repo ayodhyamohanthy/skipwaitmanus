@@ -11,7 +11,9 @@
       "path": "/api/assistants/access",
       "status": 200,
       "body": {
-        "plan": "max",
+        "plan": "land_focus",
+        "planLabel": "Land Focus",
+        "tier": "land",
         "hasAccess": true
       }
     }

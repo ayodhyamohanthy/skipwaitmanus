@@ -1,4 +1,5 @@
 import { Bot, Check } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { usePersistFn } from "@/hooks/usePersistFn";
@@ -123,7 +124,7 @@ export default function Approve() {
   }
 
   if (!loaded && loading) {
-    return shell(<p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading approvals…</p>);
+    return shell(<LoadingNote>Loading approvals…</LoadingNote>);
   }
 
   if (!loaded && loadError) {

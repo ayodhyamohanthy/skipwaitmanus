@@ -1,6 +1,30 @@
 {
   "signedIn": false,
   "routes": [
-    { "method": "GET", "path": "/api/jobs", "match": "exact", "status": 200, "body": { "jobs": [] } }
+    {
+      "method": "GET",
+      "path": "/api/companies/skipwait",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "company": {
+          "slug": "skipwait",
+          "name": "SkipWait",
+          "initials": "SW",
+          "industry": "Technology",
+          "location": "Global · Remote",
+          "functions": [
+            "Engineering",
+            "Product",
+            "Design"
+          ],
+          "blurb": "Build the platform making warm introductions more accessible.",
+          "domains": [
+            "skipwait.me"
+          ],
+          "openToReferrals": true
+        }
+      }
+    }
   ]
 }

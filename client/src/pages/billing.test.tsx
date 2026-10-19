@@ -6,14 +6,20 @@ import Billing from "./Billing";
 
 const { authState, getToken } = vi.hoisted(() => ({ authState: { isSignedIn: true }, getToken: vi.fn().mockResolvedValue("test-token") }));
 
+// Packs-on-sale paths: the flag is mocked on here; creditPacksOffSale.test.tsx pins the shipped (off) state.
+vi.mock("@shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("@shared/planCatalog")>()), CREDIT_PACKS_ON_SALE: true }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ ...authState, getToken }), SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
 vi.mock("wouter", () => ({ Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>, useLocation: () => ["/billing"] }));
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); authState.isSignedIn = true; });
 
 const ok = (json: unknown) => ({ ok: true, json: async () => json });
-const freeSummary = { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, totalAvailable: 3, subscriptionStatus: null, subscriptionCurrentTermEnd: null };
-const proSummary = { plan: "pro", monthlyAllowance: 10, monthlyCreditsRemaining: 7, totalAvailable: 9, subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z" };
+// As GET /api/credits/summary sends them: the caller's open-ask slots and the ledger block ride on the summary.
+const slots = (plan: string, planLabel: string, cap: number) => ({ plan, planLabel, open: 1, cap, full: false, nextPlan: null });
+const ledger = (creditsPerMonth: number, balance: number) => ({ balance, buckets: { cycle: balance, carriedOver: 0, trial: 0, welcome: 0, purchased: 0, promo: 0 }, creditsPerMonth, carryover: creditsPerMonth > 0 ? 1 : 0, cycle: { key: "2026-10", startsAt: null, endsAt: null, granted: creditsPerMonth, used: 0 }, planCreditsRemaining: balance, nextExpiry: null, planCreditsExpiringSoon: null, welcome: { granted: false, credits: 0, remaining: 0 } });
+const freeSummary = { plan: "free", monthlyAllowance: 0, monthlyCreditsRemaining: 0, totalAvailable: 3, subscriptionStatus: null, subscriptionCurrentTermEnd: null, slots: slots("free", "Free", 3), ledger: ledger(0, 3) };
+// A 30-day Start pass (shared/planCatalog.ts: 8 open asks, 10 credits a cycle, 1 month of carryover).
+const startSummary = { plan: "start", monthlyAllowance: 10, monthlyCreditsRemaining: 7, totalAvailable: 9, subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z", slots: slots("start", "Start", 8), ledger: ledger(10, 9) };
 
 describe("Billing page", () => {
   it("shows the free plan with an empty receipt ledger, never invented methods", async () => {
@@ -21,12 +27,14 @@ describe("Billing page", () => {
     render(<Billing />);
     expect(await screen.findByRole("heading", { name: "Free" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Manage plan." })).toBeTruthy();
-    expect(screen.getByText("3 referral requests a month · buy credits anytime")).toBeTruthy();
+    expect(screen.getByText("3 open asks · buy credits anytime")).toBeTruthy();
     expect(screen.getByText("No payments yet.")).toBeTruthy();
     expect(screen.getByText(/never sees or stores them/)).toBeTruthy();
     expect(screen.queryByText(/Visa|UPI|PayPal|4242|Make default|Add payment method/)).toBeNull();
-    expect(screen.getByRole("link", { name: /Upgrade/ }).getAttribute("href")).toBe("/plans");
-    expect(document.body.textContent).not.toMatch(/DESIGN PREVIEW|Preview state|EXAMPLE RECEIPTS|Momentum|PLACEHOLDERS/);
+    // D-067: no plan is sold from /plans until the D-046 passes go on sale, so Free offers the credits it can really buy.
+    expect(screen.getByRole("link", { name: "Add credits" }).getAttribute("href")).toBe("/premium?role=job_seeker");
+    expect(screen.queryByRole("link", { name: /Upgrade/ })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/DESIGN PREVIEW|Preview state|EXAMPLE RECEIPTS|Momentum|PLACEHOLDERS|\bPro\b|\bMax\b/);
   });
 
   it("shows an active plan, real receipts, and walks cancellation to kept access", async () => {
@@ -37,12 +45,14 @@ describe("Billing page", () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (String(url).includes("/subscription-cancel")) return ok({ currentTermEnd: "2026-11-06T00:00:00.000Z" });
       if (String(url).includes("/billing/receipts")) return ok({ receipts });
-      return ok({ summary: proSummary });
+      return ok({ summary: startSummary });
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<Billing />);
-    expect(await screen.findByRole("heading", { name: "Pro · 10 requests/month" })).toBeTruthy();
-    expect(screen.getByText("Renews 6 Nov 2026 · 7 of 10 requests left this cycle")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Start" })).toBeTruthy();
+    expect(screen.getByText("Renews 6 Nov 2026 · 8 open asks · 10 credits/month")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Plans & credits/ }).getAttribute("href")).toBe("/plans");
+    expect(document.body.textContent).not.toMatch(/requests left|requests\/month|requests a month/);
     expect(screen.getByText("5 credits")).toBeTruthy();
     expect(screen.getByText("$5")).toBeTruthy();
     expect(screen.getByText("₹99")).toBeTruthy();
@@ -50,6 +60,7 @@ describe("Billing page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel plan" }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByRole("heading", { name: "Before you go" })).toBeTruthy();
+    expect(within(dialog).getByText(/You keep Start until 6 Nov\./)).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancel anyway" }));
     expect(await within(screen.getByRole("dialog")).findByRole("heading", { name: "Plan cancelled." })).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith("/api/chargebee/subscription-cancel", expect.objectContaining({ method: "POST" }));
@@ -63,7 +74,7 @@ describe("Billing page", () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (String(url).includes("/subscription-cancel")) return { ok: false, status: 502, json: async () => ({ error: "We could not schedule your cancellation" }) };
       if (String(url).includes("/billing/receipts")) return ok({ receipts: [] });
-      return ok({ summary: proSummary });
+      return ok({ summary: startSummary });
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<Billing />);
@@ -78,10 +89,22 @@ describe("Billing page", () => {
   });
 
   it("shows a non-renewing plan as ending, with no cancel action", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: { ...proSummary, subscriptionStatus: "non_renewing" } })));
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: { ...startSummary, subscriptionStatus: "non_renewing" } })));
     render(<Billing />);
     expect(await screen.findByText("Ends 6 Nov 2026 — you keep everything until then.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Cancel plan" })).toBeNull();
+  });
+
+  it("leaves out open asks and monthly credits the server did not send, never guessing them", async () => {
+    const { slots: _slots, ledger: _ledger, ...bare } = startSummary;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: bare })));
+    render(<Billing />);
+    expect(await screen.findByText("Renews 6 Nov 2026")).toBeTruthy();
+    cleanup();
+    const { slots: _freeSlots, ...bareFree } = freeSummary;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: bareFree })));
+    render(<Billing />);
+    expect(await screen.findByText("Buy credits anytime")).toBeTruthy();
   });
 
   it("recovers from a network failure with Try again", async () => {
@@ -99,7 +122,7 @@ describe("Billing page", () => {
   });
 
   it("treats a malformed summary as a failed load, never as an empty account", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: { plan: "pro" } })));
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: { plan: "start" } })));
     render(<Billing />);
     expect((await screen.findByRole("alert")).textContent).toContain("We could not load your plan");
     expect(screen.queryByRole("heading", { name: "Free" })).toBeNull();
@@ -110,6 +133,18 @@ describe("Billing page", () => {
     render(<Billing />);
     expect(screen.getByRole("heading", { name: "Manage plan." })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Compare plans/ }).getAttribute("href")).toBe("/plans");
+    expect(screen.getByRole("link", { name: /Plans & credits/ }).getAttribute("href")).toBe("/plans");
+    expect(screen.queryByRole("link", { name: /Compare plans/ })).toBeNull();
+  });
+
+  it("reads a stale Pro or Max summary as Free: the Free panel, no cancel action, no retired name", async () => {
+    for (const plan of ["pro", "max"]) {
+      vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: { ...startSummary, plan, slots: null } })));
+      render(<Billing />);
+      expect(await screen.findByRole("heading", { name: "Free" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Cancel plan" })).toBeNull();
+      expect(document.body.textContent).not.toMatch(/\bPro\b|\bMax\b/);
+      cleanup();
+    }
   });
 });

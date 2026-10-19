@@ -52,6 +52,20 @@ describe("referral status email + in-app notifications", () => {
     expect(notifications[0]).toMatchObject({ userId: 42, category: "status", title: "Your referral request was claimed" });
   });
 
+  it("a claim answers without the seeker's account id and the fallback in-app notice says claimed, not accepted", async () => {
+    const notifications: Array<{ userId: number; body: string }> = [];
+    const app = buildApp(baseDeps({ createNotification: async (userId, _category, _title, body) => { notifications.push({ userId, body }); } }));
+    const response = await request(app).post("/api/company-referrals/9/claim").send();
+    await flushMicrotasks();
+    expect(response.status).toBe(200);
+    // D-019(e): the referrer gets no seeker account id before acceptance.
+    expect(response.body).toEqual({ requestId: 1, claimed: true, companyDomain: "acme.com" });
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]).toMatchObject({ userId: 42 });
+    expect(notifications[0]?.body).toContain("claimed your private request");
+    expect(notifications[0]?.body).not.toContain("accepted");
+  });
+
   it("notifies the seeker on a one-click decline without leaking the decline reason", async () => {
     const emails: Array<{ to: string; subject: string; html: string }> = [];
     const notifications: Array<{ userId: number; category: string; title: string }> = [];
@@ -82,7 +96,7 @@ describe("referral status email + in-app notifications", () => {
       sendEmail: async input => { emails.push(input); return { sent: true }; },
       createNotification: async (_userId, _category, title) => { notifications.push({ title }); },
     }));
-    const response = await request(app).post("/api/company-referrals/9/one-click-review").send({ decision: "approved" });
+    const response = await request(app).post("/api/company-referrals/9/one-click-review").send({ decision: "approved", ethicsConfirmed: true });
     await flushMicrotasks();
     expect(response.status).toBe(200);
     expect(emails[0].subject).toContain("Your referral was accepted");
@@ -97,7 +111,7 @@ describe("referral status email + in-app notifications", () => {
       sendEmail: async () => { sendAttempts += 1; throw new Error("smtp down"); },
       createNotification: async () => { throw new Error("db down"); },
     }));
-    const response = await request(app).post("/api/company-referrals/9/one-click-review").send({ decision: "approved" });
+    const response = await request(app).post("/api/company-referrals/9/one-click-review").send({ decision: "approved", ethicsConfirmed: true });
     await flushMicrotasks();
     expect(response.status).toBe(200);
     expect(response.body.status).toBe("approved");

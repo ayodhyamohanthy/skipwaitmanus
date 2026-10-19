@@ -82,24 +82,98 @@
     },
     {
       "method": "GET",
-      "path": "/api/credits/summary",
+      "path": "/api/companies",
       "match": "exact",
       "status": 200,
       "body": {
-        "summary": {
-          "plan": "free",
-          "monthlyAllowance": 3,
-          "monthlyCreditsRemaining": 1,
-          "purchasedCreditsRemaining": 0,
-          "promoCreditsRemaining": 0,
-          "promoExpiresAt": null,
-          "promoStatus": null,
-          "promoOfferActive": false,
-          "totalAvailable": 1,
-          "cycleKey": "2026-10",
-          "subscriptionStatus": null,
-          "subscriptionCurrentTermEnd": null
-        }
+        "companies": [
+          {
+            "slug": "skipwait",
+            "name": "SkipWait",
+            "initials": "SW",
+            "industry": "Technology",
+            "location": "Global · Remote",
+            "functions": [
+              "Engineering",
+              "Product",
+              "Design"
+            ],
+            "blurb": "Build the platform making warm introductions more accessible.",
+            "domains": [
+              "skipwait.me"
+            ],
+            "openToReferrals": true
+          },
+          {
+            "slug": "wipro",
+            "name": "Wipro",
+            "initials": "W",
+            "industry": "Technology services",
+            "location": "Global",
+            "functions": [
+              "Engineering",
+              "Data",
+              "Operations"
+            ],
+            "blurb": "Explore roles across technology, consulting, and business operations.",
+            "domains": [
+              "wipro.com"
+            ],
+            "openToReferrals": true
+          },
+          {
+            "slug": "go-neutrinos",
+            "name": "Go Neutrinos",
+            "initials": "GN",
+            "industry": "Digital products",
+            "location": "India · Remote",
+            "functions": [
+              "Engineering",
+              "Product",
+              "Design"
+            ],
+            "blurb": "Connect around product, design, and engineering opportunities.",
+            "domains": [
+              "goneutrinos.com"
+            ],
+            "openToReferrals": true
+          },
+          {
+            "slug": "tcs",
+            "name": "TCS",
+            "initials": "T",
+            "industry": "Technology services",
+            "location": "Global",
+            "functions": [
+              "Engineering",
+              "Data",
+              "Operations"
+            ],
+            "blurb": "Find a warmer path into global technology and consulting teams.",
+            "domains": [
+              "tcs.com"
+            ],
+            "openToReferrals": true
+          },
+          {
+            "slug": "merkle",
+            "name": "Merkle",
+            "initials": "M",
+            "industry": "Customer experience",
+            "location": "Global",
+            "functions": [
+              "Data",
+              "Design",
+              "Operations"
+            ],
+            "blurb": "Explore opportunities across experience, data, media, and technology.",
+            "domains": [
+              "merkle.com"
+            ],
+            "openToReferrals": true
+          }
+        ],
+        "openCount": 5
       }
     }
   ],
@@ -111,10 +185,10 @@
       "click": "[role=tab]:has-text('Saved alerts')"
     },
     {
-      "waitFor": "text=merkle.com"
+      "waitFor": "[aria-label='Watched companies'] >> text=Merkle"
     },
     {
-      "waitFor": "text=Free accounts keep 3 alerts"
+      "waitFor": "text=Free: 3 alerts"
     }
   ]
 }

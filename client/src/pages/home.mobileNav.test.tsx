@@ -42,24 +42,14 @@ describe("Home mobile navigation", () => {
     expect(screen.getAllByRole("link", { name: /Become a referrer/ }).every(link => link.getAttribute("href") === "/referrer")).toBe(true);
   });
 
-  it("shows only a truthful aggregate referral-impact indicator, never named or queue-based activity", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ acceptedReferrals: 17 }) })));
-    render(<Home />);
-    const line = await screen.findByText(/17 referral requests accepted on skipwait.me · participants stay private\./);
-    // Kit placement: a label line in the closing call to action, not a separate band.
-    expect(line.closest("section")?.className).toBe("launch-final");
-  });
-
-  it.each([
-    ["a zero count", { ok: true, json: async () => ({ acceptedReferrals: 0 }) }],
-    ["an unavailable endpoint", { ok: false, json: async () => ({ error: "Referral impact is unavailable right now" }) }],
-    ["a malformed payload", { ok: true, json: async () => ({ acceptedReferrals: "17" }) }],
-  ])("hides the impact line for %s instead of inventing one", async (_label, response) => {
-    const fetchMock = vi.fn(async () => response);
+  it("closes with the money sentence only: no activity counts and no data fetch on the landing", () => {
+    const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     render(<Home />);
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/referral-impact"));
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(screen.queryByText(/referral requests accepted/)).toBeNull();
+    const final = screen.getByText("3 asks free every month; more use credits. Referrers are never paid and never ask you for money.").closest("section") as HTMLElement;
+    expect(final.className).toBe("launch-final");
+    expect(final.querySelectorAll("p")).toHaveLength(1);
+    expect(document.body.textContent).not.toMatch(/referral requests accepted/);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

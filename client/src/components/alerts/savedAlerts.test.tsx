@@ -2,21 +2,23 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SavedAlerts, domainInitials } from "./SavedAlerts";
+import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
+import { SavedAlerts, alertIdentity, domainInitials } from "./SavedAlerts";
 import { seekerAlertSchema } from "./seekerAlertsApi";
 
 type Reply = { ok: boolean; status: number; json: () => Promise<unknown> };
 const reply = (status: number, body: unknown): Reply => ({ ok: status >= 200 && status < 300, status, json: async () => body });
 const WATCH = { id: 7, companyDomain: "merkle.com", paused: false, notifiedAt: null, createdAt: "2026-10-08T04:00:00.000Z" };
 const getToken = vi.fn(async () => "test-token");
+// GET /api/companies as the server serves it (shared/companies.ts contract), nobody open.
+const DIRECTORY = LAUNCH_COMPANY_SEED.map(({ sortOrder: _order, ...company }) => ({ ...company, functions: [...company.functions], domains: [...company.domains], openToReferrals: false }));
 
 type Handler = (url: string, init?: RequestInit) => Reply | undefined;
-function serve(handler: Handler, { alerts = [WATCH] as unknown[], plan = "free" as string | null } = {}) {
+function serve(handler: Handler, { alerts = [WATCH] as unknown[] } = {}) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const custom = handler(String(url), init);
     if (custom) return custom;
     if (String(url) === "/api/seeker-alerts" && !init?.method) return reply(200, { alerts });
-    if (String(url).startsWith("/api/credits/summary")) return plan ? reply(200, { summary: { plan } }) : reply(500, { error: "We could not load your referral credits" });
     return reply(404, { error: "not mocked" });
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -40,7 +42,7 @@ describe("Saved alerts tab", () => {
     expect(screen.getByText("Notified — door open")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Resume alert for tata-consultancy.com" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Pause alert for merkle.com" })).toBeTruthy();
-    expect(await screen.findByText("Free accounts keep 3 alerts (3 used).")).toBeTruthy();
+    expect(screen.getByText("Free: 3 alerts · Momentum and Land: unlimited")).toBeTruthy();
   });
 
   it("surfaces the server's Free cap message and keeps the typed domain", async () => {
@@ -59,27 +61,59 @@ describe("Saved alerts tab", () => {
     expect(screen.getByRole("button", { name: "New alert" })).toBeTruthy();
   });
 
-  it("words the cap from the live plan, falling back to Free like the server", async () => {
-    serve(() => undefined, { plan: "pro" });
+  it("states the plan caps with the kit footnote and leaves enforcement to the server", async () => {
+    const fetchMock = serve(() => undefined);
     renderSaved();
-    expect(await screen.findByText("Your plan allows unlimited alerts.")).toBeTruthy();
-    cleanup();
-    serve(() => undefined, { plan: null });
+    await screen.findByText("merkle.com");
+    expect(screen.getByText("Free: 3 alerts · Momentum and Land: unlimited")).toBeTruthy();
+    expect(screen.queryByText(/used\)/)).toBeNull();
+    // Only the watch list and the public directory (for row names): no plan or quota read.
+    await waitFor(() => expect(fetchMock.mock.calls.map(([url]) => String(url)).sort()).toEqual(["/api/companies", "/api/seeker-alerts"]));
+  });
+
+  it("names a watched domain from the company directory and keeps any other domain as typed", async () => {
+    serve(url => (url === "/api/companies" ? reply(200, { companies: DIRECTORY, openCount: 0 }) : undefined), { alerts: [WATCH, { ...WATCH, id: 8, companyDomain: "skipwait.me" }, { ...WATCH, id: 9, companyDomain: "globex.com" }] });
     renderSaved();
-    expect(await screen.findByText("Free accounts keep 3 alerts (1 used).")).toBeTruthy();
+    expect(await screen.findByText("Merkle")).toBeTruthy();
+    const rows = screen.getAllByRole("listitem");
+    expect(rows.map(row => row.querySelector(".company-mark")?.textContent)).toEqual(["M", "SW", "G"]);
+    expect(within(rows[1]).getByText("SkipWait")).toBeTruthy();
+    expect(within(rows[2]).getByText("globex.com")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Pause alert for SkipWait" })).toBeTruthy();
+    expect(screen.queryByText("merkle.com")).toBeNull();
+  });
+
+  it("keeps the watched domain when the directory cannot load", async () => {
+    serve(url => (url === "/api/companies" ? reply(503, { error: "down" }) : undefined));
+    renderSaved();
+    expect(await screen.findByText("merkle.com")).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    expect(screen.getByRole("button", { name: "Pause alert for merkle.com" })).toBeTruthy();
+  });
+
+  it("draws kit size-9 icon buttons that keep a 44px tap target", async () => {
+    serve(() => undefined);
+    renderSaved();
+    for (const name of ["Pause alert for merkle.com", "Delete alert for merkle.com"]) {
+      const classes = (await screen.findByRole("button", { name })).className.split(" ");
+      expect(classes).toEqual(expect.arrayContaining(["size-9", "relative", "before:absolute", "before:-inset-1"]));
+      expect(classes).not.toContain("size-11");
+    }
   });
 
   it("shows loading, then an honest empty state with no sample companies", async () => {
     let release: (value: Reply) => void = () => undefined;
     const pending = new Promise<Reply>(resolve => { release = resolve; });
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => (String(url) === "/api/seeker-alerts" ? pending : reply(200, { summary: { plan: "free" } }))));
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => (String(url) === "/api/seeker-alerts" ? pending : reply(404, { error: "not mocked" }))));
     renderSaved();
     expect(await screen.findByText("Loading your saved alerts…")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "New alert" })).toBeNull();
+    expect(screen.queryByText(/Free: 3 alerts/)).toBeNull();
     release(reply(200, { alerts: [] }));
     expect(await screen.findByRole("heading", { name: "Get told when a door opens." })).toBeTruthy();
     expect(screen.queryByText("Loading your saved alerts…")).toBeNull();
-    expect(screen.queryByText(/Merkle|Momentum/)).toBeNull();
+    expect(screen.queryByText(/Merkle|merkle/)).toBeNull();
+    expect(screen.getByText("Free: 3 alerts · Momentum and Land: unlimited")).toBeTruthy();
   });
 
   it("surfaces a load error and recovers on Try again", async () => {
@@ -128,6 +162,13 @@ describe("Saved alerts tab", () => {
 });
 
 describe("saved alert helpers", () => {
+  it("resolves directory identity by any company domain, case-insensitively", () => {
+    expect(alertIdentity("Merkle.com", DIRECTORY)).toEqual({ name: "Merkle", mark: "M" });
+    expect(alertIdentity("goneutrinos.com", DIRECTORY)).toEqual({ name: "Go Neutrinos", mark: "GN" });
+    expect(alertIdentity("tata-consultancy.com", DIRECTORY)).toEqual({ name: "tata-consultancy.com", mark: "TC" });
+    expect(alertIdentity("merkle.com", [])).toEqual({ name: "merkle.com", mark: "M" });
+  });
+
   it("derives the kit company mark from the domain", () => {
     expect(domainInitials("merkle.com")).toBe("M");
     expect(domainInitials("tata-consultancy.com")).toBe("TC");

@@ -4,10 +4,11 @@ import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { assistantApprovals, assistantConnections, assistantTokens, developerApps, operationalActivityLogs, tokenBalances } from "../drizzle/schema";
 import {
   connectAssistant, createAssistantApproval, createAssistantToken, createDeveloperApp,
-  decideAssistantApproval, disconnectAssistant, editAssistantApproval, getAssistantAccessPlan,
+  decideAssistantApproval, disconnectAssistant, editAssistantApproval, getAssistantAccess,
   getDeveloperApp, listAssistantApprovals, listAssistantConnections, listAssistantTokens,
   listDeveloperApps, revokeAssistantToken, verifyAssistantBearer, hasAssistantAccess, submitDeveloperAppForReview, updateDeveloperAppWebhook,
 } from "./db";
+import { AssistantPlanRequiredError } from "./planGates";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
@@ -128,7 +129,8 @@ function fixtureDatabase() {
   return { select, update, insert };
 }
 
-const walletRow = (plan: string) => ({ id: 1, userId: 7, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 3, monthlyAllowance: 3, monthlyCycleKey: "2026-10", plan, subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, updatedAt: NOW });
+// A paid plan counts only while billing (active or non-renewing, inside its term), so paid rows carry both.
+const walletRow = (plan: string, termEnd: Date | null = plan === "free" ? null : new Date(Date.now() + 30 * DAY), status: string | null = termEnd ? "active" : null) => ({ id: 1, userId: 7, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 3, monthlyAllowance: 3, monthlyCycleKey: "2026-10", plan, subscriptionId: null, subscriptionStatus: status, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: termEnd, subscriptionResourceVersion: null, updatedAt: NOW });
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
@@ -137,7 +139,7 @@ beforeEach(() => {
     tokens: [],
     apps: [],
     approvals: [],
-    wallets: [walletRow("max")],
+    wallets: [walletRow("land_focus")],
     activity: [],
   };
   mocks.createPool.mockResolvedValue({});
@@ -146,8 +148,8 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); });
 
 describe("assistant connections", () => {
-  it("reports the plan and connects on max", async () => {
-    expect(await getAssistantAccessPlan(7)).toBe("max");
+  it("reports the entitlement and connects on Land Focus", async () => {
+    expect(await getAssistantAccess(7)).toEqual({ plan: "land_focus", planLabel: "Land Focus", tier: "land", hasAccess: true });
     const connection = await connectAssistant(7, { provider: "chatgpt", appName: "ChatGPT", scopes: ["read", "draft"] });
     expect(connection).toMatchObject({ provider: "chatgpt", appName: "ChatGPT", status: "connected", scopes: ["read", "draft"] });
     expect(await listAssistantConnections(7)).toHaveLength(1);
@@ -158,10 +160,24 @@ describe("assistant connections", () => {
     await expect(connectAssistant(7, { provider: "claude", scopes: ["read"] })).rejects.toThrow(/already connected/);
   });
 
-  it("gates connections on the max plan", async () => {
+  it("gates connections on the assistant entitlement (the Land tier)", async () => {
     tables.wallets = [walletRow("free")];
-    await expect(connectAssistant(7, { provider: "chatgpt" })).rejects.toThrow(/max plan/);
+    await expect(connectAssistant(7, { provider: "chatgpt" })).rejects.toThrow(/part of Land and Concierge/);
+    await expect(connectAssistant(7, { provider: "chatgpt" })).rejects.toBeInstanceOf(AssistantPlanRequiredError);
     expect(await listAssistantConnections(7)).toEqual([]);
+  });
+
+  // D-067: Max no longer carries assistant access; every gate fails closed for a wallet still marked max or pro.
+  it.each(["max", "pro"])("a wallet still marked %s has no assistant access and every gate fails closed", async plan => {
+    tables.wallets = [walletRow(plan)];
+    expect(await getAssistantAccess(7)).toEqual({ plan: "free", planLabel: "Free", tier: "free", hasAccess: false });
+    expect(await hasAssistantAccess(7)).toBe(false);
+    await expect(connectAssistant(7, { provider: "chatgpt" })).rejects.toBeInstanceOf(AssistantPlanRequiredError);
+    await expect(createAssistantToken(7, { name: "Notion tracker" })).rejects.toBeInstanceOf(AssistantPlanRequiredError);
+    await expect(createDeveloperApp(7, { name: "Instinct", kind: "web_app", description: "d", redirectUrls: ["https://a.app/cb"], scopes: ["companies:read"], agreeToTerms: true })).rejects.toThrow(/part of Land and Concierge/);
+    expect(tables.connections).toEqual([]);
+    expect(tables.tokens).toEqual([]);
+    expect(tables.apps).toEqual([]);
   });
 
   it("revokes with ownership enforcement", async () => {
@@ -190,8 +206,8 @@ describe("assistant tokens", () => {
 
   it("validates token names and gates on plan", async () => {
     await expect(createAssistantToken(7, { name: "x" })).rejects.toThrow(/Give the token a name/);
-    tables.wallets = [walletRow("pro")];
-    await expect(createAssistantToken(7, { name: "OK name" })).rejects.toThrow(/max plan/);
+    tables.wallets = [walletRow("start")];
+    await expect(createAssistantToken(7, { name: "OK name" })).rejects.toThrow(/part of Land and Concierge/);
   });
 });
 
@@ -215,10 +231,25 @@ describe("assistant approvals", () => {
     expect(await verifyAssistantBearer(hash)).toBeNull();
   });
 
-  it("reports assistant access from the owner's plan", async () => {
+  it("reports assistant access from the owner's entitlement", async () => {
     expect(await hasAssistantAccess(7)).toBe(true);
-    tables.wallets = [walletRow("pro")];
+    tables.wallets = [walletRow("momentum")];
     expect(await hasAssistantAccess(7)).toBe(false);
+    // A non-renewing Land pass keeps access through the paid term; a lapsed term fails closed even before the wallet normalizes.
+    tables.wallets = [walletRow("land_sprint", new Date(Date.now() + DAY), "non_renewing")];
+    expect(await hasAssistantAccess(7)).toBe(true);
+    tables.wallets = [walletRow("land_focus", new Date(Date.now() - DAY))];
+    expect(await hasAssistantAccess(7)).toBe(false);
+    tables.wallets = [walletRow("land_focus", new Date(Date.now() + DAY), "cancelled")];
+    expect(await hasAssistantAccess(7)).toBe(false);
+    expect(await getAssistantAccess(7)).toEqual({ plan: "free", planLabel: "Free", tier: "free", hasAccess: false });
+  });
+
+  it("reads only the caller's own wallet (cross-user)", async () => {
+    tables.wallets = [walletRow("free"), { ...walletRow("land_focus"), id: 2, userId: 8 }];
+    expect(await hasAssistantAccess(7)).toBe(false);
+    expect(await hasAssistantAccess(8)).toBe(true);
+    await expect(createAssistantToken(7, { name: "Tracker" })).rejects.toBeInstanceOf(AssistantPlanRequiredError);
   });
 
   it("rejects invalid approval input", async () => {
@@ -279,10 +310,10 @@ describe("developer apps", () => {
     await expect(createDeveloperApp(7, { ...base, agreeToTerms: false })).rejects.toThrow(/developer terms/);
   });
 
-  it("gates registration on the max plan and updates webhooks", async () => {
+  it("gates registration on the assistant entitlement and updates webhooks", async () => {
     tables.wallets = [walletRow("free")];
-    await expect(createDeveloperApp(7, { name: "Instinct", kind: "web_app", description: "d", redirectUrls: ["https://a.app/cb"], scopes: ["companies:read"], agreeToTerms: true })).rejects.toThrow(/max plan/);
-    tables.wallets = [walletRow("max")];
+    await expect(createDeveloperApp(7, { name: "Instinct", kind: "web_app", description: "d", redirectUrls: ["https://a.app/cb"], scopes: ["companies:read"], agreeToTerms: true })).rejects.toThrow(/part of Land and Concierge/);
+    tables.wallets = [walletRow("land_focus")];
     const app = await createDeveloperApp(7, { name: "Instinct", kind: "web_app", description: "d", redirectUrls: ["https://a.app/cb"], scopes: ["companies:read"], agreeToTerms: true });
     expect(await updateDeveloperAppWebhook(7, app!.id, { webhookUrl: "https://instinct.app/hooks" })).toEqual({ id: app!.id, webhookUrl: "https://instinct.app/hooks" });
     expect(await updateDeveloperAppWebhook(7, app!.id, { webhookUrl: "" })).toEqual({ id: app!.id, webhookUrl: null });
@@ -291,7 +322,7 @@ describe("developer apps", () => {
   });
 
   it("submits test and rejected apps for review only", async () => {
-    tables.wallets = [walletRow("max")];
+    tables.wallets = [walletRow("land_focus")];
     const app = await createDeveloperApp(7, { name: "Instinct", kind: "web_app", description: "d", redirectUrls: ["https://a.app/cb"], scopes: ["companies:read"], agreeToTerms: true });
     expect(await submitDeveloperAppForReview(7, app!.id)).toEqual({ id: app!.id, status: "in_review" });
     await expect(submitDeveloperAppForReview(7, app!.id)).rejects.toThrow(/Only test apps/);

@@ -10,7 +10,9 @@ vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: true, getToken }),
   useUser: () => ({ user: { emailAddresses: [{ emailAddress: "employee@acme.com", verification: { status: "verified" } }] } }),
 }));
-vi.mock("wouter", () => ({ Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>, useLocation: () => ["/inbox", go] }));
+vi.mock("wouter", () => ({ Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>, useLocation: () => ["/queue", go], useSearch: () => "" }));
+// The verified-referrer gate itself is covered in myCompanyInbox.serverAccess.test.tsx; these cases start verified.
+vi.mock("@/hooks/useReferrerAccess", () => ({ useReferrerAccess: () => ({ status: "verified", access: { verified: true, domain: "acme.com", companyName: null, companyInitials: null } }) }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div>, LogoMark: () => <div data-skipwait-logo-mark="true" /> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
@@ -46,13 +48,17 @@ describe("My Company Inbox pending states", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Not a fit" }));
 
     // Confirm step: nothing has been posted yet and the accept CTA is out of the way.
-    expect(screen.getByRole("group", { name: "Confirm decline" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Accept & submit referral" })).toBeNull();
+    const confirm = screen.getByRole("group", { name: "Confirm decline" });
+    // A decline reopens the ask to colleagues (D-021) and moves no credit, so the
+    // referrer is told that, never promised a refund for the seeker (D-063, D-066).
+    expect(confirm.textContent).toContain("never your name. The ask stays with your company, so a colleague can still pick it up.");
+    expect((confirm.textContent ?? "").toLowerCase()).not.toMatch(/credit|token|refund/);
+    expect(screen.queryByRole("button", { name: "Accept & connect" })).toBeNull();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/one-click-review"))).toBe(false);
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("group", { name: "Confirm decline" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Accept & submit referral" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Accept & connect" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Not a fit" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm decline" }));
@@ -90,7 +96,9 @@ describe("My Company Inbox pending states", () => {
     });
     render(<MyCompanyInbox />);
     fireEvent.click(await screen.findByRole("button", { name: "Open request" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Accept & submit referral" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Accept & connect" }));
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("Accept failed");
     expect(alert.textContent).toContain("Another employee accepted this request a moment earlier. Nothing was charged to your credits.");
@@ -112,7 +120,7 @@ describe("My Company Inbox pending states", () => {
       return {};
     });
     render(<MyCompanyInbox />);
-    expect(await screen.findByText(/Expires in 2 days/)).toBeTruthy();
+    expect(await screen.findByText(/Expires in 3 days/)).toBeTruthy();
   });
 
   it("tells the Referrer honestly when the queue is taking longer than 15 seconds", async () => {

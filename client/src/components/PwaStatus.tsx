@@ -1,30 +1,20 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, Signal } from "lucide-react";
+import { Signal, WifiOff } from "lucide-react";
+import { StatusBanner } from "@/components/app-states/SystemStates";
 
 export const SW_UPDATE_EVENT = "skipwait:sw-update";
 
-/** Shown when a new deploy's worker is installed and waiting. Nothing reloads until the person taps Refresh. */
+/**
+ * A new deploy's worker is installed and waiting. Activate it quietly: no banner, no reload. The page the person is on
+ * keeps running; the next navigation picks up the new version. (Navigations are network-first, so nothing stale is served.)
+ */
 export function PwaUpdatePrompt() {
-  const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
-  const [dismissed, setDismissed] = useState(false);
   useEffect(() => {
-    const onUpdate = (event: Event) => { setWaiting((event as CustomEvent<ServiceWorker>).detail ?? null); setDismissed(false); };
+    const onUpdate = (event: Event) => { (event as CustomEvent<ServiceWorker>).detail?.postMessage({ type: "SKIP_WAITING" }); };
     window.addEventListener(SW_UPDATE_EVENT, onUpdate);
     return () => window.removeEventListener(SW_UPDATE_EVENT, onUpdate);
   }, []);
-  if (!waiting || dismissed) return null;
-  const refresh = () => {
-    navigator.serviceWorker?.addEventListener("controllerchange", () => window.location.reload(), { once: true });
-    waiting.postMessage({ type: "SKIP_WAITING" });
-  };
-  return (
-    <div role="status" aria-live="polite" className="fixed inset-x-3 bottom-20 z-50 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-lg md:bottom-4">
-      <RefreshCw className="h-4 w-4 shrink-0" aria-hidden="true" />
-      <p className="flex-1 text-sm">A new version of SkipWait is ready.</p>
-      <button type="button" onClick={() => setDismissed(true)} className="min-h-11 px-2 text-sm text-[var(--muted-foreground)]">Later</button>
-      <button type="button" onClick={refresh} className="brand-button min-h-11 px-4 text-sm">Refresh</button>
-    </div>
-  );
+  return null;
 }
 
 type NetworkInformation = { effectiveType?: string; saveData?: boolean; addEventListener?: (t: string, cb: () => void) => void; removeEventListener?: (t: string, cb: () => void) => void };
@@ -42,9 +32,19 @@ export function SlowConnectionNotice() {
     return () => c.removeEventListener?.("change", update);
   }, []);
   if (!slow || (typeof navigator !== "undefined" && !navigator.onLine)) return null;
-  return (
-    <div role="status" aria-live="polite" className="fixed inset-x-0 top-0 z-40 flex items-center justify-center gap-2 bg-[var(--muted)] px-4 py-2 text-xs font-medium text-[var(--foreground)]">
-      <Signal className="h-4 w-4 shrink-0" aria-hidden="true" />Slow connection. Pages may take a moment to load.
-    </div>
-  );
+  return <StatusBanner icon={<Signal className="size-4 shrink-0" aria-hidden="true" />}>Slow connection. Pages may take a moment to load.</StatusBanner>;
+}
+
+/** Kit "Offline" banner. Hidden on /offline, which carries the same banner itself. */
+export function OfflineNotice() {
+  const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);
+  useEffect(() => {
+    const restore = () => setOnline(true);
+    const lose = () => setOnline(false);
+    window.addEventListener("online", restore);
+    window.addEventListener("offline", lose);
+    return () => { window.removeEventListener("online", restore); window.removeEventListener("offline", lose); };
+  }, []);
+  if (online || (typeof window !== "undefined" && window.location.pathname === "/offline")) return null;
+  return <StatusBanner icon={<WifiOff className="size-4 shrink-0" aria-hidden="true" />}>You&apos;re offline. Showing saved info.</StatusBanner>;
 }

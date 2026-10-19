@@ -19,18 +19,22 @@ vi.mock("wouter", () => ({
 }));
 
 const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
-const ASKING = [{ id: 11, title: "Product Designer", companyDomain: "wipro.com", status: "approved", referrerId: 9, queueStatus: null, referrerMessage: null, unreadMessageCount: 2, updatedAt: ago(3600000) }];
+const ASKING = [{ id: 11, title: "Product Designer", companyDomain: "wipro.com", companyName: "Wipro", companyInitials: "W", status: "approved", referrerId: 9, queueStatus: null, referrerMessage: null, unreadMessageCount: 2, updatedAt: ago(3600000) }];
 // candidateName is not part of the real inbox payload; it is here to prove the list never renders seeker identity.
-const REFERRING_NEW = [{ id: 21, companyDomain: "wipro.com", status: "pending", unreadMessageCount: 0, updatedAt: ago(7200000), candidateName: "Rahul Kumar" }];
-const REFERRING_DONE = [{ id: 22, companyDomain: "wipro.com", status: "approved", unreadMessageCount: 0, updatedAt: ago(9000000) }];
+const REFERRING_NEW = [{ id: 21, companyDomain: "wipro.com", companyName: "Wipro", companyInitials: "W", status: "pending", unreadMessageCount: 0, updatedAt: ago(7200000), candidateName: "Rahul Kumar" }];
+const REFERRING_DONE = [{ id: 22, companyDomain: "wipro.com", companyName: "Wipro", companyInitials: "W", status: "approved", unreadMessageCount: 0, updatedAt: ago(9000000) }];
 
 const WORK_USER = { id: "41", emailAddresses: [{ emailAddress: "r@wipro.com", verification: { status: "verified" } }] };
 const PERSONAL_USER = { id: "42", emailAddresses: [{ emailAddress: "r@gmail.com", verification: { status: "verified" } }] };
 
+// The server's verified-referrer verdict (GET /api/company-referrals/access) decides the referring side.
+const VERIFIED_ACCESS = { body: { verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" } };
+const UNVERIFIED_ACCESS = { body: { verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null } };
+
 type Reply = { status?: number; body: unknown } | "network";
-let replies: { mine: Reply; fresh: Reply; done: Reply };
+let replies: { access: Reply; mine: Reply; fresh: Reply; done: Reply };
 const fetchMock = vi.fn(async (url: string) => {
-  const key = String(url).endsWith("/mine") ? "mine" : String(url).includes("scope=new") ? "fresh" : String(url).includes("scope=completed") ? "done" : null;
+  const key = String(url).endsWith("/access") ? "access" : String(url).endsWith("/mine") ? "mine" : String(url).includes("scope=new") ? "fresh" : String(url).includes("scope=completed") ? "done" : null;
   const reply: Reply = key ? replies[key] : { body: {} };
   if (reply === "network") throw new TypeError("Failed to fetch");
   const status = reply.status ?? 200;
@@ -38,7 +42,7 @@ const fetchMock = vi.fn(async (url: string) => {
 });
 
 function stubAll(mine: unknown[], fresh: unknown[], done: unknown[]) {
-  replies = { mine: { body: { requests: mine } }, fresh: { body: { requests: fresh } }, done: { body: { requests: done } } };
+  replies = { access: VERIFIED_ACCESS, mine: { body: { requests: mine } }, fresh: { body: { requests: fresh } }, done: { body: { requests: done } } };
 }
 
 function renderInbox() {
@@ -103,21 +107,57 @@ describe("UnifiedInbox", () => {
     expect(screen.queryByText(/Review queue/)).toBeNull();
   });
 
-  it("links verified referrers with new asks to the review queue", async () => {
+  it("opens a verified referrer's new ask from its list row, with no separate review-queue card (kit v4)", async () => {
     stubAll([], REFERRING_NEW, REFERRING_DONE);
     renderInbox();
-    const queue = await screen.findByRole("link", { name: /Review queue · 1 new ask waiting/ });
-    expect(queue.getAttribute("href")).toBe("/queue");
+    const hidden = await screen.findByText("Seeker · identity hidden");
+    expect(hidden.closest("a")?.getAttribute("href")).toBe("/conversation/21?from=inbox");
+    expect(screen.queryByText(/Review queue/)).toBeNull();
+    expect(screen.queryByRole("link", { name: /new asks? waiting/ })).toBeNull();
   });
 
-  it("never asks the referrer inbox for a personal-email account", async () => {
+  it("never asks the referrer inbox for an account the server has not verified", async () => {
+    userState.user = PERSONAL_USER;
+    stubAll(ASKING, REFERRING_NEW, []);
+    replies.access = UNVERIFIED_ACCESS;
+    renderInbox();
+    await screen.findByText("Your referrer · Wipro");
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/access", expect.anything()));
+    expect(fetchMock.mock.calls.map(([url]) => String(url)).sort()).toEqual(["/api/company-referrals/access", "/api/company-referrals/mine"]);
+    expect(screen.queryByText(/Review queue/)).toBeNull();
+    expect(screen.queryByText("Seeker · identity hidden")).toBeNull();
+  });
+
+  it("does not trust a company address on the sign-in account when the server says not verified", async () => {
+    userState.user = WORK_USER;
+    stubAll(ASKING, REFERRING_NEW, []);
+    replies.access = UNVERIFIED_ACCESS;
+    renderInbox();
+    await screen.findByText("Your referrer · Wipro");
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/access", expect.anything()));
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/inbox?scope="))).toBe(false);
+    expect(screen.queryByText("Seeker · identity hidden")).toBeNull();
+  });
+
+  it("shows referring threads for a Google SSO account whose work email the server verified by code (D-019)", async () => {
     userState.user = PERSONAL_USER;
     stubAll(ASKING, REFERRING_NEW, []);
     renderInbox();
-    await screen.findByText("Your referrer · Wipro");
-    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(["/api/company-referrals/mine"]);
-    expect(screen.queryByText(/Review queue/)).toBeNull();
-    expect(screen.queryByText("Seeker · identity hidden")).toBeNull();
+    expect(await screen.findByText("Seeker · identity hidden")).toBeTruthy();
+    expect(screen.getByText("Your referrer · Wipro")).toBeTruthy();
+  });
+
+  it("shows a failed verification check as a load error, never as a seeker-only inbox, then recovers on retry", async () => {
+    userState.user = PERSONAL_USER;
+    stubAll([], REFERRING_NEW, []);
+    replies.access = { status: 500, body: { error: "We could not check your company-email access" } };
+    renderInbox();
+    expect(await screen.findByText("We could not check your company-email access", undefined, { timeout: 4000 })).toBeTruthy();
+    expect(screen.queryByText("No conversations yet.")).toBeNull();
+    replies.access = VERIFIED_ACCESS;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Seeker · identity hidden")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("shows a load error instead of an empty inbox, then recovers on retry", async () => {

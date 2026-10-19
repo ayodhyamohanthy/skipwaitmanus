@@ -1,15 +1,23 @@
 import { Bell, BellOff, Plus, Search, Trash2 } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FREE_ALERT_LIMIT, type SeekerAlert } from "@shared/alerts";
 import { Button } from "@/components/kit/button";
 import { Panel, field } from "@/components/kit/preview-kit";
-import { ALERT_REMOVE_ERROR, ALERT_SAVE_ERROR, ALERT_UPDATE_ERROR, createSeekerAlert, deleteSeekerAlert, fetchSeekerAlerts, fetchSeekerPlan, setSeekerAlertPaused, type TokenSource } from "./seekerAlertsApi";
+import { findCompanyByDomain, useCompanyDirectory, type PublicCompany } from "@/lib/companyDirectory";
+import { ALERT_REMOVE_ERROR, ALERT_SAVE_ERROR, ALERT_UPDATE_ERROR, createSeekerAlert, deleteSeekerAlert, fetchSeekerAlerts, setSeekerAlertPaused, type TokenSource } from "./seekerAlertsApi";
 
 /** Kit company mark from the watched domain: "merkle.com" -> "M", "tata-consultancy.com" -> "TC". */
 export function domainInitials(domain: string): string {
   const label = domain.split(".")[0] ?? "";
   return label.split(/[-_]/).filter(Boolean).slice(0, 2).map(part => part.charAt(0)).join("").toUpperCase() || "?";
+}
+
+/** Directory name and initials for a watched domain ("skipwait.me" -> SkipWait, SW); the domain itself otherwise. */
+export function alertIdentity(companyDomain: string, companies: readonly PublicCompany[]): { name: string; mark: string } {
+  const listed = findCompanyByDomain(companies, companyDomain);
+  return listed ? { name: listed.name, mark: listed.initials } : { name: companyDomain, mark: domainInitials(companyDomain) };
 }
 
 function alertStatus(alert: SeekerAlert): string {
@@ -19,18 +27,25 @@ function alertStatus(alert: SeekerAlert): string {
 
 const messageOf = (reason: unknown, fallback: string) => (reason instanceof Error && reason.message ? reason.message : fallback);
 
+// Kit footnote, verbatim. Any paid plan is unlimited on the server (shared/alerts.ts canAddAlert).
+const CAP_NOTE = `Free: ${FREE_ALERT_LIMIT} alerts · Momentum and Land: unlimited`;
+// Kit size-9 icon button with a 44px tap target from a transparent ::before.
+const ICON_BUTTON = "relative size-9 before:absolute before:-inset-1";
+
 /**
  * Kit Saved alerts tab (app/src/routes/alerts.tsx) on the real watch backend
  * (/api/seeker-alerts). A watch is a company domain; the first verified
  * referrer who enrolls there notifies every unpaused watcher once. Rows only
  * change after the server confirms; the Free cap is enforced server-side and
- * its message is shown as-is.
+ * its message is shown as-is, under the kit's static plan footnote.
  */
 export function SavedAlerts({ userId, getToken }: { userId: string | null; getToken: TokenSource }) {
   const queryClient = useQueryClient();
   const listKey = ["alerts", "saved", userId ?? "session"] as const;
   const alerts = useQuery({ queryKey: listKey, retry: false, queryFn: () => fetchSeekerAlerts(getToken) });
-  const plan = useQuery({ queryKey: ["alerts", "plan", userId ?? "session"], retry: false, queryFn: () => fetchSeekerPlan(getToken) });
+  // Names are display-only: while the public directory loads, or if it fails, a row keeps its watched domain.
+  const directory = useCompanyDirectory({ enabled: Boolean(alerts.data?.length) });
+  const directoryCompanies = directory.data?.companies ?? [];
   const [adding, setAdding] = useState(false);
   const [domain, setDomain] = useState("");
   const [saving, setSaving] = useState(false);
@@ -78,12 +93,10 @@ export function SavedAlerts({ userId, getToken }: { userId: string | null; getTo
   const cancel = () => { setAdding(false); setDomain(""); setFormError(""); };
   const loading = alerts.isFetching && !alerts.data;
   const loadError = alerts.isError && !alerts.isFetching ? alerts.error.message : "";
-  // Same wording and fallback as the backend's cap: no readable paid plan counts as Free.
-  const capNote = !alerts.data || plan.isPending ? "" : (plan.data ?? "free") === "free" ? `Free accounts keep ${FREE_ALERT_LIMIT} alerts (${alerts.data.length} used).` : "Your plan allows unlimited alerts.";
 
   return (
     <div className="mt-4 space-y-3" data-skipwait-saved-alerts="live">
-      {loading ? <p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your saved alerts…</p> : null}
+      {loading ? <LoadingNote>Loading your saved alerts…</LoadingNote> : null}
       {loadError ? (
         <div role="alert" className="rounded-3xl border border-destructive/30 bg-destructive/10 p-4 text-sm">
           {loadError} <button type="button" className="font-semibold underline" onClick={() => { void alerts.refetch(); }}>Try again</button>
@@ -103,13 +116,14 @@ export function SavedAlerts({ userId, getToken }: { userId: string | null; getTo
         <ul className="space-y-3" aria-label="Watched companies">
           {alerts.data.map(alert => {
             const busy = busyIds.includes(alert.id);
+            const company = alertIdentity(alert.companyDomain, directoryCompanies);
             return (
               <li key={alert.id}>
                 <Panel className="flex items-center gap-3 p-4!">
-                  <span className="company-mark" aria-hidden="true">{domainInitials(alert.companyDomain)}</span>
-                  <span className="min-w-0 flex-1"><strong className="block truncate">{alert.companyDomain}</strong><small className="text-muted-foreground">{alertStatus(alert)}</small></span>
-                  <Button variant="ghost" size="icon" className="size-11 md:size-9" disabled={busy} aria-label={alert.paused ? `Resume alert for ${alert.companyDomain}` : `Pause alert for ${alert.companyDomain}`} onClick={() => { void togglePaused(alert); }}>{alert.paused ? <BellOff /> : <Bell />}</Button>
-                  <Button variant="ghost" size="icon" className="size-11 md:size-9" disabled={busy} aria-label={`Delete alert for ${alert.companyDomain}`} onClick={() => { void remove(alert); }}><Trash2 /></Button>
+                  <span className="company-mark" aria-hidden="true">{company.mark}</span>
+                  <span className="min-w-0 flex-1"><strong className="block truncate">{company.name}</strong><small className="text-muted-foreground">{alertStatus(alert)}</small></span>
+                  <Button variant="ghost" size="icon" className={ICON_BUTTON} disabled={busy} aria-label={alert.paused ? `Resume alert for ${company.name}` : `Pause alert for ${company.name}`} onClick={() => { void togglePaused(alert); }}>{alert.paused ? <BellOff /> : <Bell />}</Button>
+                  <Button variant="ghost" size="icon" className={ICON_BUTTON} disabled={busy} aria-label={`Delete alert for ${company.name}`} onClick={() => { void remove(alert); }}><Trash2 /></Button>
                 </Panel>
               </li>
             );
@@ -132,7 +146,7 @@ export function SavedAlerts({ userId, getToken }: { userId: string | null; getTo
         </Panel>
       ) : null}
       {alerts.data && !adding ? <Button variant="outline" className="w-full" onClick={() => setAdding(true)}><Plus />New alert</Button> : null}
-      {capNote ? <p className="text-center text-xs text-muted-foreground">{capNote}</p> : null}
+      {alerts.data ? <p className="text-center text-xs text-muted-foreground">{CAP_NOTE}</p> : null}
     </div>
   );
 }

@@ -7,7 +7,13 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Download, ExternalLink, FileText, 
 import { Button } from "@/components/kit/button";
 import { ReferralCoverageInviteBanner } from "./CoverageInviteBanner";
 
-export type ClaimedAttachment = { id: string; fileName: string; mimeType: string; fileSize: number; key: string; url: string };
+// Before acceptance the server sends files locked: no name, id or link (D-019(e), shared/referrerAskView.ts). After
+// acceptance a file is named, and linked while the referrer's document access is active (url null once it ended).
+export type ClaimedAttachment = { id?: string | number; fileName?: string; mimeType?: string | null; fileSize?: number | null; url?: string | null };
+type ViewableAttachment = ClaimedAttachment & { id: string | number; fileName: string; url: string };
+const isViewable = (attachment: ClaimedAttachment): attachment is ViewableAttachment => attachment.id !== undefined && Boolean(attachment.fileName && attachment.url);
+/** Named (accepted) but unlinked: access has ended, which is not the same as "ready after acceptance". */
+const isAccessEnded = (attachment: ClaimedAttachment) => Boolean(attachment.fileName) && !attachment.url;
 export type ClaimedCompanyRequest = { id: number; targetRoleUrl: string; companyDomain: string; candidateName: string | null; attachments: ClaimedAttachment[] };
 
 export function companyInitial(domain: string) {
@@ -52,7 +58,7 @@ export function ClaimedReview({ request, activeDocument, setActiveDocument, mess
         </article>
         <aside className="queue-guidance h-fit">
           <span className="eyebrow">YOUR DECISION</span>
-          <h3>Reviewing is free.</h3>
+          <h3>Reviewing costs you nothing.</h3>
           <p>Approve only if you can genuinely help. You can send a private note after approval.</p>
           <label className="grid gap-2 text-xs font-semibold">
             <span>Note for the Job Seeker <span className="font-normal text-muted-foreground">(optional)</span></span>
@@ -66,13 +72,25 @@ export function ClaimedReview({ request, activeDocument, setActiveDocument, mess
   );
 }
 
-function DocumentReview({ attachments, active, setActive }: { attachments: ClaimedAttachment[]; active: number; setActive: (value: number) => void }) {
+function DocumentReview({ attachments: received, active, setActive }: { attachments: ClaimedAttachment[]; active: number; setActive: (value: number) => void }) {
+  const attachments = received.filter(isViewable);
+  const accessEnded = received.filter(isAccessEnded);
   const document = attachments[active];
-  const previewable = Boolean(document && (document.mimeType === "application/pdf" || document.mimeType.startsWith("image/")));
+  const mimeType = document?.mimeType ?? "";
+  const previewable = Boolean(document && (mimeType === "application/pdf" || mimeType.startsWith("image/")));
   return (
     <div className="mt-6 border-t border-border pt-5">
-      <div className="flex items-center justify-between gap-3"><span className="eyebrow">Candidate documents</span><span className="text-xs font-semibold">{attachments.length} attached</span></div>
-      {attachments.length ? (
+      <div className="flex items-center justify-between gap-3"><span className="eyebrow">Candidate documents</span><span className="text-xs font-semibold">{received.length} attached</span></div>
+      {received.length > 0 && attachments.length === 0 && accessEnded.length > 0 ? (
+        <div className="mt-3">
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {accessEnded.map((attachment, index) => <li key={attachment.id ?? index} className="flex min-w-0 items-center gap-3 rounded-[7px] border border-border p-3"><FileText className="size-4 shrink-0 text-primary" /><span className="min-w-0 truncate text-sm font-semibold">{attachment.fileName}</span></li>)}
+          </ul>
+          <p className="mt-3 text-sm text-muted-foreground">Resume access has ended. Message the Job Seeker in your private conversation if you still need it.</p>
+        </div>
+      ) : received.length > 0 && attachments.length === 0 ? (
+        <p className="mt-3 flex items-center gap-2 text-sm font-semibold"><FileText className="size-4 shrink-0 text-primary" />Resume ready after acceptance</p>
+      ) : attachments.length ? (
         <>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {attachments.map((attachment, index) => (
@@ -99,15 +117,17 @@ function DocumentReview({ attachments, active, setActive }: { attachments: Claim
   );
 }
 
-export function DecisionRecorded({ decision, request, onMessage }: { decision: "approved" | "declined"; request: ClaimedCompanyRequest | null; onMessage: (requestId: number) => void }) {
+// A decline is a private pass, not a terminal decision (D-021): the ask returns
+// to the company's queue, so the recorded state says what actually happened.
+export function DecisionRecorded({ decision, request, onMessage }: { decision: "approved" | "passed"; request: ClaimedCompanyRequest | null; onMessage: (requestId: number) => void }) {
   const approved = decision === "approved";
   return (
     <main data-skipwait-screen="referrer-decision" className="page-content">
       <section className="mx-auto grid max-w-xl justify-items-center py-14 text-center">
         <span className="impact-door">{approved ? <CheckCircle2 /> : <XCircle />}</span>
-        <span className="eyebrow">{approved ? "REFERRAL APPROVED" : "DECISION RECORDED"}</span>
-        <h1 className="mt-2.5 text-[28px] font-semibold">{approved ? "Referral approved." : "Request declined."}</h1>
-        <p className="mt-2 text-[13px] leading-[1.7] text-muted-foreground">{approved ? "You can now continue privately with this Job Seeker." : "The Job Seeker will receive your update privately."}</p>
+        <span className="eyebrow">{approved ? "REFERRAL APPROVED" : "PASSED PRIVATELY"}</span>
+        <h1 className="mt-2.5 text-[28px] font-semibold">{approved ? "Referral approved." : "You passed privately."}</h1>
+        <p className="mt-2 text-[13px] leading-[1.7] text-muted-foreground">{approved ? "You can now continue privately with this Job Seeker." : "Your name was never shown. Their ask is open again to other verified employees."}</p>
         {approved && request ? <div className="mt-7 w-full"><ReferralCoverageInviteBanner companyDomain={request.companyDomain} /></div> : null}
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           {approved && request ? <Button type="button" onClick={() => onMessage(request.id)}>Message Job Seeker <ArrowRight /></Button> : null}

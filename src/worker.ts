@@ -4,7 +4,7 @@ import { Container, getContainer } from "@cloudflare/containers";
 
 const CONTAINER_ENV_KEYS = [
   "ADMIN_SMOKE_SECRET", "AI_MODEL", "AI_PROVIDER_API_KEY", "AI_PROVIDER_BASE_URL",
-  "BUILT_IN_FORGE_API_KEY", "BUILT_IN_FORGE_API_URL", "BILLING_ENV", "CHARGEBEE_API_KEY",
+  "BUILT_IN_FORGE_API_KEY", "BUILT_IN_FORGE_API_URL", "BILLING_ENV", "BILLING_LEDGER_READ_TOKEN", "CHARGEBEE_API_KEY",
   "CHARGEBEE_LIVE_API_KEY", "CHARGEBEE_LIVE_DOMAIN", "CHARGEBEE_LIVE_ENABLED",
   "CHARGEBEE_LIVE_SITE", "CHARGEBEE_LIVE_WEBHOOK_SECRET", "CHARGEBEE_SITE",
   "CHARGEBEE_WEBHOOK_SECRET",
@@ -14,11 +14,13 @@ const CONTAINER_ENV_KEYS = [
   "PAYPAL_WEBHOOK_ID", "PUBLIC_BASE_URL", "R2_ACCESS_KEY_ID", "R2_ACCOUNT_ID", "R2_BUCKET",
   "R2_SECRET_ACCESS_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET",
   "RAZORPAY_WEBHOOK_SECRET", "RESEND_API_KEY", "SENTRY_DSN", "SKIPWAIT_ADMIN_EMAIL",
+  "INDIA_GST_REGISTERED", "USD_RECURRING_CONFIRMED", "HUMAN_REVIEWERS_STAFFED",
+  "EMPLOYER_SPONSORSHIP_ENABLED",
   "PROMO_GRANTS_ENABLED", "TRUST_CLOUDFLARE_CONNECTING_IP",
   "VITE_APP_ID", "VITE_APP_TITLE", "WORKOS_API_KEY", "WORKOS_CLIENT_ID",
   "WORKOS_COOKIE_PASSWORD", "WORKOS_POST_SIGNIN_PATH", "WORKOS_REDIRECT_URI",
   "WORKOS_WEBHOOK_SECRET",
-  "ZEPTOMAIL_API_KEY", "ZEPTOMAIL_FROM_EMAIL",
+  "ZEPTOMAIL_API_KEY", "ZEPTOMAIL_FROM_EMAIL", "WORK_EMAIL_HMAC_KEY",
 ] as const;
 
 /**
@@ -45,12 +47,20 @@ export class SkipwaitApi extends Container {
   }
 }
 
-import { fetchContainerWithStoppedRecovery } from "./containerRecovery";
+import { fetchContainerReplayingIdempotent, fetchContainerWithStoppedRecovery } from "./containerRecovery";
+import { buildJobsTickRequest, isInternalApiPath, withoutJobsTickHeader } from "../shared/jobsTick";
+import { withEdgeClientIp } from "../shared/clientIp";
+
+type WorkerEnv = Record<string, unknown> & { SkipwaitApi: DurableObjectNamespace; API_RELEASE?: string };
+
+function releaseOf(env: WorkerEnv): string {
+  return typeof env.API_RELEASE === "string" && /^[a-f0-9]{40}$/.test(env.API_RELEASE) ? env.API_RELEASE.slice(0, 12) : "legacy";
+}
 
 export default {
   async fetch(
     request: Request,
-    env: Record<string, unknown> & { SkipwaitApi: DurableObjectNamespace; API_RELEASE?: string },
+    env: WorkerEnv,
     ctx: ExecutionContext
   ): Promise<Response> {
     // The API Worker is reachable only on the canonical zone route. Never trust
@@ -60,9 +70,32 @@ export default {
     if (url.protocol !== "https:" || url.hostname !== "skipwait.me" || !url.pathname.startsWith("/api/")) {
       return new Response("Not Found", { status: 404, headers: { "cache-control": "no-store" } });
     }
+    // Internal routes (the scheduled-jobs tick) are reachable only from
+    // scheduled() below, never through the public route.
+    if (isInternalApiPath(url.pathname)) {
+      return new Response("Not Found", { status: 404, headers: { "cache-control": "no-store" } });
+    }
     // Single-instance API: all requests to one container for session affinity.
-    const release = typeof env.API_RELEASE === "string" && /^[a-f0-9]{40}$/.test(env.API_RELEASE) ? env.API_RELEASE.slice(0, 12) : "legacy";
+    const release = releaseOf(env);
     const container = getContainer(env.SkipwaitApi, `skipwaitmanus-api-${release}`);
-    return fetchContainerWithStoppedRecovery(container, request);
+    // A public request can never present the cron's tick token to the container.
+    // Client-supplied X-Forwarded-For is never trusted: the container sees one
+    // forwarding header, set here from Cloudflare's CF-Connecting-IP.
+    return fetchContainerWithStoppedRecovery(container, withEdgeClientIp(withoutJobsTickHeader(request)));
+  },
+
+  // Cron trigger (wrangler.jsonc triggers.crons): POST the scheduled-jobs tick
+  // to the same container, signed with HMAC(JWT_SECRET, minute) per
+  // shared/jobsTick.ts. The container runs each due job once per window, so a
+  // replay after a stopped-instance start is safe. A non-2xx answer throws so
+  // the cron invocation is marked failed in Workers observability.
+  async scheduled(controller: ScheduledController, env: WorkerEnv, ctx: ExecutionContext): Promise<void> {
+    const secret = typeof env.JWT_SECRET === "string" ? env.JWT_SECRET : "";
+    if (!secret) throw new Error("Scheduled jobs tick skipped: JWT_SECRET is not set on the Worker");
+    const container = getContainer(env.SkipwaitApi, `skipwaitmanus-api-${releaseOf(env)}`);
+    const response = await fetchContainerReplayingIdempotent(container, () => buildJobsTickRequest(secret, Date.now()));
+    const body = await response.text();
+    if (!response.ok) throw new Error(`Scheduled jobs tick (${controller.cron}) failed with HTTP ${response.status}`);
+    console.log(`[jobs] tick ${controller.cron} ${body.slice(0, 1000)}`);
   },
 };

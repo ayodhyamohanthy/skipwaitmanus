@@ -27,7 +27,7 @@ describe("My Requests pending states", () => {
     renderPage();
     expect(await screen.findByRole("heading", { name: "No asks yet." })).toBeTruthy();
     expect(screen.getByText("Pick a company, find a verified referrer, and write one great ask.")).toBeTruthy();
-    expect(document.querySelector('[data-skipwait-zero-action="job_seeker"]')).toBeTruthy();
+    expect(document.querySelector('[data-skipwait-zero-action="job_seeker"]')).toBeNull();
     expect(screen.getByRole("link", { name: "Explore companies" })).toBeTruthy();
   });
 
@@ -50,12 +50,12 @@ describe("My Requests pending states", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [expiring, urgent, fresh, pendingRequest] }) })));
     renderPage();
     const tomorrowNote = await screen.findByText("acme.com · Expires tomorrow");
-    expect(tomorrowNote.textContent).toContain("Ref-1021");
+    // Kit v4 rows carry no support reference.
+    expect(tomorrowNote.closest("li")?.textContent).not.toContain("Ref-");
     expect(screen.getByText("EXPIRING SOON").parentElement?.textContent).toContain("2");
     const urgentNote = await screen.findByText("acme.com · Expires today");
     expect(urgentNote.className).toContain("text-destructive");
-    expect(urgentNote.textContent).toContain("Ref-1022");
-    expect(screen.getByText(/acme\.com · Expires in 5 days/).className).toContain("text-muted-foreground");
+    expect(screen.getByText(/acme\.com · Expires in 6 days/).className).toContain("text-muted-foreground");
   });
 
   it("counts down from createdAt even when the server also sends expiresAt", async () => {
@@ -65,7 +65,7 @@ describe("My Requests pending states", () => {
     const ask = { ...pendingRequest, id: 41, referrerId: null, createdAt: iso(now - 4.5 * day), updatedAt: iso(now - 4.5 * day), expiresAt: iso(now + 2.5 * day) };
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [ask] }) })));
     renderPage();
-    expect(await screen.findByText("acme.com · Expires in 2 days")).toBeTruthy();
+    expect(await screen.findByText("acme.com · Expires in 3 days")).toBeTruthy();
   });
 
   it("labels a lapsed ask Expired instead of hiding it", async () => {
@@ -78,18 +78,16 @@ describe("My Requests pending states", () => {
     expect(await screen.findByText("acme.com · Expired")).toBeTruthy();
   });
 
-  it("meters open slots against the real monthly allowance", async () => {
+  it("meters the server's open-ask count against the plan cap", async () => {
     const now = Date.now();
     const day = 24 * 60 * 60 * 1000;
     const iso = (ms: number) => new Date(ms).toISOString();
     const ask = { ...pendingRequest, id: 41, referrerId: null, createdAt: iso(now - day), updatedAt: iso(now - day) };
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (String(url).includes("/credits/summary")) return { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 2, purchasedCreditsRemaining: 0, totalAvailable: 2 } }) };
-      return { ok: true, json: async () => ({ requests: [ask] }) };
-    }));
+    const slots = { plan: "free", planLabel: "Free", open: 1, cap: 3, full: false, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 } };
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [ask], slots }) })));
     renderPage();
-    const meter = await screen.findByLabelText("Open slots: 2 of 3");
-    expect(meter.textContent).toContain("2/3");
+    const meter = await screen.findByLabelText("Open slots: 1 of 3 used");
+    expect(meter.textContent).toContain("1/3");
     expect(screen.queryByText(/All 3 slots are in use/)).toBeNull();
   });
 
@@ -98,10 +96,8 @@ describe("My Requests pending states", () => {
     const day = 24 * 60 * 60 * 1000;
     const iso = (ms: number) => new Date(ms).toISOString();
     const asks = [51, 52, 53].map(id => ({ ...pendingRequest, id, referrerId: null, createdAt: iso(now - day), updatedAt: iso(now - day) }));
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (String(url).includes("/credits/summary")) return { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 0, purchasedCreditsRemaining: 0, totalAvailable: 0 } }) };
-      return { ok: true, json: async () => ({ requests: asks }) };
-    }));
+    const slots = { plan: "free", planLabel: "Free", open: 3, cap: 3, full: true, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 } };
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: asks, slots }) })));
     renderPage();
     expect(await screen.findByText("All 3 slots are in use.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "See plans" }).getAttribute("href")).toBe("/plans");

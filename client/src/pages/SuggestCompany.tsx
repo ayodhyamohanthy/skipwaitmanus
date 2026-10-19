@@ -4,13 +4,15 @@ import { Link } from "wouter";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Heading, Panel, field } from "@/components/kit/preview-kit";
-import { LAUNCH_COMPANIES } from "@/lib/companies";
+import { findListedCompanyByName, useCompanyDirectory } from "@/lib/companyDirectory";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 
 // Kit v4 /suggest-company (app/src/routes/suggest-company.tsx) on the live
 // POST /api/company-suggestions intake (auth required, 3 a day, open-duplicate
-// check server side).
+// check server side). The duplicate hint is the kit's prefix match against the
+// live company directory (the same list /explore shows), and a website is
+// required before Submit, as in the kit.
 type SuggestRole = "seeker" | "employee";
 const ROLES: ReadonlyArray<readonly [SuggestRole, string]> = [["seeker", "Looking to join"], ["employee", "Working there now"]];
 const SITE_PATTERN = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+/i;
@@ -25,6 +27,8 @@ function normalizeCompanyWebsite(input: string): string | undefined {
 export default function SuggestCompany() {
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
+  // Duplicate hint source; signed-out visitors never see the form, so never fetch it.
+  const directory = useCompanyDirectory({ enabled: Boolean(isSignedIn) });
   const [name, setName] = useState("");
   const [website, setWebsite] = useState("");
   const [role, setRole] = useState<SuggestRole>("seeker");
@@ -32,8 +36,8 @@ export default function SuggestCompany() {
   const [error, setError] = useState("");
   const [sentName, setSentName] = useState<string | null>(null);
 
-  const listed = LAUNCH_COMPANIES.find(company => company.name.toLowerCase() === name.trim().toLowerCase());
-  const siteOk = !website.trim() || SITE_PATTERN.test(website.trim());
+  const listed = findListedCompanyByName(directory.data?.companies ?? [], name, "prefix");
+  const siteOk = SITE_PATTERN.test(website.trim());
 
   if (!isSignedIn) {
     return (
@@ -83,8 +87,8 @@ export default function SuggestCompany() {
       <Panel>
         <label className="block text-sm font-medium">Company name<input className={field} value={name} maxLength={160} onChange={event => { setName(event.target.value); setError(""); }} placeholder="e.g. Freshworks" /></label>
         {listed ? <p className="mt-2 flex items-center gap-2 text-sm"><AlertTriangle className="size-4" />{listed.name} is already on SkipWait. <Link href={`/explore/${listed.slug}`} className="text-link">Open it</Link></p> : null}
+        {directory.isError && name.trim().length > 1 ? <p className="mt-2 text-sm text-muted-foreground">We couldn’t check the current company list. Reviewers still catch duplicates.</p> : null}
         <label className="mt-4 block text-sm font-medium">Website<input className={field} value={website} inputMode="url" maxLength={500} onChange={event => { setWebsite(event.target.value); setError(""); }} placeholder="freshworks.com" /></label>
-        {siteOk ? null : <p className="mt-2 text-sm text-muted-foreground">Enter the company website, like freshworks.com.</p>}
         <fieldset className="mt-4">
           <legend className="text-sm font-medium">You are</legend>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">

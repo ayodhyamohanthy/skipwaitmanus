@@ -2,18 +2,20 @@
 import { Bot, Copy, KeyRound, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { LAND_NOT_ON_SALE_LINE } from "@shared/assistant";
 import { Button } from "@/components/kit/button";
 import { Panel, field } from "@/components/kit/preview-kit";
 import { createdLabel, describeEvent, scopeSummary, providerLabel, timeAgo, type AssistantConnection, type AssistantEvent, type AssistantToken } from "./format";
 
-// Kit Toggle markup, rendered as a fixed "on" indicator: the server always asks
-// before a send or a credit spend, so there is nothing for the viewer to switch.
+// Kit Toggle markup (a role="switch" button), fixed "on": the server always asks
+// before a send or a credit spend, so the switch is aria-disabled and clicking it
+// changes nothing. No `disabled` attribute: that would grey it out like an unavailable control.
 function AlwaysOnRow({ label, hint }: { label: string; hint: string }) {
   return (
-    <div className="flex min-h-14 w-full items-center justify-between gap-4 border-b border-border py-3 text-left last:border-0">
+    <button type="button" role="switch" aria-checked="true" aria-disabled="true" onClick={event => event.preventDefault()} className="flex min-h-14 w-full cursor-default items-center justify-between gap-4 border-b border-border py-3 text-left last:border-0">
       <span><strong className="block text-sm">{label}</strong><small className="text-muted-foreground">{hint}</small></span>
-      <span aria-hidden="true" className="relative h-7 w-12 shrink-0 rounded-full bg-primary"><span className="absolute left-6 top-1 size-5 rounded-full bg-background" /></span>
-    </div>
+      <span className="relative h-7 w-12 shrink-0 rounded-full bg-primary"><span className="absolute left-6 top-1 size-5 rounded-full bg-background" /></span>
+    </button>
   );
 }
 
@@ -21,9 +23,10 @@ export function PlanGate() {
   return (
     <Panel className="text-center">
       <Bot className="mx-auto size-8" />
-      <h2 className="mt-2 font-semibold">Assistants and API tokens come with Max</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Max members can sign in, connect and apply from ChatGPT, Claude, bots and their own tools.</p>
-      <Button asChild className="mt-4"><Link href="/plans">Upgrade to Max</Link></Button>
+      <h2 className="mt-2 font-semibold">Assistants and API tokens come with Land</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Land and Concierge members can sign in, connect and apply from ChatGPT, Claude, bots and their own tools.</p>
+      {/* No upgrade link while /plans sells no Land: it would lead to a page that cannot sell it. */}
+      <p className="mt-4 text-sm">{LAND_NOT_ON_SALE_LINE}</p>
     </Panel>
   );
 }
@@ -108,16 +111,17 @@ export function TokensPanel({ tokens, onceToken, creating, workingId, onCreate, 
         <h2 className="font-semibold">Your tokens</h2>
         {tokens.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">No tokens yet.</p> : (
           <ul className="mt-2">
-            {tokens.map(token => (
-              <li key={token.id} className="flex min-h-14 items-center gap-3 border-b border-border last:border-0">
-                <KeyRound className="size-5 shrink-0" />
-                <span className="min-w-0 flex-1 text-sm">
-                  {token.name} · created {createdLabel(token.createdAt)}{token.lastUsedAt ? ` · used ${timeAgo(token.lastUsedAt)}` : ""}
-                  <span className="text-muted-foreground"> · <span className="font-mono">{token.prefix}…</span></span>
-                </span>
-                <Button variant="ghost" size="sm" disabled={workingId === token.id} onClick={() => onRevoke(token)}>{workingId === token.id ? "Revoking…" : "Revoke"}</Button>
-              </li>
-            ))}
+            {tokens.map(token => {
+              // Kit row text is exactly "{name} · created {date}"; the key prefix and last use stay available to hover and screen readers.
+              const detail = `Starts ${token.prefix}…${token.lastUsedAt ? ` · used ${timeAgo(token.lastUsedAt)}` : " · not used yet"}`;
+              return (
+                <li key={token.id} className="flex min-h-14 items-center gap-3 border-b border-border last:border-0">
+                  <KeyRound className="size-5 shrink-0" />
+                  <span className="min-w-0 flex-1 text-sm" title={detail}>{token.name} · created {createdLabel(token.createdAt)}<span className="sr-only"> · {detail}</span></span>
+                  <Button variant="ghost" size="sm" disabled={workingId === token.id} onClick={() => onRevoke(token)}>{workingId === token.id ? "Revoking…" : "Revoke"}</Button>
+                </li>
+              );
+            })}
           </ul>
         )}
         <form className="mt-4 flex flex-col gap-2 sm:flex-row" onSubmit={event => { event.preventDefault(); const trimmed = name.trim(); if (!trimmed || creating) return; void onCreate(trimmed).then(ok => { if (ok) setName(""); }); }}>

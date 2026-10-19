@@ -7,7 +7,7 @@ import { BUSINESS } from "@/lib/business";
  * /refunds — Refunds & cancellation.
  *
  * Mirrors the real billing behaviour: credit reservation/return on withdraw
- * and decline, end-of-term subscription cancellation (Chargebee
+ * and expiry (a decline keeps the credit spent), end-of-term subscription cancellation (Chargebee
  * `cancel_option=end_of_term`), and administrator-reviewed refunds that
  * deduct the credited tokens.
  */
@@ -23,8 +23,8 @@ export default function RefundPolicy() {
   >
     <PolicySection number="01" title="How a credit is used">
       <ul>
-        <li>Sending a referral request <strong>reserves one credit</strong>. The credit is returned to your balance automatically if you <strong>withdraw before a verified employee claims</strong> the request, or if the Referrer <strong>declines</strong>.</li>
-        <li>A credit is used up only when a Referrer <strong>accepts</strong> your request. Acceptance is an introduction; it does not guarantee an interview or an offer, and no refund is due for a hiring outcome.</li>
+        <li>Sending a referral request <strong>reserves one credit</strong>. The credit is returned to your balance automatically if you <strong>withdraw before a verified employee claims</strong> the request, or if it <strong>expires</strong> without a decision.</li>
+        <li>If a Referrer <strong>declines</strong>, the credit stays spent: that employee invested time reviewing your request, and your request stays open for other employees at the company. A credit is also used when a Referrer <strong>accepts</strong>. Acceptance is an introduction; it does not guarantee an interview or an offer, and no refund is due for a hiring outcome.</li>
         <li>Free monthly credits reset each month and do not carry over. Purchased credits never expire.</li>
         <li><strong>Delivery.</strong> skipwait.me is a digital service: there is no physical shipping. Purchased credits appear in your account <strong>immediately after the payment provider confirms payment</strong>; plan allowances activate on the first paid invoice. If credits do not appear, section 04 explains the automatic re-check.</li>
       </ul>
@@ -34,9 +34,9 @@ export default function RefundPolicy() {
       <p>Purchased credits are added only after the payment provider confirms payment. Unused purchased credits <strong>can be refunded on request within 14 days</strong> of purchase, less any credits already consumed by accepted referrals. Contact <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a> from your account email with the payment reference shown on your receipt.</p>
     </PolicySection>
 
-    <PolicySection number="03" title="Pro and Max subscriptions">
+    <PolicySection number="03" title="Paid plans">
       <ul>
-        <li>Plans renew monthly until cancelled. You can <strong>cancel renewal at any time from Plans</strong>; paid access and the monthly allowance stay active <strong>until the end of the current billing cycle</strong>, and no further charges are made.</li>
+        <li>Paid plans (Keep warm, Start, Momentum, Land) renew at the end of the term you chose until cancelled. You can <strong>cancel renewal at any time from Plans</strong>; paid access and the plan allowance stay active <strong>until the end of the current billing cycle</strong>, and no further charges are made.</li>
         <li>We do not pro-rate partially used months. If you were charged after cancelling, or charged twice, tell us and the duplicate charge is refunded in full.</li>
         <li>Prices are shown before checkout in INR (Razorpay) or USD (PayPal) via Chargebee, including applicable taxes where the provider collects them.</li>
       </ul>

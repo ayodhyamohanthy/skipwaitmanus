@@ -2,42 +2,48 @@
 // Parses the live REST payloads with Zod at the edge and derives the kit v4
 // referrer-home view from them. Derivations are pure so the honesty rules
 // (real counts only, expiry from the same instant the seeker sees) stay testable.
+import { reverifyDaysLeft } from "@shared/reverify";
 import { z } from "zod";
-import { getAskExpiresAtMs, referralStatuses } from "@shared/referral";
+import { getAskShelfLifeEndsAtMs, referralStatuses } from "@shared/referral";
+import { companyIdentityOf, type CompanyIdentity } from "@shared/companies";
+import { REFERRER_ACCESS_PATH, isVerifiedReferrer, referrerAccessResponseSchema } from "@shared/referrerAccess";
+import { JOB_LEVELS, REFERRER_AREAS, jobFunctionFieldSchema } from "@shared/jobFunctions";
 import { readApiJson } from "@/lib/apiResponse";
-import { companySlugForJobCompany, getLaunchCompany } from "@/lib/companies";
 
 export type TokenSource = () => Promise<string | null | undefined>;
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 /** Client-side re-verification nudge: warn 14 days before 90 days since the last verified work email. */
-export const REVERIFY_DAYS = 90;
+export { REVERIFY_DAYS } from "@shared/reverify";
 export const REVERIFY_WARNING_DAYS = 14;
-export const JOB_AREAS = ["Engineering", "Product", "Design", "Data", "Marketing", "Operations", "Sales", "Finance", "HR"] as const;
-export const JOB_LEVELS = ["Intern", "Early career", "Mid-level", "Senior", "Lead+"] as const;
 
 const timestamp = z.union([z.string(), z.date()]).transform(value => (typeof value === "string" ? value : value.toISOString()));
 const count = z.number().int().nonnegative();
 
-const accessSchema = z.object({ verifiedCompanyAccess: z.boolean().optional(), workEmailDomain: z.string().nullish() });
 const profileSchema = z.object({ profile: z.object({ workEmailVerifiedAt: timestamp.nullish(), referralCapacity: z.number().int().nullish() }).nullish() });
 const impactSchema = z.object({ summary: z.object({ reviewed: count, approved: count, introductions: count, interviews: count, offers: count, repliedWithin3DaysPct: z.number().min(0).max(100).nullish() }) });
 const inboxRowSchema = z.object({
   id: z.number().int().positive(),
   companyDomain: z.string().min(1),
+  jobFunction: jobFunctionFieldSchema,
   status: z.enum(referralStatuses),
   createdAt: timestamp,
   isClaimedByYou: z.boolean().optional().transform(value => value ?? false),
   unreadMessageCount: count.optional().transform(value => value ?? 0),
   attachmentCount: count.nullish(),
   expiresAt: timestamp.nullish(),
+  // D-061 window fields: fallback clock when a payload carries no expiresAt.
+  waitingForCoverage: z.boolean().nullish(),
+  coverageVisibleAt: timestamp.nullish(),
+  jobTitle: z.string().nullish(),
+  askStrength: z.enum(["strong", "good", "basic"]).nullish().catch(null),
 });
 const inboxSchema = z.object({ requests: z.array(inboxRowSchema) });
 
 const optionList = <T extends string>(options: readonly T[]) => z.array(z.string()).optional().transform(values => (values ?? []).filter((value): value is T => (options as readonly string[]).includes(value)));
 export const referrerPreferencesSchema = z.object({
   referralCapacity: z.number().int().min(1).max(15).optional().transform(value => value ?? 3),
-  preferAreas: optionList(JOB_AREAS),
+  preferAreas: optionList(REFERRER_AREAS),
   preferLevels: optionList(JOB_LEVELS),
   referrerVisibility: z.string().optional().transform((value): "anon" | "named" => (value === "named" ? "named" : "anon")),
   notifyNewAsk: z.boolean().optional().transform(value => value ?? true),
@@ -45,7 +51,8 @@ export const referrerPreferencesSchema = z.object({
 });
 const preferencesPayloadSchema = z.object({ preferences: referrerPreferencesSchema });
 
-export type CompanyAccess = { verified: boolean; domain: string };
+/** Verified work-email access (shared/referrerAccess.ts); companyName/companyInitials come from the server company directory. */
+export type CompanyAccess = { verified: boolean; domain: string; companyName: string | null; companyInitials: string | null };
 export type ReferrerPreferences = z.infer<typeof referrerPreferencesSchema>;
 export type ReferrerPreferencesPatch = Partial<Omit<ReferrerPreferences, "preferAreas" | "preferLevels">> & { preferAreas?: string[]; preferLevels?: string[] };
 export type ReferrerImpact = z.infer<typeof impactSchema>["summary"];
@@ -89,9 +96,10 @@ async function sendJson<T>(path: string, method: "PUT" | "POST", body: unknown, 
   return parsed.data;
 }
 
+/** The server's verified-referrer verdict, judged by the one shared predicate. A failed or malformed check throws; it never reads as "not verified". */
 export async function fetchCompanyAccess(getToken: TokenSource): Promise<CompanyAccess> {
-  const access = await getJson("/api/company-referrals/access", getToken, accessSchema, "We could not check your work-email verification.");
-  return { verified: Boolean(access.verifiedCompanyAccess), domain: access.workEmailDomain ?? "" };
+  const access = await getJson(REFERRER_ACCESS_PATH, getToken, referrerAccessResponseSchema, "We could not check your work-email verification.");
+  return { verified: isVerifiedReferrer(access), domain: access.workEmailDomain ?? "", companyName: access.companyName, companyInitials: access.companyInitials };
 }
 
 export async function fetchReferrerPreferences(getToken: TokenSource): Promise<ReferrerPreferences> {
@@ -102,7 +110,64 @@ export async function saveReferrerPreferences(getToken: TokenSource, patch: Refe
   return (await sendJson("/api/referrer-preferences", "PUT", patch, getToken, preferencesPayloadSchema, "We could not save your referrer settings.")).preferences;
 }
 
+const bundleSchema = z.object({
+  access: referrerAccessResponseSchema,
+  preferences: preferencesPayloadSchema.shape.preferences.nullable(),
+  inboxNew: inboxSchema.nullable(),
+  inboxCompleted: inboxSchema.nullable(),
+  profile: profileSchema.nullable(),
+  impact: impactSchema.shape.summary.nullable(),
+  failed: z.array(z.string()),
+});
+
+type PrefetchedBundle = { at: number; response: Promise<Response> };
+
+/** index.html only starts the home-bundle prefetch when this browser has loaded the bundle before, so signed-out visitors never trigger a 401 (the session cookie is httpOnly, so the page cannot see it directly). */
+export const HOME_PREFETCH_HINT_KEY = "sw-home-prefetch-ok";
+function setPrefetchHint(on: boolean) { try { if (on) localStorage.setItem(HOME_PREFETCH_HINT_KEY, "1"); else localStorage.removeItem(HOME_PREFETCH_HINT_KEY); } catch { /* storage unavailable */ } }
+
+/** The request index.html started at page load, used once and only while fresh. Any problem means "ask again". */
+async function takePrefetchedBundle(): Promise<z.infer<typeof bundleSchema> | null> {
+  const holder = globalThis as unknown as { __swHomeBundle?: PrefetchedBundle };
+  const prefetched = holder.__swHomeBundle;
+  holder.__swHomeBundle = undefined;
+  if (!prefetched || Date.now() - prefetched.at > 15_000) return null;
+  try {
+    const response = await prefetched.response;
+    if (response.status === 401) setPrefetchHint(false);
+    if (!response.ok) return null;
+    const parsed = bundleSchema.safeParse(await response.json());
+    if (parsed.success) setPrefetchHint(true);
+    return parsed.success ? parsed.data : null;
+  } catch { return null; }
+}
+
+/** One request for the whole page. Returns null on any problem so the caller uses the separate endpoints instead. */
+async function fetchHomeBundle(getToken: TokenSource): Promise<ReferrerHomeData | null> {
+  try {
+    const bundle = (await takePrefetchedBundle()) ?? await getJson("/api/referrer/home-bundle", getToken, bundleSchema, "bundle unavailable");
+    setPrefetchHint(true);
+    const access: CompanyAccess = (() => { const a = bundle.access; return { verified: isVerifiedReferrer(a), domain: a.workEmailDomain ?? "", companyName: a.companyName, companyInitials: a.companyInitials }; })();
+    if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [] };
+    // The page needs preferences and both lists; profile and impact are optional extras.
+    if (!bundle.preferences || !bundle.inboxNew || !bundle.inboxCompleted) return null;
+    return {
+      access,
+      preferences: bundle.preferences,
+      verifiedAt: bundle.profile?.profile?.workEmailVerifiedAt ?? null,
+      profileCapacity: bundle.profile?.profile?.referralCapacity ?? null,
+      impact: bundle.impact ?? null,
+      fresh: bundle.inboxNew.requests,
+      completed: bundle.inboxCompleted.requests,
+    };
+  } catch { return null; }
+}
+
 export async function fetchReferrerHome(getToken: TokenSource): Promise<ReferrerHomeData> {
+  return (await fetchHomeBundle(getToken)) ?? fetchReferrerHomeSeparately(getToken);
+}
+
+async function fetchReferrerHomeSeparately(getToken: TokenSource): Promise<ReferrerHomeData> {
   const access = await fetchCompanyAccess(getToken);
   if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [] };
   const [preferences, fresh, completed, profile, impact] = await Promise.all([
@@ -123,11 +188,17 @@ export async function fetchReferrerHome(getToken: TokenSource): Promise<Referrer
   };
 }
 
-/** "wipro.com" -> { name: "Wipro", mark: "W" }; the raw domain otherwise. */
-export function companyIdentity(domain: string): { name: string; mark: string } {
-  const launch = getLaunchCompany(companySlugForJobCompany(domain) ?? "");
-  if (launch) return { name: launch.name, mark: launch.initials };
-  return { name: domain, mark: (domain.charAt(0) || "?").toUpperCase() };
+const handleSchema = z.object({ profile: z.object({ handle: z.string().nullish() }).nullish() });
+
+/** The public profile handle (/p/:handle), or null when unset or unavailable. */
+export async function fetchProfileHandle(getToken: TokenSource): Promise<string | null> {
+  const handle = (await getOptional("/api/profile/me", getToken, handleSchema))?.profile?.handle?.trim();
+  return handle ? handle : null;
+}
+
+/** The verified company's directory name and initials ("Wipro", "W"); the raw domain otherwise. */
+export function companyIdentity(access: Pick<CompanyAccess, "domain" | "companyName" | "companyInitials">): CompanyIdentity {
+  return companyIdentityOf({ companyDomain: access.domain, companyName: access.companyName, companyInitials: access.companyInitials });
 }
 
 /** Greeting for the viewer's local hour, so the heading never says evening at breakfast. */
@@ -137,8 +208,8 @@ export function greetingFor(hour: number): string {
   return "Good evening";
 }
 
-function expiryMs(row: Pick<InboxRow, "expiresAt" | "createdAt">): number | null {
-  const ms = row.expiresAt ? Date.parse(row.expiresAt) : getAskExpiresAtMs(row.createdAt);
+function expiryMs(row: Pick<InboxRow, "expiresAt" | "createdAt" | "waitingForCoverage" | "coverageVisibleAt">): number | null {
+  const ms = row.expiresAt ? Date.parse(row.expiresAt) : getAskShelfLifeEndsAtMs(row);
   return ms === null || Number.isNaN(ms) ? null : ms;
 }
 
@@ -163,6 +234,8 @@ export type ReferrerHomeView = {
   isNew: boolean;
   paused: boolean;
   reverifyDue: boolean;
+  /** Whole days left before the badge needs re-verifying (grandfathered by the shared policy); null when not verified. */
+  reverifyDaysLeft: number | null;
 };
 
 export function deriveReferrerHome(data: ReferrerHomeData, nowMs: number): ReferrerHomeView {
@@ -176,11 +249,10 @@ export function deriveReferrerHome(data: ReferrerHomeData, nowMs: number): Refer
     const ms = expiryMs(row);
     return askCountdown(row, nowMs) !== null && ms !== null && ms - nowMs <= DAY_MS;
   }).length;
-  const verifiedMs = data.verifiedAt ? Date.parse(data.verifiedAt) : Number.NaN;
-  const daysSince = Number.isNaN(verifiedMs) ? null : Math.floor((nowMs - verifiedMs) / DAY_MS);
+  const daysLeft = reverifyDaysLeft(data.verifiedAt, nowMs);
   return {
     verified,
-    company: data.access.domain ? companyIdentity(data.access.domain) : null,
+    company: data.access.domain ? companyIdentity(data.access) : null,
     waiting,
     expiringSoon,
     capacity,
@@ -189,7 +261,8 @@ export function deriveReferrerHome(data: ReferrerHomeData, nowMs: number): Refer
     atCapacity: verified && used >= capacity,
     isNew: verified && waiting.length === 0 && (data.impact?.reviewed ?? 0) === 0,
     paused: verified && Boolean(data.preferences?.paused),
-    reverifyDue: verified && daysSince !== null && daysSince >= REVERIFY_DAYS - REVERIFY_WARNING_DAYS,
+    reverifyDue: verified && daysLeft !== null && daysLeft <= REVERIFY_WARNING_DAYS,
+    reverifyDaysLeft: verified ? daysLeft : null,
   };
 }
 

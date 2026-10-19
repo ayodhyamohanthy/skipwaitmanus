@@ -1,0 +1,5 @@
+{
+  "signedIn": false,
+  "routes": [],
+  "actions": [{ "waitFor": "text=SkipWait app" }]
+}

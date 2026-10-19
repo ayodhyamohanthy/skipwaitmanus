@@ -10,8 +10,11 @@ vi.mock("@/_core/auth", () => ({
 }));
 vi.mock("wouter", () => ({
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
-  useLocation: () => ["/inbox", vi.fn()],
+  useLocation: () => ["/queue", vi.fn()],
+  useSearch: () => "",
 }));
+// The verified-referrer gate itself is covered in myCompanyInbox.serverAccess.test.tsx; these cases start verified.
+vi.mock("@/hooks/useReferrerAccess", () => ({ useReferrerAccess: () => ({ status: "verified", access: { verified: true, domain: "acme.com", companyName: null, companyInitials: null } }) }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));

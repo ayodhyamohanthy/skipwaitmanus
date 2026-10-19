@@ -3,7 +3,6 @@
 //   POST   /api/seeker-alerts { companyDomain }-> 201 { alert } | 400 { error } (bad domain, duplicate, Free cap)
 //   PATCH  /api/seeker-alerts/:id { paused }   -> { alert }
 //   DELETE /api/seeker-alerts/:id              -> { deleted, id }
-//   GET    /api/credits/summary?role=job_seeker -> { summary: { plan, ... } } (only the plan is read)
 // Routes: server/privateReferralRoutes.ts; engine: server/db.ts; shared contract:
 // shared/alerts.ts. The server owns validation and the Free cap; the client
 // only parses what comes back so a malformed payload reads as an error.
@@ -15,7 +14,6 @@ export const ALERTS_LOAD_ERROR = "We could not load your saved alerts";
 export const ALERT_SAVE_ERROR = "We could not save this alert";
 export const ALERT_UPDATE_ERROR = "We could not update this alert";
 export const ALERT_REMOVE_ERROR = "We could not remove this alert";
-export const PLAN_LOAD_ERROR = "We could not load your plan";
 export const ALERTS_NETWORK_ERROR = "We could not reach SkipWait. Check your connection and try again.";
 
 export const seekerAlertSchema = z.object({
@@ -29,7 +27,6 @@ export const seekerAlertSchema = z.object({
 const alertListSchema = z.object({ alerts: z.array(seekerAlertSchema) });
 const alertReplySchema = z.object({ alert: seekerAlertSchema });
 const pausedReplySchema = z.object({ alert: seekerAlertSchema.pick({ paused: true }) });
-const planReplySchema = z.object({ summary: z.object({ plan: z.string().min(1) }) });
 
 export type TokenSource = () => Promise<string | null | undefined>;
 
@@ -64,12 +61,6 @@ async function readParsed<T>(response: Response, schema: z.ZodType<T>, fallback:
 export async function fetchSeekerAlerts(getToken: TokenSource): Promise<SeekerAlert[]> {
   const reply = await readParsed(await send("/api/seeker-alerts", getToken), alertListSchema, ALERTS_LOAD_ERROR);
   return reply.alerts;
-}
-
-/** The seeker wallet plan. It only words the Free-cap note; the server enforces the cap. */
-export async function fetchSeekerPlan(getToken: TokenSource): Promise<string> {
-  const reply = await readParsed(await send("/api/credits/summary?role=job_seeker", getToken), planReplySchema, PLAN_LOAD_ERROR);
-  return reply.summary.plan;
 }
 
 export async function createSeekerAlert(companyDomain: string, getToken: TokenSource): Promise<SeekerAlert> {

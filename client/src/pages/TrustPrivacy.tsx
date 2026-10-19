@@ -14,7 +14,7 @@ export default function TrustPrivacy() {
     eyebrow="PRIVACY POLICY"
     title="Privacy"
     intro="A private handoff, not a public marketplace. skipwait.me is designed to help one Job Seeker and the right verified employee move a referral forward with the least necessary exposure. We do not publish resumes, Referrer identities, or private request conversations."
-    updated="8 Oct 2026"
+    updated="15 Oct 2026"
     summary={[
       "Resumes and identities stay private until a referrer accepts your ask.",
       "Requests reach only verified employees of the company behind the role.",
@@ -43,11 +43,11 @@ export default function TrustPrivacy() {
     </PolicySection>
 
     <PolicySection number="03" title="Conversation opens after acceptance">
-      <p>Job Seekers and Referrers can message only after the Referrer accepts that specific request.</p>
+      <p>Job Seekers and Referrers can message only after the Referrer accepts that specific request. On acceptance, the Job Seeker and the Referrer see each other's names, and the Referrer receives the resume. Before acceptance, neither is shown.</p>
     </PolicySection>
 
     <PolicySection number="04" title="Hosted payment checkout">
-      <p>Payment details are handled by the payment provider’s checkout. Referral decisions are always free for Referrers.</p>
+      <p>Payment details are handled by the payment provider’s checkout. Referral decisions never cost Referrers anything.</p>
     </PolicySection>
 
     <PolicySection number="05" title="What we collect">
