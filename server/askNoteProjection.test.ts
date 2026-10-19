@@ -155,7 +155,7 @@ describe("referrer-facing reads", () => {
     expect(select?.projection?.candidateMessage).toBe(referralRequests.personalPitch);
     expect(select?.projection?.title).toBe(jobs.title);
     expect(exposesNote(select)).toBe(true);
-    expect(columnsOf(select)).toEqual(["acceptedByActorAt", "candidateMessage", "candidateName", "companyDomain", "grantExpiresAt", "grantId", "grantRevokedAt", "id", "jobFunction", "passId", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
+    expect(columnsOf(select)).toEqual(["acceptedByActorAt", "candidateMessage", "candidateName", "companyDomain", "grantExpiresAt", "grantId", "grantRevokedAt", "id", "jobFunction", "passId", "referrerId", "revision", "status", "targetRoleUrl", "title", "updatedAt"]);
     // D-019(e): the ask loads on its assignment alone (a claim writes no grant); no grant condition gates the row.
     const where = select?.where ? dialect.sqlToQuery(select.where) : undefined;
     expect(where?.params).toEqual([501, REFERRER, "pending", "approved", "intro_made", "interview", "offer"]);
