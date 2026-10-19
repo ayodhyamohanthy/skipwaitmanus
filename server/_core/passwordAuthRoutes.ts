@@ -10,8 +10,8 @@ import type { PasswordWorkosClient } from "./passwordWorkosClient";
 /**
  * Registers every seeker password route (D-049): /api/auth/password/sign-in, /sign-up, /verify-email,
  * /verify-email/resend, /forgot and /reset/confirm. With no WorkOS client (local dev without WorkOS keys)
- * each one answers 503 password_sign_in_unavailable. The seeker email-code routes stay registered and
- * unchanged elsewhere (server/_core/seekerEmailCode.ts) for app versions still cached in browsers.
+ * each one answers 503 password_sign_in_unavailable. The retired seeker email code (server/_core/seekerEmailCode.ts)
+ * never sends again and stops verifying at SEEKER_CODE_VERIFY_UNTIL (D-049, D-078 ruling 1).
  */
 export type PasswordRouteOptions = {
   readonly client?: PasswordWorkosClient | null;

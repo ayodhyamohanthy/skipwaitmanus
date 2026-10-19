@@ -330,7 +330,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; passwor
         res.status(502).send(`Authentication could not be completed${bootstrapDiagnostic}`);
       }
     });
-    // Retired from the seeker UI by D-049 (it costs a paid email per code); kept unchanged for cached app versions.
+    // Retired by D-049 (each code was a paid email): send answers 410, verify finishes an emailed code until SEEKER_CODE_VERIFY_UNTIL.
     registerSeekerEmailCodeRoutes(app);
     registerPasswordAuthRoutes(app, { ...deps.password, client: passwordClient });
     app.get("/api/auth/workos/admin-diagnostic/:id",(req,res)=>{
