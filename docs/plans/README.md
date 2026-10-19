@@ -13,14 +13,14 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. S
 ## Stage 0 — now
 | Order | §3b row | Packet | Tier | Size | Packet state | Runs beside |
 |---|---|---|---|---|---|---|
-| 0.1 | P0-allocated-ask-stuck | [P0-allocated-ask-stuck.md](P0-allocated-ask-stuck.md) | 1 | M | review — draft PR #321 | 1.1, 1.2, 1.4, F-1, T-1 |
+| 0.1 | P0-allocated-ask-stuck | [P0-allocated-ask-stuck.md](P0-allocated-ask-stuck.md) | 1 | M | done — `bc655963`, live (independent review passed on PR #321) | 1.1, 1.2, 1.4, F-1, T-1 |
 | 0.2 | Owner: switch on Cloudflare Web Analytics for skipwait.me (free, D-054); the D-056 clock starts that day | plan §6 | — | — | owner action | everything |
 
 ## Stage 1 — the D-072 lanes
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on | Runs beside |
 |---|---|---|---|---|---|---|---|
 | 1.1 | D-067-pro-max-removal | [D-067-packet.md](D-067-packet.md) (verification for slices 3–4 and the review) | 1 | L (sliced into commits) | done — `08d193a0`, live (independent review passed on PR #318) | — | 0.1, 1.2, 1.4 |
-| 1.2 | 2 + Drift-D030-seeker-signin | [seeker-passwords.md](seeker-passwords.md) | 1 | M | ready; claimed by Claude Code (D-072 lane 2), open to any model under queue rule 2 | — | 0.1, 1.1, 1.4 |
+| 1.2 | 2 + Drift-D030-seeker-signin | [seeker-passwords.md](seeker-passwords.md) | 1 | M | in progress — Claude Code, branch `agent/claude/seeker-signin-finish` | — | 0.1, 1.1, 1.4 |
 | 1.2b | D-057-session-gate (new, from the sign-in review finding S-4) | [D-057-session-gate.md](D-057-session-gate.md) | 1 | M | ready | 1.2 live | 1.3, 1.4 |
 | 1.3 | D-069-chargebee-catalog-sync | [D-069-chargebee-catalog-sync.md](D-069-chargebee-catalog-sync.md) | 1 | M | ready; claimed by Claude Code (D-072 lane 3), open to any model under queue rule 2 | 1.1 live | 1.2, 1.4, 3.1 |
 | 1.4 | D-048 (phase 2) | [D-048-phase-2.md](D-048-phase-2.md) | 2 | M | ready | — | 0.1, 1.1, 1.2, 1.3 |
