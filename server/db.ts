@@ -2677,10 +2677,17 @@ export async function getSlotOpenedAlertRecipients(referrerId: number, requestId
 
 export type PublicReferralImpact = { acceptedReferrals: number };
 
+// TRUTH-1 (D-066 (3), D-076 (8)): this counts asks a referrer accepted and that were not
+// undone: the open accepted statuses, or closed only when an acceptance transition exists
+// for the ask. An expired ask is closed with no acceptance and never counts, whether it
+// was claimed or not. A "referrals made" count (intro_made or later) is a different
+// number; never relabel this one as such.
 export async function getPublicReferralImpact(): Promise<PublicReferralImpact> {
   const db = await getDb(); if (!db) return { acceptedReferrals: 0 };
-  const result = await db.select({ acceptedReferrals: count(referralRequests.id) }).from(referralRequests).where(or(eq(referralRequests.status, "approved"), eq(referralRequests.status, "intro_made"), eq(referralRequests.status, "interview"), eq(referralRequests.status, "offer"), eq(referralRequests.status, "closed")));
-  return { acceptedReferrals: Number(result[0]?.acceptedReferrals ?? 0) };
+  const open = await db.select({ acceptedReferrals: count(referralRequests.id) }).from(referralRequests).where(inArray(referralRequests.status, ["approved", "intro_made", "interview", "offer"]));
+  const acceptedEventIds = await db.select({ id: referralTransitionEvents.referralRequestId }).from(referralTransitionEvents).where(eq(referralTransitionEvents.resultingStatus, "approved"));
+  const closedAccepted = acceptedEventIds.length === 0 ? [] : await db.select({ acceptedReferrals: count(referralRequests.id) }).from(referralRequests).where(and(eq(referralRequests.status, "closed"), inArray(referralRequests.id, acceptedEventIds.map(row => row.id))));
+  return { acceptedReferrals: Number(open[0]?.acceptedReferrals ?? 0) + Number(closedAccepted[0]?.acceptedReferrals ?? 0) };
 }
 
 export async function getDomainIntegrity(limit = 100) {
