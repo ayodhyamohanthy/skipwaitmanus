@@ -3,14 +3,14 @@
 // (client/src/components/SeekerSignIn.tsx, ForgotPassword.tsx, ResetPassword.tsx). Requests are strict
 // objects; every response is parsed with these schemas on both sides, so nothing else defines these shapes.
 // Seekers only: no request carries an intent (referrers sign in with a work-email code, D-030), and nothing
-// continues on the hosted WorkOS page.
+// continues on the hosted WorkOS page. No six-digit code anywhere (D-049): an address WorkOS has not verified gets
+// an emailed link that sets the password on /reset-password, which also proves the inbox (D-078 ruling 2).
 import { z } from "zod";
 
 export const EMAIL_MAX = 320;
 export const PASSWORD_MAX = 256;
 export const RETURN_TO_MAX = 2048;
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-export const VERIFICATION_CODE_PATTERN = /^\d{6}$/;
 
 const emailSchema = z.string().trim().toLowerCase().max(EMAIL_MAX).regex(EMAIL_PATTERN);
 /** Passwords are never trimmed or normalised: what the person typed is what WorkOS checks. */
@@ -22,11 +22,9 @@ export const appPathSchema = z.string().max(RETURN_TO_MAX).regex(/^\/(?![/\\])(?
 
 export const passwordSignInRequestSchema = z.strictObject({ email: emailSchema, password: passwordSchema, returnTo: returnToSchema });
 export type PasswordSignInRequest = z.infer<typeof passwordSignInRequestSchema>;
-/** The password policy (passwordPolicyError) is checked separately, before WorkOS is called. */
-export const passwordSignUpRequestSchema = z.strictObject({ email: emailSchema, password: passwordSchema, returnTo: returnToSchema });
+/** Sign-up takes only the email (D-078 ruling 2): the person sets the password from the emailed link. */
+export const passwordSignUpRequestSchema = z.strictObject({ email: emailSchema });
 export type PasswordSignUpRequest = z.infer<typeof passwordSignUpRequestSchema>;
-export const verifyEmailRequestSchema = z.strictObject({ code: z.string().regex(VERIFICATION_CODE_PATTERN) });
-export const resendVerificationRequestSchema = z.strictObject({});
 export const passwordForgotRequestSchema = z.strictObject({ email: emailSchema });
 
 /** WorkOS reset tokens are opaque; this bounds the length and keeps them to URL-safe characters. */
@@ -37,10 +35,10 @@ export const passwordResetConfirmRequestSchema = z.strictObject({
   confirm: z.string().max(PASSWORD_MAX),
 });
 
-/** Sign-in, sign-up and verification answer with the next step: signed in, or check your email for a code. */
+/** Sign-in and sign-up answer with the next step: signed in, or check your email for a link that sets the password. */
 export const passwordStepSchema = z.discriminatedUnion("step", [
   z.strictObject({ ok: z.literal(true), step: z.literal("signed_in"), redirectTo: appPathSchema }),
-  z.strictObject({ ok: z.literal(true), step: z.literal("verify_email") }),
+  z.strictObject({ ok: z.literal(true), step: z.literal("check_email") }),
 ]);
 export type PasswordStep = z.infer<typeof passwordStepSchema>;
 export const passwordForgotAcceptedSchema = z.strictObject({ ok: z.literal(true) });
@@ -55,7 +53,6 @@ export type PasswordResetConfirmSuccess = z.infer<typeof passwordResetConfirmSuc
 export const PASSWORD_AUTH_ERROR_CODES = [
   "invalid_input",
   "invalid_credentials",
-  "invalid_code",
   "expired",
   "weak_password",
   "rate_limited",
@@ -82,8 +79,7 @@ export type PasswordAuthError = z.infer<typeof passwordAuthErrorSchema>;
 export const PASSWORD_AUTH_COPY: Readonly<Record<PasswordAuthErrorCode, string>> = {
   invalid_input: "Enter a valid email address and password.",
   invalid_credentials: "That email and password don't match. Try again, or reset your password.",
-  invalid_code: "That code didn't work. Check the newest email from us and try again.",
-  expired: "This has expired. Start again and we'll send a new one.",
+  expired: "This link has expired. Ask for a new one.",
   weak_password: "Choose a stronger password: at least 10 characters with a number or symbol, and not one used on other sites.",
   rate_limited: "Too many attempts. Wait a few minutes and try again.",
   forbidden_origin: "This request did not come from SkipWait. Refresh the page and try again.",

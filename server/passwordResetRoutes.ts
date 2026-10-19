@@ -1,67 +1,21 @@
 import type { Express, Response } from "express";
 import { passwordForgotRequestSchema, passwordPolicyError, passwordResetConfirmRequestSchema } from "@shared/passwordAuth";
-import { configuredPublicOrigin } from "./_core/authPostGuard";
 import { forgotLimits, requestIp, resetConfirmLimits } from "./_core/passwordLimits";
 import {
   failUnexpectedly, guardPasswordPost, passLimits, recordPasswordActivity, reportPasswordFailure, sendPasswordError, type PasswordRouteContext,
 } from "./_core/passwordResponses";
 import { finishPasswordLogin } from "./_core/passwordSession";
-import type { PasswordUser, PasswordWorkosClient } from "./_core/passwordWorkosClient";
+import type { PasswordUser } from "./_core/passwordWorkosClient";
 import { classifyWorkosPasswordError } from "./_core/workosPasswordErrors";
-import { captureServerError } from "./sentry";
+import { startPasswordReset } from "./passwordLinks";
 
 /**
- * Seeker forgot / reset password through WorkOS (D-049). WorkOS creates the reset token and sends the email
- * (free for SkipWait; nothing goes through our paid ZeptoMail sender), linking to the dashboard's "Password
- * reset URL", which must be https://skipwait.me/reset-password; a mismatch is reported to Sentry. SkipWait
- * never sees or returns the token, and /forgot answers before any WorkOS work, so neither the body nor the
- * timing says whether an account exists. Referrers never get a password (their work email is skipped).
- * Reset sets the password in WorkOS (which also verifies the email and ends WorkOS sessions), then signs this
- * browser in and every other SkipWait session out.
+ * Seeker forgot / reset password through WorkOS (D-049). /forgot answers before any WorkOS work, so neither the
+ * body nor the timing says whether an account exists; the deferred work (server/passwordLinks.ts) has WorkOS create
+ * the reset token and emails a link to skipwait.me/reset-password through SkipWait's own sender (D-078 ruling 6),
+ * never to a referrer's work email (referrers never get a password). Reset sets the password in WorkOS (which also
+ * verifies the email and ends WorkOS sessions), then signs this browser in and every other session out.
  */
-function resetUrlPointsHome(url: string): boolean {
-  const origin = configuredPublicOrigin();
-  if (!origin) return true;
-  try {
-    const parsed = new URL(url);
-    return parsed.origin === origin && parsed.pathname === "/reset-password";
-  } catch { return false; }
-}
-
-/**
- * The one place a password reset is requested, so every path (forgot, sign-up, sign-in) skips a referrer's work
- * email before any WorkOS call (D-078 ruling 3, S-3). Checks where the link points. Never logs the token or email.
- */
-export async function requestWorkosPasswordReset(ctx: Pick<PasswordRouteContext, "emailStanding">, client: PasswordWorkosClient, email: string): Promise<void> {
-  try {
-    if ((await ctx.emailStanding(email)) === "referrer_work_email") return;
-    const reset = await client.createPasswordReset({ email });
-    if (!resetUrlPointsHome(reset.passwordResetUrl)) captureServerError(new Error("WorkOS password reset URL is not skipwait.me/reset-password"), { operation: "forgot", kind: "reset_url_misconfigured" });
-  } catch (error) {
-    const failure = classifyWorkosPasswordError(error, "forgot");
-    if (failure.kind === "rate_limited") console.warn("[password-auth]", { operation: "forgot", kind: "rate_limited" });
-    else reportPasswordFailure("forgot", failure.kind, error);
-  }
-}
-
-/** The WorkOS side of /forgot, run after the response. */
-async function startWorkosReset(ctx: PasswordRouteContext, client: PasswordWorkosClient, email: string): Promise<void> {
-  try {
-    const standing = await ctx.emailStanding(email);
-    if (standing === "referrer_work_email") return;
-    const found = await client.listUsers({ email, limit: 1 });
-    if (!found.data.some(user => user.email.trim().toLowerCase() === email)) {
-      // A seeker who only ever signed in with an emailed code has no WorkOS user yet: create one without a
-      // password (WorkOS marks the email verified when the reset succeeds), then send the reset.
-      if (standing !== "verified_seeker") return;
-      await client.createUser({ email });
-    }
-    await requestWorkosPasswordReset(ctx, client, email);
-  } catch (error) {
-    reportPasswordFailure("forgot", classifyWorkosPasswordError(error, "forgot").kind, error);
-  }
-}
-
 function sendResetDone(res: Response, signedIn: boolean): void {
   res.set("Cache-Control", "no-store").status(200).json({ ok: true, signedIn, redirectTo: signedIn ? "/explore" : "/sign-in" });
 }
@@ -76,7 +30,7 @@ export function registerPasswordResetRoutes(app: Express, ctx: PasswordRouteCont
       if (!(await passLimits(ctx, res, forgotLimits(body.email, requestIp(req))))) return;
       res.set("Cache-Control", "no-store").status(200).json({ ok: true });
       recordPasswordActivity("auth.password_forgot", "success", {});
-      ctx.defer(() => startWorkosReset(ctx, client, body.email));
+      ctx.defer(() => startPasswordReset(ctx, client, body.email));
     } catch (error) {
       failUnexpectedly(res, "forgot", error);
     }

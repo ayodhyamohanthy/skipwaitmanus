@@ -1,10 +1,10 @@
-// Seeker email + password on skipwait.me (D-049): sign-in, sign-up, the email-verification step WorkOS
-// requires, and logout. WorkOS is a fake with the SDK's real exception classes; the session, identity
+// Seeker email + password on skipwait.me (D-049, D-078): sign-in, sign-up by emailed link, no six-digit code
+// anywhere, and logout. WorkOS is a fake with the SDK's real exception classes; the session, identity
 // resolver and cookies are the real modules over a mocked db.
 import express from "express";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthenticationException, BadRequestException, GenericServerException, RateLimitExceededException, UnprocessableEntityException } from "@workos-inc/node";
+import { AuthenticationException, GenericServerException, RateLimitExceededException, UnprocessableEntityException } from "@workos-inc/node";
 import { PASSWORD_AUTH_COPY } from "@shared/passwordAuth";
 import { createMemoryDurableLimitStore } from "./memoryDurableLimitStore";
 import type { DurableLimitStore } from "./durableRateLimit";
@@ -54,7 +54,10 @@ function seedAccount(openId: string, overrides: Partial<Row> = {}): Row {
   return row;
 }
 
-let pending: Promise<void>[] = [];
+let queued: Array<() => Promise<void>> = [];
+/** Runs the work the routes deferred until after their answer (sign-up, the emailed links). */
+async function flush(): Promise<void> { while (queued.length) await queued.shift()?.(); }
+const mail = vi.hoisted(() => vi.fn());
 async function buildApp(options: { store?: DurableLimitStore | null; now?: () => number } = {}) {
   vi.resetModules();
   for (const [key, value] of Object.entries(baseEnv)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
@@ -64,7 +67,7 @@ async function buildApp(options: { store?: DurableLimitStore | null; now?: () =>
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   const store = options.store === undefined ? createMemoryDurableLimitStore() : options.store;
-  createWorkosAuthRoutesRegistrar({ workos: { userManagement: hosted } as never, password: { client: wos, store, now: options.now, defer: task => { pending.push(task()); }, emailStanding: async (email, lookup) => { state.standingCalls.push([email, lookup?.workosUserId]); return (state.standings.get(email) ?? "unknown") as never; } } })(app);
+  createWorkosAuthRoutesRegistrar({ workos: { userManagement: hosted } as never, password: { client: wos, store, now: options.now, defer: task => { queued.push(task); }, sendEmail: mail, emailStanding: async (email, lookup) => { state.standingCalls.push([email, lookup?.workosUserId]); return (state.standings.get(email) ?? "unknown") as never; } } })(app);
   app.get("/session-proof", async (req, res) => {
     const { resolveWorkosIdentity } = await import("./workosAuth");
     const identity = await resolveWorkosIdentity(req);
@@ -83,25 +86,20 @@ function post(app: express.Express, path: string, body: object | string, options
 const setCookies = (res: request.Response): string[] => { const value = res.headers["set-cookie"]; return Array.isArray(value) ? value : value ? [value] : []; };
 const cookieOf = (res: request.Response, name: string) => setCookies(res).find(value => value.startsWith(`${name}=`));
 const pairOf = (setCookie: string | undefined) => (setCookie ?? "").split(";")[0];
-const attributesOf = (setCookie: string | undefined) => (setCookie ?? "").split(";").slice(1).map(part => part.trim()).filter(part => !part.startsWith("Expires=")).sort();
 const SIGN_IN = "/api/auth/password/sign-in";
 const SIGN_UP = "/api/auth/password/sign-up";
-const VERIFY = "/api/auth/password/verify-email";
-const RESEND = "/api/auth/password/verify-email/resend";
+const LINK = "https://skipwait.me/reset-password?token=tok_secret";
 
 beforeEach(() => {
-  pending = [];
+  queued = [];
   state.accounts.clear(); state.workEmailDomains.clear(); state.subjects.clear(); state.standings.clear(); state.standingCalls = []; state.nextId = 10;
-  [resolveLoginIdentity, revokeUserSessions, capture, recordActivity, ...Object.values(wos), ...Object.values(hosted)].forEach(fn => fn.mockReset());
+  [resolveLoginIdentity, revokeUserSessions, capture, recordActivity, mail, ...Object.values(wos), ...Object.values(hosted)].forEach(fn => fn.mockReset());
+  mail.mockResolvedValue({ sent: true, reason: "sent" });
   revokeUserSessions.mockImplementation(async (openId: string) => { const row = state.accounts.get(openId); if (row) row.sessionsValidAfter = new Date(Date.now() + 1000); });
   resolveLoginIdentity.mockImplementation(async (input: { openId: string; email: string }) => state.accounts.get(input.openId) ?? seedAccount(input.openId, { email: input.email }));
   recordActivity.mockResolvedValue(undefined);
   wos.authenticateWithPassword.mockResolvedValue(authResponse());
-  wos.authenticateWithEmailVerification.mockResolvedValue(authResponse());
   wos.createUser.mockResolvedValue(workosUser({ emailVerified: false }));
-  wos.sendVerificationEmail.mockResolvedValue({ user: workosUser({ emailVerified: false }) });
-  wos.verifyEmail.mockResolvedValue({ user: workosUser() });
-  wos.getEmailVerification.mockResolvedValue({ object: "email_verification", id: "email_verification_1", userId: "user_x", email: EMAIL, code: "999999", expiresAt: "2026-10-18T00:10:00Z", createdAt: "x", updatedAt: "x" });
   wos.listUsers.mockResolvedValue({ data: [] });
   wos.createPasswordReset.mockResolvedValue({ object: "password_reset", id: "password_reset_1", userId: "user_x", email: EMAIL, passwordResetToken: "tok_secret", passwordResetUrl: "https://skipwait.me/reset-password?token=tok_secret", expiresAt: "x", createdAt: "x" });
   hosted.listSessions.mockResolvedValue({ data: [{ id: "session_pw", status: "active" }] });
@@ -151,132 +149,95 @@ describe("seeker password sign-in", () => {
     for (const secret of ["Wr0ng-password!", EMAIL, "nobody@gmail.com"]) expect(everything).not.toContain(secret);
   });
 
-  it("an unverified email never gets a session; the verification step replaces it", async () => {
+  // D-049 / D-078 ruling 2: no six-digit code. An address WorkOS has not verified gets an emailed link that sets the
+  // password (which verifies the email) and signs in from /reset-password; nothing is issued before that.
+  it("an unverified email gets no session and no code: a link to set the password is emailed instead", async () => {
     const app = await buildApp();
-    wos.authenticateWithPassword.mockRejectedValueOnce(needsVerification());
-    const res = await post(app, SIGN_IN, { email: EMAIL, password: PASSWORD });
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ ok: true, step: "verify_email" });
-    const ticket = cookieOf(res, "pw_verify");
-    for (const attribute of ["HttpOnly", "Path=/api/auth/password", "Max-Age=600", "Secure", "SameSite=Lax"]) expect(ticket).toContain(attribute);
-    expect(ticket).not.toContain("pat_secret_token");
-    expect(JSON.stringify(res.body)).not.toContain("pat_");
-    expect(cookieOf(res, "app_session_id")).toBeUndefined();
-    expect(resolveLoginIdentity).not.toHaveBeenCalled();
-
-    wos.authenticateWithPassword.mockResolvedValueOnce(authResponse(workosUser({ emailVerified: false })));
-    const unverifiedSuccess = await post(app, SIGN_IN, { email: EMAIL, password: PASSWORD });
-    expect(unverifiedSuccess.body).toEqual({ ok: true, step: "verify_email" });
-    expect(wos.sendVerificationEmail).toHaveBeenCalledWith({ userId: "user_x" });
-    expect(cookieOf(unverifiedSuccess, "app_session_id")).toBeUndefined();
-    expect(resolveLoginIdentity).not.toHaveBeenCalled();
-  });
-
-  it("a correct code finishes sign-in; wrong, exhausted, expired or tampered tickets do not", async () => {
-    const app = await buildApp();
-    wos.authenticateWithPassword.mockRejectedValueOnce(needsVerification());
-    const ticket = pairOf(cookieOf(await post(app, SIGN_IN, { email: EMAIL, password: PASSWORD, returnTo: "/plans" }), "pw_verify"));
-    const done = await post(app, VERIFY, { code: "482913" }, { cookie: ticket });
-    expect(done.status).toBe(200);
-    expect(done.body).toEqual({ ok: true, step: "signed_in", redirectTo: "/plans" });
-    expect(wos.authenticateWithEmailVerification).toHaveBeenCalledWith({ code: "482913", pendingAuthenticationToken: "pat_secret_token", ipAddress: IP, userAgent: UA });
-    expect(cookieOf(done, "app_session_id")).toBeDefined();
-    expect(cookieOf(done, "pw_verify")).toMatch(/^pw_verify=;/);
-
-    wos.authenticateWithPassword.mockResolvedValueOnce(authResponse(workosUser({ emailVerified: false })));
-    const userTicket = pairOf(cookieOf(await post(app, SIGN_IN, { email: EMAIL, password: PASSWORD }), "pw_verify"));
-    const viaUser = await post(app, VERIFY, { code: "111111" }, { cookie: userTicket });
-    expect(wos.verifyEmail).toHaveBeenCalledWith({ userId: "user_x", code: "111111" });
-    expect(viaUser.body).toEqual({ ok: true, step: "signed_in", redirectTo: "/explore" });
-
-    wos.authenticateWithPassword.mockRejectedValueOnce(needsVerification());
-    const third = pairOf(cookieOf(await post(app, SIGN_IN, { email: EMAIL, password: PASSWORD }), "pw_verify"));
-    wos.authenticateWithEmailVerification.mockRejectedValue(new BadRequestException({ code: "invalid_one_time_code", errors: [], message: "Invalid code", requestID: "r" }));
-    const before = wos.authenticateWithEmailVerification.mock.calls.length;
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const wrong = await post(app, VERIFY, { code: "000000" }, { cookie: third });
-      expect(wrong.status).toBe(400);
-      expect(wrong.body.code).toBe("invalid_code");
-      expect(cookieOf(wrong, "app_session_id")).toBeUndefined();
+    for (const outcome of ["refused", "let through"] as const) {
+      if (outcome === "refused") wos.authenticateWithPassword.mockRejectedValueOnce(needsVerification());
+      else wos.authenticateWithPassword.mockResolvedValueOnce(authResponse(workosUser({ emailVerified: false })));
+      const res = await post(app, SIGN_IN, { email: EMAIL, password: PASSWORD });
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ ok: true, step: "check_email" });
+      expect(res.headers["set-cookie"]).toBeUndefined();
+      expect(JSON.stringify(res.body)).not.toContain("pat_");
+      expect(wos.createPasswordReset).not.toHaveBeenCalled();
+      await flush();
+      expect(wos.createPasswordReset).toHaveBeenCalledWith({ email: EMAIL });
+      expect(mail).toHaveBeenLastCalledWith({ to: EMAIL, subject: "Finish signing in to SkipWait", text: expect.stringContaining(LINK) });
+      wos.createPasswordReset.mockClear();
     }
-    const sixth = await post(app, VERIFY, { code: "000000" }, { cookie: third });
-    expect(sixth.status).toBe(429);
-    expect(Number(sixth.headers["retry-after"])).toBeGreaterThan(0);
-    expect(wos.authenticateWithEmailVerification.mock.calls.length - before).toBe(5);
-
-    const tampered = await post(app, VERIFY, { code: "482913" }, { cookie: `${third.slice(0, -4)}AAAA` });
-    expect(tampered.status).toBe(400);
-    expect(tampered.body.code).toBe("expired");
-    expect((await post(app, VERIFY, { code: "482913" })).body.code).toBe("expired");
-
-    wos.authenticateWithPassword.mockRejectedValueOnce(needsVerification());
-    const late = pairOf(cookieOf(await post(app, SIGN_IN, { email: EMAIL, password: PASSWORD }), "pw_verify"));
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(Date.now() + 11 * 60_000);
-    const expired = await post(app, VERIFY, { code: "482913" }, { cookie: late });
-    expect(expired.status).toBe(400);
-    expect(expired.body.code).toBe("expired");
+    expect(resolveLoginIdentity).not.toHaveBeenCalled();
+    expect(wos.sendVerificationEmail).not.toHaveBeenCalled();
   });
 
-  it("resend sends a new WorkOS code at most once every 30 seconds", async () => {
+  it("the six-digit verification routes are gone", async () => {
     const app = await buildApp();
-    wos.authenticateWithPassword.mockRejectedValueOnce(needsVerification());
-    const ticket = pairOf(cookieOf(await post(app, SIGN_IN, { email: EMAIL, password: PASSWORD }), "pw_verify"));
-    const first = await post(app, RESEND, {}, { cookie: ticket });
-    expect(first.status).toBe(200);
-    expect(first.body).toEqual({ ok: true, step: "verify_email" });
-    expect(wos.sendVerificationEmail).toHaveBeenCalledWith({ userId: "user_x" });
-    const again = await post(app, RESEND, {}, { cookie: ticket });
-    expect(again.status).toBe(429);
-    expect(wos.sendVerificationEmail).toHaveBeenCalledTimes(1);
-    expect((await post(app, RESEND, {})).body.code).toBe("expired");
+    for (const path of ["/api/auth/password/verify-email", "/api/auth/password/verify-email/resend"]) {
+      const res = await post(app, path, { code: "482913" });
+      expect(res.status, path).toBe(404);
+      expect(res.headers["set-cookie"]).toBeUndefined();
+    }
   });
 
-  it("sign-up never reveals whether the email already has an account", async () => {
+  // D-078 ruling 2: sign-up takes only the email and always answers "check your email" at once; the WorkOS work runs
+  // after the answer. A new address gets a WorkOS user with no password, then a link that sets one.
+  it("sign-up answers at once with the same step for a new or an existing account, and emails a link either way", async () => {
     const app = await buildApp();
-    wos.authenticateWithPassword.mockRejectedValueOnce(needsVerification({ pending_authentication_token: "pat_new", user: { object: "user", id: "user_new", email: "new@gmail.com", email_verified: false } }));
-    const fresh = await post(app, SIGN_UP, { email: "New@Gmail.com", password: "Longpassword1!" });
-    expect(wos.createUser).toHaveBeenCalledWith({ email: "new@gmail.com", password: "Longpassword1!", ipAddress: IP, userAgent: UA });
-    expect(fresh.status).toBe(200);
-    expect(fresh.body).toEqual({ ok: true, step: "verify_email" });
+    const fresh = await post(app, SIGN_UP, { email: "New@Gmail.com" });
+    expect(Object.values(wos).every(fn => fn.mock.calls.length === 0)).toBe(true);
+    wos.listUsers.mockResolvedValueOnce({ data: [] });
+    await flush();
+    expect(wos.listUsers).toHaveBeenCalledWith({ email: "new@gmail.com", limit: 1 });
+    expect(wos.createUser).toHaveBeenCalledWith({ email: "new@gmail.com" });
+    expect(wos.createPasswordReset).toHaveBeenCalledWith({ email: "new@gmail.com" });
+    expect(mail).toHaveBeenLastCalledWith({ to: "new@gmail.com", subject: "Finish signing in to SkipWait", text: expect.stringContaining(LINK) });
 
+    const existing = await post(app, SIGN_UP, { email: EMAIL });
+    wos.listUsers.mockResolvedValueOnce({ data: [workosUser()] });
+    const creates = wos.createUser.mock.calls.length;
+    await flush();
+    expect(wos.createUser.mock.calls.length).toBe(creates);
+    expect(wos.createPasswordReset).toHaveBeenLastCalledWith({ email: EMAIL });
+    expect(mail).toHaveBeenLastCalledWith({ to: EMAIL, subject: "Finish signing in to SkipWait", text: expect.stringContaining(LINK) });
+
+    for (const res of [fresh, existing]) {
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ ok: true, step: "check_email" });
+      expect(res.headers["set-cookie"]).toBeUndefined();
+    }
+    const headers = (res: request.Response) => Object.fromEntries(Object.entries(res.headers).filter(([name]) => name !== "date"));
+    expect(headers(existing)).toEqual(headers(fresh));
+    expect(wos.authenticateWithPassword).not.toHaveBeenCalled();
+
+    const calls = Object.values(wos).map(fn => fn.mock.calls.length);
+    for (const body of [{ email: "x@gmail.com", password: "Longpassword1!" }, { email: "x@gmail.com", returnTo: "/plans" }, { email: "nope" }]) {
+      const refused = await post(app, SIGN_UP, body);
+      expect(refused.status).toBe(400);
+      expect(refused.body.code).toBe("invalid_input");
+    }
+    await flush();
+    expect(Object.values(wos).map(fn => fn.mock.calls.length)).toEqual(calls);
+  });
+
+  it("an address WorkOS already holds (a race with another sign-up) still gets the link", async () => {
+    const app = await buildApp();
     wos.createUser.mockRejectedValueOnce(emailTaken());
-    wos.authenticateWithPassword.mockRejectedValueOnce(wrongPassword());
-    const taken = await post(app, SIGN_UP, { email: EMAIL, password: "Longpassword1!" });
-    expect(taken.status).toBe(fresh.status);
-    expect(taken.body).toEqual(fresh.body);
-    const freshTicket = cookieOf(fresh, "pw_verify");
-    const takenTicket = cookieOf(taken, "pw_verify");
-    expect(attributesOf(takenTicket)).toEqual(attributesOf(freshTicket));
-    expect(pairOf(takenTicket).length).toBe(pairOf(freshTicket).length);
-    expect(cookieOf(taken, "app_session_id")).toBeUndefined();
-    await Promise.all(pending);
+    await post(app, SIGN_UP, { email: EMAIL });
+    await flush();
     expect(wos.createPasswordReset).toHaveBeenCalledWith({ email: EMAIL });
-    // The decoy ticket never verifies.
-    const decoy = await post(app, VERIFY, { code: "482913" }, { cookie: pairOf(takenTicket) });
-    expect(decoy.body.code).toBe("invalid_code");
+    expect(mail).toHaveBeenCalledTimes(1);
+    expect(capture).not.toHaveBeenCalled();
+  });
 
-    wos.createUser.mockRejectedValueOnce(emailTaken());
-    wos.authenticateWithPassword.mockResolvedValueOnce(authResponse());
-    const owner = await post(app, SIGN_UP, { email: EMAIL, password: PASSWORD, returnTo: "/plans" });
-    expect(owner.body).toEqual({ ok: true, step: "signed_in", redirectTo: "/plans" });
-    expect(cookieOf(owner, "app_session_id")).toBeDefined();
-
-    const calls = wos.createUser.mock.calls.length;
-    const weak = await post(app, SIGN_UP, { email: "x@gmail.com", password: "short" });
-    expect(weak.status).toBe(400);
-    expect(weak.body.code).toBe("weak_password");
-    expect(wos.createUser.mock.calls.length).toBe(calls);
-
-    wos.createUser.mockRejectedValueOnce(new BadRequestException({ code: "password_strength_error", errors: [{ code: "password_breached" }], message: "Too weak", requestID: "r" }));
-    const refused = await post(app, SIGN_UP, { email: "y@gmail.com", password: "Password123!" });
-    expect(refused.status).toBe(400);
-    expect(refused.body.code).toBe("weak_password");
-
-    wos.createUser.mockRejectedValueOnce(new AuthenticationException(400, { error: "sso_required", error_description: "This domain signs in with SSO" }, "r"));
-    const sso = await post(app, SIGN_UP, { email: "z@corp.example", password: "Password123!" });
-    expect(sso.status).toBe(403);
-    expect(sso.body.code).toBe("use_another_method");
+  it("a deferred sign-up failure is reported without personal data and sends nothing", async () => {
+    const app = await buildApp();
+    wos.listUsers.mockRejectedValueOnce(new GenericServerException(500, `Upstream failed for ${EMAIL}`, { message: `Upstream failed for ${EMAIL}` }, "req_up"));
+    expect((await post(app, SIGN_UP, { email: EMAIL })).body).toEqual({ ok: true, step: "check_email" });
+    await flush();
+    expect(mail).not.toHaveBeenCalled();
+    expect(capture).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(capture.mock.calls)).not.toContain(EMAIL);
   });
 
   it("failed passwords lock durably and limiter outages fail closed", async () => {
@@ -317,7 +278,7 @@ describe("seeker password sign-in", () => {
   it("password POSTs refuse cross-site and non-JSON requests", async () => {
     const app = await buildApp();
     expect((await post(app, SIGN_IN, `email=${encodeURIComponent(EMAIL)}&password=x`, { form: true })).status).toBe(403);
-    for (const path of [SIGN_IN, SIGN_UP, VERIFY, RESEND, "/api/auth/password/forgot", "/api/auth/password/reset/confirm"]) {
+    for (const path of [SIGN_IN, SIGN_UP, "/api/auth/password/forgot", "/api/auth/password/reset/confirm"]) {
       const evil = await post(app, path, { email: EMAIL, password: PASSWORD }, { origin: "https://evil.example" });
       expect(evil.status, path).toBe(403);
       expect(evil.body.code).toBe("forbidden_origin");
@@ -376,14 +337,16 @@ describe("seeker password sign-in", () => {
   it("sign-up with a referrer's work email makes no WorkOS call and sends nothing, and looks like any other sign-up", async () => {
     const app = await buildApp();
     state.standings.set("asha@wipro.com", "referrer_work_email");
-    wos.authenticateWithPassword.mockRejectedValueOnce(needsVerification({ user: { object: "user", id: "user_new", email: "new@gmail.com", email_verified: false } }));
-    const fresh = await post(app, SIGN_UP, { email: "new@gmail.com", password: "Longpassword1!" });
+    const fresh = await post(app, SIGN_UP, { email: "new@gmail.com" });
+    await flush();
     const calls = Object.values(wos).map(fn => fn.mock.calls.length);
-    const referrer = await post(app, SIGN_UP, { email: "asha@wipro.com", password: "Longpassword1!" });
-    await Promise.all(pending);
+    const mails = mail.mock.calls.length;
+    const referrer = await post(app, SIGN_UP, { email: "asha@wipro.com" });
+    await flush();
     expect(referrer.status).toBe(fresh.status);
     expect(referrer.body).toEqual(fresh.body);
     expect(Object.values(wos).map(fn => fn.mock.calls.length)).toEqual(calls);
+    expect(mail.mock.calls.length).toBe(mails);
     expect(cookieOf(referrer, "app_session_id")).toBeUndefined();
   });
 
@@ -426,7 +389,7 @@ describe("without WorkOS configuration (local dev)", () => {
     app.set("trust proxy", true);
     app.use(express.json());
     registerPasswordAuthRoutes(app, { client: null, store: createMemoryDurableLimitStore() });
-    for (const [path, body] of [[SIGN_IN, { email: EMAIL, password: PASSWORD }], [SIGN_UP, { email: EMAIL, password: "Longpassword1!" }], ["/api/auth/password/forgot", { email: EMAIL }]] as const) {
+    for (const [path, body] of [[SIGN_IN, { email: EMAIL, password: PASSWORD }], [SIGN_UP, { email: EMAIL }], ["/api/auth/password/forgot", { email: EMAIL }]] as const) {
       const res = await post(app, path, body);
       expect(res.status, path).toBe(503);
       expect(res.body.code).toBe("password_sign_in_unavailable");

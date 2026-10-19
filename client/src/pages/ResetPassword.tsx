@@ -19,7 +19,7 @@ function dropTokenFromAddressBar(): void {
 }
 
 /**
- * Seeker password reset (D-049), from the link WorkOS emails. WorkOS checks the token and sets the password;
+ * Seeker password reset or first password (D-049), from the link SkipWait emails (D-078 ruling 6). WorkOS checks the token and sets the password;
  * this page says "You're signed in" only when the server actually signed this browser in. No request is made
  * before the person submits: WorkOS is the only judge of the token.
  */

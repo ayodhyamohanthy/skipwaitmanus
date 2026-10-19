@@ -3,6 +3,7 @@ import type { z } from "zod";
 import { safeSignInReturnTo } from "@shared/authReturnTo";
 import { PASSWORD_AUTH_COPY, type PasswordAuthErrorCode, type PasswordStep } from "@shared/passwordAuth";
 import * as db from "../db";
+import type { TransactionalEmailInput, TransactionalEmailResult } from "../emailDelivery";
 import { captureServerError } from "../sentry";
 import { configuredPublicOrigin, isTrustedAuthPost } from "./authPostGuard";
 import { activeDurableLock, consumeDurableLimits, type DurableLimit, type DurableLimitStore } from "./durableRateLimit";
@@ -21,15 +22,16 @@ export type PasswordRouteContext = {
   /** undefined: the MySQL limiter; null: no durable store (every limited route fails closed). */
   readonly store: DurableLimitStore | null | undefined;
   readonly now: () => number;
-  readonly ticketSecret: string;
-  /** Runs work after the response is sent (forgot, the sign-up reset nudge). */
+  /** Runs work after the response is sent (forgot, sign-up, the emailed links), so timing says nothing. */
   readonly defer: (task: () => Promise<void>) => void;
+  /** SkipWait's own sender (server/emailDelivery.ts) for the password links (D-078 ruling 6); never throws. */
+  readonly sendEmail: (input: TransactionalEmailInput) => Promise<TransactionalEmailResult>;
   /** Read-only, and throws when it cannot decide (server/passwordAccountLookup.ts); runs before any write or WorkOS call. */
   readonly emailStanding: PasswordEmailStandingLookup;
 };
 
 const STATUS: Readonly<Record<PasswordAuthErrorCode, number>> = {
-  invalid_input: 400, invalid_credentials: 401, invalid_code: 400, expired: 400, weak_password: 400, rate_limited: 429,
+  invalid_input: 400, invalid_credentials: 401, expired: 400, weak_password: 400, rate_limited: 429,
   forbidden_origin: 403, account_review: 403, account_inactive: 403, use_work_email_code: 403, use_another_method: 403,
   password_sign_in_unavailable: 503, temporarily_unavailable: 503,
 };

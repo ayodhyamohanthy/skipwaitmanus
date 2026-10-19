@@ -1,10 +1,10 @@
 import type { Request } from "express";
-import { OTP_LOCK_AFTER_FAILURES, OTP_LOCK_MS, OTP_RESEND_COOLDOWN_SECONDS } from "../otpPolicy";
-import { durableLimiterKey, type DurableClaim, type DurableFailureCounter, type DurableLimit } from "./durableRateLimit";
+import { OTP_LOCK_AFTER_FAILURES, OTP_LOCK_MS } from "../otpPolicy";
+import { durableLimiterKey, type DurableFailureCounter, type DurableLimit } from "./durableRateLimit";
 
 /**
  * Durable limits for seeker password auth (D-049), all below WorkOS's own per-environment limits
- * (authenticate 10/60 s per email, verification and reset sends 3/60 s). Keys are hashed and namespaced
+ * (authenticate 10/60 s per email, reset sends 3/60 s). Keys are hashed and namespaced
  * ("pw-*"), so the shared workEmailOtpRateLimits table never holds a raw email or IP.
  *
  * Per-IP keys use req.ip: Express trusts the proxy and the Worker rewrites X-Forwarded-For to the
@@ -40,21 +40,12 @@ export function signUpLimits(email: string, ip: string): DurableLimit[] {
   ];
 }
 
-/** Five codes per ticket over its whole life (the window is anchored to the ticket), twenty per IP per 10 minutes. */
-export function verifyLimits(ticket: { readonly jti: string; readonly issuedAtMs: number } | null, ip: string, ticketTtlMs: number): DurableLimit[] {
-  const limits: DurableLimit[] = [{ key: key("pw-verify-ip", ip), windowMs: 10 * MINUTE, limit: 20 }];
-  if (ticket) limits.push({ key: key("pw-verify-ticket", ticket.jti), windowMs: ticketTtlMs + MINUTE, limit: 5, anchorMs: ticket.issuedAtMs });
-  return limits;
-}
-
-/** A sliding 30-second cooldown per ticket: the claim row lives until 30 s after the last send. */
-export function resendCooldownClaim(ticket: { readonly jti: string; readonly issuedAtMs: number }, now: number): DurableClaim {
-  return { key: key("pw-resend-ticket", ticket.jti), windowStart: new Date(ticket.issuedAtMs), expiresAt: new Date(now + OTP_RESEND_COOLDOWN_SECONDS * 1000) };
-}
-export const RESEND_COOLDOWN_SECONDS = OTP_RESEND_COOLDOWN_SECONDS;
-
-export function resendLimits(email: string): DurableLimit[] {
-  return [{ key: key("pw-resend-email", email), windowMs: HOUR, limit: 5 }];
+/**
+ * Every emailed password link (forgot, sign-up, a sign-in that must prove the inbox) shares one cap per address:
+ * three an hour. Each one is an email SkipWait pays to send (D-078 ruling 6), and the cap is checked before WorkOS.
+ */
+export function passwordLinkEmailLimits(email: string): DurableLimit[] {
+  return [{ key: key("pw-link-email", email), windowMs: HOUR, limit: 3 }];
 }
 
 export function forgotLimits(email: string, ip: string): DurableLimit[] {

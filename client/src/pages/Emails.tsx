@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { MONEY_SENTENCE } from "@shared/moneyCopy";
+import { passwordLinkEmail } from "@shared/passwordEmails";
 
 /**
  * /emails — reference for every transactional message skipwait.me sends, in
@@ -11,8 +12,8 @@ import { MONEY_SENTENCE } from "@shared/moneyCopy";
  * Dynamic parts render in ⟨angle brackets⟩ and the code block is always
  * masked — this page never shows a real code, person, company, or price.
  * Entries without a verified sender keep their trigger description only.
- * Emails WorkOS sends for us (seeker password reset and sign-up code, D-049)
- * name WorkOS as the sender and quote no subject or body we do not own.
+ * The seeker password links (D-049, D-078 rulings 2 and 6) are sent by SkipWait
+ * and quoted from the same copy the server uses (shared/passwordEmails.ts).
  */
 type Template = {
   name: string;
@@ -24,12 +25,10 @@ type Template = {
   body?: string[];
   /** Button label the real email carries, when it has one. */
   cta?: string;
-  /** A code email (work-email code, seeker sign-up code) arrives as a six-digit code block (always masked here). */
+  /** The work-email code arrives as a six-digit code block (always masked here). */
   code?: true;
   /** In-app title the real notification carries, when it has one. */
   push?: string;
-  /** Who sends it when that is not SkipWait's own sender. */
-  sender?: string;
 };
 
 const TEMPLATES = [
@@ -44,15 +43,18 @@ const TEMPLATES = [
   {
     name: "Password reset",
     channel: "Email",
-    trigger: "Sent by WorkOS, our sign-in provider, when a job seeker asks to reset a password. SkipWait always answers “check your email”, whether the account exists or not. The link works once and leads back to skipwait.me; WorkOS sets how long it lasts.",
-    sender: "WorkOS (our sign-in provider), for SkipWait",
+    trigger: "Sent when a job seeker asks to set or reset a password. SkipWait always answers “check your email”, whether the account exists or not, and never sends one to a referrer's work email. The link works once and opens skipwait.me; WorkOS, our sign-in provider, sets how long it lasts.",
+    subject: passwordLinkEmail("reset", "⟨reset link⟩").subject,
+    body: [...passwordLinkEmail("reset", "⟨reset link⟩").lines],
+    cta: "Reset link (in the email body)",
   },
   {
-    name: "Sign-up verification code",
+    name: "Set your password",
     channel: "Email",
-    trigger: "Sent by WorkOS, our sign-in provider, when a job seeker creates a password account or signs in before confirming their email. The six-digit code finishes sign-in on skipwait.me.",
-    code: true,
-    sender: "WorkOS (our sign-in provider), for SkipWait",
+    trigger: "Sent when a job seeker creates an account with an email, or signs in before the address is confirmed. There is no code: the link sets the password on skipwait.me and signs them in.",
+    subject: passwordLinkEmail("set", "⟨reset link⟩").subject,
+    body: [...passwordLinkEmail("set", "⟨reset link⟩").lines],
+    cta: "Reset link (in the email body)",
   },
   { name: "Welcome", channel: "Email", trigger: "Sent after first sign-in with the honest next step for the account type." },
   {
@@ -123,7 +125,7 @@ export default function Emails() {
         {template.push && <div className="mx-auto max-w-sm rounded-2xl bg-background p-3 shadow-md"><div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="grid size-5 place-items-center rounded bg-primary text-[10px] font-bold text-primary-foreground">S</span>SKIPWAIT · now</div><p className="mt-1 text-sm font-semibold">{template.push}</p></div>}
         <article aria-label={template.name} className="mx-auto max-w-xl overflow-hidden rounded-3xl bg-background">
           <div className="border-b border-border p-4 text-sm">
-            <p>{emailed ? <><span className="text-muted-foreground">From:</span> {template.sender ?? SENDER}</> : <><span className="text-muted-foreground">In-app:</span> SkipWait notifications</>}</p>
+            <p>{emailed ? <><span className="text-muted-foreground">From:</span> {SENDER}</> : <><span className="text-muted-foreground">In-app:</span> SkipWait notifications</>}</p>
             {template.subject ? <p className="font-semibold">{template.subject}</p> : <p className="font-semibold">{template.name}</p>}
           </div>
           <div className="p-8">

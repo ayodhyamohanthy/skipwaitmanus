@@ -16,21 +16,25 @@ import {
   passwordSignInRequestSchema,
   passwordSignUpRequestSchema,
   passwordStepSchema,
-  resendVerificationRequestSchema,
   resetTokenSchema,
   retryMinutes,
-  verifyEmailRequestSchema,
 } from "@shared/passwordAuth";
 
 describe("password request contracts are seeker-only and strict", () => {
   it("normalises the email but never the password", () => {
     expect(passwordSignInRequestSchema.parse({ email: "  Asha@Gmail.COM ", password: "  spaced pass  " })).toEqual({ email: "asha@gmail.com", password: "  spaced pass  " });
-    expect(passwordSignUpRequestSchema.parse({ email: "Asha@Gmail.com", password: " Longpassword1! ", returnTo: "/plans" })).toEqual({ email: "asha@gmail.com", password: " Longpassword1! ", returnTo: "/plans" });
+  });
+
+  // D-078 ruling 2: sign-up takes only the email; the password is set from the emailed link.
+  it("sign-up takes only an email", () => {
+    expect(passwordSignUpRequestSchema.parse({ email: " Asha@Gmail.com " })).toEqual({ email: "asha@gmail.com" });
+    for (const body of [{ email: "asha@gmail.com", password: "Longpassword1!" }, { email: "asha@gmail.com", returnTo: "/plans" }, { email: "asha@gmail.com", intent: "seeker" }, { email: "nope" }, {}]) {
+      expect(passwordSignUpRequestSchema.safeParse(body).success, JSON.stringify(body)).toBe(false);
+    }
   });
 
   it.each([
     ["sign-in", passwordSignInRequestSchema],
-    ["sign-up", passwordSignUpRequestSchema],
   ] as const)("%s refuses an intent, unknown fields, bad emails and oversized passwords", (_label, schema) => {
     for (const body of [
       { email: "asha@gmail.com", password: "secret", intent: "seeker" },
@@ -46,13 +50,8 @@ describe("password request contracts are seeker-only and strict", () => {
     ]) expect(schema.safeParse(body).success, JSON.stringify(body).slice(0, 80)).toBe(false);
   });
 
-  it("verification takes exactly six digits and nothing else", () => {
-    expect(verifyEmailRequestSchema.parse({ code: "482913" })).toEqual({ code: "482913" });
-    for (const body of [{ code: "48291" }, { code: "4829134" }, { code: "48a913" }, { code: " 482913" }, { code: 482913 }, {}, { code: "482913", email: "asha@gmail.com" }, { code: "482913", intent: "seeker" }]) {
-      expect(verifyEmailRequestSchema.safeParse(body).success).toBe(false);
-    }
-    expect(resendVerificationRequestSchema.safeParse({}).success).toBe(true);
-    expect(resendVerificationRequestSchema.safeParse({ userId: "user_1" }).success).toBe(false);
+  it("no verification-code contract remains (D-049: no six-digit code for seekers)", () => {
+    for (const name of ["verifyEmailRequestSchema", "resendVerificationRequestSchema", "VERIFICATION_CODE_PATTERN"]) expect(name in contract, name).toBe(false);
   });
 
   it("forgot takes only an email", () => {
@@ -76,14 +75,15 @@ describe("password response contracts", () => {
     for (const bad of ["https://evil.example", "//evil.example", "/\\evil.example", "/api/auth/workos/logout", "explore", "/a b"]) expect(appPathSchema.safeParse(bad).success).toBe(false);
   });
 
-  it("a step is signed_in with an app path, or verify_email with nothing else", () => {
+  it("a step is signed_in with an app path, or check_email with nothing else", () => {
     expect(passwordStepSchema.parse({ ok: true, step: "signed_in", redirectTo: "/plans" })).toEqual({ ok: true, step: "signed_in", redirectTo: "/plans" });
-    expect(passwordStepSchema.parse({ ok: true, step: "verify_email" })).toEqual({ ok: true, step: "verify_email" });
+    expect(passwordStepSchema.parse({ ok: true, step: "check_email" })).toEqual({ ok: true, step: "check_email" });
     for (const bad of [
       { ok: true, step: "signed_in", redirectTo: "https://evil.example" },
       { ok: true, step: "signed_in" },
-      { ok: true, step: "verify_email", pendingAuthenticationToken: "pat_1" },
-      { ok: true, step: "verify_email", redirectTo: "/explore" },
+      { ok: true, step: "verify_email" },
+      { ok: true, step: "check_email", pendingAuthenticationToken: "pat_1" },
+      { ok: true, step: "check_email", redirectTo: "/explore" },
       { ok: true, step: "continue_hosted", redirectTo: "/api/auth/workos/sign-in" },
       { ok: true, redirectTo: "/explore" },
     ]) expect(passwordStepSchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
@@ -94,8 +94,9 @@ describe("password response contracts", () => {
   });
 
   it("round-trips every error code, with plain copy and no hosted continuation", () => {
-    expect(PASSWORD_AUTH_ERROR_CODES).toEqual(expect.arrayContaining(["invalid_input", "invalid_credentials", "invalid_code", "expired", "weak_password", "rate_limited", "forbidden_origin", "account_review", "account_inactive", "use_work_email_code", "use_another_method", "password_sign_in_unavailable", "temporarily_unavailable"]));
-    expect(PASSWORD_AUTH_ERROR_CODES).toHaveLength(13);
+    expect(PASSWORD_AUTH_ERROR_CODES).toEqual(expect.arrayContaining(["invalid_input", "invalid_credentials", "expired", "weak_password", "rate_limited", "forbidden_origin", "account_review", "account_inactive", "use_work_email_code", "use_another_method", "password_sign_in_unavailable", "temporarily_unavailable"]));
+    expect(PASSWORD_AUTH_ERROR_CODES).toHaveLength(12);
+    expect(PASSWORD_AUTH_ERROR_CODES).not.toContain("invalid_code");
     expect(PASSWORD_AUTH_ERROR_CODES).not.toContain("continue_hosted");
     for (const code of PASSWORD_AUTH_ERROR_CODES) {
       const body = { ok: false as const, code, message: PASSWORD_AUTH_COPY[code] };

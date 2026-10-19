@@ -13,7 +13,7 @@ afterEach(() => cleanup);
 const NAMES = [
   "Work-email code",
   "Password reset",
-  "Sign-up verification code",
+  "Set your password",
   "Welcome",
   "Request claimed",
   "Ask accepted",
@@ -64,19 +64,21 @@ describe("Emails template gallery", () => {
     }
   });
 
-  // D-049: WorkOS sends the seeker reset and sign-up code emails, so this page shows no SkipWait subject or body
-  // for them (it cannot quote a sender it does not own) and makes no fixed lifetime promise.
-  it("credits WorkOS for the password reset and sign-up code, with no invented copy", () => {
+  // D-049 / D-078 rulings 2 and 6: SkipWait sends the seeker's password links itself, to its own reset page, and
+  // there is no sign-up code. The page quotes the server copy (shared/passwordEmails.ts) with the link masked.
+  it("quotes the password-link emails SkipWait sends, with no code and no fixed lifetime", () => {
     const view = render(<Emails />);
     try {
       fireEvent.click(screen.getByRole("button", { name: "Password reset" }));
       const reset = screen.getByRole("article", { name: "Password reset" });
-      expect(reset.textContent).toContain("WorkOS");
-      expect(reset.textContent).not.toMatch(/1 hour|Reset your SkipWait password|SkipWait <noreply@skipwait\.me>/);
-      fireEvent.click(screen.getByRole("button", { name: "Sign-up verification code" }));
-      const code = screen.getByRole("article", { name: "Sign-up verification code" });
-      expect(code.textContent).toContain("WorkOS");
-      expect(screen.getByRole("img", { name: "Six-digit code" }).textContent).not.toMatch(/\d/);
+      expect(reset.textContent).toContain("Set or reset your SkipWait password");
+      expect(reset.textContent).toContain("⟨reset link⟩");
+      expect(reset.textContent).not.toMatch(/1 hour|WorkOS \(our sign-in provider\)/);
+      fireEvent.click(screen.getByRole("button", { name: "Set your password" }));
+      const set = screen.getByRole("article", { name: "Set your password" });
+      expect(set.textContent).toContain("Finish signing in to SkipWait");
+      expect(set.textContent).toContain("⟨reset link⟩");
+      expect(screen.queryByRole("button", { name: "Sign-up verification code" })).toBeNull();
     } finally {
       view.unmount();
     }

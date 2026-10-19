@@ -5,7 +5,7 @@ import { EMAIL_PATTERN, passwordForgotAcceptedSchema } from "@shared/passwordAut
 import { postPasswordAuth } from "@/lib/passwordAuthClient";
 
 /**
- * Seeker password reset request (D-049). WorkOS emails the link; the answer is the same whether or not the
+ * Seeker password reset request (D-049). SkipWait emails the link (D-078 ruling 6); the answer is the same whether or not the
  * email has an account, and it promises no fixed lifetime (WorkOS sets the expiry). Referrers have no password:
  * they sign in with a work-email code.
  */

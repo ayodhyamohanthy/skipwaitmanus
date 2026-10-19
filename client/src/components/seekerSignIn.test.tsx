@@ -71,61 +71,43 @@ describe("seekers sign in with email and password, never a sign-in code", () => 
   });
 });
 
-describe("verification, create-account and error states are explicit", () => {
-  it("the verify step takes WorkOS's six-digit code, with a resend cooldown", async () => {
+describe("check-your-email, create-account and error states are explicit", () => {
+  // D-049 / D-078 ruling 2: no six-digit code. A sign-in WorkOS cannot finish yet ends on "check your email", and the
+  // emailed link sets the password on /reset-password.
+  it("a sign-in that needs the inbox proven shows check-your-email, with no code field", async () => {
     const assign = stubAssign();
-    const calls = stubFetch([
-      { status: 200, body: { ok: true, step: "verify_email" } },
-      { status: 200, body: { ok: true, step: "verify_email" } },
-      { status: 200, body: { ok: true, step: "signed_in", redirectTo: "/explore" } },
-    ]);
-    // Fake timeouts that still follow the real clock, so Testing Library's own waits keep working.
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    stubFetch([{ status: 200, body: { ok: true, step: "check_email" } }]);
     render(<SeekerSignIn />);
     openEmailForm();
     fillSignIn();
     fireEvent.click(screen.getByRole("button", { name: /^Sign in/ }));
-    const code = await screen.findByLabelText("Six-digit code") as HTMLInputElement;
-    expect(document.activeElement).toBe(code);
-    expect(code.getAttribute("autocomplete")).toBe("one-time-code");
-    expect(code.getAttribute("inputmode")).toBe("numeric");
-    expect(screen.getByText(/asha@gmail\.com/)).toBeTruthy();
-    const resend = () => screen.getByRole("button", { name: /Send a new code/ }) as HTMLButtonElement;
-    expect(resend().disabled).toBe(true);
-    // The countdown starts in a passive effect; let it schedule its first tick before moving the clock.
-    await waitFor(() => expect(vi.getTimerCount()).toBeGreaterThan(0));
-    for (let second = 0; second < 31; second++) act(() => { vi.advanceTimersByTime(1000); });
-    expect(resend().disabled).toBe(false);
-    vi.useRealTimers();
-    fireEvent.click(resend());
-    await waitFor(() => expect(calls).toHaveLength(2));
-    expect(calls[1]).toEqual({ url: "/api/auth/password/verify-email/resend", body: {} });
-    await waitFor(() => expect(resend().disabled).toBe(true));
-    fireEvent.change(code, { target: { value: "48a2913x" } });
-    expect(code.value).toBe("482913");
-    fireEvent.click(screen.getByRole("button", { name: /Verify and continue/ }));
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("/explore"));
-    expect(calls[2]).toEqual({ url: "/api/auth/password/verify-email", body: { code: "482913" } });
+    const step = await screen.findByTestId("seeker-check-email");
+    expect(step.textContent).toContain("Check your email");
+    expect(step.textContent).toContain("asha@gmail.com");
+    expect(step.textContent).toMatch(/link/);
+    expect(document.querySelector("[autocomplete=one-time-code]")).toBeNull();
+    expect(screen.queryByLabelText(/code/i)).toBeNull();
+    expect(assign).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Use a different email" }));
+    expect(screen.getByLabelText("Email address")).toBeTruthy();
   });
 
-  it("create-account mode shows the rules, posts sign-up and explains an emailed reset link", async () => {
-    const calls = stubFetch([{ status: 200, body: { ok: true, step: "verify_email" } }]);
+  it("create-account mode asks only for the email and always ends on check-your-email", async () => {
+    const calls = stubFetch([{ status: 200, body: { ok: true, step: "check_email" } }]);
     render(<SeekerSignIn returnTo="/ask" />);
     fireEvent.click(screen.getByRole("button", { name: "Create a free account" }));
-    const password = screen.getByLabelText("Password") as HTMLInputElement;
-    expect(password.getAttribute("autocomplete")).toBe("new-password");
-    fireEvent.change(screen.getByLabelText("Email address"), { target: { value: "new@gmail.com" } });
-    fireEvent.change(password, { target: { value: "short" } });
+    expect(screen.queryByLabelText("Password")).toBeNull();
+    expect(document.querySelector("input[type=password]")).toBeNull();
+    expect(screen.getByText(/We'll email you a link to set your password/)).toBeTruthy();
     const submit = () => screen.getByRole("button", { name: /^Create account/ }) as HTMLButtonElement;
     expect(submit().disabled).toBe(true);
-    expect(screen.getByText("At least 10 characters")).toBeTruthy();
-    expect(screen.getByText("A number or symbol")).toBeTruthy();
-    fireEvent.change(password, { target: { value: "Longpassword1!" } });
+    fireEvent.change(screen.getByLabelText("Email address"), { target: { value: " New@Gmail.com " } });
     expect(submit().disabled).toBe(false);
     fireEvent.click(submit());
-    await screen.findByLabelText("Six-digit code");
-    expect(calls).toEqual([{ url: "/api/auth/password/sign-up", body: { email: "new@gmail.com", password: "Longpassword1!", returnTo: "/ask" } }]);
-    expect(screen.getByText(/If this email already had a SkipWait account, we sent a password reset link instead/)).toBeTruthy();
+    const step = await screen.findByTestId("seeker-check-email");
+    expect(calls).toEqual([{ url: "/api/auth/password/sign-up", body: { email: "new@gmail.com" } }]);
+    expect(step.textContent).toContain("new@gmail.com");
+    expect(step.textContent).toMatch(/same account/);
   });
 
   it.each([
@@ -143,16 +125,6 @@ describe("verification, create-account and error states are explicit", () => {
     fillSignIn();
     fireEvent.click(screen.getByRole("button", { name: /^Sign in/ }));
     expect((await screen.findByRole("alert")).textContent).toBe(message);
-  });
-
-  it("a weak password from WorkOS on create shows its message", async () => {
-    stubFetch([{ status: 400, body: { ok: false, code: "weak_password", message: PASSWORD_AUTH_COPY.weak_password } }]);
-    render(<SeekerSignIn />);
-    fireEvent.click(screen.getByRole("button", { name: "Create a free account" }));
-    fireEvent.change(screen.getByLabelText("Email address"), { target: { value: "new@gmail.com" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "Password123!" } });
-    fireEvent.click(screen.getByRole("button", { name: /^Create account/ }));
-    expect((await screen.findByRole("alert")).textContent).toBe(PASSWORD_AUTH_COPY.weak_password);
   });
 
   it("busy state disables the submit button while the request is in flight", async () => {

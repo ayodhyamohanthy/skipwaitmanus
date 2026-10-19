@@ -41,11 +41,7 @@ let resetRequested: () => void = () => undefined;
 const resetDone = new Promise<void>(resolve => { resetRequested = resolve; });
 const client: PasswordWorkosClient = {
   authenticateWithPassword: async ({ email }) => { throw workosFailure(`Upstream failed for ${email}`); },
-  authenticateWithEmailVerification: async () => { throw workosFailure("unused"); },
   createUser: async () => { throw workosFailure("unused"); },
-  sendVerificationEmail: async () => { throw workosFailure("unused"); },
-  verifyEmail: async () => { throw workosFailure("unused"); },
-  getEmailVerification: async () => { throw workosFailure("unused"); },
   listUsers: async ({ email }) => {
     // What the SDK does on the wire: the email in the query string, the API key in a header.
     await fetch(`${upstreamUrl}/user_management/users?email=${encodeURIComponent(email)}&limit=1`, { headers: { Authorization: `Bearer ${SECRETS.apiKey}` } });
@@ -53,7 +49,7 @@ const client: PasswordWorkosClient = {
   },
   createPasswordReset: async ({ email }) => {
     setImmediate(resetRequested);
-    return { passwordResetUrl: `https://exemplary-refuge-51.authkit.app/reset-password?token=${SECRETS.resetToken}&email=${email}` };
+    return { passwordResetToken: SECRETS.resetToken, passwordResetUrl: `https://exemplary-refuge-51.authkit.app/reset-password?token=${SECRETS.resetToken}&email=${email}` };
   },
   resetPassword: async () => { throw workosFailure(`Reset failed for ${SECRETS.resetToken}`); },
 };
@@ -101,7 +97,7 @@ describe("server Sentry privacy (real SDK, real password routes)", () => {
     const { flushServerSentry } = await import("./sentry");
     const app = express();
     app.use(express.json());
-    registerPasswordAuthRoutes(app, { client, store: createMemoryDurableLimitStore(), emailStanding: async () => "unknown" });
+    registerPasswordAuthRoutes(app, { client, store: createMemoryDurableLimitStore(), emailStanding: async () => "unknown", sendEmail: async () => ({ sent: true, reason: "sent" }) });
 
     const signIn = await withBrowserHeaders(request(app).post(`/api/auth/password/sign-in?debug=${SECRETS.query}`)).send({ email: SECRETS.email, password: SECRETS.password });
     expect(signIn.status).toBe(503);

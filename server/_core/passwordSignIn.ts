@@ -1,22 +1,23 @@
 import type { Express, Request, Response } from "express";
-import { passwordPolicyError, passwordSignInRequestSchema, passwordSignUpRequestSchema } from "@shared/passwordAuth";
+import { passwordSignInRequestSchema, passwordSignUpRequestSchema } from "@shared/passwordAuth";
+import { startPasswordSetup } from "../passwordLinks";
 import { recordDurableFailures } from "./durableRateLimit";
 import { failureCounters, passwordLockKeys, requestIp, signInLimits, signUpLimits } from "./passwordLimits";
 import {
   clientContext, failUnexpectedly, guardPasswordPost, noteWorkosSuccess, noteWorkosUnauthorized, passLimits, passLock, recordPasswordActivity,
-  reportPasswordFailure, sendPasswordError, signedInDestination, type PasswordRouteContext,
+  reportPasswordFailure, sendPasswordError, sendPasswordStep, signedInDestination, type PasswordRouteContext,
 } from "./passwordResponses";
-import { issueVerifyStep, PASSWORD_ACTIVITY, respondSignedIn, type SignInOrigin } from "./passwordSteps";
+import { answerCheckEmail, PASSWORD_ACTIVITY, respondSignedIn, type SignInOrigin } from "./passwordSteps";
 import type { PasswordAuthentication, PasswordWorkosClient } from "./passwordWorkosClient";
 import { classifyWorkosPasswordError, type WorkosPasswordFailure } from "./workosPasswordErrors";
 
 /**
- * Seeker email + password sign-in and sign-up on skipwait.me (D-049), server-side through WorkOS User
- * Management; never the hosted WorkOS page, never for referrers (no intent is accepted, and a referrer's own
- * work email is refused at session time). An unverified email never gets a session: WorkOS's verification
- * code finishes it (server/_core/passwordVerification.ts). Sign-up never says whether an email already has an
- * account: the existing-account answer looks exactly like the new-account one, and the real owner gets a
- * WorkOS password-reset email instead.
+ * Seeker email + password sign-in and sign-up on skipwait.me (D-049, D-078), server-side through WorkOS User
+ * Management; never the hosted WorkOS page, never for referrers (no intent is accepted, and a referrer's work email
+ * is refused or skipped by a read-only lookup). There is no six-digit code: an address WorkOS has not verified gets
+ * a link to set the password instead (server/passwordLinks.ts), which proves the inbox. Sign-up takes only the email
+ * and always answers "check your email" at once; its WorkOS work runs after the answer, so neither the body nor the
+ * timing says whether the address already has an account.
  */
 type Attempt = { readonly type: "authenticated"; readonly authentication: PasswordAuthentication } | { readonly type: "failed"; readonly failure: WorkosPasswordFailure; readonly error: unknown };
 type AttemptContext = { readonly email: string; readonly ip: string; readonly redirectTo: string; readonly origin: SignInOrigin };
@@ -31,28 +32,12 @@ async function authenticate(client: PasswordWorkosClient, req: Request, email: s
   }
 }
 
-async function continueAuthenticated(ctx: PasswordRouteContext, client: PasswordWorkosClient, req: Request, res: Response, authentication: PasswordAuthentication, at: AttemptContext): Promise<void> {
-  if (authentication.user.emailVerified === true) return respondSignedIn(ctx, req, res, authentication, at.redirectTo, at.origin);
-  // WorkOS let an unverified email through (verification not required in its dashboard): we still require it.
-  try {
-    await client.sendVerificationEmail({ userId: authentication.user.id });
-  } catch (error) {
-    const failure = classifyWorkosPasswordError(error, "resend");
-    // A rate-limited send means a code went out moments ago; the person can use it.
-    if (failure.kind !== "rate_limited") { reportPasswordFailure(at.origin, `verification_send_${failure.kind}`, error); return sendPasswordError(res, "temporarily_unavailable"); }
-  }
-  return issueVerifyStep(ctx, req, res, { kind: "user", userId: authentication.user.id, email: at.email, returnTo: at.redirectTo, origin: at.origin });
-}
-
-async function answerFailure(ctx: PasswordRouteContext, req: Request, res: Response, attempt: Extract<Attempt, { type: "failed" }>, at: AttemptContext): Promise<void> {
+async function answerFailure(ctx: PasswordRouteContext, client: PasswordWorkosClient, res: Response, attempt: Extract<Attempt, { type: "failed" }>, at: AttemptContext): Promise<void> {
   const { failure, error } = attempt;
   switch (failure.kind) {
-    case "verify_email": {
-      if (failure.pendingAuthenticationToken) return issueVerifyStep(ctx, req, res, { kind: "pending", token: failure.pendingAuthenticationToken, ...(failure.userId ? { userId: failure.userId } : {}), ...(failure.emailVerificationId ? { emailVerificationId: failure.emailVerificationId } : {}), email: at.email, returnTo: at.redirectTo, origin: at.origin });
-      if (failure.userId) return issueVerifyStep(ctx, req, res, { kind: "user", userId: failure.userId, email: at.email, returnTo: at.redirectTo, origin: at.origin });
-      reportPasswordFailure(at.origin, "verification_without_token", error);
-      return sendPasswordError(res, "temporarily_unavailable");
-    }
+    case "verify_email":
+      // The password was right but WorkOS has not verified the address: a link, never a code (D-078 ruling 2).
+      return answerCheckEmail(ctx, client, res, at.email, at.origin);
     case "invalid_credentials":
       await recordFailure(ctx, at.email, at.ip);
       noteWorkosUnauthorized(error);
@@ -79,7 +64,7 @@ async function recordFailure(ctx: PasswordRouteContext, email: string, ip: strin
   }
 }
 
-export function registerPasswordSignInRoutes(app: Express, ctx: PasswordRouteContext, requestReset: (client: PasswordWorkosClient, email: string) => Promise<void>): void {
+export function registerPasswordSignInRoutes(app: Express, ctx: PasswordRouteContext): void {
   app.post("/api/auth/password/sign-in", async (req, res) => {
     try {
       const body = guardPasswordPost(req, res, passwordSignInRequestSchema);
@@ -91,8 +76,10 @@ export function registerPasswordSignInRoutes(app: Express, ctx: PasswordRouteCon
       if (!(await passLock(ctx, res, passwordLockKeys(body.email, ip)))) return;
       const at: AttemptContext = { email: body.email, ip, redirectTo: signedInDestination(req, body.returnTo), origin: "sign_in" };
       const attempt = await authenticate(client, req, body.email, body.password);
-      if (attempt.type === "authenticated") return await continueAuthenticated(ctx, client, req, res, attempt.authentication, at);
-      return await answerFailure(ctx, req, res, attempt, at);
+      if (attempt.type === "failed") return await answerFailure(ctx, client, res, attempt, at);
+      // WorkOS let an unverified email through (verification not required in its dashboard): we still require it.
+      if (attempt.authentication.user.emailVerified !== true) return answerCheckEmail(ctx, client, res, at.email, at.origin);
+      return await respondSignedIn(ctx, req, res, attempt.authentication, at.redirectTo, at.origin);
     } catch (error) {
       return failUnexpectedly(res, "sign_in", error);
     }
@@ -102,43 +89,15 @@ export function registerPasswordSignInRoutes(app: Express, ctx: PasswordRouteCon
     try {
       const body = guardPasswordPost(req, res, passwordSignUpRequestSchema);
       if (!body) return;
-      const policy = passwordPolicyError(body.password, body.password);
-      if (policy) return sendPasswordError(res, "weak_password", { message: `${policy}.` });
       const client = ctx.client;
       if (!client) return sendPasswordError(res, "password_sign_in_unavailable");
-      const ip = requestIp(req);
-      if (!(await passLimits(ctx, res, signUpLimits(body.email, ip)))) return;
-      if (!(await passLock(ctx, res, passwordLockKeys(body.email, ip)))) return;
-      const at: AttemptContext = { email: body.email, ip, redirectTo: signedInDestination(req, body.returnTo), origin: "sign_up" };
-      // D-078 ruling 3 (S-3): a referrer's work email never reaches WorkOS and is never emailed; it gets the same
-      // check-your-email answer as any new account (a decoy ticket), so the answer says nothing about the address.
-      if ((await ctx.emailStanding(body.email)) === "referrer_work_email") return await issueVerifyStep(ctx, req, res, { kind: "decoy", email: body.email, returnTo: at.redirectTo, origin: "sign_up" });
-      let existingAccount = false;
-      try {
-        await client.createUser({ email: body.email, password: body.password, ...clientContext(req) });
-      } catch (error) {
-        const failure = classifyWorkosPasswordError(error, "sign_up");
-        if (failure.kind === "email_taken") existingAccount = true;
-        else if (failure.kind === "weak_password") return sendPasswordError(res, "weak_password");
-        else if (failure.kind === "rate_limited") return sendPasswordError(res, "rate_limited", { retryAfterSeconds: failure.retryAfterSeconds });
-        else if (failure.kind === "use_another_method") return sendPasswordError(res, "use_another_method");
-        else {
-          reportPasswordFailure("sign_up", failure.kind, error);
-          return sendPasswordError(res, failure.kind === "password_sign_in_unavailable" ? "password_sign_in_unavailable" : "temporarily_unavailable");
-        }
-      }
-      const attempt = await authenticate(client, req, body.email, body.password);
-      if (attempt.type === "authenticated") return await continueAuthenticated(ctx, client, req, res, attempt.authentication, at);
-      if (existingAccount && attempt.failure.kind === "invalid_credentials") {
-        // Someone else's (or a forgotten) account: answer exactly like a new account, and let the real owner reset.
-        await recordFailure(ctx, body.email, ip);
-        ctx.defer(() => requestReset(client, body.email));
-        return await issueVerifyStep(ctx, req, res, { kind: "decoy", email: body.email, returnTo: at.redirectTo, origin: "sign_up" });
-      }
-      return await answerFailure(ctx, req, res, attempt, at);
+      if (!(await passLimits(ctx, res, signUpLimits(body.email, requestIp(req))))) return;
+      // D-078 ruling 2: the same answer at once for a new address, an existing account or a referrer's work email.
+      recordPasswordActivity(PASSWORD_ACTIVITY.sign_up, "success", { step: "check_email" });
+      sendPasswordStep(res, { ok: true, step: "check_email" });
+      ctx.defer(() => startPasswordSetup(ctx, client, body.email));
     } catch (error) {
       return failUnexpectedly(res, "sign_up", error);
     }
   });
-
 }

@@ -1,19 +1,21 @@
 import type { Request, Response } from "express";
-import { PASSWORD_TICKET_RETURN_TO_MAX, sealPasswordTicket, setPasswordTicketCookie, type PasswordTicketInput } from "./passwordPending";
+import { requestWorkosPasswordReset } from "../passwordLinks";
 import { recordPasswordActivity, sendPasswordError, sendPasswordStep, type PasswordRouteContext } from "./passwordResponses";
 import { finishPasswordLogin } from "./passwordSession";
-import type { PasswordAuthentication } from "./passwordWorkosClient";
+import type { PasswordAuthentication, PasswordWorkosClient } from "./passwordWorkosClient";
 
-/** The two answers a password sign-in, sign-up or verification can end with: "check your email" or "signed in". */
+/** The two answers a password sign-in or sign-up can end with: "check your email" or "signed in". */
 export type SignInOrigin = "sign_in" | "sign_up";
 export const PASSWORD_ACTIVITY: Readonly<Record<SignInOrigin, string>> = { sign_in: "auth.password_sign_in", sign_up: "auth.password_sign_up" };
 
-export async function issueVerifyStep(ctx: PasswordRouteContext, req: Request, res: Response, ticket: PasswordTicketInput): Promise<void> {
-  const returnTo = ticket.returnTo.length > PASSWORD_TICKET_RETURN_TO_MAX ? "/explore" : ticket.returnTo;
-  const { value } = await sealPasswordTicket({ ...ticket, returnTo }, ctx.ticketSecret);
-  setPasswordTicketCookie(req, res, value);
-  recordPasswordActivity(PASSWORD_ACTIVITY[ticket.origin], "success", { step: "verify_email" });
-  sendPasswordStep(res, { ok: true, step: "verify_email" });
+/**
+ * "Check your email" (D-049, D-078 ruling 2): no six-digit code. The emailed link sets the password on
+ * /reset-password, which proves the inbox and signs in there. The link is requested after the answer.
+ */
+export function answerCheckEmail(ctx: PasswordRouteContext, client: PasswordWorkosClient, res: Response, email: string, origin: SignInOrigin): void {
+  recordPasswordActivity(PASSWORD_ACTIVITY[origin], "success", { step: "check_email" });
+  sendPasswordStep(res, { ok: true, step: "check_email" });
+  ctx.defer(() => requestWorkosPasswordReset(ctx, client, email, "set"));
 }
 
 /** Signs in a WorkOS user whose email WorkOS has verified, or answers why not. */

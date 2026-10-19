@@ -1,5 +1,6 @@
 // Seeker forgot / reset through WorkOS (D-049). Replaces the SkipWait JWT reset whose confirm step never set a
-// password but told the person they were signed in. WorkOS sends the reset email; SkipWait never sees the token.
+// password but told the person they were signed in. WorkOS creates the token and sets the password; SkipWait emails
+// the link to its own /reset-password (D-078 ruling 6) and never logs the token.
 import express from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -74,13 +75,14 @@ beforeEach(() => {
   resolveLoginIdentity.mockImplementation(async (input: { openId: string; email: string }) => state.accounts.get(input.openId) ?? seedAccount(input.openId, { email: input.email }));
   revokeUserSessions.mockImplementation(async (openId: string) => { const row = state.accounts.get(openId); if (row) row.sessionsValidAfter = new Date(Date.now() + 1000); });
   wos.authenticateWithPassword.mockResolvedValue({ user: workosUser(), accessToken: "not-a-jwt", refreshToken: "r" });
+  zepto.mockResolvedValue({ sent: true, reason: "sent" });
   wos.listUsers.mockResolvedValue({ data: [] });
   wos.createUser.mockImplementation(async ({ email }: { email: string }) => workosUser({ id: "user_new", email, emailVerified: false }));
   wos.createPasswordReset.mockImplementation(async ({ email }: { email: string }) => resetObject(email));
   wos.resetPassword.mockResolvedValue({ user: workosUser() });
 });
 
-describe("forgot password (WorkOS sends the reset)", () => {
+describe("forgot password (SkipWait emails the WorkOS reset link)", () => {
   it("is neutral, and only real seeker accounts get a WorkOS reset", async () => {
     const app = await buildApp();
     const spies = (["log", "info", "warn", "error"] as const).map(method => vi.spyOn(console, method).mockImplementation(() => {}));
@@ -99,7 +101,8 @@ describe("forgot password (WorkOS sends the reset)", () => {
     // A code-only seeker gets a WorkOS user (no password) first, then the reset that sets one.
     expect(wos.createUser.mock.calls).toEqual([[{ email: "code@gmail.com" }]]);
     expect(wos.createUser.mock.invocationCallOrder[0]).toBeLessThan(wos.createPasswordReset.mock.invocationCallOrder[1]);
-    expect(zepto).not.toHaveBeenCalled();
+    // D-078 ruling 6: SkipWait sends the link, always to its own reset page, never the hosted one.
+    expect(zepto.mock.calls).toEqual([EMAIL, "code@gmail.com"].map(to => [{ to, subject: "Set or reset your SkipWait password", text: expect.stringContaining(`https://skipwait.me/reset-password?token=${TOKEN}`) }]));
     const everything = JSON.stringify([responses.map(res => res.body), spies.map(spy => spy.mock.calls), capture.mock.calls]);
     expect(everything).not.toContain(TOKEN);
     expect(everything).not.toContain("reset-password?token");
@@ -129,19 +132,47 @@ describe("forgot password (WorkOS sends the reset)", () => {
     expect(hostedLink.body).toEqual(fine.body);
     expect(capture).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(capture.mock.calls)).not.toMatch(new RegExp(`${TOKEN}|${EMAIL}|authkit\\.app`));
+    // The emailed link is SkipWait's own page either way (D-030: never the hosted authkit.app page).
+    for (const [message] of zepto.mock.calls as Array<[{ text: string }]>) {
+      expect(message.text).toContain(`https://skipwait.me/reset-password?token=${TOKEN}`);
+      expect(message.text).not.toContain("authkit.app");
+    }
+  });
+
+  it("a reset link is emailed at most 3 times an hour per address, across forgot, sign-up and sign-in", async () => {
+    const app = await buildApp();
+    wos.listUsers.mockResolvedValue({ data: [workosUser()] });
+    for (let attempt = 0; attempt < 3; attempt++) expect((await post(app, FORGOT, { email: EMAIL }, `198.51.100.${60 + attempt}`)).status).toBe(200);
+    await Promise.all(pending);
+    expect(zepto).toHaveBeenCalledTimes(3);
+    expect((await post(app, "/api/auth/password/sign-up", { email: EMAIL })).body).toEqual({ ok: true, step: "check_email" });
+    await Promise.all(pending);
+    expect(zepto).toHaveBeenCalledTimes(3);
+    expect(wos.createPasswordReset).toHaveBeenCalledTimes(3);
+  });
+
+  it("a link that could not be sent is reported, never silent, and never with the token or email", async () => {
+    const app = await buildApp();
+    wos.listUsers.mockResolvedValue({ data: [workosUser()] });
+    zepto.mockResolvedValueOnce({ sent: false, reason: "delivery_failed" });
+    expect((await post(app, FORGOT, { email: EMAIL })).status).toBe(200);
+    await Promise.all(pending);
+    expect(capture).toHaveBeenCalledWith(expect.any(Error), expect.objectContaining({ operation: "reset_email", kind: "delivery_failed" }));
+    expect(JSON.stringify(capture.mock.calls)).not.toMatch(new RegExp(`${TOKEN}|${EMAIL}`));
   });
 });
 
 describe("every reset path skips a referrer's work email (D-078 ruling 3, S-3)", () => {
   it("requestWorkosPasswordReset makes no WorkOS call and sends nothing for a referrer's work email", async () => {
     await buildApp();
-    const { requestWorkosPasswordReset } = await import("./passwordResetRoutes");
-    const ctx = { emailStanding: async (email: string) => (email === "asha@wipro.com" ? "referrer_work_email" : "unknown") as never };
-    await requestWorkosPasswordReset(ctx as never, wos, "asha@wipro.com");
+    const { requestWorkosPasswordReset } = await import("./passwordLinks");
+    const ctx = { emailStanding: async (email: string) => (email === "asha@wipro.com" ? "referrer_work_email" : "unknown") as never, store: createMemoryDurableLimitStore(), now: () => Date.now(), sendEmail: zepto };
+    await requestWorkosPasswordReset(ctx, wos, "asha@wipro.com", "reset");
     expect(wos.createPasswordReset).not.toHaveBeenCalled();
     expect(zepto).not.toHaveBeenCalled();
-    await requestWorkosPasswordReset(ctx as never, wos, EMAIL);
+    await requestWorkosPasswordReset(ctx, wos, EMAIL, "reset");
     expect(wos.createPasswordReset).toHaveBeenCalledWith({ email: EMAIL });
+    expect(zepto).toHaveBeenCalledTimes(1);
   });
 });
 

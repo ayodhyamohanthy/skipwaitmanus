@@ -73,6 +73,8 @@ describe("login rule: job seeker", () => {
     expect(calls.every(([url]) => !url.startsWith("/api/auth/workos/email-code/"))).toBe(true);
     const seekerSource = readFileSync("client/src/components/SeekerSignIn.tsx", "utf8") + readdirSync("client/src/components/seeker-sign-in").map(file => readFileSync(`client/src/components/seeker-sign-in/${file}`, "utf8")).join("\n");
     expect(seekerSource).not.toContain("/api/auth/workos/email-code/");
+    // D-049 / D-078 ruling 2: no six-digit code of any kind for seekers, WorkOS's included.
+    expect(seekerSource).not.toMatch(/one-time-code|\/api\/auth\/password\/verify-email|Six-digit code/);
   });
 });
 

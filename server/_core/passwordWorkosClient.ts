@@ -17,13 +17,11 @@ type ClientContext = { readonly ipAddress?: string; readonly userAgent?: string 
 
 export type PasswordWorkosClient = {
   authenticateWithPassword(input: { readonly email: string; readonly password: string } & ClientContext): Promise<PasswordAuthentication>;
-  authenticateWithEmailVerification(input: { readonly code: string; readonly pendingAuthenticationToken: string } & ClientContext): Promise<PasswordAuthentication>;
-  createUser(input: { readonly email: string; readonly password?: string } & ClientContext): Promise<PasswordUser>;
-  sendVerificationEmail(input: { readonly userId: string }): Promise<{ readonly user: PasswordUser }>;
-  verifyEmail(input: { readonly userId: string; readonly code: string }): Promise<{ readonly user: PasswordUser }>;
-  getEmailVerification(emailVerificationId: string): Promise<{ readonly userId: string }>;
+  /** Only ever without a password (D-078 ruling 2): the password is set from the emailed reset link. */
+  createUser(input: { readonly email: string } & ClientContext): Promise<PasswordUser>;
   listUsers(input: { readonly email: string; readonly limit: number }): Promise<{ readonly data: readonly PasswordUser[] }>;
-  createPasswordReset(input: { readonly email: string }): Promise<{ readonly passwordResetUrl: string }>;
+  /** SkipWait emails a link to its own /reset-password built from the token (D-078 ruling 6). */
+  createPasswordReset(input: { readonly email: string }): Promise<{ readonly passwordResetToken: string; readonly passwordResetUrl: string }>;
   resetPassword(input: { readonly token: string; readonly newPassword: string }): Promise<{ readonly user: PasswordUser }>;
 };
 
