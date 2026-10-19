@@ -2968,8 +2968,40 @@ export async function confirmReferredBySeeker(tx: LedgerTx, requestId: number, n
   const acceptEventId = Number(latest[0].id);
   const already = await tx.select({ id: referralTransitionEvents.id }).from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId, requestId), eq(referralTransitionEvents.action, "seeker_confirmed_referred"))).limit(1);
   if (already.length > 0) return { confirmed: false, replayed: true };
-  await transitionReferralRequestTx(tx, { requestId, actorUserId, action: "seeker_confirmed_referred", operationKey: `seeker-confirmed:${acceptEventId}`, toStatus: "intro_made", allowedFrom: ["approved"], authorize: row => { if (row.jobSeekerId !== actorUserId) throw new Error("Referral Request not found"); }, patch: {}, notification: { userId: current.referrerId!, title: "The seeker confirmed the referral email", body: "They received your referral email. The referral is recorded." } });
+  await transitionReferralRequestTx(tx, { requestId, actorUserId, action: "seeker_confirmed_referred", operationKey: `seeker-confirmed:${acceptEventId}`, toStatus: "intro_made", allowedFrom: ["approved"], authorize: row => { if (row.jobSeekerId !== actorUserId) throw new Error("Referral Request not found"); }, patch: {}, notification: { userId: current.referrerId!, title: "The seeker confirmed the referral email", body: "They got your referral email. Nothing more is needed from you." } });
   return { confirmed: true };
+}
+
+/** Route-facing wrappers (D-038-B): the Tx functions above are timer-facing and
+ * take the ledger transaction; the referral-action routes carry the signed-in
+ * user, so these open the transaction, prove the actor owns the ask, then
+ * delegate. Ownership failures read "not in your account" so the routes answer
+ * 404, never another person's state. */
+export async function stepBackFromReferralForUser(userId: number, requestId: number, nowMs: number): Promise<{ lapsed: boolean; reason?: string }> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const owner = (await tx.select({ referrerId: referralRequests.referrerId }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1).for("update"))[0];
+    if (!owner || owner.referrerId !== userId) throw new Error("Referral Request not in your account");
+    return stepBackFromReferral(tx, requestId, nowMs);
+  });
+}
+
+export async function extendReferredDeadlineForUser(userId: number, requestId: number, nowMs: number): Promise<{ extended: boolean; replayed?: boolean }> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const owner = (await tx.select({ referrerId: referralRequests.referrerId }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1).for("update"))[0];
+    if (!owner || owner.referrerId !== userId) throw new Error("Referral Request not in your account");
+    return extendReferredDeadlineTx(tx, requestId, nowMs);
+  });
+}
+
+export async function confirmReferredBySeekerForUser(userId: number, requestId: number, nowMs: number): Promise<{ confirmed: boolean; replayed?: boolean }> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const owner = (await tx.select({ jobSeekerId: referralRequests.jobSeekerId }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1).for("update"))[0];
+    if (!owner || owner.jobSeekerId !== userId) throw new Error("Referral Request not in your account");
+    return confirmReferredBySeeker(tx, requestId, nowMs);
+  });
 }
 
 /** D-038-A: candidates for the referral-timers job, bounded and oldest-first per step. */
@@ -3019,7 +3051,7 @@ export async function listReferralTimerCandidates(limit: number, nowMs: number =
     const dueAt = referredDueAtMs(acceptCreatedAt, extended);
     if (nowMs >= dueAt) referredToLapse.push(candidate);
     else {
-      for (const day of REFERRED_REMINDER_DAYS) {
+      for (const day of [...REFERRED_REMINDER_DAYS].sort((a, b) => b - a)) {
         const reminder = referredReminderAtMs(acceptCreatedAt, day);
         if (reminder !== null && nowMs >= reminder) {
           referredToRemind.push({ ...candidate, reminderDay: day });

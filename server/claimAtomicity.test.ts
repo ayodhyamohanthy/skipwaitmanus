@@ -1,5 +1,5 @@
 import {describe,expect,it} from "vitest";import{readFileSync}from"node:fs";
-const s=readFileSync(new URL("./db.ts",import.meta.url),"utf8"),f=s.slice(s.indexOf("export async function claimCompanyReferralRequest"),s.indexOf("export async function getClaimedCompanyReferralDetail"));
+const s=readFileSync(new URL("./db.ts",import.meta.url),"utf8"),f=s.slice(s.indexOf("export async function claimCompanyReferralRequest"),s.indexOf("export async function referralWasClaimedTx"));
 // The claim mechanism moved to the shared transition primitive (revision CAS +
 // per-user operation keys); these guards pin the claim-specific load-bearing
 // elements of the current shape. Transition mechanics themselves are covered
