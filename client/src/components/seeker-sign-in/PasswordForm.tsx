@@ -66,7 +66,8 @@ export function PasswordForm({ mode, email, onEmailChange, returnTo, onCheckEmai
         </>}
     {error ? <p role="alert" className="text-sm text-[#B91C1C]">{error}</p> : null}
     <Button type="submit" disabled={busy || !ready}>{busy ? (creating ? "Creating account…" : "Signing in…") : (creating ? "Create account" : "Sign in")} <ArrowRight /></Button>
-    {creating ? null : <p className="text-xs leading-relaxed text-muted-foreground">Signed in with a code before? Create a password with the same email — it’s the same account.</p>}
+    {/* D-078 ruling 8: the email code is retired; a code-only seeker sets a password through Forgot password. */}
+    {creating ? null : <p className="text-xs leading-relaxed text-muted-foreground">Signed in with a code before? Use Forgot password to set one. It&apos;s the same account.</p>}
     <Button type="button" variant="ghost" onClick={onBack}>Use another method</Button>
   </form>;
 }

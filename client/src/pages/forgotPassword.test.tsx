@@ -33,6 +33,8 @@ describe("the forgot page is neutral and parses the response", () => {
     requestReset(" Asha@Gmail.com ");
     expect(await screen.findByText("Check your email.")).toBeTruthy();
     expect(screen.getByText(/If asha@gmail\.com has a SkipWait account/)).toBeTruthy();
+    // D-078 ruling 8: an older account with no password and no code sign-in gets nothing from forgot; sign-up joins it.
+    expect(screen.getByText("No email after a few minutes? Create an account with the same address; it joins your existing account.")).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/1 hour|an hour/);
     expect(calls).toEqual([{ url: "/api/auth/password/forgot", body: { email: "asha@gmail.com" } }]);
   });
@@ -49,6 +51,11 @@ describe("the forgot page is neutral and parses the response", () => {
     requestReset("asha@gmail.com");
     expect((await screen.findByRole("alert")).textContent).toBe(PASSWORD_AUTH_COPY.temporarily_unavailable);
     expect(screen.queryByText("Check your email.")).toBeNull();
+  });
+
+  it("is titled for setting a first password as well as resetting one (D-078 ruling 8)", () => {
+    render(<ForgotPassword />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Set or reset your password");
   });
 
   it("points referrers to the work-email sign-in", () => {

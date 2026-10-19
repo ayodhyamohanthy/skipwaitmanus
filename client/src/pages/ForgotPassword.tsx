@@ -35,7 +35,7 @@ export default function ForgotPassword() {
         </Link>
         {!sentTo ? (
           <section className="mt-10">
-            <h1 className="text-3xl font-semibold tracking-[-.02em]">Forgot your password?</h1>
+            <h1 className="text-3xl font-semibold tracking-[-.02em]">Set or reset your password</h1>
             <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
               Enter the email you sign in with. We&apos;ll send a link to set a new password.
             </p>
@@ -72,6 +72,9 @@ export default function ForgotPassword() {
             <h1 className="mt-4 text-2xl font-semibold">Check your email.</h1>
             <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
               If {sentTo} has a SkipWait account, we&apos;ve sent a link to set a new password. It can take a few minutes; check spam too.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
+              No email after a few minutes? Create an account with the same address; it joins your existing account.
             </p>
             <button type="button" onClick={() => setSentTo("")} className="brand-button-secondary mt-6">
               Use a different email
