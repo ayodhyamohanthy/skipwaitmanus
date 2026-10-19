@@ -2972,6 +2972,38 @@ export async function confirmReferredBySeeker(tx: LedgerTx, requestId: number, n
   return { confirmed: true };
 }
 
+/** Route-facing wrappers (D-038-B): the Tx functions above are timer-facing and
+ * take the ledger transaction; the referral-action routes carry the signed-in
+ * user, so these open the transaction, prove the actor owns the ask, then
+ * delegate. Ownership failures read "not in your account" so the routes answer
+ * 404, never another person's state. */
+export async function stepBackFromReferralForUser(userId: number, requestId: number, nowMs: number): Promise<{ lapsed: boolean; reason?: string }> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const owner = (await tx.select({ referrerId: referralRequests.referrerId }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1).for("update"))[0];
+    if (!owner || owner.referrerId !== userId) throw new Error("Referral Request not in your account");
+    return stepBackFromReferral(tx, requestId, nowMs);
+  });
+}
+
+export async function extendReferredDeadlineForUser(userId: number, requestId: number, nowMs: number): Promise<{ extended: boolean; replayed?: boolean }> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const owner = (await tx.select({ referrerId: referralRequests.referrerId }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1).for("update"))[0];
+    if (!owner || owner.referrerId !== userId) throw new Error("Referral Request not in your account");
+    return extendReferredDeadlineTx(tx, requestId, nowMs);
+  });
+}
+
+export async function confirmReferredBySeekerForUser(userId: number, requestId: number, nowMs: number): Promise<{ confirmed: boolean; replayed?: boolean }> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const owner = (await tx.select({ jobSeekerId: referralRequests.jobSeekerId }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1).for("update"))[0];
+    if (!owner || owner.jobSeekerId !== userId) throw new Error("Referral Request not in your account");
+    return confirmReferredBySeeker(tx, requestId, nowMs);
+  });
+}
+
 /** D-038-A: candidates for the referral-timers job, bounded and oldest-first per step. */
 export type ReferralTimerCandidate = { id: number; referrerId: number; companyDomain: string; claimEventId?: number; claimCreatedAt?: number; slotId?: number; coverageVisibleAt?: number | null; acceptEventId?: number; acceptCreatedAt?: number; extended?: boolean; reminderDay?: number };
 
@@ -3019,7 +3051,7 @@ export async function listReferralTimerCandidates(limit: number, nowMs: number =
     const dueAt = referredDueAtMs(acceptCreatedAt, extended);
     if (nowMs >= dueAt) referredToLapse.push(candidate);
     else {
-      for (const day of REFERRED_REMINDER_DAYS) {
+      for (const day of [...REFERRED_REMINDER_DAYS].sort((a, b) => b - a)) {
         const reminder = referredReminderAtMs(acceptCreatedAt, day);
         if (reminder !== null && nowMs >= reminder) {
           referredToRemind.push({ ...candidate, reminderDay: day });
