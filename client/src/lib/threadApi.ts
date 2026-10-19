@@ -72,6 +72,9 @@ const detailSchema = z.object({
     referrerId: z.number().int().nullish(),
     status: statusSchema,
     attachments: z.array(attachmentSchema).nullish(),
+    decisionDueAt: z.string().nullish(),
+    referredDueAt: z.string().nullish(),
+    extensionUsed: z.boolean().nullish(),
   }),
 });
 
@@ -109,6 +112,12 @@ export type ThreadRequest = {
   unclaimedAssignment?: boolean;
   /** Seeker side only: coverage state of a pending ask (D-034/D-047/D-061). */
   queueStatus?: "available_for_review" | "waiting_for_coverage" | "held_for_credit" | null;
+  /** Referrer side only: when the viewer's own claim/allocation decision is due (D-038-A). */
+  decisionDueAt?: string | null;
+  /** Referrer side only: when the Referred decision is due for an accepted ask (D-038-B). */
+  referredDueAt?: string | null;
+  /** Referrer side only: whether the one 3-day extension was already used (D-038-B). */
+  extensionUsed?: boolean;
 };
 export type ThreadMessage = { id: number; body: string; isMine: boolean };
 export type ThreadRole = "seeker" | "referrer-pending" | "referrer-claimed";
@@ -179,7 +188,7 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
     request: {
       id: request.id, title: request.title ?? null, pitch: request.candidateMessage ?? null, candidateName: accepted ? request.candidateName ?? null : null,
       targetRoleUrl: request.targetRoleUrl ?? null, companyDomain: request.companyDomain, companyName: request.companyName ?? null, companyInitials: request.companyInitials ?? null, jobFunction: request.jobFunction ?? null, status: request.status, referrerId: request.referrerId ?? null,
-      referrerMessage: null, createdAt: null, attachments: accepted ? attachments : [], attachmentCount: request.attachments?.length ?? 0,
+      referrerMessage: null, createdAt: null, attachments: accepted ? attachments : [], attachmentCount: request.attachments?.length ?? 0, decisionDueAt: request.decisionDueAt ?? null, referredDueAt: request.referredDueAt ?? null, extensionUsed: request.extensionUsed ?? false,
     },
   };
 }
@@ -207,4 +216,16 @@ export async function recordProgress(requestId: number, status: string, getToken
 
 export async function withdrawThreadRequest(requestId: number, getToken: TokenGetter) {
   return authedFetch(`/api/company-referrals/${requestId}/withdraw`, getToken, { method: "POST" });
+}
+
+export async function extendReferredDeadline(requestId: number, getToken: TokenGetter) {
+  return authedFetch(`/api/company-referrals/${requestId}/extend-referred-deadline`, getToken, { method: "POST" });
+}
+
+export async function stepBackFromReferral(requestId: number, getToken: TokenGetter) {
+  return authedFetch(`/api/company-referrals/${requestId}/step-back`, getToken, { method: "POST" });
+}
+
+export async function confirmReferredBySeeker(requestId: number, getToken: TokenGetter) {
+  return authedFetch(`/api/company-referrals/${requestId}/confirm-referred`, getToken, { method: "POST" });
 }

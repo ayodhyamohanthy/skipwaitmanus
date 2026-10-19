@@ -78,6 +78,63 @@ export const ASK_TTL_MS = ASK_TTL_DAYS * 24 * 60 * 60 * 1000;
 /** D-061: an ask at a company with no available verified referrer waits up to this long at no cost. */
 export const COVERAGE_WAIT_DAYS = 90;
 export const COVERAGE_WAIT_MS = COVERAGE_WAIT_DAYS * 24 * 60 * 60 * 1000;
+
+/** D-038-A / D-076 (5): the claim and allocation timers only run for events at or after this instant,
+ * set to the UTC midnight after the day this ships, so nothing lapses before referrers have had
+ * 48 hours under the new rule. Claims and allocations made before it keep the old lifecycle. */
+export const REFERRAL_TIMERS_SINCE = new Date("2026-10-20T00:00:00.000Z").getTime();
+
+const HOUR_MS = 60 * 60 * 1000;
+export const CLAIM_LAPSE_HOURS = 48;
+export const CLAIM_LAPSE_MS = CLAIM_LAPSE_HOURS * HOUR_MS;
+export const CLAIM_REMINDER_HOURS = 24;
+export const CLAIM_REMINDER_MS = CLAIM_REMINDER_HOURS * HOUR_MS;
+/** D-038-A: a referrer holds at most this many open claims at once. */
+export const MAX_ACTIVE_CLAIMS = 5;
+
+/** The instant a claim lapses: 48 h after the claim event, but never before REFERRAL_TIMERS_SINCE + 48 h. */
+export function claimLapseAtMs(claimCreatedAt: number): number {
+  return Math.max(claimCreatedAt, REFERRAL_TIMERS_SINCE) + CLAIM_LAPSE_MS;
+}
+
+/** The instant an allocation lapses: 48 h after first visibility (coverageVisibleAt), but never before REFERRAL_TIMERS_SINCE + 48 h.
+ * Never read the slot's openedAt (a database clock) for timing. */
+export function allocationLapseAtMs(coverageVisibleAt: number | null | undefined): number {
+  const visibleAtMs = coverageVisibleAt == null ? null : createdAtMs(coverageVisibleAt);
+  const visibleAt = visibleAtMs == null ? REFERRAL_TIMERS_SINCE : Math.max(visibleAtMs, REFERRAL_TIMERS_SINCE);
+  return visibleAt + CLAIM_LAPSE_MS;
+}
+
+/** The instant the 24-hour reminder is due: one day before the lapse. */
+export function reminderAtMs(lapseAtMs: number): number {
+  return lapseAtMs - CLAIM_REMINDER_MS;
+}
+
+/** D-038-B: an accepted ask must be marked Referred within this many days. */
+export const REFERRED_LAPSE_DAYS = 5;
+/** D-038-B: one optional extension moves the deadline by this many days (5 -> 8). */
+export const REFERRED_EXTENSION_DAYS = 3;
+/** D-038-B: reminder days after acceptance, before the deadline. */
+export const REFERRED_REMINDER_DAYS = [2, 4] as const;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The instant an accepted ask's Referred deadline is due: 5 days from acceptance,
+ * or 8 days once the one extension was used, but never before REFERRAL_TIMERS_SINCE + 5 days. */
+export function referredDueAtMs(acceptedAtMs: number, extended: boolean): number {
+  const base = Math.max(acceptedAtMs, REFERRAL_TIMERS_SINCE);
+  return base + (extended ? REFERRED_LAPSE_DAYS + REFERRED_EXTENSION_DAYS : REFERRED_LAPSE_DAYS) * DAY_MS;
+}
+
+/** The instant a day-N reminder is due: N days after acceptance, clamped to not
+ * run before REFERRAL_TIMERS_SINCE. Returns null when the day is past the deadline. */
+export function referredReminderAtMs(acceptedAtMs: number, day: (typeof REFERRED_REMINDER_DAYS)[number]): number | null {
+  const base = Math.max(acceptedAtMs, REFERRAL_TIMERS_SINCE);
+  const reminder = base + day * DAY_MS;
+  const due = referredDueAtMs(acceptedAtMs, false);
+  return reminder >= due ? null : reminder;
+}
+
 /** Cards and urgency copy treat an ask as "expiring soon" inside this window. */
 export const ASK_EXPIRING_SOON_DAYS = 2;
 export const ASK_EXPIRING_SOON_MS = ASK_EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000;

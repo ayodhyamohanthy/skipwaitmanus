@@ -10,7 +10,7 @@
 | Size | M |
 | Implementer | senior model only |
 | Branch | `agent/instinct/card-validation` from the latest `origin/main` |
-| Depends on | none on main; production enablement waits on the owner's Chargebee dashboard check (§12 Q1) |
+| Depends on | none on main; Q1/Q-USD resolved per §12. Oct 19 enable attempt rolled back same hour (#327/#328): the Validate-your-card CTA rendered only on an unrouted page, so locked seekers had no unlock path. CTA moved to /plans (fix/d079-validate-cta-plans); re-enable waits a fresh owner yes after QA verifies the button path |
 | Do not run at the same time as | D-038-A, D-038-B, D-035 (same wallet/cycle functions in `server/db.ts` + `server/creditCycles.ts`), D-065-B (same check file) |
 | Verified against | `main` `b60eda03` on 2026-10-19 |
 

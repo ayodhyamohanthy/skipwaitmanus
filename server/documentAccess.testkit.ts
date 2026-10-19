@@ -13,7 +13,7 @@
 import express from "express";
 import { jobs, profiles, referralAttachments, referralDocumentAccessGrants, referralRequestPasses, referralRequests, referralTransitionEvents, referrerReviewEmailLinks, tokenBalances, tokenTransactions, userBlocks, users } from "../drizzle/schema";
 import { createInMemoryDrizzle, type Row } from "./inMemoryDrizzle.testkit";
-import { claimCompanyReferralRequest, getAccessibleReferralAttachment, getClaimedCompanyReferralDetail, oneClickReviewReferralRequest, reviewReferralRequest } from "./db";
+import { claimCompanyReferralRequest, getAccessibleReferralAttachment, getClaimedCompanyReferralDetail, oneClickReviewReferralRequest, reviewReferralRequest, extendReferredDeadlineTx, stepBackFromReferral, confirmReferredBySeeker, lapseReferredTx } from "./db";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
 
 export const SEEKER = 7;
@@ -99,6 +99,7 @@ export function documentAccessApp(activity: RecordedActivity[] = [], options: { 
     recordActivity: async entry => { activity.push(entry); },
     storageGetSignedUrl: async key => `https://signed.example/${key}`,
     getAccessibleReferralAttachment, claimCompanyReferralRequest, getClaimedCompanyReferralDetail, oneClickReviewReferralRequest, reviewReferralRequest,
+    extendReferredDeadlineTx: unusedDep("extendReferredDeadlineTx"), stepBackFromReferral: unusedDep("stepBackFromReferral"), confirmReferredBySeeker: unusedDep("confirmReferredBySeeker"), lapseReferredTx: unusedDep("lapseReferredTx"),
   });
   return server;
 }
