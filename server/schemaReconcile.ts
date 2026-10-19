@@ -136,6 +136,8 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   // and ledger kind ENUM widenings are applied by the migration only.
   { table: "tokenBalances", column: "trialStartedAt", definition: "TIMESTAMP NULL" },
   { table: "tokenBalances", column: "trialEndsAt", definition: "TIMESTAMP NULL" },
+  // Free monthly credits eligibility (0096): null until the provider confirms a saved payment source.
+  { table: "tokenBalances", column: "paymentMethodOnFileAt", definition: "TIMESTAMP NULL" },
   // D-022 referrer-posted roles (0094). Post expiry is added defensively as NULL here;
   // 0094 backfills each row to its pre-migration visible state (hiring-now: createdAt +
   // 30 days; walk-ins: walkInEndsAt, malformed end-less walk-ins stay hidden) and

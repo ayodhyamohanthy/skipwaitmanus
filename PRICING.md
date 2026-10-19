@@ -18,7 +18,7 @@ auto-renew: we send a reminder and a one-tap re-buy instead.
 
 | Plan | Price 30 days | Price 90 days | Plan credits / month | Rollover | Open asks |
 |---|---|---|---|---|---|
-| Free (never a card) | $0 | — | 3, no welcome credits | none | 3 |
+| Free (card unlocks the monthly credits) | $0 | — | 3, no welcome credits | none | 3 |
 | Keep warm | — (yearly $29 / ₹999) | — | 4 | 1 month | 5 |
 | Start | $8 / ₹299 | $19 / ₹699 | 10 | 1 month | 8 |
 | Momentum (recommended) | $24 / ₹999 | $59 / ₹2,499 | 36 | 3 months | 15 |
@@ -28,6 +28,9 @@ auto-renew: we send a reminder and a one-tap re-buy instead.
 
 - USD is the one global price. India sees the INR "India price"; GST wording appears only once a
   GSTIN exists (`INDIA_GST_REGISTERED`, off — Indian sole proprietorship, Udyam MSME; see D-007).
+- Free's 3 credits a month are granted only while a payment method is on file (D-079). Without
+  one the month opens empty and the /billing screen asks for a card; nothing is charged when it is
+  saved, and a card added mid-month still grants that month.
 - The one-time 14-day reverse trial (Momentum's 15 open asks and 5 trial credits, no card, once
   per person) stays in code but is not offered: nothing grants it yet, so the public catalog and
   every screen leave it out until its trigger ships (D-051; `REVERSE_TRIAL_ON_OFFER` is off;

@@ -11,27 +11,109 @@ vi.mock("@shared/planCatalog", async importOriginal => ({ ...(await importOrigin
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ ...authState, getToken }), SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
 vi.mock("wouter", () => ({ Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>, useLocation: () => ["/billing"] }));
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); authState.isSignedIn = true; });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); authState.isSignedIn = true; try { window.localStorage.clear(); } catch { /* jsdom without storage */ } });
 
 const ok = (json: unknown) => ({ ok: true, json: async () => json });
+const fail = (status: number, error: string) => ({ ok: false, status, json: async () => ({ error }) });
+
+/** Routes the three reads /billing makes; anything unrouted answers like the real server would. */
+function stubFetch(options: { summary: unknown; receipts?: unknown[]; methods?: unknown; onSession?: () => unknown }) {
+  const mock = vi.fn(async (url: string) => {
+    const target = String(url);
+    if (target.includes("/billing/payment-methods/session")) return (options.onSession?.() ?? ok({ url: "https://skipwait-test.chargebee.com/hosted/ps_manage" }));
+    if (target.includes("/billing/payment-methods")) return ok(options.methods ?? { methods: [], customer: false });
+    if (target.includes("/billing/receipts")) return ok({ receipts: options.receipts ?? [] });
+    return ok({ summary: options.summary });
+  });
+  vi.stubGlobal("fetch", mock);
+  return mock;
+}
+
 // As GET /api/credits/summary sends them: the caller's open-ask slots and the ledger block ride on the summary.
 const slots = (plan: string, cap: number) => ({ plan, planLabel: plan === "free" ? "Free" : "Pro", open: 1, cap, full: false, nextPlan: null });
 const ledger = (creditsPerMonth: number, balance: number) => ({ balance, buckets: { cycle: balance, carriedOver: 0, trial: 0, welcome: 0, purchased: 0, promo: 0 }, creditsPerMonth, carryover: creditsPerMonth > 0 ? 1 : 0, cycle: { key: "2026-10", startsAt: null, endsAt: null, granted: creditsPerMonth, used: 0 }, planCreditsRemaining: balance, nextExpiry: null, planCreditsExpiringSoon: null, welcome: { granted: false, credits: 0, remaining: 0 } });
-const freeSummary = { plan: "free", monthlyAllowance: 0, monthlyCreditsRemaining: 0, totalAvailable: 3, subscriptionStatus: null, subscriptionCurrentTermEnd: null, slots: slots("free", 3), ledger: ledger(0, 3) };
-const proSummary = { plan: "pro", monthlyAllowance: 10, monthlyCreditsRemaining: 7, totalAvailable: 9, subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z", slots: slots("pro", 10), ledger: ledger(10, 9) };
+// No card on file: the month grants nothing, so the wallet holds only what was bought.
+const freeSummary = { plan: "free", monthlyAllowance: 0, monthlyCreditsRemaining: 0, totalAvailable: 3, subscriptionStatus: null, subscriptionCurrentTermEnd: null, slots: slots("free", 3), ledger: ledger(0, 3), paymentMethodOnFile: false };
+const proSummary = { plan: "pro", monthlyAllowance: 10, monthlyCreditsRemaining: 7, totalAvailable: 9, subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z", slots: slots("pro", 10), ledger: ledger(10, 9), paymentMethodOnFile: true };
+const savedCard = { methods: [{ id: "ps_1", type: "card", label: "Visa •••• 4242", detail: "Default · expires 08/28", isDefault: true }], customer: true };
 
 describe("Billing page", () => {
-  it("shows the free plan with an empty receipt ledger, never invented methods", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ok({ summary: freeSummary, receipts: [] })));
+  it("shows the free plan, the payment-method prompt, and no invented methods", async () => {
+    stubFetch({ summary: freeSummary });
     render(<Billing />);
     expect(await screen.findByRole("heading", { name: "Free" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Manage plan." })).toBeTruthy();
     expect(screen.getByText("3 open asks · buy credits anytime")).toBeTruthy();
     expect(screen.getByText("No payments yet.")).toBeTruthy();
-    expect(screen.getByText(/never sees or stores them/)).toBeTruthy();
-    expect(screen.queryByText(/Visa|UPI|PayPal|4242|Make default|Add payment method/)).toBeNull();
+    // The prompt the screenshot asks for, and the honest reason a 0-credit wallet is not broken.
+    expect(screen.getByText("Add a payment method to become eligible for free monthly credits.")).toBeTruthy();
+    expect(screen.getByText(/this month's free credits are paused/)).toBeTruthy();
+    expect(screen.getByText("No payment method on file. Free monthly credits stay paused until one is saved.")).toBeTruthy();
+    expect(screen.getByText(/Cards are saved by the payment provider, never by SkipWait/)).toBeTruthy();
+    expect(screen.queryByText(/Visa|UPI|PayPal|4242|Make default/)).toBeNull();
     expect(screen.getByRole("link", { name: /Upgrade/ }).getAttribute("href")).toBe("/plans");
     expect(document.body.textContent).not.toMatch(/DESIGN PREVIEW|Preview state|EXAMPLE RECEIPTS|Momentum|PLACEHOLDERS/);
+  });
+
+  it("lists the saved methods the provider holds, with no prompt once a card is on file", async () => {
+    stubFetch({ summary: proSummary, methods: savedCard });
+    render(<Billing />);
+    expect(await screen.findByRole("heading", { name: "Pro" })).toBeTruthy();
+    expect(await screen.findByText(/Visa •••• 4242/)).toBeTruthy();
+    expect(screen.getByText(/Default · expires 08\/28/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Manage payment methods" })).toBeTruthy();
+    expect(screen.queryByText("Add a payment method to become eligible for free monthly credits.")).toBeNull();
+  });
+
+  it("dismisses the prompt without losing the reason, because the panel keeps saying it", async () => {
+    stubFetch({ summary: freeSummary });
+    render(<Billing />);
+    fireEvent.click(await screen.findByRole("button", { name: "Dismiss the payment method prompt" }));
+    expect(screen.queryByText("Add a payment method to become eligible for free monthly credits.")).toBeNull();
+    expect(screen.getByText("No payment method on file. Free monthly credits stay paused until one is saved.")).toBeTruthy();
+  });
+
+  it("opens the hosted card page through the server, never with card fields of its own", async () => {
+    const fetchMock = stubFetch({ summary: freeSummary, onSession: () => fail(502, "We could not open the secure card page") });
+    render(<Billing />);
+    fireEvent.click(await screen.findByRole("button", { name: "Add a payment method to unlock free monthly credits" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/billing/payment-methods/session?role=job_seeker", expect.objectContaining({ method: "POST", body: JSON.stringify({ returnTo: "methods" }) })));
+    expect((await screen.findByRole("alert")).textContent).toContain("We could not open the secure card page");
+    // No card number, expiry or CVV input exists on this page at all.
+    expect(document.querySelector("input[autocomplete='cc-number']")).toBeNull();
+  });
+
+  it("still shows the plan and receipts when the provider cannot be reached", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      const target = String(url);
+      if (target.includes("/billing/payment-methods")) return fail(502, "We could not reach the payment provider. Try again in a moment.");
+      if (target.includes("/billing/receipts")) return ok({ receipts: [] });
+      return ok({ summary: freeSummary });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Billing />);
+    expect(await screen.findByRole("heading", { name: "Free" })).toBeTruthy();
+    expect((await screen.findByRole("alert")).textContent).toContain("could not reach the payment provider");
+    // The panel does not claim "no card" when it simply could not ask.
+    expect(screen.queryByText("No payment method on file. Free monthly credits stay paused until one is saved.")).toBeNull();
+  });
+
+  it("re-reads the credits when the provider reports a card the summary did not know about", async () => {
+    let summaryCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      const target = String(url);
+      if (target.includes("/billing/payment-methods")) return ok(savedCard);
+      if (target.includes("/billing/receipts")) return ok({ receipts: [] });
+      summaryCalls += 1;
+      // First read predates the card; the second one is the month it unlocks.
+      return ok({ summary: summaryCalls === 1 ? freeSummary : { ...freeSummary, monthlyAllowance: 3, monthlyCreditsRemaining: 3, paymentMethodOnFile: true } });
+    }));
+    render(<Billing />);
+    await waitFor(() => expect(summaryCalls).toBe(2));
+    await waitFor(() => expect(screen.queryByText("Add a payment method to become eligible for free monthly credits.")).toBeNull());
+    expect(screen.queryByText(/this month's free credits are paused/)).toBeNull();
+    // Exactly one re-read: the loop guard holds.
+    expect(summaryCalls).toBe(2);
   });
 
   it("shows an active plan, real receipts, and walks cancellation to kept access", async () => {
@@ -40,8 +122,10 @@ describe("Billing page", () => {
       { id: 1, provider: "chargebee", amount: 9900, currency: "INR", tokenCount: 1, status: "refunded", providerInvoiceId: "inv-1", createdAt: "2026-09-06T06:00:00.000Z" },
     ];
     const fetchMock = vi.fn(async (url: string) => {
-      if (String(url).includes("/subscription-cancel")) return ok({ currentTermEnd: "2026-11-06T00:00:00.000Z" });
-      if (String(url).includes("/billing/receipts")) return ok({ receipts });
+      const target = String(url);
+      if (target.includes("/subscription-cancel")) return ok({ currentTermEnd: "2026-11-06T00:00:00.000Z" });
+      if (target.includes("/billing/payment-methods")) return ok(savedCard);
+      if (target.includes("/billing/receipts")) return ok({ receipts });
       return ok({ summary: proSummary });
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -67,8 +151,10 @@ describe("Billing page", () => {
 
   it("keeps the plan when the user backs out, and announces a failed cancellation in the dialog", async () => {
     const fetchMock = vi.fn(async (url: string) => {
-      if (String(url).includes("/subscription-cancel")) return { ok: false, status: 502, json: async () => ({ error: "We could not schedule your cancellation" }) };
-      if (String(url).includes("/billing/receipts")) return ok({ receipts: [] });
+      const target = String(url);
+      if (target.includes("/subscription-cancel")) return fail(502, "We could not schedule your cancellation");
+      if (target.includes("/billing/payment-methods")) return ok(savedCard);
+      if (target.includes("/billing/receipts")) return ok({ receipts: [] });
       return ok({ summary: proSummary });
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -84,7 +170,7 @@ describe("Billing page", () => {
   });
 
   it("shows a non-renewing plan as ending, with no cancel action", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: { ...proSummary, subscriptionStatus: "non_renewing" } })));
+    stubFetch({ summary: { ...proSummary, subscriptionStatus: "non_renewing" }, methods: savedCard });
     render(<Billing />);
     expect(await screen.findByText("Ends 6 Nov 2026 — you keep everything until then.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Cancel plan" })).toBeNull();
@@ -92,12 +178,12 @@ describe("Billing page", () => {
 
   it("leaves out open asks and monthly credits the server did not send, never guessing them", async () => {
     const { slots: _slots, ledger: _ledger, ...bare } = proSummary;
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: bare })));
+    stubFetch({ summary: bare, methods: savedCard });
     render(<Billing />);
     expect(await screen.findByText("Renews 6 Nov 2026")).toBeTruthy();
     cleanup();
     const { slots: _freeSlots, ...bareFree } = freeSummary;
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: bareFree })));
+    stubFetch({ summary: bareFree });
     render(<Billing />);
     expect(await screen.findByText("Buy credits anytime")).toBeTruthy();
   });
@@ -106,21 +192,30 @@ describe("Billing page", () => {
     let online = false;
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (!online) throw new TypeError("Failed to fetch");
-      return String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: freeSummary });
+      if (String(url).includes("/billing/payment-methods")) return ok({ methods: [], customer: false });
+      if (String(url).includes("/billing/receipts")) return ok({ receipts: [] });
+      return ok({ summary: freeSummary });
     }));
     render(<Billing />);
     expect((await screen.findByRole("alert")).textContent).toContain("Check your connection");
     online = true;
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByRole("heading", { name: "Free" })).toBeTruthy();
-    expect(screen.queryByRole("alert")).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
   });
 
   it("treats a malformed summary as a failed load, never as an empty account", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: { plan: "pro" } })));
+    stubFetch({ summary: { plan: "pro" } });
     render(<Billing />);
     expect((await screen.findByRole("alert")).textContent).toContain("We could not load your plan");
     expect(screen.queryByRole("heading", { name: "Free" })).toBeNull();
+  });
+
+  it("treats a summary without the eligibility fact as a failed load, never as a card on file", async () => {
+    const { paymentMethodOnFile: _eligible, ...older } = freeSummary;
+    stubFetch({ summary: older });
+    render(<Billing />);
+    expect((await screen.findByRole("alert")).textContent).toContain("We could not load your plan");
   });
 
   it("asks signed-out visitors to sign in", () => {

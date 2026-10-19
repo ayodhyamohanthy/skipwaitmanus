@@ -727,6 +727,11 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   // clock, when a Free seeker's ask starts it; the trial credits are a planCreditGrants "trial" row.
   trialStartedAt: timestamp("trialStartedAt"),
   trialEndsAt: timestamp("trialEndsAt"),
+  // Free monthly credits eligibility (0096). Set from the JS clock when the provider confirms the
+  // member has a usable saved payment source, cleared when the last one is removed. A Free seeker
+  // month is granted only while this is set (server/creditCycles.ts openCycleTx), so a null here is
+  // the "add a payment method" state the billing screen prompts for, never a broken wallet.
+  paymentMethodOnFileAt: timestamp("paymentMethodOnFileAt"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("token_balances_user_idx").on(table.userId), uniqueIndex("token_balances_user_role_unique").on(table.userId, table.role), uniqueIndex("token_balances_subscription_unique").on(table.subscriptionId)]);
 

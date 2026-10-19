@@ -34,6 +34,7 @@
           "cycleKey": "2026-10",
           "subscriptionStatus": null,
           "subscriptionCurrentTermEnd": null,
+          "paymentMethodOnFile": false,
           "ledger": {
             "balance": 2,
             "buckets": {
@@ -118,6 +119,16 @@
             "createdAt": "2026-08-21T09:10:00.000Z"
           }
         ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/payment-methods",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "methods": [],
+        "customer": false
       }
     }
   ]
