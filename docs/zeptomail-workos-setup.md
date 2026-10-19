@@ -34,7 +34,7 @@ Seekers never see a hosted WorkOS (authkit.app) page (D-030, D-049): every "Sign
    - `WORKOS_POST_SIGNIN_PATH=/` (optional)
    - `PUBLIC_BASE_URL=https://skipwait.me` — the origin of every emailed password link
    - `VITE_WORKOS_ENABLED` is still set by `deploy-pages.yml` but no client code reads it: `startLogin()` always opens skipwait.me's `/sign-in`.
-5. Dashboard steps before the seeker-password release (owner only; plan §6 has the current list): Email + Password on (the admin's hosted methods kept); Password reset URL = `https://skipwait.me/reset-password`; WorkOS's own **Password reset** email switched **off** (SkipWait sends the links itself through ZeptoMail, D-078 ruling 6, one email per link, at most 3 per address per hour), with no custom email provider configured; no required MFA and no Radar email/SMS challenge for seekers; the Google connection confirmed.
+5. Dashboard steps before the seeker-password release (owner only; plan §6 has the current list): Email + Password on (the admin's hosted methods kept); Password reset URL = `https://skipwait.me/reset-password`; WorkOS's own **Email verification** and **Password reset** emails switched **off** (SkipWait sends the links itself through ZeptoMail, D-078 ruling 6, one email per link, at most 3 per address per hour), with no custom email provider configured; no required MFA and no Radar email/SMS challenge for seekers; the Google connection confirmed.
 6. Referrers never use WorkOS to sign in: their sign-in and verification are the work-email code only (D-030 as amended by D-049/D-057). A verified referrer's work email is refused on the social callback and never reaches WorkOS from sign-up or reset.
 
 ## 3. What changed in the code
