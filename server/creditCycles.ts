@@ -20,7 +20,7 @@ import { CreditSpendConflictError, asLedgerGrant, cycleRulesFor, digest, readGra
  */
 export async function rollCycleTx(tx: LedgerTx, input: { wallet: WalletRow; next: { startsAt: Date; key: string }; plan: string; subscriptionId: string | null; now: Date }): Promise<CyclePatch> {
   await closeCycleTx(tx, input);
-  return openCycleTx(tx, { userId: input.wallet.userId, role: input.wallet.role, next: input.next, plan: input.plan, subscriptionId: input.subscriptionId });
+  return openCycleTx(tx, { userId: input.wallet.userId, role: input.wallet.role, next: input.next, plan: input.plan, subscriptionId: input.subscriptionId, paymentMethodOnFile: hasPaymentMethodOnFile(input.wallet) });
 }
 
 /** Carries or expires what the wallet's current cycle left unspent (see rollCycleTx). */
@@ -58,10 +58,18 @@ async function planGrantRecordedTx(tx: LedgerTx, userId: number, role: WalletRol
  * same cycle fails on the unique index instead of paying twice. A Free cycle is
  * keyed by its calendar month: Free gets its 3 credits once per person per
  * month, however many times the wallet returns to Free inside that month.
+ *
+ * A Free *seeker* month also requires a payment method on file (0096). Without
+ * one the cycle still opens — the month advances and the key is consumed — but
+ * it grants 0, so no credit and no ledger row is invented. Confirm a card later
+ * in the same month and reconcileSeekerWalletTx grants that month's allowance
+ * through the same idempotency key, so a member never loses a month to the order
+ * in which they added the card.
  */
-export async function openCycleTx(tx: LedgerTx, input: { userId: number; role: WalletRole; next: { startsAt: Date; key: string }; plan: string; subscriptionId: string | null }): Promise<CyclePatch> {
+export async function openCycleTx(tx: LedgerTx, input: { userId: number; role: WalletRole; next: { startsAt: Date; key: string }; plan: string; subscriptionId: string | null; paymentMethodOnFile: boolean }): Promise<CyclePatch> {
   const { userId, role, next } = input;
   let allowance = cycleRulesFor(input.plan, role).creditsPerMonth;
+  if (allowance > 0 && !freeMonthEligible(input.plan, role, input.paymentMethodOnFile)) allowance = 0;
   if (allowance > 0) {
     const cycleId = input.subscriptionId ? digest(input.subscriptionId, next.startsAt.toISOString()) : digest("free", next.key);
     const idempotencyKey = `plan-cycle:${cycleId}`;
@@ -70,6 +78,24 @@ export async function openCycleTx(tx: LedgerTx, input: { userId: number; role: W
   }
   return { monthlyAllowance: allowance, monthlyCreditsRemaining: allowance, monthlyCycleKey: next.key };
 }
+
+/**
+ * Whether a cycle may grant this plan's credits at all. Only the Free seeker
+ * month is conditional: a paid term was paid for, and referrer wallets keep
+ * their pre-kit 3 a month, so neither is gated on a card.
+ */
+function freeMonthEligible(plan: string, role: WalletRole, paymentMethodOnFile: boolean): boolean {
+  return plan !== "free" || role !== "job_seeker" || paymentMethodOnFile;
+}
+
+/** True when this wallet carries a confirmed saved payment source (0096). */
+export function hasPaymentMethodOnFile(wallet: WalletRow): boolean {
+  // Truthiness, not `!== null`: a row built before the column existed carries
+  // `undefined`, and reading that as "card on file" would grant free credits
+  // nobody has a card for.
+  return Boolean(wallet.paymentMethodOnFileAt);
+}
+
 
 /** The cycle a new or renewed term opens: the term's current monthly cycle, else the term start's month. */
 export function termOpeningCycle(termStart: Date | undefined, termEnd: Date | undefined, now: Date): { startsAt: Date; key: string } {
@@ -100,7 +126,16 @@ async function expireGrantsTx(tx: LedgerTx, wallet: WalletRow, grants: GrantRow[
 export function seekerCycleDue(wallet: WalletRow, now: Date): boolean {
   if (wallet.plan !== "free" && isPaidPlanActive(wallet, now)) return paidCycleSteps(wallet, now).length > 0;
   if (paidPlanLapsed(wallet, now)) return true;
-  return wallet.plan === "free" && freeCycleBehind(wallet.monthlyCycleKey, now);
+  return wallet.plan === "free" && (freeCycleBehind(wallet.monthlyCycleKey, now) || freeGrantPending(wallet));
+}
+
+/**
+ * A Free month that opened while no card was on file carries a 0 allowance. Once
+ * the card is confirmed, that month's grant is still owed, so reconcile runs the
+ * cycle again; openCycleTx's idempotency key keeps it to one grant per month.
+ */
+function freeGrantPending(wallet: WalletRow): boolean {
+  return hasPaymentMethodOnFile(wallet) && wallet.monthlyAllowance === 0 && wallet.monthlyCreditsRemaining === 0;
 }
 
 const CYCLE_KEY_PATTERN = /^\d{4}-\d{2}$/;
@@ -153,7 +188,7 @@ export async function reconcileSeekerWalletTx(tx: LedgerTx, locked: WalletRow, n
     const next = { startsAt: now, key: currentMonthlyCycleKey(now) };
     const cycle = await rollCycleTx(tx, { wallet, next, plan: "free", subscriptionId: null, now });
     await write({ ...cycle, plan: "free", subscriptionStatus: "cancelled" });
-  } else if (wallet.plan === "free" && freeCycleBehind(wallet.monthlyCycleKey, now)) {
+  } else if (wallet.plan === "free" && (freeCycleBehind(wallet.monthlyCycleKey, now) || freeGrantPending(wallet))) {
     const startsAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
     await write(await rollCycleTx(tx, { wallet, next: { startsAt, key: currentMonthlyCycleKey(now) }, plan: "free", subscriptionId: null, now }));
   }

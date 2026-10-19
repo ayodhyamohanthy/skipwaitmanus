@@ -86,7 +86,8 @@ export default function Plans() {
   }
 
   return <main data-skipwait-screen="plans" className="page-content plans-page">
-    <div className="page-heading"><div><span className="eyebrow">PLANS · <Link href="/billing" className="underline">Manage plan</Link></span><h1>Choose how much help you need<span className="brand-dot">.</span></h1><p>Everyone starts free — no card needed. {ASK_COST_SENTENCE} {isReferrer ? `${REFERRERS_NEVER_PAY} Reviewing requests is free, and SkipWait never pays a referrer.` : REFERRER_MONEY_SENTENCE} Queue position never changes.</p></div>{isReferrer ? null : <CreditCta summary={summary} currency={currency} href={creditsHref} />}</div>
+    <div className="page-heading"><div><span className="eyebrow">PLANS · <Link href="/billing" className="underline">Manage plan</Link></span><h1>Choose how much help you need<span className="brand-dot">.</span></h1><p>Everyone starts free — add a payment method to unlock the monthly credits. {ASK_COST_SENTENCE} {isReferrer ? `${REFERRERS_NEVER_PAY} Reviewing requests is free, and SkipWait never pays a referrer.` : REFERRER_MONEY_SENTENCE} Queue position never changes.</p></div>{isReferrer ? null : <CreditCta summary={summary} currency={currency} href={creditsHref} />}</div>
+    <GiftNotices giftReturn={giftReturn} claimedPlan={claimedPlan} claimable={claimableGifts} claimingId={claimingId} onClaim={giftId => { void claimGift(giftId); }} />
 
     {payment === "cancelled" ? <p role="status" className="plan-grid-note font-semibold">Checkout was cancelled. Nothing was charged.</p> : null}
 

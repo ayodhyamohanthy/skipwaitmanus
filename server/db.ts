@@ -9,7 +9,7 @@ import { passReasonSeekerLabel } from "../shared/passReasons";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { accountPreferences, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { accountPreferences, moderationEvents, moderationEvidence, adminTokenAdjustments, billingCustomers, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
@@ -3218,6 +3218,12 @@ export type CreditSummary = {
   cycleKey: string;
   subscriptionStatus: string | null;
   subscriptionCurrentTermEnd: Date | null;
+  /**
+   * Whether a saved payment source is on file (0096). A Free seeker month grants
+   * its credits only while this is true, so the billing screen reads it to decide
+   * between "add a payment method" and the saved-method list.
+   */
+  paymentMethodOnFile: boolean;
   /** Kit ledger block (shared/creditLedger.ts): on GET /api/credits/summary and spends; embedded summaries omit it. */
   ledger?: CreditsLedger;
 };
@@ -3348,6 +3354,7 @@ function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect, prom
     cycleKey: wallet.monthlyCycleKey,
     subscriptionStatus: wallet.subscriptionStatus ?? null,
     subscriptionCurrentTermEnd: wallet.subscriptionCurrentTermEnd ?? null,
+    paymentMethodOnFile: Boolean(wallet.paymentMethodOnFileAt),
   };
 }
 
@@ -3584,6 +3591,52 @@ export async function getTokenWallet(userId: number, role: WalletRole): Promise<
     const promo = await promoStateForTx(tx, userId, role, now);
     return creditSummaryTx(tx, { wallet, grants, promo, now });
   });
+}
+
+/** The Chargebee customer that holds this member's payment methods, per provider site. */
+export async function findBillingCustomer(input: { userId: number; role: WalletRole; provider: string; site: "test" | "live" }): Promise<string | undefined> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const rows = await db.select({ providerCustomerId: billingCustomers.providerCustomerId }).from(billingCustomers)
+    .where(and(eq(billingCustomers.userId, input.userId), eq(billingCustomers.role, input.role), eq(billingCustomers.provider, input.provider), eq(billingCustomers.site, input.site)))
+    .limit(1);
+  return rows[0]?.providerCustomerId;
+}
+
+/**
+ * Binds a provider customer to this member. One customer never maps to two
+ * people: a duplicate on (provider, site, providerCustomerId) is a conflict the
+ * caller must surface, never a silent overwrite of somebody else's billing.
+ */
+export async function saveBillingCustomer(input: { userId: number; role: WalletRole; provider: string; site: "test" | "live"; providerCustomerId: string }): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.insert(billingCustomers)
+    .values({ userId: input.userId, role: input.role, provider: input.provider, site: input.site, providerCustomerId: input.providerCustomerId })
+    .onDuplicateKeyUpdate({ set: { providerCustomerId: input.providerCustomerId, updatedAt: new Date() } });
+}
+
+/**
+ * Records the provider's answer about saved payment sources (0096). A confirmed
+ * source stamps the wallet and keeps the first confirmation time; losing the last
+ * source clears it, which stops the next Free month from granting.
+ *
+ * Compare-then-write rather than an unconditional update: a billing page reload
+ * must not rewrite the wallet on every poll. The read is not inside a
+ * transaction, so two tabs can race — the loser's write is the same fact, and
+ * the next provider read settles it. Nothing is granted from this value until a
+ * cycle opens, so a stale instant can never create or destroy credits.
+ */
+export async function setPaymentMethodOnFile(userId: number, role: WalletRole, at: Date | null): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await ensureTokenWallet(userId, role);
+  const current = (await db.select({ at: tokenBalances.paymentMethodOnFileAt }).from(tokenBalances)
+    .where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1))[0];
+  if (!current) return;
+  const present = Boolean(current.at);
+  if (at === null ? !present : present) return;
+  await db.update(tokenBalances).set({ paymentMethodOnFileAt: at }).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role)));
 }
 
 /** GET /api/credits/ledger: the caller's own ledger rows, newest first. Pending invite rewards are not credits yet. */
@@ -4046,7 +4099,7 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       ? startsNewTerm
         ? wallet
           ? await rollCycleTx(tx, { wallet, next: termOpeningCycle(input.currentTermStart, input.currentTermEnd, now), plan: expectedPlan, subscriptionId: input.subscriptionId, now })
-          : await openCycleTx(tx, { userId, role, next: termOpeningCycle(input.currentTermStart, input.currentTermEnd, now), plan: expectedPlan, subscriptionId: input.subscriptionId })
+          : await openCycleTx(tx, { userId, role, next: termOpeningCycle(input.currentTermStart, input.currentTermEnd, now), plan: expectedPlan, subscriptionId: input.subscriptionId, paymentMethodOnFile: false })
         : { monthlyAllowance: allowance, monthlyCreditsRemaining: currentSubscription?.monthlyCreditsRemaining ?? allowance, monthlyCycleKey: currentSubscription?.monthlyCycleKey ?? termOpeningCycle(input.currentTermStart, input.currentTermEnd, now).key }
       // The seeker's paid term ended on this subscription: its plan credits end with it (kit billing).
       : role === "job_seeker" && wallet && sameSubscription && wallet.plan !== "free"

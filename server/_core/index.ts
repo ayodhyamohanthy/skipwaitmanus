@@ -58,6 +58,7 @@ import { registerAskDraftRoutes } from "../askDraftRoutes";
 import { registerSafetyRoutes } from "../safetyRoutes";
 import { registerBlocksRoutes } from "../blocksRoutes";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
+import { registerBillingAccountRoutes } from "../billingAccountRoutes";
 import { registerAdminBillingCatalogRoutes } from "../adminBillingCatalog";
 import { registerPlansCatalogRoutes } from "../plansCatalogRoutes";
 import { registerAdminBillingLedgerRoutes } from "../adminBillingLedger";
@@ -279,6 +280,15 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
       const pending = await db.listPendingChargebeePaymentIntents();
       return resolveChargebeeHostedPageForPayment({ ...input, pendingHostedPageIds: pending.flatMap(row => row.hostedPageId ? [row.hostedPageId] : []) });
     },
+  });
+  // Billing account payment methods (0096). Reading them is also what confirms
+  // the "payment method on file" fact that a Free seeker month grants on.
+  registerBillingAccountRoutes(app, {
+    resolveIdentity,
+    findCustomer: db.findBillingCustomer,
+    saveCustomer: db.saveBillingCustomer,
+    setPaymentMethodOnFile: db.setPaymentMethodOnFile,
+    recordActivity: db.recordOperationalActivity,
   });
   // tRPC API — tRPC handles errors internally and never calls Express
   // error middleware, so report them to Sentry here explicitly.

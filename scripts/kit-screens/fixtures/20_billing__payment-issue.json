@@ -34,6 +34,7 @@
           "cycleKey": "2026-10",
           "subscriptionStatus": "active",
           "subscriptionCurrentTermEnd": "2026-11-06T00:00:00.000Z",
+          "paymentMethodOnFile": true,
           "ledger": {
             "balance": 9,
             "buckets": {
@@ -114,6 +115,24 @@
             "createdAt": "2026-08-21T09:10:00.000Z"
           }
         ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/payment-methods",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "methods": [
+          {
+            "id": "ps_7f21",
+            "type": "card",
+            "label": "Visa •••• 4242",
+            "detail": "Default · expires 08/28",
+            "isDefault": true
+          }
+        ],
+        "customer": true
       }
     }
   ]

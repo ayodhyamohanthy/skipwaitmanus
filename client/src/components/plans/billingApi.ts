@@ -3,6 +3,7 @@
 // Unknown fields are ignored; a payload that does not parse is treated as a
 // failed load, never as an empty account.
 import { z } from "zod";
+import { paymentMethodsResponseSchema, type PaymentMethodsResponse } from "@shared/billingAccount";
 import { creditsLedgerSchema } from "@shared/creditLedger";
 import { openAskSlotsSchema } from "@shared/openAskSlots";
 
@@ -23,8 +24,23 @@ export const creditSummarySchema = z.object({
   ledger: creditsLedgerSchema.nullish().catch(null).transform(value => value ?? null),
   // Seeker open-ask slots (shared/openAskSlots.ts); the server omits them when the count fails.
   slots: openAskSlotsSchema.nullish().catch(null).transform(value => value ?? null),
+  /**
+   * A Free seeker month grants its credits only while a payment method is on
+   * file (server/creditCycles.ts). Required rather than defaulted: a payload
+   * without it comes from an older server, and guessing either way would show
+   * the wrong state on a money screen.
+   */
+  paymentMethodOnFile: z.boolean(),
 });
 export type CreditSummary = z.infer<typeof creditSummarySchema>;
+
+/** GET /api/billing/payment-methods: saved method labels, plus whether a billing customer exists at all. */
+export type PaymentMethods = PaymentMethodsResponse;
+
+export function parsePaymentMethods(payload: unknown): PaymentMethods | null {
+  const parsed = paymentMethodsResponseSchema.safeParse(payload);
+  return parsed.success ? parsed.data : null;
+}
 
 export const receiptSchema = z.object({
   id: z.number(),
