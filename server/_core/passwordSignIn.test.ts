@@ -67,7 +67,7 @@ async function buildApp(options: { store?: DurableLimitStore | null; now?: () =>
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   const store = options.store === undefined ? createMemoryDurableLimitStore() : options.store;
-  createWorkosAuthRoutesRegistrar({ workos: { userManagement: hosted } as never, password: { client: wos, store, now: options.now, responseFloorMs: options.responseFloorMs ?? 0, defer: task => { queued.push(task); }, sendEmail: mail, witness: { has: async id => state.witnesses.has(id), record: async ({ workosUserId }) => { state.witnesses.add(workosUserId); } }, emailStanding: async (email, lookup) => { state.standingCalls.push([email, lookup?.workosUserId]); return (state.standings.get(email) ?? "unknown") as never; } } })(app);
+  createWorkosAuthRoutesRegistrar({ workos: { userManagement: hosted } as never, password: { client: wos, store, now: options.now, responseFloorMs: options.responseFloorMs ?? 0, defer: task => { queued.push(task); }, sendEmail: mail, witness: { has: async id => state.witnesses.has(id), record: async ({ workosUserId }) => { state.witnesses.add(workosUserId); } }, emailStanding: async (email, lookup) => { state.standingCalls.push([email, lookup?.workosUserId]); const standing = state.standings.get(email); if (standing === "throw") throw new Error("Database unavailable"); return (standing ?? "unknown") as never; } } })(app);
   app.get("/session-proof", async (req, res) => {
     const { resolveWorkosIdentity } = await import("./workosAuth");
     const identity = await resolveWorkosIdentity(req);
@@ -318,12 +318,19 @@ describe("seeker password sign-in", () => {
     const { AUTH_RESPONSE_FLOOR_MS } = await import("./passwordResponses");
     expect(AUTH_RESPONSE_FLOOR_MS).toBeGreaterThanOrEqual(1000);
     const app = await buildApp({ responseFloorMs: 150 });
-    wos.authenticateWithPassword.mockRejectedValueOnce(wrongPassword()).mockResolvedValueOnce(authResponse());
+    const limiterDown = await buildApp({ store: null, responseFloorMs: 150 });
     const cases: Array<[string, () => request.Test, number, string | undefined]> = [
-      ["unknown email or wrong password", () => post(app, SIGN_IN, { email: EMAIL, password: "Wr0ng-password!" }), 401, "invalid_credentials"],
+      ["unknown email or wrong password", () => { wos.authenticateWithPassword.mockRejectedValueOnce(wrongPassword()); return post(app, SIGN_IN, { email: EMAIL, password: "Wr0ng-password!" }); }, 401, "invalid_credentials"],
       ["signed in", () => post(app, SIGN_IN, { email: EMAIL, password: PASSWORD }), 200, undefined],
       ["bad input", () => post(app, SIGN_IN, { email: "nope", password: "x" }), 400, "invalid_input"],
       ["sign-up", () => post(app, SIGN_UP, { email: "new@gmail.com" }), 200, undefined],
+      // Review F4: the refusals and failures are held too.
+      ["WorkOS rate limit", () => { wos.authenticateWithPassword.mockRejectedValueOnce(new RateLimitExceededException("Too many requests", "r", 30)); return post(app, SIGN_IN, { email: EMAIL, password: PASSWORD }); }, 429, "rate_limited"],
+      ["limiter down on sign-in", () => post(limiterDown, SIGN_IN, { email: EMAIL, password: PASSWORD }), 503, "temporarily_unavailable"],
+      ["limiter down on sign-up", () => post(limiterDown, SIGN_UP, { email: "new@gmail.com" }), 503, "temporarily_unavailable"],
+      ["standing lookup throws", () => { state.standings.set("down@gmail.com", "throw"); wos.authenticateWithPassword.mockResolvedValueOnce(authResponse(workosUser({ email: "down@gmail.com" }))); return post(app, SIGN_IN, { email: "down@gmail.com", password: PASSWORD }); }, 503, "temporarily_unavailable"],
+      ["cross-site", () => post(app, SIGN_IN, { email: EMAIL, password: PASSWORD }, { origin: "https://evil.example" }), 403, "forbidden_origin"],
+      ["referrer work email", () => { state.standings.set("asha@wipro.com", "referrer_work_email"); wos.authenticateWithPassword.mockResolvedValueOnce(authResponse(workosUser({ id: "user_ref", email: "asha@wipro.com" }))); return post(app, SIGN_IN, { email: "asha@wipro.com", password: PASSWORD }); }, 403, "use_work_email_code"],
     ];
     for (const [label, call, status, code] of cases) {
       const started = Date.now();
