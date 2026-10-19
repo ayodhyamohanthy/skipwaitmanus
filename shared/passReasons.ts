@@ -25,3 +25,13 @@ export function passReasonSeekerLabel(code: string | null | undefined): string |
   const option = PASS_REASON_OPTIONS.find(item => item.code === code);
   return option && option.code !== "prefer_not_to_say" ? option.label : null;
 }
+
+/** D-038-A: exclusion codes written as pass rows so a lapsed referrer is excluded everywhere
+ * (inbox, preview, save, claim, review email, first look, claimed detail, documents).
+ * They are not pass reasons: isPassReasonCode stays false for them, nothing shows them to anyone. */
+export const REFERRER_EXCLUSION_CODES = ["lapsed_claim", "lapsed_allocation"] as const;
+export type ReferrerExclusionCode = (typeof REFERRER_EXCLUSION_CODES)[number];
+
+export function isExclusionCode(value: unknown): value is ReferrerExclusionCode {
+  return typeof value === "string" && REFERRER_EXCLUSION_CODES.includes(value as ReferrerExclusionCode);
+}

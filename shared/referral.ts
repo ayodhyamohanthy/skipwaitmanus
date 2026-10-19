@@ -78,15 +78,48 @@ export const ASK_TTL_MS = ASK_TTL_DAYS * 24 * 60 * 60 * 1000;
 /** D-061: an ask at a company with no available verified referrer waits up to this long at no cost. */
 export const COVERAGE_WAIT_DAYS = 90;
 export const COVERAGE_WAIT_MS = COVERAGE_WAIT_DAYS * 24 * 60 * 60 * 1000;
-/** Cards and urgency copy treat an ask as "expiring soon" inside this window. */
-export const ASK_EXPIRING_SOON_DAYS = 2;
-export const ASK_EXPIRING_SOON_MS = ASK_EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000;
 
-function createdAtMs(createdAt: Date | string | number | null | undefined): number | null {
+/** D-038-A / D-076 (5): the claim and allocation timers only run for events at or after this instant,
+ * set to the UTC midnight after the day this ships, so nothing lapses before referrers have had
+ * 48 hours under the new rule. Claims and allocations made before it keep the old lifecycle. */
+export const REFERRAL_TIMERS_SINCE = new Date("2026-10-20T00:00:00.000Z").getTime();
+export const REFERRAL_TIMERS_SINCE_DATE = new Date(REFERRAL_TIMERS_SINCE);
+
+const HOUR_MS = 60 * 60 * 1000;
+export const CLAIM_LAPSE_HOURS = 48;
+export const CLAIM_LAPSE_MS = CLAIM_LAPSE_HOURS * HOUR_MS;
+export const CLAIM_REMINDER_HOURS = 24;
+export const CLAIM_REMINDER_MS = CLAIM_REMINDER_HOURS * HOUR_MS;
+/** D-038-A: a referrer holds at most this many open claims at once. */
+export const MAX_ACTIVE_CLAIMS = 5;
+
+/** The instant a claim lapses: 48 h after the claim event, but never before REFERRAL_TIMERS_SINCE + 48 h. */
+export function claimLapseAtMs(claimCreatedAt: number): number {
+  return Math.max(claimCreatedAt, REFERRAL_TIMERS_SINCE) + CLAIM_LAPSE_MS;
+}
+
+/** The instant an allocation lapses: 48 h after first visibility (coverageVisibleAt), but never before REFERRAL_TIMERS_SINCE + 48 h.
+ * Never read the slot's openedAt (a database clock) for timing. */
+export function allocationLapseAtMs(coverageVisibleAt: number | null | undefined): number {
+  const visibleAtMs = coverageVisibleAt == null ? null : createdAtMs(coverageVisibleAt);
+  const visibleAt = visibleAtMs == null ? REFERRAL_TIMERS_SINCE : Math.max(visibleAtMs, REFERRAL_TIMERS_SINCE);
+  return visibleAt + CLAIM_LAPSE_MS;
+}
+
+/** The instant the 24-hour reminder is due: one day before the lapse. */
+export function reminderAtMs(lapseAtMs: number): number {
+  return lapseAtMs - CLAIM_REMINDER_MS;
+}
+
+/** Milliseconds since epoch for a timestamp, or null. */
+export function createdAtMs(createdAt: Date | string | number | null | undefined): number | null {
   if (createdAt == null) return null;
   const ms = createdAt instanceof Date ? createdAt.getTime() : typeof createdAt === "number" ? createdAt : Date.parse(createdAt);
   return Number.isFinite(ms) ? ms : null;
 }
+/** Cards and urgency copy treat an ask as "expiring soon" inside this window. */
+export const ASK_EXPIRING_SOON_DAYS = 2;
+export const ASK_EXPIRING_SOON_MS = ASK_EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000;
 
 /**
  * D-034/D-061: the clock fields of an ask's shelf life. `coverageVisibleAt` is
