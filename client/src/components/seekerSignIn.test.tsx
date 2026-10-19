@@ -154,6 +154,25 @@ describe("check-your-email, create-account and error states are explicit", () =>
     expect((await screen.findByRole("alert")).textContent).toBe(message);
   });
 
+  // Screenshot pass, item 7: the work-email refusal now offers the way forward, the referrer's work-email code
+  // sign-in (referrerSignInHref, never SignInButton or openSignIn), and only for that refusal.
+  it("a referrer's work email gets a link to the work-email code sign-in", async () => {
+    stubAssign();
+    stubFetch([
+      { status: 403, body: { ok: false, code: "use_work_email_code", message: PASSWORD_AUTH_COPY.use_work_email_code } },
+      { status: 401, body: { ok: false, code: "invalid_credentials", message: PASSWORD_AUTH_COPY.invalid_credentials } },
+    ]);
+    render(<SeekerSignIn />);
+    openEmailForm();
+    fillSignIn(" Asha@Wipro.com ");
+    fireEvent.click(screen.getByRole("button", { name: /^Sign in/ }));
+    expect((await screen.findByRole("alert")).textContent).toBe(PASSWORD_AUTH_COPY.use_work_email_code);
+    expect(screen.getByRole("link", { name: "Sign in with your work-email code" }).getAttribute("href")).toBe(referrerSignInHref());
+    fireEvent.click(screen.getByRole("button", { name: /^Sign in/ }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe(PASSWORD_AUTH_COPY.invalid_credentials));
+    expect(screen.queryByRole("link", { name: "Sign in with your work-email code" })).toBeNull();
+  });
+
   it("busy state disables the submit button while the request is in flight", async () => {
     stubFetch([new Promise<never>(() => {})]);
     render(<SeekerSignIn />);
