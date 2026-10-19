@@ -38,7 +38,7 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
   it("hands a fresh agent the first pickable task in order", () => {
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
     expect(first.kind).toBe("build");
-    expect(first.kind === "build" && first.task.id).toBe("D-065-B");
+    expect(first.kind === "build" && first.task.id).toBe("GO-LIVE-1");
   });
 
   it("rejects unknown keys, duplicates, bad branches, missing packets, unknown dependencies and cycles", () => {

@@ -13,9 +13,9 @@
       "tier": 1,
       "lane": "payments",
       "branch": "agent/claude/chargebee-catalog-sync",
-      "status": "in-review",
+      "status": "done",
       "dependsOn": [],
-      "note": "Independent review passed on PR #326; the d067-review session lands it under D-082 and sets this to done."
+      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan §6)."
     },
     {
       "id": "GO-LIVE-1",
@@ -26,7 +26,9 @@
       "lane": "payments",
       "branch": "agent/queue/go-live-plans",
       "status": "todo",
-      "dependsOn": ["D-069-chargebee-catalog-sync"]
+      "dependsOn": [
+        "D-069-chargebee-catalog-sync"
+      ]
     },
     {
       "id": "D-038-reconcile",
@@ -49,7 +51,9 @@
       "lane": "money-core",
       "branch": "agent/queue/d035-pass-credit",
       "status": "todo",
-      "dependsOn": ["D-038-reconcile"]
+      "dependsOn": [
+        "D-038-reconcile"
+      ]
     },
     {
       "id": "D-065-B",
@@ -149,7 +153,9 @@
       "lane": "sign-in",
       "branch": "agent/queue/d057-session-gate",
       "status": "todo",
-      "dependsOn": ["seeker-passwords"]
+      "dependsOn": [
+        "seeker-passwords"
+      ]
     },
     {
       "id": "FND-4",
@@ -160,7 +166,9 @@
       "lane": "observability",
       "branch": "agent/queue/fnd4-token-paths",
       "status": "todo",
-      "dependsOn": ["seeker-passwords"]
+      "dependsOn": [
+        "seeker-passwords"
+      ]
     },
     {
       "id": "D-048-phase-3",
