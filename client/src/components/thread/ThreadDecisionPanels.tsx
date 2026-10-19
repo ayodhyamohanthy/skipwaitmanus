@@ -96,7 +96,7 @@ export function SeekerPanel({ request, onWithdraw, onProgress, onConfirmReferred
               {titleId => (
                 <>
                   <h2 id={titleId} className="text-xl font-semibold">Confirm you received the referral email?</h2>
-                  <p className="mt-2 text-muted-foreground">This tells your referrer their referral was received and counts as your referral.</p>
+                  <p className="mt-2 text-muted-foreground">This tells your referrer you got it and counts the ask as referred.</p>
                   <ModalError message={action.error} />
                   <footer className="mt-6 flex justify-end gap-2">
                     <Button variant="ghost" onClick={close}>Cancel</Button>
