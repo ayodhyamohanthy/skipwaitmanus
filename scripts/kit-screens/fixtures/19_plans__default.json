@@ -70,7 +70,8 @@
             "cap": 3,
             "full": true,
             "nextPlan": null
-          }
+          },
+          "paymentMethodRequiredForFreeCredits": true
         }
       }
     }

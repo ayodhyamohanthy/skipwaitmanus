@@ -34,6 +34,20 @@ export function humanReviewersStaffed(env: BillingEnv = process.env): boolean {
 }
 
 /**
+ * D-079: Free monthly credits are granted only while a payment method is on file.
+ * Default **off**, so the rule ships as code without changing what any member
+ * receives until the owner has run a live card test and flipped it. Turning it on
+ * stops the monthly grant for every free seeker without a card at their next
+ * cycle, so it is a deliberate act, not a deploy side effect.
+ *
+ * The billing screen reads this through the credit summary: with the switch off
+ * it must not ask for a card, because nothing is gated.
+ */
+export function freeCreditsRequirePaymentMethod(env: BillingEnv = process.env): boolean {
+  return flag(env, "FREE_CREDITS_REQUIRE_PAYMENT_METHOD");
+}
+
+/**
  * Paid employer placement (the sponsor route) is a labeled "Featured listing"
  * that never outranks employee posts (D-040). Unlike the switches above, this
  * one defaults to **on**: the surface already delivers what it sells, so the

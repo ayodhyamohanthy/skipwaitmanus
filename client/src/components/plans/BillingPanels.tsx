@@ -21,7 +21,7 @@ function openAsks(summary: CreditSummary): string | null {
 
 /** True when this Free wallet is owed credits it cannot receive until a card is saved. */
 function freeCreditsGated(summary: CreditSummary): boolean {
-  return !hasActivePaidPlan(summary) && !summary.paymentMethodOnFile;
+  return summary.paymentMethodRequiredForFreeCredits && !hasActivePaidPlan(summary) && !summary.paymentMethodOnFile;
 }
 
 export function CurrentPlanPanel({ summary, onCancel }: { summary: CreditSummary; onCancel: () => void }) {
@@ -77,6 +77,8 @@ type PaymentMethodPanelProps = {
   loading: boolean;
   error: string;
   adding: boolean;
+  /** Whether Free credits actually wait on a card (D-079's switch). */
+  required: boolean;
   onManage: () => void;
 };
 
@@ -85,13 +87,13 @@ type PaymentMethodPanelProps = {
  * could not ask (or have not asked yet): the panel then says so and offers the
  * same hosted page, rather than claiming there is no card on file.
  */
-export function PaymentMethodPanel({ methods, loading, error, adding, onManage }: PaymentMethodPanelProps) {
+export function PaymentMethodPanel({ methods, loading, error, adding, required, onManage }: PaymentMethodPanelProps) {
   const saved = methods?.methods ?? [];
   return <Panel className="mt-4">
     <h2 className="font-semibold">Payment methods</h2>
     {loading ? <p role="status" className="mt-2 min-h-12 content-center text-sm text-muted-foreground">Loading your payment methods…</p> : null}
     {!loading && error ? <p role="alert" className="mt-2 text-sm text-muted-foreground">{error} You can still open the secure card page below.</p> : null}
-    {!loading && !error && methods && saved.length === 0 ? <div className="mt-3 flex items-start gap-3"><CreditCard className="mt-0.5 size-5 shrink-0" /><p className="flex-1 text-sm text-muted-foreground">No payment method on file. Free monthly credits stay paused until one is saved.</p></div> : null}
+    {!loading && !error && methods && saved.length === 0 ? <div className="mt-3 flex items-start gap-3"><CreditCard className="mt-0.5 size-5 shrink-0" /><p className="flex-1 text-sm text-muted-foreground">{required ? "No payment method on file. Free monthly credits stay paused until one is saved." : "No payment method on file. You do not need one for the free credits — add one to buy credit packs without re-entering details."}</p></div> : null}
     {!loading && saved.length > 0 ? <ul className="mt-3 divide-y divide-border">{saved.map(method => <li key={method.id} className="flex min-h-12 items-center gap-3 text-sm">
       <CreditCard className="size-4 shrink-0 text-muted-foreground" />
       <span className="min-w-0 flex-1 truncate font-medium">{method.label}{method.detail ? <span className="font-normal text-muted-foreground"> · {method.detail}</span> : null}</span>

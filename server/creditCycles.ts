@@ -8,6 +8,7 @@ import { planCreditGrants, tokenBalances, tokenTransactions } from "../drizzle/s
 import { BUCKET_SOURCES } from "../shared/creditLedger";
 import { grantShouldExpire, paidPlanLapsed, planCreditsExpireAt, planCycleAt, planCycleByIndex, planCycleIndexOfKey, walletCycleStart } from "../shared/creditCycles";
 import { isPaidPlanActive } from "../shared/planEntitlements";
+import { freeCreditsRequirePaymentMethod } from "./billingSettings";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { CreditSpendConflictError, asLedgerGrant, cycleRulesFor, digest, readGrantsTx, writeLedgerRow, type CyclePatch, type GrantRow, type LedgerTx, type WalletRole, type WalletRow } from "./creditLedger";
 
@@ -83,9 +84,15 @@ export async function openCycleTx(tx: LedgerTx, input: { userId: number; role: W
  * Whether a cycle may grant this plan's credits at all. Only the Free seeker
  * month is conditional: a paid term was paid for, and referrer wallets keep
  * their pre-kit 3 a month, so neither is gated on a card.
+ *
+ * The Free half sits behind an owner switch (D-079, server/billingSettings.ts):
+ * until FREE_CREDITS_REQUIRE_PAYMENT_METHOD is on, a Free month grants exactly as
+ * it always did.
  */
 function freeMonthEligible(plan: string, role: WalletRole, paymentMethodOnFile: boolean): boolean {
-  return plan !== "free" || role !== "job_seeker" || paymentMethodOnFile;
+  if (plan !== "free" || role !== "job_seeker") return true;
+  if (!freeCreditsRequirePaymentMethod()) return true;
+  return paymentMethodOnFile;
 }
 
 /** True when this wallet carries a confirmed saved payment source (0096). */

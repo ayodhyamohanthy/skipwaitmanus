@@ -31,6 +31,9 @@ const asWallet = (row: Row) => row as unknown as Parameters<typeof seekerCycleDu
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
   vi.stubEnv("PROMO_GRANTS_ENABLED", "false");
+  // D-079 is behind an owner switch and ships OFF; these tests pin the rule ON, and
+  // "ships off, so Free grants as it always did" is asserted below.
+  vi.stubEnv("FREE_CREDITS_REQUIRE_PAYMENT_METHOD", "true");
   fixture.reset({ wallets: [freeWallet()], txns: [], users: [{ id: SEEKER, canonicalPersonId: 1 }, { id: REFERRER, canonicalPersonId: 2 }] });
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(fixture.database);
@@ -40,6 +43,13 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
 
 describe("Free monthly credits require a payment method on file", () => {
+  it("ships behind the owner switch: with it off, Free grants its month with no card at all", async () => {
+    vi.stubEnv("FREE_CREDITS_REQUIRE_PAYMENT_METHOD", "false");
+    const summary = await getTokenWallet(SEEKER, "job_seeker");
+    expect(summary).toMatchObject({ monthlyAllowance: 3, monthlyCreditsRemaining: 3, paymentMethodOnFile: false, paymentMethodRequiredForFreeCredits: false });
+    expect(planGrants()).toEqual([expect.objectContaining({ tokenCount: 3, sourceCycleKey: "2026-10" })]);
+  });
+
   it("opens the month with no credits and no ledger row while no card is on file", async () => {
     const summary = await getTokenWallet(SEEKER, "job_seeker");
     expect(summary).toMatchObject({ monthlyAllowance: 0, monthlyCreditsRemaining: 0, paymentMethodOnFile: false });

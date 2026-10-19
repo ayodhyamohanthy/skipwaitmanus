@@ -31,6 +31,11 @@ export const creditSummarySchema = z.object({
    * the wrong state on a money screen.
    */
   paymentMethodOnFile: z.boolean(),
+  /**
+   * Whether the card requirement is switched on (D-079). False means Free grants
+   * as it always did, and the screen must not ask for a card it would not act on.
+   */
+  paymentMethodRequiredForFreeCredits: z.boolean(),
 });
 export type CreditSummary = z.infer<typeof creditSummarySchema>;
 

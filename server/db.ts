@@ -3,6 +3,7 @@ import { enrichInboxRow } from "./inboxEnrichment";
 import { transitionNotificationKind } from "./notificationKinds";
 import { buildEvidenceRows, cleanNote as cleanModerationNote, groupEvents as groupModerationEvents, groupEvidence, reportSeverity, reviewDueAt } from "./moderationCase";
 import { checkPostingAllowance, opportunityLimits } from "./opportunityLimits";
+import { freeCreditsRequirePaymentMethod } from "./billingSettings";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, notInArray, or, sql } from "drizzle-orm";
 import { workEmailStorageKeys } from "./workEmailKey";
 import { passReasonSeekerLabel } from "../shared/passReasons";
@@ -3224,6 +3225,12 @@ export type CreditSummary = {
    * between "add a payment method" and the saved-method list.
    */
   paymentMethodOnFile: boolean;
+  /**
+   * Whether that rule is switched on (D-079, server/billingSettings.ts). False
+   * means Free grants as it always did, and the billing screen must not ask for a
+   * card it would not act on.
+   */
+  paymentMethodRequiredForFreeCredits: boolean;
   /** Kit ledger block (shared/creditLedger.ts): on GET /api/credits/summary and spends; embedded summaries omit it. */
   ledger?: CreditsLedger;
 };
@@ -3355,6 +3362,7 @@ function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect, prom
     subscriptionStatus: wallet.subscriptionStatus ?? null,
     subscriptionCurrentTermEnd: wallet.subscriptionCurrentTermEnd ?? null,
     paymentMethodOnFile: Boolean(wallet.paymentMethodOnFileAt),
+    paymentMethodRequiredForFreeCredits: freeCreditsRequirePaymentMethod(),
   };
 }
 

@@ -157,9 +157,9 @@ export default function Billing() {
 
       {!loading && !error && summary ? (
         <>
-          {!summary.paymentMethodOnFile && !dismissed ? <PaymentMethodNudge onAdd={() => { void startPaymentMethodSession(); }} onDismiss={dismissNudge} adding={managing} /> : null}
+          {summary.paymentMethodRequiredForFreeCredits && !summary.paymentMethodOnFile && !dismissed ? <PaymentMethodNudge onAdd={() => { void startPaymentMethodSession(); }} onDismiss={dismissNudge} adding={managing} /> : null}
           <CurrentPlanPanel summary={summary} onCancel={() => { setCancelError(""); setCancelStep("confirm"); }} />
-          <PaymentMethodPanel methods={methods} loading={methodsLoading} error={methodsError} adding={managing} onManage={() => { void startPaymentMethodSession(); }} />
+          <PaymentMethodPanel methods={methods} loading={methodsLoading} error={methodsError} adding={managing} required={summary.paymentMethodRequiredForFreeCredits} onManage={() => { void startPaymentMethodSession(); }} />
           <ReceiptsPanel receipts={receipts} />
         </>
       ) : null}

@@ -28,9 +28,10 @@ auto-renew: we send a reminder and a one-tap re-buy instead.
 
 - USD is the one global price. India sees the INR "India price"; GST wording appears only once a
   GSTIN exists (`INDIA_GST_REGISTERED`, off — Indian sole proprietorship, Udyam MSME; see D-007).
-- Free's 3 credits a month are granted only while a payment method is on file (D-079). Without
-  one the month opens empty and the /billing screen asks for a card; nothing is charged when it is
-  saved, and a card added mid-month still grants that month.
+- Free's 3 credits a month require a payment method on file (D-079), behind the owner switch
+  `FREE_CREDITS_REQUIRE_PAYMENT_METHOD` (off until verified live). Without one the month opens
+  empty and the /billing screen asks for a card; nothing is charged when it is saved, and a card
+  added mid-month still grants that month.
 - The one-time 14-day reverse trial (Momentum's 15 open asks and 5 trial credits, no card, once
   per person) stays in code but is not offered: nothing grants it yet, so the public catalog and
   every screen leave it out until its trigger ships (D-051; `REVERSE_TRIAL_ON_OFFER` is off;
