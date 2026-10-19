@@ -72,7 +72,7 @@ export default function ForgotPassword() {
             </span>
             <h1 className="mt-4 text-2xl font-semibold">Check your email.</h1>
             <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
-              If {sentTo} has a SkipWait account, we&apos;ve sent a link to set a new password. It can take a few minutes; check spam too.
+              If {sentTo} can use a password on SkipWait, we&apos;ve sent a link to set a new password. It can take a few minutes; check spam too.
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
               No email after a few minutes, and nothing in spam? Create an account with the same address and we&apos;ll email you a link to set a password.

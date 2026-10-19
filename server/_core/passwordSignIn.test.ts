@@ -427,6 +427,8 @@ describe("seeker password sign-in", () => {
       const signIn = await post(app, SIGN_IN, { email, password: PASSWORD });
       expect(signIn.status).toBe(403);
       expect(signIn.body).toEqual({ ok: false, code: "use_work_email_code", message: PASSWORD_AUTH_COPY.use_work_email_code });
+      // Review F-R2 (a): the refusal is domain-wide, so it never tells an unverified address it is a verified work email.
+      expect(signIn.body.message).not.toMatch(/verified work email/i);
       expect(wos.authenticateWithPassword).not.toHaveBeenCalled();
       wos.authenticateWithPassword.mockReset().mockResolvedValue(authResponse());
     }

@@ -32,7 +32,9 @@ describe("the forgot page is neutral and parses the response", () => {
     const calls = stubFetch({ status: 200, body: { ok: true } });
     requestReset(" Asha@Gmail.com ");
     expect(await screen.findByText("Check your email.")).toBeTruthy();
-    expect(screen.getByText(/If asha@gmail\.com has a SkipWait account/)).toBeTruthy();
+    // Review F-R2 (b): a covered-domain account gets no link (D-081), so the line never promises one to every account.
+    expect(screen.getByText(/If asha@gmail\.com can use a password on SkipWait, we've sent a link/)).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/has a SkipWait account/);
     // D-078 ruling 8, worded so the two lines agree (screenshot pass, item 4): no email means no account to reset yet.
     expect(screen.getByText("No email after a few minutes, and nothing in spam? Create an account with the same address and we'll email you a link to set a password.")).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/joins your existing account/);

@@ -85,7 +85,7 @@ export const PASSWORD_AUTH_COPY: Readonly<Record<PasswordAuthErrorCode, string>>
   forbidden_origin: "This request did not come from SkipWait. Refresh the page and try again.",
   account_review: "This account needs a quick review before it can sign in. Contact support@skipwait.me.",
   account_inactive: "This account is not active. Contact support@skipwait.me.",
-  use_work_email_code: "This is a verified work email. Sign in with a work-email code under Give a referral.",
+  use_work_email_code: "Work emails at companies on SkipWait sign in with a work-email code under Give a referral. Use a personal email for a password.",
   use_another_method: "This account needs a different sign-in method. Continue with Google, Microsoft or GitHub, or contact support@skipwait.me.",
   password_sign_in_unavailable: "Email and password sign-in isn't available right now. Continue with Google, Microsoft or GitHub.",
   temporarily_unavailable: "We couldn't reach the sign-in service. Try again in a moment.",
