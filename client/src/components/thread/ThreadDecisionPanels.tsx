@@ -127,6 +127,7 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
       ) : role === "referrer-pending" && stage === "Requested" ? (
         <>
           <h2 className="mt-2 text-lg font-semibold">Would you refer this person?</h2>
+          {request.decisionDueAt ? <p className="mt-1 text-sm text-muted-foreground">Decision due in {Math.ceil((Date.parse(request.decisionDueAt) - Date.now()) / 86_400_000) || 0} day(s).</p> : null}
           <div className="mt-4 grid gap-2">
             <Button onClick={() => open("accept")}>Accept &amp; connect <ArrowRight /></Button>
             <Button variant="ghost" onClick={() => open("pass")}>Pass privately</Button>

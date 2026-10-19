@@ -19,7 +19,7 @@ import { readApiJson } from "@/lib/apiResponse";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
 
-type CompanyInboxItem = { id: number; targetRoleUrl: string | null; companyDomain: string; companyName?: string | null; companyInitials?: string | null; jobFunction?: JobFunction | null; compensation?: string | null; status: ReferralStatus; savedAt: string | null; createdAt: string; updatedAt: string; attachmentCount: number; isClaimedByYou: boolean; isQueueOpenAllocation?: boolean; unreadMessageCount: number; expiresAt?: string | null; waitingForCoverage?: boolean | null; coverageVisibleAt?: string | null };
+type CompanyInboxItem = { id: number; targetRoleUrl: string | null; companyDomain: string; companyName?: string | null; companyInitials?: string | null; jobFunction?: JobFunction | null; compensation?: string | null; status: ReferralStatus; savedAt: string | null; createdAt: string; updatedAt: string; attachmentCount: number; isClaimedByYou: boolean; isQueueOpenAllocation?: boolean; unreadMessageCount: number; expiresAt?: string | null; decisionDueAt?: string | null; waitingForCoverage?: boolean | null; coverageVisibleAt?: string | null };
 type InboxPayload = { requests?: CompanyInboxItem[] };
 type PrivateImpactSummary = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number };
 
@@ -143,12 +143,15 @@ export default function MyCompanyInbox() {
       const expiryDays = validExpiry === null ? null : Math.floor((validExpiry - nowMs) / 86_400_000);
       const daysShown = validExpiry === null ? null : Math.ceil((validExpiry - nowMs) / 86_400_000);
       const expiryLabel = daysShown === null ? null : daysShown < 0 ? "Expired" : daysShown === 0 ? "Expires today" : daysShown === 1 ? "Expires tomorrow" : `Expires in ${daysShown} days`;
+      // D-038-A: the viewer's own claim/allocation decision due (only for claims/allocations they hold).
+      const decisionDue = request.isClaimedByYou && request.decisionDueAt ? `Decision due in ${Math.ceil((Date.parse(request.decisionDueAt) - nowMs) / 86_400_000) || 0} day(s)` : null;
       return <QueueRequestCard
         key={request.id}
         request={request}
         badge={kitStatusFor(request.status)}
         expiry={expiryLabel}
         expiryUrgent={expiryDays !== null && expiryDays <= 1}
+        decisionDue={decisionDue}
         footer={cardFooter(request)}
       />;
     })}
