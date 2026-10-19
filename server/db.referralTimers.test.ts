@@ -94,12 +94,12 @@ describe("D-038-B: referred deadline (5 days)", () => {
     await lapseReferredTx(store.db as any, REQUEST_ID, T0 + 5 * DAY_MS + 1);
 
     // Expiry after lapse should return the credit
-    const refunds = store.rows(tokenTransactions).filter(row => row.kind === "expiry_refund" && row.referenceId === String(REQUEST_ID));
+    const refunds = store.rows(tokenTransactions).filter(row => row.kind === "expiry_refund" && row.referenceId === `${REQUEST_ID}#refund`);
     expect(refunds.length).toBe(0); // expiry not yet run
 
     const { expireStalePendingReferralRequest } = await import("./db");
     await expireStalePendingReferralRequest(SEEKER, REQUEST_ID, T0 + 8 * DAY_MS);
-    const refundsAfter = store.rows(tokenTransactions).filter(row => row.kind === "expiry_refund" && row.referenceId === String(REQUEST_ID));
+    const refundsAfter = store.rows(tokenTransactions).filter(row => row.kind === "expiry_refund" && row.referenceId === `${REQUEST_ID}#refund`);
     expect(refundsAfter.length).toBe(1);
   });
 
@@ -204,13 +204,13 @@ describe("D-038-B: referred deadline (5 days)", () => {
 
     // Day 2 reminder
     await job({ nowMs: T0 + 2 * DAY_MS });
-    const day2Reminders = store.rows(notifications).filter(n => String(n.eventKey ?? "").startsWith(`referred-reminder:${REQUEST_ID}:2`));
+    const day2Reminders = store.rows(notifications).filter(n => String(n.eventKey ?? "").startsWith(`referred-reminder:${REQUEST_ID}:`) && String(n.eventKey ?? "").endsWith(":2"));
     expect(day2Reminders.length).toBe(1);
     expect(day2Reminders[0]?.title).toBe("Did you submit the referral?");
 
     // Day 4 reminder
     await job({ nowMs: T0 + 4 * DAY_MS });
-    const day4Reminders = store.rows(notifications).filter(n => String(n.eventKey ?? "").startsWith(`referred-reminder:${REQUEST_ID}:4`));
+    const day4Reminders = store.rows(notifications).filter(n => String(n.eventKey ?? "").startsWith(`referred-reminder:${REQUEST_ID}:`) && String(n.eventKey ?? "").endsWith(":4"));
     expect(day4Reminders.length).toBe(1);
 
     // Re-running doesn't duplicate
