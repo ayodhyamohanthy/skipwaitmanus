@@ -7,8 +7,9 @@ import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
 import type { CreditSummary, Receipt } from "./billingApi";
 import { kitDate, money } from "./format";
+import { billingPlanLabel } from "@shared/billingCatalog";
 import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
-import { hasActivePaidPlan, planLabel } from "./planCatalog";
+import { hasActivePaidPlan } from "./planCatalog";
 
 /** "8 open asks" from the caller's own slots; left out when the server did not send them. */
 function openAsks(summary: CreditSummary): string | null {
@@ -23,7 +24,7 @@ export function CurrentPlanPanel({ summary, onCancel }: { summary: CreditSummary
       <span className="eyebrow">CURRENT PLAN</span>
       <h2 className="mt-1 text-2xl font-semibold">Free</h2>
       <p className="text-sm text-muted-foreground">{CREDIT_PACKS_ON_SALE ? (openAsks(summary) ? `${openAsks(summary)} · buy credits anytime` : "Buy credits anytime") : (openAsks(summary) || "Free plan")}</p>
-      <Button asChild className="mt-4"><Link href="/plans">Upgrade</Link></Button>
+      {CREDIT_PACKS_ON_SALE ? <Button asChild className="mt-4"><Link href="/premium?role=job_seeker">Add credits</Link></Button> : null}
     </Panel>;
   }
   const cancelling = summary.subscriptionStatus === "non_renewing";
@@ -34,12 +35,12 @@ export function CurrentPlanPanel({ summary, onCancel }: { summary: CreditSummary
   return <Panel>
     <div className="flex flex-wrap items-start justify-between gap-3"><div>
       <span className="eyebrow">CURRENT PLAN</span>
-      <h2 className="mt-1 text-2xl font-semibold">{planLabel(summary.plan)}</h2>
+      <h2 className="mt-1 text-2xl font-semibold">{billingPlanLabel(summary.plan)}</h2>
       <p className="text-sm text-muted-foreground">{cancelling
         ? `${termEnd ? `Ends ${termEnd}` : "Ends at the end of this paid cycle"} — you keep everything until then.`
         : renewing || "Renews with your plan cycle"}</p>
     </div></div>
-    {!cancelling && <div className="mt-5 grid gap-2 sm:grid-cols-3"><Button variant="outline" asChild><Link href="/plans">Compare plans<ArrowRight /></Link></Button><Button variant="ghost" className="sm:col-start-3" onClick={onCancel}>Cancel plan</Button></div>}
+    {!cancelling && <div className="mt-5 grid gap-2 sm:grid-cols-3"><Button variant="outline" asChild><Link href="/plans">See plans<ArrowRight /></Link></Button><Button variant="ghost" className="sm:col-start-3" onClick={onCancel}>Cancel plan</Button></div>}
   </Panel>;
 }
 

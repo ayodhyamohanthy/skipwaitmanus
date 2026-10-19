@@ -1,0 +1,294 @@
+// Scheduled job "daily-money-check" (D-065, the payments bar under D-058).
+//
+// Once a day this reads the money tables and emails the owner anything that
+// does not reconcile: every wallet against its ledger rows (the same bucket
+// rules as the admin audit, but all wallets, not the 200 latest), one
+// purchase credit per credited payment, payments parked for review, refunds
+// no payment explains, checkouts still pending after a day, any wallet still
+// marked with a retired Pro/Max plan and an active term (D-067: each one is a
+// missed normalization to Free), and asks still allocated to a referrer more
+// than a day past their shelf life (a stuck ask-expiry sweep,
+// P0-allocated-ask-stuck). It never writes to a wallet, payment, ledger or ask
+// row; the only writes are the job's own run record (the runner) and one
+// operational-activity row when an alert email goes out. The email carries
+// ids, amounts, currencies and reasons — never names, emails, or request content.
+import { and, asc, count, eq, gt, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
+import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs } from "../shared/referral";
+import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
+import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
+import { JobRunStoreUnavailableError } from "./jobRunStore";
+import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
+
+/** A checkout still pending after this is stale enough to list (D-065: "checkouts older than a day"). */
+export const STALE_CHECKOUT_AGE_MS = 24 * 60 * 60_000;
+/** The hourly ask-expiry sweep has had a full day to close an ask past its shelf life; later than this it is stuck. */
+export const ALLOCATED_ASK_GRACE_MS = 24 * 60 * 60_000;
+export const MONEY_CHECK_BATCH = 200;
+/** Each check lists at most this many examples; the counts stay complete. */
+export const FINDINGS_PREVIEW_LIMIT = 50;
+/** The most finding lines one email carries; the subject keeps the full count. */
+export const FINDINGS_EMAIL_LINE_LIMIT = 60;
+const MONEY_CHECK_RECIPIENT = "ayodhya@skipwait.me";
+
+export type WalletAuditResult = { checkedWallets: number; mismatches: Array<Record<string, unknown>>; integrity: Array<Record<string, unknown>> };
+export type CreditedPaymentRow = { id: number; userId: number; role: string; tokenCount: number };
+export type PaymentCreditCount = { paymentId: number; creditRows: number; creditedTokens: number };
+export type ParkedPaymentRow = { id: number; amount: number; currency: string; reconciliationReason: string | null; createdAt: Date };
+export type UnmatchedRefundRow = { logId: number; resourceId: string | null; createdAt: Date };
+export type StaleCheckoutRow = { id: number; amount: number; currency: string; createdAt: Date };
+/** A pending ask holding an allocated availability slot, with its window fields and its latest claim and slot release. */
+export type AllocatedAskRow = { id: number; createdAt: Date; coverageVisibleAt: Date | null; waitingForCoverage: boolean; latestClaimAt: Date | null; latestReleaseAt: Date | null };
+/** SQL pre-filter cutoffs: each window's end plus the grace, computed from the job's clock. */
+export type AllocatedAskCutoffs = { visibleBefore: Date; waitingBefore: Date };
+export type LegacyPlanWalletRow = { id: number; role: string; plan: string; termEnd: Date | null };
+
+export type DailyMoneyCheckDeps = {
+  auditWallets: () => Promise<WalletAuditResult>;
+  listCreditedPayments: (afterId: number, limit: number) => Promise<CreditedPaymentRow[]>;
+  countPaymentCreditRows: (paymentIds: number[]) => Promise<PaymentCreditCount[]>;
+  listParkedPayments: (limit: number) => Promise<ParkedPaymentRow[]>;
+  listUnmatchedRefunds: (limit: number) => Promise<UnmatchedRefundRow[]>;
+  listStaleCheckouts: (olderThan: Date, limit: number) => Promise<StaleCheckoutRow[]>;
+  listAllocatedAsks: (cutoffs: AllocatedAskCutoffs, afterId: number, limit: number) => Promise<AllocatedAskRow[]>;
+  listLegacyPlanWallets: (now: Date, limit: number) => Promise<LegacyPlanWalletRow[]>;
+  sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
+  recordActivity: typeof recordOperationalActivity;
+};
+
+async function listCreditedPayments(afterId: number, limit: number): Promise<CreditedPaymentRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  return db.select({ id: paymentFulfillments.id, userId: paymentFulfillments.userId, role: paymentFulfillments.role, tokenCount: paymentFulfillments.tokenCount })
+    .from(paymentFulfillments)
+    .where(and(eq(paymentFulfillments.status, "credited"), gt(paymentFulfillments.id, afterId)))
+    .orderBy(asc(paymentFulfillments.id)).limit(limit);
+}
+
+async function countPaymentCreditRows(paymentIds: number[]): Promise<PaymentCreditCount[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  if (paymentIds.length === 0) return [];
+  const rows = await db.select({ referenceId: tokenTransactions.referenceId, creditRows: count(), creditedTokens: sql<string>`COALESCE(SUM(${tokenTransactions.tokenCount}), 0)` })
+    .from(tokenTransactions)
+    .where(and(eq(tokenTransactions.referenceType, "payment_fulfillment"), eq(tokenTransactions.kind, "purchase"), inArray(tokenTransactions.referenceId, paymentIds.map(String))))
+    .groupBy(tokenTransactions.referenceId);
+  return rows.map(row => ({ paymentId: Number(row.referenceId), creditRows: Number(row.creditRows), creditedTokens: Number(row.creditedTokens) }));
+}
+
+async function listParkedPayments(limit: number): Promise<ParkedPaymentRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  return db.select({ id: paymentFulfillments.id, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, reconciliationReason: paymentFulfillments.reconciliationReason, createdAt: paymentFulfillments.createdAt })
+    .from(paymentFulfillments).where(eq(paymentFulfillments.status, "requires_review"))
+    .orderBy(asc(paymentFulfillments.id)).limit(limit);
+}
+
+async function listUnmatchedRefunds(limit: number): Promise<UnmatchedRefundRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  // A refund the webhook could not match to a payment never reaches Admin >
+  // Payments requiring review, so it only exists as this log row; metadata
+  // paymentId null is the unmatched marker (server/chargebeeRoutes.ts).
+  const rows = await db.select({ id: operationalActivityLogs.id, resourceId: operationalActivityLogs.resourceId, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt })
+    .from(operationalActivityLogs).where(eq(operationalActivityLogs.action, "billing.refund_needs_review"))
+    .orderBy(asc(operationalActivityLogs.id)).limit(500);
+  const unmatched: UnmatchedRefundRow[] = [];
+  for (const row of rows) {
+    let paymentId: unknown;
+    try { paymentId = row.metadata ? (JSON.parse(row.metadata) as { paymentId?: unknown }).paymentId : null; } catch { paymentId = null; }
+    if (paymentId === null || paymentId === undefined) unmatched.push({ logId: row.id, resourceId: row.resourceId ?? null, createdAt: row.createdAt });
+    if (unmatched.length >= limit) break;
+  }
+  return unmatched;
+}
+
+async function listStaleCheckouts(olderThan: Date, limit: number): Promise<StaleCheckoutRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  return db.select({ id: paymentFulfillments.id, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, createdAt: paymentFulfillments.createdAt })
+    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan)))
+    .orderBy(asc(paymentFulfillments.id)).limit(limit);
+}
+
+/**
+ * Pending asks with an allocated slot whose window (getAskShelfLifeEndsAtMs: 7 days from first visibility,
+ * creation without it, 90 days from creation while waiting) ended before the cutoffs, by id, one bounded
+ * page after `afterId`. Claim events and slot releases come from two plain reads, so the job decides "never
+ * claimed" in JS (release times are read too, for D-038's later "no claim since the latest release" rule): both
+ * are written from the app clock by transitionReferralRequestTx and releaseAvailabilitySlotsTx, and neither is
+ * compared with DB NOW().
+ */
+export async function listAllocatedPendingAsks(cutoffs: AllocatedAskCutoffs, afterId: number, limit: number): Promise<AllocatedAskRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  const asks = await db.select({ id: referralRequests.id, createdAt: referralRequests.createdAt, coverageVisibleAt: referralRequests.coverageVisibleAt, waitingForCoverage: referralRequests.waitingForCoverage })
+    .from(referralRequests)
+    .innerJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.status, "allocated")))
+    .where(and(
+      eq(referralRequests.status, "pending"), gt(referralRequests.id, afterId),
+      or(
+        and(eq(referralRequests.waitingForCoverage, true), lt(referralRequests.createdAt, cutoffs.waitingBefore)),
+        and(eq(referralRequests.waitingForCoverage, false), or(
+          and(isNotNull(referralRequests.coverageVisibleAt), lt(referralRequests.coverageVisibleAt, cutoffs.visibleBefore)),
+          and(isNull(referralRequests.coverageVisibleAt), lt(referralRequests.createdAt, cutoffs.visibleBefore)),
+        )),
+      ),
+    ))
+    .orderBy(asc(referralRequests.id)).limit(limit);
+  if (asks.length === 0) return [];
+  const ids = asks.map(ask => ask.id);
+  const claims = await db.select({ requestId: referralTransitionEvents.referralRequestId, at: referralTransitionEvents.createdAt })
+    .from(referralTransitionEvents).where(and(inArray(referralTransitionEvents.referralRequestId, ids), eq(referralTransitionEvents.action, "claim")));
+  const releases = await db.select({ requestId: referralAvailabilitySlots.referralRequestId, at: referralAvailabilitySlots.releasedAt })
+    .from(referralAvailabilitySlots).where(and(inArray(referralAvailabilitySlots.referralRequestId, ids), eq(referralAvailabilitySlots.status, "released")));
+  const latestOf = (rows: ReadonlyArray<{ requestId: number; at: Date | null }>) => {
+    const latest = new Map<number, Date>();
+    for (const row of rows) {
+      const seen = latest.get(row.requestId);
+      if (row.at && (!seen || row.at.getTime() > seen.getTime())) latest.set(row.requestId, row.at);
+    }
+    return latest;
+  };
+  const latestClaim = latestOf(claims);
+  const latestRelease = latestOf(releases);
+  return asks.map(ask => ({ ...ask, latestClaimAt: latestClaim.get(ask.id) ?? null, latestReleaseAt: latestRelease.get(ask.id) ?? null }));
+}
+
+/**
+ * P0-allocated-ask-stuck: still allocated, never claimed, and its shelf life ended more
+ * than ALLOCATED_ASK_GRACE_MS before `nowMs` (the app clock). The hourly sweep should have closed it with its
+ * credit back. A claimed ask keeps its credit spent and never expires (D-021), so it is never a finding.
+ */
+export function isAllocatedAskPastWindow(ask: AllocatedAskRow, nowMs: number): boolean {
+  // An assigned ask created before claims became recorded events keeps today's rules (it never expires), so the
+  // sweep never closes it by design: flagging it would repeat the same line in every daily email (heldAsk.ts).
+  if (!ask.waitingForCoverage && ask.createdAt.getTime() < HELD_ASK_HISTORY_SINCE.getTime()) return false;
+  // Today's release rule (packet 4.1, heldForReferrerTx) is "no claim ever": an ask claimed once keeps its credit
+  // spent and is never released, so it is never a finding. D-038 slice A moves the release rule and this check to
+  // "no claim since the latest release" together (D-076 (1)); latestReleaseAt is kept for that.
+  if (ask.latestClaimAt !== null) return false;
+  const endsAt = getAskShelfLifeEndsAtMs(ask);
+  return endsAt !== null && nowMs - endsAt > ALLOCATED_ASK_GRACE_MS;
+}
+
+/**
+ * D-067: a wallet still marked pro or max reads as Free and is rolled to Free by the next read or the hourly
+ * plan-credit-cycles job. One that still holds an active term was missed. The term end is compared with the
+ * app clock (never MySQL NOW()); the plan values stay in the enum as storage-only.
+ */
+async function listLegacyPlanWallets(now: Date, limit: number): Promise<LegacyPlanWalletRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  return db.select({ id: tokenBalances.id, role: tokenBalances.role, plan: tokenBalances.plan, termEnd: tokenBalances.subscriptionCurrentTermEnd })
+    .from(tokenBalances).where(and(inArray(tokenBalances.plan, ["pro", "max"]), gt(tokenBalances.subscriptionCurrentTermEnd, now)))
+    .orderBy(asc(tokenBalances.id)).limit(limit);
+}
+
+async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {
+  try {
+    const apiKey = process.env.RESEND_API_KEY;
+    const sender = process.env.ERROR_ALERT_FROM_EMAIL;
+    if (!apiKey || !sender) throw new Error("Money check email delivery is not configured");
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: sender, to: [MONEY_CHECK_RECIPIENT], subject: input.subject, text: input.text }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+    return true;
+  } catch (error) {
+    console.warn("[DailyMoneyCheck] Unable to send the owner email", error instanceof Error ? error.message : error);
+    return false;
+  }
+}
+
+export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
+  auditWallets: getFullCreditLedgerAudit,
+  listCreditedPayments,
+  countPaymentCreditRows,
+  listParkedPayments,
+  listUnmatchedRefunds,
+  listStaleCheckouts,
+  listAllocatedAsks: listAllocatedPendingAsks,
+  listLegacyPlanWallets,
+  sendEmail: sendMoneyCheckEmail,
+  recordActivity: recordOperationalActivity,
+}) {
+  return async ({ nowMs }: JobRunContext): Promise<JobRunOutput> => {
+    const findings: string[] = [];
+
+    const audit = await deps.auditWallets();
+    for (const mismatch of audit.mismatches) findings.push(`wallet mismatch: ${JSON.stringify(mismatch)}`);
+    for (const item of audit.integrity) findings.push(`wallet integrity: ${JSON.stringify(item)}`);
+
+    // One purchase credit per payment: a credited payment holds exactly one
+    // purchase ledger row for its token count (unique idempotency keys refuse
+    // a second; a missing or short row means the buyer paid for credits they
+    // do not have).
+    let afterId = 0;
+    let checkedPayments = 0;
+    for (;;) {
+      const payments = await deps.listCreditedPayments(afterId, MONEY_CHECK_BATCH);
+      if (payments.length === 0) break;
+      const counts = new Map((await deps.countPaymentCreditRows(payments.map(row => row.id))).map(row => [row.paymentId, row]));
+      for (const payment of payments) {
+        const credit = counts.get(payment.id);
+        if (!credit || credit.creditRows !== 1 || credit.creditedTokens !== payment.tokenCount) {
+          findings.push(`payment credit mismatch: payment #${payment.id} expects one purchase row for ${payment.tokenCount} credits, found ${credit?.creditRows ?? 0} row(s) totaling ${credit?.creditedTokens ?? 0}`);
+        }
+      }
+      checkedPayments += payments.length;
+      afterId = payments[payments.length - 1]!.id;
+      if (payments.length < MONEY_CHECK_BATCH) break;
+    }
+
+    const parked = await deps.listParkedPayments(FINDINGS_PREVIEW_LIMIT);
+    for (const payment of parked) findings.push(`parked payment: #${payment.id} ${payment.amount} ${payment.currency} (${payment.reconciliationReason ?? "no reason recorded"}, since ${payment.createdAt.toISOString()})`);
+
+    const refunds = await deps.listUnmatchedRefunds(FINDINGS_PREVIEW_LIMIT);
+    for (const refund of refunds) findings.push(`unmatched refund: log #${refund.logId} (${refund.resourceId ?? "no invoice id"}, ${refund.createdAt.toISOString()})`);
+
+    const stale = await deps.listStaleCheckouts(new Date(nowMs - STALE_CHECKOUT_AGE_MS), FINDINGS_PREVIEW_LIMIT);
+    for (const checkout of stale) findings.push(`stale checkout: payment #${checkout.id} ${checkout.amount} ${checkout.currency} pending since ${checkout.createdAt.toISOString()}`);
+
+    // P0-allocated-ask-stuck: paged by id until a short batch, so claimed asks (which keep their slot and
+    // never expire) can never fill a page and hide a stuck one; at most FINDINGS_PREVIEW_LIMIT are listed.
+    const cutoffs: AllocatedAskCutoffs = { visibleBefore: new Date(nowMs - ASK_TTL_MS - ALLOCATED_ASK_GRACE_MS), waitingBefore: new Date(nowMs - COVERAGE_WAIT_MS - ALLOCATED_ASK_GRACE_MS) };
+    const stuckAsks = new Set<number>();
+    let askAfterId = 0;
+    while (stuckAsks.size < FINDINGS_PREVIEW_LIMIT) {
+      const asks = await deps.listAllocatedAsks(cutoffs, askAfterId, MONEY_CHECK_BATCH);
+      for (const ask of asks) {
+        if (stuckAsks.size >= FINDINGS_PREVIEW_LIMIT || stuckAsks.has(ask.id) || !isAllocatedAskPastWindow(ask, nowMs)) continue;
+        stuckAsks.add(ask.id);
+        findings.push(`allocated_ask_past_window: ask #${ask.id} is still allocated and was never claimed, more than a day past its shelf life (the ask-expiry sweep has not closed it)`);
+      }
+      const last = asks[asks.length - 1];
+      if (!last || asks.length < MONEY_CHECK_BATCH) break;
+      askAfterId = last.id;
+    }
+
+    const legacy = await deps.listLegacyPlanWallets(new Date(nowMs), FINDINGS_PREVIEW_LIMIT);
+    for (const wallet of legacy) findings.push(`legacy plan wallet: wallet #${wallet.id} (${wallet.role}, ${wallet.plan}) still holds an active term until ${wallet.termEnd?.toISOString() ?? "an unknown date"}`);
+
+    const output: JobRunOutput = { processed: audit.checkedWallets + checkedPayments, failed: 0 };
+    if (findings.length === 0) return output;
+
+    const subject = `skipwait.me daily money check · ${findings.length} finding${findings.length === 1 ? "" : "s"}`;
+    const shown = findings.slice(0, FINDINGS_EMAIL_LINE_LIMIT);
+    const text = [
+      "The daily read-only money check found entries that do not reconcile. Nothing was written; each line needs a human look.",
+      "",
+      `Wallets checked: ${audit.checkedWallets}. Credited payments checked: ${checkedPayments}.`,
+      "",
+      ...shown,
+      ...(findings.length > shown.length ? [`...and ${findings.length - shown.length} more finding(s) not shown here.`] : []),
+      "",
+      "Only ids, amounts, currencies and reasons are listed — no names, emails, or request content.",
+    ].join("\n");
+    const sent = await deps.sendEmail({ subject, text });
+    await deps.recordActivity({ action: "billing.daily_money_check_alert", outcome: sent ? "success" : "failure", resourceType: "scheduled_job", resourceId: "daily-money-check", metadata: { findings: findings.length, checkedWallets: audit.checkedWallets, checkedPayments } }).catch(() => undefined);
+    if (!sent) {
+      // Fail the window so it is retried and reaches Sentry: a money mismatch
+      // the owner never hears about is worse than a noisy retry.
+      output.failed = 1;
+      output.firstError = new Error(`The daily money check found ${findings.length} finding(s) but the owner email could not be sent`);
+    }
+    return output;
+  };
+}

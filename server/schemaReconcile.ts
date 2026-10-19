@@ -146,6 +146,16 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "referralRequests", column: "opportunityId", definition: "INT NULL" },
   { table: "referralRequests", column: "firstLookReferrerId", definition: "INT NULL" },
   { table: "referralRequests", column: "firstLookUntil", definition: "TIMESTAMP NULL" },
+  // D-034/D-047/D-061 (0095): first visibility starts the 7-day clock; an ask
+  // held for credit keeps coverageHeldAt until the sweep delivers it. Both are
+  // nullable and older rows read through coalesce(coverageVisibleAt, createdAt).
+  { table: "referralRequests", column: "coverageVisibleAt", definition: "TIMESTAMP NULL" },
+  { table: "referralRequests", column: "coverageHeldAt", definition: "TIMESTAMP NULL" },
+  // D-079 (0096): card validation for free credits. Both nullable; a null
+  // cardValidatedAt means "no validated card" and a null chargebeeCustomerId
+  // means the provider customer is created on first use.
+  { table: "tokenBalances", column: "cardValidatedAt", definition: "TIMESTAMP NULL" },
+  { table: "users", column: "chargebeeCustomerId", definition: "VARCHAR(80) NULL" },
 ];
 
 // Indexes for OTP lookup and idempotency/atomic-spend contracts. Applied
@@ -214,6 +224,8 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "subscriptionCancellationFeedback", name: "subscription_cancellation_feedback_user_idx", columns: "`userId`,`createdAt`", nonUnique: true },
   // D-022 referrer-posted roles (0094): the first-look-release sweep scans by this clock.
   { table: "referralRequests", name: "referral_requests_first_look_idx", columns: "`firstLookUntil`", nonUnique: true },
+  // D-047 (0095): the coverage-delivery sweep scans held asks by this clock.
+  { table: "referralRequests", name: "referral_requests_coverage_held_idx", columns: "`coverageHeldAt`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is

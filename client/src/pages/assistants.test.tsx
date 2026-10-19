@@ -33,7 +33,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 describe("Assistants page", () => {
   it("lists connections, tokens and activity when the server grants access", async () => {
     stubFetch(url => {
-      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max", hasAccess: true }) };
+      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "land_focus", hasAccess: true }) };
       if (url.includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: CONNECTIONS }) };
       if (url.includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: TOKENS }) };
       if (url.includes("/api/assistants/activity")) return { ok: true, json: async () => ({ activity: ACTIVITY }) };
@@ -54,19 +54,23 @@ describe("Assistants page", () => {
     expect(await screen.findByText("Connected ChatGPT")).toBeTruthy();
   });
 
-  it("shows the Land upgrade gate when the server denies access", async () => {
+  // Review round 2 (D-067): /plans sells no Land until the passes go on sale, so the gate
+  // says so plainly instead of offering an upgrade that leads nowhere.
+  it("shows the Land gate when the server denies access, with no upgrade link while Land is not on sale", async () => {
     stubFetch(() => ({ ok: true, json: async () => ({ plan: "free", hasAccess: false }) }));
     render(<Assistants />);
     expect(await screen.findByText("Assistants and API tokens come with Land")).toBeTruthy();
     expect(screen.getByText("Land and Concierge members can sign in, connect and apply from ChatGPT, Claude, bots and their own tools.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Upgrade to Land" }).getAttribute("href")).toBe("/plans");
+    expect(screen.getByText("Land is not on sale yet. It arrives with the 30 and 90-day passes.")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Upgrade/ })).toBeNull();
+    expect(document.querySelector('a[href="/plans"]')).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "API tokens" }));
     expect(screen.getByText("Assistants and API tokens come with Land")).toBeTruthy();
     expect(screen.queryByText("Your tokens")).toBeNull();
   });
 
   it("follows the server's access answer, not the plan name", async () => {
-    stubFetch(url => (url.includes("/api/assistants/access") ? { ok: true, json: async () => ({ plan: "max", hasAccess: false }) } : { ok: true, json: async () => ({}) }));
+    stubFetch(url => (url.includes("/api/assistants/access") ? { ok: true, json: async () => ({ plan: "land_focus", hasAccess: false }) } : { ok: true, json: async () => ({}) }));
     render(<Assistants />);
     expect(await screen.findByText("Assistants and API tokens come with Land")).toBeTruthy();
     expect(screen.queryByText("Safety")).toBeNull();
@@ -74,7 +78,7 @@ describe("Assistants page", () => {
 
   it("shows the always-on safety rules as fixed switches a visitor cannot flip", async () => {
     stubFetch(url => {
-      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max", hasAccess: true }) };
+      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "land_focus", hasAccess: true }) };
       if (url.includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: [] }) };
       if (url.includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: [] }) };
       return { ok: true, json: async () => ({ activity: [] }) };
@@ -98,7 +102,7 @@ describe("Assistants page", () => {
 
   it("describes real MCP activity and blocked calls honestly", async () => {
     stubFetch(url => {
-      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max", hasAccess: true }) };
+      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "land_focus", hasAccess: true }) };
       if (url.includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: [] }) };
       if (url.includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: [] }) };
       return { ok: true, json: async () => ({ activity: [
@@ -116,7 +120,7 @@ describe("Assistants page", () => {
   it("keeps the token list visible when a revoke fails", async () => {
     stubFetch((url, init) => {
       if (url.includes("/api/assistants/tokens/2") && init?.method === "DELETE") return { ok: false, json: async () => ({ error: "We could not revoke this token" }) };
-      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max", hasAccess: true }) };
+      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "land_focus", hasAccess: true }) };
       if (url.includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: [] }) };
       if (url.includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: TOKENS }) };
       return { ok: true, json: async () => ({ activity: [] }) };
@@ -133,7 +137,7 @@ describe("Assistants page", () => {
       if (String(url).includes("/api/assistants/tokens") && init?.method === "POST") {
         return { ok: true, json: async () => ({ token: { id: 9, name: "Script", prefix: "sw_XyZ", token: "sw_full-once-value" } }) };
       }
-      if (String(url).includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max", hasAccess: true }) };
+      if (String(url).includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "land_focus", hasAccess: true }) };
       if (String(url).includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: [] }) };
       if (String(url).includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: [] }) };
       return { ok: true, json: async () => ({ activity: [] }) };
@@ -150,7 +154,7 @@ describe("Assistants page", () => {
   it("disconnects an assistant", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (String(url).includes("/api/assistants/connections/1") && init?.method === "DELETE") return { ok: true, json: async () => ({ revoked: true, id: 1 }) };
-      if (String(url).includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max", hasAccess: true }) };
+      if (String(url).includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "land_focus", hasAccess: true }) };
       if (String(url).includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: CONNECTIONS }) };
       if (String(url).includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: [] }) };
       return { ok: true, json: async () => ({ activity: [] }) };

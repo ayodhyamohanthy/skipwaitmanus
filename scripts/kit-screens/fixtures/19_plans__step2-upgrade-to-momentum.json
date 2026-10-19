@@ -71,35 +71,10 @@
             "open": 2,
             "cap": 3,
             "full": false,
-            "nextPlan": {
-              "id": "start",
-              "label": "Start",
-              "openRequests": 8
-            }
+            "nextPlan": null
           }
         }
       }
-    },
-    {
-      "method": "GET",
-      "path": "/api/chargebee/gifts/mine",
-      "match": "exact",
-      "status": 200,
-      "body": {
-        "sent": [],
-        "claimable": []
-      }
-    }
-  ],
-  "actions": [
-    {
-      "waitFor": "text=Upgrade to Pro"
-    },
-    {
-      "click": "text=Upgrade to Pro"
-    },
-    {
-      "wait": 300
     }
   ]
 }

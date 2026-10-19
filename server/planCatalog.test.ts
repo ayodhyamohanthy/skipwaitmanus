@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { CATALOG_PLANS, CATALOG_PLAN_IDS, CREDIT_PACKS, CREDIT_TOOLS, FREE_PLAN, HUMAN_SESSIONS, MAX_OPEN_ASKS_PER_COMPANY, REVERSE_TRIAL, catalogItemPriceId, catalogPackItemPriceId, catalogPlanById, catalogSessionItemPriceId, creditToolCost, legacyPlanTarget, planDisplayName, planIntervals, tierAtLeast, type CatalogCurrency, type CatalogInterval } from "../shared/planCatalog";
+import * as planCatalog from "../shared/planCatalog";
+import * as subscriptionPlans from "../shared/subscriptionPlans";
+import { CATALOG_PLANS, CATALOG_PLAN_IDS, CREDIT_PACKS, CREDIT_TOOLS, FREE_PLAN, HUMAN_SESSIONS, MAX_OPEN_ASKS_PER_COMPANY, REVERSE_TRIAL, catalogItemPriceId, catalogPackItemPriceId, catalogPlanById, catalogSessionItemPriceId, creditToolCost, planDisplayName, planIntervals, tierAtLeast, type CatalogCurrency, type CatalogInterval } from "../shared/planCatalog";
 
 const plan = (id: string) => catalogPlanById(id)!;
 const price = (id: string, interval: CatalogInterval, currency: CatalogCurrency) => plan(id).prices[interval]?.[currency];
@@ -122,9 +124,9 @@ describe("structure", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("item price ids never collide with the live Pro and Max ids", () => {
-    const live = ["skipwait_pro_monthly-INR", "skipwait_pro_monthly-USD", "skipwait_max_monthly-INR", "skipwait_max_monthly-USD"];
-    for (const p of CATALOG_PLANS) for (const i of planIntervals(p)) for (const c of ["USD", "INR"] as const) expect(live).not.toContain(catalogItemPriceId(p.id, i, c));
+  it("item price ids never collide with the retired Pro and Max ids, so a late Pro/Max event can never resolve to a kit plan", () => {
+    const retired = ["skipwait_pro_monthly-INR", "skipwait_pro_monthly-USD", "skipwait_max_monthly-INR", "skipwait_max_monthly-USD"];
+    for (const p of CATALOG_PLANS) for (const i of planIntervals(p)) for (const c of ["USD", "INR"] as const) expect(retired).not.toContain(catalogItemPriceId(p.id, i, c));
   });
 
   it("each higher plan holds more open asks (and each paid plan more credits), so moving up never loses a limit", () => {
@@ -145,9 +147,16 @@ describe("structure", () => {
     expect(tierAtLeast("keep_warm", "free")).toBe(true);
   });
 
-  it("legacy subscribers map by rank: Pro to Start, Max to Momentum", () => {
-    expect(legacyPlanTarget("pro")?.id).toBe("start");
-    expect(legacyPlanTarget("max")?.id).toBe("momentum");
-    expect(legacyPlanTarget("free")).toBeUndefined();
+  // D-067: Pro and Max are removed completely, so nothing maps them to a kit tier any more.
+  it("has no legacy Pro/Max map, plan table or item-price lookup for them", () => {
+    expect(planCatalog).not.toHaveProperty("LEGACY_PLAN_MAP");
+    expect(planCatalog).not.toHaveProperty("legacyPlanTarget");
+    expect(subscriptionPlans).not.toHaveProperty("subscriptionPlanFromItemPrice");
+    // The Pro/Max plan table and its paid-plan predicate went with their last callers (the /plans cards and checkout).
+    expect(subscriptionPlans).not.toHaveProperty("SUBSCRIPTION_PLANS");
+    expect(subscriptionPlans).not.toHaveProperty("isPaidSubscriptionPlan");
+    expect(Object.keys(subscriptionPlans).sort()).toEqual(["FREE_MONTHLY_ALLOWANCE", "currentMonthlyCycleKey"]);
+    expect(subscriptionPlans.FREE_MONTHLY_ALLOWANCE).toBe(3);
+    expect(subscriptionPlans.currentMonthlyCycleKey(new Date("2026-10-18T00:00:00.000Z"))).toBe("2026-10");
   });
 });

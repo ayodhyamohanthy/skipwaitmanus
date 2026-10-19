@@ -1,5 +1,7 @@
 # Pricing & credits spec (display values — source: `docs/PRICING_RECOMMENDATION.md`, code: `shared/planCatalog.ts`)
 
+> Start with [`docs/BRIEF.md`](docs/BRIEF.md) (D-073).
+
 3 asks free every month; more use credits. Referrers are never paid and never ask you for money (D-063).
 Money never buys queue position, referral access or acceptance odds.
 If this file and `shared/planCatalog.ts` disagree, the code wins — change both together.
@@ -74,4 +76,6 @@ job ads ("Featured listing") and tooling (D-040).
 
 Honest anchoring only (yearly, packs, Land levels). No fake tiers, fake "was" prices or fake
 scarcity. No hiring guarantees. Never sell referrals, priority, visibility or payments to referrers,
-and never show a plan to a referrer.
+and never show a plan to a referrer. Referrers never pay: every referrer-role checkout is refused
+before any provider call (D-055; `REFERRER_PURCHASES_ENABLED = false` in `shared/referrerPurchases.ts`,
+switched off, not deleted; live since `08d193a0`).

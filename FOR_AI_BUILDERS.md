@@ -1,9 +1,9 @@
 # SkipWait — Read This First (for AI coding platforms)
 
-> Read START_HERE.md first. The platform is already live: update it, do not rebuild it.
+> Read [`docs/BRIEF.md`](docs/BRIEF.md) first (D-073), then `AGENTS.md`. The platform is already live: update it, do not rebuild it.
 
 
-You are turning the SkipWait **design preview** into a working product. The designs in `app/src/routes` are a reference, no longer the spec: Kit v4 is not binding, the UI is designed for the goal, and key-screen designs go to the owner before any rollout (D-048). Where this file conflicts with `docs/DECISIONS.md` or `AGENTS.md`, they win. Everything below is what the designs do NOT do, and what you must build or decide.
+You are turning the SkipWait **design preview** into a working product. The designs in `app/src/routes` are a reference, no longer the spec: Kit v4 is not binding, the UI is designed for the goal, and the owner approved the goal-UI key screens on Oct 18 (D-048, D-071; comps in `design/goal-ui/pick/`), rolled out in phases. Where this file conflicts with `docs/DECISIONS.md` or `AGENTS.md`, they win. Everything below is what the designs do NOT do, and what you must build or decide.
 
 Read in this order: `AGENTS.md` and `docs/DECISIONS.md` (D-026) → this file → `LLM_HANDOFF.md` → `SCREENS.md` → `PRICING.md` → `UPGRADE_NUDGES.md` → `CHECKLIST.md` → `CHANGELOG.md`.
 
@@ -34,7 +34,7 @@ Example data lives in: `src/lib/marketplace-data.ts`, `src/lib/monetization-data
 | Messaging | Opens only after accept. Unified inbox (Asking/Referring). Report/block from any thread. |
 | Notifications | In-app + email + Web Push (only after install + permission). Respect per-type toggles and quiet hours in user time zone. No marketing push ever. Templates: `/emails`. |
 | Saved alerts | Company + function. Fire when a verified, discoverable referrer becomes available. Free 3 alerts, paid unlimited. |
-| Payments | 30/90-day passes (Start, Momentum, Land Focus/Sprint; Land Concierge by application) and Keep warm yearly (D-005, D-046); credit packs ₹99/2, ₹1,199/25, ₹2,599/60, ₹5,999/150 and $5/5, $22/25, $48/60, $105/150 (D-036); Free gets 3 credits a month and 3 open asks, no welcome credits (D-039). All through Chargebee, with Razorpay for INR and PayPal for USD (D-004, D-069). Purchased credits never expire; plan credits roll over per `PRICING.md`. Manage plan / cancel / pause / failed payment per `/billing`. Support UPI where available. |
+| Payments | 30/90-day passes (Start, Momentum, Land Focus/Sprint; Land Concierge by application) and Keep warm yearly (D-005, D-046); credit packs ₹99/2, ₹1,199/25, ₹2,599/60, ₹5,999/150 and $5/5, $22/25, $48/60, $105/150 (D-036); Free gets 3 credits a month and 3 open asks, no welcome credits (D-039). All through Chargebee, with Razorpay for INR and PayPal for USD (D-004, D-069). Purchased credits never expire; plan credits roll over per `PRICING.md`. Referrers never pay: every referrer-role checkout is refused before any provider call (D-055, `REFERRER_PURCHASES_ENABLED = false`; live since `08d193a0`). Manage plan / cancel / pause / failed payment per `/billing`. Support UPI where available. |
 | Safety | Reports with reasons, urgent SLA 4 h, normal 48 h, block both directions, reviewer note required, full audit log, 14-day appeal. |
 | Companies | Suggestions (`/suggest-company`) with duplicate detection, 3/day limit, manual review. Employer workspace (`/employer`): aggregate stats only, cannot see/block individual asks, cannot pay for visibility. |
 | Account | Data export ZIP within 24 h; delete account with typed confirm, 14-day grace, erase within 30 days; session list with sign-out. |
@@ -47,7 +47,7 @@ Installable manifest, icons, offline fallback page, offline draft saving, Web Pu
 i18n with RTL support (Arabic) — language preferences only until supply exists (D-059). Times in the user's time zone. **USD is the global display currency; India sees the INR "India price"** (D-005, D-007; Razorpay for INR, PayPal for USD, D-069).
 
 ## 6. Design system
-- **D-048 (Oct 18 2026):** Kit v4 is no longer binding. Key-screen designs for the goal go to the owner before any rollout; until then the live tokens and components stay and nobody re-skins a surface.
+- **D-048 (Oct 18 2026):** Kit v4 is no longer binding. The goal-UI key screens were approved on Oct 18 (D-071, `design/goal-ui/pick/`, no compensation row); rollout is phase 2 (DESIGN.md, tokens, primitives) then surface by surface. Until a surface is moved over, its live tokens and components stay and nobody re-skins it ad hoc.
 - Tokens in `src/styles.css` (light + dark). Never hardcode colors; use semantic tokens.
 - Fonts: Instrument Sans (UI), IBM Plex Mono (labels).
 - Brand: white, ink #141414, electric blue #0000FF, invitation yellow #FFFC52.
@@ -56,6 +56,7 @@ i18n with RTL support (Arabic) — language preferences only until supply exists
 
 ## 7. Navigation (kit v4 — changes only through the owner's design review, D-048)
 Sidebar: Explore, Requests, Inbox, Refer (→ `/referrer-home`) · "Your space": Profile, My work, Plans & credits · More: Help & safety, For companies. Admin is reachable only by direct URL `/admin`. Alerts bell in the top bar. Wallet merged into Plans.
+The goal navigation in `DESIGN.md` (Find, My asks, Inbox, plus Referral queue for verified referrers) ships per surface in D-048 phase 3; the live sidebar above stays until each surface moves.
 
 ## 8. Accessibility
 Every control named, every field labelled, mobile tap targets ≥ 44 px, visible focus, reduced-motion respected, contrast AA in both themes. Run axe in CI.

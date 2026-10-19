@@ -52,7 +52,9 @@ export function getJobSeekerReferralState(input: { status: ReferralStatus; refer
   if (input.status === "offer") return { label: "Offer recorded", title: "An offer milestone was recorded.", detail: "This is a factual private progress update, not a public success claim.", tone: "emerald" };
   if (input.status === "closed") return { label: "Request closed", title: "This referral request is closed.", detail: "Your private request history and documents remain protected.", tone: "slate" };
   if (input.status === "declined") return { label: "Request closed", title: "This referral request was declined.", detail: "Your documents stay private. You can reuse your packet for another opportunity.", tone: "slate" };
-  if (input.status === "withdrawn") return { label: "Withdrawn", title: "You withdrew this request.", detail: "Your credit was returned to your balance. You can request another referral anytime.", tone: "slate" };
+  // Truthful in every withdrawal: the slot always frees; the credit comes back only
+  // while no employee had picked the ask up (server/db.ts withdrawCompanyReferralRequest).
+  if (input.status === "withdrawn") return { label: "Withdrawn", title: "You withdrew this request.", detail: "Its open slot is free again. The credit came back only if no verified employee had picked it up. You can request another referral anytime.", tone: "slate" };
   return { label: referralStatusLabels[input.status], title: referralStatusLabels[input.status], detail: "This request has a verified status update.", tone: input.status === "offer" ? "emerald" : "blue" };
 }
 
@@ -73,6 +75,9 @@ export function getReferrerInboxState(input: { status: ReferralStatus; referrerI
  */
 export const ASK_TTL_DAYS = 7;
 export const ASK_TTL_MS = ASK_TTL_DAYS * 24 * 60 * 60 * 1000;
+/** D-061: an ask at a company with no available verified referrer waits up to this long at no cost. */
+export const COVERAGE_WAIT_DAYS = 90;
+export const COVERAGE_WAIT_MS = COVERAGE_WAIT_DAYS * 24 * 60 * 60 * 1000;
 /** Cards and urgency copy treat an ask as "expiring soon" inside this window. */
 export const ASK_EXPIRING_SOON_DAYS = 2;
 export const ASK_EXPIRING_SOON_MS = ASK_EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000;
@@ -83,38 +88,68 @@ function createdAtMs(createdAt: Date | string | number | null | undefined): numb
   return Number.isFinite(ms) ? ms : null;
 }
 
-/** Absolute expiry instant for an ask, or null when it cannot be established (fail open: never strand). */
+/**
+ * D-034/D-061: the clock fields of an ask's shelf life. `coverageVisibleAt` is
+ * when an available verified referrer could first see the ask (null while it
+ * still waits for coverage); `waitingForCoverage` means no referrer can see it
+ * yet, so only the 90-day coverage wait runs. Rows from before migration 0095
+ * have no coverageVisibleAt and keep their exact old lifecycle (visible since
+ * creation).
+ */
+export type AskExpiryWindow = {
+  coverageVisibleAt?: Date | string | number | null;
+  waitingForCoverage?: boolean | null;
+};
+
+/** The instant the 7-day clock starts: first visibility, or creation for pre-0095 rows. */
+export function getAskVisibleSinceMs(input: { createdAt: Date | string | number | null | undefined } & AskExpiryWindow): number | null {
+  return createdAtMs(input.coverageVisibleAt ?? null) ?? createdAtMs(input.createdAt);
+}
+
+/** Absolute expiry instant for an ask, or null when it cannot be established (fail open: never strand). Creation-based: the D-050 held-ask shelf life. */
 export function getAskExpiresAtMs(createdAt: Date | string | number | null | undefined): number | null {
   const base = createdAtMs(createdAt);
   return base === null ? null : base + ASK_TTL_MS;
 }
 
-/** True only for unclaimed pending asks past their shelf life. */
-export function isAskExpired(input: { status: ReferralStatus; referrerId?: number | null; createdAt: Date | string | number | null | undefined }, nowMs: number = Date.now()): boolean {
+/** D-061 deadline of an unclaimed ask: waiting asks close COVERAGE_WAIT_DAYS after creation at no cost; everything else ASK_TTL_DAYS after first visibility. */
+export function getAskShelfLifeEndsAtMs(input: { createdAt: Date | string | number | null | undefined } & AskExpiryWindow): number | null {
+  if (input.waitingForCoverage) {
+    const base = createdAtMs(input.createdAt);
+    return base === null ? null : base + COVERAGE_WAIT_MS;
+  }
+  const since = getAskVisibleSinceMs(input);
+  return since === null ? null : since + ASK_TTL_MS;
+}
+
+/** True only for unclaimed pending asks past their D-061 shelf life. */
+export function isAskExpired(input: { status: ReferralStatus; referrerId?: number | null; createdAt: Date | string | number | null | undefined } & AskExpiryWindow, nowMs: number = Date.now()): boolean {
   if (input.status !== "pending" || input.referrerId != null) return false;
-  const expiresAt = getAskExpiresAtMs(input.createdAt);
+  const expiresAt = getAskShelfLifeEndsAtMs(input);
   return expiresAt !== null && nowMs >= expiresAt;
 }
 
-/** Whole days left before expiry. Null when unstated; <=0 means expired. */
-export function askDaysLeft(input: { createdAt: Date | string | number | null | undefined }, nowMs: number = Date.now()): number | null {
-  const expiresAt = getAskExpiresAtMs(input.createdAt);
+/** Whole days left before the 7-day shelf life ends. Null when unstated or while the ask waits for coverage; <=0 means expired. */
+export function askDaysLeft(input: { createdAt: Date | string | number | null | undefined } & AskExpiryWindow, nowMs: number = Date.now()): number | null {
+  if (input.waitingForCoverage) return null;
+  const expiresAt = getAskShelfLifeEndsAtMs(input);
   if (expiresAt === null) return null;
   return Math.floor((expiresAt - nowMs) / (24 * 60 * 60 * 1000));
 }
 
 /** Days to show in "Expires in N days": rounds a partial day up so a fresh 7-day ask reads 7, not 6. Today/tomorrow bands still use the floor above. */
-export function askDaysShown(input: { createdAt: Date | string | number | null | undefined }, nowMs: number = Date.now()): number | null {
-  const expiresAt = getAskExpiresAtMs(input.createdAt);
+export function askDaysShown(input: { createdAt: Date | string | number | null | undefined } & AskExpiryWindow, nowMs: number = Date.now()): number | null {
+  if (input.waitingForCoverage) return null;
+  const expiresAt = getAskShelfLifeEndsAtMs(input);
   if (expiresAt === null) return null;
   const day = 24 * 60 * 60 * 1000;
   const floor = Math.floor((expiresAt - nowMs) / day);
   return floor >= 2 ? Math.ceil((expiresAt - nowMs) / day) : floor;
 }
 
-/** Row countdown copy. Returns null when no expiry applies. */
-export function formatAskExpiry(input: { status: ReferralStatus; referrerId?: number | null; createdAt: Date | string | number | null | undefined }, nowMs: number = Date.now()): string | null {
-  if (input.status !== "pending" || input.referrerId != null) return null;
+/** Row countdown copy. Returns null when no expiry applies (including while an ask waits for coverage). A personal-link ask its employee has not acted on (`heldForReferrer`, D-050) counts down like an unclaimed one. */
+export function formatAskExpiry(input: { status: ReferralStatus; referrerId?: number | null; heldForReferrer?: boolean; createdAt: Date | string | number | null | undefined } & AskExpiryWindow, nowMs: number = Date.now()): string | null {
+  if (input.status !== "pending" || (input.referrerId != null && input.heldForReferrer !== true)) return null;
   const days = askDaysShown(input, nowMs);
   if (days === null) return null;
   if (days < 0) return "Expired";

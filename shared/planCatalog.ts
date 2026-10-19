@@ -86,8 +86,7 @@ export type PaidCatalogPlan = CatalogPlan & { id: CatalogPlanId };
  * Credit PACKS (the D-005/D-036 ladder: first pack ₹99 for 2 / $5 for 5, then
  * 25 / 60 / 150) stay on sale alongside the passes (D-036/D-046). The flag
  * below only hides client entry points: the server checkout route, pricing and
- * the payment-recovery screen are untouched. Pro/Max are unaffected (they sell
- * open-ask slots and assistant access, and stay off sale per D-027).
+ * the payment-recovery screen are untouched.
  */
 export const CREDIT_PACKS_ON_SALE = true;
 
@@ -202,14 +201,6 @@ export const REVERSE_TRIAL_ON_OFFER: boolean = false;
 
 // ---- Lookups ----
 
-/**
- * Grandfathered legacy subscribers. Pro and Max keep their billing and receive
- * at least the entitlements of the tier they map to (Pro: Start, Max: Momentum),
- * never fewer open requests than the monthly requests they pay for, and Max
- * keeps assistant access. The full rule lives in planEntitlements.ts.
- */
-export const LEGACY_PLAN_MAP = { pro: "start", max: "momentum" } as const satisfies Record<string, CatalogPlanId>;
-
 /** "Land Focus", "Momentum": the tier label plus the Land level when there is one. */
 export function planDisplayName(plan: CatalogPlan): string {
   return plan.levelLabel ? `${plan.label} ${plan.levelLabel}` : plan.label;
@@ -242,9 +233,4 @@ export function catalogPackItemPriceId(packId: CatalogPackId, currency: CatalogC
 /** One-time Chargebee item price for a human session, e.g. skipwait_written_review-INR. */
 export function catalogSessionItemPriceId(sessionId: HumanSessionId, currency: CatalogCurrency): string {
   return `skipwait_${sessionId}-${currency}`;
-}
-
-export function legacyPlanTarget(plan: unknown): CatalogPlan | undefined {
-  if (plan === "pro" || plan === "max") return catalogPlanById(LEGACY_PLAN_MAP[plan]);
-  return undefined;
 }

@@ -23,7 +23,8 @@ describe("credit summary contract", () => {
   });
 
   it("parses the caller's open-ask slots exactly as the server builds them", () => {
-    expect(parseSummary(fixture("20_billing__default"))?.slots).toEqual({ ...openAskSlots(planEntitlementsFor("pro"), 4), nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 } }); // fixtures keep the kit's next plan; the server names none until a plan is on sale
+    // A 30-day Start pass: the fixture carries the same enforced limits the server sends.
+    expect(parseSummary(fixture("20_billing__default"))?.slots).toEqual(openAskSlots(planEntitlementsFor("start"), 4));
     expect(parseSummary(fixture("19_plans__default"))?.slots).toMatchObject({ open: 3, cap: 3, full: true });
   });
 

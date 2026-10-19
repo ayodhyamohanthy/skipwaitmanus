@@ -7,7 +7,7 @@ const d = (iso: string) => new Date(iso);
 const DAY = 24 * 60 * 60 * 1000;
 
 const free = (patch: Partial<LedgerWallet> = {}): LedgerWallet => ({ plan: "free", balance: 0, monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: "2026-10", subscriptionId: null, subscriptionStatus: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, ...patch });
-const paid = (patch: Partial<LedgerWallet> = {}): LedgerWallet => free({ plan: "pro", monthlyAllowance: 10, monthlyCreditsRemaining: 10, subscriptionId: "sub_1", subscriptionStatus: "active", subscriptionCurrentTermStart: d("2026-10-06T00:00:00Z"), subscriptionCurrentTermEnd: d("2026-11-06T00:00:00Z"), ...patch });
+const paid = (patch: Partial<LedgerWallet> = {}): LedgerWallet => free({ plan: "start", monthlyAllowance: 10, monthlyCreditsRemaining: 10, subscriptionId: "sub_1", subscriptionStatus: "active", subscriptionCurrentTermStart: d("2026-10-06T00:00:00Z"), subscriptionCurrentTermEnd: d("2026-11-06T00:00:00Z"), ...patch });
 const carry = (patch: Partial<LedgerGrant> = {}): LedgerGrant => ({ id: 1, source: "carryover", subscriptionId: "sub_1", tokenCount: 4, creditsRemaining: 4, expiresAt: d("2026-11-06T00:00:00Z"), status: "active", ...patch });
 
 describe("cycle math", () => {
@@ -85,6 +85,15 @@ describe("plan lapse and grants", () => {
     expect(paidPlanLapsed(paid(ended), now)).toBe(false);
     expect(paidPlanLapsed(paid(ended), new Date(d("2026-10-19T00:00:00Z").getTime() + RENEWAL_GRACE_MS))).toBe(true);
     expect(paidPlanLapsed(free(), now)).toBe(false);
+  });
+
+  // D-067: a stored plan outside the catalog (retired Pro/Max, reserved Land ids) is
+  // lapsed now, whatever its status or term, so the ledger rolls the wallet to Free.
+  it.each(["pro", "max", "land_100", "land_500"])("a wallet still marked %s has lapsed now, even mid-term and renewing", plan => {
+    for (const subscriptionStatus of ["active", "non_renewing", "cancelled", "paused"]) {
+      expect(paidPlanLapsed(paid({ plan, subscriptionStatus }), now)).toBe(true);
+    }
+    expect(grantIsSpendable(carry(), paid({ plan }), now)).toBe(false);
   });
 
   it("carried credits are spendable only while their own subscription bills, and expire by date or when it ends", () => {

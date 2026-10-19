@@ -10,7 +10,7 @@
 
 | Participant | Value received | Required control |
 | --- | --- | --- |
-| Job Seeker | Their existing private request advances without re-submission or a public employee search. | One notification and one action: **View your request**. No sign-up prompt or sharing gate. Under D-034/D-047 (code pending), a waiting ask spends its one credit at this moment; a seeker with no credit is told plainly and the ask stays held, unseen, until a credit exists. |
+| Job Seeker | Their existing private request advances without re-submission or a public employee search. | One notification and one action: **View your request**. No sign-up prompt or sharing gate. Under D-034/D-047 (shipped `66801d2b`), a waiting ask spends its one credit at this moment; a seeker with no credit is told plainly and the ask stays held, unseen, until a credit exists. |
 | Referrer | A deliberate way to help at their real capacity with a complete candidate packet. | Opens, pauses, or closes voluntary review capacity; no quota, fee, public ranking, or penalty for declining. |
 | Company corridor | Waiting demand is resolved fairly and privately as verified employee capacity becomes available. | Exact-company matching only, atomic allocation, privacy-safe operational logs, and no fabricated availability. |
 

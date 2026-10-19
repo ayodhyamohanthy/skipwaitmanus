@@ -91,7 +91,7 @@ export function ThreadMain({ request, role, seekerIdentity, passed, messages, dr
         {passed ? <Notice tone="muted" title="You passed privately." text="The request stays active for other verified employees. Your identity was never revealed." /> : null}
         {stage === "Declined" ? <Notice tone="muted" title="This referrer passed." text={`It's not a judgment of you. Your slot is open again — try another verified referrer at ${company}.`} /> : null}
         {stage === "Expired" ? <Notice tone="muted" title="This request expired." text="Nobody could take it within 7 days. Your slot is free — refresh your note and ask again." /> : null}
-        {stage === "Withdrawn" ? <Notice tone="muted" title="You withdrew this request." text="Your credit was returned to your balance." /> : null}
+        {stage === "Withdrawn" ? <Notice tone="muted" title="You withdrew this request." text="Its open slot is free again. The credit came back only if no verified employee had picked it up." /> : null}
 
         {accepted ? <p className="text-center text-xs text-muted-foreground">— {seeker ? "Request accepted. You can now message privately." : "Request accepted. Their name and resume are now shared."} —</p> : null}
         {messages.map(message => (

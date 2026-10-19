@@ -19,6 +19,9 @@ export const users = mysqlTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   suspended: boolean("suspended").default(false).notNull(),
+  // D-079: the Chargebee customer created for card validation (and reusable by
+  // later provider flows). Set by the server only; never from the client.
+  chargebeeCustomerId: varchar("chargebeeCustomerId", { length: 80 }),
   sessionsValidAfter: timestamp("sessionsValidAfter").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -480,9 +483,15 @@ export const referralRequests = mysqlTable("referralRequests", {
   opportunityId: int("opportunityId").references(() => companyOpportunities.id, { onDelete: "set null" }),
   firstLookReferrerId: int("firstLookReferrerId").references(() => users.id, { onDelete: "set null" }),
   firstLookUntil: timestamp("firstLookUntil"),
+  // D-034/D-047/D-061 (migration 0095): when an available referrer could first
+  // see the ask (starts the 7-day clock; null while it waits for coverage), and
+  // when coverage opened but the seeker had no credit, so the ask is held
+  // (server/coverageDelivery.ts) until the hourly sweep delivers it.
+  coverageVisibleAt: timestamp("coverageVisibleAt"),
+  coverageHeldAt: timestamp("coverageHeldAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), index("referral_requests_first_look_idx").on(table.firstLookUntil), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
+}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), index("referral_requests_first_look_idx").on(table.firstLookUntil), index("referral_requests_coverage_held_idx").on(table.coverageHeldAt), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
 
 export const referralTransitionEvents = mysqlTable("referralTransitionEvents", {
   id: int("id").autoincrement().primaryKey(),
@@ -690,6 +699,9 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   monthlyCreditsRemaining: int("monthlyCreditsRemaining").default(3).notNull(),
   monthlyAllowance: int("monthlyAllowance").default(3).notNull(),
   monthlyCycleKey: varchar("monthlyCycleKey", { length: 16 }).default("legacy").notNull(),
+  // D-079: when the provider (Chargebee) confirmed a card for this wallet's
+  // owner. Written only from the verified webhook or a provider-truth re-read.
+  cardValidatedAt: timestamp("cardValidatedAt"),
   // Order pinned to shared/billingCatalog.ts WALLET_PLAN_IDS (server/subscriptionManagementContract.test.ts); 0090 added the kit plans,
   // 0091 the Oct 14 2026 plans (land_100/200/500 are reserved, never written).
   plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).default("free").notNull(),

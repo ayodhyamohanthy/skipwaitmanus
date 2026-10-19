@@ -1,56 +1,33 @@
 #!/usr/bin/env node
 /**
- * Design-token audit for the whole client surface (DESIGN.md palette guard).
+ * Design-token audit for the whole client surface.
  *
  *   node scripts/design-token-audit.mjs [paths...]
  *
- * The approved palette is DESIGN.md ("Moving Parts"): the tokens below are the
- * only hexes allowed anywhere in client/src (ui primitives included). Third-
- * party share-brand colours (WhatsApp/Telegram/LinkedIn) are classified
- * separately. Everything else fails the audit.
+ * Two palettes are guarded at once:
+ * - Live surfaces (Kit v4): the APPROVED migration-union hex set below is the
+ *   only arbitrary-value hex allowed until the goal-UI move tightens it.
+ * - The goal scope (client/src/components/goal/**, D-048 phase 2): no colour
+ *   literals at all; only the --g-* system declared in client/src/index.css,
+ *   with trust blue reserved for GoalVerifiedMark, status hues internal to
+ *   the primitives, and the comp sample data banned tree-wide.
  *
- * Why this exists: the pending screens were authored in the earlier Takram /
- * warm-paper palette (#191713, #F5F4EF, #E2DDD2, #E8F0FE, #ECE8DD, #D5CFC0,
- * #BFDBFE, #DBEAFE, #625D52, #3F3B33, #2E2B25) and only rendered correctly
- * because client/src/index.css carried a `!important` compatibility shim. That
- * shim has since been retired: every product surface is re-authored in the
- * approved tokens and the audit guards the whole tree so the legacy palette
- * cannot leak back in (a missing shim entry used to be invisible in review).
+ * The rules live in scripts/designTokenAuditCore.mjs (pure, fixture-tested in
+ * scripts/designTokenAudit.test.ts); this wrapper gathers files and prints.
  *
- * Exit code 0 = clean, 1 = legacy token found.
+ * Exit code 0 = clean, 1 = a rule fired.
  */
 import fs from "node:fs";
 import path from "node:path";
+import { auditFiles } from "./designTokenAuditCore.mjs";
 
 const DEFAULT_ROOTS = ["client/src"];
 
-/** Surfaces allowed to use third-party/demo styling, excluded from the audit. */
+/** Surfaces allowed to use third-party/demo styling, excluded from the hex scan only. */
 const EXCLUDED = new Set([
   "client/src/pages/Home.tsx",              // approved reference surface (already on-palette)
   "client/src/pages/ComponentShowcase.tsx", // dev-only shadcn/widget gallery
 ]);
-
-/** Kit v4 palette (owner override, Oct 2026) + legacy DESIGN.md palette.
- *
- * MIGRATION UNION: kit v4 is the visual contract going forward, but converted
- * pages land batch by batch. Until the last screen batch removes the final
- * legacy hex, both sets pass so CI stays green throughout the migration.
- * Each screen batch must convert its files to kit tokens (oklch utilities,
- * no hardcoded hexes); the batch that removes the last legacy hex tightens
- * this set back to kit-only and deletes this comment.
- */
-const APPROVED = new Set([
-  "#ffffff", "#000000", // canvas / ink (legacy; converges to kit foreground)
-  "#141414", // kit ink
-  "#0000ff", "#0000cc", "#000099", // primary action blue (+ hover/pressed)
-  "#ededff", "#c2c2ff", "#e0e0ff", // pale-blue tint, line, track
-  "#fffc52", "#121212", // accent yellow, dark section
-  "#505050", "#767676", "#e5e5e5", "#cfcfcf", "#f0f0f0", "#f5f5f5", "#e0e0e0", // greys (incl. disabled block)
-  "#15803d", "#b45309", "#b91c1c", // functional success / pending / error
-]);
-
-/** Deliberate third-party brand colours (share targets). */
-const THIRD_PARTY = new Set(["#25d366", "#229ed9", "#0a66c2"]);
 
 function expand(target) {
   const stat = fs.statSync(target);
@@ -67,30 +44,44 @@ function expand(target) {
   return out;
 }
 
-const targets = (process.argv.slice(2).length ? process.argv.slice(2) : DEFAULT_ROOTS)
-  .flatMap(expand)
-  .filter(f => !EXCLUDED.has(f.split(path.sep).join("/")));
-const findings = [];
-let approvedCount = 0;
-let thirdPartyCount = 0;
-
-for (const file of targets) {
-  const source = fs.readFileSync(file, "utf8");
-  // Tailwind arbitrary-value class tokens, e.g. `bg-[#ededff]`, `hover:border-[#0000ff]`.
-  const tokens = source.match(/[a-z-]*\[#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})\](?:\/[0-9]{1,3})?/g) ?? [];
-  for (const token of tokens) {
-    const hex = token.match(/#[0-9A-Fa-f]{3,6}/)[0].toLowerCase();
-    if (APPROVED.has(hex)) { approvedCount++; continue; }
-    if (THIRD_PARTY.has(hex)) { thirdPartyCount++; continue; }
-    findings.push({ file, token });
+function expandCss(target) {
+  const stat = fs.statSync(target);
+  if (stat.isFile()) return /\.css$/.test(target) ? [target] : [];
+  const out = [];
+  for (const name of fs.readdirSync(target)) {
+    const p = path.join(target, name);
+    if (fs.statSync(p).isDirectory()) out.push(...expandCss(p));
+    else if (/\.css$/.test(name)) out.push(p);
   }
+  return out;
 }
 
-console.log(`design-token-audit: ${targets.length} files · ${approvedCount} approved tokens · ${thirdPartyCount} third-party brand tokens`);
+const normalize = (file) => file.split(path.sep).join("/");
+const read = (file) => ({ path: normalize(file), source: fs.readFileSync(file, "utf8") });
+
+const allSources = (process.argv.slice(2).length ? process.argv.slice(2) : DEFAULT_ROOTS).flatMap(expand).map(read);
+const scanned = allSources.filter(({ path: file }) => !EXCLUDED.has(file));
+const cssFiles = DEFAULT_ROOTS.flatMap(expandCss).map(read);
+
+// R6's comp sample names come from the approved artefacts (design/goal-ui/content.json).
+let sampleNames = [];
+try {
+  const content = JSON.parse(fs.readFileSync("design/goal-ui/content.json", "utf8"));
+  const names = new Set();
+  for (const company of content.screenA?.companies ?? []) if (company?.name) names.add(company.name);
+  for (const ask of content.screenC?.asks ?? []) { if (ask?.company) names.add(ask.company); if (ask?.ref) names.add(ask.ref); }
+  if (content.screenB?.detail?.ref) names.add(content.screenB.detail.ref);
+  if (content.screenA?.askDrawer?.resume?.fileName) names.add(content.screenA.askDrawer.resume.fileName);
+  sampleNames = [...names];
+} catch { /* content.json absent: R6 has nothing to pin */ }
+
+const { findings, approvedCount, thirdPartyCount, scannedCount } = auditFiles(scanned, { sampleNames, r6Files: allSources, cssFiles });
+
+console.log(`design-token-audit: ${scannedCount} files · ${approvedCount} approved tokens · ${thirdPartyCount} third-party brand tokens`);
 if (findings.length === 0) {
   console.log("OK — no legacy or off-brand hexes in the client surface.");
   process.exit(0);
 }
 console.error(`\nFAIL — ${findings.length} off-brand token(s):`);
-for (const { file, token } of findings) console.error(`  ${file}: ${token}`);
+for (const { file, rule, token } of findings) console.error(`  ${file}: [${rule}] ${token}`);
 process.exit(1);

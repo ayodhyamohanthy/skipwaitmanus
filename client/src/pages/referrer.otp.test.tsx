@@ -214,7 +214,7 @@ describe("Referrer work-email OTP verification", () => {
     }));
     render(<Referrer />);
     await waitFor(() => expect(screen.getByRole("button", { name: "Approve referral" })).toBeTruthy());
-    expect(screen.getByText("Reviewing is free.")).toBeTruthy();
+    expect(screen.getByText("Reviewing costs you nothing.")).toBeTruthy();
     expect(screen.queryByText(/token per approved referral/i)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Approve referral" }));
     await waitFor(() => expect(screen.getByText("Referral approved.")).toBeTruthy());

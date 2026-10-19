@@ -57,7 +57,7 @@ export default function Referrer() {
   useEffect(() => {
     // /referrer is the public employee entry point, so it carries its own title
     // instead of inheriting the current shell metadata.
-    applySeo({ title: "Verify a work email to review private referrals", description: "Verify a company email once, then review private referral requests for your own company and choose whether to help. Reviewing is always free.", path: "/referrer" });
+    applySeo({ title: "Verify a work email to review private referrals", description: "Verify a company email once, then review private referral requests for your own company and choose whether to help. Reviewing never costs you anything.", path: "/referrer" });
   }, []);
   useEffect(() => {
     // /referrer is the employee login door: signed-out visitors meet the

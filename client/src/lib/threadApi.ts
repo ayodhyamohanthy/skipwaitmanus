@@ -37,6 +37,10 @@ const seekerRowSchema = z.object({
   referrerMessage: z.string().nullish(),
   createdAt: timestampSchema,
   attachmentCount: z.number().nullish(),
+  heldForReferrer: z.boolean().nullish().catch(null),
+  unclaimedAssignment: z.boolean().optional().catch(undefined),
+  // D-034/D-047: which coverage state the ask is in (server-computed); drives the waiting/held seeker copy.
+  queueStatus: z.enum(["available_for_review", "waiting_for_coverage", "held_for_credit"]).nullish(),
 });
 const mineSchema = z.object({ requests: z.array(z.looseObject({ id: z.number() })) });
 
@@ -99,6 +103,12 @@ export type ThreadRequest = {
   createdAt: string | number | null;
   attachments: readonly ThreadAttachment[];
   attachmentCount: number;
+  /** Seeker side only: a personal-link ask its employee has not acted on still counts as unclaimed (D-050). */
+  heldForReferrer?: boolean;
+  /** Seeker side only: assigned to one referrer who has not claimed it, by personal link or queue allocation (P0-allocated-ask-stuck). */
+  unclaimedAssignment?: boolean;
+  /** Seeker side only: coverage state of a pending ask (D-034/D-047/D-061). */
+  queueStatus?: "available_for_review" | "waiting_for_coverage" | "held_for_credit" | null;
 };
 export type ThreadMessage = { id: number; body: string; isMine: boolean };
 export type ThreadRole = "seeker" | "referrer-pending" | "referrer-claimed";
@@ -139,7 +149,7 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
       request: {
         id: own.id, title: own.title ?? null, pitch: own.pitch ?? null, candidateName: null, targetRoleUrl: own.targetRoleUrl ?? null,
         companyDomain: own.companyDomain, companyName: own.companyName ?? null, companyInitials: own.companyInitials ?? null, jobFunction: own.jobFunction ?? null, status: own.status, referrerId: own.referrerId ?? null, referrerName: own.referrerName ?? null, referrerTitle: own.referrerTitle ?? null, referrerMessage: own.referrerMessage ?? null,
-        createdAt: own.createdAt ?? null, attachments: [], attachmentCount: own.attachmentCount ?? 0,
+        createdAt: own.createdAt ?? null, attachments: [], attachmentCount: own.attachmentCount ?? 0, heldForReferrer: own.heldForReferrer === true, unclaimedAssignment: own.unclaimedAssignment === true, queueStatus: own.queueStatus ?? null,
       },
     };
   }

@@ -28,7 +28,7 @@ afterEach(() => { vi.unstubAllEnvs(); });
 const getDocument = (server: express.Express, user: number, id = RESUME_ID) => request(server).get(`/api/documents/${id}`).set("x-test-user", String(user));
 const getDetail = (server: express.Express, user: number) => request(server).get(`/api/company-referrals/${REQUEST_ID}`).set("x-test-user", String(user));
 const claim = (server: express.Express, user: number) => request(server).post(`/api/company-referrals/${REQUEST_ID}/claim`).set("x-test-user", String(user));
-const oneClickAccept = (server: express.Express, user: number) => request(server).post(`/api/company-referrals/${REQUEST_ID}/one-click-review`).set("x-test-user", String(user)).send({ decision: "approved" });
+const oneClickAccept = (server: express.Express, user: number) => request(server).post(`/api/company-referrals/${REQUEST_ID}/one-click-review`).set("x-test-user", String(user)).send({ decision: "approved", ethicsConfirmed: true });
 const review = (server: express.Express, user: number) => request(server).post(`/api/company-referrals/${REQUEST_ID}/review`).set("x-test-user", String(user)).send({ decision: "approved" });
 const grants = () => store.rows(referralDocumentAccessGrants);
 const detailViews = (activity: readonly RecordedActivity[]) => activity.filter(entry => entry.action === "company_referral.claimed_detail_viewed").map(entry => entry.metadata);

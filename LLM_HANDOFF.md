@@ -1,6 +1,6 @@
 # SkipWait — LLM Development Handoff
 
-> Read START_HERE.md first. The platform is already live: update it, do not rebuild it.
+> Read [`docs/BRIEF.md`](docs/BRIEF.md) first (D-073), then `AGENTS.md`. The platform is already live: update it, do not rebuild it.
 
 
 > **AI coding platforms: read `FOR_AI_BUILDERS.md` first.** It lists every rule, backend requirement and placeholder not visible in the designs.
@@ -19,7 +19,7 @@ Hard rule: never invent user counts, testimonials, outcomes, or fake activity. L
 - `app/AGENTS.md` — architecture rules. `app/roadmap.md` — what is designed.
 
 ## 3. Design system (do not change without approval)
-- Kit v4 is no longer binding (D-048): goal-focused key-screen designs go to the owner before any rollout; until then the live tokens stay and nobody re-skins a surface.
+- Kit v4 is no longer binding (D-048): the goal-UI key screens were approved on Oct 18 (D-071, `design/goal-ui/pick/`); phase 2 shipped Oct 19 (`DESIGN.md`, tokens in `client/src/index.css`, primitives in `client/src/components/goal/`, token audit); phase 3 moves surface by surface, and until a surface is moved over its live tokens stay.
 - Colors: white #FFFFFF, ink #141414, electric blue #0000FF, invitation yellow #FFFC52.
 - Fonts: Instrument Sans (UI), IBM Plex Mono (labels/captions).
 - Signature motif: the "door" (opening a door = a referral). Keep it.
@@ -38,7 +38,7 @@ Hard rule: never invent user counts, testimonials, outcomes, or fake activity. L
 | `/invite` | Self-growth / invite loop |
 | `/safety` | Trust, rules, reporting |
 | `/work` | Profile-only work showcase (no feed/likes/followers); add, import, pin, per-item privacy |
-| `/plans` | Plans & credits in one page (Start/Momentum/Land, credits modal, usage panel, upgrade moments) — `/wallet` redirects here |
+| `/plans` | Plans & credits in one page (Free plus the account's own pass, credits, usage panel, upgrade moments; the pass cards come with the D-046 go-live; the referrer role sees no purchase, D-055) — `/wallet` redirects here |
 | `/for-companies` | Standalone employer sales page (no app nav) |
 | `/admin` | Separate internal console, direct URL only, not in any menu: overview, company approvals, verifications, safety reports, users |
 
@@ -73,7 +73,7 @@ Create `app/.env` with your own backend keys (VITE_SUPABASE_URL, VITE_SUPABASE_P
 
 ## 9. Monetization (current — `docs/DECISIONS.md`; prices in `PRICING.md` and `shared/planCatalog.ts`)
 - Passes: Start, Momentum, Land Focus and Land Sprint for 30 or 90 days, Keep warm yearly, Land Concierge by application (D-005, D-046; on sale once D-063, D-067 and D-051 land, D-059); human review and sessions stay off until staffed (D-041). Free is not shown as a card.
-- Credits: Free gets 3 a month and 3 open asks, no welcome credits; the reverse trial comes off the public catalog until its trigger is built (D-039, D-051; off the catalog since `1376dfa3`). Packs ₹99/2, ₹1,199/25, ₹2,599/60, ₹5,999/150 and $5/5, $22/25, $48/60, $105/150 (D-036); purchased credits never expire. All sold through Chargebee, with Razorpay for INR and PayPal for USD (D-004, D-069).
+- Credits: Free gets 3 a month and 3 open asks, no welcome credits; the reverse trial comes off the public catalog until its trigger is built (D-039, D-051; off the catalog since `1376dfa3`). Packs ₹99/2, ₹1,199/25, ₹2,599/60, ₹5,999/150 and $5/5, $22/25, $48/60, $105/150 (D-036); purchased credits never expire. All sold through Chargebee, with Razorpay for INR and PayPal for USD (D-004, D-069). Referrers never pay: every referrer-role checkout is refused before any provider call (D-055, `REFERRER_PURCHASES_ENABLED = false`; live since `08d193a0`).
 - Usage panel + upgrade moments: `UPGRADE_NUDGES.md`.
 
 ## 10. Doc index

@@ -58,7 +58,7 @@ export function ClaimedReview({ request, activeDocument, setActiveDocument, mess
         </article>
         <aside className="queue-guidance h-fit">
           <span className="eyebrow">YOUR DECISION</span>
-          <h3>Reviewing is free.</h3>
+          <h3>Reviewing costs you nothing.</h3>
           <p>Approve only if you can genuinely help. You can send a private note after approval.</p>
           <label className="grid gap-2 text-xs font-semibold">
             <span>Note for the Job Seeker <span className="font-normal text-muted-foreground">(optional)</span></span>

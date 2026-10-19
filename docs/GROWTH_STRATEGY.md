@@ -80,7 +80,7 @@ Supply is 0: live `/api/companies` lists 39 companies (Oct 18) and only skipwait
 
 ### 4. Ship the approved money rules in order; promise only once it can be kept — 5/10
 - **Build order:**
-  1. D-034 first, with its delivery rule D-047 right after (D-053). It is the only rule that matters while supply is 0: `server/db.ts:1620-1625` spends at creation for uncovered asks, and ask creation counts paused, suspended and full referrers as coverage.
+  1. D-034 first, with its delivery rule D-047 right after (D-053). It is the only rule that matters while supply is 0: shipped Oct 18 (`66801d2b`) — an ask to an uncovered company waits free, is charged once at first visibility, and is held when the seeker has no credit.
   2. Then D-038 (with D-050): the claim lapse and the "Referred" timer.
   3. Then D-035 (with D-052): decline reasons.
 - **Each slice:** follows the payments runbook with tests first; uses idempotent ledger keys; computes time in JS (invariant 5); passes `getCreditLedgerAudit` with 0 mismatches.
@@ -130,6 +130,6 @@ Supply is 0: live `/api/companies` lists 39 companies (Oct 18) and only skipwait
 - **Broad seeker launches** (Product Hunt, Reddit, campus blasts), **AI matching, public response leaderboards, paying referrers, scraping, a paid Chrome extension, bulk credits to bootcamps, auto-post bots:** all rejected while supply is 0, or by D-006/D-031.
 
 ## Sequencing
-- **Days 0–30 (Mon Oct 19 to Wed Nov 18, D-064):** P0b merged (Oct 16) and the sprint kit shipped (Oct 18); first D-018 reading; ship move 3 with the approved wording (D-063); start the D-034 tests; rule on free link asks; resolve the referrer-side credit under D-055. From week 1: 25 messages a week, a reading every Monday, concierge emails, free preview baseline. Checkpoints on Mon Nov 2 and Wed Nov 18.
+- **Days 0–30 (Mon Oct 19 to Wed Nov 18, D-064):** P0b merged (Oct 16) and the sprint kit shipped (Oct 18); the D-034 money tier shipped (Oct 18); first D-018 reading; ship move 3 with the approved wording (D-063); rule on free link asks; resolve the referrer-side credit under D-055. From week 1: 25 messages a week, a reading every Monday, concierge emails, free preview baseline. Checkpoints on Mon Nov 2 and Wed Nov 18.
 - **Days 31–60 (to Fri Dec 18, the 3×3 target, D-064), only if a corridor company has 3 or more available outside referrers:** the invite card only if the concierge cleared its bar; repeat the sprint at adjacent companies. No longer gated on supply: D-038 and D-035 sit in the money tier of the queue and D-028 in its supply-tools tier (D-053); D-022 posted roles shipped Oct 17; the D-036 pack prices reach Chargebee through the D-069 catalog sync. If no company has 3 by day 60: narrow to one company, build no supply features, and the owner decides whether the founder time exists.
 - **Days 61–90 (to Sun Jan 17 2027):** if the 3×3 gate is met, open the next corridor (passes and Keep warm no longer wait for this gate, D-046).

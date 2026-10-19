@@ -46,7 +46,11 @@ export function SeekerPanel({ request, onWithdraw, onProgress }: SeekerProps) {
   const close = () => { setModal(null); action.reset(); };
 
   if (stage === "Requested") {
-    const canWithdraw = request.referrerId === null;
+    // Unclaimed: no referrer yet, a personal-link ask its employee has not acted on (D-050), or any assigned ask
+    // nobody claimed, such as a D-034 delivery (P0-allocated-ask-stuck). The server re-decides.
+    const canWithdraw = request.referrerId === null || request.heldForReferrer === true || request.unclaimedAssignment === true;
+    // D-061: a waiting or held ask never reached a verified employee, so withdrawing it returns nothing — nothing was spent.
+    const awaitingCoverage = request.queueStatus === "waiting_for_coverage" || request.queueStatus === "held_for_credit";
     return (
       <>
         <h2 className="mt-2 text-lg font-semibold">Nothing to do yet.</h2>
@@ -57,7 +61,7 @@ export function SeekerPanel({ request, onWithdraw, onProgress }: SeekerProps) {
             {titleId => (
               <>
                 <h2 id={titleId} className="text-xl font-semibold">Withdraw this request?</h2>
-                <p className="mt-2 text-muted-foreground">It leaves the referrer&apos;s queue and frees your slot.</p>
+                <p className="mt-2 text-muted-foreground">{awaitingCoverage ? "It never reached a verified employee, so no credit was used." : "It leaves the referrer's queue and frees your slot."}</p>
                 <ModalError message={action.error} />
                 <footer className="mt-6 flex justify-end gap-2">
                   <Button variant="ghost" onClick={close}>Keep it</Button>

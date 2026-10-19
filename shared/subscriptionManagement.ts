@@ -5,7 +5,7 @@
  * catalog amount (shared/billingCatalog.ts).
  */
 import { z } from "zod";
-import { BILLING_CURRENCIES, BILLING_INTERVALS, LEGACY_PLAN_IDS, planSellsInterval } from "./billingCatalog";
+import { BILLING_CURRENCIES, BILLING_INTERVALS, planSellsInterval } from "./billingCatalog";
 import { BILLING_REGIONS, currencyForRegion } from "./billingRegion";
 import { CATALOG_PACK_IDS, CATALOG_PLAN_IDS, type CatalogInterval, type CatalogPlanId } from "./planCatalog";
 
@@ -34,9 +34,6 @@ export const kitPlanCheckoutRequestSchema = z.object({
   .refine(soldForInterval, { message: INTERVAL_MESSAGE, path: ["interval"] });
 export type KitPlanCheckoutRequest = z.infer<typeof kitPlanCheckoutRequestSchema>;
 
-/** The pre-kit body (Pro/Max monthly), still accepted for grandfathered sales and the current /plans page. */
-export const legacyPlanCheckoutRequestSchema = z.object({ plan: z.enum(LEGACY_PLAN_IDS), currency: z.enum(BILLING_CURRENCIES), billingCountry, role });
-
 /** POST /api/chargebee/checkout for a kit credit pack. The /premium body ({itemPriceId, quantity}) stays as it is. */
 export const packCheckoutRequestSchema = z.object({ packId: z.enum(CATALOG_PACK_IDS), billingCountry, role });
 export type PackCheckoutRequest = z.infer<typeof packCheckoutRequestSchema>;
@@ -45,6 +42,12 @@ export const checkoutResponseSchema = z.object({ checkoutUrl: z.string().url(), 
 
 /** The plan or pack is in the catalog but its Chargebee item price is not live on the billing site yet. */
 export const NOT_AVAILABLE_CODE = "not_available_yet" as const;
+
+/**
+ * D-067: the pre-kit monthly plans (a body naming `plan: "pro" | "max"`) are removed
+ * completely. The checkout answers 410 with this code before any provider call or intent.
+ */
+export const PLAN_RETIRED_CODE = "plan_retired" as const;
 
 /** POST /api/chargebee/subscription-change: move an active subscription to a kit plan. */
 export const subscriptionChangeRequestSchema = z.object({ planId: z.enum(CATALOG_PLAN_IDS), interval: z.enum(BILLING_INTERVALS), role }).refine(soldForInterval, { message: INTERVAL_MESSAGE, path: ["interval"] });
@@ -91,4 +94,5 @@ export const SUBSCRIPTION_REFUSALS = {
   pauseUnavailable: "pause_unavailable",
   nothingToReactivate: "nothing_to_reactivate",
   activeSubscription: "active_subscription",
+  planRetired: PLAN_RETIRED_CODE, // 410
 } as const;
