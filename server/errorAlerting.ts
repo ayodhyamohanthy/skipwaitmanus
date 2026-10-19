@@ -298,10 +298,10 @@ export function createCardValidationAlerter(dependencies: AlertDependencies = {}
         signal: AbortSignal.timeout(10_000),
       });
       if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
-      await recordActivity({ action: "system.card_validation_alert_sent", outcome: "success", resourceType: "chargebee_payment_source", resourceId: input.paymentSourceId ?? null, metadata });
+      await recordActivity({ action: "system.card_validation_alert_sent", outcome: "success", resourceType: "chargebee_payment_source", resourceId: input.paymentSourceId ?? undefined, metadata });
       return { alerted: true as const };
     } catch (error) {
-      await recordActivity({ action: "system.card_validation_alert_sent", outcome: "failure", resourceType: "chargebee_payment_source", resourceId: input.paymentSourceId ?? null, metadata: { ...metadata, error: error instanceof Error ? error.message : String(error) } }).catch(() => undefined);
+      await recordActivity({ action: "system.card_validation_alert_sent", outcome: "failure", resourceType: "chargebee_payment_source", resourceId: input.paymentSourceId ?? undefined, metadata: { ...metadata, error: error instanceof Error ? error.message : String(error) } }).catch(() => undefined);
       throw error;
     }
   };
