@@ -7,6 +7,8 @@
 //   node scripts/next-task.mjs                                  # show the next task
 //   node scripts/next-task.mjs --claim "<model · session>"      # take it (or get your own back)
 //   node scripts/next-task.mjs --heartbeat --as "<model · session>"   # keep your claim alive
+//   node scripts/next-task.mjs --report green|red|blocked|review|landed --task <id> --as "<name>" --note "<one line>"
+//   node scripts/next-task.mjs --status                                # the board: every priority, green or not
 //   node scripts/next-task.mjs --verdict pass|findings --task <id> --as "<name>"
 //   node scripts/next-task.mjs --fixed --task <id> --as "<name>"
 //
@@ -16,9 +18,9 @@
 // the list from another ref; it exists only to test the picker itself.
 import { execFileSync, spawnSync } from "node:child_process";
 import {
-  architectLockOf, ciStateFromRuns, heartbeatOf, localSyncIssues, markerSubject, parseMarker, pickNextTask, reviewLockOf, reviewStateOf, slugOf, validateAssignments,
+  REPORT_STATUSES, architectLockOf, ciStateFromRuns, heartbeatOf, localSyncIssues, markerSubject, parseMarker, pickNextTask, reviewLockOf, reviewStateOf, slugOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
-import { renderPick } from "./nextTaskText.mjs";
+import { renderBoard, renderPick } from "./nextTaskText.mjs";
 
 // Cloud sandboxes reach GitHub only through HTTPS_PROXY, which Node's fetch
 // ignores unless NODE_USE_ENV_PROXY=1 (Node >= 22.21); without it the CI read
@@ -30,7 +32,8 @@ if ((process.env.HTTPS_PROXY || process.env.https_proxy) && process.env.NODE_USE
 
 const LIST = "docs/plans/assignments.json";
 const LIST_REF = process.env.NEXT_TASK_LIST_REF || "origin/main";
-const CLAIMABLE = ["build", "takeover", "fix-main", "review", "fix", "green", "land", "architect", "continue"];
+const CLAIMABLE = ["build", "takeover", "fix-main", "review", "fix", "green", "land", "architect", "unblock", "continue"];
+const REPORTS = "agent/reports/log";
 const git = (...args) => execFileSync("git", args, { encoding: "utf8", env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }, stdio: ["ignore", "pipe", "pipe"] }).trim();
 const tryGit = (...args) => { try { return git(...args); } catch { return null; } };
 const fail = message => { console.error(`next-task: ${message}`); process.exit(1); };
@@ -41,7 +44,8 @@ function argsOf(argv) {
     const a = argv[i];
     if (a === "--fixed") out.fixed = true;
     else if (a === "--heartbeat") out.heartbeat = true;
-    else if (["--claim", "--verdict", "--task", "--as"].includes(a)) {
+    else if (a === "--status") out.status = true;
+    else if (["--claim", "--verdict", "--task", "--as", "--report", "--note"].includes(a)) {
       const v = argv[++i];
       if (!v || v.startsWith("--")) fail(`${a} needs a value`);
       out[a.slice(2)] = v;
@@ -50,6 +54,8 @@ function argsOf(argv) {
   if (out.verdict && !["pass", "findings"].includes(out.verdict)) fail("--verdict is pass or findings");
   if ((out.verdict || out.fixed) && (!out.task || !out.as)) fail("--verdict and --fixed need --task <id> and --as \"<name>\"");
   if (out.heartbeat && !out.as) fail("--heartbeat needs --as \"<name>\" (the name you claimed with)");
+  if (out.report && !REPORT_STATUSES.includes(out.report)) fail(`--report is one of ${REPORT_STATUSES.join(", ")}`);
+  if (out.report && (!out.task || !out.as)) fail("--report needs --task <id> and --as \"<name>\"");
   return out;
 }
 
@@ -101,9 +107,20 @@ function localState() {
   return { local, mainBehind };
 }
 
+/** D-085: the reports the team sent the CEO, newest first (one marker commit each on agent/reports/log). */
+function loadReports() {
+  const raw = tryGit("log", "-n", "500", "--format=%ct%x1f%s%x1f%b%x1e", `refs/remotes/origin/${REPORTS}`);
+  if (!raw) return [];
+  return raw.split("\x1e").map(rec => rec.trim()).filter(Boolean).flatMap(rec => {
+    const [ct, subject, body = ""] = rec.split("\x1f");
+    const m = parseMarker(subject ?? "");
+    return m?.verb === "Report" ? [{ id: m.id, status: m.status, who: m.who, at: Number(ct) * 1000, note: body.trim() }] : [];
+  });
+}
+
 /** Push one empty marker commit onto `parent` as `branch`; false when someone else got there first. */
-function pushMarker(branch, parent, subject) {
-  const sha = git("commit-tree", `${parent}^{tree}`, "-p", parent, "-m", subject);
+function pushMarker(branch, parent, subject, body) {
+  const sha = git("commit-tree", `${parent}^{tree}`, "-p", parent, "-m", subject, ...(body ? ["-m", body] : []));
   return tryGit("push", "-q", "origin", `${sha}:refs/heads/${branch}`) !== null;
 }
 
@@ -141,7 +158,7 @@ async function state() {
       catch (e) { console.error(`next-task: ${e.message}`); }
     }
   } catch (e) { console.error(`next-task: ${e.message}`); }
-  return { doc, mainCi, openPrs, prCi, branches: loadBranches(doc.tasks) };
+  return { doc, mainCi, openPrs, prCi, branches: loadBranches(doc.tasks), reports: loadReports() };
 }
 
 function claim(pick, who, branches) {
@@ -152,6 +169,7 @@ function claim(pick, who, branches) {
     case "land": return pick.tier1
       ? pushMarker(pick.lock, tip(pick.lock), markerSubject("Land claim", pick.task.id, who))
       : pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who));
+    case "unblock": return true;
     case "architect": return pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : git("rev-parse", "origin/main"), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who));
     case "fix-main": return pushMarker(pick.lock, pick.parent ? tip(pick.parent) : git("rev-parse", "origin/main"), markerSubject("Claim", `fix-main-${pick.sha.slice(0, 8)}`, who));
     case "review": return pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : git("rev-parse", "origin/main"), markerSubject("Review claim", pick.task.id, who));
@@ -188,6 +206,23 @@ async function main() {
     console.log(`Recorded on ${lockName}: ${subject}`);
     return;
   }
+  if (args.status) {
+    const { doc, mainCi, openPrs, prCi, branches, reports } = await state();
+    console.log(`main CI: ${mainCi.state}${mainCi.url ? ` (${mainCi.url})` : ""}\n`);
+    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, prCi, reports, now: Date.now() })));
+    return;
+  }
+  if (args.report) {
+    const { doc } = await state();
+    const task = doc.tasks.find(t => t.id === args.task) ?? fail(`no task ${args.task}`);
+    // One plain line: no secrets, tokens or personal data (the repo is public, D-059).
+    const note = (args.note ?? "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, 500);
+    const subject = markerSubject("Report", task.id, args.as, args.report);
+    const parent = () => (tryGit("rev-parse", "--verify", "-q", `refs/remotes/origin/${REPORTS}`) ? git("rev-parse", `refs/remotes/origin/${REPORTS}`) : git("rev-parse", "origin/main"));
+    if (!pushMarker(REPORTS, parent(), subject, note) && (tryGit("fetch", "-q", "origin", REPORTS), !pushMarker(REPORTS, parent(), subject, note))) fail(`could not push ${REPORTS}; fetch and run again`);
+    console.log(`Reported to the CEO on ${REPORTS}: ${subject}${note ? ` — ${note}` : ""}`);
+    return;
+  }
   if (args.heartbeat) {
     const { doc, mainCi, openPrs, prCi, branches } = await state();
     const ci = mainCi.state === "unknown" ? { state: "green" } : mainCi;
@@ -199,8 +234,13 @@ async function main() {
   }
   const who = args.claim ?? args.as ?? null;
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const { doc, mainCi, openPrs, prCi, branches } = await state();
-    const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, prCi, now: Date.now(), claimant: who });
+    const { doc, mainCi, openPrs, prCi, branches, reports } = await state();
+    const now = Date.now();
+    const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, prCi, reports, now, claimant: who });
+    // D-085: every agent starts from the same picture — the priorities top down, green or not.
+    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, prCi, reports, now });
+    if (pick.kind === "ceo") pick.board = board;
+    else console.log(renderBoard(board));
     const { local, mainBehind } = localState();
     const sync = localSyncIssues({ local, branches, claimant: who, mainBehind });
     printSync(sync);

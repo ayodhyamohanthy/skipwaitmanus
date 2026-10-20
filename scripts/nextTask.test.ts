@@ -24,10 +24,11 @@ const task = (id: string, extra: Record<string, unknown> = {}) => ({
 });
 const claimBy = (who: string, id: string, hoursAgo = 1, merged = false): Branch =>
   ({ tipMs: NOW - hoursAgo * HOUR, merged, markers: [{ verb: "Claim", id, who }] });
-const pick = (tasks: ReturnType<typeof task>[], opts: { branches?: [string, Branch][]; prs?: [string, string][]; prCi?: [string, string][]; claimant?: string; ci?: object } = {}) =>
+type Report = { id: string; status: string; who: string; at: number; note: string };
+const pick = (tasks: ReturnType<typeof task>[], opts: { branches?: [string, Branch][]; prs?: [string, string][]; prCi?: [string, string][]; reports?: Report[]; claimant?: string; ci?: object } = {}) =>
   pickNextTask({
     tasks, mainCi: opts.ci ?? green, branches: new Map(opts.branches ?? []), openPrs: new Map(opts.prs ?? []),
-    prCi: new Map((opts.prCi ?? []).map(([b, state]) => [b, { state }])),
+    prCi: new Map((opts.prCi ?? []).map(([b, state]) => [b, { state }])), reports: opts.reports ?? [],
     now: NOW, claimant: opts.claimant ?? null,
   });
 
@@ -210,13 +211,14 @@ describe("own work first, then strict priority (D-085)", () => {
     expect(pick(tasks, { branches, claimant: "Mistral · s5" }).kind).toBe("none");
   });
 
-  it("strict priority: an abandoned task outranks every lower task, and a higher new task outranks a lower abandoned one", () => {
+  it("finishing pending work comes before any new work, each top down (owner: \"completing a pending task is important than taking new one\")", () => {
     const abandonedA: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 3)];
     expect(pick([task("A"), task("B")], { branches: [abandonedA], claimant: "Kimi · s2" })).toMatchObject({ kind: "takeover", task: { id: "A" } });
     const abandonedB: [string, Branch] = ["agent/queue/b", claimBy("Qwen · s1", "B", 3)];
-    expect(pick([task("A"), task("B")], { branches: [abandonedB], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "A" } });
-    // A review needed lower in the list waits behind higher work.
-    expect(pick([task("A"), t1], { branches: [built], prs: [pr], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "A" } });
+    expect(pick([task("A"), task("B")], { branches: [abandonedB], claimant: "Kimi · s2" })).toMatchObject({ kind: "takeover", task: { id: "B" } });
+    expect(pick([task("A"), t1], { branches: [built], prs: [pr], claimant: "Kimi · s2" })).toMatchObject({ kind: "review", task: { id: "M" } });
+    const abandonedC: [string, Branch] = ["agent/queue/c", claimBy("Qwen · s1", "C", 3)];
+    expect(pick([task("A"), task("B"), task("C")], { branches: [abandonedB, abandonedC], claimant: "Kimi · s2" })).toMatchObject({ kind: "takeover", task: { id: "B" } });
   });
 
   it("a builder whose Tier 1 pull request waits for review takes new work; its reviewer, fixer and lander continue theirs", () => {
@@ -247,7 +249,8 @@ describe("built but not green, or green but not landed, and nobody on it (D-085)
     const quiet: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 3)];
     expect(pick([task("A"), task("B")], { branches: [quiet], prs: [t2pr], prCi: [["agent/queue/a", "red"]], claimant: "Kimi · s2" })).toMatchObject({ kind: "green", task: { id: "A" }, pr: t2pr[1], from: "Qwen · s1" });
     const busy: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 1)];
-    expect(pick([task("A"), task("B")], { branches: [busy], prs: [t2pr], prCi: [["agent/queue/a", "red"]], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "B" } });
+    // Its owner is on it, so nobody touches anything below it until it is green.
+    expect(pick([task("A"), task("B")], { branches: [busy], prs: [t2pr], prCi: [["agent/queue/a", "red"]], claimant: "Kimi · s2" })).toMatchObject({ kind: "wait", gate: "A" });
     expect(pick([task("A"), task("B")], { branches: [busy], prs: [t2pr], prCi: [["agent/queue/a", "red"]], claimant: "Qwen · s1" })).toMatchObject({ kind: "continue", of: "green", task: { id: "A" } });
   });
 
@@ -257,7 +260,7 @@ describe("built but not green, or green but not landed, and nobody on it (D-085)
     // Its reviewer keeps the review it holds (a red PR is a finding), but never takes the code fix.
     expect(pick([t1], { branches: [built, reviewing], prs: [pr], prCi: [["agent/queue/m", "red"]], claimant: "Claude · r1" })).toMatchObject({ kind: "continue", of: "review" });
     const fresh: [string, Branch] = ["agent/review/m", { tipMs: NOW - 3 * HOUR, merged: false, markers: [{ verb: "Review claim", id: "M", who: "Claude · r1" }, { verb: "Verdict", id: "M", who: "Claude · r1", verdict: "findings" }] }];
-    expect(pick([t1], { branches: [built, fresh], prs: [pr], prCi: [["agent/queue/m", "red"]], claimant: "Claude · r1" }).kind).toBe("none");
+    expect(pick([t1], { branches: [built, fresh], prs: [pr], prCi: [["agent/queue/m", "red"]], claimant: "Claude · r1" })).toMatchObject({ kind: "wait", gate: "M" });
     expect(pick([t1], { branches: [built], prs: [pr], prCi: [["agent/queue/m", "red"]], claimant: "DeepSeek · s4" })).toMatchObject({ kind: "continue", of: "green" });
   });
 
@@ -281,6 +284,43 @@ describe("built but not green, or green but not landed, and nobody on it (D-085)
     expect(reviewStateOf(landing[1])).toBe("landing");
     expect(pick([t1], { branches: [built, landing], prs: [pr], claimant: "Kimi · s2" })).toMatchObject({ kind: "continue", of: "land" });
     expect(pick([t1], { branches: [built, landing], prs: [pr], claimant: "Gemini · s3" }).kind).toBe("none");
+  });
+});
+
+describe("a red priority holds everything below it (owner: \"top priorities should always be green before touching the next priority\")", () => {
+  const busyA: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 1)];
+  const quietA: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 3)];
+  const red = (status: string, at = NOW - HOUR, note = "gate red on coverage") => ({ id: "A", status, who: "Qwen · s1", at, note });
+
+  it("a red report from an active owner makes everyone else wait, and a newer green report releases it", () => {
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: [red("red")], claimant: "Kimi · s2" })).toMatchObject({ kind: "wait", gate: "A" });
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: [red("red"), { ...red("green"), at: NOW - HOUR / 2 }], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "B" } });
+  });
+
+  it("a red report whose owner went quiet goes to the next agent to make green", () => {
+    expect(pick([task("A"), task("B")], { branches: [quietA], reports: [red("red", NOW - 3 * HOUR)], claimant: "Kimi · s2" })).toMatchObject({ kind: "takeover", task: { id: "A" } });
+  });
+
+  it("a blocked task waits for the CEO: Claude Code gets the unblock, everyone else waits", () => {
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: [red("blocked")], claimant: "Claude Code · s9" })).toMatchObject({ kind: "unblock", task: { id: "A" }, report: { status: "blocked" } });
+    expect(pick([task("A"), task("B")], { branches: [quietA], reports: [red("blocked", NOW - 3 * HOUR)], claimant: "Kimi · s2" })).toMatchObject({ kind: "wait", gate: "A" });
+  });
+
+  it("new work ranked above the red priority may still start; nothing below it does", () => {
+    expect(pick([task("N"), task("A"), task("B")], { branches: [busyA], reports: [red("red")], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "N" } });
+  });
+
+  it("below a red priority the CEO only writes packets and unblocks", () => {
+    const t1 = task("M", { tier: 1, lane: "money" });
+    const builtM: [string, Branch] = ["agent/queue/m", claimBy("DeepSeek · s4", "M", 1)];
+    const prM: [string, string] = ["agent/queue/m", "https://github.com/o/r/pull/9"];
+    expect(pick([task("A"), t1], { branches: [busyA, builtM], prs: [prM], reports: [red("red")], claimant: "Claude Code · s9" }).kind).toBe("ceo");
+    expect(pick([task("A"), task("P", { status: "architect", packet: null })], { branches: [busyA], reports: [red("red")], claimant: "Claude Code · s9" })).toMatchObject({ kind: "architect", task: { id: "P" } });
+  });
+
+  it("the board marks each priority's health, top down", () => {
+    const rows = statusBoard({ tasks: [task("A"), task("B")], branches: new Map([busyA]), openPrs: new Map(), reports: [red("red")], now: NOW });
+    expect(rows.map(r => [r.id, r.health])).toEqual([["A", "red"], ["B", "open"]]);
   });
 });
 
@@ -323,7 +363,9 @@ describe("Claude Code is the CEO, never the builder (D-085)", () => {
     expect(pick([task("A")], { ci: red, claimant: ceo }).kind).toBe("fix-main");
     expect(pick([task("A")], { branches: [["agent/queue/a", claimBy(ceo, "A", 1)]], claimant: ceo })).toMatchObject({ kind: "continue", of: "build" });
     expect(pick([task("A"), t1], { branches: [built], prs: [pr], claimant: ceo })).toMatchObject({ kind: "review", task: { id: "M" } });
-    expect(pick([task("P", { status: "architect", packet: null }), t1], { branches: [built], prs: [pr], claimant: ceo })).toMatchObject({ kind: "architect", task: { id: "P" } });
+    // Pending before new: a review waiting on the CEO comes before writing a new packet, then the packet.
+    expect(pick([task("P", { status: "architect", packet: null }), t1], { branches: [built], prs: [pr], claimant: ceo })).toMatchObject({ kind: "review", task: { id: "M" } });
+    expect(pick([task("P", { status: "architect", packet: null }), task("A")], { claimant: ceo })).toMatchObject({ kind: "architect", task: { id: "P" } });
   });
 
   it("prints the CEO review when nothing at its level waits", () => {

@@ -15,6 +15,8 @@ const worktree = branch => `Work in your own worktree, never by switching branch
 /** D-085: origin is the only place other agents can see; a claim nobody pushes to for 2 hours is free again. */
 const keepAlive = who => `Push your branch after every commit. Before any step that may take over an hour without a commit (the full gate, a long test run), run \`${CMD} --heartbeat --as "${who}"\`: a claim nobody has pushed to for 2 hours is handed to the next agent (D-085). Before you stop for any reason, commit (a WIP commit is fine) and push.`;
 const unclear = "If anything is unclear, a test fails for a reason the packet does not give, or the call is the owner's: stop, write the question in the row, push the branch and ask the owner. Never guess about money, sign-in, identity or privacy.";
+/** D-085: the team reports every priority's status to the CEO (Claude Code), green or not. */
+const report = (task, who) => `When you stop, land, open a pull request or get blocked, report to the CEO: \`${CMD} --report <green|red|blocked|review|landed> --task ${task.id} --as "${who}" --note "<one line: what is green, what is not, what you need>"\` (D-085). A red or blocked report holds every lower priority until it is green.`;
 const yours = who => `This is already yours (${who}): nothing new was claimed, and no other agent will be given it. Finish it before anything else (queue rule 2).`;
 
 function workSteps(task, who, branch) {
@@ -25,6 +27,7 @@ function workSteps(task, who, branch) {
       ? `Tier 1: push the branch, open a DRAFT pull request, set the row to "review — ${branch} — <sha>", and stop. Never land it yourself: \`${CMD}\` hands the review to a different session.`
       : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and the §3b row to "done — <sha>".`,
     unclear,
+    report(task, who),
   ];
 }
 
@@ -52,6 +55,7 @@ const reviewSteps = (pick, who) => steps([
   `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\`. Merge the latest origin/main into ${pick.work}, set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set the §3b row to "done — <sha>".`,
   `Findings: list each with file:line, severity and the failing test to add first, then run \`${CMD} --verdict findings --task ${pick.task.id} --as "${who}"\` and stop.`,
   `Run \`${CMD} --heartbeat --as "${who}"\` before any long step: a review lock nobody has pushed to for 2 hours goes to the next agent (D-085).`,
+  report(pick.task, who),
 ]);
 
 const fixSteps = (pick, who) => steps([
@@ -59,6 +63,7 @@ const fixSteps = (pick, who) => steps([
   `Read docs/BRIEF.md, ${pick.task.packet} and the findings on the pull request. Fix each one red-first on ${pick.work}, then re-run the full gate merged with the latest origin/main and push.`,
   keepAlive(who),
   `Run \`${CMD} --fixed --task ${pick.task.id} --as "${who}"\` so the next run hands it back for review. Do not land it.`,
+  report(pick.task, who),
 ]);
 
 const greenSteps = (pick, who) => steps([
@@ -69,6 +74,7 @@ const greenSteps = (pick, who) => steps([
   pick.task.tier === 1
     ? `Tier 1: once green, set the row to "review — ${pick.work} — <sha>" and stop; \`${CMD}\` hands the review to a different session.`
     : `Then land it: ${land.slice(1).join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and the §3b row to "done — <sha>".`,
+  report(pick.task, who),
 ]);
 
 const landSteps = (pick, who) => steps([
@@ -78,6 +84,7 @@ const landSteps = (pick, who) => steps([
     ? `Set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set the §3b row to "done — <sha>".`
     : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and the §3b row to "done — <sha>".`,
   keepAlive(who),
+  report(pick.task, who),
 ]);
 
 const architectSteps = (pick, who) => steps([
@@ -86,6 +93,7 @@ const architectSteps = (pick, who) => steps([
   "Write the packet in docs/plans/ exactly as docs/DELEGATION.md describes (goal, binding rules quoted, current behaviour verified in code with file:line, rulings, files in and out of scope, red-first tests, definition of done, review checklist, stop-and-ask). Record any ruling you make as a register entry marked \"decided under D-074\".",
   `In the same pull request set the task's "packet" and "status": "todo" in docs/plans/assignments.json, so the next \`${CMD}\` hands it to a builder.`,
   `Land it like any docs change (D-082: pull request, every check green on that exact commit). ${keepAlive(who)}`,
+  report(pick.task, who),
 ]);
 
 const fixMainSteps = () => steps([
@@ -96,11 +104,26 @@ const fixMainSteps = () => steps([
 ]);
 
 const ceoSteps = () => steps([
+  `Read the board above: every priority, top down, green or not, and the latest report from its team. A red or blocked priority comes first: unblock it (decide it under D-074, or move the task to "owner" in docs/plans/assignments.json and ask the owner) before anything lower moves.`,
   "Session-start sync (AGENTS.md §0): fetch main, read the newest entries in docs/DECISIONS.md, the queue (docs/plans/assignments.json, plan §3b) and plan §6; show the owner every decision since your last session.",
   "Re-analyse the business against the goal (the go-to global site for referrals, getting people referred faster, D-010/D-026): what is live, what the money and funnel numbers say (D-018 panel, D-054 analytics, D-065 money check), supply (D-064), and what users hit that we have not fixed. Find the highest-leverage gap.",
   "Turn it into decisions for the owner (rate each 1-10, give the strongest counter-argument, D-023), packets for the open models (docs/plans/, D-074) and the queue order in docs/plans/assignments.json (only Claude Code reorders it, D-083).",
   "Land those docs through a pull request with every check green (D-082). You do not build: the open models build from packets (D-085).",
 ]);
+
+const HEALTH = { done: "done", green: "GREEN", red: "RED", progress: "in progress", open: "not started", owner: "waits for the owner" };
+/** D-085: one board every agent reads — the priorities top down, green or not. */
+export function renderBoard(rows) {
+  const lines = rows.map((r, i) => {
+    const bits = [`${i + 1}. ${r.id} — ${r.title}`, r.role, `Tier ${r.tier}`, HEALTH[r.health] ?? r.state, r.state];
+    if (r.holder) bits.push(r.holder);
+    if (r.quietHours !== null && r.quietHours !== undefined) bits.push(`quiet ${r.quietHours}h`);
+    if (r.pr) bits.push(r.pr);
+    if (r.report) bits.push(`report: ${r.report.status} — ${r.report.who}${r.report.note ? `: ${r.report.note}` : ""}`);
+    return bits.join(" · ");
+  });
+  return ["STATUS BOARD (priorities top down; a red or blocked one holds everything below it)", ...lines, ""].join("\n");
+}
 
 /** The steps for one pick. ctx: { who, date, claimed } (claimed = this run took the lock or holds it). */
 export function renderPick(pick, { who, date, claimed }) {
@@ -113,7 +136,16 @@ export function renderPick(pick, { who, date, claimed }) {
       ...pick.skipped.map(s => `- ${s.id}: ${s.reason}`),
       "Tell the owner; do not choose work yourself.",
     ]);
+    case "unblock": return head(`UNBLOCK ${pick.task.id} — ${pick.task.title}`, [
+      `${pick.report.who} reported it ${pick.report.status}${pick.report.note ? `: ${pick.report.note}` : ""}. Every lower priority waits on it (D-085).`,
+      steps([
+        `Read the row "${pick.task.row}", its branch and pull request, and every decision it names.`,
+        "Decide it as CEO under D-074 and record the ruling in docs/DECISIONS.md, or, if the call is the owner's (prices, legal text, live money, the frozen list), set the task's status to \"owner\" in docs/plans/assignments.json and put the question to the owner.",
+        `Answer the team where it will see it (the row and the pull request), then report: \`${CMD} --report review --task ${pick.task.id} --as "${who}" --note "<the ruling>"\`.`,
+      ]),
+    ]) + take;
     case "ceo": return head("CEO REVIEW (D-085)", [
+      ...(pick.board ? [renderBoard(pick.board)] : []),
       "Nothing at your level waits: no red main, nothing of yours open, no packet to write, no Tier 1 review. The queue for the builders:",
       ...pick.skipped.map(s => `- ${s.id}: ${s.reason}`),
       ceoSteps(),

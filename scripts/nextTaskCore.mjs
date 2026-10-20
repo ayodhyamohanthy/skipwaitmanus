@@ -170,7 +170,14 @@ export function localSyncIssues({ local, branches, claimant, mainBehind = 0 }) {
 }
 
 /** The one thing the next agent should do (D-083, D-085). */
-export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(), now, claimant }) {
+/** The newest report per task id. */
+const latestReports = reports => {
+  const latest = new Map();
+  for (const r of reports) if (!latest.has(r.id) || latest.get(r.id).at < r.at) latest.set(r.id, r);
+  return latest;
+};
+
+export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(), reports = [], now, claimant }) {
   const tipOf = name => branches.get(name)?.tipMs ?? 0;
   const activeAt = (name, slug) => Math.max(tipOf(name), tipOf(heartbeatOf(slug)));
   const idle = (name, slug) => now - activeAt(name, slug) > IDLE_MS;
@@ -210,6 +217,9 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
 
   const skipped = [];
   const skip = (v, reason) => { skipped.push({ id: v.task.id, reason }); return null; };
+  const latest = latestReports(reports);
+  // D-085: a priority that is red (CI, or its team reported red or blocked) holds everything below it.
+  const gate = reason => ({ kind: "gate", reason });
   const roles = v => ({
     reviewer: v.lock ? lastBy(v.lock.markers, ["Review claim"])?.who ?? null : null,
     fixer: v.lock ? lastBy(v.lock.markers, ["Fix claim"])?.who ?? null : null,
@@ -222,9 +232,18 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       const quiet = idle(v.work, v.slug);
       const { reviewer, fixer, lander } = roles(v);
       if (v.pr && v.ci === "red") {
-        if (!quiet) return skip(v, `CI is red on ${v.pr}; ${v.owner ?? "its builder"} is on it`);
-        if (claimant && claimant === reviewer) return skip(v, "CI is red, and you reviewed it");
+        if (!quiet) return gate(`${v.task.id} is red (CI on ${v.pr}) and ${v.owner ?? "its builder"} is making it green`);
+        if (claimant && claimant === reviewer) return gate(`${v.task.id} is red (CI on ${v.pr}); you reviewed it, so someone else makes it green`);
         return { kind: "green", task: v.task, work: v.work, pr: v.pr, from: v.owner, since: activeAt(v.work, v.slug) };
+      }
+      const said = latest.get(v.task.id);
+      if (said && (said.status === "red" || said.status === "blocked")) {
+        const why = `${said.who} reported ${v.task.id} ${said.status}${said.note ? `: ${said.note}` : ""}`;
+        if (said.status === "blocked") return isArchitect(claimant) ? { kind: "unblock", task: v.task, report: said } : gate(`${why}; it waits for the CEO`);
+        if (!quiet) return gate(`${why}; ${v.owner ?? "its builder"} is on it`);
+        return v.pr
+          ? { kind: "green", task: v.task, work: v.work, pr: v.pr, from: v.owner, since: activeAt(v.work, v.slug) }
+          : { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: activeAt(v.work, v.slug) };
       }
       if (v.pr && (v.ci === "running" || v.ci === "running-after-red")) return skip(v, `CI is running on ${v.pr}`);
       if (v.pr && v.task.tier === 1) {
@@ -266,16 +285,40 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   // D-085: Claude Code is the CEO; the open models build. A Claude Code session
   // is never handed development work, and with nothing at its level it runs
   // the CEO review instead of idling.
+  // D-085 (owner): finishing pending work comes before starting new work. Pass 1
+  // walks the queue top down for pending work (a review, findings to fix, a red
+  // pull request, a landing, a half-built claim, a blocked task); pass 2 for new
+  // work. A red or blocked priority holds everything below it in both passes.
+  // Claude Code is the CEO: never development work, and below a red priority
+  // only packets and unblocking.
   const ceo = isArchitect(claimant);
-  for (const v of view) {
-    const action = actionFor(v);
+  const actions = [];
+  let gateAt = -1, gateReason = null;
+  for (let i = 0; i < view.length; i++) {
+    const action = actions[i] = actionFor(view[i]);
     if (!action) continue;
-    if (ceo && (DEV_KINDS.has(action.kind) || (action.kind === "land" && !action.tier1))) { skip(v, "development work: the open models build it (D-085)"); continue; }
+    if (action.kind === "gate") {
+      if (gateAt < 0) { gateAt = i; gateReason = action.reason; }
+      if (!ceo) break;
+      skip(view[i], action.reason);
+      continue;
+    }
+    if (!PENDING_KINDS.has(action.kind)) continue;
+    if (ceo && (DEV_KINDS.has(action.kind) || (action.kind === "land" && !action.tier1))) { skip(view[i], "development work: the open models build it (D-085)"); continue; }
+    if (ceo && gateAt >= 0 && action.kind !== "unblock") { skip(view[i], `waits below red priority ${view[gateAt].task.id}`); continue; }
     return action;
   }
+  for (let i = 0; i < (gateAt >= 0 && !ceo ? gateAt : view.length); i++) {
+    const action = actions[i];
+    if (!action || action.kind === "gate" || PENDING_KINDS.has(action.kind)) continue;
+    if (ceo && action.kind !== "architect") { skip(view[i], "development work: the open models build it (D-085)"); continue; }
+    return action;
+  }
+  if (gateAt >= 0 && !ceo) return { kind: "wait", gate: view[gateAt].task.id, reason: `${gateReason}. A priority must be green before anything below it is touched (D-085): help only if its holder asks, otherwise run this again later` };
   return ceo ? { kind: "ceo", skipped } : { kind: "none", skipped };
 }
 
+const PENDING_KINDS = new Set(["review", "fix", "green", "land", "takeover", "unblock"]);
 const DEV_KINDS = new Set(["build", "takeover", "green", "fix"]);
 
 /** D-085: what this agent already holds, in queue order. A Tier 1 builder waiting for review holds nothing. */
@@ -309,8 +352,7 @@ function ownWork(view, claimant) {
 export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), reports = [], now }) {
   const HOUR = 60 * 60 * 1000;
   const tipOf = name => branches.get(name)?.tipMs ?? 0;
-  const latest = new Map();
-  for (const r of reports) if (!latest.has(r.id) || latest.get(r.id).at < r.at) latest.set(r.id, r);
+  const latest = latestReports(reports);
   const doneIds = new Set(tasks.filter(t => t.status === "done" || branches.get(workBranchOf(t, branches) ?? "")?.merged).map(t => t.id));
   return tasks.map(task => {
     const work = workBranchOf(task, branches);
@@ -330,8 +372,14 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), report
     else if (!info) state = task.dependsOn.some(d => !doneIds.has(d)) ? "waiting" : "todo";
     else if (pr) state = { red: "pr-red", green: "pr-green", running: "pr-running", "running-after-red": "pr-running" }[ci] ?? "pr-open";
     else state = quiet ? "quiet" : "building";
+    const said = state === "done" ? null : latest.get(task.id) ?? null;
+    const health = state === "done" ? "done"
+      : state === "owner" ? "owner"
+      : state === "pr-red" || state === "quiet" || said?.status === "red" || said?.status === "blocked" ? "red"
+      : state === "pr-green" ? "green"
+      : ["todo", "waiting", "architect"].includes(state) ? "open" : "progress";
     return {
-      id: task.id, title: task.title, tier: task.tier, lane: task.lane, role: roleOf(task), state,
+      id: task.id, title: task.title, tier: task.tier, lane: task.lane, role: roleOf(task), state, health,
       holder: holderOf(lockInfo), quietHours: activeAt === null || state === "done" ? null : Math.floor((now - activeAt) / HOUR),
       pr, review: pr && task.tier === 1 ? reviewStateOf(branches.get(reviewLockOf(task)) ?? null) : null, report: latest.get(task.id) ?? null,
     };
