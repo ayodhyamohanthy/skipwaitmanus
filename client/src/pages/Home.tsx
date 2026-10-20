@@ -28,7 +28,7 @@ export default function Home() {
   return (
     <div className="launch-page">
       <header className="launch-header">
-        <Link className="wordmark" href="/" aria-label="skipwait.me home">skipwait<span className="brand-dot">.</span>me</Link>
+        <Link className="wordmark" href="/" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         <nav aria-label="Website navigation" className={menu ? "launch-nav open" : "launch-nav"}>
           <Link href="/explore" onClick={() => setMenu(false)}>Explore companies</Link>
           <Link href="/referrer" onClick={() => setMenu(false)}>For referrers</Link>
@@ -109,7 +109,7 @@ export default function Home() {
         </section>
       </main>
       <footer className="launch-footer">
-        <Link className="wordmark" href="/" aria-label="skipwait.me home">skipwait<span className="brand-dot">.</span>me</Link>
+        <Link className="wordmark" href="/" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         <span>A warmer way in. · skipwait.me</span>
         {/* Kit phone CSS puts every footer span on row 2; the links take row 3 so they never overlap the tagline. */}
         <span className="flex flex-wrap gap-4 max-[769px]:row-start-3!">

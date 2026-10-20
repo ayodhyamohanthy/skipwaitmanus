@@ -27,7 +27,7 @@ describe("landing kit composition", () => {
   it("leads with the product headline and a brand header", () => {
     render(<Home />);
     expect(screen.getByRole("heading", { level: 1, name: /Private job referrals/ })).toBeTruthy();
-    expect(screen.getByRole("banner").textContent).toContain("skipwait.me");
+    expect(within(screen.getByRole("banner")).getByRole("img", { name: "skipwait.me" })).toBeTruthy();
   });
 
   it("states what asking costs as an assurance instead of inventing proof", () => {

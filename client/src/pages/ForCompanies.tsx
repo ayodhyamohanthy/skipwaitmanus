@@ -40,7 +40,7 @@ export default function ForCompanies() {
   return (
     <div data-skipwait-screen="for-companies" className="companies-site">
       <header className="launch-header">
-        <Link className="wordmark" href="/" aria-label="skipwait.me home">skipwait<span className="brand-dot">.</span>me</Link>
+        <Link className="wordmark" href="/" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         <nav aria-label="Company navigation" className="launch-nav">
           <Link href="/explore">Explore</Link>
           <Link href="/plans">Plans</Link>
@@ -97,7 +97,7 @@ export default function ForCompanies() {
         </section>
       </main>
       <footer className="launch-footer">
-        <Link className="wordmark" href="/" aria-label="skipwait.me home">skipwait<span className="brand-dot">.</span>me</Link>
+        <Link className="wordmark" href="/" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         <span>A warmer way in. · skipwait.me</span>
         <Link href="/employer">Employer workspace</Link>
         <Link href="/safety">Help &amp; safety</Link>

@@ -41,7 +41,7 @@ describe("kit error screen behind the app-wide boundary", () => {
     render(<ErrorBoundary><Flaky /></ErrorBoundary>);
     expect(screen.getByRole("heading", { name: "Something went wrong on our side." })).toBeTruthy();
     expect(screen.getByText("Nothing you did. Your asks and messages are safe.")).toBeTruthy();
-    expect(screen.getByText((_: string, el: Element | null) => el?.classList?.contains("wordmark") && el.textContent === "skipwait.me")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "skipwait.me" }).className).toContain("wordmark-logo");
     expect(screen.queryByText(/secret internal detail/)).toBeNull();
     expect(captureClientError).toHaveBeenCalledWith(expect.objectContaining({ message: "secret internal detail" }), expect.objectContaining({ boundary: "ErrorBoundary" }));
     expect(screen.getByRole("link", { name: "Go home" }).getAttribute("href")).toBe("/");

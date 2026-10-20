@@ -34,7 +34,7 @@ export default function ForgotPassword() {
     <div className="grid min-h-screen place-items-center bg-[var(--background)] px-5 py-10">
       <main data-skipwait-screen="forgot-password" className="w-full max-w-md">
         <Link href="/" className="wordmark" aria-label="skipwait.me home">
-          skipwait<span className="brand-dot">.</span>me
+          <img src="/brand/lockup-horizontal.svg" alt="skipwait.me" className="wordmark-logo" />
         </Link>
         {!sent ? (
           <section className="mt-10">
