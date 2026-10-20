@@ -58,7 +58,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <aside className={`app-sidebar overflow-y-auto${drawer ? " is-open" : ""}`}>
-        <Link href="/" className="wordmark" onClick={close}><img src="/brand/lockup-horizontal.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
+        <Link href="/" className="wordmark" onClick={close}><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         <div className="sidebar-caption">A LITTLE CONNECTION.<br />A BIG NEXT STEP.</div>
         <nav aria-label="Main navigation">
           {navigation.map(item => (
@@ -87,7 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="app-topbar">
           <div className="mobile-brand">
             <Button variant="ghost" size="icon" aria-label={drawer ? "Close menu" : "Open menu"} onClick={() => setDrawer(!drawer)}>{drawer ? <X /> : <Menu />}</Button>
-            <Link href="/" className="wordmark"><img src="/brand/lockup-horizontal.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
+            <Link href="/" className="wordmark"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
             <Button variant="ghost" size="icon" asChild className="ml-auto md:hidden"><Link href="/alerts" aria-label="Alerts"><Bell /></Link></Button>
           </div>
           <span className="desktop-top-label">GOOD OPPORTUNITIES START WITH PEOPLE.</span>
