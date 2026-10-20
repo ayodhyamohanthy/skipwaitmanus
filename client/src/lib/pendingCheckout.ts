@@ -4,8 +4,11 @@
 // asks POST /api/chargebee/credit-recovery to match the provider record, at
 // once, at 2.5 s and 7.5 s and on window focus, three attempts per run.
 // Credits are only ever added by the server; this only asks it to look.
+// Browser storage can refuse a write: that never blocks a checkout (the verified
+// webhook and the hourly reconcile still credit), it is only reported.
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
+import { captureClientError } from "@/lib/sentry";
 import type { TokenRole } from "@/lib/tokens";
 
 export const PENDING_CHECKOUT_STORAGE_KEY = "skipwait.pending-chargebee-checkout";
@@ -24,7 +27,11 @@ const recoveryPayloadSchema = z.object({
 });
 
 export function savePendingCheckout(checkout: PendingCheckout) {
-  if (typeof window !== "undefined") window.sessionStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify(checkout));
+  try {
+    if (typeof window !== "undefined") window.sessionStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify(checkout));
+  } catch (error) {
+    captureClientError(error, { source: "pending-checkout-storage", action: "save" });
+  }
 }
 
 export function readPendingCheckout(role: TokenRole): PendingCheckout | undefined {
@@ -38,7 +45,11 @@ export function readPendingCheckout(role: TokenRole): PendingCheckout | undefine
 }
 
 export function clearPendingCheckout() {
-  if (typeof window !== "undefined") window.sessionStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+  try {
+    if (typeof window !== "undefined") window.sessionStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+  } catch (error) {
+    captureClientError(error, { source: "pending-checkout-storage", action: "clear" });
+  }
 }
 
 /** The return screen's heading and line for each recovery state. */

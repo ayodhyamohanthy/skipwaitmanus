@@ -32,6 +32,19 @@ describe("pending checkout storage", () => {
     expect(window.sessionStorage.getItem("skipwait.pending-chargebee-checkout")).toBeNull();
   });
 
+  it("a storage that refuses writes never throws: a checkout is never blocked by it", () => {
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("QuotaExceededError"); });
+    const removeItem = vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => { throw new DOMException("SecurityError"); });
+    try {
+      expect(() => savePendingCheckout({ hostedPageId: "hp_1", role: "job_seeker" })).not.toThrow();
+      expect(() => clearPendingCheckout()).not.toThrow();
+      expect(readPendingCheckout("job_seeker")).toBeUndefined();
+    } finally {
+      setItem.mockRestore();
+      removeItem.mockRestore();
+    }
+  });
+
   it("reads a malformed or empty intent as none", () => {
     window.sessionStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, "{not json");
     expect(readPendingCheckout("job_seeker")).toBeUndefined();
