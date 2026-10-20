@@ -1,12 +1,12 @@
-// Phase-2 boundary: nothing live imports components/goal yet (phase 3 adds
-// each moved surface), and the token block sits exactly once, appended after
-// the previous last rule of index.css (§6b).
+// Phase-3 boundary: only the moved surfaces import components/goal (phase 3
+// adds each one behind its own packet), and the token block sits exactly once,
+// appended after the previous last rule of index.css (§6b).
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const CLIENT_SRC = join(__dirname, "..", "..");
-const ALLOWLIST = /components[\\/]goal[\\/]|pages[\\/]ComponentShowcase\.tsx$|\.test\.tsx?$/;
+const ALLOWLIST = /components[\\/]goal[\\/]|pages[\\/]ComponentShowcase\.tsx$|pages[\\/]MyRequests\.tsx$|\.test\.tsx?$/;
 
 function* walk(dir: string): Generator<string> {
   for (const entry of readdirSync(dir)) {

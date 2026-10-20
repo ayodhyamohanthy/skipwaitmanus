@@ -2,6 +2,9 @@
 // Goal-UI composite pins (packet §6b). Behaviour only; pixel checks are §6c.
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
+import { Router } from "wouter";
+import { memoryLocation } from "wouter/memory-location";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GoalShell } from "./GoalShell";
 import { GoalListRow } from "./GoalListRow";
@@ -40,9 +43,16 @@ const SHELL_PROPS = {
   alertsHref: "/alerts",
 };
 
+/** The shell and its rows navigate with wouter Links, so they need a router even in jsdom. */
+function renderInRouter(ui: ReactElement) {
+  const location = memoryLocation({ path: "/queue", record: true });
+  render(<Router hook={location.hook} searchHook={location.searchHook}>{ui}</Router>);
+  return location;
+}
+
 describe("GoalShell", () => {
   it("links every nav item to its route, with aria-current on the active one", () => {
-    render(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
     const primaryNavs = screen.getAllByRole("navigation", { name: /primary/i });
     expect(primaryNavs.length).toBeGreaterThan(0);
     const current = screen.getAllByRole("link", { current: "page" });
@@ -52,7 +62,7 @@ describe("GoalShell", () => {
   });
 
   it("hides the queue for a non-referrer and shows Give a referral to the referrer sign-in", () => {
-    render(<GoalShell {...SHELL_PROPS} active="find" verifiedReferrer={false}><p>content</p></GoalShell>);
+    renderInRouter(<GoalShell {...SHELL_PROPS} active="find" verifiedReferrer={false}><p>content</p></GoalShell>);
     const navs = screen.getAllByRole("navigation", { name: /primary/i });
     const hrefs = navs.flatMap(nav => Array.from(nav.querySelectorAll("a")).map(a => a.getAttribute("href")));
     expect(hrefs).not.toContain("/queue");
@@ -62,19 +72,36 @@ describe("GoalShell", () => {
   });
 
   it("renders no credits pill when credits is null", () => {
-    render(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
     expect(screen.queryByTestId("goal-credits-pill")).toBeNull();
   });
 
+  it("a ready credit balance is a real link to the credit details, never a dead number", () => {
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer credits={{ state: "ready", count: 4 }}><p>content</p></GoalShell>);
+    const pills = screen.getAllByTestId("goal-credits-pill");
+    expect(pills[0].textContent).toBe("4 credits");
+    expect(pills[0].getAttribute("href")).toBe("/plans");
+    expect(pills[0].getAttribute("aria-label")).toBe("4 credits available. Open credit details");
+  });
+
+  it("the account avatar opens settings; a missing initial falls back to a sign-in link", () => {
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
+    expect(screen.getAllByTestId("goal-avatar")[0].getAttribute("href")).toBe("/settings");
+    cleanup();
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer account={{ initials: "" }}><p>content</p></GoalShell>);
+    expect(screen.queryByTestId("goal-avatar")).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Sign in" }).length).toBeGreaterThan(0);
+  });
+
   it("credits error renders the error copy and never 0", () => {
-    render(<GoalShell {...SHELL_PROPS} verifiedReferrer credits={{ state: "error", onRetry: () => {} }}><p>content</p></GoalShell>);
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer credits={{ state: "error", onRetry: () => {} }}><p>content</p></GoalShell>);
     const pills = screen.getAllByTestId("goal-credits-pill");
     expect(pills[0].textContent).toContain("Balance didn't load");
     expect(pills[0].textContent).not.toContain("0");
   });
 
   it("root carries g-scope", () => {
-    render(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
     expect(screen.getByTestId("goal-shell").className).toContain("g-scope");
   });
 });

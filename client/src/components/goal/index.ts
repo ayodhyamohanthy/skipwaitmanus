@@ -13,6 +13,7 @@ export { GoalField, GoalTextInput } from "./GoalField";
 export { GoalEmptyState, GoalErrorState, GoalSkeletonRows } from "./GoalStates";
 export { useOnlineStatus } from "./useOnlineStatus";
 export { GoalShell, type GoalShellProps, type GoalShellCredits } from "./GoalShell";
+export { GoalAppShell } from "./GoalAppShell";
 export { GoalListRow, GoalListSection, GoalCompanyMark, GoalAvailability, type GoalListRowProps } from "./GoalListRow";
 export { GoalDetailPane, type GoalDetailPaneProps } from "./GoalDetailPane";
 export { GoalLockedPanel } from "./GoalLockedPanel";
