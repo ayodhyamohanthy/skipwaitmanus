@@ -222,15 +222,12 @@ A new job needs its name in both registries and a contract test (`server/schedul
    - `render.yaml`;
    - the imported-but-unused `VitePWA`.
 2. **Test blind spots:**
-   - `shared/` tests never run;
    - `*.test.ts` files are not type-checked;
-   - the in-memory kit throws a bare duplicate-key error where production Drizzle wraps it (`DrizzleQueryError`), so duplicate checks that read only the top-level `code` (`server/blocksRoutes.ts`, `server/companyDirectoryAdmin.ts`) pass in tests and may miss in production;
-   - one copy-guard assertion always passes (`scripts/productCopyGuard.test.ts:21`).
+   - the in-memory kit throws a bare duplicate-key error where production Drizzle wraps it (`DrizzleQueryError`), so duplicate checks that read only the top-level `code` (`server/blocksRoutes.ts`, `server/companyDirectoryAdmin.ts`) pass in tests and may miss in production.
 3. **Privacy hygiene:**
    - server Sentry and admin-alert paths do not redact the token-bearing API routes (`/api/referrer-fast-track/:linkCode`, `/api/referral-share-cards/public/:shareToken`, `/api/referrer-review-links/:linkToken`);
    - the Pages CSP is report-only with nowhere to report.
 4. **Configuration drift:** six server keys are read but never forwarded to the container (`GIFT_CHECKOUT_ENABLED`, the three `OPPORTUNITY_*` limits, `ZEPTOMAIL_FROM_NAME`, `PORT`), so they always take their defaults.
 5. **Toolchain:**
-   - `engines.node` says `>=22`, but the jsdom tests need 22.12 or newer;
    - deploys do not wait for CI;
    - `deploy-pages.yml` builds without running tests.

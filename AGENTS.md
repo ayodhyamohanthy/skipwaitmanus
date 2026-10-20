@@ -176,7 +176,7 @@ employees of that employer can review it. Two auth planes:
 
 ## Commands
 ```bash
-pnpm install          # pnpm 10.4.1 pinned via packageManager; node >=22
+pnpm install          # pnpm 10.34.7 pinned via packageManager; node >=22.12 (.nvmrc)
 pnpm dev              # Express+Vite on :3000 (dev sign-in widget appears)
 pnpm check            # tsc --noEmit
 pnpm test             # vitest (unit + component + route regressions)
