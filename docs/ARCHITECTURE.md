@@ -224,7 +224,6 @@ A new job needs its name in both registries and a contract test (`server/schedul
 2. **Test blind spots:**
    - `shared/` tests never run;
    - `*.test.ts` files are not type-checked;
-   - the in-memory kit throws a bare duplicate-key error where production Drizzle wraps it (`DrizzleQueryError`), so duplicate checks that read only the top-level `code` (`server/blocksRoutes.ts`, `server/companyDirectoryAdmin.ts`) pass in tests and may miss in production;
    - one copy-guard assertion always passes (`scripts/productCopyGuard.test.ts:21`).
 3. **Privacy hygiene:**
    - server Sentry and admin-alert paths do not redact the token-bearing API routes (`/api/referrer-fast-track/:linkCode`, `/api/referral-share-cards/public/:shareToken`, `/api/referrer-review-links/:linkToken`);
