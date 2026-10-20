@@ -40,11 +40,16 @@ async function hostedPage(credentials: ChargebeeCredentials, path: string, form:
   return { checkoutUrl: body.hosted_page.url, hostedPageId: body.hosted_page.id };
 }
 
-/** A new subscription to one catalog item price (kit plan, monthly or yearly). */
+/**
+ * A new subscription to one catalog item price (kit plan, monthly or yearly).
+ * One billing cycle: the term is paid once and never renews, whatever the item
+ * price's own default (GO-LIVE-1 ruling 4.1; opt-in renewal is a later packet).
+ */
 export function createPlanCheckout(credentials: ChargebeeCredentials, input: CheckoutCustomer & ReturnUrls & { itemPriceId: string; checkoutIntentId: string }): Promise<HostedPageResult> {
   const form = new URLSearchParams();
   form.set("subscription_items[item_price_id][0]", input.itemPriceId);
   form.set("subscription_items[quantity][0]", "1");
+  form.set("subscription_items[billing_cycles][0]", "1");
   setCustomer(form, input);
   form.set("redirect_url", input.redirectUrl);
   form.set("cancel_url", input.cancelUrl);
