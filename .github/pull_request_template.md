@@ -12,6 +12,7 @@
 - [ ] token audit clean, no kit imports on goal surfaces (goal-UI slices)
 - [ ] neighbouring flows regression-checked, desktop and 390 (QA)
 - [ ] behind a flag, off until QA verifies (D-097); backward compatible; migrations ship with the slice
+- [ ] names what it strengthens on the other sides; QA cross-side regression (seeker, referrer, company core paths) before any flag goes on (D-096)
 - [ ] one-tap check done (D-095)
 - [ ] green front to back: UI, API, DB and real-path integration tests pass; stays a draft until then; no promote without full green plus QA sign-off (D-097)
 - [ ] rollback noted in docs/RELEASES.md if this deploys
