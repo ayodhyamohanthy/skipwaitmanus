@@ -90,6 +90,25 @@ export type PaidCatalogPlan = CatalogPlan & { id: CatalogPlanId };
  */
 export const CREDIT_PACKS_ON_SALE = true;
 
+/**
+ * D-084: passes and Keep warm are sold only once a paid pass can always be
+ * activated (GO-LIVE-1b: return-page and hourly recovery through the checkout
+ * page). While false, the catalog reports every plan term unavailable and the
+ * subscription checkout refuses with 409 not_available_yet before any provider
+ * call. Kept in code and switched on when it can deliver (D-042).
+ */
+export const PASS_SALES_ENABLED: boolean = false;
+
+/**
+ * D-036/D-046: the legacy ₹99 / $1 single credit retires in a currency once a
+ * credit pack is buyable in that currency. The legacy route stays in code
+ * (D-042) and pending single-credit checkouts still recover; setting this to
+ * false turns the retirement off.
+ */
+export const SINGLE_CREDIT_RETIRES_WITH_PACKS: boolean = true;
+export const SINGLE_CREDIT_RETIRED_CODE = "single_credit_retired" as const;
+export const SINGLE_CREDIT_RETIRED_ERROR = "Single credits are replaced by credit packs. Nothing has been charged.";
+
 export const FREE_PLAN: CatalogPlan & { id: "free" } = {
   id: "free", tier: "free", level: 1, label: "Free", levelLabel: null,
   creditsPerMonth: 3, openRequests: 3, carryover: 0, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: {},
@@ -228,6 +247,11 @@ export function catalogItemPriceId(planId: CatalogPlanId, interval: CatalogInter
 /** One-time Chargebee item price for a credit pack, e.g. skipwait_pack_25-USD. */
 export function catalogPackItemPriceId(packId: CatalogPackId, currency: CatalogCurrency): string {
   return `skipwait_${packId}-${currency}`;
+}
+
+/** D-036: true when the single credit is retired in `currency` — the switch is on and a pack sold in that currency is live. */
+export function singleCreditRetired(currency: CatalogCurrency, packAvailable: (itemPriceId: string) => boolean): boolean {
+  return SINGLE_CREDIT_RETIRES_WITH_PACKS && CREDIT_PACKS.some(pack => pack.prices[currency] !== undefined && packAvailable(catalogPackItemPriceId(pack.id, currency)));
 }
 
 /** One-time Chargebee item price for a human session, e.g. skipwait_written_review-INR. */
