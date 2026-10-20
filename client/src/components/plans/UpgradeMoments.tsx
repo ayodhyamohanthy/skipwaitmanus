@@ -4,15 +4,17 @@
 // the signed-in account's own credit summary; nothing renders when no limit applies.
 //
 // D-067 removed the Pro/Max plans and the compare table, so no moment pitches a
-// plan: a full slot set points at the asks, and credits point at /premium only
-// while credit packs are on sale (CREDIT_PACKS_ON_SALE, D-042); off sale the
-// credits moment is dismiss-only, never a link to the paused screen.
+// plan: a full slot set points at the asks, and credits point at where credits
+// are bought (the page's creditsHref: the packs on /plans while one is on sale,
+// else /premium) only while credit packs are on sale (CREDIT_PACKS_ON_SALE,
+// D-042); off sale the credits moment is dismiss-only, never a link to the
+// paused screen.
 import { useState } from "react";
 import { Bell } from "lucide-react";
-import { Link } from "wouter";
 import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
 import { kitDate } from "./format";
 import type { CreditSummary } from "./planCatalog";
+import { PlansLink } from "./PlansLink";
 
 type Action = { label: string; href: string };
 /** cta is null when the moment has nothing to offer but a dismiss (credits while packs are off sale). */
@@ -63,7 +65,7 @@ export function upgradeMoments(summary: CreditSummary, now: Date, creditsHref: s
 }
 
 function ActionLink({ action, className }: { action: Action; className: string }) {
-  return <Link href={action.href} className={className}>{action.label}</Link>;
+  return <PlansLink href={action.href} className={className}>{action.label}</PlansLink>;
 }
 
 export function UpgradeMoments({ moments }: { moments: Moment[] }) {

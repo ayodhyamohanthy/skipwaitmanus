@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { catalogFixture } from "@/components/plans/catalogFixture";
 import Premium from "./Premium";
 
 // Packs-on-sale paths: the flag is mocked on here; creditPacksOffSale.test.tsx pins the shipped (off) state.
@@ -17,6 +19,11 @@ vi.mock("@/lib/chargebeeCheckout", () => ({ openChargebeeCheckout: (...args: unk
 const mockBrowserRoute = vi.hoisted(() => ({ current: "USD" as "USD" | "INR" }));
 vi.mock("@/lib/paymentRoute", async importOriginal => ({ ...(await importOriginal<typeof import("@/lib/paymentRoute")>()), browserPaymentRoute: () => mockBrowserRoute.current }));
 
+// GO-LIVE-1 C9: /premium reads the catalog for its currency. These tests pin the legacy
+// single-credit picker, so the catalog they get sells no pack in either currency.
+const render = (ui: React.ReactElement) => rtlRender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
+const noPackCatalog = (url: string) => catalogFixture(new URL(url, "https://skipwait.test").searchParams.get("region") === "IN" ? "IN" : "INTL", { packs: false });
+
 function prepareStorage() {
   localStorage.clear();
   mockBrowserRoute.current = "USD";
@@ -27,7 +34,9 @@ function prepareStorage() {
 describe("secure token checkout routes", () => {
   beforeEach(() => {
     prepareStorage();
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ checkoutUrl: "https://skipwait-test.chargebee.com/hosted_pages/test", hostedPageId: "hp_test" }) })));
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => String(input).startsWith("/api/plans/catalog")
+      ? { ok: true, json: async () => noPackCatalog(String(input)) }
+      : { ok: true, json: async () => ({ checkoutUrl: "https://skipwait-test.chargebee.com/hosted_pages/test", hostedPageId: "hp_test" }) }));
   });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); openCheckout.mockReset(); });
 

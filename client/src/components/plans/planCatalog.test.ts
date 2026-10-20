@@ -76,6 +76,18 @@ describe("plan catalog copy after D-012 item 3 and D-067", () => {
     for (const [, line] of planFaqs()) expect(line).not.toMatch(/more open requests/i);
   });
 
+  // GO-LIVE-1 C10 (D-084 (6)): the catalog carries no single-credit price, so /plans names none;
+  // Free states no price until the catalog's currency is on screen.
+  it("names no single-credit price and prices Free only in the catalog's currency", () => {
+    const answers = new Map(planFaqs());
+    expect(answers.get("Is pricing local?")).toBe("Yes. India sees India prices in rupees; everywhere else pays in US dollars.");
+    expect(answers.get("What are credits for?")).not.toMatch(/\$|₹/);
+    expect(planCards("USD")[0].features).toContain("Add credits anytime");
+    for (const line of [...planCards("USD")[0].features, ...planCards("INR")[0].features, ...planFaqs().flat()]) expect(line).not.toMatch(/\$1(?![\d.,])|₹99(?![\d.,])|per credit|a credit\b/);
+    expect(planCards(null)[0].price).toBeNull();
+    expect(planCards(null)[0].per).toBeNull();
+  });
+
   it("reads a retired or unknown stored plan as Free", () => {
     for (const plan of ["pro", "max", "land_100"]) {
       const summary = { plan, subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z" } as never;

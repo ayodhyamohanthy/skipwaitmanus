@@ -1,22 +1,27 @@
 // @vitest-environment jsdom
 // /plans on live data: the Free plan and the account's own active plan, usage and
 // upgrade moments only from the account's own summary, active-plan cancel
-// renewal, the checkout return states, and no Pro, Max, gift or plan checkout
-// (D-067 removed them; the D-046 passes go on sale here in their own slice).
+// renewal, the checkout return states, and no Pro, Max or gift (D-067 removed
+// them). What is for sale comes from the catalog (GO-LIVE-1): packs and passes
+// are pinned in plans.catalog.test.tsx and plans.buy.test.tsx; this file stubs
+// the catalog so the page renders as it does live.
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render as rtlRender, screen, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { CreditsLedger } from "@shared/creditLedger";
+import { catalogFixture } from "@/components/plans/catalogFixture";
 import Plans from "./Plans";
 
 const { openedCheckout, authState, getToken } = vi.hoisted(() => ({ openedCheckout: vi.fn(), authState: { isSignedIn: true }, getToken: vi.fn(async () => "test-token") }));
 // Packs-on-sale paths: the flag is mocked on here; creditPacksOnSale.test.tsx pins the shipped (on) state and creditPacksOffSale.test.tsx the switched-off path.
 vi.mock("@shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("@shared/planCatalog")>()), CREDIT_PACKS_ON_SALE: true }));
-vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: authState.isSignedIn, getToken, openSignIn: vi.fn() }) }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: authState.isSignedIn, userId: null, getToken, openSignIn: vi.fn() }) }));
 vi.mock("wouter", () => ({ Link: ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => <a href={href} className={className}>{children}</a> }));
 vi.mock("@/lib/chargebeeCheckout", () => ({ openChargebeeCheckout: (url: string) => openedCheckout(url) }));
 vi.mock("@/lib/paymentRoute", async importOriginal => ({ ...(await importOriginal<typeof import("@/lib/paymentRoute")>()), browserPaymentRoute: () => "USD" as const }));
 
+const render = (ui: React.ReactElement) => rtlRender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
 type Handler = (url: string, init?: RequestInit) => { ok: boolean; status?: number; json: () => Promise<unknown> } | undefined;
 const ok = (json: unknown) => ({ ok: true, json: async () => json });
 // Summaries as GET /api/credits/summary sends them: the ledger block and the caller's open-ask slots.
@@ -34,46 +39,57 @@ function stub(summary: unknown, extra?: Handler) {
     const handled = extra?.(String(url), init);
     if (handled) return handled;
     if (String(url).includes("/api/credits/summary")) return ok({ summary });
+    if (String(url).startsWith("/api/plans/catalog")) return ok(catalogFixture("INTL"));
+    if (String(url).startsWith("/api/company-referrals/mine")) return ok({ requests: [] });
     return ok({});
   });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
 
-const onlySummaryReads = (fetchMock: ReturnType<typeof stub>) => fetchMock.mock.calls.every(([url, init]) => String(url).startsWith("/api/credits/summary") && (init?.method ?? "GET") === "GET");
+// GO-LIVE-1: the page also reads the public catalog and the seeker's own asks, so "only summary reads"
+// became "only GET reads, and nothing sent to /api/chargebee/ without a press".
+const onlyReads = (fetchMock: ReturnType<typeof stub>) => fetchMock.mock.calls.every(([url, init]) => (init?.method ?? "GET") === "GET" && !String(url).includes("/api/chargebee/"));
 
 beforeEach(() => { authState.isSignedIn = true; window.history.pushState({}, "", "/plans?role=job_seeker"); openedCheckout.mockClear(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.pushState({}, "", "/"); });
 
 describe("Plans on live data", () => {
-  it("renders the Free plan and the credit price, with no Pro, Max, gift, compare table or plan checkout", async () => {
+  it("renders the Free plan and Add credits with no single-credit price, and no Pro, Max, gift, compare table or plan checkout", async () => {
     authState.isSignedIn = false;
     const fetchMock = stub(null);
     render(<Plans />);
+    await screen.findByRole("region", { name: "Credit packs" });
     expect(screen.getByRole("heading", { name: "Choose how much help you need." })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Free", level: 2 })).toBeTruthy();
     expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).not.toEqual(expect.arrayContaining(["Pro", "Max"]));
-    // Signed out: the price of a credit, never a balance or a welcome offer that is not live yet.
-    expect(screen.getByText("$1 a credit")).toBeTruthy();
+    // Signed out: "Add credits" with no single-credit price (C10), never a balance or a welcome offer that is not live yet.
+    expect(document.querySelector(".credit-cta")?.textContent).toBe("Add credits");
+    expect(document.body.textContent).not.toMatch(/\$1(?![\d.,])|₹99(?![\d.,])|a credit\b/);
     expect(screen.getByText("PAY AS YOU GO")).toBeTruthy();
     expect(screen.getByText("3 referral requests open at once")).toBeTruthy();
     // Review round 2 (D-063): the credit cost strip never calls a referral request free.
     const costs = screen.getByRole("list", { name: "Credit costs" });
-    expect(within(costs).getAllByRole("listitem").map(item => item.textContent)).toEqual(["1 creditEach ask a verified employee can see", "$1Each credit you buy", "NeverBought credits expire"]);
+    // C10: the cost strip's single-credit price item is gone; pack prices come from the catalog.
+    expect(within(costs).getAllByRole("listitem").map(item => item.textContent)).toEqual(["1 creditEach ask a verified employee can see", "NeverBought credits expire"]);
     const text = document.body.textContent ?? "";
     expect(text).not.toMatch(RETIRED);
-    for (const banned of ["DESIGN PREVIEW", "EXAMPLE PRICING", "PREVIEW DATA", "Most chosen", "Momentum", "Land", "Yearly", "2 mo free", "checkout preview", "YOUR BALANCE", "free credits", "every month are free", "One private referral request", "Compare every individual plan", "monthly credits", "Your plan"]) expect(text).not.toContain(banned);
+    // "Momentum" and "Land" left this list on purpose: the catalog's passes are listed now (not on sale until GO-LIVE-1b).
+    for (const banned of ["DESIGN PREVIEW", "EXAMPLE PRICING", "PREVIEW DATA", "Most chosen", "Most popular", "Yearly", "2 mo free", "checkout preview", "YOUR BALANCE", "free credits", "every month are free", "One private referral request", "Compare every individual plan", "monthly credits", "Your plan"]) expect(text).not.toContain(banned);
     expect(screen.queryAllByRole("button").filter(button => PLAN_PURCHASE.test(button.textContent ?? ""))).toEqual([]);
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.queryByLabelText("Your usage this cycle")).toBeNull();
     expect(screen.queryByText("Upgrade moments")).toBeNull();
-    expect(fetchMock).not.toHaveBeenCalled();
+    // Signed out: one public catalog read, no account or asks read, nothing posted.
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(["/api/plans/catalog"]);
+    expect(onlyReads(fetchMock)).toBe(true);
   });
 
   it("shows the account's own usage and only the upgrade moments it has really hit", async () => {
     const fetchMock = stub(free({ open: 3, used: 2 }));
     render(<Plans />);
     expect(await screen.findByText("3 of 3")).toBeTruthy();
+    await screen.findByRole("region", { name: "Credit packs" });
     expect(screen.getByText("2 of 2")).toBeTruthy();
     expect(screen.getByRole("meter", { name: "Open referral slots used" }).getAttribute("aria-valuenow")).toBe("100");
     expect(screen.getByRole("meter", { name: "Plan credits expiring" }).getAttribute("aria-valuenow")).toBe("0");
@@ -84,14 +100,15 @@ describe("Plans on live data", () => {
     expect(within(slotsMoment).getByText("Wait for an answer to free a slot. Queue position stays equal either way.")).toBeTruthy();
     expect(within(slotsMoment).getByRole("link", { name: "View my requests" }).getAttribute("href")).toBe("/requests");
     const creditsMoment = screen.getByText("You're out of credits").closest("article") as HTMLElement;
-    expect(within(creditsMoment).getByRole("link", { name: "Add credits" }).getAttribute("href")).toBe("/premium?role=job_seeker");
+    // A pack is on sale in the catalog on screen, so Add credits goes to the packs on this page.
+    expect(within(creditsMoment).getByRole("link", { name: "Add credits" }).getAttribute("href")).toBe("#credits");
     expect(within(creditsMoment).queryByRole("link", { name: /Compare plans/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "I'll wait" }));
     expect(screen.queryByText("Your 3 requests are all open")).toBeNull();
-    expect(screen.getAllByRole("link", { name: "Add credits" }).every(link => link.getAttribute("href") === "/premium?role=job_seeker")).toBe(true);
+    expect(screen.getAllByRole("link", { name: /Add credits/ }).every(link => link.getAttribute("href") === "#credits")).toBe(true);
     expect(document.body.textContent).not.toMatch(RETIRED);
     expect(screen.queryAllByRole("button").filter(button => PLAN_PURCHASE.test(button.textContent ?? ""))).toEqual([]);
-    expect(onlySummaryReads(fetchMock)).toBe(true);
+    expect(onlyReads(fetchMock)).toBe(true);
     cleanup();
 
     // Slots free and no credits ever spent: no limit was hit, so no moments.
@@ -188,7 +205,7 @@ describe("Plans on live data", () => {
     window.history.pushState({}, "", "/plans?role=job_seeker&payment=cancelled");
     stub(free());
     render(<Plans />);
-    expect(screen.getByRole("status").textContent).toBe("Checkout was cancelled. Nothing was charged.");
+    expect(screen.getByText("Checkout was cancelled. Nothing was charged.").getAttribute("role")).toBe("status");
     expect(screen.getByRole("heading", { name: "Choose how much help you need." })).toBeTruthy();
     expect(await screen.findByText("0 of 3")).toBeTruthy();
   });

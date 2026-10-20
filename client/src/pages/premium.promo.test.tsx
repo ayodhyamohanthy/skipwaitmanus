@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render as rtlRender, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { catalogFixture } from "@/components/plans/catalogFixture";
 import Premium from "./Premium";
 
 // Packs-on-sale paths: the flag is mocked on here; creditPacksOffSale.test.tsx pins the shipped (off) state.
@@ -9,8 +11,13 @@ vi.mock("@shared/planCatalog", async importOriginal => ({ ...(await importOrigin
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: true, getToken: vi.fn(async () => null), openSignIn: vi.fn() }) }));
 vi.mock("@/lib/chargebeeCheckout", () => ({ openChargebeeCheckout: vi.fn() }));
 
+const render = (ui: React.ReactElement) => rtlRender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
+
+// GO-LIVE-1 C9: /premium reads the catalog for its currency; with no pack on sale it keeps the picker these tests pin.
 function summaryFetch(summary: Record<string, unknown>) {
-  return vi.fn(async () => ({ ok: true, json: async () => ({ summary }) }));
+  return vi.fn(async (input: RequestInfo | URL) => String(input).startsWith("/api/plans/catalog")
+    ? { ok: true, json: async () => catalogFixture("INTL", { packs: false }) }
+    : { ok: true, json: async () => ({ summary }) });
 }
 
 describe("Premium promo banner", () => {

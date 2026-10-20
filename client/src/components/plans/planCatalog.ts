@@ -1,10 +1,11 @@
 // Live plan catalog for the kit v4 /plans and /billing screens.
 //
-// D-067 (owner, Oct 18 2026) removed the retired monthly Pro/Max plans: /plans
-// now shows Free, and the account's own catalog plan card when it holds one
-// (the D-046 passes go on sale here in their own slice). Every number comes
-// from shared/planCatalog.ts — the catalog the server enforces — never from
-// copy written here.
+// D-067 (owner, Oct 18 2026) removed the retired monthly Pro/Max plans: this
+// grid shows Free, and the account's own catalog plan card when it holds one.
+// Every number comes from shared/planCatalog.ts — the catalog the server
+// enforces — never from copy written here. What is for sale, and at what
+// price, comes only from GET /api/plans/catalog (PackCards, PassCards); no
+// single-credit price is printed here (GO-LIVE-1 C10, D-084 (6)).
 import { ASK_COST_SENTENCE, CREDIT_RULE_SHORT, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import {
   CATALOG_PLANS,
@@ -23,9 +24,6 @@ import type { CreditSummary } from "./billingApi";
 export type PlanId = "free" | PaidCatalogPlan["id"];
 
 export type { CreditSummary } from "./billingApi";
-
-/** One extra credit, as sold on /premium. */
-export const CREDIT_PRICE: Record<CatalogCurrency, string> = { USD: "$1", INR: "₹99" };
 
 function paidPlan(plan: string): PaidCatalogPlan | undefined {
   return CATALOG_PLANS.find(candidate => candidate.id === plan);
@@ -75,7 +73,7 @@ export function carryoverLabel(carryover: Carryover): string {
   return carryover === 0 ? "—" : `${carryover} month${carryover === 1 ? "" : "s"}`;
 }
 
-function carryoverFeature(carryover: Carryover): string {
+export function carryoverFeature(carryover: Carryover): string {
   if (carryover === "subscribed") return "Unused plan credits roll over while you're subscribed";
   return carryover === 0 ? "Unused plan credits end with the cycle" : `Unused plan credits carry over ${carryover === 1 ? "1 month" : `up to ${carryover} months`}`;
 }
@@ -109,20 +107,21 @@ export type PlanCardCopy = { id: PlanId; name: string; tagline: string; price: s
 
 /**
  * The plan grid: Free always, plus the account's own catalog plan when it holds
- * one. No other plan is sold from this screen until the D-046 pass cards land.
+ * one. Passes are sold from their own section (PassCards). Free is priced in
+ * the catalog's currency once it is on screen, and states no price before.
  */
-export function planCards(currency: CatalogCurrency, active: PaidCatalogPlan | null = null): PlanCardCopy[] {
+export function planCards(currency: CatalogCurrency | null, active: PaidCatalogPlan | null = null): PlanCardCopy[] {
   const free = planLimits("free");
   const cards: PlanCardCopy[] = [{
     id: "free",
     name: FREE_PLAN.label,
     tagline: "For getting started: a few private asks at a time.",
-    price: planAmount("free", currency),
-    per: planTerm("free"),
+    price: currency ? planAmount("free", currency) : null,
+    per: currency ? planTerm("free") : null,
     features: [
       `${openRequestsLabel(free.openRequests)} referral requests open at once`,
       "Track every request in one place",
-      ...(CREDIT_PACKS_ON_SALE ? [`Add credits anytime, ${CREDIT_PRICE[currency]} each`] : []),
+      ...(CREDIT_PACKS_ON_SALE ? ["Add credits anytime"] : []),
       "Same referrer queue as every plan",
     ],
     cta: "Ask for a referral",
@@ -163,9 +162,9 @@ export function planFaqs(): Array<readonly [string, string]> {
   return [
     ["Does paying help me get referred?", "No. Referrers see the same queue whatever you have paid for. Credits you buy pay for asks and tools; they never change how many requests you can have open or your place in the queue. The decision to refer stays human."],
     ["How many referral requests can I have open?", `Free includes ${openRequestsLabel(free.openRequests)} open requests at a time. A request that's answered, passed, withdrawn or expired frees its slot. Every account shares the same queue.`],
-    ["What are credits for?", `1 credit = ${CREDIT_PRICE.USD} = one finished piece of work from SkipWait's tools. Each referral request uses 1 credit; ${CREDIT_RULE_SHORT}. Extra credits are ${CREDIT_PRICE.USD} each (${CREDIT_PRICE.INR} in India).`],
+    ["What are credits for?", `1 credit = one finished piece of work from SkipWait's tools. Each referral request uses 1 credit; ${CREDIT_RULE_SHORT}. Buy credits anytime in packs.`],
     ["Do unused credits expire?", "Credits you buy never expire, and they are spent only when a verified employee can first see your ask."],
     ["Do referrers pay?", "No. Referrers never pay to review requests, SkipWait never pays them, and they never ask you for money."],
-    ["Is pricing local?", `Yes. In India a credit costs ${CREDIT_PRICE.INR}; everywhere else ${CREDIT_PRICE.USD}.`],
+    ["Is pricing local?", "Yes. India sees India prices in rupees; everywhere else pays in US dollars."],
   ];
 }
