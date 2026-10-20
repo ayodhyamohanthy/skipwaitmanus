@@ -93,4 +93,16 @@ describe("Smart Pitch and referral share cards", () => {
     expect(page.text).toContain("/start?invite=r1-deadbeef");
     expect(page.text).toContain("Get your own referral");
   });
+
+  it("builds the share-card URL from the configured public origin, never a spoofed request host", async () => {
+    const prev = { PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL, WORKOS_REDIRECT_URI: process.env.WORKOS_REDIRECT_URI };
+    process.env.WORKOS_REDIRECT_URI = "https://skipwait.me/api/auth/workos/callback"; delete process.env.PUBLIC_BASE_URL;
+    try {
+      const { app } = appFor();
+      const res = await request(app).post("/api/referral-share-cards/901").set("x-test-user", "seeker").set("Host", "evil.example");
+      expect(res.status).toBe(201); expect(res.body.shareUrl).toBe("https://skipwait.me/share-card/" + "a".repeat(32));
+    } finally {
+      for (const [key, value] of Object.entries(prev)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+    }
+  });
 });
