@@ -24,6 +24,7 @@ function harness(overrides: Record<string, unknown> = {}) {
     alert: vi.fn(async () => undefined),
     getSummary: vi.fn(async () => ({ plan: "momentum", subscriptionCurrentTermEnd: "2026-11-20T00:00:00.000Z" })),
     getIntent: vi.fn(async () => intent),
+    markReview: vi.fn(async () => undefined),
   };
   const app = express();
   app.use(express.json());
@@ -32,6 +33,7 @@ function harness(overrides: Record<string, unknown> = {}) {
     createPaymentIntent: async () => undefined,
     fulfillPayment: async () => ({ status: "credited" }),
     getSubscriptionCheckoutIntent: spies.getIntent,
+    markSubscriptionCheckoutIntentReview: spies.markReview,
     retrieveCheckout: spies.retrieveCheckout,
     applySubscriptionEvent: spies.applySubscriptionEvent,
     alertRetiredPlanEvent: spies.alert,
@@ -109,4 +111,40 @@ describe("pass checkout recovery (GO-LIVE-1b)", () => {
     expect((await post(app)).body.status).toBe("activated");
     expect(spies.applySubscriptionEvent).not.toHaveBeenCalled();
   });
+  it("never says activated for a subscription whose status keeps no access (QA #359)", async () => {
+    const { app, spies } = harness();
+    spies.retrieveCheckout.mockResolvedValue({ ...succeededPage, subscription: { ...succeededPage.subscription, status: "cancelled" } });
+    const response = await post(app);
+    expect(response.body.status).toBe("requires_review");
+    expect(spies.applySubscriptionEvent).not.toHaveBeenCalled();
+    expect(spies.markReview).toHaveBeenCalledWith("hp_pass_1", "review_status");
+    expect(spies.alert).toHaveBeenCalledTimes(1);
+  });
+
+  it("a parked (review) intent answers requires_review with no provider call and no second alert (QA #359)", async () => {
+    const { app, spies } = harness({ getSubscriptionCheckoutIntent: vi.fn(async () => ({ ...intent, failureReason: "review_mismatch" })) });
+    const response = await post(app);
+    expect(response.body.status).toBe("requires_review");
+    expect(spies.retrieveCheckout).not.toHaveBeenCalled();
+    expect(spies.alert).not.toHaveBeenCalled();
+  });
+
+  it("a mismatch parks the intent and alerts exactly once", async () => {
+    const { app, spies } = harness();
+    spies.retrieveCheckout.mockResolvedValue({ ...succeededPage, passThruContent: "intent_OTHER" });
+    const response = await post(app);
+    expect(response.body.status).toBe("requires_review");
+    expect(spies.markReview).toHaveBeenCalledWith("hp_pass_1", "review_mismatch");
+    expect(spies.alert).toHaveBeenCalledTimes(1);
+  });
+
+  it("throttles a caller hammering the recovery route (QA #359)", async () => {
+    const { app, spies } = harness({ getSubscriptionCheckoutIntent: vi.fn(async () => ({ ...intent, status: "activated" })) });
+    const statuses: number[] = [];
+    for (let n = 0; n < 6; n += 1) statuses.push((await post(app)).status);
+    expect(statuses.slice(0, 5)).toEqual([200, 200, 200, 200, 200]);
+    expect(statuses[5]).toBe(429);
+    expect(spies.retrieveCheckout).not.toHaveBeenCalled();
+  });
+
 });

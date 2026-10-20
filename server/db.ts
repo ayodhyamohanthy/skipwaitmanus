@@ -4327,12 +4327,21 @@ export async function listPendingSubscriptionCheckoutIntents(olderThan: Date, ne
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.select().from(subscriptionCheckoutIntents)
-    .where(and(eq(subscriptionCheckoutIntents.status, "pending"), lt(subscriptionCheckoutIntents.createdAt, olderThan), gt(subscriptionCheckoutIntents.createdAt, newerThan)))
+    // An intent parked for human review (failureReason set) is out of the automatic loop:
+    // it was already alerted when parked, so re-reading it hourly would only re-alert.
+    .where(and(eq(subscriptionCheckoutIntents.status, "pending"), isNull(subscriptionCheckoutIntents.failureReason), lt(subscriptionCheckoutIntents.createdAt, olderThan), gt(subscriptionCheckoutIntents.createdAt, newerThan)))
     .orderBy(asc(subscriptionCheckoutIntents.createdAt), asc(subscriptionCheckoutIntents.id))
     .limit(limit);
 }
 
 /** GO-LIVE-1b: an expired checkout page marks its pending intent cancelled; never an activated one. */
+/** GO-LIVE-1b (QA #359): park a pending intent for human review; it stops re-alerting and is never reported cancelled. */
+export async function markSubscriptionCheckoutIntentReview(hostedPageId: string, reviewReason: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(subscriptionCheckoutIntents).set({ failureReason: reviewReason.slice(0, 32) }).where(and(eq(subscriptionCheckoutIntents.hostedPageId, hostedPageId), eq(subscriptionCheckoutIntents.status, "pending"), isNull(subscriptionCheckoutIntents.failureReason)));
+}
+
 export async function markSubscriptionCheckoutIntentCancelled(hostedPageId: string, failureReason: string) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");

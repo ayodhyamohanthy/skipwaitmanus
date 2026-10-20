@@ -16,6 +16,7 @@ function deps(overrides: Record<string, unknown> = {}) {
     retrieveCheckout: vi.fn(async () => paidPage),
     applySubscriptionEvent: vi.fn(async () => ({ status: "applied" })),
     cancelIntent: vi.fn(async () => undefined),
+    markIntentReview: vi.fn(async () => undefined),
     alert: vi.fn(async () => undefined),
     ...overrides,
   };
@@ -60,6 +61,27 @@ describe("subscription pending reconcile (GO-LIVE-1b)", () => {
     const d = deps({ retrieveCheckout: vi.fn(async () => ({ ...paidPage, passThruContent: "ci_OTHER" })) });
     await run(d);
     expect(d.applySubscriptionEvent).not.toHaveBeenCalled();
+    expect(d.alert).toHaveBeenCalledTimes(1);
+  });
+
+  it("parks a mismatched intent for review so the next run never re-alerts it", async () => {
+    const d = deps({ retrieveCheckout: vi.fn(async () => ({ ...paidPage, passThruContent: "ci_OTHER" })) });
+    await run(d);
+    expect(d.markIntentReview).toHaveBeenCalledWith("hp_1", "review_mismatch");
+  });
+
+  it("parks a paid page whose subscription status keeps no access, granting nothing", async () => {
+    const d = deps({ retrieveCheckout: vi.fn(async () => ({ ...paidPage, subscription: { ...paidPage.subscription, status: "cancelled" } })) });
+    await run(d);
+    expect(d.applySubscriptionEvent).not.toHaveBeenCalled();
+    expect(d.markIntentReview).toHaveBeenCalledWith("hp_1", "review_status");
+    expect(d.alert).toHaveBeenCalledTimes(1);
+  });
+
+  it("parks an apply refusal for review after a single alert", async () => {
+    const d = deps({ applySubscriptionEvent: vi.fn(async () => ({ status: "ignored", reason: "subscription_conflict" })) });
+    await run(d);
+    expect(d.markIntentReview).toHaveBeenCalledWith("hp_1", "review_refused");
     expect(d.alert).toHaveBeenCalledTimes(1);
   });
 

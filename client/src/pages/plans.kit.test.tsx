@@ -121,7 +121,7 @@ describe("Plans on live data", () => {
     expect(screen.queryByText("You're out of credits")).toBeNull();
   });
 
-  it("marks the account's active plan from the summary, with its enforced limits, and shows when the pass ends with no renewal control", async () => {
+  it("marks the account's active plan from the summary, with its enforced limits, its end date and the renewal control (QA #359)", async () => {
     stub(start);
     render(<Plans />);
     const card = (await screen.findByRole("heading", { name: "Start", level: 2 })).closest("article") as HTMLElement;
@@ -129,7 +129,7 @@ describe("Plans on live data", () => {
     expect(within(card).getByText("Your plan")).toBeTruthy();
     expect(within(card).getByText("Your plan is active")).toBeTruthy();
     expect(within(card).getByText("Ends 6 Nov 2026 — your allowance stays until then.")).toBeTruthy();
-    expect(within(card).queryByRole("button", { name: /cancel/i })).toBeNull();
+    expect(within(card).getByRole("button", { name: "Cancel renewal" })).toBeTruthy();
     expect(within(card).getByText("8 referral requests open at once")).toBeTruthy();
     expect(within(card).getByText("10 credits every month")).toBeTruthy();
     expect(within(card).getByText("Unused plan credits carry over 1 month")).toBeTruthy();

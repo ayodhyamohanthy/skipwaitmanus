@@ -37,7 +37,7 @@ describe("Billing page", () => {
     expect(document.body.textContent).not.toMatch(/DESIGN PREVIEW|Preview state|EXAMPLE RECEIPTS|Momentum|PLACEHOLDERS|\bPro\b|\bMax\b/);
   });
 
-  it("shows an active pass ending on its term with no renewal control, plus real receipts", async () => {
+  it("shows an active pass with its term date and keeps the renewal control until fixed-term is proven (QA #359), plus real receipts", async () => {
     const receipts = [
       { id: 2, provider: "chargebee", amount: 500, currency: "USD", tokenCount: 5, status: "credited", providerInvoiceId: "inv-2", createdAt: "2026-10-06T06:00:00.000Z" },
       { id: 1, provider: "chargebee", amount: 9900, currency: "INR", tokenCount: 1, status: "refunded", providerInvoiceId: "inv-1", createdAt: "2026-09-06T06:00:00.000Z" },
@@ -49,10 +49,11 @@ describe("Billing page", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<Billing />);
     expect(await screen.findByRole("heading", { name: "Start" })).toBeTruthy();
-    // GO-LIVE-1b ruling 6: a catalog pass is a fixed non-renewing term.
-    expect(screen.getByText("Ends 6 Nov 2026 · 8 open asks · 10 credits/month — you keep everything until then.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Cancel plan" })).toBeNull();
-    expect(screen.queryByText(/^Renews /)).toBeNull();
+    // QA review (#359 finding 1): while billing_cycles=1 is unproven, an active
+    // subscription keeps its cancel control; the Ends line returns when the
+    // provider confirms the fixed term (non_renewing, pinned in the next test).
+    expect(screen.getByText("Renews 6 Nov 2026 · 8 open asks · 10 credits/month")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Cancel renewal" })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Plans & credits/ }).getAttribute("href")).toBe("/plans");
     expect(document.body.textContent).not.toMatch(/requests left|requests\/month|requests a month/);
     expect(screen.getByText("5 credits")).toBeTruthy();
@@ -72,7 +73,7 @@ describe("Billing page", () => {
     const { slots: _slots, ledger: _ledger, ...bare } = startSummary;
     vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: bare })));
     render(<Billing />);
-    expect(await screen.findByText("Ends 6 Nov 2026 — you keep everything until then.")).toBeTruthy();
+    expect(await screen.findByText("Renews 6 Nov 2026")).toBeTruthy();
     cleanup();
     const { slots: _freeSlots, ...bareFree } = freeSummary;
     vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: bareFree })));

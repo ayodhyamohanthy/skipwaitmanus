@@ -15,7 +15,7 @@ import type { RetiredPlanAlertInput } from "./errorAlerting";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
 
-type SubscriptionCheckoutIntentRow = { hostedPageId: string; checkoutIntentId: string; userId: number; role: "job_seeker" | "referrer"; plan: string; itemPriceId: string; currency: string; status: string };
+type SubscriptionCheckoutIntentRow = { hostedPageId: string; checkoutIntentId: string; userId: number; role: "job_seeker" | "referrer"; plan: string; itemPriceId: string; currency: string; status: string; failureReason?: string | null };
 
 type Deps = {
   resolveIdentity: (req: Request) => Promise<ChargebeeIdentity | undefined>;
@@ -34,6 +34,7 @@ type Deps = {
   getPaymentRecovery?: (userId: number, role: TokenRole, hostedPageId: string) => Promise<{ id: number; status: "pending" | "credited" | "requires_review" | "rejected" | "refunded"; hostedPageId: string | null; checkoutIntentId: string | null; tokenCount: number; amount: number; currency: string; reconciliationReason: string | null } | undefined>;
   getSubscriptionCheckoutIntent?: (hostedPageId: string) => Promise<SubscriptionCheckoutIntentRow | undefined>;
   markSubscriptionCheckoutIntentCancelled?: (hostedPageId: string, failureReason: string) => Promise<void>;
+  markSubscriptionCheckoutIntentReview?: (hostedPageId: string, reviewReason: string) => Promise<void>;
   retrieveCheckout?: (hostedPageId: string) => Promise<RetrievedCheckoutSubscription | null>;
   markPaymentForReview?: (paymentId: number, reason: "provider_page_mismatch" | "provider_page_incomplete" | "reconciliation_rejected", evidence?: { invoiceId?: string; paidAmount?: number; paidCurrency?: string }) => Promise<unknown>;
   retrieveHostedPage?: typeof retrieveChargebeeHostedPage;
@@ -297,6 +298,20 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   // arrived, the seeker's return (and the hourly reconcile) recovers the pass
   // from the provider's own checkout page - ownership is proven before the
   // provider is ever called, the activation input is built from the provider
+  // QA review (#359 finding 5): recovery re-reads the provider on every call, so a
+  // caller gets five tries a minute, not an unbounded provider loop.
+  const recoveryTries = new Map<string, number[]>();
+  const recoveryThrottled = (userId: number, role: TokenRole): boolean => {
+    const now = Date.now();
+    const key = `${userId}:${role}`;
+    const recent = (recoveryTries.get(key) ?? []).filter(t => now - t < 60_000);
+    if (recoveryTries.size > 10_000) recoveryTries.clear();
+    if (recent.length >= 5) { recoveryTries.set(key, recent); return true; }
+    recent.push(now);
+    recoveryTries.set(key, recent);
+    return false;
+  };
+
   // page and never the client, and the shared apply grants it exactly once
   // (event id hosted_page:<id>); a webhook for the same subscription afterwards
   // is an ordinary update, not a second grant.
@@ -305,6 +320,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to confirm your pass" });
       const role = roleFromBody(req.body?.role);
+      if (recoveryThrottled(identity.account.id, role)) return res.status(429).json({ error: "Too many confirmation tries. Give it a minute and try again." });
       const hostedPageId = typeof req.body?.hostedPageId === "string" ? req.body.hostedPageId.trim() : "";
       if (!hostedPageId || hostedPageId.length > 255) return res.status(400).json({ error: "Your secure checkout reference is unavailable. Your pass will still activate after provider verification." });
       if (!deps.getSubscriptionCheckoutIntent || !deps.applySubscriptionEvent) return res.status(503).json({ error: "Pass confirmation is temporarily unavailable" });
@@ -313,6 +329,9 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const summary = async () => deps.getCreditSummary ? await deps.getCreditSummary(identity.account.id, role) : undefined;
       if (intent.status === "activated") return res.json({ status: "activated", summary: await summary() });
       if (intent.status === "cancelled") return res.json({ status: "cancelled", summary: await summary() });
+      // Parked for human review (mismatch, refused or a non-access subscription status): say so,
+      // never "cancelled", and never alert again - the park already alerted once.
+      if (intent.failureReason) return res.json({ status: "requires_review", summary: await summary() });
       const runtime = deps.retrieveCheckout ? undefined : resolveChargebeeRuntime(req.hostname);
       if (!deps.retrieveCheckout && !runtime) return res.status(503).json({ error: "Chargebee is not configured" });
       const page = await (deps.retrieveCheckout ?? ((id: string) => retrieveCheckoutSubscription(runtime!, id)))(hostedPageId);
@@ -328,12 +347,23 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       // different intent id, term (item price) or currency is a human review,
       // and the owner hears about it.
       if (page.passThruContent !== intent.checkoutIntentId || (event.itemPriceId && event.itemPriceId !== intent.itemPriceId) || (event.currency && event.currency !== intent.currency)) {
+        await deps.markSubscriptionCheckoutIntentReview?.(hostedPageId, "review_mismatch");
         record({ action: "billing.subscription_recovery_mismatch", outcome: "failure", resourceType: "chargebee_subscription", resourceId: event.subscriptionId, metadata: { hostedPageId, reason: "provider_page_mismatch", itemPriceId: event.itemPriceId } });
+        void deps.alertRetiredPlanEvent?.({ eventId: event.eventId, eventType: "subscription_recovery", reason: "unlinked_subscription", subscriptionId: event.subscriptionId, itemPriceId: event.itemPriceId }).catch(() => undefined);
+        return res.json({ status: "requires_review", summary: await summary() });
+      }
+      // QA review (#359 finding 2): only a subscription whose status keeps access
+      // (active / non_renewing) may be told "Your pass is active". A cancelled,
+      // paused or future subscription at read time is human review, not a grant.
+      if (event.status !== "active" && event.status !== "non_renewing") {
+        await deps.markSubscriptionCheckoutIntentReview?.(hostedPageId, "review_status");
+        record({ action: "billing.subscription_recovery_refused", outcome: "failure", resourceType: "chargebee_subscription", resourceId: event.subscriptionId, metadata: { hostedPageId, reason: `subscription_status_${event.status}`, itemPriceId: event.itemPriceId } });
         void deps.alertRetiredPlanEvent?.({ eventId: event.eventId, eventType: "subscription_recovery", reason: "unlinked_subscription", subscriptionId: event.subscriptionId, itemPriceId: event.itemPriceId }).catch(() => undefined);
         return res.json({ status: "requires_review", summary: await summary() });
       }
       const result = (await deps.applySubscriptionEvent(event)) as { status?: string; reason?: string } | undefined;
       if (result?.status === "applied" || result?.status === "duplicate") return res.json({ status: "activated", summary: await summary() });
+      await deps.markSubscriptionCheckoutIntentReview?.(hostedPageId, "review_refused");
       record({ action: "billing.subscription_recovery_refused", outcome: "failure", resourceType: "chargebee_subscription", resourceId: event.subscriptionId, metadata: { hostedPageId, reason: result?.reason ?? result?.status ?? "unknown", itemPriceId: event.itemPriceId } });
       void deps.alertRetiredPlanEvent?.({ eventId: event.eventId, eventType: "subscription_recovery", reason: "unlinked_subscription", subscriptionId: event.subscriptionId, itemPriceId: event.itemPriceId }).catch(() => undefined);
       return res.json({ status: "requires_review", summary: await summary() });

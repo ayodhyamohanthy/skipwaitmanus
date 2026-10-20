@@ -16,7 +16,7 @@ import { and, asc, eq, gt, isNull, lt, like, or } from "drizzle-orm";
 import { paymentFulfillments } from "../drizzle/schema";
 import { retrieveChargebeeHostedPage } from "./chargebee";
 import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
-import { applyChargebeeSubscriptionEvent, fulfillChargebeePayment, getDb, listPendingSubscriptionCheckoutIntents, markChargebeePaymentForReview, markSubscriptionCheckoutIntentCancelled } from "./db";
+import { applyChargebeeSubscriptionEvent, fulfillChargebeePayment, getDb, listPendingSubscriptionCheckoutIntents, markChargebeePaymentForReview, markSubscriptionCheckoutIntentCancelled, markSubscriptionCheckoutIntentReview } from "./db";
 import { createPaymentReviewAlerter, createRetiredPlanAlerter } from "./errorAlerting";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
 import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
@@ -143,6 +143,7 @@ export type SubscriptionReconcileDeps = {
   retrieveCheckout: (hostedPageId: string) => Promise<RetrievedCheckoutSubscription | null>;
   applySubscriptionEvent: (input: NonNullable<ReturnType<typeof subscriptionEventFromCheckoutPage>>) => Promise<{ status?: string; reason?: string }>;
   cancelIntent: (hostedPageId: string, failureReason: string) => Promise<void>;
+  markIntentReview: (hostedPageId: string, reviewReason: string) => Promise<void>;
   alert: (input: { eventId?: string; eventType?: string; subscriptionId?: string; itemPriceId?: string }) => Promise<unknown>;
 };
 
@@ -165,6 +166,7 @@ export function createSubscriptionPendingReconcile(deps: SubscriptionReconcileDe
   retrieveCheckout: retrieveCheckoutFromConfiguredSite,
   applySubscriptionEvent: applyChargebeeSubscriptionEvent,
   cancelIntent: markSubscriptionCheckoutIntentCancelled,
+  markIntentReview: markSubscriptionCheckoutIntentReview,
   alert: input => createRetiredPlanAlerter()({ ...input, reason: "unlinked_subscription" }),
 }) {
   return async function runSubscriptionPendingReconcile({ nowMs }: JobRunContext): Promise<JobRunOutput> {
@@ -190,12 +192,21 @@ export function createSubscriptionPendingReconcile(deps: SubscriptionReconcileDe
           || (event.currency && event.currency !== intent.currency);
         if (mismatched) {
           review += 1;
+          await deps.markIntentReview(intent.hostedPageId, "review_mismatch");
           void deps.alert({ eventId: event?.eventId ?? `hosted_page:${intent.hostedPageId}`, eventType: "subscription_reconcile", subscriptionId: event?.subscriptionId, itemPriceId: event?.itemPriceId }).catch(() => undefined);
+          continue;
+        }
+        // QA review (#359 finding 2): "activated" is only claimed for a status that keeps access.
+        if (event.status !== "active" && event.status !== "non_renewing") {
+          review += 1;
+          await deps.markIntentReview(intent.hostedPageId, "review_status");
+          void deps.alert({ eventId: event.eventId, eventType: "subscription_reconcile", subscriptionId: event.subscriptionId, itemPriceId: event.itemPriceId }).catch(() => undefined);
           continue;
         }
         const result = await deps.applySubscriptionEvent(event);
         if (result?.status === "applied" || result?.status === "duplicate") { activated += 1; continue; }
         review += 1;
+        await deps.markIntentReview(intent.hostedPageId, "review_refused");
         void deps.alert({ eventId: event.eventId, eventType: "subscription_reconcile", subscriptionId: event.subscriptionId, itemPriceId: event.itemPriceId }).catch(() => undefined);
       } catch (error) {
         failed += 1;
