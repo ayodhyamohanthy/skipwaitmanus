@@ -5,20 +5,26 @@
 // (first push wins). Your own unfinished work always comes back first.
 //
 //   node scripts/next-task.mjs                                  # show the next task
-//   node scripts/next-task.mjs --claim "<model · session>"      # take it (or get your own back)
-//   node scripts/next-task.mjs --heartbeat --as "<model · session>"   # keep your claim alive
-//   node scripts/next-task.mjs --report green|red|blocked|review|landed --task <id> --as "<name>" --note "<one line>"
+//   node scripts/next-task.mjs --claim "<your model name>"      # take it (or get your own back); prints your session name
+//   node scripts/next-task.mjs --heartbeat --as "<session name>"       # keep your claim alive
+//   node scripts/next-task.mjs --report green|red|blocked|review|landed --task <id> --as "<session name>" --note "<one line>"
 //   node scripts/next-task.mjs --status                                # the board: every priority, green or not
-//   node scripts/next-task.mjs --verdict pass|findings --task <id> --as "<name>"
-//   node scripts/next-task.mjs --fixed --task <id> --as "<name>"
+//   node scripts/next-task.mjs --verdict pass|findings --task <id> --as "<session name>"
+//   node scripts/next-task.mjs --fixed --task <id> --as "<session name>"
+//
+// Exit codes: 0 work to do (claimed, your own work, CEO review), 1 error,
+// 2 STOP (GitHub unreadable), 3 SYNC FIRST (your work is not on origin),
+// 4 WAIT, 5 NOTHING TO PICK.
 //
 // It reads the task list from origin/main, never a local copy, and never
 // switches branches or touches the working tree. It does read the local clone
 // to report work that origin cannot see (D-085). NEXT_TASK_LIST_REF=<ref> reads
 // the list from another ref; it exists only to test the picker itself.
 import { execFileSync, spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import {
-  REPORT_STATUSES, architectLockOf, ciStateFromRuns, heartbeatOf, localSyncIssues, markerSubject, parseMarker, pickNextTask, reviewLockOf, reviewStateOf, slugOf, statusBoard, validateAssignments,
+  REPORT_STATUSES, architectLockOf, ciStateFromRuns, classifyPushError, fixMainIdOf, heartbeatOf, heldBy, leaseFor, localSyncIssues, markerSubject,
+  parseMarker, pickNextTask, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
 
@@ -33,10 +39,12 @@ if ((process.env.HTTPS_PROXY || process.env.https_proxy) && process.env.NODE_USE
 const LIST = "docs/plans/assignments.json";
 const LIST_REF = process.env.NEXT_TASK_LIST_REF || "origin/main";
 const CLAIMABLE = ["build", "takeover", "fix-main", "review", "fix", "green", "land", "architect", "unblock", "continue"];
+const EXIT = { stop: 2, wait: 4, none: 5 };
 const REPORTS = "agent/reports/log";
-const git = (...args) => execFileSync("git", args, { encoding: "utf8", env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }, stdio: ["ignore", "pipe", "pipe"] }).trim();
+const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
+const git = (...args) => execFileSync("git", args, { encoding: "utf8", env: GIT_ENV, stdio: ["ignore", "pipe", "pipe"] }).trim();
 const tryGit = (...args) => { try { return git(...args); } catch { return null; } };
-const fail = message => { console.error(`next-task: ${message}`); process.exit(1); };
+const fail = (message, code = 1) => { console.error(`next-task: ${message}`); process.exit(code); };
 
 function argsOf(argv) {
   const out = {};
@@ -51,11 +59,13 @@ function argsOf(argv) {
       out[a.slice(2)] = v;
     } else fail(`unknown argument ${a}`);
   }
+  for (const k of ["claim", "as"]) if (out[k] !== undefined && !sanitizeName(out[k])) fail(`--${k} needs a name`);
+  if (out.as) out.as = sanitizeName(out.as);
   if (out.verdict && !["pass", "findings"].includes(out.verdict)) fail("--verdict is pass or findings");
-  if ((out.verdict || out.fixed) && (!out.task || !out.as)) fail("--verdict and --fixed need --task <id> and --as \"<name>\"");
-  if (out.heartbeat && !out.as) fail("--heartbeat needs --as \"<name>\" (the name you claimed with)");
+  if ((out.verdict || out.fixed) && (!out.task || !out.as)) fail("--verdict and --fixed need --task <id> and --as \"<session name>\"");
+  if (out.heartbeat && !out.as) fail("--heartbeat needs --as \"<session name>\" (the name your claim printed)");
   if (out.report && !REPORT_STATUSES.includes(out.report)) fail(`--report is one of ${REPORT_STATUSES.join(", ")}`);
-  if (out.report && (!out.task || !out.as)) fail("--report needs --task <id> and --as \"<name>\"");
+  if (out.report && (!out.task || !out.as)) fail("--report needs --task <id> and --as \"<session name>\"");
   return out;
 }
 
@@ -67,19 +77,28 @@ async function github(repo, path) {
   return res.json();
 }
 
+/** Marker commits are empty: a commit that changes files is work, whatever its subject says. */
+function markersOn(ref) {
+  const raw = tryGit("log", "--reverse", "--no-merges", "--format=%x1e%s%x1f", "--name-only", `origin/main..${ref}`) ?? "";
+  return raw.split("\x1e").filter(Boolean).flatMap(rec => {
+    const [subject, files = ""] = rec.split("\x1f");
+    const m = files.trim() ? null : parseMarker(subject.trim());
+    return m ? [m] : [];
+  });
+}
+
 function loadBranches(tasks) {
   const wanted = new Set(tasks.flatMap(t => [t.branch, reviewLockOf(t), architectLockOf(t), heartbeatOf(slugOf(t.branch))]));
   const slugs = tasks.map(t => `/${slugOf(t.branch)}`);
-  const refs = git("for-each-ref", "--format=%(refname:strip=3)%09%(committerdate:unix)", "refs/remotes/origin/agent");
+  const refs = git("for-each-ref", "--format=%(refname:strip=3)%09%(committerdate:unix)%09%(objectname)", "refs/remotes/origin/agent");
   const branches = new Map();
   for (const line of refs.split("\n").filter(Boolean)) {
-    const [name, unix] = line.split("\t");
+    const [name, unix, sha] = line.split("\t");
     const fixMain = name.startsWith("agent/queue/fix-main-") || name.startsWith("agent/heartbeat/fix-main-");
     if (!wanted.has(name) && !slugs.some(s => name.endsWith(s)) && !fixMain) continue;
     const ref = `refs/remotes/origin/${name}`;
-    const subjects = (tryGit("log", "--reverse", "--format=%s", `origin/main..${ref}`) ?? "").split("\n").filter(Boolean);
     const merged = tryGit("merge-base", "--is-ancestor", ref, "origin/main") !== null;
-    branches.set(name, { tipMs: Number(unix) * 1000, merged, markers: subjects.map(parseMarker).filter(Boolean) });
+    branches.set(name, { tipMs: Number(unix) * 1000, tipSha: sha, merged, markers: markersOn(ref) });
   }
   return branches;
 }
@@ -107,34 +126,60 @@ function localState() {
   return { local, mainBehind };
 }
 
-/** D-085: the reports the team sent the CEO, newest first (one marker commit each on agent/reports/log). */
+/** D-085: the reports the team sent the CEO, newest first (one marker commit each on agent/reports/log), cleaned again on read. */
 function loadReports() {
   const raw = tryGit("log", "-n", "500", "--format=%ct%x1f%s%x1f%b%x1e", `refs/remotes/origin/${REPORTS}`);
   if (!raw) return [];
   return raw.split("\x1e").map(rec => rec.trim()).filter(Boolean).flatMap(rec => {
     const [ct, subject, body = ""] = rec.split("\x1f");
     const m = parseMarker(subject ?? "");
-    return m?.verb === "Report" ? [{ id: m.id, status: m.status, who: m.who, at: Number(ct) * 1000, note: body.trim() }] : [];
+    return m?.verb === "Report" ? [{ id: m.id, status: m.status, who: sanitizeName(m.who), at: Number(ct) * 1000, note: sanitizeNote(body) }] : [];
   });
 }
 
-/** Push one empty marker commit onto `parent` as `branch`; false when someone else got there first. */
+const originRef = name => `refs/remotes/origin/${name}`;
+const onOrigin = name => tryGit("rev-parse", "--verify", "-q", originRef(name)) !== null;
+const tip = name => git("rev-parse", originRef(name));
+const base = name => (onOrigin(name) ? tip(name) : git("rev-parse", "origin/main"));
+
+/**
+ * Push one empty marker commit onto `parent` as `branch`. Returns the new
+ * commit, or null when another agent got there first; any other refusal
+ * (auth, a ruleset, the network) stops the run with git's own words.
+ */
 function pushMarker(branch, parent, subject, body) {
   const sha = git("commit-tree", `${parent}^{tree}`, "-p", parent, "-m", subject, ...(body ? ["-m", body] : []));
-  return tryGit("push", "-q", "origin", `${sha}:refs/heads/${branch}`) !== null;
+  const res = spawnSync("git", ["push", "-q", "origin", `${sha}:refs/heads/${branch}`], { encoding: "utf8", env: GIT_ENV });
+  if (res.status === 0) {
+    tryGit("update-ref", originRef(branch), sha);
+    return sha;
+  }
+  if (classifyPushError(res.stderr) === "race") return null;
+  fail(`could not push ${branch}: ${(res.stderr || res.error?.message || "unknown error").trim()}`);
 }
 
-const tip = name => git("rev-parse", `refs/remotes/origin/${name}`);
-
-/** D-085: mark a held task as worked on, so it is not handed to another agent after 2 quiet hours. */
-function pushHeartbeat(pick, who, branches) {
-  const slug = pick.of === "fix-main" ? slugOf(pick.lock) : slugOf(pick.task.branch);
-  const id = pick.of === "fix-main" ? `fix-main-${pick.sha.slice(0, 8)}` : pick.task.id;
-  const ref = heartbeatOf(slug);
-  const parent = () => (tryGit("rev-parse", "--verify", "-q", `refs/remotes/origin/${ref}`) ? tip(ref) : git("rev-parse", "origin/main"));
-  if (pushMarker(ref, branches.has(ref) ? tip(ref) : parent(), markerSubject("Heartbeat", id, who))) return true;
-  tryGit("fetch", "-q", "origin", ref);
-  return pushMarker(ref, parent(), markerSubject("Heartbeat", id, who));
+/**
+ * D-085: record that `who` is still on a held task. A quiet claim is re-taken on
+ * the ref a takeover pushes to (first push wins); a fresh one gets a heartbeat.
+ * Returns false when another agent took it first.
+ */
+function keepClaim(pick, who, branches) {
+  const lease = leaseFor(pick, branches, Date.now());
+  const subject = markerSubject(lease.verb, lease.id, who);
+  let parent = base(lease.ref);
+  let sha = pushMarker(lease.ref, parent, subject);
+  if (!sha && !lease.reclaim) {
+    // Only this holder writes its side heartbeat; a refused one is a stale view, so read it again once.
+    tryGit("fetch", "-q", "origin", lease.ref);
+    parent = base(lease.ref);
+    sha = pushMarker(lease.ref, parent, subject);
+  }
+  if (!sha) return false;
+  // A reclaim adds an empty commit to your own branch: move your local copy onto it so your next push is a fast-forward.
+  if (lease.reclaim && tryGit("rev-parse", "--verify", "-q", `refs/heads/${lease.ref}`) === parent) {
+    if (tryGit("update-ref", `refs/heads/${lease.ref}`, sha, parent) === null) console.error(`next-task: run git merge --ff-only origin/${lease.ref} in your worktree before your next commit`);
+  }
+  return true;
 }
 
 async function state() {
@@ -145,39 +190,48 @@ async function state() {
   try { doc = JSON.parse(raw); } catch (e) { fail(`${LIST} is not valid JSON: ${e.message}`); }
   const errors = validateAssignments(doc, p => tryGit("cat-file", "-e", `${LIST_REF}:${p}`) !== null);
   if (errors.length) fail(`${LIST} is invalid; tell Claude Code:\n- ${errors.join("\n- ")}`);
-  let mainCi = { state: "unknown" }, openPrs = new Map();
+  // D-085: every GitHub read is known or unknown; an unknown one stops the picker instead of looking like "nothing there".
+  let mainCi = { state: "unknown" }, openPrs = null, mergedHeads = null;
   const prCi = new Map();
+  try { mainCi = ciStateFromRuns((await github(doc.repo, "/actions/workflows/ci.yml/runs?branch=main&event=push&per_page=10")).workflow_runs); }
+  catch (e) { console.error(`next-task: ${e.message}`); }
   try {
-    mainCi = ciStateFromRuns((await github(doc.repo, "/actions/workflows/ci.yml/runs?branch=main&event=push&per_page=10")).workflow_runs);
     const pulls = await github(doc.repo, "/pulls?state=open&per_page=100");
     openPrs = new Map(pulls.filter(p => p.head?.repo?.full_name === doc.repo).map(p => [p.head.ref, p.html_url]));
-    const slugs = doc.tasks.map(t => `/${slugOf(t.branch)}`);
-    for (const head of openPrs.keys()) {
-      if (!head.startsWith("agent/") || !slugs.some(s => head.endsWith(s))) continue;
-      try { prCi.set(head, ciStateFromRuns((await github(doc.repo, `/actions/workflows/ci.yml/runs?branch=${encodeURIComponent(head)}&per_page=5`)).workflow_runs)); }
-      catch (e) { console.error(`next-task: ${e.message}`); }
+  } catch (e) { console.error(`next-task: ${e.message}`); }
+  try {
+    const closed = await github(doc.repo, "/pulls?state=closed&sort=updated&direction=desc&per_page=100");
+    mergedHeads = new Map();
+    for (const p of closed) {
+      if (!p.merged_at || p.head?.repo?.full_name !== doc.repo) continue;
+      if (!mergedHeads.has(p.head.ref)) mergedHeads.set(p.head.ref, new Set());
+      mergedHeads.get(p.head.ref).add(p.head.sha);
     }
   } catch (e) { console.error(`next-task: ${e.message}`); }
-  return { doc, mainCi, openPrs, prCi, branches: loadBranches(doc.tasks), reports: loadReports() };
+  const slugs = doc.tasks.map(t => `/${slugOf(t.branch)}`);
+  for (const head of openPrs?.keys() ?? []) {
+    if (!head.startsWith("agent/") || !slugs.some(s => head.endsWith(s))) continue;
+    try { prCi.set(head, ciStateFromRuns((await github(doc.repo, `/actions/workflows/ci.yml/runs?branch=${encodeURIComponent(head)}&per_page=5`)).workflow_runs)); }
+    catch (e) { console.error(`next-task: ${e.message}`); prCi.set(head, { state: "error" }); }
+  }
+  return { doc, mainCi, openPrs, mergedHeads, prCi, branches: loadBranches(doc.tasks), reports: loadReports() };
 }
 
 function claim(pick, who, branches) {
+  const origin = () => git("rev-parse", "origin/main");
   switch (pick.kind) {
-    case "build": return pushMarker(pick.task.branch, git("rev-parse", "origin/main"), markerSubject("Claim", pick.task.id, who));
+    case "build": return Boolean(pushMarker(pick.task.branch, origin(), markerSubject("Claim", pick.task.id, who)));
     case "takeover":
-    case "green": return pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who));
-    case "land": return pick.tier1
+    case "green": return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who)));
+    case "land": return Boolean(pick.tier1
       ? pushMarker(pick.lock, tip(pick.lock), markerSubject("Land claim", pick.task.id, who))
-      : pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who));
-    case "unblock": return true;
-    case "architect": return pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : git("rev-parse", "origin/main"), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who));
-    case "fix-main": return pushMarker(pick.lock, pick.parent ? tip(pick.parent) : git("rev-parse", "origin/main"), markerSubject("Claim", `fix-main-${pick.sha.slice(0, 8)}`, who));
-    case "review": return pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : git("rev-parse", "origin/main"), markerSubject("Review claim", pick.task.id, who));
-    case "fix": return branches.has(pick.lock) && pushMarker(pick.lock, tip(pick.lock), markerSubject("Fix claim", pick.task.id, who));
-    case "continue":
-      // Already held: nothing to win. The heartbeat restarts its 2-hour clock.
-      if (!pushHeartbeat(pick, who, branches)) console.error("next-task: could not record a heartbeat; push a commit soon so the claim stays yours");
-      return true;
+      : pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who)));
+    case "unblock": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Unblock", pick.task.id, who)));
+    case "architect": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who)));
+    case "fix-main": return Boolean(pushMarker(pick.lock, pick.parent ? tip(pick.parent) : origin(), markerSubject(pick.parent ? "Takeover" : "Claim", fixMainIdOf(pick.sha), who)));
+    case "review": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Review claim", pick.task.id, who)));
+    case "fix": return branches.has(pick.lock) && Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Fix claim", pick.task.id, who)));
+    case "continue": return keepClaim(pick, who, branches);
     default: return false;
   }
 }
@@ -190,6 +244,15 @@ function printSync(sync) {
   console.log("");
 }
 
+/** --report and --fixed speak for work that must already be on origin. */
+function requireSynced(doc, branches, who) {
+  const { local, mainBehind } = localState();
+  const sync = localSyncIssues({ local, branches, claimant: who, mainBehind, tasks: doc.tasks });
+  if (!sync.blocking.length) return;
+  printSync(sync);
+  fail("your own work is not on origin yet (the MUST PUSH lines above); push it, then run this again", 3);
+}
+
 async function main() {
   const args = argsOf(process.argv.slice(2));
   const date = new Date().toLocaleDateString("en-CA");
@@ -197,64 +260,71 @@ async function main() {
     const { doc, branches } = await state();
     const task = doc.tasks.find(t => t.id === args.task) ?? fail(`no task ${args.task}`);
     const lockName = reviewLockOf(task), lock = branches.get(lockName);
-    const stage = reviewStateOf(lock);
-    const holder = lock?.markers.at(-1)?.who;
+    const stage = reviewStateOf(lock, task.id);
+    const holder = stageHolderOf(lock, task.id);
     if (args.verdict && (stage !== "in-review" || holder !== args.as)) fail(`only the reviewer holding ${lockName} records a verdict (it is ${stage}, held by ${holder ?? "nobody"})`);
     if (args.fixed && (stage !== "fixing" || holder !== args.as)) fail(`only the agent holding the fix claim on ${lockName} marks it fixed (it is ${stage}, held by ${holder ?? "nobody"})`);
+    if (args.fixed) requireSynced(doc, branches, args.as);
     const subject = args.verdict ? markerSubject("Verdict", task.id, args.as, args.verdict) : markerSubject("Fixed", task.id, args.as);
-    if (!pushMarker(lockName, git("rev-parse", `refs/remotes/origin/${lockName}`), subject)) fail(`could not push ${lockName}; fetch and run again`);
+    if (!pushMarker(lockName, tip(lockName), subject)) fail(`could not push ${lockName}: it moved; fetch and run again`);
     console.log(`Recorded on ${lockName}: ${subject}`);
     return;
   }
   if (args.status) {
-    const { doc, mainCi, openPrs, prCi, branches, reports } = await state();
-    console.log(`main CI: ${mainCi.state}${mainCi.url ? ` (${mainCi.url})` : ""}\n`);
-    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, prCi, reports, now: Date.now() })));
+    const { doc, mainCi, openPrs, mergedHeads, prCi, branches, reports } = await state();
+    console.log(`main CI: ${mainCi.state}${mainCi.url ? ` (${mainCi.url})` : ""}${openPrs === null || mergedHeads === null ? " · pull requests: UNKNOWN (GitHub read failed; the board may be wrong)" : ""}\n`);
+    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, reports, now: Date.now() })));
     return;
   }
   if (args.report) {
-    const { doc } = await state();
+    const { doc, branches } = await state();
     const task = doc.tasks.find(t => t.id === args.task) ?? fail(`no task ${args.task}`);
+    requireSynced(doc, branches, args.as);
     // One plain line: no secrets, tokens or personal data (the repo is public, D-059).
-    const note = (args.note ?? "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, 500);
+    const note = sanitizeNote(args.note);
     const subject = markerSubject("Report", task.id, args.as, args.report);
-    const parent = () => (tryGit("rev-parse", "--verify", "-q", `refs/remotes/origin/${REPORTS}`) ? git("rev-parse", `refs/remotes/origin/${REPORTS}`) : git("rev-parse", "origin/main"));
-    if (!pushMarker(REPORTS, parent(), subject, note) && (tryGit("fetch", "-q", "origin", REPORTS), !pushMarker(REPORTS, parent(), subject, note))) fail(`could not push ${REPORTS}; fetch and run again`);
+    let sha = pushMarker(REPORTS, base(REPORTS), subject, note);
+    if (!sha) { tryGit("fetch", "-q", "origin", REPORTS); sha = pushMarker(REPORTS, base(REPORTS), subject, note); }
+    if (!sha) fail(`could not push ${REPORTS}: other reports keep arriving; run again`);
     console.log(`Reported to the CEO on ${REPORTS}: ${subject}${note ? ` — ${note}` : ""}`);
     return;
   }
   if (args.heartbeat) {
-    const { doc, mainCi, openPrs, prCi, branches } = await state();
-    const ci = mainCi.state === "unknown" ? { state: "green" } : mainCi;
-    const pick = pickNextTask({ tasks: doc.tasks, mainCi: ci, branches, openPrs, prCi, now: Date.now(), claimant: args.as });
-    if (pick.kind !== "continue") fail(`"${args.as}" holds no task, so there is nothing to keep alive; run --claim to take one`);
-    if (!pushHeartbeat(pick, args.as, branches)) fail("could not push the heartbeat; fetch and run again");
-    console.log(`Heartbeat recorded: ${pick.of === "fix-main" ? pick.lock : pick.task.id} stays yours for the next 2 hours.`);
+    const { doc, mainCi, openPrs, mergedHeads, prCi, branches, reports } = await state();
+    const mainSha = mainCi.state === "red" || mainCi.state === "running-after-red" ? mainCi.sha : null;
+    // A heartbeat keeps what you hold alive whatever main's CI says (D-085).
+    const held = heldBy({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, reports, claimant: args.as, mainSha });
+    if (!held) fail(`"${args.as}" holds no task, so there is nothing to keep alive; run --claim to take one`);
+    if (!keepClaim(held, args.as, branches)) fail(`another agent took ${held.task?.id ?? held.lock} first; run --claim "${args.as}" to see what is yours`);
+    console.log(`Heartbeat recorded: ${held.of === "fix-main" ? held.lock : held.task.id} stays yours for the next 2 hours.`);
     return;
   }
-  const who = args.claim ?? args.as ?? null;
+  // D-085: a bare model name gets a unique session tag, so two sessions of one model never share a claim.
+  const who = args.claim ? sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4)) : args.as ?? null;
+  if (args.claim && who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const { doc, mainCi, openPrs, prCi, branches, reports } = await state();
+    const { doc, mainCi, openPrs, mergedHeads, prCi, branches, reports } = await state();
     const now = Date.now();
-    const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, prCi, reports, now, claimant: who });
+    const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, prCi, reports, now, claimant: who });
     // D-085: every agent starts from the same picture — the priorities top down, green or not.
-    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, prCi, reports, now });
+    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, reports, now });
     if (pick.kind === "ceo") pick.board = board;
     else console.log(renderBoard(board));
     const { local, mainBehind } = localState();
-    const sync = localSyncIssues({ local, branches, claimant: who, mainBehind });
+    const sync = localSyncIssues({ local, branches, claimant: who, mainBehind, tasks: doc.tasks });
     printSync(sync);
-    if (sync.blocking.length && CLAIMABLE.includes(pick.kind) && pick.kind !== "continue") {
-      console.log("NEXT: SYNC FIRST\nYour own claimed work is not on origin (the MUST PUSH lines above). Push it, then run this again. Nothing new was claimed.\n");
+    const continuing = pick.kind === "continue" ? pick.work ?? pick.lock : null;
+    // New work waits until your own work is on origin; your own claim waits until its commits are.
+    if (CLAIMABLE.includes(pick.kind) && sync.blocking.length && (!continuing || sync.unpushed.includes(continuing))) {
+      console.log("NEXT: SYNC FIRST\nYour own work is not on origin (the MUST PUSH lines above). Push it, then run this again. Nothing new was claimed.\n");
       process.exit(3);
     }
     if (!args.claim || !CLAIMABLE.includes(pick.kind)) {
-      console.log(renderPick(pick, { who: who ?? "<your model>", date, claimed: pick.kind === "continue" && Boolean(args.claim) }));
-      if (pick.kind === "stop") process.exit(2);
-      return;
+      console.log(renderPick(pick, { who: who ?? "<your session name>", date, claimed: false }));
+      process.exit(EXIT[pick.kind] ?? 0);
     }
-    if (claim(pick, args.claim, branches)) { console.log(renderPick(pick, { who: args.claim, date, claimed: true })); return; }
-    console.error(`next-task: someone claimed it first (attempt ${attempt}); picking again`);
+    if (claim(pick, who, branches)) { console.log(renderPick(pick, { who, date, claimed: true })); return; }
+    console.error(`next-task: another agent pushed first (attempt ${attempt}); picking again`);
   }
   fail("three claims in a row were taken by other agents; run again in a minute");
 }
