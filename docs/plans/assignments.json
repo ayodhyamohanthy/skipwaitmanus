@@ -19,7 +19,7 @@
     },
     {
       "id": "GO-LIVE-1",
-      "title": "/plans sells packs and passes; coverage shown before payment; a pass never renews by accident",
+      "title": "/plans sells credit packs; coverage shown before payment; passes listed but off until GO-LIVE-1b; a pass never renews by accident",
       "row": "1",
       "packet": "docs/plans/GO-LIVE-1-plans-purchase.md",
       "tier": 1,
@@ -28,7 +28,22 @@
       "status": "todo",
       "dependsOn": [
         "D-069-chargebee-catalog-sync"
-      ]
+      ],
+      "note": "D-084 (Oct 20): packs go on sale here; passes and Keep warm stay off (PASS_SALES_ENABLED=false) until GO-LIVE-1b can always activate a paid pass. Packet §0 wins over §1-§10."
+    },
+    {
+      "id": "GO-LIVE-1b",
+      "title": "A paid pass always activates (checkout-page recovery on return and hourly, alert on unlinked kit subscriptions), then passes go on sale",
+      "row": "1",
+      "packet": "docs/plans/GO-LIVE-1b-pass-activation.md",
+      "tier": 1,
+      "lane": "payments",
+      "branch": "agent/queue/go-live-passes",
+      "status": "todo",
+      "dependsOn": [
+        "GO-LIVE-1"
+      ],
+      "note": "D-084. The switch commit needs test-site evidence (packet §4.5); without it the packet lands with passes still off."
     },
     {
       "id": "D-038-reconcile",
