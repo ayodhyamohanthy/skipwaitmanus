@@ -1,5 +1,6 @@
 import type { Express, Request } from "express";
-import { EDGE_COUNTRY_HEADER, regionFromHeader } from "../shared/billingRegion";
+import { z } from "zod";
+import { BILLING_REGIONS, EDGE_COUNTRY_HEADER, regionFromHeader } from "../shared/billingRegion";
 import { planCatalogResponse, sellableItemPrices } from "../shared/billingCatalog";
 import { priceAvailability, type AvailabilityDeps } from "./billingAvailability";
 import { indiaGstRegistered, humanReviewersStaffed, usdRecurringConfirmed } from "./billingSettings";
@@ -13,6 +14,9 @@ import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
  * Worker-set `CF-IPCountry` header (src/worker.ts rewrites it from the edge's
  * own request.cf.country, so a caller cannot pick a region by sending the
  * header); anything other than IN reads as the one global USD price.
+ * `?region=IN|INTL` asks for the other billing country's prices instead (the
+ * page's "Different billing country?"); any other value is a 400. Display only:
+ * checkout charges the catalog amount for the billing country the buyer names.
  *
  * `available` answers whether the owner has already created that Chargebee item
  * price at the catalog amount. Checkout re-checks the same question before it
@@ -37,6 +41,9 @@ export type PlansCatalogDeps = {
 
 const DEFAULT_MAX_AGE_SECONDS = 300;
 const UNREACHABLE_BODY = { error: "Prices are unavailable right now. Try again in a moment." } as const;
+const UNKNOWN_REGION_BODY = { error: "Unknown billing region" } as const;
+/** Absent: the edge's region. A repeated or bracketed parameter arrives as an array and is refused. */
+const catalogQuerySchema = z.object({ region: z.enum(BILLING_REGIONS).optional() });
 
 type ResolvedAvailability = { available: (itemPriceId: string) => boolean; unreachable: boolean };
 
@@ -63,7 +70,12 @@ async function resolveAvailable(req: Request, deps: PlansCatalogDeps): Promise<R
 export function registerPlansCatalogRoutes(app: Express, deps: PlansCatalogDeps = {}): void {
   app.get("/api/plans/catalog", async (req, res) => {
     try {
-      const region = regionFromHeader(req.headers[EDGE_COUNTRY_HEADER]);
+      const query = catalogQuerySchema.safeParse(req.query);
+      if (!query.success) {
+        res.set("Cache-Control", "no-store").status(400).json(UNKNOWN_REGION_BODY);
+        return;
+      }
+      const region = query.data.region ?? regionFromHeader(req.headers[EDGE_COUNTRY_HEADER]);
       const { available, unreachable } = await resolveAvailable(req, deps);
       if (unreachable) {
         res.set("Cache-Control", "no-store").status(503).json(UNREACHABLE_BODY);

@@ -42,6 +42,38 @@ describe("GET /api/plans/catalog", () => {
     expect(registered.body.priceNote).toBe("India price, incl. GST");
   });
 
+  it("lets ?region=IN|INTL price the other billing country, and keeps the edge's region without it (GO-LIVE-1 S3)", async () => {
+    const app = appFor();
+    const india = await request(app).get("/api/plans/catalog?region=IN").set(EDGE_COUNTRY_HEADER, "US");
+    expect(india.status).toBe(200);
+    expect(india.body).toMatchObject({ region: "IN", currency: "INR", priceNote: "India price" });
+    expect(india.body.packs.map((pack: { id: string }) => pack.id)).toContain("pack_2");
+    const globally = await request(app).get("/api/plans/catalog?region=INTL").set(EDGE_COUNTRY_HEADER, "IN");
+    expect(globally.status).toBe(200);
+    expect(globally.body).toMatchObject({ region: "INTL", currency: "USD", priceNote: null });
+    expect(globally.body.packs.map((pack: { id: string }) => pack.id)).toContain("pack_5");
+    const edge = await request(app).get("/api/plans/catalog").set(EDGE_COUNTRY_HEADER, "IN");
+    expect(edge.body).toMatchObject({ region: "IN", currency: "INR" });
+    expect(edge.headers["cache-control"]).toBe("public, max-age=60");
+  });
+
+  it.each([
+    ["lower case", "region=in"],
+    ["a country code", "region=US"],
+    ["an empty value", "region="],
+    ["a list", "region=IN,INTL"],
+    ["a repeated parameter", "region=IN&region=IN"],
+    ["an array", "region[]=IN"],
+  ])("answers 400 for %s in ?region, before reading any availability", async (_label, query) => {
+    let asked = 0;
+    const response = await request(appFor({ availableFor: () => { asked += 1; return () => true; } }))
+      .get(`/api/plans/catalog?${query}`).set(EDGE_COUNTRY_HEADER, "IN");
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: "Unknown billing region" });
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(asked).toBe(0);
+  });
+
   it("carries availability and gates human sessions and USD auto-extend behind their flags", async () => {
     const held = await request(appFor()).get("/api/plans/catalog").set(EDGE_COUNTRY_HEADER, "US");
     expect(held.body.sessions.every((session: { available: boolean }) => !session.available)).toBe(true);
