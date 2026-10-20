@@ -1,4 +1,4 @@
-// Email + password sign-in and SkipWait-issued password reset: the one
+// Email + password sign-in and skipwait.me-issued password reset: the one
 // contract for /api/auth/password/* (server/passwordAuthRoutes.ts,
 // server/passwordResetRoutes.ts) and the kit pages that call them
 // (client/src/pages/SignIn.tsx, ForgotPassword.tsx, ResetPassword.tsx).
@@ -129,7 +129,7 @@ export const PASSWORD_AUTH_COPY: Readonly<Record<PasswordAuthErrorCode, string>>
   account_review: "This account needs a quick review before it can sign in. Contact support@skipwait.me.",
   account_inactive: "This account is not active. Contact support@skipwait.me.",
   rate_limited: "Too many attempts. Wait a few minutes and try again.",
-  forbidden_origin: "This request did not come from SkipWait. Refresh the page and try again.",
+  forbidden_origin: "This request did not come from skipwait.me. Refresh the page and try again.",
   weak_password: "Choose a stronger password. This one is too common or has appeared in a data breach.",
   expired: "This link has expired. Request a new one.",
   consumed: "This link was already used. Request a new one.",

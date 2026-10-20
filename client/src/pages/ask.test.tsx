@@ -420,7 +420,7 @@ describe("Ask composer", () => {
       return uploadAndPitch?.(url, init);
     });
     await composeAndSend(fetchMock);
-    expect((await screen.findByRole("alert")).textContent).toContain("We couldn't reach SkipWait. Check your connection and try again.");
+    expect((await screen.findByRole("alert")).textContent).toContain("We couldn't reach skipwait.me. Check your connection and try again.");
     expect(document.body.textContent).not.toContain("Failed to fetch");
     const firstKey = sessionStorage.getItem("skipwait-ask-idempotency-key");
     expect(firstKey).toBeTruthy();

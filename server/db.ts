@@ -3507,7 +3507,7 @@ export const MAX_ADMIN_TOKEN_ADJUSTMENT = 1000;
 export const COMPANY_COVERAGE_REWARD_TOKENS = 1;
 export const PERSONAL_REFERRAL_REWARD_TOKENS = 1;
 /**
- * D-055: SkipWait never pays referrers. No credits, passes, karma, money or perks for referring
+ * D-055: skipwait.me never pays referrers. No credits, passes, karma, money or perks for referring
  * or for accepting asks; recognition stays private (impact stats, thank-yous). The one
  * referrer-side reward, a coverage-invite joiner's pending credit that unlocked when they
  * accepted an ask, is switched off here, not deleted (D-042): accepting grants nothing and no
@@ -3971,7 +3971,7 @@ export async function markSubscriptionNonRenewing(userId: number, role: WalletRo
 // recipient performs a real action: a Job Seeker sends a private referral
 // request. Joining grants nothing, which removes the incentive to farm sign-ups.
 // The Referrer side (accepting a referral request) is off under D-055
-// (REFERRER_ACCEPT_REWARDS_ENABLED): SkipWait never pays referrers.
+// (REFERRER_ACCEPT_REWARDS_ENABLED): skipwait.me never pays referrers.
 async function grantPendingActionRewardsTx(tx: any, userId: number, role: WalletRole, qualifiedByType: string, qualifiedById: string) {
   const pending = await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.userId,userId),eq(tokenTransactions.role,role),eq(tokenTransactions.kind,"invite_reward_pending"),or(isNull(tokenTransactions.rewardStatus),eq(tokenTransactions.rewardStatus,"pending")))).for("update");
   let total=0; const claimedIds:number[]=[];
@@ -4357,7 +4357,7 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     if (!expectedPlan || !isBillablePlanId(expectedPlan)) {
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
       // A wallet or intent still stored as Pro/Max is a retired plan (cancel and refund); anything
-      // else is a price SkipWait cannot place, reviewed without a Pro/Max label.
+      // else is a price skipwait.me cannot place, reviewed without a Pro/Max label.
       return { status: "ignored" as const, reason: isRetiredPlanId(expectedPlan) ? PLAN_RETIRED_CODE : "unsupported_plan" };
     }
     const currentSubscription = sameSubscription ? wallet : undefined;
@@ -4773,7 +4773,7 @@ export const TALENT_CONSENT_RETENTION_DAYS = 90;
 export const TALENT_UNLOCK_DAYS = 30;
 export const TALENT_DISCLOSABLE_FIELDS = ["headline", "location", "skills", "experience", "expertise"] as const;
 export type TalentDisclosedField = typeof TALENT_DISCLOSABLE_FIELDS[number];
-const TALENT_CONSENT_AUDIENCE = "approved employers on SkipWait";
+const TALENT_CONSENT_AUDIENCE = "approved employers on skipwait.me";
 const TALENT_CONSENT_PURPOSE = "anonymous talent discovery and employer introduction requests";
 const TALENT_CONTACT_FLOW = "Employers spend credits to unlock the approved snapshot and may request an introduction; the seeker chooses whether to respond.";
 

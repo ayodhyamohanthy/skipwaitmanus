@@ -43,7 +43,7 @@ describe("ConnectAssistant", () => {
   it("renders the consent screen with locked read scopes and the signed-in email", async () => {
     stubFetch(url => granted(url) ?? { ok: true, json: async () => ({}) });
     render(<ConnectAssistant />);
-    expect(await screen.findByText("Connect ChatGPT to SkipWait")).toBeTruthy();
+    expect(await screen.findByText("Connect ChatGPT to skipwait.me")).toBeTruthy();
     const locked = screen.getAllByRole("checkbox").filter(box => (box as HTMLInputElement).disabled);
     expect(locked.length).toBeGreaterThan(0);
     expect(screen.getByText("Send an ask — only after you approve each one")).toBeTruthy();
@@ -92,10 +92,10 @@ describe("ConnectAssistant", () => {
     });
     render(<ConnectAssistant />);
     // A self-registered client that calls itself "ChatGPT" is still shown as unverified, with its callback host.
-    expect(await screen.findByText("“ChatGPT” isn't verified by SkipWait")).toBeTruthy();
+    expect(await screen.findByText("“ChatGPT” isn't verified by skipwait.me")).toBeTruthy();
     expect(screen.getByText("It connected through the open MCP link. It can only read and draft until it's verified. Only continue if you trust it.")).toBeTruthy();
     expect(screen.getByText("Callback: chatgpt.com")).toBeTruthy();
-    expect(screen.queryByText("Connect ChatGPT to SkipWait")).toBeNull();
+    expect(screen.queryByText("Connect ChatGPT to skipwait.me")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Continue, read & draft only" }));
     expect(await screen.findByText("Taking you back to ChatGPT…")).toBeTruthy();
     const body = JSON.parse(String(fetchMock.mock.calls.find(([url]) => String(url) === "/api/oauth/authorize")?.[1]?.body ?? "{}"));
@@ -113,7 +113,7 @@ describe("ConnectAssistant", () => {
     search.value = OAUTH_QUERY;
     stubFetch(url => (url.startsWith("/api/oauth/client") ? { ok: true, json: async () => ({ clientName: "JobBot" }) } : granted(url) ?? { ok: true, json: async () => ({}) }));
     render(<ConnectAssistant />);
-    expect(await screen.findByText("“JobBot” isn't verified by SkipWait")).toBeTruthy();
+    expect(await screen.findByText("“JobBot” isn't verified by skipwait.me")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Continue, read & draft only" })).toBeTruthy();
   });
 
@@ -126,7 +126,7 @@ describe("ConnectAssistant", () => {
     expect(screen.getByText("Land is not on sale yet. It arrives with the 30 and 90-day passes.")).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Upgrade/ })).toBeNull();
     expect(document.querySelector('a[href="/plans"]')).toBeNull();
-    expect(screen.getByRole("link", { name: "Keep using SkipWait yourself" }).getAttribute("href")).toBe("/explore");
+    expect(screen.getByRole("link", { name: "Keep using skipwait.me yourself" }).getAttribute("href")).toBe("/explore");
   });
 
   it.each(["access answers first", "client answers first"])("shows the Land gate, not the unverified-app screen, to a non-Land member arriving from an assistant (%s)", async order => {
@@ -142,18 +142,18 @@ describe("ConnectAssistant", () => {
       return { ok: true, json: async () => ({}) };
     }));
     render(<ConnectAssistant />);
-    if (order === "client answers first") await screen.findByText("“ChatGPT” isn't verified by SkipWait");
+    if (order === "client answers first") await screen.findByText("“ChatGPT” isn't verified by skipwait.me");
     releaseSlow();
     expect(await screen.findByText("Assistants need Land")).toBeTruthy();
     await waitFor(() => expect(screen.queryByRole("button", { name: "Continue, read & draft only" })).toBeNull());
-    expect(screen.queryByText("“ChatGPT” isn't verified by SkipWait")).toBeNull();
+    expect(screen.queryByText("“ChatGPT” isn't verified by skipwait.me")).toBeNull();
   });
 
   it("asks signed-out visitors to sign in first", () => {
     authState.isSignedIn = false;
     render(<ConnectAssistant />);
     expect(screen.getByText("Sign in to connect ChatGPT")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Sign in to SkipWait" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sign in to skipwait.me" })).toBeTruthy();
   });
 
   it("never derives a screen from URL flags the client controls", async () => {
@@ -161,7 +161,7 @@ describe("ConnectAssistant", () => {
     search.value = `${OAUTH_QUERY.replace("state=st_1", "state=expired")}&unverified=0`;
     stubFetch(url => (url.startsWith("/api/oauth/client") ? { ok: true, json: async () => ({ clientName: "JobBot" }) } : granted(url) ?? { ok: true, json: async () => ({}) }));
     render(<ConnectAssistant />);
-    expect(await screen.findByText("“JobBot” isn't verified by SkipWait")).toBeTruthy();
+    expect(await screen.findByText("“JobBot” isn't verified by skipwait.me")).toBeTruthy();
     expect(screen.queryByText("This link has expired")).toBeNull();
   });
 
@@ -190,6 +190,6 @@ describe("ConnectAssistant", () => {
     render(<ConnectAssistant />);
     fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
     expect((await screen.findByRole("alert")).textContent).toContain("We could not connect this assistant");
-    expect(screen.getByText("Connect ChatGPT to SkipWait")).toBeTruthy();
+    expect(screen.getByText("Connect ChatGPT to skipwait.me")).toBeTruthy();
   });
 });

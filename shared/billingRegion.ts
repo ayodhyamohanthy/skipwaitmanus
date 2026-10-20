@@ -16,7 +16,7 @@ export type RegionCurrency = "INR" | "USD";
 
 export const EDGE_COUNTRY_HEADER = "cf-ipcountry";
 /**
- * Shown beside every INR price. SkipWait is an Indian sole proprietorship with
+ * Shown beside every INR price. skipwait.me is an Indian sole proprietorship with
  * Udyam (MSME) registration and is **not** GST-registered (D-007), so no GST is
  * charged and the label says only "India price". `INDIA_PRICE_NOTE_GST` is used
  * once a GSTIN exists and the Chargebee tax mode is switched on.

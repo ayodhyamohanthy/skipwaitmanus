@@ -95,7 +95,7 @@ export default function PublicProfile() {
   const publicUrl = `https://skipwait.me/p/${profile?.handle ?? handle}`;
   const copyLink = () => { void navigator.clipboard?.writeText(publicUrl); setCopied(true); setTimeout(() => setCopied(false), 1500); };
   const share = () => {
-    if (typeof navigator.share === "function") { void navigator.share({ title: profile?.displayName ?? "SkipWait profile", url: publicUrl }).catch(() => undefined); return; }
+    if (typeof navigator.share === "function") { void navigator.share({ title: profile?.displayName ?? "skipwait.me profile", url: publicUrl }).catch(() => undefined); return; }
     copyLink();
   };
   const ownsPage = profile?.visible === true && profile.isOwner === true;
@@ -107,7 +107,7 @@ export default function PublicProfile() {
   return (
     <div data-skipwait-screen="public-profile" className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4">
-        <Link href="/" className="wordmark" aria-label="skipwait.me home">SkipWait<span className="brand-dot">.</span></Link>
+        <Link href="/" className="wordmark" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         {ownsPage ? (
           <div className="flex rounded-full bg-muted p-1 text-sm" role="tablist" aria-label="View as">
             {(["you", "visitor"] as const).map(option => (
@@ -157,7 +157,7 @@ export default function PublicProfile() {
             </section>
             {profile.openTo && profile.openTo.length > 0 ? <ul className="mt-5 flex flex-wrap gap-2" aria-label="Open to">{profile.openTo.map(role => <li key={role} className="rounded-full bg-muted px-3 py-1.5 text-sm">Open to: {role}</li>)}</ul> : null}
             <PublicWorkGrid items={shownItems} isOwner={asOwner} />
-            <p className="mt-12 text-center text-sm text-muted-foreground">No feed. No followers. No likes. Just work. · <Link href="/" className="text-link">Make your own on SkipWait</Link></p>
+            <p className="mt-12 text-center text-sm text-muted-foreground">No feed. No followers. No likes. Just work. · <Link href="/" className="text-link">Make your own on skipwait.me</Link></p>
           </>
         ) : null}
       </main>

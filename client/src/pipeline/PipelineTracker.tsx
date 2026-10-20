@@ -1,6 +1,6 @@
 /**
  * src/components/pipeline/PipelineTracker.tsx
- * SkipWait Kinetic · Linear Pipeline Tracker component.
+ * skipwait.me Kinetic · Linear Pipeline Tracker component.
  * ─────────────────────────────────────────────────────────────────────────
  */
 import { useId } from "react";

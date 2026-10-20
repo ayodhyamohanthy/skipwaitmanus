@@ -74,7 +74,7 @@ describe("ReferrerImpact dashboard", () => {
     // D-055: recognition only. The server still sends creditsRemaining; a referrer is never shown a credit balance.
     expect(screen.queryByText("3")).toBeNull();
     expect(screen.queryByText(/credits remaining/i)).toBeNull();
-    expect(screen.getByText(/SkipWait never pays referrers\./)).toBeTruthy();
+    expect(screen.getByText(/skipwait.me never pays referrers\./)).toBeTruthy();
     expect(screen.getByText("acme.com")).toBeTruthy();
     expect(screen.getByText("Accepted 2 days ago")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open my inbox" }).getAttribute("href")).toBe("/inbox");
@@ -84,7 +84,7 @@ describe("ReferrerImpact dashboard", () => {
   it("shows a verified referrer's impact when the server verified a work email the SSO sign-in does not carry (D-019)", async () => {
     authState.isSignedIn = true;
     stubFetch(url => {
-      if (url.endsWith("/api/company-referrals/access")) return { ok: true, json: async () => ({ verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "SkipWait", companyInitials: "SW" }) };
+      if (url.endsWith("/api/company-referrals/access")) return { ok: true, json: async () => ({ verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "skipwait.me", companyInitials: "SW" }) };
       if (url.endsWith("/api/referrer/impact-summary")) return { ok: true, json: async () => ({ acceptedReferrals: 0, pendingRequests: 1, declinedRequests: 0, unreadMessages: 0, creditsRemaining: 3, recentAccepted: [] }) };
       return { ok: true, json: async () => ({}) };
     });

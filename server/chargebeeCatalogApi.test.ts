@@ -67,7 +67,7 @@ describe("chargebee catalog api", () => {
       return { body: { item_price: { id, status: "active", price: Number(request.body?.get("price")), currency_code: request.body?.get("currency_code") } } };
     });
     const client = api();
-    await client.createItemFamily({ id: "skipwait", name: "SkipWait" });
+    await client.createItemFamily({ id: "skipwait", name: "skipwait.me" });
     const plan = spec("skipwait_start_90d-USD");
     const pack = spec("skipwait_pack_25-INR");
     await client.createItem({ ...plan.item, itemFamilyId: "skipwait" });
@@ -78,7 +78,7 @@ describe("chargebee catalog api", () => {
     expect(created).toMatchObject({ id: "skipwait_start_90d-USD", price: 1900, currency_code: "USD" });
 
     const fields = requests.map(request => Object.fromEntries(request.body ?? []));
-    expect(fields[0]).toEqual({ id: "skipwait", name: "SkipWait" });
+    expect(fields[0]).toEqual({ id: "skipwait", name: "skipwait.me" });
     expect(fields[1]).toEqual({ id: "skipwait_start", name: "skipwait_start", type: "plan", item_family_id: "skipwait", external_name: "Start", enabled_in_portal: "false" });
     expect(fields[2]).toEqual({ id: "skipwait_pack_25", name: "skipwait_pack_25", type: "charge", item_family_id: "skipwait", external_name: "25 credits" });
     expect(fields[3]).toEqual({ id: "skipwait_pack_25", name: "skipwait_pack_25", type: "charge", external_name: "25 credits" });
@@ -102,7 +102,7 @@ describe("chargebee catalog api", () => {
     const client = api();
     await Promise.all([client.listItemFamilies(), client.listItems({ idPrefix: "skipwait_" }), client.listItemPrices({ idPrefix: "skipwait_" }), client.listItemPrices({ itemIds: ["skipwait_start"] })]);
     const entry = spec("skipwait_pack_2-INR");
-    await client.createItemFamily({ id: "skipwait", name: "SkipWait" });
+    await client.createItemFamily({ id: "skipwait", name: "skipwait.me" });
     await client.createItem({ ...entry.item, itemFamilyId: "skipwait" });
     await client.createItemPrice(entry.spec);
     expect(requests).toHaveLength(7);

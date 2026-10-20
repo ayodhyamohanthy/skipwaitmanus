@@ -10,7 +10,7 @@ export const Route = createFileRoute("/report")({
   component: Report,
 });
 
-const reasons = [["Asked for or offered money", "Referrals on SkipWait are always free"], ["Harassment or inappropriate messages", ""], ["Fake job or scam", "Suspicious links, fees, or personal data requests"], ["Pretending to work at a company", ""], ["Spam or repeated asks", ""], ["Something else", ""]] as const;
+const reasons = [["Asked for or offered money", "Referrals on skipwait.me are always free"], ["Harassment or inappropriate messages", ""], ["Fake job or scam", "Suspicious links, fees, or personal data requests"], ["Pretending to work at a company", ""], ["Spam or repeated asks", ""], ["Something else", ""]] as const;
 
 function Report() {
   const [s, setS] = useState(0);

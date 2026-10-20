@@ -12,7 +12,7 @@ import { readApiJson } from "@/lib/apiResponse";
  */
 
 const FALLBACK_ERROR = "We could not complete this private thread action";
-const NETWORK_ERROR = "We couldn't reach SkipWait. Check your connection and try again.";
+const NETWORK_ERROR = "We couldn't reach skipwait.me. Check your connection and try again.";
 const MALFORMED_ERROR = "We could not read this private thread. Try again in a moment.";
 
 const statusSchema = z.enum(referralStatuses);

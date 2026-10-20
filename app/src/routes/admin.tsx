@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { launchCompanies } from "@/lib/marketplace-data";
 import { pageMeta } from "@/lib/page-meta";
 
-export const Route = createFileRoute("/admin")({ head: () => pageMeta("Admin operations preview", "A design preview of SkipWait marketplace operations, safety, company review, and sustainable growth tools."), component: Admin });
+export const Route = createFileRoute("/admin")({ head: () => pageMeta("Admin operations preview", "A design preview of skipwait.me marketplace operations, safety, company review, and sustainable growth tools."), component: Admin });
 
 function Admin() {
   const [view, setView] = useState<AdminView>("overview");

@@ -47,7 +47,7 @@ describe("secure token checkout routes", () => {
   it("offers a Referrer no checkout and leaves the purchased wallet alone (D-055: referrers never pay)", async () => {
     window.history.pushState({}, "", "/premium?role=referrer");
     render(<Premium />);
-    expect(await screen.findByText("Referrers never pay on SkipWait.")).toBeTruthy();
+    expect(await screen.findByText("Referrers never pay on skipwait.me.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /continue to pay/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /different billing country/i })).toBeNull();
     expect(fetch).not.toHaveBeenCalledWith("/api/chargebee/checkout", expect.anything());

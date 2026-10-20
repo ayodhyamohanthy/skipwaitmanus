@@ -23,7 +23,7 @@ const TEAM_SIZES = ["1–200", "201–2,000", "2,000+"];
 export function demoRequestMailto({ email, company, teamSize }: { email: string; company: string; teamSize: string }) {
   const name = company.trim();
   const subject = `Demo request${name ? ` — ${name}` : ""}`;
-  const body = `Hi SkipWait team,\n\nWe'd like a 20-minute demo for ${name || "our company"} (team size ${teamSize}).\n\nContact: ${email.trim()}\n\nThanks!`;
+  const body = `Hi skipwait.me team,\n\nWe'd like a 20-minute demo for ${name || "our company"} (team size ${teamSize}).\n\nContact: ${email.trim()}\n\nThanks!`;
   return `mailto:hello@skipwait.me?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
@@ -40,7 +40,7 @@ export default function ForCompanies() {
   return (
     <div data-skipwait-screen="for-companies" className="companies-site">
       <header className="launch-header">
-        <Link className="wordmark" href="/" aria-label="SkipWait home">SkipWait<span className="brand-dot">.</span></Link>
+        <Link className="wordmark" href="/" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         <nav aria-label="Company navigation" className="launch-nav">
           <Link href="/explore">Explore</Link>
           <Link href="/plans">Plans</Link>
@@ -51,7 +51,7 @@ export default function ForCompanies() {
         <section className="launch-section co-hero">
           <span className="eyebrow">FOR EMPLOYERS</span>
           <h1>Your best hires already<br />know someone inside<span className="brand-dot">.</span></h1>
-          <p>SkipWait turns employee referrals into a trusted, measurable channel. Referrers are never paid. Your team stays in control.</p>
+          <p>skipwait.me turns employee referrals into a trusted, measurable channel. Referrers are never paid. Your team stays in control.</p>
           <div className="done-actions">
             <Button asChild className="brand-button"><a href="#demo">Book a demo <ArrowRight /></a></Button>
             <Button asChild variant="outline" className="brand-button"><a href="#pricing">See pricing</a></Button>
@@ -97,7 +97,7 @@ export default function ForCompanies() {
         </section>
       </main>
       <footer className="launch-footer">
-        <Link className="wordmark" href="/" aria-label="SkipWait home">SkipWait<span className="brand-dot">.</span></Link>
+        <Link className="wordmark" href="/" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         <span>A warmer way in. · skipwait.me</span>
         <Link href="/employer">Employer workspace</Link>
         <Link href="/safety">Help &amp; safety</Link>

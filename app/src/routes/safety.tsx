@@ -3,7 +3,7 @@ import { ShieldCheck, ArrowUpRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { pageMeta } from "@/lib/page-meta";
-export const Route = createFileRoute("/safety")({ head: () => pageMeta("Help & safety", "Understand privacy, free referrals, verification, and honest expectations on SkipWait."), component: Safety });
+export const Route = createFileRoute("/safety")({ head: () => pageMeta("Help & safety", "Understand privacy, free referrals, verification, and honest expectations on skipwait.me."), component: Safety });
 const answers = [
   ["Are referrals really free?", "Yes. No payments between job seekers and referrers, no commissions, and no paid priority. A referral is a voluntary introduction, not a purchase."],
   ["Who can see a referrer’s name?", "Referrer names are not public. A name is revealed only to the seeker whose request that referrer has accepted."],

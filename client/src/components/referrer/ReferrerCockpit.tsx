@@ -1,6 +1,6 @@
 /**
  * src/components/referrer/ReferrerCockpit.tsx
- * SkipWait Kinetic · Referrer Cockpit. Polaris-style triage queue inside <AppShell>.
+ * skipwait.me Kinetic · Referrer Cockpit. Polaris-style triage queue inside <AppShell>.
  * ─────────────────────────────────────────────────────────────────────────
  */
 import {useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore, type ReactNode} from "react";
