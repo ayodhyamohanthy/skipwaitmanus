@@ -15,7 +15,7 @@
       "branch": "agent/claude/chargebee-catalog-sync",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan §6)."
+      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan \u00a76)."
     },
     {
       "id": "GO-LIVE-1",
@@ -96,8 +96,9 @@
       "tier": 3,
       "lane": "toolchain",
       "branch": "agent/queue/fnd1-toolchain",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed as `1f234293` (branch `agent/queue/fnd1-toolchain`, Tier 3, no review needed). engines.node >=22.12 + new .nvmrc; vitest include collects shared/**/*.test.ts (+3 files, +17 tests); copy-guard assertion now bites. Gate: pnpm check 0, frozen-lockfile install leaves the lockfile unchanged, full vitest 422 files / 3515 passed / 16 skipped."
     },
     {
       "id": "FND-2",
