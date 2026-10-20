@@ -210,7 +210,7 @@ A new job needs its name in both registries and a contract test (`server/schedul
 | R2 / Forge storage | `server/storageCloudflare.ts`, `server/storage.ts` | Database blobs as the last resort |
 | Microsoft Clarity | `client/src/lib/clarity.ts` | Only after "Accept all" consent; skips token pages |
 
-`.env.example` is the contract (72 keys). `server/configContract.test.ts` checks that every referenced key is declared there, and that every forwarded key is declared.
+`.env.example` is the contract (71 keys). `server/configContract.test.ts` checks that every referenced key is declared there, that every forwarded key is declared, and that every key the server reads is either in `CONTAINER_ENV_KEYS` or allowlisted there with the reason the platform sets it (`PORT` in the Dockerfile, `NODE_ENV` in the image).
 
 ## 11. Known gaps (each has a packet or row in `docs/plans/README.md`)
 1. **Dead code that misleads readers:**
@@ -229,8 +229,7 @@ A new job needs its name in both registries and a contract test (`server/schedul
 3. **Privacy hygiene:**
    - server Sentry and admin-alert paths do not redact the token-bearing API routes (`/api/referrer-fast-track/:linkCode`, `/api/referral-share-cards/public/:shareToken`, `/api/referrer-review-links/:linkToken`);
    - the Pages CSP is report-only with nowhere to report.
-4. **Configuration drift:** six server keys are read but never forwarded to the container (`GIFT_CHECKOUT_ENABLED`, the three `OPPORTUNITY_*` limits, `ZEPTOMAIL_FROM_NAME`, `PORT`), so they always take their defaults.
-5. **Toolchain:**
+4. **Toolchain:**
    - `engines.node` says `>=22`, but the jsdom tests need 22.12 or newer;
    - deploys do not wait for CI;
    - `deploy-pages.yml` builds without running tests.
