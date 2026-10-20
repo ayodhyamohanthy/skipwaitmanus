@@ -8,15 +8,21 @@ Method: the GitHub API (56 open PRs, three pages), `git branch -r --merged origi
 
 ---
 
-## 1. P0 security findings (three; act first)
+## 1. Security findings (corrected 2026-10-20)
 
-### P0-a. Storage proxy private-document bypass — PR #2 claim, still present
+> **Correction:** this section originally listed three P0s. Two did not survive a
+> second pass: dev auth is already fail-closed, and review links do not read
+> `X-Forwarded-Host`. The corrected record is below; the fix slice is
+> [`P0-security-correction.md`](./P0-security-correction.md).
+
+### P0-a (kept). Storage proxy key check is bypassable — PR #2 claim
 
 `server/_core/storageProxy.ts:6-13` still blocks private documents with a single
 `key.startsWith("skipwait/private-referrals/")` check, and `server/_core/index.ts:202`
 registers the route. `skipwait//private-referrals/…`, `./skipwait/private-referrals/…`
 and `public/../skipwait/private-referrals/…` do not match the prefix and are forwarded
-as `path` to the Forge presign endpoint, which normalizes them to the private object.
+as `path` to the Forge presign endpoint. **Whether the backend normalizes the path is
+unverified** — treat this as an app-layer hole, not a confirmed production breach.
 The route is unauthenticated.
 
 Impact depends on `BUILT_IN_FORGE_API_URL`/`_KEY` being set in production (the route
@@ -29,34 +35,29 @@ any `private-referrals` segment) and presign only the normalized key; or retire 
 legacy route (documents already stream through `/api/documents/:id`). Regression tests
 for each bypass shape.
 
-### P0-b. Production registers the dev sign-in plane when WorkOS keys are absent — PR #18 claim, still present
+### P0-b (withdrawn). Dev auth in production — PR #18 claim, already fixed
 
-`server/_core/index.ts:199-200`:
+`workosConfigured()` throws when any of `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`,
+`WORKOS_COOKIE_PASSWORD` is missing and `NODE_ENV=production`
+(`server/_core/workosAuth.ts:49-60`, landed `5c8d98a3`, PR #92). Boot fails, so
+`registerDevAuthRoutes` at `server/_core/index.ts:199-200` is unreachable in production
+and `resolveIdentity` never flips to the dev path there. **No P0, no code change.** A
+boot check is already the behaviour; the comment in `workosAuth.ts` records why.
 
-```ts
-if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);
-else registerDevAuthRoutes(app);
-```
+### P0-c (recast, defence in depth). Edge forwarded headers are not fully canonical — PR #18 claim
 
-There is no `NODE_ENV` guard in `server/_core/devAuth.ts`. One missing or rotated WorkOS
-key (the branch's scenario) turns `skipwait.me` into open self-service registration, and
-`resolveIdentity` at line 145 flips to `resolveDevIdentity` in the same deploy.
+Review links build from `req.get("host")` (the `Host` header), not `req.hostname`, and
+the Worker rejects any request whose Cloudflare-set URL host is not `skipwait.me`
+(`src/worker.ts:70-77`). A client `X-Forwarded-Host` therefore does **not** move the
+one-click approve/decline token to another host — the original finding does not hold.
 
-Fix: refuse to boot in production without WorkOS config, or gate dev auth behind an
-explicit `ALLOW_DEV_AUTH` flag that production never sets and CI sets only in tests.
-
-### P0-c. Referral review emails take their action origin from the request host — PR #18 claim, still present
-
-`server/privateReferralRoutes.ts:735` (also 745, 919, 980, 1020, 1133) builds links as
-`${req.protocol}://${req.get("host")}` while `server/_core/index.ts:128` sets
-`app.set("trust proxy", true)`. A seeker who triggers a review email with a spoofed
-`X-Forwarded-Host` can make a legitimate SkipWait email point the one-click
-approve/decline token (`/email-review/<token>`) at another host. The token alone
-authorizes the decision.
-
-Fix: build outbound links from a configured canonical origin (the WorkOS redirect origin
-is already available) and never from request headers. Verify on staging that a forged
-`X-Forwarded-Host` does not change the link.
+The residue is real but narrower: `shared/clientIp.ts:17-37` deletes only the IP
+forwarding headers, so `X-Forwarded-Host` and `X-Forwarded-Proto` pass through even
+though the trust-proxy comment (`server/_core/index.ts:115-128`) says every forwarding
+header is rewritten. Six link builders (`server/privateReferralRoutes.ts:735, 745, 919,
+980, 1020, 1133`) still use the request origin. Fix both as defence in depth: overwrite
+`x-forwarded-host`/`x-forwarded-proto` at the edge and build links from
+`PUBLIC_BASE_URL` when set.
 
 ### Not a finding: PR #2's "fail-open session signing" headline
 
@@ -68,6 +69,7 @@ hardening, not a P0.
 
 ### Already fixed on `main` (PR #18's other claims)
 
+- Dev auth cannot fall through in production: `workosConfigured()` throws when keys are incomplete (`server/_core/workosAuth.ts:49-60`, `5c8d98a3` #92).
 - Work-email enrollment receipt is bound to the consuming account: `server/workEmailOtp.ts:160-167` stores `userId` with the receipt.
 - Chargebee test/live cannot be steered by a request header: `server/chargebeeEnvironment.ts:29-33` ignores the host and reads `BILLING_ENV`.
 - CSRF: session cookies are `SameSite=Lax` (`server/_core/cookies.ts:16-19`), so cross-site form POSTs do not carry them.
@@ -196,7 +198,7 @@ Squash-merged lane branches appear in the next list even though their PR is clos
 
 ## 4. Owner action list (15 minutes)
 
-1. **Approve the three P0 fixes** (P0-a storage proxy, P0-b dev-auth fallback, P0-c email-link host). They are code-visible on `main` today; the first two are reachable without a user action, the third needs a forged header. Give them to the next available model before any feature lane.
+1. **Approve the corrected P0 set**: P0-a storage-key normalization (code fix in progress) and the P0-c edge/link hardening (defence in depth). The dev-auth finding was withdrawn — `workosConfigured()` already fails the production boot. Nothing else in this report is an active exploit.
 2. **Keep three lanes**: #324 (wait for D-080 + dashboard), #322 (D-067 recovery), #308 (row 13 slice A).
 3. **Close #146** (sharp already on `main`). **Decide the row-20 set**: #310/#311/#314 (merge as row 20, or close and restart), #309 (rebase on D-035/D-063).
 4. **Close the superseded/dropped list** with a one-line pointer (D-059): 325, 319, 187, 141, 140, 139, 133, 132, 128, 124, 120, 119, 117, 116, 114, 113, 111, 110, 107, 106, 105, 104, 93, 25, 14, 1. That is 26 PRs off the board.
