@@ -48,3 +48,28 @@ describe("password POST login-CSRF guard", () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("publicOutboundOrigin for outbound links", () => {
+  async function helper() { const mod = await import("./authPostGuard"); return mod.publicOutboundOrigin; }
+  function fakeReq(host: string, forwardedHost?: string) {
+    return { protocol: "https", get: (h: string) => (h === "host" ? (forwardedHost ?? host) : undefined) } as unknown as import("express").Request;
+  }
+  it("uses the configured public origin and never the request host, even with a spoofed host", async () => {
+    process.env.WORKOS_REDIRECT_URI = "https://skipwait.me/api/auth/workos/callback"; delete process.env.PUBLIC_BASE_URL;
+    expect((await helper())(fakeReq("evil.example"))).toBe("https://skipwait.me");
+    process.env.PUBLIC_BASE_URL = "https://www.skipwait.me";
+    expect((await helper())(fakeReq("evil.example"))).toBe("https://www.skipwait.me");
+  });
+  it("refuses to build an outbound origin from request headers in production", async () => {
+    delete process.env.PUBLIC_BASE_URL; delete process.env.WORKOS_REDIRECT_URI;
+    const prevEnv = process.env.NODE_ENV; process.env.NODE_ENV = "production";
+    try { expect(() => (globalThis as never)).not.toThrow(); expect(async () => {}).toBeTruthy();
+      const fn = await helper(); expect(() => fn(fakeReq("evil.example"))).toThrow(/not configured/);
+    } finally { process.env.NODE_ENV = prevEnv; }
+  });
+  it("falls back to the request host outside production for local development", async () => {
+    delete process.env.PUBLIC_BASE_URL; delete process.env.WORKOS_REDIRECT_URI;
+    const prevEnv = process.env.NODE_ENV; process.env.NODE_ENV = "development";
+    try { expect((await helper())(fakeReq("localhost:3000"))).toBe("https://localhost:3000"); } finally { process.env.NODE_ENV = prevEnv; }
+  });
+});
