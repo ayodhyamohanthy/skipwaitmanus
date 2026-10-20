@@ -152,4 +152,29 @@ describe("config contract", () => {
       expect(forwarded.has(key), `container passthrough missing ${key}`).toBe(true);
     }
   });
+
+  // Regression (FND-5): a key the server reads but the Worker never forwards
+  // silently keeps its default in production, because a Cloudflare Container
+  // inherits no Worker binding on its own. "Read implies forwarded" is the
+  // contract; the allowlist below is only for keys the platform sets itself,
+  // and each entry carries the reason it cannot come from the Worker.
+  it("forwards every key the server reads, or allowlists it with a reason", () => {
+    const platformOwned = new Map([
+      ["PORT", "the container runtime sets it (Dockerfile), never app config"],
+      ["NODE_ENV", "the container runtime sets it for the production image"],
+    ]);
+    const { env } = referencedKeys();
+    const forwarded = new Set(workerPassthroughKeys());
+    const missing = [...env]
+      .filter(key => !forwarded.has(key) && !platformOwned.has(key))
+      .sort();
+    expect(
+      missing,
+      `keys read on the server but never forwarded to the container: ${missing.join(", ")} — add each to CONTAINER_ENV_KEYS in src/worker.ts, or allowlist it here with the reason the platform sets it`
+    ).toEqual([]);
+    // An allowlist entry nothing reads any more would silently excuse the next
+    // key that reuses the name, so it is a defect too.
+    const stale = [...platformOwned.keys()].filter(key => !env.has(key)).sort();
+    expect(stale, `allowlisted keys nothing reads any more (drop them): ${stale.join(", ")}`).toEqual([]);
+  });
 });
