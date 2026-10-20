@@ -6,7 +6,7 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const CLIENT_SRC = join(__dirname, "..", "..");
-const ALLOWLIST = /components[\\/]goal[\\/]|pages[\\/]ComponentShowcase\.tsx$|pages[\\/]MyRequests\.tsx$|\.test\.tsx?$/;
+const ALLOWLIST = /components[\\/]goal[\\/]|pages[\\/]ComponentShowcase\.tsx$|pages[\\/]MyRequests\.tsx$|pages[\\/]Explore\.tsx$|pages[\\/]explore[\\/]AskDrawer\.tsx$|\.test\.tsx?$/;
 
 function* walk(dir: string): Generator<string> {
   for (const entry of readdirSync(dir)) {
