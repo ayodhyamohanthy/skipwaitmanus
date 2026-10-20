@@ -17,6 +17,7 @@ import {
   type CatalogPlan,
   type PaidCatalogPlan,
 } from "@shared/planCatalog";
+import type { PlanCatalogResponse } from "@shared/billingCatalog";
 import { money } from "./format";
 import type { CreditSummary } from "./billingApi";
 
@@ -168,4 +169,76 @@ export function planFaqs(): Array<readonly [string, string]> {
     ["Do referrers pay?", "No. Referrers never pay to review requests, skipwait.me never pays them, and they never ask you for money."],
     ["Is pricing local?", `Yes. In India a credit costs ${CREDIT_PRICE.INR}; everywhere else ${CREDIT_PRICE.USD}.`],
   ];
+}
+
+// --- Live-catalog view models (GO-LIVE-1) -------------------------------------
+// Packs and passes are rendered from the server's /api/plans/catalog payload
+// (availability included), so a price that goes off sale disappears on its own.
+
+export type PackCardCopy = { id: string; credits: number; price: string; available: boolean; firstPack: boolean; recommended: boolean };
+
+export function catalogPackCards(catalog: PlanCatalogResponse): PackCardCopy[] {
+  return catalog.packs.map(pack => ({
+    id: pack.id,
+    credits: pack.credits,
+    price: money(pack.amount, catalog.currency),
+    available: pack.available,
+    firstPack: pack.firstPack,
+    recommended: pack.recommended,
+  }));
+}
+
+export type PassTerm = "30d" | "90d";
+
+export type PassCardCopy = {
+  id: PlanId;
+  displayName: string;
+  tagline: string;
+  price: string;
+  per: string;
+  interval: "30d" | "90d" | "yearly";
+  available: boolean;
+  /** A plan of a lower or equal level is not sold while this plan is active. */
+  buyable: boolean;
+  byApplication: boolean;
+  recommended: boolean;
+  humanTimeOffered: boolean;
+  autoExtend: boolean;
+  features: string[];
+};
+
+/** One card per catalog plan: Keep warm yearly always; the passes follow the 30/90-day toggle. */
+export function catalogPassCards(catalog: PlanCatalogResponse, term: PassTerm, active: PaidCatalogPlan | null): PassCardCopy[] {
+  return catalog.plans.flatMap(plan => {
+    const catalogPlan = catalogPlanById(plan.id);
+    if (!catalogPlan) return [];
+    const wanted = plan.id === "keep_warm" ? "yearly" : term;
+    const chosen = plan.terms.find(candidate => candidate.interval === wanted) ?? plan.terms[0];
+    if (!chosen) return [];
+    const buyable = active === null || catalogPlan.level > active.level;
+    const features = [
+      `${openRequestsLabel(plan.openRequests)} referral requests open at once`,
+      `${plan.creditsPerMonth} credits every month`,
+      carryoverFeature(plan.carryover),
+      ...(plan.humanTimeOffered && (plan.humanTime.writtenReviews > 0 || plan.humanTime.liveSessions > 0 || plan.humanTime.hours > 0) ? ["Human review time included"] : []),
+      "Paid once — never renews by itself",
+      ...(chosen.autoExtend.length > 0 ? ["Optional auto-extend offered at checkout"] : []),
+      "Same referrer queue as every plan",
+    ];
+    return [{
+      id: plan.id as PlanId,
+      displayName: plan.displayName,
+      tagline: TAGLINES[plan.tier],
+      price: money(chosen.amount, catalog.currency),
+      per: chosen.interval === "yearly" ? "a year" : `for ${chosen.days ?? 30} days`,
+      interval: chosen.interval,
+      available: chosen.available,
+      buyable,
+      byApplication: plan.byApplication,
+      recommended: plan.recommended,
+      humanTimeOffered: plan.humanTimeOffered,
+      autoExtend: chosen.autoExtend.length > 0,
+      features,
+    }];
+  });
 }
