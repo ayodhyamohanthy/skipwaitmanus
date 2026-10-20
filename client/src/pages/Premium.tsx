@@ -58,8 +58,9 @@ export default function Premium() {
   const updateQuantity = (next: number) => setQuantity(Math.max(1, Math.min(1000, Number.isFinite(next) ? Math.round(next) : 1)));
   // C9: the catalog for this page's currency says whether a credit pack sells there. While it loads
   // or fails the legacy picker stays (the server is the gate); never asked on the pending or referrer screens.
+  // An answer in another currency (an API that ignores ?region=) decides nothing, like a failed read.
   const catalogQuery = usePlansCatalog(route === "INR" ? "IN" : "INTL", { enabled: status !== "pending" && !referrerPurchasesOff && CREDIT_PACKS_ON_SALE });
-  const packsOnSale = catalogQuery.data ? packOnSale(catalogQuery.data) : false;
+  const packsOnSale = catalogQuery.data?.currency === route && packOnSale(catalogQuery.data);
   const switchRoute = () => { setRetired(null); setRoute(current => alternatePaymentRoute(current)); };
 
   useEffect(() => {

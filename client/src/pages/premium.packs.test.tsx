@@ -78,6 +78,17 @@ describe("/premium once a credit pack is on sale (C9)", () => {
     expect(screen.queryByRole("heading", { name: REPLACED })).toBeNull();
   });
 
+  it("keeps the rupee picker when the answer is another currency's catalog (an API that ignores ?region=)", async () => {
+    window.history.pushState({}, "", "/premium?role=job_seeker&currency=INR");
+    const fetchMock = serve({ catalog: () => json(catalogFixture("INTL")) });
+    render(<Premium />);
+    await waitFor(() => expect(catalogReads(fetchMock)).toEqual(["/api/plans/catalog?region=IN"]));
+    expect(await screen.findByRole("spinbutton")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /continue to pay/i })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: REPLACED })).toBeNull();
+    expect(screen.queryByRole("link", { name: /See credit packs/ })).toBeNull();
+  });
+
   it("keeps the legacy picker while the catalog loads, and when it fails", async () => {
     window.history.pushState({}, "", "/premium?role=job_seeker");
     serve({ catalog: () => new Promise<Response>(() => undefined) });
