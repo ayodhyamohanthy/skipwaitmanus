@@ -4,5 +4,5 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export function GoalNum({ children, className }: { children: ReactNode; className?: string }) {
-  return <span data-testid="goal-num" className={cn("g-num", className)}>{children}</span>;
+  return <span data-testid="goal-num" className={cn("g-num text-g-ink-2", className)}>{children}</span>;
 }

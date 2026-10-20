@@ -4,7 +4,7 @@
 // lives on its detail, never in list rows (content.json screenA.notOpenAction).
 import { useMemo, useState } from "react";
 import { Building2, RefreshCw } from "lucide-react";
-import { Button } from "@/components/kit/button";
+import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalAvailability, GoalCompanyMark, GoalListRow } from "@/components/goal/GoalListRow";
 import { GoalFilterChip } from "@/components/goal/GoalFilterChip";
 import { GoalSearchInput } from "@/components/goal/GoalSearchInput";
@@ -12,6 +12,7 @@ import { GoalNum } from "@/components/goal/GoalNum";
 import { exploreDescription, useCompanyDirectory } from "@/lib/companyDirectory";
 import { publicRoute } from "@shared/publicRoutes";
 import { applySeo } from "@/lib/seo";
+import { useSlowLoad } from "@/hooks/useSlowLoad";
 import { useEffect } from "react";
 
 type ChipId = "all" | "open" | "engineering" | "product-design";
@@ -27,6 +28,7 @@ export default function Explore() {
   const [search, setSearch] = useState("");
   const [pressed, setPressed] = useState<ChipId[]>(["all"]);
   const companies = directory.data?.companies;
+  const { isSlow } = useSlowLoad(!companies && !directory.isError);
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     const active = pressed.filter(id => id !== "all");
@@ -73,19 +75,18 @@ export default function Explore() {
           trailing={<GoalAvailability open={company.openToReferrals} label={company.openToReferrals ? "Open to requests" : "Not open yet"} />} />)}
       </ul> : <section className="mt-8 grid justify-items-start gap-3" aria-live="polite">
         <Building2 aria-hidden="true" className="size-6 text-g-ink-3" strokeWidth={1.75} />
-        <h2 className="text-g-heading text-g-ink">Try a wider search.</h2>
-        <p className="text-g-meta text-g-ink-3">Clear a filter, or search for a different company, function or industry.</p>
-        <Button variant="outline" onClick={() => { setSearch(""); setPressed(["all"]); }}>Clear filters</Button>
+        <h2 className="text-g-heading text-g-ink">No matching companies yet</h2>
+        <p className="text-g-meta text-g-ink-3">Try a wider search.</p>
+        <GoalButton variant="outline" onClick={() => { setSearch(""); setPressed(["all"]); }}>Clear filters</GoalButton>
       </section>}
       <p className="mt-4 text-g-meta text-g-ink-3">Availability can change. No referral is guaranteed.</p>
     </> : directory.isError ? <section className="mt-8 grid justify-items-start gap-3" role="alert">
       <Building2 aria-hidden="true" className="size-6 text-g-ink-3" strokeWidth={1.75} />
       <h2 className="text-g-heading text-g-ink">We couldn’t load companies.</h2>
-      <p className="text-g-meta text-g-ink-3">{directory.error.message}</p>
-      <Button variant="outline" onClick={() => { void directory.refetch(); }} disabled={directory.isFetching}><RefreshCw aria-hidden="true" />Try again</Button>
+      <GoalButton variant="outline" onClick={() => { void directory.refetch(); }} disabled={directory.isFetching}><RefreshCw aria-hidden="true" />Try again</GoalButton>
     </section>
-      : <ul className="mt-8 grid gap-0.5" aria-busy="true" aria-label="Loading companies">
+      : <div aria-busy="true" aria-label="Loading companies"><ul className="mt-8 grid gap-0.5">
         {[0, 1, 2, 3].map(index => <li key={index} className="flex h-[52px] items-center gap-3 px-3"><span className="size-7 animate-pulse rounded-g-control bg-g-surface-selected" /><span className="h-4 w-40 animate-pulse rounded bg-g-surface-selected" /></li>)}
-      </ul>}
+      </ul>{isSlow ? <p className="mt-3 text-g-meta text-g-ink-3">Taking longer than expected.</p> : null}</div>}
   </main>;
 }
