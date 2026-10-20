@@ -17,7 +17,7 @@
 // ids, amounts, currencies and reasons — never names, emails, or request content.
 import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
-import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs } from "../shared/referral";
+import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, referredDueAtMs } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
 import { ASK_DELIVERY_KEY_PREFIX } from "./coverageDelivery";
 import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
@@ -52,6 +52,8 @@ export type AskSpentWhileWaitingRow = { transactionId: number; requestId: number
 export type DoublyReversedSpendRow = { reversesTransactionId: number; reversalRows: number; ledgerRowIds: number[] };
 /** D-038-A: a withdrawal or expiry refund whose ask had already been picked up by a claim. */
 export type RefundAfterPickupRow = { transactionId: number; requestId: number; kind: string; createdAt: Date | null };
+/** D-038-B: an approved ask still holding a referrer more than a day past its Referred deadline. */
+export type ReferredDeadlineStuckRow = { id: number; referrerId: number; dueAt: Date };
 
 export type DailyMoneyCheckDeps = {
   auditWallets: () => Promise<WalletAuditResult>;
@@ -65,6 +67,7 @@ export type DailyMoneyCheckDeps = {
   listAskDeliverySpendsWhileWaiting: (limit: number) => Promise<AskSpentWhileWaitingRow[]>;
   listDoublyReversedSpends: (limit: number) => Promise<DoublyReversedSpendRow[]>;
   listRefundsAfterPickup: (limit: number) => Promise<RefundAfterPickupRow[]>;
+  listReferredPastDeadline: (nowMs: number, limit: number) => Promise<ReferredDeadlineStuckRow[]>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
   recordActivity: typeof recordOperationalActivity;
 };
@@ -287,6 +290,37 @@ async function listRefundsAfterPickup(limit: number): Promise<RefundAfterPickupR
   return found;
 }
 
+/**
+ * D-038-B: an approved ask more than a day past its Referred deadline. The `referral-timers` job should
+ * have reopened it to colleagues with the credit released; if it is still approved, that release is
+ * overdue and the referrer still holds the seeker's name and files. Read-only, bounded.
+ */
+export async function listReferredPastDeadline(nowMs: number, limit: number): Promise<ReferredDeadlineStuckRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  const asks = await db.select({ id: referralRequests.id, referrerId: referralRequests.referrerId }).from(referralRequests)
+    .where(and(eq(referralRequests.status, "approved"), isNotNull(referralRequests.referrerId))).limit(MONEY_CHECK_BATCH);
+  const found: ReferredDeadlineStuckRow[] = [];
+  for (const ask of asks) {
+    if (!ask.referrerId) continue;
+    const events = await db.select({ id: referralTransitionEvents.id, action: referralTransitionEvents.action, createdAt: referralTransitionEvents.createdAt, resultingStatus: referralTransitionEvents.resultingStatus })
+      .from(referralTransitionEvents)
+      .where(and(eq(referralTransitionEvents.referralRequestId, ask.id), inArray(referralTransitionEvents.action, ["approve", "review", "referred_lapse", "step_back", "referred_extension"])));
+    let latestAcceptance: { id: number; action: string; createdAt: Date | string; resultingStatus: string | null } | null = null;
+    let extended = false;
+    for (const event of events) {
+      if (event.action === "referred_extension") { extended = true; continue; }
+      if (latestAcceptance === null || Number(event.id) > Number(latestAcceptance.id)) latestAcceptance = { id: Number(event.id), action: event.action, createdAt: event.createdAt, resultingStatus: event.resultingStatus ?? null };
+    }
+    if (latestAcceptance === null || latestAcceptance.resultingStatus !== "approved") continue;
+    const acceptedAtMs = latestAcceptance.createdAt instanceof Date ? latestAcceptance.createdAt.getTime() : Date.parse(String(latestAcceptance.createdAt));
+    if (!Number.isFinite(acceptedAtMs)) continue;
+    const dueAt = referredDueAtMs(acceptedAtMs, extended);
+    if (nowMs - dueAt > ALLOCATED_ASK_GRACE_MS) found.push({ id: ask.id, referrerId: ask.referrerId, dueAt: new Date(dueAt) });
+    if (found.length >= limit) break;
+  }
+  return found;
+}
+
 async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {  try {
     const apiKey = process.env.RESEND_API_KEY;
     const sender = process.env.ERROR_ALERT_FROM_EMAIL;
@@ -317,6 +351,7 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
   listAskDeliverySpendsWhileWaiting,
   listDoublyReversedSpends,
   listRefundsAfterPickup,
+  listReferredPastDeadline,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
 }) {
@@ -389,6 +424,10 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
     // D-038-A: once a referrer claimed the ask the credit stays spent, so a refund after a pickup is a leak.
     const refundsAfterPickup = await deps.listRefundsAfterPickup(FINDINGS_PREVIEW_LIMIT);
     for (const row of refundsAfterPickup) findings.push(`refund_after_pickup: ledger row #${row.transactionId} returned a credit for ask #${row.requestId} (${row.kind}) although the ask's latest pickup was a claim`);
+
+    // D-038-B: an accepted ask nobody marked Referred should have reopened a day ago, with the credit released.
+    const referredStuck = await deps.listReferredPastDeadline(nowMs, FINDINGS_PREVIEW_LIMIT);
+    for (const row of referredStuck) findings.push(`referred_deadline_stuck: ask #${row.id} is still approved more than a day past its Referred deadline (${row.dueAt.toISOString()}); the referral-timers job has not reopened it`);
 
     const output: JobRunOutput = { processed: audit.checkedWallets + checkedPayments, failed: 0 };
     if (findings.length === 0) return output;

@@ -1,4 +1,4 @@
-# D-038-A independent review: a lapsed claim or allocation returns the ask, and a referrer holds at most 5 claims
+# D-038-A and D-038-B independent review: the lapses, the cap, and the referred deadline
 
 > Tier 1 (credits, refunds). Reviewed against `docs/plans/D-038-A-lapses.md` and
 > `docs/DELEGATION.md` §6 on 2026-10-20, on branch `agent/workbuddy/d038-a-lapses` from
@@ -98,11 +98,38 @@ this branch, each with a test that failed first.
 
 ## 6. Still open
 
-- **D-038-B has had no independent review.** It is on `main` unreviewed, from the same
-  `c53ea471` push. Its own §3b row still asks for that review; this document covers slice A
-  only, and the code paths it shares with A (the pickup-since-release predicate, the
-  transitions) were reviewed here.
 - **No live check yet.** The timers only start doing work once this branch is on `main` and
   deployed; the first window after deploy is the one to watch (`GET /api/admin/jobs`).
 - **Owner action, unchanged from the packet:** the pre-cut-off count of waiting asks
   (`§9` of the packet) before the first sweep runs.
+
+## 7. Slice B (D-038-B): reviewed against `docs/plans/D-038-B-referred-deadline.md`
+
+Slice B arrived in the same `c53ea471` push and had no review either. Reviewed here because the
+two slices share the pickup-since-release predicate, the transition transactions and the job.
+
+**One real bug, one missing DoD item, one copy clause.**
+
+| # | Finding | Effect |
+|---|---|---|
+| B1 | **"Need 3 more days" worked after the deadline.** `extendReferredDeadlineTx` checked the ask's status and whether an extension already existed, but never the clock. §4.3 offers the extension "while the ask is `approved` **and before the deadline**". | A referrer could press it at day 5 and keep the seeker's name and resume for three more days past the deadline they had already missed — a privacy leak (D-019(e)) and a delayed credit release, not a UX nicety. Fixed: the transaction refuses with `ReferralTransitionConflict` once `nowMs >= referredDueAtMs(acceptedAt, false)`; a second press stays a replay. `server/db.referredDeadline.test.ts` covers it red first. |
+| B2 | **No `referred_deadline_stuck` money check** (DoD §9). | An approved ask the job failed to reopen — the referrer still holding the seeker's files — would never be reported. Added to `server/dailyMoneyCheck.ts`, bounded and read-only, with an in-memory test that flags one stuck ask and not a not-yet-due one. |
+| B3 | **`CREDIT_RULE` had no referred-deadline clause** (DoD §9). | The public credit rule stopped at "the credit stays spent". Added — but **not in the packet's wording**. The packet asks for "or when an accepted ask wasn't referred in time" in the list of ways "the credit comes back once". That is false: D-076 (1) says no ledger row moves at a release, and the credit only returns if the reopened ask is then withdrawn or expires. The copy now says that instead. |
+
+**Verified sound, no change needed:** the lapse and step-back transactions (lock, transition,
+exclusion row, grant revocation, both notices), the release set
+{`claim`, `claim_lapse`, `referred_lapse`, `step_back`}, the `REFERRAL_TIMERS_SINCE` clamp for
+acceptances that predate the deploy, the reminders' idempotent `eventKey`s, and the north-star
+metric — which matches the actions the code really writes (`progress` with `resultingStatus`
+`intro_made`, and `seeker_confirmed_referred`) and measures from first visibility.
+
+**One deviation accepted:** §7.8 asks for 403 or 409 when another referrer, the seeker or the
+referrer calls the wrong one of the three routes. The wrappers answer **404** instead
+("not in your account"), which is the repository's stated rule for ownership failures and does
+not confirm that someone else's ask exists. The routes are also wired through
+`*ForUser` wrappers that prove ownership under the row lock, so the 404 is a deliberate
+improvement over the packet, not a miss.
+
+**Not reviewed:** the private impact read (whether a step-back touches the referrer's own stats).
+The step-back clears `referrerId`, so the referrer no longer matches the ask, but no test pins
+that; it belongs with the D-035 review.

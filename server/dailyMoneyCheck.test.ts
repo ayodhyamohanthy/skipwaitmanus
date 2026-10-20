@@ -1,9 +1,9 @@
 // D-065 daily money check: the job reconciles, reports, and never writes.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
-import { ASK_TTL_MS, COVERAGE_WAIT_MS } from "../shared/referral";
-import { createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
-import { DAY_MS, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
+import { ASK_TTL_MS, COVERAGE_WAIT_MS, REFERRAL_TIMERS_SINCE } from "../shared/referral";
+import { createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listReferredPastDeadline, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
+import { DAY_MS, LINK_OWNER, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
@@ -29,6 +29,7 @@ function makeDeps(overrides: Partial<DailyMoneyCheckDeps> = {}) {
     listAskDeliverySpendsWhileWaiting: vi.fn(async () => []),
     listDoublyReversedSpends: vi.fn(async () => []),
     listRefundsAfterPickup: vi.fn(async () => []),
+    listReferredPastDeadline: vi.fn(async () => []),
     sendEmail: vi.fn(async (input: Sent) => { sent.push(input); return true; }),
     recordActivity: vi.fn(async (row: { action: string }) => { activity.push(row as { action: string; outcome: string }); }),
     ...overrides,
@@ -340,5 +341,38 @@ describe("D-065-B slice checks over the in-memory database", () => {
     // Read-only: no ask or ledger row moved.
     expect(store.rows(referralRequests)).toEqual(before.requests);
     expect(store.rows(tokenTransactions)).toEqual(before.ledger);
+  });
+});
+
+describe("referred_deadline_stuck over the in-memory database", () => {
+  beforeEach(() => {
+    vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+    mocks.createPool.mockResolvedValue({});
+    mocks.drizzle.mockReturnValue(store.db);
+  });
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  // D-038-B: an accepted ask the referral-timers job should have reopened a day ago. The clock is
+  // measured from the acceptance, clamped to REFERRAL_TIMERS_SINCE, so the job runs nine days later.
+  it("flags an approved ask more than a day past its referred deadline, and only that one", async () => {
+    const later = REFERRAL_TIMERS_SINCE + 9 * DAY_MS;
+    const acceptance = (id: number, requestId: number, atMs: number) => ({ ...claimEvent(requestId, id), action: "approve", operationKey: `one-click:2:approved`, resultingStatus: "approved", createdAt: new Date(atMs) });
+    seedHeldAsks({
+      asks: [
+        // Accepted a day after the cut-off: due on day 6, so nine days in it is three days overdue.
+        askRow({ id: 701, status: "approved", referrerId: LINK_OWNER }),
+        // Accepted seven days after the cut-off: due on day 12, so it is not due yet.
+        askRow({ id: 702, status: "approved", referrerId: LINK_OWNER }),
+      ],
+      events: [acceptance(80, 701, REFERRAL_TIMERS_SINCE + DAY_MS), acceptance(81, 702, REFERRAL_TIMERS_SINCE + 7 * DAY_MS)],
+    });
+
+    const { deps, sent } = makeDeps({ listReferredPastDeadline });
+    const output = await createDailyMoneyCheck(deps)({ nowMs: later, windowKey: "2026-10-29T02:00Z" });
+
+    expect(output.failed).toBe(0);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("referred_deadline_stuck: ask #701");
+    expect(sent[0]!.text).not.toContain("ask #702");
   });
 });
