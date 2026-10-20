@@ -5,12 +5,16 @@ import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./charge
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { giftClaimRequestSchema } from "../shared/giftSubscriptions";
 import { PLAN_RETIRED_CODE, kitPlanCheckoutRequestSchema, packCheckoutRequestSchema } from "../shared/subscriptionManagement";
-import { isRetiredPlanId, isRetiredPlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId } from "../shared/billingCatalog";
+import { isRetiredPlanId, isRetiredPlanItemPrice, packPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId } from "../shared/billingCatalog";
+import { CREDIT_PACKS, SINGLE_CREDIT_RETIRED_CODE, SINGLE_CREDIT_RETIRED_ERROR, singleCreditRetired, type CatalogCurrency } from "../shared/planCatalog";
 import { refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
+import { priceAvailability, type AvailabilityDeps } from "./billingAvailability";
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
 import type { RetiredPlanAlertInput } from "./errorAlerting";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
+/** Credit pack item prices that are live in one currency, and those the provider could not answer for. */
+export type PackAvailability = { available: Set<string>; unknown: Set<string> };
 
 type Deps = {
   resolveIdentity: (req: Request) => Promise<ChargebeeIdentity | undefined>;
@@ -21,6 +25,8 @@ type Deps = {
   createSubscriptionIntent?: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; plan: BillablePlanId; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) => Promise<unknown>;
   /** Kit checkout (a 30/90-day pass, Keep warm yearly, a credit pack): availability and provider calls. */
   kitCheckout?: KitCheckoutDeps;
+  /** GO-LIVE-1 ruling 4.6: which packs sold in `currency` are live; the legacy single credit retires once one is. Defaults to the provider probe. */
+  packAvailability?: (req: Request, currency: CatalogCurrency) => Promise<PackAvailability>;
   applySubscriptionEvent?: (input: NonNullable<ReturnType<typeof parseSubscriptionEvent>>) => Promise<unknown>;
   getUserSubscription?: (userId: number, role: TokenRole) => Promise<{ subscriptionId: string; status: string; currentTermEnd?: Date } | undefined>;
   markSubscriptionNonRenewing?: (userId: number, role: TokenRole, subscriptionId: string, currentTermEnd?: Date) => Promise<unknown>;
@@ -73,6 +79,17 @@ function isChargebeeNotConfigured(error: unknown): boolean {
   return error instanceof Error && /Chargebee API key(?:\/site)? is not configured/.test(error.message);
 }
 
+/** The default pack read: the shared provider probe over that currency's packs. Unconfigured billing reads as nothing live, with no provider call. */
+async function livePackAvailability(req: Request, currency: CatalogCurrency): Promise<PackAvailability> {
+  let credentials: AvailabilityDeps["credentials"] = null;
+  try {
+    credentials = resolveChargebeeRuntime(req.hostname);
+  } catch {
+    credentials = null;
+  }
+  return priceAvailability(CREDIT_PACKS.flatMap(pack => packPrice(pack.id, currency) ?? []), { credentials });
+}
+
 export function registerChargebeeRoutes(app: Express, deps: Deps) {
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
   // D-055: referrers never pay (shared/referrerPurchases.ts, switched off, not deleted).
@@ -80,6 +97,19 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   const refuseReferrerPurchase = (res: Response, actorUserId: number, action: "billing.credit_checkout_refused" | "billing.subscription_checkout_refused") => {
     record({ actorUserId, action, outcome: "denied", resourceType: action === "billing.credit_checkout_refused" ? "payment_intent" : "subscription_intent", metadata: { reason: REFERRER_PURCHASE_REFUSED_CODE, role: "referrer" } });
     return res.status(403).json({ error: REFERRER_PURCHASE_REFUSED_ERROR, code: REFERRER_PURCHASE_REFUSED_CODE });
+  };
+  // GO-LIVE-1 ruling 4.6 (D-036/D-046): has the single credit retired in this currency?
+  // An answer that cannot be read keeps today's checkout (the packs may not be live yet).
+  const singleCreditRetiredIn = async (req: Request, currency: CatalogCurrency): Promise<boolean> => {
+    try {
+      const verdicts = await (deps.packAvailability ?? livePackAvailability)(req, currency);
+      const retired = singleCreditRetired(currency, itemPriceId => verdicts.available.has(itemPriceId));
+      if (!retired && verdicts.unknown.size > 0) console.warn("[Chargebee] credit pack availability unknown; the single-credit checkout continues", { currency });
+      return retired;
+    } catch {
+      console.warn("[Chargebee] credit pack availability unreadable; the single-credit checkout continues", { currency });
+      return false;
+    }
   };
   app.post("/api/chargebee/checkout", async (req, res) => {
     try {
@@ -114,6 +144,12 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const pack = CHARGEBEE_TOKEN_PACKS[itemPriceId];
       if ((billingCountry === "IN" && pack.currency !== "INR") || (billingCountry === "INTL" && pack.currency !== "USD")) {
         return res.status(400).json({ error: "That currency is not available for the selected billing route" });
+      }
+      // Credit packs replace the single credit in their currency, whatever the quantity. The
+      // route stays (D-042): recovery, the webhook and the reconcile job never ask this.
+      if (await singleCreditRetiredIn(req, pack.currency)) {
+        record({ actorUserId: identity.account.id, action: "billing.credit_checkout_refused", outcome: "denied", resourceType: "payment_intent", metadata: { reason: SINGLE_CREDIT_RETIRED_CODE, currency: pack.currency } });
+        return res.status(410).json({ error: SINGLE_CREDIT_RETIRED_ERROR, code: SINGLE_CREDIT_RETIRED_CODE });
       }
       const origin = `${req.protocol}://${req.get("host")}`;
       const runtime = deps.createCheckout ? undefined : resolveChargebeeRuntime(req.hostname);

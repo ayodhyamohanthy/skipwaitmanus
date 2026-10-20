@@ -2,6 +2,7 @@ import express from "express";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerChargebeeRoutes } from "./chargebeeRoutes";
+import { clearPriceAvailabilityCache } from "./billingAvailability";
 
 // D-084: passes ship switched off (server/kitCheckout.test.ts proves the 409). These
 // tests prove the pass checkout and webhook plumbing, so they run with passes on sale.
@@ -10,6 +11,11 @@ vi.mock("../shared/planCatalog", async importOriginal => ({ ...(await importOrig
 function auth(secret: string) {
   return `Basic ${Buffer.from(`skipwait:${secret}`).toString("base64")}`;
 }
+
+/** Which credit packs are live, as the legacy single-credit arm asks (GO-LIVE-1 ruling 4.6). */
+const packVerdicts = (available: string[], unknown: string[] = []) => async () => ({ available: new Set(available), unknown: new Set(unknown) });
+/** The legacy single-credit tests prove the per-credit checkout itself, so no pack is live for them. */
+const nothingLive = packVerdicts([]);
 
 beforeEach(() => {
   vi.stubEnv("BILLING_ENV", "test");
@@ -34,7 +40,7 @@ describe("Chargebee checkout readiness", () => {
   it.each(["IN", "INTL"])("prefills only the known country for the %s credit route", async billingCountry => {
     const app = express(); app.use(express.json());
     const createCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/tokens", hostedPageId: "hp_tokens", checkoutIntentId: "intent_tokens" }));
-    registerChargebeeRoutes(app, { resolveIdentity: async () => ({ account: { id: 7 } }), createPaymentIntent: vi.fn(), fulfillPayment: vi.fn(), createCheckout });
+    registerChargebeeRoutes(app, { resolveIdentity: async () => ({ account: { id: 7 } }), createPaymentIntent: vi.fn(), fulfillPayment: vi.fn(), createCheckout, packAvailability: nothingLive });
     const response = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: `skipwait_token_1-${billingCountry === "IN" ? "INR" : "USD"}`, billingCountry });
     expect(response.status).toBe(200);
     expect(createCheckout).toHaveBeenCalledWith(expect.objectContaining({ billingAddress: billingCountry === "IN" ? { country: "IN" } : undefined }));
@@ -63,6 +69,141 @@ describe("Chargebee checkout readiness", () => {
     registerChargebeeRoutes(app, { resolveIdentity: async () => ({ account: { id: 7 } }), createPaymentIntent: vi.fn(), createSubscriptionIntent: vi.fn(), fulfillPayment: vi.fn() });
     expect((await request(app).post(path).send({ itemPriceId: "skipwait_token_1-INR", planId: "start", interval: "30d", currency: "INR", billingCountry: "IN" })).status).toBe(503);
     expect(provider).not.toHaveBeenCalled();
+  });
+});
+
+// GO-LIVE-1 ruling 4.6 (D-036/D-046): the ₹99 / $1 single credit retires per currency
+// once a credit pack sold in that currency is live. The legacy route stays (D-042).
+describe("the legacy single credit retires per currency once a pack is live", () => {
+  const RETIRED = { error: "Single credits are replaced by credit packs. Nothing has been charged.", code: "single_credit_retired" };
+  type Activity = { actorUserId?: number; action: string; outcome: string; resourceType?: string; metadata?: Record<string, unknown> };
+  /** `undefined` keeps the route's own default (the provider probe). */
+  function legacyApp(packAvailability: Parameters<typeof registerChargebeeRoutes>[1]["packAvailability"]) {
+    const app = express(); app.use(express.json());
+    const activity: Activity[] = [];
+    const createCheckout = vi.fn(async () => ({ checkoutUrl: "https://chargebee.test/hp_single", hostedPageId: "hp_single", checkoutIntentId: "intent_single" }));
+    const createPaymentIntent = vi.fn(async () => undefined);
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 7, email: "candidate@example.com", name: "Candidate One" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      recordActivity: async input => { activity.push(input); },
+      createCheckout, createPaymentIntent, fulfillPayment: vi.fn(),
+      packAvailability,
+    });
+    return { app, activity, createCheckout, createPaymentIntent };
+  }
+  const INR_BODY = { itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", role: "job_seeker" };
+  const USD_BODY = { itemPriceId: "skipwait_token_1-USD", billingCountry: "INTL", role: "job_seeker" };
+  afterEach(() => clearPriceAvailabilityCache());
+
+  it("answers 410 for every INR quantity once an INR pack is live, before the provider, an intent or a started row", async () => {
+    const provider = vi.fn(); vi.stubGlobal("fetch", provider);
+    const packAvailability = vi.fn(packVerdicts(["skipwait_pack_2-INR"]));
+    const { app, activity, createCheckout, createPaymentIntent } = legacyApp(packAvailability);
+    for (const quantity of [1, 10]) {
+      const response = await request(app).post("/api/chargebee/checkout").send({ ...INR_BODY, quantity });
+      expect(response.status).toBe(410);
+      expect(response.body).toEqual(RETIRED);
+    }
+    expect(packAvailability).toHaveBeenCalledWith(expect.anything(), "INR");
+    expect(createCheckout).not.toHaveBeenCalled();
+    expect(createPaymentIntent).not.toHaveBeenCalled();
+    expect(provider).not.toHaveBeenCalled();
+    // One denied row per refusal: the reason and currency only, nothing personal.
+    expect(activity).toEqual([
+      { actorUserId: 7, action: "billing.credit_checkout_refused", outcome: "denied", resourceType: "payment_intent", metadata: { reason: "single_credit_retired", currency: "INR" } },
+      { actorUserId: 7, action: "billing.credit_checkout_refused", outcome: "denied", resourceType: "payment_intent", metadata: { reason: "single_credit_retired", currency: "INR" } },
+    ]);
+  });
+
+  it("still opens the USD checkout while no USD pack is live, whatever is live in INR", async () => {
+    const packAvailability = vi.fn(packVerdicts(["skipwait_pack_2-INR", "skipwait_pack_25-INR"]));
+    const { app, activity, createCheckout, createPaymentIntent } = legacyApp(packAvailability);
+    const response = await request(app).post("/api/chargebee/checkout").send(USD_BODY);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ checkoutUrl: "https://chargebee.test/hp_single", hostedPageId: "hp_single" });
+    expect(packAvailability).toHaveBeenCalledWith(expect.anything(), "USD");
+    expect(createCheckout).toHaveBeenCalledTimes(1);
+    expect(createPaymentIntent).toHaveBeenCalledWith(expect.objectContaining({ tokenCount: 1, amount: 100, currency: "USD" }));
+    expect(activity).toContainEqual(expect.objectContaining({ action: "billing.credit_checkout_started" }));
+    expect(activity).not.toContainEqual(expect.objectContaining({ action: "billing.credit_checkout_refused" }));
+  });
+
+  it.each([
+    ["the availability read throws", async () => { throw new Error("availability unreadable"); }],
+    ["every pack is unknown", packVerdicts([], ["skipwait_pack_2-INR", "skipwait_pack_25-INR", "skipwait_pack_60-INR", "skipwait_pack_150-INR"])],
+  ])("continues the legacy checkout when %s", async (_label, packAvailability) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { app, createCheckout, createPaymentIntent } = legacyApp(packAvailability);
+    const response = await request(app).post("/api/chargebee/checkout").send(INR_BODY);
+    expect(response.status).toBe(200);
+    expect(createCheckout).toHaveBeenCalledTimes(1);
+    expect(createPaymentIntent).toHaveBeenCalledWith(expect.objectContaining({ tokenCount: 1, amount: 9900, currency: "INR" }));
+    // A read that failed is never silent, and the log carries no personal data.
+    for (const call of warn.mock.calls) expect(JSON.stringify(call)).not.toContain("candidate@example.com");
+  });
+
+  it("keeps the legacy validation order: a bad body is a 400 before availability is read", async () => {
+    const packAvailability = vi.fn(packVerdicts(["skipwait_pack_2-INR"]));
+    const { app, createCheckout } = legacyApp(packAvailability);
+    expect((await request(app).post("/api/chargebee/checkout").send({ ...INR_BODY, quantity: 1001 })).status).toBe(400);
+    expect((await request(app).post("/api/chargebee/checkout").send({ ...INR_BODY, billingCountry: "INTL" })).status).toBe(400);
+    expect((await request(app).post("/api/chargebee/checkout").send({ ...INR_BODY, itemPriceId: "skipwait_token_2-INR" })).status).toBe(400);
+    expect(packAvailability).not.toHaveBeenCalled();
+    expect(createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("by default asks the provider about that currency's packs only, and never throws out of the route", async () => {
+    clearPriceAvailabilityCache();
+    const asked: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      const itemPriceId = decodeURIComponent(url.split("/item_prices/")[1] ?? "");
+      asked.push(itemPriceId);
+      if (itemPriceId === "skipwait_pack_2-INR") return new Response(JSON.stringify({ item_price: { id: itemPriceId, status: "active", currency_code: "INR", price: 9_900, item_type: "charge" } }), { status: 200 });
+      return new Response(JSON.stringify({ api_error_code: "resource_not_found", message: "Not found" }), { status: 404 });
+    }));
+    const { app, createCheckout } = legacyApp(undefined);
+    const india = await request(app).post("/api/chargebee/checkout").send(INR_BODY);
+    expect(india.status).toBe(410);
+    expect(india.body).toEqual(RETIRED);
+    expect([...asked].sort()).toEqual(["skipwait_pack_150-INR", "skipwait_pack_2-INR", "skipwait_pack_25-INR", "skipwait_pack_60-INR"]);
+    asked.length = 0;
+    const globally = await request(app).post("/api/chargebee/checkout").send(USD_BODY);
+    expect(globally.status).toBe(200);
+    expect([...asked].sort()).toEqual(["skipwait_pack_150-USD", "skipwait_pack_25-USD", "skipwait_pack_5-USD", "skipwait_pack_60-USD"]);
+    expect(createCheckout).toHaveBeenCalledTimes(1);
+
+    // A provider that cannot be reached leaves every pack unknown: the legacy checkout continues.
+    clearPriceAvailabilityCache();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("Chargebee unreachable"); }));
+    const unreachable = await request(app).post("/api/chargebee/checkout").send(INR_BODY);
+    expect(unreachable.status).toBe(200);
+    expect(createCheckout).toHaveBeenCalledTimes(2);
+  });
+
+  it("a pending single-credit checkout from before the retirement still recovers, and the webhook still credits", async () => {
+    vi.stubEnv("CHARGEBEE_WEBHOOK_SECRET", "retire-secret");
+    const app = express(); app.use(express.json());
+    const packAvailability = vi.fn(packVerdicts(["skipwait_pack_2-INR"]));
+    const fulfillPayment = vi.fn(async () => ({ status: "credited", tokenCount: 1 }));
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 7 } }),
+      createPaymentIntent: vi.fn(),
+      fulfillPayment,
+      packAvailability,
+      getPaymentRecovery: async (_userId, _role, hostedPageId) => ({ id: 71, status: "pending", hostedPageId, checkoutIntentId: "intent_single", tokenCount: 1, amount: 9900, currency: "INR", reconciliationReason: null }),
+      retrieveHostedPage: async hostedPageId => ({ hostedPageId, invoiceId: "inv_single", passThruContent: "intent_single", amount: 9900, currency: "INR", pageState: "succeeded", invoiceStatus: "paid", paymentStatus: "paid", paid: true }),
+      getCreditSummary: async () => ({ totalAvailable: 1 }),
+    });
+    const recovered = await request(app).post("/api/chargebee/credit-recovery").send({ role: "job_seeker", hostedPageId: "hp_single" });
+    expect(recovered.status).toBe(200);
+    expect(recovered.body).toMatchObject({ status: "credited", tokenCount: 1 });
+    expect(fulfillPayment).toHaveBeenCalledWith(expect.objectContaining({ eventId: "hosted_page:hp_single", passThruContent: "intent_single", amount: 9900, currency: "INR" }));
+    const webhook = await request(app).post("/api/chargebee/webhook").set("Authorization", auth("retire-secret"))
+      .send({ id: "ev_single", event_type: "payment_succeeded", content: { payment: { amount: 9900, currency_code: "INR", hosted_page_id: "hp_single_2" }, hosted_page: { pass_thru_content: "intent_single_2" } } });
+    expect(webhook.status).toBe(200);
+    expect(fulfillPayment).toHaveBeenCalledTimes(2);
+    expect(packAvailability).not.toHaveBeenCalled();
   });
 });
 
@@ -141,6 +282,7 @@ describe("Chargebee webhook route", () => {
       resolveIdentity: async () => ({ account: { id: 7, openId: "workos_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
       recordActivity: async input => { activity.push(input); },
       createCheckout: async () => ({ checkoutUrl: "https://chargebee.test/hp_flow", hostedPageId: "hp_flow", checkoutIntentId: "intent_flow" }),
+      packAvailability: nothingLive,
       createPaymentIntent: async input => { intent = { hostedPageId: input.hostedPageId, checkoutIntentId: input.checkoutIntentId, tokenCount: input.tokenCount }; },
       fulfillPayment: async input => { if (intent?.hostedPageId !== input.hostedPageId || intent?.checkoutIntentId !== input.passThruContent) return { status: "ignored" }; wallet += intent.tokenCount; return { status: "credited", tokenCount: intent.tokenCount }; },
     });
@@ -169,6 +311,7 @@ describe("Chargebee webhook route", () => {
     registerChargebeeRoutes(app, {
       resolveIdentity: async () => ({ account: { id: 7, openId: "workos_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
       createCheckout: async input => { checkoutQuantity = input.quantity ?? 1; return { checkoutUrl: "https://chargebee.test/hp_quantity", hostedPageId: "hp_quantity", checkoutIntentId: "intent_quantity" }; },
+      packAvailability: nothingLive,
       createPaymentIntent: async input => { paymentIntent = { tokenCount: input.tokenCount, amount: input.amount, currency: input.currency }; },
       fulfillPayment: async () => ({ status: "credited" }),
     });

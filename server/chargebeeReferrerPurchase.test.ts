@@ -34,6 +34,8 @@ function harness(options: { signedIn?: boolean; withIntentStores?: boolean } = {
     createPlanCheckout: vi.fn(async () => ({ checkoutUrl: "https://checkout.example/plan", hostedPageId: "hp_plan" })),
     newCheckoutIntentId: vi.fn(() => "intent_fixture"),
     createCheckout: vi.fn(async () => ({ checkoutUrl: "https://checkout.example/tokens", hostedPageId: "hp_tokens", checkoutIntentId: "intent_tokens" })),
+    // GO-LIVE-1 ruling 4.6: no pack is live, so the seeker control still reaches the per-credit checkout.
+    packAvailability: vi.fn(async () => ({ available: new Set<string>(), unknown: new Set<string>() })),
     createPaymentIntent: vi.fn(async () => undefined),
     createSubscriptionIntent: vi.fn(async () => undefined),
     fulfillPayment: vi.fn(async () => ({ status: "credited" })),
@@ -42,6 +44,7 @@ function harness(options: { signedIn?: boolean; withIntentStores?: boolean } = {
     resolveIdentity: async () => (options.signedIn === false ? undefined : { account: { id: 7, email: "referrer@acme.com", name: "Riya Referrer" } }),
     recordActivity: async input => { activity.push(input); },
     createCheckout: spies.createCheckout,
+    packAvailability: spies.packAvailability,
     createPaymentIntent: spies.createPaymentIntent,
     fulfillPayment: spies.fulfillPayment,
     ...(options.withIntentStores === false ? {} : { createSubscriptionIntent: spies.createSubscriptionIntent }),
