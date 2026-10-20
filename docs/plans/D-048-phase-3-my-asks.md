@@ -9,7 +9,7 @@
 | Risk tier | 3 (isolated UI, no schema, money, auth or API change) |
 | Size | M (one surface, one adapter, one row layout, tests and captures) |
 | Implementer | any model |
-| Branch | `agent/qoder/d048-phase-3-requests` from `origin/main` `e383a5d4` |
+| Branch | `agent/qoder/d048-phase-3-requests` from `origin/main` `e383a5d4`; PR #360 |
 | Depends on | D-048 phase 2 live (`b6ea65f1`, tokens + primitives + token audit) |
 | Do not run at the same time as | any other packet editing `client/src/pages/MyRequests.tsx`, `client/src/components/goal/*`, or `client/src/App.tsx` |
 | Verified against | `main` `e383a5d4` on 2026-10-21 |
