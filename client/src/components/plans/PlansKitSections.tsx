@@ -110,7 +110,7 @@ function PackBuy({ pack, itemKey, checkout }: { pack: PackCardCopy; itemKey: str
   return <div className="grid gap-2">
     <Button className="brand-button w-full" disabled={!pack.available || unavailable || checkout.buying !== null} onClick={() => void checkout.buyPack(pack)}>
       {checkout.buying === itemKey ? <LoaderCircle className="animate-spin" /> : null}
-      {unavailable ? "Not on sale yet" : checkout.buying === itemKey ? "Opening secure checkout…" : pack.firstPack ? "Start with this pack" : "Buy pack"}
+      {unavailable || !pack.available ? "Not on sale yet" : checkout.buying === itemKey ? "Opening secure checkout…" : pack.firstPack ? "Start with this pack" : "Buy pack"}
     </Button>
     {checkout.failure?.key === itemKey ? <p role="alert" className="text-xs leading-5 text-destructive">{checkout.failure.message}</p> : null}
   </div>;
@@ -159,7 +159,7 @@ function PassBuy({ card, itemKey, checkout }: { card: PassCardCopy; itemKey: str
   return <div className="grid gap-2">
     <Button className="brand-button w-full" disabled={!card.available || unavailable || checkout.buying !== null} onClick={() => void checkout.buyPass(card)}>
       {checkout.buying === itemKey ? <LoaderCircle className="animate-spin" /> : null}
-      {unavailable ? "Not on sale yet" : checkout.buying === itemKey ? "Opening secure checkout…" : `Get ${card.displayName}`}
+      {unavailable || !card.available ? "Not on sale yet" : checkout.buying === itemKey ? "Opening secure checkout…" : `Get ${card.displayName}`}
     </Button>
     {checkout.failure?.key === itemKey ? <p role="alert" className="text-xs leading-5 text-destructive">{checkout.failure.message}</p> : null}
   </div>;

@@ -2,6 +2,9 @@ import express from "express";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerChargebeeRoutes } from "./chargebeeRoutes";
+// These cases test selling passes, so they run with pass sales on; the shipped
+// off state (D-084) is pinned in server/passSalesSwitch.test.ts.
+vi.mock("../shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("../shared/planCatalog")>()), PASS_SALES_ENABLED: true }));
 
 function auth(secret: string) {
   return `Basic ${Buffer.from(`skipwait:${secret}`).toString("base64")}`;
