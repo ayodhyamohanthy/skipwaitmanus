@@ -61,7 +61,7 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. T
 | D-060-pending-action-emails | Needs task 21 (notification kinds and preferences); D-038's reminders ship in-app first |
 | D-057-referrer-continuity | After the session gate (1.2b) |
 | P2 (D-028 link previews and company pages) | After stage 1; parallel-safe with stage 3 |
-| D-048 phase 3 (surface by surface) | After 1.4; each surface is its own packet |
+| D-048 phase 3 (surface by surface) | Mapped in [D-048-phase-3-rollout.md](D-048-phase-3-rollout.md): eight waves, one PR each. W0 (shell) is ready to packet; each later wave gets its own packet. Four owner calls (§6) block W2. |
 | Tasks 12, 13, 20 | Owned by opencode and Qoder (open PRs #308, #310, #311, #314) |
 | The rest of §3b | D-053 order; parked rows stay parked (29, 30, 31, lite mode, 40) |
 
