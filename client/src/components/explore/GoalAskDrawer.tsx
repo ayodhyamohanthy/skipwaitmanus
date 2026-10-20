@@ -19,6 +19,9 @@ import { askErrorMessage } from "@/components/ask/askApi";
 import { readApiJson } from "@/lib/apiResponse";
 import { saveAskDraftRemote } from "@/lib/askDraftApi";
 import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUpload";
+import { fill, goalCopy } from "@shared/i18n/en";
+
+const copy = goalCopy.askDrawer;
 
 const REASON_LIMIT = 140;
 const IDEMPOTENCY_KEY = "goal-ask-idempotency";
@@ -73,7 +76,7 @@ export function GoalAskDrawer({ company, open, onOpenChange }: { company: Public
 
   const ensureResume = async (): Promise<ResumeDoc> => {
     if (resume) return resume;
-    if (!resumeFile) throw new Error("Add your resume before sending this ask.");
+    if (!resumeFile) throw new Error(copy.errors.send);
     const uploaded = await uploadResume(resumeFile, getToken);
     setResume(uploaded); setResumeFile(null);
     return uploaded;
@@ -88,12 +91,12 @@ export function GoalAskDrawer({ company, open, onOpenChange }: { company: Public
       const body: Record<string, string | number[]> = { targetRoleUrl: url.trim(), attachmentIds: [doc.id], candidateMessage: note, companySlug: company.slug };
       if (matchedDomain) body.confirmedCompanyDomain = matchedDomain;
       const response = await fetch("/api/company-referrals", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey(), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
-      const payload = await readApiJson<Record<string, unknown>>(response, "We could not send this ask");
-      if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "We could not send this ask");
+      const payload = await readApiJson<Record<string, unknown>>(response, copy.errors.send);
+      if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : copy.errors.send);
       sessionStorage.removeItem(IDEMPOTENCY_KEY);
       onOpenChange(false);
       navigate("/requests");
-    } catch (reason) { setError(askErrorMessage(reason, "We could not send this ask")); }
+    } catch (reason) { setError(askErrorMessage(reason, copy.errors.send)); }
     finally { setSending(false); }
   };
 
@@ -109,59 +112,78 @@ export function GoalAskDrawer({ company, open, onOpenChange }: { company: Public
     if (draftState === "saving") return;
     setDraftState("saving");
     try { await saveAskDraftRemote({ companySlug: company.slug, targetRoleUrl: url.trim(), note }, getToken); setDraftState("saved"); }
-    catch { setDraftState("idle"); setError("We could not save this draft"); }
+    catch { setDraftState("idle"); setError(copy.errors.draftSave); }
   };
 
   const intro = (
     <div className="grid gap-2">
-      <GoalVerifiedMark>{`Goes to verified ${company.name} employees`}</GoalVerifiedMark>
-      <p className="text-g-meta text-g-ink-2 text-pretty">Referrers see your job link and reasons. Your name and resume are shared only if one accepts.</p>
+      {company.openToReferrals ? <GoalVerifiedMark>{fill(copy.verifiedLine, { company: company.name })}</GoalVerifiedMark> : null}
+      <p className="text-g-meta text-g-ink-2 text-pretty">{copy.privacyNote}</p>
+      <a href={`/explore/${company.slug}`} className="text-g-meta text-g-ink-3 underline underline-offset-2 hover:text-g-ink-2">{copy.seeOpenRoles}</a>
     </div>
   );
 
+  const [arming, setArming] = useState(false);
+  const armAlert = async () => {
+    if (arming) return;
+    setError(""); setArming(true);
+    try {
+      const token = await getToken();
+      const response = await fetch("/api/seeker-alerts", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ companyDomain: company.domains[0] }) });
+      const payload = await readApiJson<Record<string, unknown>>(response, copy.errors.alertSave);
+      if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : copy.errors.alertSave);
+      onOpenChange(false);
+      navigate("/alerts");
+    } catch (reason) { setError(askErrorMessage(reason, copy.errors.alertSave)); }
+    finally { setArming(false); }
+  };
+
   const closedBody = (
     <div className="grid gap-3">
-      <p className="text-g-body text-g-ink text-pretty">Nobody at {company.name} can take a new ask right now.</p>
-      <GoalButton variant="outline" onClick={() => navigate("/alerts")}><Bell aria-hidden="true" className="size-4" strokeWidth={1.75} />Get told when a referrer joins</GoalButton>
-      <p className="text-g-meta text-g-ink-3">An alert is not a referral.</p>
+      <p className="text-g-body text-g-ink text-pretty">{fill(copy.closedBody, { company: company.name })}</p>
+      {isSignedIn
+        ? <GoalButton variant="outline" busy={arming} onClick={() => { void armAlert(); }}><Bell aria-hidden="true" className="size-4" strokeWidth={1.75} />{copy.closedCta}</GoalButton>
+        : <SignInButton><GoalButton variant="outline"><Bell aria-hidden="true" className="size-4" strokeWidth={1.75} />{copy.closedCta}</GoalButton></SignInButton>}
+      <p className="text-g-meta text-g-ink-3">{copy.closedFootnote}</p>
+      {error ? <p role="alert" className="text-g-meta text-g-ink-2">{error}</p> : null}
     </div>
   );
 
   const signedOutBody = (
     <div className="grid gap-3">
-      <p className="text-g-body text-g-ink text-pretty">Sign in to ask {company.name} for a referral.</p>
-      <SignInButton><GoalButton variant="primary">Sign in to ask</GoalButton></SignInButton>
+      <p className="text-g-body text-g-ink text-pretty">{fill(copy.signedOutBody, { company: company.name })}</p>
+      <SignInButton><GoalButton variant="primary">{copy.signedOutCta}</GoalButton></SignInButton>
     </div>
   );
 
   const form = (
     <>
-      <GoalField label="Job link" htmlFor="goal-ask-url"
-        hint={matchedDomain ? { icon: FileText, tone: "pass", text: `Matches ${company.name}’s careers site` } : undefined}
-        error={url && !officialUrl ? "That doesn’t look like a job posting link." : undefined}>
+      <GoalField label={copy.jobLinkLabel} htmlFor="goal-ask-url"
+        hint={matchedDomain ? { icon: FileText, tone: "pass", text: fill(copy.matchHint, { company: company.name }) } : undefined}
+        error={url && !officialUrl ? copy.errors.invalidUrl : undefined}>
         <input id="goal-ask-url" type="url" inputMode="url" autoCapitalize="none" spellCheck={false}
-          value={url} maxLength={2048} placeholder="Paste the job posting link…"
+          value={url} maxLength={2048} placeholder={copy.jobLinkPlaceholder}
           onChange={event => setUrl(event.target.value)}
           className="h-11 w-full rounded-g-control border border-g-control-edge bg-g-surface px-3 text-g-body text-g-ink placeholder:text-g-ink-3 max-gdesk:h-12" />
       </GoalField>
-      <GoalField label="Resume" hint={{ icon: Lock, tone: "muted", text: "Shared after a referrer accepts" }}>
+      <GoalField label={copy.resumeLabel} hint={{ icon: Lock, tone: "muted", text: copy.resumeHint }}>
         <div className="grid grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-x-3 rounded-g-control border border-g-hairline px-3.5 py-2">
           <FileText aria-hidden="true" className="size-5 text-g-ink-2" strokeWidth={1.75} />
           <span className="min-w-0">
-            <span className="block truncate text-g-body text-g-ink">{resume?.fileName ?? resumeFile?.name ?? "Add your resume (PDF)"}</span>
+            <span className="block truncate text-g-body text-g-ink">{resume?.fileName ?? resumeFile?.name ?? copy.resumeEmpty}</span>
           </span>
-          <GoalButton variant="ghost" size="xs" onClick={() => fileInput.current?.click()}>Change</GoalButton>
+          <GoalButton variant="ghost" size="xs" onClick={() => fileInput.current?.click()}>{copy.resumeChange}</GoalButton>
         </div>
         <input ref={fileInput} type="file" accept="application/pdf" className="hidden" aria-label="Choose resume PDF"
           onChange={event => { const file = event.target.files?.[0]; if (!file) return; const invalid = validateResumeFile(file); if (invalid) { setError(invalid); return; } setError(""); setResumeFile(file); setResume(null); }} />
       </GoalField>
-      <GoalField label="Why me" help="Three reasons, up to 140 characters each. One specific result beats a list of skills.">
+      <GoalField label={copy.whyMeLabel} help={copy.whyMeHelper}>
         <div className="grid gap-2">
           {reasons.map((reason, index) => (
             <div key={index} className="grid grid-cols-[24px_minmax(0,1fr)] gap-x-2 gap-y-1 rounded-g-control border border-g-control-edge bg-g-surface px-3 pb-2 pt-3 focus-within:border-g-ink">
               <GoalNum className="leading-6 text-g-ink-3">{String(index + 1).padStart(2, "0")}</GoalNum>
               <textarea rows={2} value={reason} maxLength={REASON_LIMIT} aria-label={`Why me ${index + 1}`}
-                placeholder={index === 2 ? "A third reason: a skill the posting asks for, or why this team…" : undefined}
+                placeholder={index === 2 ? copy.reasonPlaceholder3 : undefined}
                 onChange={event => setReasons(current => current.map((item, at) => (at === index ? event.target.value : item)))}
                 className="w-full resize-none text-g-body text-g-ink placeholder:text-g-ink-3 focus:outline-none" />
               <GoalNum className="col-start-2 justify-self-end text-g-ink-3">{reason.length}/{REASON_LIMIT}</GoalNum>
@@ -169,19 +191,19 @@ export function GoalAskDrawer({ company, open, onOpenChange }: { company: Public
           ))}
         </div>
       </GoalField>
-      {error ? <p role="alert" className="text-g-meta text-g-crimson">{error}</p> : null}
+      {error ? <p role="alert" className="text-g-meta text-g-ink-2">{error}</p> : null}
     </>
   );
 
   const footer = (
     <div className="grid gap-1">
-      <p className="text-g-label text-g-ink">Uses <GoalNum>1</GoalNum> of your <GoalNum>{credits ?? "…"}</GoalNum> credits</p>
-      <p className="text-g-meta text-g-ink-2 text-pretty">Comes back if you withdraw before anyone picks it up, or if nobody picks it up within 7 days. Once picked up, it stays spent, even if they pass.</p>
+      <p className="text-g-label text-g-ink">{credits === null ? fill(copy.costLine, { count: "…" }) : <>Uses <GoalNum>1</GoalNum> of your <GoalNum>{credits}</GoalNum> credits</>}</p>
+      <p className="text-g-meta text-g-ink-2 text-pretty">{copy.costDetail}</p>
       <div className="mt-4 flex items-center justify-end gap-2 max-gdesk:grid max-gdesk:grid-cols-[1fr_2fr]">
-        <GoalButton variant="ghost" busy={draftState === "saving"} onClick={() => { void saveDraft(); }}>{draftState === "saved" ? "Draft saved" : "Save draft"}</GoalButton>
-        <GoalButton variant="primary" busy={sending} busyLabel="Sending your ask…" keys={[{ icon: "command" }, { icon: "corner-down-left" }]}
-          disabledReason={!ready ? "a job link, your resume and your reasons" : undefined} onClick={() => { void send(); }}>
-          Send ask
+        <GoalButton variant="ghost" busy={draftState === "saving"} onClick={() => { void saveDraft(); }}>{draftState === "saved" ? copy.draftSaved : copy.saveDraft}</GoalButton>
+        <GoalButton variant="primary" busy={sending} busyLabel={copy.sending} keys={[{ icon: "command" }, { icon: "corner-down-left" }]}
+          disabledReason={!ready ? copy.sendDisabledReason : undefined} onClick={() => { void send(); }}>
+          {copy.send}
         </GoalButton>
       </div>
     </div>
@@ -189,7 +211,7 @@ export function GoalAskDrawer({ company, open, onOpenChange }: { company: Public
 
   const body = !company.openToReferrals ? closedBody : isLoaded && !isSignedIn ? signedOutBody : form;
   return (
-    <GoalDrawer open={open} onOpenChange={onOpenChange} title="Ask for a referral" context={company.name} closeLabel="Close" footer={company.openToReferrals && isSignedIn ? footer : <span />}>
+    <GoalDrawer open={open} onOpenChange={onOpenChange} title={copy.title} context={company.name} closeLabel="Close" footer={company.openToReferrals && isSignedIn ? footer : <span />}>
       {intro}
       {body}
     </GoalDrawer>

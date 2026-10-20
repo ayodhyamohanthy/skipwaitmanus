@@ -167,9 +167,30 @@ describe("Explore directory", () => {
     // Closed company: no ask form - the Resy-notify offer (content.json notOpenAction).
     fireEvent.click(screen.getByText("Merkle"));
     expect(await screen.findByText(/Nobody at Merkle can take a new ask right now/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Get told when a referrer joins/ })).toBeTruthy();
+    // Trust blue never lies: the verified line is suppressed for a closed company.
+    expect(screen.queryByText(/Goes to verified Merkle employees/)).toBeNull();
     expect(screen.getByText("An alert is not a referral.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Send ask" })).toBeNull();
+    // The CTA arms the company alert (POST /api/seeker-alerts), then lands on /alerts.
+    const posts: Array<{ url: string; body: string }> = [];
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/seeker-alerts" && init?.method === "POST") { posts.push({ url, body: String(init.body) }); return new Response(JSON.stringify({ alert: { id: 1 } }), { status: 201, headers: { "Content-Type": "application/json" } }); }
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }) as typeof fetch;
+    fireEvent.click(screen.getByRole("button", { name: /Get told when a referrer joins/ }));
+    await vi.waitFor(() => expect(posts.length).toBe(1));
+    expect(JSON.parse(posts[0].body).companyDomain).toBe("merkle.com");
+  });
+
+  it("keeps a See open roles entry to the live detail page (D-022) inside the drawer", async () => {
+    stubDirectory(directoryOf([company("wipro")]));
+    renderWithQuery(<Explore />);
+    await screen.findByTestId("explore-summary");
+    fireEvent.click(screen.getByText("Wipro"));
+    await screen.findByText("Ask for a referral");
+    const link = screen.getByRole("link", { name: "See open roles" });
+    expect(link.getAttribute("href")).toBe("/explore/wipro");
   });
 
   it("keeps the row href for the live company detail page", async () => {
