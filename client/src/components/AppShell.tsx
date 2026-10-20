@@ -21,7 +21,9 @@ const authHeaders = (token: string | null | undefined): Record<string, string> =
 
 // Referrer surfaces never show a credits pill (D-055): referrers are never charged or paid.
 const REFERRER_SURFACE = /^\/(queue|referrer(\/|$))/;
-const HIDE_BOTTOM_BAR = /^\/(conversation|messages)\b/;
+// DESIGN.md:72 + BRIEF.md §149: no bottom bar on an opened request (conversation, and its
+// /thread alias) or under sheets; sheets arrive with the W1 drawer and wire in there.
+const HIDE_BOTTOM_BAR = /^\/(conversation|messages|thread)\b/;
 
 function activeNav(path: string): GoalNavId {
   if (path.startsWith("/queue")) return "queue";
@@ -120,6 +122,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       credits={credits}
       account={account}
       alertsHref="/alerts"
+      showAlerts={isLoaded && isSignedIn === true}
       hideBottomBar={HIDE_BOTTOM_BAR.test(path)}
     >
       {children}

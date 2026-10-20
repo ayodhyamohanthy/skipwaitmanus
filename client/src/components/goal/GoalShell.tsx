@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { goalNavFor, type GoalNavId } from "./nav";
 import { GoalNum } from "./GoalNum";
-import { GoalIconButton } from "./GoalIconButton";
 import { GoalButton } from "./GoalButton";
 
 export type GoalShellCredits =
@@ -23,6 +22,8 @@ export type GoalShellProps = {
   credits: GoalShellCredits;
   account: { initials: string; menu?: ReactNode };
   alertsHref: string;
+  /** Designer review (W0): signed-out visitors get no bell — /alerts is a dead end without sign-in. */
+  showAlerts?: boolean;
   giveReferralHref?: string;
   hideBottomBar?: boolean;
   drawer?: ReactNode;
@@ -47,17 +48,18 @@ function CreditsPill({ credits, compact }: { credits: GoalShellCredits; compact?
       </span>
     );
   }
-  const label = compact ? String(credits.count) : `${credits.count} credits`;
+  // Comp: the numeral is mono, "credits" is sans (button.credits.hit = 44px target via g-hit).
   return (
-    <button
-      type="button"
+    <a
+      href="/plans"
       data-testid="goal-credits-pill"
       aria-label={`${credits.count} credits available. Open credit details`}
-      className={cn("inline-flex items-center gap-1.5 rounded-g-control border border-g-control-edge pl-2.5 pr-3 text-g-meta text-g-ink transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover", compact ? "h-9" : "h-8")}
+      className={cn("g-hit inline-flex items-center gap-1.5 rounded-g-control border border-g-control-edge pl-2.5 pr-3 text-g-meta text-g-ink transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover", compact ? "h-9" : "h-8")}
     >
       <Coins aria-hidden="true" className="size-4 text-g-ink-2" strokeWidth={1.75} />
-      <GoalNum>{label}</GoalNum>
-    </button>
+      <GoalNum>{credits.count}</GoalNum>
+      {compact ? null : <span>{" "}credits</span>}
+    </a>
   );
 }
 
@@ -94,7 +96,7 @@ function AccountSlot({ account }: { account: GoalShellProps["account"] }) {
   return account.menu ? <>{account.menu}</> : <Avatar initials={account.initials} />;
 }
 
-export function GoalShell({ active, verifiedReferrer, pageTitle, credits, account, alertsHref, giveReferralHref = referrerSignInHref(), hideBottomBar = false, drawer, children }: GoalShellProps) {
+export function GoalShell({ active, verifiedReferrer, pageTitle, credits, account, alertsHref, showAlerts = true, giveReferralHref = referrerSignInHref(), hideBottomBar = false, drawer, children }: GoalShellProps) {
   const items = goalNavFor(verifiedReferrer);
   return (
     <div
@@ -103,7 +105,9 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
         "g-scope grid min-h-screen",
         drawer ? "gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)_var(--g-drawer-w)]" : "gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)]",
         "gdesk:grid-rows-[var(--g-topbar-h)_minmax(0,1fr)]",
-        "max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px-56px),auto)_56px]",
+        hideBottomBar
+          ? "max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px),auto)]"
+          : "max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px-56px),auto)_56px]",
       )}
     >
       {/* Desktop rail */}
@@ -142,7 +146,11 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
         <span className="ml-auto flex items-center gap-2">
           <span className="max-gdesk:hidden"><CreditsPill credits={credits} /></span>
           <span className="gdesk:hidden"><CreditsPill credits={credits} compact /></span>
-          <GoalIconButton icon={Bell} aria-label="Alerts" onClick={() => { window.location.href = alertsHref; }} />
+          {showAlerts ? (
+            <a href={alertsHref} aria-label="Alerts" className="g-hit inline-flex size-9 items-center justify-center rounded-g-control text-g-ink-2 transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover hover:text-g-ink max-gdesk:size-11">
+              <Bell aria-hidden="true" className="size-5" strokeWidth={1.75} />
+            </a>
+          ) : null}
         </span>
       </header>
 
@@ -154,7 +162,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
 
       {/* Phone bottom bar */}
       {!hideBottomBar ? (
-        <nav aria-label="Primary" className="gdesk:hidden flex h-14 items-stretch border-t border-g-hairline bg-g-surface">
+        <nav aria-label="Primary" className="gdesk:hidden max-gdesk:sticky max-gdesk:bottom-0 max-gdesk:z-20 max-gdesk:col-start-1 max-gdesk:row-start-2 max-gdesk:row-end-[-1] max-gdesk:self-end flex h-14 items-stretch border-t border-g-hairline bg-g-surface">
           {items.map(item => (
             <a
               key={item.id}
