@@ -28,7 +28,7 @@ export function AskSent({ sent, onWriteAnother }: { sent: SentAsk; onWriteAnothe
     ? `Only the ${companyPrefix}employee whose link you used will see it. If they don't pick it up within ${ASK_TTL_DAYS} days, it expires and the credit comes back, ${CREDIT_ENDED_CAVEAT}.`
     : sent.waitingForCoverage
       ? `No verified referrers there yet, so nothing was spent. Your ask waits for free up to ${COVERAGE_WAIT_DAYS} days: when a verified employee can see it, 1 credit is used and it goes live; unclaimed ${ASK_TTL_DAYS} days after that, it expires and the credit comes back, ${CREDIT_ENDED_CAVEAT}. No credit then? We hold it until you add one.`
-      : `Verified ${companyPrefix}referrers will see it. If nobody picks it up within ${ASK_TTL_DAYS} days, it expires and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`;
+      : `Verified ${companyPrefix}referrers will see it. If nobody picks it up within ${ASK_TTL_DAYS} days, it expires and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent, unless they pass for a reason you can't fix.`;
   return (
     <main data-skipwait-screen="ask-sent" className="page-content mx-auto max-w-xl text-center">
       <span className="mx-auto grid size-20 place-items-center rounded-full bg-accent"><Check className="size-10 text-primary" /></span>

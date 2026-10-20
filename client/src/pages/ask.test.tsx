@@ -180,7 +180,7 @@ describe("Ask composer", () => {
     // The note travels in the field the server stores as the seeker's pitch (shared/askNote.ts).
     expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ candidateMessage: STRONG_NOTE });
     expect(screen.getByRole("link", { name: /Track this ask/ }).getAttribute("href")).toBe("/conversation/9");
-    expect(screen.getByText("Verified wipro.com referrers will see it. If nobody picks it up within 7 days, it expires and the credit comes back, unless its month or plan has ended by then; once someone picks it up, the credit stays spent.")).toBeTruthy();
+    expect(screen.getByText("Verified wipro.com referrers will see it. If nobody picks it up within 7 days, it expires and the credit comes back, unless its month or plan has ended by then; once someone picks it up, the credit stays spent, unless they pass for a reason you can't fix.")).toBeTruthy();
     expect(screen.getByText(/^Open slots:/).textContent).toBe("Open slots: 2 of 3 used");
     // The send response carries the count; no second request is needed.
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/mine"))).toBe(false);
