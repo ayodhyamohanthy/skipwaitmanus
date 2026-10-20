@@ -2,7 +2,7 @@
 
 Applies to every model, IDE, CLI, automation agent, and human working on this repository. Read [`docs/BRIEF.md`](docs/BRIEF.md) first (D-073), then this file and AGENTS.md, before editing. Configure tools that do not discover AGENTS.md automatically to read both files at session start. Instructions are a shared convention, not an enforced lock or a direct communication channel between models.
 
-**Owner says `build`?** Run `node scripts/next-task.mjs --claim "<your model name · session>"` and do only the task it prints, step by step. Never choose work yourself: Claude Code sets the order in `docs/plans/assignments.json` (D-083).
+**Owner says `build`, `resume`, `continue` or `next`?** They all mean one thing: run `node scripts/next-task.mjs --claim "<your model name · session>"` (the same name for your whole session) and do only what it prints, step by step. It hands you back your own unfinished work first, then the highest-priority task nobody is on (half-built work before new work), so agents started together never take the same task. Push after every commit; never resume or choose work from memory. Claude Code is the CEO and sets the order in `docs/plans/assignments.json`; the open models build (D-083, D-085).
 
 ## 1. Establish the baseline
 

@@ -5,9 +5,9 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  IDLE_MS, ciStateFromRuns, localSyncIssues, markerSubject, parseMarker, pickNextTask, reviewStateOf, validateAssignments,
+  IDLE_MS, ciStateFromRuns, localSyncIssues, markerSubject, parseMarker, pickNextTask, reviewStateOf, roleOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
-import { renderPick } from "./nextTaskText.mjs";
+import { renderBoard, renderPick } from "./nextTaskText.mjs";
 
 const root = path.resolve(__dirname, "..");
 const real = JSON.parse(readFileSync(path.join(root, "docs/plans/assignments.json"), "utf8"));
@@ -413,5 +413,60 @@ describe("markers and printed steps", () => {
   it("reserves the review, heartbeat and architect prefixes", () => {
     const doc = { version: 1, repo: "o/r", tasks: [task("A", { branch: "agent/heartbeat/a" }), task("B", { branch: "agent/architect/b" })] };
     expect(validateAssignments(doc, exists).filter(e => e.includes("reserved"))).toHaveLength(2);
+  });
+
+  it("ends every work step list with the report to the CEO", () => {
+    const ctx = { who: "Qwen · s1", date: "2026-10-20", claimed: true };
+    for (const p of [
+      { kind: "build", task: task("N"), ciRunning: false },
+      { kind: "continue", of: "build", task: task("A"), work: "agent/queue/a" },
+      { kind: "green", task: task("A"), work: "agent/queue/a", pr: "https://github.com/o/r/pull/7", from: "x", since: NOW },
+      { kind: "review", task: task("M", { tier: 1 }), work: "agent/queue/m", pr: "https://github.com/o/r/pull/9", lock: "agent/review/m", lockExists: false, builder: "x" },
+    ]) expect(renderPick(p, ctx)).toContain(`--report <green|red|blocked|review|landed> --task ${p.task.id} --as "Qwen · s1"`);
+  });
+});
+
+// The organisation (owner, Oct 20): the open models (CTO, CDO and the rest)
+// report the status of every priority task to the CEO (Claude Code), who reads
+// one board, in priority order, before deciding direction (D-085).
+describe("status reports to the CEO and the board (D-085)", () => {
+  it("round-trips a report with its status", () => {
+    const subject = markerSubject("Report", "GO-LIVE-1", "Qwen 3 · s1", "green");
+    expect(subject).toBe("Report GO-LIVE-1: green — Qwen 3 · s1");
+    expect(parseMarker(subject)).toEqual({ verb: "Report", id: "GO-LIVE-1", status: "green", who: "Qwen 3 · s1" });
+    expect(parseMarker("Report GO-LIVE-1: shiny — Qwen 3 · s1")).toBeNull();
+  });
+
+  it("names the executive role from the lane", () => {
+    expect(roleOf(task("A", { lane: "design" }))).toBe("CDO");
+    expect(roleOf(task("A", { lane: "payments" }))).toBe("CTO");
+  });
+
+  it("shows every task in priority order with its state, holder, quiet time and latest report", () => {
+    const tasks = [task("A"), task("B", { tier: 1 }), task("C"), task("D", { status: "done" }), task("E", { status: "owner" })];
+    const branches = new Map<string, Branch>([
+      ["agent/queue/a", claimBy("Qwen · s1", "A", 3)],
+      ["agent/queue/b", claimBy("Kimi · s2", "B", 1)],
+    ]);
+    const reports = [
+      { id: "A", status: "red", who: "Qwen · s1", at: NOW - 4 * HOUR, note: "gate red on the coverage test" },
+      { id: "B", status: "review", who: "Kimi · s2", at: NOW - HOUR, note: "draft PR open" },
+      { id: "B", status: "green", who: "Kimi · s2", at: NOW - HOUR / 2, note: "CI green" },
+    ];
+    const rows = statusBoard({ tasks, branches, openPrs: new Map([["agent/queue/b", "https://github.com/o/r/pull/9"]]), prCi: new Map([["agent/queue/b", { state: "green" }]]), reports, now: NOW });
+    expect(rows.map(r => [r.id, r.state])).toEqual([["A", "quiet"], ["B", "pr-green"], ["C", "todo"], ["D", "done"], ["E", "owner"]]);
+    expect(rows[0]).toMatchObject({ holder: "Qwen · s1", role: "CTO", quietHours: 3, report: { status: "red", note: "gate red on the coverage test" } });
+    expect(rows[1].report).toMatchObject({ status: "green" });
+    const text = renderBoard(rows);
+    expect(text).toContain("STATUS BOARD");
+    expect(text).toContain("A");
+    expect(text).toContain("quiet 3h");
+    expect(text).toContain("red — Qwen · s1: gate red on the coverage test");
+  });
+
+  it("the CEO review starts from the board", () => {
+    const text = renderPick({ kind: "ceo", skipped: [], board: [{ id: "A", title: "A title", tier: 2, role: "CTO", state: "todo", holder: null, quietHours: null, pr: null, report: null }] }, { who: "Claude Code · s9", date: "2026-10-20", claimed: true });
+    expect(text).toContain("STATUS BOARD");
+    expect(text).toContain("CEO REVIEW");
   });
 });

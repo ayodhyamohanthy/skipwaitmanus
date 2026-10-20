@@ -6,8 +6,8 @@ Written Oct 18 2026 at `main` `5ef0626`. On that commit the full suite was green
 
 ## 1. Roles
 - **Owner:** decides (register), approves new features and pricing, triggers anything that touches live money or provider settings (catalog apply, the one live payment test, D-065), and answers the questions batched for the weekly review (D-064).
-- **Architect (Claude Code):** keeps the architecture map, this file and the packets true; writes a packet before a row is delegated; writes the red-first tests for Tier 1 packets; reviews Tier 1 work; handles P0 triage and register entries on the owner's say-so.
-- **Implementer (any model):** executes exactly one packet per session, on its own branch.
+- **CEO and architect (Claude Code, D-074, D-085):** sets direction and makes the high-stakes calls inside the owner's decisions; keeps the business, the architecture map, this file, the packets and the queue order true; re-analyses what we build toward the goal and brings the owner rated recommendations; writes a packet before a row is delegated; writes the red-first tests for Tier 1 packets; reviews Tier 1 work; handles P0 triage and register entries on the owner's say-so. It never builds a packet itself (the picker never offers it one).
+- **Implementer (an open frontier model):** executes exactly one packet per session, on its own branch.
 - **Reviewer (a different model session from the implementer):** checks Tier 1 work against the packet and §6 before it reaches `main`.
 
 ## 2. What to do next
@@ -36,7 +36,7 @@ handles real money: a mistake reaches real users.
    function with `grep -n "name" <file>` and read only that line range.
 2. git fetch origin. If a function the packet cites no longer matches
    it, stop (step 8).
-3. Claim it: node scripts/next-task.mjs --claim "<your model · session>"
+3. Claim it: node scripts/next-task.mjs --claim "<your model · session>" (the same name all session; it gives you back your own unfinished work first)
    pushes <BRANCH> to origin (the first push wins). Work in a worktree on
    it. Your first commit sets its docs/KIT_V4_BUILD_PLAN.md §3b row to
    "in progress — <your model> — <date> — branch <BRANCH>".
@@ -67,12 +67,14 @@ handles real money: a mistake reaches real users.
    money, sign-in, identity or privacy.
 ```
 
-### 4a. Starting any model: the owner says `build` (D-083)
-Every agent entry doc tells an agent what `build` means: run `node scripts/next-task.mjs --claim "<model · session>"` and do only the task it prints. The script reads Claude Code's order from `docs/plans/assignments.json` on `origin/main` and main's CI from GitHub, then decides:
-1. While `main` is red: only fixing it, and only one agent (a lock branch `agent/queue/fix-main-<sha>`).
-2. Tier 1 work in an open pull request: the review, or fixing the review's findings. Never by the agent that built, fixed or reviewed it; the review state is the marker commits on `agent/review/<slug>`, moved with `--verdict pass|findings --task <id> --as "<name>"` and `--fixed --task <id> --as "<name>"`.
-3. A claim with no commits for 24 hours (queue rule 2): continue it on the same branch.
-4. The first `todo` whose dependencies are done, whose lane is free and that nobody claimed.
+### 4a. Starting any model: the owner says `build`, `resume`, `continue` or `next` (D-083, D-085)
+Every agent entry doc tells an agent that all four words mean one thing: run `node scripts/next-task.mjs --claim "<model · session>"` with the same name for the whole session and do only what it prints. The script reads Claude Code's order from `docs/plans/assignments.json` on `origin/main`, main's CI and each task pull request's CI from GitHub, and the local clone, then decides:
+1. While `main` is red: only fixing it, and only one agent (a lock branch `agent/queue/fix-main-<sha>`); its holder gets it back instead of waiting on itself.
+2. Your own unfinished work: a build, a review, findings to fix, a landing, a packet. A Tier 1 builder whose pull request waits for review holds nothing and takes new work.
+3. One top-down pass over the order; the first task that needs anyone wins: a Tier 1 review (never by the agent that built or fixed it), findings to fix (never by its reviewer), a pull request with red CI whose owner has been quiet for 2 hours (make it green), a green pull request nobody lands, a passed review whose reviewer went quiet (landed by someone who neither built nor fixed it, `Land claim` on the review lock), a half-built claim nobody has pushed to for 2 hours (take it over on the same branch), or the next `todo` whose dependencies are done and whose lane is free. So a lower task never runs while a higher one waits for hands.
+4. "Quiet" means no commit and no heartbeat for 2 hours: push after every commit, run `--heartbeat --as "<name>"` before a long step (the full gate), and commit and push before you stop.
+5. Claude Code sessions (the CEO, D-085) are offered red `main`, their own work, packets (claimed on `agent/architect/<slug>`) and Tier 1 reviews only, and the CEO review when nothing at that level waits.
+6. Before any new work it checks the local clone: your own claimed branch with unpushed commits or uncommitted changes blocks it (exit 3, "SYNC FIRST"); other local-only branches and a stale local `main` are reported.
 
 A claim is the task's branch on `origin`, an empty marker commit: the first push wins and a second agent's push is refused. Without `--claim` the script only shows the pick. Name yourself with a session tag (for example `Qwen 3 · 14:05`) so two sessions of one model count as different people for reviews.
 
@@ -154,6 +156,7 @@ Verdict: `pass` (then the reviewer pushes the merged candidate to the pull reque
 
 ## 10. An environment that works
 - Node 22.12 or newer (the jsdom test environment loads an ES module with `require()`; on Node 22.11 set `NODE_OPTIONS=--experimental-require-module`). CI uses the latest Node 22.
+- Behind an HTTPS proxy (cloud sandboxes), Node's `fetch` ignores `HTTPS_PROXY`; `scripts/next-task.mjs` re-runs itself with `NODE_USE_ENV_PROXY=1` (Node 22.21 or newer), so the picker can read GitHub.
 - pnpm 10.34.7 (`packageManager` in `package.json`). If corepack fails with "Cannot find matching keyid", install it with `npm install -g pnpm@10.34.7`.
 - Tests need no database: database code runs against in-repo fixtures and the in-memory Drizzle test kit.
 - Local dev: `.env` with `JWT_SECRET`, `VITE_APP_ID=skipwait`, `BILLING_ENV=test` and placeholder `CHARGEBEE_SITE`, `CHARGEBEE_API_KEY`, `CHARGEBEE_WEBHOOK_SECRET`.

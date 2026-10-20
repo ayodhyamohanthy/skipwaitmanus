@@ -2,7 +2,7 @@
 
 > AI models and contributors: read [`docs/BRIEF.md`](docs/BRIEF.md) first (D-073), then `AGENTS.md`.
 >
-> **Owner says `build`?** Run `node scripts/next-task.mjs --claim "<your model name · session>"` and do only the task it prints, step by step. Never choose work yourself: Claude Code sets the order in `docs/plans/assignments.json` (D-083).
+> **Owner says `build`, `resume`, `continue` or `next`?** They all mean one thing: run `node scripts/next-task.mjs --claim "<your model name · session>"` (the same name for your whole session) and do only what it prints, step by step. It hands you back your own unfinished work first, then the highest-priority task nobody is on (half-built work before new work), so agents started together never take the same task. Push after every commit; never resume or choose work from memory. Claude Code is the CEO and sets the order in `docs/plans/assignments.json`; the open models build (D-083, D-085).
 
 A mobile-first PWA where a Job Seeker shares one real job link and a resume, and only verified employees of that employer can review it. Employee identities stay hidden until a Referrer chooses to claim and approve a request.
 

@@ -17,7 +17,11 @@ export const IDLE_MS = 2 * 60 * 60 * 1000;
 export const STATUSES = ["todo", "in-review", "done", "architect", "owner"];
 const TASK_KEYS = ["id", "title", "row", "packet", "tier", "lane", "branch", "status", "dependsOn", "note"];
 const DOC_KEYS = ["version", "repo", "decidedBy", "updated", "rules", "tasks"];
-const MARKER = /^(Review claim|Fix claim|Land claim|Claim|Takeover|Verdict|Fixed|Heartbeat) (\S+): (.+)$/;
+const MARKER = /^(Review claim|Fix claim|Land claim|Claim|Takeover|Verdict|Fixed|Heartbeat|Report) (\S+): (.+)$/;
+/** What an agent reports to the CEO about its task (D-085). */
+export const REPORT_STATUSES = ["green", "red", "blocked", "review", "landed"];
+/** The executive who owns a lane; the open models play these roles (D-085). */
+const ROLE_BY_LANE = { design: "CDO" };
 const RED = new Set(["failure", "timed_out", "startup_failure", "action_required"]);
 const RESERVED = ["agent/review/", "agent/heartbeat/", "agent/architect/"];
 
@@ -37,12 +41,19 @@ export function parseMarker(subject) {
     const v = /^(pass|findings) — (.+)$/.exec(m[3]);
     return v ? { verb: "Verdict", id: m[2], verdict: v[1], who: v[2] } : null;
   }
+  if (m[1] === "Report") {
+    const r = /^(\S+) — (.+)$/.exec(m[3]);
+    return r && REPORT_STATUSES.includes(r[1]) ? { verb: "Report", id: m[2], status: r[1], who: r[2] } : null;
+  }
   return { verb: m[1], id: m[2], who: m[3] };
 }
 
-export function markerSubject(verb, id, who, verdict) {
-  return verb === "Verdict" ? `Verdict ${id}: ${verdict} — ${who}` : `${verb} ${id}: ${who}`;
+/** `extra` is the verdict (pass|findings) for a Verdict and the status for a Report. */
+export function markerSubject(verb, id, who, extra) {
+  return verb === "Verdict" || verb === "Report" ? `${verb} ${id}: ${extra} — ${who}` : `${verb} ${id}: ${who}`;
 }
+
+export const roleOf = task => ROLE_BY_LANE[task.lane] ?? "CTO";
 
 /** Newest-first CI runs (main, or one pull request's branch) -> green | red | running | running-after-red | unknown. */
 export function ciStateFromRuns(runs) {
@@ -288,4 +299,41 @@ function ownWork(view, claimant) {
     }
   }
   return null;
+}
+
+/**
+ * D-085: the board the CEO reads — every task in priority order with its
+ * state, holder, quiet time and the latest report its team sent.
+ * reports: [{ id, status, who, at, note }] from agent/reports/log.
+ */
+export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), reports = [], now }) {
+  const HOUR = 60 * 60 * 1000;
+  const tipOf = name => branches.get(name)?.tipMs ?? 0;
+  const latest = new Map();
+  for (const r of reports) if (!latest.has(r.id) || latest.get(r.id).at < r.at) latest.set(r.id, r);
+  const doneIds = new Set(tasks.filter(t => t.status === "done" || branches.get(workBranchOf(t, branches) ?? "")?.merged).map(t => t.id));
+  return tasks.map(task => {
+    const work = workBranchOf(task, branches);
+    const info = work ? branches.get(work) : null;
+    const slug = slugOf(task.branch);
+    const arch = branches.get(architectLockOf(task));
+    const pr = work ? openPrs.get(work) ?? null : null;
+    const ci = pr ? prCi.get(work)?.state ?? "unknown" : null;
+    const lockInfo = task.status === "architect" && arch && !arch.merged ? arch : info && !info.merged ? info : null;
+    const activeAt = lockInfo ? Math.max(lockInfo.tipMs, tipOf(heartbeatOf(slug))) : null;
+    const quiet = activeAt !== null && now - activeAt > IDLE_MS;
+    let state;
+    if (doneIds.has(task.id)) state = "done";
+    else if (task.status === "owner") state = "owner";
+    else if (task.status === "in-review") state = "in-review";
+    else if (task.status === "architect") state = lockInfo ? (quiet ? "quiet" : "packet") : "architect";
+    else if (!info) state = task.dependsOn.some(d => !doneIds.has(d)) ? "waiting" : "todo";
+    else if (pr) state = { red: "pr-red", green: "pr-green", running: "pr-running", "running-after-red": "pr-running" }[ci] ?? "pr-open";
+    else state = quiet ? "quiet" : "building";
+    return {
+      id: task.id, title: task.title, tier: task.tier, lane: task.lane, role: roleOf(task), state,
+      holder: holderOf(lockInfo), quietHours: activeAt === null || state === "done" ? null : Math.floor((now - activeAt) / HOUR),
+      pr, review: pr && task.tier === 1 ? reviewStateOf(branches.get(reviewLockOf(task)) ?? null) : null, report: latest.get(task.id) ?? null,
+    };
+  });
 }
