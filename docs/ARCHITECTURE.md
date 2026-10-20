@@ -146,6 +146,7 @@ Note: `closed` means hired when a referrer accepted, and expired when none did (
 
 **Payments** (`docs/PAYMENTS_TEST_RUNBOOK.md` §7 is the recovery manual):
 - **Checkout.** Checkout writes `pending:<hostedPageId>`.
+- **What is sold (GO-LIVE-1, D-084).** `/plans` sells credit packs from `GET /api/plans/catalog`. Passes and Keep warm are listed but refused (409 `not_available_yet`) while `PASS_SALES_ENABLED = false`, because a paid pass activates only from a webhook that names its checkout page and nothing recovers it yet (GO-LIVE-1b). A kit plan checkout sends `subscription_items[billing_cycles][0]=1`. The legacy single credit answers 410 `single_credit_retired` in a currency once a pack is live there.
 - **Paid event.** A Chargebee paid event, from the webhook, recovery or the hourly reconcile, credits once in one transaction.
 - **Review.** A mismatch or unmatched payment is parked as `requires_review`, with an admin alert.
 - **Refunds.** A full refund takes back unused credits, never below zero; any other refund is parked for review.
