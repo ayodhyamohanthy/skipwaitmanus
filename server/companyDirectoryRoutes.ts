@@ -4,6 +4,7 @@
 //   GET  /api/companies/:slug/opportunities  public, cacheable: a company's live
 //                                  employee-posted roles (D-022), newest first
 //   GET  /api/admin/companies?q=   admin: every company with status and domains
+//   GET  /api/admin/companies/unmatched-domains  admin, flagged: verified work domains no company owns
 //   POST /api/admin/companies      admin: create (strict Zod body)
 //   PATCH /api/admin/companies/:id admin: edit, hide/list, add/remove alias domains
 // Contracts live in shared/companies.ts; services are injectable for tests.
@@ -11,7 +12,7 @@ import express, { type Express, type Request, type Response } from "express";
 import { adminCompanyCreateSchema, adminCompanyUpdateSchema, COMPANY_NOT_FOUND_ERROR, COMPANY_SLUG_PATTERN, type AdminCompany, type AdminCompanyCreate, type AdminCompanyUpdate, type CompanyDirectoryResponse, type PublicCompany } from "../shared/companies";
 import { companyOpportunitiesResponseSchema } from "../shared/companyOpportunities";
 import { getCompanyDirectoryEntry, listAdminCompanies, listCompanyDirectory } from "./companyDirectory";
-import { CompanyConflictError, CompanyInputError, CompanyNotFoundError, createCompany, updateCompany } from "./companyDirectoryAdmin";
+import { CompanyConflictError, CompanyInputError, CompanyNotFoundError, createCompany, listUnmatchedWorkDomains, updateCompany, type UnmatchedWorkDomain } from "./companyDirectoryAdmin";
 import { CompanyDirectoryUnavailableError } from "./companyDirectorySource";
 import { listCompanyOpportunityPosts } from "./db";
 
@@ -28,6 +29,9 @@ export type CompanyDirectoryRouteDeps = {
   listAdminCompanies?: (query?: string) => Promise<AdminCompany[]>;
   createCompany?: (input: AdminCompanyCreate) => Promise<AdminCompany>;
   updateCompany?: (id: number, patch: AdminCompanyUpdate) => Promise<AdminCompany>;
+  /** D-097: off until QA verifies. Defaults to UNMATCHED_DOMAINS_ENABLED=true. */
+  unmatchedDomainsEnabled?: () => boolean;
+  listUnmatchedWorkDomains?: () => Promise<UnmatchedWorkDomain[]>;
 };
 
 const PUBLIC_CACHE = "public, max-age=60";
@@ -100,6 +104,15 @@ export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirect
       const query = typeof req.query.q === "string" ? req.query.q.slice(0, 100) : undefined;
       res.json({ companies: await adminList(query) });
     } catch (error) { failure(res, error, "We could not load companies"); }
+  });
+
+  app.get("/api/admin/companies/unmatched-domains", async (req, res) => {
+    try {
+      const identity = await requireAdmin(req, res); if (!identity) return;
+      const enabled = deps.unmatchedDomainsEnabled ?? (() => process.env.UNMATCHED_DOMAINS_ENABLED === "true");
+      if (!enabled()) return res.status(404).json({ error: "Not found" });
+      res.json({ domains: await (deps.listUnmatchedWorkDomains ?? listUnmatchedWorkDomains)() });
+    } catch (error) { failure(res, error, "We could not load unmatched domains"); }
   });
 
   app.post("/api/admin/companies", express.json({ limit: "16kb" }), async (req, res) => {
