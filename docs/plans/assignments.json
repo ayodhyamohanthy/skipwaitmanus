@@ -129,7 +129,7 @@
       "tier": 3,
       "lane": "triage",
       "branch": "agent/queue/fnd7-triage",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
