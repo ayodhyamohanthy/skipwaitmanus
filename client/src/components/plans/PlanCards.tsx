@@ -1,6 +1,6 @@
 // /plans plan grid on the shared catalog: Free always, plus the account's own
 // catalog plan while it is active. D-067 removed Pro/Max and the gift flow; the
-// D-046 pass cards arrive here in their own slice, not before.
+// D-046 passes are sold from their own section (PassCards, GO-LIVE-1).
 import { ArrowRight, Check, Crown } from "lucide-react";
 import { Link } from "wouter";
 import type { CatalogCurrency, PaidCatalogPlan } from "@shared/planCatalog";
@@ -16,7 +16,8 @@ export type CancelRenewalState = {
 };
 
 type PlanCardsProps = {
-  currency: CatalogCurrency;
+  /** The catalog's currency once it is on screen; Free states no price before. */
+  currency: CatalogCurrency | null;
   activePlan: PaidCatalogPlan | null;
   renewing: boolean;
   cancelRenewal: CancelRenewalState;

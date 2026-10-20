@@ -31,6 +31,11 @@ export async function fetchPlansCatalog(region?: BillingRegion): Promise<PlanCat
   return parsed.data;
 }
 
+/** True when the catalog sells at least one credit pack right now. */
+export function packOnSale(catalog: PlanCatalogResponse): boolean {
+  return catalog.packs.some(pack => pack.available);
+}
+
 /** The catalog for the edge region, or for one region when the seeker asked for it. */
 export function usePlansCatalog(region?: BillingRegion, options: { enabled?: boolean } = {}) {
   return useQuery({ queryKey: plansCatalogKeys.region(region), queryFn: () => fetchPlansCatalog(region), retry: 1, enabled: options.enabled ?? true });
