@@ -38,10 +38,10 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
   });
 
   it("hands a fresh agent the first pickable task in order", () => {
-    // GO-LIVE-1 is done (PR #351); every remaining todo row waits on an architect or
-    // owner row (D-038-reconcile, seeker-passwords), so nothing is pickable right now.
+    // GO-LIVE-1 is done (PR #351); D-084 queues GO-LIVE-1b (passes stay off until a paid
+    // pass can always be activated) right after it, so it is the first pickable task.
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    expect(first.kind).toBe("none");
+    expect(first).toMatchObject({ kind: "build", task: { id: "GO-LIVE-1b" } });
   });
 
   it("rejects unknown keys, duplicates, bad branches, missing packets, unknown dependencies and cycles", () => {
