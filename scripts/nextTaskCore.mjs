@@ -39,7 +39,7 @@ export const heartbeatOf = slug => `agent/heartbeat/${slug}`;
 export const fixMainLockOf = sha => `agent/queue/fix-main-${sha.slice(0, 8)}`;
 export const fixMainIdOf = sha => `fix-main-${sha.slice(0, 8)}`;
 /** Claude Code sessions are the CEO and architect (D-074, D-085), known by the "Claude" name prefix. */
-export const isArchitect = who => /^Claude\b/.test(who ?? "");
+export const isArchitect = who => /^claude/i.test((who ?? "").trim());
 const modelOf = who => (who ?? "").split(" · ")[0];
 
 /** "Claim GO-LIVE-1: Qwen 3 · s1" -> { verb: "Claim", id: "GO-LIVE-1", who: "Qwen 3 · s1" }. */
@@ -48,13 +48,14 @@ export function parseMarker(subject) {
   if (!m) return null;
   if (m[1] === "Verdict") {
     const v = /^(pass|findings) — (.+)$/.exec(m[3]);
-    return v ? { verb: "Verdict", id: m[2], verdict: v[1], who: v[2] } : null;
+    return v ? { verb: "Verdict", id: m[2], verdict: v[1], who: sanitizeName(v[2]) } : null;
   }
   if (m[1] === "Report") {
     const r = /^(\S+) — (.+)$/.exec(m[3]);
-    return r && REPORT_STATUSES.includes(r[1]) ? { verb: "Report", id: m[2], status: r[1], who: r[2] } : null;
+    return r && REPORT_STATUSES.includes(r[1]) ? { verb: "Report", id: m[2], status: r[1], who: sanitizeName(r[2]) } : null;
   }
-  return { verb: m[1], id: m[2], who: m[3] };
+  // Names on origin are written by any agent: clean them on read too, so the board prints no control characters.
+  return { verb: m[1], id: m[2], who: sanitizeName(m[3]) };
 }
 
 /** `extra` is the verdict (pass|findings) for a Verdict and the status for a Report. */
@@ -80,7 +81,8 @@ export function sanitizeNote(raw) {
 /** D-085: a name without a session part gets a unique tag, so two sessions of one model never share a claim. */
 export function sessionName(raw, tag) {
   const name = sanitizeName(raw);
-  return name.includes(" · ") ? name : `${name} · ${tag}`;
+  // The tag must survive the 60-character cut every later read applies, or the name could never be reused.
+  return name.includes(" · ") ? name : `${name.slice(0, 60 - 3 - tag.length).trimEnd()} · ${tag}`;
 }
 /** A refused marker push: lost to another agent ("race"), or anything else ("error", which must stop the run). */
 export function classifyPushError(stderr) {
@@ -188,10 +190,18 @@ export function reviewStateOf(lock, id) {
 /** Who holds a review lock's current stage (the reviewer, fixer or lander), or null. */
 export const stageHolderOf = (lock, id) => stageMarkers(lock, id).at(-1)?.who ?? null;
 
-/** The newest report per task: reports arrive newest first (log order), never sorted by an agent's clock. */
+/**
+ * The report that stands for each task: the newest (reports arrive newest first, log order, never
+ * sorted by an agent's clock), except that a blocked report stands until the CEO reports on the task.
+ */
 const latestReports = reports => {
-  const latest = new Map();
-  for (const r of reports) if (!latest.has(r.id)) latest.set(r.id, r);
+  const latest = new Map(), settled = new Set();
+  for (const r of reports) {
+    if (settled.has(r.id)) continue;
+    if (!latest.has(r.id)) latest.set(r.id, r);
+    if (isArchitect(r.who)) settled.add(r.id);
+    else if (r.status === "blocked") { latest.set(r.id, r); settled.add(r.id); }
+  }
   return latest;
 };
 
@@ -221,7 +231,7 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports }) {
       builders: everyone(stageMarkers(info, id), ["Claim", "Takeover"]),
       reviewers: everyone(lockMarkers, ["Review claim"]), fixers: everyone(lockMarkers, ["Fix claim"]),
       reviewer: lastBy(lockMarkers, ["Review claim"])?.who ?? null, fixer: lastBy(lockMarkers, ["Fix claim"])?.who ?? null,
-      lander: lastBy(lockMarkers, ["Land claim"])?.who ?? null, review: reviewStateOf(lock, id),
+      lander: lastBy(lockMarkers, ["Land claim"])?.who ?? null, review: reviewStateOf(lock, id), stageHolder: lockMarkers.at(-1)?.who ?? null,
       unblocker: archMarkers.at(-1)?.verb === "Unblock" ? archMarkers.at(-1).who : null,
       done: task.status === "done" || (task.status === "todo" && landed),
       open: task.status === "todo" && Boolean(info) && !landed,
@@ -238,8 +248,8 @@ function clock(branches, now) {
     return hb && holder && hb.markers.at(-1)?.who === holder ? hb.tipMs : 0;
   };
   const workAt = v => Math.max(tipOf(v.work), beat(v.slug, v.owner));
-  // A fixer or lander works on the pull request's branch, so its pushes keep the stage alive.
-  const lockAt = v => Math.max(tipOf(v.lockName), v.review === "fixing" || v.review === "landing" ? tipOf(v.work) : 0);
+  // A fixer or lander works on the pull request's branch (a passed review's reviewer lands it), so its pushes keep the stage alive.
+  const lockAt = v => Math.max(tipOf(v.lockName), ["fixing", "passed", "landing"].includes(v.review) ? tipOf(v.work) : 0);
   const archAt = v => tipOf(v.archName);
   const quiet = at => now - at > IDLE_MS;
   return { workAt, lockAt, archAt, quiet };
@@ -253,13 +263,15 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   if (mainCi.state === "unknown") return { kind: "stop", reason: "cannot read main's CI runs from GitHub; nothing may be picked or pushed until it is known (D-082)" };
   if (mainCi.state === "running-after-red") return { kind: "wait", mainRed: true, reason: "main's CI is running again after a failure; run this again when it finishes" };
   if (mainCi.state === "red") {
-    const lock = fixMainLockOf(mainCi.sha);
-    const held = branches.get(lock);
-    const holder = holderOf(held, fixMainIdOf(mainCi.sha));
-    const { workAt, quiet } = clock(branches, now);
-    if (held && claimant && holder === claimant) return { kind: "continue", of: "fix-main", sha: mainCi.sha, url: mainCi.url, lock };
-    if (held && !quiet(workAt({ work: lock, slug: slugOf(lock), owner: holder }))) return { kind: "wait", mainRed: true, reason: `main is red; ${holder ?? "another agent"} is fixing it on ${lock}` };
-    return { kind: "fix-main", sha: mainCi.sha, url: mainCi.url, lock, parent: held ? lock : null, from: held ? holder : null };
+    // One fix-main lock at a time: a newer red commit while someone is fixing main does not open a second lock.
+    const current = fixMainLockOf(mainCi.sha);
+    const locks = fixMainLocks(branches, now);
+    const mine = claimant ? locks.find(l => l.holder === claimant && (!l.quiet || l.lock === current)) : null;
+    if (mine) return { kind: "continue", of: "fix-main", sha: mine.sha8, url: mainCi.url, lock: mine.lock };
+    const busy = locks.find(l => !l.quiet);
+    if (busy) return { kind: "wait", mainRed: true, reason: `main is red; ${busy.holder ?? "another agent"} is fixing it on ${busy.lock}` };
+    const held = locks.find(l => l.lock === current);
+    return { kind: "fix-main", sha: mainCi.sha, url: mainCi.url, lock: current, parent: held ? current : null, from: held ? held.holder : null };
   }
   if (openPrs === null) return { kind: "stop", reason: "cannot read the open pull requests from GitHub; a task under review would look abandoned, so nothing may be picked until they are known (D-085)" };
   if (mergedHeads === null) return { kind: "stop", reason: "cannot read the merged pull requests from GitHub; a landed task would look half-built, so nothing may be picked until they are known (D-085)" };
@@ -285,10 +297,12 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     const state = v.review;
     const lockQuiet = v.lock ? quiet(lockAt(v)) : false;
     if (v.ci === "red") {
-      if ((state === "fixing" || state === "landing") && !lockQuiet) return gate(`${v.task.id} is red (CI on ${v.pr}) and ${state === "fixing" ? v.fixer : v.lander} is on it`);
-      if (state === "needs-fix" || state === "fixing") {
-        if (did(v, ["reviewers"])) return gate(`${v.task.id} is red (CI on ${v.pr}) with review findings, and you reviewed it, so someone else fixes it`);
-        return { kind: "fix", task: v.task, work: v.work, pr: v.pr, lock: v.lockName };
+      if (state === "fixing" && !lockQuiet) return gate(`${v.task.id} is red (CI on ${v.pr}) and ${v.fixer} is on it`);
+      // Red after a passed review: the change goes through a fix stage and is reviewed again, never landed as it is.
+      const afterPass = state === "passed" || state === "landing";
+      if (state === "needs-fix" || state === "fixing" || afterPass) {
+        if (did(v, ["reviewers"]) || (v.lander && claimant === v.lander)) return gate(`${v.task.id} is red (CI on ${v.pr}) and you reviewed or are landing it, so someone else fixes it`);
+        return { kind: "fix", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, ...(afterPass ? { why: `CI on ${v.pr} turned red after its review passed; fix it red-first, then it is reviewed again` } : {}) };
       }
       if (!quiet(workAt(v))) return gate(`${v.task.id} is red (CI on ${v.pr}) and ${v.owner ?? "its builder"} is making it green`);
       if (did(v, ["reviewers"])) return gate(`${v.task.id} is red (CI on ${v.pr}); you reviewed it, so someone else makes it green`);
@@ -387,6 +401,7 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
 
 /** D-085: what this agent already holds, in queue order. A Tier 1 builder waiting for review holds nothing. */
 function ownWork(view, claimant) {
+  let blockedOwn = null;
   for (const v of view) {
     if (v.open && v.pr && v.task.tier === 1 && v.lock) {
       const last = stageMarkers(v.lock, v.task.id).at(-1);
@@ -394,13 +409,18 @@ function ownWork(view, claimant) {
         const base = { kind: "continue", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, at: v.at };
         if (last.verb === "Review claim") return { ...base, of: "review", builder: v.owner };
         if (last.verb === "Fix claim") return { ...base, of: "fix" };
-        if (last.verb === "Land claim" || (last.verb === "Verdict" && last.verdict === "pass")) return { ...base, of: "land", tier1: true };
+        // A passed review whose CI went red is not landed: it goes to a fix stage (pickNextTask), never back to its lander.
+        if ((last.verb === "Land claim" || (last.verb === "Verdict" && last.verdict === "pass")) && v.ci !== "red") return { ...base, of: "land", tier1: true };
       }
     }
     if (v.open && v.owner === claimant) {
-      if (v.said?.status === "blocked") return { kind: "wait", gate: v.task.id, blocked: true, own: true, at: v.at, task: v.task, work: v.work, reason: `your task ${v.task.id} is blocked (${v.said.who} reported it blocked${v.said.note ? `: ${v.said.note}` : ""}); only the CEO (a Claude Code session) or the owner can clear it` };
-      // The builder side holds a Tier 1 pull request only while its CI is red and no fix or landing stage owns it.
-      if (v.pr && v.task.tier === 1 && !(v.ci === "red" && !["needs-fix", "fixing", "landing"].includes(v.review))) continue;
+      // A blocked task waits for the CEO or the owner; its holder keeps going on anything else it holds (D-085 (3)).
+      if (v.said?.status === "blocked") {
+        blockedOwn ??= { kind: "wait", gate: v.task.id, blocked: true, own: true, at: v.at, task: v.task, work: v.work, reason: `your task ${v.task.id} is blocked (${v.said.who} reported it blocked${v.said.note ? `: ${v.said.note}` : ""}); only the CEO (a Claude Code session) or the owner can clear it` };
+        continue;
+      }
+      // The builder side holds a Tier 1 pull request only while its CI is red before any review passed or any fix stage owns it.
+      if (v.pr && v.task.tier === 1 && !(v.ci === "red" && ["needs-review", "in-review"].includes(v.review))) continue;
       return { kind: "continue", of: v.pr ? (v.ci === "red" ? "green" : "land") : "build", task: v.task, work: v.work, pr: v.pr, tier1: v.task.tier === 1, at: v.at };
     }
     if (v.task.status === "architect" && v.arch && holderOf(v.arch, v.task.id) === claimant) {
@@ -410,14 +430,29 @@ function ownWork(view, claimant) {
       return { kind: "continue", of: "unblock", task: v.task, report: v.said, lock: v.archName, at: v.at };
     }
   }
-  return null;
+  return blockedOwn;
+}
+
+/** Every fix-main lock not yet merged, newest activity first. */
+function fixMainLocks(branches, now) {
+  const { workAt, quiet } = clock(branches, now);
+  return [...branches]
+    .filter(([name, info]) => /^agent\/queue\/fix-main-[0-9a-f]{8}$/.test(name) && !info.merged)
+    .map(([lock, info]) => {
+      const id = lock.slice("agent/queue/".length);
+      const holder = holderOf(info, id);
+      const at = workAt({ work: lock, slug: slugOf(lock), owner: holder });
+      return { lock, id, sha8: id.slice("fix-main-".length), holder, at, quiet: quiet(at) };
+    })
+    .sort((a, b) => b.at - a.at);
 }
 
 /** D-085: what `--heartbeat` keeps alive, whatever main's CI says. mainSha: main's red commit, if any. */
-export function heldBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], claimant, mainSha = null }) {
+export function heldBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
   if (mainSha) {
-    const lock = fixMainLockOf(mainSha);
-    if (holderOf(branches.get(lock), fixMainIdOf(mainSha)) === claimant) return { kind: "continue", of: "fix-main", sha: mainSha, lock };
+    const current = fixMainLockOf(mainSha);
+    const mine = fixMainLocks(branches, now).find(l => l.holder === claimant && (!l.quiet || l.lock === current));
+    if (mine) return { kind: "continue", of: "fix-main", sha: mine.sha8, lock: mine.lock };
   }
   const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports });
   const own = ownWork(view, claimant);
@@ -438,9 +473,10 @@ export function leaseFor(pick, branches, now) {
     const hb = branches.get(heartbeatOf(slug));
     const holder = holderOf(info, id);
     const at = Math.max(info?.tipMs ?? 0, hb && hb.markers.at(-1)?.who === holder ? hb.tipMs : 0);
-    return now - at >= RECLAIM_MS ? { ref, verb: "Claim", id, reclaim: true } : { ref: heartbeatOf(slug), verb: "Heartbeat", id, reclaim: false };
+    return now - at >= RECLAIM_MS ? { ref, verb: "Claim", id, reclaim: true, retry: false } : { ref: heartbeatOf(slug), verb: "Heartbeat", id, reclaim: false, retry: true };
   };
-  const onLock = { ref: pick.lock, verb: "Heartbeat", id: pick.task?.id, reclaim: false };
+  // A heartbeat on a shared lock is never retried: a refused push there means another agent took the stage.
+  const onLock = { ref: pick.lock, verb: "Heartbeat", id: pick.task?.id, reclaim: false, retry: false };
   switch (pick.of) {
     case "fix-main": return workLike(pick.lock, slugOf(pick.lock), fixMainIdOf(pick.sha));
     case "build": case "green": return workLike(pick.work, slugOf(pick.task.branch), pick.task.id);
@@ -461,17 +497,22 @@ export function localSyncIssues({ local, branches, claimant, mainBehind = 0, tas
   const owners = new Map();
   for (const t of tasks) {
     const work = workBranchOf(t, branches) ?? t.branch;
-    owners.set(work, { holder: holderOf(branches.get(work), t.id), stage: stageHolderOf(branches.get(reviewLockOf(t)), t.id) });
+    const last = stageMarkers(branches.get(reviewLockOf(t)), t.id).at(-1);
+    // Only a fixer or lander pushes to the builder's branch; a reviewer who returned findings never does.
+    const pushes = last && (last.verb === "Fix claim" || last.verb === "Land claim" || (last.verb === "Verdict" && last.verdict === "pass"));
+    owners.set(work, { holder: holderOf(branches.get(work), t.id), stage: pushes ? last.who : null, names: [holderOf(branches.get(work), t.id), last?.who].filter(Boolean) });
     const arch = architectLockOf(t);
-    owners.set(arch, { holder: lastBy(stageMarkers(branches.get(arch), t.id), ["Claim", "Takeover", "Unblock"])?.who ?? null, stage: null });
+    const archHolder = lastBy(stageMarkers(branches.get(arch), t.id), ["Claim", "Takeover", "Unblock"])?.who ?? null;
+    owners.set(arch, { holder: archHolder, stage: null, names: archHolder ? [archHolder] : [] });
   }
   for (const l of local) {
     if (MARKER_ONLY.some(p => l.branch.startsWith(p))) continue;
     const fixMain = /^agent\/queue\/(fix-main-[0-9a-f]{8})$/.exec(l.branch)?.[1];
-    const known = owners.get(l.branch) ?? { holder: holderOf(branches.get(l.branch), fixMain), stage: null };
+    const fallback = holderOf(branches.get(l.branch), fixMain);
+    const known = owners.get(l.branch) ?? { holder: fallback, stage: null, names: fallback ? [fallback] : [] };
     // A fixer or lander pushes to the builder's branch, so that branch is theirs to keep in sync too.
     const mine = Boolean(claimant) && (known.holder === claimant || known.stage === claimant);
-    const label = known.holder ?? known.stage;
+    const label = known.holder ?? known.stage ?? known.names[0] ?? null;
     if (l.ahead === null) {
       notes.push(`${l.branch} is not on origin (worktree ${l.path}): if it is yours, push it now (git -C ${l.path} push -u origin ${l.branch}); work only on your machine is invisible to every other agent`);
       continue;
@@ -487,13 +528,28 @@ export function localSyncIssues({ local, branches, claimant, mainBehind = 0, tas
       if (mine) blocking.push(`${l.branch} has uncommitted changes in ${l.path}: commit the files your task names (a WIP commit is fine) and push; never commit .env files, screenshots or other files your packet does not name`);
       else notes.push(`${l.branch} has uncommitted changes in ${l.path}${label ? ` (held by ${label})` : ""}`);
     }
-    // D-085: a restarted session must reuse its name, or its own half-built work sits idle.
-    if (someoneElse && claimant && modelOf(label) === modelOf(claimant) && (l.ahead > 0 || l.dirty)) {
-      notes.push(`${l.branch} is held by "${label}", the same model as you: if that was your earlier session, run again as --claim "${label}" so your own work comes back first`);
+    // D-085: a restarted session must reuse its name, or its own half-built work sits idle. Name every
+    // same-model holder of the branch or its review stage, since the stage holder is often the one that left.
+    const sameModel = claimant && !mine && (l.ahead > 0 || l.dirty) ? known.names.filter(n => n !== claimant && modelOf(n) === modelOf(claimant)) : [];
+    for (const name of [...new Set(sameModel)]) {
+      notes.push(`${l.branch} is held by "${name}", the same model as you: if that was your earlier session, run again as --claim "${name}" so your own work comes back first`);
     }
   }
   if (mainBehind > 0) notes.push(`your main checkout is ${mainBehind} commits behind origin/main: git pull --ff-only before reading any doc`);
   return { blocking, notes, unpushed };
+}
+
+/** D-085: who may report on a task: anyone who holds it or one of its stages, and the CEO. */
+export function mayReport({ task, branches, claimant }) {
+  if (!claimant) return false;
+  if (isArchitect(claimant)) return true;
+  const work = workBranchOf(task, branches);
+  const names = [
+    holderOf(work ? branches.get(work) : null, task.id),
+    stageHolderOf(branches.get(reviewLockOf(task)), task.id),
+    lastBy(stageMarkers(branches.get(architectLockOf(task)), task.id), ["Claim", "Takeover", "Unblock"])?.who ?? null,
+  ];
+  return names.includes(claimant);
 }
 
 /**
@@ -522,7 +578,8 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), merged
     else if (pr) state = { red: "pr-red", green: "pr-green", running: "pr-running", "running-after-red": "pr-running" }[v.ci] ?? "pr-open";
     else state = quiet ? "quiet" : "building";
     // Reports gate only open tasks, so only they colour the board; a Tier 1 pull request is green only once its review passed.
-    const said = v.open ? v.said : null;
+    // The picker lets a Tier 1 pull request's review lock decide over red reports, so the board does too.
+    const said = !v.open ? null : review && v.said?.status === "red" ? null : v.said;
     const health = state === "done" ? "done"
       : state === "owner" ? "owner"
       : state === "pr-red" || state === "quiet" || said?.status === "red" || said?.status === "blocked" ? "red"
@@ -533,6 +590,8 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), merged
       holder: archHeld ? holderOf(v.arch, task.id) : v.open ? v.owner : null,
       quietHours: activeAt === null || state === "done" ? null : Math.floor((now - activeAt) / HOUR),
       pr, review, report: state === "done" ? null : latest.get(task.id) ?? null,
+      // Who holds the current review stage (reviewer, fixer or lander) or the unblock: a restarted session reads its name here.
+      stage: review ? v.stageHolder : v.open && v.unblocker ? v.unblocker : null,
     };
   });
 }

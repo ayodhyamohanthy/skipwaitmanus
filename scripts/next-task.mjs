@@ -24,7 +24,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
   REPORT_STATUSES, architectLockOf, ciStateFromRuns, classifyPushError, fixMainIdOf, heartbeatOf, heldBy, leaseFor, localSyncIssues, markerSubject,
-  parseMarker, pickNextTask, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
+  mayReport, parseMarker, pickNextTask, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
 
@@ -168,16 +168,19 @@ function keepClaim(pick, who, branches) {
   const subject = markerSubject(lease.verb, lease.id, who);
   let parent = base(lease.ref);
   let sha = pushMarker(lease.ref, parent, subject);
-  if (!sha && !lease.reclaim) {
+  if (!sha && lease.retry) {
     // Only this holder writes its side heartbeat; a refused one is a stale view, so read it again once.
+    // A refused push on a shared lock or a takeover ref means another agent won it: never retry on top of them.
     tryGit("fetch", "-q", "origin", lease.ref);
     parent = base(lease.ref);
     sha = pushMarker(lease.ref, parent, subject);
   }
   if (!sha) return false;
   // A reclaim adds an empty commit to your own branch: move your local copy onto it so your next push is a fast-forward.
-  if (lease.reclaim && tryGit("rev-parse", "--verify", "-q", `refs/heads/${lease.ref}`) === parent) {
-    if (tryGit("update-ref", `refs/heads/${lease.ref}`, sha, parent) === null) console.error(`next-task: run git merge --ff-only origin/${lease.ref} in your worktree before your next commit`);
+  if (lease.reclaim) {
+    const localTip = tryGit("rev-parse", "--verify", "-q", `refs/heads/${lease.ref}`);
+    const moved = localTip === parent && tryGit("update-ref", `refs/heads/${lease.ref}`, sha, parent) !== null;
+    if (localTip && !moved && localTip !== sha) console.error(`next-task: origin/${lease.ref} gained your claim marker; run git merge --ff-only origin/${lease.ref} (or git pull --no-rebase) in your worktree before your next push, and never force-push`);
   }
   return true;
 }
@@ -279,6 +282,8 @@ async function main() {
   if (args.report) {
     const { doc, branches } = await state();
     const task = doc.tasks.find(t => t.id === args.task) ?? fail(`no task ${args.task}`);
+    // A report can hold or release every lower priority, so only the task's own people or the CEO send one (D-085).
+    if (!mayReport({ task, branches, claimant: args.as })) fail(`"${args.as}" holds no part of ${task.id}; only its builder, reviewer, fixer, lander, unblocker or the CEO reports on it`);
     requireSynced(doc, branches, args.as);
     // One plain line: no secrets, tokens or personal data (the repo is public, D-059).
     const note = sanitizeNote(args.note);
@@ -293,8 +298,13 @@ async function main() {
     const { doc, mainCi, openPrs, mergedHeads, prCi, branches, reports } = await state();
     const mainSha = mainCi.state === "red" || mainCi.state === "running-after-red" ? mainCi.sha : null;
     // A heartbeat keeps what you hold alive whatever main's CI says (D-085).
-    const held = heldBy({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, reports, claimant: args.as, mainSha });
+    const held = heldBy({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, reports, claimant: args.as, mainSha, now: Date.now() });
     if (!held) fail(`"${args.as}" holds no task, so there is nothing to keep alive; run --claim to take one`);
+    // Commits only on this machine are the real heartbeat: push them first, or a marker on origin would leave your branch diverged.
+    const { local, mainBehind } = localState();
+    const sync = localSyncIssues({ local, branches, claimant: args.as, mainBehind, tasks: doc.tasks });
+    const branch = held.work ?? held.lock;
+    if (sync.unpushed.includes(branch)) { printSync(sync); fail(`push your commits on ${branch} first (that push keeps the claim alive), then run this again`, 3); }
     if (!keepClaim(held, args.as, branches)) fail(`another agent took ${held.task?.id ?? held.lock} first; run --claim "${args.as}" to see what is yours`);
     console.log(`Heartbeat recorded: ${held.of === "fix-main" ? held.lock : held.task.id} stays yours for the next 2 hours.`);
     return;

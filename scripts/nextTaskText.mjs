@@ -137,7 +137,8 @@ const HEALTH = { done: "done", green: "GREEN", red: "RED", progress: "in progres
 export function renderBoard(rows) {
   const lines = rows.map((r, i) => {
     const bits = [`${i + 1}. ${r.id} — ${r.title}`, r.role, `Tier ${r.tier}`, HEALTH[r.health] ?? r.state, r.state];
-    if (r.review) bits.push(`review ${r.review}`);
+    if (r.review) bits.push(`review ${r.review}${r.stage ? ` by ${r.stage}` : ""}`);
+    else if (r.stage) bits.push(`unblocking: ${r.stage}`);
     if (r.holder) bits.push(r.holder);
     if (r.quietHours !== null && r.quietHours !== undefined) bits.push(`quiet ${r.quietHours}h`);
     if (r.pr) bits.push(r.pr);
@@ -181,6 +182,7 @@ export function renderPick(pick, { who, date, claimed }) {
     ]) + take;
     case "fix": return head(`FIX REVIEW FINDINGS ${pick.task.id} — ${pick.task.title}`, [
       `Tier 1 · pull request ${pick.pr} · branch ${pick.work}`,
+      ...(pick.why ? [`${pick.why}.`] : []),
       "You must not be a reviewer of it.",
       ...holding(pick),
       fixSteps(pick, who),

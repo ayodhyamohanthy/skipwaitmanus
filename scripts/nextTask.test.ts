@@ -711,3 +711,93 @@ describe("hardening from the D-085 review", () => {
     expect(arch[0].health).toBe("open");
   });
 });
+
+// The second independent review of D-085 (Oct 21): each finding pinned with its reproduced case.
+describe("hardening from the second D-085 review", () => {
+  const t1 = task("M", { tier: 1, lane: "money" });
+  const pr: [string, string] = ["agent/queue/m", "https://github.com/o/r/pull/9"];
+  const lockOf = (hoursAgo: number, ...markers: Marker[]): [string, Branch] => ["agent/review/m", { tipMs: NOW - hoursAgo * HOUR, merged: false, markers }];
+  const passedBy = (who: string): Marker[] => [{ verb: "Review claim", id: "M", who }, { verb: "Verdict", id: "M", who, verdict: "pass" }];
+
+  it("F1: a refused heartbeat on a shared lock is never retried on top of the agent that won it", () => {
+    const branches = new Map<string, Branch>([["agent/queue/a", claimBy("Qwen · s1", "A", 0.5)]]);
+    for (const of of ["review", "fix", "architect", "unblock"]) expect(core.leaseFor({ kind: "continue", of, task: t1, lock: "agent/review/m" }, branches, NOW).retry).toBe(false);
+    expect(core.leaseFor({ kind: "continue", of: "land", tier1: true, task: t1, lock: "agent/review/m" }, branches, NOW).retry).toBe(false);
+    expect(core.leaseFor({ kind: "continue", of: "build", task: task("A"), work: "agent/queue/a" }, branches, NOW)).toMatchObject({ ref: "agent/heartbeat/a", retry: true });
+    expect(core.leaseFor({ kind: "continue", of: "build", task: task("A"), work: "agent/queue/a" }, new Map([["agent/queue/a", claimBy("Qwen · s1", "A", 3)]]), NOW).retry).toBe(false);
+  });
+
+  it("F2: CI that turns red after a passed review goes to a fix stage, so the change is reviewed again; never to the builder, reviewer or lander as green or land", () => {
+    const fresh: [string, Branch] = ["agent/queue/m", claimBy("DeepSeek · s4", "M", 0.5)];
+    const passed = lockOf(0.3, ...passedBy("Mistral · r1"));
+    const red = { prs: [pr], prCi: [["agent/queue/m", "red"]] as [string, string][] };
+    expect(pick([t1], { branches: [fresh, passed], ...red, claimant: "DeepSeek · s4" })).not.toMatchObject({ kind: "continue", of: "green" });
+    expect(pick([t1], { branches: [fresh, passed], ...red, claimant: "Mistral · r1" })).not.toMatchObject({ kind: "continue", of: "land" });
+    const quiet: [string, Branch] = ["agent/queue/m", claimBy("DeepSeek · s4", "M", 3)];
+    expect(pick([t1], { branches: [quiet, lockOf(3, ...passedBy("Mistral · r1"))], ...red, claimant: "Gemini · s3" })).toMatchObject({ kind: "fix", task: { id: "M" } });
+    const landing = lockOf(3, ...passedBy("Mistral · r1"), { verb: "Land claim", id: "M", who: "Kimi · l1" });
+    expect(pick([t1], { branches: [quiet, landing], ...red, claimant: "Gemini · s3" })).toMatchObject({ kind: "fix" });
+    expect(pick([t1], { branches: [quiet, landing], ...red, claimant: "Kimi · l1" }).kind).not.toBe("fix");
+  });
+
+  it("F3: a reviewer who returned findings is never told to push onto the pull request's branch", () => {
+    const findings = lockOf(1, { verb: "Review claim", id: "M", who: "Mistral · r1" }, { verb: "Verdict", id: "M", who: "Mistral · r1", verdict: "findings" });
+    const out = localSyncIssues({ local: [{ branch: "agent/queue/m", ahead: 1, dirty: true, path: "/wt/m-review" }], branches: new Map([["agent/queue/m", claimBy("DeepSeek · s4", "M", 3)], findings]), claimant: "Mistral · r1", tasks: [t1] });
+    expect(out.blocking).toEqual([]);
+  });
+
+  it("F4: a lander pushing to the pull request's branch in the passed stage keeps it", () => {
+    const work: [string, Branch] = ["agent/queue/m", { tipMs: NOW - 9 * 60_000, merged: false, markers: [{ verb: "Claim", id: "M", who: "DeepSeek · s4" }] }];
+    expect(pick([t1], { branches: [work, lockOf(2.5, ...passedBy("Mistral · r1"))], prs: [pr], prCi: [["agent/queue/m", "green"]], claimant: "Gemini · s3" }).kind).not.toBe("land");
+  });
+
+  it("F5: a long session name survives cleaning and a second claim unchanged", () => {
+    const name = core.sessionName("x".repeat(62), "ab12");
+    expect(core.sanitizeName(name)).toBe(name);
+    expect(core.sessionName(name, "zz99")).toBe(name);
+  });
+
+  it("F6: only the CEO clears a blocked task, and only the task's own people or the CEO may report on it", () => {
+    const busyA: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 1)];
+    const block = { id: "A", status: "blocked", who: "Qwen · s1", at: NOW - HOUR, note: "x" };
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: [{ id: "A", status: "green", who: "Kimi · s2", at: NOW - 0.5 * HOUR, note: "" }, block], claimant: "Kimi · s2" })).toMatchObject({ kind: "wait", gate: "A" });
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: [{ id: "A", status: "review", who: "Claude Code · s9", at: NOW - 0.5 * HOUR, note: "ruled" }, block], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "B" } });
+    const branches = new Map([busyA]);
+    expect(core.mayReport({ task: task("A"), branches, claimant: "Kimi · s2" })).toBe(false);
+    expect(core.mayReport({ task: task("A"), branches, claimant: "Qwen · s1" })).toBe(true);
+    expect(core.mayReport({ task: task("A"), branches, claimant: "Claude Code · s9" })).toBe(true);
+  });
+
+  it("F7: a blocked task of yours does not stop your other work", () => {
+    const branches: [string, Branch][] = [["agent/queue/a", claimBy("Qwen · s1", "A", 1)], ["agent/queue/c", claimBy("Qwen · s1", "C", 1)]];
+    expect(pick([task("A"), task("C")], { branches, reports: [{ id: "A", status: "blocked", who: "Qwen · s1", at: NOW - HOUR, note: "x" }], claimant: "Qwen · s1" })).toMatchObject({ kind: "continue", task: { id: "C" } });
+  });
+
+  it("F8: the board names who holds a Tier 1 review stage, and a restarted session is pointed at its own stage name", () => {
+    const reviewing = lockOf(1, { verb: "Review claim", id: "M", who: "Qwen 3 · cccc" });
+    const branches = new Map<string, Branch>([["agent/queue/m", claimBy("DeepSeek · s4", "M", 1)], reviewing]);
+    const rows = statusBoard({ tasks: [t1], branches, openPrs: new Map([pr]), now: NOW });
+    expect(rows[0].stage).toBe("Qwen 3 · cccc");
+    expect(renderBoard(rows)).toContain("Qwen 3 · cccc");
+    const out = localSyncIssues({ local: [{ branch: "agent/queue/m", ahead: 0, dirty: true, path: "/wt/m" }], branches, claimant: "Qwen 3 · dddd", tasks: [t1] });
+    expect(out.notes.join("\n")).toContain('--claim "Qwen 3 · cccc"');
+  });
+
+  it("F9: names read from markers are cleaned", () => {
+    expect(parseMarker("Claim A: Qwen\u001b[2J\u202e · s1")?.who).not.toMatch(/[\p{Cc}\p{Cf}]/u);
+  });
+
+  it("F11: one fix-main lock at a time, even when a newer commit is red", () => {
+    const held: [string, Branch] = ["agent/queue/fix-main-cccccccc", claimBy("Kimi · s2", "fix-main-cccccccc", 1)];
+    const newer = { state: "red", sha: "d".repeat(40), url: "https://ci/red2" };
+    expect(pick([task("A")], { ci: newer, branches: [held], claimant: "Gemini · s3" }).kind).toBe("wait");
+    expect(pick([task("A")], { ci: newer, branches: [held], claimant: "Kimi · s2" })).toMatchObject({ kind: "continue", of: "fix-main", lock: "agent/queue/fix-main-cccccccc" });
+    expect(core.heldBy({ tasks: [task("A")], branches: new Map([held]), openPrs: new Map(), claimant: "Kimi · s2", mainSha: "d".repeat(40) })).toMatchObject({ of: "fix-main", lock: "agent/queue/fix-main-cccccccc" });
+  });
+
+  it("F13: the CEO prefix ignores case, and the board agrees with the picker on Tier 1 red reports", () => {
+    expect(pick([task("A")], { claimant: "claude code · s1" }).kind).toBe("ceo");
+    const rows = statusBoard({ tasks: [t1], branches: new Map([["agent/queue/m", claimBy("DeepSeek · s4", "M", 1)]]), openPrs: new Map([pr]), prCi: new Map([["agent/queue/m", { state: "green" }]]), reports: [{ id: "M", status: "red", who: "Mistral · r1", at: NOW - HOUR, note: "3 findings" }], now: NOW });
+    expect(rows[0].health).not.toBe("red");
+  });
+});
