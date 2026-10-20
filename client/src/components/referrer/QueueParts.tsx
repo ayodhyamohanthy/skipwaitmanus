@@ -38,11 +38,13 @@ export function QueuePanel({ icon: Icon, title, text, label, children }: { icon:
 export type QueueCardRequest = { jobTitle?: string | null; id: number; companyDomain: string; companyName?: string | null; companyInitials?: string | null; jobFunction?: JobFunction | null; targetRoleUrl: string | null; compensation?: string | null; attachmentCount: number };
 
 /** One routed request in the kit queue card ("PRODUCT · WIPRO"). The role link and the seeker's note stay inside the opened request. */
-export function QueueRequestCard({ request, badge, expiry, expiryUrgent, footer }: {
+export function QueueRequestCard({ request, badge, expiry, expiryUrgent, decisionDue, footer }: {
   request: QueueCardRequest;
   badge: string;
   expiry: string | null;
   expiryUrgent: boolean;
+  /** D-038-A: "Decide within N hours" on the viewer's own claimed or allocated ask. Neutral, never a countdown. */
+  decisionDue?: string | null;
   footer: ReactNode;
 }) {
   return (
@@ -58,6 +60,7 @@ export function QueueRequestCard({ request, badge, expiry, expiryUrgent, footer 
         <span><Check />{request.attachmentCount} document{request.attachmentCount === 1 ? "" : "s"} attached</span>
         {request.compensation ? <span>{request.compensation}</span> : null}
         {expiry ? <span className={expiryUrgent ? "text-destructive" : undefined}><Clock3 />{expiry}</span> : null}
+        {decisionDue ? <span><Clock3 />{decisionDue}</span> : null}
       </div>
       <div className="mt-[23px]">{footer}</div>
     </article>
