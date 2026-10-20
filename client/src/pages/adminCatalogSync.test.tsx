@@ -19,9 +19,9 @@ const dryRun = () => ({
   environment: "live",
   checkedAt: "2026-10-19T10:00:00.000Z",
   planHash: HASH,
-  family: { id: "skipwait", action: "create", reason: "No SkipWait product family exists yet, so one is created." },
+  family: { id: "skipwait", action: "create", reason: "No skipwait.me product family exists yet, so one is created." },
   toCreate: [
-    { kind: "item_family", params: { id: "skipwait", name: "SkipWait" } },
+    { kind: "item_family", params: { id: "skipwait", name: "skipwait.me" } },
     { kind: "item_price", params: packSpec },
   ],
   correct: [{ itemPriceId: "skipwait_pack_5-USD", currencyCode: "USD", price: 500, term: "one_time" }],
@@ -33,8 +33,8 @@ const dryRun = () => ({
     diffs: [{ field: "price", expected: 119900, actual: 119000 }],
     sellableNow: false,
   }],
-  blocked: [{ itemPriceId: "skipwait_start_30d-INR", currencyCode: "INR", price: 29900, term: "30d", reason: "SkipWait item skipwait_start is archived in Chargebee; restore it before syncing." }],
-  extras: [{ kind: "item_price", id: "skipwait_token_1-INR", status: "active", note: "Legacy SkipWait item price (D-036/D-067); left alone." }],
+  blocked: [{ itemPriceId: "skipwait_start_30d-INR", currencyCode: "INR", price: 29900, term: "30d", reason: "skipwait.me item skipwait_start is archived in Chargebee; restore it before syncing." }],
+  extras: [{ kind: "item_price", id: "skipwait_token_1-INR", status: "active", note: "Legacy skipwait.me item price (D-036/D-067); left alone." }],
   excluded: [{ itemPriceId: "skipwait_land_concierge_30d-INR", reason: "Land Concierge is sold by application, never from self-serve checkout." }],
   counts: { desired: 26, correct: 1, mismatched: 1, blocked: 1, toCreate: 2, itemPricesToCreate: 1, extras: 1, excluded: 1 },
 });
@@ -82,7 +82,7 @@ describe("admin catalog sync page", () => {
     expect(screen.getByText(/Does not sell/)).toBeTruthy();
     expect(screen.getByText(/price: expected 119900 → Chargebee has 119000/)).toBeTruthy();
     expect(screen.getByText(/archived in Chargebee/)).toBeTruthy();
-    expect(screen.getByText(/Legacy SkipWait item price/)).toBeTruthy();
+    expect(screen.getByText(/Legacy skipwait.me item price/)).toBeTruthy();
     expect(screen.getByText(/sold by application/)).toBeTruthy();
   });
 

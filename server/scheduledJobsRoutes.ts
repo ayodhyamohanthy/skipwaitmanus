@@ -1,6 +1,6 @@
 // Scheduled jobs REST surface.
 //   POST /api/internal/jobs/tick  Worker cron only (src/worker.ts scheduled()):
-//        X-SkipWait-Jobs-Tick = HMAC token from JWT_SECRET (shared/jobsTick.ts).
+//        X-skipwait.me-Jobs-Tick = HMAC token from JWT_SECRET (shared/jobsTick.ts).
 //        404 when JWT_SECRET is unset, 401 for a missing or stale token, 503
 //        without a database; otherwise runs every due job once per window.
 //        The public Worker route 404s /api/internal/ and strips the header.

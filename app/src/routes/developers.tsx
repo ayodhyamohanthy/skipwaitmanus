@@ -5,7 +5,7 @@ import { pageMeta } from "@/lib/page-meta";
 import { Panel } from "@/components/preview-kit";
 
 export const Route = createFileRoute("/developers")({
-  head: () => pageMeta("SkipWait for assistants & developers", "Connect SkipWait to ChatGPT, Claude or your own scripts with MCP and a simple API. Open to any app, agent or MCP client."),
+  head: () => pageMeta("skipwait.me for assistants & developers", "Connect skipwait.me to ChatGPT, Claude or your own scripts with MCP and a simple API. Open to any app, agent or MCP client."),
   component: Developers,
 });
 
@@ -13,11 +13,11 @@ const tools = [["search_companies", "Companies open to referrals, by role, locat
 
 function Developers() {
   return <div className="min-h-screen">
-    <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5"><Link to="/" className="wordmark text-xl">SkipWait<span className="brand-dot">.</span></Link><Button asChild variant="outline" size="sm"><Link to="/assistants">Connected assistants</Link></Button></header>
+    <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5"><Link to="/" className="wordmark text-xl">skipwait<span className="brand-dot">.</span>me</Link><Button asChild variant="outline" size="sm"><Link to="/assistants">Connected assistants</Link></Button></header>
     <main className="mx-auto max-w-5xl px-4 pb-20">
       <p className="example-banner mb-6">DESIGN PREVIEW · API NOT LIVE</p>
       <span className="eyebrow">For assistants & developers</span>
-      <h1 className="mt-2 max-w-3xl text-4xl font-semibold sm:text-5xl">Use SkipWait from ChatGPT, Claude, or your own code<span className="brand-dot">.</span></h1>
+      <h1 className="mt-2 max-w-3xl text-4xl font-semibold sm:text-5xl">Use skipwait.me from ChatGPT, Claude, or your own code<span className="brand-dot">.</span></h1>
       <p className="mt-4 max-w-2xl text-lg text-muted-foreground">Your assistant finds companies, drafts asks and tracks replies. You approve every send. For Land and Concierge members.</p>
       <div className="mt-6 flex flex-wrap gap-2"><Button asChild size="lg"><Link to="/connect-assistant">Connect an assistant</Link></Button><Button asChild variant="outline" size="lg"><Link to="/developer-console">Build an app</Link></Button></div>
 

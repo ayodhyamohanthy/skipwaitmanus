@@ -250,7 +250,7 @@ export function createPaymentRefundAlerter(dependencies: AlertDependencies = {})
 
 /**
  * Why a plan event reached a human: plan_retired (a Pro/Max subscription, D-067), gift_claimed /
- * gift_claim_refused (a gift of one), or unsupported_plan (an item price SkipWait cannot place).
+ * gift_claim_refused (a gift of one), or unsupported_plan (an item price skipwait.me cannot place).
  */
 export type RetiredPlanAlertReason = "plan_retired" | "gift_claimed" | "gift_claim_refused" | "unsupported_plan";
 export type RetiredPlanAlertInput = { eventId?: string; eventType?: string; reason: RetiredPlanAlertReason; subscriptionId?: string; giftId?: string; itemPriceId?: string };
@@ -260,7 +260,7 @@ export type RetiredPlanAlertInput = { eventId?: string; eventType?: string; reas
  * Pro/Max plans (a renewal, a change, a claimed gift) or a recipient tries to
  * claim such a gift. Nothing is granted for these, so a human must cancel the
  * subscription and refund the customer in the Chargebee dashboard. An event on
- * an item price SkipWait cannot place (unsupported_plan) is not called Pro/Max
+ * an item price skipwait.me cannot place (unsupported_plan) is not called Pro/Max
  * and carries no refund instruction: it may be a paying kit customer, so it asks
  * for a review. Never deduplicated here (callers alert once per transition).
  * Provider ids only.
@@ -275,15 +275,15 @@ export function createCardValidationAlerter(dependencies: AlertDependencies = {}
     const ref = input.customerId ?? input.eventId ?? "unknown";
     const subject = `skipwait.me card validation needs review · ${input.reason} · ${ref}`;
     const text = [
-      "Chargebee sent a payment-source event SkipWait could not apply to a wallet. No free credits were granted.",
+      "Chargebee sent a payment-source event skipwait.me could not apply to a wallet. No free credits were granted.",
       `Reason: ${input.reason}`,
       `Event: ${input.eventId ?? "none"}${input.eventType ? ` (${input.eventType})` : ""}`,
       `Chargebee customer: ${input.customerId ?? "unknown"}`,
       `Payment source: ${input.paymentSourceId ?? "unknown"}`,
       input.reason === "no_user_for_customer"
-        ? "The Chargebee customer is not linked to any SkipWait account. In the Chargebee dashboard, find the customer by this id; if it is a real user, link the customer id on their account (or re-run validation from their credits page)."
+        ? "The Chargebee customer is not linked to any skipwait.me account. In the Chargebee dashboard, find the customer by this id; if it is a real user, link the customer id on their account (or re-run validation from their credits page)."
         : input.reason === "hosted_page_creation_failed"
-          ? "A signed-in seeker asked to validate a card and SkipWait could not create Chargebee's hosted page, so free credits stay locked for them. Nothing was charged. Check the Chargebee site and API key configuration and the hosted-pages setup."
+          ? "A signed-in seeker asked to validate a card and skipwait.me could not create Chargebee's hosted page, so free credits stay locked for them. Nothing was charged. Check the Chargebee site and API key configuration and the hosted-pages setup."
           : "The card did not validate. No charge settles (Chargebee voids its verification). If this repeats for the same customer, check the gateway's card-verification log in Chargebee.",
     ].join("\n");
     const metadata = { eventId: input.eventId, reason: input.reason, customerId: input.customerId, paymentSourceId: input.paymentSourceId };
@@ -316,8 +316,8 @@ export function createRetiredPlanAlerter(dependencies: AlertDependencies = {}) {
     const subject = `skipwait.me ${unsupported ? "unrecognised" : "retired"} plan event needs review · ${ref}`;
     const text = [
       unsupported
-        ? "Chargebee sent a subscription event for an item price SkipWait could not match to a plan it sells. Nothing was granted."
-        : "Chargebee sent an event for a plan SkipWait no longer sells (Pro/Max, or a gift of one; D-067). Nothing was granted.",
+        ? "Chargebee sent a subscription event for an item price skipwait.me could not match to a plan it sells. Nothing was granted."
+        : "Chargebee sent an event for a plan skipwait.me no longer sells (Pro/Max, or a gift of one; D-067). Nothing was granted.",
       `Reason: ${input.reason}`,
       `Event: ${input.eventId ?? "none"}${input.eventType ? ` (${input.eventType})` : ""}`,
       `Subscription: ${input.subscriptionId ?? "unknown"}`,

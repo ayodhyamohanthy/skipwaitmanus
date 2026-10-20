@@ -163,9 +163,9 @@ export function planFaqs(): Array<readonly [string, string]> {
   return [
     ["Does paying help me get referred?", "No. Referrers see the same queue whatever you have paid for. Credits you buy pay for asks and tools; they never change how many requests you can have open or your place in the queue. The decision to refer stays human."],
     ["How many referral requests can I have open?", `Free includes ${openRequestsLabel(free.openRequests)} open requests at a time. A request that's answered, passed, withdrawn or expired frees its slot. Every account shares the same queue.`],
-    ["What are credits for?", `1 credit = ${CREDIT_PRICE.USD} = one finished piece of work from SkipWait's tools. Each referral request uses 1 credit; ${CREDIT_RULE_SHORT}. Extra credits are ${CREDIT_PRICE.USD} each (${CREDIT_PRICE.INR} in India).`],
+    ["What are credits for?", `1 credit = ${CREDIT_PRICE.USD} = one finished piece of work from skipwait.me's tools. Each referral request uses 1 credit; ${CREDIT_RULE_SHORT}. Extra credits are ${CREDIT_PRICE.USD} each (${CREDIT_PRICE.INR} in India).`],
     ["Do unused credits expire?", "Credits you buy never expire, and they are spent only when a verified employee can first see your ask."],
-    ["Do referrers pay?", "No. Referrers never pay to review requests, SkipWait never pays them, and they never ask you for money."],
+    ["Do referrers pay?", "No. Referrers never pay to review requests, skipwait.me never pays them, and they never ask you for money."],
     ["Is pricing local?", `Yes. In India a credit costs ${CREDIT_PRICE.INR}; everywhere else ${CREDIT_PRICE.USD}.`],
   ];
 }

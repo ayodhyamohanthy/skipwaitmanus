@@ -1,6 +1,6 @@
 /**
  * src/components/layout/AppShell.tsx
- * SkipWait Kinetic · Adaptive App Shell
+ * skipwait.me Kinetic · Adaptive App Shell
  */
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { cx, SvgIcon, type IconProps } from "../ui/primitives";

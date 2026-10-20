@@ -6,7 +6,7 @@ import { pageMeta } from "@/lib/page-meta";
 import { Heading, Panel, field } from "@/components/preview-kit";
 
 export const Route = createFileRoute("/help")({
-  head: () => pageMeta("Help centre", "Answers about asking for referrals, becoming a verified referrer, plans and credits, privacy, and safety on SkipWait."),
+  head: () => pageMeta("Help centre", "Answers about asking for referrals, becoming a verified referrer, plans and credits, privacy, and safety on skipwait.me."),
   component: Help,
 });
 

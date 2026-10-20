@@ -14,17 +14,17 @@ const QUICK_START = `curl ${MCP_ENDPOINT} \\
 export default function Developers() {
   return (
     <div data-skipwait-screen="developers" className="min-h-screen">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5"><Link href="/" className="wordmark text-xl">SkipWait<span className="brand-dot">.</span></Link><Button asChild variant="outline" size="sm"><Link href="/assistants">Connected assistants</Link></Button></header>
+      <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5"><Link href="/" className="wordmark text-xl">skipwait<span className="brand-dot">.</span>me</Link><Button asChild variant="outline" size="sm"><Link href="/assistants">Connected assistants</Link></Button></header>
       <main className="mx-auto max-w-5xl px-4 pb-20">
         <span className="eyebrow">For assistants & developers</span>
-        <h1 className="mt-2 max-w-3xl text-4xl font-semibold sm:text-5xl">Use SkipWait from ChatGPT, Claude, or your own code<span className="brand-dot">.</span></h1>
+        <h1 className="mt-2 max-w-3xl text-4xl font-semibold sm:text-5xl">Use skipwait.me from ChatGPT, Claude, or your own code<span className="brand-dot">.</span></h1>
         <p className="mt-4 max-w-2xl text-lg text-muted-foreground">Your assistant finds companies, drafts asks and tracks replies. You approve every send. For Land and Concierge members.</p>
         <div className="mt-6 flex flex-wrap gap-2"><Button asChild size="lg"><Link href="/connect-assistant">Connect an assistant</Link></Button><Button asChild variant="outline" size="lg"><Link href="/developer-console">Build an app</Link></Button></div>
 
         <div className="mt-12 grid gap-4 md:grid-cols-3">
           <Panel><Bot className="mb-3 size-6 text-primary" /><h2 className="font-semibold">MCP connector</h2><p className="mt-1 text-sm text-muted-foreground">Add <code>{MCP_ENDPOINT}</code> in ChatGPT, Claude, Cursor or any MCP client. Sign in, approve, done.</p></Panel>
           <Panel><KeyRound className="mb-3 size-6 text-primary" /><h2 className="font-semibold">Personal tokens</h2><p className="mt-1 text-sm text-muted-foreground">Create one in Connected assistants for your own scripts and trackers. Same tools, same limits.</p></Panel>
-          <Panel><CircleCheck className="mb-3 size-6 text-primary" /><h2 className="font-semibold">Your approval</h2><p className="mt-1 text-sm text-muted-foreground">A proposed ask waits in SkipWait until you approve it, with the credit cost shown first.</p></Panel>
+          <Panel><CircleCheck className="mb-3 size-6 text-primary" /><h2 className="font-semibold">Your approval</h2><p className="mt-1 text-sm text-muted-foreground">A proposed ask waits in skipwait.me until you approve it, with the credit cost shown first.</p></Panel>
         </div>
 
         <h2 className="mt-14 text-2xl font-semibold">Tools</h2>

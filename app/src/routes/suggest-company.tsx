@@ -25,7 +25,7 @@ function Suggest() {
     <Heading eyebrow="GROW THE MAP" title="Suggest a company" text="Real employers only. We review every suggestion before it appears." />
     <Panel>
       <label className="block text-sm font-medium">Company name<input className={field} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Freshworks" /></label>
-      {dup && <p className="mt-2 flex items-center gap-2 text-sm"><AlertTriangle className="size-4" />{dup.name} is already on SkipWait. <Link to="/explore/$slug" params={{ slug: dup.slug }} className="text-link">Open it</Link></p>}
+      {dup && <p className="mt-2 flex items-center gap-2 text-sm"><AlertTriangle className="size-4" />{dup.name} is already on skipwait.me. <Link to="/explore/$slug" params={{ slug: dup.slug }} className="text-link">Open it</Link></p>}
       <label className="mt-4 block text-sm font-medium">Website<input className={field} value={site} onChange={e => setSite(e.target.value)} placeholder="freshworks.com" /></label>
       <fieldset className="mt-4"><legend className="text-sm font-medium">You are</legend><div className="mt-2 grid gap-2 sm:grid-cols-2">{([["seeker", "Looking to join"], ["employee", "Working there now"]] as const).map(([k, l]) => <button key={k} type="button" onClick={() => setRole(k)} className={`flex min-h-12 items-center gap-2 rounded-xl border px-4 text-left ${role === k ? "border-primary bg-primary/5" : "border-border"}`}><Building2 className="size-4" />{l}</button>)}</div></fieldset>
       <Button className="mt-6 w-full" disabled={!name.trim() || !validSite || !!dup} onClick={() => setSent(true)}>Submit for review <ArrowRight /></Button>

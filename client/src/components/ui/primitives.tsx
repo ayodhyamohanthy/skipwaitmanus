@@ -1,6 +1,6 @@
 /**
  * src/components/ui/primitives.tsx
- * SkipWait Kinetic · UI Primitives
+ * skipwait.me Kinetic · UI Primitives
  */
 import {forwardRef, useEffect, useId, useMemo, useRef, useState, type ButtonHTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode} from "react";
 import { createPortal } from "react-dom";

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { pageMeta } from "@/lib/page-meta";
 import { importSources, visibilityLabels, workTypes, type Visibility } from "@/lib/monetization-data";
 
-export const Route = createFileRoute("/work")({ head: () => pageMeta("Work showcase", "Publish your work to your SkipWait profile. No feed, no likes — just proof of what you can do."), component: Work });
+export const Route = createFileRoute("/work")({ head: () => pageMeta("Work showcase", "Publish your work to your skipwait.me profile. No feed, no likes — just proof of what you can do."), component: Work });
 
 type Piece = { id: number; title: string; type: string; vis: Visibility; pinned: boolean; source?: string };
 const starter: Piece[] = [

@@ -1,7 +1,7 @@
 /**
  * Billing account contracts (kit 20_billing, 33_app-states payment failed):
  * saved payment methods, receipts, a checkout's outcome and a payment retry.
- * SkipWait never handles card data: methods are labels read from Chargebee,
+ * skipwait.me never handles card data: methods are labels read from Chargebee,
  * and every change happens on a Chargebee hosted page.
  */
 import { z } from "zod";

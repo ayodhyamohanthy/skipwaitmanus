@@ -6,7 +6,7 @@ import { pageMeta } from "@/lib/page-meta";
 import { Heading, Panel, StateChips } from "@/components/preview-kit";
 
 export const Route = createFileRoute("/billing")({
-  head: () => pageMeta("Manage plan and billing", "Change, pause or cancel your SkipWait plan, update payment, and download receipts."),
+  head: () => pageMeta("Manage plan and billing", "Change, pause or cancel your skipwait.me plan, update payment, and download receipts."),
   component: Billing,
 });
 

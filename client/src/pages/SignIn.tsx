@@ -25,15 +25,15 @@ export default function SignIn() {
   // Where the work-email OTP lands the referrer (same-origin path only).
   const referrerReturnTo = typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.referrer) : INTENT_RETURN_TO.referrer;
   return <main data-skipwait-screen="sign-in" className="auth-page">
-    <section className="auth-story" aria-label="SkipWait introduction">
-      <Link className="wordmark auth-wordmark" href="/">SkipWait<span className="brand-dot">.</span></Link>
+    <section className="auth-story" aria-label="skipwait.me introduction">
+      <Link className="wordmark auth-wordmark" href="/">skipwait<span className="brand-dot">.</span>me</Link>
       <img src="/launch-door.jpg" alt="An open blue door with a yellow path" width={1600} height={1008} />
       <div className="auth-story-copy"><span className="eyebrow">A WARMER WAY IN</span><h1>One sign-in.<br />More open doors.</h1><p>Explore first. Sign in only when you’re ready to ask for—or <span className="whitespace-nowrap">offer—a</span> real introduction.</p></div>
       <div className="auth-story-proof"><ShieldCheck /><span><strong>Private by default</strong>Your details stay yours until you choose to share.</span></div>
     </section>
     <section className="auth-panel"><div className="auth-panel-inner">
       <Link className="auth-back" href="/"><ArrowLeft /> Back to home</Link>
-      <div className="auth-heading"><span className="auth-step">YOUR DOOR STARTS HERE</span><h2>Welcome to SkipWait.</h2><p>Pick your side. You can switch any time on this screen.</p></div>
+      <div className="auth-heading"><span className="auth-step">YOUR DOOR STARTS HERE</span><h2>Welcome to skipwait.me.</h2><p>Pick your side. You can switch any time on this screen.</p></div>
       <p className="intent-prompt" id="intent-prompt">I’m here to…</p>
       <div className="intent-switch intent-cards" role="group" aria-labelledby="intent-prompt">
         <Button type="button" variant="ghost" className={intent === "seeker" ? "selected" : ""} aria-pressed={intent === "seeker"} onClick={() => setIntent("seeker")}><Sparkles /><span className="intent-title">Find a referral</span><span className="intent-sub">I’m looking for a job</span>{intent === "seeker" && <Check className="intent-check" aria-hidden="true" />}</Button>
@@ -45,7 +45,7 @@ export default function SignIn() {
         ? <div className="auth-form" data-testid="referrer-work-email-otp"><ReferrerOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
         // Job seekers: every sign-in stays on skipwait.me. Social buttons go straight to the provider; email uses a six-digit code.
         : <SeekerSignIn returnTo={INTENT_RETURN_TO.seeker} />}
-      {intent === "referrer" ? <p className="auth-new">Work email only. We never use personal email or social logins for referrers.</p> : <p className="auth-new">New to SkipWait? Enter your email and we’ll create your account.</p>}
+      {intent === "referrer" ? <p className="auth-new">Work email only. We never use personal email or social logins for referrers.</p> : <p className="auth-new">New to skipwait.me? Enter your email and we’ll create your account.</p>}
       <p className="auth-terms">By continuing, you agree to the <Link href="/terms" className={legalLink}>Terms</Link> and acknowledge the <Link href="/privacy" className={legalLink}>Privacy Policy</Link>. {MONEY_SENTENCE_SHORT} A referral never guarantees an interview.</p>
     </div></section>
   </main>;

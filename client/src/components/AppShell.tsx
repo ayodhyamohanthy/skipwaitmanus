@@ -58,7 +58,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <aside className={`app-sidebar overflow-y-auto${drawer ? " is-open" : ""}`}>
-        <Link href="/" className="wordmark" onClick={close}><span className="brand-mark"><ArrowUpRight /></span>SkipWait<span className="brand-dot">.</span></Link>
+        <Link href="/" className="wordmark" onClick={close}><span className="brand-mark"><ArrowUpRight /></span>skipwait<span className="brand-dot">.</span>me</Link>
         <div className="sidebar-caption">A LITTLE CONNECTION.<br />A BIG NEXT STEP.</div>
         <nav aria-label="Main navigation">
           {navigation.map(item => (
@@ -87,7 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="app-topbar">
           <div className="mobile-brand">
             <Button variant="ghost" size="icon" aria-label={drawer ? "Close menu" : "Open menu"} onClick={() => setDrawer(!drawer)}>{drawer ? <X /> : <Menu />}</Button>
-            <Link href="/" className="wordmark">SkipWait<span className="brand-dot">.</span></Link>
+            <Link href="/" className="wordmark">skipwait<span className="brand-dot">.</span>me</Link>
             <Button variant="ghost" size="icon" asChild className="ml-auto md:hidden"><Link href="/alerts" aria-label="Alerts"><Bell /></Link></Button>
           </div>
           <span className="desktop-top-label">GOOD OPPORTUNITIES START WITH PEOPLE.</span>
@@ -98,7 +98,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         {children}
-        <footer className="app-footer"><span>SkipWait · A warmer way in.</span><Link href="/safety">{FREE_ASKS_CHIP}. {REFERRERS_NEVER_PAID} <ArrowUpRight size={13} /></Link></footer>
+        <footer className="app-footer"><span>skipwait.me · A warmer way in.</span><Link href="/safety">{FREE_ASKS_CHIP}. {REFERRERS_NEVER_PAID} <ArrowUpRight size={13} /></Link></footer>
       </div>
       <nav className="mobile-tabs" aria-label="Mobile navigation">
         {[...navigation, ...accountLinks].map(item => (

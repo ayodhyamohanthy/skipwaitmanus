@@ -25,7 +25,7 @@ describe("ForCompanies sales page", () => {
     expect(screen.getByText(/Your best hires already/)).toBeTruthy();
     expect(await screen.findByText("Wipro")).toBeTruthy();
     const chips = screen.getByText("PEOPLE OPEN TO REFERRALS AT LAUNCH").closest("section") as HTMLElement;
-    expect(Array.from(chips.querySelectorAll(".co-logos span")).map(node => node.textContent)).toEqual(["SkipWait", "Wipro", "Go Neutrinos", "TCS", "Merkle"]);
+    expect(Array.from(chips.querySelectorAll(".co-logos span")).map(node => node.textContent)).toEqual(["skipwait.me", "Wipro", "Go Neutrinos", "TCS", "Merkle"]);
     const nav = screen.getByRole("navigation", { name: "Company navigation" });
     expect(within(nav).getByRole("link", { name: "Plans" }).getAttribute("href")).toBe("/plans");
     expect(within(nav).getByRole("link", { name: "Book a demo" }).getAttribute("href")).toBe("#demo");

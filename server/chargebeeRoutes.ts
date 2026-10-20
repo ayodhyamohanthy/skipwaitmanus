@@ -40,7 +40,7 @@ type Deps = {
   listClaimableGifts?: (userId: number) => Promise<Array<{ giftId: string; plan: RetiredPlanId | null; currency: string | null; amount: number | null; subscriptionId: string | null; receiverEmail: string | null; createdAt: Date }>>;
   /** Never credits (D-067): "retired" for a gift not credited (`parked` when this call parked it), "duplicate" for one credited before D-067. */
   claimGift?: (userId: number, giftId: string) => Promise<{ status: "retired"; giftId: string; parked: boolean } | { status: "duplicate" }>;
-  /** D-067: anything Chargebee sends for the retired Pro/Max plans, or a claim of such a gift (a human cancels and refunds it), or an item price SkipWait cannot place (unsupported_plan: reviewed, worded neutrally). */
+  /** D-067: anything Chargebee sends for the retired Pro/Max plans, or a claim of such a gift (a human cancels and refunds it), or an item price skipwait.me cannot place (unsupported_plan: reviewed, worded neutrally). */
   alertRetiredPlanEvent?: (input: RetiredPlanAlertInput) => Promise<unknown>;
   /** D-079: apply a provider payment-source event (card validation for free credits). */
   applyCardValidationEvent?: (input: NonNullable<ReturnType<typeof parsePaymentSourceEvent>>) => Promise<{ status: string; userId?: number; granted?: boolean; reason?: string }>;
@@ -53,7 +53,7 @@ type Deps = {
 };
 
 /** What a recipient reads when a gift (always a retired Pro/Max gift) is claimed. */
-const GIFT_RETIRED_MESSAGE = "This gift was for a plan SkipWait no longer offers, so it cannot be added to your account. We have told our team so the person who sent it can be refunded.";
+const GIFT_RETIRED_MESSAGE = "This gift was for a plan skipwait.me no longer offers, so it cannot be added to your account. We have told our team so the person who sent it can be refunded.";
 
 type ReviewResult = { status: "requires_review"; reason: string; paymentId: number; expectedAmount: number; expectedCurrency: string; paidAmount: number; paidCurrency: string };
 
@@ -319,7 +319,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       }
       // D-067: an event that was recorded and granted nothing because of its plan reaches a human.
       // A retired Pro/Max item price, or a wallet/intent still stored as Pro/Max (plan_retired), is
-      // cancelled and refunded in Chargebee. Any other price SkipWait cannot place (unsupported_plan,
+      // cancelled and refunded in Chargebee. Any other price skipwait.me cannot place (unsupported_plan,
       // e.g. a renamed item price on a kit subscription) is reviewed under its own neutral label,
       // never called Pro/Max, so nobody refunds a paying kit customer on a wrong label.
       const applied = obligations.subscription as { status?: string; reason?: string } | undefined;

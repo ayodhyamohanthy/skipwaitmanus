@@ -15,7 +15,7 @@ import { z } from "zod";
 /** Four weeks: long enough to see a trend, short enough to act on. */
 export const BASELINE_WINDOW_DAYS = 28;
 
-/** The company page that belongs to SkipWait itself; its referrers are operators, not demand. */
+/** The company page that belongs to skipwait.me itself; its referrers are operators, not demand. */
 export const OPERATOR_COMPANY_SLUG = "skipwait";
 
 export const flowBaselineWeekSchema = z.object({
@@ -126,7 +126,7 @@ export function decisionLatencyHours(samplesMs: readonly number[]): { medianHour
   return { medianHours: round1(median), p90Hours: round1(hours[rank]!) };
 }
 
-/** True when a verified referrer's domain is not one SkipWait itself operates. */
+/** True when a verified referrer's domain is not one skipwait.me itself operates. */
 export function isExternalReferrerDomain(domain: string | null | undefined, operatorDomains: readonly string[]): boolean {
   const normalized = (domain ?? "").trim().toLowerCase();
   if (!normalized) return false;

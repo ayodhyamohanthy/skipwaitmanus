@@ -18,10 +18,10 @@ function renderPage() {
 
 const day = 24 * 60 * 60 * 1000;
 const iso = (ms: number) => new Date(ms).toISOString();
-// /mine rows carry the server directory identity: null outside it, "SkipWait"/"SW" for skipwait.me.
+// /mine rows carry the server directory identity: null outside it, "skipwait.me"/"SW" for skipwait.me.
 const base = { targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", companyName: null, companyInitials: null, queueStatus: null, referrerMessage: null, unreadMessageCount: 0, attachmentCount: 1 };
 const openAsk = (id: number) => ({ ...base, id, title: "Product Designer", status: "pending", referrerId: null, createdAt: iso(Date.now() - day), updatedAt: iso(Date.now() - day) });
-const declined = { ...base, id: 45, title: "Designer", companyDomain: "skipwait.me", companyName: "SkipWait", companyInitials: "SW", status: "declined", referrerId: 503, referrerMessage: "Not my team", createdAt: iso(Date.now() - 9 * day), updatedAt: iso(Date.now() - 8 * day) };
+const declined = { ...base, id: 45, title: "Designer", companyDomain: "skipwait.me", companyName: "skipwait.me", companyInitials: "SW", status: "declined", referrerId: 503, referrerMessage: "Not my team", createdAt: iso(Date.now() - 9 * day), updatedAt: iso(Date.now() - 8 * day) };
 const expired = { ...base, id: 46, title: "Analyst", status: "closed", referrerId: null, createdAt: iso(Date.now() - 12 * day), updatedAt: iso(Date.now() - 5 * day) };
 // The server's open-ask slots payload (shared/openAskSlots.ts): open asks against the plan cap.
 const slots = (open: number, extra: Record<string, unknown> = {}) => ({ plan: "free", planLabel: "Free", open, cap: 3, full: open >= 3, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 }, ...extra });
@@ -118,12 +118,12 @@ describe("My Requests kit v4 states", () => {
     stub([openAsk(42), declined, expired], slots(1));
     renderPage();
     await screen.findByLabelText("acme.com request, Requested");
-    expect(screen.queryByLabelText("SkipWait request, Declined")).toBeNull();
+    expect(screen.queryByLabelText("skipwait.me request, Declined")).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Closed" }));
-    const row = await screen.findByLabelText("SkipWait request, Declined");
+    const row = await screen.findByLabelText("skipwait.me request, Declined");
     expect(row.getAttribute("href")).toBe("/conversation/45");
     // Launch companies show their name and kit initials, not the raw domain.
-    expect(row.textContent).toContain("SkipWait · Not my team");
+    expect(row.textContent).toContain("skipwait.me · Not my team");
     expect(row.querySelector(".company-mark")?.textContent).toBe("SW");
     expect(row.textContent).not.toContain("Ref-");
     expect(screen.getByLabelText("acme.com request, Expired")).toBeTruthy();
@@ -143,7 +143,7 @@ describe("My Requests kit v4 states", () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
     renderPage();
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("We couldn’t reach SkipWait. Check your connection and try again.");
+    expect(alert.textContent).toContain("We couldn’t reach skipwait.me. Check your connection and try again.");
     expect(screen.queryByText("IN CONVERSATION")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Back to home" }));
     expect(go).toHaveBeenCalledWith("/");

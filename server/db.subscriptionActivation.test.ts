@@ -248,7 +248,7 @@ describe("applyChargebeeSubscriptionEvent for a retired Pro/Max subscription", (
     expect(promoTxns).toEqual([]);
   });
   // Review round 2: the webhook tells "a retired Pro/Max subscription, cancel and refund" apart from
-  // "an item price SkipWait cannot place, review". A wallet still stored as pro/max whose event
+  // "an item price skipwait.me cannot place, review". A wallet still stored as pro/max whose event
   // names no item price is the first kind; a Free-bound wallet getting an unknown price is the second.
   it.each(["pro", "max"] as const)("a wallet still stored as %s gets nothing from an event that names no item price, as a retired plan", async plan => {
     Object.assign(wallets[0], { plan, subscriptionId: "sub_legacy", subscriptionStatus: "active", subscriptionCurrency: "INR", subscriptionCurrentTermStart: termStart, subscriptionCurrentTermEnd: termEnd, subscriptionResourceVersion: 10 });

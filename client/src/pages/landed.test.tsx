@@ -60,7 +60,7 @@ describe("Landed journey (kit v4)", () => {
     expect(screen.getByText("Once you have your new work email, verify in 30 seconds and refer people you believe in — at your own pace.")).toBeTruthy();
     expect(screen.getByText("Set your own capacity")).toBeTruthy();
     expect(screen.getByText("Even 1 request a month helps.")).toBeTruthy();
-    const back = screen.getByRole("link", { name: "Back to SkipWait" });
+    const back = screen.getByRole("link", { name: "Back to skipwait.me" });
     expect(back.getAttribute("href")).toBe("/explore");
     expect(classesOf(back)).toEqual(expect.arrayContaining(["brand-button", "border-2", "text-sm"]));
     fireEvent.click(screen.getByRole("button", { name: "Yes, I'll pay it forward" }));

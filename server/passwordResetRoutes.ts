@@ -106,8 +106,8 @@ export function registerPasswordResetRoutes(app: Express, deps: PasswordResetDep
       const { sendTransactionalEmail } = await import("./emailDelivery");
       await sendTransactionalEmail({
         to,
-        subject: "Reset your SkipWait password",
-        text: `You asked to reset your SkipWait password. This link works for 1 hour, once:\n\n${link}\n\nIf you did not ask for this, ignore this email — nothing changes. Passwords are managed through secure sign-in; you can also continue with email from the sign-in page.`,
+        subject: "Reset your skipwait.me password",
+        text: `You asked to reset your skipwait.me password. This link works for 1 hour, once:\n\n${link}\n\nIf you did not ask for this, ignore this email — nothing changes. Passwords are managed through secure sign-in; you can also continue with email from the sign-in page.`,
       });
     });
 

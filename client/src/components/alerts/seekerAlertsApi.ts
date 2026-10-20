@@ -14,7 +14,7 @@ export const ALERTS_LOAD_ERROR = "We could not load your saved alerts";
 export const ALERT_SAVE_ERROR = "We could not save this alert";
 export const ALERT_UPDATE_ERROR = "We could not update this alert";
 export const ALERT_REMOVE_ERROR = "We could not remove this alert";
-export const ALERTS_NETWORK_ERROR = "We could not reach SkipWait. Check your connection and try again.";
+export const ALERTS_NETWORK_ERROR = "We could not reach skipwait.me. Check your connection and try again.";
 
 export const seekerAlertSchema = z.object({
   id: z.number().int().positive(),

@@ -78,8 +78,8 @@ export default function ResetPassword() {
   return (
     <div className="grid min-h-screen place-items-center bg-[var(--background)] px-5 py-10">
       <main data-skipwait-screen="reset-password" className="w-full max-w-md">
-        <Link href="/" className="wordmark" aria-label="SkipWait home">
-          SkipWait<span className="brand-dot">.</span>
+        <Link href="/" className="wordmark" aria-label="skipwait.me home">
+          skipwait<span className="brand-dot">.</span>me
         </Link>
         {checking ? (
           <LoadingNote>Checking this link…</LoadingNote>

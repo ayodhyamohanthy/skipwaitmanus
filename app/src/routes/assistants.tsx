@@ -6,7 +6,7 @@ import { pageMeta } from "@/lib/page-meta";
 import { Heading, Panel, StateChips, Toggle, field } from "@/components/preview-kit";
 
 export const Route = createFileRoute("/assistants")({
-  head: () => pageMeta("Connected assistants", "See and control which AI assistants and API tokens can use your SkipWait account."),
+  head: () => pageMeta("Connected assistants", "See and control which AI assistants and API tokens can use your skipwait.me account."),
   component: Assistants,
 });
 
@@ -25,13 +25,13 @@ function Assistants() {
   const [plan, setPlan] = useState<"Land" | "Momentum or Start">("Land");
 
   return <main className="page-content mx-auto max-w-3xl">
-    <Heading eyebrow="Settings" title="Connected assistants" text="Use SkipWait from ChatGPT, Claude and your own tools. You stay in control of every ask and every credit." />
+    <Heading eyebrow="Settings" title="Connected assistants" text="Use skipwait.me from ChatGPT, Claude and your own tools. You stay in control of every ask and every credit." />
     <StateChips label="Plan:" states={["Land", "Momentum or Start"] as const} value={plan} onChange={setPlan} />
     <div role="tablist" className="mb-5 flex gap-1 overflow-x-auto rounded-full bg-muted p-1">{tabs.map(t => <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`min-h-11 flex-1 whitespace-nowrap rounded-full px-4 text-sm ${tab === t ? "bg-background font-semibold shadow-sm" : ""}`}>{t}</button>)}</div>
 
     {plan !== "Land" ? <Panel className="text-center"><Bot className="mx-auto size-8" /><h2 className="mt-2 font-semibold">Assistants and API tokens come with Land</h2><p className="mt-1 text-sm text-muted-foreground">Land and Concierge members can sign in, connect and apply from ChatGPT, Claude, bots and their own tools.</p><Button asChild className="mt-4"><Link to="/plans">Upgrade to Land</Link></Button></Panel> : <>
     {tab === "Assistants" && <>
-      {list.length === 0 ? <Panel className="text-center"><Bot className="mx-auto size-8" /><h2 className="mt-2 font-semibold">No assistants connected</h2><p className="mt-1 text-sm text-muted-foreground">In ChatGPT or Claude, add SkipWait as a connector and approve it here.</p></Panel> :
+      {list.length === 0 ? <Panel className="text-center"><Bot className="mx-auto size-8" /><h2 className="mt-2 font-semibold">No assistants connected</h2><p className="mt-1 text-sm text-muted-foreground">In ChatGPT or Claude, add skipwait.me as a connector and approve it here.</p></Panel> :
         <ul className="space-y-3">{list.map(a => <li key={a.name}><Panel><div className="flex items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-muted"><Bot className="size-5" /></span><span className="min-w-0 flex-1"><strong className="block">{a.name}</strong><small className="block text-muted-foreground">{a.scopes}</small><small className="text-muted-foreground">{a.last}</small></span><Button variant="ghost" size="sm" onClick={() => setList(list.filter(x => x !== a))}><Trash2 />Disconnect</Button></div></Panel></li>)}</ul>}
       <Panel className="mt-4"><h2 className="font-semibold">Safety</h2><Toggle on={confirmSend} onChange={setConfirmSend} label="Ask me before any ask is sent" hint="Always on. Assistants can draft, you send." /><Toggle on={true} onChange={() => {}} label="Ask me before credits are spent" hint="Always on" /><p className="mt-2 text-xs text-muted-foreground">Assistants follow the same limits as you: open-request slots, daily asks, quality checks. They never move you up a queue.</p></Panel>
       <Panel tone="muted" className="mt-4"><h2 className="font-semibold">How to connect</h2><ol className="mt-2 list-decimal space-y-1 pl-5 text-sm"><li>In ChatGPT or Claude, open Connectors and add <code className="rounded bg-background px-1">skipwait.me/mcp</code></li><li>Sign in and approve what it can do</li><li>Ask: “Find companies open to referrals for product designers”</li></ol><Button asChild variant="link" className="mt-1 px-0"><Link to="/connect-assistant">Preview the approval screen</Link></Button></Panel>
