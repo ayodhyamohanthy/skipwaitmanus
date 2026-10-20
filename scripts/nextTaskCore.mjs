@@ -5,17 +5,29 @@
 // A claim is a branch on origin. Every state change is one empty "marker"
 // commit pushed as a fast-forward, so two agents racing for the same task
 // cannot both win: the second push is rejected as non-fast-forward.
+//
+// D-085 (owner, Oct 20): `build`, `resume`, `continue` and `next` all run the
+// picker. An agent gets its own unfinished work back first; after that the
+// queue is walked once, top down, and the first task that needs anyone wins —
+// a review, a fix, a red pull request, a landing, a half-built claim nobody
+// has pushed to for 2 hours, or new work — so a lower task never runs while a
+// higher one waits for hands.
 
-export const STALE_MS = 24 * 60 * 60 * 1000;
+export const IDLE_MS = 2 * 60 * 60 * 1000;
 export const STATUSES = ["todo", "in-review", "done", "architect", "owner"];
 const TASK_KEYS = ["id", "title", "row", "packet", "tier", "lane", "branch", "status", "dependsOn", "note"];
 const DOC_KEYS = ["version", "repo", "decidedBy", "updated", "rules", "tasks"];
-const MARKER = /^(Review claim|Fix claim|Claim|Takeover|Verdict|Fixed) (\S+): (.+)$/;
+const MARKER = /^(Review claim|Fix claim|Land claim|Claim|Takeover|Verdict|Fixed|Heartbeat) (\S+): (.+)$/;
 const RED = new Set(["failure", "timed_out", "startup_failure", "action_required"]);
+const RESERVED = ["agent/review/", "agent/heartbeat/", "agent/architect/"];
 
 export const slugOf = branch => branch.split("/").pop();
 export const reviewLockOf = task => `agent/review/${slugOf(task.branch)}`;
+export const architectLockOf = task => `agent/architect/${slugOf(task.branch)}`;
+export const heartbeatOf = slug => `agent/heartbeat/${slug}`;
 export const fixMainLockOf = sha => `agent/queue/fix-main-${sha.slice(0, 8)}`;
+/** Claude Code sessions: the CEO and architect (D-074, D-085). Packets go only to them; building never does. */
+export const isArchitect = who => /^Claude Code\b/.test(who ?? "");
 
 /** "Claim GO-LIVE-1: Qwen 3 · s1" -> { verb: "Claim", id: "GO-LIVE-1", who: "Qwen 3 · s1" }. */
 export function parseMarker(subject) {
@@ -32,7 +44,7 @@ export function markerSubject(verb, id, who, verdict) {
   return verb === "Verdict" ? `Verdict ${id}: ${verdict} — ${who}` : `${verb} ${id}: ${who}`;
 }
 
-/** Newest-first CI runs on main -> green | red | running | running-after-red | unknown. */
+/** Newest-first CI runs (main, or one pull request's branch) -> green | red | running | running-after-red | unknown. */
 export function ciStateFromRuns(runs) {
   const newest = runs[0];
   const done = runs.find(r => r.status === "completed" && r.conclusion !== "cancelled" && r.conclusion !== "skipped");
@@ -62,7 +74,10 @@ export function validateAssignments(doc, packetExists) {
     if (![1, 2, 3].includes(t.tier)) errors.push(`${at}: tier must be 1, 2 or 3`);
     if (!STATUSES.includes(t.status)) errors.push(`${at}: status must be one of ${STATUSES.join(", ")}`);
     if (!/^agent\/[a-z0-9-]+\/[a-z0-9.-]+$/.test(t.branch ?? "")) errors.push(`${at}: branch must be agent/<owner>/<slug>`);
-    else if (t.branch.startsWith("agent/review/")) errors.push(`${at}: agent/review/ is reserved for review locks`);
+    else {
+      const prefix = RESERVED.find(p => t.branch.startsWith(p));
+      if (prefix) errors.push(`${at}: ${prefix} is reserved for review locks, heartbeats and architect claims`);
+    }
     if (branches.has(t.branch)) errors.push(`${at}: duplicate branch`);
     branches.add(t.branch);
     const slug = slugOf(t.branch ?? "");
@@ -102,12 +117,13 @@ function workBranchOf(task, branches) {
   if (branches.has(task.branch)) return task.branch;
   const slug = slugOf(task.branch);
   for (const name of branches.keys()) {
-    if (name.endsWith(`/${slug}`) && !name.startsWith("agent/review/")) return name;
+    if (name.endsWith(`/${slug}`) && !RESERVED.some(p => name.startsWith(p))) return name;
   }
   return null;
 }
 
 const lastBy = (markers, verbs) => [...markers].reverse().find(m => verbs.includes(m.verb)) ?? null;
+const holderOf = info => (info ? lastBy(info.markers, ["Claim", "Takeover"])?.who ?? null : null);
 
 /** Where a Tier 1 pull request stands, read from its review lock's markers. */
 export function reviewStateOf(lock) {
@@ -116,63 +132,160 @@ export function reviewStateOf(lock) {
   if (last.verb === "Review claim") return "in-review";
   if (last.verb === "Verdict") return last.verdict === "pass" ? "passed" : "needs-fix";
   if (last.verb === "Fix claim") return "fixing";
+  if (last.verb === "Land claim") return "landing";
   return "needs-review";
 }
 
-/** The one thing the next agent should do. Order: red main, reviews and fixes, stalled claims, new work. */
-export function pickNextTask({ tasks, mainCi, branches, openPrs, now, claimant }) {
+/**
+ * D-085: local work that origin cannot see. local: [{ branch, ahead (commits
+ * not on origin, null when the branch is not on origin), dirty, path }].
+ * Your own claimed branch out of sync blocks new work; anything else is a note.
+ */
+export function localSyncIssues({ local, branches, claimant, mainBehind = 0 }) {
+  const blocking = [], notes = [];
+  for (const l of local) {
+    if (RESERVED.some(p => l.branch.startsWith(p))) continue;
+    const holder = holderOf(branches.get(l.branch));
+    const mine = Boolean(claimant) && holder === claimant;
+    if (l.ahead === null) {
+      notes.push(`${l.branch} is not on origin (worktree ${l.path}): if it is yours, push it now (git -C ${l.path} push -u origin ${l.branch}); work only on your machine is invisible to every other agent`);
+      continue;
+    }
+    if (l.ahead > 0) (mine ? blocking : notes).push(`${l.branch} has ${l.ahead} commit${l.ahead === 1 ? "" : "s"} not on origin${mine ? "" : ` (claimed by ${holder ?? "nobody"})`}: git -C ${l.path} push origin ${l.branch}`);
+    if (l.dirty) (mine ? blocking : notes).push(`${l.branch} has uncommitted changes in ${l.path}${mine ? ": commit them (a WIP commit is fine) and push" : ` (claimed by ${holder ?? "nobody"})`}`);
+  }
+  if (mainBehind > 0) notes.push(`your main checkout is ${mainBehind} commits behind origin/main: git pull --ff-only before reading any doc`);
+  return { blocking, notes };
+}
+
+/** The one thing the next agent should do (D-083, D-085). */
+export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(), now, claimant }) {
+  const tipOf = name => branches.get(name)?.tipMs ?? 0;
+  const activeAt = (name, slug) => Math.max(tipOf(name), tipOf(heartbeatOf(slug)));
+  const idle = (name, slug) => now - activeAt(name, slug) > IDLE_MS;
+
   if (mainCi.state === "unknown") return { kind: "stop", reason: "cannot read main's CI runs from GitHub; nothing may be picked or pushed until it is known (D-082)" };
   if (mainCi.state === "running-after-red") return { kind: "wait", reason: "main's CI is running again after a failure; run this again when it finishes" };
   if (mainCi.state === "red") {
     const lock = fixMainLockOf(mainCi.sha);
     const held = branches.get(lock);
-    if (held && now - held.tipMs <= STALE_MS) return { kind: "wait", reason: `main is red; ${held.markers[0]?.who ?? "another agent"} is fixing it on ${lock}` };
+    const holder = holderOf(held);
+    if (held && claimant && holder === claimant) return { kind: "continue", of: "fix-main", sha: mainCi.sha, url: mainCi.url, lock };
+    if (held && !idle(lock, slugOf(lock))) return { kind: "wait", reason: `main is red; ${holder ?? "another agent"} is fixing it on ${lock}` };
     return { kind: "fix-main", sha: mainCi.sha, url: mainCi.url, lock, parent: held ? lock : null };
   }
+
   const view = tasks.map(task => {
     const work = workBranchOf(task, branches);
     const info = work ? branches.get(work) : null;
-    const owner = info ? lastBy(info.markers, ["Claim", "Takeover"])?.who ?? null : null;
-    const done = task.status === "done" || (task.status === "todo" && Boolean(info?.merged));
-    return { task, work, info, owner, done, open: task.status === "todo" && Boolean(info) && !info.merged };
+    const lockName = reviewLockOf(task);
+    const archName = architectLockOf(task);
+    const arch = branches.get(archName) ?? null;
+    const pr = work ? openPrs.get(work) ?? null : null;
+    return {
+      task, work, info, lockName, lock: branches.get(lockName) ?? null, archName, arch: arch && !arch.merged ? arch : null,
+      slug: slugOf(task.branch), owner: holderOf(info), pr, ci: pr ? prCi.get(work)?.state ?? "unknown" : "unknown",
+      done: task.status === "done" || (task.status === "todo" && Boolean(info?.merged)),
+      open: task.status === "todo" && Boolean(info) && !info.merged,
+    };
   });
   const byId = new Map(view.map(v => [v.task.id, v]));
   const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open));
-  const skipped = [];
 
-  for (const v of view) {
-    if (!v.open || v.task.tier !== 1 || !openPrs.has(v.work)) continue;
-    const lockName = reviewLockOf(v.task);
-    const lock = branches.get(lockName) ?? null;
-    const state = reviewStateOf(lock);
-    const stale = lock ? now - lock.tipMs > STALE_MS : false;
-    const reviewer = lock ? lastBy(lock.markers, ["Review claim"])?.who ?? null : null;
-    const fixer = lock ? lastBy(lock.markers, ["Fix claim"])?.who ?? null : null;
-    const pr = openPrs.get(v.work);
-    if (state === "needs-review" || (state === "in-review" && stale)) {
-      if (claimant && (claimant === v.owner || claimant === fixer)) { skipped.push({ id: v.task.id, reason: "needs a review, and you built or fixed it" }); continue; }
-      return { kind: "review", task: v.task, work: v.work, pr, lock: lockName, lockExists: Boolean(lock), builder: v.owner };
-    }
-    if (state === "needs-fix" || (state === "fixing" && stale)) {
-      if (claimant && claimant === reviewer) { skipped.push({ id: v.task.id, reason: "needs its review findings fixed, and you reviewed it" }); continue; }
-      return { kind: "fix", task: v.task, work: v.work, pr, lock: lockName };
-    }
-    skipped.push({ id: v.task.id, reason: state === "passed" ? `review passed; ${reviewer} lands it` : `${state === "fixing" ? "findings being fixed by " + fixer : "under review by " + reviewer}` });
+  if (claimant) {
+    const mine = ownWork(view, claimant);
+    if (mine) return mine;
   }
-  for (const v of view) {
-    if (!v.open || now - v.info.tipMs <= STALE_MS) continue;
-    if (v.task.tier === 1 && openPrs.has(v.work)) continue;
-    return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: v.info.tipMs };
-  }
-  for (const v of view) {
-    const id = v.task.id;
-    if (v.done) { skipped.push({ id, reason: "done" }); continue; }
-    if (v.task.status !== "todo") { skipped.push({ id, reason: { "in-review": "being landed by its reviewer", architect: "waits for Claude Code's packet", owner: "waits for the owner" }[v.task.status] }); continue; }
-    if (v.open) { if (!skipped.some(s => s.id === id)) skipped.push({ id, reason: `in progress by ${v.owner ?? "another agent"} on ${v.work}` }); continue; }
+
+  const skipped = [];
+  const skip = (v, reason) => { skipped.push({ id: v.task.id, reason }); return null; };
+  const roles = v => ({
+    reviewer: v.lock ? lastBy(v.lock.markers, ["Review claim"])?.who ?? null : null,
+    fixer: v.lock ? lastBy(v.lock.markers, ["Fix claim"])?.who ?? null : null,
+    lander: v.lock ? lastBy(v.lock.markers, ["Land claim"])?.who ?? null : null,
+  });
+
+  const actionFor = v => {
+    if (v.done) return skip(v, "done");
+    if (v.open) {
+      const quiet = idle(v.work, v.slug);
+      const { reviewer, fixer, lander } = roles(v);
+      if (v.pr && v.ci === "red") {
+        if (!quiet) return skip(v, `CI is red on ${v.pr}; ${v.owner ?? "its builder"} is on it`);
+        if (claimant && claimant === reviewer) return skip(v, "CI is red, and you reviewed it");
+        return { kind: "green", task: v.task, work: v.work, pr: v.pr, from: v.owner, since: activeAt(v.work, v.slug) };
+      }
+      if (v.pr && (v.ci === "running" || v.ci === "running-after-red")) return skip(v, `CI is running on ${v.pr}`);
+      if (v.pr && v.task.tier === 1) {
+        const state = reviewStateOf(v.lock);
+        const lockQuiet = v.lock ? idle(v.lockName, v.slug) : false;
+        if (state === "needs-review" || (state === "in-review" && lockQuiet)) {
+          if (claimant && (claimant === v.owner || claimant === fixer)) return skip(v, "needs a review, and you built or fixed it");
+          return { kind: "review", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner };
+        }
+        if (state === "needs-fix" || (state === "fixing" && lockQuiet)) {
+          if (claimant && claimant === reviewer) return skip(v, "needs its review findings fixed, and you reviewed it");
+          return { kind: "fix", task: v.task, work: v.work, pr: v.pr, lock: v.lockName };
+        }
+        if ((state === "passed" || state === "landing") && lockQuiet) {
+          if (claimant && (claimant === v.owner || claimant === fixer)) return skip(v, "its review passed, and you built or fixed it");
+          return { kind: "land", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, tier1: true, from: lander ?? reviewer };
+        }
+        return skip(v, { passed: `review passed; ${reviewer} lands it`, landing: `${lander} is landing it`, fixing: `findings being fixed by ${fixer}` }[state] ?? `under review by ${reviewer}`);
+      }
+      if (v.pr) {
+        if (!quiet) return skip(v, `${v.owner ?? "its builder"} is landing ${v.pr}`);
+        return { kind: "land", task: v.task, work: v.work, pr: v.pr, tier1: false, from: v.owner };
+      }
+      if (!quiet) return skip(v, `in progress by ${v.owner ?? "another agent"} on ${v.work}`);
+      return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: activeAt(v.work, v.slug) };
+    }
+    if (v.task.status === "architect") {
+      if (!isArchitect(claimant)) return skip(v, "waits for Claude Code's packet");
+      if (v.arch && !idle(v.archName, v.slug)) return skip(v, `${holderOf(v.arch) ?? "a Claude Code session"} is writing its packet`);
+      return { kind: "architect", task: v.task, lock: v.archName, lockExists: Boolean(v.arch), from: holderOf(v.arch) };
+    }
+    if (v.task.status !== "todo") return skip(v, { "in-review": "being landed by its reviewer", owner: "waits for the owner" }[v.task.status]);
     const unmet = v.task.dependsOn.filter(d => !byId.get(d)?.done);
-    if (unmet.length) { skipped.push({ id, reason: `waits for ${unmet.join(", ")}` }); continue; }
-    if (laneBusy(v)) { skipped.push({ id, reason: `lane ${v.task.lane} is busy` }); continue; }
+    if (unmet.length) return skip(v, `waits for ${unmet.join(", ")}`);
+    if (laneBusy(v)) return skip(v, `lane ${v.task.lane} is busy`);
     return { kind: "build", task: v.task, ciRunning: mainCi.state === "running" };
+  };
+
+  // D-085: Claude Code is the CEO; the open models build. A Claude Code session
+  // is never handed development work, and with nothing at its level it runs
+  // the CEO review instead of idling.
+  const ceo = isArchitect(claimant);
+  for (const v of view) {
+    const action = actionFor(v);
+    if (!action) continue;
+    if (ceo && (DEV_KINDS.has(action.kind) || (action.kind === "land" && !action.tier1))) { skip(v, "development work: the open models build it (D-085)"); continue; }
+    return action;
   }
-  return { kind: "none", skipped };
+  return ceo ? { kind: "ceo", skipped } : { kind: "none", skipped };
+}
+
+const DEV_KINDS = new Set(["build", "takeover", "green", "fix"]);
+
+/** D-085: what this agent already holds, in queue order. A Tier 1 builder waiting for review holds nothing. */
+function ownWork(view, claimant) {
+  for (const v of view) {
+    if (v.open && v.pr && v.lock) {
+      const last = v.lock.markers.at(-1);
+      if (last?.who === claimant) {
+        const base = { kind: "continue", task: v.task, work: v.work, pr: v.pr, lock: v.lockName };
+        if (last.verb === "Review claim") return { ...base, of: "review", builder: v.owner };
+        if (last.verb === "Fix claim") return { ...base, of: "fix" };
+        if (last.verb === "Land claim" || (last.verb === "Verdict" && last.verdict === "pass")) return { ...base, of: "land", tier1: true };
+      }
+    }
+    if (v.open && v.owner === claimant) {
+      if (v.pr && v.task.tier === 1 && v.ci !== "red") continue;
+      return { kind: "continue", of: v.pr ? (v.ci === "red" ? "green" : "land") : "build", task: v.task, work: v.work, pr: v.pr, tier1: v.task.tier === 1 };
+    }
+    if (v.task.status === "architect" && v.arch && holderOf(v.arch) === claimant) {
+      return { kind: "continue", of: "architect", task: v.task, lock: v.archName };
+    }
+  }
+  return null;
 }
