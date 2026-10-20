@@ -7,7 +7,7 @@ Written Oct 18 2026 at `main` `5ef0626`. On that commit the full suite was green
 ## 1. Roles
 - **Owner:** decides (register), approves new features and pricing, triggers anything that touches live money or provider settings (catalog apply, the one live payment test, D-065), and answers the questions batched for the weekly review (D-064).
 - **CEO and architect (Claude Code, D-074, D-085):** sets direction and makes the high-stakes calls inside the owner's decisions; keeps the business, the architecture map, this file, the packets and the queue order true; re-analyses what we build toward the goal and brings the owner rated recommendations; writes a packet before a row is delegated; writes the red-first tests for Tier 1 packets; reviews Tier 1 work; handles P0 triage and register entries on the owner's say-so. It never builds a packet itself (the picker never offers it one).
-- **Implementer (an open frontier model):** executes exactly one packet per session, on its own branch.
+- **Implementer (an open frontier model):** executes exactly one packet per session, on its own branch; after it opens a Tier 1 draft pull request or lands, it reports to the CEO and ends the session (D-085).
 - **Reviewer (a different model session from the implementer):** checks Tier 1 work against the packet and §6 before it reaches `main`.
 
 ## 2. What to do next
@@ -36,9 +36,12 @@ handles real money: a mistake reaches real users.
    function with `grep -n "name" <file>` and read only that line range.
 2. git fetch origin. If a function the packet cites no longer matches
    it, stop (step 8).
-3. Claim it: node scripts/next-task.mjs --claim "<your model · session>" (the same name all session; it gives you back your own unfinished work first)
-   pushes <BRANCH> to origin (the first push wins). Work in a worktree on
-   it. Your first commit sets its docs/KIT_V4_BUILD_PLAN.md §3b row to
+3. Claim it: node scripts/next-task.mjs --claim "<your model name>"
+   It adds a session tag and prints your full name: use exactly that name
+   from now on and when you resume. It pushes <BRANCH> to origin (the
+   first push wins). If it prints a different task than <PACKET FILE>, do
+   the printed task instead and tell me. Work in a worktree on it. Your
+   first commit sets its docs/KIT_V4_BUILD_PLAN.md §3b row to
    "in progress — <your model> — <date> — branch <BRANCH>".
 4. Write the tests in packet section 7 first. Run them; they must fail for
    the reason the packet gives. Never change a test the packet gave you.
@@ -61,6 +64,8 @@ handles real money: a mistake reaches real users.
      check on your commit is failing, skipped or still running, or with
      --no-verify. If main goes red after your landing, revert or fix your
      commit before anything else (D-082).
+   - Then report to the CEO with --report and end the session: one packet
+     per session.
 8. If anything is unclear, a test fails for an unexpected reason, or a rule
    seems to conflict with docs/DECISIONS.md: stop. Write the question in
    the §3b row, push your branch, end the session. Never guess about
@@ -68,16 +73,23 @@ handles real money: a mistake reaches real users.
 ```
 
 ### 4a. Starting any model: the owner says `build`, `resume`, `continue` or `next` (D-083, D-085)
-Every agent entry doc tells an agent that all four words mean one thing: run `node scripts/next-task.mjs --claim "<model · session>"` with the same name for the whole session and do only what it prints. The script reads Claude Code's order from `docs/plans/assignments.json` on `origin/main`, main's CI and each task pull request's CI from GitHub, and the local clone, then decides:
-1. While `main` is red: only fixing it, and only one agent (a lock branch `agent/queue/fix-main-<sha>`); its holder gets it back instead of waiting on itself.
-2. Your own unfinished work: a build, a review, findings to fix, a landing, a packet. A Tier 1 builder whose pull request waits for review holds nothing and takes new work.
-3. Pending work before new work (owner: "completing a pending task is important than taking new one"). First one top-down pass for pending work nobody is on, then one for new work; a priority with red CI or a red or blocked report holds everything below it (others wait; new work ranked above it may start; a blocked task goes to the CEO): a Tier 1 review (never by the agent that built or fixed it), findings to fix (never by its reviewer), a pull request with red CI whose owner has been quiet for 2 hours (make it green), a green pull request nobody lands, a passed review whose reviewer went quiet (landed by someone who neither built nor fixed it, `Land claim` on the review lock), a half-built claim nobody has pushed to for 2 hours (take it over on the same branch), or, in the second pass, the next `todo` whose dependencies are done and whose lane is free.
-4. "Quiet" means no commit and no heartbeat for 2 hours: push after every commit, run `--heartbeat --as "<name>"` before a long step (the full gate), and commit and push before you stop.
-5. Claude Code sessions (the CEO, D-085) are offered red `main`, their own work, packets (claimed on `agent/architect/<slug>`) and Tier 1 reviews only, and the CEO review when nothing at that level waits.
-6. Every agent reports to the CEO with `--report green|red|blocked|review|landed --task <id> --as "<name>" --note "<one line>"` when it stops, lands, opens a pull request or gets blocked (markers on `agent/reports/log`); `--status` and the top of every run print one board: every priority top down, its role (CTO, CDO), health, holder, quiet time, pull request and latest report.
-7. Before any new work it checks the local clone: your own claimed branch with unpushed commits or uncommitted changes blocks it (exit 3, "SYNC FIRST"); other local-only branches and a stale local `main` are reported.
+Every agent entry doc tells an agent that all four words mean one thing: run `node scripts/next-task.mjs --claim "<your model name>"` and do only what it prints. If the name has no ` · <session>` part, the picker adds a unique session tag (for example `Qwen 3 · k3f9`) and prints it. Use exactly that full name for `--heartbeat`, `--report`, `--fixed`, `--verdict` and when you resume: on resume, read your name from the holder column of the board (`--status`); never invent a new one, or your own half-built work sits idle. Two sessions never share a name, so two sessions of one model count as different people for reviews.
 
-A claim is the task's branch on `origin`, an empty marker commit: the first push wins and a second agent's push is refused. Without `--claim` the script only shows the pick. Name yourself with a session tag (for example `Qwen 3 · 14:05`) so two sessions of one model count as different people for reviews.
+The script reads Claude Code's order from `docs/plans/assignments.json` on `origin/main`, main's CI and each task pull request's CI from GitHub, and the local clone, then decides:
+1. **Red `main` first**, fixed by one agent only. The fixer works on the lock branch itself (`agent/queue/fix-main-<sha8>`) and opens the fix pull request from it, so its commits keep the lock alive; its holder gets it back instead of waiting on itself. Because `main` is red, landing the fix is the one push D-082 allows, once every check on that commit is green.
+2. **Your own unfinished work** (a build, a review, findings to fix, a landing, a packet). Except: pending work ranked above your own task with nobody on it (a review, findings to fix, a red pull request whose owner is quiet, a landing, a half-built claim quiet for 2 hours, an unblock for the CEO) is handed to you first. You push your own work first (the picker enforces it), and your own claim stays yours for 2 hours.
+3. **Pending work nobody is on, top down** (owner: "completing a pending task is important than taking new one"): a Tier 1 review (never by the agent that built or fixed it), findings to fix (never by its reviewer), a pull request with red CI whose owner is quiet (make it green), a green pull request nobody lands, a passed review whose reviewer went quiet (landed by someone who neither built nor fixed it, `Land claim` on the review lock), a half-built claim quiet for 2 hours (take it over on the same branch), a blocked task (the CEO unblocks it).
+4. **New work, top down:** the next `todo` whose dependencies are done and whose lane is free. A squash-merged pull request counts as done even before its status is set to done.
+5. **A red or blocked priority** (red CI, or a red or blocked report) holds everything ranked below it for everyone else: no new or pending work below it starts. An agent already holding work below a red priority whose owner is active keeps going on its own work (its hands cannot help the red one); a red priority with nobody on it is handed out first.
+6. **Quiet** means no push to the task's branch or lock and no heartbeat for 2 hours (D-085; queue rule 2 said 24 hours). Push after every commit, run `--heartbeat --as "<name>"` before a long step (the full gate), and commit and push before you stop. A holder that comes back after 90 minutes or more re-takes its claim on the same branch a takeover would push to, so the first push wins and two agents never both hold it.
+7. **Claude Code (the CEO, D-085)** always claims as `--claim "Claude Code"`: the picker knows the CEO by the "Claude" prefix. It is offered red `main`, its own work, unblocks of blocked priorities, packets (architect, claimed on `agent/architect/<slug>`), Tier 1 reviews and Tier 1 landings after a passed review, and the CEO review when nothing at that level waits; never a build, takeover, make-green or findings fix.
+8. **Reports:** every agent reports to the CEO with `--report green|red|blocked|review|landed --task <id> --as "<name>" --note "<one line>"` when it stops, lands, opens a pull request or gets blocked (markers on `agent/reports/log`). A note is one line; secrets and email addresses are redacted, and no personal data belongs in it (the repo is public). `--status` and the top of every run print one board: every priority top down, its role (CTO, CDO), health, holder, quiet time, pull request and latest report.
+9. **Sync:** while your own claimed work has commits or changes not on origin, the picker refuses new work, `--report` and `--fixed` (exit 3, "SYNC FIRST"); other local-only branches and a stale local `main` are reported.
+10. **One packet per session (D-074):** after you open a Tier 1 draft pull request or land, report to the CEO and end the session. A Tier 1 builder whose pull request waits for review holds nothing; the owner's next `build` starts a new session, which runs the picker.
+
+Exit codes: 0 work to do (claimed, continue, or the CEO review), 2 STOP (GitHub unreadable: main's CI, the pull-request list or a task pull request's CI), 3 SYNC FIRST (your own work is not on origin), 4 WAIT, 5 NOTHING TO PICK.
+
+A claim is the task's branch on `origin`, an empty marker commit: the first push wins and a second agent's push is refused. Without `--claim` the script only shows the pick.
 
 For an agent that loads no instruction file, or one started in a folder that is behind `main`, paste:
 
@@ -88,11 +100,12 @@ run the task picker straight from origin/main:
 
   git fetch origin
   d=$(mktemp -d); for f in next-task.mjs nextTaskCore.mjs nextTaskText.mjs; do git show origin/main:scripts/$f > "$d/$f"; done
-  node "$d/next-task.mjs" --claim "<your model name · a session tag>"
+  node "$d/next-task.mjs" --claim "<your model name>"
 
 Do only the task it prints, exactly as it says, in the worktree it tells
-you to create, and read docs/BRIEF.md there first. Never choose work
-yourself. If it prints STOP, WAIT or NOTHING TO PICK, tell me and stop.
+you to create, and read docs/BRIEF.md there first. Use the full name it
+prints for every later step. Never choose work yourself. If it prints
+STOP, WAIT or NOTHING TO PICK, tell me and stop.
 ```
 
 Use this prompt instead of `build` in any folder that is behind `main` (its entry docs do not know `build` yet). It changes nothing in the folder: the picker only reads git and pushes the claim.
@@ -148,7 +161,7 @@ Verdict: `pass` (then the reviewer pushes the merged candidate to the pull reque
 ## 8. Working in a small context window
 - Required reading is the brief (under 10 KB) plus one packet. Aim for under 15 KB; a large lane keeps its packet under 60 KB and moves reference tables (verification, token values, specs) to an appendix that the implementer opens by section. The architecture map (`docs/ARCHITECTURE.md`) is also a reference: read only the section the packet names.
 - `server/db.ts` is about 470 KB (about 120K tokens) and `server/privateReferralRoutes.ts` about 170 KB: never read either whole. Use the function index in `docs/ARCHITECTURE.md` and `grep -n`, then `sed -n '<from>,<to>p' server/db.ts | cut -c1-400`.
-- One packet per session; commit after every step, so a crashed session loses at most one step.
+- One packet per session (after a Tier 1 draft pull request or a landing, report and end the session); commit after every step, so a crashed session loses at most one step.
 
 ## 9. Running lanes side by side
 - Two lanes may run at the same time only when `docs/plans/README.md` marks them parallel-safe (different functions and files). Everything else waits.
