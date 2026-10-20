@@ -15,7 +15,7 @@
       "branch": "agent/claude/chargebee-catalog-sync",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan \u00a76)."
+      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan §6)."
     },
     {
       "id": "GO-LIVE-1",
@@ -30,6 +30,20 @@
         "D-069-chargebee-catalog-sync"
       ],
       "note": "Done via PR #351 (squash 43370293): server + client slices. Money path opens only when the owner creates the catalog item prices (409 before any provider call until then)."
+    },
+    {
+      "id": "GO-LIVE-1b",
+      "title": "A paid pass always activates (checkout-page recovery on return and hourly, alert on unlinked kit subscriptions), then passes go back on sale",
+      "row": "1",
+      "packet": "docs/plans/GO-LIVE-1b-pass-activation.md",
+      "tier": 1,
+      "lane": "payments",
+      "branch": "agent/queue/go-live-passes",
+      "status": "todo",
+      "dependsOn": [
+        "GO-LIVE-1"
+      ],
+      "note": "D-084. Passes are off (PASS_SALES_ENABLED=false, P0 after #351). The switch commit needs test-site evidence (packet §4.5); without it the packet lands with passes still off."
     },
     {
       "id": "D-038-reconcile",
