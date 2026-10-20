@@ -13,6 +13,8 @@ import { exploreDescription, useCompanyDirectory } from "@/lib/companyDirectory"
 import { publicRoute } from "@shared/publicRoutes";
 import { applySeo } from "@/lib/seo";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
+import { GoalAskDrawer } from "@/components/explore/GoalAskDrawer";
+import type { PublicCompany } from "@shared/companies";
 import { useEffect } from "react";
 
 type ChipId = "all" | "open" | "engineering" | "product-design";
@@ -27,6 +29,9 @@ export default function Explore() {
   const directory = useCompanyDirectory();
   const [search, setSearch] = useState("");
   const [pressed, setPressed] = useState<ChipId[]>(["all"]);
+  // Row click opens the ask drawer; /explore/:slug keeps its live detail page
+  // (owner call pending: comp has no detail page vs D-022 roles list).
+  const [selected, setSelected] = useState<PublicCompany | null>(null);
   const companies = directory.data?.companies;
   const { isSlow } = useSlowLoad(!companies && !directory.isError);
   const filtered = useMemo(() => {
@@ -68,7 +73,7 @@ export default function Explore() {
         <GoalNum>{filtered.length}</GoalNum> {filtered.length === 1 ? "company" : "companies"} · <GoalNum>{openShown}</GoalNum> open to requests
       </p>
       {filtered.length ? <ul className="mt-2 -mx-2 grid gap-0.5" aria-live="polite">
-        {filtered.map(company => <GoalListRow key={company.slug} density="company" href={`/explore/${company.slug}`}
+        {filtered.map(company => <GoalListRow key={company.slug} density="company" href={`/explore/${company.slug}`} onSelect={() => setSelected(company)}
           leading={<GoalCompanyMark initials={company.initials} />}
           title={company.name}
           meta={company.functions.join(" · ")}
@@ -80,10 +85,11 @@ export default function Explore() {
         <GoalButton variant="outline" onClick={() => { setSearch(""); setPressed(["all"]); }}>Clear filters</GoalButton>
       </section>}
       <p className="mt-4 text-g-meta text-g-ink-3">Availability can change. No referral is guaranteed.</p>
+      {selected ? <GoalAskDrawer company={selected} open onOpenChange={next => { if (!next) setSelected(null); }} /> : null}
     </> : directory.isError ? <section className="mt-8 grid justify-items-start gap-3" role="alert">
       <Building2 aria-hidden="true" className="size-6 text-g-ink-3" strokeWidth={1.75} />
       <h2 className="text-g-heading text-g-ink">We couldn’t load companies.</h2>
-      <GoalButton variant="outline" onClick={() => { void directory.refetch(); }} disabled={directory.isFetching}><RefreshCw aria-hidden="true" />Try again</GoalButton>
+      <GoalButton variant="outline" onClick={() => { void directory.refetch(); }} busy={directory.isFetching}><RefreshCw aria-hidden="true" />Try again</GoalButton>
     </section>
       : <div aria-busy="true" aria-label="Loading companies"><ul className="mt-8 grid gap-0.5">
         {[0, 1, 2, 3].map(index => <li key={index} className="flex h-[52px] items-center gap-3 px-3"><span className="size-7 animate-pulse rounded-g-control bg-g-surface-selected" /><span className="h-4 w-40 animate-pulse rounded bg-g-surface-selected" /></li>)}

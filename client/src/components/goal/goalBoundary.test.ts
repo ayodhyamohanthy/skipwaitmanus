@@ -10,7 +10,7 @@ const ALLOWLIST = /components[\\/]goal[\\/]|pages[\\/]ComponentShowcase\.tsx$|\.
 
 // Phase-3 waves that have landed, one entry per moved surface. This branch adds
 // Explore (W1 directory slice); W0 adds AppShell - union both on rebase.
-const MOVED_SURFACES = new Set(["components/AppShell.tsx", "pages/Explore.tsx"]);
+const MOVED_SURFACES = new Set(["components/AppShell.tsx", "pages/Explore.tsx", "components/explore/GoalAskDrawer.tsx"]);
 
 function* walk(dir: string): Generator<string> {
   for (const entry of readdirSync(dir)) {

@@ -60,6 +60,8 @@ const renderWithQuery = (ui: React.ReactElement) => render(<QueryClientProvider 
 const paths = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls.map(call => String(call[0]));
 
 beforeEach(() => {
+  // jsdom has no matchMedia; GoalDrawer's useIsDesktop needs it (desktop = true).
+  window.matchMedia = window.matchMedia ?? ((query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {} }) as unknown as MediaQueryList);
   routeState.slug = "wipro";
   authState.isSignedIn = true;
   sessionStorage.clear();
@@ -149,6 +151,33 @@ describe("Explore directory", () => {
     stubDirectory();
     fireEvent.click(screen.getByRole("button", { name: /Try again/ }));
     expect(await screen.findByTestId("explore-summary")).toBeTruthy();
+  });
+
+  it("opens the ask drawer from a row for an open company, and the alert offer for a closed one", async () => {
+    stubDirectory(directoryOf([company("wipro"), company("merkle", false)]));
+    renderWithQuery(<Explore />);
+    await screen.findByTestId("explore-summary");
+    // Open company: the comp's ask drawer with its verified line and cost footer.
+    fireEvent.click(screen.getByText("Wipro"));
+    expect(await screen.findByText("Ask for a referral")).toBeTruthy();
+    expect(screen.getByText(/Goes to verified Wipro employees/)).toBeTruthy();
+    expect(screen.getByText(/Comes back if you withdraw before anyone picks it up/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Send ask" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    // Closed company: no ask form - the Resy-notify offer (content.json notOpenAction).
+    fireEvent.click(screen.getByText("Merkle"));
+    expect(await screen.findByText(/Nobody at Merkle can take a new ask right now/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Get told when a referrer joins/ })).toBeTruthy();
+    expect(screen.getByText("An alert is not a referral.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Send ask" })).toBeNull();
+  });
+
+  it("keeps the row href for the live company detail page", async () => {
+    stubDirectory();
+    renderWithQuery(<Explore />);
+    await screen.findByTestId("explore-summary");
+    const row = screen.getAllByTestId("goal-list-row")[0].querySelector("a");
+    expect(row?.getAttribute("href")).toBe("/explore/go-neutrinos");
   });
 
   it("titles the page with the kit head built from the directory names", async () => {
