@@ -1,32 +1,65 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { ENV } from "./env";
 
-export function registerStorageProxy(app: Express) {
+/**
+ * Canonical storage key for the legacy `/manus-storage/*` proxy.
+ *
+ * The proxy only allowed `skipwait/private-referrals/…` through one
+ * `startsWith` check; `skipwait//private-referrals/…`, `./skipwait/…` and
+ * `skipwait/a/../private-referrals/…` slipped past it. Collapse empty and `.`
+ * segments, and reject `..`, NUL, backslashes and any `private-referrals`
+ * segment, so the key forwarded to the provider is the same key that was
+ * checked.
+ */
+export function normalizeStorageKey(raw: string): string | null {
+  if (!raw || raw.includes("\0") || raw.includes("\\")) return null;
+  const segments: string[] = [];
+  for (const segment of raw.split("/")) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === ".." || segment === "private-referrals") return null;
+    segments.push(segment);
+  }
+  if (!segments.length) return null;
+  return segments.join("/");
+}
+
+export type StorageProxyDeps = {
+  forgeUrl?: string;
+  forgeKey?: string;
+  fetchImpl?: typeof fetch;
+};
+
+export function registerStorageProxy(app: Express, deps: StorageProxyDeps = {}) {
   app.get("/manus-storage/*", async (req, res) => {
-    const key = (req.params as Record<string, string>)[0];
+    const raw = (req.params as Record<string, string>)[0] ?? "";
+    const key = normalizeStorageKey(raw);
     if (!key) {
-      res.status(400).send("Missing storage key");
-      return;
-    }
-    if (key.startsWith("skipwait/private-referrals/")) {
+      if (!raw) {
+        res.status(400).send("Missing storage key");
+        return;
+      }
+      // A private or malformed key answers exactly like a missing document.
       res.status(404).send("Document not found");
       return;
     }
 
-    if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
+    const forgeUrl = deps.forgeUrl ?? ENV.forgeApiUrl;
+    const forgeKey = deps.forgeKey ?? ENV.forgeApiKey;
+    const fetchImpl = deps.fetchImpl ?? fetch;
+    if (!forgeUrl || !forgeKey) {
       res.status(500).send("Storage proxy not configured");
       return;
     }
 
     try {
-      const forgeUrl = new URL(
+      const presignUrl = new URL(
         "v1/storage/presign/get",
-        ENV.forgeApiUrl.replace(/\/+$/, "") + "/",
+        forgeUrl.replace(/\/+$/, "") + "/",
       );
-      forgeUrl.searchParams.set("path", key);
+      presignUrl.searchParams.set("path", key);
 
-      const forgeResp = await fetch(forgeUrl, {
-        headers: { Authorization: `Bearer ${ENV.forgeApiKey}` },
+      const forgeResp = await fetchImpl(presignUrl, {
+        headers: { Authorization: `Bearer ${forgeKey}` },
       });
 
       if (!forgeResp.ok) {
@@ -58,7 +91,7 @@ export function registerStorageProxy(app: Express) {
  * in AND own the attachment or be the assigned referrer.
  */
 export function registerDbDocumentRoute(app: Express, deps: {
-  resolveIdentity: (req: import("express").Request) => Promise<{ account: { id: number } } | undefined>;
+  resolveIdentity: (req: Request) => Promise<{ account: { id: number } } | undefined>;
 }) {
   // Raw DB keys are never an authorization surface. Canonical downloads stream
   // through /api/documents/:attachmentId after the shared attachment policy.
