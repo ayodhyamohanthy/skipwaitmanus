@@ -80,7 +80,8 @@ describe("GET /api/plans/catalog", () => {
     expect(held.body.plans.find((plan: { id: string }) => plan.id === "start").terms[0].available).toBe(true);
     expect(held.body.plans.find((plan: { id: string }) => plan.id === "start").terms[0].autoExtend).toEqual([]);
 
-    const open = await request(appFor({ usdRecurringConfirmed: () => true, humanReviewersStaffed: () => true }))
+    // The USD flag gates its rail once checkout can renew at all (switched on here; shipped off, pinned below).
+    const open = await request(appFor({ usdRecurringConfirmed: () => true, humanReviewersStaffed: () => true, autoExtendAtCheckout: () => true }))
       .get("/api/plans/catalog").set(EDGE_COUNTRY_HEADER, "US");
     expect(open.body.plans.find((plan: { id: string }) => plan.id === "start").terms[0].autoExtend).toEqual(["usd_recurring"]);
     expect(open.body.sessions.map((session: { id: string; available: boolean }) => [session.id, session.available]))
@@ -94,6 +95,17 @@ describe("GET /api/plans/catalog", () => {
       { id: "written_review", label: "Written expert review", detail: "Returned within 48 hours", amount: 4_900, available: true },
       { id: "live_session", label: "Live 45-minute session", detail: "Mock interview or search strategy", amount: 9_900, available: false },
     ]);
+  });
+
+  it("lists no renewal method while every kit checkout is paid once, even with USD recurring confirmed (GO-LIVE-1 ruling 4.1)", async () => {
+    for (const country of ["US", "IN"]) {
+      const response = await request(appFor({ availableFor: () => () => true, usdRecurringConfirmed: () => true }))
+        .get("/api/plans/catalog").set(EDGE_COUNTRY_HEADER, country);
+      expect(response.status).toBe(200);
+      const terms: { autoExtend: string[] }[] = response.body.plans.flatMap((plan: { terms: { autoExtend: string[] }[] }) => plan.terms);
+      expect(terms.length).toBeGreaterThan(0);
+      expect(terms.filter(term => term.autoExtend.length > 0)).toEqual([]);
+    }
   });
 
   it("is public and cacheable, leaks no item price ids and never 500s when billing is unreachable", async () => {

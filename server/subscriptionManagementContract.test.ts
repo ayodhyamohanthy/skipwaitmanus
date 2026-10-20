@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { billingCustomers, billingInvoices, subscriptionCancellationFeedback, subscriptionCheckoutIntents, tokenBalances } from "../drizzle/schema";
 import { checkoutIntentStateSchema, paymentFailureReasonFrom, parseReceiptId, receiptSchema } from "../shared/billingAccount";
-import { BILLABLE_PLAN_IDS, INTENT_PLAN_IDS, RETIRED_PLAN_IDS, WALLET_PLAN_IDS, adjacentPlans, billingPlanLabel, isRetiredPlanItemPrice, autoExtendMethods, catalogPackForAmount, planCatalogResponse, planCatalogResponseSchema, planChangeDirection, planPrice, planSellsInterval, resolveItemPrice, sellableItemPrices } from "../shared/billingCatalog";
+import { AUTO_EXTEND_AT_CHECKOUT, BILLABLE_PLAN_IDS, INTENT_PLAN_IDS, RETIRED_PLAN_IDS, WALLET_PLAN_IDS, adjacentPlans, billingPlanLabel, isRetiredPlanItemPrice, autoExtendMethods, catalogPackForAmount, planCatalogResponse, planCatalogResponseSchema, planChangeDirection, planPrice, planSellsInterval, resolveItemPrice, sellableItemPrices } from "../shared/billingCatalog";
 import * as subscriptionManagement from "../shared/subscriptionManagement";
 import { CANCELLATION_REASONS, PLAN_RETIRED_CODE, SUBSCRIPTION_REFUSALS, kitPlanCheckoutRequestSchema, packCheckoutRequestSchema, subscriptionCancelRequestSchema, subscriptionChangeRequestSchema, subscriptionChangeResponseSchema, subscriptionPauseRequestSchema } from "../shared/subscriptionManagement";
 import { subscriptionStateFor, type SubscriptionWallet } from "../shared/subscriptionState";
@@ -160,7 +160,9 @@ describe("billing catalog", () => {
 
 describe("public catalog payload (GET /api/plans/catalog)", () => {
   const live = new Set(["skipwait_start_30d-USD", "skipwait_pack_5-USD", "skipwait_land_concierge_30d-USD", "skipwait_written_review-USD", "skipwait_momentum_30d-INR"]);
-  const base = { available: (id: string) => live.has(id), usdRecurringConfirmed: false, sessionsStaffed: false, indiaGstRegistered: false };
+  // The rail pins below run with renewal at checkout switched on, so they keep proving which
+  // rails a term would offer; the shipped value (off: every term paid once) is pinned at the end.
+  const base = { available: (id: string) => live.has(id), usdRecurringConfirmed: false, sessionsStaffed: false, indiaGstRegistered: false, autoExtendAtCheckout: true };
 
   it("global callers see USD prices only, each with its availability and auto-extend rails", () => {
     const catalog = planCatalogResponse({ ...base, region: "INTL" });
@@ -231,6 +233,25 @@ describe("public catalog payload (GET /api/plans/catalog)", () => {
     const selling = planCatalogResponse({ ...everythingLive, region: "INTL" });
     expect(selling.plans.map(plan => [plan.id, plan.terms.every(term => term.available)])).toEqual([["keep_warm", true], ["start", true], ["momentum", true], ["land_focus", true], ["land_sprint", true], ["land_concierge", false]]);
     expect(selling.plans.find(plan => plan.id === "land_concierge")?.terms.some(term => term.available)).toBe(false);
+  });
+
+  it("lists no renewal method while every kit checkout is paid once (GO-LIVE-1 ruling 4.1, D-044)", () => {
+    // createPlanCheckout always sends one billing cycle and the checkout body has no opt-in,
+    // so the shipped catalog offers no auto-extend rail, whatever the price, region or USD flag.
+    const shipped = { available: () => true, usdRecurringConfirmed: true, sessionsStaffed: true, indiaGstRegistered: false };
+    for (const passSales of [true, false]) {
+      switches.passSales = passSales;
+      for (const region of ["IN", "INTL"] as const) {
+        const terms = planCatalogResponse({ ...shipped, region }).plans.flatMap(plan => plan.terms);
+        expect(terms.length).toBeGreaterThan(0);
+        expect(terms.filter(term => term.autoExtend.length > 0)).toEqual([]);
+      }
+    }
+    expect(AUTO_EXTEND_AT_CHECKOUT).toBe(false);
+    // Switched on (GO-LIVE-2, together with an opt-in checkout), the rails come back from autoExtendMethods.
+    switches.passSales = true;
+    expect(planCatalogResponse({ ...shipped, region: "IN", autoExtendAtCheckout: true }).plans.find(plan => plan.id === "momentum")?.terms[0].autoExtend).toEqual(["upi_autopay", "card_netbanking_mandate"]);
+    expect(planCatalogResponse({ ...shipped, region: "INTL", autoExtendAtCheckout: true }).plans.find(plan => plan.id === "momentum")?.terms[0].autoExtend).toEqual(["usd_recurring"]);
   });
 });
 
