@@ -2,7 +2,7 @@
 
 > Read [`docs/BRIEF.md`](../../../docs/BRIEF.md) first (D-073), then `AGENTS.md`. The platform is already live: update it, do not rebuild it.
 >
-> **Owner says `build`, `resume`, `continue` or `next`?** They all mean one thing: run `node scripts/next-task.mjs --claim "<your model name · session>"` (the same name for your whole session) and do only what it prints, step by step. It hands you back your own unfinished work first, then the highest-priority task nobody is on (half-built work before new work), so agents started together never take the same task. Push after every commit; never resume or choose work from memory. Claude Code is the CEO and sets the order in `docs/plans/assignments.json`; the open models build (D-083, D-085).
+> **Owner says `build`, `resume`, `continue` or `next`?** They all mean one thing: run `node scripts/next-task.mjs --claim "<your model name · session>"` (the same name for your whole session) and do only what it prints, step by step. It hands you back your own unfinished work first, then pending work nobody is on before any new work, each top down; a red or blocked priority holds everything below it, so agents never take the same task and the top stays green first. Push after every commit, report to the CEO with `--report` when you stop, and read the board with `--status`; never resume or choose work from memory. Claude Code is the CEO and sets the order in `docs/plans/assignments.json`; the open models (CTO, CDO and the team) build (D-083, D-085).
 
 
 > **AI coding platforms: read `FOR_AI_BUILDERS.md` first.** It lists every rule, backend requirement and placeholder not visible in the designs.
