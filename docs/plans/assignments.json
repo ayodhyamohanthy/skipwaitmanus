@@ -63,7 +63,7 @@
       "tier": 2,
       "lane": "money-check",
       "branch": "agent/queue/d065b-slice-checks",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
@@ -74,7 +74,7 @@
       "tier": 2,
       "lane": "config",
       "branch": "agent/queue/fnd5-env",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
@@ -85,7 +85,7 @@
       "tier": 2,
       "lane": "test-kit",
       "branch": "agent/queue/fnd3-dup-keys",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
@@ -108,7 +108,7 @@
       "tier": 3,
       "lane": "cleanup",
       "branch": "agent/queue/fnd2-dead-code",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
@@ -119,7 +119,7 @@
       "tier": 3,
       "lane": "docs-status",
       "branch": "agent/queue/fnd6-row-audit",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
@@ -130,7 +130,7 @@
       "tier": 3,
       "lane": "triage",
       "branch": "agent/queue/fnd7-triage",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {

@@ -132,7 +132,7 @@ export default function AdminCatalogSync() {
           <section className="mt-20 rounded-2xl border border-[#e5e5e5] bg-white p-8">
             <ShieldCheck className="h-7 w-7 text-black" />
             <h1 className="mt-4 text-2xl font-semibold">Chargebee catalog sync</h1>
-            <p className="mt-2 text-sm leading-6 text-[#505050]">Sign in with an administrator account to read the catalog and create the prices SkipWait sells.</p>
+            <p className="mt-2 text-sm leading-6 text-[#505050]">Sign in with an administrator account to read the catalog and create the prices skipwait.me sells.</p>
             <SignInButton>
               <button type="button" className="mt-5 rounded-lg bg-[#141414] px-4 py-3 text-sm font-semibold text-white">Secure sign in</button>
             </SignInButton>
@@ -235,7 +235,7 @@ export default function AdminCatalogSync() {
               ) : undefined}
             </Section>
 
-            <Section title={`Extras — left alone (${dryRun.counts.extras})`} empty="No other SkipWait objects on this site.">
+            <Section title={`Extras — left alone (${dryRun.counts.extras})`} empty="No other skipwait.me objects on this site.">
               {dryRun.extras.length > 0 ? (
                 <ul className="mt-3 grid gap-2">
                   {dryRun.extras.map(extra => (

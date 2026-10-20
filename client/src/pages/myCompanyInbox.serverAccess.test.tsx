@@ -27,9 +27,9 @@ vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
 
 type Reply = { status: number; body: unknown } | "hang";
-const VERIFIED: Reply = { status: 200, body: { verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "SkipWait", companyInitials: "SW" } };
+const VERIFIED: Reply = { status: 200, body: { verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "skipwait.me", companyInitials: "SW" } };
 const UNVERIFIED: Reply = { status: 200, body: { verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null } };
-const ASK = { id: 13, targetRoleUrl: null, companyDomain: "skipwait.me", companyName: "SkipWait", companyInitials: "SW", status: "pending", savedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), attachmentCount: 1, isClaimedByYou: false, unreadMessageCount: 0 };
+const ASK = { id: 13, targetRoleUrl: null, companyDomain: "skipwait.me", companyName: "skipwait.me", companyInitials: "SW", status: "pending", savedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), attachmentCount: 1, isClaimedByYou: false, unreadMessageCount: 0 };
 
 let accessReplies: Reply[];
 let newRows: unknown[];

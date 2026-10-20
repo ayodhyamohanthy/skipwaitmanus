@@ -93,7 +93,7 @@ describe("unmatched paid invoice safety net (#77)", () => {
     expect(alertUnmatchedPayment).not.toHaveBeenCalled();
   });
 
-  // Review round 2: an event SkipWait cannot place (an item price outside the price book on a
+  // Review round 2: an event skipwait.me cannot place (an item price outside the price book on a
   // subscription a wallet still holds) is not called Pro/Max: it is alerted as "unrecognised,
   // review", with its own activity, so nobody refunds a kit customer on a wrong label.
   it("alerts an unrecognised item price as unsupported, never as a retired Pro/Max plan", async () => {

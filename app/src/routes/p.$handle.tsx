@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/p/$handle")({
-  head: () => pageMeta("Public work profile", "A shareable SkipWait profile: who someone is, the work they're proud of, and how to reach them — no feed, no follower counts."),
+  head: () => pageMeta("Public work profile", "A shareable skipwait.me profile: who someone is, the work they're proud of, and how to reach them — no feed, no follower counts."),
   component: PublicProfile,
 });
 
@@ -28,7 +28,7 @@ function PublicProfile() {
   const hidden = !owner && vis === "private";
 
   return <div className="min-h-screen bg-background">
-    <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4"><Link to="/" className="wordmark">SkipWait<span className="brand-dot">.</span></Link><div className="flex rounded-full bg-muted p-1 text-sm">{[true, false].map(o => <button key={String(o)} onClick={() => setOwner(o)} className={`min-h-10 rounded-full px-4 ${owner === o ? "bg-background font-semibold shadow-sm" : "text-muted-foreground"}`}>{o ? "You" : "Visitor"}</button>)}</div></header>
+    <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4"><Link to="/" className="wordmark">skipwait<span className="brand-dot">.</span>me</Link><div className="flex rounded-full bg-muted p-1 text-sm">{[true, false].map(o => <button key={String(o)} onClick={() => setOwner(o)} className={`min-h-10 rounded-full px-4 ${owner === o ? "bg-background font-semibold shadow-sm" : "text-muted-foreground"}`}>{o ? "You" : "Visitor"}</button>)}</div></header>
     <main className="mx-auto max-w-5xl px-5 pb-16">
       <div className="mb-4 flex flex-wrap gap-2 text-xs"><span className="example-banner !m-0">EXAMPLE PROFILE · PREVIEW</span>{(["seeker", "referrer"] as const).map(k => <button key={k} onClick={() => setKind(k)} className={`rounded-full border px-3 py-1 ${kind === k ? "border-primary bg-primary/5" : "border-border"}`}>{k === "seeker" ? "Seeker" : "Referrer"}</button>)}<button onClick={() => setEmpty(!empty)} className={`rounded-full border px-3 py-1 ${empty ? "border-primary bg-primary/5" : "border-border"}`}>Empty state</button></div>
 
@@ -50,7 +50,7 @@ function PublicProfile() {
           {empty ? <div className="rounded-3xl border border-dashed border-border p-10 text-center"><p className="font-medium">{owner ? "Add one piece you're proud of." : "No public work yet."}</p>{owner && <><p className="mt-1 text-sm text-muted-foreground">Import from GitHub, Behance, Dribbble, Medium or your site.</p><Button asChild className="mt-4"><Link to="/work">Add work</Link></Button></>}</div> :
             <div className="grid gap-4 sm:grid-cols-2">{work.map(w => <article key={w.title} className="rounded-3xl border border-border p-5"><div className="mb-10 flex items-center justify-between text-xs text-muted-foreground"><span className="flex items-center gap-1">{w.source === "GitHub" ? <Github className="size-3.5" /> : <Globe className="size-3.5" />}{w.source}</span>{w.pinned && <span className="flex items-center gap-1 text-foreground"><Pin className="size-3.5" />Pinned</span>}</div><span className="eyebrow">{w.kind.toUpperCase()}</span><h3 className="mt-1 text-lg font-semibold">{w.title}</h3>{owner && <p className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">{w.pinned ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}{w.pinned ? "Visible on profile" : "Shown only in requests"}</p>}</article>)}</div>}
         </section>
-        <p className="mt-12 text-center text-sm text-muted-foreground">No feed. No followers. No likes. Just work. · <Link to="/" className="text-link">Make your own on SkipWait</Link></p>
+        <p className="mt-12 text-center text-sm text-muted-foreground">No feed. No followers. No likes. Just work. · <Link to="/" className="text-link">Make your own on skipwait.me</Link></p>
       </>}
     </main>
   </div>;

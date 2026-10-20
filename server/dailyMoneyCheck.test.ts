@@ -2,8 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS } from "../shared/referral";
-import { createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
-import { DAY_MS, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, store } from "./heldAsk.testkit";
+import { createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
+import { DAY_MS, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
@@ -26,6 +26,8 @@ function makeDeps(overrides: Partial<DailyMoneyCheckDeps> = {}) {
     listStaleCheckouts: vi.fn(async () => []),
     listAllocatedAsks: vi.fn(async () => []),
     listLegacyPlanWallets: vi.fn(async () => []),
+    listAskDeliverySpendsWhileWaiting: vi.fn(async () => []),
+    listDoublyReversedSpends: vi.fn(async () => []),
     sendEmail: vi.fn(async (input: Sent) => { sent.push(input); return true; }),
     recordActivity: vi.fn(async (row: { action: string }) => { activity.push(row as { action: string; outcome: string }); }),
     ...overrides,
@@ -148,6 +150,43 @@ describe("daily-money-check (D-065)", () => {
 });
 
 /*
+ * D-065-B (D-065: one check per money-rule slice): the D-034/D-047 delivery spend must flip its ask to visible in
+ * the same transaction, so a credit_spend keyed ask-delivery:<id> whose ask still waits for coverage is a fault;
+ * the unique index on reversesTransactionId should keep one reversal per spend, so two rows reversing one
+ * transaction is a fault too. Each line carries ids and counts only.
+ */
+describe("D-065-B slice checks", () => {
+  it("flags a delivery spend whose ask still waits for coverage, and stays quiet on a clean ledger", async () => {
+    const clean = makeDeps();
+    await runJob(clean.deps);
+    expect(clean.sent).toEqual([]);
+
+    const { deps, sent } = makeDeps({
+      listAskDeliverySpendsWhileWaiting: vi.fn(async () => [{ transactionId: 901, requestId: 601 }]),
+    });
+    await runJob(deps);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.subject).toBe("skipwait.me daily money check · 1 finding");
+    expect(sent[0]!.text).toContain("ask_spent_while_waiting: ask #601 still waits for coverage, but ledger row #901 spent a credit for it");
+    expect(sent[0]!.text).not.toContain("@");
+  });
+
+  it("flags a spend reversed by two rows, never a single reversal", async () => {
+    const single = makeDeps();
+    await runJob(single.deps);
+    expect(single.sent).toEqual([]);
+
+    const { deps, sent } = makeDeps({
+      listDoublyReversedSpends: vi.fn(async () => [{ reversesTransactionId: 700, reversalRows: 2, ledgerRowIds: [701, 702] }]),
+    });
+    await runJob(deps);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("spend_reversed_twice: transaction #700 is reversed by 2 rows (ledger rows #701, #702)");
+    expect(sent[0]!.text).not.toContain("@");
+  });
+});
+
+/*
  * P0-allocated-ask-stuck (D-065: one check per money-rule slice): a pending ask that still holds an allocated
  * availability slot, with no claim since its latest release, more than 24 hours past its shelf life
  * (getAskShelfLifeEndsAtMs, on the app clock) is one the hourly ask-expiry sweep should have closed with its
@@ -252,6 +291,53 @@ describe("allocated_ask_past_window over the in-memory database", () => {
     // Read-only: no ask, slot or ledger row moved.
     expect(store.rows(referralRequests)).toEqual(before.requests);
     expect(store.rows(referralAvailabilitySlots)).toEqual(before.slots);
+    expect(store.rows(tokenTransactions)).toEqual(before.ledger);
+  });
+});
+
+describe("D-065-B slice checks over the in-memory database", () => {
+  beforeEach(() => {
+    vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+    mocks.createPool.mockResolvedValue({});
+    mocks.drizzle.mockReturnValue(store.db);
+  });
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  it("finds a delivery spend on an ask still waiting and a spend reversed twice, never a legacy create charge or a single reversal, and writes nothing", async () => {
+    const deliverySpend = (id: number, requestId: number) => spendRow({ id, referenceId: String(requestId), idempotencyKey: `ask-delivery:${requestId}#1`, tokenCount: -1 });
+    const reversal = (id: number, spendId: number, kind: string) => spendRow({ id, tokenCount: 1, kind, reversesTransactionId: spendId, idempotencyKey: `reversal-${id}` });
+    seedHeldAsks({
+      asks: [
+        // A D-034 delivery spend exists while the ask still waits: the flip did not reach the row (the fault).
+        askRow({ id: 601, referrerId: null, waitingForCoverage: true, debitTransactionId: null }),
+        // A pre-0095 waiting ask charged at create: its spend is not an ask-delivery key, so it is no fault.
+        askRow({ id: 602, referrerId: null, waitingForCoverage: true, debitTransactionId: 61 }),
+        // Delivered: waitingForCoverage=false is exactly what the delivery spend requires.
+        askRow({ id: 603, debitTransactionId: 63 }),
+      ],
+      spends: [
+        spendRow({ id: 61, referenceId: "602#1", idempotencyKey: "k602#1", tokenCount: -1 }),
+        deliverySpend(62, 601),
+        deliverySpend(63, 603),
+        reversal(64, 63, "expiry_refund"),
+        reversal(65, 63, "withdrawal_refund"),
+        reversal(66, 61, "withdrawal_refund"),
+      ],
+    });
+    const before = { requests: structuredClone(store.rows(referralRequests)), ledger: structuredClone(store.rows(tokenTransactions)) };
+    const { deps, sent } = makeDeps({ listAllocatedAsks: listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends });
+    const output = await createDailyMoneyCheck(deps)({ nowMs: KIT_NOW, windowKey: "2026-10-18T12:00Z" });
+
+    expect(output.failed).toBe(0);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.subject).toBe("skipwait.me daily money check · 2 findings");
+    expect(sent[0]!.text).toContain("ask_spent_while_waiting: ask #601 still waits for coverage, but ledger row #62 spent a credit for it");
+    expect(sent[0]!.text).toContain("spend_reversed_twice: transaction #63 is reversed by 2 rows (ledger rows #64, #65)");
+    for (const id of [602, 603]) expect(sent[0]!.text).not.toContain(`ask #${id}`);
+    expect(sent[0]!.text).not.toContain("transaction #61 ");
+    expect(sent[0]!.text).not.toContain("@");
+    // Read-only: no ask or ledger row moved.
+    expect(store.rows(referralRequests)).toEqual(before.requests);
     expect(store.rows(tokenTransactions)).toEqual(before.ledger);
   });
 });

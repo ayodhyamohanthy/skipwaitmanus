@@ -86,7 +86,7 @@ export default function Terms() {
     </PolicySection>
 
     <PolicySection number="09" title="Business identity">
-      <p>skipwait.me is operated by <strong>Ayodhya Ram Mohanthy</strong>, a sole proprietor based in India, trading as SkipWait.</p>
+      <p>skipwait.me is operated by <strong>Ayodhya Ram Mohanthy</strong>, a sole proprietor based in India, trading as skipwait.me.</p>
       <ul>
         <li>Address: D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India.</li>
         <li>Phone: <a href="tel:+919513064808" className="font-semibold text-foreground">+91 95130 64808</a> (Mon–Fri, IST business hours).</li>

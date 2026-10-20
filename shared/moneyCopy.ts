@@ -2,7 +2,7 @@
  * D-063: one truthful money sentence for every surface that says what asking
  * costs. Asking is free for a monthly allowance and then uses credits, so no
  * surface may call referrals simply "free"; referrers are never paid by
- * SkipWait (D-055) and never ask a job seeker for money (D-006).
+ * skipwait.me (D-055) and never ask a job seeker for money (D-006).
  *
  * Each surface renders these strings instead of writing its own, so the copy
  * cannot drift from the catalog: the number comes from the Free plan.

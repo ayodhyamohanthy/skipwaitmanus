@@ -283,7 +283,7 @@ export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; qu
     // comes only from the catalog constant, never from the client, and payment
     // reconciliation already matches on invoice amount + currency.
     form.set("charges[amount][0]", String(pack.amount * quantity));
-    form.set("charges[description][0]", `SkipWait credits x ${quantity}`);
+    form.set("charges[description][0]", `skipwait.me credits x ${quantity}`);
   }
   form.set("currency_code", pack.currency);
   if (input.email) form.set("customer[email]", input.email);

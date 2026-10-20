@@ -9,7 +9,7 @@ const { getToken, toast } = vi.hoisted(() => ({ getToken: vi.fn().mockResolvedVa
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: true, getToken }) }));
 vi.mock("sonner", () => ({ toast }));
 
-const link = { linkCode: "abc123", vanityAlias: "ref-priya", companyDomain: "acme.com", isActive: true, url: "https://skipwait.me/fast/abc123", vanityUrl: "https://skipwait.me/refer/acme/ref-priya", suggestedBioCopy: "Private referral requests at acme.com via Skipwait.me." };
+const link = { linkCode: "abc123", vanityAlias: "ref-priya", companyDomain: "acme.com", isActive: true, url: "https://skipwait.me/fast/abc123", vanityUrl: "https://skipwait.me/refer/acme/ref-priya", suggestedBioCopy: "Private referral requests at acme.com via skipwait.me." };
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); toast.mockReset(); });
 
@@ -86,14 +86,14 @@ describe("Referrer Fast-Track Link card", () => {
       render(<ReferrerFastTrackCard />);
       expect(await screen.findByText("skipwait.me/refer/acme/ref-priya")).toBeTruthy();
       // The bio preview shows the exact message and URL that will be pasted.
-      expect(screen.getByText("Private referral requests at acme.com via Skipwait.me.")).toBeTruthy();
+      expect(screen.getByText("Private referral requests at acme.com via skipwait.me.")).toBeTruthy();
 
       fireEvent.click(screen.getByRole("button", { name: "Copy" }));
       await waitFor(() => expect(written).toEqual(["https://skipwait.me/refer/acme/ref-priya"]));
       expect(toast).toHaveBeenCalledWith("Link copied.");
 
       fireEvent.click(screen.getByRole("button", { name: "Copy for LinkedIn bio" }));
-      await waitFor(() => expect(written).toEqual(["https://skipwait.me/refer/acme/ref-priya", "Private referral requests at acme.com via Skipwait.me.\nhttps://skipwait.me/refer/acme/ref-priya"]));
+      await waitFor(() => expect(written).toEqual(["https://skipwait.me/refer/acme/ref-priya", "Private referral requests at acme.com via skipwait.me.\nhttps://skipwait.me/refer/acme/ref-priya"]));
       expect(toast).toHaveBeenCalledWith("Bio copied — paste it in your LinkedIn bio.");
       expect(opened).toEqual(["https://www.linkedin.com/in/me/"]);
     } finally {

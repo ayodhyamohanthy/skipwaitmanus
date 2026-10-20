@@ -6,9 +6,12 @@
 // purchase credit per credited payment, payments parked for review, refunds
 // no payment explains, checkouts still pending after a day, any wallet still
 // marked with a retired Pro/Max plan and an active term (D-067: each one is a
-// missed normalization to Free), and asks still allocated to a referrer more
+// missed normalization to Free), asks still allocated to a referrer more
 // than a day past their shelf life (a stuck ask-expiry sweep,
-// P0-allocated-ask-stuck). It never writes to a wallet, payment, ledger or ask
+// P0-allocated-ask-stuck), a D-034/D-047 delivery spend still sitting on an ask
+// that waits for coverage (its flip to visible was lost), and one spend
+// reversed by two ledger rows (the reversal unique index broken). It never
+// writes to a wallet, payment, ledger or ask
 // row; the only writes are the job's own run record (the runner) and one
 // operational-activity row when an alert email goes out. The email carries
 // ids, amounts, currencies and reasons — never names, emails, or request content.
@@ -16,6 +19,7 @@ import { and, asc, count, eq, gt, inArray, isNotNull, isNull, lt, or, sql } from
 import { operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
+import { ASK_DELIVERY_KEY_PREFIX } from "./coverageDelivery";
 import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
 import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
@@ -42,6 +46,10 @@ export type AllocatedAskRow = { id: number; createdAt: Date; coverageVisibleAt: 
 /** SQL pre-filter cutoffs: each window's end plus the grace, computed from the job's clock. */
 export type AllocatedAskCutoffs = { visibleBefore: Date; waitingBefore: Date };
 export type LegacyPlanWalletRow = { id: number; role: string; plan: string; termEnd: Date | null };
+/** A D-034/D-047 delivery spend (ask-delivery:<id>) whose ask still waits for coverage. */
+export type AskSpentWhileWaitingRow = { transactionId: number; requestId: number };
+/** One spend that two or more ledger rows reverse; the unique index should make this impossible. */
+export type DoublyReversedSpendRow = { reversesTransactionId: number; reversalRows: number; ledgerRowIds: number[] };
 
 export type DailyMoneyCheckDeps = {
   auditWallets: () => Promise<WalletAuditResult>;
@@ -52,6 +60,8 @@ export type DailyMoneyCheckDeps = {
   listStaleCheckouts: (olderThan: Date, limit: number) => Promise<StaleCheckoutRow[]>;
   listAllocatedAsks: (cutoffs: AllocatedAskCutoffs, afterId: number, limit: number) => Promise<AllocatedAskRow[]>;
   listLegacyPlanWallets: (now: Date, limit: number) => Promise<LegacyPlanWalletRow[]>;
+  listAskDeliverySpendsWhileWaiting: (limit: number) => Promise<AskSpentWhileWaitingRow[]>;
+  listDoublyReversedSpends: (limit: number) => Promise<DoublyReversedSpendRow[]>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
   recordActivity: typeof recordOperationalActivity;
 };
@@ -178,6 +188,75 @@ async function listLegacyPlanWallets(now: Date, limit: number): Promise<LegacyPl
     .orderBy(asc(tokenBalances.id)).limit(limit);
 }
 
+/**
+ * D-034/D-047: a waiting ask spends nothing, and its first-visibility spend (ask-delivery:<id>)
+ * plus the flip to visible share one transaction. So a delivery spend whose ask still waits for
+ * coverage is a lost flip. Pages the waiting asks — the only asks that can hold the fault — and
+ * looks up their delivery spends; a legacy create charge uses another key and is never a finding.
+ */
+export async function listAskDeliverySpendsWhileWaiting(limit: number): Promise<AskSpentWhileWaitingRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  const found: AskSpentWhileWaitingRow[] = [];
+  let afterId = 0;
+  for (;;) {
+    const waiting = await db.select({ id: referralRequests.id }).from(referralRequests)
+      .where(and(eq(referralRequests.waitingForCoverage, true), gt(referralRequests.id, afterId)))
+      .orderBy(asc(referralRequests.id)).limit(MONEY_CHECK_BATCH);
+    if (waiting.length === 0) break;
+    const ids = waiting.map(row => row.id);
+    const waitingIds = new Set(ids);
+    const spends = await db.select({ id: tokenTransactions.id, referenceId: tokenTransactions.referenceId, idempotencyKey: tokenTransactions.idempotencyKey })
+      .from(tokenTransactions)
+      .where(and(eq(tokenTransactions.kind, "credit_spend"), inArray(tokenTransactions.referenceId, ids.map(String))));
+    for (const spend of spends) {
+      if (found.length >= limit) return found;
+      if (!(spend.idempotencyKey ?? "").startsWith(`${ASK_DELIVERY_KEY_PREFIX}:`)) continue;
+      const requestId = Number(spend.referenceId);
+      if (!Number.isInteger(requestId) || !waitingIds.has(requestId)) continue;
+      found.push({ transactionId: spend.id, requestId });
+    }
+    const last = waiting[waiting.length - 1];
+    if (!last || waiting.length < MONEY_CHECK_BATCH) break;
+    afterId = last.id;
+  }
+  return found;
+}
+
+/**
+ * One reversal row per spend is the ledger's contract (unique index
+ * token_transactions_reversal_unique; MySQL allows many NULLs, not two ids). This proves it holds:
+ * pages the distinct reversal targets by id and lists any target with more than one row.
+ */
+export async function listDoublyReversedSpends(limit: number): Promise<DoublyReversedSpendRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  const found: DoublyReversedSpendRow[] = [];
+  let afterId = 0;
+  for (;;) {
+    const groups = await db.select({ reversesTransactionId: tokenTransactions.reversesTransactionId, reversalRows: count() })
+      .from(tokenTransactions)
+      .where(and(isNotNull(tokenTransactions.reversesTransactionId), gt(tokenTransactions.reversesTransactionId, afterId)))
+      .groupBy(tokenTransactions.reversesTransactionId)
+      .orderBy(asc(tokenTransactions.reversesTransactionId)).limit(MONEY_CHECK_BATCH);
+    const doubled = groups.filter(group => Number(group.reversalRows) > 1);
+    if (doubled.length > 0) {
+      const targets = doubled.map(group => group.reversesTransactionId).filter((id): id is number => id !== null);
+      const rows = await db.select({ id: tokenTransactions.id, reversesTransactionId: tokenTransactions.reversesTransactionId })
+        .from(tokenTransactions).where(inArray(tokenTransactions.reversesTransactionId, targets)).orderBy(asc(tokenTransactions.id));
+      for (const group of doubled) {
+        if (found.length >= limit) return found;
+        if (group.reversesTransactionId === null) continue;
+        found.push({ reversesTransactionId: group.reversesTransactionId, reversalRows: Number(group.reversalRows), ledgerRowIds: rows.filter(row => row.reversesTransactionId === group.reversesTransactionId).map(row => row.id) });
+      }
+    }
+    const last = groups[groups.length - 1];
+    if (!last) break;
+    const next = last.reversesTransactionId;
+    if (groups.length < MONEY_CHECK_BATCH || next === null || next <= afterId) break;
+    afterId = next;
+  }
+  return found;
+}
+
 async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {
   try {
     const apiKey = process.env.RESEND_API_KEY;
@@ -206,6 +285,8 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
   listStaleCheckouts,
   listAllocatedAsks: listAllocatedPendingAsks,
   listLegacyPlanWallets,
+  listAskDeliverySpendsWhileWaiting,
+  listDoublyReversedSpends,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
 }) {
@@ -265,6 +346,15 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
 
     const legacy = await deps.listLegacyPlanWallets(new Date(nowMs), FINDINGS_PREVIEW_LIMIT);
     for (const wallet of legacy) findings.push(`legacy plan wallet: wallet #${wallet.id} (${wallet.role}, ${wallet.plan}) still holds an active term until ${wallet.termEnd?.toISOString() ?? "an unknown date"}`);
+
+    // D-065-B (D-034/D-047): the delivery spend and the flip to visible are one transaction, so a spend still
+    // sitting on a waiting ask means the flip was lost. D-065-B: one reversal row per spend is the unique
+    // index's promise, so a second row reversing the same spend is a fault.
+    const waitingSpends = await deps.listAskDeliverySpendsWhileWaiting(FINDINGS_PREVIEW_LIMIT);
+    for (const row of waitingSpends) findings.push(`ask_spent_while_waiting: ask #${row.requestId} still waits for coverage, but ledger row #${row.transactionId} spent a credit for it`);
+
+    const doubleReversals = await deps.listDoublyReversedSpends(FINDINGS_PREVIEW_LIMIT);
+    for (const row of doubleReversals) findings.push(`spend_reversed_twice: transaction #${row.reversesTransactionId} is reversed by ${row.reversalRows} rows (ledger rows ${row.ledgerRowIds.map(id => `#${id}`).join(", ")})`);
 
     const output: JobRunOutput = { processed: audit.checkedWallets + checkedPayments, failed: 0 };
     if (findings.length === 0) return output;

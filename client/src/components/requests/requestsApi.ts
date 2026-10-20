@@ -12,7 +12,7 @@ import { referralStatuses } from "@shared/referral";
 import { readApiJson } from "@/lib/apiResponse";
 
 export const LOAD_ERROR = "We could not load your referral requests";
-export const NETWORK_ERROR = "We couldn’t reach SkipWait. Check your connection and try again.";
+export const NETWORK_ERROR = "We couldn’t reach skipwait.me. Check your connection and try again.";
 
 const referralRequestSchema = z.object({
   id: z.number().int().positive(),

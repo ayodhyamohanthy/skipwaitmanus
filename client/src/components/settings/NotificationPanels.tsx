@@ -1,6 +1,6 @@
 // Kit v4 Settings > Notifications. Per-event notification choices need a
 // preferences store that does not exist yet, so this section shows the
-// channels SkipWait really uses: email (always on), Alerts in the app, and the
+// channels skipwait.me really uses: email (always on), Alerts in the app, and the
 // opt-in Slack review channel for verified referrers.
 import { Bell } from "lucide-react";
 import { Link } from "wouter";
@@ -18,7 +18,7 @@ export function NotificationPanels({ getToken }: { getToken: TokenSource }) {
     <h2 className="text-lg font-semibold">How we reach you</h2>
     <div className="mt-2">
       <SettingsRow label="Email" hint="Accepts and replies"><span className="shrink-0 text-sm text-muted-foreground">Always on</span></SettingsRow>
-      <SettingsRow label="Alerts" hint="Your notifications inside SkipWait"><Link href="/alerts" className="text-link shrink-0">Open Alerts</Link></SettingsRow>
+      <SettingsRow label="Alerts" hint="Your notifications inside skipwait.me"><Link href="/alerts" className="text-link shrink-0">Open Alerts</Link></SettingsRow>
       {hasVerifiedWorkEmail(access.data) ? <><NewAskEmailRow getToken={getToken} /><SlackReviewAlerts getToken={getToken} /></> : null}
     </div>
   </Panel>;

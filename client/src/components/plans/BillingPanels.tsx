@@ -47,7 +47,7 @@ export function CurrentPlanPanel({ summary, onCancel }: { summary: CreditSummary
 export function PaymentMethodPanel() {
   return <Panel className="mt-4">
     <h2 className="font-semibold">Payment method</h2>
-    <div className="mt-3 flex items-start gap-3"><CreditCard className="mt-0.5 size-5 shrink-0" /><p className="flex-1 text-sm text-muted-foreground">Checkout runs on the payment provider&apos;s hosted page. Card and bank details stay with them — SkipWait never sees or stores them, so there are no saved methods to list here.</p></div>
+    <div className="mt-3 flex items-start gap-3"><CreditCard className="mt-0.5 size-5 shrink-0" /><p className="flex-1 text-sm text-muted-foreground">Checkout runs on the payment provider&apos;s hosted page. Card and bank details stay with them — skipwait.me never sees or stores them, so there are no saved methods to list here.</p></div>
     <p className="mt-3 text-xs text-muted-foreground">Plans are charged in rupees in India and in US dollars elsewhere. The provider shows the payment methods available to you at checkout.</p>
   </Panel>;
 }

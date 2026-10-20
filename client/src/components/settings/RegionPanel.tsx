@@ -34,7 +34,7 @@ export function deviceRegion(now: Date = new Date()): RegionValues {
     language: "English",
     timeZone: `${timeZone} (${gmtOffsetLabel(timeZone, now)})`,
     currency: browserPaymentRoute(),
-    // Dates across SkipWait use the device locale's short-month format.
+    // Dates across skipwait.me use the device locale's short-month format.
     dateSample: new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" }).format(now),
   };
 }

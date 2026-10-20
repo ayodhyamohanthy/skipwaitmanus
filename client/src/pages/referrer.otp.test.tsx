@@ -197,7 +197,7 @@ describe("Referrer work-email OTP verification", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<Referrer />);
-    expect(await screen.findByText("You joined from an invite. The person who invited you gets one referral credit after their next ask. SkipWait never pays referrers.")).toBeTruthy();
+    expect(await screen.findByText("You joined from an invite. The person who invited you gets one referral credit after their next ask. skipwait.me never pays referrers.")).toBeTruthy();
     expect(screen.queryByText(/each received one referral credit|Welcome credit added/)).toBeNull();
     const enroll = fetchMock.mock.calls.find(call => String(call[0]).endsWith("/verify-work-email"));
     expect(JSON.parse(String(enroll?.[1]?.body))).toEqual({ email: "employee@acme.com", inviteCode: "cov-acme-1" });

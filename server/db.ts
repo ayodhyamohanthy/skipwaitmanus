@@ -439,7 +439,7 @@ export async function createSeekerAlert(userId: number, input: { companyDomain?:
     const id = Number(inserted[0].insertId);
     return (await db.select().from(seekerAlerts).where(eq(seekerAlerts.id, id)).limit(1))[0];
   } catch (error) {
-    if (error instanceof Error && (error as { code?: unknown }).code === "ER_DUP_ENTRY") throw new Error(`You already watch ${domain}`);
+    if (isDuplicateKey(error)) throw new Error(`You already watch ${domain}`);
     throw error instanceof Error ? error : new Error("We could not save this alert");
   }
 }
@@ -570,7 +570,7 @@ export async function createAssistantToken(userId: number, input: { name?: unkno
     const id = Number(inserted[0].insertId);
     return { id, name, prefix, token: plaintext, createdAt: new Date().toISOString() };
   } catch (error) {
-    if (error instanceof Error && (error as { code?: unknown }).code === "ER_DUP_ENTRY") throw new Error(`You already have a token named “${name}”`);
+    if (isDuplicateKey(error)) throw new Error(`You already have a token named “${name}”`);
     throw error instanceof Error ? error : new Error("We could not create this token");
   }
 }
@@ -780,7 +780,7 @@ export async function createDeveloperApp(userId: number, input: {
       inserted = await tryInsert(clientId);
       break;
     } catch (error) {
-      if (error instanceof Error && (error as { code?: unknown }).code === "ER_DUP_ENTRY" && attempt < 2) continue;
+      if (isDuplicateKey(error) && attempt < 2) continue;
       throw error instanceof Error ? error : new Error("We could not register this app");
     }
   }
@@ -3507,7 +3507,7 @@ export const MAX_ADMIN_TOKEN_ADJUSTMENT = 1000;
 export const COMPANY_COVERAGE_REWARD_TOKENS = 1;
 export const PERSONAL_REFERRAL_REWARD_TOKENS = 1;
 /**
- * D-055: SkipWait never pays referrers. No credits, passes, karma, money or perks for referring
+ * D-055: skipwait.me never pays referrers. No credits, passes, karma, money or perks for referring
  * or for accepting asks; recognition stays private (impact stats, thank-yous). The one
  * referrer-side reward, a coverage-invite joiner's pending credit that unlocked when they
  * accepted an ask, is switched off here, not deleted (D-042): accepting grants nothing and no
@@ -3609,7 +3609,7 @@ export async function claimPersonalReferralInvite(joinerUserId: number, input: {
       return { rewarded: true as const, tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS };
     });
   } catch (error) {
-    if ((error as { code?: string }).code === "ER_DUP_ENTRY") return { rewarded: false as const, reason: "duplicate_account" as const };
+    if (isDuplicateKey(error)) return { rewarded: false as const, reason: "duplicate_account" as const };
     throw error;
   }
 }
@@ -3738,7 +3738,7 @@ export async function grantPromoCreditsTx(tx: any, input: { userId: number; role
     await tx.insert(notifications).values({ kind: "credits_added", userId: input.userId, category: "system", title: `${PROMO_GRANT_TOKENS} bonus referral credits`, body: `Your verified payment earned ${PROMO_GRANT_TOKENS} bonus credits. They expire in 30 days and are used before monthly credits.` });
     return { granted: true, grantId };
   } catch (error) {
-    if ((error as { code?: string }).code === "ER_DUP_ENTRY") return { granted: false, reason: "already_granted" };
+    if (isDuplicateKey(error)) return { granted: false, reason: "already_granted" };
     throw error;
   }
 }
@@ -3971,7 +3971,7 @@ export async function markSubscriptionNonRenewing(userId: number, role: WalletRo
 // recipient performs a real action: a Job Seeker sends a private referral
 // request. Joining grants nothing, which removes the incentive to farm sign-ups.
 // The Referrer side (accepting a referral request) is off under D-055
-// (REFERRER_ACCEPT_REWARDS_ENABLED): SkipWait never pays referrers.
+// (REFERRER_ACCEPT_REWARDS_ENABLED): skipwait.me never pays referrers.
 async function grantPendingActionRewardsTx(tx: any, userId: number, role: WalletRole, qualifiedByType: string, qualifiedById: string) {
   const pending = await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.userId,userId),eq(tokenTransactions.role,role),eq(tokenTransactions.kind,"invite_reward_pending"),or(isNull(tokenTransactions.rewardStatus),eq(tokenTransactions.rewardStatus,"pending")))).for("update");
   let total=0; const claimedIds:number[]=[];
@@ -4357,7 +4357,7 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     if (!expectedPlan || !isBillablePlanId(expectedPlan)) {
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
       // A wallet or intent still stored as Pro/Max is a retired plan (cancel and refund); anything
-      // else is a price SkipWait cannot place, reviewed without a Pro/Max label.
+      // else is a price skipwait.me cannot place, reviewed without a Pro/Max label.
       return { status: "ignored" as const, reason: isRetiredPlanId(expectedPlan) ? PLAN_RETIRED_CODE : "unsupported_plan" };
     }
     const currentSubscription = sameSubscription ? wallet : undefined;
@@ -4773,7 +4773,7 @@ export const TALENT_CONSENT_RETENTION_DAYS = 90;
 export const TALENT_UNLOCK_DAYS = 30;
 export const TALENT_DISCLOSABLE_FIELDS = ["headline", "location", "skills", "experience", "expertise"] as const;
 export type TalentDisclosedField = typeof TALENT_DISCLOSABLE_FIELDS[number];
-const TALENT_CONSENT_AUDIENCE = "approved employers on SkipWait";
+const TALENT_CONSENT_AUDIENCE = "approved employers on skipwait.me";
 const TALENT_CONSENT_PURPOSE = "anonymous talent discovery and employer introduction requests";
 const TALENT_CONTACT_FLOW = "Employers spend credits to unlock the approved snapshot and may request an introduction; the seeker chooses whether to respond.";
 
@@ -5052,7 +5052,7 @@ export async function prepareUnlockCreditCheckout(input: { checkoutKey:string; u
   const expected=UNLOCK_CREDIT_PACKS[input.pack]; if(!expected||input.amount!==expected.amountInPaise||input.currency.toUpperCase()!=="INR") throw new Error("Checkout does not match the selected pack");
   if(!/^[\x21-\x7E]{16,64}$/.test(input.checkoutKey)) throw new Error("A valid Idempotency-Key header is required");
   const fingerprint=createHash("sha256").update(`${input.userId}|${input.pack}|${input.amount}|INR`).digest("hex"); const providerReceipt=`sw_${createHash("sha256").update(`${input.userId}|${input.checkoutKey}`).digest("hex").slice(0,32)}`;
-  const db=await getDb();if(!db)throw new Error("Database unavailable"); try{await db.insert(employerPaymentFulfillments).values({provider:"razorpay",providerOrderId:null,checkoutKey:input.checkoutKey,fingerprint,providerReceipt,userId:input.userId,pack:input.pack,amount:input.amount,currency:"INR",status:"creating"});}catch(error){if((error as any).code!=="ER_DUP_ENTRY")throw error;}
+  const db=await getDb();if(!db)throw new Error("Database unavailable"); try{await db.insert(employerPaymentFulfillments).values({provider:"razorpay",providerOrderId:null,checkoutKey:input.checkoutKey,fingerprint,providerReceipt,userId:input.userId,pack:input.pack,amount:input.amount,currency:"INR",status:"creating"});}catch(error){if(!isDuplicateKey(error))throw error;}
   return db.transaction(async tx=>{const intent=(await tx.select().from(employerPaymentFulfillments).where(and(eq(employerPaymentFulfillments.userId,input.userId),eq(employerPaymentFulfillments.checkoutKey,input.checkoutKey))).limit(1).for("update"))[0];if(!intent||intent.fingerprint!==fingerprint)throw new Error("Idempotency-Key is already bound to a different credit pack");if(intent.providerOrderId)return {...intent,action:"bound" as const};const now=new Date();if(intent.status==="provider_create_in_progress"&&intent.createLeaseExpiresAt&&intent.createLeaseExpiresAt>now)return {...intent,action:"busy" as const};if(!["creating","provider_create_in_progress"].includes(intent.status))return {...intent,action:"blocked" as const};const leaseOwner=randomUUID();const leaseExpiresAt=new Date(now.getTime()+30_000);await tx.update(employerPaymentFulfillments).set({status:"provider_create_in_progress",createLeaseOwner:leaseOwner,createLeaseExpiresAt:leaseExpiresAt,attemptCount:sql`${employerPaymentFulfillments.attemptCount}+1`}).where(eq(employerPaymentFulfillments.id,intent.id));return {...intent,status:"provider_create_in_progress",createLeaseOwner:leaseOwner,createLeaseExpiresAt:leaseExpiresAt,action:intent.status==="provider_create_in_progress"?"reconcile" as const:"create" as const};});
 }
 export async function markUnlockCheckoutRequiresReview(intentId:number,reason:string){const db=await getDb();if(!db)throw new Error("Database unavailable");await db.update(employerPaymentFulfillments).set({status:"requires_review",lastError:reason,createLeaseOwner:null,createLeaseExpiresAt:null}).where(eq(employerPaymentFulfillments.id,intentId));}

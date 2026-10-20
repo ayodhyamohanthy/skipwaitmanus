@@ -7,7 +7,7 @@ import { readApiJson } from "@/lib/apiResponse";
 export type TokenSource = () => Promise<string | null>;
 
 const UNAVAILABLE = "Work-email verification is unavailable right now";
-export const NETWORK_MESSAGE = "We couldn't reach SkipWait. Check your connection and try again.";
+export const NETWORK_MESSAGE = "We couldn't reach skipwait.me. Check your connection and try again.";
 
 const errorPayload = z.object({ error: z.string().optional(), retryAfterSeconds: z.number().optional() });
 const sentPayload = z.object({ sent: z.literal(true) });

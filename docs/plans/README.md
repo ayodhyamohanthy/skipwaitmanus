@@ -29,7 +29,7 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. T
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on | Runs beside |
 |---|---|---|---|---|---|---|---|
 | 2.1 | 1 (go-live slice: `/plans` packs and passes, coverage before payment, no accidental renewal) | [GO-LIVE-1-plans-purchase.md](GO-LIVE-1-plans-purchase.md) | 1 | M | ready | 1.1 live, 1.3 built | 3.1 |
-| 2.2 | D-065-daily-money-check | live (`eed80e5f`, PR #317); follow-up [D-065-B-slice-checks.md](D-065-B-slice-checks.md) | 2 | S | ready | — | everything |
+| 2.2 | D-065-daily-money-check | live (`eed80e5f`, PR #317); follow-up [D-065-B-slice-checks.md](D-065-B-slice-checks.md) | 2 | S | done — `dc8d0bf3` (PR #333) | — | everything |
 | 2.3 | Owner: read the D-069 dry run, apply, fix `billing_cycles` mismatches in Chargebee, add the pass-refund wording to `/refunds`, then the one live ₹99 UPI buy-and-refund (D-065) | plan §6 | — | — | owner action | 1.3, 2.1 | — |
 
 ## Stage 3 — the money rules (one at a time; same functions in `server/db.ts`)
@@ -45,12 +45,12 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. T
 | ID | What | Packet | Tier | Size | Packet state | Wait for |
 |---|---|---|---|---|---|---|
 | F-1 | Toolchain pins (Node 22.12+, `.nvmrc`) and run the `shared/` tests | [FND-1-toolchain-and-test-collection.md](FND-1-toolchain-and-test-collection.md) | 3 | S | done — `1f234293` | — |
-| F-2 | Remove verified-dead code that misleads readers | [FND-2-dead-code.md](FND-2-dead-code.md) | 3 | S | ready | — |
-| F-3 | Test kit throws production-shaped duplicate errors; fix the two duplicate checks that read only `code` | [FND-3-duplicate-key-fidelity.md](FND-3-duplicate-key-fidelity.md) | 2 | S | ready | 0.1 |
+| F-2 | Remove verified-dead code that misleads readers | [FND-2-dead-code.md](FND-2-dead-code.md) | 3 | S | done — `7fdc634d` (PR #342) | — |
+| F-3 | Test kit throws production-shaped duplicate errors; fix the two duplicate checks that read only `code` | [FND-3-duplicate-key-fidelity.md](FND-3-duplicate-key-fidelity.md) | 2 | S | done — `a62c9d20` (PR #338) | 0.1 |
 | F-4 | Redact token-bearing API paths in Sentry and admin alerts | [FND-4-token-path-scrubbing.md](FND-4-token-path-scrubbing.md) | 2 | S | ready | 1.2 (same Sentry files) |
-| F-5 | Forward or remove the server keys the container never receives | [FND-5-env-forwarding.md](FND-5-env-forwarding.md) | 2 | S | ready | 1.1 |
-| F-6 | Correct stale §3b status cells (rows 4, 5, 7, 21, 25) from evidence on `main` | [FND-6-row-status-audit.md](FND-6-row-status-audit.md) | 3 | S | ready | — |
-| F-7 | Triage the 53 open PRs and ~250 branches for the owner (read-only) | [FND-7-pr-branch-triage.md](FND-7-pr-branch-triage.md) | 3 | S | ready | — |
+| F-5 | Forward or remove the server keys the container never receives | [FND-5-env-forwarding.md](FND-5-env-forwarding.md) | 2 | S | done — `d93a1d12` (PR #334) | 1.1 |
+| F-6 | Correct stale §3b status cells (rows 4, 5, 7, 21, 25) from evidence on `main` | [FND-6-row-status-audit.md](FND-6-row-status-audit.md) | 3 | S | done — `8e641c7c` (PR #343) | — |
+| F-7 | Triage the 53 open PRs and ~250 branches for the owner (read-only) | [FND-7-pr-branch-triage.md](FND-7-pr-branch-triage.md) | 3 | S | done — `bcd1074e` (PR #344), result in [FND-7-triage-result.md](FND-7-triage-result.md) | — |
 | T-1 | Public impact counts only accepted asks, never expired ones | [TRUTH-1-public-impact-count.md](TRUTH-1-public-impact-count.md) | 2 | S | done — `c34582a9` | — |
 
 ## Later (packets come from the architect when the stage before them is live)

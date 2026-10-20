@@ -1,6 +1,6 @@
 /**
- * D-055 follow-up (D-067 lane): referrers never pay on SkipWait. Referring is
- * never charged, and SkipWait never pays a referrer (D-055).
+ * D-055 follow-up (D-067 lane): referrers never pay on skipwait.me. Referring is
+ * never charged, and skipwait.me never pays a referrer (D-055).
  *
  * Every referrer-role purchase (a kit credit pack, a kit pass or Keep warm, or
  * the /premium per-credit checkout with role "referrer") is refused first by
@@ -21,7 +21,7 @@ export const REFERRER_PURCHASES_ENABLED: boolean = false;
 export const REFERRER_PURCHASE_REFUSED_CODE = "referrers_never_pay" as const;
 
 /** The plain fact, for any surface that would otherwise offer a referrer a purchase. */
-export const REFERRERS_NEVER_PAY = "Referrers never pay on SkipWait.";
+export const REFERRERS_NEVER_PAY = "Referrers never pay on skipwait.me.";
 
 /** The 403 body's error for a refused referrer-role checkout. */
 export const REFERRER_PURCHASE_REFUSED_ERROR = `${REFERRERS_NEVER_PAY} Nothing has been charged.`;

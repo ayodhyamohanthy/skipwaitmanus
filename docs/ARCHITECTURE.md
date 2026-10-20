@@ -210,24 +210,17 @@ A new job needs its name in both registries and a contract test (`server/schedul
 | R2 / Forge storage | `server/storageCloudflare.ts`, `server/storage.ts` | Database blobs as the last resort |
 | Microsoft Clarity | `client/src/lib/clarity.ts` | Only after "Accept all" consent; skips token pages |
 
-`.env.example` is the contract (72 keys). `server/configContract.test.ts` checks that every referenced key is declared there, and that every forwarded key is declared.
+`.env.example` is the contract (71 keys). `server/configContract.test.ts` checks that every referenced key is declared there, that every forwarded key is declared, and that every key the server reads is either in `CONTAINER_ENV_KEYS` or allowlisted there with the reason the platform sets it (`PORT` in the Dockerfile, `NODE_ENV` in the image).
 
 ## 11. Known gaps (each has a packet or row in `docs/plans/README.md`)
 1. **Dead code that misleads readers:**
-   - the Kinetic drafts: `components/layout/AppShell.tsx`, `components/ui/primitives.tsx`, `components/referrer/ReferrerCockpit.tsx`, `components/seeker/SeekerSearchPage.tsx`, `pipeline/PipelineTracker.tsx`;
-   - `styles/globals.css`;
-   - the unrouted pages `Notifications.tsx` and `ReferralRequest.tsx`;
-   - `src/services/mailService.ts`;
-   - the unused Manus Forge modules (`map`, `dataApi`, `imageGeneration`, `voiceTranscription`, `heartbeat`);
-   - `render.yaml`;
-   - the imported-but-unused `VitePWA`.
+   - `styles/globals.css` (the D-048 phase-2 packet deletes it; its `--sw-*` names collide with the goal tokens);
+   - the unrouted pages `Notifications.tsx` (read as text by `server/notificationCenterUi.test.ts`) and `ReferralRequest.tsx` (kept by D-067; `client/src/pages/referralRequest.auth.test.tsx` imports it).
 2. **Test blind spots:**
    - `*.test.ts` files are not type-checked;
-   - the in-memory kit throws a bare duplicate-key error where production Drizzle wraps it (`DrizzleQueryError`), so duplicate checks that read only the top-level `code` (`server/blocksRoutes.ts`, `server/companyDirectoryAdmin.ts`) pass in tests and may miss in production.
 3. **Privacy hygiene:**
    - server Sentry and admin-alert paths do not redact the token-bearing API routes (`/api/referrer-fast-track/:linkCode`, `/api/referral-share-cards/public/:shareToken`, `/api/referrer-review-links/:linkToken`);
    - the Pages CSP is report-only with nowhere to report.
-4. **Configuration drift:** six server keys are read but never forwarded to the container (`GIFT_CHECKOUT_ENABLED`, the three `OPPORTUNITY_*` limits, `ZEPTOMAIL_FROM_NAME`, `PORT`), so they always take their defaults.
-5. **Toolchain:**
+4. **Toolchain:**
    - deploys do not wait for CI;
    - `deploy-pages.yml` builds without running tests.

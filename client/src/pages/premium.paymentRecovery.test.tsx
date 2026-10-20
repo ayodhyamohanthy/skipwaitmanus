@@ -90,7 +90,7 @@ describe("Premium for the referrer role (D-055: referrers never pay)", () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ summary: { totalAvailable: 0 } }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
     render(<Premium />);
-    expect(await screen.findByText("Referrers never pay on SkipWait.")).toBeTruthy();
+    expect(await screen.findByText("Referrers never pay on skipwait.me.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /continue to pay|sign in to pay/i })).toBeNull();
     expect(screen.queryByRole("spinbutton")).toBeNull();
     expect(screen.queryByRole("link", { name: /Pro and Max/i })).toBeNull();

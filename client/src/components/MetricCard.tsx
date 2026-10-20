@@ -1,4 +1,0 @@
-import type { LucideIcon } from "lucide-react";
-
-/** World metrics read as a scoreboard cell: mono label, condensed numeral, ink rule. */
-export default function MetricCard({ label, value, detail, icon: Icon, accent = "bg-paper-dim text-ink" }: { label: string; value: string; detail: string; icon: LucideIcon; accent?: string }) { return <div className="border-[1.5px] border-ink/20 bg-paper p-5"><div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[11px] uppercase tracking-[.16em] text-fog">{label}</p><p className="tnum font-display text-4xl font-semibold uppercase leading-none text-ink">{value}</p><p className="mt-2 text-xs leading-5 text-fog">{detail}</p></div><span className={`grid size-10 shrink-0 place-items-center border border-ink/20 ${accent}`}><Icon className="size-5" /></span></div></div>; }
