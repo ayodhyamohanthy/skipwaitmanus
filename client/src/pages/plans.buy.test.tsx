@@ -7,6 +7,7 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render as rtlRender, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { REFERRER_PURCHASE_REFUSED_ERROR } from "@shared/referrerPurchases";
 import { catalogFixture } from "@/components/plans/catalogFixture";
 import Plans from "./Plans";
 
@@ -118,7 +119,13 @@ describe("/plans buying (§0.4 test 2)", () => {
 
   it.each([
     [503, { error: "Payments are not available right now. Please try again in a moment." }, "Payments are not available right now. Nothing has been charged."],
-    [400, { error: "That credit pack is not available for this billing route" }, "That credit pack is not available for this billing route"],
+    // A refusal keeps the server's words and always says nothing was charged, never twice.
+    [400, { error: "That credit pack is not available for this billing route" }, "That credit pack is not available for this billing route. Nothing has been charged."],
+    [401, { error: "Sign in before purchasing tokens" }, "Sign in before purchasing tokens. Nothing has been charged."],
+    [403, { error: REFERRER_PURCHASE_REFUSED_ERROR, code: "referrers_never_pay" }, REFERRER_PURCHASE_REFUSED_ERROR],
+    // The provider leg failing (server/chargebeeRoutes.ts's real 502 bodies) reads the plain fallback.
+    [502, { error: "Unable to start Chargebee checkout" }, "We couldn't start checkout. Nothing has been charged."],
+    [500, { error: "Internal server error" }, "We couldn't start checkout. Nothing has been charged."],
     [502, {}, "We couldn't start checkout. Nothing has been charged."],
   ])("a %s answer shows plain words and opens nothing", async (status, body, copy) => {
     serve({ summary: freeSummary, extra: url => url === "/api/chargebee/checkout" ? json(body, status) : undefined });
@@ -126,6 +133,17 @@ describe("/plans buying (§0.4 test 2)", () => {
     await screen.findByRole("region", { name: "Credit packs" });
     fireEvent.click(within(packCard(60)).getByRole("button", { name: "Buy 60 credits" }));
     expect((await screen.findByRole("alert")).textContent).toBe(copy);
+    expect(openedCheckout).not.toHaveBeenCalled();
+    expect(window.sessionStorage.getItem("skipwait.pending-chargebee-checkout")).toBeNull();
+  });
+
+  it("a pass whose provider leg fails (502) says nothing was charged and opens nothing", async () => {
+    const catalog = catalogFixture("INTL", { terms: ["momentum:30d"] });
+    serve({ summary: freeSummary, catalog: () => json(catalog), extra: url => url === "/api/chargebee/subscription-checkout" ? json({ error: "Unable to start the secure plan checkout" }, 502) : undefined });
+    render(<Plans />);
+    await screen.findByRole("region", { name: "Passes" });
+    fireEvent.click(within(passCard("Momentum")).getByRole("button", { name: "Buy Momentum, 30 days" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("We couldn't start checkout. Nothing has been charged.");
     expect(openedCheckout).not.toHaveBeenCalled();
     expect(window.sessionStorage.getItem("skipwait.pending-chargebee-checkout")).toBeNull();
   });

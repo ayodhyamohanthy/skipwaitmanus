@@ -27,6 +27,14 @@ type CheckoutRequest = { path: "/api/chargebee/checkout"; body: PackCheckoutRequ
 type Outcome = { ok: true; checkoutUrl: string; hostedPageId: string } | { ok: false; notAvailable: boolean; message: string };
 
 const refusalSchema = z.object({ error: z.string().min(1) });
+const SAYS_NOTHING_CHARGED = /nothing (?:has been|was) charged/i;
+
+/** A refusal in the server's own words, always saying nothing was charged (never twice). */
+function refusalMessage(serverError: string): string {
+  const sentence = serverError.trim();
+  if (SAYS_NOTHING_CHARGED.test(sentence)) return sentence;
+  return `${sentence}${/[.!?]$/.test(sentence) ? "" : "."} Nothing has been charged.`;
+}
 
 /** One key per buyable item, so a card can show that its own press is sending. */
 export function purchaseKey(purchase: KitPurchase): string {
@@ -60,8 +68,10 @@ async function postCheckout(request: CheckoutRequest, token: string | null | und
   }
   if (response.status === 409) return { ok: false, notAvailable: true, message: NOT_ON_SALE_ERROR };
   if (response.status === 503) return { ok: false, notAvailable: false, message: PAYMENTS_DOWN_ERROR };
+  // A server or provider failure (for example the 502 when the provider's checkout call fails) reads the plain fallback.
+  if (response.status >= 500) return { ok: false, notAvailable: false, message: CHECKOUT_ERROR };
   const refusal = refusalSchema.safeParse(payload);
-  return { ok: false, notAvailable: false, message: refusal.success ? refusal.data.error : CHECKOUT_ERROR };
+  return { ok: false, notAvailable: false, message: refusal.success ? refusalMessage(refusal.data.error) : CHECKOUT_ERROR };
 }
 
 type KitCheckoutInput = {
