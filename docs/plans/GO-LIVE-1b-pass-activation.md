@@ -57,7 +57,7 @@ D-084: GO-LIVE-1 (#351) put passes and Keep warm on sale; the P0 switch took the
 ## 7. Definition of done
 - [ ] Gate; draft PR; independent review.
 - [ ] Test-site evidence in the row (§4.5), then the switch commit, then live checks: API and web CONVERGED; `/plans` at 1280 and 390 with passes on sale.
-- [ ] Docs: BUGFREE legs for pass checkout, activation and recovery; runbook §7 (a pass that never activated: recovery by checkout page, then the admin match); `AGENTS.md` living-map payments row; D-084 and D-046 sync cells; row 1.
+- [x] Docs: BUGFREE 4.18 legs for pass activation and recovery (first live run pending the release); runbook §7 (a paid pass whose webhook never arrived: recovery by checkout page, then the admin match); `AGENTS.md` living-map payments row; D-084 sync cell; row 1. (D-046 sync cell: updated when passes go back on sale.)
 
 ## 8. Review checklist
 1. Can any path grant a pass without a provider-confirmed succeeded checkout page or webhook?
