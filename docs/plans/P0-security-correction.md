@@ -30,7 +30,7 @@
    - The end-to-end test asserts `req.hostname` and `req.protocol` are canonical under spoofed input.
 3. `@server/publicOrigin.ts` and `@server/publicOrigin.test.ts`, used at the six link sites in `@server/privateReferralRoutes.ts`
    - `PUBLIC_BASE_URL` (already declared `.env.example:56`, forwarded `src/worker.ts:16`) when set, trailing slashes trimmed; the request origin only as a local fallback.
-4. Docs: this packet, the three §3b rows, FND-7 result §1, `assignments.json`, `docs/plans/README.md`.
+4. Docs: this packet, the three §3b rows and FND-7 result §1. No `assignments.json` entry: that file is architect-owned and only Claude Code adds tasks (D-083); this correction runs under the owner's direct instruction and is recorded in §3b.
 
 ## 3. Tests first (red for the stated reason)
 

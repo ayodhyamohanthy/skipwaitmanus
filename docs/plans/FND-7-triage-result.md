@@ -198,7 +198,7 @@ Squash-merged lane branches appear in the next list even though their PR is clos
 
 ## 4. Owner action list (15 minutes)
 
-1. **Approve the corrected P0 set**: P0-a storage-key normalization (code fix in progress) and the P0-c edge/link hardening (defence in depth). The dev-auth finding was withdrawn — `workosConfigured()` already fails the production boot. Nothing else in this report is an active exploit.
+1. **Approve the corrected P0 set**: P0-a storage-key normalization (fixed on `agent/queue/p0-security-correction`, `da4be6c6`) and the P0-c edge/link hardening (defence in depth, `3ea10eff` + `f305a792`). The dev-auth finding was withdrawn — `workosConfigured()` already fails the production boot. Nothing else in this report is an active exploit.
 2. **Keep three lanes**: #324 (wait for D-080 + dashboard), #322 (D-067 recovery), #308 (row 13 slice A).
 3. **Close #146** (sharp already on `main`). **Decide the row-20 set**: #310/#311/#314 (merge as row 20, or close and restart), #309 (rebase on D-035/D-063).
 4. **Close the superseded/dropped list** with a one-line pointer (D-059): 325, 319, 187, 141, 140, 139, 133, 132, 128, 124, 120, 119, 117, 116, 114, 113, 111, 110, 107, 106, 105, 104, 93, 25, 14, 1. That is 26 PRs off the board.
