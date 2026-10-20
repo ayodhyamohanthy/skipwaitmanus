@@ -84,7 +84,7 @@ const TEMPLATES = [
     channel: "Email + Slack",
     trigger: "A private review link is prepared for a verified employee. Never includes candidate content.",
     subject: "Private referral review at ⟨company⟩",
-    body: ["A private review is ready at ⟨company⟩", "Reviewing is optional and never costs you anything. Sign in with your verified company email before any decision is recorded.", "Opening this link never records a decision. Review and confirm on Skipwait."],
+    body: ["A private review is ready at ⟨company⟩", "Reviewing is optional and never costs you anything. Sign in with your verified company email before any decision is recorded.", "Opening this link never records a decision. Review and confirm on skipwait.me."],
     cta: "Open private review",
   },
   { name: "Re-verify reminder", channel: "Email", trigger: "A work-email verification approaches its re-check window." },
@@ -111,7 +111,7 @@ export default function Emails() {
         })}
       </nav>
       <div className="min-w-0 space-y-4">
-        {template.push && <div className="mx-auto max-w-sm rounded-2xl bg-background p-3 shadow-md"><div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="grid size-5 place-items-center rounded bg-primary text-[10px] font-bold text-primary-foreground">S</span>SKIPWAIT · now</div><p className="mt-1 text-sm font-semibold">{template.push}</p></div>}
+        {template.push && <div className="mx-auto max-w-sm rounded-2xl bg-background p-3 shadow-md"><div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="grid size-5 place-items-center rounded bg-primary text-[10px] font-bold text-primary-foreground">S</span>SKIPWAIT.ME · now</div><p className="mt-1 text-sm font-semibold">{template.push}</p></div>}
         <article aria-label={template.name} className="mx-auto max-w-xl overflow-hidden rounded-3xl bg-background">
           <div className="border-b border-border p-4 text-sm">
             <p>{emailed ? <><span className="text-muted-foreground">From:</span> {SENDER}</> : <><span className="text-muted-foreground">In-app:</span> skipwait.me notifications</>}</p>
