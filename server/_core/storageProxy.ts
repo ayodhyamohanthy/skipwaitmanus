@@ -1,14 +1,31 @@
 import type { Express } from "express";
 import { ENV } from "./env";
 
+/**
+ * Collapse empty and "." segments and reject anything that could escape the
+ * public namespace: ".." traversal, backslashes, and NUL bytes. Returns null
+ * for a key that must never reach the presign backend.
+ */
+export function normalizeStorageKey(raw: string): string | null {
+  if (raw.includes("\0") || raw.includes("\\")) return null;
+  const segments = raw.split("/").filter(segment => segment !== "" && segment !== ".");
+  if (segments.some(segment => segment === "..")) return null;
+  return segments.join("/");
+}
+
 export function registerStorageProxy(app: Express) {
   app.get("/manus-storage/*", async (req, res) => {
-    const key = (req.params as Record<string, string>)[0];
-    if (!key) {
+    const rawKey = (req.params as Record<string, string>)[0];
+    if (!rawKey) {
       res.status(400).send("Missing storage key");
       return;
     }
-    if (key.startsWith("skipwait/private-referrals/")) {
+    const key = normalizeStorageKey(rawKey);
+    if (!key || key.startsWith("skipwait/private-referrals/")) {
+      // Private documents only stream through /api/documents/:attachmentId,
+      // which applies the shared attachment policy. The guard runs on the
+      // NORMALIZED key: "//", "./" and encoded-separator variants of the
+      // private prefix must never reach the presign backend.
       res.status(404).send("Document not found");
       return;
     }
