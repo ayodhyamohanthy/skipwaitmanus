@@ -77,9 +77,9 @@ describe("Saved alerts tab", () => {
     expect(await screen.findByText("Merkle")).toBeTruthy();
     const rows = screen.getAllByRole("listitem");
     expect(rows.map(row => row.querySelector(".company-mark")?.textContent)).toEqual(["M", "SW", "G"]);
-    expect(within(rows[1]).getByText("SkipWait")).toBeTruthy();
+    expect(within(rows[1]).getByText("skipwait.me")).toBeTruthy();
     expect(within(rows[2]).getByText("globex.com")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Pause alert for SkipWait" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Pause alert for skipwait.me" })).toBeTruthy();
     expect(screen.queryByText("merkle.com")).toBeNull();
   });
 
@@ -141,7 +141,7 @@ describe("Saved alerts tab", () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
     renderSaved();
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("We could not reach SkipWait. Check your connection and try again.");
+    expect(alert.textContent).toContain("We could not reach skipwait.me. Check your connection and try again.");
     expect(alert.textContent).not.toContain("Failed to fetch");
   });
 

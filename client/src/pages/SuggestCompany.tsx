@@ -86,7 +86,7 @@ export default function SuggestCompany() {
       <Heading eyebrow="GROW THE MAP" title="Suggest a company" text="Real employers only. We review every suggestion before it appears." />
       <Panel>
         <label className="block text-sm font-medium">Company name<input className={field} value={name} maxLength={160} onChange={event => { setName(event.target.value); setError(""); }} placeholder="e.g. Freshworks" /></label>
-        {listed ? <p className="mt-2 flex items-center gap-2 text-sm"><AlertTriangle className="size-4" />{listed.name} is already on SkipWait. <Link href={`/explore/${listed.slug}`} className="text-link">Open it</Link></p> : null}
+        {listed ? <p className="mt-2 flex items-center gap-2 text-sm"><AlertTriangle className="size-4" />{listed.name} is already on skipwait.me. <Link href={`/explore/${listed.slug}`} className="text-link">Open it</Link></p> : null}
         {directory.isError && name.trim().length > 1 ? <p className="mt-2 text-sm text-muted-foreground">We couldn’t check the current company list. Reviewers still catch duplicates.</p> : null}
         <label className="mt-4 block text-sm font-medium">Website<input className={field} value={website} inputMode="url" maxLength={500} onChange={event => { setWebsite(event.target.value); setError(""); }} placeholder="freshworks.com" /></label>
         <fieldset className="mt-4">

@@ -104,7 +104,7 @@ function Verify() {
         </div>}
       </section>
       <aside className="space-y-4">
-        <div className="rounded-3xl bg-muted p-5"><span className="eyebrow">WHY A CODE?</span><p className="mt-2 text-sm">It proves you can receive email at {c.name} today. It doesn't prove your role or that {c.name} endorses SkipWait.</p></div>
+        <div className="rounded-3xl bg-muted p-5"><span className="eyebrow">WHY A CODE?</span><p className="mt-2 text-sm">It proves you can receive email at {c.name} today. It doesn't prove your role or that {c.name} endorses skipwait.me.</p></div>
         <div className="rounded-3xl border border-border p-5 text-sm"><span className="eyebrow">WE STORE</span><ul className="mt-2 space-y-2"><li className="flex gap-2"><Check className="size-4 shrink-0 text-primary" />A one-way fingerprint of your email</li><li className="flex gap-2"><Check className="size-4 shrink-0 text-primary" />Company and verification date</li><li className="flex gap-2"><Check className="size-4 shrink-0 text-primary" />Never the code or your inbox</li></ul></div>
         <div className="rounded-3xl border border-border p-5 text-sm"><span className="eyebrow">LEFT YOUR COMPANY?</span><p className="mt-2 text-muted-foreground">Your badge is removed at the next re-check. Open requests are returned to seekers with a kind note.</p></div>
       </aside>

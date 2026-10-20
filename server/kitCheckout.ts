@@ -11,7 +11,7 @@
  *    therefore the entitlement) is written by the caller only after Chargebee
  *    returned a page, and the pass becomes real only from a verified webhook
  *    (server/db.ts applyChargebeeSubscriptionEvent).
- * No card data reaches SkipWait: every payment happens on Chargebee's page.
+ * No card data reaches skipwait.me: every payment happens on Chargebee's page.
  */
 import { randomUUID } from "node:crypto";
 import type { Request } from "express";

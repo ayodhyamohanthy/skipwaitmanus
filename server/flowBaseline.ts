@@ -4,7 +4,7 @@
 // Rules this file keeps:
 //  - aggregate only: every number is a count over rows, never a name, email,
 //    user id or request text;
-//  - operator domains (SkipWait's own company and the admin mailbox) are
+//  - operator domains (skipwait.me's own company and the admin mailbox) are
 //    excluded from "external referrers", because operator activity is not
 //    marketplace supply;
 //  - availability uses the company directory's own predicate
@@ -23,7 +23,7 @@ const MAX_COMPANY_ROWS = 12;
 const DECISION_ACTIONS = new Set(["approve", "pass"]);
 const ACTIVITY_ACTIONS = new Set(["claim", "approve", "pass", "review"]);
 
-/** SkipWait's own domains: the launch seed's own page, plus the admin mailbox domain. */
+/** skipwait.me's own domains: the launch seed's own page, plus the admin mailbox domain. */
 export function operatorDomains(adminEmail: string | null | undefined = process.env.SKIPWAIT_ADMIN_EMAIL): string[] {
   const own = LAUNCH_COMPANY_SEED.filter(seed => seed.slug === OPERATOR_COMPANY_SLUG).flatMap(seed => seed.domains);
   const admin = (adminEmail ?? "").split("@")[1]?.trim().toLowerCase();

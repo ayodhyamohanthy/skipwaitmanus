@@ -136,15 +136,15 @@ describe("Plans on live data", () => {
     expect(openedCheckout).not.toHaveBeenCalled();
   });
 
-  // Review round 2: a cancel request that never reaches SkipWait shows the plain network
+  // Review round 2: a cancel request that never reaches skipwait.me shows the plain network
   // message, never the browser's raw "Failed to fetch".
-  it("says plainly when cancel renewal cannot reach SkipWait", async () => {
+  it("says plainly when cancel renewal cannot reach skipwait.me", async () => {
     stub(start, url => { if (url.includes("/subscription-cancel")) throw new TypeError("Failed to fetch"); return undefined; });
     render(<Plans />);
     const card = (await screen.findByRole("heading", { name: "Start", level: 2 })).closest("article") as HTMLElement;
     fireEvent.click(within(card).getByRole("button", { name: "Cancel renewal" }));
     fireEvent.click(within(card).getByRole("button", { name: "Yes, cancel renewal" }));
-    expect((await screen.findByRole("alert")).textContent).toBe("We couldn’t reach SkipWait. Check your connection and try again.");
+    expect((await screen.findByRole("alert")).textContent).toBe("We couldn’t reach skipwait.me. Check your connection and try again.");
     expect(within(card).getByText("Your current plan is active")).toBeTruthy();
   });
 

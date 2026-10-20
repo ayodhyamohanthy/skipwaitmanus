@@ -57,7 +57,7 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     // The kit's design-only banner never ships.
     expect(document.body.textContent).not.toMatch(/DRAFT FOR DESIGN|placeholder address/i);
     expect(policyLinks(container)).toEqual(["/terms", "/guidelines", "/privacy", "/refunds", "/cancellations", "/shipping", "/pricing", "/about", "/contact", "/support"]);
-    expect(screen.getByRole("link", { name: "SkipWait home" }).getAttribute("href")).toBe("/");
+    expect(screen.getByRole("link", { name: "skipwait.me home" }).getAttribute("href")).toBe("/");
     expect(screen.getByRole("navigation", { name: "Legal" }).querySelector('[aria-current="page"]')?.getAttribute("href")).toBe("/terms");
   });
 

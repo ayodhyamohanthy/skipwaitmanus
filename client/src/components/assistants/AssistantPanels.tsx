@@ -38,7 +38,7 @@ export function AssistantsPanel({ connections, workingId, onDisconnect }: { conn
         <Panel className="text-center">
           <Bot className="mx-auto size-8" />
           <h2 className="mt-2 font-semibold">No assistants connected</h2>
-          <p className="mt-1 text-sm text-muted-foreground">In ChatGPT or Claude, add SkipWait as a connector and approve it here.</p>
+          <p className="mt-1 text-sm text-muted-foreground">In ChatGPT or Claude, add skipwait.me as a connector and approve it here.</p>
         </Panel>
       ) : (
         <ul className="space-y-3" aria-label="Connected assistants">

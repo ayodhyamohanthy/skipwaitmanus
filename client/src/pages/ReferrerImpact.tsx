@@ -90,7 +90,7 @@ export default function ReferrerImpact() {
     <Button asChild><Link href="/queue">See how a request looks <ArrowRight /></Link></Button>
   </ImpactState>);
 
-  return frame("referrer-impact", <ImpactState icon={HeartHandshake} eyebrow="ONLY YOU CAN SEE THIS" title="Your private impact at a glance." text="Acceptances, pending decisions, and private messages from the requests you covered. SkipWait never pays referrers.">
+  return frame("referrer-impact", <ImpactState icon={HeartHandshake} eyebrow="ONLY YOU CAN SEE THIS" title="Your private impact at a glance." text="Acceptances, pending decisions, and private messages from the requests you covered. skipwait.me never pays referrers.">
     <div aria-label="Your private impact"><Stat value={summary.acceptedReferrals} label="referrals accepted" /><Stat value={summary.pendingRequests} label="pending decisions" /><Stat value={summary.unreadMessages} label="unread messages" /></div>
     {summary.recentAccepted.length ? (
       <section aria-label="Recent referrals" className="mb-8 w-full max-w-xl rounded-[8px] border border-border p-5 text-left">

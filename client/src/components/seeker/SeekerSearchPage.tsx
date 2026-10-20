@@ -1,6 +1,6 @@
 /**
  * src/components/seeker/SeekerSearchPage.tsx
- * SkipWait Kinetic · Seeker Search Page
+ * skipwait.me Kinetic · Seeker Search Page
  */
 import { useState, type ReactNode } from "react";
 import { Chip, PrimaryButton, ResponsiveDrawer, SecondaryButton, StatusPill, VerifiedBadge } from "@/components/ui/primitives";

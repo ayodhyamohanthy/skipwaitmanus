@@ -19,7 +19,7 @@ const sendAskResponseSchema = z.object({
 // Written by the job-link company confirmation step; browser storage is untrusted.
 const companyConfirmationSchema = z.object({ canonicalUrl: z.string(), confirmedDomain: z.string().min(1) });
 
-export const ASK_NETWORK_ERROR = "We couldn't reach SkipWait. Check your connection and try again.";
+export const ASK_NETWORK_ERROR = "We couldn't reach skipwait.me. Check your connection and try again.";
 
 /** The created (or idempotently replayed) ask, or null when the payload is not a send result. */
 export function parseSentAsk(payload: Record<string, unknown>): SentAsk | null {

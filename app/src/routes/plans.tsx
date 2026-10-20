@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { pageMeta } from "@/lib/page-meta";
 import { creditActions, creditPacks, fairnessRules, proLevels, seekerPlans, signatureTools } from "@/lib/monetization-data";
 
-export const Route = createFileRoute("/plans")({ head: () => pageMeta("Individual plans and credits", "Upgrade SkipWait Start, Momentum or Land when you need more. Every referral stays free and every queue stays equal."), component: Plans });
+export const Route = createFileRoute("/plans")({ head: () => pageMeta("Individual plans and credits", "Upgrade skipwait.me Start, Momentum or Land when you need more. Every referral stays free and every queue stays equal."), component: Plans });
 
 // Preview-only values: backend must replace with the signed-in user's real usage. Never show other users' stats.
 const usageStats = [

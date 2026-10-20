@@ -26,7 +26,7 @@ const now = new Date(2026, 9, 9, 12, 0, 0).getTime();
 const ITEMS = [
   { id: 1, category: "referral", title: "Your ask was accepted", body: "A verified referrer at Wipro accepted", readAt: null, createdAt: new Date(now - 12 * 60000).toISOString() },
   { id: 2, category: "message", title: "New message", body: "Happy to help", readAt: null, createdAt: new Date(now - 60 * 60000).toISOString() },
-  { id: 3, category: "system", title: "Weekly summary", body: "Your week on SkipWait", readAt: new Date(now - 2 * 86400000).toISOString(), createdAt: new Date(now - 2 * 86400000).toISOString() },
+  { id: 3, category: "system", title: "Weekly summary", body: "Your week on skipwait.me", readAt: new Date(now - 2 * 86400000).toISOString(), createdAt: new Date(now - 2 * 86400000).toISOString() },
 ];
 
 type FetchReply = { ok: boolean; status?: number; json: () => Promise<unknown> };
@@ -165,7 +165,7 @@ describe("Alerts center", () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
     renderAlerts();
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("We could not reach SkipWait. Check your connection and try again.");
+    expect(alert.textContent).toContain("We could not reach skipwait.me. Check your connection and try again.");
     expect(alert.textContent).not.toContain("Failed to fetch");
   });
 

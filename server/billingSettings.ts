@@ -14,7 +14,7 @@ function flag(env: BillingEnv, key: string): boolean {
 }
 
 /**
- * SkipWait is an Indian sole proprietorship with Udyam (MSME) registration and
+ * skipwait.me is an Indian sole proprietorship with Udyam (MSME) registration and
  * is not GST-registered, so no GST is charged and INR prices say only "India
  * price" (D-007). Set INDIA_GST_REGISTERED=true once a GSTIN exists; that also
  * requires turning on Chargebee tax mode and GST invoices in the same change.
@@ -49,7 +49,7 @@ export function employerSponsorshipEnabled(env: BillingEnv = process.env): boole
  * Free monthly credits unlock only after the seeker validates a card (D-079,
  * owner Oct 19 2026). Default off: while unset, today's grants are untouched.
  * The check itself is owned by the provider (Chargebee card verification);
- * SkipWait stores only the outcome. No real money in tests; production
+ * skipwait.me stores only the outcome. No real money in tests; production
  * enablement is an owner decision after Chargebee-test-site QA.
  */
 export function freeCreditsRequireCardValidation(env: BillingEnv = process.env): boolean {

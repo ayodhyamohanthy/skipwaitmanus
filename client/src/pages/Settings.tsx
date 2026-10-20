@@ -15,7 +15,7 @@ import { SettingsNav, parseSettingsSection, type SettingsSection } from "@/compo
 import { Loading, SignInPanel } from "@/components/settings/settingsUi";
 
 const SIGNED_OUT: Record<"notifications" | "privacy" | "account", { title: string; text: string }> = {
-  notifications: { title: "Notifications", text: "Sign in to see how SkipWait reaches you." },
+  notifications: { title: "Notifications", text: "Sign in to see how skipwait.me reaches you." },
   privacy: { title: "Privacy", text: "Sign in to manage blocked people, talent discovery consent, assistants and your data." },
   account: { title: "Account", text: "Sign in to manage your work email and account." },
 };

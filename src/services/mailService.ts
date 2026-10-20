@@ -23,7 +23,7 @@ export async function sendZeptoMail(payload: EmailPayload, env: WorkerEnv) {
   const requestBody = {
     from: {
       address: env.ZEPTOMAIL_FROM_EMAIL,
-      name: "SkipWait",
+      name: "skipwait.me",
     },
     to: [
       {

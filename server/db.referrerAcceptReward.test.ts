@@ -5,7 +5,7 @@ import { REFERRER, REQUEST_ID, SEEKER, resetStore, store } from "./documentAcces
 import { REFERRER_ACCEPT_REWARDS_ENABLED, completeWorkEmailOtpEnrollment, fulfillCompanyCoverageInvitation, oneClickReviewReferralRequest } from "./db";
 
 /*
- * D-055: SkipWait never pays referrers. Accepting an ask grants the referrer
+ * D-055: skipwait.me never pays referrers. Accepting an ask grants the referrer
  * nothing, a referrer-side pending reward written before D-055 stays exactly as
  * it was (no data change), and a completed coverage invite still records the
  * inviting seeker's reward while promising the joining referrer nothing. Runs
@@ -40,7 +40,7 @@ function expectInviterRewardOnly() {
   expect(store.rows(companyCoverageInvitations)[0]).toMatchObject({ status: "completed", joinerUserId: JOINER });
 }
 
-describe("D-055: SkipWait never pays referrers", () => {
+describe("D-055: skipwait.me never pays referrers", () => {
   it("ships with the referrer accept reward switched off", () => {
     expect(REFERRER_ACCEPT_REWARDS_ENABLED).toBe(false);
   });

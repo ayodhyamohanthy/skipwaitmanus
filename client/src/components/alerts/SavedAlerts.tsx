@@ -14,7 +14,7 @@ export function domainInitials(domain: string): string {
   return label.split(/[-_]/).filter(Boolean).slice(0, 2).map(part => part.charAt(0)).join("").toUpperCase() || "?";
 }
 
-/** Directory name and initials for a watched domain ("skipwait.me" -> SkipWait, SW); the domain itself otherwise. */
+/** Directory name and initials for a watched domain ("skipwait.me" -> skipwait.me, SW); the domain itself otherwise. */
 export function alertIdentity(companyDomain: string, companies: readonly PublicCompany[]): { name: string; mark: string } {
   const listed = findCompanyByDomain(companies, companyDomain);
   return listed ? { name: listed.name, mark: listed.initials } : { name: companyDomain, mark: domainInitials(companyDomain) };

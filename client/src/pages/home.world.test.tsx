@@ -27,7 +27,7 @@ describe("landing kit composition", () => {
   it("leads with the product headline and a brand header", () => {
     render(<Home />);
     expect(screen.getByRole("heading", { level: 1, name: /Private job referrals/ })).toBeTruthy();
-    expect(screen.getByRole("banner").textContent).toContain("SkipWait");
+    expect(within(screen.getByRole("banner")).getByRole("img", { name: "skipwait.me" })).toBeTruthy();
   });
 
   it("states what asking costs as an assurance instead of inventing proof", () => {
@@ -51,7 +51,7 @@ describe("landing kit composition", () => {
   it("lists the five launch companies with links to their doors", () => {
     render(<Home />);
     const section = screen.getByText("Start somewhere real.").closest("section") as HTMLElement;
-    for (const [name, slug] of [["SkipWait", "skipwait"], ["Wipro", "wipro"], ["Go Neutrinos", "go-neutrinos"], ["TCS", "tcs"], ["Merkle", "merkle"]]) {
+    for (const [name, slug] of [["skipwait.me", "skipwait"], ["Wipro", "wipro"], ["Go Neutrinos", "go-neutrinos"], ["TCS", "tcs"], ["Merkle", "merkle"]]) {
       const link = within(section).getByText(name).closest("a");
       expect(link?.getAttribute("href")).toBe(`/explore/${slug}`);
     }

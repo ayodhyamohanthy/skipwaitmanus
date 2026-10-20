@@ -15,7 +15,7 @@ export const ALL_SCOPES = [
   { key: "companies:read", label: "Search companies open to referrals" },
   { key: "requests:read", label: "Read the user's requests and replies" },
   { key: "asks:draft", label: "Create draft asks" },
-  { key: "asks:send", label: "Send asks — user approves each one in SkipWait" },
+  { key: "asks:send", label: "Send asks — user approves each one in skipwait.me" },
   { key: "profile:read", label: "Basic profile and resume (with user consent)" },
   { key: "credits:spend", label: "Run paid tools — user approves cost each time" },
   { key: "webhooks", label: "Accepted / passed / message events" },
