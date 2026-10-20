@@ -7,7 +7,7 @@ import { retrieveCheckoutSubscription, subscriptionEventFromCheckoutPage, type R
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { giftClaimRequestSchema } from "../shared/giftSubscriptions";
 import { PLAN_RETIRED_CODE, kitPlanCheckoutRequestSchema, packCheckoutRequestSchema } from "../shared/subscriptionManagement";
-import { isRetiredPlanId, isRetiredPlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId } from "../shared/billingCatalog";
+import { isRetiredPlanId, isRetiredPlanItemPrice, resolvePlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId } from "../shared/billingCatalog";
 import { SINGLE_CREDIT_RETIRED_CODE, SINGLE_CREDIT_RETIRED_ERROR, singleCreditRetired } from "../shared/planCatalog";
 import { anyPackAvailableForCurrency, refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
@@ -391,6 +391,15 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const retired = isRetiredPlanItemPrice(subscription.itemPriceId) || applied?.reason === PLAN_RETIRED_CODE;
       const unsupported = !retired && applied?.status === "ignored" && applied.reason === "unsupported_plan";
       // A redelivery of an event already recorded (duplicate) was alerted on its first delivery.
+      // GO-LIVE-1b ruling 4: a kit pass Chargebee sells but no checkout intent
+      // or wallet can match is never left unactivated silently - the owner is
+      // alerted at once (provider ids only), whatever else went right.
+      const unlinked = !retired && applied?.status === "ignored" && (applied.reason === "unknown_subscription" || applied.reason === "checkout_intent_mismatch") && resolvePlanItemPrice(subscription.itemPriceId) !== undefined;
+      if (applied?.status !== "duplicate" && unlinked) {
+        console.error("[Chargebee] unlinked kit subscription needs review", { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId, reason: applied.reason });
+        record({ action: "billing.unlinked_subscription", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType, reason: applied.reason ?? "unknown", itemPriceId: subscription.itemPriceId } });
+        void deps.alertRetiredPlanEvent?.({ eventId: subscription.eventId, eventType: subscription.eventType, reason: "unlinked_subscription", subscriptionId: subscription.subscriptionId, itemPriceId: subscription.itemPriceId }).catch(() => undefined);
+      }
       if (applied?.status !== "duplicate" && (retired || unsupported)) {
         const reason = retired ? PLAN_RETIRED_CODE : "unsupported_plan";
         console.error(`[Chargebee] ${retired ? "retired" : "unrecognised"} plan event needs review`, { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId, reason });
