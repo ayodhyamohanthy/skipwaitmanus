@@ -47,15 +47,15 @@
     },
     {
       "id": "D-038-reconcile",
-      "title": "Reconcile the D-038 timers: part B reached main unreviewed (c53ea471 + #330), part A sits on agent/opencode/d038-a-lapses, both add server/referralTimers.ts",
+      "title": "Land PR #353 (D-038-A complete, timers job registered) with part B's money steps switched off until their own review",
       "row": "D-038-B",
-      "packet": null,
+      "packet": "docs/plans/D-038-reconcile.md",
       "tier": 1,
       "lane": "money-core",
-      "branch": "agent/claude/d038-reconcile",
-      "status": "architect",
+      "branch": "agent/workbuddy/d038-a-lapses",
+      "status": "todo",
       "dependsOn": [],
-      "note": "Claude Code writes the reconcile packet (independent review of the code on main against both D-038 packets, then part A through a draft PR, then register the referral-timers job)."
+      "note": "Builds on workbuddy's PR #353 and qoder's audit #354 (docs/reviews/D-038-reconcile-evidence.md). Rulings R-1..R-6 (D-103): fix R1-R5 on #353's branch, REFERRED_DEADLINE_ENABLED=false unless part B's own review passes, the lander sets REFERRAL_TIMERS_SINCE. Never merge agent/opencode/d038-a-lapses."
     },
     {
       "id": "D-035",
