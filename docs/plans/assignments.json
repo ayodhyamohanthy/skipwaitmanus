@@ -63,7 +63,7 @@
       "tier": 2,
       "lane": "money-check",
       "branch": "agent/queue/d065b-slice-checks",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
