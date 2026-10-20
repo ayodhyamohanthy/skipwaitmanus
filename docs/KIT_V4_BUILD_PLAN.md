@@ -104,7 +104,7 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 | FND-2 | Remove verified-dead code (Kinetic drafts, unused components, Manus template modules, `render.yaml`, the unused `VitePWA` import). | — | S | todo — packet `docs/plans/FND-2-dead-code.md` (Tier 3) |
 | FND-3 | The test kit throws production-shaped duplicate-key errors; `blocksRoutes.ts` and `companyDirectoryAdmin.ts` stop missing wrapped duplicates. | P0-allocated-ask-stuck | S | todo — packet `docs/plans/FND-3-duplicate-key-fidelity.md` (Tier 2) |
 | FND-4 | Single-use tokens in API paths never reach Sentry or admin alert emails. | 2 | S | todo — packet `docs/plans/FND-4-token-path-scrubbing.md` (Tier 2) |
-| FND-5 | Every key the server reads is forwarded to the container or allowlisted, with a contract test. | D-067 | S | todo — packet `docs/plans/FND-5-env-forwarding.md` (Tier 2) |
+| FND-5 | Every key the server reads is forwarded to the container or allowlisted, with a contract test. | D-067 | S | in progress — opencode/DeepSeek V4.1 Flash · fnd5-session — 2026-10-20 — branch `agent/queue/fnd5-env`; packet `docs/plans/FND-5-env-forwarding.md` (Tier 2) |
 | FND-6 | Correct the stale Oct 15 status cells of rows 4, 5, 7, 21, 25 from evidence on `main`. | — | S | todo — packet `docs/plans/FND-6-row-status-audit.md` (Tier 3, docs only) |
 | FND-7 | Triage the 53 open PRs and the ~250 remote branches into superseded / stale / active / dependabot with evidence, flag any security fix still missing from `main`, and list merged branches safe to delete, for the owner. | — | S | todo — packet `docs/plans/FND-7-pr-branch-triage.md` (Tier 3, read-only) |
 
