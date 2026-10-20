@@ -7,7 +7,8 @@ import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { giftClaimRequestSchema } from "../shared/giftSubscriptions";
 import { PLAN_RETIRED_CODE, kitPlanCheckoutRequestSchema, packCheckoutRequestSchema } from "../shared/subscriptionManagement";
 import { isRetiredPlanId, isRetiredPlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId } from "../shared/billingCatalog";
-import { refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
+import { SINGLE_CREDIT_RETIRED_CODE, SINGLE_CREDIT_RETIRED_ERROR, singleCreditRetired } from "../shared/planCatalog";
+import { anyPackAvailableForCurrency, refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
 import type { RetiredPlanAlertInput } from "./errorAlerting";
 
@@ -115,6 +116,12 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const pack = CHARGEBEE_TOKEN_PACKS[itemPriceId];
       if ((billingCountry === "IN" && pack.currency !== "INR") || (billingCountry === "INTL" && pack.currency !== "USD")) {
         return res.status(400).json({ error: "That currency is not available for the selected billing route" });
+      }
+      // D-036: the per-credit checkout retires in a currency once any pack is on
+      // sale in it. Pending single-credit checkouts from before the switch still
+      // recover and credit; only NEW checkouts are refused.
+      if (singleCreditRetired({ currency: pack.currency, anyPackAvailable: await anyPackAvailableForCurrency(req, pack.currency, deps.kitCheckout) })) {
+        return res.status(410).json({ error: SINGLE_CREDIT_RETIRED_ERROR, code: SINGLE_CREDIT_RETIRED_CODE });
       }
       const origin = publicOutboundOrigin(req);
       const runtime = deps.createCheckout ? undefined : resolveChargebeeRuntime(req.hostname);

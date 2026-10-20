@@ -198,6 +198,26 @@ describe("Chargebee webhook route", () => {
     }
   });
 
+  it("retires the single credit per currency once a pack is on sale, and never calls the provider", async () => {
+    const app = express();
+    app.use(express.json());
+    let providerCalls = 0;
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 7, openId: "workos_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      createCheckout: async () => { providerCalls += 1; return { checkoutUrl: "https://chargebee.test/hp_legacy", hostedPageId: "hp_legacy", checkoutIntentId: "intent_legacy" }; },
+      createPaymentIntent: async () => undefined,
+      fulfillPayment: async () => ({ status: "credited" }),
+      kitCheckout: { isAvailable: async (_req, price) => price.itemPriceId === "skipwait_pack_2-INR" },
+    });
+    const inr = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", role: "job_seeker" });
+    expect(inr.status).toBe(410);
+    expect(inr.body.code).toBe("single_credit_retired");
+    expect(inr.body.error).toBe("Single credits are replaced by credit packs. Nothing has been charged.");
+    const usd = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-USD", billingCountry: "INTL", role: "job_seeker" });
+    expect(usd.status).toBe(200);
+    expect(providerCalls).toBe(1);
+  });
+
   it("rejects unsigned payment delivery before any fulfillment call", async () => {
     const app = express();
     app.use(express.json());
