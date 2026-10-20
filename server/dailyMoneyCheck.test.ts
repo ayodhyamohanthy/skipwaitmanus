@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS } from "../shared/referral";
 import { createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
-import { DAY_MS, NOW as KIT_NOW, SEEKER, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
+import { DAY_MS, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
@@ -339,6 +339,5 @@ describe("D-065-B slice checks over the in-memory database", () => {
     // Read-only: no ask or ledger row moved.
     expect(store.rows(referralRequests)).toEqual(before.requests);
     expect(store.rows(tokenTransactions)).toEqual(before.ledger);
-    expect(SEEKER).toBe(7);
   });
 });
