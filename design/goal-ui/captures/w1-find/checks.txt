@@ -1,0 +1,2 @@
+ok   explore @desktop (1280x820): rows=5 summary="5 companies·0 open to requests"
+ok   explore @mobile (390x844): rows=5 summary="5 companies·0 open to requests"

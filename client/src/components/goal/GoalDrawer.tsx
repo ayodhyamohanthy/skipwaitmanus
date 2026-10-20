@@ -7,10 +7,19 @@ import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { GoalIconButton } from "./GoalIconButton";
 
+const DESKTOP_QUERY = "(min-width: 641px)";
+
+/** jsdom has no matchMedia; without one the layout reads as desktop, never as a crash. */
+function desktopQuery(): MediaQueryList | null {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return null;
+  return window.matchMedia(DESKTOP_QUERY);
+}
+
 export function useIsDesktop(): boolean {
-  const [desktop, setDesktop] = useState(() => (typeof window === "undefined" ? true : window.matchMedia("(min-width: 641px)").matches));
+  const [desktop, setDesktop] = useState(() => desktopQuery()?.matches ?? true);
   useEffect(() => {
-    const query = window.matchMedia("(min-width: 641px)");
+    const query = desktopQuery();
+    if (!query) return;
     const onChange = () => setDesktop(query.matches);
     onChange();
     query.addEventListener("change", onChange);

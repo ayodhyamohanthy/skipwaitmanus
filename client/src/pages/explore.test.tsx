@@ -18,7 +18,8 @@ const { go, routeState, authState } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/_core/auth", () => ({
-  useAuth: () => ({ isSignedIn: authState.isSignedIn, userId: authState.isSignedIn ? "user-7" : null, getToken: async () => (authState.isSignedIn ? "test-token" : null) }),
+  useAuth: () => ({ isLoaded: true, isSignedIn: authState.isSignedIn, userId: authState.isSignedIn ? "user-7" : null, getToken: async () => (authState.isSignedIn ? "test-token" : null) }),
+  useUser: () => ({ isLoaded: true, isSignedIn: authState.isSignedIn, user: authState.isSignedIn ? { id: "user-7", fullName: "Ada Lovelace", imageUrl: null, primaryEmailAddress: { emailAddress: "ada@example.com" }, emailAddresses: [] } : null }),
   SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock("wouter", () => ({
@@ -68,101 +69,108 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("Explore directory", () => {
-  it("renders the kit directory from the server directory, reading nothing but GET /api/companies", async () => {
+  // D-048 phase 3: the goal-UI Find screen. Same data, same behaviour, new chrome.
+  const exploreLinks = () => screen.getAllByRole("link").filter(link => (link.getAttribute("href") ?? "").startsWith("/explore/"));
+  const summary = () => screen.getByTestId("goal-find-summary").textContent ?? "";
+
+  it("renders one row per server company, linking each door, from GET /api/companies alone", async () => {
     const fetchMock = stubDirectory();
     renderWithQuery(<Explore />);
-    expect(await screen.findByText("5 companies to explore")).toBeTruthy();
-    expect(screen.getByText("FIVE OPEN DOORS · MORE TO COME")).toBeTruthy();
-    expect(screen.getByText("PEOPLE ARE OPEN TO REQUESTS", { exact: false })).toBeTruthy();
-    expect(screen.getAllByText("PEOPLE OPEN TO REFERRALS")).toHaveLength(5);
-    const doors = screen.getAllByRole("link", { name: /View open door/ });
-    expect(doors.map(link => link.getAttribute("href"))).toEqual(["/explore/skipwait", "/explore/wipro", "/explore/go-neutrinos", "/explore/tcs", "/explore/merkle"]);
+    expect(await screen.findByText("Wipro")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Where do you want a referral?" })).toBeTruthy();
+    expect(exploreLinks().map(link => link.getAttribute("href"))).toEqual(["/explore/skipwait", "/explore/wipro", "/explore/go-neutrinos", "/explore/tcs", "/explore/merkle"]);
+    expect(summary()).toContain("5 companies");
     expect(screen.queryByText(/open roles?/i)).toBeNull();
     expect(screen.queryByText(/DESIGN PREVIEW|Preview state/i)).toBeNull();
+    // One read, and nothing else: the directory screen invents no numbers.
     expect(paths(fetchMock)).toEqual(["/api/companies"]);
   });
 
-  it("counts only open companies and offers an alert for a door that is not open yet", async () => {
+  it("counts only open companies and says plainly when a door is not open yet", async () => {
     stubDirectory(directoryOf([company("skipwait", false), company("wipro"), company("go-neutrinos", false), company("tcs"), company("merkle", false)]));
     renderWithQuery(<Explore />);
-    expect(await screen.findByText("TWO OPEN DOORS · MORE TO COME")).toBeTruthy();
-    expect(screen.getByText("5 companies to explore")).toBeTruthy();
-    expect(screen.getAllByText("PEOPLE OPEN TO REFERRALS")).toHaveLength(2);
-    const alerts = screen.getAllByRole("link", { name: /Get told when a door opens/ });
-    expect(alerts).toHaveLength(3);
-    expect(alerts.every(link => link.getAttribute("href") === "/alerts")).toBe(true);
-    const skipwait = screen.getByRole("heading", { name: "skipwait.me" }).closest("article") as HTMLElement;
-    expect(within(skipwait).queryByText("PEOPLE OPEN TO REFERRALS")).toBeNull();
-    expect(within(skipwait).getByRole("link", { name: /View company/ }).getAttribute("href")).toBe("/explore/skipwait");
+    expect(await screen.findByText("Wipro")).toBeTruthy();
+    expect(summary()).toContain("5 companies");
+    expect(summary()).toContain("2 open to requests");
+    const availability = screen.getAllByTestId("goal-availability").map(node => node.textContent);
+    expect(availability.filter(text => text === "Open to requests")).toHaveLength(2);
+    expect(availability.filter(text => text === "Not open yet")).toHaveLength(3);
   });
 
-  it("never claims open doors when no referrer is available", async () => {
+  it("never claims an open door when no referrer is available", async () => {
     stubDirectory(directoryOf(LAUNCH_COMPANY_SEED.map(seed => company(seed.slug, false))));
     renderWithQuery(<Explore />);
-    expect(await screen.findByText("NO OPEN DOORS YET · MORE TO COME")).toBeTruthy();
-    expect(screen.queryByText("PEOPLE ARE OPEN TO REQUESTS", { exact: false })).toBeNull();
-    expect(screen.queryAllByText("PEOPLE OPEN TO REFERRALS")).toHaveLength(0);
-    expect(screen.getByText("5 companies to explore")).toBeTruthy();
+    expect(await screen.findByText("Wipro")).toBeTruthy();
+    expect(summary()).toContain("0 open to requests");
+    const availability = screen.getAllByTestId("goal-availability").map(node => node.textContent);
+    expect(availability.filter(text => text === "Open to requests")).toHaveLength(0);
+    expect(availability.filter(text => text === "Not open yet")).toHaveLength(5);
   });
 
-  it("shows a loading grid, then an error with Try again that recovers", async () => {
+  it("shows skeleton rows, then an error with Try again that recovers", async () => {
     let fail = true;
     let release: (() => void) | undefined;
     const gate = new Promise<void>(resolve => { release = resolve; });
     vi.stubGlobal("fetch", vi.fn(async () => { await gate; if (fail) throw new TypeError("Failed to fetch"); return json(200, ALL_OPEN); }));
     renderWithQuery(<Explore />);
-    expect(screen.getByLabelText("Loading companies").getAttribute("aria-busy")).toBe("true");
-    expect(screen.queryByText(/companies to explore/)).toBeNull();
+    expect(screen.getByTestId("goal-skeleton-rows").getAttribute("aria-busy")).toBe("true");
+    expect(screen.queryByTestId("goal-find-summary")).toBeNull();
     release?.();
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("We couldn’t load companies.");
     fail = false;
     fireEvent.click(within(alert).getByRole("button", { name: /Try again/ }));
-    expect(await screen.findByText("5 companies to explore")).toBeTruthy();
+    expect(await screen.findByTestId("goal-find-summary")).toBeTruthy();
+    expect(summary()).toContain("5 companies");
   });
 
-  it("filters by search, function and location, then clears back to every door", async () => {
+  it("filters by search, function and open-to-requests, then clears back to every company", async () => {
     stubDirectory();
     renderWithQuery(<Explore />);
-    await screen.findByText("5 companies to explore");
+    await screen.findByTestId("goal-find-summary");
     fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "tcs" } });
-    expect(screen.getByText("1 company to explore")).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Wipro" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
-    expect(screen.getByText("5 companies to explore")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Function"), { target: { value: "Product" } });
-    expect(screen.getByText("2 companies to explore")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Location"), { target: { value: "India" } });
-    expect(screen.getByText("1 company to explore")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Go Neutrinos" })).toBeTruthy();
+    expect(summary()).toContain("1 company");
+    expect(exploreLinks().map(link => link.getAttribute("href"))).toEqual(["/explore/tcs"]);
+    fireEvent.click(screen.getByRole("button", { name: "All companies" }));
+    expect(summary()).toContain("5 companies");
+    fireEvent.click(screen.getByRole("button", { name: "Product" }));
+    expect(summary()).toContain("2 companies");
+    fireEvent.click(screen.getByRole("button", { name: "Open to requests" }));
+    expect(screen.getAllByRole("button", { name: "Open to requests" }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Product" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open to requests" }));
+    expect(summary()).toContain("5 companies");
   });
 
-  it("shows an honest empty state with live recovery links", async () => {
+  it("shows an honest empty state with both recovery links", async () => {
     stubDirectory();
     renderWithQuery(<Explore />);
-    await screen.findByText("5 companies to explore");
+    await screen.findByTestId("goal-find-summary");
     fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "zzz-no-such-company" } });
-    expect(screen.getByText("No matching doors yet")).toBeTruthy();
-    expect(screen.getByText("Try a wider search.")).toBeTruthy();
-    expect(screen.queryAllByRole("link", { name: /View open door/ })).toHaveLength(0);
-    expect(screen.getByRole("link", { name: /Request a company/ }).getAttribute("href")).toBe("/invite");
+    expect(screen.getByText("No company matches that yet.")).toBeTruthy();
+    expect(exploreLinks()).toHaveLength(0);
+    expect(screen.getByRole("link", { name: "Request a company" }).getAttribute("href")).toBe("/invite");
     fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
-    expect(screen.getByText("5 companies to explore")).toBeTruthy();
+    expect(summary()).toContain("5 companies");
+    expect(exploreLinks()).toHaveLength(5);
   });
 
-  it("titles the page with the kit head built from the directory names", async () => {
+  it("titles the page from the directory names and keeps the canonical path", async () => {
     stubDirectory();
     renderWithQuery(<Explore />);
-    await screen.findByText("5 companies to explore");
-    expect(document.title).toBe("Explore companies · skipwait.me");
+    await screen.findByTestId("goal-find-summary");
+    expect(document.title).toBe("Find a referral · skipwait.me");
     await waitFor(() => expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Find people open to referral requests at skipwait.me, Wipro, Go Neutrinos, TCS, and Merkle."));
     expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore");
   });
 
-  it("links the employee band to the live referrer page", () => {
+  it("carries the honest availability note and promises no referral", async () => {
     stubDirectory();
     renderWithQuery(<Explore />);
-    expect(screen.getByRole("link", { name: /I can refer/ }).getAttribute("href")).toBe("/referrer");
+    await screen.findByTestId("goal-find-summary");
+    expect(screen.getByText(/Availability can change. No referral is guaranteed./)).toBeTruthy();
+    // The approved comp (D-071) puts no money line on the directory screen.
+    expect(screen.queryByText(/free every month|credits/)).toBeNull();
   });
 });
 
