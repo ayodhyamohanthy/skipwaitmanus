@@ -106,11 +106,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       };
     }
     return {
-      initials: initialsFor(user?.fullName ?? user?.firstName, user?.primaryEmailAddress?.emailAddress ?? null),
+      initials: initialsFor(user?.fullName, user?.primaryEmailAddress?.emailAddress ?? null),
       // Carried over unchanged (phase-3 W0): the account menu restyles in a later wave.
       menu: <AccountMenu />,
     };
-  }, [isLoaded, isSignedIn, user?.fullName, user?.firstName, user?.primaryEmailAddress?.emailAddress]);
+  }, [isLoaded, isSignedIn, user?.fullName, user?.primaryEmailAddress?.emailAddress]);
 
   return (
     <GoalShell
