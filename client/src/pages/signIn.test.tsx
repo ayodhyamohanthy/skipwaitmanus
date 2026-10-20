@@ -23,7 +23,7 @@ describe("SignIn", () => {
     const assign = stubAssign();
     render(<SignIn />);
     expect(screen.getByText(/One sign-in/)).toBeTruthy();
-    expect(screen.getByText("Welcome to SkipWait.")).toBeTruthy();
+    expect(screen.getByText("Welcome to skipwait.me.")).toBeTruthy();
     expect(screen.getByText("YOUR DOOR STARTS HERE")).toBeTruthy();
     expect(screen.getByAltText(/open blue door/)).toBeTruthy();
     expect(screen.queryByLabelText(/Password/)).toBeNull();

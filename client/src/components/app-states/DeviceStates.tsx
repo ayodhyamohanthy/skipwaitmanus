@@ -1,7 +1,7 @@
 // Kit v4 /app-states device screens (install sheets, push permission) wired to
 // the real browser APIs. Nothing here pretends: the Android sheet only opens the
 // browser's own install prompt when the browser offered one, and the push screen
-// only sets the browser permission (SkipWait sends no device push today).
+// only sets the browser permission (skipwait.me sends no device push today).
 import { useEffect, useState, type ReactNode } from "react";
 import { Bell, Download, Share, X } from "lucide-react";
 import { Button } from "@/components/kit/button";
@@ -49,12 +49,12 @@ export function InstallAndroidSheet() {
   const [status, setStatus] = useState("");
   if (dismissed) return <Backdrop />;
   const install = async () => {
-    if (isStandalone()) { setStatus("SkipWait is already installed on this device."); return; }
+    if (isStandalone()) { setStatus("skipwait.me is already installed on this device."); return; }
     if (!promptEvent) { setStatus("Your browser hasn't offered install here. Use its menu: Install app, or Add to Home screen."); return; }
     try {
       await promptEvent.prompt();
       const choice = await promptEvent.userChoice;
-      setStatus(choice.outcome === "accepted" ? "Installing SkipWait on this device." : "Install dismissed. You can install later from the browser menu.");
+      setStatus(choice.outcome === "accepted" ? "Installing skipwait.me on this device." : "Install dismissed. You can install later from the browser menu.");
     } catch {
       setStatus("The install prompt didn't open. Use the browser menu instead.");
     } finally {
@@ -63,7 +63,7 @@ export function InstallAndroidSheet() {
   };
   return <><Backdrop /><Sheet>
     <button type="button" onClick={() => setDismissed(true)} className="absolute right-2 top-2 grid size-11 place-items-center" aria-label="Dismiss"><X className="size-5" /></button>
-    <div className="flex items-center gap-3"><span className="grid size-12 place-items-center rounded-2xl bg-primary text-lg font-bold text-primary-foreground">S.</span><span><strong className="block">Install SkipWait</strong><small className="text-muted-foreground">One tap from your home screen</small></span></div>
+    <div className="flex items-center gap-3"><span className="grid size-12 place-items-center rounded-2xl bg-primary text-lg font-bold text-primary-foreground">S.</span><span><strong className="block">Install skipwait.me</strong><small className="text-muted-foreground">One tap from your home screen</small></span></div>
     <Button className="mt-4 w-full" onClick={() => { void install(); }}><Download />Install app</Button>
     {status ? <p role="status" className="mt-2 text-center text-sm text-muted-foreground">{status}</p> : null}
     <button type="button" onClick={() => setDismissed(true)} className="mt-2 w-full text-sm text-muted-foreground">Not now</button>
@@ -74,7 +74,7 @@ export function InstallIphoneSheet() {
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return <Backdrop />;
   return <><Backdrop /><Sheet>
-    <strong className="block">Add SkipWait to your Home Screen</strong>
+    <strong className="block">Add skipwait.me to your Home Screen</strong>
     <ol className="mt-3 space-y-3 text-sm">
       <li className="flex items-center gap-2"><span className="grid size-6 place-items-center rounded-full bg-muted text-xs">1</span>Tap <Share className="size-4" /> Share in Safari</li>
       <li className="flex items-center gap-2"><span className="grid size-6 place-items-center rounded-full bg-muted text-xs">2</span>Choose “Add to Home Screen”</li>

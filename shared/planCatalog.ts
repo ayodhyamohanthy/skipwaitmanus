@@ -1,5 +1,5 @@
 /**
- * SkipWait plan catalog: the pricing model the owner decided on Oct 14 2026
+ * skipwait.me plan catalog: the pricing model the owner decided on Oct 14 2026
  * (docs/PRICING_RECOMMENDATION.md, "Owner decisions" and sections 3 to 5),
  * amended Oct 16–17 2026 (D-036–D-046 in docs/DECISIONS.md). It
  * overrides PRICING.md, UPGRADE_NUDGES.md and the kit PNG numbers wherever
@@ -146,7 +146,7 @@ export const HUMAN_SESSION_IDS = ["written_review", "live_session"] as const;
 export type HumanSessionId = (typeof HUMAN_SESSION_IDS)[number];
 export type HumanSession = { id: HumanSessionId; label: string; detail: string; prices: Record<CatalogCurrency, number> };
 
-/** Reviewers are never employees of, or SkipWait referrers for, the seeker's target company. */
+/** Reviewers are never employees of, or skipwait.me referrers for, the seeker's target company. */
 export const HUMAN_SESSIONS: readonly HumanSession[] = [
   { id: "written_review", label: "Written expert review", detail: "Returned within 48 hours", prices: { USD: usd(49), INR: inr(799) } },
   { id: "live_session", label: "Live 45-minute session", detail: "Mock interview or search strategy", prices: { USD: usd(99), INR: inr(1_499) } },

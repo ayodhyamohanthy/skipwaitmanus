@@ -85,7 +85,7 @@ describe("retired-plan event alert", () => {
     expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "system.retired_plan_alert_sent", outcome: "success", resourceId: "sub_max_legacy", metadata: expect.objectContaining({ eventId: "ev_max_renewal", reason: "plan_retired" }) }));
   });
 
-  // Review round 2: an item price SkipWait cannot place is not a Pro/Max plan. The email says so
+  // Review round 2: an item price skipwait.me cannot place is not a Pro/Max plan. The email says so
   // neutrally and asks for a review, never for a cancel-and-refund of a possibly paying customer.
   it("words an unrecognised item price neutrally, with no Pro/Max label and no refund instruction", async () => {
     process.env.RESEND_API_KEY = "re_test";

@@ -55,6 +55,6 @@ export function SeekerSignIn({ returnTo: requestedReturnTo = "/explore" }: { ret
         </div>}
     <p className="auth-new">{creating
       ? <>Already have an account? <Button type="button" variant="link" onClick={() => setStage({ kind: "password", mode: "sign_in" })}>Sign in</Button></>
-      : <>New to SkipWait? <Button type="button" variant="link" onClick={() => setStage({ kind: "password", mode: "sign_up" })}>Create a free account</Button></>}</p>
+      : <>New to skipwait.me? <Button type="button" variant="link" onClick={() => setStage({ kind: "password", mode: "sign_up" })}>Create a free account</Button></>}</p>
   </>;
 }

@@ -71,12 +71,12 @@ describe("Emails template gallery", () => {
     try {
       fireEvent.click(screen.getByRole("button", { name: "Password reset" }));
       const reset = screen.getByRole("article", { name: "Password reset" });
-      expect(reset.textContent).toContain("Set or reset your SkipWait password");
+      expect(reset.textContent).toContain("Set or reset your skipwait.me password");
       expect(reset.textContent).toContain("⟨reset link⟩");
       expect(reset.textContent).not.toMatch(/1 hour|WorkOS \(our sign-in provider\)/);
       fireEvent.click(screen.getByRole("button", { name: "Set your password" }));
       const set = screen.getByRole("article", { name: "Set your password" });
-      expect(set.textContent).toContain("Finish signing in to SkipWait");
+      expect(set.textContent).toContain("Finish signing in to skipwait.me");
       expect(set.textContent).toContain("⟨reset link⟩");
       expect(screen.queryByRole("button", { name: "Sign-up verification code" })).toBeNull();
     } finally {

@@ -104,7 +104,7 @@ describe("forgot password (SkipWait emails the WorkOS reset link)", () => {
     expect(wos.createUser.mock.calls).toEqual([[{ email: "code@gmail.com" }]]);
     expect(wos.createUser.mock.invocationCallOrder[0]).toBeLessThan(wos.createPasswordReset.mock.invocationCallOrder[1]);
     // D-078 ruling 6: SkipWait sends the link, always to its own reset page, never the hosted one.
-    expect(zepto.mock.calls).toEqual([EMAIL, "code@gmail.com"].map(to => [{ to, subject: "Set or reset your SkipWait password", text: expect.stringContaining(`https://skipwait.me/reset-password?token=${TOKEN}`) }]));
+    expect(zepto.mock.calls).toEqual([EMAIL, "code@gmail.com"].map(to => [{ to, subject: "Set or reset your skipwait.me password", text: expect.stringContaining(`https://skipwait.me/reset-password?token=${TOKEN}`) }]));
     const everything = JSON.stringify([responses.map(res => res.body), spies.map(spy => spy.mock.calls), capture.mock.calls]);
     expect(everything).not.toContain(TOKEN);
     expect(everything).not.toContain("reset-password?token");

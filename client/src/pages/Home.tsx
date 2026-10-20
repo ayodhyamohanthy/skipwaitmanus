@@ -22,13 +22,13 @@ export default function Home() {
   const [menu, setMenu] = useState(false);
   const [faq, setFaq] = useState<number | null>(0);
   useEffect(() => {
-    applySeo({ title: `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}`, description: `SkipWait connects job seekers with people inside the companies they want to join. ${MONEY_SENTENCE}`, path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
+    applySeo({ title: `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}`, description: `skipwait.me connects job seekers with people inside the companies they want to join. ${MONEY_SENTENCE}`, path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
   }, []);
 
   return (
     <div className="launch-page">
       <header className="launch-header">
-        <Link className="wordmark" href="/" aria-label="SkipWait home">SkipWait<span className="brand-dot">.</span></Link>
+        <Link className="wordmark" href="/" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         <nav aria-label="Website navigation" className={menu ? "launch-nav open" : "launch-nav"}>
           <Link href="/explore" onClick={() => setMenu(false)}>Explore companies</Link>
           <Link href="/referrer" onClick={() => setMenu(false)}>For referrers</Link>
@@ -45,7 +45,7 @@ export default function Home() {
         <section className="launch-hero">
           <img className="launch-hero-image" src="/launch-door.jpg" alt="An open blue door with a yellow path leading through it" width={1600} height={1008} fetchPriority="high" />
           <div className="launch-hero-copy">
-            <span className="launch-kicker"><span />INTRODUCING SKIPWAIT</span>
+            <span className="launch-kicker"><span />INTRODUCING SKIPWAIT.ME</span>
             <h1>{LANDING_H1_LINES[0]}<br />{LANDING_H1_LINES[1]}<span className="brand-dot">.</span></h1>
             <p>{LANDING_HERO_LEAD_PARTS[0]}<br className="desktop-break" /> {LANDING_HERO_LEAD_PARTS[1]}</p>
             <Button asChild><Link href="/explore">Explore companies <ArrowUpRight /></Link></Button>
@@ -56,7 +56,7 @@ export default function Home() {
         </section>
         <section className="launch-trust-strip" aria-label="Our commitments"><span><HeartHandshake />{REFERRERS_NEVER_PAID}</span><span><LockKeyhole />Private by default.</span><span><ShieldCheck />No job guarantees.</span></section>
         <section className="launch-section launch-companies">
-          <div className="section-intro"><span className="eyebrow">OPEN DOORS AT LAUNCH</span><h2>Start somewhere real.</h2><p>People at these companies have told SkipWait they are open to referral requests. Availability can change, and every person chooses each ask.</p></div>
+          <div className="section-intro"><span className="eyebrow">OPEN DOORS AT LAUNCH</span><h2>Start somewhere real.</h2><p>People at these companies have told skipwait.me they are open to referral requests. Availability can change, and every person chooses each ask.</p></div>
           <div className="launch-company-row">
             {LAUNCH_COMPANY_SEED.map(company => <Link key={company.slug} href={`/explore/${company.slug}`}><span className="company-mark">{company.initials}</span><strong>{company.name}</strong><ArrowUpRight /></Link>)}
           </div>
@@ -109,7 +109,7 @@ export default function Home() {
         </section>
       </main>
       <footer className="launch-footer">
-        <Link className="wordmark" href="/" aria-label="SkipWait home">SkipWait<span className="brand-dot">.</span></Link>
+        <Link className="wordmark" href="/" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         <span>A warmer way in. · skipwait.me</span>
         {/* Kit phone CSS puts every footer span on row 2; the links take row 3 so they never overlap the tagline. */}
         <span className="flex flex-wrap gap-4 max-[769px]:row-start-3!">

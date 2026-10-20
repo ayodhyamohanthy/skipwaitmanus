@@ -43,7 +43,7 @@ const TEMPLATES = [
   {
     name: "Password reset",
     channel: "Email",
-    trigger: "Sent when a job seeker asks to set or reset a password. SkipWait always answers “check your email”, whether the account exists or not, and never sends one to a referrer's work email. The link works once and opens skipwait.me; WorkOS, our sign-in provider, sets how long it lasts.",
+    trigger: "Sent when a job seeker asks to set or reset a password. skipwait.me always answers “check your email”, whether the account exists or not, and never sends one to a referrer's work email. The link works once and opens skipwait.me; WorkOS, our sign-in provider, sets how long it lasts.",
     subject: passwordLinkEmail("reset", "⟨reset link⟩").subject,
     body: [...passwordLinkEmail("reset", "⟨reset link⟩").lines],
     cta: "Reset link (in the email body)",
@@ -95,7 +95,7 @@ const TEMPLATES = [
     channel: "Email + Slack",
     trigger: "A private review link is prepared for a verified employee. Never includes candidate content.",
     subject: "Private referral review at ⟨company⟩",
-    body: ["A private review is ready at ⟨company⟩", "Reviewing is optional and never costs you anything. Sign in with your verified company email before any decision is recorded.", "Opening this link never records a decision. Review and confirm on Skipwait."],
+    body: ["A private review is ready at ⟨company⟩", "Reviewing is optional and never costs you anything. Sign in with your verified company email before any decision is recorded.", "Opening this link never records a decision. Review and confirm on skipwait.me."],
     cta: "Open private review",
   },
   { name: "Re-verify reminder", channel: "Email", trigger: "A work-email verification approaches its re-check window." },
@@ -103,7 +103,7 @@ const TEMPLATES = [
   { name: "Payment receipt / failed", channel: "Email", trigger: "A credit purchase or subscription event confirms — or a payment fails with next steps." },
 ] as const satisfies readonly [Template, ...Template[]];
 
-const SENDER = "SkipWait <noreply@skipwait.me>";
+const SENDER = "skipwait.me <noreply@skipwait.me>";
 
 export default function Emails() {
   const [selected, setSelected] = useState<string>(TEMPLATES[0].name);
@@ -111,7 +111,7 @@ export default function Emails() {
   const emailed = template.channel !== "In-app";
   return <div data-skipwait-screen="emails" className="min-h-screen bg-muted">
     <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-      <Link href="/" className="wordmark" aria-label="SkipWait home">SkipWait<span className="brand-dot">.</span></Link>
+      <Link href="/" className="wordmark" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
       <h1 className="text-xs font-semibold text-muted-foreground">EMAIL & IN-APP TEMPLATES</h1>
     </header>
     <div className="mx-auto grid max-w-6xl gap-4 px-5 pb-16 md:grid-cols-[240px_minmax(0,1fr)]">
@@ -122,14 +122,14 @@ export default function Emails() {
         })}
       </nav>
       <div className="min-w-0 space-y-4">
-        {template.push && <div className="mx-auto max-w-sm rounded-2xl bg-background p-3 shadow-md"><div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="grid size-5 place-items-center rounded bg-primary text-[10px] font-bold text-primary-foreground">S</span>SKIPWAIT · now</div><p className="mt-1 text-sm font-semibold">{template.push}</p></div>}
+        {template.push && <div className="mx-auto max-w-sm rounded-2xl bg-background p-3 shadow-md"><div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="grid size-5 place-items-center rounded bg-primary text-[10px] font-bold text-primary-foreground">S</span>SKIPWAIT.ME · now</div><p className="mt-1 text-sm font-semibold">{template.push}</p></div>}
         <article aria-label={template.name} className="mx-auto max-w-xl overflow-hidden rounded-3xl bg-background">
           <div className="border-b border-border p-4 text-sm">
-            <p>{emailed ? <><span className="text-muted-foreground">From:</span> {SENDER}</> : <><span className="text-muted-foreground">In-app:</span> SkipWait notifications</>}</p>
+            <p>{emailed ? <><span className="text-muted-foreground">From:</span> {SENDER}</> : <><span className="text-muted-foreground">In-app:</span> skipwait.me notifications</>}</p>
             {template.subject ? <p className="font-semibold">{template.subject}</p> : <p className="font-semibold">{template.name}</p>}
           </div>
           <div className="p-8">
-            <p className="wordmark text-xl">SkipWait<span className="brand-dot">.</span></p>
+            <p className="wordmark text-xl"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></p>
             {(template.body ?? [template.trigger]).map(line => <p key={line} className="mt-4 leading-relaxed">{line}</p>)}
             {template.body ? <p className="mt-4 leading-relaxed text-muted-foreground">Fired when: {template.trigger.replace(/^Sent when /, "")}</p> : null}
             <p className="mt-4 leading-relaxed text-muted-foreground">Sent by: {template.channel}</p>
@@ -137,7 +137,7 @@ export default function Emails() {
             {template.code ? <p role="img" aria-label="Six-digit code" className="mt-6 flex justify-center rounded-2xl bg-muted py-5 text-3xl"><span className="flex h-9 items-center gap-[0.8em]">{[0, 1].map(group => <span key={group} className="flex gap-[0.3em]">{[0, 1, 2].map(dot => <span key={dot} className="size-[0.3em] rounded-full bg-foreground" />)}</span>)}</span></p> : null}
             {template.cta ? <span className="mt-6 inline-block rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground">{template.cta}</span> : null}
             <hr className="my-8 border-border" />
-            <p className="text-xs text-muted-foreground">{MONEY_SENTENCE} SkipWait never asks for your password by email.</p>
+            <p className="text-xs text-muted-foreground">{MONEY_SENTENCE} skipwait.me never asks for your password by email.</p>
           </div>
         </article>
       </div>

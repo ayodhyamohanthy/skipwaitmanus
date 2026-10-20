@@ -17,7 +17,7 @@ export function CheckEmailStep({ email, origin, onBack }: CheckEmailStepProps) {
     <p className="flex items-center gap-2 text-sm font-semibold"><MailCheck className="size-4" aria-hidden="true" />Check your email</p>
     <p className="text-xs leading-relaxed text-muted-foreground">
       {origin === "sign_up"
-        ? <>If <strong className="break-all text-foreground">{email}</strong> can use a password on SkipWait, we&apos;ve sent it a link to set one. Open it to finish creating your account.</>
+        ? <>If <strong className="break-all text-foreground">{email}</strong> can use a password on skipwait.me, we&apos;ve sent it a link to set one. Open it to finish creating your account.</>
         : <>To keep your account safe, this address needs confirming first. If <strong className="break-all text-foreground">{email}</strong> can sign in with a password, we&apos;ve sent it a link to set your password and finish signing in.</>}
     </p>
     <p className="text-xs leading-relaxed text-muted-foreground">Already have an account with this email? The link sets a new password for that same account. It works once and can take a few minutes, so check spam too.</p>

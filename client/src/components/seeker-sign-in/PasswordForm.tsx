@@ -61,7 +61,7 @@ export function PasswordForm({ mode, email, onEmailChange, returnTo, onCheckEmai
       ? <>
           <p className="text-xs leading-relaxed text-muted-foreground">We&apos;ll email you a link to set your password. It&apos;s how we know the address is yours.</p>
           {/* D-081: one static line for every address; it never says whether a given address has an account. */}
-          <p className="text-xs leading-relaxed text-muted-foreground">Use a personal email address. Work emails at companies on SkipWait sign in with a work-email code under Give a referral.</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">Use a personal email address. Work emails at companies on skipwait.me sign in with a work-email code under Give a referral.</p>
         </>
       : <>
           <label htmlFor="seeker-password">Password</label>

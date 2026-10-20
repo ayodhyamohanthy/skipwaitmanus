@@ -145,9 +145,9 @@ export function describeEvent(event: AssistantEvent, nowMs: number = Date.now())
     case "assistant.approval_declined": return { ...base, what: approvalSummary(meta.kind), note: "Declined by you" };
     case "assistant.mcp.tool": {
       const tool = typeof meta.tool === "string" ? meta.tool : "";
-      return { ...base, what: TOOL_SUMMARY[tool] ?? (tool ? `Used ${tool}` : "Used a SkipWait tool") };
+      return { ...base, what: TOOL_SUMMARY[tool] ?? (tool ? `Used ${tool}` : "Used a skipwait.me tool") };
     }
-    case "assistant.mcp.denied": return { ...base, what: "Tried to use SkipWait", note: "Blocked: your plan does not include assistants", blocked: true };
+    case "assistant.mcp.denied": return { ...base, what: "Tried to use skipwait.me", note: "Blocked: your plan does not include assistants", blocked: true };
     default: return { ...base, what: event.action };
   }
 }

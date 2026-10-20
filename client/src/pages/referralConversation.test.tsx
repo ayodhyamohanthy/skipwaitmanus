@@ -265,7 +265,7 @@ describe("ReferralConversation thread", () => {
     });
     render(<ReferralConversation />);
     expect(await screen.findByText("This thread isn't available.")).toBeTruthy();
-    expect(screen.getByRole("alert").textContent).toMatch(/couldn't reach SkipWait/);
+    expect(screen.getByRole("alert").textContent).toMatch(/couldn't reach skipwait.me/);
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Nothing to do yet.")).toBeTruthy();
   });

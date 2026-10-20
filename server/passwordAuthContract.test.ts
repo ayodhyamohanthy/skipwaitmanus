@@ -104,7 +104,7 @@ describe("password response contracts", () => {
       expect(PASSWORD_AUTH_COPY[code].length).toBeGreaterThan(10);
       expect(PASSWORD_AUTH_COPY[code]).not.toMatch(/secure screen|authkit|hosted/i);
       // Review F-R2 (a): D-081 shows this for any address at a covered domain, so it states the rule, not a fact about the address.
-      if (code === "use_work_email_code") expect(PASSWORD_AUTH_COPY[code]).toBe("Work emails at companies on SkipWait sign in with a work-email code under Give a referral. Use a personal email for a password.");
+      if (code === "use_work_email_code") expect(PASSWORD_AUTH_COPY[code]).toBe("Work emails at companies on skipwait.me sign in with a work-email code under Give a referral. Use a personal email for a password.");
     }
     expect(passwordAuthErrorSchema.parse({ ok: false, code: "rate_limited", message: "Wait.", retryAfterSeconds: 900 }).retryAfterSeconds).toBe(900);
     expect(passwordAuthErrorSchema.safeParse({ ok: false, code: "invalid_credentials", message: "x", email: "asha@gmail.com" }).success).toBe(false);

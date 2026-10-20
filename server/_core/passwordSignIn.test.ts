@@ -166,7 +166,7 @@ describe("seeker password sign-in", () => {
       expect(wos.createPasswordReset).not.toHaveBeenCalled();
       await flush();
       expect(wos.createPasswordReset).toHaveBeenCalledWith({ email: EMAIL });
-      expect(mail).toHaveBeenLastCalledWith({ to: EMAIL, subject: "Finish signing in to SkipWait", text: expect.stringContaining(LINK) });
+      expect(mail).toHaveBeenLastCalledWith({ to: EMAIL, subject: "Finish signing in to skipwait.me", text: expect.stringContaining(LINK) });
       wos.createPasswordReset.mockClear();
     }
     expect(resolveLoginIdentity).not.toHaveBeenCalled();
@@ -186,7 +186,7 @@ describe("seeker password sign-in", () => {
     expect(revokeUserSessions).not.toHaveBeenCalled();
     await flush();
     expect(wos.createPasswordReset).toHaveBeenCalledWith({ email: EMAIL });
-    expect(mail).toHaveBeenCalledWith({ to: EMAIL, subject: "Finish signing in to SkipWait", text: expect.stringContaining(LINK) });
+    expect(mail).toHaveBeenCalledWith({ to: EMAIL, subject: "Finish signing in to skipwait.me", text: expect.stringContaining(LINK) });
     expect(state.witnesses.size).toBe(0);
     // A referrer's work email is still refused first, and is never emailed.
     state.standings.set("asha@wipro.com", "referrer_work_email");
@@ -216,7 +216,7 @@ describe("seeker password sign-in", () => {
     expect(wos.listUsers).toHaveBeenCalledWith({ email: "new@gmail.com", limit: 1 });
     expect(wos.createUser).toHaveBeenCalledWith({ email: "new@gmail.com" });
     expect(wos.createPasswordReset).toHaveBeenCalledWith({ email: "new@gmail.com" });
-    expect(mail).toHaveBeenLastCalledWith({ to: "new@gmail.com", subject: "Finish signing in to SkipWait", text: expect.stringContaining(LINK) });
+    expect(mail).toHaveBeenLastCalledWith({ to: "new@gmail.com", subject: "Finish signing in to skipwait.me", text: expect.stringContaining(LINK) });
 
     const existing = await post(app, SIGN_UP, { email: EMAIL });
     wos.listUsers.mockResolvedValueOnce({ data: [workosUser()] });
@@ -224,7 +224,7 @@ describe("seeker password sign-in", () => {
     await flush();
     expect(wos.createUser.mock.calls.length).toBe(creates);
     expect(wos.createPasswordReset).toHaveBeenLastCalledWith({ email: EMAIL });
-    expect(mail).toHaveBeenLastCalledWith({ to: EMAIL, subject: "Finish signing in to SkipWait", text: expect.stringContaining(LINK) });
+    expect(mail).toHaveBeenLastCalledWith({ to: EMAIL, subject: "Finish signing in to skipwait.me", text: expect.stringContaining(LINK) });
 
     for (const res of [fresh, existing]) {
       expect(res.status).toBe(200);

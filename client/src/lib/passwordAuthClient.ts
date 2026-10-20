@@ -10,7 +10,7 @@ export type PasswordCallResult<T> =
   | { readonly ok: true; readonly data: T }
   | { readonly ok: false; readonly code: PasswordAuthErrorCode | "network"; readonly message: string; readonly retryAfterSeconds?: number };
 
-export const NETWORK_FAILURE_MESSAGE = "We couldn't reach SkipWait. Check your connection and try again.";
+export const NETWORK_FAILURE_MESSAGE = "We couldn't reach skipwait.me. Check your connection and try again.";
 
 export function rateLimitedMessage(retryAfterSeconds: number | undefined): string {
   const minutes = retryMinutes(retryAfterSeconds);

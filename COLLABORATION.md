@@ -60,7 +60,7 @@ Next: <next action or requested coordination>
 - Ask the owners to resolve ambiguous behavior conflicts. Rerun validation on the integrated result; earlier passing tests do not certify a later merge.
 - Run `git diff --check`, `pnpm check`, affected Vitest files, and `pnpm build` for runtime/dependency changes. Report exact commands and outcomes, including failures outside the task. Do not weaken tests to conceal conflicts.
 - Use one designated integrator or the repository merge queue to serialize integration. Never force-push main. A rejected push means fetch, inspect, coordinate, and revalidate, not force.
-- Where repository settings permit, maintainers should protect main with required CI checks (verified groups ship without a PR review, D-003). Documentation alone does not enable branch protection (proposed to the owner under D-082; not on yet).
+- Where repository settings permit, maintainers should protect main with required CI checks (verified groups ship without a PR review, D-003). Documentation alone does not enable branch protection; since Oct 20 the GitHub ruleset `main: green CI only (D-082)` refuses any push to main whose exact commit has not passed typecheck, tests and build, for everyone.
 
 ## 6. Leave a usable handoff
 

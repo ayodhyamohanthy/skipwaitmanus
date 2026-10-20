@@ -68,7 +68,7 @@ describe("Plans for the referrer role (D-055: referrers never pay)", () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ summary: { totalAvailable: 0 } }) });
     vi.stubGlobal("fetch", fetchMock);
     render(<Plans />);
-    expect(await screen.findByText("Referrers never pay on SkipWait.")).toBeTruthy();
+    expect(await screen.findByText("Referrers never pay on skipwait.me.")).toBeTruthy();
     expect(screen.queryAllByRole("button").filter(button => purchaseControl.test(button.textContent ?? ""))).toEqual([]);
     expect(document.querySelector("a[href^='/premium'], a[href*='payment=']")).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -81,7 +81,7 @@ describe("Plans for the referrer role (D-055: referrers never pay)", () => {
     window.history.pushState({}, "", "/plans?role=referrer");
     vi.stubGlobal("fetch", vi.fn());
     render(<Plans />);
-    expect(screen.getByText("Referrers never pay on SkipWait.")).toBeTruthy();
+    expect(screen.getByText("Referrers never pay on skipwait.me.")).toBeTruthy();
     expect(screen.queryAllByRole("button").filter(button => purchaseControl.test(button.textContent ?? ""))).toEqual([]);
     expect(auth.openSignIn).not.toHaveBeenCalled();
   });

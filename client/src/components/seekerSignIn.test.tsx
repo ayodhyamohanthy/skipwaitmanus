@@ -113,7 +113,7 @@ describe("check-your-email, create-account and error states are explicit", () =>
     expect(document.querySelector("input[type=password]")).toBeNull();
     expect(screen.getByText(/We'll email you a link to set your password/)).toBeTruthy();
     // D-081: one static line, the same for every address (it never says whether an address has an account).
-    expect(screen.getByText("Use a personal email address. Work emails at companies on SkipWait sign in with a work-email code under Give a referral.")).toBeTruthy();
+    expect(screen.getByText("Use a personal email address. Work emails at companies on skipwait.me sign in with a work-email code under Give a referral.")).toBeTruthy();
     const submit = () => screen.getByRole("button", { name: /^Create account/ }) as HTMLButtonElement;
     expect(submit().disabled).toBe(true);
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: " New@Gmail.com " } });
@@ -146,7 +146,7 @@ describe("check-your-email, create-account and error states are explicit", () =>
     ["password sign-in switched off", { status: 503, body: { ok: false, code: "password_sign_in_unavailable", message: PASSWORD_AUTH_COPY.password_sign_in_unavailable } }, PASSWORD_AUTH_COPY.password_sign_in_unavailable],
     ["a referrer's work email", { status: 403, body: { ok: false, code: "use_work_email_code", message: PASSWORD_AUTH_COPY.use_work_email_code } }, PASSWORD_AUTH_COPY.use_work_email_code],
     ["a garbled answer", { status: 500, body: { html: true } }, PASSWORD_AUTH_COPY.temporarily_unavailable],
-    ["a network failure", new TypeError("Failed to fetch"), "We couldn't reach SkipWait. Check your connection and try again."],
+    ["a network failure", new TypeError("Failed to fetch"), "We couldn't reach skipwait.me. Check your connection and try again."],
   ] as const)("%s shows plain words in an alert", async (_label, reply, message) => {
     stubAssign();
     stubFetch([reply instanceof Error ? reply : { status: reply.status, body: reply.body }]);

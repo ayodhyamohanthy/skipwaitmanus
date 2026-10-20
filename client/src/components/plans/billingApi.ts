@@ -6,7 +6,7 @@ import { z } from "zod";
 import { creditsLedgerSchema } from "@shared/creditLedger";
 import { openAskSlotsSchema } from "@shared/openAskSlots";
 
-export const NETWORK_ERROR = "We couldn’t reach SkipWait. Check your connection and try again.";
+export const NETWORK_ERROR = "We couldn’t reach skipwait.me. Check your connection and try again.";
 
 const nullableString = z.string().nullish().transform(value => value ?? null);
 

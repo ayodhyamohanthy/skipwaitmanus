@@ -91,7 +91,7 @@ describe("Explore directory", () => {
     const alerts = screen.getAllByRole("link", { name: /Get told when a door opens/ });
     expect(alerts).toHaveLength(3);
     expect(alerts.every(link => link.getAttribute("href") === "/alerts")).toBe(true);
-    const skipwait = screen.getByRole("heading", { name: "SkipWait" }).closest("article") as HTMLElement;
+    const skipwait = screen.getByRole("heading", { name: "skipwait.me" }).closest("article") as HTMLElement;
     expect(within(skipwait).queryByText("PEOPLE OPEN TO REFERRALS")).toBeNull();
     expect(within(skipwait).getByRole("link", { name: /View company/ }).getAttribute("href")).toBe("/explore/skipwait");
   });
@@ -155,7 +155,7 @@ describe("Explore directory", () => {
     renderWithQuery(<Explore />);
     await screen.findByText("5 companies to explore");
     expect(document.title).toBe("Explore companies · skipwait.me");
-    await waitFor(() => expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Find people open to referral requests at SkipWait, Wipro, Go Neutrinos, TCS, and Merkle."));
+    await waitFor(() => expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Find people open to referral requests at skipwait.me, Wipro, Go Neutrinos, TCS, and Merkle."));
     expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore");
   });
 
@@ -167,7 +167,7 @@ describe("Explore directory", () => {
 });
 
 describe("Explore company detail", () => {
-  it("renders the app 404 for a company that is not on SkipWait", async () => {
+  it("renders the app 404 for a company that is not on skipwait.me", async () => {
     routeState.slug = "no-such-company";
     stubDirectory();
     renderWithQuery(<ExploreCompany />);

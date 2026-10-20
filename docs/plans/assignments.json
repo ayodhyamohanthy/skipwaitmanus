@@ -63,7 +63,7 @@
       "tier": 2,
       "lane": "money-check",
       "branch": "agent/queue/d065b-slice-checks",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
@@ -74,7 +74,7 @@
       "tier": 2,
       "lane": "config",
       "branch": "agent/queue/fnd5-env",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
@@ -85,7 +85,7 @@
       "tier": 2,
       "lane": "test-kit",
       "branch": "agent/queue/fnd3-dup-keys",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
@@ -107,7 +107,7 @@
       "tier": 3,
       "lane": "cleanup",
       "branch": "agent/queue/fnd2-dead-code",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
@@ -118,7 +118,7 @@
       "tier": 3,
       "lane": "docs-status",
       "branch": "agent/queue/fnd6-row-audit",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
@@ -181,6 +181,18 @@
       "status": "architect",
       "dependsOn": [],
       "note": "Claude Code writes one packet per surface; each becomes its own task here."
+    },
+    {
+      "id": "SYNC-LOG-off-main",
+      "title": "Keep the deploy log without pushing to main (the D-082 ruleset refuses the bot's push)",
+      "row": "D-082",
+      "packet": null,
+      "tier": 3,
+      "lane": "deploy-workflows",
+      "branch": "agent/claude/sync-log-off-main",
+      "status": "architect",
+      "dependsOn": [],
+      "note": "Claude Code writes the packet: write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected."
     }
   ]
 }

@@ -35,15 +35,15 @@ export default function SignIn() {
   // A password finished on WorkOS's hosted page is refused at the callback (review F1); say where it works.
   const passwordElsewhere = reason === USE_PASSWORD_SIGN_IN_REASON;
   return <main data-skipwait-screen="sign-in" className="auth-page">
-    <section className="auth-story" aria-label="SkipWait introduction">
-      <Link className="wordmark auth-wordmark" href="/">SkipWait<span className="brand-dot">.</span></Link>
+    <section className="auth-story" aria-label="skipwait.me introduction">
+      <Link className="wordmark auth-wordmark" href="/"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
       <img src="/launch-door.jpg" alt="An open blue door with a yellow path" width={1600} height={1008} />
       <div className="auth-story-copy"><span className="eyebrow">A WARMER WAY IN</span><h1>One sign-in.<br />More open doors.</h1><p>Explore first. Sign in only when you’re ready to ask for—or <span className="whitespace-nowrap">offer—a</span> real introduction.</p></div>
       <div className="auth-story-proof"><ShieldCheck /><span><strong>Private by default</strong>Your details stay yours until you choose to share.</span></div>
     </section>
     <section className="auth-panel"><div className="auth-panel-inner">
       <Link className="auth-back" href="/"><ArrowLeft /> Back to home</Link>
-      <div className="auth-heading"><span className="auth-step">YOUR DOOR STARTS HERE</span><h2>Welcome to SkipWait.</h2><p>Pick your side. You can switch any time on this screen.</p></div>
+      <div className="auth-heading"><span className="auth-step">YOUR DOOR STARTS HERE</span><h2>Welcome to skipwait.me.</h2><p>Pick your side. You can switch any time on this screen.</p></div>
       <p className="intent-prompt" id="intent-prompt">I’m here to…</p>
       <div className="intent-switch intent-cards" role="group" aria-labelledby="intent-prompt">
         <Button type="button" variant="ghost" className={intent === "seeker" ? "selected" : ""} aria-pressed={intent === "seeker"} onClick={() => setIntent("seeker")}><Sparkles /><span className="intent-title">Find a referral</span><span className="intent-sub">I’m looking for a job</span>{intent === "seeker" && <Check className="intent-check" aria-hidden="true" />}</Button>
@@ -54,7 +54,7 @@ export default function SignIn() {
         // FOUNDER-LOCKED (Oct 16 2026, D-049): referrers sign in with a work-email OTP only. No social, no personal email, no password.
         ? <div className="auth-form" data-testid="referrer-work-email-otp">{workEmailRefused ? <p role="status" className="auth-new">{PASSWORD_AUTH_COPY.use_work_email_code}</p> : null}<ReferrerOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
         // Job seekers: every sign-in stays on skipwait.me. Social buttons go straight to the provider; email uses a password
-        // (D-049). SeekerSignIn renders its own "New to SkipWait? Create a free account" line under the form.
+        // (D-049). SeekerSignIn renders its own "New to skipwait.me? Create a free account" line under the form.
         : <>{passwordElsewhere ? <p role="status" className="auth-new">{USE_PASSWORD_SIGN_IN_COPY}</p> : null}<SeekerSignIn returnTo={seekerReturnTo} /></>}
       {intent === "referrer" ? <p className="auth-new">Work email only. We never use personal email, passwords or social logins for referrers.</p> : null}
       <p className="auth-terms">By continuing, you agree to the <Link href="/terms" className={legalLink}>Terms</Link> and acknowledge the <Link href="/privacy" className={legalLink}>Privacy Policy</Link>. {MONEY_SENTENCE_SHORT} A referral never guarantees an interview.</p>

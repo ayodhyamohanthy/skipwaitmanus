@@ -14,7 +14,7 @@ import { registerChargebeeRoutes } from "./chargebeeRoutes";
 
 type Activity = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; metadata?: Record<string, string | number | boolean | null | undefined> };
 
-const REFUSAL = { error: "Referrers never pay on SkipWait. Nothing has been charged.", code: "referrers_never_pay" };
+const REFUSAL = { error: "Referrers never pay on skipwait.me. Nothing has been charged.", code: "referrers_never_pay" };
 
 function auth(secret: string) {
   return `Basic ${Buffer.from(`skipwait:${secret}`).toString("base64")}`;
