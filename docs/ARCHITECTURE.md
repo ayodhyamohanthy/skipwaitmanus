@@ -214,13 +214,8 @@ A new job needs its name in both registries and a contract test (`server/schedul
 
 ## 11. Known gaps (each has a packet or row in `docs/plans/README.md`)
 1. **Dead code that misleads readers:**
-   - the Kinetic drafts: `components/layout/AppShell.tsx`, `components/ui/primitives.tsx`, `components/referrer/ReferrerCockpit.tsx`, `components/seeker/SeekerSearchPage.tsx`, `pipeline/PipelineTracker.tsx`;
-   - `styles/globals.css`;
-   - the unrouted pages `Notifications.tsx` and `ReferralRequest.tsx`;
-   - `src/services/mailService.ts`;
-   - the unused Manus Forge modules (`map`, `dataApi`, `imageGeneration`, `voiceTranscription`, `heartbeat`);
-   - `render.yaml`;
-   - the imported-but-unused `VitePWA`.
+   - `styles/globals.css` (the D-048 phase-2 packet deletes it; its `--sw-*` names collide with the goal tokens);
+   - the unrouted pages `Notifications.tsx` (read as text by `server/notificationCenterUi.test.ts`) and `ReferralRequest.tsx` (kept by D-067; `client/src/pages/referralRequest.auth.test.tsx` imports it).
 2. **Test blind spots:**
    - `shared/` tests never run;
    - `*.test.ts` files are not type-checked;
