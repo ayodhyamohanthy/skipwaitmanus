@@ -91,8 +91,9 @@ describe("Free monthly credits require a payment method on file", () => {
   });
 
   it("leaves the paid plans alone: a term that was paid for still grants with no card", async () => {
+    // D-067 retired Pro/Max: a paid Start 30-day pass, not a retired plan.
     fixture.reset({
-      wallets: [freeWallet({ plan: "pro", subscriptionId: "sub_pro", subscriptionStatus: "active", subscriptionCurrency: "USD", subscriptionCurrentTermStart: at("2026-09-06T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-11-06T00:00:00Z"), monthlyAllowance: 10, monthlyCreditsRemaining: 4, monthlyCycleKey: "2026-09" })],
+      wallets: [freeWallet({ plan: "start", subscriptionId: "sub_start", subscriptionStatus: "active", subscriptionCurrency: "USD", subscriptionCurrentTermStart: at("2026-09-06T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-11-05T00:00:00Z"), monthlyAllowance: 10, monthlyCreditsRemaining: 4, monthlyCycleKey: "2026-09" })],
       txns: [],
       users: [{ id: SEEKER, canonicalPersonId: 1 }],
     });

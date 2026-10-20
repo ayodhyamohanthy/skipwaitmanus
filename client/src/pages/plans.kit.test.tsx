@@ -62,7 +62,9 @@ describe("Plans on live data", () => {
     expect(within(costs).getAllByRole("listitem").map(item => item.textContent)).toEqual(["1 creditEach ask a verified employee can see", "$1Each credit you buy", "NeverBought credits expire"]);
     const text = document.body.textContent ?? "";
     expect(text).not.toMatch(RETIRED);
-    for (const banned of ["DESIGN PREVIEW", "EXAMPLE PRICING", "PREVIEW DATA", "Most chosen", "Momentum", "Land", "Yearly", "2 mo free", "checkout preview", "YOUR BALANCE", "free credits", "every month are free", "One private referral request", "Compare every individual plan", "monthly credits", "Your plan"]) expect(text).not.toContain(banned);
+    for (const banned of ["DESIGN PREVIEW", "EXAMPLE PRICING", "PREVIEW DATA", "Most chosen", "Momentum", "Land", "Yearly", "2 mo free", "checkout preview", "YOUR BALANCE", "free credits", "every month are free", "One private referral request", "Compare every individual plan", "Your plan"]) expect(text).not.toContain(banned);
+    // D-079: the hero names the payment-method gate honestly, so "monthly credits" is live copy here.
+    expect(text).toContain("add a payment method to unlock the monthly credits");
     expect(screen.queryAllByRole("button").filter(button => PLAN_PURCHASE.test(button.textContent ?? ""))).toEqual([]);
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.queryByLabelText("Your usage this cycle")).toBeNull();

@@ -35,6 +35,8 @@ const ledger = (creditsPerMonth: number, balance: number) => ({ balance, buckets
 const freeSummary = { plan: "free", monthlyAllowance: 0, monthlyCreditsRemaining: 0, totalAvailable: 3, subscriptionStatus: null, subscriptionCurrentTermEnd: null, paymentMethodOnFile: false, paymentMethodRequiredForFreeCredits: true, slots: slots("free", "Free", 3), ledger: ledger(0, 3) };
 // A 30-day Start pass (shared/planCatalog.ts: 8 open asks, 10 credits a cycle, 1 month of carryover).
 const startSummary = { plan: "start", monthlyAllowance: 10, monthlyCreditsRemaining: 7, totalAvailable: 9, subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z", paymentMethodOnFile: true, paymentMethodRequiredForFreeCredits: true, slots: slots("start", "Start", 8), ledger: ledger(10, 9) };
+// D-079: saved methods are labels read from the provider, never card data.
+const savedCard = { methods: [{ id: "ps_1", type: "card", label: "Visa •••• 4242", detail: "Default · expires 08/28", isDefault: true }], customer: true };
 
 describe("Billing page", () => {
   it("shows the free plan, the payment-method prompt, and no invented methods", async () => {
@@ -44,7 +46,7 @@ describe("Billing page", () => {
     expect(screen.getByRole("heading", { name: "Manage plan." })).toBeTruthy();
     expect(screen.getByText("3 open asks · buy credits anytime")).toBeTruthy();
     expect(screen.getByText("No payments yet.")).toBeTruthy();
-    expect(screen.getByText(/never sees or stores them/)).toBeTruthy();
+    expect(screen.getByText(/Cards are saved by the payment provider, never by SkipWait/)).toBeTruthy();
     expect(screen.queryByText(/Visa|UPI|PayPal|4242|Make default|Add payment method/)).toBeNull();
     // D-067: no plan is sold from /plans until the D-046 passes go on sale, so Free offers the credits it can really buy.
     expect(screen.getByRole("link", { name: "Add credits" }).getAttribute("href")).toBe("/premium?role=job_seeker");
@@ -53,9 +55,10 @@ describe("Billing page", () => {
   });
 
   it("lists the saved methods the provider holds, with no prompt once a card is on file", async () => {
-    stubFetch({ summary: proSummary, methods: savedCard });
+    // D-067 retired Pro/Max: a paid Start pass, not a retired plan, with the provider's saved card.
+    stubFetch({ summary: startSummary, methods: savedCard });
     render(<Billing />);
-    expect(await screen.findByRole("heading", { name: "Pro" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Start" })).toBeTruthy();
     expect(await screen.findByText(/Visa •••• 4242/)).toBeTruthy();
     expect(screen.getByText(/Default · expires 08\/28/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Manage payment methods" })).toBeTruthy();

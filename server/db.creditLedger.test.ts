@@ -216,6 +216,10 @@ describe("reconcile and the scheduled safety net", () => {
   });
 
   it("new seeker wallets open Free's month empty until a card is on file; referrer wallets keep 3 a month", async () => {
+    // D-079: pin the payment-method gate ON for this D-079 case only; the shipped
+    // default is OFF (pinned in server/creditCyclesPaymentMethod.test.ts), and every
+    // other case in this file runs with the shipped default.
+    vi.stubEnv("FREE_CREDITS_REQUIRE_PAYMENT_METHOD", "true");
     db.wallets = [];
     db.txns = [];
     // 0096: a brand-new seeker has no payment method, so the month opens with 0 and no

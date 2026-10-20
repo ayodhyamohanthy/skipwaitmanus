@@ -304,6 +304,10 @@ describe("applyChargebeeSubscriptionEvent on a kit pass (0091)", () => {
   });
 
   it("ends the pass cleanly: a cancelled pass returns the wallet to Free and keeps purchased credits", async () => {
+    // D-079: pin the payment-method gate ON for this D-079 case only; the shipped
+    // default is OFF (pinned in server/creditCyclesPaymentMethod.test.ts), and every
+    // other case in this file runs with the shipped default.
+    vi.stubEnv("FREE_CREDITS_REQUIRE_PAYMENT_METHOD", "true");
     momentumIntent();
     await applyChargebeeSubscriptionEvent(momentum90);
     expect(await applyChargebeeSubscriptionEvent({ ...momentum90, eventId: "event_kit_end", eventType: "subscription_cancelled", status: "cancelled", hostedPageId: undefined, passThruContent: undefined, itemPriceId: undefined, interval: undefined, resourceVersion: 6 })).toMatchObject({ status: "applied" });
