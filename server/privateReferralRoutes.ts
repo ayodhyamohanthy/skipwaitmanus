@@ -1355,7 +1355,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     } catch (error) {
       const message = error instanceof Error ? error.message : "This referral request is no longer available";
       const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
-      res.status(/verify your (work|company) email/i.test(message) ? 403 : /no longer available|already claimed|conflicts with the current state|expired/i.test(message) ? 409 : /not in your account|not found|no longer exists/i.test(message) ? 404 : 500).json({ error: message, currentState });
+      // D-038-A: the 5-claim cap is a state conflict (the referrer must accept or pass one first), never a server fault.
+      const capReached = error instanceof Error && error.name === "ReferralTransitionConflict" && /asks at once/i.test(message);
+      res.status(/verify your (work|company) email/i.test(message) ? 403 : capReached || /no longer available|already claimed|conflicts with the current state|expired/i.test(message) ? 409 : /not in your account|not found|no longer exists/i.test(message) ? 404 : 500).json({ error: message, currentState });
     }
   });
   app.post("/api/company-referrals/:requestId/extend-referred-deadline", async (req, res) => {

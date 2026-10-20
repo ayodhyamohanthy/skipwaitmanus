@@ -15,7 +15,7 @@
 // row; the only writes are the job's own run record (the runner) and one
 // operational-activity row when an alert email goes out. The email carries
 // ids, amounts, currencies and reasons — never names, emails, or request content.
-import { and, asc, count, eq, gt, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
@@ -50,6 +50,8 @@ export type LegacyPlanWalletRow = { id: number; role: string; plan: string; term
 export type AskSpentWhileWaitingRow = { transactionId: number; requestId: number };
 /** One spend that two or more ledger rows reverse; the unique index should make this impossible. */
 export type DoublyReversedSpendRow = { reversesTransactionId: number; reversalRows: number; ledgerRowIds: number[] };
+/** D-038-A: a withdrawal or expiry refund whose ask had already been picked up by a claim. */
+export type RefundAfterPickupRow = { transactionId: number; requestId: number; kind: string; createdAt: Date | null };
 
 export type DailyMoneyCheckDeps = {
   auditWallets: () => Promise<WalletAuditResult>;
@@ -62,6 +64,7 @@ export type DailyMoneyCheckDeps = {
   listLegacyPlanWallets: (now: Date, limit: number) => Promise<LegacyPlanWalletRow[]>;
   listAskDeliverySpendsWhileWaiting: (limit: number) => Promise<AskSpentWhileWaitingRow[]>;
   listDoublyReversedSpends: (limit: number) => Promise<DoublyReversedSpendRow[]>;
+  listRefundsAfterPickup: (limit: number) => Promise<RefundAfterPickupRow[]>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
   recordActivity: typeof recordOperationalActivity;
 };
@@ -257,8 +260,34 @@ export async function listDoublyReversedSpends(limit: number): Promise<DoublyRev
   return found;
 }
 
-async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {
-  try {
+/**
+ * D-038-A: a refund whose ask had already been picked up. Once a referrer claimed the ask the
+ * credit stays spent (D-034, D-076 (1)), so a withdrawal_refund or expiry_refund row whose ask's
+ * latest pickup-or-release event before the refund was a claim is a money leak, not a refund.
+ * Read-only and bounded: the newest `limit * 4` refund rows are examined, `limit` findings returned.
+ */
+async function listRefundsAfterPickup(limit: number): Promise<RefundAfterPickupRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  const refunds = await db.select({ id: tokenTransactions.id, kind: tokenTransactions.kind, referenceId: tokenTransactions.referenceId, createdAt: tokenTransactions.createdAt })
+    .from(tokenTransactions)
+    .where(and(eq(tokenTransactions.referenceType, "referral_request"), inArray(tokenTransactions.kind, ["withdrawal_refund", "expiry_refund"])))
+    .orderBy(desc(tokenTransactions.id)).limit(limit * 4);
+  const found: RefundAfterPickupRow[] = [];
+  for (const refund of refunds) {
+    const requestId = Number(String(refund.referenceId ?? "").split("#")[0]);
+    if (!Number.isInteger(requestId) || requestId <= 0) continue;
+    const events = await db.select({ id: referralTransitionEvents.id, action: referralTransitionEvents.action }).from(referralTransitionEvents)
+      .where(and(eq(referralTransitionEvents.referralRequestId, requestId), inArray(referralTransitionEvents.action, ["claim", "claim_lapse", "referred_lapse", "step_back"]), refund.createdAt ? lte(referralTransitionEvents.createdAt, refund.createdAt) : undefined));
+    let latest: { id: number; action: string } | null = null;
+    for (const event of events) if (latest === null || Number(event.id) > Number(latest.id)) latest = event;
+    if (latest?.action !== "claim") continue;
+    found.push({ transactionId: refund.id, requestId, kind: refund.kind, createdAt: refund.createdAt ?? null });
+    if (found.length >= limit) break;
+  }
+  return found;
+}
+
+async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {  try {
     const apiKey = process.env.RESEND_API_KEY;
     const sender = process.env.ERROR_ALERT_FROM_EMAIL;
     if (!apiKey || !sender) throw new Error("Money check email delivery is not configured");
@@ -287,6 +316,7 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
   listLegacyPlanWallets,
   listAskDeliverySpendsWhileWaiting,
   listDoublyReversedSpends,
+  listRefundsAfterPickup,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
 }) {
@@ -355,6 +385,10 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
 
     const doubleReversals = await deps.listDoublyReversedSpends(FINDINGS_PREVIEW_LIMIT);
     for (const row of doubleReversals) findings.push(`spend_reversed_twice: transaction #${row.reversesTransactionId} is reversed by ${row.reversalRows} rows (ledger rows ${row.ledgerRowIds.map(id => `#${id}`).join(", ")})`);
+
+    // D-038-A: once a referrer claimed the ask the credit stays spent, so a refund after a pickup is a leak.
+    const refundsAfterPickup = await deps.listRefundsAfterPickup(FINDINGS_PREVIEW_LIMIT);
+    for (const row of refundsAfterPickup) findings.push(`refund_after_pickup: ledger row #${row.transactionId} returned a credit for ask #${row.requestId} (${row.kind}) although the ask's latest pickup was a claim`);
 
     const output: JobRunOutput = { processed: audit.checkedWallets + checkedPayments, failed: 0 };
     if (findings.length === 0) return output;
