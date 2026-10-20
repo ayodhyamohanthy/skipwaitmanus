@@ -282,6 +282,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     getUserSubscription: db.getUserSubscription,
     markSubscriptionNonRenewing: db.markSubscriptionNonRenewing,
     getPaymentRecovery: db.getChargebeePaymentRecovery,
+    getSubscriptionCheckoutIntent: db.getSubscriptionCheckoutIntent,
+    markSubscriptionCheckoutIntentCancelled: db.markSubscriptionCheckoutIntentCancelled,
     markPaymentForReview: db.markChargebeePaymentForReview,
     getCreditSummary: db.getTokenWallet,
     alertPaymentReview: createPaymentReviewAlerter(),

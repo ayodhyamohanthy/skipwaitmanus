@@ -4314,6 +4314,31 @@ export async function createChargebeeSubscriptionIntent(input: { hostedPageId: s
   return { id: Number(result[0].insertId), hostedPageId: input.hostedPageId };
 }
 
+/** GO-LIVE-1b: one checkout intent by its hosted page (recovery ownership check). */
+export async function getSubscriptionCheckoutIntent(hostedPageId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(subscriptionCheckoutIntents).where(eq(subscriptionCheckoutIntents.hostedPageId, hostedPageId)).limit(1);
+  return rows[0];
+}
+
+/** GO-LIVE-1b: pending pass checkouts for the hourly reconcile, oldest first. */
+export async function listPendingSubscriptionCheckoutIntents(olderThan: Date, newerThan: Date, limit: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.select().from(subscriptionCheckoutIntents)
+    .where(and(eq(subscriptionCheckoutIntents.status, "pending"), lt(subscriptionCheckoutIntents.createdAt, olderThan), gt(subscriptionCheckoutIntents.createdAt, newerThan)))
+    .orderBy(asc(subscriptionCheckoutIntents.createdAt), asc(subscriptionCheckoutIntents.id))
+    .limit(limit);
+}
+
+/** GO-LIVE-1b: an expired checkout page marks its pending intent cancelled; never an activated one. */
+export async function markSubscriptionCheckoutIntentCancelled(hostedPageId: string, failureReason: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(subscriptionCheckoutIntents).set({ status: "cancelled", failureReason }).where(and(eq(subscriptionCheckoutIntents.hostedPageId, hostedPageId), eq(subscriptionCheckoutIntents.status, "pending")));
+}
+
 export async function applyChargebeeSubscriptionEvent(input: { eventId: string; eventType: string; hostedPageId?: string; passThruContent?: string; subscriptionId: string; plan?: BillablePlanId; itemPriceId?: string; interval?: BillingPeriod; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
