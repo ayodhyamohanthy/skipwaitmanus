@@ -205,6 +205,20 @@ describe("/plans states (C8)", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it.each([
+    ["answers 500", (): Response => json({ error: "We could not refresh your plan details" }, 500)],
+    ["cannot be reached", (): Response => { throw new TypeError("Failed to fetch"); }],
+  ])("when the account summary %s, the packs and their Buy buttons still render", async (_case, summaryAnswer) => {
+    const fetchMock = serve({ extra: url => url.startsWith("/api/credits/summary") ? summaryAnswer() : undefined });
+    render(<Plans />);
+    const packs = await screen.findByRole("region", { name: "Credit packs" });
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).startsWith("/api/credits/summary"))).toBe(true));
+    expect(within(packs).getAllByRole("button", { name: /^Buy \d+ credits$/ }).map(button => button.textContent)).toEqual(["Buy", "Buy", "Buy", "Buy"]);
+    expect(within(packs).getAllByRole("button", { name: /^Buy \d+ credits$/ }).every(button => !(button as HTMLButtonElement).disabled)).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByText("YOUR BALANCE")).toBeNull();
+  });
+
   it("Different billing country? keeps its line while the other region's prices load, and asks for nothing", async () => {
     const fetchMock = serve({ catalog: region => region === "IN" ? new Promise<Response>(() => undefined) : json(catalogFixture("INTL")) });
     auth.isSignedIn = false;
