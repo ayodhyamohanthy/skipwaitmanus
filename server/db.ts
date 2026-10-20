@@ -439,7 +439,7 @@ export async function createSeekerAlert(userId: number, input: { companyDomain?:
     const id = Number(inserted[0].insertId);
     return (await db.select().from(seekerAlerts).where(eq(seekerAlerts.id, id)).limit(1))[0];
   } catch (error) {
-    if (error instanceof Error && (error as { code?: unknown }).code === "ER_DUP_ENTRY") throw new Error(`You already watch ${domain}`);
+    if (isDuplicateKey(error)) throw new Error(`You already watch ${domain}`);
     throw error instanceof Error ? error : new Error("We could not save this alert");
   }
 }
@@ -570,7 +570,7 @@ export async function createAssistantToken(userId: number, input: { name?: unkno
     const id = Number(inserted[0].insertId);
     return { id, name, prefix, token: plaintext, createdAt: new Date().toISOString() };
   } catch (error) {
-    if (error instanceof Error && (error as { code?: unknown }).code === "ER_DUP_ENTRY") throw new Error(`You already have a token named “${name}”`);
+    if (isDuplicateKey(error)) throw new Error(`You already have a token named “${name}”`);
     throw error instanceof Error ? error : new Error("We could not create this token");
   }
 }
@@ -780,7 +780,7 @@ export async function createDeveloperApp(userId: number, input: {
       inserted = await tryInsert(clientId);
       break;
     } catch (error) {
-      if (error instanceof Error && (error as { code?: unknown }).code === "ER_DUP_ENTRY" && attempt < 2) continue;
+      if (isDuplicateKey(error) && attempt < 2) continue;
       throw error instanceof Error ? error : new Error("We could not register this app");
     }
   }
@@ -3609,7 +3609,7 @@ export async function claimPersonalReferralInvite(joinerUserId: number, input: {
       return { rewarded: true as const, tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS };
     });
   } catch (error) {
-    if ((error as { code?: string }).code === "ER_DUP_ENTRY") return { rewarded: false as const, reason: "duplicate_account" as const };
+    if (isDuplicateKey(error)) return { rewarded: false as const, reason: "duplicate_account" as const };
     throw error;
   }
 }
@@ -3738,7 +3738,7 @@ export async function grantPromoCreditsTx(tx: any, input: { userId: number; role
     await tx.insert(notifications).values({ kind: "credits_added", userId: input.userId, category: "system", title: `${PROMO_GRANT_TOKENS} bonus referral credits`, body: `Your verified payment earned ${PROMO_GRANT_TOKENS} bonus credits. They expire in 30 days and are used before monthly credits.` });
     return { granted: true, grantId };
   } catch (error) {
-    if ((error as { code?: string }).code === "ER_DUP_ENTRY") return { granted: false, reason: "already_granted" };
+    if (isDuplicateKey(error)) return { granted: false, reason: "already_granted" };
     throw error;
   }
 }
@@ -5052,7 +5052,7 @@ export async function prepareUnlockCreditCheckout(input: { checkoutKey:string; u
   const expected=UNLOCK_CREDIT_PACKS[input.pack]; if(!expected||input.amount!==expected.amountInPaise||input.currency.toUpperCase()!=="INR") throw new Error("Checkout does not match the selected pack");
   if(!/^[\x21-\x7E]{16,64}$/.test(input.checkoutKey)) throw new Error("A valid Idempotency-Key header is required");
   const fingerprint=createHash("sha256").update(`${input.userId}|${input.pack}|${input.amount}|INR`).digest("hex"); const providerReceipt=`sw_${createHash("sha256").update(`${input.userId}|${input.checkoutKey}`).digest("hex").slice(0,32)}`;
-  const db=await getDb();if(!db)throw new Error("Database unavailable"); try{await db.insert(employerPaymentFulfillments).values({provider:"razorpay",providerOrderId:null,checkoutKey:input.checkoutKey,fingerprint,providerReceipt,userId:input.userId,pack:input.pack,amount:input.amount,currency:"INR",status:"creating"});}catch(error){if((error as any).code!=="ER_DUP_ENTRY")throw error;}
+  const db=await getDb();if(!db)throw new Error("Database unavailable"); try{await db.insert(employerPaymentFulfillments).values({provider:"razorpay",providerOrderId:null,checkoutKey:input.checkoutKey,fingerprint,providerReceipt,userId:input.userId,pack:input.pack,amount:input.amount,currency:"INR",status:"creating"});}catch(error){if(!isDuplicateKey(error))throw error;}
   return db.transaction(async tx=>{const intent=(await tx.select().from(employerPaymentFulfillments).where(and(eq(employerPaymentFulfillments.userId,input.userId),eq(employerPaymentFulfillments.checkoutKey,input.checkoutKey))).limit(1).for("update"))[0];if(!intent||intent.fingerprint!==fingerprint)throw new Error("Idempotency-Key is already bound to a different credit pack");if(intent.providerOrderId)return {...intent,action:"bound" as const};const now=new Date();if(intent.status==="provider_create_in_progress"&&intent.createLeaseExpiresAt&&intent.createLeaseExpiresAt>now)return {...intent,action:"busy" as const};if(!["creating","provider_create_in_progress"].includes(intent.status))return {...intent,action:"blocked" as const};const leaseOwner=randomUUID();const leaseExpiresAt=new Date(now.getTime()+30_000);await tx.update(employerPaymentFulfillments).set({status:"provider_create_in_progress",createLeaseOwner:leaseOwner,createLeaseExpiresAt:leaseExpiresAt,attemptCount:sql`${employerPaymentFulfillments.attemptCount}+1`}).where(eq(employerPaymentFulfillments.id,intent.id));return {...intent,status:"provider_create_in_progress",createLeaseOwner:leaseOwner,createLeaseExpiresAt:leaseExpiresAt,action:intent.status==="provider_create_in_progress"?"reconcile" as const:"create" as const};});
 }
 export async function markUnlockCheckoutRequiresReview(intentId:number,reason:string){const db=await getDb();if(!db)throw new Error("Database unavailable");await db.update(employerPaymentFulfillments).set({status:"requires_review",lastError:reason,createLeaseOwner:null,createLeaseExpiresAt:null}).where(eq(employerPaymentFulfillments.id,intentId));}
