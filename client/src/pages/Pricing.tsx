@@ -19,7 +19,7 @@ export default function Pricing() {
     </PolicySection>
     <PolicySection number="02" title="Extra credits (one-time)">
       <ul>
-        <li><strong>₹99 per credit</strong> (India) or <strong>$1 per credit</strong> (rest of the world). Buy 1 or more.</li>
+        <li>Credit packs in rupees (India) or US dollars (everywhere else); see <Link href="/plans" className="font-semibold text-black">/plans</Link> for today's prices.</li>
         <li>Purchased credits never expire. {CREDIT_RULE}</li>
       </ul>
     </PolicySection>

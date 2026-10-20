@@ -125,7 +125,7 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
           CREDIT_PACKS_ON_SALE ? <Link href="/premium?role=job_seeker"
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-4 py-3 text-sm font-semibold text-white"
           >
-            <CreditCard className="h-4 w-4" /> Add a credit for $1 <ArrowRight className="h-4 w-4" />
+            <CreditCard className="h-4 w-4" /> Add credits <ArrowRight className="h-4 w-4" />
           </Link> : null
         ) : (
           <Link
