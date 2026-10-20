@@ -2,7 +2,9 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
+import { catalogFixture } from "@/components/plans/catalogFixture";
 import Premium from "./Premium";
 import { upgradeMoments } from "@/components/plans/UpgradeMoments";
 import { CreditsSection } from "@/components/plans/PlansCredits";
@@ -12,6 +14,9 @@ vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: t
 vi.mock("@/lib/chargebeeCheckout", () => ({ openChargebeeCheckout }));
 
 // Credit packs reopened (legacy $1 / Rs 99 per-credit route) once credits had a verified spend: debit at send, return on withdraw or expiry.
+// GO-LIVE-1 C9: /premium reads the catalog for its currency; with no kit pack on sale it keeps the legacy picker.
+const withQuery = (ui: React.ReactElement) => <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>;
+const summaryOrCatalog = (summary: Record<string, unknown>) => vi.fn(async (url: string) => (url.startsWith("/api/plans/catalog") ? { ok: true, json: async () => catalogFixture("INTL", { packs: false }) } : { ok: true, json: async () => ({ summary }) }));
 describe("credit packs are on sale", () => {
   afterEach(() => { cleanup(); window.history.replaceState({}, "", "/"); vi.unstubAllGlobals(); });
 
@@ -19,8 +24,8 @@ describe("credit packs are on sale", () => {
 
   it("/premium shows the quantity picker and a pay button, not the paused state", async () => {
     window.history.pushState({}, "", "/premium?role=job_seeker");
-    vi.stubGlobal("fetch", vi.fn(async (_url: string) => ({ ok: true, json: async () => ({ summary: { totalAvailable: 3 } }) })));
-    render(<Premium />);
+    vi.stubGlobal("fetch", summaryOrCatalog({ totalAvailable: 3 }));
+    render(withQuery(<Premium />));
     expect(await screen.findByLabelText("Number of credits to add")).toBeTruthy();
     expect(screen.queryByText("Credit packs are paused.")).toBeNull();
     expect(screen.getAllByRole("button", { name: /pay/i }).length).toBeGreaterThan(0);
@@ -28,8 +33,8 @@ describe("credit packs are on sale", () => {
 
   it("labels only the purchased bucket as pack credits and names the free monthly credits separately", async () => {
     window.history.pushState({}, "", "/premium?role=job_seeker");
-    vi.stubGlobal("fetch", vi.fn(async (_url: string) => ({ ok: true, json: async () => ({ summary: { totalAvailable: 3, ledger: { buckets: { purchased: 0, cycle: 3 } } } }) })));
-    render(<Premium />);
+    vi.stubGlobal("fetch", summaryOrCatalog({ totalAvailable: 3, ledger: { buckets: { purchased: 0, cycle: 3 } } }));
+    render(withQuery(<Premium />));
     expect(await screen.findByText(/in total, including your free monthly credits/)).toBeTruthy();
     expect(document.body.textContent).toContain("You have 0 pack credits.");
     expect(document.body.textContent).not.toContain("on top of your monthly");
