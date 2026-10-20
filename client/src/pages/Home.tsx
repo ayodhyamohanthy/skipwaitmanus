@@ -45,7 +45,7 @@ export default function Home() {
         <section className="launch-hero">
           <img className="launch-hero-image" src="/launch-door.jpg" alt="An open blue door with a yellow path leading through it" width={1600} height={1008} fetchPriority="high" />
           <div className="launch-hero-copy">
-            <span className="launch-kicker"><span />INTRODUCING SKIPWAIT</span>
+            <span className="launch-kicker"><span />INTRODUCING SKIPWAIT.ME</span>
             <h1>{LANDING_H1_LINES[0]}<br />{LANDING_H1_LINES[1]}<span className="brand-dot">.</span></h1>
             <p>{LANDING_HERO_LEAD_PARTS[0]}<br className="desktop-break" /> {LANDING_HERO_LEAD_PARTS[1]}</p>
             <Button asChild><Link href="/explore">Explore companies <ArrowUpRight /></Link></Button>
