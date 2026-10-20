@@ -115,12 +115,19 @@ describe("referrer purchases are switched off (D-055, D-042)", () => {
 
   it.each([{ role: "job_seeker" }, {}])("still opens every checkout for the seeker role (%o), so a seeker who is also a referrer can buy", async roleField => {
     const { app, spies } = harness();
-    for (const { path, body } of PURCHASES) {
+    for (const { label, path, body } of PURCHASES) {
       const response = await request(app).post(path).send({ ...body, ...roleField });
+      // D-036 (GO-LIVE-1): with packs on sale (the harness stubs every price available), the
+      // legacy per-credit checkout is retired for everyone, seeker included - never a provider call.
+      if (label === "the per-credit token checkout") {
+        expect(response.status, path).toBe(410);
+        expect(response.body.code).toBe("single_credit_retired");
+        continue;
+      }
       expect(response.status, path).toBe(200);
       expect(typeof response.body.checkoutUrl).toBe("string");
     }
-    expect(spies.createPaymentIntent).toHaveBeenCalledTimes(2);
+    expect(spies.createPaymentIntent).toHaveBeenCalledTimes(1);
     expect(spies.createSubscriptionIntent).toHaveBeenCalledTimes(2);
     for (const [intent] of [...spies.createPaymentIntent.mock.calls, ...spies.createSubscriptionIntent.mock.calls]) expect(intent).toMatchObject({ userId: 7, role: "job_seeker" });
   });

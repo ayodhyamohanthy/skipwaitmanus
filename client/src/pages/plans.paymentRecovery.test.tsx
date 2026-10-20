@@ -6,8 +6,14 @@
 // referrers never pay).
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render as rtlRender, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Plans from "./Plans";
+
+function render(element: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(<QueryClientProvider client={client}>{element}</QueryClientProvider>);
+}
 
 const auth = vi.hoisted(() => ({ isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token"), openSignIn: vi.fn() }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => auth }));
@@ -16,7 +22,9 @@ vi.mock("@/lib/paymentRoute", async importOriginal => ({ ...(await importOrigina
 beforeEach(() => { auth.isLoaded = true; auth.isSignedIn = true; auth.openSignIn.mockClear(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.pushState({}, "", "/"); });
 
-const onlyAccountReads = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls.every(([url, init]) => String(url).startsWith("/api/credits/summary") && (init?.method ?? "GET") === "GET");
+// GO-LIVE-1: /plans also reads the public live catalog (GET /api/plans/catalog, no checkout).
+const ACCOUNT_GETS = ["/api/credits/summary", "/api/plans/catalog", "/api/company-referrals/mine", "/api/companies"];
+const onlyAccountReads = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls.every(([url, init]) => ACCOUNT_GETS.some(path => String(url).startsWith(path)) && (init?.method ?? "GET") === "GET");
 const planPurchase = /upgrade|\bpay\b|choose|gift|checkout|checking sign-in/i;
 
 describe("Plans payment return recovery", () => {
@@ -30,10 +38,12 @@ describe("Plans payment return recovery", () => {
     expect(screen.queryAllByRole("button").filter(button => planPurchase.test(button.textContent ?? ""))).toEqual([]);
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(auth.openSignIn).not.toHaveBeenCalled();
-    expect(fetchMock).not.toHaveBeenCalled();
+    // Only the public catalog is read before sign-in; never the account.
+    expect(fetchMock.mock.calls.every(([url]) => String(url).startsWith("/api/plans/catalog"))).toBe(true);
+    fetchMock.mockClear();
     auth.isLoaded = true;
     auth.isSignedIn = true;
-    view.rerender(<Plans />);
+    view.rerender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Plans /></QueryClientProvider>);
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(onlyAccountReads(fetchMock)).toBe(true);
     expect(screen.queryAllByRole("button").filter(button => planPurchase.test(button.textContent ?? ""))).toEqual([]);
@@ -48,7 +58,8 @@ describe("Plans payment return recovery", () => {
     const view = render(<Plans />);
     expect(screen.getByText(/Razorpay \(INR\)/)).toBeTruthy();
     expect(screen.getByText("₹99 a credit")).toBeTruthy();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.every(([url]) => String(url).startsWith("/api/plans/catalog"))).toBe(true);
+    fetchMock.mockClear();
     view.unmount();
     auth.isSignedIn = true;
     render(<Plans />);

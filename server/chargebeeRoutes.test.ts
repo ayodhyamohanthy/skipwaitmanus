@@ -176,6 +176,48 @@ describe("Chargebee webhook route", () => {
     expect((await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", quantity: 1001 })).status).toBe(400);
   });
 
+  it("builds hosted-page return URLs from the configured public origin, never a spoofed request host", async () => {
+    const prev = { PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL, WORKOS_REDIRECT_URI: process.env.WORKOS_REDIRECT_URI };
+    process.env.WORKOS_REDIRECT_URI = "https://skipwait.me/api/auth/workos/callback"; delete process.env.PUBLIC_BASE_URL;
+    try {
+      const app = express();
+      app.use(express.json());
+      let seen: { redirectUrl?: string; cancelUrl?: string } = {};
+      registerChargebeeRoutes(app, {
+        resolveIdentity: async () => ({ account: { id: 7, openId: "workos_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+        createCheckout: async input => { seen = { redirectUrl: input.redirectUrl, cancelUrl: input.cancelUrl }; return { checkoutUrl: "https://chargebee.test/hp_origin", hostedPageId: "hp_origin", checkoutIntentId: "intent_origin" }; },
+        createPaymentIntent: async () => undefined,
+        fulfillPayment: async () => ({ status: "credited" }),
+      });
+      const res = await request(app).post("/api/chargebee/checkout").set("Host", "evil.example").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", role: "job_seeker" });
+      expect(res.status).toBe(200);
+      expect(seen.redirectUrl).toBe("https://skipwait.me/premium?role=job_seeker&payment=pending");
+      expect(seen.cancelUrl).toBe("https://skipwait.me/premium?role=job_seeker&payment=cancelled");
+    } finally {
+      for (const [key, value] of Object.entries(prev)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+    }
+  });
+
+  it("retires the single credit per currency once a pack is on sale, and never calls the provider", async () => {
+    const app = express();
+    app.use(express.json());
+    let providerCalls = 0;
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 7, openId: "workos_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      createCheckout: async () => { providerCalls += 1; return { checkoutUrl: "https://chargebee.test/hp_legacy", hostedPageId: "hp_legacy", checkoutIntentId: "intent_legacy" }; },
+      createPaymentIntent: async () => undefined,
+      fulfillPayment: async () => ({ status: "credited" }),
+      kitCheckout: { isAvailable: async (_req, price) => price.itemPriceId === "skipwait_pack_2-INR" },
+    });
+    const inr = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", role: "job_seeker" });
+    expect(inr.status).toBe(410);
+    expect(inr.body.code).toBe("single_credit_retired");
+    expect(inr.body.error).toBe("Single credits are replaced by credit packs. Nothing has been charged.");
+    const usd = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-USD", billingCountry: "INTL", role: "job_seeker" });
+    expect(usd.status).toBe(200);
+    expect(providerCalls).toBe(1);
+  });
+
   it("rejects unsigned payment delivery before any fulfillment call", async () => {
     const app = express();
     app.use(express.json());

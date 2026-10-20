@@ -95,6 +95,20 @@ export const FREE_PLAN: CatalogPlan & { id: "free" } = {
   creditsPerMonth: 3, openRequests: 3, carryover: 0, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: {},
 };
 
+
+/** GO-LIVE-1 (D-036): the legacy per-credit checkout answers this when retired. */
+export const SINGLE_CREDIT_RETIRED_CODE = "single_credit_retired";
+export const SINGLE_CREDIT_RETIRED_ERROR = "Single credits are replaced by credit packs. Nothing has been charged.";
+
+/**
+ * The ₹99/$1 single credit retires in a currency once any credit pack is on sale
+ * in it (D-036). A computed switch (D-042): the server answers from the live
+ * availability probe, so a pack that goes off sale re-opens the single credit.
+ */
+export function singleCreditRetired(args: { currency: CatalogCurrency; anyPackAvailable: boolean }): boolean {
+  return args.anyPackAvailable;
+}
+
 export const CATALOG_PLANS: readonly PaidCatalogPlan[] = [
   { id: "keep_warm", tier: "keep_warm", level: 1, label: "Keep warm", levelLabel: null, creditsPerMonth: 4, openRequests: 5, carryover: 1, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: { yearly: { USD: usd(29), INR: inr(999) } } },
   { id: "start", tier: "start", level: 1, label: "Start", levelLabel: null, creditsPerMonth: 10, openRequests: 8, carryover: 1, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: pass(8, 299, 19, 699) },

@@ -15,7 +15,7 @@
       "branch": "agent/claude/chargebee-catalog-sync",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan §6)."
+      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan \u00a76)."
     },
     {
       "id": "GO-LIVE-1",
@@ -25,10 +25,11 @@
       "tier": 1,
       "lane": "payments",
       "branch": "agent/queue/go-live-plans",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-069-chargebee-catalog-sync"
-      ]
+      ],
+      "note": "Done via PR #351 (squash 43370293): server + client slices. Money path opens only when the owner creates the catalog item prices (409 before any provider call until then)."
     },
     {
       "id": "D-038-reconcile",
@@ -96,8 +97,9 @@
       "tier": 3,
       "lane": "toolchain",
       "branch": "agent/queue/fnd1-toolchain",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed as `1f234293` (branch `agent/queue/fnd1-toolchain`, Tier 3, no review needed). engines.node >=22.12 + new .nvmrc; vitest include collects shared/**/*.test.ts (+3 files, +17 tests); copy-guard assertion now bites. Gate: pnpm check 0, frozen-lockfile install leaves the lockfile unchanged, full vitest 422 files / 3515 passed / 16 skipped."
     },
     {
       "id": "FND-2",
@@ -118,7 +120,7 @@
       "tier": 3,
       "lane": "docs-status",
       "branch": "agent/queue/fnd6-row-audit",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
@@ -129,7 +131,7 @@
       "tier": 3,
       "lane": "triage",
       "branch": "agent/queue/fnd7-triage",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {

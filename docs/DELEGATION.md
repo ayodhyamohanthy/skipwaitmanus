@@ -156,7 +156,7 @@ Verdict: `pass` (then the reviewer pushes the merged candidate to the pull reque
 - Pushes to `main` are serialized: fetch, merge, re-run the gate, wait for green CI on that exact commit, push (D-082). A rejected push means merge and re-gate, never force.
 
 ## 10. An environment that works
-- Node 22.12 or newer (the jsdom test environment loads an ES module with `require()`; on Node 22.11 set `NODE_OPTIONS=--experimental-require-module`). CI uses the latest Node 22.
+- Node 22.12 or newer (`.nvmrc` pins 22; the jsdom test environment loads an ES module with `require()`, which is only unflagged from Node 22.12). CI uses the latest Node 22.
 - Behind an HTTPS proxy (cloud sandboxes), Node's `fetch` ignores `HTTPS_PROXY`; `scripts/next-task.mjs` re-runs itself with `NODE_USE_ENV_PROXY=1` (Node 22.21 or newer), so the picker can read GitHub.
 - pnpm 10.34.7 (`packageManager` in `package.json`). If corepack fails with "Cannot find matching keyid", install it with `npm install -g pnpm@10.34.7`.
 - Tests need no database: database code runs against in-repo fixtures and the in-memory Drizzle test kit.

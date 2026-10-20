@@ -16,6 +16,7 @@
 import { randomUUID } from "node:crypto";
 import type { Request } from "express";
 import { billingPlanLabel, packPrice, planPrice, type CatalogPrice, type PackPrice, type PlanPrice } from "../shared/billingCatalog";
+import { CREDIT_PACKS, type CatalogCurrency } from "../shared/planCatalog";
 import { catalogPlanById } from "../shared/planCatalog";
 import { NOT_AVAILABLE_CODE, type KitPlanCheckoutRequest, type PackCheckoutRequest } from "../shared/subscriptionManagement";
 import { itemPriceAvailability, type AvailabilityDeps, type PriceAvailability } from "./billingAvailability";
@@ -113,6 +114,21 @@ export async function startKitPackCheckout(input: { req: Request; request: PackC
     cancelUrl: input.urls.cancelUrl,
   });
   return { ok: true, price, checkoutIntentId, checkout };
+}
+
+/**
+ * GO-LIVE-1 (D-036): is any credit pack on sale in this currency right now?
+ * Drives the per-currency retirement of the legacy single credit. An
+ * unreachable or unconfigured provider answers false, so an outage never
+ * retires a checkout path.
+ */
+export async function anyPackAvailableForCurrency(req: Request, currency: CatalogCurrency, deps: KitCheckoutDeps = {}): Promise<boolean> {
+  for (const pack of CREDIT_PACKS) {
+    const price = packPrice(pack.id, currency);
+    if (!price) continue;
+    if ((await availabilityOf(req, price, deps)) === "available") return true;
+  }
+  return false;
 }
 
 /** The JSON body for a refusal: the code lets the kit UI branch, `error` is shown as written. */
