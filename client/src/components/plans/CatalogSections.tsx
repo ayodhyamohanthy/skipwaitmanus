@@ -2,9 +2,12 @@
 // a loading skeleton, the catalog error with Try again (the shared network
 // copy when offline), one line when nothing is on sale, else the credit packs
 // and the passes. A catalog already on screen stays while a refetch runs or
-// fails, so prices and the checkout body always come from one response.
+// fails, so prices and the checkout body always come from one response. The
+// packs show only while CREDIT_PACKS_ON_SALE is on; passes keep their own
+// switch (PASS_SALES_ENABLED, through the catalog's availability).
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { PlanCatalogResponse } from "@shared/billingCatalog";
+import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
 import { LoadingNote } from "@/components/app-states/SystemStates";
 import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
@@ -32,7 +35,7 @@ export function CatalogSections({ query, buy }: { query: UseQueryResult<PlanCata
   }
   if (!catalogOnSale(catalog)) return <p className="plan-grid-note font-semibold">{NOTHING_ON_SALE}</p>;
   return <>
-    <PackCards catalog={catalog} buy={buy} />
+    {CREDIT_PACKS_ON_SALE ? <PackCards catalog={catalog} buy={buy} /> : null}
     <PassCards catalog={catalog} buy={buy} />
   </>;
 }

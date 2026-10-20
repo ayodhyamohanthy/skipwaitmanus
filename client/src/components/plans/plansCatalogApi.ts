@@ -6,6 +6,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { planCatalogResponseSchema, type PlanCatalogResponse } from "@shared/billingCatalog";
 import type { BillingRegion } from "@shared/billingRegion";
+import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
 import { readApiJson } from "@/lib/apiResponse";
 import { NETWORK_ERROR } from "./billingApi";
 
@@ -31,9 +32,13 @@ export async function fetchPlansCatalog(region?: BillingRegion): Promise<PlanCat
   return parsed.data;
 }
 
-/** True when the catalog sells at least one credit pack right now. */
+/**
+ * True when the catalog sells at least one credit pack right now. While
+ * CREDIT_PACKS_ON_SALE is off (shared/planCatalog.ts) no client surface offers
+ * a pack, whatever the catalog says (D-042: switched off, not deleted).
+ */
 export function packOnSale(catalog: PlanCatalogResponse): boolean {
-  return catalog.packs.some(pack => pack.available);
+  return CREDIT_PACKS_ON_SALE && catalog.packs.some(pack => pack.available);
 }
 
 /** The catalog for the edge region, or for one region when the seeker asked for it. */
