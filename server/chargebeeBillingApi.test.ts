@@ -23,12 +23,14 @@ beforeEach(() => clearPriceAvailabilityCache());
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("hosted checkouts send only catalog item prices", () => {
-  it("a kit plan checkout names one item price, reuses the billing customer and carries the intent", async () => {
+  it("a kit plan checkout names one item price, reuses the billing customer, carries the intent and never renews", async () => {
     provider(() => ({ body: { hosted_page: { id: "hp_1", url: "https://fixture-test.chargebee.com/pages/hp_1" } } }));
     const result = await createPlanCheckout(credentials, { itemPriceId: "skipwait_momentum_90d-USD", customerId: "cust_1", email: "a@example.com", redirectUrl: "https://skipwait.me/billing", cancelUrl: "https://skipwait.me/plans", checkoutIntentId: "intent_1" });
     expect(result).toEqual({ checkoutUrl: "https://fixture-test.chargebee.com/pages/hp_1", hostedPageId: "hp_1" });
     expect(calls[0].url).toBe("https://fixture-test.chargebee.com/api/v2/hosted_pages/checkout_new_for_items");
-    expect(Object.fromEntries(calls[0].form!)).toEqual({ "subscription_items[item_price_id][0]": "skipwait_momentum_90d-USD", "subscription_items[quantity][0]": "1", "customer[id]": "cust_1", "customer[email]": "a@example.com", redirect_url: "https://skipwait.me/billing", cancel_url: "https://skipwait.me/plans", pass_thru_content: "intent_1" });
+    // GO-LIVE-1 (D-005/D-046): a pass is paid once. billing_cycles = 1 makes the
+    // subscription end after its single paid cycle, whatever the item price says.
+    expect(Object.fromEntries(calls[0].form!)).toEqual({ "subscription_items[item_price_id][0]": "skipwait_momentum_90d-USD", "subscription_items[quantity][0]": "1", "subscription_items[billing_cycles][0]": "1", "customer[id]": "cust_1", "customer[email]": "a@example.com", redirect_url: "https://skipwait.me/billing", cancel_url: "https://skipwait.me/plans", pass_thru_content: "intent_1" });
   });
 
   it("a pack checkout is one unit of the pack's own item price, never an ad hoc amount", async () => {
@@ -41,6 +43,8 @@ describe("hosted checkouts send only catalog item prices", () => {
     expect(form.get("currency_code")).toBe("INR");
     expect(form.get("billing_address[country]")).toBe("IN");
     expect([...form.keys()].some(key => key.startsWith("charges["))).toBe(false);
+    // A one-time pack is not a subscription: nothing here may set a billing cycle.
+    expect([...form.keys()].some(key => key.includes("billing_cycles"))).toBe(false);
   });
 
   it("an upgrade replaces the subscription's items on a hosted page; a switch down waits for term end", async () => {

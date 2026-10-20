@@ -3,7 +3,7 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { registerChargebeeRoutes } from "./chargebeeRoutes";
 import { startKitPackCheckout, startKitPlanCheckout } from "./kitCheckout";
-import { NOT_AVAILABLE_CODE } from "../shared/subscriptionManagement";
+import { NOT_AVAILABLE_CODE, SINGLE_CREDIT_RETIRED_CODE, SINGLE_CREDIT_RETIRED_ERROR } from "../shared/subscriptionManagement";
 import type { CatalogPrice } from "../shared/billingCatalog";
 
 const req = { hostname: "skipwait.me", protocol: "https", get: () => "skipwait.me" } as unknown as Parameters<typeof startKitPlanCheckout>[0]["req"];
@@ -204,6 +204,73 @@ describe("kit checkout over the two money routes", () => {
     expect(recordActivity).not.toHaveBeenCalledWith(expect.objectContaining({ action: "billing.subscription_checkout_started" }));
     expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 7, action: "billing.subscription_checkout_refused", outcome: "denied", metadata: expect.objectContaining({ reason: "plan_retired", plan }) }));
     vi.unstubAllGlobals();
+  });
+
+  // D-036 with D-046: the per-credit item price retires in a currency once one of
+  // that currency's credit packs can be bought. It is a computed switch (D-042):
+  // the legacy route stays in code and sells again if no pack is buyable.
+  describe("legacy single-credit retirement", () => {
+    const legacyBody = (currency: "INR" | "USD") => ({ itemPriceId: `skipwait_token_1-${currency}`, billingCountry: currency === "INR" ? "IN" : "INTL", role: "job_seeker", quantity: 1 });
+
+    it.each(["INR", "USD"] as const)("answers 410 single_credit_retired in %s when one of its packs is buyable, before any checkout page or intent", async currency => {
+      const createPaymentIntent = vi.fn();
+      const createCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/legacy", hostedPageId: "hp_legacy", checkoutIntentId: "intent_legacy" }));
+      const recordActivity = vi.fn(async () => undefined);
+      const isAvailable = vi.fn((_req: unknown, price: { itemPriceId: string }) => price.itemPriceId === (currency === "INR" ? "skipwait_pack_25-INR" : "skipwait_pack_25-USD"));
+      const provider = vi.fn();
+      vi.stubGlobal("fetch", provider);
+
+      const response = await request(app({ createPaymentIntent, createCheckout, recordActivity, kitCheckout: { isAvailable } }))
+        .post("/api/chargebee/checkout")
+        .send(legacyBody(currency));
+
+      expect(response.status).toBe(410);
+      expect(response.body).toEqual({ error: SINGLE_CREDIT_RETIRED_ERROR, code: SINGLE_CREDIT_RETIRED_CODE });
+      // The packs of the other currency are never probed, and nothing charges.
+      expect(isAvailable.mock.calls.map(([, price]) => price.itemPriceId)).toContain(currency === "INR" ? "skipwait_pack_25-INR" : "skipwait_pack_25-USD");
+      const probed = isAvailable.mock.calls.map(([, price]) => price.itemPriceId);
+      expect(probed.every(id => id.endsWith(`-${currency}`))).toBe(true);
+      expect(createCheckout).not.toHaveBeenCalled();
+      expect(createPaymentIntent).not.toHaveBeenCalled();
+      expect(provider).not.toHaveBeenCalled();
+      expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 7, action: "billing.credit_checkout_refused", outcome: "denied", metadata: expect.objectContaining({ reason: SINGLE_CREDIT_RETIRED_CODE }) }));
+      vi.unstubAllGlobals();
+    });
+
+    it("keeps selling the single credit in a currency no pack can be bought in", async () => {
+      const createPaymentIntent = vi.fn();
+      const createCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/legacy", hostedPageId: "hp_legacy", checkoutIntentId: "intent_legacy" }));
+      const response = await request(app({ createPaymentIntent, createCheckout, kitCheckout: { isAvailable: nothingLive } }))
+        .post("/api/chargebee/checkout")
+        .send(legacyBody("USD"));
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ checkoutUrl: "https://checkout.example/legacy", hostedPageId: "hp_legacy" });
+      expect(createPaymentIntent).toHaveBeenCalledWith(expect.objectContaining({ tokenCount: 1, amount: 100, currency: "USD" }));
+    });
+
+    it("keeps the legacy flow, charging nothing itself, when the provider cannot be asked about packs", async () => {
+      const createPaymentIntent = vi.fn();
+      const createCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/legacy", hostedPageId: "hp_legacy", checkoutIntentId: "intent_legacy" }));
+      const response = await request(app({ createPaymentIntent, createCheckout, kitCheckout: { lookup: async () => { throw new Error("Chargebee down"); }, probeTimeoutMs: 40 } }))
+        .post("/api/chargebee/checkout")
+        .send(legacyBody("INR"));
+      expect(response.status).toBe(200);
+      expect(createPaymentIntent).toHaveBeenCalledWith(expect.objectContaining({ tokenCount: 1, currency: "INR" }));
+    });
+
+    it("still credits a single-credit payment that was pending when the packs went on sale", async () => {
+      // Retirement closes new sales only: recovery is the same verified path, using
+      // the intent written before the switch.
+      const fulfillPayment = vi.fn(async () => ({ status: "credited" }));
+      const retrieveHostedPage = vi.fn(async () => ({ hostedPageId: "hp_pending", invoiceId: "inv_1", passThruContent: "intent_legacy", amount: 9_900, currency: "INR", pageState: "succeeded", paid: true }));
+      const getPaymentRecovery = vi.fn(async () => ({ id: 11, status: "pending" as const, hostedPageId: "hp_pending", checkoutIntentId: "intent_legacy", tokenCount: 1, amount: 9_900, currency: "INR", reconciliationReason: null }));
+      const response = await request(app({ fulfillPayment, retrieveHostedPage, getPaymentRecovery, kitCheckout: { isAvailable: () => true } }))
+        .post("/api/chargebee/credit-recovery")
+        .send({ hostedPageId: "hp_pending", role: "job_seeker" });
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({ status: "credited", tokenCount: 1 });
+      expect(fulfillPayment).toHaveBeenCalledWith(expect.objectContaining({ passThruContent: "intent_legacy", amount: 9_900, currency: "INR" }));
+    });
   });
 
   it("refuses a body that is neither a kit plan nor a retired plan with a plain 400 and no intent", async () => {

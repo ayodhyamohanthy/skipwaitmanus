@@ -49,6 +49,14 @@ export const NOT_AVAILABLE_CODE = "not_available_yet" as const;
  */
 export const PLAN_RETIRED_CODE = "plan_retired" as const;
 
+/**
+ * D-036: the per-credit item price retires in a currency once one of that
+ * currency's credit packs can be bought (D-046). Answered 410 with no hosted page
+ * and no intent; a payment started before the switch still recovers and credits.
+ */
+export const SINGLE_CREDIT_RETIRED_CODE = "single_credit_retired" as const;
+export const SINGLE_CREDIT_RETIRED_ERROR = "Single credits are replaced by credit packs. Nothing has been charged.";
+
 /** POST /api/chargebee/subscription-change: move an active subscription to a kit plan. */
 export const subscriptionChangeRequestSchema = z.object({ planId: z.enum(CATALOG_PLAN_IDS), interval: z.enum(BILLING_INTERVALS), role }).refine(soldForInterval, { message: INTERVAL_MESSAGE, path: ["interval"] });
 export type SubscriptionChangeRequest = z.infer<typeof subscriptionChangeRequestSchema>;

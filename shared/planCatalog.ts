@@ -140,6 +140,17 @@ export function catalogPackById(id: unknown): CreditPack | undefined {
   return CREDIT_PACKS.find(pack => pack.id === id);
 }
 
+/**
+ * D-036: the packs sold in one currency. Pack sets differ by currency (₹99 buys 2
+ * credits, $5 buys 5), so this is the whole list of packs a currency can sell
+ * right now — and the computed switch (D-042) the legacy per-credit price retires
+ * behind: once one of them is buyable, the single credit is replaced in that
+ * currency, and it sells again only while none of them is.
+ */
+export function packsSoldIn(currency: CatalogCurrency): CreditPack[] {
+  return CREDIT_PACKS.filter(pack => pack.prices[currency] !== undefined);
+}
+
 // ---- Human sessions: one-time, sold only once reviewers are staffed ----
 
 export const HUMAN_SESSION_IDS = ["written_review", "live_session"] as const;

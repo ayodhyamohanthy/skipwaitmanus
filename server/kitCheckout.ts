@@ -16,7 +16,7 @@
 import { randomUUID } from "node:crypto";
 import type { Request } from "express";
 import { billingPlanLabel, packPrice, planPrice, type CatalogPrice, type PackPrice, type PlanPrice } from "../shared/billingCatalog";
-import { catalogPlanById } from "../shared/planCatalog";
+import { catalogPlanById, packsSoldIn, type CatalogCurrency } from "../shared/planCatalog";
 import { NOT_AVAILABLE_CODE, type KitPlanCheckoutRequest, type PackCheckoutRequest } from "../shared/subscriptionManagement";
 import { itemPriceAvailability, type AvailabilityDeps, type PriceAvailability } from "./billingAvailability";
 import { createPackCheckout, createPlanCheckout, type CheckoutCustomer, type HostedPageResult } from "./chargebeeSubscriptionApi";
@@ -62,6 +62,23 @@ async function availabilityOf(req: Request, price: CatalogPrice, deps: KitChecko
 /** "Momentum" / "Land Sprint"; the catalog label, never a client string. */
 const kitPriceError = (price: PlanPrice): string => `${billingPlanLabel(price.plan)} is not on sale yet. Nothing has been charged.`;
 const packPriceError = (price: PackPrice): string => `The ${price.credits}-credit pack is not on sale yet. Nothing has been charged.`;
+
+/**
+ * D-036 with D-046: the legacy per-credit item price is retired in a currency
+ * once one of that currency's credit packs can actually be bought. This is the
+ * computed switch (D-042): the legacy route stays in code, keeps selling while
+ * no pack is live, and closes again only on proof that a pack sells. A provider
+ * that cannot be asked changes nothing (that checkout would fail on its own, and
+ * nothing is charged either way).
+ */
+export async function singleCreditPackSold(input: { req: Request; currency: CatalogCurrency; deps?: KitCheckoutDeps }): Promise<boolean> {
+  const deps = input.deps ?? {};
+  for (const pack of packsSoldIn(input.currency)) {
+    const price = packPrice(pack.id, input.currency);
+    if (price && (await availabilityOf(input.req, price, deps)) === "available") return true;
+  }
+  return false;
+}
 
 export const APPLICATION_REQUIRED_CODE = "application_required";
 const notConfigured: KitCheckoutRefusal = { ok: false, status: 503, error: "Payments are not available right now. Please try again in a moment." };

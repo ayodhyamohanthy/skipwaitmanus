@@ -4,9 +4,9 @@ import type { TokenRole, VerifiedChargebeeHostedPage } from "./chargebee";
 import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { giftClaimRequestSchema } from "../shared/giftSubscriptions";
-import { PLAN_RETIRED_CODE, kitPlanCheckoutRequestSchema, packCheckoutRequestSchema } from "../shared/subscriptionManagement";
+import { PLAN_RETIRED_CODE, SINGLE_CREDIT_RETIRED_CODE, SINGLE_CREDIT_RETIRED_ERROR, kitPlanCheckoutRequestSchema, packCheckoutRequestSchema } from "../shared/subscriptionManagement";
 import { isRetiredPlanId, isRetiredPlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId } from "../shared/billingCatalog";
-import { refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
+import { refusalBody, singleCreditPackSold, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
 import type { RetiredPlanAlertInput } from "./errorAlerting";
 
@@ -114,6 +114,13 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const pack = CHARGEBEE_TOKEN_PACKS[itemPriceId];
       if ((billingCountry === "IN" && pack.currency !== "INR") || (billingCountry === "INTL" && pack.currency !== "USD")) {
         return res.status(400).json({ error: "That currency is not available for the selected billing route" });
+      }
+      // D-036 with D-046: once credit packs are buyable in this currency, the
+      // single per-credit price is replaced there. Refused before any hosted page
+      // or intent; a checkout started earlier still recovers through credit-recovery.
+      if (await singleCreditPackSold({ req, currency: pack.currency, deps: deps.kitCheckout })) {
+        record({ actorUserId: identity.account.id, action: "billing.credit_checkout_refused", outcome: "denied", resourceType: "payment_intent", metadata: { reason: SINGLE_CREDIT_RETIRED_CODE, itemPriceId, currency: pack.currency } });
+        return res.status(410).json({ error: SINGLE_CREDIT_RETIRED_ERROR, code: SINGLE_CREDIT_RETIRED_CODE });
       }
       const origin = `${req.protocol}://${req.get("host")}`;
       const runtime = deps.createCheckout ? undefined : resolveChargebeeRuntime(req.hostname);
