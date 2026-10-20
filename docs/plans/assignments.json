@@ -25,10 +25,11 @@
       "tier": 1,
       "lane": "payments",
       "branch": "agent/queue/go-live-plans",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-069-chargebee-catalog-sync"
-      ]
+      ],
+      "note": "Done via PR #351 (squash 43370293): server + client slices. Money path opens only when the owner creates the catalog item prices (409 before any provider call until then)."
     },
     {
       "id": "D-038-reconcile",
