@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
+import { z } from "zod";
 import { useAuth } from "@/_core/auth";
 import { ArrowLeft, Check, CreditCard, LoaderCircle, Minus, Plus } from "lucide-react";
 import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
+import { recoveryCopy, savePendingCheckout, usePendingCheckoutRecovery } from "@/lib/pendingCheckout";
 import { alternatePaymentRoute, browserPaymentRoute, paymentRouteDetails, type PaymentRoute } from "@/lib/paymentRoute";
 import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
 import { tokenReturnPath, type TokenRole } from "@/lib/tokens";
@@ -11,16 +13,20 @@ import { ASK_COST_SENTENCE } from "@shared/moneyCopy";
 import { REFERRERS_NEVER_PAY, REFERRER_PURCHASES_ENABLED } from "@shared/referrerPurchases";
 
 type Pack = { id: "skipwait_token_1-INR" | "skipwait_token_1-USD"; price: number; currency: PaymentRoute };
-type PendingCheckout = { hostedPageId: string; role: TokenRole };
-type RecoveryState = "checking" | "pending" | "credited" | "requires_review";
 
 const packs: Pack[] = [{ id: "skipwait_token_1-INR", price: 99, currency: "INR" }, { id: "skipwait_token_1-USD", price: 1, currency: "USD" }];
-const pendingCheckoutStorageKey = "skipwait.pending-chargebee-checkout";
+
+// The summary a credited recovery sends back: the same fields the page reads on load.
+const recoveredSummarySchema = z.object({
+  totalAvailable: z.number(),
+  ledger: z.object({ buckets: z.object({ purchased: z.number().optional().catch(undefined) }).optional().catch(undefined) }).nullish().catch(undefined),
+  promoCreditsRemaining: z.number().optional().catch(undefined),
+  promoExpiresAt: z.string().optional().catch(undefined),
+  promoStatus: z.string().optional().catch(undefined),
+  promoOfferActive: z.boolean().optional().catch(undefined),
+});
 
 function money(value: number, route: PaymentRoute) { return route === "INR" ? `₹${value.toLocaleString("en-IN")}` : `$${value.toLocaleString("en-US")}`; }
-function savePendingCheckout(checkout: PendingCheckout) { if (typeof window !== "undefined") window.sessionStorage.setItem(pendingCheckoutStorageKey, JSON.stringify(checkout)); }
-function readPendingCheckout(role: TokenRole): PendingCheckout | undefined { try { const value = typeof window === "undefined" ? null : window.sessionStorage.getItem(pendingCheckoutStorageKey); const parsed = value ? JSON.parse(value) as PendingCheckout : undefined; return parsed?.role === role && typeof parsed.hostedPageId === "string" && parsed.hostedPageId.length > 0 ? parsed : undefined; } catch { return undefined; } }
-function clearPendingCheckout() { if (typeof window !== "undefined") window.sessionStorage.removeItem(pendingCheckoutStorageKey); }
 
 export default function Premium() {
   const role: TokenRole = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("role") === "referrer" ? "referrer" : "job_seeker";
@@ -36,8 +42,6 @@ export default function Premium() {
   const [promo, setPromo] = useState<{ remaining: number; expiresAt: string | null; status: string | null; offerActive: boolean } | undefined>(undefined);
   const promoDaysLeft = promo?.expiresAt ? Math.max(0, Math.ceil((new Date(promo.expiresAt).getTime() - Date.now()) / 86_400_000)) : null;
   const [status, setStatus] = useState<"idle" | "launching" | "pending" | "error">(typeof window !== "undefined" && new URLSearchParams(window.location.search).get("payment") === "pending" ? "pending" : "idle");
-  const [recovery, setRecovery] = useState<RecoveryState>("checking");
-  const [creditedTokens, setCreditedTokens] = useState(0);
   const [error, setError] = useState("");
   const selected = useMemo(() => packs.find(pack => pack.currency === route) ?? packs[1], [route]);
   const routeDetails = paymentRouteDetails(route);
@@ -68,44 +72,19 @@ export default function Premium() {
     return () => { active = false; };
   }, [getToken, isSignedIn, role]);
 
-  useEffect(() => {
-    if (status !== "pending" || !isSignedIn || recovery === "credited") return;
-    const checkout = readPendingCheckout(role);
-    if (!checkout) { setRecovery("pending"); return; }
-    let active = true;
-    let attempts = 0;
-    const reconcile = async () => {
-      if (!active || attempts >= 3) return;
-      attempts += 1;
-      try {
-        const sessionToken = await getToken();
-        const response = await fetch("/api/chargebee/credit-recovery", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) }, body: JSON.stringify({ hostedPageId: checkout.hostedPageId, role }) });
-        const payload = await response.json().catch(() => ({}));
-        if (!active) return;
-        if (payload.status === "credited") {
-          setRecovery("credited");
-          setCreditedTokens(Number.isInteger(payload.tokenCount) ? payload.tokenCount : 0);
-          if (typeof payload.summary?.totalAvailable === "number") {
-            setBalance(payload.summary.totalAvailable);
-            setPurchased(typeof payload.summary?.ledger?.buckets?.purchased === "number" ? payload.summary.ledger.buckets.purchased : null);
-          setPurchased(typeof payload.summary?.ledger?.buckets?.purchased === "number" ? payload.summary.ledger.buckets.purchased : null);
-            if (typeof payload.summary?.promoCreditsRemaining === "number") setPromo({ remaining: payload.summary.promoCreditsRemaining, expiresAt: typeof payload.summary?.promoExpiresAt === "string" ? payload.summary.promoExpiresAt : null, status: typeof payload.summary?.promoStatus === "string" ? payload.summary.promoStatus : null, offerActive: payload.summary?.promoOfferActive === true });
-          }
-          clearPendingCheckout();
-          return;
-        }
-        setRecovery(payload.status === "requires_review" ? "requires_review" : "pending");
-      } catch {
-        if (active) setRecovery("pending");
-      }
-    };
-    void reconcile();
-    const secondAttempt = window.setTimeout(() => { void reconcile(); }, 2500);
-    const thirdAttempt = window.setTimeout(() => { void reconcile(); }, 7500);
-    const retryOnFocus = () => { void reconcile(); };
-    window.addEventListener("focus", retryOnFocus);
-    return () => { active = false; window.clearTimeout(secondAttempt); window.clearTimeout(thirdAttempt); window.removeEventListener("focus", retryOnFocus); };
-  }, [getToken, isSignedIn, recovery, role, status]);
+  const { recovery, creditedTokens } = usePendingCheckoutRecovery({
+    enabled: status === "pending",
+    isSignedIn,
+    role,
+    getToken,
+    onCredited: summary => {
+      const parsed = recoveredSummarySchema.safeParse(summary);
+      if (!parsed.success) return;
+      setBalance(parsed.data.totalAvailable);
+      setPurchased(parsed.data.ledger?.buckets?.purchased ?? null);
+      if (parsed.data.promoCreditsRemaining !== undefined) setPromo({ remaining: parsed.data.promoCreditsRemaining, expiresAt: parsed.data.promoExpiresAt ?? null, status: parsed.data.promoStatus ?? null, offerActive: parsed.data.promoOfferActive === true });
+    },
+  });
 
   const beginCheckout = async () => {
     if (!isLoaded || referrerPurchasesOff) return;
@@ -134,9 +113,7 @@ export default function Premium() {
 
   if (status === "pending") {
     const confirmed = recovery === "credited";
-    const needsReview = recovery === "requires_review";
-    const title = confirmed ? `${creditedTokens || "Your"} referral credit${creditedTokens === 1 ? " is" : "s are"} ready.` : needsReview ? "We’re checking this payment securely." : "We’re confirming your payment.";
-    const body = confirmed ? "Your verified payment is complete and your available credits are updated." : needsReview ? "Your transaction is protected. We will only add credits after the provider record matches your checkout." : "Nothing else is needed from you. We will add credits as soon as the provider’s verified record reaches our server.";
+    const { title, body } = recoveryCopy(recovery, creditedTokens);
     return <main data-skipwait-screen="premium" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 items-center"><Link href={returnPath} className="inline-flex items-center gap-1 text-sm font-semibold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link></header><section className="flex flex-1 flex-col justify-center text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f5f5f5] text-black">{recovery === "checking" ? <LoaderCircle className="h-6 w-6 animate-spin" /> : <Check className="h-6 w-6" />}</span><h1 className="font-display mt-6 text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">{title}</h1><p className="mt-4 text-sm leading-6 text-[#505050]">{body}</p></section><footer className="pb-[max(0.75rem,env(safe-area-inset-bottom))]"><Link href={returnPath} className="inline-flex w-full items-center justify-center rounded-lg bg-[#141414] px-5 py-3.5 text-sm font-semibold text-white">{confirmed ? "Use my credits" : "Continue"}</Link></footer></div></main>;
   }
 
