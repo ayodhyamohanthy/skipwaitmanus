@@ -4,13 +4,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { registerChargebeeRoutes } from "./chargebeeRoutes";
 import { startKitPackCheckout, startKitPlanCheckout } from "./kitCheckout";
 import { NOT_AVAILABLE_CODE } from "../shared/subscriptionManagement";
-import type { CatalogPrice } from "../shared/billingCatalog";
+import { billingPlanLabel, type CatalogPrice } from "../shared/billingCatalog";
+import { CATALOG_PLANS, planIntervals } from "../shared/planCatalog";
+
+// D-084: passes ship switched off (pinned in server/goLiveSwitches.test.ts). The pass
+// tests below run with the switch on so they keep proving the checkout decision they
+// proved before; the "passes are not on sale" block turns it off.
+const switches = vi.hoisted(() => ({ passSales: true }));
+vi.mock("../shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("../shared/planCatalog")>()), get PASS_SALES_ENABLED() { return switches.passSales; } }));
 
 const req = { hostname: "skipwait.me", protocol: "https", get: () => "skipwait.me" } as unknown as Parameters<typeof startKitPlanCheckout>[0]["req"];
 const urls = { redirectUrl: "https://skipwait.me/plans?payment=pending", cancelUrl: "https://skipwait.me/plans?payment=cancelled" };
 const nothingLive = () => false;
 
 beforeEach(() => {
+  switches.passSales = true;
   vi.stubEnv("BILLING_ENV", "test");
   vi.stubEnv("CHARGEBEE_SITE", "fixture-test");
   vi.stubEnv("CHARGEBEE_API_KEY", "fixture-key");
@@ -121,6 +129,79 @@ describe("kit credit pack checkout decision", () => {
     });
     expect(started).toMatchObject({ ok: false, status: 409, code: NOT_AVAILABLE_CODE });
     expect(createPackCheckout).not.toHaveBeenCalled();
+  });
+});
+
+describe("passes are not on sale while PASS_SALES_ENABLED is off (D-084)", () => {
+  beforeEach(() => { switches.passSales = false; });
+
+  it("refuses every self-serve term with 409 not_available_yet before credentials, any probe or a hosted page", async () => {
+    const credentials = vi.fn(() => ({ site: "fixture-test", apiKey: "fixture-key" }));
+    const isAvailable = vi.fn(() => true);
+    const lookup = vi.fn();
+    const createPlanCheckout = vi.fn();
+    const selfServe = CATALOG_PLANS.filter(plan => !plan.byApplication);
+    expect(selfServe.map(plan => plan.id)).toEqual(["keep_warm", "start", "momentum", "land_focus", "land_sprint"]);
+    for (const plan of selfServe) {
+      for (const interval of planIntervals(plan)) {
+        for (const [currency, billingCountry] of [["USD", "INTL"], ["INR", "IN"]] as const) {
+          const started = await startKitPlanCheckout({
+            req, request: { planId: plan.id, interval, currency, billingCountry, role: "job_seeker" },
+            customer: {}, urls, deps: { credentials, isAvailable, lookup, createPlanCheckout },
+          });
+          expect(started).toEqual({ ok: false, status: 409, code: NOT_AVAILABLE_CODE, error: `${billingPlanLabel(plan.id)} is not on sale yet. Nothing has been charged.` });
+        }
+      }
+    }
+    expect(credentials).not.toHaveBeenCalled();
+    expect(isAvailable).not.toHaveBeenCalled();
+    expect(lookup).not.toHaveBeenCalled();
+    expect(createPlanCheckout).not.toHaveBeenCalled();
+  });
+
+  it("names the plan in the refusal and says 409 even when billing is not configured", async () => {
+    vi.stubEnv("CHARGEBEE_API_KEY", "");
+    const started = await startKitPlanCheckout({
+      req, request: { planId: "keep_warm", interval: "yearly", currency: "INR", billingCountry: "IN", role: "job_seeker" },
+      customer: {}, urls, deps: { isAvailable: () => true },
+    });
+    expect(started).toEqual({ ok: false, status: 409, code: NOT_AVAILABLE_CODE, error: "Keep warm is not on sale yet. Nothing has been charged." });
+  });
+
+  it("keeps the Concierge 403 first, and leaves credit packs on sale", async () => {
+    const concierge = await startKitPlanCheckout({
+      req, request: { planId: "land_concierge", interval: "30d", currency: "USD", billingCountry: "INTL", role: "job_seeker" },
+      customer: {}, urls, deps: { isAvailable: () => true },
+    });
+    expect(concierge).toMatchObject({ ok: false, status: 403, code: "application_required" });
+    const createPackCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/pack", hostedPageId: "hp_pack" }));
+    const pack = await startKitPackCheckout({
+      req, request: { packId: "pack_25", billingCountry: "IN", role: "job_seeker" }, customer: {}, urls,
+      deps: { isAvailable: () => true, createPackCheckout, newCheckoutIntentId: () => "intent_pack" },
+    });
+    expect(pack).toMatchObject({ ok: true, price: { packId: "pack_25" } });
+    expect(createPackCheckout).toHaveBeenCalledTimes(1);
+  });
+
+  it("the route answers 409 with no availability lookup, provider call, intent or started activity", async () => {
+    const instance = express(); instance.use(express.json());
+    const createSubscriptionIntent = vi.fn();
+    const isAvailable = vi.fn(() => true);
+    const createPlanCheckout = vi.fn();
+    const recordActivity = vi.fn(async () => undefined);
+    const provider = vi.fn(); vi.stubGlobal("fetch", provider);
+    registerChargebeeRoutes(instance, { resolveIdentity: async () => ({ account: { id: 7, email: "member@example.com", name: "Member One" } }), createPaymentIntent: vi.fn(), fulfillPayment: vi.fn(), createSubscriptionIntent, recordActivity, kitCheckout: { isAvailable, createPlanCheckout } } as never);
+    const response = await request(instance)
+      .post("/api/chargebee/subscription-checkout")
+      .send({ planId: "momentum", interval: "30d", currency: "INR", billingCountry: "IN", role: "job_seeker" });
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ error: "Momentum is not on sale yet. Nothing has been charged.", code: NOT_AVAILABLE_CODE });
+    expect(isAvailable).not.toHaveBeenCalled();
+    expect(createPlanCheckout).not.toHaveBeenCalled();
+    expect(createSubscriptionIntent).not.toHaveBeenCalled();
+    expect(provider).not.toHaveBeenCalled();
+    expect(recordActivity).not.toHaveBeenCalledWith(expect.objectContaining({ action: "billing.subscription_checkout_started" }));
+    vi.unstubAllGlobals();
   });
 });
 

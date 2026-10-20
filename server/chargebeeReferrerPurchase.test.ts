@@ -4,6 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { REFERRER_PURCHASES_ENABLED } from "../shared/referrerPurchases";
 import { registerChargebeeRoutes } from "./chargebeeRoutes";
 
+// D-084: passes ship switched off (server/kitCheckout.test.ts proves the 409). The
+// seeker-role control below must still reach every checkout, passes included.
+vi.mock("../shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("../shared/planCatalog")>()), PASS_SALES_ENABLED: true }));
+
 /*
  * D-055 follow-up (D-067 lane): referrers never pay. Every referrer-role
  * purchase is refused first, with plain words and a denied activity row,

@@ -16,7 +16,7 @@
 import { randomUUID } from "node:crypto";
 import type { Request } from "express";
 import { billingPlanLabel, packPrice, planPrice, type CatalogPrice, type PackPrice, type PlanPrice } from "../shared/billingCatalog";
-import { catalogPlanById } from "../shared/planCatalog";
+import { PASS_SALES_ENABLED, catalogPlanById } from "../shared/planCatalog";
 import { NOT_AVAILABLE_CODE, type KitPlanCheckoutRequest, type PackCheckoutRequest } from "../shared/subscriptionManagement";
 import { itemPriceAvailability, type AvailabilityDeps, type PriceAvailability } from "./billingAvailability";
 import { createPackCheckout, createPlanCheckout, type CheckoutCustomer, type HostedPageResult } from "./chargebeeSubscriptionApi";
@@ -75,6 +75,9 @@ export async function startKitPlanCheckout(input: { req: Request; request: KitPl
   if (!price) return { ok: false, status: 400, error: "That plan is not sold for this term" };
   // A by-application plan (Land Concierge) is never self-serve: refuse before any provider call, whatever the client sends.
   if (catalogPlanById(planId)?.byApplication) return { ok: false, status: 403, code: APPLICATION_REQUIRED_CODE, error: `${billingPlanLabel(price.plan)} is by application. Apply and we'll set it up with you; nothing has been charged.` };
+  // D-084: passes and Keep warm are not sold until a paid pass can always be activated
+  // (GO-LIVE-1b). Refused before credentials or any probe, so nothing reaches the provider.
+  if (!PASS_SALES_ENABLED) return { ok: false, status: 409, code: NOT_AVAILABLE_CODE, error: kitPriceError(price) };
   const credentials = credentialsFor(input.req, deps);
   if (!credentials && !deps.createPlanCheckout) return notConfigured;
   const verdict = await availabilityOf(input.req, price, deps);

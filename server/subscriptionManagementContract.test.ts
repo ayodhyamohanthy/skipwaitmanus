@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { billingCustomers, billingInvoices, subscriptionCancellationFeedback, subscriptionCheckoutIntents, tokenBalances } from "../drizzle/schema";
 import { checkoutIntentStateSchema, paymentFailureReasonFrom, parseReceiptId, receiptSchema } from "../shared/billingAccount";
 import { BILLABLE_PLAN_IDS, INTENT_PLAN_IDS, RETIRED_PLAN_IDS, WALLET_PLAN_IDS, adjacentPlans, billingPlanLabel, isRetiredPlanItemPrice, autoExtendMethods, catalogPackForAmount, planCatalogResponse, planCatalogResponseSchema, planChangeDirection, planPrice, planSellsInterval, resolveItemPrice, sellableItemPrices } from "../shared/billingCatalog";
@@ -8,6 +8,13 @@ import { CANCELLATION_REASONS, PLAN_RETIRED_CODE, SUBSCRIPTION_REFUSALS, kitPlan
 import { subscriptionStateFor, type SubscriptionWallet } from "../shared/subscriptionState";
 import { CATALOG_PLAN_IDS } from "../shared/planCatalog";
 import { DESIRED_COLUMNS, DESIRED_FOREIGN_KEYS, DESIRED_INDEXES, DESIRED_TABLES } from "./schemaReconcile";
+
+// D-084: passes ship switched off (pinned in server/goLiveSwitches.test.ts). The exact
+// payload pins below run with the switch on so they keep proving per-item availability;
+// the "passes are not on sale" case turns it off.
+const switches = vi.hoisted(() => ({ passSales: true }));
+vi.mock("../shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("../shared/planCatalog")>()), get PASS_SALES_ENABLED() { return switches.passSales; } }));
+beforeEach(() => { switches.passSales = true; });
 
 const migration = readFileSync(new URL("../drizzle/deploy/0090_subscription_management.sql", import.meta.url), "utf8");
 const quoted = (values: readonly string[]) => values.map(value => `''${value}''`).join(",");
@@ -206,6 +213,24 @@ describe("public catalog payload (GET /api/plans/catalog)", () => {
     const catalog = planCatalogResponse({ ...base, region: "INTL" });
     expect(JSON.stringify(catalog)).not.toContain("skipwait_");
     expect(planCatalogResponseSchema.safeParse({ ...catalog, extra: 1 }).success).toBe(false);
+  });
+
+  it("while passes are not on sale (D-084), every plan term reads unavailable even with every item price live; packs are untouched", () => {
+    const everythingLive = { ...base, available: () => true, sessionsStaffed: true };
+    switches.passSales = false;
+    for (const region of ["INTL", "IN"] as const) {
+      const catalog = planCatalogResponse({ ...everythingLive, region });
+      expect(catalog.plans.flatMap(plan => plan.terms.map(term => [plan.id, term.interval, term.available])).filter(([, , available]) => available)).toEqual([]);
+      expect(catalog.plans.flatMap(plan => plan.terms)).not.toHaveLength(0);
+      expect(catalog.packs.length).toBeGreaterThan(0);
+      expect(catalog.packs.every(pack => pack.available)).toBe(true);
+      expect(catalog.sessions.every(session => session.available)).toBe(true);
+    }
+    // Switched on, the same live prices sell every self-serve term; Concierge stays by application.
+    switches.passSales = true;
+    const selling = planCatalogResponse({ ...everythingLive, region: "INTL" });
+    expect(selling.plans.map(plan => [plan.id, plan.terms.every(term => term.available)])).toEqual([["keep_warm", true], ["start", true], ["momentum", true], ["land_focus", true], ["land_sprint", true], ["land_concierge", false]]);
+    expect(selling.plans.find(plan => plan.id === "land_concierge")?.terms.some(term => term.available)).toBe(false);
   });
 });
 
