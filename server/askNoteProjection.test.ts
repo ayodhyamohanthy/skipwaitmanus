@@ -155,7 +155,9 @@ describe("referrer-facing reads", () => {
     expect(select?.projection?.candidateMessage).toBe(referralRequests.personalPitch);
     expect(select?.projection?.title).toBe(jobs.title);
     expect(exposesNote(select)).toBe(true);
-    expect(columnsOf(select)).toEqual(["acceptedByActorAt", "candidateMessage", "candidateName", "companyDomain", "grantExpiresAt", "grantId", "grantRevokedAt", "id", "jobFunction", "passId", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
+    // `coverageVisibleAt` joined the projection with D-038-A: the decision deadline for an allocated ask is
+    // computed from first visibility. It stays internal — the returned object names its fields one by one.
+    expect(columnsOf(select)).toEqual(["acceptedByActorAt", "candidateMessage", "candidateName", "companyDomain", "coverageVisibleAt", "grantExpiresAt", "grantId", "grantRevokedAt", "id", "jobFunction", "passId", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
     // D-019(e): the ask loads on its assignment alone (a claim writes no grant); no grant condition gates the row.
     const where = select?.where ? dialect.sqlToQuery(select.where) : undefined;
     expect(where?.params).toEqual([501, REFERRER, "pending", "approved", "intro_made", "interview", "offer"]);
