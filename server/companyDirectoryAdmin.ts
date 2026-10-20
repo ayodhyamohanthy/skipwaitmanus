@@ -10,13 +10,13 @@ import { COMPANY_SLUG_PATTERN, deriveCompanyInitials, deriveCompanySlug, type Ad
 import { getAdminCompany } from "./companyDirectory";
 import { CompanyDirectoryUnavailableError } from "./companyDirectorySource";
 import { getDb } from "./db";
+import { isDuplicateKeyError } from "./dbErrors";
 
 export class CompanyConflictError extends Error { constructor(message: string) { super(message); this.name = "CompanyConflictError"; } }
 export class CompanyNotFoundError extends Error { constructor() { super("This company could not be found"); this.name = "CompanyNotFoundError"; } }
 export class CompanyInputError extends Error { constructor(message: string) { super(message); this.name = "CompanyInputError"; } }
 
 const DEFAULT_SORT_ORDER = 1000;
-const isDuplicateKey = (error: unknown) => typeof error === "object" && error !== null && (error as { code?: unknown }).code === "ER_DUP_ENTRY";
 
 /** Which domain rows a PATCH adds and removes. The primary domain is never removable. */
 export function planDomainChanges(owned: ReadonlyArray<{ domain: string; isPrimary: boolean }>, add: readonly string[], remove: readonly string[]): { insert: string[]; delete: string[] } {
@@ -61,7 +61,7 @@ export async function createCompany(input: AdminCompanyCreate, now: Date = new D
       return companyId;
     });
   } catch (error) {
-    if (isDuplicateKey(error)) throw new CompanyConflictError("This slug or domain was just taken by another company");
+    if (isDuplicateKeyError(error)) throw new CompanyConflictError("This slug or domain was just taken by another company");
     throw error;
   }
   return reread(id);
@@ -84,7 +84,7 @@ export async function updateCompany(id: number, patch: AdminCompanyUpdate, now: 
       await tx.update(companies).set({ ...fields, ...(functions ? { functions: JSON.stringify(functions) } : {}), updatedAt: now }).where(eq(companies.id, id));
     });
   } catch (error) {
-    if (isDuplicateKey(error)) throw new CompanyConflictError("This domain was just taken by another company");
+    if (isDuplicateKeyError(error)) throw new CompanyConflictError("This domain was just taken by another company");
     throw error;
   }
   return reread(id);
