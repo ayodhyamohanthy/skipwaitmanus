@@ -9,7 +9,7 @@
 | Risk tier | 3 (isolated UI; no schema, money, auth, API or routing change) |
 | Size | S (one page, one test file, one dead-code removal, one boundary entry) |
 | Implementer | opencode (`agent/opencode/d048-phase-3-find`) |
-| Branch | `agent/opencode/d048-phase-3-find` from `origin/main` `e383a5d4` |
+| Branch | `agent/opencode/d048-phase-3-find` from `origin/main` `e383a5d4`; draft PR #363 (owner review of the captures before it lands) |
 | Depends on | D-048 phase 2 live (`b6ea65f1`: tokens, primitives, token audit) |
 | Runs beside | the W0 shell wave (`agent/instinct/goal-ui-w0-shell`, `AppShell.tsx`) and the `/requests` pilot (`agent/qoder/d048-phase-3-requests`, PR #360). This packet edits none of their files except `client/src/components/goal/goalBoundary.test.ts` (one allowlist entry). |
 | Verified against | `main` `e383a5d4` on 2026-10-21 |
