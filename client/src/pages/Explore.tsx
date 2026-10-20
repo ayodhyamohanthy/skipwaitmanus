@@ -62,7 +62,7 @@ export default function Explore() {
       {CHIPS.map(chip => <GoalFilterChip key={chip.id} label={chip.label} pressed={pressed.includes(chip.id)} onPressedChange={next => toggle(chip.id, next)} />)}
     </div>
     {companies ? <>
-      <p className="mt-6 gdesk:mt-7 text-g-meta text-g-ink-3">
+      <p data-testid="explore-summary" className="mt-6 gdesk:mt-7 text-g-meta text-g-ink-3">
         <GoalNum>{filtered.length}</GoalNum> {filtered.length === 1 ? "company" : "companies"} · <GoalNum>{openShown}</GoalNum> open to requests
       </p>
       {filtered.length ? <ul className="mt-2 -mx-2 grid gap-0.5" aria-live="polite">

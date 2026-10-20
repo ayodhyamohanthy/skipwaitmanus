@@ -75,13 +75,13 @@ describe("Explore directory", () => {
     renderWithQuery(<Explore />);
     expect(await screen.findByText("Where do you want a referral?")).toBeTruthy();
     expect(screen.getByText("Ask a verified employee. Your name and resume stay private until they accept.")).toBeTruthy();
-    expect(screen.getByText(/5 companies · 5 open to requests/)).toBeTruthy();
+    expect((await screen.findByTestId("explore-summary")).textContent).toBe("5 companies · 5 open to requests");
     const rows = screen.getAllByTestId("goal-list-row");
     expect(rows).toHaveLength(5);
     // Alphabetical (content.json screenA.sort): open companies are not pushed up.
     const hrefs = rows.map(row => row.querySelector("a")?.getAttribute("href"));
     expect(hrefs).toEqual(["/explore/go-neutrinos", "/explore/merkle", "/explore/skipwait", "/explore/tcs", "/explore/wipro"]);
-    expect(screen.getAllByText("Open to requests")).toHaveLength(5);
+    expect(screen.getAllByTestId("goal-availability").map(el => el.textContent)).toEqual(Array(5).fill("Open to requests"));
     expect(screen.queryByText(/open roles?/i)).toBeNull();
     expect(screen.queryByText(/DESIGN PREVIEW|Preview state/i)).toBeNull();
     expect(paths(fetchMock)).toEqual(["/api/companies"]);
@@ -90,9 +90,9 @@ describe("Explore directory", () => {
   it("marks a closed company Not open yet with no alert action in the row", async () => {
     stubDirectory(directoryOf([company("skipwait", false), company("wipro")]));
     renderWithQuery(<Explore />);
-    await screen.findByText(/2 companies · 1 open to requests/);
-    expect(screen.getByText("Open to requests")).toBeTruthy();
-    expect(screen.getByText("Not open yet")).toBeTruthy();
+    await screen.findByTestId("explore-summary");
+    expect(screen.getByTestId("explore-summary").textContent).toBe("2 companies · 1 open to requests");
+    expect(screen.getAllByTestId("goal-availability").map(el => el.textContent).sort()).toEqual(["Not open yet", "Open to requests"]);
     // content.json screenA.notOpenAction: the alert lives on the detail, never in list rows.
     expect(screen.queryByRole("link", { name: /Get told when/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /alerts/ })).toBeNull();
@@ -101,39 +101,39 @@ describe("Explore directory", () => {
   it("filters with the chip toolbar and resets with All companies", async () => {
     stubDirectory();
     renderWithQuery(<Explore />);
-    await screen.findByText(/5 companies · 5 open to requests/);
+    await screen.findByTestId("explore-summary");
     const chips = screen.getAllByTestId("goal-filter-chip");
     expect(chips.map(chip => chip.textContent)).toEqual(["All companies", "Open to requests", "Engineering", "Product & design"]);
     fireEvent.click(screen.getByRole("button", { name: "Engineering" }));
-    expect(screen.getByText(/4 companies · 4 open to requests/)).toBeTruthy();
+    expect(screen.getByTestId("explore-summary").textContent).toBe("4 companies · 4 open to requests");
     expect(screen.queryByText("Merkle")).toBeNull();
     // Chips combine: Engineering ∩ Product & design keeps only companies with both.
     fireEvent.click(screen.getByRole("button", { name: "Product & design" }));
-    expect(screen.getByText(/2 companies · 2 open to requests/)).toBeTruthy();
+    expect(screen.getByTestId("explore-summary").textContent).toBe("2 companies · 2 open to requests");
     expect(screen.getByText("Go Neutrinos")).toBeTruthy();
     expect(screen.getByText("skipwait.me")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "All companies" }));
-    expect(screen.getByText(/5 companies · 5 open to requests/)).toBeTruthy();
+    expect(screen.getByTestId("explore-summary").textContent).toBe("5 companies · 5 open to requests");
   });
 
   it("filters by the search box, then clears back to every company", async () => {
     stubDirectory();
     renderWithQuery(<Explore />);
-    await screen.findByText(/5 companies · 5 open to requests/);
+    await screen.findByTestId("explore-summary");
     fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "wipro" } });
-    expect(screen.getByText(/1 company · 1 open to requests/)).toBeTruthy();
+    expect(screen.getByTestId("explore-summary").textContent).toBe("1 company · 1 open to requests");
     expect(screen.queryByText("TCS")).toBeNull();
   });
 
   it("shows an honest empty state with a clear-filters recovery", async () => {
     stubDirectory();
     renderWithQuery(<Explore />);
-    await screen.findByText(/5 companies · 5 open to requests/);
+    await screen.findByTestId("explore-summary");
     fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "zzz-no-such-company" } });
-    expect(screen.getByText(/0 companies · 0 open to requests/)).toBeTruthy();
+    expect(screen.getByTestId("explore-summary").textContent).toBe("0 companies · 0 open to requests");
     expect(screen.getByText("Try a wider search.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
-    expect(screen.getByText(/5 companies · 5 open to requests/)).toBeTruthy();
+    expect(screen.getByTestId("explore-summary").textContent).toBe("5 companies · 5 open to requests");
   });
 
   it("shows loading rows, then an error with Try again that recovers", async () => {
@@ -148,13 +148,13 @@ describe("Explore directory", () => {
     expect(alert.textContent).toContain("We couldn’t load companies.");
     stubDirectory();
     fireEvent.click(screen.getByRole("button", { name: /Try again/ }));
-    expect(await screen.findByText(/5 companies · 5 open to requests/)).toBeTruthy();
+    expect(await screen.findByTestId("explore-summary")).toBeTruthy();
   });
 
   it("titles the page with the kit head built from the directory names", async () => {
     stubDirectory();
     renderWithQuery(<Explore />);
-    await screen.findByText(/5 companies · 5 open to requests/);
+    await screen.findByTestId("explore-summary");
     expect(document.title).toBe("Explore companies · skipwait.me");
     await waitFor(() => expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Find people open to referral requests at skipwait.me, Wipro, Go Neutrinos, TCS, and Merkle."));
     expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore");
