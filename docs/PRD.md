@@ -1,11 +1,11 @@
 # skipwait.me PRD (product truth)
 
-One page. DECISIONS.md owns rulings; this owns what the product is, who it serves, and what ships next. Update in the same PR as the slice that changes it (D-084).
+One page. DECISIONS.md owns rulings; this owns what the product is, who it serves, and what ships next. Update in the same PR as the slice that changes it (D-088).
 
 ## Who it serves
-Job seekers and job referrers (owner, Oct 21 02:50 IST, D-085). Every product, design and growth choice is judged by their happiness: task success, trust, effort saved. Anything that would annoy either side is reported, not shipped.
+Job seekers and job referrers (owner, Oct 21 02:50 IST, D-089). Every product, design and growth choice is judged by their happiness: task success, trust, effort saved. Anything that would annoy either side is reported, not shipped.
 
-## Growth loops (D-083)
+## Growth loops (D-087)
 Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 
 | Loop | Name | Feed (output that becomes the next input) | Ships with |
@@ -28,13 +28,13 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 | GO-LIVE-1b (PR #359) | - | QA + build | awaiting QA second review + PASS_SALES_ENABLED confirmation |
 | W0 goal shell (PR #361) | L6 | build | designer fixes pushed; re-review pending |
 | W1 comps: /explore + ask drawer (w1-comps) | L1 | build | pushed; designer review pending; /queue held for #353 |
-| Demand list (D-082) | L1 | build | approved; after #361 + drawer review; mocks in hand |
+| Demand list (D-086) | L1 | build | approved; after #361 + drawer review; mocks in hand |
 | BYOR one-time link (idea 2) | L2 | design | mocks with owner 3:06 AM; approval pending; takes next free D-number |
 | Employee request-inbox link (idea 1) | L4 | design | after idea 2 |
 | Sourced bonus pages (idea 3) | L5 | design | after idea 1 |
 | Bedrock AI provider plan | - | build | plan with owner; AWS access needed |
 
-## Demand-list copy (D-082, verbatim)
+## Demand-list copy (D-086, verbatim)
 - "{N} people are asking for a referral at {Company}." (singular for 1)
 - Empty: "No one has asked for {Company} yet." / "Nobody at {Company} is waiting right now. We'll tell you if that changes."
 - Bonus honesty: "Most companies pay their own referral bonus when a referral they make is hired. That programme is your employer's and they pay it - skipwait.me never pays referrers."
