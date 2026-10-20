@@ -14,6 +14,7 @@ import { CreditCta, CreditsSection, UsagePanel } from "@/components/plans/PlansC
 import { SeekerCreditsCard } from "@/components/SeekerCreditsCard";
 import { FairBand, PlansReference } from "@/components/plans/PlansReference";
 import { PlanCards } from "@/components/plans/PlanCards";
+import { PendingCheckoutReturn } from "@/components/plans/PendingCheckoutReturn";
 import { CoverageBlock, PacksSection, PassesSection, useKitCheckout } from "@/components/plans/PlansKitSections";
 import { PlansCatalogOfflineError, usePlansCatalog } from "@/components/plans/plansCatalogApi";
 import { UpgradeMoments, upgradeMoments } from "@/components/plans/UpgradeMoments";
@@ -34,8 +35,6 @@ export default function Plans() {
   const { isLoaded, isSignedIn, getToken, openSignIn } = useAuth();
   const [route, setRoute] = useState<PaymentRoute>(() => params.get("currency") === "INR" ? "INR" : params.get("currency") === "USD" ? "USD" : browserPaymentRoute());
   const [summary, setSummary] = useState<CreditSummary | null>(null);
-  const [cancelling, setCancelling] = useState(false);
-  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [cancelError, setCancelError] = useState("");
 
   const currency = route as CatalogCurrency;
@@ -68,29 +67,9 @@ export default function Plans() {
     return () => { active = false; };
   }, [getToken, isLoaded, isSignedIn, isReferrer]);
 
-  const scheduleCancellation = async () => {
-    if (!isSignedIn || summary?.subscriptionStatus !== "active") return;
-    setCancelError("");
-    setCancelling(true);
-    try {
-      const response = await fetch("/api/chargebee/subscription-cancel", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeaders(await getToken()) },
-        body: JSON.stringify({ role: isReferrer ? "referrer" : "job_seeker" }),
-      });
-      const payload = await readApiJson<{ currentTermEnd?: string; error?: string }>(response, "We could not schedule your cancellation");
-      if (!response.ok) throw new Error(payload.error || "We could not schedule your cancellation");
-      setSummary(current => current ? { ...current, subscriptionStatus: "non_renewing", subscriptionCurrentTermEnd: payload.currentTermEnd ?? current.subscriptionCurrentTermEnd } : current);
-    } catch (reason) {
-      setCancelError(failureMessage(reason, "We could not schedule your cancellation"));
-    } finally {
-      setCancelling(false);
-    }
-  };
 
   if (payment === "pending") {
-    return <main data-skipwait-screen="plans" className="page-content plans-page"><section className="workspace-empty"><span className="empty-icon"><Check /></span><h2>We’re confirming your payment.</h2><p>Access starts only after the verified payment event reaches our server.</p><Button asChild className="brand-button"><Link href="/requests">View my requests<ArrowRight /></Link></Button></section></main>;
+    return <main data-skipwait-screen="plans" className="page-content plans-page"><PendingCheckoutReturn role={isReferrer ? "referrer" : "job_seeker"} getToken={getToken} /></main>;
   }
 
   return <main data-skipwait-screen="plans" className="page-content plans-page">
@@ -104,8 +83,7 @@ export default function Plans() {
         <PlanCards
           currency={currency}
           activePlan={activePlan}
-          renewing={summary?.subscriptionStatus === "active"}
-          cancelRenewal={{ confirming: confirmingCancel, cancelling, onAsk: () => setConfirmingCancel(true), onConfirm: () => { void scheduleCancellation(); setConfirmingCancel(false); }, onKeep: () => setConfirmingCancel(false) }}
+          endsAt={summary?.subscriptionCurrentTermEnd ?? null}
         />
         {isSignedIn ? <CoverageBlock isSignedIn={isSignedIn} getToken={getToken} /> : null}
         {catalog ? <PacksSection catalog={catalog} checkout={checkout} /> : null}
@@ -113,7 +91,6 @@ export default function Plans() {
         {catalogQuery.isError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{catalogQuery.error instanceof PlansCatalogOfflineError ? catalogQuery.error.message : "We could not load live prices. Check your connection and try again."} <button type="button" className="underline underline-offset-4" onClick={() => void catalogQuery.refetch()}>Try again</button></p> : null}
         <p className="plan-grid-note">Every account starts on the free tier, and tracking every request is free. {CREDIT_RULE}</p>
         <p className="plan-grid-note">{routeDetails.gateway} · {routeDetails.gatewayDescriptor}. <button type="button" onClick={() => setRoute(current => alternatePaymentRoute(current))} className="font-semibold text-foreground underline underline-offset-4">Different billing country? {routeDetails.alternateLabel}</button></p>
-        {cancelError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{cancelError}</p> : null}
 
         {summary?.freeCreditsLocked ? (
           // D-079: a locked free seeker must be able to reach card validation from the
