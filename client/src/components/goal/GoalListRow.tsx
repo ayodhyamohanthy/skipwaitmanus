@@ -21,7 +21,26 @@ export type GoalListRowProps = {
 
 export function GoalListRow({ href, onSelect, selected = false, selectable = true, density, leading, title, trailing, meta, metaTrailing, footer }: GoalListRowProps) {
   const interactive = selectable && (href !== undefined || onSelect !== undefined);
-  const body = (
+  // The company row is the comp's grid (find-a-referral.css `.co-row`): one line
+  // on desktop — mark, name, functions, availability — and two lines on phones
+  // (name and availability above, functions below). The queue and ask rows keep
+  // their stacked shape.
+  const body = density === "company" ? (
+    <>
+      {selected && selectable ? (
+        <span aria-hidden="true" className="absolute top-3 bottom-3 left-0 w-0.5 rounded-r-[2px] bg-g-ink" />
+      ) : null}
+      {leading ? <span className="flex max-gdesk:col-start-1 max-gdesk:row-start-1 max-gdesk:row-span-2">{leading}</span> : null}
+      <span className="block truncate text-g-label text-g-ink max-gdesk:col-start-2 max-gdesk:row-start-1 max-gdesk:text-g-row-phone">{title}</span>
+      {meta ? <span className="block truncate text-g-meta text-g-ink-3 max-gdesk:col-start-2 max-gdesk:row-start-2 max-gdesk:col-span-2">{meta}</span> : null}
+      {(trailing || metaTrailing) ? (
+        <span className="flex shrink-0 items-center gap-3 whitespace-nowrap text-g-meta text-g-ink-3 max-gdesk:col-start-3 max-gdesk:row-start-1 max-gdesk:justify-self-end">
+          {trailing}
+          {metaTrailing}
+        </span>
+      ) : null}
+    </>
+  ) : (
     <>
       {selected && selectable ? (
         <span aria-hidden="true" className="absolute top-3 bottom-3 left-0 w-0.5 rounded-r-[2px] bg-g-ink" />
@@ -42,7 +61,7 @@ export function GoalListRow({ href, onSelect, selected = false, selectable = tru
   );
   const className = cn(
     "relative flex w-full items-center gap-3 rounded-g-tile px-3 text-left",
-    density === "company" && "h-[52px]",
+    density === "company" && "grid h-[52px] grid-cols-[28px_auto_minmax(0,1fr)_auto] items-center gap-x-3 pl-2.5 max-gdesk:h-auto max-gdesk:min-h-16 max-gdesk:grid-cols-[32px_minmax(0,1fr)_auto] max-gdesk:grid-rows-[auto_auto] max-gdesk:gap-y-0 max-gdesk:py-2.5 max-gdesk:pr-3",
     density === "queue" && "min-h-16 py-2.5",
     density === "ask" && "min-h-[72px] py-3",
     interactive && "hover:bg-g-surface-hover",
