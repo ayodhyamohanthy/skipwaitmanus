@@ -100,6 +100,19 @@ describe("/plans sells passes and Keep warm", () => {
     expect(JSON.parse(String(buy?.init?.body))).toEqual({ planId: "momentum", interval: "90d", currency: "INR", billingCountry: "IN", role: "job_seeker" });
   });
 
+  it("says 'Not on sale yet' for every term the catalog does not sell, and never posts a pass checkout (D-084)", async () => {
+    window.history.pushState({}, "", "/plans?role=job_seeker&currency=INR");
+    const calls = stubFetch({ catalog: catalogPayload({}, false) });
+    renderPlans();
+    expect(await screen.findByText("Momentum")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Get / })).toBeNull();
+    const offSale = screen.getAllByRole("button", { name: "Not on sale yet" });
+    expect(offSale.length).toBeGreaterThan(0);
+    for (const button of offSale) expect((button as HTMLButtonElement).disabled).toBe(true);
+    offSale.forEach(button => fireEvent.click(button));
+    expect(calls.some(call => call.url === "/api/chargebee/subscription-checkout")).toBe(false);
+  });
+
   it("keeps Keep warm yearly listed regardless of the toggle, and Concierge is by application", async () => {
     window.history.pushState({}, "", "/plans?role=job_seeker&currency=INR");
     stubFetch();
