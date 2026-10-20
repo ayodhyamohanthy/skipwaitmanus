@@ -37,3 +37,11 @@ export type ReferrerExclusionCode = (typeof REFERRER_EXCLUSION_CODES)[number];
 export function isReferrerExclusionCode(value: unknown): value is ReferrerExclusionCode {
   return typeof value === "string" && (REFERRER_EXCLUSION_CODES as readonly string[]).includes(value);
 }
+
+/** D-035: does this reason let the seeker fix the ask before sending it again? Only the two D-052
+ * fixable reasons do. Anything else — including no reason at all, which D-076 (7) covers — is not
+ * fixable, so the pickup is released and the credit comes back when the ask ends. */
+export function isFixablePassReason(value: unknown): boolean {
+  const option = PASS_REASON_OPTIONS.find(item => item.code === value);
+  return option?.fixable === true;
+}

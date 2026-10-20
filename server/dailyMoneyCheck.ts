@@ -54,6 +54,8 @@ export type DoublyReversedSpendRow = { reversesTransactionId: number; reversalRo
 export type RefundAfterPickupRow = { transactionId: number; requestId: number; kind: string; createdAt: Date | null };
 /** D-038-B: an approved ask still holding a referrer more than a day past its Referred deadline. */
 export type ReferredDeadlineStuckRow = { id: number; referrerId: number; dueAt: Date };
+/** D-035: an ask a not-fixable pass released, then closed without exactly one refund row. */
+export type ReleasedPassUnrefundedRow = { requestId: number; status: string; refundRows: number };
 
 export type DailyMoneyCheckDeps = {
   auditWallets: () => Promise<WalletAuditResult>;
@@ -68,6 +70,7 @@ export type DailyMoneyCheckDeps = {
   listDoublyReversedSpends: (limit: number) => Promise<DoublyReversedSpendRow[]>;
   listRefundsAfterPickup: (limit: number) => Promise<RefundAfterPickupRow[]>;
   listReferredPastDeadline: (nowMs: number, limit: number) => Promise<ReferredDeadlineStuckRow[]>;
+  listReleasedPassUnrefunded: (limit: number) => Promise<ReleasedPassUnrefundedRow[]>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
   recordActivity: typeof recordOperationalActivity;
 };
@@ -321,6 +324,28 @@ export async function listReferredPastDeadline(nowMs: number, limit: number): Pr
   return found;
 }
 
+export async function listReleasedPassUnrefunded(limit: number): Promise<ReleasedPassUnrefundedRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  // D-035: a not-fixable pass releases the pickup, so when the ask later closes it must have exactly one
+  // refund row. Two means the release ran twice; zero means the release never reached the ledger.
+  const releases = await db.select({ requestId: referralTransitionEvents.referralRequestId }).from(referralTransitionEvents)
+    .where(eq(referralTransitionEvents.action, "pass_release")).orderBy(desc(referralTransitionEvents.id)).limit(limit * 2);
+  const seen = new Set<number>();
+  const found: ReleasedPassUnrefundedRow[] = [];
+  for (const release of releases) {
+    if (seen.has(release.requestId)) continue;
+    seen.add(release.requestId);
+    const ask = (await db.select({ id: referralRequests.id, status: referralRequests.status, debitTransactionId: referralRequests.debitTransactionId })
+      .from(referralRequests).where(eq(referralRequests.id, release.requestId)).limit(1))[0];
+    if (!ask || (ask.status !== "closed" && ask.status !== "withdrawn") || ask.debitTransactionId === null) continue;
+    const refundRows = (await db.select({ id: tokenTransactions.id }).from(tokenTransactions)
+      .where(and(eq(tokenTransactions.referenceType, "referral_request"), eq(tokenTransactions.referenceId, `${release.requestId}#refund`), inArray(tokenTransactions.kind, ["withdrawal_refund", "expiry_refund"])))).length;
+    if (refundRows !== 1) found.push({ requestId: release.requestId, status: ask.status, refundRows });
+    if (found.length >= limit) break;
+  }
+  return found;
+}
+
 async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {  try {
     const apiKey = process.env.RESEND_API_KEY;
     const sender = process.env.ERROR_ALERT_FROM_EMAIL;
@@ -352,6 +377,7 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
   listDoublyReversedSpends,
   listRefundsAfterPickup,
   listReferredPastDeadline,
+  listReleasedPassUnrefunded,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
 }) {
@@ -428,6 +454,10 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
     // D-038-B: an accepted ask nobody marked Referred should have reopened a day ago, with the credit released.
     const referredStuck = await deps.listReferredPastDeadline(nowMs, FINDINGS_PREVIEW_LIMIT);
     for (const row of referredStuck) findings.push(`referred_deadline_stuck: ask #${row.id} is still approved more than a day past its Referred deadline (${row.dueAt.toISOString()}); the referral-timers job has not reopened it`);
+
+    // D-035: a not-fixable pass released the pickup, so the ask's later close owes exactly one refund row.
+    const releasedUnrefunded = await deps.listReleasedPassUnrefunded(FINDINGS_PREVIEW_LIMIT);
+    for (const row of releasedUnrefunded) findings.push(`released_pass_unrefunded: ask #${row.requestId} was released by a not-fixable pass and closed (${row.status}) with ${row.refundRows} refund row(s), not 1`);
 
     const output: JobRunOutput = { processed: audit.checkedWallets + checkedPayments, failed: 0 };
     if (findings.length === 0) return output;

@@ -20,8 +20,10 @@ import { drizzleFlowBaselineSource, type BaselineReferrerRow, type BaselineReque
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
 const MAX_COMPANY_ROWS = 12;
-const DECISION_ACTIONS = new Set(["approve", "pass"]);
-const ACTIVITY_ACTIONS = new Set(["claim", "approve", "pass", "review"]);
+// D-035: a pass whose reason is not fixable is recorded as `pass_release`. It is still a pass the
+// referrer made, so the weekly outcome and the activity count include both.
+const DECISION_ACTIONS = new Set(["approve", "pass", "pass_release"]);
+const ACTIVITY_ACTIONS = new Set(["claim", "approve", "pass", "pass_release", "review"]);
 
 /** skipwait.me's own domains: the launch seed's own page, plus the admin mailbox domain. */
 export function operatorDomains(adminEmail: string | null | undefined = process.env.SKIPWAIT_ADMIN_EMAIL): string[] {

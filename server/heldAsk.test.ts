@@ -52,7 +52,9 @@ const CASES: readonly Case[] = [
   { acted: "a one-click approve", seed: stale(), act: async () => { await oneClickReviewReferralRequest(LINK_OWNER, { requestId: REQUEST_ID, decision: "approved" }); }, held: false, inbox: false, withdrawal: "refused", expires: false },
   { acted: "a review approve", seed: stale(), act: async () => { await reviewReferralRequest(LINK_OWNER, { requestId: REQUEST_ID, decision: "approved" }); }, held: false, inbox: false, withdrawal: "refused", expires: false },
   { acted: "a pass", seed: stale(), act: pass, held: false, inbox: false, withdrawal: "refund", expires: true },
-  { acted: "a claim on day 2 then a pass", seed: stale(), act: onDay2(async () => { await claim(); await pass(); }), held: false, inbox: false, withdrawal: "no refund", expires: true },
+  // D-035: this pass carries no reason code, which counts as not fixable, so it releases the pickup — the
+  // ask is unclaimed again and its credit comes back like any other unclaimed ask.
+  { acted: "a claim on day 2 then a pass", seed: stale(), act: onDay2(async () => { await claim(); await pass(); }), held: false, inbox: false, withdrawal: "refund", expires: true },
   { acted: "a queue allocation", seed: { ...stale(), slots: [allocatedSlot()] }, act: async () => undefined, held: false, unclaimed: true, inbox: false, withdrawal: "refund", expires: true },
   { acted: "nothing, before the history cut-off", seed: stale({ createdAt: new Date(HELD_ASK_HISTORY_SINCE.getTime() - DAY_MS) }), act: async () => undefined, held: false, inbox: true, withdrawal: "refused", expires: false },
 ];

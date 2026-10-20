@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, REFERRAL_TIMERS_SINCE } from "../shared/referral";
-import { createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listReferredPastDeadline, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
+import { createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listReferredPastDeadline, listReleasedPassUnrefunded, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
 import { DAY_MS, LINK_OWNER, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -30,6 +30,7 @@ function makeDeps(overrides: Partial<DailyMoneyCheckDeps> = {}) {
     listDoublyReversedSpends: vi.fn(async () => []),
     listRefundsAfterPickup: vi.fn(async () => []),
     listReferredPastDeadline: vi.fn(async () => []),
+    listReleasedPassUnrefunded: vi.fn(async () => []),
     sendEmail: vi.fn(async (input: Sent) => { sent.push(input); return true; }),
     recordActivity: vi.fn(async (row: { action: string }) => { activity.push(row as { action: string; outcome: string }); }),
     ...overrides,
@@ -344,8 +345,7 @@ describe("D-065-B slice checks over the in-memory database", () => {
   });
 });
 
-describe("referred_deadline_stuck over the in-memory database", () => {
-  beforeEach(() => {
+describe("referred_deadline_stuck over the in-memory database", () => {  beforeEach(() => {
     vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
     mocks.createPool.mockResolvedValue({});
     mocks.drizzle.mockReturnValue(store.db);
@@ -374,5 +374,41 @@ describe("referred_deadline_stuck over the in-memory database", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]!.text).toContain("referred_deadline_stuck: ask #701");
     expect(sent[0]!.text).not.toContain("ask #702");
+  });
+});
+
+describe("released_pass_unrefunded over the in-memory database", () => {
+  beforeEach(() => {
+    vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+    mocks.createPool.mockResolvedValue({});
+    mocks.drizzle.mockReturnValue(store.db);
+  });
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  // D-035: a not-fixable pass releases the pickup, so the ask's later close owes exactly one refund row.
+  it("flags a released ask that closed with no refund, and stays quiet on the one that got its credit", async () => {
+    const release = (id: number, requestId: number) => ({ ...claimEvent(requestId, id), action: "pass_release", operationKey: `pass:${requestId}`, resultingStatus: "pending", createdAt: new Date(KIT_NOW) });
+    seedHeldAsks({
+      asks: [
+        // Released, closed, and the credit never came back: the fault.
+        askRow({ id: 801, status: "closed", referrerId: null, debitTransactionId: 61 }),
+        // Released, closed, refunded once: correct.
+        askRow({ id: 802, status: "closed", referrerId: null, debitTransactionId: 63 }),
+      ],
+      spends: [
+        spendRow({ id: 61, referenceId: "801#1", idempotencyKey: "k801#1", tokenCount: -1 }),
+        spendRow({ id: 63, referenceId: "802#1", idempotencyKey: "k802#1", tokenCount: -1 }),
+        spendRow({ id: 64, referenceId: "802#refund", idempotencyKey: "r802", tokenCount: 1, kind: "expiry_refund", reversesTransactionId: 63 }),
+      ],
+      events: [release(90, 801), release(91, 802)],
+    });
+
+    const { deps, sent } = makeDeps({ listReleasedPassUnrefunded });
+    const output = await createDailyMoneyCheck(deps)({ nowMs: KIT_NOW, windowKey: "2026-10-18T12:00Z" });
+
+    expect(output.failed).toBe(0);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("released_pass_unrefunded: ask #801");
+    expect(sent[0]!.text).not.toContain("ask #802");
   });
 });

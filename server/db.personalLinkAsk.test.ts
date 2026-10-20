@@ -114,7 +114,8 @@ describe("withdrawing a personal-link ask its employee has not acted on", () => 
 
     seedHeldAsks();
     await claim();
-    await reviewReferralRequest(LINK_OWNER, { requestId: REQUEST_ID, decision: "declined" });
+    // D-035: only a fixable reason keeps the pickup, so the "refunds nothing" half needs one.
+    await oneClickReviewReferralRequest(LINK_OWNER, { requestId: REQUEST_ID, decision: "declined", declineReason: "role_not_a_fit", passReason: "needs_experience" });
     expect(await withdraw()).toMatchObject({ withdrawn: true, creditRefunded: false });
     expect(reversalsOf()).toEqual([]);
     expect(walletOf()?.monthlyCreditsRemaining).toBe(2);
@@ -178,7 +179,7 @@ describe("withdrawing a personal-link ask its employee has not acted on", () => 
       }
       // A pass reopens the ask to the company (D-021): never claimed, so its credit comes back.
       expect(await withdraw()).toMatchObject({ withdrawn: true, creditRefunded: true });
-      expect(eventActions()).toEqual(["pass", "withdraw"]);
+      expect(eventActions()).toEqual(["pass_release", "withdraw"]);
       expect(reversalsOf()).toHaveLength(1);
     });
   });

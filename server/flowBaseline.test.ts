@@ -71,6 +71,27 @@ describe("D-018 baseline aggregation", () => {
     expect(baseline.decisionLatency).toEqual({ sampleSize: 2, medianHours: 40, p90Hours: 50 });
   });
 
+  // D-035: a not-fixable pass is recorded as `pass_release`. It is still a pass the referrer made, so
+  // the weekly outcome counts it and the decision latency measures it like any other decision.
+  it("counts a not-fixable pass as a pass, and as a decision, in the weekly outcome", async () => {
+    const baseline = await buildFlowBaseline(fixture({
+      loadRequests: async () => [request(1, "acme.com", "pending", Date.UTC(2026, 9, 12, 9))],
+      loadPassedRequestIds: async () => [1],
+      loadTransitionsSince: async () => [
+        { requestId: 1, actorUserId: 11, action: "claim", createdAt: new Date(Date.UTC(2026, 9, 12, 10)) },
+        { requestId: 1, actorUserId: 11, action: "pass_release", createdAt: new Date(Date.UTC(2026, 9, 12, 11)) },
+      ],
+      loadCompanyDomains: async () => [{ companyId: 1, domain: "acme.com" }],
+      loadReferrerProfiles: async () => [referrer(11, "acme.com")],
+    }), { nowMs: NOW, operatorDomains: ["skipwait.me"] });
+
+    expect(baseline.weeks[3]).toMatchObject({ passed: 1, waiting: 0 });
+    // One decision, measured from the ask: the release is a decision, not an absence of one.
+    expect(baseline.decisionLatency).toMatchObject({ sampleSize: 1, medianHours: 2 });
+    // The referrer who passed counts as active, exactly as a fixable pass would.
+    expect(baseline.externalReferrers.activeInWindow).toBe(1);
+  });
+
   it("counts uncovered asks from current coverage, and only asks inside the window", async () => {
     const baseline = await buildFlowBaseline(fixture({
       loadRequests: async () => [

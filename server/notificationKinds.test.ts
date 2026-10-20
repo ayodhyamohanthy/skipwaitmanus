@@ -8,6 +8,8 @@ describe("notification kinds", () => {
     expect(transitionNotificationKind("review", "approved")).toBe("ask_accepted");
     expect(transitionNotificationKind("review", "rejected")).toBe("ask_passed");
     expect(transitionNotificationKind("pass", "pending")).toBe("ask_passed");
+    // D-035: a not-fixable pass is still a pass to the person reading it.
+    expect(transitionNotificationKind("pass_release", "pending")).toBe("ask_passed");
     expect(transitionNotificationKind("claim", "pending")).toBe("ask_claimed");
     expect(transitionNotificationKind("expire", "closed")).toBe("ask_expired");
     expect(transitionNotificationKind("progress", "interview")).toBe("ask_update");

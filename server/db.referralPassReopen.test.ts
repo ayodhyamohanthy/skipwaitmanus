@@ -253,10 +253,13 @@ describe("a claimed decline reopens the ask (D-021)", () => {
     expect(rows.referralAvailabilitySlots[0]).toMatchObject({ status: "released", referrerId: 9 });
     // The seeker is told in plain words, in the same transaction as the pass.
     expect(seekerNotice()).toMatchObject({ userId: 7, category: "status", kind: expect.any(String), refId: 501, title: "Update on your referral request — acme.com" });
-    expect(String(seekerNotice().body)).toContain("Your ask is open again to other verified employees at acme.com.");
+    // D-035: the seeker is told what was said and that the ask is open again; "at_capacity" is not fixable,
+    // so the pickup is released and the event says so.
+    expect(String(seekerNotice().body)).toContain("Your ask is open again to other verified employees there.");
+    expect(String(seekerNotice().body)).toContain("your credit comes back");
     expect(ask().status).not.toBe("declined");
     // One deterministic event records the pass without changing the status.
-    const events = rows.referralTransitionEvents.filter(event => event.action === "pass");
+    const events = rows.referralTransitionEvents.filter(event => event.action === "pass_release");
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({ operationKey: "one-click:9:declined:timing", actorUserId: 9, fromStatus: "pending", resultingStatus: "pending", resultingRevision: 5 });
   });
@@ -305,7 +308,7 @@ describe("a claimed decline reopens the ask (D-021)", () => {
     await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "cannot_support", passReason: "only_refer_known" });
 
     expect(rows.referralRequestPasses).toEqual([expect.objectContaining({ referrerId: 9, reason: "cannot_support", reasonCode: "only_refer_known" })]);
-    expect(String(seekerNotice().body)).toContain("(I only refer people I know)");
+    expect(String(seekerNotice().body)).toContain("A verified employee at acme.com said: I only refer people I know.");
     expect(ask()).toMatchObject({ status: "pending", referrerId: null });
   });
 });
@@ -317,7 +320,7 @@ describe("the claimed-review decline is the same pass (D-021)", () => {
     expect(result).toMatchObject({ status: "passed" });
     expect(ask()).toMatchObject({ status: "pending", referrerId: null, referrerMessage: null, revision: 5 });
     expect(rows.referralRequestPasses).toEqual([expect.objectContaining({ referrerId: 9, reason: "Not the team I can help this cycle", reasonCode: null })]);
-    expect(String(seekerNotice().body)).toContain("Your ask is open again to other verified employees at acme.com.");
+    expect(String(seekerNotice().body)).toContain("Your ask is open again to other verified employees there.");
     expect(String(seekerNotice().body)).not.toContain("Not the team I can help");
     expect(rows.referralTransitionEvents.some(event => event.resultingStatus === "declined")).toBe(false);
     expect(rows.referralDocumentAccessGrants[0].revokeReason).toBe("passed");
@@ -438,7 +441,8 @@ describe("pickup permanently spends the ask credit", () => {
 
   it("reports no refund after actual claim, pass and withdrawal", async () => {
     await claimCompanyReferralRequest(9, 501);
-    await reviewReferralRequest(9, { requestId: 501, decision: "declined" });
+    // D-035: only a fixable reason keeps the credit spent, so the control uses one.
+    await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "role_not_a_fit", passReason: "needs_experience" });
     expect(await withdrawCompanyReferralRequest(7, 501)).toMatchObject({ withdrawn: true, creditRefunded: false });
     expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
     expect(rows.tokenTransactions.filter(row => row.reversesTransactionId != null)).toEqual([]);
@@ -449,7 +453,8 @@ describe("pickup permanently spends the ask credit", () => {
       await claimCompanyReferralRequest(9, 501);
       expect(ask().referrerId).toBe(9);
       expect(rows.referralTransitionEvents.some(event => event.action === "claim")).toBe(true);
-      await reviewReferralRequest(9, { requestId: 501, decision: "declined" });
+      // D-035: a fixable reason keeps the credit spent; the legacy no-code review releases it.
+      await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "role_not_a_fit", passReason: "needs_experience" });
       expect(ask()).toMatchObject({ status: "pending", referrerId: null });
       expect(rows.referralTransitionEvents.some(event => event.action === "pass")).toBe(true);
       await finish(terminal);
@@ -478,10 +483,13 @@ describe("pickup permanently spends the ask credit", () => {
       ask().debitTransactionId = null;
       rows.tokenTransactions = [];
       await claimCompanyReferralRequest(9, 501);
+      // A legacy no-code pass releases the pickup, but this ask reserved nothing, so the notice says nothing about credit.
       await reviewReferralRequest(9, { requestId: 501, decision: "declined" });
       await finish(terminal);
+      // D-035: the pass released the pickup, so the ask ends like any other unclaimed one. This one reserved
+      // no credit, so nothing claims one: no ledger row, and no notice promising a credit back.
       expect(String(rows.notifications.at(-1)?.body)).not.toContain("credit");
-      expect(String(rows.notifications.at(-1)?.body)).toContain("open slot is free");
+      expect(ask().status).toBe(terminal === "withdraw" ? "withdrawn" : "closed");
       expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
       expect(rows.tokenTransactions).toEqual([]);
     });
