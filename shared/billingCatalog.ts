@@ -160,6 +160,15 @@ export function autoExtendMethods(planId: CatalogPlanId, interval: CatalogInterv
   return methods;
 }
 
+/**
+ * GO-LIVE-1 ruling 4.1: every kit plan checkout is paid once (createPlanCheckout
+ * sends one billing cycle) and the checkout body has no opt-in, so while this is
+ * false the public catalog lists no renewal method (D-044: nothing is advertised
+ * that checkout does not set up). GO-LIVE-2 turns it on together with the opt-in
+ * checkout; the rails above stay in code until then (D-042).
+ */
+export const AUTO_EXTEND_AT_CHECKOUT: boolean = false;
+
 // ---- Plan changes ----
 
 /** "Momentum", "Land Sprint", "Free" (a retired or unknown id reads as "Free"). */
@@ -242,7 +251,7 @@ export const planCatalogResponseSchema = z.strictObject({
       amount,
       /** Sold now: passes are on sale (PASS_SALES_ENABLED, D-084), the item price is live at this amount, and the plan is self-serve. */
       available: z.boolean(),
-      /** Opt-in renewal methods at checkout; empty means paid once only. */
+      /** Opt-in renewal methods at checkout; empty means paid once only (every term while AUTO_EXTEND_AT_CHECKOUT is off). */
       autoExtend: z.array(z.enum(AUTO_EXTEND_METHODS)),
     })).min(1),
   })),
@@ -262,6 +271,8 @@ export type CatalogResponseInput = {
   sessionsStaffed: boolean;
   /** GSTIN exists and Chargebee tax mode is on; off by default (D-007, Indian MSME not GST-registered). */
   indiaGstRegistered: boolean;
+  /** Checkout can set up an opt-in renewal; absent means AUTO_EXTEND_AT_CHECKOUT (off: every term is paid once). */
+  autoExtendAtCheckout?: boolean;
 };
 
 function planEntry(plan: PaidCatalogPlan, input: CatalogResponseInput, currency: CatalogCurrency) {
@@ -291,7 +302,8 @@ function planEntry(plan: PaidCatalogPlan, input: CatalogResponseInput, currency:
         amount: price.amount,
         // D-084: no pass or Keep warm term sells until a paid pass can always be activated (GO-LIVE-1b).
         available: PASS_SALES_ENABLED && !plan.byApplication && input.available(price.itemPriceId),
-        autoExtend: autoExtendMethods(id, interval, currency, input.usdRecurringConfirmed),
+        // GO-LIVE-1 ruling 4.1: no renewal rail is listed while checkout sells every term paid once.
+        autoExtend: (input.autoExtendAtCheckout ?? AUTO_EXTEND_AT_CHECKOUT) ? autoExtendMethods(id, interval, currency, input.usdRecurringConfirmed) : [],
       }];
     }),
   }];

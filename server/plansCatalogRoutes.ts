@@ -1,7 +1,7 @@
 import type { Express, Request } from "express";
 import { z } from "zod";
 import { BILLING_REGIONS, EDGE_COUNTRY_HEADER, regionFromHeader } from "../shared/billingRegion";
-import { planCatalogResponse, sellableItemPrices } from "../shared/billingCatalog";
+import { AUTO_EXTEND_AT_CHECKOUT, planCatalogResponse, sellableItemPrices } from "../shared/billingCatalog";
 import { priceAvailability, type AvailabilityDeps } from "./billingAvailability";
 import { indiaGstRegistered, humanReviewersStaffed, usdRecurringConfirmed } from "./billingSettings";
 import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
@@ -35,6 +35,8 @@ export type PlansCatalogDeps = {
   indiaGstRegistered?: () => boolean;
   usdRecurringConfirmed?: () => boolean;
   humanReviewersStaffed?: () => boolean;
+  /** Overridable for tests: checkout can set up an opt-in renewal (shipped off, GO-LIVE-1 ruling 4.1). */
+  autoExtendAtCheckout?: () => boolean;
   /** Cache seconds for the public response; prices change only when the owner edits Chargebee. */
   maxAgeSeconds?: number;
 };
@@ -87,6 +89,7 @@ export function registerPlansCatalogRoutes(app: Express, deps: PlansCatalogDeps 
         usdRecurringConfirmed: (deps.usdRecurringConfirmed ?? usdRecurringConfirmed)(),
         sessionsStaffed: (deps.humanReviewersStaffed ?? humanReviewersStaffed)(),
         indiaGstRegistered: (deps.indiaGstRegistered ?? indiaGstRegistered)(),
+        autoExtendAtCheckout: deps.autoExtendAtCheckout ? deps.autoExtendAtCheckout() : AUTO_EXTEND_AT_CHECKOUT,
       });
       // Public prices, no personal data: shareable and cheap to cache. Availability
       // itself is cached in-process (server/billingAvailability.ts).

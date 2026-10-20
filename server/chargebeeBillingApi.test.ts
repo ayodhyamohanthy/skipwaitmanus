@@ -36,12 +36,15 @@ describe("hosted checkouts send only catalog item prices", () => {
     provider(() => ({ body: { hosted_page: { id: "hp_2", url: "https://fixture-test.chargebee.com/pages/hp_2" } } }));
     await createPackCheckout(credentials, { itemPriceId: "skipwait_pack_25-INR", currency: "INR", billingCountry: "IN", redirectUrl: "https://skipwait.me/plans", cancelUrl: "https://skipwait.me/plans", checkoutIntentId: "intent_2" });
     const form = calls[0].form!;
-    expect(calls[0].url).toMatch(/checkout_one_time_for_items$/);
+    expect(calls[0].url).toBe("https://fixture-test.chargebee.com/api/v2/hosted_pages/checkout_one_time_for_items");
     expect(form.get("item_prices[item_price_id][0]")).toBe("skipwait_pack_25-INR");
     expect(form.get("item_prices[quantity][0]")).toBe("1");
     expect(form.get("currency_code")).toBe("INR");
     expect(form.get("billing_address[country]")).toBe("IN");
     expect([...form.keys()].some(key => key.startsWith("charges["))).toBe(false);
+    // GO-LIVE-1 §7.1: the pack form is pinned whole, so nothing (billing_cycles included) joins a one-time purchase untested.
+    expect(Object.fromEntries(form)).toEqual({ "item_prices[item_price_id][0]": "skipwait_pack_25-INR", "item_prices[quantity][0]": "1", currency_code: "INR", "billing_address[country]": "IN", redirect_url: "https://skipwait.me/plans", cancel_url: "https://skipwait.me/plans", pass_thru_content: "intent_2" });
+    expect([...form.keys()]).toHaveLength(7);
   });
 
   it("an upgrade replaces the subscription's items on a hosted page; a switch down waits for term end", async () => {
