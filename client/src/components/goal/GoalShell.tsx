@@ -90,6 +90,10 @@ function Avatar({ initials }: { initials: string }) {
   );
 }
 
+function AccountSlot({ account }: { account: GoalShellProps["account"] }) {
+  return account.menu ? <>{account.menu}</> : <Avatar initials={account.initials} />;
+}
+
 export function GoalShell({ active, verifiedReferrer, pageTitle, credits, account, alertsHref, giveReferralHref = referrerSignInHref(), hideBottomBar = false, drawer, children }: GoalShellProps) {
   const items = goalNavFor(verifiedReferrer);
   return (
@@ -123,7 +127,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
         </div>
         <div className="mt-auto flex w-full flex-col items-center gap-4">
           {!verifiedReferrer ? <GiveReferralLink href={giveReferralHref} variant="rail" /> : null}
-          <Avatar initials={account.initials} />
+          <AccountSlot account={account} />
         </div>
       </nav>
 
@@ -131,7 +135,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
       <header className={cn("gdesk:col-start-2 gdesk:col-end-[-1] gdesk:row-start-1 flex h-14 items-center gap-2 border-b border-g-hairline bg-g-surface pr-3 pl-6", "max-gdesk:gap-1 max-gdesk:pr-1 max-gdesk:pl-2.5")}>
         {/* phone: avatar left, no wordmark (BRIEF.md §149) */}
         <span className="gdesk:hidden mx-0.5 flex items-center gap-2">
-          <Avatar initials={account.initials} />
+          <AccountSlot account={account} />
           {!verifiedReferrer ? <GiveReferralLink href={giveReferralHref} variant="bar" /> : null}
         </span>
         <h1 className="max-gdesk:hidden text-g-meta text-g-ink-3">{pageTitle}</h1>
