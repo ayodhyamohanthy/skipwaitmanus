@@ -5,6 +5,7 @@ import { Button } from "@/components/kit/button";
 import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
 import { SeekerSignIn } from "@/components/SeekerSignIn";
 import { safeReturnTo } from "@/lib/referrerSignIn";
+import { ONE_TAP_PAY_SIGNIN } from "@/lib/oneTap";
 import { MONEY_SENTENCE_SHORT } from "@shared/moneyCopy";
 
 type Intent = "seeker" | "referrer";
@@ -24,6 +25,8 @@ export default function SignIn() {
   const [intent, setIntent] = useState<Intent>(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("intent") === "referrer" ? "referrer" : "seeker"));
   // Where the work-email OTP lands the referrer (same-origin path only).
   const referrerReturnTo = typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.referrer) : INTENT_RETURN_TO.referrer;
+  // D-095: a seeker arriving from a purchase returns to it (same-origin path only; flag off keeps /explore).
+  const seekerReturnTo = ONE_TAP_PAY_SIGNIN && typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.seeker) : INTENT_RETURN_TO.seeker;
   return <main data-skipwait-screen="sign-in" className="auth-page">
     <section className="auth-story" aria-label="skipwait.me introduction">
       <Link className="wordmark auth-wordmark" href="/"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
@@ -44,7 +47,7 @@ export default function SignIn() {
         // FOUNDER-LOCKED (Oct 16 2026): referrers sign in with a work-email OTP only. No social, no personal email.
         ? <div className="auth-form" data-testid="referrer-work-email-otp"><ReferrerOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
         // Job seekers: every sign-in stays on skipwait.me. Social buttons go straight to the provider; email uses a six-digit code.
-        : <SeekerSignIn returnTo={INTENT_RETURN_TO.seeker} />}
+        : <SeekerSignIn returnTo={seekerReturnTo} />}
       {intent === "referrer" ? <p className="auth-new">Work email only. We never use personal email or social logins for referrers.</p> : <p className="auth-new">New to skipwait.me? Enter your email and we’ll create your account.</p>}
       <p className="auth-terms">By continuing, you agree to the <Link href="/terms" className={legalLink}>Terms</Link> and acknowledge the <Link href="/privacy" className={legalLink}>Privacy Policy</Link>. {MONEY_SENTENCE_SHORT} A referral never guarantees an interview.</p>
     </div></section>

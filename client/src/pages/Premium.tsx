@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { ONE_TAP_PAY_SIGNIN } from "@/lib/oneTap";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { ArrowLeft, Check, CreditCard, LoaderCircle, Minus, Plus } from "lucide-react";
@@ -120,7 +121,10 @@ export default function Premium() {
       destination.searchParams.set("role", role);
       destination.searchParams.set("quantity", String(quantity));
       destination.searchParams.set("currency", route);
-      openSignIn({ returnTo: `${destination.pathname}${destination.search}${destination.hash}` });
+      const backToPack = `${destination.pathname}${destination.search}${destination.hash}`;
+      // D-095 one-tap: seekers use the in-app sign-in (all providers) and come back to this exact pack; referrers keep the work-email flow.
+      if (ONE_TAP_PAY_SIGNIN && role === "job_seeker") { window.location.assign(`/sign-in?${new URLSearchParams({ returnTo: backToPack })}`); return; }
+      openSignIn({ returnTo: backToPack });
       return;
     }
     setError("");
