@@ -12,7 +12,7 @@ Give this whole folder to your LLM / developer. Start by reading `AGENTS.md` and
 ## 1. Product
 SkipWait (skipwait.me) is a global platform for **private job referrals**. Seekers ask employees at a company for a referral; referrers accept, chat privately, and refer. 3 asks free every month; more use credits. Referrers are never paid and never ask you for money (D-063). No commissions, no paid priority (D-006).
 
-Launch companies (real people open to referrals): **SkipWait, Wipro, Go Neutrinos, TCS, Merkle**.
+Launch companies (real people open to referrals): **SkipWait, Wipro, Neutrinos, TCS, Merkle**.
 Hard rule: never invent user counts, testimonials, outcomes, or fake activity. Label demo data as preview in the prototype only; the product ships no preview labels or sample data (AGENTS.md §0a).
 
 ## 2. What is in this package
