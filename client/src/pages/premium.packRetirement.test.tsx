@@ -25,7 +25,7 @@ const catalog = (packsAvailable: boolean) => ({
 });
 
 function setup(packsAvailable: boolean) {
-  const fetchMock = vi.fn(async (url: string) => {
+  const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
     if (String(url).startsWith("/api/plans/catalog")) return { ok: true, status: 200, json: async () => catalog(packsAvailable) } as Response;
     return { ok: true, status: 200, json: async () => ({ summary: { totalAvailable: 3 } }) } as Response;
   });
