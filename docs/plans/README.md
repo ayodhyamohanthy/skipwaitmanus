@@ -48,7 +48,7 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. T
 | F-2 | Remove verified-dead code that misleads readers | [FND-2-dead-code.md](FND-2-dead-code.md) | 3 | S | ready | — |
 | F-3 | Test kit throws production-shaped duplicate errors; fix the two duplicate checks that read only `code` | [FND-3-duplicate-key-fidelity.md](FND-3-duplicate-key-fidelity.md) | 2 | S | ready | 0.1 |
 | F-4 | Redact token-bearing API paths in Sentry and admin alerts | [FND-4-token-path-scrubbing.md](FND-4-token-path-scrubbing.md) | 2 | S | ready | 1.2 (same Sentry files) |
-| F-5 | Forward or remove the server keys the container never receives | [FND-5-env-forwarding.md](FND-5-env-forwarding.md) | 2 | S | ready | 1.1 |
+| F-5 | Forward or remove the server keys the container never receives | [FND-5-env-forwarding.md](FND-5-env-forwarding.md) | 2 | S | done — `d93a1d12` (PR #334) | 1.1 |
 | F-6 | Correct stale §3b status cells (rows 4, 5, 7, 21, 25) from evidence on `main` | [FND-6-row-status-audit.md](FND-6-row-status-audit.md) | 3 | S | ready | — |
 | F-7 | Triage the 53 open PRs and ~250 branches for the owner (read-only) | [FND-7-pr-branch-triage.md](FND-7-pr-branch-triage.md) | 3 | S | ready | — |
 | T-1 | Public impact counts only accepted asks, never expired ones | [TRUTH-1-public-impact-count.md](TRUTH-1-public-impact-count.md) | 2 | S | done — `c34582a9` | — |
