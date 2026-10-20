@@ -139,7 +139,7 @@ Please follow your company's referral policy. If it helps, I can send a calendar
 - That referrals are free (D-043 move 3, D-063).
 - That their record follows them to the next job. D-057 is decided, not built.
 - That SkipWait stores only a fingerprint of their email. Work-email sign-in keeps the address as the account login (`server/_core/otpLogin.ts`).
-- That passing gives the seeker their credit back. The decline screen on an opened ask says so, but today the credit stays spent while the ask goes on to colleagues (D-035 is not built).
+- That passing gives the seeker their credit back. The decline screen on an opened ask says so, and since D-035 a not-fixable pass returns the credit when the ask ends (a fixable one keeps it spent).
 - That {Company} is a partner of SkipWait or endorses it.
 
 ## 4. Two vouch questions
