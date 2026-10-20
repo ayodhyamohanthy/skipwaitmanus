@@ -39,7 +39,7 @@
       "tier": 1,
       "lane": "payments",
       "branch": "agent/queue/go-live-passes",
-      "status": "doing",
+      "status": "todo",
       "dependsOn": [
         "GO-LIVE-1"
       ],
