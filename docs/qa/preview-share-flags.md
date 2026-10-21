@@ -2,10 +2,10 @@
 
 Branch `agent/instinct/qa-preview-share` merges the four draft PRs (#373 company signal, #375 seeker win card, #381 level classifier, #382 referrer impact card) so QA can verify cross-side behavior in one build. It is a preview integration branch: feature work lands from the individual PRs, not from here.
 
-## Deploy (owner/CI holds Cloudflare credentials)
-1. Build with the client flags on: `VITE_COMPANY_RESPONSE_SIGNAL=true VITE_SHARE_WIN_CARD=true VITE_SHARE_IMPACT_CARD=true pnpm build`
-2. Deploy the qa worker env (flags on in `wrangler.jsonc` env.qa; billing forced to test): `wrangler deploy --env qa`
-3. Set the qa worker's DATABASE_URL secret to a SCRATCH database (e.g. `skipwait_qa` on the MySQL server). Never prod.
+## Deploy (automatic, same credentials as the prod pipeline)
+`.github/workflows/deploy-qa.yml` deploys this branch to the skipwait-qa worker on every push (migrations gate first, typecheck, build with the client flags ON, `wrangler deploy --env qa`). It reuses the repo's existing CLOUDFLARE_API_TOKEN/CLOUDFLARE_ACCOUNT_ID and DB secrets - no new credentials. It NEVER touches prod: separate worker name, separate scratch database `skipwait_qa` (created on the MySQL server 2026-10-21; the pipeline DB user has been granted privileges on it). The qa worker gets its own DATABASE_URL (pointed at skipwait_qa) and JWT_SECRET secrets on first deploy.
+First-time seed: run the workflow manually (Actions -> Deploy QA preview -> Run workflow -> seed=true). Re-seed the same way whenever fixtures go stale.
+Qa has no WorkOS vars, so sign-in uses the dev-auth path. Billing is forced to test.
 
 ## Seed the scratch database
 `DATABASE_URL=mysql://user:pass@host/skipwait_qa npx tsx scripts/qa-seed-share-fixtures.ts`
