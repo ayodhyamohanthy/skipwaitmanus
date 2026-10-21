@@ -78,9 +78,9 @@
       "tier": 1,
       "lane": "billing",
       "branch": "agent/kat/d067-allocated-0098-oct19",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "Migration 0098 is taken on main (Neutrinos rebrand); renumber first."
+      "note": "Migration renumbered 0098 to 0099 (the Neutrinos rebrand took 0098 on main); SQL bytes unchanged (SHA256 d14c261e). Merged with origin/main, independent review passed, landed; live check in the landing report."
     },
     {
       "id": "D-104-company-signal",
