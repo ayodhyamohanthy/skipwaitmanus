@@ -9,8 +9,8 @@ import { getDb } from "./db";
 export const COMPANY_RESPONSE_SIGNAL_FLAG = "COMPANY_RESPONSE_SIGNAL_ENABLED";
 export const companyResponseSignalEnabled = () => process.env[COMPANY_RESPONSE_SIGNAL_FLAG] === "true";
 
-export async function loadCompanyResponseSignal(domains: readonly string[], now: Date = new Date()): Promise<CompanyResponseSignal> {
-  const db = await getDb();
+export async function loadCompanyResponseSignal(domains: readonly string[], now: Date = new Date(), dbOverride?: Awaited<ReturnType<typeof getDb>>): Promise<CompanyResponseSignal> {
+  const db = dbOverride ?? await getDb();
   if (!db) throw new CompanyDirectoryUnavailableError();
   const owned = domains.map(domain => domain.trim().toLowerCase()).filter(Boolean);
   if (owned.length === 0) return { state: "insufficient" };
