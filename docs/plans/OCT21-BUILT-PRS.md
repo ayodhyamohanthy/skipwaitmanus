@@ -7,7 +7,7 @@ These pull requests were built before they had a packet. This packet is their pa
 ## Rules for every task here
 1. **Green before `main` (D-082).** Merge the latest `origin/main` into the pull request's branch (never rebase or force-push), run the full gate from `docs/BRIEF.md` "How to ship", and land only when every check on that exact commit is green. GitHub refuses anything else.
 2. **Flags stay off (D-097).** Every new behaviour lands behind its flag, off. Turning a flag on is a separate step after QA, never part of these tasks.
-3. **Migrations.** A pull request whose migration number is already used on `main` takes the next free number (plan §5 says which; today 0099 or higher) before anything else, and records it in plan §5 in the same pull request. Renumbering never changes the SQL.
+3. **Migrations.** A pull request whose migration number is already used on `main` takes the next free number (plan §5 says which; today 0103 or higher) before anything else, and records it in plan §5 in the same pull request. Renumbering never changes the SQL.
 4. **Tier 1** (money, sign-in, identity, privacy, migrations): the builder stops at a green draft pull request; a different session reviews it (`docs/DELEGATION.md` §6) and lands it. Tier 2 and 3: the builder lands it.
 5. **Never change prices or credit rules (D-056, D-091).** Tasks marked `owner` in the list wait for the owner's yes and are never landed by an agent.
 6. In the same pull request that lands a task, set its `status` to `done` in `docs/plans/assignments.json` and update the decision's `Sync` cell and any doc the change makes stale (D-068).
