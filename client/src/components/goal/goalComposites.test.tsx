@@ -61,6 +61,20 @@ describe("GoalShell", () => {
     }
   });
 
+  it("phone layout: main is pinned to grid row 2 so it never drops into an implicit row", () => {
+    // Regression (Oct 21): the sticky phone bottom bar spans rows 2..-1, so an
+    // auto-placed <main> skipped the occupied rows and landed in an implicit
+    // 4th row - signed-in pages rendered a blank first viewport at 390px.
+    render(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
+    const main = screen.getByRole("main");
+    expect(main.className).toContain("max-gdesk:row-start-2");
+    expect(main.className).toContain("max-gdesk:col-start-1");
+    // The bottom bar must keep its explicit span; removing either side of this
+    // contract re-opens the implicit-row bug above.
+    const bottomBar = screen.getAllByRole("navigation", { name: /primary/i }).find(nav => nav.className.includes("max-gdesk:sticky"));
+    expect(bottomBar?.className).toContain("max-gdesk:row-start-2");
+  });
+
   it("renders no credits pill when credits is null", () => {
     render(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
     expect(screen.queryByTestId("goal-credits-pill")).toBeNull();
