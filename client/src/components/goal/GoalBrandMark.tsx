@@ -30,12 +30,11 @@ export function GoalBrandIcon({ className }: { className?: string }) {
   );
 }
 
+/** The brand lockup (V6-B icon + W1 wordmark, designer's final asset,
+ *  header size 26px). The single image swap point for future logo updates. */
 export function GoalBrandMark({ className, iconClassName }: { className?: string; iconClassName?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-2", className)}>
-      <GoalBrandIcon className={iconClassName} />
-      <span className="text-g-label font-semibold tracking-tight text-g-ink">SkipWait<span className="text-g-ink-3">.me</span></span>
-    </span>
+    <img src="/brand/lockup.svg" alt="SkipWait.me" className={cn("h-[26px] w-auto", iconClassName, className)} />
   );
 }
 
