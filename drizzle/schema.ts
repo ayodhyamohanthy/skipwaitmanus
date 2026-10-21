@@ -703,8 +703,8 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   // owner. Written only from the verified webhook or a provider-truth re-read.
   cardValidatedAt: timestamp("cardValidatedAt"),
   // Order pinned to shared/billingCatalog.ts WALLET_PLAN_IDS (server/subscriptionManagementContract.test.ts); 0090 added the kit plans,
-  // 0091 the Oct 14 2026 plans (land_100/200/500 are reserved, never written).
-  plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).default("free").notNull(),
+  // 0091 the Oct 14 2026 plans (land_100/200/500 are reserved, never written), 0102 the D-132 families.
+  plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge", "fast_track", "insider"]).default("free").notNull(),
   subscriptionId: varchar("subscriptionId", { length: 80 }),
   subscriptionStatus: varchar("subscriptionStatus", { length: 32 }),
   subscriptionCurrency: varchar("subscriptionCurrency", { length: 3 }),

@@ -55,8 +55,8 @@ export const RESERVED_PLAN_IDS = ["land_100", "land_200", "land_500"] as const;
 /** Every plan a subscription can bill: the kit catalog plans only (D-067). */
 export const BILLABLE_PLAN_IDS = CATALOG_PLAN_IDS;
 export type BillablePlanId = (typeof BILLABLE_PLAN_IDS)[number];
-/** tokenBalances.plan: existing values first and in order (0090, then 0091). */
-export const WALLET_PLAN_IDS = ["free", ...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
+/** tokenBalances.plan: existing values first and in order (0090, then 0091, then 0102 the D-132 families). */
+export const WALLET_PLAN_IDS = ["free", ...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge", "fast_track", "insider"] as const;
 export type WalletPlanId = (typeof WALLET_PLAN_IDS)[number];
 /** subscriptionCheckoutIntents.plan, same ordering rule. */
 export const INTENT_PLAN_IDS = [...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge", "fast_track", "insider"] as const;

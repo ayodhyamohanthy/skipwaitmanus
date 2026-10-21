@@ -14,6 +14,9 @@ const migration = readFileSync(new URL("../drizzle/deploy/0091_pricing_model.sql
 // enum; 0091 keeps its historical 11-value set and the latest widening carries
 // the full list.
 const migration0101 = readFileSync(new URL("../drizzle/deploy/0101_v2_plan_family_intents.sql", import.meta.url), "utf8");
+// 0102 owns the wallet plan enum's v2 widening; 0091 keeps its historical
+// 12-value set and the latest widening carries the full WALLET_PLAN_IDS list.
+const migration0102 = readFileSync(new URL("../drizzle/deploy/0102_v2_plan_family_wallets.sql", import.meta.url), "utf8");
 const quoted = (values: readonly string[]) => values.map(value => `''${value}''`).join(",");
 
 describe("pricing model schema contract (0091)", () => {
@@ -27,7 +30,8 @@ describe("pricing model schema contract (0091)", () => {
     expect(RESERVED_PLAN_IDS.some(plan => (CATALOG_PLAN_IDS as readonly string[]).includes(plan))).toBe(false);
     expect([...tokenBalances.plan.enumValues]).toEqual([...WALLET_PLAN_IDS]);
     expect([...subscriptionCheckoutIntents.plan.enumValues]).toEqual([...INTENT_PLAN_IDS]);
-    expect(migration).toContain(`MODIFY \`plan\` ENUM(${quoted(WALLET_PLAN_IDS)}) NOT NULL DEFAULT ''free''`);
+    expect(migration).toContain(`MODIFY \`plan\` ENUM(${quoted(WALLET_PLAN_IDS.slice(0, 12))}) NOT NULL DEFAULT ''free''`);
+    expect(migration0102).toContain(`MODIFY \`plan\` ENUM(${quoted(WALLET_PLAN_IDS)}) NOT NULL DEFAULT ''free''`);
     expect(INTENT_PLAN_IDS.slice(11)).toEqual(["fast_track", "insider"]);
     expect(migration).toContain(`MODIFY \`plan\` ENUM(${quoted(INTENT_PLAN_IDS.slice(0, 11))}) NOT NULL`);
     expect(migration0101).toContain(`MODIFY \`plan\` ENUM(${quoted(INTENT_PLAN_IDS)}) NOT NULL`);
