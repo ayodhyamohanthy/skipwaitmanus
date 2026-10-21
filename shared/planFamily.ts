@@ -181,10 +181,53 @@ export const MENTOR_ADD_ON = {
 export const REFERRER_CREDIT_PER_ACCEPTED_ASK = 1;
 
 /**
- * Company tier: DRAFT, unbuilt. Owner pick (Oct 21 18:52, changeable):
- * "Group Plan" - Group Free / Group Plus, subtitle "for companies, colleges
- * and training institutes buying for many people". Bulk/group oriented, NOT
- * "Partner" and NOT "Company Plus". Draft shape only: Group Plus companies
- * give their verified employees Mentor free. Do not build while draft.
+ * Company tier: DRAFT, unbuilt. Name FROZEN by the owner Oct 21 19:10
+ * (phonemsg-01M5FB1XYT5GY6VAGH7GCEC0SZ "Lets stick to organisations",
+ * author=user): "Organisation" - Organisation Free / Organisation Plus,
+ * subtitle "for companies, colleges and training institutes buying for many
+ * people" (supersedes the 18:52 "Group Plan" pick). Draft shape only:
+ * Organisation Plus gives verified employees Mentor free. Do not build
+ * while draft.
  */
-export const COMPANY_TIER_DRAFT = { built: false, name: "Group Plan" } as const;
+export const COMPANY_TIER_DRAFT = { built: false, name: "Organisation" } as const;
+
+// ---- D-132 derivation helpers (plans page "Choose your reach.") ----
+
+export type PlanPriceBook = "USD" | "INR";
+
+export function ladderRung(credits: number): (typeof PLAN_CREDIT_LADDER)[number] {
+  const rung = PLAN_CREDIT_LADDER.find(entry => entry.credits === credits);
+  if (!rung) throw new Error(`unknown credit rung: ${credits}`);
+  return rung;
+}
+
+/** Rung price in minor units for a price book. */
+export function rungPriceMinor(credits: PlanCreditRung, book: PlanPriceBook): number {
+  const rung = ladderRung(credits);
+  return book === "INR" ? rung.inrPaise : rung.usdCents;
+}
+
+/** Per-credit minor units for a rung (exact for every frozen rung). */
+export function perCreditMinor(credits: PlanCreditRung, book: PlanPriceBook): number {
+  return rungPriceMinor(credits, book) / credits;
+}
+
+/** What the rung saves vs buying the same credits at the single price. */
+export function rungSavingsMinor(credits: PlanCreditRung, book: PlanPriceBook): number {
+  const single = book === "INR" ? CREDIT_SINGLE_PRICE.inrPaise : CREDIT_SINGLE_PRICE.usdCents;
+  return single * credits - rungPriceMinor(credits, book);
+}
+
+/** Plan perks fee per month in minor units. */
+export function planFeeMinor(id: PlanFamilyId, book: PlanPriceBook): number {
+  const entry = planFamilyEntry(id);
+  return book === "INR" ? entry.monthlyInrPaise : entry.monthlyUsdCents;
+}
+
+/**
+ * "This month" = plan fee + picked rung. A null rung is the free pick
+ * (Open Door's default: its 3 free monthly credits, no charge).
+ */
+export function thisMonthMinor(id: PlanFamilyId, rung: PlanCreditRung | null, book: PlanPriceBook): number {
+  return planFeeMinor(id, book) + (rung === null ? 0 : rungPriceMinor(rung, book));
+}
