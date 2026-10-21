@@ -44,6 +44,12 @@ describe("referrer impact card", () => {
     const events = [ev(1, "approve", "approved"), ev(2, "pass", "declined"), ev(3, "pass", "declined")];
     expect(summarizeImpact(events, NOW).acceptRatePct).toBe(33);
   });
+  it("singular: one referred person reads 1 person, never 1 people", () => {
+    const one = { ...input, stats: { ...input.stats, referredThisMonth: 1 } };
+    const text = impactCardText(one);
+    expect(text).toContain("1 person referred into Kestrel Pay through my link this month.");
+    expect(text).not.toContain("1 people");
+  });
   it("plain text card carries screen name, company, aggregates and the link", () => {
     const text = impactCardText(input);
     expect(text).toContain("QuietFalcon · Verified at Kestrel Pay");

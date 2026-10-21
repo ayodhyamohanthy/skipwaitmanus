@@ -1086,6 +1086,7 @@
     "intro": "A card for your bio or your next post. Screen name only - no seeker ever appears.",
     "verifiedLine": "{screenName} · Verified at {company}",
     "referredBig": "{count} people",
+    "referredBigOne": "{count} person",
     "referredLine": "referred into {company} through my link this month.",
     "medianReplyValue": "{hours}h",
     "medianReplyLabel": "median first reply",

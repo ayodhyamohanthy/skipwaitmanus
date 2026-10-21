@@ -321,7 +321,7 @@ input, textarea { caret-color: var(--primary); }
 .sharecard__stats { display: flex; gap: 22px; margin-top: 12px; }
 .sharecard__stat b { font-family: var(--font-label); font-size: 20px; font-weight: 600; color: var(--foreground); display: block; }
 .sharecard__stat span { font: 11px var(--font-label); color: var(--muted-foreground); }
-.sharecard__brand { font: 11px var(--font-label); color: var(--muted-foreground); margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--border); }
+.sharecard__brand { font: 11px var(--font-label); color: var(--muted-foreground); margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--border); max-width: 88%; overflow-wrap: anywhere; }
 /* Seeker win card shares the impact-card visual language. No kit imports. */
 .share-win .share-win-card{border:2px solid var(--foreground);background:var(--background);border-radius:12px;display:grid;gap:8px;padding:20px;margin:0}
 .share-win-card .sharecard__status{font-size:12px;text-transform:none;letter-spacing:normal;margin:0 0 4px}

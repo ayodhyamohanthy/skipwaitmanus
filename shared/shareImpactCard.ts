@@ -81,7 +81,7 @@ export function impactVerifiedLine(input: Pick<ImpactCardInput, "screenName" | "
 }
 
 export function impactReferredBig(count: number): string {
-  return fill(IMPACT_CARD_COPY.referredBig, { count });
+  return fill(count === 1 ? IMPACT_CARD_COPY.referredBigOne : IMPACT_CARD_COPY.referredBig, { count });
 }
 
 export function impactReferredLine(companyName: string): string {

@@ -14,7 +14,7 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import { eq } from "drizzle-orm";
 import mysql from "mysql2/promise";
-import { companies, companyDomains, jobs, profiles, referralRequests, referralTransitionEvents, referrerFastTrackLinks, users } from "../drizzle/schema";
+import { companies, companyDomains, jobs, profiles, referralRequestPasses, referralRequests, referralTransitionEvents, referrerFastTrackLinks, users } from "../drizzle/schema";
 
 const url = process.env.DATABASE_URL ?? "";
 const dbName = /\/([^/?]+)(\?|$)/.exec(url)?.[1] ?? "";
@@ -43,12 +43,14 @@ async function main() {
   // Idempotent: remove any previous fixture rows (a failed earlier run leaves
   // partial fixtures). Scratch DB only; guards above already proved that.
   await pool.query("SET FOREIGN_KEY_CHECKS = 0");
+  await pool.query("DELETE p FROM referralRequestPasses p JOIN referralRequests r ON p.referralRequestId = r.id JOIN jobs j ON r.jobId = j.id WHERE j.company = 'quillmint.com'");
   await pool.query("DELETE e FROM referralTransitionEvents e JOIN referralRequests r ON e.referralRequestId = r.id JOIN jobs j ON r.jobId = j.id WHERE j.company = 'quillmint.com'");
   await pool.query("DELETE r FROM referralRequests r JOIN jobs j ON r.jobId = j.id WHERE j.company = 'quillmint.com'");
   await pool.query("DELETE FROM jobs WHERE company = 'quillmint.com'");
   await pool.query("DELETE FROM referrerFastTrackLinks WHERE companyDomain = 'quillmint.com'");
   await pool.query("DELETE p FROM profiles p JOIN users u ON p.userId = u.id WHERE u.openId LIKE 'qa_%'");
-  await pool.query("DELETE FROM users WHERE openId LIKE 'qa_%'");
+  await pool.query("DELETE p FROM profiles p JOIN users u ON p.userId = u.id WHERE u.email LIKE '%@qa-fixtures.invalid'");
+  await pool.query("DELETE FROM users WHERE openId LIKE 'qa_%' OR email LIKE '%@qa-fixtures.invalid'");
   await pool.query("DELETE d FROM companyDomains d JOIN companies c ON d.companyId = c.id WHERE c.slug = 'quillmint'");
   await pool.query("DELETE FROM companies WHERE slug = 'quillmint'");
   await pool.query("SET FOREIGN_KEY_CHECKS = 1");
@@ -87,15 +89,21 @@ async function main() {
   await decide(a1, refA, "approve", 46); // ~3h first reply
   await decide(a2, refA, "approve", 34);
   await decide(a3, refA, "pass", 26);
-  await db.update(referralRequests).set({ status: "approved" }).where(eq(referralRequests.id, a1));
-  await db.update(referralRequests).set({ status: "approved" }).where(eq(referralRequests.id, a2));
+  await db.update(referralRequests).set({ status: "approved", referrerId: refA, revision: 1 }).where(eq(referralRequests.id, a1));
+  await db.update(referralRequests).set({ status: "approved", referrerId: refA, revision: 1 }).where(eq(referralRequests.id, a2));
   await db.insert(referralTransitionEvents).values({ referralRequestId: a1, operationKey: `progress:${refA}:${a1}`, actorUserId: refA, action: "progress", fromStatus: "approved", resultingStatus: "intro_made", resultingRevision: 2, createdAt: ago(20) });
+  await db.update(referralRequests).set({ status: "intro_made", revision: 2 }).where(eq(referralRequests.id, a1));
+  // A pass releases the ask (status stays pending, no referrerId) and is recorded
+  // in referralRequestPasses so it never reappears in the passing referrer's queue.
+  await db.insert(referralRequestPasses).values({ referralRequestId: a3, referrerId: refA, reason: "cannot_support", createdAt: ago(26) });
 
   // Referrer B: 2 answered asks - the impact card must stay HIDDEN (min-3 gate).
   const b1 = await mkAsk(await mkJob("Data Engineer"), 28, 27);
   const b2 = await mkAsk(await mkJob("QA Engineer"), 20, 19);
   await decide(b1, refB, "approve", 22);
+  await db.update(referralRequests).set({ status: "approved", referrerId: refB, revision: 1 }).where(eq(referralRequests.id, b1));
   await decide(b2, refB, "pass", 16);
+  await db.insert(referralRequestPasses).values({ referralRequestId: b2, referrerId: refB, reason: "cannot_support", createdAt: ago(16) });
 
   console.log(JSON.stringify({ companyId, referrers: { A: refA, B: refB, others: referrerIds.slice(2) }, seeker, asks: { a1, a2, a3, b1, b2 } }, null, 2));
   await pool.end();
