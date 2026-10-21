@@ -13,8 +13,16 @@
  * CF-Connecting-IP. If that value is missing or not an IP, no forwarding
  * header is sent and the limiter falls back to the shared socket address
  * (one shared bucket: stricter, never bypassable).
+ *
+ * Host and protocol are edge facts, not client choices: the Worker only
+ * serves the canonical zone route (url.hostname must be skipwait.me) and
+ * Cloudflare terminates TLS. They are overwritten here for the same reason
+ * as the IP, so Express `trust proxy` never reads a caller-supplied value.
  */
-const CLIENT_SUPPLIED_FORWARDING_HEADERS = ["x-forwarded-for", "x-real-ip", "forwarded", "true-client-ip", "x-client-ip"];
+const CLIENT_SUPPLIED_FORWARDING_HEADERS = ["x-forwarded-for", "x-real-ip", "forwarded", "true-client-ip", "x-client-ip", "x-forwarded-host", "x-forwarded-proto", "x-forwarded-scheme"];
+
+export const EDGE_ORIGIN_HOST = "skipwait.me";
+export const EDGE_ORIGIN_PROTOCOL = "https";
 
 // No node:net here: the Worker runs without nodejs_compat.
 const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
@@ -34,5 +42,7 @@ export function withEdgeClientIp(request: Request): Request {
   const edgeIp = normalize(headers.get("cf-connecting-ip") ?? "");
   for (const name of CLIENT_SUPPLIED_FORWARDING_HEADERS) headers.delete(name);
   if (edgeIp && !edgeIp.includes(",") && isIp(edgeIp)) headers.set("x-forwarded-for", edgeIp);
+  headers.set("x-forwarded-host", EDGE_ORIGIN_HOST);
+  headers.set("x-forwarded-proto", EDGE_ORIGIN_PROTOCOL);
   return new Request(request, { headers });
 }

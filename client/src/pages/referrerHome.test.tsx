@@ -269,7 +269,7 @@ describe("Invite colleagues and request companies", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderWithQuery(<Invite />);
     await waitFor(() => expect(document.querySelectorAll("#launch-companies option")).toHaveLength(5));
-    expect(Array.from(document.querySelectorAll("#launch-companies option")).map(option => option.getAttribute("value"))).toEqual(["skipwait.me", "Wipro", "Go Neutrinos", "TCS", "Merkle"]);
+    expect(Array.from(document.querySelectorAll("#launch-companies option")).map(option => option.getAttribute("value"))).toEqual(["skipwait.me", "Wipro", "Neutrinos", "TCS", "Merkle"]);
     fireEvent.change(screen.getByLabelText("Company name"), { target: { value: "wipro" } });
     expect(screen.getByText(/Wipro already has a door on skipwait.me/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open it" }).getAttribute("href")).toBe("/explore/wipro");
