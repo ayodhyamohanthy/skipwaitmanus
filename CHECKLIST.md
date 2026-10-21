@@ -17,7 +17,7 @@ Hand this to your LLM together with `LLM_HANDOFF.md`, `SCREENS.md`, the `app/` s
 - [ ] Sign-in at `/sign-in` (seeker/referrer intent, Google + email choices).
 - [ ] App shell: desktop sidebar + mobile bottom tabs.
 - [ ] Explore at `/explore` with search and filters.
-- [ ] Company detail + referral request flow at `/explore/:slug` for all five companies: SkipWait, Wipro, Go Neutrinos, TCS, Merkle.
+- [ ] Company detail + referral request flow at `/explore/:slug` for all five companies: SkipWait, Wipro, Neutrinos, TCS, Merkle.
 - [ ] My requests at `/requests`, inbox at `/inbox`, profile at `/profile`.
 - [ ] Referrer workspace at `/referrer`, invite at `/invite`, safety at `/safety`.
 - [ ] My work `/work`, Plans & credits `/plans` (per PRICING.md + UPGRADE_NUDGES.md), employer page `/for-companies`.
@@ -55,7 +55,7 @@ Hand this to your LLM together with `LLM_HANDOFF.md`, `SCREENS.md`, the `app/` s
 ## Rules that must never change
 - 3 asks free every month; more use credits. Referrers are never paid and never ask you for money (D-063). No pay-to-win, no paid priority.
 - Never invent users, counts, testimonials, response times, or outcomes.
-- The five launch companies are SkipWait, Wipro, Go Neutrinos, TCS, and Merkle — shown as having people open to referrals, with no fabricated numbers.
+- The five launch companies are SkipWait, Wipro, Neutrinos, TCS, and Merkle — shown as having people open to referrals, with no fabricated numbers.
 - Private by default: seekers control what referrers see.
 
 ## Trust flows (backend notes)

@@ -11,9 +11,9 @@ import { readApiJson } from "@/lib/apiResponse";
 import { applySeo } from "@/lib/seo";
 import { failureMessage, parseSummary, type CreditSummary } from "@/components/plans/billingApi";
 import { CreditCta, CreditsSection, UsagePanel } from "@/components/plans/PlansCredits";
-import { SeekerCreditsCard } from "@/components/SeekerCreditsCard";
 import { FairBand, PlansReference } from "@/components/plans/PlansReference";
 import { PlanCards } from "@/components/plans/PlanCards";
+import { PendingCheckoutReturn } from "@/components/plans/PendingCheckoutReturn";
 import { CoverageBlock, PacksSection, PassesSection, useKitCheckout } from "@/components/plans/PlansKitSections";
 import { PlansCatalogOfflineError, usePlansCatalog } from "@/components/plans/plansCatalogApi";
 import { UpgradeMoments, upgradeMoments } from "@/components/plans/UpgradeMoments";
@@ -68,6 +68,9 @@ export default function Plans() {
     return () => { active = false; };
   }, [getToken, isLoaded, isSignedIn, isReferrer]);
 
+
+  // QA review (#359 finding 1): until a pass is proven fixed-term on the provider
+  // side, an active subscription keeps its cancel-renewal control.
   const scheduleCancellation = async () => {
     if (!isSignedIn || summary?.subscriptionStatus !== "active") return;
     setCancelError("");
@@ -90,7 +93,7 @@ export default function Plans() {
   };
 
   if (payment === "pending") {
-    return <main data-skipwait-screen="plans" className="page-content plans-page"><section className="workspace-empty"><span className="empty-icon"><Check /></span><h2>We’re confirming your payment.</h2><p>Access starts only after the verified payment event reaches our server.</p><Button asChild className="brand-button"><Link href="/requests">View my requests<ArrowRight /></Link></Button></section></main>;
+    return <main data-skipwait-screen="plans" className="page-content plans-page"><PendingCheckoutReturn role={isReferrer ? "referrer" : "job_seeker"} getToken={getToken} /></main>;
   }
 
   return <main data-skipwait-screen="plans" className="page-content plans-page">
@@ -104,6 +107,7 @@ export default function Plans() {
         <PlanCards
           currency={currency}
           activePlan={activePlan}
+          endsAt={summary?.subscriptionCurrentTermEnd ?? null}
           renewing={summary?.subscriptionStatus === "active"}
           cancelRenewal={{ confirming: confirmingCancel, cancelling, onAsk: () => setConfirmingCancel(true), onConfirm: () => { void scheduleCancellation(); setConfirmingCancel(false); }, onKeep: () => setConfirmingCancel(false) }}
         />
@@ -115,23 +119,6 @@ export default function Plans() {
         <p className="plan-grid-note">{routeDetails.gateway} · {routeDetails.gatewayDescriptor}. <button type="button" onClick={() => setRoute(current => alternatePaymentRoute(current))} className="font-semibold text-foreground underline underline-offset-4">Different billing country? {routeDetails.alternateLabel}</button></p>
         {cancelError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{cancelError}</p> : null}
 
-        {summary?.freeCreditsLocked ? (
-          // D-079: a locked free seeker must be able to reach card validation from the
-          // place the no-credits error points to. The card renders the provider-owned
-          // "Validate your card" flow; nothing is charged.
-          <SeekerCreditsCard credits={{
-            plan: summary.plan,
-            monthlyAllowance: summary.monthlyAllowance,
-            monthlyCreditsRemaining: summary.monthlyCreditsRemaining,
-            purchasedCreditsRemaining: summary.purchasedCreditsRemaining ?? 0,
-            totalAvailable: summary.totalAvailable,
-            cycleKey: summary.cycleKey ?? "",
-            subscriptionStatus: summary.subscriptionStatus,
-            subscriptionCurrentTermEnd: summary.subscriptionCurrentTermEnd,
-            cardValidated: summary.cardValidated,
-            freeCreditsLocked: summary.freeCreditsLocked,
-          }} />
-        ) : null}
         <CreditsSection summary={summary} currency={currency} creditsHref={creditsHref} />
         {summary ? <UsagePanel summary={summary} /> : null}
         {summary ? <UpgradeMoments moments={upgradeMoments(summary, new Date(), creditsHref)} /> : null}

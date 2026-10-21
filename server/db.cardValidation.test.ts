@@ -46,10 +46,10 @@ describe("applyCardValidationEvent (D-079)", () => {
     expect(planGrants()).toHaveLength(0);
   });
 
-  it("the summary reports the lock state for the client", async () => {
+  it("the summary never reports locked free credits (D-127 retired the gate)", async () => {
     let summary = await getTokenWallet(SEEKER, "job_seeker");
     expect(summary.cardValidated).toBe(false);
-    expect(summary.freeCreditsLocked).toBe(true);
+    expect(summary.freeCreditsLocked).toBe(false);
 
     await applyCardValidationEvent(event());
     summary = await getTokenWallet(SEEKER, "job_seeker");

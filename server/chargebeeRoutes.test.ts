@@ -399,3 +399,53 @@ describe("Chargebee webhook route", () => {
     expect(persisted).toEqual({ userId: 7, role: "job_seeker", subscriptionId: "sub_owned" });
   });
 });
+
+describe("unlinked kit subscription alert (GO-LIVE-1b ruling 4)", () => {
+  const kitSubscriptionEvent = {
+    id: "evt_unlinked_1",
+    event_type: "subscription_created",
+    content: {
+      subscription: {
+        id: "sub_orphan_1", status: "active", currency_code: "USD",
+        current_term_start: 1792531200, current_term_end: 1795123200, resource_version: 7,
+        subscription_items: [{ item_price_id: "skipwait_momentum_30d-USD" }],
+      },
+    },
+  };
+
+  function buildApp(apply: ReturnType<typeof vi.fn>, alert: ReturnType<typeof vi.fn>) {
+    vi.stubEnv("CHARGEBEE_WEBHOOK_SECRET", "test-secret");
+    const app = express();
+    app.use(express.json());
+    registerChargebeeRoutes(app, {
+      resolveIdentity: vi.fn(),
+      createPaymentIntent: vi.fn(),
+      applySubscriptionEvent: apply,
+      alertRetiredPlanEvent: alert,
+    });
+    return app;
+  }
+  const postWebhook = (app: express.Express, payload: unknown) =>
+    request(app).post("/api/chargebee/webhook").set("Authorization", auth("test-secret")).send(payload);
+
+  it("alerts the owner when a kit pass subscription matches no intent or wallet", async () => {
+    const alert = vi.fn(async () => undefined);
+    const app = buildApp(vi.fn(async () => ({ status: "ignored", reason: "unknown_subscription" })), alert);
+    const response = await postWebhook(app, kitSubscriptionEvent);
+    expect(response.status).toBe(200);
+    expect(alert).toHaveBeenCalledTimes(1);
+    expect(alert.mock.calls[0][0]).toMatchObject({ reason: "unlinked_subscription", subscriptionId: "sub_orphan_1", itemPriceId: "skipwait_momentum_30d-USD" });
+  });
+
+  it("alerts on checkout_intent_mismatch for a kit price, but not on a duplicate", async () => {
+    const alert = vi.fn(async () => undefined);
+    const app = buildApp(vi.fn(async () => ({ status: "ignored", reason: "checkout_intent_mismatch" })), alert);
+    expect((await postWebhook(app, kitSubscriptionEvent)).status).toBe(200);
+    expect(alert).toHaveBeenCalledTimes(1);
+
+    const quiet = vi.fn(async () => undefined);
+    const app2 = buildApp(vi.fn(async () => ({ status: "duplicate" })), quiet);
+    expect((await postWebhook(app2, kitSubscriptionEvent)).status).toBe(200);
+    expect(quiet).not.toHaveBeenCalled();
+  });
+});

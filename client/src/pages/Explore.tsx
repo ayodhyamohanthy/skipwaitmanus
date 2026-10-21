@@ -10,7 +10,8 @@ import { applySeo } from "@/lib/seo";
 
 export default function Explore() {
   const directory = useCompanyDirectory();
-  const [search, setSearch] = useState("");
+  // Pre-filter from the landing search bar (QA fix, #407): /explore?q=...
+  const [search, setSearch] = useState(() => (typeof window === "undefined" ? "" : (new URLSearchParams(window.location.search).get("q") ?? "")));
   const [role, setRole] = useState("");
   const [location, setLocation] = useState("");
   const companies = directory.data?.companies;

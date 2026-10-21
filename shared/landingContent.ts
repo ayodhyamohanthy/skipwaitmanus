@@ -26,7 +26,7 @@ export const LANDING_H1 = `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}.`;
 export const LANDING_HERO_LEAD_PARTS = ["Connect with people inside the companies you want to join.", "A real introduction. Not another application into the unknown."] as const;
 export const LANDING_HERO_LEAD = LANDING_HERO_LEAD_PARTS.join(" ");
 /** The search snippet (160 characters at most): how it works, then both money facts (D-063). */
-export const LANDING_SUMMARY = `Paste a role link; verified employees at the company decide privately whether to refer you. ${MONEY_SENTENCE_SHORT}`;
+export const LANDING_SUMMARY = `Paste a role link; verified employees decide privately whether to refer you. ${MONEY_SENTENCE_SHORT}`;
 
 export const LANDING_SEEKER_STEPS: readonly LandingStep[] = [
   { title: "Start with the role", body: "Paste the job link for the company you want to join." },

@@ -4,11 +4,14 @@
 
 How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. The machine order every agent's `build` uses is [`assignments.json`](assignments.json) (D-083): change the two together. System map: [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md). Packet format: [`TEMPLATE.md`](TEMPLATE.md).
 
+## Oct 21 (CEO sync, D-085)
+The picker's order (`assignments.json`) after the money lane (GO-LIVE-1b, D-038 reconcile, D-035): the pull requests built before they had a packet, finished through [`OCT21-BUILT-PRS.md`](OCT21-BUILT-PRS.md) — D-067 review outbox (#322), D-104 company signal (#373), D-107 claim your company (#384), D-105 win card (#375), D-106 impact card (#382), D-048 phase 3 (#358, #361, #362, #360), row 20 (#310, #311, #314), task 13 slice A (#308). Then the packets Claude Code owes (D-090 BYOR, D-095 one-tap, D-100 security audit, D-099 bonus pages, D-093 language, D-094 AI-in-UI). The pricing pull requests #380 and #381 wait for the owner (D-056, D-091).
+
 ## Rules for this page
 - A row may be delegated only when its packet below is **ready**. "Architect" means Claude Code writes or refreshes the packet first.
-- A row still claimed by a Claude Code session (D-072 lanes) stays with that session unless 24 hours pass with no new commits on its branch (queue rule 2). Check the §3b row before you claim it.
-- Pick the first stage with a ready packet whose §3b status is `todo` and whose dependencies are live. Within a stage, anything marked parallel-safe may run at the same time with different models (D-075). Pushes to `main` stay one at a time.
-- Rows another model already owns (§3b status `in progress — <model>`) are theirs until 24 hours pass with no commits on their branch (queue rule 2).
+- Nobody picks or claims a row by hand: every agent runs `node scripts/next-task.mjs --claim "<your model name>"` and does only what it prints (D-083, D-085). It walks [`assignments.json`](assignments.json) top down: red `main`, then your own unfinished work (pending work ranked above it with nobody on it first), then pending work nobody is on, then new work whose packet is ready, whose dependencies are done and whose lane is free. A red or blocked priority holds its own lane and the tasks that depend on it; red `main` holds everything (D-109).
+- A claim is the task's branch on origin; your first commit on it sets the §3b row, which reaches `main` with the work. A claim is free after 2 hours with no push to its branch or lock and no `--heartbeat` (D-085; queue rule 2 said 24 hours); the picker then hands it to the next agent on the same branch.
+- Within a stage, anything marked parallel-safe may run at the same time with different models (D-075). Pushes to `main` stay one at a time.
 
 ## Stage 0 — now
 | Order | §3b row | Packet | Tier | Size | Packet state | Runs beside |
@@ -29,7 +32,7 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. T
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on | Runs beside |
 |---|---|---|---|---|---|---|---|
 | 2.1 | 1 (go-live slice: `/plans` packs and passes, coverage before payment, no accidental renewal) | [GO-LIVE-1-plans-purchase.md](GO-LIVE-1-plans-purchase.md) | 1 | M | done — #351; passes switched off again by the D-084 P0 until 2.1b | 1.1 live, 1.3 built | 3.1 |
-| 2.1b | 1 (pass slice: a paid pass always activates, then passes go back on sale; D-084) | [GO-LIVE-1b-pass-activation.md](GO-LIVE-1b-pass-activation.md) | 1 | M | ready — first in the queue | 2.1 live | 3.1 |
+| 2.1b | 1 (pass slice: a paid pass always activates, then passes go back on sale; D-084) | [GO-LIVE-1b-pass-activation.md](GO-LIVE-1b-pass-activation.md) | 1 | M | landed — PR #359 (merge of `agent/queue/go-live-passes`); passes stay off until the owner's §4.5 test-site evidence | 2.1 live | 3.1 |
 | 2.2 | D-065-daily-money-check | live (`eed80e5f`, PR #317); follow-up [D-065-B-slice-checks.md](D-065-B-slice-checks.md) | 2 | S | done — `dc8d0bf3` (PR #333) | — | everything |
 | 2.3 | Owner: read the D-069 dry run, apply, fix `billing_cycles` mismatches in Chargebee, add the pass-refund wording to `/refunds`, then the one live ₹99 UPI buy-and-refund (D-065) | plan §6 | — | — | owner action | 1.3, 2.1 | — |
 
@@ -37,8 +40,8 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. T
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on |
 |---|---|---|---|---|---|---|
 | 3.0 | D-079-card-validation-free-credits | [D-079-card-validation-free-credits.md](D-079-card-validation-free-credits.md) | 1 | M | ready; claimed by Instinct (Oct 19) | — | nothing that touches the credit-cycle functions (3.1-3.3 included) |
-| 3.1 | D-038 slice A: claim and allocation lapse, 5-claim cap | [D-038-A-lapses.md](D-038-A-lapses.md) | 1 | M | built on `agent/opencode/d038-a-lapses`, not on `main`; draft PR and independent review next | 0.1 live |
-| 3.2 | D-038 slice B: referred deadline, step back, seeker confirmation | [D-038-B-referred-deadline.md](D-038-B-referred-deadline.md) | 1 | M | on `main` unreviewed (`c53ea471`, fixed forward in #330 `7b201aab`); timer job not registered; independent review next | 3.1 live |
+| 3.1 | D-038 slice A: claim and allocation lapse, 5-claim cap | [D-038-A-lapses.md](D-038-A-lapses.md) | 1 | M | reconciled by [D-038-reconcile.md](D-038-reconcile.md) (D-103): PR #353 (`agent/workbuddy/d038-a-lapses`) is the work; fix R1–R5, then independent review; never merge `agent/opencode/d038-a-lapses` | 0.1 live |
+| 3.2 | D-038 slice B: referred deadline, step back, seeker confirmation | [D-038-B-referred-deadline.md](D-038-B-referred-deadline.md) | 1 | M | on `main` unreviewed (`c53ea471`, fixed forward in #330 `7b201aab`); reviewed inside [D-038-reconcile.md](D-038-reconcile.md), its money steps and routes behind `REFERRED_DEADLINE_ENABLED` until that review passes (D-103) | 3.1 live |
 | 3.3 | D-035 + D-052: the pass reason decides the credit | [D-035-pass-reason-credit.md](D-035-pass-reason-credit.md) | 1 | M | ready | 3.2 live |
 | 3.4 | D-035 + D-066(1): Send again | D-035-send-again.md | 1 | M | architect (after 3.3) | 3.3 live |
 
@@ -61,7 +64,7 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. T
 | D-060-pending-action-emails | Needs task 21 (notification kinds and preferences); D-038's reminders ship in-app first |
 | D-057-referrer-continuity | After the session gate (1.2b) |
 | P2 (D-028 link previews and company pages) | After stage 1; parallel-safe with stage 3 |
-| D-048 phase 3 (surface by surface) | After 1.4; each surface is its own packet |
+| D-048 phase 3 (surface by surface) | Mapped in [D-048-phase-3-rollout.md](D-048-phase-3-rollout.md): eight waves, one PR each. W0 (shell) is ready to packet; each later wave gets its own packet. The four former owner calls are decided on merit (D-123), §6. |
 | Tasks 12, 13, 20 | Owned by opencode and Qoder (open PRs #308, #310, #311, #314) |
 | The rest of §3b | D-053 order; parked rows stay parked (29, 30, 31, lite mode, 40) |
 

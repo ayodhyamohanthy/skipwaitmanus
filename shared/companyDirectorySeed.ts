@@ -8,7 +8,8 @@
 // landing page's static "open doors at launch" row (the landing makes no data
 // fetch by contract). Every live surface reads GET /api/companies instead.
 //
-// OWNER ACTION: confirm these domains (notably goneutrinos.com) and that the
+// Neutrinos (formerly Go Neutrinos; owner confirmed the rebrand Oct 21, 2026) keeps goneutrinos.com as an alias.
+// OWNER ACTION: confirm these domains and that the
 // descriptors are approved live copy. Availability is never seeded: it is
 // derived from verified referrers on every read.
 
@@ -28,7 +29,7 @@ export type CompanySeed = {
 export const LAUNCH_COMPANY_SEED: readonly CompanySeed[] = [
   { slug: "skipwait", name: "skipwait.me", initials: "SW", industry: "Technology", location: "Global · Remote", functions: ["Engineering", "Product", "Design"], blurb: "Build the platform making warm introductions more accessible.", domains: ["skipwait.me"], sortOrder: 10 },
   { slug: "wipro", name: "Wipro", initials: "W", industry: "Technology services", location: "Global", functions: ["Engineering", "Data", "Operations"], blurb: "Explore roles across technology, consulting, and business operations.", domains: ["wipro.com"], sortOrder: 20 },
-  { slug: "go-neutrinos", name: "Go Neutrinos", initials: "GN", industry: "Digital products", location: "India · Remote", functions: ["Engineering", "Product", "Design"], blurb: "Connect around product, design, and engineering opportunities.", domains: ["goneutrinos.com"], sortOrder: 30 },
+  { slug: "go-neutrinos", name: "Neutrinos", initials: "N", industry: "Digital products", location: "India · Remote", functions: ["Engineering", "Product", "Design"], blurb: "Connect around product, design, and engineering opportunities.", domains: ["neutrinos.com", "goneutrinos.com"], sortOrder: 30 },
   { slug: "tcs", name: "TCS", initials: "T", industry: "Technology services", location: "Global", functions: ["Engineering", "Data", "Operations"], blurb: "Find a warmer path into global technology and consulting teams.", domains: ["tcs.com"], sortOrder: 40 },
   { slug: "merkle", name: "Merkle", initials: "M", industry: "Customer experience", location: "Global", functions: ["Data", "Design", "Operations"], blurb: "Explore opportunities across experience, data, media, and technology.", domains: ["merkle.com"], sortOrder: 50 },
 ];
