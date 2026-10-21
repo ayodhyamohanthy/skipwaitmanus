@@ -123,6 +123,11 @@ jobs:
           ADMIN_DATABASE_URL: mysql://${{ vars.SKIPWAIT_NEWDB_USER }}:${{ secrets.SKIPWAIT_NEWDB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/mysql
           QA_LOCAL_DB_PASSWORD: ${{ secrets.QA_LOCAL_DB_PASSWORD }}
         run: npx tsx scripts/qa-grant-local-user.ts
+      - name: Diagnose schema validation against scratch DB
+        if: inputs.probe_only == 'true'
+        env:
+          DATABASE_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
+        run: npx tsx scripts/qa-schema-check.ts
       - name: Verify gate (401 without creds, 200 with)
         if: (inputs.rotate_gate == 'true' || inputs.probe_only == 'true') && inputs.setup_local_user != 'true'
         env:
