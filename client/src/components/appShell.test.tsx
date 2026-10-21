@@ -95,6 +95,11 @@ describe("AppShell on GoalShell (W0)", () => {
     const { container } = render(<AppShell><p>page</p></AppShell>);
     const bars = screen.getAllByRole("navigation", { name: "Primary" });
     expect(bars.some(bar => bar.className.includes("sticky") && bar.className.includes("bottom-0"))).toBe(true);
+    // The desktop rail stays in view too, so the account/More group is reachable
+    // without scrolling to the end of a long directory.
+    const rail = bars[0];
+    expect(rail.className).toContain("gdesk:sticky");
+    expect(rail.className).toContain("gdesk:h-screen");
     // The sticky bar spans rows 2..-1; main must claim phone row 2 explicitly or
     // auto-placement drops it into an implicit fourth row below a blank screen.
     expect(container.querySelector("main")?.className).toContain("max-gdesk:row-start-2");
