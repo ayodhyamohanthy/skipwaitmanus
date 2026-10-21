@@ -69,7 +69,7 @@
       "workers_dev": true,
       "routes": [],
       "triggers": { "crons": [] },
-      "containers": [{ "class_name": "SkipwaitApi", "image": "./Dockerfile.qa", "max_instances": 1, "instance_type": "lite", "name": "skipwait-qa-api" }],
+      "containers": [{ "class_name": "SkipwaitApi", "image": "./Dockerfile.qa", "max_instances": 1, "instance_type": "basic", "name": "skipwait-qa-api" }] // basic (1 GiB): lite (256 MiB) VMs stopped at boot with zero logs - OOM signature; prod runs basic (founder-approved Oct 16),
       "durable_objects": { "bindings": [{ "name": "SkipwaitApi", "class_name": "SkipwaitApi" }] },
       "vars": {
         "NODE_ENV": "test",
