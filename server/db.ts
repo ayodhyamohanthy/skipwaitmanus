@@ -4566,7 +4566,13 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       // the free cycle by one month (the kit carryover shape), and the
       // bundle's invoice credits (always >= Free's 3) land on top. Free cycles
       // stop while the family plan runs. FAMILY_UPGRADE_FREE_LEFTOVER flips it.
-      if (retainsAccess && wallet && !sameSubscription && wallet.plan === "free" && wallet.monthlyCreditsRemaining > 0 && FAMILY_UPGRADE_FREE_LEFTOVER === "carry_one_month") {
+      // First transition onto the family plan, in either webhook order: when the
+      // payment beats the subscription event, the email binding attached the
+      // subscriptionId while the wallet was still plan "free" (sameSubscription
+      // is already true here). plan === "free" is the real once-only guard - a
+      // renewal or redelivery meets a family wallet and skips. Idempotent per
+      // event via the v2carry:<eventId> grant key.
+      if (retainsAccess && wallet && wallet.plan === "free" && wallet.monthlyCreditsRemaining > 0 && FAMILY_UPGRADE_FREE_LEFTOVER === "carry_one_month") {
         const leftover = wallet.monthlyCreditsRemaining;
         const cycleKey = wallet.monthlyCycleKey ?? currentMonthlyCycleKey(new Date());
         const [cycleYear, cycleMonth] = cycleKey.split("-").map(Number);
