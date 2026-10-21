@@ -1,4 +1,4 @@
-> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-048, D-055).
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-048, D-055, D-120 (goal-focused UI is the one design; older design sources are history)).
 
 # Design Screen Coverage — skipwait.me
 

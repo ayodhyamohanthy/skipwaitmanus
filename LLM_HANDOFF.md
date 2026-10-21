@@ -21,7 +21,7 @@ Hard rule: never invent user counts, testimonials, outcomes, or fake activity. L
 - `app/AGENTS.md` — architecture rules. `app/roadmap.md` — what is designed.
 
 ## 3. Design system (do not change without approval)
-- Kit v4 is no longer binding (D-048): the goal-UI key screens were approved on Oct 18 (D-071, `design/goal-ui/pick/`); phase 2 shipped Oct 19 (`DESIGN.md`, tokens in `client/src/index.css`, primitives in `client/src/components/goal/`, token audit); phase 3 moves surface by surface, and until a surface is moved over its live tokens stay.
+- Kit v4 is RETIRED (D-120, Oct 21): the goal-focused UI is the one design, landing to platform - the contract in `DESIGN.md`, the doctrine in `design/goal-ui/DOCTRINE.md`, comps in `design/goal-ui/pick/`, tokens in `client/src/index.css`, primitives in `client/src/components/goal/`, token audit. Surfaces migrate one at a time through the gate (`docs/plans/GOAL_UI_MIGRATION.md`); until a surface migrates, its live tokens stay.
 - Colors: white #FFFFFF, ink #141414, electric blue #0000FF, invitation yellow #FFFC52.
 - Fonts: Instrument Sans (UI), IBM Plex Mono (labels/captions).
 - Signature motif: the "door" (opening a door = a referral). Keep it.
@@ -71,7 +71,7 @@ npm run dev
 Create `app/.env` with your own backend keys (VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY) when connecting a backend.
 
 ## 8. Prompt to paste into your LLM
-> You are updating SkipWait, a global job-referral PWA that is already live. Read AGENTS.md and docs/DECISIONS.md first (the decision register wins), then LLM_HANDOFF.md and everything in reference/. The attached `app/` folder is the kit v4 design reference, no longer binding (D-048): keep the live UI until the owner approves goal-focused designs. Pick work only from the priority queue in docs/KIT_V4_BUILD_PLAN.md §3b: run `node scripts/next-task.mjs --claim "<your model name>"` and do only what it prints. Never fabricate activity or counts. Money follows the register: 3 asks free every month; more use credits; referrers are never paid (D-063). Keep mobile and desktop both excellent.
+> You are updating SkipWait, a global job-referral PWA that is already live. Read AGENTS.md and docs/DECISIONS.md first (the decision register wins), then LLM_HANDOFF.md and everything in reference/. The attached `app/` folder is the kit v4 design reference, retired (D-120): the goal-focused UI (`DESIGN.md` + `design/goal-ui/DOCTRINE.md`) is binding, landing to platform; surfaces migrate one at a time through the gate (`docs/plans/GOAL_UI_MIGRATION.md`). Pick work only from the priority queue in docs/KIT_V4_BUILD_PLAN.md §3b: run `node scripts/next-task.mjs --claim "<your model name>"` and do only what it prints. Never fabricate activity or counts. Money follows the register: 3 asks free every month; more use credits; referrers are never paid (D-063). Keep mobile and desktop both excellent.
 
 ## 9. Monetization (current — `docs/DECISIONS.md`; prices in `PRICING.md` and `shared/planCatalog.ts`)
 - Passes: Start, Momentum, Land Focus and Land Sprint for 30 or 90 days, Keep warm yearly, Land Concierge by application (D-005, D-046; on sale once D-063, D-067 and D-051 land, D-059); human review and sessions stay off until staffed (D-041). Free is not shown as a card.
