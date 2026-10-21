@@ -8,7 +8,7 @@ import { createCoverageDeliverySweep } from "./coverageDeliverySweep";
 import { createDailyMoneyCheck } from "./dailyMoneyCheck";
 import { createFirstLookRelease } from "./firstLookRelease";
 import { createPlanCreditCycleJob } from "./planCreditCycleJob";
-import { createChargebeePendingReconcile } from "./chargebeePendingReconcile";
+import { createChargebeePendingReconcile, createSubscriptionPendingReconcile } from "./chargebeePendingReconcile";
 import { createDataExportSweep } from "./dataExport";
 import { createWorkEmailReverifySweep } from "./workEmailReverifySweep";
 import { createWorkEmailOtpPurgeJob } from "./workEmailOtpPurge";
@@ -44,6 +44,16 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createChargebeePendingReconcile(),
+  },
+  {
+    // GO-LIVE-1b ruling 3: a paid pass always activates - the hourly safety net
+    // under a missed webhook. Paid pending pass checkouts activate from their
+    // provider checkout page; expired unpaid ones are marked cancelled.
+    name: "chargebee-subscription-reconcile",
+    description: "Re-checks pending pass checkouts older than 10 minutes (up to 3 days) and activates the paid ones the webhook missed; expired unpaid checkouts are marked cancelled",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createSubscriptionPendingReconcile(),
   },
   {
     name: "work-email-reverify-sweep",

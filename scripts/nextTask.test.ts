@@ -41,10 +41,12 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
   });
 
   it("hands a fresh agent the first pickable task in order", () => {
-    // GO-LIVE-1 is done (PR #351); D-084 queues GO-LIVE-1b (passes stay off until a paid
-    // pass can always be activated) right after it, so it is the first pickable task.
+    // GO-LIVE-1b is done (landed through PR #359; passes stay off until its §4.5
+    // test-site evidence), so the queue head moves to the next pickable task:
+    // D-038-reconcile, whose pull request #353 waits on its review findings - finishing
+    // half-built money work comes before starting anything new (D-085).
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    expect(first).toMatchObject({ kind: "build", task: { id: "GO-LIVE-1b" } });
+    expect(first).toMatchObject({ kind: "build", task: { id: "D-038-reconcile" } });
   });
 
   it("rejects unknown keys, duplicates, bad branches, missing packets, unknown dependencies and cycles", () => {

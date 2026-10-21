@@ -13,6 +13,7 @@ import { failureMessage, parseSummary, type CreditSummary } from "@/components/p
 import { CreditCta, CreditsSection, UsagePanel } from "@/components/plans/PlansCredits";
 import { FairBand, PlansReference } from "@/components/plans/PlansReference";
 import { PlanCards } from "@/components/plans/PlanCards";
+import { PendingCheckoutReturn } from "@/components/plans/PendingCheckoutReturn";
 import { CoverageBlock, PacksSection, PassesSection, useKitCheckout } from "@/components/plans/PlansKitSections";
 import { PlansCatalogOfflineError, usePlansCatalog } from "@/components/plans/plansCatalogApi";
 import { UpgradeMoments, upgradeMoments } from "@/components/plans/UpgradeMoments";
@@ -67,6 +68,9 @@ export default function Plans() {
     return () => { active = false; };
   }, [getToken, isLoaded, isSignedIn, isReferrer]);
 
+
+  // QA review (#359 finding 1): until a pass is proven fixed-term on the provider
+  // side, an active subscription keeps its cancel-renewal control.
   const scheduleCancellation = async () => {
     if (!isSignedIn || summary?.subscriptionStatus !== "active") return;
     setCancelError("");
@@ -89,7 +93,7 @@ export default function Plans() {
   };
 
   if (payment === "pending") {
-    return <main data-skipwait-screen="plans" className="page-content plans-page"><section className="workspace-empty"><span className="empty-icon"><Check /></span><h2>We’re confirming your payment.</h2><p>Access starts only after the verified payment event reaches our server.</p><Button asChild className="brand-button"><Link href="/requests">View my requests<ArrowRight /></Link></Button></section></main>;
+    return <main data-skipwait-screen="plans" className="page-content plans-page"><PendingCheckoutReturn role={isReferrer ? "referrer" : "job_seeker"} getToken={getToken} /></main>;
   }
 
   return <main data-skipwait-screen="plans" className="page-content plans-page">
@@ -103,6 +107,7 @@ export default function Plans() {
         <PlanCards
           currency={currency}
           activePlan={activePlan}
+          endsAt={summary?.subscriptionCurrentTermEnd ?? null}
           renewing={summary?.subscriptionStatus === "active"}
           cancelRenewal={{ confirming: confirmingCancel, cancelling, onAsk: () => setConfirmingCancel(true), onConfirm: () => { void scheduleCancellation(); setConfirmingCancel(false); }, onKeep: () => setConfirmingCancel(false) }}
         />

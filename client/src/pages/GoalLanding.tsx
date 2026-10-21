@@ -13,6 +13,7 @@ import { GoalNum } from "@/components/goal/GoalNum";
 import CookieConsent from "@/components/CookieConsent";
 import { applySeo } from "@/lib/seo";
 import { ASK_COST_SENTENCE, REFERRING_FREE_LINE } from "@shared/moneyCopy";
+import { BetaBadge, BetaNoticeLine } from "@/components/BetaNotice";
 
 const STEPS: Array<{ title: string; body: string }> = [
   { title: "Find your company", body: "See the companies with verified employees inside, and the roles you can ask about." },
@@ -39,7 +40,7 @@ export default function GoalLanding() {
   return (
     <div className="min-h-screen bg-g-canvas font-g-sans text-g-ink">
       <header className="flex items-center justify-between border-b border-g-hairline px-5 gdesk:px-10" style={{ height: "var(--g-topbar-h)" }}>
-        <Link href="/" aria-label="skipwait.me home" className="text-g-label tracking-tight">skipwait.me</Link>
+        <span className="inline-flex items-center gap-2"><Link href="/" aria-label="skipwait.me home" className="text-g-label tracking-tight">skipwait.me</Link><BetaBadge tone="goal" /></span>
         <nav aria-label="Website navigation" className="flex items-center gap-5">
           <Link href="/referrer" className="hidden text-g-meta text-g-ink-2 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink gdesk:inline">Join as a referrer</Link>
           <Link href="/sign-in" className="text-g-meta text-g-ink-2 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink">Sign in</Link>
@@ -50,6 +51,7 @@ export default function GoalLanding() {
         <section className="py-14 gdesk:py-20">
           <h1 className="text-g-display gdesk:text-[40px] gdesk:leading-[48px]">Get referred.</h1>
           <p className="mt-4 max-w-xl text-g-body text-g-ink-2">Ask a verified employee at the company you want to join. They choose every referral: no commissions, no outcome promises.</p>
+          <BetaNoticeLine tone="goal" />
           <div className="mt-8 rounded-g-sheet border border-g-control-edge p-5" data-testid="goal-next-step">
             <span className="text-g-badge uppercase tracking-[0.08em] text-g-ink-3">Your next step</span>
             <div className="mt-3 flex flex-wrap items-center gap-4">
