@@ -123,8 +123,16 @@ jobs:
             [ "$code_yes" = "200" ] && break
             sleep 15
           done
-          [ "$code_yes" = "200" ] || echo "health body: $(echo "$resp" | head -c 400)"
           echo "without-creds=${code_no} with-creds=${code_yes}"
+          if [ "$code_yes" != "200" ]; then
+            echo "health body: $(echo "$resp" | head -c 400)"
+            echo "--- capturing 40s of worker/container logs while re-probing:"
+            (timeout 40 npx wrangler tail --env qa --format pretty > tail.log 2>&1 &)
+            sleep 6
+            curl -s -o /dev/null -m 30 -u "qa:${GATE}" https://skipwait-qa.ayodhya-711.workers.dev/api/health || true
+            sleep 36
+            sed -E 's#(mysql://)[^"'"'"' ]+#\1***#g; s#(DATABASE_URL|JWT_SECRET|WORKOS_API_KEY|WORKOS_COOKIE_PASSWORD|ZEPTOMAIL_API_KEY)["'"'"'=:]+[^ ,"'"'"']+#\1=***#g' tail.log | grep -vE "^\s*$" | tail -50
+          fi
           [ "$code_no" = "401" ] && [ "$code_yes" = "200" ]
       - name: Seed fictional share fixtures (manual runs only, when requested)
         if: github.event_name == 'workflow_dispatch' && (inputs.seed == 'true' || inputs.seed_only == 'true') && inputs.rotate_gate != 'true'
