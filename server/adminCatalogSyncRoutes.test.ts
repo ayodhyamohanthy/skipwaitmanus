@@ -65,7 +65,7 @@ describe("admin catalog sync routes", () => {
     expect(response.status).toBe(200);
     expect(response.headers["cache-control"]).toBe("no-store");
     const dryRun = catalogSyncDryRunSchema.parse(response.body);
-    expect(dryRun).toMatchObject({ site: "skipwait", environment: "live", counts: { desired: 26, toCreate: 37, itemPricesToCreate: 26, correct: 0, excluded: 8 } });
+    expect(dryRun).toMatchObject({ site: "skipwait", environment: "live", counts: { desired: 28, toCreate: 39, itemPricesToCreate: 28, correct: 0, excluded: 8 } });
     expect(dryRun.planHash).toMatch(/^[0-9a-f]{64}$/);
   });
 
@@ -115,7 +115,7 @@ describe("admin catalog sync routes", () => {
     expect(response.headers["cache-control"]).toBe("no-store");
     const report = catalogSyncApplyResponseSchema.parse(response.body);
     expect(report).toMatchObject({ outcome: "applied", stoppedReason: null });
-    expect(report.created).toHaveLength(37);
+    expect(report.created).toHaveLength(39);
     expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "billing.catalog_sync.apply_started", actorUserId: 1 }));
 
     live = true;
@@ -150,7 +150,7 @@ describe("admin catalog sync routes", () => {
     const plan = catalogSyncDryRunSchema.parse((await request(app).get("/api/admin/billing/catalog-sync")).body);
     const response = await request(app).post("/api/admin/billing/catalog-sync/apply").send({ planHash: plan.planHash, confirmSite: "skipwait" });
     expect(catalogSyncApplyResponseSchema.parse(response.body).outcome).toBe("applied");
-    expect(urls.length).toBeGreaterThan(37);
+    expect(urls.length).toBeGreaterThan(39);
     for (const { method, url } of urls) {
       expect(url).toMatch(/^https:\/\/skipwait\.chargebee\.com\/api\/v2\/(item_families|items|item_prices)(\?|$)/);
       if (method === "POST") expect(url).toMatch(/\/api\/v2\/(item_families|items|item_prices)$/);

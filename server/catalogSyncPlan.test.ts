@@ -30,13 +30,13 @@ function withPrice(id: string, replace: ((price: ReturnType<typeof providerItemP
 }
 
 const EXPECTED_IDS = [
-  "skipwait_pack_2-INR", "skipwait_pack_5-USD", "skipwait_pack_25-INR", "skipwait_pack_25-USD", "skipwait_pack_60-INR", "skipwait_pack_60-USD", "skipwait_pack_150-INR", "skipwait_pack_150-USD",
+  ...[1, 5, 10, 25, 50].flatMap(n => ["INR", "USD"].map(currency => `skipwait_pack_${n}-${currency}`)),
   "skipwait_keep_warm_yearly-INR", "skipwait_keep_warm_yearly-USD",
   ...["start", "momentum", "land_focus", "land_sprint"].flatMap(plan => ["30d", "90d"].flatMap(term => ["INR", "USD"].map(currency => `skipwait_${plan}_${term}-${currency}`))),
 ].sort();
 
 describe("desired catalog", () => {
-  it("is exactly the 26 sold item prices, derived from shared/planCatalog.ts", () => {
+  it("is exactly the 28 sold item prices, derived from shared/planCatalog.ts", () => {
     const desired = desiredCatalog();
     expect(desired.map(entry => entry.spec.id).sort()).toEqual(EXPECTED_IDS);
     const fromCatalog = [
@@ -45,10 +45,10 @@ describe("desired catalog", () => {
     ];
     expect(fromCatalog.sort()).toEqual(EXPECTED_IDS);
     const amount = (id: string) => specFor(id).spec.price;
-    expect(amount("skipwait_pack_2-INR")).toBe(9900);
-    expect(amount("skipwait_pack_5-USD")).toBe(500);
-    expect(amount("skipwait_pack_25-INR")).toBe(119900);
-    expect(amount("skipwait_pack_150-USD")).toBe(10500);
+    expect(amount("skipwait_pack_1-INR")).toBe(9900);
+    expect(amount("skipwait_pack_5-USD")).toBe(479);
+    expect(amount("skipwait_pack_25-INR")).toBe(197900);
+    expect(amount("skipwait_pack_10-USD")).toBe(899);
     expect(amount("skipwait_momentum_90d-INR")).toBe(249900);
     expect(amount("skipwait_land_sprint_90d-INR")).toBe(2799900);
     expect(amount("skipwait_keep_warm_yearly-USD")).toBe(2900);
@@ -97,15 +97,15 @@ describe("desired catalog", () => {
 });
 
 describe("planCatalogSync", () => {
-  it("plans the family, 10 items and 26 prices on an empty site, in execution order", () => {
+  it("plans the family, 10 items and 28 prices on an empty site, in execution order", () => {
     const dryRun = plan(EMPTY);
     expect(dryRun.family).toMatchObject({ id: "skipwait", action: "create" });
     expect(dryRun.toCreate[0]).toEqual({ kind: "item_family", params: { id: "skipwait", name: "SkipWait" } });
     expect(dryRun.toCreate.slice(1, 11).every(action => action.kind === "item")).toBe(true);
     expect(dryRun.toCreate.slice(11).every(action => action.kind === "item_price")).toBe(true);
-    expect(dryRun.toCreate).toHaveLength(37);
+    expect(dryRun.toCreate).toHaveLength(39);
     // Items in the order their first price needs them: pack items first, then plan items.
-    expect(ids(dryRun.toCreate, "item")).toEqual(["skipwait_pack_2", "skipwait_pack_25", "skipwait_pack_60", "skipwait_pack_150", "skipwait_pack_5", "skipwait_start", "skipwait_momentum", "skipwait_land_focus", "skipwait_land_sprint", "skipwait_keep_warm"]);
+    expect(ids(dryRun.toCreate, "item")).toEqual(["skipwait_pack_1", "skipwait_pack_5", "skipwait_pack_10", "skipwait_pack_25", "skipwait_pack_50", "skipwait_start", "skipwait_momentum", "skipwait_land_focus", "skipwait_land_sprint", "skipwait_keep_warm"]);
     for (const action of dryRun.toCreate) {
       // Items and prices are named after their ids; the family keeps its human name ("SkipWait").
       if (action.kind === "item") {
@@ -116,9 +116,9 @@ describe("planCatalogSync", () => {
     }
     // Prices: packs, then 30-day passes, then the yearly Keep warm, then 90-day passes (the likeliest provider refusal last).
     const terms = dryRun.toCreate.flatMap(action => (action.kind === "item_price" ? [action.params.itemType === "charge" ? "pack" : action.params.periodUnit === "year" ? "yearly" : action.params.period === 3 ? "90d" : "30d"] : []));
-    expect(terms).toEqual([...Array(8).fill("pack"), ...Array(8).fill("30d"), "yearly", "yearly", ...Array(8).fill("90d")]);
-    expect(ids(dryRun.toCreate, "item_price").slice(0, 4)).toEqual(["skipwait_pack_2-INR", "skipwait_pack_25-INR", "skipwait_pack_60-INR", "skipwait_pack_150-INR"]);
-    expect(dryRun.counts).toEqual({ desired: 26, correct: 0, mismatched: 0, blocked: 0, toCreate: 37, itemPricesToCreate: 26, extras: 0, excluded: 8 });
+    expect(terms).toEqual([...Array(10).fill("pack"), ...Array(8).fill("30d"), "yearly", "yearly", ...Array(8).fill("90d")]);
+    expect(ids(dryRun.toCreate, "item_price").slice(0, 4)).toEqual(["skipwait_pack_1-INR", "skipwait_pack_5-INR", "skipwait_pack_10-INR", "skipwait_pack_25-INR"]);
+    expect(dryRun.counts).toEqual({ desired: 28, correct: 0, mismatched: 0, blocked: 0, toCreate: 39, itemPricesToCreate: 28, extras: 0, excluded: 8 });
   });
 
   it("calls an exact existing price correct and queues nothing for it; a Keep warm year set as 12 months is also correct", () => {
@@ -133,11 +133,11 @@ describe("planCatalogSync", () => {
 
   it("flags price, currency, period, archived, pricing-model and billing-cycle differences as mismatched, never queued", () => {
     const cases = [
-      { id: "skipwait_pack_25-INR", patch: { price: 119000 }, field: "price", expected: 119900, actual: 119000, sellableNow: false },
+      { id: "skipwait_pack_25-INR", patch: { price: 247000 }, field: "price", expected: 197900, actual: 247000, sellableNow: false },
       { id: "skipwait_pack_25-USD", patch: { currency_code: "EUR" }, field: "currency_code", expected: "USD", actual: "EUR", sellableNow: false },
       { id: "skipwait_start_90d-INR", patch: { period: 1 }, field: "period", expected: "3 months", actual: "1 month", sellableNow: false },
       { id: "skipwait_momentum_30d-USD", patch: { status: "archived" }, field: "status", expected: "active", actual: "archived", sellableNow: false },
-      { id: "skipwait_pack_60-INR", patch: { pricing_model: "flat_fee" }, field: "pricing_model", expected: "per_unit", actual: "flat_fee", sellableNow: true },
+      { id: "skipwait_pack_10-INR", patch: { pricing_model: "flat_fee" }, field: "pricing_model", expected: "per_unit", actual: "flat_fee", sellableNow: true },
       { id: "skipwait_land_sprint_30d-USD", patch: { billing_cycles: undefined }, field: "billing_cycles", expected: 1, actual: null, sellableNow: true },
     ] as const;
     for (const fixture of cases) {
@@ -152,10 +152,10 @@ describe("planCatalogSync", () => {
   });
 
   it("plans a deleted price as a create (Chargebee lets a deleted id be reused)", () => {
-    const dryRun = plan(withPrice("skipwait_pack_150-USD", price => ({ ...price, status: "deleted" })));
-    expect(dryRun.toCreate).toEqual([{ kind: "item_price", params: specFor("skipwait_pack_150-USD").spec }]);
-    const missing = plan(withPrice("skipwait_pack_150-USD", null));
-    expect(missing.toCreate).toEqual([{ kind: "item_price", params: specFor("skipwait_pack_150-USD").spec }]);
+    const dryRun = plan(withPrice("skipwait_pack_10-USD", price => ({ ...price, status: "deleted" })));
+    expect(dryRun.toCreate).toEqual([{ kind: "item_price", params: specFor("skipwait_pack_10-USD").spec }]);
+    const missing = plan(withPrice("skipwait_pack_10-USD", null));
+    expect(missing.toCreate).toEqual([{ kind: "item_price", params: specFor("skipwait_pack_10-USD").spec }]);
     expect(missing.planHash).toBe(dryRun.planHash);
   });
 
@@ -196,8 +196,8 @@ describe("planCatalogSync", () => {
     const priceIds = ids(dryRun.toCreate, "item_price");
     for (const id of Object.keys(reasons)) expect(priceIds).not.toContain(id);
     // Everything else still plans normally, including the other land_focus prices.
-    expect(priceIds).toEqual(expect.arrayContaining(["skipwait_land_focus_30d-USD", "skipwait_land_focus_90d-INR", "skipwait_pack_2-INR", "skipwait_keep_warm_yearly-INR"]));
-    expect(priceIds).toHaveLength(26 - 11);
+    expect(priceIds).toEqual(expect.arrayContaining(["skipwait_land_focus_30d-USD", "skipwait_land_focus_90d-INR", "skipwait_pack_1-INR", "skipwait_keep_warm_yearly-INR"]));
+    expect(priceIds).toHaveLength(28 - 11);
   });
 
   it("reuses the one family existing SkipWait prices use, creates 'skipwait' when there is none, and blocks new items when there are several", () => {
@@ -221,11 +221,11 @@ describe("planCatalogSync", () => {
     expect(ambiguous.family.action).toBe("blocked");
     expect(ambiguous.family.reason).toMatch(/legacy_family/);
     expect(ambiguous.toCreate.filter(action => action.kind !== "item_price")).toEqual([]);
-    expect(ambiguous.blocked).toHaveLength(26);
+    expect(ambiguous.blocked).toHaveLength(28);
   });
 
   it("keeps the planHash stable across listing order and volatile fields, and changes it with any planned action, classification, site or environment", () => {
-    const base = withPrice("skipwait_pack_25-INR", price => ({ ...price, price: 119000 }));
+    const base = withPrice("skipwait_pack_25-INR", price => ({ ...price, price: 247000 }));
     const reference = plan(base);
     expect(reference.planHash).toMatch(/^[0-9a-f]{64}$/);
     const shuffled = { families: [...base.families].reverse(), items: [...base.items].reverse(), itemPrices: [...base.itemPrices].reverse() };
@@ -234,7 +234,7 @@ describe("planCatalogSync", () => {
     expect(plan(volatile).planHash).toBe(reference.planHash);
     expect(plan(base, { checkedAt: new Date("2026-10-19T00:00:00.000Z") }).planHash).toBe(reference.planHash);
     expect(plan(withPrice("skipwait_pack_25-INR", price => ({ ...price, price: 118000 }))).planHash).not.toBe(reference.planHash);
-    expect(plan({ ...base, itemPrices: base.itemPrices.filter(price => price.id !== "skipwait_pack_60-USD") }).planHash).not.toBe(reference.planHash);
+    expect(plan({ ...base, itemPrices: base.itemPrices.filter(price => price.id !== "skipwait_pack_10-USD") }).planHash).not.toBe(reference.planHash);
     expect(plan(base, { site: "skipwait-test" }).planHash).not.toBe(reference.planHash);
     expect(plan(base, { environment: "test" }).planHash).not.toBe(reference.planHash);
   });

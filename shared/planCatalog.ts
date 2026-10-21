@@ -83,8 +83,8 @@ const pass = (usd30: number, inr30: number, usd90: number, inr90: number): Catal
 export type PaidCatalogPlan = CatalogPlan & { id: CatalogPlanId };
 
 /**
- * Credit PACKS (the D-005/D-036 ladder: first pack ₹99 for 2 / $5 for 5, then
- * 25 / 60 / 150) stay on sale alongside the passes (D-036/D-046). The flag
+ * Credit PACKS (the D-005/D-036 ladder, proposed re-cut: 1 / 5 / 10 / 25 / 50 credits;
+ * one credit is ₹99 / $1) stay on sale alongside the passes (D-036/D-046). The flag
  * below only hides client entry points: the server checkout route, pricing and
  * the payment-recovery screen are untouched.
  */
@@ -135,7 +135,7 @@ export function planIntervals(plan: CatalogPlan): CatalogInterval[] {
 
 // ---- Credit packs: one-time, never renew, never expire ----
 
-export const CATALOG_PACK_IDS = ["pack_2", "pack_5", "pack_25", "pack_60", "pack_150"] as const;
+export const CATALOG_PACK_IDS = ["pack_1", "pack_5", "pack_10", "pack_25", "pack_50"] as const;
 export type CatalogPackId = (typeof CATALOG_PACK_IDS)[number];
 
 export type CreditPack = {
@@ -143,21 +143,22 @@ export type CreditPack = {
   credits: number;
   /** Sold only in the currencies listed (pack sets differ by currency). */
   prices: Partial<Record<CatalogCurrency, number>>;
-  /** The first-purchase pack of its currency: $5 for 5, or ₹99 for 2 (enough for one extra open ask). */
+  /** The first-purchase pack of its currency: $5 for 5, or ₹198 for 2 (enough for one extra open ask). */
   firstPack: boolean;
   recommended: boolean;
 };
 
 /**
- * USD 5/$5, 25/$22, 60/$48, 150/$105. INR 2/₹99, 25/₹1,199, 60/₹2,599, 150/₹5,999.
+ * USD 1/$1, 5/$4.79, 10/$8.99, 25/$19.99, 50/$39.99. INR 1/₹99, 5/₹479, 10/₹899, 25/₹1,979, 50/₹3,959.
+ * Floor: ₹99 / $1 buys one credit; bigger packs save a little, none under about ₹79 / $0.80 a credit (owner Oct 21 07:54 IST).
  * Purchased credits never expire and never affect referral access or queue position.
  */
 export const CREDIT_PACKS: readonly CreditPack[] = [
-  { id: "pack_2", credits: 2, prices: { INR: inr(99) }, firstPack: true, recommended: false },
-  { id: "pack_5", credits: 5, prices: { USD: usd(5) }, firstPack: true, recommended: false },
-  { id: "pack_25", credits: 25, prices: { USD: usd(22), INR: inr(1_199) }, firstPack: false, recommended: true },
-  { id: "pack_60", credits: 60, prices: { USD: usd(48), INR: inr(2_599) }, firstPack: false, recommended: false },
-  { id: "pack_150", credits: 150, prices: { USD: usd(105), INR: inr(5_999) }, firstPack: false, recommended: false },
+  { id: "pack_1", credits: 1, prices: { USD: usd(1), INR: inr(99) }, firstPack: false, recommended: false },
+  { id: "pack_5", credits: 5, prices: { USD: usd(4.79), INR: inr(479) }, firstPack: false, recommended: false },
+  { id: "pack_10", credits: 10, prices: { USD: usd(8.99), INR: inr(899) }, firstPack: false, recommended: false },
+  { id: "pack_25", credits: 25, prices: { USD: usd(19.99), INR: inr(1_979) }, firstPack: false, recommended: true },
+  { id: "pack_50", credits: 50, prices: { USD: usd(39.99), INR: inr(3_959) }, firstPack: false, recommended: false },
 ];
 
 export function catalogPackById(id: unknown): CreditPack | undefined {

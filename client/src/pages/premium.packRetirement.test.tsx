@@ -19,7 +19,7 @@ const catalog = (packsAvailable: boolean) => ({
   region: "IN", currency: "INR", priceNote: null,
   free: { openRequests: 2, creditsPerMonth: 2 },
   plans: [],
-  packs: [{ id: "pack_2", credits: 2, amount: 9900, available: packsAvailable, firstPack: true, recommended: false }],
+  packs: [{ id: "pack_1", credits: 1, amount: 9900, available: packsAvailable, firstPack: false, recommended: false }],
   sessions: [], creditCosts: [],
   fairness: { maxOpenAsksPerCompany: 2, planVisibleToReferrers: false },
 });
