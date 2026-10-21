@@ -22,7 +22,8 @@ describe("job level classifier (always a level, never unread)", () => {
   it("explicit ladder tags map conservatively", () => {
     expect(lvl("SDE 2, Marketplace")).toMatchObject({ level: 4, confidence: "high", basis: "ladder-tag" });
     expect(lvl("IC5 Backend Engineer")).toMatchObject({ level: 7 });
-    expect(lvl("Software Engineer L3")).toMatchObject({ level: 5 });
+    expect(lvl("Software Engineer (L5)")).toMatchObject({ level: 5, confidence: "medium", basis: "ladder-tag-bare" });
+    expect(lvl("Software Engineer L3")).toMatchObject({ level: 3, confidence: "medium", basis: "ladder-tag-bare" });
   });
   it("years of experience, lower bound of a range (tie-break to lower)", () => {
     expect(parseYearsOfExperience("Requires 5-8 years of experience")).toBe(5);
@@ -65,10 +66,24 @@ describe("adversarial cases (growth review, Oct 21)", () => {
     expect(lvl("Software Engineer 2")).toMatchObject({ level: 4 });
     expect(lvl("Product Analyst III")).toMatchObject({ level: 5 });
   });
+  it("(4b) bare L-number maps to itself, medium, capped at L6 (growth round 2)", () => {
+    expect(lvl("Software Engineer (L5)")).toMatchObject({ level: 5, confidence: "medium" });
+    expect(lvl("Backend Engineer (L9)").level).toBeLessThanOrEqual(6);
+  });
+  it("(4c) associate product manager family (growth round 2)", () => {
+    expect(lvl("Associate Product Manager")).toMatchObject({ level: 3 });
+    expect(lvl("Associate Program Manager")).toMatchObject({ level: 3 });
+  });
+  it("(1b) company age is not candidate experience (growth round 2)", () => {
+    expect(parseYearsOfExperience("Company has 20 years in business")).toBeNull();
+    expect(parseYearsOfExperience("A legacy of 30 years of excellence")).toBeNull();
+    expect(lvl("Sales Executive", { description: "Company has 20 years in business" })).toMatchObject({ level: 2, confidence: "low" });
+    expect(lvl("Chat Support", { description: "2.5 years experience in chat support" })).toMatchObject({ level: 3, confidence: "medium" });
+  });
   it("(4) years parsing traps", () => {
     expect(parseYearsOfExperience("Candidates must be 18 years of age or older")).toBeNull();
     expect(lvl("Data Entry Clerk", { description: "Applicants 18 years of age welcome" }).level).toBe(2);
-    expect(parseYearsOfExperience("2.5 years in support roles")).toBeNull();
+    expect(parseYearsOfExperience("2.5 years in support roles")).toBe(2);
     expect(lvl("Support Associate", { description: "0-2 years experience" })).toMatchObject({ level: 2 });
     expect(lvl("Engineer", { description: "18 years of experience in payments" }).level).toBeLessThanOrEqual(6);
   });

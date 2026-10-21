@@ -56,16 +56,19 @@ const LADDER_TAGS: ReadonlyArray<readonly [digits: string, level: JobLevel]> = [
 ];
 const LADDER_RE = /\b(sde|swe|sdet|ic|l|p|e|g|grade|band|level)\s*-?\s*(\d{1,2})\b/g;
 
-function ladderTagLevel(title: string): JobLevel | null {
+function ladderTagLevel(title: string): { level: JobLevel; confidence: LevelConfidence; basis: string } | null {
   for (const match of title.toLowerCase().matchAll(LADDER_RE)) {
     const digits = Number(match[2]);
-    if (digits >= 8) return 10;
+    // A bare "(L5)" style tag maps to its own number, capped at L6, medium
+    // confidence (growth review): company ladders differ too much to trust more.
+    if (match[1] === "l") return { level: Math.min(Math.max(digits, 1), 6) as JobLevel, confidence: "medium", basis: "ladder-tag-bare" };
+    if (digits >= 8) return { level: 10, confidence: "high", basis: "ladder-tag" };
     const found = LADDER_TAGS.find(([tag]) => tag === match[2]);
-    if (found) return found[1];
+    if (found) return { level: found[1], confidence: "high", basis: "ladder-tag" };
   }
   // Roman numerals only after an engineering prefix: "SDE II", "SDE-III".
   const roman = /\b(sde|swe)\s*-?\s*(ii|iii)\b/.exec(title.toLowerCase());
-  if (roman) return roman[2] === "ii" ? 4 : 5;
+  if (roman) return { level: roman[2] === "ii" ? 4 : 5, confidence: "high", basis: "ladder-tag" };
   return null;
 }
 
@@ -90,6 +93,7 @@ const TITLE_RULES: ReadonlyArray<readonly [phrase: string, level: JobLevel]> = [
   ["assistant general manager", 6], ["deputy general manager", 7],
   ["assistant vice president", 6], ["associate vice president", 6],
   ["assistant manager", 3], ["deputy manager", 3],
+  ["associate product manager", 3], ["associate program manager", 3], ["associate project manager", 3],
   ["hr business partner", 5], ["business partner", 5],
   ["senior product manager", 5], ["senior program manager", 5], ["senior project manager", 5], ["senior account manager", 5],
   ["lead product manager", 6], ["product lead", 6], ["lead program manager", 6], ["lead project manager", 6],
@@ -129,16 +133,19 @@ const YEARS_TO_LEVEL: ReadonlyArray<readonly [minYears: number, level: JobLevel]
   [8, 6], [6, 6], [5, 5], [4, 4], [2, 3], [0, 2],
 ];
 
-const YEARS_RE = /(?<![\d.])(\d{1,2})\s*(?:-|–|to)\s*(\d{1,2})(?![\d.])\s*\+?\s*(?:years|year|yrs|yr)\b|(?<![\d.])(\d{1,2})(?![\d.])\s*\+\s*(?:years|year|yrs|yr)\b|(?<![\d.])(\d{1,2})(?![\d.])\s*(?:years|year|yrs|yr)\b/g;
+const YEARS_RE = /(?<![\d.])(\d{1,2})\s*(?:-|–|to)\s*(\d{1,2})(?![\d.])\s*\+?\s*(?:years|year|yrs|yr)\b|(?<![\d.])(\d{1,2})(?![\d.])\s*\+\s*(?:years|year|yrs|yr)\b|(?<![\d.])(\d{1,2})(?:\.(\d+))?(?![\d.])\s*(?:years|year|yrs|yr)\b/g;
+// Company age or heritage is not candidate experience ("20 years in business").
+const YEARS_EXCLUSION = /in business|of excellence|of legacy|of service|since\b/;
 
 export function parseYearsOfExperience(text: string): number | null {
   const candidates: Array<{ years: number; experienced: boolean }> = [];
   for (const match of text.toLowerCase().matchAll(YEARS_RE)) {
     const after = text.slice((match.index ?? 0) + match[0].length, (match.index ?? 0) + match[0].length + 8);
     if (/^\s*of age/.test(after)) continue; // "18 years of age" is not experience
-    const years = Number(match[1] ?? match[3] ?? match[4]);
+    const years = Math.floor(Number(match[1] ?? match[3] ?? match[4] + (match[5] ? `.${match[5]}` : "")));
     if (years > 40) continue;
     const around = text.slice(Math.max(0, (match.index ?? 0) - 40), (match.index ?? 0) + match[0].length + 20);
+    if (YEARS_EXCLUSION.test(around) && !/experience|exp\b/.test(around)) continue; // company age, not experience
     candidates.push({ years, experienced: /experience|exp\b|professional|industry/.test(around) });
   }
   if (candidates.length === 0) return null;
@@ -170,7 +177,7 @@ export function assignJobLevel(input: JobLevelInput): JobLevelResult {
 
   // Layer 1: explicit ladder tag in the title (strongest).
   const tag = ladderTagLevel(title);
-  if (tag !== null) return { level: tag, confidence: "high", basis: "ladder-tag" };
+  if (tag !== null) return tag;
 
   // Layer 1b: bare role + suffix ("Software Engineer II").
   const suffix = SUFFIX_RE.exec(title.toLowerCase());
