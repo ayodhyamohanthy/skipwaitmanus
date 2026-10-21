@@ -37,6 +37,7 @@ async function main() {
     user: decodeURIComponent(parsed.username),
     password: decodeURIComponent(parsed.password),
     database: urlDb,
+    ssl: { rejectUnauthorized: false },
   });
   const [colRows] = await conn.query(
     `SELECT TABLE_NAME, COLUMN_NAME, NULL AS INDEX_NAME, NULL AS NON_UNIQUE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()
