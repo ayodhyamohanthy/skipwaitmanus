@@ -143,7 +143,7 @@ export type CreditPack = {
   credits: number;
   /** Sold only in the currencies listed (pack sets differ by currency). */
   prices: Partial<Record<CatalogCurrency, number>>;
-  /** The first-purchase pack of its currency: $5 for 5, or ₹198 for 2 (enough for one extra open ask). */
+  /** The first-purchase pack of its currency (none marked in the current ladder; the flag stays for a future first-pack offer). */
   firstPack: boolean;
   recommended: boolean;
 };
