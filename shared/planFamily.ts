@@ -32,6 +32,8 @@ export type PlanFamilyEntry = {
    * Oct 21). Open Door and Fast Track keep the normal flow.
    */
   automatedOnly: boolean;
+  /** Insider joins by application only (D-132). Absent = open signup. */
+  byApplication?: boolean;
   /** Features folded into the plan instead of billed separately. */
   includes: { stealth: boolean; reachUp: boolean };
 };
@@ -39,7 +41,7 @@ export type PlanFamilyEntry = {
 export const PLAN_FAMILY: readonly PlanFamilyEntry[] = [
   { id: "open_door", label: "Open Door", monthlyUsdCents: 0, monthlyInrPaise: 0, automatedOnly: false, includes: { stealth: false, reachUp: false } },
   { id: "fast_track", label: "Fast Track", monthlyUsdCents: 999, monthlyInrPaise: 49900, automatedOnly: false, includes: { stealth: false, reachUp: true } },
-  { id: "insider", label: "Insider", monthlyUsdCents: 5900, monthlyInrPaise: 129900, automatedOnly: true, includes: { stealth: true, reachUp: true } },
+  { id: "insider", label: "Insider", monthlyUsdCents: 5900, monthlyInrPaise: 129900, automatedOnly: true, byApplication: true, includes: { stealth: true, reachUp: true } },
 ] as const;
 
 /**
@@ -104,3 +106,83 @@ export function planFamilyEntry(id: PlanFamilyId): PlanFamilyEntry {
 export function planFamilyV2Enabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return (env.PLAN_FAMILY_V2 ?? "").trim().toLowerCase() === "true";
 }
+
+// ---------------------------------------------------------------------------
+// D-132 (frozen Oct 21 18:42 IST, phonemsg-01M5F9FRS2N26EMEYNEBHK65Q0 "Now
+// freeze", author=user): the bundled Lovable-style model. Each plan = perks
+// fee (PLAN_FAMILY above) + an in-plan monthly credits dropdown; one monthly
+// total = plan fee + credits. Supersedes D-115's plan-less dropdown model.
+// All numbers CURRENT BEST AND CHANGEABLE (D-116). NOTHING here is live:
+// PLAN_FAMILY_V2 stays OFF until QA's payment-path check passes (stop at the
+// hosted payment form) and the owner's enable word is relayed by main.
+// ---------------------------------------------------------------------------
+
+/** Dropdown rungs inside every plan (credits per month). */
+export const PLAN_CREDIT_RUNGS = [5, 10, 25, 50, 100, 200] as const;
+export type PlanCreditRung = (typeof PLAN_CREDIT_RUNGS)[number];
+
+/** Single-credit reference prices the "Save %" is measured against. */
+export const CREDIT_SINGLE_PRICE = { usdCents: 100, inrPaise: 4_900 } as const;
+
+/**
+ * The frozen ladder (screenshot phonemsg-01M5F8EDCXCWN99MSM1V433WA9):
+ * INR Rs240/470/1,125/2,150/4,100/7,840 = Save 2/4/8/12/16/20% vs Rs49 single.
+ * USD derived at the same percent off the $1 single (changeable default,
+ * confirmed by main Oct 21 18:50). "This month" on the plans page =
+ * plan fee + the picked rung.
+ */
+export const PLAN_CREDIT_LADDER: readonly { credits: PlanCreditRung; savePct: number; usdCents: number; inrPaise: number }[] = [
+  { credits: 5, savePct: 2, usdCents: 490, inrPaise: 24_000 },
+  { credits: 10, savePct: 4, usdCents: 960, inrPaise: 47_000 },
+  { credits: 25, savePct: 8, usdCents: 2_300, inrPaise: 112_500 },
+  { credits: 50, savePct: 12, usdCents: 4_400, inrPaise: 215_000 },
+  { credits: 100, savePct: 16, usdCents: 8_400, inrPaise: 410_000 },
+  { credits: 200, savePct: 20, usdCents: 16_000, inrPaise: 784_000 },
+] as const;
+
+/** Open Door is truly free: 3 free credits a month, no paid default pick. */
+export const OPEN_DOOR_FREE_CREDITS_PER_MONTH = 3;
+
+/** Paid credits never expire; free monthly credits still end with the month. */
+export const PAID_CREDITS_NEVER_EXPIRE = true;
+
+/**
+ * Plan reach (owner liked main's pick, changeable): how far above the
+ * seeker's profile level the plan's asks may target. Open Door = own level.
+ */
+export const PLAN_REACH_LEVELS_ABOVE: Record<PlanFamilyId, number> = {
+  open_door: 0,
+  fast_track: 2,
+  insider: 4,
+} as const;
+
+/**
+ * Ask cost by target job level: L1 = 1 credit up to L10 = 10 credits, linear.
+ * UNCONFIRMED by the owner (from the earlier plan; flagged to main Oct 21) -
+ * treat as the working default, revisit before go-live.
+ */
+export const ASK_CREDITS_BY_LEVEL_UNCONFIRMED = (level: number): number => Math.min(10, Math.max(1, Math.round(level)));
+
+/**
+ * Mentor (referrer side): opt-in Rs199/$2.99 per month, first 60 days free;
+ * the month's fee returns as earned credits when the mentor handles 2 asks
+ * that month. Referrers are never paid cash (D-006); credits are usable on
+ * their own asks.
+ */
+export const MENTOR_ADD_ON = {
+  monthlyUsdCents: 299,
+  monthlyInrPaise: 19_900,
+  freeDays: 60,
+  feeReturnThresholdAsksPerMonth: 2,
+} as const;
+
+/** Each accepted ask earns the referrer 1 credit on their own asks (D-132;
+ *  amends D-055, superseding the D-059 freeze on that point). */
+export const REFERRER_CREDIT_PER_ACCEPTED_ASK = 1;
+
+/**
+ * Company tier: DRAFT, unbuilt, unnamed (owner's pick pending; "Partner Plan"
+ * likely - NOT "Company Plus"). Draft shape only: companies on it give their
+ * verified employees Mentor free. Do not build before the owner names it.
+ */
+export const COMPANY_TIER_DRAFT = { built: false, name: null } as const;
