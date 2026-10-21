@@ -88,7 +88,9 @@
         "CHARGEBEE_SITE": "skipwait-test",
         "CHARGEBEE_WEBHOOK_SECRET": "qa-preview-dummy",
         "COMPANY_RESPONSE_SIGNAL_ENABLED": "true",
-        "SHARE_IMPACT_CARD_ENABLED": "true"
+        "SHARE_IMPACT_CARD_ENABLED": "true",
+        "PLAN_FAMILY_V2": "true",
+        "ASK_LEVEL_COST": "true"
       }
     }
   }

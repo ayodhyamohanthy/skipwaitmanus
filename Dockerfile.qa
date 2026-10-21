@@ -6,7 +6,7 @@ COPY package.json pnpm-lock.yaml ./
 COPY patches ./patches
 RUN pnpm install --frozen-lockfile
 COPY . .
-ENV VITE_COMPANY_RESPONSE_SIGNAL=true VITE_SHARE_WIN_CARD=true VITE_SHARE_IMPACT_CARD=true
+ENV VITE_COMPANY_RESPONSE_SIGNAL=true VITE_SHARE_WIN_CARD=true VITE_SHARE_IMPACT_CARD=true VITE_PLAN_FAMILY_V2=true VITE_ASK_LEVEL_COST=true
 RUN pnpm build
 
 FROM node:22-slim
