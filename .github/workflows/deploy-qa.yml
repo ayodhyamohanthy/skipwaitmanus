@@ -63,7 +63,7 @@ jobs:
         run: npx tsx scripts/qa-reset-scratch.ts
       - name: Sync scratch QA schema from definitions only
         if: inputs.seed_only != 'true' && inputs.rotate_gate != 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true'
-        timeout-minutes: 15
+        timeout-minutes: 35
         env:
           DATABASE_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
         run: npx drizzle-kit push --force
