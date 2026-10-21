@@ -2,6 +2,7 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { PASSWORD_AUTH_COPY, USE_PASSWORD_SIGN_IN_COPY } from "@shared/passwordAuth";
 import SignIn from "./SignIn";
 
 vi.mock("wouter", () => ({
@@ -48,7 +49,7 @@ describe("SignIn", () => {
     }
   });
 
-  it("job seeker signs in on skipwait.me: five socials go straight to the provider, email uses a code", () => {
+  it("job seeker signs in on skipwait.me: five socials go straight to the provider, email uses a password", () => {
     const assign = stubAssign();
     render(<SignIn />);
     expect(screen.queryByLabelText(/Password/)).toBeNull();
@@ -57,6 +58,73 @@ describe("SignIn", () => {
     expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&provider=github");
     expect(screen.getByRole("button", { name: /Continue with Google/ })).toBeTruthy();
     for (const name of ["LinkedIn", "Slack", "Microsoft"]) expect(screen.getByRole("button", { name: new RegExp(`Continue with ${name}`) })).toBeTruthy();
+  });
+
+  // D-049 (owner, Oct 18 2026): the seeker email method is a password; the password field is for seekers only.
+  it("the password field is for seekers only", () => {
+    render(<SignIn />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
+    expect(screen.getByLabelText("Password")).toBeTruthy();
+    expect(document.querySelector("input[type=password]")).toBeTruthy();
+    expect(screen.queryByLabelText("Six-digit code")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Give a referral/ }));
+    expect(screen.queryByLabelText("Password")).toBeNull();
+    expect(document.querySelector("input[type=password]")).toBeNull();
+    expect(screen.getByLabelText("Company email")).toBeTruthy();
+  });
+
+  it("with one-tap pay on (D-095), honours a validated seeker returnTo and keeps the referrer returnTo handling", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/oneTap", () => ({ ONE_TAP_PAY_SIGNIN: true }));
+    const { default: SignIn } = await import("./SignIn");
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign, search: "?returnTo=%2Fplans" });
+    render(<SignIn />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with Google/ }));
+    expect(assign).toHaveBeenLastCalledWith("/api/auth/workos/sign-in?returnTo=%2Fplans&provider=google");
+    cleanup();
+    for (const unsafe of ["//evil.example", "https://evil.example", "/api/x", "/sign-in"]) {
+      vi.stubGlobal("location", { ...window.location, assign, search: `?${new URLSearchParams({ returnTo: unsafe })}` });
+      render(<SignIn />);
+      fireEvent.click(screen.getByRole("button", { name: /Continue with Google/ }));
+      expect(assign).toHaveBeenLastCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&provider=google");
+      cleanup();
+    }
+    // The referrer branch still lands on its own safe path (work-email OTP only, no social).
+    vi.stubGlobal("location", { ...window.location, assign, search: "?intent=referrer&returnTo=%2Freferrer-home" });
+    render(<SignIn />);
+    expect(screen.getByLabelText("Company email")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Continue with/ })).toBeNull();
+    vi.doUnmock("@/lib/oneTap");
+  });
+
+  // D-078 ruling 4: a social sign-in with a referrer's verified work email lands here instead of a session.
+  it("says why when a social sign-in was refused for a verified work email, on the referrer side only", () => {
+    vi.stubGlobal("location", { ...window.location, assign: vi.fn(), search: "?intent=referrer&reason=use_work_email_code" });
+    render(<SignIn />);
+    expect(screen.getByRole("status").textContent).toBe(PASSWORD_AUTH_COPY.use_work_email_code);
+    expect(screen.getByLabelText("Company email")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Continue with/ })).toBeNull();
+    cleanup();
+    vi.stubGlobal("location", { ...window.location, assign: vi.fn(), search: "?reason=use_work_email_code" });
+    render(<SignIn />);
+    expect(screen.queryByRole("status")).toBeNull();
+    cleanup();
+    vi.stubGlobal("location", { ...window.location, assign: vi.fn(), search: "?intent=referrer&reason=%3Cb%3Eanything%3C%2Fb%3E" });
+    render(<SignIn />);
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  // Review F1: a password finished on WorkOS's hosted page is refused at the callback and sent here instead.
+  it("tells a seeker refused at the callback to sign in with their password here", () => {
+    vi.stubGlobal("location", { ...window.location, assign: vi.fn(), search: "?reason=use_password_sign_in" });
+    render(<SignIn />);
+    expect(screen.getByRole("status").textContent).toBe(USE_PASSWORD_SIGN_IN_COPY);
+    expect(screen.getByRole("button", { name: /Continue with email/ })).toBeTruthy();
+    cleanup();
+    vi.stubGlobal("location", { ...window.location, assign: vi.fn(), search: "?intent=referrer&reason=use_password_sign_in" });
+    render(<SignIn />);
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("ships no design-preview scaffolding", () => {

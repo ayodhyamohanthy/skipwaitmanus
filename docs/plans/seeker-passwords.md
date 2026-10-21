@@ -54,7 +54,7 @@ Seekers sign in only on skipwait.me, never on an authkit.app page. They use Goog
 8. **Copy for code-only seekers** (appendix §A5, row 3):
    - the password form says "Signed in with a code before? Use Forgot password to set one. It's the same account.";
    - `/forgot-password` is titled "Set or reset your password";
-   - the sent state adds "No email after a few minutes? Create an account with the same address; it joins your existing account.";
+   - the sent state adds "No email after a few minutes? Create an account with the same address; it joins your existing account." (as built, reworded in the screenshot pass so it agrees with the line above: "No email after a few minutes, and nothing in spam? Create an account with the same address and we'll email you a link to set a password.");
    - keep D-063 wording.
 
 ## 4. What the branch already does (verified)

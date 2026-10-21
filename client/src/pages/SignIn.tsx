@@ -5,18 +5,21 @@ import { Button } from "@/components/kit/button";
 import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
 import { SeekerSignIn } from "@/components/SeekerSignIn";
 import { safeReturnTo } from "@/lib/referrerSignIn";
+import { safeSignInReturnTo } from "@shared/authReturnTo";
 import { ONE_TAP_PAY_SIGNIN } from "@/lib/oneTap";
 import { MONEY_SENTENCE_SHORT } from "@shared/moneyCopy";
+import { PASSWORD_AUTH_COPY, USE_PASSWORD_SIGN_IN_COPY, USE_PASSWORD_SIGN_IN_REASON, USE_WORK_EMAIL_CODE_REASON } from "@shared/passwordAuth";
 
 type Intent = "seeker" | "referrer";
 
-/** Where each intent lands after AuthKit: the job search, or referrer setup (work-email verification). */
+/** Where each intent lands after signing in: the job search, or referrer setup (work-email verification). */
 const INTENT_RETURN_TO: Readonly<Record<Intent, string>> = { seeker: "/explore", referrer: "/referrer-setup" };
 
 /**
  * Kit v4 sign-in (app/src/components/sign-in-page.tsx), all on skipwait.me. Job seekers: SeekerSignIn (social
- * straight to the provider, email by six-digit code). Referrers: work-email OTP only. The intent switch picks
- * where the person lands afterwards.
+ * straight to the provider, or email + password checked by WorkOS, D-049). Referrers: work-email OTP only, never
+ * a password. The intent switch picks where the person lands afterwards; every app "Sign in" arrives here with a
+ * validated ?returnTo (signInPagePath).
  */
 /** Kit draws the legal names as plain muted text; they stay links, underlined only on hover or keyboard focus. */
 const legalLink = "hover:underline focus-visible:underline";
@@ -25,8 +28,14 @@ export default function SignIn() {
   const [intent, setIntent] = useState<Intent>(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("intent") === "referrer" ? "referrer" : "seeker"));
   // Where the work-email OTP lands the referrer (same-origin path only).
   const referrerReturnTo = typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.referrer) : INTENT_RETURN_TO.referrer;
-  // D-095: a seeker arriving from a purchase returns to it (same-origin path only; flag off keeps /explore).
-  const seekerReturnTo = ONE_TAP_PAY_SIGNIN && typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.seeker) : INTENT_RETURN_TO.seeker;
+  // D-095: with one-tap pay on, a seeker returns to the page that sent them when it is same-site and not an auth page
+  // (safeSignInReturnTo); with the flag off, seekers always land on the job search.
+  const seekerReturnTo = ONE_TAP_PAY_SIGNIN && typeof window !== "undefined" ? safeSignInReturnTo(new URLSearchParams(window.location.search).get("returnTo"), window.location.origin) ?? INTENT_RETURN_TO.seeker : INTENT_RETURN_TO.seeker;
+  // A social sign-in with a verified work email is refused and sent here (D-078 ruling 4); say why, on the referrer side only.
+  const reason = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("reason") : null;
+  const workEmailRefused = reason === USE_WORK_EMAIL_CODE_REASON;
+  // A password finished on WorkOS's hosted page is refused at the callback (review F1); say where it works.
+  const passwordElsewhere = reason === USE_PASSWORD_SIGN_IN_REASON;
   return <main data-skipwait-screen="sign-in" className="auth-page">
     <section className="auth-story" aria-label="skipwait.me introduction">
       <Link className="wordmark auth-wordmark" href="/"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
@@ -44,11 +53,12 @@ export default function SignIn() {
       </div>
       <div className="auth-context"><span>{intent === "seeker" ? "Explore companies and send a thoughtful request." : "Choose who you help and keep your identity private."}</span><Check /></div>
       {intent === "referrer"
-        // FOUNDER-LOCKED (Oct 16 2026): referrers sign in with a work-email OTP only. No social, no personal email.
-        ? <div className="auth-form" data-testid="referrer-work-email-otp"><ReferrerOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
-        // Job seekers: every sign-in stays on skipwait.me. Social buttons go straight to the provider; email uses a six-digit code.
-        : <SeekerSignIn returnTo={seekerReturnTo} />}
-      {intent === "referrer" ? <p className="auth-new">Work email only. We never use personal email or social logins for referrers.</p> : <p className="auth-new">New to skipwait.me? Enter your email and we’ll create your account.</p>}
+        // FOUNDER-LOCKED (Oct 16 2026, D-049): referrers sign in with a work-email OTP only. No social, no personal email, no password.
+        ? <div className="auth-form" data-testid="referrer-work-email-otp">{workEmailRefused ? <p role="status" className="auth-new">{PASSWORD_AUTH_COPY.use_work_email_code}</p> : null}<ReferrerOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
+        // Job seekers: every sign-in stays on skipwait.me. Social buttons go straight to the provider; email uses a password
+        // (D-049). SeekerSignIn renders its own "New to skipwait.me? Create a free account" line under the form.
+        : <>{passwordElsewhere ? <p role="status" className="auth-new">{USE_PASSWORD_SIGN_IN_COPY}</p> : null}<SeekerSignIn returnTo={seekerReturnTo} /></>}
+      {intent === "referrer" ? <p className="auth-new">Work email only. We never use personal email, passwords or social logins for referrers.</p> : null}
       <p className="auth-terms">By continuing, you agree to the <Link href="/terms" className={legalLink}>Terms</Link> and acknowledge the <Link href="/privacy" className={legalLink}>Privacy Policy</Link>. {MONEY_SENTENCE_SHORT} A referral never guarantees an interview.</p>
     </div></section>
   </main>;

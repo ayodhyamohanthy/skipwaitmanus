@@ -155,6 +155,14 @@ const CSP_REPORT_ONLY = [
   "frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com",
 ].join("; ");
 
+/**
+ * The reset page's URL carries a live WorkOS password-reset token until the page drops it from the address
+ * bar; send no Referer at all from it, so the requests made before the app runs never carry the token.
+ */
+export function referrerPolicyFor(pathname: string): string {
+  return pathname === "/reset-password" || pathname === "/reset-password/" ? "no-referrer" : "strict-origin-when-cross-origin";
+}
+
 export const onRequest: PagesFunction = async context => {
   const url = new URL(context.request.url);
 
@@ -173,7 +181,7 @@ export const onRequest: PagesFunction = async context => {
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   headers.set("X-Frame-Options", "DENY");
   headers.set("X-Content-Type-Options", "nosniff");
-  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  headers.set("Referrer-Policy", referrerPolicyFor(url.pathname));
   headers.set("Content-Security-Policy-Report-Only", CSP_REPORT_ONLY);
   const contentType = headers.get("content-type") || "";
   const isHtml = contentType.includes("text/html");

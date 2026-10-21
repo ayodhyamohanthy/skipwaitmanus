@@ -1,78 +1,53 @@
-import { Check, Circle, Eye, EyeOff } from "lucide-react";
-import { LoadingNote } from "@/components/app-states/SystemStates";
+import { ArrowLeft, Check, Circle, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { passwordPolicyChecks, passwordResetConfirmSuccessSchema, resetTokenSchema, type PasswordResetConfirmSuccess } from "@shared/passwordAuth";
+import { postPasswordAuth } from "@/lib/passwordAuthClient";
 
 function tokenFromUrl(): string {
   if (typeof window === "undefined") return "";
   return new URLSearchParams(window.location.search).get("token") ?? "";
 }
 
+/**
+ * The token sets a password and signs this browser in, so it must not stay in the address bar once read:
+ * not in history, a shared screenshot, an analytics page URL or a later Referer.
+ */
+function dropTokenFromAddressBar(): void {
+  if (typeof window === "undefined" || (!window.location.search && !window.location.hash)) return;
+  window.history.replaceState(window.history.state, "", window.location.pathname);
+}
+
+/**
+ * Seeker password reset or first password (D-049), from the link SkipWait emails (D-078 ruling 6). WorkOS checks the token and sets the password;
+ * this page says "You're signed in" only when the server actually signed this browser in. No request is made
+ * before the person submits: WorkOS is the only judge of the token.
+ */
 export default function ResetPassword() {
-  const [token, setToken] = useState("");
-  const [checking, setChecking] = useState(true);
-  const [linkValid, setLinkValid] = useState(true);
+  const [token] = useState(tokenFromUrl);
+  // No token at all means the page was opened without the emailed link, not that a link expired.
+  const [noLink] = useState(() => token === "");
+  useEffect(dropTokenFromAddressBar, []);
+  const [linkValid, setLinkValid] = useState(() => resetTokenSchema.safeParse(token).success);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [show, setShow] = useState(false);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<PasswordResetConfirmSuccess | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    const current = tokenFromUrl();
-    setToken(current);
-    if (!current) {
-      setLinkValid(false);
-      setChecking(false);
-      return;
-    }
-    let active = true;
-    void (async () => {
-      try {
-        const response = await fetch(`/api/auth/password/reset/verify?token=${encodeURIComponent(current)}`, { credentials: "include" });
-        const payload = (await response.json().catch(() => ({}))) as { valid?: boolean };
-        if (active) setLinkValid(response.ok && payload.valid === true);
-      } catch {
-        if (active) setLinkValid(false);
-      } finally {
-        if (active) setChecking(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const rules = [
-    ["At least 10 characters", password.length >= 10],
-    ["A number or symbol", /[\d\W]/.test(password)],
-    ["Passwords match", password.length > 0 && password === confirm],
-  ] as const;
-  const ok = rules.every(rule => rule[1]);
+  const rules = passwordPolicyChecks(password, confirm);
+  const ok = rules.every(rule => rule.passed);
 
   const submit = async () => {
     if (!ok || busy) return;
     setBusy(true);
     setError("");
-    try {
-      const response = await fetch("/api/auth/password/reset/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ token, password, confirm }),
-      });
-      const payload = (await response.json().catch(() => ({}))) as { error?: string; code?: string };
-      if (!response.ok) {
-        if (payload.code === "expired" || payload.code === "consumed") setLinkValid(false);
-        throw new Error(payload.error ?? "We could not update the password.");
-      }
-      setDone(true);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "We could not update the password.");
-    } finally {
-      setBusy(false);
-    }
+    const result = await postPasswordAuth("/api/auth/password/reset/confirm", { token, password, confirm }, passwordResetConfirmSuccessSchema);
+    setBusy(false);
+    if (result.ok) { setDone(result.data); return; }
+    if (result.code === "expired" || result.code === "invalid_input") { setLinkValid(false); return; }
+    setError(result.message);
   };
 
   return (
@@ -81,12 +56,18 @@ export default function ResetPassword() {
         <Link href="/" className="wordmark" aria-label="skipwait.me home">
           <img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" />
         </Link>
-        {checking ? (
-          <LoadingNote>Checking this link…</LoadingNote>
+        {noLink ? (
+          <section className="mt-10">
+            <h1 className="text-3xl font-semibold tracking-[-.02em]">This page needs the link from your email.</h1>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">Open the newest link we emailed you to set or reset your password, or ask for one now.</p>
+            <Link href="/forgot-password" className="brand-button mt-6 w-full">
+              Set or reset your password
+            </Link>
+          </section>
         ) : !linkValid ? (
           <section className="mt-10">
             <h1 className="text-3xl font-semibold tracking-[-.02em]">This link has expired.</h1>
-            <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">Reset links work for 1 hour, once. Request a new one.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">Reset links work once and expire after a while. Request a new one.</p>
             <Link href="/forgot-password" className="brand-button mt-6 w-full">
               Send a new link
             </Link>
@@ -95,12 +76,22 @@ export default function ResetPassword() {
           <section className="mt-10 text-center">
             <Check className="mx-auto size-12 text-[var(--primary)]" />
             <h1 className="mt-4 text-2xl font-semibold">Password updated.</h1>
-            <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
-              You&apos;re signed in. Other devices were signed out for safety.
-            </p>
-            <Link href="/explore" className="brand-button mt-6 w-full">
-              Continue
-            </Link>
+            {done.signedIn ? (
+              <>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">You&apos;re signed in. Other devices were signed out for safety.</p>
+                {/* A full page load, so the app starts with the new session instead of the signed-out one it rendered. */}
+                <a href={done.redirectTo} className="brand-button mt-6 w-full">
+                  Continue
+                </a>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">Sign in to continue.</p>
+                <Link href={done.redirectTo} className="brand-button mt-6 w-full">
+                  Sign in
+                </Link>
+              </>
+            )}
           </section>
         ) : (
           <section className="mt-10">
@@ -112,7 +103,7 @@ export default function ResetPassword() {
                   type={show ? "text" : "password"}
                   autoComplete="new-password"
                   value={password}
-                  onChange={event => setPassword(event.target.value)}
+                  onChange={event => { setPassword(event.target.value); setError(""); }}
                   className="mt-2 h-12 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-4 pr-12"
                 />
                 <button
@@ -131,15 +122,15 @@ export default function ResetPassword() {
                 type={show ? "text" : "password"}
                 autoComplete="new-password"
                 value={confirm}
-                onChange={event => setConfirm(event.target.value)}
+                onChange={event => { setConfirm(event.target.value); setError(""); }}
                 className="mt-2 h-12 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-4"
               />
             </label>
             <ul className="mt-4 space-y-1 text-sm">
-              {rules.map(([label, passed]) => (
-                <li key={label} className={`flex items-center gap-2 ${passed ? "" : "text-[var(--muted-foreground)]"}`}>
-                  {passed ? <Check className="size-4 text-[var(--primary)]" /> : <Circle className="size-4" />}
-                  {label}
+              {rules.map(rule => (
+                <li key={rule.label} className={`flex items-center gap-2 ${rule.passed ? "" : "text-[var(--muted-foreground)]"}`}>
+                  {rule.passed ? <Check className="size-4 text-[var(--primary)]" /> : <Circle className="size-4" />}
+                  {rule.label}
                 </li>
               ))}
             </ul>
@@ -152,6 +143,13 @@ export default function ResetPassword() {
               {busy ? "Updating…" : "Update password"}
             </button>
           </section>
+        )}
+        {/* A way back from every state short of "Password updated" (that state has its own next step). */}
+        {done ? null : (
+          <Link href="/sign-in" className="text-link mt-8 inline-flex min-h-11 items-center gap-1 text-sm">
+            <ArrowLeft className="size-4" />
+            Back to sign in
+          </Link>
         )}
       </main>
     </div>

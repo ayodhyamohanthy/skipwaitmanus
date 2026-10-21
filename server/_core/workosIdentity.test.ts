@@ -66,6 +66,12 @@ describe("WorkOS bearer authentication at the HTTP boundary", () => {
     expect(mocks.resolveLoginIdentity).toHaveBeenCalledWith(expect.objectContaining({ provider: "workos", subject: "user_test", name: "Test User", email: "test@example.com", emailVerified: true }));
   });
 
+  it("a provider profile with no names resolves an unnamed account, never one named after the email (S-11)", async () => {
+    mocks.getUser.mockResolvedValue({ ...providerUser, firstName: null, lastName: null });
+    expect((await request(app).get("/private").auth(await signIn(), { type: "bearer" })).status).toBe(200);
+    expect(mocks.resolveLoginIdentity).toHaveBeenCalledWith(expect.objectContaining({ subject: "user_test", name: null }));
+  });
+
   it("does not mistake the first account creation timestamp for a revocation", async () => {
     const token = await signIn();
     const createdAt = new Date(Date.now() + 1000);

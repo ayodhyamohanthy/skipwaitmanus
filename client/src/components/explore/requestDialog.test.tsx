@@ -25,7 +25,7 @@ describe("RequestDialog login handoff", () => {
     return <RequestDialog company={company} open step={step} onStepChange={setStep} onOpenChange={() => undefined} />;
   }
 
-  it("sends signed-out seekers to job-seeker login with a return to the ask composer", () => {
+  it("sends signed-out seekers through the skipwait.me sign-in with a return to the ask composer", () => {
     const assign = vi.fn();
     const actual = window.location;
     Object.defineProperty(window, "location", { configurable: true, value: { ...actual, assign } });
@@ -38,10 +38,9 @@ describe("RequestDialog login handoff", () => {
         fireEvent.click(screen.getByRole("button", { name: "Continue" }));
         fireEvent.click(screen.getByRole("button", { name: "Continue" }));
         fireEvent.click(screen.getByRole("button", { name: "Sign in to continue" }));
+        // D-030 / D-049: the on-site sign-in, never the provider-less WorkOS route (hosted AuthKit page).
         expect(assign).toHaveBeenCalledTimes(1);
-        const target = String(assign.mock.calls[0]?.[0]);
-        expect(target.startsWith("/api/auth/workos/sign-in?")).toBe(true);
-        expect(target).toContain(`returnTo=${encodeURIComponent("/ask")}`);
+        expect(assign).toHaveBeenCalledWith("/sign-in?returnTo=%2Fask");
         const saved = JSON.parse(sessionStorage.getItem("skipwait-ask-prefill") ?? "null") as unknown as { companySlug?: string; targetRoleUrl?: string } | null;
         expect(saved?.companySlug).toBe("acme");
         expect(saved?.targetRoleUrl).toBe("https://careers.acme.com/jobs/design-lead");

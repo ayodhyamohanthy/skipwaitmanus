@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { MONEY_SENTENCE } from "@shared/moneyCopy";
+import { passwordLinkEmail } from "@shared/passwordEmails";
 
 /**
  * /emails — reference for every transactional message skipwait.me sends, in
@@ -11,6 +12,8 @@ import { MONEY_SENTENCE } from "@shared/moneyCopy";
  * Dynamic parts render in ⟨angle brackets⟩ and the code block is always
  * masked — this page never shows a real code, person, company, or price.
  * Entries without a verified sender keep their trigger description only.
+ * The seeker password links (D-049, D-078 rulings 2 and 6) are sent by SkipWait
+ * and quoted from the same copy the server uses (shared/passwordEmails.ts).
  */
 type Template = {
   name: string;
@@ -40,9 +43,17 @@ const TEMPLATES = [
   {
     name: "Password reset",
     channel: "Email",
-    trigger: "Sent when someone asks to reset a password. Neutral reply: always “check your email”, whether the account exists or not. 1-hour single-use link.",
-    subject: "Reset your skipwait.me password",
-    body: ["You asked to reset your skipwait.me password. This link works for 1 hour, once: ⟨reset link⟩", "If you did not ask for this, ignore this email — nothing changes. Passwords are managed through secure sign-in; you can also continue with email from the sign-in page."],
+    trigger: "Sent when a job seeker asks to set or reset a password. skipwait.me always answers “check your email”, whether the account exists or not, and never sends one to a referrer's work email. The link works once and opens skipwait.me; WorkOS, our sign-in provider, sets how long it lasts.",
+    subject: passwordLinkEmail("reset", "⟨reset link⟩").subject,
+    body: [...passwordLinkEmail("reset", "⟨reset link⟩").lines],
+    cta: "Reset link (in the email body)",
+  },
+  {
+    name: "Set your password",
+    channel: "Email",
+    trigger: "Sent when a job seeker creates an account with an email, or signs in before the address is confirmed. There is no code: the link sets the password on skipwait.me and signs them in.",
+    subject: passwordLinkEmail("set", "⟨reset link⟩").subject,
+    body: [...passwordLinkEmail("set", "⟨reset link⟩").lines],
     cta: "Reset link (in the email body)",
   },
   { name: "Welcome", channel: "Email", trigger: "Sent after first sign-in with the honest next step for the account type." },

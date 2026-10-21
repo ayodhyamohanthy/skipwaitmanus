@@ -1,33 +1,31 @@
 import { ArrowLeft, MailCheck } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { Button } from "@/components/kit/button";
+import { EMAIL_PATTERN, passwordForgotAcceptedSchema } from "@shared/passwordAuth";
+import { postPasswordAuth } from "@/lib/passwordAuthClient";
 
+/**
+ * Seeker password reset request (D-049). SkipWait emails the link (D-078 ruling 6); the answer is the same whether or not the
+ * email has an account, and it promises no fixed lifetime (WorkOS sets the expiry). Referrers have no password:
+ * they sign in with a work-email code.
+ */
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [sentTo, setSentTo] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+  const normalized = email.trim().toLowerCase();
+  const valid = normalized.length <= 320 && EMAIL_PATTERN.test(normalized);
 
   const send = async () => {
     if (!valid || busy) return;
     setBusy(true);
     setError("");
-    try {
-      const response = await fetch("/api/auth/password/forgot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "We could not send the link. Try again.");
-      setSent(true);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "We could not send the link. Try again.");
-    } finally {
-      setBusy(false);
-    }
+    const result = await postPasswordAuth("/api/auth/password/forgot", { email: normalized }, passwordForgotAcceptedSchema);
+    setBusy(false);
+    if (!result.ok) { setError(result.message); return; }
+    setSentTo(normalized);
   };
 
   return (
@@ -36,19 +34,22 @@ export default function ForgotPassword() {
         <Link href="/" className="wordmark" aria-label="skipwait.me home">
           <img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" />
         </Link>
-        {!sent ? (
+        {!sentTo ? (
           <section className="mt-10">
-            <h1 className="text-3xl font-semibold tracking-[-.02em]">Forgot your password?</h1>
+            <h1 className="text-3xl font-semibold tracking-[-.02em]">Set or reset your password</h1>
             <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
-              Enter your account email. We&apos;ll send a link to set a new one.
+              Enter the email you sign in with. We&apos;ll send a link to set a new password.
             </p>
             <label className="mt-6 block text-sm font-medium">
               Email
               <input
                 type="email"
-                autoComplete="email"
+                inputMode="email"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
                 value={email}
-                onChange={event => setEmail(event.target.value)}
+                onChange={event => { setEmail(event.target.value); setError(""); }}
                 onKeyDown={event => {
                   if (event.key === "Enter" && valid) void send();
                 }}
@@ -71,15 +72,20 @@ export default function ForgotPassword() {
             </span>
             <h1 className="mt-4 text-2xl font-semibold">Check your email.</h1>
             <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
-              If an account exists for <strong className="break-all text-[var(--foreground)]">{email}</strong>, a reset link is on
-              its way. It works for 1 hour.
+              If {sentTo} can use a password on skipwait.me, we&apos;ve sent a link to set a new password. It can take a few minutes; check spam too.
             </p>
-            <button type="button" onClick={() => setSent(false)} className="brand-button-secondary mt-6">
+            <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
+              No email after a few minutes, and nothing in spam? Create an account with the same address and we&apos;ll email you a link to set a password.
+            </p>
+            <Button type="button" variant="outline" onClick={() => setSentTo("")} className="mt-6">
               Use a different email
-            </button>
+            </Button>
           </section>
         )}
-        <Link href="/sign-in" className="text-link mt-8 inline-flex min-h-11 items-center gap-1 text-sm">
+        <p className="mt-8 text-sm leading-6 text-[var(--muted-foreground)]">
+          Give referrals? Referrers have no password: <Link href="/sign-in?intent=referrer" className="py-2 font-semibold text-[var(--primary)] underline underline-offset-2">Sign in with your work email</Link>.
+        </p>
+        <Link href="/sign-in" className="text-link mt-4 inline-flex min-h-11 items-center gap-1 text-sm">
           <ArrowLeft className="size-4" />
           Back to sign in
         </Link>

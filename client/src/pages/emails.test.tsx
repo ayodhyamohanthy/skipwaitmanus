@@ -13,6 +13,7 @@ afterEach(() => cleanup);
 const NAMES = [
   "Work-email code",
   "Password reset",
+  "Set your password",
   "Welcome",
   "Request claimed",
   "Ask accepted",
@@ -27,7 +28,7 @@ const NAMES = [
 ];
 
 describe("Emails template gallery", () => {
-  it("lists all thirteen templates with no fabricated live content", () => {
+  it("lists all fourteen templates with no fabricated live content", () => {
     const view = render(<Emails />);
     try {
       for (const name of NAMES) expect(screen.getByRole("button", { name })).toBeTruthy();
@@ -58,6 +59,26 @@ describe("Emails template gallery", () => {
       fireEvent.click(screen.getByRole("button", { name: "Report outcome" }));
       expect(screen.getByText("Update on your report")).toBeTruthy();
       expect(screen.getByText(/took action. Thank you for flagging it/)).toBeTruthy();
+    } finally {
+      view.unmount();
+    }
+  });
+
+  // D-049 / D-078 rulings 2 and 6: SkipWait sends the seeker's password links itself, to its own reset page, and
+  // there is no sign-up code. The page quotes the server copy (shared/passwordEmails.ts) with the link masked.
+  it("quotes the password-link emails SkipWait sends, with no code and no fixed lifetime", () => {
+    const view = render(<Emails />);
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "Password reset" }));
+      const reset = screen.getByRole("article", { name: "Password reset" });
+      expect(reset.textContent).toContain("Set or reset your skipwait.me password");
+      expect(reset.textContent).toContain("⟨reset link⟩");
+      expect(reset.textContent).not.toMatch(/1 hour|WorkOS \(our sign-in provider\)/);
+      fireEvent.click(screen.getByRole("button", { name: "Set your password" }));
+      const set = screen.getByRole("article", { name: "Set your password" });
+      expect(set.textContent).toContain("Finish signing in to skipwait.me");
+      expect(set.textContent).toContain("⟨reset link⟩");
+      expect(screen.queryByRole("button", { name: "Sign-up verification code" })).toBeNull();
     } finally {
       view.unmount();
     }

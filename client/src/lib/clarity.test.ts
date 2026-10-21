@@ -18,6 +18,9 @@ describe("Clarity wiring", () => {
     expect(shouldTrackClarityPath("/share-card/xyz")).toBe(false);
     expect(shouldTrackClarityPath("/fast/r12-34")).toBe(false);
     expect(shouldTrackClarityPath("/refer/a/b")).toBe(false);
+    // WorkOS reset links carry a live password-setting token in the query string (Clarity records page URLs).
+    expect(shouldTrackClarityPath("/reset-password")).toBe(false);
+    expect(shouldTrackClarityPath("/reset-password/")).toBe(false);
     expect(shouldTrackClarityPath("/")).toBe(true);
     expect(shouldTrackClarityPath("/feed")).toBe(true);
     expect(shouldTrackClarityPath("/pricing")).toBe(true);

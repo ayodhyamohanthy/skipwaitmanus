@@ -24,12 +24,12 @@ Verified against `main` `e6b87f8` (Oct 18 2026). Line numbers drift: find a func
    - `trust proxy`, then security headers.
    - **Webhook routes before any body parser**, so they get the raw body for signature checks: payment webhooks (Razorpay, PayPal), WorkOS webhooks.
    - Job-link preview routes.
-   - `Server-Timing` on `/api`, plus a log line for responses slower than 800 ms (path only).
+   - `Server-Timing` on `/api` except `/api/auth/*` (`server/_core/apiTiming.ts`), plus a log line for responses slower than 800 ms (path only).
    - JSON and form parsers capped at 256 KB (the two document upload routes have their own parser).
    - Health routes, then the admin smoke fixture (production code, enabled by a Worker var).
    - Account sessions and preferences, then session renewal on `/api`.
-   - Referrer work-email OTP login, password reset.
-   - WorkOS auth when its keys exist; otherwise the dev-auth routes.
+   - Referrer work-email OTP login.
+   - WorkOS auth when its keys exist, with the seeker password routes (`/api/auth/password/*`); otherwise the dev-auth routes, and the password routes answer 503.
    - Error-alert middleware.
    - Domain routes, in this order: `registerPrivateReferralRoutes` (the core: asks, referrals, documents, notifications, admin flow health), company directory, scheduled jobs (the Worker tick, admin job status), employer, DMs, follows, assistants, MCP, OAuth, ask drafts, profile, safety, blocks, payments (consumer order routes always answer 503, D-004), admin billing catalog, public plans catalog, admin billing ledger, Chargebee checkout and webhook.
    - tRPC at `/api/trpc` (`server/routers.ts`; the client uses it only for `auth.me`, talent consent and `profile.mine`).
@@ -156,7 +156,8 @@ Note: `closed` means hired when a referrer accepted, and expired when none did (
 - WorkOS sign-in and work-email OTP converge on that person.
 - Ambiguous cases are frozen for operator review.
 - A suspension covers every alias.
-- Referrers sign in only with a work-email code (D-030, D-049).
+- Referrers sign in only with a work-email code (D-030, D-049); their work email never gets a password or a social session.
+- Seekers sign in with a social provider or email + password, with no code: sign-up and an unconfirmed address get an emailed link, and a password opens a session only after that link (a `workos_password` alias, D-078).
 
 ## 7. Scheduled jobs
 **How they run.** The Worker cron fires hourly and POSTs `/api/internal/jobs/tick` with HMAC(`JWT_SECRET`, minute) (accepted ±1 minute). The server runs each registered job once per window: a `jobRuns` lease, a compare-and-set takeover, up to 3 attempts, Sentry on failure. Status is at `GET /api/admin/jobs`.
