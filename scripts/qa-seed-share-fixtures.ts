@@ -39,6 +39,19 @@ async function main() {
   });
   const db = drizzle(pool);
 
+  // Idempotent: remove any previous fixture rows (a failed earlier run leaves
+  // partial fixtures). Scratch DB only; guards above already proved that.
+  await pool.query("SET FOREIGN_KEY_CHECKS = 0");
+  await pool.query("DELETE e FROM referralTransitionEvents e JOIN referralRequests r ON e.referralRequestId = r.id JOIN jobs j ON r.jobId = j.id WHERE j.company = 'quillmint.com'");
+  await pool.query("DELETE r FROM referralRequests r JOIN jobs j ON r.jobId = j.id WHERE j.company = 'quillmint.com'");
+  await pool.query("DELETE FROM jobs WHERE company = 'quillmint.com'");
+  await pool.query("DELETE FROM referrerFastTrackLinks WHERE companyDomain = 'quillmint.com'");
+  await pool.query("DELETE p FROM profiles p JOIN users u ON p.userId = u.id WHERE u.openId LIKE 'qa_%'");
+  await pool.query("DELETE FROM users WHERE openId LIKE 'qa_%'");
+  await pool.query("DELETE d FROM companyDomains d JOIN companies c ON d.companyId = c.id WHERE c.slug = 'quillmint'");
+  await pool.query("DELETE FROM companies WHERE slug = 'quillmint'");
+  await pool.query("SET FOREIGN_KEY_CHECKS = 1");
+
   const [company] = await db.insert(companies).values({ slug: "quillmint", name: "Quillmint", initials: "Q", industry: "Fintech", location: "Bengaluru", functions: JSON.stringify(["Engineering", "Design"]), blurb: "Fictional QA fixture company.", status: "listed", sortOrder: 0 }).$returningId();
   const companyId = company.id;
   await db.insert(companyDomains).values({ companyId, domain: "quillmint.com", isPrimary: true });
@@ -59,10 +72,10 @@ async function main() {
 
   // Seeker with asks.
   const seeker = await mkUser("qa_seeker", "QA Seeker", "seeker@qa-fixtures.invalid");
-  const mkJob = async (title: string) => (await db.insert(jobs).values({ title, company: "quillmint.com", targetRoleUrl: `https://careers.quillmint.example/${title.toLowerCase().replaceAll(" ", "-")}`, jobFunction: "engineering", createdAt: ago(72) }).$returningId())[0].id;
+  const mkJob = async (title: string) => (await db.insert(jobs).values({ title, company: "quillmint.com", location: "Bengaluru (fictional)", seniority: "mid", employmentType: "full-time", workMode: "hybrid", description: `Fictional QA fixture role: ${title}.`, targetRoleUrl: `https://careers.quillmint.example/${title.toLowerCase().replaceAll(" ", "-")}`, jobFunction: "engineering", createdAt: ago(72) }).$returningId())[0].id;
 
   const mkAsk = async (jobId: number, hoursAgo: number, visibleHoursAgo: number) =>
-    (await db.insert(referralRequests).values({ jobId, jobSeekerId: seeker, status: "pending", createdAt: ago(hoursAgo), coverageVisibleAt: ago(visibleHoursAgo) }).$returningId())[0].id;
+    (await db.insert(referralRequests).values({ jobId, jobSeekerId: seeker, status: "pending", personalPitch: "Fictional QA fixture pitch.", createdAt: ago(hoursAgo), coverageVisibleAt: ago(visibleHoursAgo) }).$returningId())[0].id;
   const decide = async (requestId: number, actor: number, action: "approve" | "pass", hoursAgo: number, revision = 1) =>
     db.insert(referralTransitionEvents).values({ referralRequestId: requestId, operationKey: `${action}:${actor}:${requestId}:${revision}`, actorUserId: actor, action, fromStatus: "pending", resultingStatus: action === "approve" ? "approved" : "declined", resultingRevision: revision, createdAt: ago(hoursAgo) });
 
