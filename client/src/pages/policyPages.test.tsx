@@ -154,11 +154,15 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
   });
 });
 
-describe("decline keeps the credit spent (founder decision, Oct 14 2026)", () => {
-  it("Terms say a decline does not return the credit", () => {
+describe("the credit rule on the legal pages (founder decision, Oct 14 2026; D-035, Oct 16 2026)", () => {
+  it("Terms say a fixable pass keeps the credit spent and a not-fixable one returns it", () => {
     const { container } = render(<Terms />);
     const text = container.textContent ?? "";
-    expect(text).toContain("the credit stays spent, even if they pass");
+    // D-035: the reason decides the credit. A decline the seeker can fix (needs more experience,
+    // not enough context) keeps the credit spent as payment for the review; a not-fixable one
+    // releases it. The page must say that, and must not claim a decline always keeps the credit.
+    expect(text).toContain("the credit stays spent, unless they pass for a reason you can't fix");
+    expect(text).not.toContain("the credit stays spent, even if they pass");
     expect(text).not.toMatch(/reserved when a request is sent/);
     expect(text).not.toMatch(/Momentum|Keep warm/);
   });
