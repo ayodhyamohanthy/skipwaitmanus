@@ -9,7 +9,7 @@ The picker's order (`assignments.json`) after the money lane (GO-LIVE-1b, D-038 
 
 ## Rules for this page
 - A row may be delegated only when its packet below is **ready**. "Architect" means Claude Code writes or refreshes the packet first.
-- Nobody picks or claims a row by hand: every agent runs `node scripts/next-task.mjs --claim "<your model name>"` and does only what it prints (D-083, D-085). It walks [`assignments.json`](assignments.json) top down: red `main`, then your own unfinished work (pending work ranked above it with nobody on it first), then pending work nobody is on, then new work whose packet is ready, whose dependencies are done and whose lane is free. A red or blocked priority holds everything below it.
+- Nobody picks or claims a row by hand: every agent runs `node scripts/next-task.mjs --claim "<your model name>"` and does only what it prints (D-083, D-085). It walks [`assignments.json`](assignments.json) top down: red `main`, then your own unfinished work (pending work ranked above it with nobody on it first), then pending work nobody is on, then new work whose packet is ready, whose dependencies are done and whose lane is free. A red or blocked priority holds its own lane and the tasks that depend on it; red `main` holds everything (D-109).
 - A claim is the task's branch on origin; your first commit on it sets the §3b row, which reaches `main` with the work. A claim is free after 2 hours with no push to its branch or lock and no `--heartbeat` (D-085; queue rule 2 said 24 hours); the picker then hands it to the next agent on the same branch.
 - Within a stage, anything marked parallel-safe may run at the same time with different models (D-075). Pushes to `main` stay one at a time.
 
