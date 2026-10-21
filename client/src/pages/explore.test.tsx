@@ -134,7 +134,7 @@ describe("Explore directory", () => {
     expect(screen.getByText("2 companies to explore")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Location"), { target: { value: "India" } });
     expect(screen.getByText("1 company to explore")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Go Neutrinos" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Neutrinos" })).toBeTruthy();
   });
 
   it("shows an honest empty state with live recovery links", async () => {
@@ -155,7 +155,7 @@ describe("Explore directory", () => {
     renderWithQuery(<Explore />);
     await screen.findByText("5 companies to explore");
     expect(document.title).toBe("Explore companies · skipwait.me");
-    await waitFor(() => expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Find people open to referral requests at skipwait.me, Wipro, Go Neutrinos, TCS, and Merkle."));
+    await waitFor(() => expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Find people open to referral requests at skipwait.me, Wipro, Neutrinos, TCS, and Merkle."));
     expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore");
   });
 

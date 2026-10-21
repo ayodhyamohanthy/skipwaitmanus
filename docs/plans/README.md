@@ -6,9 +6,9 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. T
 
 ## Rules for this page
 - A row may be delegated only when its packet below is **ready**. "Architect" means Claude Code writes or refreshes the packet first.
-- A row still claimed by a Claude Code session (D-072 lanes) stays with that session unless 24 hours pass with no new commits on its branch (queue rule 2). Check the §3b row before you claim it.
-- Pick the first stage with a ready packet whose §3b status is `todo` and whose dependencies are live. Within a stage, anything marked parallel-safe may run at the same time with different models (D-075). Pushes to `main` stay one at a time.
-- Rows another model already owns (§3b status `in progress — <model>`) are theirs until 24 hours pass with no commits on their branch (queue rule 2).
+- Nobody picks or claims a row by hand: every agent runs `node scripts/next-task.mjs --claim "<your model name>"` and does only what it prints (D-083, D-085). It walks [`assignments.json`](assignments.json) top down: red `main`, then your own unfinished work (pending work ranked above it with nobody on it first), then pending work nobody is on, then new work whose packet is ready, whose dependencies are done and whose lane is free. A red or blocked priority holds everything below it.
+- A claim is the task's branch on origin; your first commit on it sets the §3b row, which reaches `main` with the work. A claim is free after 2 hours with no push to its branch or lock and no `--heartbeat` (D-085; queue rule 2 said 24 hours); the picker then hands it to the next agent on the same branch.
+- Within a stage, anything marked parallel-safe may run at the same time with different models (D-075). Pushes to `main` stay one at a time.
 
 ## Stage 0 — now
 | Order | §3b row | Packet | Tier | Size | Packet state | Runs beside |
@@ -37,8 +37,8 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. T
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on |
 |---|---|---|---|---|---|---|
 | 3.0 | D-079-card-validation-free-credits | [D-079-card-validation-free-credits.md](D-079-card-validation-free-credits.md) | 1 | M | ready; claimed by Instinct (Oct 19) | — | nothing that touches the credit-cycle functions (3.1-3.3 included) |
-| 3.1 | D-038 slice A: claim and allocation lapse, 5-claim cap | [D-038-A-lapses.md](D-038-A-lapses.md) | 1 | M | built on `agent/opencode/d038-a-lapses`, not on `main`; draft PR and independent review next | 0.1 live |
-| 3.2 | D-038 slice B: referred deadline, step back, seeker confirmation | [D-038-B-referred-deadline.md](D-038-B-referred-deadline.md) | 1 | M | on `main` unreviewed (`c53ea471`, fixed forward in #330 `7b201aab`); timer job not registered; independent review next | 3.1 live |
+| 3.1 | D-038 slice A: claim and allocation lapse, 5-claim cap | [D-038-A-lapses.md](D-038-A-lapses.md) | 1 | M | reconciled by [D-038-reconcile.md](D-038-reconcile.md) (D-103): PR #353 (`agent/workbuddy/d038-a-lapses`) is the work; fix R1–R5, then independent review; never merge `agent/opencode/d038-a-lapses` | 0.1 live |
+| 3.2 | D-038 slice B: referred deadline, step back, seeker confirmation | [D-038-B-referred-deadline.md](D-038-B-referred-deadline.md) | 1 | M | on `main` unreviewed (`c53ea471`, fixed forward in #330 `7b201aab`); reviewed inside [D-038-reconcile.md](D-038-reconcile.md), its money steps and routes behind `REFERRED_DEADLINE_ENABLED` until that review passes (D-103) | 3.1 live |
 | 3.3 | D-035 + D-052: the pass reason decides the credit | [D-035-pass-reason-credit.md](D-035-pass-reason-credit.md) | 1 | M | ready | 3.2 live |
 | 3.4 | D-035 + D-066(1): Send again | D-035-send-again.md | 1 | M | architect (after 3.3) | 3.3 live |
 
