@@ -187,7 +187,7 @@ const TRIAL_LABEL = `${planDisplayName(catalogPlanById(REVERSE_TRIAL.plan) ?? FR
  * open-ask cap from the frozen growth table, and credits-per-month 0 because
  * family credits arrive per paid invoice, never from a monthly allowance.
  */
-function fromFamilyPlan(id: PlanFamilyId): PlanEntitlements {
+function fromFamilyPlan(id: Exclude<PlanFamilyId, "open_door">): PlanEntitlements {
   const free = fromCatalog(FREE_PLAN);
   return {
     ...free,

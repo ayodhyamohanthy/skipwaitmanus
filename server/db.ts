@@ -4284,10 +4284,11 @@ async function replayParkedV2GrantsTx(tx: LedgerTx, subscriptionId: string) {
     let receipt: { eventId?: string; subscriptionId?: string | null; planFamily?: PlanFamilyId; rung?: PlanCreditRung; amount?: number; currency?: string } = {};
     try { receipt = JSON.parse(row.metadata ?? "{}") ?? {}; } catch { continue; }
     if (receipt.subscriptionId !== subscriptionId || !receipt.eventId || !receipt.planFamily || !receipt.rung || typeof receipt.amount !== "number" || !receipt.currency) continue;
-    const invoiceId = row.resourceId ?? undefined;
+    if (!row.resourceId) continue;
+    const invoiceId = row.resourceId;
     const result = await grantV2PaidCreditsTx(tx, { eventId: receipt.eventId, invoiceId, subscriptionId, planFamily: receipt.planFamily, rung: receipt.rung, amount: receipt.amount, currency: receipt.currency });
     if (result.status === "credited") {
-      await tx.insert(operationalActivityLogs).values({ actorUserId: result.userId, action: "billing.v2_grant_replayed", outcome: "success", resourceType: "chargebee_invoice", resourceId: invoiceId ?? null, metadata: JSON.stringify({ eventId: receipt.eventId, subscriptionId, tokenCount: result.tokenCount }) });
+      await tx.insert(operationalActivityLogs).values({ actorUserId: result.userId, action: "billing.v2_grant_replayed", outcome: "success", resourceType: "chargebee_invoice", resourceId: invoiceId, metadata: JSON.stringify({ eventId: receipt.eventId, subscriptionId, tokenCount: result.tokenCount }) });
     }
   }
 }
