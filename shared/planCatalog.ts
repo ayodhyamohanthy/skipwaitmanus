@@ -83,7 +83,7 @@ const pass = (usd30: number, inr30: number, usd90: number, inr90: number): Catal
 export type PaidCatalogPlan = CatalogPlan & { id: CatalogPlanId };
 
 /**
- * Credit PACKS (the D-005/D-036 ladder: first pack ₹99 for 2 / $5 for 5, then
+ * Credit PACKS (the D-005/D-036 ladder: first pack ₹198 for 2 / $5 for 5, then
  * 25 / 60 / 150) stay on sale alongside the passes (D-036/D-046). The flag
  * below only hides client entry points: the server checkout route, pricing and
  * the payment-recovery screen are untouched.
@@ -143,21 +143,21 @@ export type CreditPack = {
   credits: number;
   /** Sold only in the currencies listed (pack sets differ by currency). */
   prices: Partial<Record<CatalogCurrency, number>>;
-  /** The first-purchase pack of its currency: $5 for 5, or ₹99 for 2 (enough for one extra open ask). */
+  /** The first-purchase pack of its currency: $5 for 5, or ₹198 for 2 (enough for one extra open ask). */
   firstPack: boolean;
   recommended: boolean;
 };
 
 /**
- * USD 5/$5, 25/$22, 60/$48, 150/$105. INR 2/₹99, 25/₹1,199, 60/₹2,599, 150/₹5,999.
+ * USD 5/$5, 25/$22, 60/$48, 150/$105. INR 2/₹198, 25/₹2,475, 60/₹5,940, 150/₹14,850 (floor: ₹99 per credit).
  * Purchased credits never expire and never affect referral access or queue position.
  */
 export const CREDIT_PACKS: readonly CreditPack[] = [
-  { id: "pack_2", credits: 2, prices: { INR: inr(99) }, firstPack: true, recommended: false },
+  { id: "pack_2", credits: 2, prices: { INR: inr(198) }, firstPack: true, recommended: false },
   { id: "pack_5", credits: 5, prices: { USD: usd(5) }, firstPack: true, recommended: false },
-  { id: "pack_25", credits: 25, prices: { USD: usd(22), INR: inr(1_199) }, firstPack: false, recommended: true },
-  { id: "pack_60", credits: 60, prices: { USD: usd(48), INR: inr(2_599) }, firstPack: false, recommended: false },
-  { id: "pack_150", credits: 150, prices: { USD: usd(105), INR: inr(5_999) }, firstPack: false, recommended: false },
+  { id: "pack_25", credits: 25, prices: { USD: usd(22), INR: inr(2_475) }, firstPack: false, recommended: true },
+  { id: "pack_60", credits: 60, prices: { USD: usd(48), INR: inr(5_940) }, firstPack: false, recommended: false },
+  { id: "pack_150", credits: 150, prices: { USD: usd(105), INR: inr(14_850) }, firstPack: false, recommended: false },
 ];
 
 export function catalogPackById(id: unknown): CreditPack | undefined {

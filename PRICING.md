@@ -57,7 +57,7 @@ priority, visibility or queue position (D-006). Plan credits end with the pass t
 (renewing passes keep the rollover above, after a 3-day grace).
 
 - Packs (one-time): USD 5/$5 (first), 25/$22, 60/$48, 150/$105.
-  India: 2/₹99 (first), 25/₹1,199, 60/₹2,599, 150/₹5,999.
+  India: 2/₹198 (first), 25/₹2,475, 60/₹5,940, 150/₹14,850 (floor of ₹99 per credit, owner Oct 21 07:51 IST).
 - Costs: Ask rewrite 1, Profile check 1, Thank-you pack 1, Ask One-Pager 2, extra open ask for
   30 days 2, Company research 3, Resume overhaul 3, Offer comparison 3, Interview dossier 4,
   AI mock interview 5, Salary coach 5.

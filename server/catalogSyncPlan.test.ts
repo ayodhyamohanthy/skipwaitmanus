@@ -45,9 +45,9 @@ describe("desired catalog", () => {
     ];
     expect(fromCatalog.sort()).toEqual(EXPECTED_IDS);
     const amount = (id: string) => specFor(id).spec.price;
-    expect(amount("skipwait_pack_2-INR")).toBe(9900);
+    expect(amount("skipwait_pack_2-INR")).toBe(19800);
     expect(amount("skipwait_pack_5-USD")).toBe(500);
-    expect(amount("skipwait_pack_25-INR")).toBe(119900);
+    expect(amount("skipwait_pack_25-INR")).toBe(247500);
     expect(amount("skipwait_pack_150-USD")).toBe(10500);
     expect(amount("skipwait_momentum_90d-INR")).toBe(249900);
     expect(amount("skipwait_land_sprint_90d-INR")).toBe(2799900);
@@ -133,7 +133,7 @@ describe("planCatalogSync", () => {
 
   it("flags price, currency, period, archived, pricing-model and billing-cycle differences as mismatched, never queued", () => {
     const cases = [
-      { id: "skipwait_pack_25-INR", patch: { price: 119000 }, field: "price", expected: 119900, actual: 119000, sellableNow: false },
+      { id: "skipwait_pack_25-INR", patch: { price: 247000 }, field: "price", expected: 247500, actual: 247000, sellableNow: false },
       { id: "skipwait_pack_25-USD", patch: { currency_code: "EUR" }, field: "currency_code", expected: "USD", actual: "EUR", sellableNow: false },
       { id: "skipwait_start_90d-INR", patch: { period: 1 }, field: "period", expected: "3 months", actual: "1 month", sellableNow: false },
       { id: "skipwait_momentum_30d-USD", patch: { status: "archived" }, field: "status", expected: "active", actual: "archived", sellableNow: false },
@@ -225,7 +225,7 @@ describe("planCatalogSync", () => {
   });
 
   it("keeps the planHash stable across listing order and volatile fields, and changes it with any planned action, classification, site or environment", () => {
-    const base = withPrice("skipwait_pack_25-INR", price => ({ ...price, price: 119000 }));
+    const base = withPrice("skipwait_pack_25-INR", price => ({ ...price, price: 247000 }));
     const reference = plan(base);
     expect(reference.planHash).toMatch(/^[0-9a-f]{64}$/);
     const shuffled = { families: [...base.families].reverse(), items: [...base.items].reverse(), itemPrices: [...base.itemPrices].reverse() };

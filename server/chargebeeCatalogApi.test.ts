@@ -83,7 +83,7 @@ describe("chargebee catalog api", () => {
     expect(fields[2]).toEqual({ id: "skipwait_pack_25", name: "skipwait_pack_25", type: "charge", item_family_id: "skipwait", external_name: "25 credits" });
     expect(fields[3]).toEqual({ id: "skipwait_pack_25", name: "skipwait_pack_25", type: "charge", external_name: "25 credits" });
     expect(fields[4]).toEqual({ id: "skipwait_start_90d-USD", name: "skipwait_start_90d-USD", item_id: "skipwait_start", pricing_model: "flat_fee", price: "1900", currency_code: "USD", external_name: "Start, 90 days", period: "3", period_unit: "month", billing_cycles: "1" });
-    expect(fields[5]).toEqual({ id: "skipwait_pack_25-INR", name: "skipwait_pack_25-INR", item_id: "skipwait_pack_25", pricing_model: "per_unit", price: "119900", currency_code: "INR", external_name: "25 credits" });
+    expect(fields[5]).toEqual({ id: "skipwait_pack_25-INR", name: "skipwait_pack_25-INR", item_id: "skipwait_pack_25", pricing_model: "per_unit", price: "247500", currency_code: "INR", external_name: "25 credits" });
     for (const form of fields) expect(form).not.toHaveProperty("is_taxable");
     expect(requests.every(request => request.method === "POST")).toBe(true);
     // The form builders are the single source of those fields.
