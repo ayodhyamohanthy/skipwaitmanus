@@ -69,8 +69,15 @@ function argsOf(argv) {
   return out;
 }
 
+/** The GitHub CLI's token, when an agent is signed in with it; never printed. */
+function ghToken() {
+  try { return execFileSync("gh", ["auth", "token"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() || null; }
+  catch { return null; }
+}
+
 async function github(repo, path) {
-  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || tryGit("config", "--get", "github.token");
+  // D-109: any token raises GitHub's limit from 60 reads an hour; `gh auth token` covers agents signed in with the GitHub CLI.
+  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || tryGit("config", "--get", "github.token") || ghToken();
   const headers = { accept: "application/vnd.github+json", "user-agent": "skipwait-next-task", ...(token ? { authorization: `Bearer ${token}` } : {}) };
   const res = await fetch(`https://api.github.com/repos/${repo}${path}`, { headers, signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`GitHub ${path} answered ${res.status}`);
@@ -211,11 +218,18 @@ async function state() {
       mergedHeads.get(p.head.ref).add(p.head.sha);
     }
   } catch (e) { console.error(`next-task: ${e.message}`); }
+  // D-109: one read for every pull request's CI (the newest 100 runs, grouped by branch), not one read per branch,
+  // so agents without a token stay inside GitHub's 60 reads an hour. A branch with no run among them reads unknown.
   const slugs = doc.tasks.map(t => `/${slugOf(t.branch)}`);
-  for (const head of openPrs?.keys() ?? []) {
-    if (!head.startsWith("agent/") || !slugs.some(s => head.endsWith(s))) continue;
-    try { prCi.set(head, ciStateFromRuns((await github(doc.repo, `/actions/workflows/ci.yml/runs?branch=${encodeURIComponent(head)}&per_page=5`)).workflow_runs)); }
-    catch (e) { console.error(`next-task: ${e.message}`); prCi.set(head, { state: "error" }); }
+  const heads = [...(openPrs?.keys() ?? [])].filter(head => head.startsWith("agent/") && slugs.some(s => head.endsWith(s)));
+  if (heads.length) {
+    try {
+      const runs = (await github(doc.repo, "/actions/workflows/ci.yml/runs?per_page=100")).workflow_runs;
+      for (const head of heads) prCi.set(head, ciStateFromRuns(runs.filter(r => r.head_branch === head)));
+    } catch (e) {
+      console.error(`next-task: ${e.message}`);
+      for (const head of heads) prCi.set(head, { state: "error" });
+    }
   }
   return { doc, mainCi, openPrs, mergedHeads, prCi, branches: loadBranches(doc.tasks), reports: loadReports() };
 }

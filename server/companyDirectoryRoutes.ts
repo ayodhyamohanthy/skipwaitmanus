@@ -31,12 +31,12 @@ export type CompanyDirectoryRouteDeps = {
   listAdminCompanies?: (query?: string) => Promise<AdminCompany[]>;
   createCompany?: (input: AdminCompanyCreate) => Promise<AdminCompany>;
   updateCompany?: (id: number, patch: AdminCompanyUpdate) => Promise<AdminCompany>;
-  /** D-097: off until QA verifies. Defaults to UNMATCHED_DOMAINS_ENABLED=true. */
-  unmatchedDomainsEnabled?: () => boolean;
-  listUnmatchedWorkDomains?: () => Promise<UnmatchedWorkDomain[]>;
   /** Flag company_response_signal (D-097): off until QA. */
   responseSignalEnabled?: () => boolean;
   loadResponseSignal?: (domains: readonly string[]) => Promise<CompanyResponseSignal>;
+  /** D-097: off until QA verifies. Defaults to UNMATCHED_DOMAINS_ENABLED=true. */
+  unmatchedDomainsEnabled?: () => boolean;
+  listUnmatchedWorkDomains?: () => Promise<UnmatchedWorkDomain[]>;
 };
 
 const PUBLIC_CACHE = "public, max-age=60";

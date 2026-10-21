@@ -1,3 +1,4 @@
+// D-067 recovery: transport belongs exclusively to the durable scheduled consumer.
 import express from "express";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -77,7 +78,7 @@ describe("gift mine and claim endpoints", () => {
     expect(response.status).toBe(409);
     expect(response.body).toEqual({ error: "This gift was for a plan skipwait.me no longer offers, so it cannot be added to your account. We have told our team so the person who sent it can be refunded.", code: "plan_retired" });
     expect(claimGift).toHaveBeenCalledWith(7, "gift_ready");
-    expect(alertRetiredPlanEvent).toHaveBeenCalledWith(expect.objectContaining({ giftId: "gift_ready", reason: "gift_claim_refused" }));
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
     expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 7, action: "billing.gift_claim_refused", outcome: "denied", resourceType: "gift", resourceId: "gift_ready" }));
     expect(recordActivity).not.toHaveBeenCalledWith(expect.objectContaining({ action: "billing.gift_claimed" }));
     expect(provider).not.toHaveBeenCalled();
@@ -96,7 +97,7 @@ describe("gift mine and claim endpoints", () => {
       expect(response.status).toBe(409);
       expect(response.body.code).toBe("plan_retired");
     }
-    expect(alertRetiredPlanEvent).toHaveBeenCalledTimes(1);
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
     expect(recordActivity.mock.calls.filter(([entry]) => (entry as { action: string }).action === "billing.gift_claim_refused")).toHaveLength(3);
   });
 
@@ -164,8 +165,8 @@ describe("gift webhook branch", () => {
     expect(response.body.obligations.gift).toEqual({ status: "parked", reason: "plan_retired" });
     expect(recordGiftEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_gift_claimed_9", giftId: "gift_1", status: "claimed", subscriptionId: "sub_g1", receiverEmail: "james@user.com", buyerUserId: 9 }));
     for (const untouched of [retrieveGiftPlan, updateGiftPlan, resolveGiftRecipient, fulfillGift, fulfillPayment, applySubscriptionEvent]) expect(untouched).not.toHaveBeenCalled();
-    expect(alertRetiredPlanEvent).toHaveBeenCalledTimes(1);
-    expect(alertRetiredPlanEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_gift_claimed_9", eventType: "gift_claimed", giftId: "gift_1", subscriptionId: "sub_g1", reason: "gift_claimed" }));
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
     expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "billing.retired_plan_event", outcome: "failure", resourceType: "gift", resourceId: "gift_1" }));
   });
 
@@ -183,7 +184,7 @@ describe("gift webhook branch", () => {
       expect(response.body.obligations.gift).toEqual({ status: "parked", reason: "plan_retired" });
     }
     expect(recordGiftEvent).toHaveBeenCalledTimes(2);
-    expect(alertRetiredPlanEvent).toHaveBeenCalledTimes(1);
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
     expect(recordActivity.mock.calls.filter(([entry]) => (entry as { action: string }).action === "billing.retired_plan_event")).toHaveLength(1);
   });
 
@@ -204,8 +205,8 @@ describe("gift webhook branch", () => {
     const response = await authed(app, { id: "ev_upd", event_type: "gift_updated", content: { gift: { id: "gift_1", status: "claimed" } } });
     expect(response.status).toBe(200);
     expect(response.body.obligations.gift).toEqual({ status: "parked", reason: "plan_retired" });
-    expect(alertRetiredPlanEvent).toHaveBeenCalledTimes(1);
-    expect(alertRetiredPlanEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_upd", eventType: "gift_updated", giftId: "gift_1", reason: "gift_claimed" }));
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
   });
 
   it("asks for a retry when the gift receipt cannot be recorded", async () => {
