@@ -3,6 +3,7 @@
 // server picked from the catalog; nothing here reads a client price. Each call
 // is mocked in tests: real payment execution is prohibited in engineering/QA.
 import { z } from "zod";
+import { classifyV2SubscriptionItems } from "../shared/planFamilyBilling";
 import { resolvePlanItemPrice } from "../shared/billingCatalog";
 import { ChargebeeApiError, chargebeeRequest, idPath, providerDate, toProviderSeconds, type ChargebeeCredentials } from "./chargebeeApi";
 
@@ -193,6 +194,7 @@ export type CheckoutPageSubscription = {
   status: string;
   currency?: "INR" | "USD";
   itemPriceId?: string;
+  itemPriceIds?: string[];
   currentTermStart?: Date;
   currentTermEnd?: Date;
   resourceVersion?: number;
@@ -219,6 +221,7 @@ export async function retrieveCheckoutSubscription(credentials: ChargebeeCredent
         status: (subscription.status ?? "unknown").toLowerCase(),
         currency: subscription.currency_code === "INR" || subscription.currency_code === "USD" ? subscription.currency_code : undefined,
         itemPriceId: subscription.subscription_items?.find(item => typeof item.item_price_id === "string")?.item_price_id,
+        itemPriceIds: Array.isArray(subscription.subscription_items) ? subscription.subscription_items.map(item => item.item_price_id).filter((id): id is string => typeof id === "string") : undefined,
         currentTermStart: typeof subscription.current_term_start === "number" ? new Date(subscription.current_term_start * 1000) : undefined,
         currentTermEnd: typeof subscription.current_term_end === "number" ? new Date(subscription.current_term_end * 1000) : undefined,
         resourceVersion: Number.isSafeInteger(subscription.resource_version) && (subscription.resource_version ?? 0) > 0 ? subscription.resource_version : undefined,
@@ -238,6 +241,7 @@ export function subscriptionEventFromCheckoutPage(page: RetrievedCheckoutSubscri
   const subscription = page.subscription;
   if (!subscription) return null;
   const resolvedPrice = resolvePlanItemPrice(subscription.itemPriceId);
+  const v2 = classifyV2SubscriptionItems(subscription.itemPriceIds ?? (subscription.itemPriceId ? [subscription.itemPriceId] : []));
   return {
     eventId: `hosted_page:${page.hostedPageId}`,
     eventType: "subscription_created",
@@ -245,6 +249,8 @@ export function subscriptionEventFromCheckoutPage(page: RetrievedCheckoutSubscri
     passThruContent: page.passThruContent ?? undefined,
     subscriptionId: subscription.id,
     plan: resolvedPrice?.plan,
+    planFamily: v2.plan?.planId,
+    planFamilyRung: v2.credits?.rung,
     interval: resolvedPrice?.interval,
     itemPriceId: subscription.itemPriceId,
     status: subscription.status,

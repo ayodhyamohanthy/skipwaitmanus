@@ -52,3 +52,15 @@ describe("D-132 item price identities", () => {
     expect(monthlyTotal("open_door", 0, "INR")).toBe(0);
   });
 });
+
+describe("classifyV2SubscriptionItems", () => {
+  it("classifies the D-132 bundle into plan + credits and leaves kit ids alone", async () => {
+    const { classifyV2SubscriptionItems, planItemPriceId, planCreditsItemPriceId } = await import("./planFamilyBilling");
+    const bundle = classifyV2SubscriptionItems([planItemPriceId("fast_track", "INR"), planCreditsItemPriceId(25, "INR")]);
+    expect(bundle.plan).toMatchObject({ kind: "plan", planId: "fast_track", currency: "INR", recurring: true });
+    expect(bundle.credits).toMatchObject({ kind: "planCredits", rung: 25, currency: "INR", recurring: true });
+    expect(classifyV2SubscriptionItems([planItemPriceId("insider", "USD")])).toEqual({ plan: expect.objectContaining({ planId: "insider" }), credits: undefined });
+    expect(classifyV2SubscriptionItems(["skipwait_start_30d-INR", "nope"])).toEqual({ plan: undefined, credits: undefined });
+    expect(classifyV2SubscriptionItems([])).toEqual({ plan: undefined, credits: undefined });
+  });
+});
