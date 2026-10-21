@@ -6,8 +6,8 @@ import { BETA_BADGE_LABEL, BETA_NOTICE_ENABLED, BETA_NOTICE_LINE, BETA_NOTICE_LI
 export function BetaBadge({ tone = "kit" }: { tone?: "kit" | "goal" }) {
   if (!BETA_NOTICE_ENABLED) return null;
   const cls = tone === "goal"
-    ? "inline-flex items-center rounded-full border border-g-control-edge px-2 py-0.5 text-g-badge uppercase tracking-[0.08em] text-g-ink-2"
-    : "inline-flex items-center rounded-full border border-[#141414]/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#141414]";
+    ? "inline-flex items-center rounded-[3px] border border-g-ink px-1.5 py-px text-[10px] uppercase tracking-[0.14em] text-g-ink"
+    : "inline-flex items-center rounded-[3px] border border-[#141414] px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.14em] text-[#141414]";
   return <span className={cls} data-testid="beta-badge">{BETA_BADGE_LABEL}</span>;
 }
 
