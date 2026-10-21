@@ -280,7 +280,9 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   const byId = new Map(view.map(v => [v.task.id, v]));
   // D-127: dependsOn holds a landing, not only a build: a built pull request never lands before what it depends on.
   const unmetOf = v => v.task.dependsOn.filter(d => !byId.get(d)?.done);
-  const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open));
+  // D-127: a lane-mate that depends on v (directly or through others) cannot land before v, so it never makes v's lane busy.
+  const dependsOnTask = (o, id, seen = new Set()) => o.task.dependsOn.some(d => d === id || (!seen.has(d) && seen.add(d) && byId.has(d) && dependsOnTask(byId.get(d), id, seen)));
+  const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id));
   const { workAt, lockAt, archAt, quiet } = clock(branches, now);
   const ceo = isArchitect(claimant);
 
@@ -369,7 +371,10 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     return { kind: "build", task: v.task, ciRunning: mainCi.state === "running" };
   };
 
-  const mine = claimant ? ownWork(view, claimant) : null;
+  let mine = claimant ? ownWork(view, claimant) : null;
+  if (mine?.of === "land" && unmetOf(byId.get(mine.task.id)).length) { skip(byId.get(mine.task.id), `yours to land after ${unmetOf(byId.get(mine.task.id)).join(", ")}`); mine = null; }
+  // D-127: any pick whose task still waits on a dependency says so, and its printed steps stop before landing.
+  const withHold = pick => { const v = pick?.task ? byId.get(pick.task.id) : null; const after = v ? unmetOf(v) : []; return after.length ? { ...pick, landsAfter: after } : pick; };
 
   // Claude Code is the CEO: never development work. Pass 1: pending work top down,
   // stopping at your own work; pass 2: new work. A red or blocked priority holds
@@ -393,15 +398,15 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     if (!PENDING_KINDS.has(action.kind)) continue;
     if (ceo && (DEV_KINDS.has(action.kind) || (action.kind === "land" && !action.tier1))) { skip(view[i], "development work: the open models build it (D-085)"); continue; }
     // D-085: pending work ranked above your own comes first; your own claim waits, pushed.
-    return mine ? { ...action, holds: { id: mine.task.id, branch: mine.work ?? mine.lock } } : action;
+    return withHold(mine ? { ...action, holds: { id: mine.task.id, branch: mine.work ?? mine.lock } } : action);
   }
   // Your own work: a red priority above it whose owner is on it does not stop you (your hands cannot help it).
-  if (mine) { const { at, ...pick } = mine; return pick; }
+  if (mine) { const { at, ...pick } = mine; return withHold(pick); }
   for (let i = 0; i < view.length; i++) {
     const action = actions[i];
     if (!action || action.kind === "gate" || PENDING_KINDS.has(action.kind)) continue;
     if (ceo && action.kind !== "architect") { skip(view[i], "development work: the open models build it (D-085)"); continue; }
-    return action;
+    return withHold(action);
   }
   if (gateAt >= 0 && !ceo) return { kind: "wait", gate: view[gateAt].task.id, blocked: Boolean(gateAction.blocked), reason: gateAction.reason };
   return ceo ? { kind: "ceo", skipped } : { kind: "none", skipped };
@@ -581,8 +586,9 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), merged
     if (v.done) state = "done";
     else if (task.status === "owner") state = "owner";
     else if (task.status === "in-review") state = "in-review";
-    else if (task.status === "architect") state = archHeld ? (quiet ? "quiet" : "packet") : "architect";
+    else if (task.status === "architect") state = archHeld ? (quiet ? "quiet" : "packet") : task.dependsOn.some(d => !doneIds.has(d)) ? "waiting" : "architect";
     else if (!v.open) state = task.dependsOn.some(d => !doneIds.has(d)) ? "waiting" : "todo";
+    else if (pr && v.ci !== "red" && task.dependsOn.some(d => !doneIds.has(d))) state = "lands-after";
     else if (pr) state = { red: "pr-red", green: "pr-green", running: "pr-running", "running-after-red": "pr-running" }[v.ci] ?? "pr-open";
     else state = quiet ? "quiet" : "building";
     // Reports gate only open tasks, so only they colour the board; a Tier 1 pull request is green only once its review passed.

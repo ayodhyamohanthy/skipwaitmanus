@@ -310,6 +310,44 @@ describe("dependsOn holds a landing, not only a build (D-127)", () => {
     expect(pick(tasks, { branches: [writingF], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "C" } });
     expect(pick(tasks, { claimant: "Kimi · s2" })).toMatchObject({ kind: "architect", task: { id: "F" } });
   });
+  it("every way a task reaches main waits for its dependency: continue, takeover, make-green and review stop before landing", () => {
+    const ctx = { who: "Kimi · s2", date: "2026-10-21", claimed: true };
+    const tasks = [task("A", { lane: "X" }), task("B", { dependsOn: ["A"] })];
+    // The builder's own green pull request: no continue-land; the agent gets other work and keeps the claim.
+    const mineB: [string, Branch] = ["agent/queue/b", claimBy("Kimi · s2", "B", 0.5)];
+    expect(pick(tasks, { branches: [mineB], prs: [prB], prCi: [["agent/queue/b", "green"]], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "A" } });
+    // A quiet half-built claim is taken over, but its steps stop before landing.
+    const quietB: [string, Branch] = ["agent/queue/b", claimBy("Qwen · s1", "B", 3)];
+    const takeover = pick(tasks, { branches: [quietB], claimant: "Kimi · s2" });
+    expect(takeover).toMatchObject({ kind: "takeover", task: { id: "B" }, landsAfter: ["A"] });
+    expect(renderPick(takeover, ctx)).toContain("Do not land yet");
+    // A red pull request is made green, but not landed.
+    const green = pick(tasks, { branches: [quietB], prs: [prB], prCi: [["agent/queue/b", "red"]], claimant: "Kimi · s2" });
+    expect(green).toMatchObject({ kind: "green", task: { id: "B" }, landsAfter: ["A"] });
+    expect(renderPick(green, ctx)).toContain("Do not land yet");
+    expect(renderPick(green, ctx)).not.toContain("Then land it");
+  });
+  it("a Tier 1 review is still handed out, but its pass stops before landing; the reviewer gets no continue-land", () => {
+    const ctx = { who: "Gemini · s3", date: "2026-10-21", claimed: true };
+    const t1 = task("M", { tier: 1, lane: "money", dependsOn: ["A"] });
+    const built: [string, Branch] = ["agent/queue/m", claimBy("DeepSeek · s4", "M", 3)];
+    const prM: [string, string] = ["agent/queue/m", "https://github.com/o/r/pull/9"];
+    const review = pick([t1, task("A", { lane: "X" })], { branches: [built], prs: [prM], claimant: "Gemini · s3" });
+    expect(review).toMatchObject({ kind: "review", task: { id: "M" }, landsAfter: ["A"] });
+    expect(renderPick(review, ctx)).toContain("Do not land yet");
+    const passedByMe: [string, Branch] = ["agent/review/m", { tipMs: NOW - 0.2 * HOUR, merged: false, markers: [{ verb: "Review claim", id: "M", who: "Gemini · s3" }, { verb: "Verdict", id: "M", who: "Gemini · s3", verdict: "pass" }] }];
+    expect(pick([t1, task("A", { lane: "X" })], { branches: [built, passedByMe], prs: [prM], claimant: "Gemini · s3" })).toMatchObject({ kind: "build", task: { id: "A" } });
+  });
+  it("a lane-mate that depends on a task never makes that task's lane busy (no deadlock)", () => {
+    const tasks = [task("A", { lane: "L" }), task("B", { lane: "L", dependsOn: ["A"] })];
+    const quietB: [string, Branch] = ["agent/queue/b", claimBy("Qwen · s1", "B", 3)];
+    expect(pick(tasks, { branches: [quietB], prs: [prB], prCi: [["agent/queue/b", "green"]], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "A" } });
+  });
+  it("the board shows an open pull request that waits for a dependency, and a packet that waits for another", () => {
+    const quietB: [string, Branch] = ["agent/queue/b", claimBy("Qwen · s1", "B", 3)];
+    const rows = statusBoard({ tasks: [task("A"), task("B", { dependsOn: ["A"] }), task("P", { status: "architect", packet: null, dependsOn: ["A"] })], branches: new Map([quietB]), openPrs: new Map([prB]), prCi: new Map([["agent/queue/b", { state: "green" }]]), reports: [], now: NOW });
+    expect(rows.map(r => [r.id, r.state])).toEqual([["A", "todo"], ["B", "lands-after"], ["P", "waiting"]]);
+  });
   it("a Tier 1 pull request whose review passed waits to land until its dependency is done", () => {
     const t1 = task("M", { tier: 1, lane: "money", dependsOn: ["A"] });
     const built: [string, Branch] = ["agent/queue/m", claimBy("DeepSeek · s4", "M", 3)];
