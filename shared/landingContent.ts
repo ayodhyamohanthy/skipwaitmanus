@@ -50,7 +50,7 @@ export const LANDING_EXPLORE: readonly LandingLink[] = [
   { href: "/jobs", label: "Browse roles", summary: "Published roles worth a referral." },
   { href: "/wall", label: "Internal openings", summary: "Hiring signals shared privately by verified employees." },
   { href: "/referrer", label: "For employees", summary: "Verify your work email to review private requests at your company." },
-  { href: "/premium", label: "Buy credits", summary: "Referral credits start at $1 each and never expire." },
+  { href: "/premium", label: "Buy credits", summary: "Extra referral credits cost $1 each and never expire." },
   { href: "/pricing", label: "Pricing", summary: "The free monthly allowance, extra credits, and what a credit buys." },
   { href: "/plans", label: "Plans and credits", summary: PAID_PLANS_SENTENCE },
   { href: "/about", label: "About us", summary: "Who runs skipwait.me and what it sells." },
@@ -91,6 +91,6 @@ export const LANDING_FAQ_HEADING = "Common questions, answered plainly.";
 export const LANDING_FAQ: readonly { question: string; answer: string }[] = [
   { question: "Is skipwait.me a public job board?", answer: "No. A referral request is visible only to verified employees at the company behind the role link you paste, and your resume stays private." },
   { question: "Who can review my request?", answer: "Only employees who verified a company email at that employer. They see the role, your resume, and your short note — never your contact details." },
-  { question: "What does it cost?", answer: `${MONEY_SENTENCE} Credits start at $1 each (in India, ₹99 for 2) and never expire. ${CREDIT_RULE}` },
+  { question: "What does it cost?", answer: `${MONEY_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire. ${CREDIT_RULE}` },
   { question: "Does a referral guarantee an interview?", answer: "No. Employees choose whether to help, and a referral never guarantees an interview, an offer, or a job. You can withdraw an unclaimed request at any time." },
 ];
