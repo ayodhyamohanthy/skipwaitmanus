@@ -15,7 +15,7 @@
       "branch": "agent/claude/chargebee-catalog-sync",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan §6)."
+      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan \u00a76)."
     },
     {
       "id": "GO-LIVE-1",
@@ -39,11 +39,11 @@
       "tier": 1,
       "lane": "payments",
       "branch": "agent/queue/go-live-passes",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "GO-LIVE-1"
       ],
-      "note": "D-084. Passes are off (PASS_SALES_ENABLED=false, P0 after #351). The switch commit needs test-site evidence (packet §4.5); without it the packet lands with passes still off."
+      "note": "D-084. Landed through PR #359 (merge of agent/queue/go-live-passes into main, Oct 21): return-page and hourly recovery of pending pass checkouts through the provider checkout page, an alert on any unlinked kit subscription, and \"Ends <date>\" with a renewed cancel control while billing_cycles=1 is unproven. Passes STAY OFF (PASS_SALES_ENABLED=false): the switch commit needs the packet \u00a74.5 test-site evidence (owner on skipwait-test), then one flag change. Review: passed by Assistant \u00b7 4b07; landed by DeepSeek V4.1 Flash Free \u00b7 89c2."
     },
     {
       "id": "D-038-reconcile",

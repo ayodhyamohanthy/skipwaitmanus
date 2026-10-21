@@ -65,7 +65,8 @@ describe("jobs tick protocol", () => {
 
 describe("scheduled jobs contract", () => {
   it("names each job once, within the column width", () => {
-    expect(SCHEDULED_JOB_NAMES).toEqual(["ask-expiry-sweep", "first-look-release", "plan-credit-cycles", "chargebee-pending-reconcile", "work-email-reverify-sweep", "data-export-sweep", "work-email-otp-purge", "coverage-delivery-retry", "daily-money-check"]);
+    // GO-LIVE-1b added chargebee-subscription-reconcile (pending pass checkout safety net).
+    expect(SCHEDULED_JOB_NAMES).toEqual(["ask-expiry-sweep", "first-look-release", "plan-credit-cycles", "chargebee-pending-reconcile", "chargebee-subscription-reconcile", "work-email-reverify-sweep", "data-export-sweep", "work-email-otp-purge", "coverage-delivery-retry", "daily-money-check"]);
     expect(new Set(SCHEDULED_JOB_NAMES).size).toBe(SCHEDULED_JOB_NAMES.length);
     expect(Math.max(...SCHEDULED_JOB_NAMES.map(name => name.length))).toBeLessThanOrEqual(64);
   });
