@@ -103,36 +103,52 @@ export default function GoalLandingV9() {
         </div>
       </section>
 
-      {/* Mass applying vs a referral (owner 18:00:59
-          phonemsg-01M5F730N3AZPJ5P2JZ3FMH9VH). Figure from Jobvite's own
-          blog; inline footnote with source link. Copy is the engineering
-          draft - the designer's final copy list swaps in verbatim. */}
+      {/* Mass applying vs a referral - designer final copy list (main
+          18:24, owner shipped C1 phonemsg-01M5F815M7QD4MZRPGH858XGPG).
+          Figures from the linked Jobvite page (verified verbatim there). */}
       <section className="border-b border-g-hairline">
         <div className="mx-auto max-w-[1120px] px-5 py-14 gdesk:px-8 gdesk:py-24">
           <Reveal>
-            <Kicker>The honest comparison</Kicker>
+            <Kicker>Why not just apply?</Kicker>
             <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Mass applying vs a referral.</h2>
           </Reveal>
-          <div className="mt-10 grid gap-10 gdesk:grid-cols-2 gdesk:gap-16">
-            <Reveal>
-              <h3 className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Mass applying</h3>
-              <ul className="mt-4">
-                <li className="border-t border-g-hairline py-4 text-g-body text-g-ink-2">Screened by software. Heard by no one.</li>
-                <li className="border-t border-g-hairline py-4 text-g-body text-g-ink-2">Another form. Another silence.</li>
-                <li className="border-y border-g-hairline py-4 text-g-body text-g-ink-2">One of the pile.</li>
-              </ul>
-            </Reveal>
-            <Reveal>
-              <h3 className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">One referral on skipwait.me</h3>
-              <ul className="mt-4">
-                <li className="border-t border-g-ink py-4 text-g-body font-semibold">A person inside reads you.</li>
-                <li className="border-y border-g-ink py-4 text-g-body font-semibold">One thoughtful ask. Your name on it.</li>
-              </ul>
-            </Reveal>
+          <div className="mt-10">
+            <div className="hidden grid-cols-[140px_1fr_1fr] gap-6 pb-3 gdesk:grid" aria-hidden="true">
+              <span />
+              <span className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Mass applying</span>
+              <span className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">One referral on skipwait.me</span>
+            </div>
+            {[
+              ["Where you land", "One more application in a pile, screened by software before any person.", "One ask, read by a verified employee inside the company."],
+              ["Your effort", "The same form, re-filled for every posting, hearing nothing back.", "One thoughtful ask with your resume and a short note - not another form."],
+              ["Your wait", "39-55 days average hiring time for job-board and career-site candidates.", "About 29 days average hiring time for referred candidates."],
+              ["Your odds", "One of every applicant in the pile.", "Referrals are about 7% of candidates and convert at nearly 40%."],
+            ].map(([label, mass, referral]) => (
+              <Reveal key={label} className="border-t border-g-hairline py-5">
+                <div className="grid gap-3 gdesk:grid-cols-[140px_1fr_1fr] gdesk:gap-6">
+                  <span className="font-g-mono text-[13px] text-g-ink-3">{label}</span>
+                  <p className="text-g-small leading-[1.6] text-g-ink-2"><span className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3 gdesk:hidden">Mass applying: </span>{mass}</p>
+                  <p className="text-g-small font-semibold leading-[1.6]"><span className="font-g-mono text-[11px] font-medium uppercase tracking-[0.14em] text-g-ink-3 gdesk:hidden">Referral: </span>{referral}</p>
+                </div>
+              </Reveal>
+            ))}
           </div>
+          <Reveal className="mt-10">
+            <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">The wait, to scale</p>
+            <div className="mt-4 space-y-3">
+              <div>
+                <div className="h-3 rounded-full bg-g-hairline" style={{ width: "100%" }} />
+                <p className="mt-1.5 font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">39-55 days - job boards &amp; career sites</p>
+              </div>
+              <div>
+                <div className="h-3 rounded-full bg-g-ink" style={{ width: "52.7%" }} />
+                <p className="mt-1.5 font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink">About 29 days - referred candidates</p>
+              </div>
+            </div>
+          </Reveal>
           <Reveal>
-            <p className="mt-8 text-g-small leading-[1.6] text-g-ink-3">Referrals make up about 7% of candidates, and they convert at nearly 40%.<sup><a href="#vs-source" className="ml-0.5 underline underline-offset-2">1</a></sup>{" "}Industry-wide figures, not a promise of your outcome.</p>
-            <p id="vs-source" className="mt-2 font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">1. <a href="https://www.jobvite.com/blog/4-reasons-to-invest-in-employee-referrals/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Jobvite - 4 reasons to invest in employee referrals</a></p>
+            <p className="mt-8 text-g-small leading-[1.6] text-g-ink-3">Figures: Jobvite, &ldquo;4 Reasons to Invest in Employee Referrals&rdquo; - <a href="https://www.jobvite.com/blog/4-reasons-to-invest-in-employee-referrals/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">jobvite.com</a> - Employer-side averages, not a promise for any one person.</p>
+            <p className="mt-4 text-g-body font-semibold">A referral is an introduction, never a promise of an interview or a job.</p>
           </Reveal>
         </div>
       </section>
