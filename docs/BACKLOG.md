@@ -65,7 +65,7 @@ Related (D-110, in the #380 draft): in discussion the owner said "Im sure about 
 | D-048 phase 3: /explore to goal directory | #362 | open | designer/QA flow |
 | D-048 phase 3: /requests to goal list | #360 | open | same |
 | D-048 phase 3 rollout map (8 waves) | #358 | draft | planning doc |
-| QA preview worker (share cards + company signal ON, fictional data, Basic Auth + noindex) | #383 | draft; pipeline proven up to the deploy gate Oct 21 11:53 IST | spend approval is tapback-based (owner 👍 at 10:57 and 10:58 on main's cost message: lite only, sleep-after-idle, test sessions only); an explicit "yes" word has been requested and the worker deploy step waits for it |
+| QA preview worker (share cards + company signal ON, fictional data, Basic Auth + noindex) | #383 | draft; deploy authorized and running Oct 21 12:20 IST | spend approved by the owner's word: "We have cloudflare credits of 10k$ so no worries" (Oct 21 12:20 IST, phonemsg-01M5EKJP736W2B4BA35WYT83ES; scope: lite, test sessions only, fictional data). Whether the $10k Cloudflare credit applies to this account is unverified |
 | D-107 claim your company (aggregate-only, free) | #384 | draft, flags OFF; owner build approval phonemsg-01M5DRBEBDB0P0HV7KW39075EM + phonemsg-01M5DRBHX150843DKETYP9FS7K (Oct 21 4:24 IST) | QA preview for flag-on verification |
 | Credit pack ladder 1/5/10/25/50 (₹99/$1 per credit) + D-110 level-denominated free credits | #380 | draft, flags OFF; D-110 evidence phonemsg-01M5E5BK5611HF5YHCDXKC3JZF | owner reviewing the pack table view |
 | Job level classifier L1-L10 (level-scaled ask cost groundwork) | #381 | draft, flag OFF | feeds level pricing research below |
