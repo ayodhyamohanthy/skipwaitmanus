@@ -5,6 +5,7 @@ import { SignInButton, useAuth, useUser } from "@/_core/auth";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { ReferrerPanel, SeekerPanel } from "@/components/thread/ThreadDecisionPanels";
 import { ThreadMain } from "@/components/thread/ThreadMain";
+import { ShareWinCard } from "@/components/thread/ShareWinCard";
 import { canMessage, companyName, isAccepted } from "@/components/thread/threadModel";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { decideReview, confirmReferredBySeeker, extendReferredDeadline, loadConversation, loadThread, recordProgress, sendConversationMessage, stepBackFromReferral, withdrawThreadRequest, type ThreadMessage, type ThreadRequest, type ThreadRole } from "@/lib/threadApi";
@@ -157,6 +158,7 @@ export default function ReferralConversation() {
             <div className="rounded-3xl border border-border p-5 text-sm text-muted-foreground">
               <ShieldCheck className="mb-2 size-5 text-primary" />Referrers are never paid and never ask for money. Never pay or accept money for a referral. <Link href="/report" className="text-link">Report or block</Link>
             </div>
+            {role === "seeker" && isAccepted(request) ? <ShareWinCard roleTitle={request.title} companyName={companyName(request)} status={request.status} /> : null}
           </aside>
         </div>
       ) : null}
