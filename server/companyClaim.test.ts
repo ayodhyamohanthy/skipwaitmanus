@@ -46,3 +46,11 @@ describe("company mailbox proof and aggregate privacy", () => {
     expect(JSON.stringify(result)).not.toMatch(/userId|email|resume|seeker|messages|referrerId/);
   });
 });
+
+it("keeps claim tokens out of sign-in returnTo and replay analytics initialization", async () => {
+  const { readFileSync } = await import("node:fs");
+  const ui = readFileSync("client/src/pages/CompanyClaim.tsx", "utf8");
+  expect(ui).not.toContain("window.location.pathname + window.location.search + window.location.hash");
+  expect(ui).toContain('window.history.replaceState(null, "", window.location.pathname)');
+  expect(readFileSync("client/src/lib/clarity.ts", "utf8")).toContain("company\\/claim");
+});

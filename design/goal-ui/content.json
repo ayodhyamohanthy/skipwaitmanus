@@ -1108,7 +1108,7 @@
     "peopleTitle": "Your people",
     "people": "Their names, asks and chats stay private to them - companies see the count, not the people.",
     "footer": "Seekers are never shown to companies: no names, no resumes, no contact details. Claiming is free.",
-    "signin": "Sign in to verify your work email",
+    "signin": "Sign in for company access. This does not enroll you as a referrer. If you arrived from an email, reopen that link after signing in.",
     "view": "View company dashboard",
     "back": "Back to company page",
     "error": "We could not complete company verification. Try again.",

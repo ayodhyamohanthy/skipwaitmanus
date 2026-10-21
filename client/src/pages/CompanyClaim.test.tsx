@@ -3,6 +3,7 @@ import React from "react";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({ signed: true, dashboard: false, go: vi.fn() }));
+vi.mock("@/components/SeekerSignIn", () => ({ SeekerSignIn: () => <div>Company account sign-in</div> }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: state.signed }) }));
 vi.mock("wouter", () => ({ Link: ({ href, children, ...props }: any) => <a href={href} {...props}>{children}</a>, useLocation: () => ["/company/claim", state.go], useRoute: () => [state.dashboard, state.dashboard ? { slug: "quillmint" } : undefined] }));
 import CompanyClaim from "./CompanyClaim";

@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useRoute } from "wouter";
+import { SeekerSignIn } from "@/components/SeekerSignIn";
+import { CompanyResponseSignalView } from "@/components/explore/CompanyResponseSignal";
 import { BadgeCheck } from "lucide-react";
 import { useAuth } from "@/_core/auth";
 import content from "../../../design/goal-ui/content.json";
@@ -16,7 +18,10 @@ export default function CompanyClaim() {
   const { isSignedIn } = useAuth();
   const [, go] = useLocation();
   const [isDashboard, params] = useRoute("/company/dashboard/:slug");
-  const token = new URLSearchParams(window.location.hash.slice(1)).get("token");
+  const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("token"));
+  useEffect(() => {
+    if (token) window.history.replaceState(null, "", window.location.pathname);
+  }, [token]);
   useEffect(() => {
     const meta = document.createElement("meta"); meta.name = "referrer"; meta.content = "no-referrer";
     document.head.appendChild(meta); return () => { meta.remove(); };
@@ -59,18 +64,18 @@ export default function CompanyClaim() {
         <div className="company-claim-benefits">{copy.benefits.map(item => <section key={item.title}><h3>{item.title}</h3><p>{item.body}</p></section>)}</div>
         <h2>{copy.privacyTitle}</h2><p>{copy.privacy}</p>
       </> : null}
-      {!isSignedIn ? <Link className="company-claim-primary" href={`/sign-in?intent=referrer&returnTo=${encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)}`}>{copy.signin}</Link> : isDashboard ? <>
+      {!isSignedIn ? <section className="company-claim-signin"><p>{copy.signin}</p><SeekerSignIn returnTo={window.location.pathname} /></section> : isDashboard ? <>
         {!dashboard && !error ? <p role="status">{copy.loading}</p> : null}
         {company ? <p className="company-claim-verified"><BadgeCheck size={16} />{company.domain} verified · {copy.period}</p> : null}
         {signal?.state === "shown" ? <div className="company-claim-kpis"><div><strong>{signal.answeredThisMonth}</strong><span>{copy.answered}</span></div><div><strong>{signal.usualFirstReplyDays} days</strong><span>{copy.reply}</span></div><div><strong>{signal.referrersInside}</strong><span>{copy.employees}</span></div></div> : signal ? <p className="company-claim-empty">{copy.insufficient}</p> : null}
-        {company ? <><h2>{copy.publicTitle}</h2>{signal?.state === "shown" ? <div className="company-claim-public"><p>{company.openToReferrals ? copy.open : copy.closed}</p><div className="company-claim-kpis"><div><strong>{signal.usualFirstReplyDays} days</strong><span>{copy.reply}</span></div><div><strong>{signal.answeredThisMonth}</strong><span>{copy.answered}</span></div><div><strong>{signal.referrersInside}</strong><span>{copy.employees}</span></div></div></div> : <p>{copy.insufficient}</p>}<Link href={`/explore/${company.slug}`}>{copy.back}</Link><p>{copy.thin}</p><h2>{copy.peopleTitle}</h2><p>{copy.people}</p><small>{copy.footer}</small></> : null}
+        {company ? <><h2>{copy.publicTitle}</h2><CompanyResponseSignalView data={signal} /><Link href={`/explore/${company.slug}`}>{copy.back}</Link><p>{copy.thin}</p><h2>{copy.peopleTitle}</h2><p>{copy.people}</p><small>{copy.footer}</small></> : null}
       </> : <form onSubmit={submit} className="company-claim-form">
         {token ? <p>{copy.confirmNote}</p> : <><label htmlFor="claim-work-email">{copy.emailLabel}</label><input id="claim-work-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" /></>}
         <button className="company-claim-primary" disabled={busy || sent} type="submit">{token ? copy.confirm : copy.send}</button>
         {sent ? <p role="status">{copy.sent}</p> : null}
       </form>}
       {error ? <p role="alert">{error}</p> : null}
-      {!isDashboard ? <><small>{copy.fine}</small><Link href="/suggest-company">Suggest a company</Link></> : null}
+      {!isDashboard ? <small>{copy.fine}</small> : null}
     </main>
   </div>;
 }
