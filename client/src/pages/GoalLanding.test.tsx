@@ -32,7 +32,7 @@ describe("GoalLanding (D-120)", () => {
 
   it("teaches the 3 steps with the real cost before any ask", () => {
     render(<GoalLanding />);
-    const section = screen.getByRole("heading", { name: "How it goes" }).closest("section")!;
+    const section = screen.getByRole("heading", { name: "Three steps. No noise." }).closest("section")!;
     const steps = section.querySelector("ol")!;
     expect(steps.textContent).toContain("Find your company");
     expect(steps.textContent).toContain("Send one thoughtful ask");
