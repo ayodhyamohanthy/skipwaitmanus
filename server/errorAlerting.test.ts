@@ -76,7 +76,7 @@ describe("retired-plan event alert", () => {
     await expect(alert(input)).resolves.toEqual({ alerted: true });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
-    expect(payload).toMatchObject({ to: ["ayodhya@skipwait.me"], subject: "skipwait.me retired plan event needs review · sub_max_legacy" });
+    expect(payload).toMatchObject({ to: ["ayodhya@skipwait.me", "ayodhyarammohanthy@gmail.com", "ayodhya@mail.instinct.com"], subject: "[SKIPWAIT PAYMENT] retired plan event needs review · sub_max_legacy" });
     expect(payload.text).toContain("Nothing was granted");
     expect(payload.text).toContain("sub_max_legacy");
     expect(payload.text).toContain("skipwait_max_monthly-USD");
@@ -95,7 +95,7 @@ describe("retired-plan event alert", () => {
     const alert = createRetiredPlanAlerter({ fetchImpl, recordActivity });
     await expect(alert({ eventId: "ev_unknown", eventType: "subscription_changed", reason: "unsupported_plan", subscriptionId: "sub_start", itemPriceId: "skipwait_start_30d_v2-USD" })).resolves.toEqual({ alerted: true });
     const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
-    expect(payload.subject).toBe("skipwait.me unrecognised plan event needs review · sub_start");
+    expect(payload.subject).toBe("[SKIPWAIT PAYMENT] unrecognised plan event needs review · sub_start");
     expect(payload.text).toContain("Nothing was granted");
     expect(payload.text).toContain("skipwait_start_30d_v2-USD");
     expect(payload.text).not.toContain("Pro/Max");

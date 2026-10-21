@@ -299,7 +299,7 @@ export function createCardValidationAlerter(dependencies: AlertDependencies = {}
   const recordActivity = dependencies.recordActivity ?? recordOperationalActivity;
   return async function alertCardValidationEvent(input: CardValidationAlertInput) {
     const ref = input.customerId ?? input.eventId ?? "unknown";
-    const subject = `skipwait.me card validation needs review · ${input.reason} · ${ref}`;
+    const subject = `${PAYMENT_ALERT_SUBJECT_PREFIX} card validation needs review · ${input.reason} · ${ref}`;
     const text = [
       "Chargebee sent a payment-source event skipwait.me could not apply to a wallet. No free credits were granted.",
       `Reason: ${input.reason}`,
@@ -313,23 +313,14 @@ export function createCardValidationAlerter(dependencies: AlertDependencies = {}
           : "The card did not validate. No charge settles (Chargebee voids its verification). If this repeats for the same customer, check the gateway's card-verification log in Chargebee.",
     ].join("\n");
     const metadata = { eventId: input.eventId, reason: input.reason, customerId: input.customerId, paymentSourceId: input.paymentSourceId };
-    try {
-      const apiKey = process.env.RESEND_API_KEY;
-      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
-      const response = await fetchImpl("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+    const send = await sendPaymentAlertEmail(fetchImpl, { subject, text, sleep: dependencies.sleep });
+    if (send.sent) {
       await recordActivity({ action: "system.card_validation_alert_sent", outcome: "success", resourceType: "chargebee_payment_source", resourceId: input.paymentSourceId ?? undefined, metadata });
       return { alerted: true as const };
-    } catch (error) {
-      await recordActivity({ action: "system.card_validation_alert_sent", outcome: "failure", resourceType: "chargebee_payment_source", resourceId: input.paymentSourceId ?? undefined, metadata: { ...metadata, error: error instanceof Error ? error.message : String(error) } }).catch(() => undefined);
-      throw error;
     }
+    await recordActivity({ action: "system.card_validation_alert_sent", outcome: "failure", resourceType: "chargebee_payment_source", resourceId: input.paymentSourceId ?? undefined, metadata: { ...metadata, error: send.error } }).catch(() => undefined);
+    await recordUndeliveredPaymentAlert(recordActivity, { alert: "card_validation", resourceType: "chargebee_payment_source", resourceId: input.paymentSourceId ?? ref, metadata, attempts: send.attempts, error: send.error });
+    throw new Error(send.error ?? "Card-validation alert delivery failed");
   };
 }
 
@@ -375,7 +366,7 @@ export function createRetiredPlanAlerter(dependencies: AlertDependencies = {}) {
   return async function alertRetiredPlanEvent(input: RetiredPlanAlertInput) {
     const ref = input.subscriptionId ?? input.giftId ?? input.eventId ?? "unknown";
     const unsupported = input.reason === "unsupported_plan" || input.reason === "unlinked_subscription";
-    const subject = `skipwait.me ${unsupported ? "unrecognised" : "retired"} plan event needs review · ${ref}`;
+    const subject = `${PAYMENT_ALERT_SUBJECT_PREFIX} ${unsupported ? "unrecognised" : "retired"} plan event needs review · ${ref}`;
     const text = [
       unsupported
         ? input.reason === "unlinked_subscription"
@@ -395,23 +386,14 @@ export function createRetiredPlanAlerter(dependencies: AlertDependencies = {}) {
     ].join("\n");
     const action = unsupported ? "system.unsupported_plan_alert_sent" : "system.retired_plan_alert_sent";
     const metadata = { eventId: input.eventId, reason: input.reason, subscriptionId: input.subscriptionId, giftId: input.giftId };
-    try {
-      const apiKey = process.env.RESEND_API_KEY;
-      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
-      const response = await fetchImpl("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+    const send = await sendPaymentAlertEmail(fetchImpl, { subject, text, sleep: dependencies.sleep });
+    if (send.sent) {
       await recordActivity({ action, outcome: "success", resourceType: "chargebee_subscription", resourceId: ref, metadata });
       return { alerted: true as const };
-    } catch (error) {
-      console.warn("[RetiredPlanAlert] Unable to send administrator alert", error instanceof Error ? error.message : error);
-      await recordActivity({ action, outcome: "failure", resourceType: "chargebee_subscription", resourceId: ref, metadata }).catch(() => undefined);
-      return { alerted: false as const };
     }
+    console.warn("[RetiredPlanAlert] Unable to send administrator alert", send.error);
+    await recordActivity({ action, outcome: "failure", resourceType: "chargebee_subscription", resourceId: ref, metadata }).catch(() => undefined);
+    await recordUndeliveredPaymentAlert(recordActivity, { alert: unsupported ? "unsupported_plan" : "retired_plan", resourceType: "chargebee_subscription", resourceId: ref, metadata, attempts: send.attempts, error: send.error });
+    return { alerted: false as const };
   };
 }

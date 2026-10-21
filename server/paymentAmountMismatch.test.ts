@@ -67,7 +67,7 @@ describe("paid invoice that disagrees with the checkout amount", () => {
     expect(await alert(input)).toEqual({ alerted: true });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     const body = JSON.parse((fetchImpl.mock.calls[0] as unknown as [string, { body: string }])[1].body);
-    expect(body.to).toEqual(["ayodhya@skipwait.me"]);
+    expect(body.to).toEqual(["ayodhya@skipwait.me", "ayodhyarammohanthy@gmail.com", "ayodhya@mail.instinct.com"]);
     expect(body.subject).toContain("#41");
     expect(body.text).toContain("Expected: 99000 INR");
     expect(body.text).toContain("Paid: 116820 INR");
