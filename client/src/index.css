@@ -326,7 +326,7 @@ input, textarea { caret-color: var(--primary); }
 .share-win .share-win-card{border:2px solid var(--foreground);background:var(--background);border-radius:12px;display:grid;gap:8px;padding:20px;margin:0}
 .share-win-card .sharecard__status{font-size:12px;text-transform:none;letter-spacing:normal;margin:0 0 4px}
 .share-win-dot{width:7px;height:7px;border-radius:50%;background:var(--foreground);display:inline-block}
-.sharecard__status[data-status="Referred"] .share-win-dot{background:#059669}
+.sharecard__status[data-status="Referred"] .share-win-dot{background:var(--g-emerald)}
 .share-win-card .share-win-company{font-size:28px;line-height:1.1;letter-spacing:-.03em;font-weight:600}
 .share-win-card .share-win-role{font-size:14px;color:var(--muted-foreground)}
 .share-win-primary,.share-win-ghost{width:100%;border-radius:10px;padding:12px 16px;font-size:14px;font-weight:600;cursor:pointer}
