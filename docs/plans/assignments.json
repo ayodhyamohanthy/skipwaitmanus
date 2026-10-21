@@ -137,8 +137,9 @@
       "tier": 3,
       "lane": "design",
       "branch": "agent/workbuddy/d048-phase3-plan",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed as `f9d7e8d5` (PR #358) by DeepSeek V4.1 Flash Free · 91af: merged with `main`, the map corrected against D-120, D-123 and D-130, full gate green. W0 (the shell) is next."
     },
     {
       "id": "D-048-p3-w0-shell",
