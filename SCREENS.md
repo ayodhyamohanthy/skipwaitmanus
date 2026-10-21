@@ -17,7 +17,7 @@ PWA feels like a native app.
 ## Job seeker flow (app shell)
 | Route | Screen | Purpose |
 |---|---|---|
-| `/explore` | Company discovery | SkipWait, Wipro, Go Neutrinos, TCS, Merkle with search |
+| `/explore` | Company discovery | SkipWait, Wipro, Neutrinos, TCS, Merkle with search |
 | `/explore/$slug` | Company detail | Company profile + people open to referrals |
 | `/requests` | Request tracking | Every referral request with status pills |
 | `/inbox` | Conversations | Private chat previews with referrers |

@@ -5,9 +5,16 @@
 // (D-067 removed them; the D-046 passes go on sale here in their own slice).
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render as rtlRender, screen, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { CreditsLedger } from "@shared/creditLedger";
 import Plans from "./Plans";
+
+// GO-LIVE-1: /plans reads the live catalog through React Query, so tests wrap a client.
+function render(element: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(<QueryClientProvider client={client}>{element}</QueryClientProvider>);
+}
 
 const { openedCheckout, authState, getToken } = vi.hoisted(() => ({ openedCheckout: vi.fn(), authState: { isSignedIn: true }, getToken: vi.fn(async () => "test-token") }));
 // Packs-on-sale paths: the flag is mocked on here; creditPacksOnSale.test.tsx pins the shipped (on) state and creditPacksOffSale.test.tsx the switched-off path.
@@ -40,7 +47,9 @@ function stub(summary: unknown, extra?: Handler) {
   return fetchMock;
 }
 
-const onlySummaryReads = (fetchMock: ReturnType<typeof stub>) => fetchMock.mock.calls.every(([url, init]) => String(url).startsWith("/api/credits/summary") && (init?.method ?? "GET") === "GET");
+// GO-LIVE-1: the page also reads the public live catalog; never a checkout POST.
+const ACCOUNT_GETS = ["/api/credits/summary", "/api/plans/catalog", "/api/company-referrals/mine", "/api/companies"];
+const onlySummaryReads = (fetchMock: ReturnType<typeof stub>) => fetchMock.mock.calls.every(([url, init]) => ACCOUNT_GETS.some(path => String(url).startsWith(path)) && (init?.method ?? "GET") === "GET");
 
 beforeEach(() => { authState.isSignedIn = true; window.history.pushState({}, "", "/plans?role=job_seeker"); openedCheckout.mockClear(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.pushState({}, "", "/"); });
@@ -67,7 +76,8 @@ describe("Plans on live data", () => {
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.queryByLabelText("Your usage this cycle")).toBeNull();
     expect(screen.queryByText("Upgrade moments")).toBeNull();
-    expect(fetchMock).not.toHaveBeenCalled();
+    // Signed out reads only the public catalog (no prices of its own, no account data).
+    expect(fetchMock.mock.calls.every(([url]) => String(url).startsWith("/api/plans/catalog"))).toBe(true);
   });
 
   it("shows the account's own usage and only the upgrade moments it has really hit", async () => {

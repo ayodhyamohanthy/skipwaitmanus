@@ -25,22 +25,37 @@
       "tier": 1,
       "lane": "payments",
       "branch": "agent/queue/go-live-plans",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-069-chargebee-catalog-sync"
-      ]
+      ],
+      "note": "Done via PR #351 (squash 43370293): server + client slices. Money path opens only when the owner creates the catalog item prices (409 before any provider call until then)."
+    },
+    {
+      "id": "GO-LIVE-1b",
+      "title": "A paid pass always activates (checkout-page recovery on return and hourly, alert on unlinked kit subscriptions), then passes go back on sale",
+      "row": "1",
+      "packet": "docs/plans/GO-LIVE-1b-pass-activation.md",
+      "tier": 1,
+      "lane": "payments",
+      "branch": "agent/queue/go-live-passes",
+      "status": "todo",
+      "dependsOn": [
+        "GO-LIVE-1"
+      ],
+      "note": "D-084. Passes are off (PASS_SALES_ENABLED=false, P0 after #351). The switch commit needs test-site evidence (packet §4.5); without it the packet lands with passes still off."
     },
     {
       "id": "D-038-reconcile",
-      "title": "Reconcile the D-038 timers: part B reached main unreviewed (c53ea471 + #330), part A sits on agent/opencode/d038-a-lapses, both add server/referralTimers.ts",
+      "title": "Land PR #353 (D-038-A complete, timers job registered) with part B's money steps switched off until their own review",
       "row": "D-038-B",
-      "packet": null,
+      "packet": "docs/plans/D-038-reconcile.md",
       "tier": 1,
       "lane": "money-core",
-      "branch": "agent/claude/d038-reconcile",
-      "status": "architect",
+      "branch": "agent/workbuddy/d038-a-lapses",
+      "status": "todo",
       "dependsOn": [],
-      "note": "Claude Code writes the reconcile packet (independent review of the code on main against both D-038 packets, then part A through a draft PR, then register the referral-timers job)."
+      "note": "Builds on workbuddy's PR #353 and qoder's audit #354 (docs/reviews/D-038-reconcile-evidence.md). Rulings R-1..R-6 (D-103): fix R1-R5 on #353's branch, REFERRED_DEADLINE_ENABLED=false unless part B's own review passes, the lander sets REFERRAL_TIMERS_SINCE. Never merge agent/opencode/d038-a-lapses."
     },
     {
       "id": "D-035",
@@ -96,8 +111,9 @@
       "tier": 3,
       "lane": "toolchain",
       "branch": "agent/queue/fnd1-toolchain",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed as `1f234293` (branch `agent/queue/fnd1-toolchain`, Tier 3, no review needed). engines.node >=22.12 + new .nvmrc; vitest include collects shared/**/*.test.ts (+3 files, +17 tests); copy-guard assertion now bites. Gate: pnpm check 0, frozen-lockfile install leaves the lockfile unchanged, full vitest 422 files / 3515 passed / 16 skipped."
     },
     {
       "id": "FND-2",
@@ -129,7 +145,7 @@
       "tier": 3,
       "lane": "triage",
       "branch": "agent/queue/fnd7-triage",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {

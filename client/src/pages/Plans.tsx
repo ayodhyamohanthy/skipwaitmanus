@@ -14,6 +14,8 @@ import { CreditCta, CreditsSection, UsagePanel } from "@/components/plans/PlansC
 import { SeekerCreditsCard } from "@/components/SeekerCreditsCard";
 import { FairBand, PlansReference } from "@/components/plans/PlansReference";
 import { PlanCards } from "@/components/plans/PlanCards";
+import { CoverageBlock, PacksSection, PassesSection, useKitCheckout } from "@/components/plans/PlansKitSections";
+import { PlansCatalogOfflineError, usePlansCatalog } from "@/components/plans/plansCatalogApi";
 import { UpgradeMoments, upgradeMoments } from "@/components/plans/UpgradeMoments";
 import { activePaidPlan } from "@/components/plans/planCatalog";
 
@@ -29,7 +31,7 @@ export default function Plans() {
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const isReferrer = params.get("role") === "referrer";
   const payment = params.get("payment");
-  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { isLoaded, isSignedIn, getToken, openSignIn } = useAuth();
   const [route, setRoute] = useState<PaymentRoute>(() => params.get("currency") === "INR" ? "INR" : params.get("currency") === "USD" ? "USD" : browserPaymentRoute());
   const [summary, setSummary] = useState<CreditSummary | null>(null);
   const [cancelling, setCancelling] = useState(false);
@@ -38,8 +40,13 @@ export default function Plans() {
 
   const currency = route as CatalogCurrency;
   const routeDetails = paymentRouteDetails(route);
-  const creditsHref = `/premium?role=${isReferrer ? "referrer" : "job_seeker"}`;
+  // Live prices, packs and passes; referrers never see a purchase (D-055).
+  const catalogQuery = usePlansCatalog(!isReferrer);
+  const catalog = catalogQuery.data ?? null;
+  const packsOnSale = catalog !== null && catalog.packs.some(pack => pack.available);
+  const creditsHref = packsOnSale ? "/plans#packs" : `/premium?role=${isReferrer ? "referrer" : "job_seeker"}`;
   const activePlan = activePaidPlan(summary);
+  const checkout = useKitCheckout({ role: isReferrer ? "referrer" : "job_seeker", currency, isSignedIn, getToken, openSignIn });
 
   useEffect(() => {
     applySeo({ title: "Plans and credits", description: PAID_PLANS_SENTENCE, path: "/plans" });
@@ -100,6 +107,10 @@ export default function Plans() {
           renewing={summary?.subscriptionStatus === "active"}
           cancelRenewal={{ confirming: confirmingCancel, cancelling, onAsk: () => setConfirmingCancel(true), onConfirm: () => { void scheduleCancellation(); setConfirmingCancel(false); }, onKeep: () => setConfirmingCancel(false) }}
         />
+        {isSignedIn ? <CoverageBlock isSignedIn={isSignedIn} getToken={getToken} /> : null}
+        {catalog ? <PacksSection catalog={catalog} checkout={checkout} /> : null}
+        {catalog ? <PassesSection catalog={catalog} activePlan={activePlan} checkout={checkout} /> : null}
+        {catalogQuery.isError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{catalogQuery.error instanceof PlansCatalogOfflineError ? catalogQuery.error.message : "We could not load live prices. Check your connection and try again."} <button type="button" className="underline underline-offset-4" onClick={() => void catalogQuery.refetch()}>Try again</button></p> : null}
         <p className="plan-grid-note">Every account starts on the free tier, and tracking every request is free. {CREDIT_RULE}</p>
         <p className="plan-grid-note">{routeDetails.gateway} · {routeDetails.gatewayDescriptor}. <button type="button" onClick={() => setRoute(current => alternatePaymentRoute(current))} className="font-semibold text-foreground underline underline-offset-4">Different billing country? {routeDetails.alternateLabel}</button></p>
         {cancelError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{cancelError}</p> : null}

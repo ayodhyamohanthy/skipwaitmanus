@@ -98,7 +98,7 @@ describe("Verify work email", () => {
     expect((screen.getByRole("button", { name: /Continue/ }) as HTMLButtonElement).disabled).toBe(true);
     release?.();
     const radios = await screen.findAllByRole("radio");
-    expect(radios.map(radio => radio.textContent)).toEqual(["SWskipwait.me@skipwait.me", "WWipro@wipro.com", "GNGo Neutrinos@goneutrinos.com", "TTCS@tcs.com", "MMerkle@merkle.com"]);
+    expect(radios.map(radio => radio.textContent)).toEqual(["SWskipwait.me@skipwait.me", "WWipro@wipro.com", "NNeutrinos@neutrinos.com", "TTCS@tcs.com", "MMerkle@merkle.com"]);
     expect(screen.getByRole("radio", { name: /Wipro/ }).getAttribute("aria-checked")).toBe("true");
     expect((screen.getByRole("button", { name: /Continue/ }) as HTMLButtonElement).disabled).toBe(false);
   });

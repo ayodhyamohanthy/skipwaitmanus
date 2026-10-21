@@ -1,9 +1,12 @@
 import express from "express";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { registerPlansCatalogRoutes } from "./plansCatalogRoutes";
 import { EDGE_COUNTRY_HEADER } from "../shared/billingRegion";
 import { clearPriceAvailabilityCache } from "./billingAvailability";
+// These cases test selling passes, so they run with pass sales on; the shipped
+// off state (D-084) is pinned in server/passSalesSwitch.test.ts.
+vi.mock("../shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("../shared/planCatalog")>()), PASS_SALES_ENABLED: true }));
 
 const LIVE = new Set(["skipwait_start_30d-USD", "skipwait_momentum_30d-INR", "skipwait_pack_2-INR"]);
 
