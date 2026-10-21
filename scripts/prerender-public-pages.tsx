@@ -112,7 +112,7 @@ export function publicSnapshots(): PublicSnapshot[] {
     },
     {
       route: "/premium",
-      markup: `<main data-skipwait-snapshot="premium"><h1>Credits from $1 each. Never expire.</h1><p>${ASK_COST_SENTENCE} Credits start at $1 each (in India, ₹99 for 2) and never expire. ${CREDIT_RULE} ${REFERRER_MONEY_SENTENCE}</p><p><a href="/premium">Buy credits</a> · <a href="/plans">See plans and credits</a> · <a href="/pricing">See all prices</a> · <a href="/referrer">Employees: verify a work email to review requests</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="premium"><h1>Credits for $1 each. Never expire.</h1><p>${ASK_COST_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire. ${CREDIT_RULE} ${REFERRER_MONEY_SENTENCE}</p><p><a href="/premium">Buy credits</a> · <a href="/plans">See plans and credits</a> · <a href="/pricing">See all prices</a> · <a href="/referrer">Employees: verify a work email to review requests</a></p></main>`,
     },
     {
       route: "/plans",
