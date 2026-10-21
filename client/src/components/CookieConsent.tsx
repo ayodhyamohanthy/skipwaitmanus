@@ -1,7 +1,6 @@
 import Clarity from "@microsoft/clarity";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { Button } from "@/components/kit/button";
 import { isClarityActive } from "@/lib/clarity";
 
 const STORAGE_KEY = "skipwait:cookie-consent";
@@ -63,9 +62,12 @@ export default function CookieConsent() {
   };
 
   return (
-    <div role="dialog" aria-label="Cookie choices" className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[60] mx-auto max-w-xl rounded-3xl border border-border bg-card p-5 shadow-xl md:bottom-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <p className="text-sm"><strong>Cookies, honestly.</strong> Essential ones keep you signed in. Optional analytics help us improve — never sold, never ads. <Link href="/privacy" className="text-link">Privacy</Link></p>
-      <div className="mt-4 flex flex-wrap justify-end gap-2"><Button variant="ghost" size="sm" onClick={() => save("essential")}>Essential only</Button><Button size="sm" onClick={() => save("all")}>Accept all</Button></div>
+    <div role="dialog" aria-label="Cookie choices" className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[60] mx-auto max-w-xl rounded-2xl border border-g-line bg-g-paper p-5 shadow-xl md:bottom-[max(1.5rem,env(safe-area-inset-bottom))]">
+      <p className="text-sm text-g-ink"><strong>Cookies, honestly.</strong> Essential ones keep you signed in. Optional analytics help us improve - never sold, never ads. <Link href="/privacy" className="underline">Privacy</Link></p>
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <button type="button" onClick={() => save("essential")} className="rounded-full border border-g-line bg-g-paper px-4 py-2 text-sm font-medium text-g-ink transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-panel">Essential only</button>
+        <button type="button" onClick={() => save("all")} className="rounded-full bg-g-ink px-4 py-2 text-sm font-medium text-g-paper transition-colors duration-(--g-dur-hover) ease-g-out hover:opacity-90">Accept all</button>
+      </div>
     </div>
   );
 }
