@@ -119,6 +119,15 @@ export function planFamilyV2Enabled(env: NodeJS.ProcessEnv = process.env): boole
 // ---------------------------------------------------------------------------
 
 /** Dropdown rungs inside every plan (credits per month). */
+/**
+ * What happens to a Free seeker's unspent monthly credits when a paid family
+ * plan activates (owner call, Oct 22: a payer never ends up with less than
+ * Free). "carry_one_month": the leftover converts to a carryover grant that
+ * outlives the free cycle by one month, the same shape a kit plan's carryover
+ * uses. "expire_at_cycle_end": kit behaviour - the leftover is lost at once.
+ */
+export const FAMILY_UPGRADE_FREE_LEFTOVER: "carry_one_month" | "expire_at_cycle_end" = "carry_one_month";
+
 export const PLAN_CREDIT_RUNGS = [5, 10, 25, 50, 100, 200] as const;
 export type PlanCreditRung = (typeof PLAN_CREDIT_RUNGS)[number];
 

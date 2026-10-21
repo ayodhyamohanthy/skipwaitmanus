@@ -48,7 +48,7 @@ import { JOB_LEVELS, REFERRER_AREAS, parseJobFunction, type JobFunction } from "
 import { resolveAskJobFunction } from "../shared/jobFunctionClassifier";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { isPaidPlanActive, resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
-import { planFamilyV2Enabled } from "../shared/planFamily";
+import { FAMILY_UPGRADE_FREE_LEFTOVER, planFamilyV2Enabled } from "../shared/planFamily";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { AssistantPlanRequiredError, CompanyCapReachedError, OpenAskSlotCapError, openAskCondition, showcaseLimitViolation } from "./planGates";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
@@ -59,7 +59,7 @@ import { COVERAGE_ATTEMPTS_PER_SLOT, COVERAGE_TARGET_SCAN_LIMIT, COVERAGE_WITHDR
 // Re-exported for every existing caller (tests and companyDirectory.ts import
 // these from ./db); the definitions live in server/referrerAvailability.ts.
 export { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
-import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
+import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, writeLedgerRow, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
 import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { grantFreeCycleOnValidationTx, openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
@@ -4523,7 +4523,7 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     const walletBySubscription = await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update");
     if ((input.hostedPageId || input.passThruContent) && !intent) return { status: "ignored" as const, reason: "checkout_intent_mismatch" };
     if (intent && walletBySubscription[0] && (walletBySubscription[0].userId !== intent.userId || walletBySubscription[0].role !== intent.role)) return { status: "ignored" as const, reason: "subscription_owner_mismatch" };
-    const wallet = walletBySubscription[0] ?? (intent
+    let wallet = walletBySubscription[0] ?? (intent
       ? (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, intent.userId), eq(tokenBalances.role, intent.role))).limit(1).for("update"))[0]
       : undefined);
     const sameSubscription = wallet?.subscriptionId === input.subscriptionId;
@@ -4561,6 +4561,27 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       const v2UserId = wallet?.userId ?? intent!.userId;
       const v2Role = wallet?.role ?? intent!.role;
       const retainsAccess = input.status === "active" || input.status === "non_renewing";
+      // D-132 fairness (owner call, Oct 22): upgrading from Free never takes
+      // the open month's credits - they convert to a carryover grant outliving
+      // the free cycle by one month (the kit carryover shape), and the
+      // bundle's invoice credits (always >= Free's 3) land on top. Free cycles
+      // stop while the family plan runs. FAMILY_UPGRADE_FREE_LEFTOVER flips it.
+      if (retainsAccess && wallet && !sameSubscription && wallet.plan === "free" && wallet.monthlyCreditsRemaining > 0 && FAMILY_UPGRADE_FREE_LEFTOVER === "carry_one_month") {
+        const leftover = wallet.monthlyCreditsRemaining;
+        const cycleKey = wallet.monthlyCycleKey ?? currentMonthlyCycleKey(new Date());
+        const [cycleYear, cycleMonth] = cycleKey.split("-").map(Number);
+        const expiresAt = new Date(Date.UTC(cycleYear, cycleMonth + 1, 1));
+        const now = new Date();
+        // Bound to the new subscription: kit carryover grants outlive their
+        // cycle only while the wallet names the same subscription, and this
+        // one follows that rule (a lapse ends it like any plan carryover).
+        const inserted = await tx.insert(planCreditGrants).values({ userId: wallet.userId, role: wallet.role, source: "carryover", grantKey: `v2carry:${input.eventId}`, planId: "free", subscriptionId: input.subscriptionId, cycleKey, tokenCount: leftover, creditsRemaining: leftover, status: "active", grantedAt: now, expiresAt });
+        const grantId = Number(inserted[0]?.insertId ?? 0);
+        await writeLedgerRow(tx, { userId: wallet.userId, role: wallet.role, tokenCount: -leftover, kind: "plan_credit_carryover", source: BUCKET_SOURCES.cycle, sourceCycleKey: cycleKey, referenceType: "plan_cycle", referenceId: `${cycleKey}:v2upgrade`, idempotencyKey: `v2carry-out:${input.eventId}`, monthlyCreditsAfter: 0 });
+        await writeLedgerRow(tx, { userId: wallet.userId, role: wallet.role, tokenCount: leftover, kind: "plan_credit_carryover", source: BUCKET_SOURCES.carryover, sourceCycleKey: cycleKey, referenceType: "credit_grant", referenceId: String(grantId), idempotencyKey: `v2carry-in:${grantId}`, creditGrantId: grantId });
+        await tx.update(tokenBalances).set({ monthlyAllowance: 0, monthlyCreditsRemaining: 0 }).where(eq(tokenBalances.id, wallet.id));
+        wallet = { ...wallet, monthlyAllowance: 0, monthlyCreditsRemaining: 0 };
+      }
       const v2Patch = {
         plan: retainsAccess ? input.planFamily : ("free" as const),
         subscriptionId: input.subscriptionId,
