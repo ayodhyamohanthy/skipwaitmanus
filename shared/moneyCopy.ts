@@ -22,6 +22,8 @@ export const ASK_COST_SENTENCE = `${FREE_ASKS_CHIP}; extra asks use credits.`;
 
 /** The shortest referrer fact, for chips and footers. */
 export const REFERRERS_NEVER_PAID = "Referrers are never paid.";
+/** D-120 landing fair rules, line one (designer Oct 21): referring costs nothing and is never bought. */
+export const REFERRING_FREE_LINE = "Referring is always free. Referrers are never paid - their help stays genuine.";
 
 /** The referrer half: nobody pays a referrer, and a referrer never asks for money. */
 export const REFERRER_MONEY_SENTENCE = "Referrers are never paid and never ask you for money.";

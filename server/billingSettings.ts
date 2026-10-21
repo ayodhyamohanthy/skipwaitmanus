@@ -46,11 +46,11 @@ export function employerSponsorshipEnabled(env: BillingEnv = process.env): boole
 }
 
 /**
- * Free monthly credits unlock only after the seeker validates a card (D-079,
- * owner Oct 19 2026). Default off: while unset, today's grants are untouched.
- * The check itself is owned by the provider (Chargebee card verification);
- * skipwait.me stores only the outcome. No real money in tests; production
- * enablement is an owner decision after Chargebee-test-site QA.
+ * RETIRED (D-127, owner Oct 21 2026, supersedes D-079): free monthly credits
+ * are never gated on card validation at sign-up; validation belongs to the
+ * first purchase. No live code reads this flag; it remains only so historical
+ * env entries do not confuse operators. Do not reintroduce the gate without a
+ * new owner decision.
  */
 export function freeCreditsRequireCardValidation(env: BillingEnv = process.env): boolean {
   return flag(env, "FREE_CREDITS_REQUIRE_CARD_VALIDATION");
