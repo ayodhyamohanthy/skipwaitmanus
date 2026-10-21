@@ -3,7 +3,7 @@
 import type { Express, Request, Response } from "express";
 import { impactCardEnabled, loadImpactCard, type ImpactCardPayload } from "./impactCard";
 
-type ResolveIdentity = (req: Request) => Promise<{ account: { id: number } } | null>;
+type ResolveIdentity = (req: Request) => Promise<{ account: { id: number } } | null | undefined>;
 
 export function registerImpactCardRoutes(app: Express, deps: { resolveIdentity: ResolveIdentity; loadImpactCard?: (referrerId: number) => Promise<ImpactCardPayload> }) {
   const load = deps.loadImpactCard ?? loadImpactCard;
