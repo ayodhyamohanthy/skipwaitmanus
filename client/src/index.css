@@ -318,3 +318,16 @@ input, textarea { caret-color: var(--primary); }
 .g-num { font-family: var(--g-font-mono); font-weight: 500; font-size: min(1em, 13px); letter-spacing: 0; word-spacing: -0.2em; white-space: nowrap; font-variant-numeric: tabular-nums; font-variant-ligatures: none; }
 .g-hit { position: relative; }
 .g-hit::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, var(--g-touch)); height: max(100%, var(--g-touch)); transform: translate(-50%, -50%); }
+
+/* Seeker win card shares the impact-card visual language. No kit imports. */
+.share-win .share-win-card{border:2px solid var(--foreground);background:var(--background);border-radius:12px;display:grid;gap:8px;padding:20px;margin:0}
+.share-win-card .sharecard__status{font-size:12px;text-transform:none;letter-spacing:normal;margin:0 0 4px}
+.share-win-dot{width:7px;height:7px;border-radius:50%;background:var(--foreground);display:inline-block}
+.sharecard__status[data-status="Referred"] .share-win-dot{background:var(--g-emerald)}
+.share-win-card .share-win-company{font-size:28px;line-height:1.1;letter-spacing:-.03em;font-weight:600}
+.share-win-card .share-win-role{font-size:14px;color:var(--muted-foreground)}
+.share-win-primary,.share-win-ghost{width:100%;border-radius:10px;padding:12px 16px;font-size:14px;font-weight:600;cursor:pointer}
+.share-win-primary{background:var(--foreground);color:var(--background);border:1px solid var(--foreground)}
+.share-win-ghost{background:transparent;color:var(--foreground);border:1px solid var(--border)}
+.share-win-primary:focus-visible,.share-win-ghost:focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
+.share-win-card .sharecard__status{display:flex;align-items:center;gap:7px;color:var(--foreground);font-family:var(--font-label)}
