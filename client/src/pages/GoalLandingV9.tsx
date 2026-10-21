@@ -7,6 +7,7 @@
 // self-hosted /brand/banner-take-e.jpg). Behind GOAL_UI_LANDING_V9, OFF
 // everywhere; live landing untouched until main relays the owner's "ship".
 import { useState } from "react";
+import CookieConsent from "@/components/CookieConsent";
 import type { FormEvent, ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { GoalBrandMark } from "@/components/goal/GoalBrandMark";
@@ -257,6 +258,8 @@ export default function GoalLandingV9() {
           </div>
         </div>
       </footer>
+      <CookieConsent />
+
     </div>
   );
 }

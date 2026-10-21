@@ -10,6 +10,13 @@ import { ASK_COST_SENTENCE, REFERRING_FREE_LINE } from "@shared/moneyCopy";
 afterEach(cleanup);
 
 describe("GoalLanding (D-120)", () => {
+  it("mounts the cookie consent banner when no choice is stored", () => {
+    window.localStorage.removeItem("skipwait:cookie-consent");
+    render(<GoalLanding />);
+    expect(screen.getByRole("dialog", { name: /cookie choices/i })).toBeTruthy();
+  });
+
+
   it("opens with the user's goal, not a welcome or a tagline", () => {
     render(<GoalLanding />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Get referred.");
