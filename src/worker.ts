@@ -97,7 +97,11 @@ export default {
       if (url.protocol !== "https:" || !url.hostname.endsWith(".workers.dev")) {
         return new Response("Not Found", { status: 404, headers: { "cache-control": "no-store" } });
       }
-      const denied = qaGate(request, env);
+      // The Chargebee webhook carries its own shared-secret basic auth
+      // (skipwait:<CHARGEBEE_WEBHOOK_SECRET>) verified inside the app; one
+      // Authorization header cannot satisfy both that and the gate, so the
+      // webhook path skips the gate. Every other path stays gated.
+      const denied = url.pathname === "/api/chargebee/webhook" ? null : qaGate(request, env);
       if (denied) return denied;
     } else if (url.protocol !== "https:" || url.hostname !== "skipwait.me" || !url.pathname.startsWith("/api/")) {
       return new Response("Not Found", { status: 404, headers: { "cache-control": "no-store" } });
