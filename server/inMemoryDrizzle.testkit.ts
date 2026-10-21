@@ -143,7 +143,7 @@ function aggregate(projection: Projection, groups: readonly Column[] | undefined
       const target = is(field, SQL) ? countTarget(field) : undefined;
       const minColumn = is(field, SQL) ? minTarget(field) : undefined;
       if (target) out[key] = target === "*" ? members.length : members.filter((member: Joined) => cellOf(target, member) !== null).length;
-      else if (minColumn) { const values = members.map((member: Joined) => cellOf(minColumn, member)).filter((value): value is Cell => value !== null); out[key] = values.length === 0 ? null : values.reduce((lowest, value) => (comparable(value) < comparable(lowest) ? value : lowest)); }
+      else if (minColumn) { const values = members.map((member: Joined) => cellOf(minColumn, member)).filter((value): value is NonNullable<Cell> => value !== null); if (values.length === 0) out[key] = null; else { let lowest = values[0]; for (const value of values) { const a = comparable(value); const b = comparable(lowest); if (a !== null && b !== null && a < b) lowest = value; } out[key] = lowest; } }
       else if (is(field, Column)) out[key] = members[0] ? structuredClone(cellOf(field, members[0])) : null;
       else return fail(`computed projection ${key}`);
     }
