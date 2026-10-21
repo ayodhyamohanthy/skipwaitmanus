@@ -289,6 +289,8 @@ input, textarea { caret-color: var(--primary); }
   /* v7 warm hero (owner pick Oct 21 16:43, phonemsg-01M5F2MR5FHEZ7DESNVCJBW12Y):
      colour lives ONLY on the landing hero band - peach/rose/lilac, no kit hues. */
   --g-warm-1: #fce9da; --g-warm-2: #f6cfdd; --g-warm-3: #e7d6f4;
+  /* V6-B mark (designer values, D-130) */
+  --g-mark-1: #c9c9c9; --g-mark-2: #8a8a8a; --g-mark-3: #0a0a0a;
   --g-trust: #1d4ed8; --g-emerald: #047857; --g-amber: #b45309; --g-crimson: #b91c1c;
   --g-dot: 8px;
   --g-font-sans: "Instrument Sans", system-ui, sans-serif; --g-font-mono: "JetBrains Mono", ui-monospace, monospace;

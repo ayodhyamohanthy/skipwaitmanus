@@ -12,12 +12,12 @@ const ICON_VIEWBOX = "76 214 392 236";
 function V6BPaths() {
   return (
     <>
-      <circle cx="140" cy="337.2" r="25.04" fill="#C9C9C9" />
-      <path d="M93.6 430A46.4 57.52 0 0 1 186.4 430Z" fill="#C9C9C9" />
-      <circle cx="255" cy="308.2" r="32.865" fill="#8A8A8A" />
-      <path d="M194.1 430A60.9 75.495 0 0 1 315.9 430Z" fill="#8A8A8A" />
-      <circle cx="372" cy="273.4" r="42.255" fill="#0A0A0A" />
-      <path d="M293.7 430A78.3 97.065 0 0 1 450.3 430Z" fill="#0A0A0A" />
+      <circle cx="140" cy="337.2" r="25.04" fill="var(--g-mark-1)" />
+      <path d="M93.6 430A46.4 57.52 0 0 1 186.4 430Z" fill="var(--g-mark-1)" />
+      <circle cx="255" cy="308.2" r="32.865" fill="var(--g-mark-2)" />
+      <path d="M194.1 430A60.9 75.495 0 0 1 315.9 430Z" fill="var(--g-mark-2)" />
+      <circle cx="372" cy="273.4" r="42.255" fill="var(--g-mark-3)" />
+      <path d="M293.7 430A78.3 97.065 0 0 1 450.3 430Z" fill="var(--g-mark-3)" />
     </>
   );
 }
