@@ -7,6 +7,27 @@ import { getDb } from "./db";
 // New tables are created idempotently (IF NOT EXISTS) so a drifted live DB
 // self-heals without manual migration runs. Keep in sync with drizzle/schema.ts.
 export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
+  { table: "billingReviewOutbox", createSql: `CREATE TABLE IF NOT EXISTS \`billingReviewOutbox\` (
+ \`id\` int AUTO_INCREMENT NOT NULL PRIMARY KEY,
+ \`obligationKey\` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ \`payload\` text NULL,
+ \`conflictDigest\` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ \`envelope\` text NULL,
+ \`submissionState\` varchar(20) NOT NULL DEFAULT 'never_submitted',
+ \`updatedAt\` timestamp(3) NOT NULL,
+ \`status\` varchar(16) NOT NULL DEFAULT 'pending',
+ \`attempts\` int NOT NULL DEFAULT 0,
+ \`nextAttemptAt\` timestamp(3) NOT NULL,
+ \`leaseOwner\` varchar(64) NULL,
+ \`leaseUntil\` timestamp(3) NULL,
+ \`firstAttemptAt\` timestamp(3) NULL,
+ \`acceptedAt\` timestamp(3) NULL,
+ \`providerMessageId\` varchar(255) NULL,
+ \`lastError\` varchar(80) NULL,
+ \`createdAt\` timestamp(3) NOT NULL,
+ UNIQUE INDEX \`billing_review_obligation_unique\` (\`obligationKey\`),
+ INDEX \`billing_review_due_idx\` (\`status\`, \`nextAttemptAt\`, \`id\`)
+) ENGINE=InnoDB` },
   { table: "aiToolCallLogs", createSql: `CREATE TABLE IF NOT EXISTS \`aiToolCallLogs\` (\`id\` int AUTO_INCREMENT NOT NULL, \`tool\` varchar(64) NOT NULL, \`model\` varchar(128) NOT NULL, \`tokensIn\` int NOT NULL, \`tokensOut\` int NOT NULL, \`costUsdMicros\` bigint NULL, \`planFamilyId\` varchar(32) NULL, \`userId\` int NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`aiToolCallLogs_id\` PRIMARY KEY(\`id\`), INDEX \`ai_tool_call_log_tool_idx\`(\`tool\`,\`createdAt\`))` },
   { table: "referralRequestSaves", createSql: `CREATE TABLE IF NOT EXISTS \`referralRequestSaves\` (\`id\` int AUTO_INCREMENT NOT NULL, \`referralRequestId\` int NOT NULL, \`referrerId\` int NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`referralRequestSaves_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`referral_request_save_request_referrer_unique\`(\`referralRequestId\`,\`referrerId\`), INDEX \`referral_request_save_referrer_idx\`(\`referrerId\`,\`createdAt\`), INDEX \`referral_request_save_request_idx\`(\`referralRequestId\`))` },
   { table: "referralRequestPasses", createSql: `CREATE TABLE IF NOT EXISTS \`referralRequestPasses\` (\`id\` int AUTO_INCREMENT NOT NULL, \`referralRequestId\` int NOT NULL, \`referrerId\` int NOT NULL, \`reason\` ENUM('role_not_a_fit','cannot_support','timing') NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`referralRequestPasses_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`referral_request_pass_request_referrer_unique\`(\`referralRequestId\`,\`referrerId\`), INDEX \`referral_request_pass_referrer_idx\`(\`referrerId\`,\`createdAt\`))` },
