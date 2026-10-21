@@ -493,6 +493,27 @@ describe("released_pass_unrefunded over the in-memory database", () => {
     expect(sent).toEqual([]);
   });
 
+  // The ledger refund row carries a per-spend suffix now ("<id>#refund#1", one row per spend the
+  // ask drew from). The check must count that shape too, or every released ask whose credit came
+  // back reads as unrefunded and the owner gets a false alert on a healthy referral.
+  it("counts the per-spend refund row the ledger writes now", async () => {
+    const release = (id: number, requestId: number) => ({ ...claimEvent(requestId, id), action: "pass_release", operationKey: `pass:${requestId}`, resultingStatus: "pending", createdAt: new Date(KIT_NOW) });
+    seedHeldAsks({
+      asks: [askRow({ id: 805, status: "closed", referrerId: null, debitTransactionId: 69 })],
+      spends: [
+        spendRow({ id: 69, referenceId: "805#1", idempotencyKey: "k805#1", tokenCount: -1 }),
+        spendRow({ id: 70, referenceId: "805#refund#1", idempotencyKey: "r805#1", tokenCount: 1, kind: "expiry_refund", reversesTransactionId: 69 }),
+      ],
+      events: [release(98, 805)],
+    });
+
+    const { deps, sent } = makeDeps({ listReleasedPassUnrefunded });
+    const output = await createDailyMoneyCheck(deps)({ nowMs: KIT_NOW, windowKey: "2026-10-18T12:00Z" });
+
+    expect(output.failed).toBe(0);
+    expect(sent).toEqual([]);
+  });
+
   // D-035 §9: only an ask whose LATEST pickup-or-release event is pass_release is in scope. A later
   // claim re-picks the ask up: the colleague may get the referral, the credit stays spent by design,
   // and the close carries no refund — flagging it would alert the owner on a healthy referral.

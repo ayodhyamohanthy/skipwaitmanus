@@ -353,10 +353,13 @@ export async function listReleasedPassUnrefunded(limit: number): Promise<Release
     const ask = (await db.select({ id: referralRequests.id, status: referralRequests.status, debitTransactionId: referralRequests.debitTransactionId })
       .from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1))[0];
     if (!ask || (ask.status !== "closed" && ask.status !== "withdrawn") || ask.debitTransactionId === null) continue;
-    // Both refund writers reference the ask: refundLedgerSpendTx writes "<id>#refund" and the
-    // pre-ledger refundReferralDebitTx writes the bare id, so the one owed refund may be either.
+    // Three refund shapes reference the ask: the ledger's per-spend row ("<id>#refund#1", one row
+    // per spend the ask drew from), the older ledger row ("<id>#refund") and the pre-ledger
+    // refundReferralDebitTx row (the bare id), so the one owed refund may be any of them. The
+    // per-spend bound mirrors the spend bound refundLedgerSpendTx itself reads.
+    const refundReferenceIds = [String(requestId), `${requestId}#refund`, ...Array.from({ length: 32 }, (_, n) => `${requestId}#refund#${n + 1}`)];
     const refundRows = (await db.select({ id: tokenTransactions.id }).from(tokenTransactions)
-      .where(and(eq(tokenTransactions.referenceType, "referral_request"), inArray(tokenTransactions.referenceId, [String(requestId), `${requestId}#refund`]), inArray(tokenTransactions.kind, ["withdrawal_refund", "expiry_refund"])))).length;
+      .where(and(eq(tokenTransactions.referenceType, "referral_request"), inArray(tokenTransactions.referenceId, refundReferenceIds), inArray(tokenTransactions.kind, ["withdrawal_refund", "expiry_refund"])))).length;
     if (refundRows !== 1) found.push({ requestId, status: ask.status, refundRows });
     if (found.length >= limit) break;
   }
