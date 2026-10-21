@@ -244,6 +244,8 @@ export default function GoalLanding() {
           </div>
         </div>
       </footer>
+      <CookieConsent />
+
     </div>
   );
 }
