@@ -25,6 +25,10 @@ on:
         description: "Only run the gate verify step (no stamp, build, secret put or deploy) - probes the last deployed state"
         required: false
         default: "false"
+      skip_reset:
+        description: "Full deploy but WITHOUT wiping the scratch QA schema - for code-only ships while QA data must survive (main's no-silent-reset rule)"
+        required: false
+        default: "false"
       setup_local_user:
         description: "Only (re)create the least-privilege skipwait_qa_local MySQL user on the scratch DB for QA's local fallback run"
         required: false
@@ -53,7 +57,7 @@ jobs:
       # Stale leftover tables make drizzle-kit ask interactive rename questions and
       # hang CI; reset the scratch schema first (guarded: scratch DB + scoped login only).
       - name: Reset scratch QA schema (guarded)
-        if: inputs.seed_only != 'true' && inputs.rotate_gate != 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true'
+        if: inputs.seed_only != 'true' && inputs.rotate_gate != 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true' && inputs.skip_reset != 'true'
         env:
           DATABASE_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
         run: npx tsx scripts/qa-reset-scratch.ts
