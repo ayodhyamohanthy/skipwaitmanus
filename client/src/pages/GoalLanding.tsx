@@ -12,7 +12,7 @@ import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalNum } from "@/components/goal/GoalNum";
 import CookieConsent from "@/components/CookieConsent";
 import { applySeo } from "@/lib/seo";
-import { ASK_COST_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
+import { ASK_COST_SENTENCE, REFERRING_FREE_LINE } from "@shared/moneyCopy";
 
 const STEPS: Array<{ title: string; body: string }> = [
   { title: "Find your company", body: "See the companies with verified employees inside, and the roles you can ask about." },
@@ -21,7 +21,7 @@ const STEPS: Array<{ title: string; body: string }> = [
 ];
 
 const FAIR_RULES = [
-  REFERRERS_NEVER_PAID,
+  REFERRING_FREE_LINE,
   "The price depends only on the job's level, never on the person asking.",
   "No outcome promises: a referral is an introduction, not an interview or a job.",
   "Private by default: your name stays hidden until a referrer accepts.",

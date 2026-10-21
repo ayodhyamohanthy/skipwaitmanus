@@ -1294,7 +1294,7 @@ export function isSafeFastTrackAlias(alias: string) {
 
 export async function getOrCreateReferrerFastTrackLink(userId: number): Promise<ReferrerFastTrackLink> {
   const profile = await getProfileByUserId(userId);
-  if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) throw new Error("Verify your company email before creating a Fast-Track Link");
+  if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) throw new Error("Verify your company email before creating your link");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const companyDomain = profile.workEmailDomain.trim().toLowerCase();
   const existing = await db.select({ linkCode: referrerFastTrackLinks.linkCode, vanityAlias: referrerFastTrackLinks.vanityAlias, companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive }).from(referrerFastTrackLinks).where(eq(referrerFastTrackLinks.referrerId, userId)).limit(1);
@@ -1310,7 +1310,7 @@ export async function getOrCreateReferrerFastTrackLink(userId: number): Promise<
       if (attempt === 3) throw error;
     }
   }
-  throw new Error("We could not create your Fast-Track Link");
+  throw new Error("We could not create your link");
 }
 
 export async function getPublicReferrerFastTrackLink(linkCode: string): Promise<{ companyDomain: string; isActive: true } | undefined> {
@@ -1876,7 +1876,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     // A waiting ask reaches no one yet, so it writes no referrer notice and no review link (delivery writes them).
     const notified=isWaiting?[]:firstLook?[firstLook]:reachable;
     for(const employee of notified){
-      await tx.insert(notifications).values({ kind: "ask_new",userId:employee.userId,category:"referral",title:firstLook?"A candidate asked from your post":fastTrackLink?"A Fast-Track referral request is ready":"A private referral request is available",body:firstLook?`A Job Seeker asked for a referral at ${companyDomain} after seeing your opening. You have the first look for 48 hours; if you cannot take it, it opens to other verified employees.`:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
+      await tx.insert(notifications).values({ kind: "ask_new",userId:employee.userId,category:"referral",title:firstLook?"A candidate asked from your post":fastTrackLink?"A referral request from your link is ready":"A private referral request is available",body:firstLook?`A Job Seeker asked for a referral at ${companyDomain} after seeing your opening. You have the first look for 48 hours; if you cannot take it, it opens to other verified employees.`:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
       const email=employee.email?.trim().toLowerCase()||"";if(email&&email.split("@")[1]===companyDomain){const token=reviewLinkToken();const expiresAt=new Date(Date.now()+reviewEmailLifetimeMs);await tx.insert(referrerReviewEmailLinks).values({referralRequestId:requestId,referrerId:employee.userId,linkToken:token,expiresAt});await tx.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId:employee.userId,channel:"email",grantVersion:1,status:"pending"});}
     }
     let inviteCode:string|undefined;if(!fastTrackLink&&isWaiting){inviteCode=randomUUID().replace(/-/g,"");await tx.insert(companyCoverageInvitations).values({inviteCode,inviterUserId:userId,companyDomain:companyDomain.trim().toLowerCase(),referralRequestId:requestId});}
@@ -2749,12 +2749,6 @@ async function auditLedgerWallets(db: LedgerAuditDb, wallets: LedgerAuditWallet[
     // (a cycle that began before the ledger has no opening row), and every grant against the rows that name it.
     const cycleRows=rows.filter(row=>row.source===BUCKET_SOURCES.cycle&&row.sourceCycleKey===wallet.monthlyCycleKey);
    
-    // D-079: with the flag on, a locked wallet must hold no free credits, and a
-    // validated free wallet's current cycle must show its grant rows.
-    if(freeCreditsRequireCardValidation()&&wallet.role==="job_seeker"&&wallet.plan==="free"){
-      if(wallet.cardValidatedAt==null&&wallet.monthlyCreditsRemaining>0)integrity.push({type:"locked_wallet_holds_free_credits",userId:wallet.userId,role:wallet.role,monthlyCreditsRemaining:wallet.monthlyCreditsRemaining,cycleKey:wallet.monthlyCycleKey});
-      if(wallet.cardValidatedAt!=null&&wallet.monthlyCreditsRemaining>0&&cycleRows.filter(row=>row.kind==="plan_grant").length===0)integrity.push({type:"validated_wallet_missing_cycle_grant",userId:wallet.userId,role:wallet.role,monthlyCreditsRemaining:wallet.monthlyCreditsRemaining,cycleKey:wallet.monthlyCycleKey});
-    }
     if(cycleRows.filter(row=>row.kind==="plan_grant").length===1){const expected=cycleRows.reduce((sum,row)=>sum+row.tokenCount,0);if(expected!==wallet.monthlyCreditsRemaining)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:"cycle",cycleKey:wallet.monthlyCycleKey,expected,actual:wallet.monthlyCreditsRemaining,delta:wallet.monthlyCreditsRemaining-expected});}
     const grants=await readGrantsTx(db,wallet.userId,wallet.role,false);
     for(const grant of grants){const expected=rows.filter(row=>row.creditGrantId===grant.id).reduce((sum,row)=>sum+row.tokenCount,0);if(expected!==grant.creditsRemaining)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:`grant:${grant.source}`,grantId:grant.id,expected,actual:grant.creditsRemaining,delta:grant.creditsRemaining-expected});if(grant.creditsRemaining<0)integrity.push({type:"negative_grant",userId:wallet.userId,role:wallet.role,grantId:grant.id});}
@@ -3631,7 +3625,9 @@ function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect, prom
     subscriptionStatus: wallet.subscriptionStatus ?? null,
     subscriptionCurrentTermEnd: wallet.subscriptionCurrentTermEnd ?? null,
     cardValidated: wallet.role === "job_seeker" && wallet.cardValidatedAt != null,
-    freeCreditsLocked: wallet.role === "job_seeker" && freeCreditsRequireCardValidation() && wallet.cardValidatedAt == null,
+    // D-127: the sign-up card-validation gate is retired; the field stays on the
+    // payload for older clients and is always false.
+    freeCreditsLocked: false,
   };
 }
 
