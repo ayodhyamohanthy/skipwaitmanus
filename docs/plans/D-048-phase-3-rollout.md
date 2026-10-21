@@ -8,7 +8,7 @@
 | Field | Value |
 |---|---|
 | Queue row | `docs/KIT_V4_BUILD_PLAN.md` §3b `D-048` (phase 3) |
-| Decisions | D-048, D-070, D-071, D-077, D-033, D-006/D-040, D-055, D-063 |
+| Decisions | D-048, D-070, D-071, D-077, D-033, D-006/D-040, D-055, D-063, D-120, D-123, D-130 |
 | Risk tier | 2 (UI only) — **except W3 (money)**, which is Tier 1 because every line of copy there is a truth claim |
 | Depends on | phase 2 live (it is: `client/src/components/goal/`, `--g-*` in `index.css`, `DESIGN.md`, `scripts/design-token-audit.mjs`) |
 | Rule | One wave = one packet = one PR. Nothing moves that is not in a wave. |
@@ -39,8 +39,9 @@ Until then it keeps today's components. A half-moved screen is worse than an unm
   appears in the referrer queue.
 - **Numerals.** `GoalNum` (JetBrains Mono) for counts, clocks, credits and references. Display
   references are the HMAC short code, never `Ref-{1000+id}` (D-077).
-- **Density.** 44px list rows, list + detail rather than nested cards, no gradients, no decorative
-  kickers, no sample data (D-001).
+- **Density.** 44px list rows, list + detail rather than nested cards, no gradients (the landing
+  hero's warm band, `.g-hero-warm`, is the one exception, D-130), no decorative kickers, no sample
+  data (D-001).
 - **Focus and disabled.** `.g-scope` neutraliser; `aria-disabled` instead of `disabled` so the kit's
   grey `!important` cannot win (phase 2 gotcha).
 - **Motion.** 100–150 ms micro, 200–300 ms drawers and modals, nothing that runs 100+ times a day.
@@ -51,10 +52,11 @@ Order is traffic × risk × cost. Each wave is one PR.
 
 ### W0 — the shell (do this alone, first)
 `client/src/components/AppShell.tsx` → `GoalShell`, `goalNavFor`, credits in the header, account
-menu unchanged. Every shell-wrapped route inherits it, so this single PR changes the frame of ~26
-screens without touching any of them. Highest leverage change in the project.
+menu unchanged. Every shell-wrapped route inherits it, so this single PR changes the frame of 27
+routes without touching any of them. Highest leverage change in the project.
 **Acceptance:** nav correct for seeker / verified referrer / signed-out; bottom bar on 390; no route
-regression in `client/src/components/layout/*` tests; captures of three representative routes.
+regression in `client/src/components/appShell.test.tsx` or `client/src/components/goal/nav.test.ts`;
+captures of three representative routes.
 
 ### W1 — the three approved comps (transcription, not invention)
 `/explore` (Find a referral + ask drawer), `/queue` (Referral queue, 7-reason pass picker),
@@ -103,7 +105,9 @@ the Frequency Principle says reduce, not decorate. Employer surfaces get the goa
 `/share-card/:token`, `/fast/*`, `/refer/*`, `/email-review/:linkToken`, the guide pages, and the
 legal pages.
 **Legal text does not move.** `Terms`, `Privacy`, `Refunds`, `Shipping`, `Cancellations` may take the
-shell and the type scale; their words are the owner's (agents never edit legal text).
+shell and the type scale; their words are the owner's (agents never edit legal text). The home page
+keeps D-130's warm hero band (`.g-hero-warm`, `--g-warm-1/2/3`); every other block on every public
+page stays ink-on-white.
 
 ## 4. What must not move, in any wave
 
@@ -125,17 +129,29 @@ shell and the type scale; their words are the owner's (agents never edit legal t
 - No new dependency (phase 2 verified everything needed is installed).
 - Each wave: the full gate, `design-token-audit`, and captures at 1280 and 390.
 
-## 6. Open owner calls (answer before W2)
+## 6. Calls made on merit (D-123: decide, ship, report — the owner may change any of them)
 
-1. **`/wall`, `/jobs`, `/p/:handle`** — public, indexable surfaces. Goal shell or standalone
-   marketing shell? They are the first thing a stranger sees; the goal shell is app-shaped.
-2. **Employer surfaces** — same system as seekers, or a denser sibling like admin?
-3. **Admin** — confirm the recommendation to keep current density.
-4. **Home (`/`)** — it is the marketing page today. Does it become the goal shell with a hero, or
-   stay a separate marketing surface that links into the app?
+D-123 (Oct 21) retired open questions to the owner. These four were the only blockers before W2, so
+they are decided here as current best, changeable, and reported in the landing pull request.
+
+1. **`/wall` and `/jobs`** take the goal shell: both are live product surfaces (real openings, the
+   job explorer) that link straight into an ask. **`/p/:handle`** keeps a standalone public frame
+   with the goal type scale and no app nav: it is a stranger's first page, and an app frame with an
+   empty credits pill and Inbox would tell them they are inside an account they do not have.
+2. **Employer surfaces** follow the goal system proper, with denser tables on list screens — not the
+   admin treatment. An employer is a customer doing a job, not an operator.
+3. **Admin** keeps its current density and takes the tokens, the type scale and the focus ring only:
+   one person reads it hundreds of times a day, and the Frequency Principle says reduce, not decorate.
+4. **Home (`/`)** stays a standalone marketing surface on the goal tokens with D-130's warm hero band,
+   and links into the app; it does not become the app shell. W7 therefore keeps `.g-hero-warm` and
+   still forbids every other gradient.
 
 ## 7. First packet
 
 **W0 + W1 in one branch is acceptable** (shell plus the three comps), because the comps are drawn
 inside the shell and splitting them means drawing the shell twice. Everything after that is one wave
 per PR.
+
+**Live order (Oct 21):** the queue already runs these as separate tickets and PRs — W0 shell
+(`D-048-p3-w0-shell`), `/explore` (`D-048-p3-explore`), `/requests` (`D-048-p3-requests`) — so the
+combined branch is no longer needed; the wave boundaries below still decide what each PR may touch.
