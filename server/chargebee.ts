@@ -205,8 +205,10 @@ export function parseSubscriptionEvent(payload: any): ParsedSubscriptionEvent | 
   const subscription = payload?.content?.subscription;
   const subscriptionId = typeof subscription?.id === "string" ? subscription.id : undefined;
   if (!eventId || !subscriptionId) return undefined;
+  // PC 2.0 subscription items carry the price id as entity_id (entity_type
+  // "*_item_price"); item_price_id is the newer alias when present.
   const itemPriceIds: string[] = Array.isArray(subscription?.subscription_items)
-    ? subscription.subscription_items.map((item: any) => item?.item_price_id).filter((id: any): id is string => typeof id === "string")
+    ? subscription.subscription_items.map((item: any) => (typeof item?.item_price_id === "string" ? item.item_price_id : typeof item?.entity_id === "string" ? item.entity_id : undefined)).filter((id: any): id is string => typeof id === "string")
     : [];
   const itemPriceId = itemPriceIds[0];
   // D-132 bundle: a v2 plan-family subscription carries its plan fee item and

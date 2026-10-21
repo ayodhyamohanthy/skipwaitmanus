@@ -38,3 +38,16 @@ describe("payment_failed webhook handling (owner rule: never silent)", () => {
     expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "billing.payment_failed", outcome: "failure", resourceId: "11" }));
   });
 });
+
+describe("parseSubscriptionEvent PC 2.0 item ids", () => {
+  it("reads subscription item prices from entity_id when item_price_id is absent", async () => {
+    const { parseSubscriptionEvent } = await import("./chargebee");
+    const parsed = parseSubscriptionEvent({ id: "ev_sub_1", event_type: "subscription_created", content: { subscription: { id: "sub_1", status: "active", currency_code: "USD", subscription_items: [{ entity_id: "skipwait_v2pack_5-USD", entity_type: "charge_item_price" }] } } });
+    expect(parsed?.itemPriceId).toBe("skipwait_v2pack_5-USD");
+  });
+  it("prefers item_price_id when both are present", async () => {
+    const { parseSubscriptionEvent } = await import("./chargebee");
+    const parsed = parseSubscriptionEvent({ id: "ev_sub_2", event_type: "subscription_created", content: { subscription: { id: "sub_2", status: "active", currency_code: "USD", subscription_items: [{ item_price_id: "skipwait_start_30d-USD", entity_id: "skipwait_v2pack_5-USD" }] } } });
+    expect(parsed?.itemPriceId).toBe("skipwait_start_30d-USD");
+  });
+});
