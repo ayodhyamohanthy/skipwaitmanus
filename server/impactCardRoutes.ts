@@ -14,7 +14,8 @@ export function registerImpactCardRoutes(app: Express, deps: { resolveIdentity: 
       if (!identity) return res.status(401).json({ error: "Sign in to view your impact card" });
       const card = await load(identity.account.id);
       return res.json(card);
-    } catch {
+    } catch (error) {
+      console.error("[ImpactCard] load failed", error);
       return res.status(503).json({ error: "Impact card unavailable" });
     }
   });

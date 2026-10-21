@@ -1,6 +1,6 @@
 import express from "express";
 import request from "supertest";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IMPACT_CARD_FLAG, type ImpactCardPayload } from "./impactCard";
 import { registerImpactCardRoutes } from "./impactCardRoutes";
 
@@ -42,9 +42,13 @@ describe("GET /api/referrer/impact-card", () => {
     const res = await request(buildApp({ state: "insufficient" })).get("/api/referrer/impact-card").expect(200);
     expect(res.body).toEqual({ state: "insufficient" });
   });
-  it("503 when the load throws", async () => {
+  it("503 when the load throws, and the failure is logged", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     const app = express();
     registerImpactCardRoutes(app, { resolveIdentity: async () => ({ account: { id: 42 } }), loadImpactCard: async () => { throw new Error("down"); } });
     await request(app).get("/api/referrer/impact-card").expect(503);
+    expect(logged).toHaveBeenCalled();
+    const [message] = logged.mock.calls[0] ?? [];
+    expect(String(message)).toContain("[ImpactCard]");
   });
 });
