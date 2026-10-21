@@ -1,5 +1,7 @@
 # Kit v4 fullstack build — living plan and handoff (read before any change)
 
+> **Design authority superseded (D-120, Oct 21 2026):** the goal-focused UI (`DESIGN.md`) is the one design, landing to platform; kit v4 PNGs, palette, type and components are history, not a spec. Visual work follows `docs/plans/GOAL_UI_MIGRATION.md`. The 3b priority queue and handoff mechanics below remain in force until re-planned.
+
 This is the shared, living plan for implementing every kit v4 screen (`screens/web` 105 PNGs at 1280, `screens/mobile` 106 PNGs at 390 @2x) fullstack. **Any AI coding platform or human continuing this work reads this file, `AGENTS.md` and `COLLABORATION.md` first.**
 
 **Owner rule (Oct 14 2026): update this file (and the short summary in `AGENTS.md`) FIRST — before editing code — and get it onto `main`, so another platform can finish the work if a session stops.** Claim a step in the Status table before starting it; record decisions, commits, migrations and owner actions as you go. Update it again after every push.
