@@ -153,7 +153,7 @@
       "dependsOn": [
         "D-048-p3-map"
       ],
-      "note": "Landed as `3cd221df` (PR #361, Tier 2): the app shell renders inside GoalShell with one navigation, the credits pill (D-055), the carried-over account menu and the beta badge (#402); no surface outside the shell re-skinned. 1280/390 before/after captures under design/goal-ui/captures/w0-shell/."
+      "note": "Landed as `a89a0e60` (PR #361, Tier 2): the app shell renders inside GoalShell with one navigation, the credits pill (D-055), the carried-over account menu and the beta badge in the top bar (#402); no surface outside the shell re-skinned. Live follow-ups (PR #412) fix the phone shell (main claims row 2, no blank screen under the sticky bottom bar), the clipped rail wordmark (badge now in the top bar) and the desktop rail (sticky viewport height, so account/More stay reachable); corrected 1280/390 captures in design/goal-ui/captures/w0-shell/fix-explore-*.png."
     },
     {
       "id": "D-048-p3-explore",
@@ -174,8 +174,9 @@
       "tier": 2,
       "lane": "design",
       "branch": "agent/qoder/d048-phase-3-requests",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging origin/main: the shared goal/ shell takes main's newer W0 version (designer review 01:52: pill mono numeral + g-hit + /plans, account-menu slot, BetaBadge), MyRequests joins MOVED_SURFACES, and the pilot's superseded avatar assertion is re-pinned to the shell's real contract. Captures at 1280/390 in four states added with a reusable live-route capture tool (design/goal-ui/tools/capture-live.mjs). Gate: tsc, token audit, deploy triggers, 54 focused tests, build green; migration lint runs in CI (macOS bash 3.2 lacks declare -A)."
     },
     {
       "id": "ROW20-A",

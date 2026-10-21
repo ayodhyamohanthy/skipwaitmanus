@@ -43,7 +43,7 @@ describe("withdrawing a personal-link ask its employee has not acted on", () => 
   it("withdraws with exactly one refund; a replay adds nothing", async () => {
     expect(await withdraw()).toMatchObject({ withdrawn: true, status: "withdrawn", creditRefunded: true });
     expect(askById()).toMatchObject({ status: "withdrawn", referrerId: null, revision: 1 });
-    expect(reversalsOf()).toEqual([expect.objectContaining({ kind: "withdrawal_refund", tokenCount: 1, referenceId: "501#refund", source: "monthly_allowance", sourceCycleKey: "2026-10" })]);
+    expect(reversalsOf()).toEqual([expect.objectContaining({ kind: "withdrawal_refund", tokenCount: 1, referenceId: "501#refund#1", source: "monthly_allowance", sourceCycleKey: "2026-10" })]);
     expect(walletOf()?.monthlyCreditsRemaining).toBe(3);
     expect(eventActions()).toEqual(["withdraw"]);
     expect(releaseLogs().map(row => [row.resourceType, row.resourceId, row.outcome])).toEqual([["referral_request", "501", "success"]]);
@@ -219,7 +219,7 @@ describe("the 7-day expiry of a personal-link ask its employee has not acted on"
     seedHeldAsks(stale());
     expect(await expire()).toMatchObject({ expired: true, status: "closed" });
     expect(askById()).toMatchObject({ status: "closed", referrerId: null });
-    expect(reversalsOf()).toEqual([expect.objectContaining({ kind: "expiry_refund", tokenCount: 1, referenceId: "501#refund" })]);
+    expect(reversalsOf()).toEqual([expect.objectContaining({ kind: "expiry_refund", tokenCount: 1, referenceId: "501#refund#1" })]);
     expect(walletOf()?.monthlyCreditsRemaining).toBe(3);
     expect(noticesFor()).toEqual([expect.objectContaining({ title: "Your ask expired — credit returned" })]);
     expect(String(noticesFor()[0]?.body)).toContain(PERSONAL_LINK_LEAD);

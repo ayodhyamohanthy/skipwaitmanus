@@ -56,6 +56,7 @@ import { COVERAGE_ATTEMPTS_PER_SLOT, COVERAGE_TARGET_SCAN_LIMIT, COVERAGE_WITHDR
 // these from ./db); the definitions live in server/referrerAvailability.ts.
 export { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
 import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
+import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { grantFreeCycleOnValidationTx, openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
@@ -1862,7 +1863,8 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     if(isWaiting){
       remaining=await creditSummaryTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoState,now:summaryNow});
     }else{
-      const spent=await spendCreditsTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoGrantsEnabled()?promoHolding(promoState.grant):null,credits:1,meta:{idempotencyKey:input.idempotencyKey,referenceType:"referral_request",referenceId:String(requestId)},now:summaryNow}).catch(error=>{if(error instanceof InsufficientCreditsError)throw new Error("You have no referral credits left. Add a credit pack or choose a plan in Plans & credits to send this ask now, or wait for your included credits to renew.");throw error;});
+      const askCost=askCreditCost({title:jobRow.title,description:jobRow.description,url:jobRow.targetRoleUrl});
+      const spent=await spendCreditsTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoGrantsEnabled()?promoHolding(promoState.grant):null,credits:askCost,meta:{idempotencyKey:input.idempotencyKey,referenceType:"referral_request",referenceId:String(requestId)},now:summaryNow}).catch(error=>{if(error instanceof InsufficientCreditsError)throw new Error(askLevelCostEnabled()?`This ask costs ${askCost} credit${askCost===1?"":"s"} and your balance is lower. Add credits in Plans & credits to send it now, or wait for your included credits to renew.`:"You have no referral credits left. Add a credit pack or choose a plan in Plans & credits to send this ask now, or wait for your included credits to renew.");throw error;});
       const debitRow=(await tx.select({id:tokenTransactions.id}).from(tokenTransactions).where(and(eq(tokenTransactions.userId,userId),eq(tokenTransactions.role,"job_seeker"),eq(tokenTransactions.idempotencyKey,`${input.idempotencyKey}#1`))).limit(1))[0];if(!debitRow)throw new Error("The referral credit debit was not recorded");
       await tx.update(referralRequests).set({debitTransactionId:debitRow.id}).where(eq(referralRequests.id,requestId));
       const promoAfter=promoState.grant&&spent.promoRemaining!==null?{grant:{...promoState.grant,creditsRemaining:spent.promoRemaining},status:spent.promoRemaining>0?promoState.status:"exhausted" as const}:promoState;
@@ -2265,7 +2267,7 @@ export async function refundLedgerSpendTx(tx: any, input: { userId: number; requ
   let monthly = input.wallet.monthlyCreditsRemaining;
   let balance = input.wallet.balance;
   let returned = 0;
-  const spends = await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.userId, userId), eq(tokenTransactions.role, "job_seeker"), eq(tokenTransactions.referenceType, "referral_request"), inArray(tokenTransactions.referenceId, [1, 2, 3, 4, 5, 6].map(n => `${requestId}#${n}`)), inArray(tokenTransactions.kind, ["credit_spend", "promo_spend"]))).orderBy(asc(tokenTransactions.id));
+  const spends = await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.userId, userId), eq(tokenTransactions.role, "job_seeker"), eq(tokenTransactions.referenceType, "referral_request"), inArray(tokenTransactions.referenceId, Array.from({ length: 32 }, (_, n) => `${requestId}#${n + 1}`)), inArray(tokenTransactions.kind, ["credit_spend", "promo_spend"]))).orderBy(asc(tokenTransactions.id));
   for (const spend of spends) {
     if (spend.tokenCount >= 0) continue;
     const reversed = (await tx.select({ id: tokenTransactions.id }).from(tokenTransactions).where(eq(tokenTransactions.reversesTransactionId, spend.id)).limit(1))[0];
@@ -2291,7 +2293,13 @@ export async function refundLedgerSpendTx(tx: any, input: { userId: number; requ
       }
     }
     returned += restored;
-    await tx.insert(tokenTransactions).values({ userId, role: "job_seeker", tokenCount: restored, kind, source: spend.source, sourceCycleKey: spend.sourceCycleKey, referenceType: "referral_request", referenceId: `${requestId}#refund`, reversesTransactionId: spend.id, creditGrantId: grantId, balanceAfter: balance, monthlyCreditsAfter: monthly });
+    // One reversal row per spend row. The debit-reference unique index
+    // (userId, role, kind, referenceType, referenceId) needs a per-spend
+    // suffix once an ask costs more than one credit and the spend drew from
+    // several buckets (level-scaled asks, D-110/D-132); a 1-credit spend
+    // keeps its historical `${requestId}#refund#1` shape.
+    const spendSuffix = typeof spend.referenceId === "string" && spend.referenceId.includes("#") ? spend.referenceId.slice(spend.referenceId.lastIndexOf("#")) : `#${spend.id}`;
+    await tx.insert(tokenTransactions).values({ userId, role: "job_seeker", tokenCount: restored, kind, source: spend.source, sourceCycleKey: spend.sourceCycleKey, referenceType: "referral_request", referenceId: `${requestId}#refund${spendSuffix}`, reversesTransactionId: spend.id, creditGrantId: grantId, balanceAfter: balance, monthlyCreditsAfter: monthly });
   }
   let wallet = input.wallet;
   if (monthly !== input.wallet.monthlyCreditsRemaining || balance !== input.wallet.balance) {
@@ -2581,8 +2589,12 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
     if (!lockedWallet) return { outcome: "held", requestId: input.requestId, seekerUserId: request.jobSeekerId, companyDomain };
     const reconciled = await reconcileWalletTx(tx, lockedWallet, now);
     const promo = await promoStateForTx(tx, request.jobSeekerId, "job_seeker", now);
+    // D-110/D-132: the waiting ask pays the same level cost the covered ask
+    // paid at creation, classified from the same stored job row.
+    const deliveryJob = (await tx.select({ title: jobs.title, description: jobs.description, url: jobs.targetRoleUrl }).from(jobs).where(eq(jobs.id, request.jobId)).limit(1))[0];
+    const deliveryCost = askCreditCost({ title: deliveryJob?.title, description: deliveryJob?.description, url: deliveryJob?.url });
     try {
-      await spendCreditsTx(tx, { wallet: reconciled.wallet, grants: reconciled.grants, promo: promoGrantsEnabled() ? promoHolding(promo.grant) : null, credits: 1, meta: { idempotencyKey: askDeliveryKey(input.requestId), referenceType: "referral_request", referenceId: String(input.requestId) }, now });
+      await spendCreditsTx(tx, { wallet: reconciled.wallet, grants: reconciled.grants, promo: promoGrantsEnabled() ? promoHolding(promo.grant) : null, credits: deliveryCost, meta: { idempotencyKey: askDeliveryKey(input.requestId), referenceType: "referral_request", referenceId: String(input.requestId) }, now });
     } catch (error) {
       if (!(error instanceof InsufficientCreditsError)) throw error;
       // D-047: no credit at first visibility — hold the ask. Nothing is allocated, no referrer is told, and the
@@ -3817,6 +3829,18 @@ async function promoStateForTx(tx: any, userId: number, role: WalletRole, now: D
 
 /** Promo grants are opt-in: only PROMO_GRANTS_ENABLED="true" turns the grant hooks on. */
 export function promoGrantsEnabled(): boolean { return process.env.PROMO_GRANTS_ENABLED === "true"; }
+/** D-110/D-132 wiring, flag ASK_LEVEL_COST (default off): an ask costs credits
+ * equal to its job's classified level (L1=1 ... L10=10); off keeps the flat
+ * 1-credit cost. Changeable default per the owner. */
+export function askLevelCostEnabled(): boolean { return process.env.ASK_LEVEL_COST === "true"; }
+/** Cost of one ask in credits. The create spend and the waiting-ask delivery
+ * spend both classify the same stored job fields, and the pre-send quote
+ * (/api/company-referrals/quote) classifies the same normalized link, so all
+ * three always agree. */
+export function askCreditCost(job: { title?: string | null; description?: string | null; url?: string | null }): number {
+  if (!askLevelCostEnabled()) return 1;
+  return creditsForLevel(assignJobLevel({ title: job.title, description: job.description, url: job.url }).level);
+}
 
 export async function grantPromoCreditsTx(tx: any, input: { userId: number; role: WalletRole; source: string; providerRef: string; now?: Date }): Promise<{ granted: boolean; grantId?: number; reason?: "already_granted" | "disabled" }> {
   // Grants stay off until the issue #35 rebuild (reviewer contracts 39-41):
