@@ -75,7 +75,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   },
   {
     name: "referral-timers",
-    description: "D-038: reminds a referrer 24 h before their 48-hour hold lapses, returns an unclaimed claim or allocation to colleagues, and reopens an accepted ask nobody marked Referred in time",
+    description: "D-038: reminds a referrer 24 h before their 48-hour hold lapses and returns an unclaimed claim or allocation to colleagues; when REFERRED_DEADLINE_ENABLED is on, also reminds the accepting referrer on days 2 and 4 and reopens an accepted ask nobody marked Referred in time",
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createReferralTimers(),

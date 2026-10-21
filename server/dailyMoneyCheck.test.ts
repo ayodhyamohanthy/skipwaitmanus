@@ -375,4 +375,24 @@ describe("referred_deadline_stuck over the in-memory database", () => {
     expect(sent[0]!.text).toContain("referred_deadline_stuck: ask #701");
     expect(sent[0]!.text).not.toContain("ask #702");
   });
+
+  // D-038-reconcile B-1: the first acceptance's extension must not excuse the second acceptance.
+  // Accepted seven days before the check: its own 5-day deadline is two days overdue, while reading
+  // any extension on the ask would put it at day 8 — a day in the future — and hide the stuck ask.
+  it("does not let a first acceptance's extension hide a second acceptance's missed deadline", async () => {
+    const later = REFERRAL_TIMERS_SINCE + 10 * DAY_MS;
+    const event = (id: number, action: string, operationKey: string, atMs: number, resultingStatus: string) => ({ ...claimEvent(703, id), action, operationKey, resultingStatus, createdAt: new Date(atMs) });
+    seedHeldAsks({
+      asks: [askRow({ id: 703, status: "approved", referrerId: LINK_OWNER })],
+      events: [
+        event(90, "approve", "one-click:2:approved", REFERRAL_TIMERS_SINCE + DAY_MS, "approved"),
+        event(91, "referred_extension", "referred-extension:90", REFERRAL_TIMERS_SINCE + 2 * DAY_MS, "approved"),
+        event(92, "referred_lapse", "referred-lapse:90", REFERRAL_TIMERS_SINCE + 2 * DAY_MS + 60 * 60_000, "pending"),
+        event(93, "approve", "one-click:4:approved", later - 7 * DAY_MS, "approved"),
+      ],
+    });
+
+    const rows = await listReferredPastDeadline(later, 50);
+    expect(rows.map(row => row.id)).toContain(703);
+  });
 });
