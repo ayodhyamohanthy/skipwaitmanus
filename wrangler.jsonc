@@ -89,7 +89,10 @@
         "COMPANY_RESPONSE_SIGNAL_ENABLED": "true",
         "SHARE_IMPACT_CARD_ENABLED": "true",
         "PLAN_FAMILY_V2": "true",
-        "ASK_LEVEL_COST": "true"
+        "ASK_LEVEL_COST": "true",
+        // QA verifies the frozen promo copy "First verified payment earns 5
+        // bonus credits"; grantPromoCreditsTx no-ops while this is unset.
+        "PROMO_GRANTS_ENABLED": "true"
       }
     }
   }
