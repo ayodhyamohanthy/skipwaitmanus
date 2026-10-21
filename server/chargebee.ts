@@ -23,6 +23,12 @@ export type ParsedPaidPaymentEvent = {
   passThruContent?: string;
   amount: number;
   currency: string;
+  /** The subscription this payment belongs to (renewals carry no hosted page). */
+  subscriptionId?: string;
+  /** D-132: the credits rung this invoice's line items sell (bundle renewal or one-time pack). */
+  v2CreditsRung?: PlanCreditRung;
+  /** D-132: the family plan fee on this invoice's line items, when present. */
+  v2PlanFamily?: PlanFamilyId;
 };
 
 export type VerifiedChargebeeHostedPage = {
@@ -109,7 +115,15 @@ export function parsePaidPaymentEvent(payload: any) {
     : typeof payment.pass_thru_content === "string"
       ? payment.pass_thru_content
       : undefined;
-  return { eventId, invoiceId, hostedPageId, passThruContent, amount, currency } satisfies ParsedPaidPaymentEvent;
+  // D-132 crediting is provider-truth: the invoice's own line items name the
+  // credits rung and plan fee sold, for the first month and every renewal
+  // alike (renewals carry no hosted page). Kit invoices classify to nothing.
+  const lineItemPriceIds: string[] = Array.isArray(invoice?.line_items)
+    ? invoice.line_items.map((item: any) => item?.item_price_id).filter((id: any): id is string => typeof id === "string")
+    : [];
+  const v2 = classifyV2SubscriptionItems(lineItemPriceIds);
+  const subscriptionId = typeof payment.subscription_id === "string" ? payment.subscription_id : typeof invoice?.subscription_id === "string" ? invoice.subscription_id : undefined;
+  return { eventId, invoiceId, hostedPageId, passThruContent, amount, currency, subscriptionId, v2CreditsRung: v2.credits?.rung ?? v2.pack?.rung, v2PlanFamily: v2.plan?.planId } satisfies ParsedPaidPaymentEvent;
 }
 
 export type ParsedRefundEvent = { eventId: string; invoiceId?: string; refundAmount?: number; currency?: string };

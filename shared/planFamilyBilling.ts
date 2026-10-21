@@ -77,15 +77,17 @@ export function parseV2ItemPriceId(id: string): V2ItemPriceRef | undefined {
  * plan fee item plus an optional monthly credits item (D-132). Kit item prices
  * and unknown ids classify to nothing, so the kit path is untouched.
  */
-export function classifyV2SubscriptionItems(itemPriceIds: readonly string[]): { plan?: Extract<V2ItemPriceRef, { kind: "plan" }>; credits?: Extract<V2ItemPriceRef, { kind: "planCredits" }> } {
+export function classifyV2SubscriptionItems(itemPriceIds: readonly string[]): { plan?: Extract<V2ItemPriceRef, { kind: "plan" }>; credits?: Extract<V2ItemPriceRef, { kind: "planCredits" }>; pack?: Extract<V2ItemPriceRef, { kind: "pack" }> } {
   let plan: Extract<V2ItemPriceRef, { kind: "plan" }> | undefined;
   let credits: Extract<V2ItemPriceRef, { kind: "planCredits" }> | undefined;
+  let pack: Extract<V2ItemPriceRef, { kind: "pack" }> | undefined;
   for (const id of itemPriceIds) {
     const ref = parseV2ItemPriceId(id);
     if (ref?.kind === "plan" && !plan) plan = ref;
     else if (ref?.kind === "planCredits" && !credits) credits = ref;
+    else if (ref?.kind === "pack" && !pack) pack = ref;
   }
-  return { plan, credits };
+  return { plan, credits, pack };
 }
 
 /** Every D-132 item price id the catalog sync must create, in stable order. */
