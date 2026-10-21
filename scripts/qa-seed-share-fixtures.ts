@@ -26,7 +26,17 @@ const NOW = Date.now();
 const ago = (hours: number) => new Date(NOW - hours * 3_600_000);
 
 async function main() {
-  const pool = mysql.createPool(url);
+  // Azure Database for MySQL enforces TLS (require_secure_transport=ON); parse
+  // the URL and pass ssl explicitly, same as drizzle.config.ts.
+  const parsed = new URL(url);
+  const pool = mysql.createPool({
+    host: parsed.hostname,
+    port: Number(parsed.port || 3306),
+    user: decodeURIComponent(parsed.username),
+    password: decodeURIComponent(parsed.password),
+    database: dbName,
+    ssl: { rejectUnauthorized: false },
+  });
   const db = drizzle(pool);
 
   const [company] = await db.insert(companies).values({ slug: "quillmint", name: "Quillmint", initials: "Q", industry: "Fintech", location: "Bengaluru", functions: JSON.stringify(["Engineering", "Design"]), blurb: "Fictional QA fixture company.", status: "listed", sortOrder: 0 }).$returningId();
