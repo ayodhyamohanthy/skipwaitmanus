@@ -5,6 +5,9 @@ import { registerChargebeeRoutes } from "./chargebeeRoutes";
 import { startKitPackCheckout, startKitPlanCheckout } from "./kitCheckout";
 import { NOT_AVAILABLE_CODE } from "../shared/subscriptionManagement";
 import type { CatalogPrice } from "../shared/billingCatalog";
+// These cases test selling passes, so they run with pass sales on; the shipped
+// off state (D-084) is pinned in server/passSalesSwitch.test.ts.
+vi.mock("../shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("../shared/planCatalog")>()), PASS_SALES_ENABLED: true }));
 
 const req = { hostname: "skipwait.me", protocol: "https", get: () => "skipwait.me" } as unknown as Parameters<typeof startKitPlanCheckout>[0]["req"];
 const urls = { redirectUrl: "https://skipwait.me/plans?payment=pending", cancelUrl: "https://skipwait.me/plans?payment=cancelled" };

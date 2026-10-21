@@ -1,4 +1,5 @@
 import { PASS_REASON_OPTIONS, type PassReasonCode } from "@shared/passReasons";
+import { REFERRED_DEADLINE_ENABLED } from "@shared/referral";
 import { ArrowRight, Check, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -83,8 +84,9 @@ export function SeekerPanel({ request, onWithdraw, onProgress, onConfirmReferred
   }
   if (stage === "Accepted") {
     // D-038-B: the seeker can confirm they got the referral email, which stops
-    // the clock and marks the ask as referred.
-    if (request.status === "approved") {
+    // the clock and marks the ask as referred. D-038-reconcile R-2: no confirm
+    // control while part B is switched off.
+    if (request.status === "approved" && REFERRED_DEADLINE_ENABLED) {
       return (
         <>
           <h2 className="mt-2 text-lg font-semibold">Did you get the referral email?</h2>
@@ -168,7 +170,7 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
         <>
           <h2 className="mt-2 text-lg font-semibold">Submit through your company.</h2>
           <p className="mt-1 text-sm text-muted-foreground">Then mark it here so the seeker knows.</p>
-          {request.referredDueAt ? (
+          {REFERRED_DEADLINE_ENABLED && request.referredDueAt ? (
             <>
               <p className="mt-1 text-sm text-muted-foreground">Mark as referred by {new Date(request.referredDueAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}.</p>
               <Button className="mt-4 w-full" onClick={() => open("referred")}>Mark as referred <Check /></Button>
@@ -179,7 +181,7 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
           ) : (
             <Button className="mt-4 w-full" onClick={() => open("referred")}>Mark as referred <Check /></Button>
           )}
-          <Button variant="destructive" className="mt-2 w-full" onClick={() => open("stepback")}>I can't refer this after all</Button>
+          {REFERRED_DEADLINE_ENABLED ? <Button variant="destructive" className="mt-2 w-full" onClick={() => open("stepback")}>I can't refer this after all</Button> : null}
         </>
       ) : (
         <p className="mt-2 text-sm text-muted-foreground">{COORDINATE}</p>

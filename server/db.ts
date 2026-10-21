@@ -36,7 +36,7 @@ import {
 import { FREE_MONTHLY_ALLOWANCE, currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { isBillablePlanId, isRetiredPlanId, isRetiredPlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId, type WalletPlanId } from "../shared/billingCatalog";
 import { PLAN_RETIRED_CODE } from "../shared/subscriptionManagement";
-import { ASK_TTL_MS, COVERAGE_WAIT_DAYS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, referredDueAtMs, referredReminderAtMs, REFERRED_REMINDER_DAYS, claimLapseAtMs, allocationLapseAtMs, reminderAtMs, MAX_ACTIVE_CLAIMS, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
+import { ASK_TTL_MS, COVERAGE_WAIT_DAYS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, referredDueAtMs, referredReminderAtMs, REFERRED_DEADLINE_ENABLED, REFERRED_REMINDER_DAYS, claimLapseAtMs, allocationLapseAtMs, reminderAtMs, MAX_ACTIVE_CLAIMS, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { firstLookUntilFrom, isOpportunityExpired, ownerOpportunityPostSchema, publicOpportunityPostSchema, OPPORTUNITY_TTL_MS, type OpportunityPoster, type OwnerOpportunityPost, type PublicOpportunityPost } from "../shared/companyOpportunities";
 import { isCorporateEmailDomain } from "../shared/const";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
@@ -2861,12 +2861,17 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
     // D-038-A (§4.7): a referrer holds at most 5 open claims at once. The claimant's own profiles row
     // is locked first so two simultaneous claims by one person cannot both slip past the count.
     // Allocations and personal-link holds are not claims and never count (D-076 (2)).
+    // D-038-reconcile R-4: the count is one bounded aggregate over the claimant's own current asks and
+    // takes no lock on any other request's row. A claim event on an ask still assigned to the claimant
+    // and pending is their open claim; every release (lapse, step-back, referral lapse) clears the
+    // assignment and writes an exclusion, so a released ask never stays assigned to the same person.
+    // R-6: repeating a claim on an ask the claimant already holds skips the cap and answers as a replay.
     await tx.select({ id: profiles.id }).from(profiles).where(eq(profiles.userId, userId)).limit(1).for("update");
-    const assigned = await tx.select({ id: referralRequests.id }).from(referralRequests).where(and(eq(referralRequests.referrerId, userId), eq(referralRequests.status, "pending")));
-    if (assigned.length >= MAX_ACTIVE_CLAIMS) {
-      let openClaims = 0;
-      for (const assignedRow of assigned) if (await referralWasClaimedTx(tx, assignedRow.id)) openClaims += 1;
-      if (openClaims >= MAX_ACTIVE_CLAIMS) throw new ReferralTransitionConflict(`You can hold ${MAX_ACTIVE_CLAIMS} asks at once. Accept or pass one of them first.`, { status: "pending", revision: -1 });
+    if (current.request.referrerId !== userId) {
+      const [openClaims] = await tx.select({ openClaims: count() }).from(referralTransitionEvents)
+        .innerJoin(referralRequests, eq(referralTransitionEvents.referralRequestId, referralRequests.id))
+        .where(and(eq(referralRequests.referrerId, userId), eq(referralRequests.status, "pending"), eq(referralTransitionEvents.action, "claim"), eq(referralTransitionEvents.actorUserId, userId)));
+      if (Number(openClaims?.openClaims ?? 0) >= MAX_ACTIVE_CLAIMS) throw new ReferralTransitionConflict(`You can hold ${MAX_ACTIVE_CLAIMS} asks at once. Accept or pass one of them first.`, { status: "pending", revision: -1 });
     }
     const result = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "claim", operationKey: `claim:${userId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null && row.referrerId !== userId) throw new Error("Another verified employee already claimed this request"); }, patch: { referrerId: userId }, notification: { userId: current.request.jobSeekerId, title: "Your referral request was claimed", body: "A verified employee at the target company is reviewing your request." } });
     // A claim grants no document access (D-019(e)); acceptance does, in transitionReferralRequestTx.
@@ -3159,10 +3164,11 @@ export async function getClaimedCompanyReferralDetail(userId: number, requestId:
   if (row.status !== "pending" && !accepted) return undefined;
   const attachments = await db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.referralRequestId, requestId));
   // D-038-B: when the Referred decision is due for an accepted ask, and whether
-  // the one 3-day extension was already used.
+  // the one 3-day extension was already used. D-038-reconcile R-2: part B omits
+  // both fields while it is switched off, so no client can offer its controls.
   let referredDueAt: string | null = null;
   let extensionUsed = false;
-  if (accepted && row.acceptedByActorAt) {
+  if (REFERRED_DEADLINE_ENABLED && accepted && row.acceptedByActorAt) {
     const acceptedAtMs = row.acceptedByActorAt instanceof Date ? row.acceptedByActorAt.getTime() : Date.parse(String(row.acceptedByActorAt));
     const hasExtension = await db.select({ id: referralTransitionEvents.id }).from(referralTransitionEvents)
       .where(and(eq(referralTransitionEvents.referralRequestId, requestId), eq(referralTransitionEvents.action, "referred_extension"))).limit(1);
@@ -3187,7 +3193,7 @@ export async function getClaimedCompanyReferralDetail(userId: number, requestId:
       }
     }
   }
-  return { id: row.id, title: row.title, targetRoleUrl: row.targetRoleUrl, companyDomain: row.companyDomain, jobFunction: row.jobFunction, candidateMessage: row.candidateMessage, referrerId: row.referrerId, status: row.status, revision: row.revision, candidateName: accepted ? row.candidateName : null, documentAccessActive: isReferrerDocumentAccessActive(access), attachments, referredDueAt, extensionUsed, decisionDueAt };
+  return { id: row.id, title: row.title, targetRoleUrl: row.targetRoleUrl, companyDomain: row.companyDomain, jobFunction: row.jobFunction, candidateMessage: row.candidateMessage, referrerId: row.referrerId, status: row.status, revision: row.revision, candidateName: accepted ? row.candidateName : null, documentAccessActive: isReferrerDocumentAccessActive(access), attachments, ...(REFERRED_DEADLINE_ENABLED ? { referredDueAt, extensionUsed } : {}), decisionDueAt };
 }
 
 export async function createReferralAttachment(ownerId: number, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) {

@@ -84,6 +84,11 @@ export const COVERAGE_WAIT_MS = COVERAGE_WAIT_DAYS * 24 * 60 * 60 * 1000;
  * 48 hours under the new rule. Claims and allocations made before it keep the old lifecycle. */
 export const REFERRAL_TIMERS_SINCE = new Date("2026-10-20T00:00:00.000Z").getTime();
 
+/** D-038-B is switched off until an independent review passes it (D-042, D-038-reconcile R-2).
+ * While false the timers job runs steps 1–3 only and the extend, step-back and confirm routes
+ * answer 409; nothing is deleted, and the lander turns it on after the review. */
+export const REFERRED_DEADLINE_ENABLED = false;
+
 const HOUR_MS = 60 * 60 * 1000;
 export const CLAIM_LAPSE_HOURS = 48;
 export const CLAIM_LAPSE_MS = CLAIM_LAPSE_HOURS * HOUR_MS;
