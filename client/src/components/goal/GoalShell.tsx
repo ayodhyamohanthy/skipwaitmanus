@@ -159,7 +159,9 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
       </header>
 
       {/* Main */}
-      {/* Phone: explicit row 2, else the row-2 bottom bar pushes main into an implicit fourth row. */}
+      {/* Main. Pinned to row 2 on phone: the bottom bar spans rows 2..-1
+          (sticky, self-end), so an auto-placed main would skip the occupied
+          rows and land in an implicit 4th row below a blank viewport. */}
       <main className="max-gdesk:col-start-1 max-gdesk:row-start-2 gdesk:col-start-2 gdesk:row-start-2 min-w-0">{children}</main>
 
       {/* Desktop drawer column */}

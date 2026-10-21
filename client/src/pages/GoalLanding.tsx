@@ -21,26 +21,26 @@ import { GoalVerifiedMark } from "@/components/goal/GoalVerifiedMark";
 import { BETA_NOTICE_LINE } from "@/lib/betaNotice";
 import { ASK_COST_SENTENCE, REFERRING_FREE_LINE } from "@shared/moneyCopy";
 
-const STEPS: Array<{ title: string; body: string }> = [
+export const STEPS: Array<{ title: string; body: string }> = [
   { title: "Find your company", body: "See the companies with verified employees inside, and the roles you can ask about." },
   { title: "Send one thoughtful ask", body: `You see the cost before you ask: ${ASK_COST_SENTENCE} Every ask costs the same.` },
   { title: "They decide", body: "An accepted ask opens a private conversation. A referral is an introduction, never a promise of an interview or a job." },
 ];
 
-const TRUST: Array<{ title: string; body: string; blue: boolean }> = [
+export const TRUST: Array<{ title: string; body: string; blue: boolean }> = [
   { title: "Verified with a work email", body: "Every referrer proves their company email before they can see a single ask.", blue: true },
   { title: "Hidden until one accepts", body: "Your name stays private until a referrer chooses to open the conversation.", blue: false },
   { title: "Nothing spent while it waits", body: "1 credit only when a verified employee can see your ask - back if you withdraw first.", blue: false },
 ];
 
-const FAIR_RULES = [
+export const FAIR_RULES = [
   REFERRING_FREE_LINE,
   "Every ask costs the same: 1 credit when a verified employee can see it, nothing while it waits.",
   "No outcome promises: a referral is an introduction, not an interview or a job.",
   "Private by default: your name stays hidden until a referrer accepts.",
 ];
 
-const FOOTER_COLS: Array<{ title: string; links: Array<[string, string]> }> = [
+export const FOOTER_COLS: Array<{ title: string; links: Array<[string, string]> }> = [
   { title: "Product", links: [["/explore", "Explore companies"], ["/jobs", "Browse roles"], ["/pricing", "Pricing"], ["/plans", "Plans"]] },
   { title: "People", links: [["/referrer", "Join as a referrer"], ["/help", "Help"], ["/contact", "Contact"]] },
   { title: "Legal", links: [["/terms", "Terms"], ["/privacy", "Privacy"], ["/refunds", "Refunds"], ["/cancellations", "Cancellation"]] },
@@ -51,7 +51,7 @@ function reducedMotion(): boolean {
 }
 
 /** Fade-up once, when scrolled into view. Reduced motion / no IO: render fully. */
-function Reveal({ children, className }: { children: ReactNode; className?: string }) {
+export function Reveal({ children, className }: { children: ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -73,7 +73,7 @@ function Reveal({ children, className }: { children: ReactNode; className?: stri
   return <div ref={ref} className={className}>{children}</div>;
 }
 
-function Kicker({ children }: { children: ReactNode }) {
+export function Kicker({ children }: { children: ReactNode }) {
   return (
     <p className="flex items-center gap-2 font-g-mono text-[11px] font-medium uppercase tracking-[0.14em] text-g-ink-3">
       <span aria-hidden="true" className="inline-block size-1.5 rounded-full bg-g-ink" />{children}
@@ -82,7 +82,7 @@ function Kicker({ children }: { children: ReactNode }) {
 }
 
 /** Monochrome ask-card art for the referrer path (aria-hidden). */
-function AskCardArt() {
+export function AskCardArt() {
   return (
     <div aria-hidden="true" className="rounded-g-sheet border border-g-control-edge p-5">
       <div className="flex items-center gap-3">
