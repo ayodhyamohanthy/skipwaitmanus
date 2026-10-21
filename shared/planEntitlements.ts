@@ -22,6 +22,7 @@
 import { z } from "zod";
 import { FREE_ALERT_LIMIT } from "./alerts";
 import { CATALOG_PLANS, CATALOG_PLAN_IDS, FREE_PLAN, REVERSE_TRIAL, catalogPlanById, planDisplayName, tierAtLeast, type CatalogPlan, type CatalogTier } from "./planCatalog";
+import { planFamilyEntry } from "./planFamily";
 
 export const ENTITLED_PLAN_IDS = ["free", ...CATALOG_PLAN_IDS] as const;
 export type EntitledPlanId = (typeof ENTITLED_PLAN_IDS)[number];
@@ -169,7 +170,7 @@ export function planEntitlementsFor(plan: string): PlanEntitlements {
 const TRIAL_OPEN_REQUESTS = catalogPlanById(REVERSE_TRIAL.plan)?.openRequests ?? FREE_PLAN.openRequests;
 const TRIAL_LABEL = `${planDisplayName(catalogPlanById(REVERSE_TRIAL.plan) ?? FREE_PLAN)} trial`;
 
-export function resolvePlanEntitlements(wallet: EntitlementWallet | null | undefined, now: Date = new Date()): PlanEntitlements {
+export function resolvePlanEntitlements(wallet: EntitlementWallet | null | undefined, now: Date = new Date(), opts?: { planFamilyV2?: boolean }): PlanEntitlements {
   const trialEnd = wallet && isTrialActive(wallet, now) ? wallet.trialEndsAt ?? null : null;
   const paid = wallet && isPaidPlanActive(wallet, now) && wallet.subscriptionCurrentTermEnd
     ? { ...planEntitlementsFor(wallet.plan), paidThrough: wallet.subscriptionCurrentTermEnd.toISOString() }
@@ -178,7 +179,11 @@ export function resolvePlanEntitlements(wallet: EntitlementWallet | null | undef
     if (!trialEnd || paid.openRequests >= TRIAL_OPEN_REQUESTS) return paid;
     return { ...paid, openRequests: TRIAL_OPEN_REQUESTS, trialEndsAt: trialEnd.toISOString() };
   }
+  // D-132 enable item 8: under PLAN_FAMILY_V2 the free tier reads "Open Door"
+  // from the planFamily single source, never the legacy catalog label. The
+  // reverse-trial label still wins while the trial runs.
   const free = fromCatalog(FREE_PLAN);
-  if (!trialEnd) return free;
-  return { ...free, planLabel: TRIAL_LABEL, openRequests: TRIAL_OPEN_REQUESTS, trialEndsAt: trialEnd.toISOString() };
+  const freeResolved = opts?.planFamilyV2 ? { ...free, planLabel: planFamilyEntry("open_door").label } : free;
+  if (!trialEnd) return freeResolved;
+  return { ...freeResolved, planLabel: TRIAL_LABEL, openRequests: TRIAL_OPEN_REQUESTS, trialEndsAt: trialEnd.toISOString() };
 }

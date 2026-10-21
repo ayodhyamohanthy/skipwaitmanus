@@ -125,3 +125,27 @@ describe("reverse trial (one-time, 14 days, Momentum's open asks)", () => {
     expect(resolve(paid("land_focus", { trialEndsAt: end }))).toMatchObject({ plan: "land_focus", openRequests: 30, trialEndsAt: null });
   });
 });
+
+describe("D-132 enable item 8: PLAN_FAMILY_V2 free-tier label from the planFamily source", () => {
+  it("flag on: the free tier reads Open Door with Free's numbers unchanged", () => {
+    const resolved = resolvePlanEntitlements(null, NOW, { planFamilyV2: true });
+    expect(resolved.plan).toBe("free");
+    expect(resolved.planLabel).toBe("Open Door");
+    expect(resolved.openRequests).toBe(3);
+    expect(resolved.creditsPerMonth).toBe(3);
+  });
+
+  it("flag off or absent: the free tier keeps the legacy catalog label", () => {
+    expect(resolvePlanEntitlements(null, NOW, { planFamilyV2: false }).planLabel).toBe("Free");
+    expect(resolvePlanEntitlements(null, NOW).planLabel).toBe("Free");
+  });
+
+  it("flag on: a paid catalog plan keeps its own label", () => {
+    expect(resolvePlanEntitlements(paid("momentum"), NOW, { planFamilyV2: true }).planLabel).toBe("Momentum");
+  });
+
+  it("flag on: the reverse-trial label still wins while the trial runs", () => {
+    const trialing: EntitlementWallet = { plan: "free", subscriptionStatus: null, subscriptionCurrentTermEnd: null, trialEndsAt: new Date(NOW.getTime() + 5 * DAY) };
+    expect(resolvePlanEntitlements(trialing, NOW, { planFamilyV2: true }).planLabel).toBe("Momentum trial");
+  });
+});

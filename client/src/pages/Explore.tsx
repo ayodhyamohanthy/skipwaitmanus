@@ -22,6 +22,7 @@ import {
 } from "@/components/goal";
 import { askErrorMessage, confirmedDomainFor, parseSentAsk, parseSlotCapReached } from "@/components/ask/askApi";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
+import { useAskQuote } from "@/hooks/useAskQuote";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { saveAskPrefill } from "@/lib/askPrefill";
@@ -52,6 +53,8 @@ function session(): Storage | null {
 function confirmedDomain(url: string): string | undefined {
   try { return confirmedDomainFor(url, localStorage.getItem("bridge-company-confirmation")); } catch { return undefined; }
 }
+
+const ASK_LEVEL_COST_ON = import.meta.env.VITE_ASK_LEVEL_COST === "true";
 
 export default function Explore() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
@@ -108,7 +111,10 @@ export default function Explore() {
   const linkOk = isValidTargetRoleUrl(url.trim()) && (!company || jobLinkFitsCompany(url, company.domains));
   const words = countWords(composeWhyMe(reasons));
   const tooLong = overLimitReasons(reasons).length > 0;
-  const cost = costLine({ open: company ? company.openToReferrals : null, balance: isSignedIn && balance?.state === "ready" ? balance.count : null });
+  // D-132: under V2 the drawer's cost line quotes by role level, like /ask;
+  // a missing quote keeps the flat one-credit line.
+  const askQuote = useAskQuote(url, ASK_LEVEL_COST_ON);
+  const cost = costLine({ open: company ? company.openToReferrals : null, balance: isSignedIn && balance?.state === "ready" ? balance.count : null, quote: askQuote });
   const context = company ? [company.name, roleTitleFromUrl(url)].filter(Boolean).join(" · ") : roleTitleFromUrl(url);
 
   const missing = !linkOk

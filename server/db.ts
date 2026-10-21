@@ -48,6 +48,7 @@ import { JOB_LEVELS, REFERRER_AREAS, parseJobFunction, type JobFunction } from "
 import { resolveAskJobFunction } from "../shared/jobFunctionClassifier";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { isPaidPlanActive, resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
+import { planFamilyV2Enabled } from "../shared/planFamily";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { AssistantPlanRequiredError, CompanyCapReachedError, OpenAskSlotCapError, openAskCondition, showcaseLimitViolation } from "./planGates";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
@@ -512,9 +513,9 @@ function parseJsonArray(raw: string | null): string[] {
  * wallet. A missing wallet or database reads as Free, so every gate fails closed.
  */
 export async function getSeekerEntitlements(userId: number, now: Date = new Date()): Promise<PlanEntitlements> {
-  const db = await getDb(); if (!db) return resolvePlanEntitlements(null, now);
+  const db = await getDb(); if (!db) return resolvePlanEntitlements(null, now, { planFamilyV2: planFamilyV2Enabled() });
   const wallet = (await db.select({ plan: tokenBalances.plan, subscriptionStatus: tokenBalances.subscriptionStatus, subscriptionCurrentTermEnd: tokenBalances.subscriptionCurrentTermEnd, trialEndsAt: tokenBalances.trialEndsAt }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1))[0];
-  return resolvePlanEntitlements(wallet ?? null, now);
+  return resolvePlanEntitlements(wallet ?? null, now, { planFamilyV2: planFamilyV2Enabled() });
 }
 
 /** GET /api/assistants/access: the Land tier only (a wallet still marked max reads as Free, D-067). */
@@ -1807,7 +1808,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     // first statement, so this plain read's snapshot starts after it and sees every ask a
     // previous lock holder committed. It is deliberately not a locking read: withdraw and
     // expiry lock the ask row before the wallet, and the reverse order here could deadlock.
-    const nowMs=Date.now();const entitlements=resolvePlanEntitlements(lockedWallet,new Date(nowMs));
+    const nowMs=Date.now();const entitlements=resolvePlanEntitlements(lockedWallet,new Date(nowMs),{ planFamilyV2: planFamilyV2Enabled() });
     const openAsks=Number((await tx.select({open:count()}).from(referralRequests).where(openAskCondition(userId,nowMs)))[0]?.open??0);
     const duplicate=await tx.select({id:referralRequests.id,fingerprint:referralRequests.requestFingerprint,companyDomain:jobs.company,jobFunction:jobs.jobFunction,waiting:referralRequests.waitingForCoverage,referrerId:referralRequests.referrerId,opportunityId:referralRequests.opportunityId,firstLookReferrerId:referralRequests.firstLookReferrerId}).from(referralRequests).innerJoin(jobs,eq(jobs.id,referralRequests.jobId)).where(and(eq(referralRequests.jobSeekerId,userId),eq(referralRequests.idempotencyKey,input.idempotencyKey))).limit(1).for("update");
     if(duplicate[0]){if(duplicate[0].fingerprint!==fingerprint)throw new ReferralIdempotencyConflictError();const wallet=lockedWallet;const invite=(await tx.select({inviteCode:companyCoverageInvitations.inviteCode}).from(companyCoverageInvitations).where(eq(companyCoverageInvitations.referralRequestId,duplicate[0].id)).limit(1))[0];return{requestId:duplicate[0].id,companyDomain:duplicate[0].companyDomain,jobFunction:parseJobFunction(duplicate[0].jobFunction),coverageStatus:duplicate[0].waiting?"waiting_for_company_coverage" as const:"covered" as const,coverageInviteCode:invite?.inviteCode,notifiedEmployees:0,remainingTokens:wallet?creditSummaryFromWallet(wallet).totalAvailable:0,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined,slots:openAskSlots(entitlements,openAsks),fastTrack:Boolean(duplicate[0].referrerId),fromPost:duplicate[0].opportunityId!==null,firstLook:duplicate[0].firstLookReferrerId!==null,replayed:true as const};}
