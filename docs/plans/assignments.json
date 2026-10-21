@@ -174,8 +174,9 @@
       "tier": 2,
       "lane": "design",
       "branch": "agent/qoder/d048-phase-3-requests",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging origin/main: the shared goal/ shell takes main's newer W0 version (designer review 01:52: pill mono numeral + g-hit + /plans, account-menu slot, BetaBadge), MyRequests joins MOVED_SURFACES, and the pilot's superseded avatar assertion is re-pinned to the shell's real contract. Captures at 1280/390 in four states added with a reusable live-route capture tool (design/goal-ui/tools/capture-live.mjs). Gate: tsc, token audit, deploy triggers, 54 focused tests, build green; migration lint runs in CI (macOS bash 3.2 lacks declare -A)."
     },
     {
       "id": "ROW20-A",
