@@ -7,7 +7,7 @@ import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GoalShell } from "./GoalShell";
-import { GoalListRow } from "./GoalListRow";
+import { GoalCompanyRow, GoalListRow } from "./GoalListRow";
 import { GoalDetailPane } from "./GoalDetailPane";
 import { GoalDecisionBar } from "./GoalDecisionBar";
 import { GoalPassReasons } from "./GoalPassReasons";
@@ -208,6 +208,26 @@ describe("GoalDrawer and GoalSheet", () => {
     render(<GoalSheet open onOpenChange={() => {}} title="Pass on this ask"><p>body</p></GoalSheet>);
     expect(screen.getByRole("dialog", { name: /pass on this ask/i })).toBeTruthy();
     expect(screen.getByTestId("goal-sheet").className).toContain("g-scope");
+  });
+});
+
+describe("GoalCompanyRow", () => {
+  it("is a 52px selectable row named by company and availability, never a fake link", async () => {
+    const onSelect = vi.fn();
+    render(<GoalCompanyRow name="Wipro" initials="W" functions={["Engineering", "Data"]} open onSelect={onSelect} />);
+    const row = screen.getByRole("button", { name: "Wipro, open to requests" });
+    expect(row.className).toContain("h-[52px]");
+    expect(row.getAttribute("href")).toBeNull();
+    expect(screen.getByTestId("goal-availability").textContent).toBe("Open to requests");
+    await userEvent.click(row);
+    expect(onSelect).toHaveBeenCalled();
+  });
+
+  it("marks the selected row with the ink bar and aria-current", () => {
+    render(<GoalCompanyRow name="Merkle" initials="M" functions={["Design"]} open={false} selected />);
+    const row = screen.getByRole("button", { name: "Merkle, not open yet" });
+    expect(row.getAttribute("aria-current")).toBe("true");
+    expect(row.className).toContain("bg-g-surface-selected");
   });
 });
 

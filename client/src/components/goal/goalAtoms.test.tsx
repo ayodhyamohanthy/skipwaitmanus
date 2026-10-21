@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { GoalButton } from "./GoalButton";
 import { GoalSearchInput } from "./GoalSearchInput";
 import { GoalFilterChip } from "./GoalFilterChip";
+import { GoalReasonInput } from "./GoalReasonInput";
 import { GoalStatus } from "./GoalStatus";
 import { GoalVerifiedMark } from "./GoalVerifiedMark";
 
@@ -71,6 +72,25 @@ describe("GoalFilterChip", () => {
     expect(chip.getAttribute("aria-pressed")).toBe("false");
     await userEvent.click(chip);
     expect(onPressedChange).toHaveBeenCalledWith(true);
+  });
+});
+
+describe("GoalReasonInput", () => {
+  it("labels itself as one of the three reasons and counts characters live", async () => {
+    const onChange = vi.fn();
+    render(<GoalReasonInput index={1} value="" onChange={onChange} max={140} placeholder="Another result…" />);
+    expect(screen.getByRole("textbox", { name: "Reason 2" })).toBeTruthy();
+    expect(screen.getByText("0/140")).toBeTruthy();
+    await userEvent.type(screen.getByPlaceholderText("Another result…"), "Led checkout");
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it("flags an over-limit reason without disabling the field", () => {
+    render(<GoalReasonInput index={0} value={"x".repeat(141)} onChange={() => {}} max={140} placeholder="One result…" />);
+    const field = screen.getByPlaceholderText("One result…");
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(field.getAttribute("disabled")).toBeNull();
+    expect(screen.getByText(/141\/140/)).toBeTruthy();
   });
 });
 
