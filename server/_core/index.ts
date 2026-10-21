@@ -43,6 +43,7 @@ import { createContext } from "./context";
 import { registerDevAuthRoutes, resolveDevIdentity } from "./devAuth";
 import { serveStatic, setupVite } from "./vite";
 import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
+import { registerImpactCardRoutes } from "../impactCardRoutes";
 import { registerCompanyDirectoryRoutes } from "../companyDirectoryRoutes";
 import { registerScheduledJobsRoutes } from "../scheduledJobsRoutes";
 import { registerEmployerRoutes } from "../employerRoutes";
@@ -65,7 +66,7 @@ import { registerPlansCatalogRoutes } from "../plansCatalogRoutes";
 import { registerAdminBillingLedgerRoutes } from "../adminBillingLedger";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
-import { createPaymentRefundAlerter, createPaymentReviewAlerter, createUnmatchedPaymentAlerter, createCardValidationAlerter, createRetiredPlanAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
+import { createPaymentRefundAlerter, createFailedPaymentAlerter, createPaymentReviewAlerter, createUnmatchedPaymentAlerter, createCardValidationAlerter, createRetiredPlanAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
 import { globalSecurityHeaders } from "../securityHeaders";
 import { draftSmartReferralPitch } from "../ai";
 import { sendReferrerReviewEmail } from "../referrerReviewEmail";
@@ -190,6 +191,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   });
 
   registerAccountPreferenceRoutes(app, { resolveIdentity, getPreferences: db.getAccountPreferences, savePreferences: db.saveAccountPreferences });
+  registerImpactCardRoutes(app, { resolveIdentity });
 
   // Dev session routes read JSON bodies, so they register after the parsers.
   // WorkOS AuthKit takes precedence over the dev fallback when configured.
@@ -273,6 +275,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     recordActivity: db.recordOperationalActivity,
     createPaymentIntent: db.createChargebeePaymentIntent,
     fulfillPayment: db.fulfillChargebeePayment,
+    grantV2Credits: db.grantV2PaidCredits,
     createSubscriptionIntent: db.createChargebeeSubscriptionIntent,
     applySubscriptionEvent: db.applyChargebeeSubscriptionEvent,
     recordGiftEvent: db.recordGiftProviderEvent,
@@ -287,6 +290,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     markSubscriptionCheckoutIntentReview: db.markSubscriptionCheckoutIntentReview,
     markPaymentForReview: db.markChargebeePaymentForReview,
     getCreditSummary: db.getTokenWallet,
+    alertFailedPayment: createFailedPaymentAlerter(),
     alertPaymentReview: createPaymentReviewAlerter(),
     applyPaymentRefund: db.applyChargebeePaymentRefund,
     alertPaymentRefund: createPaymentRefundAlerter(),

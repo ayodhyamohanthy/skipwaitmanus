@@ -81,6 +81,7 @@ export function priceDiffs(price: ProviderItemPrice, spec: ItemPriceSpec): Catal
 }
 
 function termOf(price: CatalogPrice): CatalogSyncDryRun["correct"][number]["term"] {
+  if (price.kind === "v2plan" || price.kind === "v2credits") return "monthly";
   if (price.kind !== "plan") return "one_time";
   if (price.interval === "yearly") return "yearly";
   if (price.interval === "90d") return "90d";

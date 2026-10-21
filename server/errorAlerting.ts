@@ -2,6 +2,57 @@ import type { RequestHandler } from "express";
 import { recordOperationalActivity } from "./db";
 
 const ADMIN_ERROR_RECIPIENT = "ayodhya@skipwait.me";
+/**
+ * Owner rule (Oct 22): a payment failure must never sit in an unread mailbox.
+ * Every payment-class alert goes to the admin mailbox, the owner's personal
+ * Gmail, and the Instinct agent inbox (whose watcher texts the owner), with a
+ * fixed subject prefix the watcher filters on.
+ */
+const PAYMENT_ALERT_RECIPIENTS = [ADMIN_ERROR_RECIPIENT, "ayodhyarammohanthy@gmail.com", "ayodhya@mail.instinct.com"];
+export const PAYMENT_ALERT_SUBJECT_PREFIX = "[SKIPWAIT PAYMENT]";
+const PAYMENT_ALERT_ATTEMPTS = 2;
+const PAYMENT_ALERT_RETRY_DELAY_MS = 1_500;
+
+/** One Resend call to every payment-alert recipient, retried once on failure. */
+async function sendPaymentAlertEmail(fetchImpl: typeof fetch, input: { subject: string; text: string; sleep?: (ms: number) => Promise<void> }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const sender = process.env.ERROR_ALERT_FROM_EMAIL;
+  if (!apiKey || !sender) return { sent: false as const, attempts: 0, error: "Error alert delivery is not configured" };
+  const sleep = input.sleep ?? ((ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms)));
+  let error = "unknown";
+  for (let attempt = 1; attempt <= PAYMENT_ALERT_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetchImpl("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from: sender, to: [...PAYMENT_ALERT_RECIPIENTS], subject: input.subject, text: input.text }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (response.ok) return { sent: true as const, attempts: attempt };
+      const detail = (await response.text().catch(() => "")).slice(0, 300);
+      error = `Resend responded with ${response.status}${detail ? `: ${detail}` : ""}`;
+    } catch (sendError) {
+      error = sendError instanceof Error ? sendError.message : String(sendError);
+    }
+    if (attempt < PAYMENT_ALERT_ATTEMPTS) await sleep(PAYMENT_ALERT_RETRY_DELAY_MS);
+  }
+  return { sent: false as const, attempts: PAYMENT_ALERT_ATTEMPTS, error };
+}
+
+/**
+ * A payment alert that never reached any inbox is itself a payment failure:
+ * record a durable undelivered marker the admin console banners until the
+ * alert is verified by a human. Never throws.
+ */
+async function recordUndeliveredPaymentAlert(recordActivity: typeof recordOperationalActivity, input: { alert: string; resourceType: string; resourceId: string; metadata: Record<string, unknown>; attempts: number; error?: string }) {
+  await recordActivity({
+    action: "system.payment_alert_undelivered",
+    outcome: "failure",
+    resourceType: input.resourceType,
+    resourceId: input.resourceId,
+    metadata: { ...input.metadata, alert: input.alert, attempts: input.attempts, error: input.error },
+  }).catch(() => undefined);
+}
 const DEDUPLICATION_WINDOW_MS = 10 * 60 * 1000;
 
 type AlertInput = {
@@ -15,6 +66,8 @@ type AlertDependencies = {
   fetchImpl?: typeof fetch;
   recordActivity?: typeof recordOperationalActivity;
   now?: () => number;
+  /** Test hook for the alert retry pause; defaults to a real timer. */
+  sleep?: (ms: number) => Promise<void>;
 };
 
 function normalizedPath(path: string) {
@@ -128,7 +181,7 @@ export function createPaymentReviewAlerter(dependencies: AlertDependencies = {})
   const fetchImpl = dependencies.fetchImpl ?? fetch;
   const recordActivity = dependencies.recordActivity ?? recordOperationalActivity;
   return async function alertPaymentReview(input: PaymentReviewAlertInput) {
-    const subject = `skipwait.me payment needs review · #${input.paymentId}`;
+    const subject = `${PAYMENT_ALERT_SUBJECT_PREFIX} payment needs review · #${input.paymentId}`;
     const text = [
       "A paid invoice could not be credited automatically and is waiting for admin review.",
       `Payment record: #${input.paymentId}`,
@@ -138,24 +191,15 @@ export function createPaymentReviewAlerter(dependencies: AlertDependencies = {})
       "Resolve it in Admin > Payments requiring review.",
     ].join("\n");
     const metadata = { paymentId: input.paymentId, reason: input.reason };
-    try {
-      const apiKey = process.env.RESEND_API_KEY;
-      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
-      const response = await fetchImpl("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+    const send = await sendPaymentAlertEmail(fetchImpl, { subject, text, sleep: dependencies.sleep });
+    if (send.sent) {
       await recordActivity({ action: "system.payment_review_alert_sent", outcome: "success", resourceType: "payment_fulfillment", resourceId: String(input.paymentId), metadata });
       return { alerted: true as const };
-    } catch (error) {
-      console.warn("[PaymentReviewAlert] Unable to send administrator alert", error instanceof Error ? error.message : error);
-      await recordActivity({ action: "system.payment_review_alert_sent", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(input.paymentId), metadata }).catch(() => undefined);
-      return { alerted: false as const };
     }
+    console.warn("[PaymentReviewAlert] Unable to send administrator alert", send.error);
+    await recordActivity({ action: "system.payment_review_alert_sent", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(input.paymentId), metadata }).catch(() => undefined);
+    await recordUndeliveredPaymentAlert(recordActivity, { alert: "payment_review", resourceType: "payment_fulfillment", resourceId: String(input.paymentId), metadata, attempts: send.attempts, error: send.error });
+    return { alerted: false as const };
   };
 }
 
@@ -171,7 +215,7 @@ export function createUnmatchedPaymentAlerter(dependencies: AlertDependencies = 
   const recordActivity = dependencies.recordActivity ?? recordOperationalActivity;
   return async function alertUnmatchedPayment(input: UnmatchedPaymentAlertInput) {
     const ref = input.invoiceId ?? input.eventId;
-    const subject = `skipwait.me unmatched payment needs review · ${ref}`;
+    const subject = `${PAYMENT_ALERT_SUBJECT_PREFIX} unmatched payment needs review · ${ref}`;
     const text = [
       "Chargebee reported a paid invoice that matches no checkout, subscription, or gift. Nothing was credited.",
       `Invoice: ${input.invoiceId ?? "unknown"}`,
@@ -182,24 +226,15 @@ export function createUnmatchedPaymentAlerter(dependencies: AlertDependencies = 
       "Look it up in Chargebee and credit or refund the customer.",
     ].join("\n");
     const metadata = { eventId: input.eventId, invoiceId: input.invoiceId, reason: input.reason };
-    try {
-      const apiKey = process.env.RESEND_API_KEY;
-      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
-      const response = await fetchImpl("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+    const send = await sendPaymentAlertEmail(fetchImpl, { subject, text, sleep: dependencies.sleep });
+    if (send.sent) {
       await recordActivity({ action: "system.unmatched_payment_alert_sent", outcome: "success", resourceType: "chargebee_invoice", resourceId: ref, metadata });
       return { alerted: true as const };
-    } catch (error) {
-      console.warn("[UnmatchedPaymentAlert] Unable to send administrator alert", error instanceof Error ? error.message : error);
-      await recordActivity({ action: "system.unmatched_payment_alert_sent", outcome: "failure", resourceType: "chargebee_invoice", resourceId: ref, metadata }).catch(() => undefined);
-      return { alerted: false as const };
     }
+    console.warn("[UnmatchedPaymentAlert] Unable to send administrator alert", send.error);
+    await recordActivity({ action: "system.unmatched_payment_alert_sent", outcome: "failure", resourceType: "chargebee_invoice", resourceId: ref, metadata }).catch(() => undefined);
+    await recordUndeliveredPaymentAlert(recordActivity, { alert: "unmatched_payment", resourceType: "chargebee_invoice", resourceId: ref, metadata, attempts: send.attempts, error: send.error });
+    return { alerted: false as const };
   };
 }
 
@@ -216,7 +251,7 @@ export function createPaymentRefundAlerter(dependencies: AlertDependencies = {})
   const recordActivity = dependencies.recordActivity ?? recordOperationalActivity;
   return async function alertPaymentRefund(input: PaymentRefundAlertInput) {
     const ref = input.invoiceId ?? input.eventId;
-    const subject = `skipwait.me refund needs review · ${ref}`;
+    const subject = `${PAYMENT_ALERT_SUBJECT_PREFIX} refund needs review · ${ref}`;
     const text = [
       "Chargebee refunded a payment and the credits could not be taken back automatically. The user's wallet was not changed.",
       `Invoice: ${input.invoiceId ?? "unknown"}`,
@@ -227,24 +262,15 @@ export function createPaymentRefundAlerter(dependencies: AlertDependencies = {})
       "Decide in Admin > Payments requiring review, or look it up in Chargebee.",
     ].join("\n");
     const metadata = { eventId: input.eventId, invoiceId: input.invoiceId, paymentId: input.paymentId, reason: input.reason };
-    try {
-      const apiKey = process.env.RESEND_API_KEY;
-      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
-      const response = await fetchImpl("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+    const send = await sendPaymentAlertEmail(fetchImpl, { subject, text, sleep: dependencies.sleep });
+    if (send.sent) {
       await recordActivity({ action: "system.payment_refund_alert_sent", outcome: "success", resourceType: "chargebee_invoice", resourceId: ref, metadata });
       return { alerted: true as const };
-    } catch (error) {
-      console.warn("[PaymentRefundAlert] Unable to send administrator alert", error instanceof Error ? error.message : error);
-      await recordActivity({ action: "system.payment_refund_alert_sent", outcome: "failure", resourceType: "chargebee_invoice", resourceId: ref, metadata }).catch(() => undefined);
-      return { alerted: false as const };
     }
+    console.warn("[PaymentRefundAlert] Unable to send administrator alert", send.error);
+    await recordActivity({ action: "system.payment_refund_alert_sent", outcome: "failure", resourceType: "chargebee_invoice", resourceId: ref, metadata }).catch(() => undefined);
+    await recordUndeliveredPaymentAlert(recordActivity, { alert: "payment_refund", resourceType: "chargebee_invoice", resourceId: ref, metadata, attempts: send.attempts, error: send.error });
+    return { alerted: false as const };
   };
 }
 
@@ -273,7 +299,7 @@ export function createCardValidationAlerter(dependencies: AlertDependencies = {}
   const recordActivity = dependencies.recordActivity ?? recordOperationalActivity;
   return async function alertCardValidationEvent(input: CardValidationAlertInput) {
     const ref = input.customerId ?? input.eventId ?? "unknown";
-    const subject = `skipwait.me card validation needs review · ${input.reason} · ${ref}`;
+    const subject = `${PAYMENT_ALERT_SUBJECT_PREFIX} card validation needs review · ${input.reason} · ${ref}`;
     const text = [
       "Chargebee sent a payment-source event skipwait.me could not apply to a wallet. No free credits were granted.",
       `Reason: ${input.reason}`,
@@ -287,23 +313,50 @@ export function createCardValidationAlerter(dependencies: AlertDependencies = {}
           : "The card did not validate. No charge settles (Chargebee voids its verification). If this repeats for the same customer, check the gateway's card-verification log in Chargebee.",
     ].join("\n");
     const metadata = { eventId: input.eventId, reason: input.reason, customerId: input.customerId, paymentSourceId: input.paymentSourceId };
-    try {
-      const apiKey = process.env.RESEND_API_KEY;
-      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
-      const response = await fetchImpl("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+    const send = await sendPaymentAlertEmail(fetchImpl, { subject, text, sleep: dependencies.sleep });
+    if (send.sent) {
       await recordActivity({ action: "system.card_validation_alert_sent", outcome: "success", resourceType: "chargebee_payment_source", resourceId: input.paymentSourceId ?? undefined, metadata });
       return { alerted: true as const };
-    } catch (error) {
-      await recordActivity({ action: "system.card_validation_alert_sent", outcome: "failure", resourceType: "chargebee_payment_source", resourceId: input.paymentSourceId ?? undefined, metadata: { ...metadata, error: error instanceof Error ? error.message : String(error) } }).catch(() => undefined);
-      throw error;
     }
+    await recordActivity({ action: "system.card_validation_alert_sent", outcome: "failure", resourceType: "chargebee_payment_source", resourceId: input.paymentSourceId ?? undefined, metadata: { ...metadata, error: send.error } }).catch(() => undefined);
+    await recordUndeliveredPaymentAlert(recordActivity, { alert: "card_validation", resourceType: "chargebee_payment_source", resourceId: input.paymentSourceId ?? ref, metadata, attempts: send.attempts, error: send.error });
+    throw new Error(send.error ?? "Card-validation alert delivery failed");
+  };
+}
+
+export type FailedPaymentAlertInput = { eventId: string; invoiceId?: string; subscriptionId?: string; customerId?: string; amount?: number; currency?: string };
+
+/**
+ * Owner rule (Oct 22): a FAILED payment must never pass silently either. No
+ * money settled and no credits moved, but the customer may think they paid,
+ * and a failed renewal needs a human before the subscription lapses. Never
+ * deduplicated: every failed attempt is its own provider event.
+ */
+export function createFailedPaymentAlerter(dependencies: AlertDependencies = {}) {
+  const fetchImpl = dependencies.fetchImpl ?? fetch;
+  const recordActivity = dependencies.recordActivity ?? recordOperationalActivity;
+  return async function alertFailedPayment(input: FailedPaymentAlertInput) {
+    const ref = input.invoiceId ?? input.eventId;
+    const subject = `${PAYMENT_ALERT_SUBJECT_PREFIX} payment failed · ${ref}`;
+    const text = [
+      "Chargebee reported a FAILED payment. No money settled and no credits moved.",
+      `Invoice: ${input.invoiceId ?? "unknown"}`,
+      `Event: ${input.eventId}`,
+      `Subscription: ${input.subscriptionId ?? "none"}`,
+      `Chargebee customer: ${input.customerId ?? "unknown"}`,
+      `Amount attempted: ${input.amount ?? "unknown"} ${input.currency ?? ""}`.trim(),
+      "If this was a renewal, Chargebee dunning may retry; check the subscription and the customer in the Chargebee dashboard and, if the customer expects to have paid, tell them the payment did not go through.",
+    ].join("\n");
+    const metadata = { eventId: input.eventId, invoiceId: input.invoiceId, subscriptionId: input.subscriptionId, customerId: input.customerId };
+    const send = await sendPaymentAlertEmail(fetchImpl, { subject, text, sleep: dependencies.sleep });
+    if (send.sent) {
+      await recordActivity({ action: "system.payment_failed_alert_sent", outcome: "success", resourceType: "chargebee_invoice", resourceId: ref, metadata });
+      return { alerted: true as const };
+    }
+    console.warn("[FailedPaymentAlert] Unable to send administrator alert", send.error);
+    await recordActivity({ action: "system.payment_failed_alert_sent", outcome: "failure", resourceType: "chargebee_invoice", resourceId: ref, metadata }).catch(() => undefined);
+    await recordUndeliveredPaymentAlert(recordActivity, { alert: "payment_failed", resourceType: "chargebee_invoice", resourceId: ref, metadata, attempts: send.attempts, error: send.error });
+    return { alerted: false as const };
   };
 }
 
@@ -313,7 +366,7 @@ export function createRetiredPlanAlerter(dependencies: AlertDependencies = {}) {
   return async function alertRetiredPlanEvent(input: RetiredPlanAlertInput) {
     const ref = input.subscriptionId ?? input.giftId ?? input.eventId ?? "unknown";
     const unsupported = input.reason === "unsupported_plan" || input.reason === "unlinked_subscription";
-    const subject = `skipwait.me ${unsupported ? "unrecognised" : "retired"} plan event needs review · ${ref}`;
+    const subject = `${PAYMENT_ALERT_SUBJECT_PREFIX} ${unsupported ? "unrecognised" : "retired"} plan event needs review · ${ref}`;
     const text = [
       unsupported
         ? input.reason === "unlinked_subscription"
@@ -333,23 +386,14 @@ export function createRetiredPlanAlerter(dependencies: AlertDependencies = {}) {
     ].join("\n");
     const action = unsupported ? "system.unsupported_plan_alert_sent" : "system.retired_plan_alert_sent";
     const metadata = { eventId: input.eventId, reason: input.reason, subscriptionId: input.subscriptionId, giftId: input.giftId };
-    try {
-      const apiKey = process.env.RESEND_API_KEY;
-      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
-      const response = await fetchImpl("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+    const send = await sendPaymentAlertEmail(fetchImpl, { subject, text, sleep: dependencies.sleep });
+    if (send.sent) {
       await recordActivity({ action, outcome: "success", resourceType: "chargebee_subscription", resourceId: ref, metadata });
       return { alerted: true as const };
-    } catch (error) {
-      console.warn("[RetiredPlanAlert] Unable to send administrator alert", error instanceof Error ? error.message : error);
-      await recordActivity({ action, outcome: "failure", resourceType: "chargebee_subscription", resourceId: ref, metadata }).catch(() => undefined);
-      return { alerted: false as const };
     }
+    console.warn("[RetiredPlanAlert] Unable to send administrator alert", send.error);
+    await recordActivity({ action, outcome: "failure", resourceType: "chargebee_subscription", resourceId: ref, metadata }).catch(() => undefined);
+    await recordUndeliveredPaymentAlert(recordActivity, { alert: unsupported ? "unsupported_plan" : "retired_plan", resourceType: "chargebee_subscription", resourceId: ref, metadata, attempts: send.attempts, error: send.error });
+    return { alerted: false as const };
   };
 }

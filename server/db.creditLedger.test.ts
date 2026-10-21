@@ -335,3 +335,116 @@ describe("reverse trial credits", () => {
     expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
   });
 });
+
+describe("D-132 family plan wallets (QA go-live blocker: fast_track reverted on first read)", () => {
+  it("a fast_track wallet survives the summary read: plan, subscription and invoice-granted credits intact, no phantom cycle", async () => {
+    fixture.reset({
+      wallets: [wallet({ plan: "fast_track", balance: 17, monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: "fresh", subscriptionId: "sub_v2", subscriptionCurrentTermStart: at("2026-10-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-11-01T00:00:00Z") })],
+      txns: [purchaseRow(), { ...purchaseRow(), id: 2, tokenCount: 15, referenceType: "chargebee_invoice", referenceId: "inv_v2_1", idempotencyKey: "v2credits-inv_v2_1" }],
+      users: [{ id: SEEKER, canonicalPersonId: 1 }],
+    });
+    const summary = await getTokenWallet(SEEKER, "job_seeker");
+    expect(db.wallets[0]).toMatchObject({ plan: "fast_track", subscriptionId: "sub_v2", subscriptionStatus: "active", balance: 17, monthlyCreditsRemaining: 0, monthlyAllowance: 0 });
+    expect(summary).toMatchObject({ plan: "fast_track", totalAvailable: 17 });
+    // No kit cycle machinery touched the family wallet: nothing granted, expired or carried.
+    expect(txns({ kind: "plan_credit_expiry" })).toEqual([]);
+    expect(txns({ kind: "plan_grant" })).toEqual([]);
+    expect(txns({ kind: "plan_credit_carryover" })).toEqual([]);
+    expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
+  });
+
+  it("a fast_track wallet whose term truly ended lapses to Free by the shared rules", async () => {
+    fixture.reset({
+      wallets: [wallet({ plan: "fast_track", balance: 15, monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: "fresh", subscriptionId: "sub_v2", subscriptionStatus: "non_renewing", subscriptionCurrentTermStart: at("2026-09-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-10-01T00:00:00Z") })],
+      txns: [{ ...purchaseRow(), tokenCount: 15, referenceType: "chargebee_invoice", referenceId: "inv_v2_2", idempotencyKey: "v2credits-inv_v2_2" }],
+      users: [{ id: SEEKER, canonicalPersonId: 1 }],
+    });
+    const summary = await getTokenWallet(SEEKER, "job_seeker");
+    expect(db.wallets[0]).toMatchObject({ plan: "free", subscriptionStatus: "cancelled" });
+    // The paid invoice credits were purchases: they never lapse with the plan.
+    expect(summary.totalAvailable).toBe(18);
+  });
+});
+
+describe("D-132 fairness: a free seeker's open monthly credits survive an upgrade", () => {
+  it("fast_track activation carries the free leftover into a one-month grant, never silently to zero", async () => {
+    fixture.reset({
+      wallets: [wallet({ plan: "free", balance: 0, monthlyAllowance: 3, monthlyCreditsRemaining: 3, monthlyCycleKey: "2026-10", subscriptionId: null, subscriptionStatus: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null })],
+      txns: [{ ...purchaseRow(), id: 9, tokenCount: 3, kind: "plan_grant", source: "monthly_allowance", sourceCycleKey: "2026-10", referenceType: null, referenceId: null, idempotencyKey: "grant-2026-10" }],
+      users: [{ id: SEEKER, canonicalPersonId: 1 }],
+      intents: [{ id: 1, userId: SEEKER, role: "job_seeker", hostedPageId: "hp_act", checkoutIntentId: "intent_act", plan: "fast_track", itemPriceId: "skipwait_v2plan_fast_track-USD", amount: 999, currency: "USD", status: "pending", createdAt: at("2026-10-06T00:00:00Z"), updatedAt: at("2026-10-06T00:00:00Z") }],
+    });
+    expect(await applyChargebeeSubscriptionEvent({ eventId: "ev_act", eventType: "subscription_created", hostedPageId: "hp_act", passThruContent: "intent_act", subscriptionId: "sub_v2_9", planFamily: "fast_track", status: "active", currency: "USD", currentTermStart: at("2026-10-06T00:00:00Z"), currentTermEnd: at("2026-11-06T00:00:00Z"), resourceVersion: 5 })).toMatchObject({ status: "applied", plan: "fast_track" });
+    // The free cycle closes honestly: monthly zeroed, the 3 credits carried.
+    expect(db.wallets[0]).toMatchObject({ plan: "fast_track", monthlyAllowance: 0, monthlyCreditsRemaining: 0 });
+    expect(db.grants).toHaveLength(1);
+    expect(db.grants[0]).toMatchObject({ userId: SEEKER, source: "carryover", planId: "free", subscriptionId: "sub_v2_9", cycleKey: "2026-10", tokenCount: 3, creditsRemaining: 3, status: "active" });
+    expect(iso(db.grants[0].expiresAt)).toBe("2026-12-01T00:00:00.000Z");
+    expect(txns({ kind: "plan_credit_carryover" }).map(row => [row.tokenCount, row.source])).toEqual([[-3, "monthly_allowance"], [3, "carryover_grant"]]);
+    // The summary read: the payer keeps everything they had.
+    const summary = await getTokenWallet(SEEKER, "job_seeker");
+    expect(summary.totalAvailable).toBe(3);
+    expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
+  });
+
+  it("the carried credits spend like any others and expire with the grant", async () => {
+    fixture.reset({
+      wallets: [wallet({ plan: "free", balance: 0, monthlyAllowance: 3, monthlyCreditsRemaining: 3, monthlyCycleKey: "2026-10", subscriptionId: null, subscriptionStatus: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null })],
+      txns: [{ ...purchaseRow(), id: 9, tokenCount: 3, kind: "plan_grant", source: "monthly_allowance", sourceCycleKey: "2026-10", referenceType: null, referenceId: null, idempotencyKey: "grant-2026-10" }],
+      users: [{ id: SEEKER, canonicalPersonId: 1 }],
+      intents: [{ id: 1, userId: SEEKER, role: "job_seeker", hostedPageId: "hp_act", checkoutIntentId: "intent_act", plan: "fast_track", itemPriceId: "skipwait_v2plan_fast_track-USD", amount: 999, currency: "USD", status: "pending", createdAt: at("2026-10-06T00:00:00Z"), updatedAt: at("2026-10-06T00:00:00Z") }],
+    });
+    await applyChargebeeSubscriptionEvent({ eventId: "ev_act2", eventType: "subscription_created", hostedPageId: "hp_act", passThruContent: "intent_act", subscriptionId: "sub_v2_9", planFamily: "fast_track", status: "active", currency: "USD", currentTermStart: at("2026-10-06T00:00:00Z"), currentTermEnd: at("2026-11-06T00:00:00Z"), resourceVersion: 5 });
+    await spendCredits(SEEKER, "job_seeker", { credits: 2, idempotencyKey: "spend-carried-1", referenceType: "referral_request", referenceId: "77" });
+    expect(db.grants[0].creditsRemaining).toBe(1);
+    // Past the carry window AND the paid term: the carried leftover expires,
+    // the wallet lapses to Free by the shared rules, and Free's December opens.
+    vi.setSystemTime(at("2026-12-02T00:00:00Z"));
+    const summary = await getTokenWallet(SEEKER, "job_seeker");
+    expect(db.grants[0]).toMatchObject({ status: "expired", creditsRemaining: 0 });
+    expect(db.wallets[0]).toMatchObject({ plan: "free", subscriptionStatus: "cancelled", monthlyCreditsRemaining: 3 });
+    expect(summary.totalAvailable).toBe(3);
+  });
+
+  it("payment-first order: the subscription lands after the email binding and the carryover still runs", async () => {
+    fixture.reset({
+      wallets: [wallet({ plan: "free", balance: 0, monthlyAllowance: 3, monthlyCreditsRemaining: 3, monthlyCycleKey: "2026-10", subscriptionId: null, subscriptionStatus: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null })],
+      txns: [{ ...purchaseRow(), id: 9, tokenCount: 3, kind: "plan_grant", source: "monthly_allowance", sourceCycleKey: "2026-10", referenceType: null, referenceId: null, idempotencyKey: "grant-2026-10" }],
+      users: [{ id: SEEKER, canonicalPersonId: 1, email: "payer@example.com" }],
+    });
+    // payment_succeeded first: binds by customer email, credits the rung, attaches the subscription.
+    const { grantV2PaidCredits } = await import("./db");
+    const grant = await grantV2PaidCredits({ eventId: "ev_pay_first", invoiceId: "inv_pf1", subscriptionId: "sub_v2_9", customerId: "cust_9", customerEmail: "payer@example.com", planFamily: "fast_track", rung: 5, amount: 1_489, currency: "USD" });
+    expect(grant).toMatchObject({ status: "credited", userId: SEEKER });
+    expect(db.wallets[0]).toMatchObject({ plan: "free", subscriptionId: "sub_v2_9", balance: 5, monthlyCreditsRemaining: 3 });
+    // subscription_created second: sameSubscription is already true, but the wallet is still free - the carryover must run.
+    expect(await applyChargebeeSubscriptionEvent({ eventId: "ev_act_pf", eventType: "subscription_created", subscriptionId: "sub_v2_9", planFamily: "fast_track", status: "active", currency: "USD", currentTermStart: at("2026-10-06T00:00:00Z"), currentTermEnd: at("2026-11-06T00:00:00Z"), resourceVersion: 20 })).toMatchObject({ status: "applied" });
+    expect(db.wallets[0]).toMatchObject({ plan: "fast_track", monthlyAllowance: 0, monthlyCreditsRemaining: 0, balance: 5 });
+    expect(db.grants).toHaveLength(1);
+    expect(db.grants[0]).toMatchObject({ source: "carryover", subscriptionId: "sub_v2_9", tokenCount: 3, creditsRemaining: 3, status: "active" });
+    const summary = await getTokenWallet(SEEKER, "job_seeker");
+    expect(summary.totalAvailable).toBe(8);
+    expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
+  });
+
+  it("term boundary: a non-renewing family wallet inside its term gets no kit cycle grant", async () => {
+    fixture.reset({
+      wallets: [wallet({ plan: "fast_track", balance: 8, monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: "fresh", subscriptionId: "sub_v2", subscriptionStatus: "non_renewing", subscriptionCurrentTermStart: at("2026-10-21T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-11-21T00:00:00Z") })],
+      txns: [{ ...purchaseRow(), tokenCount: 8, referenceType: "chargebee_invoice", referenceId: "inv_v2_3", idempotencyKey: "v2credits-inv_v2_3" }],
+      users: [{ id: SEEKER, canonicalPersonId: 1 }],
+    });
+    // Nov 20: one day before the term ends. No cycle rolls, no +3 anywhere.
+    vi.setSystemTime(at("2026-11-20T12:00:00Z"));
+    const summary = await getTokenWallet(SEEKER, "job_seeker");
+    expect(db.wallets[0]).toMatchObject({ plan: "fast_track", monthlyAllowance: 0, monthlyCreditsRemaining: 0, balance: 8 });
+    expect(txns({ kind: "plan_grant" })).toEqual([]);
+    expect(summary).toMatchObject({ plan: "fast_track", totalAvailable: 8 });
+    expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
+    // Nov 22: past the term - lapse to Free rolls exactly one free month.
+    vi.setSystemTime(at("2026-11-22T12:00:00Z"));
+    await getTokenWallet(SEEKER, "job_seeker");
+    expect(db.wallets[0]).toMatchObject({ plan: "free", subscriptionStatus: "cancelled", monthlyAllowance: 3, monthlyCreditsRemaining: 3 });
+    expect(txns({ kind: "plan_grant" })).toHaveLength(1);
+    expect(txns({ kind: "plan_grant" })[0]).toMatchObject({ tokenCount: 3, sourceCycleKey: "2026-11" });
+  });
+});

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createMaterialErrorEscalator, createRetiredPlanAlerter } from "./errorAlerting";
+import { createFailedPaymentAlerter, createMaterialErrorEscalator, createRetiredPlanAlerter, createUnmatchedPaymentAlerter, PAYMENT_ALERT_SUBJECT_PREFIX } from "./errorAlerting";
 
 const originalApiKey = process.env.RESEND_API_KEY;
 const originalSender = process.env.ERROR_ALERT_FROM_EMAIL;
@@ -76,7 +76,7 @@ describe("retired-plan event alert", () => {
     await expect(alert(input)).resolves.toEqual({ alerted: true });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
-    expect(payload).toMatchObject({ to: ["ayodhya@skipwait.me"], subject: "skipwait.me retired plan event needs review · sub_max_legacy" });
+    expect(payload).toMatchObject({ to: ["ayodhya@skipwait.me", "ayodhyarammohanthy@gmail.com", "ayodhya@mail.instinct.com"], subject: "[SKIPWAIT PAYMENT] retired plan event needs review · sub_max_legacy" });
     expect(payload.text).toContain("Nothing was granted");
     expect(payload.text).toContain("sub_max_legacy");
     expect(payload.text).toContain("skipwait_max_monthly-USD");
@@ -95,7 +95,7 @@ describe("retired-plan event alert", () => {
     const alert = createRetiredPlanAlerter({ fetchImpl, recordActivity });
     await expect(alert({ eventId: "ev_unknown", eventType: "subscription_changed", reason: "unsupported_plan", subscriptionId: "sub_start", itemPriceId: "skipwait_start_30d_v2-USD" })).resolves.toEqual({ alerted: true });
     const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
-    expect(payload.subject).toBe("skipwait.me unrecognised plan event needs review · sub_start");
+    expect(payload.subject).toBe("[SKIPWAIT PAYMENT] unrecognised plan event needs review · sub_start");
     expect(payload.text).toContain("Nothing was granted");
     expect(payload.text).toContain("skipwait_start_30d_v2-USD");
     expect(payload.text).not.toContain("Pro/Max");
@@ -109,5 +109,65 @@ describe("retired-plan event alert", () => {
     const alert = createRetiredPlanAlerter({ fetchImpl: vi.fn(), recordActivity });
     await expect(alert({ reason: "gift_claim_refused", giftId: "gift_1" })).resolves.toEqual({ alerted: false });
     expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "system.retired_plan_alert_sent", outcome: "failure", resourceId: "gift_1" }));
+  });
+});
+
+describe("payment-class alert delivery (owner rule: never silent)", () => {
+  const sleep = async () => undefined;
+
+  it("sends unmatched-payment alerts to the admin mailbox, the owner's personal Gmail and the agent inbox with the fixed prefix", async () => {
+    process.env.RESEND_API_KEY = "re_test";
+    process.env.ERROR_ALERT_FROM_EMAIL = "noreply@skipwait.me";
+    const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+    const recordActivity = vi.fn(async () => undefined);
+    const alert = createUnmatchedPaymentAlerter({ fetchImpl, recordActivity, sleep });
+
+    await expect(alert({ eventId: "ev_x", invoiceId: "77", reason: "missing_checkout_intent", paidAmount: 490, paidCurrency: "USD" })).resolves.toEqual({ alerted: true });
+    const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
+    expect(payload.to).toEqual(["ayodhya@skipwait.me", "ayodhyarammohanthy@gmail.com", "ayodhya@mail.instinct.com"]);
+    expect(payload.subject).toBe(`${PAYMENT_ALERT_SUBJECT_PREFIX} unmatched payment needs review · 77`);
+    expect(payload.subject.startsWith("[SKIPWAIT PAYMENT]")).toBe(true);
+  });
+
+  it("retries a failed send once, then succeeds without an undelivered marker", async () => {
+    process.env.RESEND_API_KEY = "re_test";
+    process.env.ERROR_ALERT_FROM_EMAIL = "noreply@skipwait.me";
+    const fetchImpl = vi.fn()
+      .mockImplementationOnce(async () => new Response("boom", { status: 500 }))
+      .mockImplementationOnce(async () => new Response("{}", { status: 200 }));
+    const recordActivity = vi.fn(async () => undefined);
+    const alert = createUnmatchedPaymentAlerter({ fetchImpl, recordActivity, sleep });
+
+    await expect(alert({ eventId: "ev_retry", reason: "unknown_checkout", paidAmount: 490, paidCurrency: "USD" })).resolves.toEqual({ alerted: true });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "system.unmatched_payment_alert_sent", outcome: "success" }));
+    expect(recordActivity.mock.calls.some(([row]) => row.action === "system.payment_alert_undelivered")).toBe(false);
+  });
+
+  it("a doubly-failed send records the durable undelivered marker for the admin banner", async () => {
+    process.env.RESEND_API_KEY = "re_test";
+    process.env.ERROR_ALERT_FROM_EMAIL = "noreply@skipwait.me";
+    const fetchImpl = vi.fn(async () => new Response("blocked", { status: 403 }));
+    const recordActivity = vi.fn(async () => undefined);
+    const alert = createFailedPaymentAlerter({ fetchImpl, recordActivity, sleep });
+
+    await expect(alert({ eventId: "ev_fail", invoiceId: "88", subscriptionId: "sub_1", customerId: "cust_1", amount: 999, currency: "USD" })).resolves.toEqual({ alerted: false });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "system.payment_failed_alert_sent", outcome: "failure", resourceId: "88" }));
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "system.payment_alert_undelivered", outcome: "failure", resourceType: "chargebee_invoice", resourceId: "88", metadata: expect.objectContaining({ alert: "payment_failed", attempts: 2 }) }));
+  });
+
+  it("failed-payment alerts carry the fixed prefix and the three recipients", async () => {
+    process.env.RESEND_API_KEY = "re_test";
+    process.env.ERROR_ALERT_FROM_EMAIL = "noreply@skipwait.me";
+    const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+    const recordActivity = vi.fn(async () => undefined);
+    const alert = createFailedPaymentAlerter({ fetchImpl, recordActivity, sleep });
+
+    await expect(alert({ eventId: "ev_ok", invoiceId: "89", amount: 19900, currency: "INR" })).resolves.toEqual({ alerted: true });
+    const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
+    expect(payload.to).toEqual(["ayodhya@skipwait.me", "ayodhyarammohanthy@gmail.com", "ayodhya@mail.instinct.com"]);
+    expect(payload.subject).toBe(`${PAYMENT_ALERT_SUBJECT_PREFIX} payment failed · 89`);
+    expect(payload.text).toContain("No money settled");
   });
 });

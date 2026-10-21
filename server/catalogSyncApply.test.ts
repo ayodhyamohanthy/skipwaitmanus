@@ -58,7 +58,7 @@ describe("applyCatalogSync", () => {
 
     const after = await dryRun();
     expect(after.toCreate).toEqual([]);
-    expect(after.counts).toMatchObject({ correct: 26, mismatched: 0, blocked: 0 });
+    expect(after.counts).toMatchObject({ correct: 54, mismatched: 0, blocked: 0 });
     activity.length = 0;
     const again = await applyCatalogSync({ planHash: after.planHash, confirmSite: "skipwait" }, deps);
     expect(again).toMatchObject({ status: "done", report: { outcome: "nothing_to_do", created: [], notAttempted: [], failed: null, stoppedReason: null } });

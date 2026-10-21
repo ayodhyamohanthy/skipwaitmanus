@@ -7,6 +7,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
 import type { ReferrerImpact } from "./referrerData";
+import { ShareImpactCard } from "./ShareImpactCard";
 
 type Props = { impact: ReferrerImpact | null; paused: boolean; pending: boolean; onToggle: () => void };
 
@@ -29,6 +30,7 @@ export function HomeAside({ impact, paused, pending, onToggle }: Props) {
         <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">{record.map(([label, value]) => <div key={label}><dt className="text-muted-foreground">{label}</dt><dd className="text-xl font-semibold">{value}</dd></div>)}</dl>
         <p className="mt-3 text-xs text-muted-foreground">Never ranked. Never public.</p>
       </Panel>
+      <ShareImpactCard />
       <Button variant="outline" className="w-full" disabled={pending} onClick={onToggle}>
         {paused ? <><Play />{pending ? "Resuming…" : "Resume new asks"}</> : <><Pause />{pending ? "Pausing…" : "Pause new asks"}</>}
       </Button>

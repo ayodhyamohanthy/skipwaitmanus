@@ -1504,8 +1504,17 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const limit = Math.min(250, Math.max(1, Number(req.query.limit) || 100));
       const scope = req.query.scope === "credited" ? "credited" : "review";
       const payments = scope === "credited" ? await deps.listRecentPayments?.(limit) ?? [] : await deps.listRequiresReviewPayments?.(limit) ?? [];
+      // Owner rule (Oct 22): a payment alert that never reached any inbox is a
+      // payment failure of its own - banner it here until a human verifies.
+      const alertFailures = (((await deps.listOperationalActivity?.({ action: "payment_alert_undelivered", outcome: "failure", limit: 50 })) ?? []) as Array<{ id?: unknown; resourceId?: string | null; metadata?: unknown; createdAt?: unknown }>)
+        .map(row => {
+          let meta: Record<string, unknown> = {};
+          if (typeof row.metadata === "string") { try { meta = JSON.parse(row.metadata) as Record<string, unknown>; } catch { meta = {}; } }
+          else if (row.metadata && typeof row.metadata === "object") meta = row.metadata as Record<string, unknown>;
+          return { id: row.id, alert: typeof meta.alert === "string" ? meta.alert : "payment_alert", resourceId: row.resourceId ?? "", attempts: meta.attempts ?? null, error: typeof meta.error === "string" ? meta.error : "", createdAt: row.createdAt };
+        });
       record({ actorUserId: identity.account.id, action: "admin.payment_reviews_viewed", outcome: "success", resourceType: "payment_fulfillment", metadata: { limit, queueCount: payments.length, scope } });
-      res.json({ payments });
+      res.json({ payments, alertFailures });
     } catch { res.status(500).json({ error: "We could not load the payment review queue" }); }
   });
   app.post("/api/admin/payments/review/:paymentId/refund", async (_req, res) => res.status(410).json({ error: "This legacy action did not refund provider money and is disabled. Use the separate credit-revocation action or a provider-confirmed refund workflow." }));
