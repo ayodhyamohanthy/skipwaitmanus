@@ -129,9 +129,9 @@ describe("My Company Inbox employee access", () => {
     expect(document.querySelector("iframe")).toBeNull();
     expect(document.querySelector('a[href*="avery-resume"]')).toBeNull();
     expect(screen.getByRole("button", { name: "Accept & connect" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Not a fit" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Can’t support" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Not now" })).toBeTruthy();
+    // D-035/D-052: the preview offers the same seven shared pass reasons as every other surface.
+    expect(screen.getByRole("button", { name: "Not my team or function" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Prefer not to say" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Accept & connect" }));
     // The kit ethics gate: the accept stays disabled until the checkbox is ticked.
     expect((screen.getByRole("button", { name: "Accept" }) as HTMLButtonElement).disabled).toBe(true);

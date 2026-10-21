@@ -30,7 +30,7 @@ _Each step: status = ✅ (implemented) / ◐ (partial) / ❌ (missing)._
 | 3. Inbox tabs | `/inbox` | ✅ | `MyCompanyInbox.tsx` (88 lines) | New / Saved / Completed tabs + count badges. Loading, empty, error states |
 | 4. Preview candidate | Inbox → preview card | ✅ | `MyCompanyInbox.tsx` (`data-skipwait-screen="company-candidate-preview"`) | Shows candidate name, role link, personal note, resume/document attachments with preview, company domain |
 | 5. Accept referral | Accept & submit button | ✅ | `MyCompanyInbox.tsx` `oneClickReview("approved")` | Accept → moves to Completed tab → "Referral accepted. You can now message the Job Seeker privately." |
-| 6. Decline with reason | Decline chips (3 options) | ✅ | `MyCompanyInbox.tsx` `oneClickReview("declined", reason)` | "Not a fit", "Can't support", "Not now" → "Decision recorded" + moves to Completed |
+| 6. Decline with reason | Decline chips (shared seven pass reasons) | ✅ | `MyCompanyInbox.tsx` `oneClickReview("declined", legacy, code)` via `CandidatePreviewCard.tsx` | The shared seven reasons (D-052), nothing preselected, confirm before recording; sends the legacy reason + pass reason code → "Passed privately. The Job Seeker gets a short private note — never your name." |
 | 7. Race error handling | Accept during race | ✅ | `MyCompanyInbox.tsx` | "Another employee accepted this request a moment earlier. Nothing was charged to your credits." |
 | 8. Save for later | Saved tab | ✅ | `MyCompanyInbox.tsx` scope="saved" | Requests saved for later review |
 | 9. Impact summary | `/referrer` after action | ✅ | `Referrer.tsx` states | Shows credit balance, shared links, activity |

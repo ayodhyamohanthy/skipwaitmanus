@@ -14,7 +14,7 @@ import { PassPrivatelyPanel } from "@/components/referrer/PassPrivatelyPanel";
 import { CandidatePreviewCard, type CandidatePreview, type DeclineReason } from "@/components/referrer/CandidatePreviewCard";
 import { getAskShelfLifeEndsAtMs, type ReferralStatus } from "@shared/referral";
 import { parseJobFunction, type JobFunction } from "@shared/jobFunctions";
-import type { PassReasonCode } from "@shared/passReasons";
+import type { PassReasonCode, PassReasonOption } from "@shared/passReasons";
 import { readApiJson } from "@/lib/apiResponse";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
@@ -43,7 +43,7 @@ export default function MyCompanyInbox() {
   const [workingId, setWorkingId] = useState<number | null>(null);
   const [passingId, setPassingId] = useState<number | null>(null);
   const [openingCapacity, setOpeningCapacity] = useState(false);
-  const [pendingDecline, setPendingDecline] = useState<DeclineReason | null>(null);
+  const [pendingPass, setPendingPass] = useState<PassReasonOption | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const { showSkeleton, isSlow } = useSlowLoad(loading);
 
@@ -80,14 +80,14 @@ export default function MyCompanyInbox() {
   // The queue loads once the server confirms the verification, so a retried check that
   // succeeds also brings the queue in, and an unverified account never requests it.
   useEffect(() => { if (verified) void loadInbox(); }, [isSignedIn, verified]);
-  const reviewCandidate = async (requestId: number) => { setWorkingId(requestId); setError(""); try { const payload = await companyFetch<{ request?: CandidatePreview }>(`/api/company-referrals/${requestId}/preview`); setPreview(payload.request || null); setPendingDecline(null); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load this private candidate preview"); } finally { setWorkingId(null); } };
+  const reviewCandidate = async (requestId: number) => { setWorkingId(requestId); setError(""); try { const payload = await companyFetch<{ request?: CandidatePreview }>(`/api/company-referrals/${requestId}/preview`); setPreview(payload.request || null); setPendingPass(null); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load this private candidate preview"); } finally { setWorkingId(null); } };
   // /referrer-home rows link here as /queue?request=:id and open that request directly.
   useEffect(() => { if (isSignedIn && verified && Number.isInteger(requestedId) && requestedId > 0) void reviewCandidate(requestedId); }, [isSignedIn, verified, requestedId]);
   const oneClickReview = async (requestId: number, decision: "approved" | "declined", declineReason?: DeclineReason, passReason?: PassReasonCode) => {
     setWorkingId(requestId); setError("");
     try {
       await companyFetch(`/api/company-referrals/${requestId}/one-click-review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(decision === "approved" ? { decision, ethicsConfirmed: true } : { decision, declineReason, ...(passReason ? { passReason } : {}) }) });
-      setPreview(null); setPendingDecline(null); setPassingId(null);
+      setPreview(null); setPendingPass(null); setPassingId(null);
       setAcceptedId(decision === "approved" ? requestId : null);
       setNotice(decision === "approved" ? "Request accepted. You can now message the Job Seeker privately." : "Passed privately. The Job Seeker gets a short private note — never your name.");
       await loadInbox();
@@ -109,13 +109,13 @@ export default function MyCompanyInbox() {
       working={workingId === preview.id}
       error={error}
       raceError={raceError}
-      pendingDecline={pendingDecline}
+      pendingPass={pendingPass}
       onAccept={() => { void oneClickReview(preview.id, "approved"); }}
-      onDecline={reason => setPendingDecline(reason)}
-      onConfirmDecline={reason => { void oneClickReview(preview.id, "declined", reason); }}
-      onCancelDecline={() => setPendingDecline(null)}
-      onRetry={() => { setError(""); void (pendingDecline ? oneClickReview(preview.id, "declined", pendingDecline) : oneClickReview(preview.id, "approved")); }}
-      onBackToQueue={() => { setError(""); setPreview(null); setPendingDecline(null); void loadInbox(); }}
+      onPass={reason => setPendingPass(reason)}
+      onConfirmPass={reason => { void oneClickReview(preview.id, "declined", reason.legacy, reason.code); }}
+      onCancelPass={() => setPendingPass(null)}
+      onRetry={() => { setError(""); void (pendingPass ? oneClickReview(preview.id, "declined", pendingPass.legacy, pendingPass.code) : oneClickReview(preview.id, "approved")); }}
+      onBackToQueue={() => { setError(""); setPreview(null); setPendingPass(null); void loadInbox(); }}
     />
     <QueueGuidance />
   </section>);

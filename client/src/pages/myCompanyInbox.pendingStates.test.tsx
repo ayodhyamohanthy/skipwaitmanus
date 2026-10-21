@@ -45,7 +45,7 @@ describe("My Company Inbox pending states", () => {
     });
     render(<MyCompanyInbox />);
     fireEvent.click(await screen.findByRole("button", { name: "Open request" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Not a fit" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Not my team or function" }));
 
     // Confirm step: nothing has been posted yet and the accept CTA is out of the way.
     const confirm = screen.getByRole("group", { name: "Confirm decline" });
@@ -60,9 +60,39 @@ describe("My Company Inbox pending states", () => {
     expect(screen.queryByRole("group", { name: "Confirm decline" })).toBeNull();
     expect(screen.getByRole("button", { name: "Accept & connect" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Not a fit" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm decline" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "declined", declineReason: "role_not_a_fit" }) })));
+    fireEvent.click(screen.getByRole("button", { name: "Not my team or function" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm pass" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "declined", declineReason: "role_not_a_fit", passReason: "not_my_team" }) })));
+  });
+
+  // D-035 packet §4.4: the preview opens from any pending card, including one this referrer
+  // claimed, so it offers the same seven shared reasons as the thread and the email review
+  // page. Before this, every preview decline sent no code and was recorded as a release,
+  // leaving a referrer no way to say "needs more experience" and keep the credit spent.
+  it("offers the same seven shared pass reasons on a claimed ask's preview, nothing preselected, and sends the code with the legacy reason", async () => {
+    const claimed = { ...inboxItem, id: 8, referrerId: 2, isClaimedByYou: true };
+    const fetchMock = stubFetch((url) => {
+      if (url.includes("/preview")) return { request: { ...previewPayload.request, id: 8 } };
+      if (url.includes("/inbox?scope=new")) return { requests: [claimed] };
+      if (url.includes("/inbox")) return { requests: [] };
+      if (url.includes("/credits/summary")) return credits;
+      if (url.includes("/one-click-review")) return { status: "declined", declineReason: "role_not_a_fit" };
+      return {};
+    });
+    render(<MyCompanyInbox />);
+    fireEvent.click(await screen.findByRole("button", { name: "Open request" }));
+    // The preview arrives over fetch, so wait for the card before reading its reasons.
+    expect(await screen.findByRole("article", { name: "Candidate preview" })).toBeTruthy();
+    for (const label of ["Not my team or function", "Role needs more experience", "Not enough context", "At capacity right now", "Role is closed", "I only refer people I know", "Prefer not to say"]) {
+      expect(screen.getByRole("button", { name: label })).toBeTruthy();
+    }
+    // D-066 (4): the referrer never sees what a pass costs the seeker.
+    expect((document.body.textContent ?? "").toLowerCase()).not.toMatch(/credit|refund/);
+    // Nothing is preselected: no decision posts until a reason is picked and confirmed.
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/one-click-review"))).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Role needs more experience" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm pass" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/8/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "declined", declineReason: "role_not_a_fit", passReason: "needs_experience" }) })));
   });
 
   it("keeps the queue intact and offers Try again when the inbox fails to load", async () => {
