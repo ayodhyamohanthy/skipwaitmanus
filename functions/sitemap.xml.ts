@@ -38,36 +38,55 @@ export const onRequest: PagesFunction<{ API_ORIGIN?: string }> = async (context)
   // provides them; the sitemap stays honest and stable otherwise.
   const urls = STATIC_ROUTES.map(route => ({ loc: `${origin}${route.path}`, changefreq: route.changefreq, priority: route.priority }));
 
-  try {
-    // Only job detail URLs are listed. Opportunity Wall deep links
-    // (/wall?opening=<id>) canonicalise back to /wall, so listing them would
-    // spend crawl budget on near-duplicates of one page.
-    const response = await fetch(`${apiOrigin}/api/jobs`, { headers: { accept: "application/json" } });
-    if (response.ok) {
-      const payload = (await response.json()) as { jobs?: Array<{ id?: number; updatedAt?: string }> };
-      for (const job of payload.jobs ?? []) {
-        if (typeof job.id !== "number") continue;
-        const entry: { loc: string; changefreq: string; priority: string; lastmod?: string } = { loc: `${origin}/jobs?job=${job.id}`, changefreq: "weekly", priority: "0.6" };
-        if (typeof job.updatedAt === "string" && /^\d{4}-\d{2}-\d{2}/.test(job.updatedAt)) entry.lastmod = job.updatedAt.slice(0, 10);
-        urls.push(entry);
+  // Live API reads must never fail silently: a sitemap that quietly drops
+  // every job and company is worse than a loud one. Failures are logged and
+  // stamped into the XML comment so a curl can see exactly what happened.
+  const fetchJson = async (path: string, label: string): Promise<{ payload: Record<string, unknown> | null; note: string }> => {
+    const url = `${apiOrigin}${path}`;
+    try {
+      const response = await fetch(url, { headers: { accept: "application/json", "user-agent": "skipwait-sitemap/1.0 (+https://skipwait.me/sitemap.xml)" } });
+      if (!response.ok) {
+        console.error(`[sitemap] ${label} fetch failed: HTTP ${response.status} from ${url}`);
+        return { payload: null, note: `http-${response.status}` };
       }
+      return { payload: (await response.json()) as Record<string, unknown>, note: "ok" };
+    } catch (error) {
+      console.error(`[sitemap] ${label} fetch threw: ${error instanceof Error ? error.message : String(error)} (${url})`);
+      return { payload: null, note: "threw" };
     }
-  } catch { /* sitemap still serves the static routes if the API is cold */ }
+  };
 
-  try {
-    // Listed company pages (/explore/<slug>): each is a real, linkable page,
-    // so every card in the directory is an anchor a crawler can follow.
-    const response = await fetch(`${apiOrigin}/api/companies`, { headers: { accept: "application/json" } });
-    if (response.ok) {
-      const payload = (await response.json()) as { companies?: Array<{ slug?: string }> };
-      for (const company of payload.companies ?? []) {
-        if (typeof company.slug !== "string" || company.slug.length === 0) continue;
-        urls.push({ loc: `${origin}/explore/${encodeURIComponent(company.slug)}`, changefreq: "weekly", priority: "0.7" });
-      }
+  // Only job detail URLs are listed. Opportunity Wall deep links
+  // (/wall?opening=<id>) canonicalise back to /wall, so listing them would
+  // spend crawl budget on near-duplicates of one page.
+  const jobsRead = await fetchJson("/api/jobs", "jobs");
+  let jobCount = 0;
+  if (jobsRead.payload) {
+    const payload = jobsRead.payload as { jobs?: Array<{ id?: number; updatedAt?: string }> };
+    for (const job of payload.jobs ?? []) {
+      if (typeof job.id !== "number") continue;
+      const entry: { loc: string; changefreq: string; priority: string; lastmod?: string } = { loc: `${origin}/jobs?job=${job.id}`, changefreq: "weekly", priority: "0.6" };
+      if (typeof job.updatedAt === "string" && /^\d{4}-\d{2}-\d{2}/.test(job.updatedAt)) entry.lastmod = job.updatedAt.slice(0, 10);
+      urls.push(entry);
+      jobCount += 1;
     }
-  } catch { /* company entries are additive; static routes still serve */ }
+  }
 
-  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(entry => `  <url>\n    <loc>${escapeXml(entry.loc)}</loc>\n${entry.lastmod ? `    <lastmod>${entry.lastmod}</lastmod>\n` : ""}    <changefreq>${entry.changefreq}</changefreq>\n    <priority>${entry.priority}</priority>\n  </url>`).join("\n")}\n</urlset>\n`;
+  // Listed company pages (/explore/<slug>): each is a real, linkable page,
+  // so every card in the directory is an anchor a crawler can follow.
+  const companiesRead = await fetchJson("/api/companies", "companies");
+  let companyCount = 0;
+  if (companiesRead.payload) {
+    const payload = companiesRead.payload as { companies?: Array<{ slug?: string }> };
+    for (const company of payload.companies ?? []) {
+      if (typeof company.slug !== "string" || company.slug.length === 0) continue;
+      urls.push({ loc: `${origin}/explore/${encodeURIComponent(company.slug)}`, changefreq: "weekly", priority: "0.7" });
+      companyCount += 1;
+    }
+  }
+
+  const liveNote = `<!-- live: jobs=${jobCount} (${jobsRead.note}), companies=${companyCount} (${companiesRead.note}), api=${apiOrigin} -->\n`;
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n${liveNote}<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(entry => `  <url>\n    <loc>${escapeXml(entry.loc)}</loc>\n${entry.lastmod ? `    <lastmod>${entry.lastmod}</lastmod>\n` : ""}    <changefreq>${entry.changefreq}</changefreq>\n    <priority>${entry.priority}</priority>\n  </url>`).join("\n")}\n</urlset>\n`;
 
   return new Response(body, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
 };
