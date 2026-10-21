@@ -124,7 +124,7 @@ export default function GoalLandingV9() {
             </Reveal>
           </div>
           <Reveal>
-            <p className="mt-6 text-g-small leading-[1.6] text-g-ink-3">Referrals are about 7% of applicants yet account for nearly 40% of hires.<sup><a href="#vs-source" className="ml-0.5 underline underline-offset-2">1</a></sup></p>
+            <p className="mt-6 text-g-small leading-[1.6] text-g-ink-3">Referrals make up about 7% of candidates, and they convert at nearly 40%.<sup><a href="#vs-source" className="ml-0.5 underline underline-offset-2">1</a></sup></p>
             <p id="vs-source" className="mt-2 font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">1. <a href="https://www.jobvite.com/blog/4-reasons-to-invest-in-employee-referrals/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Jobvite - 4 reasons to invest in employee referrals</a></p>
           </Reveal>
         </div>
