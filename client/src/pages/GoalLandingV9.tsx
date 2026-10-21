@@ -14,6 +14,14 @@ import { GoalVerifiedMark } from "@/components/goal/GoalVerifiedMark";
 import { BetaBadge, BetaNoticeLine } from "@/components/BetaNotice";
 import { STEPS, TRUST, FAIR_RULES, FOOTER_COLS, Kicker, Reveal, AskCardArt } from "./GoalLanding";
 
+// Single swappable band photo: "d" (handshake, default per main 17:54) or
+// "e" (walking-in). Final owner pick pending; swap = this one constant.
+const V9_BAND_PHOTO = "d";
+const BAND_ALT: Record<string, string> = {
+  d: "A new joiner shaking hands across a table",
+  e: "Two colleagues walking into a bright office together",
+};
+
 function SearchCTA() {
   const [, setLocation] = useLocation();
   const [q, setQ] = useState("");
@@ -74,7 +82,7 @@ export default function GoalLandingV9() {
             <p className="mt-4 max-w-[440px] text-g-body leading-[1.6] opacity-70">A referral moves you past the pile: a verified employee inside the company picks your ask and opens a private conversation.</p>
           </Reveal>
           <Reveal className="justify-self-center">
-            <img src="/brand/banner-take-e.jpg" alt="Two colleagues walking into a bright office together" className="w-full max-w-[520px] rounded-[16px] object-cover" data-testid="goal-v9-banner" />
+            <img src={`/brand/banner-take-${V9_BAND_PHOTO}.jpg`} alt={BAND_ALT[V9_BAND_PHOTO]} className="w-full max-w-[520px] rounded-[16px] object-cover" data-testid="goal-v9-banner" />
           </Reveal>
         </div>
       </section>
