@@ -27,7 +27,10 @@ export function seekerSocialUrl(provider: string, returnTo: string): string {
   return `/api/auth/workos/sign-in?${new URLSearchParams({ returnTo, provider })}`;
 }
 
-export function SeekerSignIn({ returnTo = "/explore" }: { returnTo?: string }) {
+// goal: under the goal sign-in the commits render ink (doctrine: no blue
+// buttons); the kit sign-in keeps the kit default look.
+export function SeekerSignIn({ returnTo = "/explore", goal = false }: { returnTo?: string; goal?: boolean }) {
+  const commit = goal ? "bg-g-ink text-g-ink-inverse hover:bg-g-ink" : undefined;
   const [emailMode, setEmailMode] = useState(false);
   const [stage, setStage] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
@@ -64,7 +67,7 @@ export function SeekerSignIn({ returnTo = "/explore" }: { returnTo?: string }) {
     return <div className="auth-options" data-testid="seeker-sign-in">
       {SEEKER_SOCIAL.map(item => <Button key={item.id} type="button" variant="outline" className="google-button" onClick={() => window.location.assign(seekerSocialUrl(item.id, returnTo))}><span className="google-g" aria-hidden="true">{item.mark}</span>Continue with {item.label}</Button>)}
       <div className="auth-divider"><span>or</span></div>
-      <Button type="button" onClick={() => setEmailMode(true)}><Mail />Continue with email</Button>
+      <Button type="button" className={commit} onClick={() => setEmailMode(true)}><Mail />Continue with email</Button>
     </div>;
   }
   if (stage === "email") {
@@ -73,7 +76,7 @@ export function SeekerSignIn({ returnTo = "/explore" }: { returnTo?: string }) {
       <div className="auth-input"><Mail /><input id="seeker-email" name="email" type="email" placeholder="you@example.com" autoComplete="email" required value={email} onChange={e => { setEmail(e.target.value); setError(""); }} /></div>
       <p className="text-xs leading-relaxed text-muted-foreground">We’ll email you a six-digit code. New here? That creates your account.</p>
       {error && <p role="alert" className="text-sm text-[#B91C1C]">{error}</p>}
-      <Button type="submit" disabled={busy || !email.trim()}>{busy ? "Sending code…" : "Send sign-in code"} <ArrowRight /></Button>
+      <Button type="submit" className={commit} disabled={busy || !email.trim()}>{busy ? "Sending code…" : "Send sign-in code"} <ArrowRight /></Button>
       <Button type="button" variant="ghost" onClick={() => { setEmailMode(false); setError(""); }}>Use another method</Button>
     </form>;
   }
@@ -82,7 +85,7 @@ export function SeekerSignIn({ returnTo = "/explore" }: { returnTo?: string }) {
     <label htmlFor="seeker-code">Six-digit code</label>
     <div className="auth-input"><input id="seeker-code" name="code" inputMode="numeric" autoComplete="one-time-code" placeholder="123456" value={code} onChange={e => { setCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }} /></div>
     {error && <p role="alert" className="text-sm text-[#B91C1C]">{error}</p>}
-    <Button type="submit" disabled={busy || code.length !== 6}>{busy ? "Checking…" : "Sign in"} <ArrowRight /></Button>
+    <Button type="submit" className={commit} disabled={busy || code.length !== 6}>{busy ? "Checking…" : "Sign in"} <ArrowRight /></Button>
     <Button type="button" variant="ghost" onClick={() => { setStage("email"); setCode(""); setError(""); }}>Use a different email</Button>
   </form>;
 }
