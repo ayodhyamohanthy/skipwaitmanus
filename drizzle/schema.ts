@@ -1123,3 +1123,16 @@ export const oauthAuthCodes = mysqlTable("oauthAuthCodes", {
   usedAt: timestamp("usedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("oauth_auth_codes_user_idx").on(table.userId), index("oauth_auth_codes_expiry_idx").on(table.expiresAt)]);
+
+// Stealth pass (D-112): a seeker blocks specific companies from seeing their
+// asks and profile. The current employer is auto-blocked (source "auto")
+// unless the seeker opts out; manual blocks are source "manual". Enforcement
+// lives in the referrer ask-inbox and directory/profile visibility queries.
+// The free baseline (name hidden until a referrer accepts) is untouched.
+export const seekerCompanyBlocks = mysqlTable("seekerCompanyBlocks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  source: mysqlEnum("source", ["auto", "manual"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("seeker_company_blocks_user_company_unique").on(table.userId, table.companyId), index("seeker_company_blocks_company_idx").on(table.companyId)]);
