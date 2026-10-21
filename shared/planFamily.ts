@@ -181,8 +181,10 @@ export const MENTOR_ADD_ON = {
 export const REFERRER_CREDIT_PER_ACCEPTED_ASK = 1;
 
 /**
- * Company tier: DRAFT, unbuilt, unnamed (owner's pick pending; "Partner Plan"
- * likely - NOT "Company Plus"). Draft shape only: companies on it give their
- * verified employees Mentor free. Do not build before the owner names it.
+ * Company tier: DRAFT, unbuilt. Owner pick (Oct 21 18:52, changeable):
+ * "Group Plan" - Group Free / Group Plus, subtitle "for companies, colleges
+ * and training institutes buying for many people". Bulk/group oriented, NOT
+ * "Partner" and NOT "Company Plus". Draft shape only: Group Plus companies
+ * give their verified employees Mentor free. Do not build while draft.
  */
-export const COMPANY_TIER_DRAFT = { built: false, name: null } as const;
+export const COMPANY_TIER_DRAFT = { built: false, name: "Group Plan" } as const;
