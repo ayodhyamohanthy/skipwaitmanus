@@ -80,8 +80,8 @@ export default function GoalLandingV9() {
       <section className="border-b border-g-hairline">
         <div className="mx-auto max-w-[1120px] px-5 pb-16 pt-14 gdesk:px-8 gdesk:pb-24 gdesk:pt-24">
           <Kicker>Private job referrals</Kicker>
-          <h1 className="mt-5 text-[56px] font-semibold leading-[0.98] tracking-[-0.045em] gdesk:text-[96px]">Get read by someone inside.</h1>
-          <p className="mt-5 max-w-[520px] text-g-body leading-[1.6] text-g-ink-2">A verified employee at the company you want to join reads your ask and can open a private conversation. They choose every referral: no commissions, no outcome promises.</p>
+          <h1 className="mt-5 text-[56px] font-semibold leading-[0.98] tracking-[-0.045em] gdesk:text-[96px]">Nobody reads the pile.</h1>
+          <p className="mt-5 max-w-[520px] text-g-body leading-[1.6] text-g-ink-2">Mass applications meet software, not people. Here, one verified employee at the company you want to join reads your ask - and can open a private conversation. No commissions, no outcome promises.</p>
           <SearchCTA />
           <p className="mt-3 text-[13px] text-g-ink-3">Explore before signing in.</p>
           <div className="mt-3"><BetaNoticeLine tone="goal" /></div>
@@ -113,18 +113,25 @@ export default function GoalLandingV9() {
             <Kicker>The honest comparison</Kicker>
             <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Mass applying vs a referral.</h2>
           </Reveal>
-          <div className="mt-10 grid gap-4 gdesk:grid-cols-2">
-            <Reveal className="rounded-[12px] border border-g-hairline p-5">
-              <h3 className="text-[15px] font-semibold text-g-ink-2">Mass applying</h3>
-              <p className="mt-1.5 text-g-small leading-[1.6] text-g-ink-2">Hundreds of blind applications into forms and filters. Your resume waits in a pile; most piles are never read by a person.</p>
+          <div className="mt-10 grid gap-10 gdesk:grid-cols-2 gdesk:gap-16">
+            <Reveal>
+              <h3 className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Mass applying</h3>
+              <ul className="mt-4">
+                <li className="border-t border-g-hairline py-4 text-g-body text-g-ink-2">Screened by software. Heard by no one.</li>
+                <li className="border-t border-g-hairline py-4 text-g-body text-g-ink-2">Another form. Another silence.</li>
+                <li className="border-y border-g-hairline py-4 text-g-body text-g-ink-2">One of the pile.</li>
+              </ul>
             </Reveal>
-            <Reveal className="rounded-[12px] border border-g-ink p-5">
-              <h3 className="text-[15px] font-semibold">One referral on skipwait.me</h3>
-              <p className="mt-1.5 text-g-small leading-[1.6] text-g-ink-2">One thoughtful ask. A verified employee inside the company reads it and can open a private conversation - you arrive as a person.</p>
+            <Reveal>
+              <h3 className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">One referral on skipwait.me</h3>
+              <ul className="mt-4">
+                <li className="border-t border-g-ink py-4 text-g-body font-semibold">A person inside reads you.</li>
+                <li className="border-y border-g-ink py-4 text-g-body font-semibold">One thoughtful ask. Your name on it.</li>
+              </ul>
             </Reveal>
           </div>
           <Reveal>
-            <p className="mt-6 text-g-small leading-[1.6] text-g-ink-3">Referrals make up about 7% of candidates, and they convert at nearly 40%.<sup><a href="#vs-source" className="ml-0.5 underline underline-offset-2">1</a></sup></p>
+            <p className="mt-8 text-g-small leading-[1.6] text-g-ink-3">Referrals make up about 7% of candidates, and they convert at nearly 40%.<sup><a href="#vs-source" className="ml-0.5 underline underline-offset-2">1</a></sup>{" "}Industry-wide figures, not a promise of your outcome.</p>
             <p id="vs-source" className="mt-2 font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">1. <a href="https://www.jobvite.com/blog/4-reasons-to-invest-in-employee-referrals/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Jobvite - 4 reasons to invest in employee referrals</a></p>
           </Reveal>
         </div>
