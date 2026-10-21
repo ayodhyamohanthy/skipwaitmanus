@@ -936,7 +936,7 @@ export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutInten
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).notNull(),
   // Order pinned to shared/billingCatalog.ts INTENT_PLAN_IDS; 0090 added the kit plans, 0091 the Oct 14 2026 plans.
-  plan: mysqlEnum("plan", ["pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).notNull(),
+  plan: mysqlEnum("plan", ["pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge", "fast_track", "insider"]).notNull(),
   itemPriceId: varchar("itemPriceId", { length: 100 }).notNull(),
   amount: int("amount").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),

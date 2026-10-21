@@ -4326,7 +4326,7 @@ export async function applyChargebeePaymentRefund(input: { eventId: string; invo
   });
 }
 
-export async function createChargebeeSubscriptionIntent(input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: WalletRole; plan: BillablePlanId; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) {
+export async function createChargebeeSubscriptionIntent(input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: WalletRole; plan: BillablePlanId | "fast_track" | "insider"; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   // A kit pass names its term (30d/90d, yearly for Keep warm) so the webhook can

@@ -59,7 +59,7 @@ export type BillablePlanId = (typeof BILLABLE_PLAN_IDS)[number];
 export const WALLET_PLAN_IDS = ["free", ...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
 export type WalletPlanId = (typeof WALLET_PLAN_IDS)[number];
 /** subscriptionCheckoutIntents.plan, same ordering rule. */
-export const INTENT_PLAN_IDS = [...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
+export const INTENT_PLAN_IDS = [...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge", "fast_track", "insider"] as const;
 
 export function isBillablePlanId(value: unknown): value is BillablePlanId {
   return typeof value === "string" && (BILLABLE_PLAN_IDS as readonly string[]).includes(value);
