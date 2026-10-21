@@ -42,6 +42,7 @@ export default function ForCompanies() {
       <header className="launch-header">
         <Link className="wordmark" href="/" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         <nav aria-label="Company navigation" className="launch-nav">
+          {import.meta.env.VITE_COMPANY_CLAIM === "true" ? <Link href="/company/claim">Claim your company</Link> : null}
           <Link href="/explore">Explore</Link>
           <Link href="/plans">Plans</Link>
           <Button asChild className="brand-button"><a href="#demo">Book a demo</a></Button>

@@ -41,3 +41,6 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 - A push to `main` deploys what it touches (D-003). Watch CI and both deploys to the end; if anything goes red, revert or fix your commit first. Then `EXPECTED_SHA=<sha> bash scripts/verify-live-release.sh` must print CONVERGED for API changes, skipwait.me must serve `<meta name="git-commit">` with your SHA for web changes, and affected screens get checked at 1280 and 390. Mark the row done with the SHA.
 - Migrations: take the next free number after `drizzle/deploy/` and the numbers claimed in plan §5; never destructive; schema-dependent code lands only after its migration is verified.
 - Owner actions waiting: plan §6. System map: `AGENTS.md`, "Living system map".
+
+## Claim-your-company (D-107, draft)
+Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COMPANY_CLAIM (off). No per-person data or account-role changes. Same-account, single-use email link. Current-month aggregates hidden below 3 referrers or answered asks. See docs/DECISIONS.md D-107. QA and delivery verification required before enablement.

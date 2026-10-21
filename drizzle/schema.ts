@@ -1123,3 +1123,20 @@ export const oauthAuthCodes = mysqlTable("oauthAuthCodes", {
   usedAt: timestamp("usedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("oauth_auth_codes_user_idx").on(table.userId), index("oauth_auth_codes_expiry_idx").on(table.expiresAt)]);
+
+// Aggregate-only company access. Work-mailbox proof grants no employee/admin rights.
+export const companyAggregateAccess = mysqlTable("companyAggregateAccess", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  domain: varchar("domain", { length: 255 }).notNull(),
+  verifiedAt: timestamp("verifiedAt").defaultNow().notNull(),
+}, t => [uniqueIndex("company_aggregate_user_domain").on(t.userId, t.domain)]);
+export const companyClaimChallenges = mysqlTable("companyClaimChallenges", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  domain: varchar("domain", { length: 255 }).notNull(),
+  tokenHash: varchar("tokenHash", { length: 64 }).notNull().unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  consumedAt: timestamp("consumedAt"),
+}, t => [index("company_claim_user_created").on(t.userId, t.createdAt)]);

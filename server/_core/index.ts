@@ -1,3 +1,4 @@
+import { registerCompanyClaimRoutes } from "../companyClaimRoutes";
 import { initServerSentry, captureServerError, flushServerSentry, isServerSentryActive, scrubSentryPath, sentryErrorMiddleware } from "../sentry";
 import { registerJobLinkPreviewRoutes } from "../jobLinkPreviewRoutes";
 
@@ -206,6 +207,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Server-owned company directory: public /api/companies reads and the
   // admin-gated /api/admin/companies writes (server/companyDirectoryRoutes.ts).
   registerCompanyDirectoryRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  registerCompanyClaimRoutes(app, { resolveIdentity });
   registerScheduledJobsRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity }); // Worker cron tick + admin job status
   // B2B monetization surface: employer accounts, unlock credits, anonymized
   // talent discovery, sponsored roles, and contextual partner modules.

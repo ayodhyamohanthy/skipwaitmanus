@@ -1068,5 +1068,52 @@
     "insufficient": "Not enough data yet",
     "day": "day",
     "days": "days"
+  },
+  "claimCompany": {
+    "label": "For companies",
+    "title": "Claim your company",
+    "intro": "See how referral asks for your company actually move - and give your employees a warmer way to help people in.",
+    "benefitsTitle": "What you get",
+    "benefits": [
+      {
+        "title": "Aggregate activity",
+        "body": "Asks answered, usual first-reply time, referrers inside - company totals only, this month."
+      },
+      {
+        "title": "Your people, verified",
+        "body": "Employees join with their work email. You see a count, never their chats."
+      },
+      {
+        "title": "A public signal you earn",
+        "body": "Your responsiveness shows on your company page once 3+ employees and 3+ answered asks qualify. Never for sale, never a ranking."
+      }
+    ],
+    "privacyTitle": "What we never show you",
+    "privacy": "No seeker names. No resumes. No individual referrer stats. Companies see aggregates - people stay people, not leads.",
+    "verify": "Verify your domain",
+    "fine": "We email a verification link to your work email. Claiming is free. There is nothing to buy here.",
+    "emailLabel": "Work email",
+    "send": "Email me a verification link",
+    "sent": "Check your work email. The link expires in 10 minutes. Open it while signed in to this account.",
+    "confirm": "Confirm company access",
+    "confirmNote": "This confirms access to a work mailbox, not ownership of the company. It only opens company-level aggregates.",
+    "dashboard": "Company dashboard",
+    "period": "This month · aggregates only",
+    "answered": "Asks answered",
+    "reply": "Usual first reply",
+    "employees": "Employees verified",
+    "publicTitle": "Your public signal - what seekers see",
+    "insufficient": "Not enough data yet",
+    "thin": "Below 3 verified referrers or 3 answered asks this month, every number stays hidden. The signal is earned through real replies - it cannot be bought, and it is never a ranking.",
+    "peopleTitle": "Your people",
+    "people": "Their names, asks and chats stay private to them - companies see the count, not the people.",
+    "footer": "Seekers are never shown to companies: no names, no resumes, no contact details. Claiming is free.",
+    "signin": "Sign in to verify your work email",
+    "view": "View company dashboard",
+    "back": "Back to company page",
+    "error": "We could not complete company verification. Try again.",
+    "loading": "Loading company aggregates…",
+    "open": "Open to requests",
+    "closed": "Not open to requests right now"
   }
 }
