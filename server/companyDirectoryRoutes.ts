@@ -4,6 +4,7 @@
 //   GET  /api/companies/:slug/opportunities  public, cacheable: a company's live
 //                                  employee-posted roles (D-022), newest first
 //   GET  /api/admin/companies?q=   admin: every company with status and domains
+//   GET  /api/admin/companies/unmatched-domains  admin, flagged: verified work domains no company owns
 //   POST /api/admin/companies      admin: create (strict Zod body)
 //   PATCH /api/admin/companies/:id admin: edit, hide/list, add/remove alias domains
 // Contracts live in shared/companies.ts; services are injectable for tests.
@@ -11,9 +12,11 @@ import express, { type Express, type Request, type Response } from "express";
 import { adminCompanyCreateSchema, adminCompanyUpdateSchema, COMPANY_NOT_FOUND_ERROR, COMPANY_SLUG_PATTERN, type AdminCompany, type AdminCompanyCreate, type AdminCompanyUpdate, type CompanyDirectoryResponse, type PublicCompany } from "../shared/companies";
 import { companyOpportunitiesResponseSchema } from "../shared/companyOpportunities";
 import { getCompanyDirectoryEntry, listAdminCompanies, listCompanyDirectory } from "./companyDirectory";
-import { CompanyConflictError, CompanyInputError, CompanyNotFoundError, createCompany, updateCompany } from "./companyDirectoryAdmin";
+import { CompanyConflictError, CompanyInputError, CompanyNotFoundError, createCompany, listUnmatchedWorkDomains, updateCompany, type UnmatchedWorkDomain } from "./companyDirectoryAdmin";
 import { CompanyDirectoryUnavailableError } from "./companyDirectorySource";
+import { companyResponseSignalEnabled, loadCompanyResponseSignal } from "./companyResponseSignal";
 import { listCompanyOpportunityPosts } from "./db";
+import type { CompanyResponseSignal } from "../shared/companyResponseSignal";
 
 type Identity = { account: { id: number; role?: "user" | "admin" } };
 type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number };
@@ -28,6 +31,12 @@ export type CompanyDirectoryRouteDeps = {
   listAdminCompanies?: (query?: string) => Promise<AdminCompany[]>;
   createCompany?: (input: AdminCompanyCreate) => Promise<AdminCompany>;
   updateCompany?: (id: number, patch: AdminCompanyUpdate) => Promise<AdminCompany>;
+  /** Flag company_response_signal (D-097): off until QA. */
+  responseSignalEnabled?: () => boolean;
+  loadResponseSignal?: (domains: readonly string[]) => Promise<CompanyResponseSignal>;
+  /** D-097: off until QA verifies. Defaults to UNMATCHED_DOMAINS_ENABLED=true. */
+  unmatchedDomainsEnabled?: () => boolean;
+  listUnmatchedWorkDomains?: () => Promise<UnmatchedWorkDomain[]>;
 };
 
 const PUBLIC_CACHE = "public, max-age=60";
@@ -94,12 +103,33 @@ export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirect
     } catch (error) { failure(res, error, "We could not load this company's openings"); }
   });
 
+  // Aggregate responsiveness for one listed company. 404 while the flag is off, so the surface does not exist.
+  app.get("/api/companies/:slug/response-signal", async (req, res) => {
+    if (!(deps.responseSignalEnabled ?? companyResponseSignalEnabled)()) return res.status(404).set("Cache-Control", "no-store").json({ error: "Not found" });
+    const slug = req.params.slug ?? "";
+    if (!COMPANY_SLUG_PATTERN.test(slug)) return res.status(400).set("Cache-Control", "no-store").json({ error: "Invalid company link" });
+    try {
+      const company = await getOne(slug);
+      if (!company) return res.status(404).set("Cache-Control", "public, max-age=30").json({ error: COMPANY_NOT_FOUND_ERROR });
+      res.set("Cache-Control", PUBLIC_CACHE).json({ signal: await (deps.loadResponseSignal ?? loadCompanyResponseSignal)(company.domains) });
+    } catch (error) { failure(res, error, "We could not load this company's signal"); }
+  });
+
   app.get("/api/admin/companies", async (req, res) => {
     try {
       const identity = await requireAdmin(req, res); if (!identity) return;
       const query = typeof req.query.q === "string" ? req.query.q.slice(0, 100) : undefined;
       res.json({ companies: await adminList(query) });
     } catch (error) { failure(res, error, "We could not load companies"); }
+  });
+
+  app.get("/api/admin/companies/unmatched-domains", async (req, res) => {
+    try {
+      const identity = await requireAdmin(req, res); if (!identity) return;
+      const enabled = deps.unmatchedDomainsEnabled ?? (() => process.env.UNMATCHED_DOMAINS_ENABLED === "true");
+      if (!enabled()) return res.status(404).json({ error: "Not found" });
+      res.json({ domains: await (deps.listUnmatchedWorkDomains ?? listUnmatchedWorkDomains)() });
+    } catch (error) { failure(res, error, "We could not load unmatched domains"); }
   });
 
   app.post("/api/admin/companies", express.json({ limit: "16kb" }), async (req, res) => {

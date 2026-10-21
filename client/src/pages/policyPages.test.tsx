@@ -81,7 +81,7 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getByText(/No money, gifts, or favours — before or after\. Seekers: if anyone asks for payment, report it\./)).toBeTruthy();
     expect(screen.getByRole("heading", { name: "The short version" })).toBeTruthy();
     expect(screen.getByText("Never pay a referrer, and never ask a seeker for money.")).toBeTruthy();
-    expect(screen.getByText("3 asks free every month; more use credits. Referrers are never paid and never ask you for money.")).toBeTruthy();
+    expect(screen.getByText("3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money.")).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/Referrals are free|free referrals/i);
     expect(screen.queryByText(/Draft · pending legal review/)).toBeNull();
     expect(screen.queryByText(/Breaking these rules can limit or close an account/)).toBeNull();
@@ -94,8 +94,10 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
   it("Refund policy matches the billing rules the product enforces", () => {
     render(<RefundPolicy />);
     expect(document.querySelector('[data-skipwait-screen="refund-policy"]')).toBeTruthy();
-    expect(screen.getByText(/reserves one credit/)).toBeTruthy();
-    expect(screen.getByText(/withdraw before a verified employee claims/)).toBeTruthy();
+    expect(screen.getByText(/The moment one can see your ask, 1 credit is used/)).toBeTruthy();
+    expect(screen.getByText(/withdraw before someone picks the ask up/)).toBeTruthy();
+    expect(screen.getByText(/not on sale right now/)).toBeTruthy();
+    expect(screen.queryByText(/Momentum|Keep warm/)).toBeNull();
     expect(screen.getByText(/until the end of the current billing cycle/)).toBeTruthy();
     expect(screen.getByText(/approved by a skipwait.me administrator/)).toBeTruthy();
     expect(screen.getByText(/free for Referrers/)).toBeTruthy();
@@ -154,15 +156,16 @@ describe("decline keeps the credit spent (founder decision, Oct 14 2026)", () =>
   it("Terms say a decline does not return the credit", () => {
     const { container } = render(<Terms />);
     const text = container.textContent ?? "";
-    expect(text).toContain("If a Referrer declines, the credit stays spent");
-    expect(text).not.toMatch(/returned automatically if you withdraw before a Referrer claims it, or if a Referrer declines/);
+    expect(text).toContain("the credit stays spent, even if they pass");
+    expect(text).not.toMatch(/reserved when a request is sent/);
+    expect(text).not.toMatch(/Momentum|Keep warm/);
   });
   it("Refund policy lists withdraw and expiry as returns, and a decline as spent", () => {
     const { container } = render(<RefundPolicy />);
     const text = container.textContent ?? "";
-    expect(text).toMatch(/If a Referrer declines, the credit stays spent/);
-    expect(text).not.toMatch(/or if the Referrer declines\./);
-    expect(text).toMatch(/or if it expires without a decision/);
+    expect(text).toMatch(/picks your request up, the credit stays spent/);
+    expect(text).not.toMatch(/reserves one credit/);
+    expect(text).toMatch(/expires unclaimed/);
   });
 });
 

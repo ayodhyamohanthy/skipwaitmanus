@@ -286,6 +286,11 @@ input, textarea { caret-color: var(--primary); }
   --g-ink: #0a0a0a; --g-ink-2: #52525b; --g-ink-3: #6b6b73; --g-ink-inverse: #ffffff;
   --g-hairline: #ebebeb; --g-control-edge: #8a8a8a;
   --g-primary: #0a0a0a; --g-primary-hover: #262626; --g-primary-pressed: #404040; --g-on-primary: #ffffff; --g-on-primary-edge: rgb(255 255 255 / 0.4);
+  /* v7 warm hero (owner pick Oct 21 16:43, phonemsg-01M5F2MR5FHEZ7DESNVCJBW12Y):
+     colour lives ONLY on the landing hero band - peach/rose/lilac, no kit hues. */
+  --g-warm-1: #fce9da; --g-warm-2: #f6cfdd; --g-warm-3: #e7d6f4;
+  /* V6-B mark (designer values, D-130) */
+  --g-mark-1: #c9c9c9; --g-mark-2: #8a8a8a; --g-mark-3: #0a0a0a;
   --g-trust: #1d4ed8; --g-emerald: #047857; --g-amber: #b45309; --g-crimson: #b91c1c;
   --g-dot: 8px;
   --g-font-sans: "Instrument Sans", system-ui, sans-serif; --g-font-mono: "JetBrains Mono", ui-monospace, monospace;
@@ -308,6 +313,8 @@ input, textarea { caret-color: var(--primary); }
 .g-scope .g-focus-inner:focus-visible { box-shadow: none; }          /* only for a field drawn inside a card that rings via :focus-within (find-a-referral.css:91,94). Same specificity (0,3,0) as the rule above, so it MUST stay after it. */
 .g-scope :is(input, textarea) { caret-color: var(--g-ink); }
 .g-scope :is(a, button) { transition-timing-function: revert-layer; }
+.g-hero-warm { background: linear-gradient(180deg, var(--g-warm-1) 0%, var(--g-warm-2) 52%, var(--g-warm-3) 100%); }
+
 .g-num { font-family: var(--g-font-mono); font-weight: 500; font-size: min(1em, 13px); letter-spacing: 0; word-spacing: -0.2em; white-space: nowrap; font-variant-numeric: tabular-nums; font-variant-ligatures: none; }
 .g-hit { position: relative; }
 .g-hit::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, var(--g-touch)); height: max(100%, var(--g-touch)); transform: translate(-50%, -50%); }

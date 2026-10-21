@@ -1,3 +1,4 @@
+import { runBillingReviewOutbox } from "./billingReviewOutbox";
 // The scheduled jobs the Worker cron runs (contract: shared/scheduledJobs.ts).
 // Each window runs at most once (server/scheduledJobRunner.ts); a job's window
 // is a whole number of cron periods so every period lands in exactly one.
@@ -7,7 +8,7 @@ import { createCoverageDeliverySweep } from "./coverageDeliverySweep";
 import { createDailyMoneyCheck } from "./dailyMoneyCheck";
 import { createFirstLookRelease } from "./firstLookRelease";
 import { createPlanCreditCycleJob } from "./planCreditCycleJob";
-import { createChargebeePendingReconcile } from "./chargebeePendingReconcile";
+import { createChargebeePendingReconcile, createSubscriptionPendingReconcile } from "./chargebeePendingReconcile";
 import { createDataExportSweep } from "./dataExport";
 import { createWorkEmailReverifySweep } from "./workEmailReverifySweep";
 import { createWorkEmailOtpPurgeJob } from "./workEmailOtpPurge";
@@ -45,6 +46,16 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     run: createChargebeePendingReconcile(),
   },
   {
+    // GO-LIVE-1b ruling 3: a paid pass always activates - the hourly safety net
+    // under a missed webhook. Paid pending pass checkouts activate from their
+    // provider checkout page; expired unpaid ones are marked cancelled.
+    name: "chargebee-subscription-reconcile",
+    description: "Re-checks pending pass checkouts older than 10 minutes (up to 3 days) and activates the paid ones the webhook missed; expired unpaid checkouts are marked cancelled",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createSubscriptionPendingReconcile(),
+  },
+  {
     name: "work-email-reverify-sweep",
     description: "DRY RUN: counts verified referrers past the 90-day work-email re-check (grandfathered to 16 Oct 2026 + 90 days); changes nothing",
     windowMs: 60 * MINUTE,
@@ -79,4 +90,5 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     leaseMs: 15 * MINUTE,
     run: createDailyMoneyCheck(),
   },
+  { name: "billing-review-retry", description: "Retries durable billing review notifications; expired ambiguous submissions need operator reconciliation", windowMs: 60 * MINUTE, leaseMs: 5 * MINUTE, run: () => runBillingReviewOutbox() },
 ];

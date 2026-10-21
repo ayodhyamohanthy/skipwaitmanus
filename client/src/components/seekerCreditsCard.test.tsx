@@ -18,13 +18,11 @@ const credits = (overrides: Partial<SeekerCredits>): SeekerCredits => ({
 });
 
 describe("Seeker credits card: card validation (D-079)", () => {
-  it("locked free credits show the validation line and CTA instead of the meter and ask/buy actions", () => {
+  it("D-127: a locked payload renders the ordinary card - card validation moved to first purchase, never sign-up", () => {
     render(<SeekerCreditsCard credits={credits({ monthlyAllowance: 0, monthlyCreditsRemaining: 0, totalAvailable: 0, freeCreditsLocked: true, cardValidated: false })} />);
-    expect(screen.getByText(/Validate your card to unlock your 3 free asks every month/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Validate your card/ })).toBeTruthy();
-    expect(screen.queryByRole("link", { name: /Ask another referral/ })).toBeNull();
-    expect(screen.queryByRole("link", { name: /Add a credit for \$1/ })).toBeNull();
-    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.queryByText(/Validate your card/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Validate your card/ })).toBeNull();
+    expect(screen.getByRole("progressbar")).toBeTruthy();
   });
 
   it("a validated wallet renders the ordinary card (no locked line, no validate CTA)", () => {
