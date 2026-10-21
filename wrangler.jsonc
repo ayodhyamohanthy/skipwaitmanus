@@ -86,7 +86,6 @@
         // Dummy values - live billing is disabled here; test-site calls would
         // just fail auth, no money path.
         "CHARGEBEE_SITE": "skipwait-test",
-        "CHARGEBEE_WEBHOOK_SECRET": "qa-preview-dummy",
         "COMPANY_RESPONSE_SIGNAL_ENABLED": "true",
         "SHARE_IMPACT_CARD_ENABLED": "true",
         "PLAN_FAMILY_V2": "true",
