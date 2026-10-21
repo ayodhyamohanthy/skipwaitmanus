@@ -3,6 +3,9 @@ import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { REFERRER_PURCHASES_ENABLED } from "../shared/referrerPurchases";
 import { registerChargebeeRoutes } from "./chargebeeRoutes";
+// These cases test selling passes, so they run with pass sales on; the shipped
+// off state (D-084) is pinned in server/passSalesSwitch.test.ts.
+vi.mock("../shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("../shared/planCatalog")>()), PASS_SALES_ENABLED: true }));
 
 /*
  * D-055 follow-up (D-067 lane): referrers never pay. Every referrer-role
@@ -14,7 +17,7 @@ import { registerChargebeeRoutes } from "./chargebeeRoutes";
 
 type Activity = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; metadata?: Record<string, string | number | boolean | null | undefined> };
 
-const REFUSAL = { error: "Referrers never pay on SkipWait. Nothing has been charged.", code: "referrers_never_pay" };
+const REFUSAL = { error: "Referrers never pay on skipwait.me. Nothing has been charged.", code: "referrers_never_pay" };
 
 function auth(secret: string) {
   return `Basic ${Buffer.from(`skipwait:${secret}`).toString("base64")}`;
@@ -115,12 +118,19 @@ describe("referrer purchases are switched off (D-055, D-042)", () => {
 
   it.each([{ role: "job_seeker" }, {}])("still opens every checkout for the seeker role (%o), so a seeker who is also a referrer can buy", async roleField => {
     const { app, spies } = harness();
-    for (const { path, body } of PURCHASES) {
+    for (const { label, path, body } of PURCHASES) {
       const response = await request(app).post(path).send({ ...body, ...roleField });
+      // D-036 (GO-LIVE-1): with packs on sale (the harness stubs every price available), the
+      // legacy per-credit checkout is retired for everyone, seeker included - never a provider call.
+      if (label === "the per-credit token checkout") {
+        expect(response.status, path).toBe(410);
+        expect(response.body.code).toBe("single_credit_retired");
+        continue;
+      }
       expect(response.status, path).toBe(200);
       expect(typeof response.body.checkoutUrl).toBe("string");
     }
-    expect(spies.createPaymentIntent).toHaveBeenCalledTimes(2);
+    expect(spies.createPaymentIntent).toHaveBeenCalledTimes(1);
     expect(spies.createSubscriptionIntent).toHaveBeenCalledTimes(2);
     for (const [intent] of [...spies.createPaymentIntent.mock.calls, ...spies.createSubscriptionIntent.mock.calls]) expect(intent).toMatchObject({ userId: 7, role: "job_seeker" });
   });

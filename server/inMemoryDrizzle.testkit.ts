@@ -10,7 +10,7 @@
  * come back in insertion order (ORDER BY is ignored), which is what makes a
  * query that relies on row order observable in a test.
  */
-import { Column, Param, SQL, StringChunk, Table, getTableColumns, getTableName, is, type SQLChunk } from "drizzle-orm";
+import { Column, DrizzleQueryError, Param, SQL, StringChunk, Table, getTableColumns, getTableName, is, type SQLChunk } from "drizzle-orm";
 import { getTableConfig, type MySqlTable } from "drizzle-orm/mysql-core";
 
 export type Cell = string | number | boolean | Date | null;
@@ -120,6 +120,14 @@ function countTarget(field: SQL): Column | "*" | undefined {
   return is(target, SQL) && significant(target).map(textOf).join("") === "*" ? "*" : undefined;
 }
 
+/** The target of a `min(col)` field as drizzle renders it; undefined for any other SQL. */
+function minTarget(field: SQL): Column | undefined {
+  const chunks = significant(field);
+  const [open, target, close] = chunks;
+  if (chunks.length !== 3 || textOf(open) !== "min(" || textOf(close) !== ")") return undefined;
+  return is(target, Column) ? target : undefined;
+}
+
 /** One output row per GROUP BY group (one group over every row for a bare count, as MySQL does). */
 function aggregate(projection: Projection, groups: readonly Column[] | undefined, kept: readonly Joined[]): Selected[] {
   const fields = Object.entries(projection);
@@ -133,7 +141,9 @@ function aggregate(projection: Projection, groups: readonly Column[] | undefined
     const out: Selected = {};
     for (const [key, field] of fields) {
       const target = is(field, SQL) ? countTarget(field) : undefined;
+      const minColumn = is(field, SQL) ? minTarget(field) : undefined;
       if (target) out[key] = target === "*" ? members.length : members.filter((member: Joined) => cellOf(target, member) !== null).length;
+      else if (minColumn) { const values = members.map((member: Joined) => cellOf(minColumn, member)).filter((value): value is NonNullable<Cell> => value !== null); if (values.length === 0) out[key] = null; else { let lowest = values[0]; for (const value of values) { const a = comparable(value); const b = comparable(lowest); if (a !== null && b !== null && a < b) lowest = value; } out[key] = lowest; } }
       else if (is(field, Column)) out[key] = members[0] ? structuredClone(cellOf(field, members[0])) : null;
       else return fail(`computed projection ${key}`);
     }
@@ -215,7 +225,13 @@ export function createInMemoryDrizzle(seed: Seed = []) {
         const id = typeof value.id === "number" ? value.id : Math.max(0, ...rows.map(row => (typeof row.id === "number" ? row.id : 0))) + 1;
         const row: Row = { ...Object.fromEntries(Object.keys(getTableColumns(table)).map(key => [key, null])), ...Object.fromEntries(Object.entries(value).filter(([, cell]) => cell !== undefined)), id };
         const duplicate = rows.find(existing => uniqueKeysOf(table).some(keys => keys.every(key => row[key] !== null && equal(existing[key] ?? null, row[key] ?? null))));
-        if (duplicate && !set) throw Object.assign(new Error(`Duplicate entry for ${name}`), { code: "ER_DUP_ENTRY", errno: 1062 });
+        if (duplicate && !set) {
+          // Production shape: drizzle rethrows the driver error inside
+          // DrizzleQueryError, so a duplicate check that reads only `.code`
+          // passes here and misses in production (server/dbErrors.ts).
+          const driverError = Object.assign(new Error(`Duplicate entry for ${name}`), { code: "ER_DUP_ENTRY", errno: 1062, sqlState: "23000" });
+          throw new DrizzleQueryError(`insert into \`${name}\``, [], driverError);
+        }
         if (duplicate && set) { for (const [key, cell] of Object.entries(set)) duplicate[key] = setValue(cell, duplicate, name); affectedRows += 2; continue; }
         rows.push(row); insertId = id; affectedRows += 1;
       }

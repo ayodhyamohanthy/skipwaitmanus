@@ -99,7 +99,7 @@ export function ThreadMain({ request, role, seekerIdentity, passed, messages, dr
             <p className={`max-w-[80%] break-words rounded-2xl px-4 py-2.5 ${message.isMine ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-muted"}`}>{message.body}</p>
           </div>
         ))}
-        {stage === "Referred" ? <Notice tone="accent" title="Referral submitted" text={`Submitted through ${company}'s internal referral process. Companies decide hiring; SkipWait never promises outcomes.`} /> : null}
+        {stage === "Referred" ? <Notice tone="accent" title="Referral submitted" text={`Submitted through ${company}'s internal referral process. Companies decide hiring; skipwait.me never promises outcomes.`} /> : null}
         {stage === "Hired" ? <Notice tone="accent" title="Hired. Congratulations." text={seeker ? "Thank your referrer, then pay it forward — become a referrer once you're verified." : "Thank you for opening this door."} /> : null}
       </div>
 

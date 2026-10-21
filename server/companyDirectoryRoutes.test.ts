@@ -56,9 +56,9 @@ describe("public company directory routes", () => {
     const response = await request(app).get("/api/companies");
     expect(response.status).toBe(200);
     const body = companyDirectoryResponseSchema.parse(response.body);
-    expect(body.companies.map(company => company.name)).toEqual(["SkipWait", "Wipro", "Go Neutrinos", "TCS", "Merkle"]);
+    expect(body.companies.map(company => company.name)).toEqual(["skipwait.me", "Wipro", "Neutrinos", "TCS", "Merkle"]);
     expect(body.openCount).toBe(0);
-    expect((await request(app).get("/api/companies/go-neutrinos")).body.company.initials).toBe("GN");
+    expect((await request(app).get("/api/companies/go-neutrinos")).body.company.initials).toBe("N");
   });
 });
 

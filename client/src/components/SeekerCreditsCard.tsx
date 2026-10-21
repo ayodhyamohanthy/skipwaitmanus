@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowRight, CreditCard } from "lucide-react";
 import { Link } from "wouter";
 import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
@@ -12,6 +13,9 @@ export type SeekerCredits = {
   cycleKey: string;
   subscriptionStatus: string | null;
   subscriptionCurrentTermEnd: string | null;
+  /** D-079: set by the server; absent on older payloads reads as unlocked. */
+  cardValidated?: boolean;
+  freeCreditsLocked?: boolean;
 };
 
 /**

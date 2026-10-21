@@ -1,11 +1,14 @@
 import type { Express, Request, Response } from "express";
-import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
+import { publicOutboundOrigin } from "./_core/authPostGuard";
+import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parsePaymentSourceEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole, VerifiedChargebeeHostedPage } from "./chargebee";
 import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
+import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { giftClaimRequestSchema } from "../shared/giftSubscriptions";
 import { PLAN_RETIRED_CODE, kitPlanCheckoutRequestSchema, packCheckoutRequestSchema } from "../shared/subscriptionManagement";
 import { isRetiredPlanId, isRetiredPlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId } from "../shared/billingCatalog";
-import { refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
+import { SINGLE_CREDIT_RETIRED_CODE, SINGLE_CREDIT_RETIRED_ERROR, singleCreditRetired } from "../shared/planCatalog";
+import { anyPackAvailableForCurrency, refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
 import type { RetiredPlanAlertInput } from "./errorAlerting";
 
@@ -39,12 +42,20 @@ type Deps = {
   listClaimableGifts?: (userId: number) => Promise<Array<{ giftId: string; plan: RetiredPlanId | null; currency: string | null; amount: number | null; subscriptionId: string | null; receiverEmail: string | null; createdAt: Date }>>;
   /** Never credits (D-067): "retired" for a gift not credited (`parked` when this call parked it), "duplicate" for one credited before D-067. */
   claimGift?: (userId: number, giftId: string) => Promise<{ status: "retired"; giftId: string; parked: boolean } | { status: "duplicate" }>;
-  /** D-067: anything Chargebee sends for the retired Pro/Max plans, or a claim of such a gift (a human cancels and refunds it), or an item price SkipWait cannot place (unsupported_plan: reviewed, worded neutrally). */
+  /** D-067: anything Chargebee sends for the retired Pro/Max plans, or a claim of such a gift (a human cancels and refunds it), or an item price skipwait.me cannot place (unsupported_plan: reviewed, worded neutrally). */
   alertRetiredPlanEvent?: (input: RetiredPlanAlertInput) => Promise<unknown>;
+  /** D-079: apply a provider payment-source event (card validation for free credits). */
+  applyCardValidationEvent?: (input: NonNullable<ReturnType<typeof parsePaymentSourceEvent>>) => Promise<{ status: string; userId?: number; granted?: boolean; reason?: string }>;
+  /** D-079: every validation failure (unmatched customer, declined or invalid source) reaches the owner at once. */
+  alertCardValidationEvent?: (input: { eventId: string; eventType: string; customerId: string; paymentSourceId: string; reason: string }) => Promise<unknown>;
+  /** D-079: the provider-hosted page where the seeker validates a card (no charge; provider voids its check). */
+  createCardValidationPage?: (input: { userId: number; email?: string | null; name?: string | null; origin: string }) => Promise<{ url: string }>;
+  /** D-079: a failure to create that page reaches the owner at once (validation is broken until fixed). */
+  alertCardValidationPageError?: (error: unknown) => Promise<unknown>;
 };
 
 /** What a recipient reads when a gift (always a retired Pro/Max gift) is claimed. */
-const GIFT_RETIRED_MESSAGE = "This gift was for a plan SkipWait no longer offers, so it cannot be added to your account. This gift needs a refund review; eligible requests are queued for our team.";
+const GIFT_RETIRED_MESSAGE = "This gift was for a plan skipwait.me no longer offers, so it cannot be added to your account. We have told our team so the person who sent it can be refunded.";
 
 type ReviewResult = { status: "requires_review"; reason: string; paymentId: number; expectedAmount: number; expectedCurrency: string; paidAmount: number; paidCurrency: string };
 
@@ -83,7 +94,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       // before anything else so a pack body never falls through to "unsupported".
       const kitPack = packCheckoutRequestSchema.safeParse(req.body);
       if (kitPack.success) {
-        const origin = `${req.protocol}://${req.get("host")}`;
+        const origin = publicOutboundOrigin(req);
         const started = await startKitPackCheckout({
           req,
           request: kitPack.data,
@@ -106,7 +117,13 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if ((billingCountry === "IN" && pack.currency !== "INR") || (billingCountry === "INTL" && pack.currency !== "USD")) {
         return res.status(400).json({ error: "That currency is not available for the selected billing route" });
       }
-      const origin = `${req.protocol}://${req.get("host")}`;
+      // D-036: the per-credit checkout retires in a currency once any pack is on
+      // sale in it. Pending single-credit checkouts from before the switch still
+      // recover and credit; only NEW checkouts are refused.
+      if (singleCreditRetired({ currency: pack.currency, anyPackAvailable: await anyPackAvailableForCurrency(req, pack.currency, deps.kitCheckout) })) {
+        return res.status(410).json({ error: SINGLE_CREDIT_RETIRED_ERROR, code: SINGLE_CREDIT_RETIRED_CODE });
+      }
+      const origin = publicOutboundOrigin(req);
       const runtime = deps.createCheckout ? undefined : resolveChargebeeRuntime(req.hostname);
       const checkout = await (deps.createCheckout ?? createChargebeeCheckout)({
         itemPriceId,
@@ -139,7 +156,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const kitPlan = kitPlanCheckoutRequestSchema.safeParse(req.body);
       if (kitPlan.success) {
         if (!deps.createSubscriptionIntent) return res.status(503).json({ error: "Subscription checkout is not configured" });
-        const origin = `${req.protocol}://${req.get("host")}`;
+        const origin = publicOutboundOrigin(req);
         const started = await startKitPlanCheckout({
           req,
           request: kitPlan.data,
@@ -269,11 +286,30 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     }
   });
 
+  // D-079: the provider-hosted page where a signed-in seeker validates a card.
+  // No charge is made here; the provider's own card verification (which it
+  // voids automatically) is the whole check.
+  app.post("/api/chargebee/card-validation", async (req, res) => {
+    const identity = await deps.resolveIdentity(req);
+    if (!identity) return res.status(401).json({ error: "Sign in to validate your card. Nothing has been charged." });
+    // QA review (D-079): gated on the flag so a flag-off deploy is byte-for-byte today.
+    if (!freeCreditsRequireCardValidation() || !deps.createCardValidationPage) return res.status(503).json({ error: "Card validation is not available. Nothing has been charged." });
+    try {
+      const page = await deps.createCardValidationPage({ userId: identity.account.id, email: identity.account.email ?? identity.primaryEmail?.emailAddress ?? null, name: identity.account.name ?? null, origin: publicOutboundOrigin(req) });
+      return res.json(page);
+    } catch (error) {
+      console.error("[Chargebee] card-validation page failed", error);
+      void Promise.resolve(deps.alertCardValidationPageError?.(error)).catch(() => undefined);
+      return res.status(502).json({ error: "Card validation is unavailable right now. Nothing has been charged." });
+    }
+  });
+
   app.post("/api/chargebee/webhook", async (req, res) => {
     const secret = resolveChargebeeWebhookSecret(req.hostname);
     if (!secret || !basicAuthMatches(req.header("authorization"), secret)) return res.status(401).send("Unauthorized");
     const subscription = parseSubscriptionEvent(req.body);
     const payment = parsePaidPaymentEvent(req.body);
+    const cardEvent = parsePaymentSourceEvent(req.body);
     const obligations: Record<string, unknown> = {};
     let handled = false;
 
@@ -290,7 +326,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       }
       // D-067: an event that was recorded and granted nothing because of its plan reaches a human.
       // A retired Pro/Max item price, or a wallet/intent still stored as Pro/Max (plan_retired), is
-      // cancelled and refunded in Chargebee. Any other price SkipWait cannot place (unsupported_plan,
+      // cancelled and refunded in Chargebee. Any other price skipwait.me cannot place (unsupported_plan,
       // e.g. a renamed item price on a kit subscription) is reviewed under its own neutral label,
       // never called Pro/Max, so nobody refunds a paying kit customer on a wrong label.
       const applied = obligations.subscription as { status?: string; reason?: string } | undefined;
@@ -301,6 +337,25 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         const reason = retired ? PLAN_RETIRED_CODE : "unsupported_plan";
         console.error(`[Chargebee] ${retired ? "retired" : "unrecognised"} plan event needs review`, { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId, reason });
         record({ action: retired ? "billing.retired_plan_event" : "billing.unsupported_plan_event", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType, reason, itemPriceId: subscription.itemPriceId } });
+      }
+    }
+
+    // D-079: a provider card confirmation validates the wallet for free credits.
+    // Unmatched customers and declined or invalid sources alert the owner at
+    // once; a processing error asks Chargebee to retry.
+    if (cardEvent && deps.applyCardValidationEvent && freeCreditsRequireCardValidation()) {
+      handled = true;
+      try {
+        obligations.cardValidation = await deps.applyCardValidationEvent(cardEvent);
+      } catch (error) {
+        console.error("[Chargebee] card-validation event error", error);
+        return res.status(500).json({ error: "Card validation synchronization retry required" });
+      }
+      const appliedCard = obligations.cardValidation as { status?: string; reason?: string } | undefined;
+      if (appliedCard?.status === "unmatched" || appliedCard?.status === "invalid_source") {
+        console.error("[Chargebee] card-validation event needs review", { eventId: cardEvent.eventId, customerId: cardEvent.customerId, reason: appliedCard.reason });
+        record({ action: "billing.card_validation_event", outcome: "failure", resourceType: "chargebee_payment_source", resourceId: cardEvent.paymentSourceId, metadata: { eventId: cardEvent.eventId, eventType: cardEvent.eventType, reason: appliedCard.reason ?? appliedCard.status } });
+        void deps.alertCardValidationEvent?.({ eventId: cardEvent.eventId, eventType: cardEvent.eventType, customerId: cardEvent.customerId, paymentSourceId: cardEvent.paymentSourceId, reason: appliedCard.reason ?? appliedCard.status ?? "unknown" }).catch(() => undefined);
       }
     }
 

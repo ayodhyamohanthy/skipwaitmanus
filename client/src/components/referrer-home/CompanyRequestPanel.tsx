@@ -44,8 +44,8 @@ export function CompanyRequestPanel({ fetchToken, onOtherPath }: { fetchToken: T
       <h2>Tell us where you want to work.</h2>
       <p>Your interest helps prioritize where to welcome verified referrers next. It does not create a referral request.</p>
       <label>Company name<input value={company} maxLength={160} onChange={event => { setCompany(event.target.value); setTooShort(false); if (request.isError) request.reset(); }} placeholder="Search or enter a company" list="launch-companies" autoComplete="organization" aria-invalid={tooShort} /><datalist id="launch-companies">{companies.map(item => <option key={item.slug} value={item.name} />)}</datalist></label>
-      {directory.isError ? <p className="text-muted-foreground">We couldn’t load the companies already on SkipWait, so suggestions are off. You can still send your request.</p> : null}
-      {listed ? <p className="flex items-start gap-2"><Building2 className="mt-1 size-4 shrink-0" /><span>{listed.name} already has a door on SkipWait. <Link href={`/explore/${listed.slug}`} className="text-link">Open it</Link></span></p> : null}
+      {directory.isError ? <p className="text-muted-foreground">We couldn’t load the companies already on skipwait.me, so suggestions are off. You can still send your request.</p> : null}
+      {listed ? <p className="flex items-start gap-2"><Building2 className="mt-1 size-4 shrink-0" /><span>{listed.name} already has a door on skipwait.me. <Link href={`/explore/${listed.slug}`} className="text-link">Open it</Link></span></p> : null}
       {tooShort ? <p role="alert" className="font-semibold text-destructive">Name the company you want to see.</p> : null}
       {request.isError ? <p role="alert" className="font-semibold text-destructive">{request.error.message || "We could not save this request. Try again."}</p> : null}
       <Button type="submit" disabled={request.isPending}>{request.isPending ? "Sending…" : "Send company request"}</Button>

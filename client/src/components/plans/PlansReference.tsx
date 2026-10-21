@@ -15,6 +15,6 @@ export function PlansReference() {
 
     <section className="plans-section"><span className="eyebrow">QUESTIONS</span><h2>Straight answers</h2><div className="safety-list">{planFaqs().map(([question, answer]) => <details key={question}><summary>{question}</summary><p>{answer}</p></details>)}</div></section>
 
-    <p className="design-note flex flex-wrap gap-x-4"><Link href="/refunds">Refund &amp; cancellation policy</Link><Link href="/for-companies">Hiring? See SkipWait for companies</Link></p>
+    <p className="design-note flex flex-wrap gap-x-4"><Link href="/refunds">Refund &amp; cancellation policy</Link><Link href="/for-companies">Hiring? See skipwait.me for companies</Link></p>
   </>;
 }

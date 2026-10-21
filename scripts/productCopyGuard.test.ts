@@ -18,7 +18,7 @@ describe("product copy guard", () => {
     for (const expected of ["shared/referral.ts", "client/src/components/RequestStatusTimeline.tsx", "server/workEmailOtp.ts"]) {
       expect(files).toContain(expected);
     }
-    expect(files.some(file => /\.test\.[tsx]?$/.test(file))).toBe(false);
+    expect(files.some(file => /\.test\.tsx?$/.test(file))).toBe(false);
   });
 
   it("flags each rule, and only each rule's own fixture proves it bites", () => {

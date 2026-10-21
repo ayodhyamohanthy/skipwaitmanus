@@ -33,7 +33,7 @@ export const SITE_ORIGIN = "https://skipwait.me";
 export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   { route: "/", title: LANDING_TITLE, description: LANDING_SUMMARY, changefreq: "daily", priority: "1.0" },
   { route: "/jobs", title: "Browse roles worth a referral", description: "Search published roles, save the ones you like, and request a private referral from a verified employee at the company.", changefreq: "daily", priority: "0.9" },
-  { route: "/explore", title: "Explore companies", description: "Find people open to referral requests at SkipWait, Wipro, Go Neutrinos, TCS, and Merkle.", changefreq: "weekly", priority: "0.7" },
+  { route: "/explore", title: "Explore companies", description: "Find people open to referral requests at skipwait.me, Wipro, Neutrinos, TCS, and Merkle.", changefreq: "weekly", priority: "0.7" },
   { route: "/wall", title: "Internal openings shared by verified employees", description: "Hiring-now roles and walk-in events published privately by verified employees, with the company domain and the role details.", changefreq: "hourly", priority: "0.9" },
   { route: "/referrer", title: "Verify a work email to review private referrals", description: "Employees verify a company email once, then review private referral requests for their own company and choose whether to help.", changefreq: "weekly", priority: "0.6" },
   { route: "/premium", title: "Buy referral credits for $1 each", description: `${ASK_COST_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire.`, changefreq: "weekly", priority: "0.7" },

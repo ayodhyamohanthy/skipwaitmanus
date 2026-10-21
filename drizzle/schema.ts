@@ -19,6 +19,9 @@ export const users = mysqlTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   suspended: boolean("suspended").default(false).notNull(),
+  // D-079: the Chargebee customer created for card validation (and reusable by
+  // later provider flows). Set by the server only; never from the client.
+  chargebeeCustomerId: varchar("chargebeeCustomerId", { length: 80 }),
   sessionsValidAfter: timestamp("sessionsValidAfter").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -696,6 +699,9 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   monthlyCreditsRemaining: int("monthlyCreditsRemaining").default(3).notNull(),
   monthlyAllowance: int("monthlyAllowance").default(3).notNull(),
   monthlyCycleKey: varchar("monthlyCycleKey", { length: 16 }).default("legacy").notNull(),
+  // D-079: when the provider (Chargebee) confirmed a card for this wallet's
+  // owner. Written only from the verified webhook or a provider-truth re-read.
+  cardValidatedAt: timestamp("cardValidatedAt"),
   // Order pinned to shared/billingCatalog.ts WALLET_PLAN_IDS (server/subscriptionManagementContract.test.ts); 0090 added the kit plans,
   // 0091 the Oct 14 2026 plans (land_100/200/500 are reserved, never written).
   plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).default("free").notNull(),
@@ -1140,3 +1146,18 @@ export const billingReviewOutbox = mysqlTable("billingReviewOutbox", {
   lastError: varchar("lastError", { length: 80 }),
   createdAt: timestamp("createdAt", { fsp: 3 }).notNull(),
 }, table => [uniqueIndex("billing_review_obligation_unique").on(table.obligationKey), index("billing_review_due_idx").on(table.status, table.nextAttemptAt, table.id)]);
+
+// D-115 plan family (main, Oct 21): one row per AI tool call so benefit caps
+// can be set from real cost before pricing go-live. costUsdMicros is null
+// until the model is priced in shared/aiCost.ts; tokens are always captured.
+export const aiToolCallLogs = mysqlTable("aiToolCallLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  tool: varchar("tool", { length: 64 }).notNull(),
+  model: varchar("model", { length: 128 }).notNull(),
+  tokensIn: int("tokensIn").notNull(),
+  tokensOut: int("tokensOut").notNull(),
+  costUsdMicros: bigint("costUsdMicros", { mode: "number" }),
+  planFamilyId: varchar("planFamilyId", { length: 32 }),
+  userId: int("userId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("ai_tool_call_log_tool_idx").on(table.tool, table.createdAt)]);

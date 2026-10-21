@@ -25,7 +25,7 @@ export function buildExportZip(data: Record<string, unknown>): Buffer {
     sections.push(`${key}.json`);
   }
   files["README.txt"] = strToU8([
-    "Your SkipWait personal data export.",
+    "Your skipwait.me personal data export.",
     `Generated: ${typeof data.generatedAt === "string" ? data.generatedAt : new Date().toISOString()}`,
     `Format: ${typeof data.format === "string" ? data.format : "skipwait.me-personal-data-export"}`,
     "",

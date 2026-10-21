@@ -17,6 +17,26 @@ const credits = (overrides: Partial<SeekerCredits>): SeekerCredits => ({
   plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-10", subscriptionStatus: null, subscriptionCurrentTermEnd: null, ...overrides,
 });
 
+describe("Seeker credits card: card validation (D-079)", () => {
+  it("D-127: a locked payload renders the ordinary card - card validation moved to first purchase, never sign-up", () => {
+    render(<SeekerCreditsCard credits={credits({ monthlyAllowance: 0, monthlyCreditsRemaining: 0, totalAvailable: 0, freeCreditsLocked: true, cardValidated: false })} />);
+    expect(screen.queryByText(/Validate your card/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Validate your card/ })).toBeNull();
+    expect(screen.getByRole("progressbar")).toBeTruthy();
+  });
+
+  it("a validated wallet renders the ordinary card (no locked line, no validate CTA)", () => {
+    render(<SeekerCreditsCard credits={credits({ cardValidated: true, freeCreditsLocked: false })} />);
+    expect(screen.queryByText(/Validate your card/)).toBeNull();
+    expect(screen.getByRole("link", { name: /Ask another referral/ })).toBeTruthy();
+  });
+
+  it("a payload without the new fields reads as unlocked (older servers)", () => {
+    render(<SeekerCreditsCard credits={credits({})} />);
+    expect(screen.queryByRole("button", { name: /Validate your card/ })).toBeNull();
+  });
+});
+
 describe("Seeker credits card after D-067", () => {
   it("offers only the credit it can sell when Free runs out: no upgrade, no /plans link", () => {
     render(<SeekerCreditsCard credits={credits({ monthlyCreditsRemaining: 0, totalAvailable: 0 })} />);

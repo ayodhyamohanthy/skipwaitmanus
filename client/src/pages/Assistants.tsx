@@ -9,7 +9,7 @@ import { Heading, Panel } from "@/components/kit/preview-kit";
 import { ActivityPanel, AssistantsPanel, PlanGate, TokensPanel } from "@/components/assistants/AssistantPanels";
 import type { AssistantConnection, AssistantEvent, AssistantToken } from "@/components/assistants/format";
 
-const HEADING = { eyebrow: "Settings", title: "Connected assistants", text: "Use SkipWait from ChatGPT, Claude and your own tools. You stay in control of every ask and every credit." } as const;
+const HEADING = { eyebrow: "Settings", title: "Connected assistants", text: "Use skipwait.me from ChatGPT, Claude and your own tools. You stay in control of every ask and every credit." } as const;
 const TABS = [{ id: "assistants", label: "Assistants" }, { id: "tokens", label: "API tokens" }, { id: "activity", label: "Activity" }] as const;
 type Tab = (typeof TABS)[number]["id"];
 

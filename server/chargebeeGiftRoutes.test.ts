@@ -76,7 +76,7 @@ describe("gift mine and claim endpoints", () => {
     const app = appFor({ claimGift, alertRetiredPlanEvent, recordActivity } as never);
     const response = await request(app).post("/api/chargebee/gifts/claim").send({ giftId: "gift_ready" });
     expect(response.status).toBe(409);
-    expect(response.body).toEqual({ error: "This gift was for a plan SkipWait no longer offers, so it cannot be added to your account. This gift needs a refund review; eligible requests are queued for our team.", code: "plan_retired" });
+    expect(response.body).toEqual({ error: "This gift was for a plan skipwait.me no longer offers, so it cannot be added to your account. We have told our team so the person who sent it can be refunded.", code: "plan_retired" });
     expect(claimGift).toHaveBeenCalledWith(7, "gift_ready");
     expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
     expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 7, action: "billing.gift_claim_refused", outcome: "denied", resourceType: "gift", resourceId: "gift_ready" }));

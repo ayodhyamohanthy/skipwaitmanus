@@ -5,9 +5,17 @@
 // (D-067 removed them; the D-046 passes go on sale here in their own slice).
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render as rtlRender, screen, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { CreditsLedger } from "@shared/creditLedger";
+import { FREE_ASKS_CHIP } from "@shared/moneyCopy";
 import Plans from "./Plans";
+
+// GO-LIVE-1: /plans reads the live catalog through React Query, so tests wrap a client.
+function render(element: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(<QueryClientProvider client={client}>{element}</QueryClientProvider>);
+}
 
 const { openedCheckout, authState, getToken } = vi.hoisted(() => ({ openedCheckout: vi.fn(), authState: { isSignedIn: true }, getToken: vi.fn(async () => "test-token") }));
 // Packs-on-sale paths: the flag is mocked on here; creditPacksOnSale.test.tsx pins the shipped (on) state and creditPacksOffSale.test.tsx the switched-off path.
@@ -40,7 +48,9 @@ function stub(summary: unknown, extra?: Handler) {
   return fetchMock;
 }
 
-const onlySummaryReads = (fetchMock: ReturnType<typeof stub>) => fetchMock.mock.calls.every(([url, init]) => String(url).startsWith("/api/credits/summary") && (init?.method ?? "GET") === "GET");
+// GO-LIVE-1: the page also reads the public live catalog; never a checkout POST.
+const ACCOUNT_GETS = ["/api/credits/summary", "/api/plans/catalog", "/api/company-referrals/mine", "/api/companies"];
+const onlySummaryReads = (fetchMock: ReturnType<typeof stub>) => fetchMock.mock.calls.every(([url, init]) => ACCOUNT_GETS.some(path => String(url).startsWith(path)) && (init?.method ?? "GET") === "GET");
 
 beforeEach(() => { authState.isSignedIn = true; window.history.pushState({}, "", "/plans?role=job_seeker"); openedCheckout.mockClear(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.pushState({}, "", "/"); });
@@ -60,14 +70,17 @@ describe("Plans on live data", () => {
     // Review round 2 (D-063): the credit cost strip never calls a referral request free.
     const costs = screen.getByRole("list", { name: "Credit costs" });
     expect(within(costs).getAllByRole("listitem").map(item => item.textContent)).toEqual(["1 creditEach ask a verified employee can see", "$1Each credit you buy", "NeverBought credits expire"]);
-    const text = document.body.textContent ?? "";
+    // The canonical free-allowance sentence (D-127 copy) is allowed; the guard
+    // still bans any OTHER "free credits" framing (paid credits are never free).
+    const text = (document.body.textContent ?? "").split(FREE_ASKS_CHIP).join("");
     expect(text).not.toMatch(RETIRED);
     for (const banned of ["DESIGN PREVIEW", "EXAMPLE PRICING", "PREVIEW DATA", "Most chosen", "Momentum", "Land", "Yearly", "2 mo free", "checkout preview", "YOUR BALANCE", "free credits", "every month are free", "One private referral request", "Compare every individual plan", "monthly credits", "Your plan"]) expect(text).not.toContain(banned);
     expect(screen.queryAllByRole("button").filter(button => PLAN_PURCHASE.test(button.textContent ?? ""))).toEqual([]);
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.queryByLabelText("Your usage this cycle")).toBeNull();
     expect(screen.queryByText("Upgrade moments")).toBeNull();
-    expect(fetchMock).not.toHaveBeenCalled();
+    // Signed out reads only the public catalog (no prices of its own, no account data).
+    expect(fetchMock.mock.calls.every(([url]) => String(url).startsWith("/api/plans/catalog"))).toBe(true);
   });
 
   it("shows the account's own usage and only the upgrade moments it has really hit", async () => {
@@ -136,15 +149,15 @@ describe("Plans on live data", () => {
     expect(openedCheckout).not.toHaveBeenCalled();
   });
 
-  // Review round 2: a cancel request that never reaches SkipWait shows the plain network
+  // Review round 2: a cancel request that never reaches skipwait.me shows the plain network
   // message, never the browser's raw "Failed to fetch".
-  it("says plainly when cancel renewal cannot reach SkipWait", async () => {
+  it("says plainly when cancel renewal cannot reach skipwait.me", async () => {
     stub(start, url => { if (url.includes("/subscription-cancel")) throw new TypeError("Failed to fetch"); return undefined; });
     render(<Plans />);
     const card = (await screen.findByRole("heading", { name: "Start", level: 2 })).closest("article") as HTMLElement;
     fireEvent.click(within(card).getByRole("button", { name: "Cancel renewal" }));
     fireEvent.click(within(card).getByRole("button", { name: "Yes, cancel renewal" }));
-    expect((await screen.findByRole("alert")).textContent).toBe("We couldn’t reach SkipWait. Check your connection and try again.");
+    expect((await screen.findByRole("alert")).textContent).toBe("We couldn’t reach skipwait.me. Check your connection and try again.");
     expect(within(card).getByText("Your current plan is active")).toBeTruthy();
   });
 
@@ -191,5 +204,22 @@ describe("Plans on live data", () => {
     expect(screen.getByRole("status").textContent).toBe("Checkout was cancelled. Nothing was charged.");
     expect(screen.getByRole("heading", { name: "Choose how much help you need." })).toBeTruthy();
     expect(await screen.findByText("0 of 3")).toBeTruthy();
+  });
+});
+
+describe("Plans free-credits card check (D-079 superseded by D-127)", () => {
+  it("D-127: a locked free seeker no longer sees a Validate-your-card gate - card validation moved to first purchase", async () => {
+    stub({ ...free(), freeCreditsLocked: true, cardValidated: false, cycleKey: "2026-10" });
+    render(<Plans />);
+    await screen.findByText("YOUR BALANCE");
+    expect(screen.queryByRole("button", { name: /Validate your card/ })).toBeNull();
+    expect(screen.queryByText(/Validate your card to unlock/)).toBeNull();
+  });
+
+  it("an unlocked free seeker does not see the validate CTA", async () => {
+    stub(free());
+    render(<Plans />);
+    await screen.findByText("YOUR BALANCE");
+    expect(screen.queryByRole("button", { name: /Validate your card/ })).toBeNull();
   });
 });

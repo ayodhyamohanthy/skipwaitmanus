@@ -159,7 +159,7 @@ describe("AdminReview console", () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
     renderPage();
     const alert = await screen.findByRole("alert", {}, { timeout: 4000 });
-    expect(alert.textContent).toContain("We could not reach SkipWait");
+    expect(alert.textContent).toContain("We could not reach skipwait.me");
     expect(screen.getByRole("tab", { name: /All 0/ })).toBeTruthy();
   });
 

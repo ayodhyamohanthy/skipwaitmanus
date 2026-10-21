@@ -1,8 +1,15 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Premium from "./Premium";
+
+// GO-LIVE-1: /premium reads the live catalog through React Query, so tests wrap a client.
+function render(element: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(<QueryClientProvider client={client}>{element}</QueryClientProvider>);
+}
 
 const auth = vi.hoisted(() => ({ isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token"), openSignIn: vi.fn() }));
 // Packs-on-sale paths: the flag is mocked on here; creditPacksOffSale.test.tsx pins the shipped (off) state.
@@ -27,12 +34,13 @@ describe("Premium payment return recovery", () => {
     expect(loading.disabled).toBe(true);
     fireEvent.click(loading);
     expect(auth.openSignIn).not.toHaveBeenCalled();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.every(([url]) => String(url).startsWith("/api/plans/catalog"))).toBe(true);
+    fetchMock.mockClear();
     auth.isLoaded = true;
     auth.isSignedIn = true;
-    view.rerender(<Premium />);
+    view.rerender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Premium /></QueryClientProvider>);
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(fetchMock.mock.calls.every(([url]) => String(url).includes("/api/credits/summary"))).toBe(true);
+    expect(fetchMock.mock.calls.every(([url]) => String(url).includes("/api/credits/summary") || String(url).startsWith("/api/plans/catalog"))).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: /continue to pay/i }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/chargebee/checkout", expect.objectContaining({ method: "POST" })));
     expect(auth.openSignIn).not.toHaveBeenCalled();
@@ -53,7 +61,8 @@ describe("Premium payment return recovery", () => {
     expect(query.get("source")).toBe("credits");
     expect(query.get("currency")).toBe("INR");
     expect(query.get("quantity")).toBe("7");
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.every(([url]) => String(url).startsWith("/api/plans/catalog"))).toBe(true);
+    fetchMock.mockClear();
     view.unmount();
     auth.isSignedIn = true;
     window.history.pushState({}, "", destination);
@@ -61,7 +70,8 @@ describe("Premium payment return recovery", () => {
     expect((screen.getByRole("spinbutton") as HTMLInputElement).value).toBe("7");
     expect(screen.getByText(/Razorpay/)).toBeTruthy();
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(fetchMock.mock.calls.every(([url]) => String(url).includes("/api/credits/summary"))).toBe(true);
+    const unexpected = fetchMock.mock.calls.map(([url]) => String(url)).filter(url => !url.includes("/api/credits/summary") && !url.startsWith("/api/plans/catalog"));
+    expect(unexpected).toEqual([]);
   });
 
   it("shows credits only after the signed-in server recovery confirms a matching provider payment", async () => {
@@ -90,7 +100,7 @@ describe("Premium for the referrer role (D-055: referrers never pay)", () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ summary: { totalAvailable: 0 } }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
     render(<Premium />);
-    expect(await screen.findByText("Referrers never pay on SkipWait.")).toBeTruthy();
+    expect(await screen.findByText("Referrers never pay on skipwait.me.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /continue to pay|sign in to pay/i })).toBeNull();
     expect(screen.queryByRole("spinbutton")).toBeNull();
     expect(screen.queryByRole("link", { name: /Pro and Max/i })).toBeNull();

@@ -50,7 +50,7 @@ export const DEVELOPER_APP_SCOPES = [
 ] as const;
 export type DeveloperAppScope = (typeof DEVELOPER_APP_SCOPES)[number];
 
-/** Scopes that need a SkipWait team review before an app can use them. */
+/** Scopes that need a skipwait.me team review before an app can use them. */
 export const DEVELOPER_APP_REVIEW_SCOPES: readonly string[] = ["asks:send", "profile:read", "credits:spend"];
 
 export type AssistantConnectionStatus = "connected" | "declined" | "expired" | "revoked";

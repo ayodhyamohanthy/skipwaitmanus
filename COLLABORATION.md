@@ -2,6 +2,8 @@
 
 Applies to every model, IDE, CLI, automation agent, and human working on this repository. Read [`docs/BRIEF.md`](docs/BRIEF.md) first (D-073), then this file and AGENTS.md, before editing. Configure tools that do not discover AGENTS.md automatically to read both files at session start. Instructions are a shared convention, not an enforced lock or a direct communication channel between models.
 
+**Owner says `build`, `resume`, `continue` or `next`?** They all mean one thing: run `node scripts/next-task.mjs --claim "<your model name>"` and do only what it prints, step by step. It adds a session tag and prints your full name (for example `Qwen 3 · k3f9`): use exactly that name for every later flag and when you resume (read it from the holder column of `--status`; never invent a new one), and never share a name with another session. Order, each top down: red `main`; your own unfinished work (pending work ranked above it with nobody on it comes first); pending work nobody is on; new work. A red or blocked priority holds its own lane and the tasks that depend on it (red `main` holds everything), so agents never take the same task and other lanes keep moving (D-109). A claim with no push and no `--heartbeat` for 2 hours is free. Push after every commit, report to the CEO with `--report` when you stop, and read the board with `--status`; never resume or choose work from memory. Claude Code is the CEO, claims as `--claim "Claude Code"` and sets the order in `docs/plans/assignments.json`; the open models (CTO, CDO and the team) build (D-083, D-085).
+
 ## 1. Establish the baseline
 
 - Inspect `git status --short`, the current branch, recent commits, and `git worktree list` before writing.
@@ -11,7 +13,7 @@ Applies to every model, IDE, CLI, automation agent, and human working on this re
 
 ## 2. Claim a task in a shared place
 
-For the active program, the claim record is `docs/KIT_V4_BUILD_PLAN.md` on `main`: update it before editing (docs-first, owner rule Oct 14 2026, D-008; for the program D-058 covers, Claude Code may record its claim in the same push as the code, never later), and keep its Status table current. Every change updates every affected markdown doc in the same push (D-068).
+For a task in `docs/plans/assignments.json`, the picker claims on origin (`node scripts/next-task.mjs --claim "<your model name>"` pushes the task's branch, and the first push wins); your first commit on the task branch sets its `docs/KIT_V4_BUILD_PLAN.md` §3b row, which reaches `main` with the work (D-083, D-085), and a claim nobody pushed to (commit or `--heartbeat`) for 2 hours is free. Keep the §3b Status table current. Every change updates every affected markdown doc in the same push (D-068).
 
 
 Use a GitHub issue or draft PR as the coordination record across machines and platforms. Before overlapping work, post:
@@ -30,7 +32,7 @@ Next: <next action or requested coordination>
 
 - Check for overlapping claims before editing and again before integration. An issue comment is advisory, not an atomic lock; simultaneous claims must be reconciled explicitly.
 - If someone owns the same file or resource, request a split or handoff in that record and wait for agreement. Continue only with non-overlapping work.
-- Refresh the record at scope changes, checkpoints, blockers, and session end. An old timestamp does not authorize taking ownership; request reassignment or user confirmation.
+- Refresh the record at scope changes, checkpoints, blockers, and session end. For a listed task the picker decides takeovers: a claim with no push to its branch or lock and no `--heartbeat` for 2 hours is free (D-085). For anything else, request reassignment or user confirmation before taking ownership.
 - If shared coordination is unavailable, tell the user and work in isolation on non-overlapping scope. Do not claim to have contacted another model without an actual shared message.
 
 ## 3. Isolate each writer
@@ -51,14 +53,14 @@ Next: <next action or requested coordination>
 
 ## 5. Integrate through review
 
-- Work on a feature branch; once a group passes the gate in `docs/KIT_V4_BUILD_PLAN.md` §3, ship it straight to main (D-003), never as concurrent direct pushes. Commit, push, merge, and deploy only when authorized by the user or the environment's applicable instructions. This protocol does not grant new permission to publish.
+- Work on a feature branch; once a group passes the gate in `docs/KIT_V4_BUILD_PLAN.md` §3 and GitHub CI is green on that exact commit, ship it to main (D-003 as amended by D-082: pull request first; while main is red, push nothing but the fix), never as concurrent direct pushes. Commit, push, merge, and deploy only when authorized by the user or the environment's applicable instructions. This protocol does not grant new permission to publish.
 - Before committing, inspect status, the full diff, recent history, and the staged diff. Stage explicit owned paths; never use `git add .` or `git add -A` to sweep up shared changes.
 - Before merging, fetch again and review the entire branch diff against current main, not only the latest commit.
 - Update only your clean, isolated branch. Resolve conflicts by reading both changes and preserving their intent; never blindly select ours/theirs or delete conflict markers to make tests pass.
 - Ask the owners to resolve ambiguous behavior conflicts. Rerun validation on the integrated result; earlier passing tests do not certify a later merge.
 - Run `git diff --check`, `pnpm check`, affected Vitest files, and `pnpm build` for runtime/dependency changes. Report exact commands and outcomes, including failures outside the task. Do not weaken tests to conceal conflicts.
 - Use one designated integrator or the repository merge queue to serialize integration. Never force-push main. A rejected push means fetch, inspect, coordinate, and revalidate, not force.
-- Where repository settings permit, maintainers should protect main with required CI checks (verified groups ship without a PR review, D-003). Documentation alone does not enable branch protection.
+- Where repository settings permit, maintainers should protect main with required CI checks (verified groups ship without a PR review, D-003). Documentation alone does not enable branch protection; since Oct 20 the GitHub ruleset `main: green CI only (D-082)` refuses any push to main whose exact commit has not passed typecheck, tests and build, for everyone.
 
 ## 6. Leave a usable handoff
 

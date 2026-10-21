@@ -103,7 +103,7 @@ export function deriveCompanySlug(name: string): string {
   return name.normalize("NFKD").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48).replace(/-+$/g, "");
 }
 
-/** "Go Neutrinos" -> "GN", "Merkle" -> "M". Admins may override (SkipWait is "SW"). */
+/** "Go Neutrinos" -> "GN", "Merkle" -> "M". Admins may override (skipwait.me is "SW"). */
 export function deriveCompanyInitials(name: string): string {
   const words = name.trim().split(/\s+/).filter(word => /[a-z0-9]/i.test(word));
   return words.slice(0, 2).map(word => (word.match(/[a-z0-9]/i)?.[0] ?? "")).join("").toUpperCase() || "?";

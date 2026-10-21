@@ -10,6 +10,7 @@
 // makes a replayed step fail loudly instead of applying twice. Dates come from
 // the JS clock the caller passes in (invariant 5), never from DB NOW().
 import { createHash } from "node:crypto";
+import { isDuplicateKeyError } from "./dbErrors";
 import { and, eq } from "drizzle-orm";
 import type { MySql2Database } from "drizzle-orm/mysql2";
 import { planCreditGrants, promoCreditGrants, tokenBalances, tokenTransactions } from "../drizzle/schema";
@@ -76,17 +77,13 @@ export function digest(...parts: Array<string | number>): string {
 }
 
 /** A unique-key collision, read through drizzle's DrizzleQueryError wrapper (the mysql2 error is its cause). */
-export function isDuplicateKey(error: unknown): boolean {
-  const seen = new Set<unknown>();
-  let current: unknown = error;
-  while (current && typeof current === "object" && !seen.has(current)) {
-    seen.add(current);
-    const typed = current as { code?: unknown; errno?: unknown; cause?: unknown };
-    if (typed.code === "ER_DUP_ENTRY" || typed.errno === 1062) return true;
-    current = typed.cause;
-  }
-  return false;
-}
+export { isDuplicateKeyError };
+/**
+ * The ledger's name for the shared check. Existing ledger call sites and the
+ * source pins in `paymentWalletConcurrency.test.ts` read this name; both names
+ * are the same cause-walking function from `dbErrors.ts`.
+ */
+export const isDuplicateKey = isDuplicateKeyError;
 
 function isMissingTable(error: unknown): boolean {
   const seen = new Set<unknown>();

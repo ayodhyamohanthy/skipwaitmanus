@@ -45,6 +45,10 @@ export function createPlanCheckout(credentials: ChargebeeCredentials, input: Che
   const form = new URLSearchParams();
   form.set("subscription_items[item_price_id][0]", input.itemPriceId);
   form.set("subscription_items[quantity][0]", "1");
+  // GO-LIVE-1 (D-005, D-046): every kit plan term is paid once. Without an explicit
+  // billing_cycles the subscription renews on the item price's default term; a pass
+  // must never renew unless the seeker opted in (opt-in is GO-LIVE-2).
+  form.set("subscription_items[billing_cycles][0]", "1");
   setCustomer(form, input);
   form.set("redirect_url", input.redirectUrl);
   form.set("cancel_url", input.cancelUrl);

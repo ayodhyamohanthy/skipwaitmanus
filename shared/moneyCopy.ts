@@ -2,7 +2,7 @@
  * D-063: one truthful money sentence for every surface that says what asking
  * costs. Asking is free for a monthly allowance and then uses credits, so no
  * surface may call referrals simply "free"; referrers are never paid by
- * SkipWait (D-055) and never ask a job seeker for money (D-006).
+ * skipwait.me (D-055) and never ask a job seeker for money (D-006).
  *
  * Each surface renders these strings instead of writing its own, so the copy
  * cannot drift from the catalog: the number comes from the Free plan.
@@ -14,13 +14,16 @@ import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "./referral";
 export const FREE_ASKS_PER_MONTH = FREE_PLAN.creditsPerMonth;
 
 /** A chip or trust-row label: the seeker half alone, never "free" on its own. */
-export const FREE_ASKS_CHIP = `${FREE_ASKS_PER_MONTH} asks free every month`;
+/** D-079: with card validation on, the seeker's free asks wait behind a one-time card check the provider owns (no charge). */
+export const FREE_ASKS_CHIP = `${FREE_ASKS_PER_MONTH} free credits every month`;
 
 /** The seeker half of the money sentence: what asking costs. */
-export const ASK_COST_SENTENCE = `${FREE_ASKS_CHIP}; more use credits.`;
+export const ASK_COST_SENTENCE = `${FREE_ASKS_CHIP}; extra asks use credits.`;
 
 /** The shortest referrer fact, for chips and footers. */
 export const REFERRERS_NEVER_PAID = "Referrers are never paid.";
+/** D-120 landing fair rules, line one (designer Oct 21): referring costs nothing and is never bought. */
+export const REFERRING_FREE_LINE = "Referring is always free. Referrers are never paid - their help stays genuine.";
 
 /** The referrer half: nobody pays a referrer, and a referrer never asks for money. */
 export const REFERRER_MONEY_SENTENCE = "Referrers are never paid and never ask you for money.";
@@ -57,5 +60,11 @@ export const CREDIT_ENDED_CAVEAT = "unless its month or plan has ended by then";
 /** The same rule as a footnote clause, after "Uses 1 credit and 1 open slot when a verified employee can see it". */
 export const CREDIT_RULE_SHORT = `nothing is used while it waits for coverage, and the credit comes back once if you withdraw before pickup or the ask expires unclaimed, ${CREDIT_ENDED_CAVEAT}`;
 
-/** What a paid plan does to the monthly allowance: it replaces the free asks, it does not add to them (planEntitlementsFor). */
-export const PAID_PLANS_SENTENCE = `Passes and Keep warm replace the ${FREE_ASKS_PER_MONTH} free asks with more credits each month.`;
+/**
+ * Neutral /plans SEO + sitemap copy (designer Oct 21): paid plans are not
+ * live, so the meta must not promise what they do ("Passes and Keep warm
+ * replace the 3 free asks" pre-announced D-115 mechanics - D-042: copy never
+ * promises what the product does not do). One config source; change here when
+ * the plan family goes live.
+ */
+export const PAID_PLANS_SENTENCE = "Extra credits when you need them; paid plans arrive soon.";

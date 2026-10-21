@@ -17,6 +17,23 @@ export function configuredPublicOrigin(): string | undefined {
   return undefined;
 }
 
+/**
+ * Origin for links that leave the system (emails, Slack deliveries, share
+ * URLs). Always the configured public origin - PUBLIC_BASE_URL first, then
+ * the origin of WORKOS_REDIRECT_URI, which production always sets. Request
+ * headers are never trusted for outbound links: with `trust proxy` on, a
+ * spoofed Host/X-Forwarded-Host would otherwise put a one-click token link
+ * onto an attacker's host. In production a missing configuration is a boot
+ * error, not a downgrade; outside production the request host keeps local
+ * development convenient.
+ */
+export function publicOutboundOrigin(req: Request): string {
+  const configured = configuredPublicOrigin();
+  if (configured) return configured;
+  if (process.env.NODE_ENV === "production") throw new Error("Public origin is not configured (PUBLIC_BASE_URL or WORKOS_REDIRECT_URI)");
+  return `${req.protocol}://${req.get("host")}`;
+}
+
 export function isTrustedAuthPost(req: Request): boolean {
   if (!req.is("application/json")) return false;
   const origin = req.header("origin");

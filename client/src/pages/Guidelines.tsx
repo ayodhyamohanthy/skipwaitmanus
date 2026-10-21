@@ -14,7 +14,7 @@ export default function Guidelines() {
     screen="guidelines"
     eyebrow="COMMUNITY GUIDELINES"
     title="Guidelines"
-    description="How seekers and referrers treat each other on SkipWait: no money between them, honest asks, respectful passes, zero tolerance for scams."
+    description="How seekers and referrers treat each other on skipwait.me: no money between them, honest asks, respectful passes, zero tolerance for scams."
     updated="18 Oct 2026"
     summary={[
       "Never pay a referrer, and never ask a seeker for money.",

@@ -21,7 +21,7 @@ it.runIf(!!process.env.D067_ISOLATED_MYSQL_URL)("actual MySQL worker races, roll
   process.env.BILLING_ENV = "test"; process.env.CHARGEBEE_SITE = "fixture-test";
   process.env.ERROR_ALERT_FROM_EMAIL = "fixture@example.invalid"; process.env.RESEND_API_KEY = "fixture";
   try {
-    const sql = await readFile("drizzle/deploy/0098_billing_review_outbox.sql", "utf8");
+    const sql = await readFile("drizzle/deploy/0099_billing_review_outbox.sql", "utf8");
     await pool.query(sql); await pool.query(sql);
     const [columns] = await pool.query<mysql.RowDataPacket[]>("SHOW COLUMNS FROM billingReviewOutbox");
     expect(columns.map(r => r.Field)).toContain("submissionState"); expect(columns).toHaveLength(17);

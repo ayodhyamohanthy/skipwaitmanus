@@ -168,10 +168,10 @@ describe("ReferralConversation thread", () => {
     await waitFor(() => expect(screen.getByText("Thank you — what should I prepare next?")).toBeTruthy());
   });
 
-  it("gives the accepted seeker only the coordinate note; progress opens once referred (kit v4)", async () => {
+  it("asks the accepted seeker to confirm the referral email; progress opens once referred (kit v4)", async () => {
     stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [seekerApproved] }) : ok({ messages: [] })));
     render(<ReferralConversation />);
-    expect(await screen.findByText(/Use messages to coordinate/)).toBeTruthy();
+    expect(await screen.findByText("Did you get the referral email?")).toBeTruthy();
     expect(screen.queryByText("Update your progress")).toBeNull();
     expect(screen.queryByRole("button", { name: "Interviewing" })).toBeNull();
   });
@@ -265,7 +265,7 @@ describe("ReferralConversation thread", () => {
     });
     render(<ReferralConversation />);
     expect(await screen.findByText("This thread isn't available.")).toBeTruthy();
-    expect(screen.getByRole("alert").textContent).toMatch(/couldn't reach SkipWait/);
+    expect(screen.getByRole("alert").textContent).toMatch(/couldn't reach skipwait.me/);
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Nothing to do yet.")).toBeTruthy();
   });

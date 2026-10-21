@@ -91,7 +91,7 @@ describe("Explore directory", () => {
     const alerts = screen.getAllByRole("link", { name: /Get told when a door opens/ });
     expect(alerts).toHaveLength(3);
     expect(alerts.every(link => link.getAttribute("href") === "/alerts")).toBe(true);
-    const skipwait = screen.getByRole("heading", { name: "SkipWait" }).closest("article") as HTMLElement;
+    const skipwait = screen.getByRole("heading", { name: "skipwait.me" }).closest("article") as HTMLElement;
     expect(within(skipwait).queryByText("PEOPLE OPEN TO REFERRALS")).toBeNull();
     expect(within(skipwait).getByRole("link", { name: /View company/ }).getAttribute("href")).toBe("/explore/skipwait");
   });
@@ -134,7 +134,7 @@ describe("Explore directory", () => {
     expect(screen.getByText("2 companies to explore")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Location"), { target: { value: "India" } });
     expect(screen.getByText("1 company to explore")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Go Neutrinos" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Neutrinos" })).toBeTruthy();
   });
 
   it("shows an honest empty state with live recovery links", async () => {
@@ -155,7 +155,7 @@ describe("Explore directory", () => {
     renderWithQuery(<Explore />);
     await screen.findByText("5 companies to explore");
     expect(document.title).toBe("Explore companies · skipwait.me");
-    await waitFor(() => expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Find people open to referral requests at SkipWait, Wipro, Go Neutrinos, TCS, and Merkle."));
+    await waitFor(() => expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Find people open to referral requests at skipwait.me, Wipro, Neutrinos, TCS, and Merkle."));
     expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore");
   });
 
@@ -167,7 +167,7 @@ describe("Explore directory", () => {
 });
 
 describe("Explore company detail", () => {
-  it("renders the app 404 for a company that is not on SkipWait", async () => {
+  it("renders the app 404 for a company that is not on skipwait.me", async () => {
     routeState.slug = "no-such-company";
     stubDirectory();
     renderWithQuery(<ExploreCompany />);
@@ -215,7 +215,7 @@ describe("Explore company detail", () => {
     renderWithQuery(<ExploreCompany />);
     await screen.findByRole("heading", { level: 1 });
     expect(document.title).toBe("Referrals at Wipro · skipwait.me");
-    expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Request a private introduction to someone at Wipro. 3 asks free every month; more use credits.");
+    expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Request a private introduction to someone at Wipro. 3 free credits every month; extra asks use credits.");
     expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore/wipro");
   });
 });

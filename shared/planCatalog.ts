@@ -1,5 +1,5 @@
 /**
- * SkipWait plan catalog: the pricing model the owner decided on Oct 14 2026
+ * skipwait.me plan catalog: the pricing model the owner decided on Oct 14 2026
  * (docs/PRICING_RECOMMENDATION.md, "Owner decisions" and sections 3 to 5),
  * amended Oct 16–17 2026 (D-036–D-046 in docs/DECISIONS.md). It
  * overrides PRICING.md, UPGRADE_NUDGES.md and the kit PNG numbers wherever
@@ -90,10 +90,34 @@ export type PaidCatalogPlan = CatalogPlan & { id: CatalogPlanId };
  */
 export const CREDIT_PACKS_ON_SALE = true;
 
+/**
+ * D-084 (P0, Oct 20): passes and Keep warm are sold only once a paid pass can
+ * always be activated. Today one activates only when the subscription webhook
+ * names its checkout page, and nothing recovers it otherwise (GO-LIVE-1b adds
+ * the recovery). While false, the catalog reports every plan term unavailable
+ * and the subscription checkout refuses with 409 not_available_yet before any
+ * provider call. Kept in code and switched on when it can deliver (D-042).
+ */
+export const PASS_SALES_ENABLED: boolean = false;
+
 export const FREE_PLAN: CatalogPlan & { id: "free" } = {
   id: "free", tier: "free", level: 1, label: "Free", levelLabel: null,
   creditsPerMonth: 3, openRequests: 3, carryover: 0, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: {},
 };
+
+
+/** GO-LIVE-1 (D-036): the legacy per-credit checkout answers this when retired. */
+export const SINGLE_CREDIT_RETIRED_CODE = "single_credit_retired";
+export const SINGLE_CREDIT_RETIRED_ERROR = "Single credits are replaced by credit packs. Nothing has been charged.";
+
+/**
+ * The ₹99/$1 single credit retires in a currency once any credit pack is on sale
+ * in it (D-036). A computed switch (D-042): the server answers from the live
+ * availability probe, so a pack that goes off sale re-opens the single credit.
+ */
+export function singleCreditRetired(args: { currency: CatalogCurrency; anyPackAvailable: boolean }): boolean {
+  return args.anyPackAvailable;
+}
 
 export const CATALOG_PLANS: readonly PaidCatalogPlan[] = [
   { id: "keep_warm", tier: "keep_warm", level: 1, label: "Keep warm", levelLabel: null, creditsPerMonth: 4, openRequests: 5, carryover: 1, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: { yearly: { USD: usd(29), INR: inr(999) } } },
@@ -146,7 +170,7 @@ export const HUMAN_SESSION_IDS = ["written_review", "live_session"] as const;
 export type HumanSessionId = (typeof HUMAN_SESSION_IDS)[number];
 export type HumanSession = { id: HumanSessionId; label: string; detail: string; prices: Record<CatalogCurrency, number> };
 
-/** Reviewers are never employees of, or SkipWait referrers for, the seeker's target company. */
+/** Reviewers are never employees of, or skipwait.me referrers for, the seeker's target company. */
 export const HUMAN_SESSIONS: readonly HumanSession[] = [
   { id: "written_review", label: "Written expert review", detail: "Returned within 48 hours", prices: { USD: usd(49), INR: inr(799) } },
   { id: "live_session", label: "Live 45-minute session", detail: "Mock interview or search strategy", prices: { USD: usd(99), INR: inr(1_499) } },

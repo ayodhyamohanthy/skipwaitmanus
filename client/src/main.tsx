@@ -150,7 +150,7 @@ function revealWhenFontsReady() {
   if (!reveal) return;
   const fonts = document.fonts;
   if (!fonts || typeof fonts.load !== "function") { reveal(); return; }
-  const loads = ["400", "500", "600", "700"].map(weight => fonts.load(`${weight} 1em "Instrument Sans"`, "Abc 123 SkipWait").catch(() => []));
+  const loads = ["400", "500", "600", "700"].map(weight => fonts.load(`${weight} 1em "Instrument Sans"`, "Abc 123 skipwait.me").catch(() => []));
   void Promise.race([Promise.all(loads), new Promise(resolve => setTimeout(resolve, 1800))]).then(() => requestAnimationFrame(() => requestAnimationFrame(reveal)));
 }
 void bootstrapSmoke(nativeFetch).finally(()=>{globalThis.fetch=smokeFetch as typeof fetch;mount();revealWhenFontsReady()});

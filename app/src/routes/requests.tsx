@@ -17,7 +17,7 @@ const all: { co: string; name: string; role: string; status: St; note: string }[
   { co: "M", name: "Merkle", role: "Data Analyst", status: "Requested", note: "Expires in 5 days" },
   { co: "T", name: "TCS", role: "UX Researcher", status: "Requested", note: "Expires tomorrow" },
   { co: "GN", name: "Go Neutrinos", role: "Product Manager", status: "Interviewing", note: "Prepare with a dossier" },
-  { co: "SW", name: "SkipWait", role: "Designer", status: "Declined", note: "Not my team · slot freed" },
+  { co: "SW", name: "skipwait.me", role: "Designer", status: "Declined", note: "Not my team · slot freed" },
 ];
 const tabs = ["Active", "Closed"] as const;
 
