@@ -4,6 +4,9 @@
 > live; this is the first build. It changes the frame of every shell-wrapped route and touches no
 > page body.
 
+> **Status (Oct 21): landed — `3cd221df` (PR #361).** This packet is kept as the record of what W0
+> was: the shell, the nav model and the credits pill, with no page body touched.
+
 | Field | Value |
 |---|---|
 | Queue row | §3b `D-048` (phase 3, W0) |
@@ -15,7 +18,7 @@
 
 ## 1. Why this is first, with the numbers
 
-- **26 of the 70 routes** in `client/src/App.tsx` are wrapped in `<AppShell>`; one frame change
+- **27 of the 88 `<Route>` elements** in `client/src/App.tsx` are wrapped in `<AppShell>`; one frame change
   reaches all of them, and the other 44 are public/legal/employer surfaces that W7 owns.
 - **The nav model already disagrees with an approved decision.** Today `AppShell.tsx:18-23` reads
   Explore · Requests · Inbox · Refer. D-070 records Find · My asks · Inbox, plus Referral queue for
@@ -29,7 +32,7 @@
 
 ## 2. Target behaviour
 
-1. `AppShell` renders `GoalShell` and keeps its own export name, so the 26 call sites do not change.
+1. `AppShell` renders `GoalShell` and keeps its own export name, so the 27 call sites do not change.
 2. `active` comes from the pathname: `/explore*` → `find`, `/requests*` → `asks`, `/inbox*` → `inbox`,
    `/queue*` and `/referrer-home*` → `queue`. A path that matches none renders no active item.
 3. `verifiedReferrer` comes from `useReferrerAccess()` (the shared verified-referrer predicate,
