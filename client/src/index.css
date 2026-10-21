@@ -313,7 +313,7 @@ input, textarea { caret-color: var(--primary); }
 .g-hit::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, var(--g-touch)); height: max(100%, var(--g-touch)); transform: translate(-50%, -50%); }
 
 /* Claim company: isolated single-column layout, aggregate-only. */
-.company-claim-site{min-height:100vh;background:white;color:var(--g-ink);font-family:"Instrument Sans",sans-serif}
+.company-claim-site{min-height:100vh;background:var(--g-surface);color:var(--g-ink);font-family:"Instrument Sans",sans-serif}
 .company-claim-header{display:flex;justify-content:space-between;padding:20px 28px;border-bottom:1px solid var(--g-hairline)}
 .company-claim-header a{color:inherit;text-decoration:none;font-size:14px}
 .company-claim-header a:first-child{font-weight:700}
