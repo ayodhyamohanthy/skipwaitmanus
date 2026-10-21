@@ -276,10 +276,3 @@ body {font-family:var(--font-ui);letter-spacing:0;} h1,h2,h3,p{letter-spacing:0;
 .intent-switch.intent-cards>button.selected>svg:first-child{color:var(--primary);}
 .intent-switch.intent-cards .intent-check{position:absolute;top:10px;right:10px;width:18px;height:18px;padding:2px;border-radius:50%;background:var(--foreground);color:var(--background);}
 @media(max-width:480px){.intent-switch.intent-cards{gap:8px;}.intent-switch.intent-cards>button{grid-template-columns:1fr;min-height:96px;padding:12px 30px 12px 12px;row-gap:4px;align-content:start;}.intent-switch.intent-cards>button>svg:first-child{grid-row:auto;}.intent-switch.intent-cards .intent-title{font-size:14px;}.intent-switch.intent-cards .intent-sub{font-size:11px;}}
-
-/* Referrer impact card (slice C, flag off) */
-.share-impact-card { margin-top: 12px; border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: var(--card); }
-.share-impact-verified { font-size: 13px; color: var(--muted-foreground); }
-.share-impact-lead { margin-top: 6px; font-size: 15px; font-weight: 600; }
-.share-impact-stats { margin-top: 8px; display: flex; gap: 12px; font-size: 13px; }
-.share-impact-link { margin-top: 8px; font-size: 13px; color: var(--muted-foreground); }

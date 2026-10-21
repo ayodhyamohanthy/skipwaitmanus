@@ -5,7 +5,7 @@
 // The min-3 gate (D-104 rule) lives in shared/shareImpactCard.ts.
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { companies, companyDomains, referralRequests, referralTransitionEvents, referrerFastTrackLinks } from "../drizzle/schema";
-import { IMPACT_MIN_ANSWERED, type ImpactStats } from "../shared/shareImpactCard";
+import { IMPACT_DECISION_ACTIONS, impactCardVisible, summarizeImpact, type ImpactEvent, type ImpactStats } from "../shared/shareImpactCard";
 import { getDb } from "./db";
 
 export const IMPACT_CARD_FLAG = "SHARE_IMPACT_CARD_ENABLED";
@@ -45,27 +45,29 @@ export async function loadImpactCard(referrerId: number, now: Date = new Date())
   const [company] = await db.select({ name: companies.name, slug: companies.slug, status: companies.status }).from(companies).where(eq(companies.id, domainRow.companyId)).limit(1);
   if (!company || company.status !== "listed") return { state: "insufficient" };
 
-  // All asks that reached this referrer's decisions.
-  const decisions = await db
-    .select({ action: referralTransitionEvents.action, createdAt: referralTransitionEvents.createdAt, requestId: referralTransitionEvents.referralRequestId })
+  // All of this referrer's answer events (approve/pass) and progress events
+  // (intro_made or later = a real referral). The min-3 gate and the referred
+  // count work on DISTINCT asks via shared/shareImpactCard.summarizeImpact
+  // (QA note: one ask can carry more than one event from the same referrer).
+  const rows = await db
+    .select({ action: referralTransitionEvents.action, resultingStatus: referralTransitionEvents.resultingStatus, createdAt: referralTransitionEvents.createdAt, requestId: referralTransitionEvents.referralRequestId })
     .from(referralTransitionEvents)
-    .where(and(eq(referralTransitionEvents.actorUserId, referrerId), inArray(referralTransitionEvents.action, ["approve", "pass"])));
+    .where(and(eq(referralTransitionEvents.actorUserId, referrerId), inArray(referralTransitionEvents.action, [...IMPACT_DECISION_ACTIONS, "progress"])));
 
-  const approved = decisions.filter(row => row.action === "approve").length;
-  const answered = decisions.length;
-  if (answered < IMPACT_MIN_ANSWERED) return { state: "insufficient" };
-
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const referredThisMonth = decisions.filter(row => row.action === "approve" && new Date(row.createdAt) >= monthStart).length;
+  const events: ImpactEvent[] = rows.map(row => ({ requestId: row.requestId, action: row.action, resultingStatus: row.resultingStatus, createdAt: new Date(row.createdAt) }));
+  const summary = summarizeImpact(events, now);
+  if (!impactCardVisible(summary.answeredAsks)) return { state: "insufficient" };
+  const referredThisMonth = summary.referredThisMonth;
 
   // Median first-reply hours: ask visible -> this referrer's first approve/pass.
+  const decisions = events.filter(event => (IMPACT_DECISION_ACTIONS as readonly string[]).includes(event.action));
   const asks = await db
     .select({ requestId: referralRequests.id, visibleAt: referralRequests.coverageVisibleAt, createdAt: referralRequests.createdAt })
     .from(referralRequests)
     .where(inArray(referralRequests.id, decisions.map(row => row.requestId)));
   const firstDecisionByRequest = new Map<number, Date>();
   for (const row of decisions) {
-    const at = new Date(row.createdAt);
+    const at = row.createdAt;
     const current = firstDecisionByRequest.get(row.requestId);
     if (!current || at < current) firstDecisionByRequest.set(row.requestId, at);
   }
@@ -89,7 +91,7 @@ export async function loadImpactCard(referrerId: number, now: Date = new Date())
     stats: {
       referredThisMonth,
       medianFirstReplyHours: median(replyHours) === null ? null : Math.round(median(replyHours)!),
-      acceptRatePct: Math.round((approved / answered) * 100),
+      acceptRatePct: summary.acceptRatePct,
     },
   };
 }

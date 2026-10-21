@@ -3,13 +3,15 @@
 // GET /api/referrer/impact-card. Copy verbatim from content.json shareImpact;
 // every string the referrer can copy comes from shared/shareImpactCard.ts, so no
 // seeker can ever appear on the card. Min-3 gate enforced server-side: on
-// "insufficient" the card renders nothing.
+// "insufficient" the card renders nothing. Structure follows the designer mock
+// (share-impact.html): blue verified mark, hero numeral, mono stat numerals,
+// one black commit button + ghost LinkedIn.
 import { useEffect, useState } from "react";
-import { Check, Copy, Linkedin } from "lucide-react";
+import { BadgeCheck, Check, Copy, Linkedin } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
 import { SHARE_IMPACT_CARD } from "@/lib/shareFlags";
-import { IMPACT_CARD_COPY, impactCardLinkedIn, impactCardText, impactVerifiedLine, impactReferredLine, impactStatLines, type ImpactCardInput } from "@shared/shareImpactCard";
+import { IMPACT_CARD_COPY, impactCardLinkedIn, impactCardText, impactVerifiedLine, impactReferredBig, impactReferredLine, impactStatPairs, type ImpactCardInput } from "@shared/shareImpactCard";
 
 type Payload = { state: "ready" | "insufficient"; screenName?: string; companyName?: string; companySlug?: string; linkPath?: string; stats?: ImpactCardInput["stats"] };
 
@@ -50,19 +52,22 @@ export function ShareImpactCard() {
     <Panel>
       <span className="eyebrow">{IMPACT_CARD_COPY.heading.toUpperCase()}</span>
       <p className="mt-2 text-sm text-muted-foreground">{IMPACT_CARD_COPY.intro}</p>
-      <div className="share-impact-card" data-testid="share-impact-card">
-        <p className="share-impact-verified">{impactVerifiedLine(input)}</p>
-        <p className="share-impact-lead">{impactReferredLine({ companyName: input.companyName, count: input.stats.referredThisMonth })}</p>
-        <div className="share-impact-stats">
-          {impactStatLines(input.stats).map(line => <span key={line}>{line}</span>)}
+      <div className="sharecard" data-testid="share-impact-card">
+        <p className="sharecard__status"><BadgeCheck className="size-4 text-primary" />{impactVerifiedLine(input)}</p>
+        <p className="sharecard__big">{impactReferredBig(input.stats.referredThisMonth)}</p>
+        <p className="sharecard__line">{impactReferredLine(input.companyName)}</p>
+        <div className="sharecard__stats">
+          {impactStatPairs(input.stats).map(pair => (
+            <div className="sharecard__stat" key={pair.label}><b>{pair.value}</b><span>{pair.label}</span></div>
+          ))}
         </div>
-        <p className="share-impact-link">skipwait.me{input.linkPath}</p>
+        <p className="sharecard__brand">skipwait.me{input.linkPath}</p>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" onClick={() => void copy("text")}>
+        <Button size="sm" className="bg-foreground text-background hover:bg-foreground/90" onClick={() => void copy("text")}>
           {copied === "text" ? <Check /> : <Copy />}{copied === "text" ? IMPACT_CARD_COPY.copied : IMPACT_CARD_COPY.copyText}
         </Button>
-        <Button size="sm" variant="outline" onClick={() => void copy("linkedin")}>
+        <Button size="sm" variant="ghost" onClick={() => void copy("linkedin")}>
           {copied === "linkedin" ? <Check /> : <Linkedin />}{copied === "linkedin" ? IMPACT_CARD_COPY.copied : IMPACT_CARD_COPY.copyLinkedIn}
         </Button>
       </div>
