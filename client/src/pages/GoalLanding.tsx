@@ -101,142 +101,149 @@ function AskCardArt() {
 }
 
 export default function GoalLanding() {
-  useEffect(() => {
-    applySeo({ title: "Get referred.", description: "Ask a verified employee at the company you want to join. They choose every referral. No commissions, no outcome promises.", path: "/" });
-  }, []);
-
   return (
-    <div className="min-h-screen bg-g-canvas font-g-sans text-g-ink">
-      <header className="flex items-center justify-between border-b border-g-hairline px-5 gdesk:px-10" style={{ height: "var(--g-topbar-h)" }}>
-        <span className="inline-flex items-center gap-2">
-          <Link href="/" aria-label="skipwait.me home" className="inline-flex items-center"><GoalBrandMark /></Link>
-          <BetaBadge tone="goal" />
-        </span>
-        <nav aria-label="Website navigation" className="flex items-center gap-5">
-          <a href="#how-it-goes" className="hidden text-g-meta text-g-ink-2 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink gdesk:inline">How it goes</a>
-          <a href="#fair-rules" className="hidden text-g-meta text-g-ink-2 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink gdesk:inline">Fair rules</a>
-          <Link href="/referrer" className="hidden text-g-meta text-g-ink-2 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink gdesk:inline">Join as a referrer</Link>
-          <Link href="/sign-in" className="text-g-meta text-g-ink-2 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink">Sign in</Link>
-        </nav>
+    <div className="min-h-screen bg-white font-g-sans text-g-ink">
+      <header className="border-b border-g-hairline">
+        <div className="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-5 gdesk:px-8">
+          <div className="flex items-center gap-2.5">
+            <Link href="/" aria-label="skipwait.me home" className="inline-flex items-center"><GoalBrandMark /></Link>
+            <BetaBadge tone="goal" />
+          </div>
+          <nav className="hidden items-center gap-7 gdesk:flex" aria-label="Landing">
+            <a href="#how" className="text-g-small font-medium text-g-ink-2 hover:text-g-ink">How it goes</a>
+            <a href="#rules" className="text-g-small font-medium text-g-ink-2 hover:text-g-ink">Fair rules</a>
+            <Link href="/sign-in?intent=referrer" className="text-g-small font-medium text-g-ink-2 hover:text-g-ink">Join as a referrer</Link>
+            <Link href="/sign-in" className="text-g-small font-medium text-g-ink hover:underline underline-offset-4">Sign in</Link>
+          </nav>
+          <Link href="/sign-in" className="text-g-small font-medium gdesk:hidden">Sign in</Link>
+        </div>
       </header>
 
-      <main className="mx-auto max-w-[1120px] px-5 gdesk:px-10">
-        <section className="py-14 gdesk:py-24">
-          <div className="max-w-[640px]">
-            <Kicker>Private job referrals</Kicker>
-            <h1 className="mt-4 text-[52px] font-semibold leading-[1.02] tracking-[-0.045em] gdesk:text-[88px]">Get referred.</h1>
-            <p className="mt-4 max-w-xl text-g-body text-g-ink-2">Ask a verified employee at the company you want to join. They choose every referral: no commissions, no outcome promises.</p>
-            <div className="mt-8 rounded-g-sheet border border-g-control-edge p-5" data-testid="goal-next-step">
-              <span className="font-g-mono text-[11px] font-medium uppercase tracking-[0.14em] text-g-ink-3">Your next step</span>
-              <div className="mt-3 flex flex-wrap items-center gap-4">
-                <GoalButton asChild variant="primary" size="md"><Link href="/explore">Find your company <ArrowRight aria-hidden="true" /></Link></GoalButton>
-                <span className="text-g-meta text-g-ink-3">Explore before signing in.</span>
-              </div>
-            </div>
-            <BetaNoticeLine tone="goal" />
+      {/* v7 warm hero band - the ONLY colour on the page (owner pick 16:43). */}
+      <section className="g-hero-warm">
+        <div className="mx-auto max-w-[760px] px-5 pt-16 text-center gdesk:pt-24">
+          <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-2">Private job referrals</p>
+          <h1 className="mt-5 text-[52px] font-semibold leading-[0.98] tracking-[-0.045em] gdesk:text-[88px]">Get referred.</h1>
+          <p className="mx-auto mt-5 max-w-[480px] text-g-body leading-[1.6] text-g-ink-2">Ask a verified employee at the company you want to join. They choose every referral: no commissions, no outcome promises.</p>
+          <div className="mt-8" data-testid="goal-next-step">
+            <Link href="/explore" data-g-primary="true" className="inline-flex h-12 items-center gap-2 rounded-full bg-g-ink px-6 text-g-small font-semibold text-g-ink-inverse hover:bg-[#262626]">Find your company <span aria-hidden="true">&rarr;</span></Link>
           </div>
-          <div className="mt-10 rounded-[16px] border border-g-hairline px-5 py-4 gdesk:px-9 gdesk:py-8" data-testid="goal-hero-banner">
-            <GoalBrandBannerArt className="mx-auto h-[240px] w-auto gdesk:h-[380px]" />
-          </div>
-        </section>
+          <p className="mt-3 text-[13px] text-g-ink-3">Explore before signing in.</p>
+          <div className="mt-3 flex justify-center"><BetaNoticeLine tone="goal" /></div>
+        </div>
+        <div className="mx-auto mt-8 max-w-[1120px] px-5 gdesk:mt-12" data-testid="goal-hero-banner">
+          <GoalBrandBannerArt className="mx-auto block h-[220px] w-auto gdesk:h-[340px]" />
+        </div>
+      </section>
 
-        <section aria-label="Why you can trust it" className="grid gap-6 border-y border-g-hairline py-8 gdesk:grid-cols-3">
-          {TRUST.map(cell => (
-            <div key={cell.title}>
-              <p className="flex items-center gap-2 text-g-label">
-                {cell.blue
-                  ? <Check aria-hidden="true" className="size-4 text-[#1D4ED8]" />
-                  : <span aria-hidden="true" className="inline-block size-1.5 rounded-full bg-g-ink" />}
-                {cell.title}
-              </p>
-              <p className="mt-1 text-g-meta text-g-ink-2">{cell.body}</p>
-            </div>
-          ))}
-        </section>
-
-        <Reveal>
-          <section id="how-it-goes" aria-labelledby="how-it-goes-h" className="py-14 gdesk:py-24">
+      <section id="how" className="border-b border-g-hairline">
+        <div className="mx-auto max-w-[1120px] px-5 py-14 gdesk:px-8 gdesk:py-24">
+          <Reveal>
             <Kicker>How it goes</Kicker>
-            <h2 id="how-it-goes-h" className="mt-3 text-g-display text-[32px] tracking-[-0.03em] gdesk:text-[40px]">Three steps. No noise.</h2>
-            <ol className="mt-8 grid gap-8 gdesk:grid-cols-3">
-              {STEPS.map((step, index) => (
-                <li key={step.title} className="border-t border-g-ink pt-4">
-                  <span className="font-g-mono text-g-mono text-g-ink-3">{String(index + 1).padStart(2, "0")}</span>
-                  <h3 className="mt-2 text-g-label">{step.title}</h3>
-                  <p className="mt-1 text-g-meta text-g-ink-2">{step.body}</p>
-                </li>
-              ))}
-            </ol>
-          </section>
-        </Reveal>
+            <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Three steps.{" "}<br />No noise.</h2>
+          </Reveal>
+          <ol className="mt-10">
+            {STEPS.map((step, i) => (
+              <li key={step.title} className={i > 0 ? "border-t border-g-hairline" : ""}>
+              <Reveal>
+                <div className="grid gap-2 py-7 gdesk:grid-cols-[140px_1fr] gdesk:gap-8 gdesk:py-8">
+                  <span className="font-g-mono text-[44px] font-medium leading-none text-g-hairline gdesk:text-[56px]" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+                  <div>
+                    <h3 className="text-[17px] font-semibold">{step.title}</h3>
+                    <p className="mt-2 max-w-[520px] text-g-small leading-[1.6] text-g-ink-2">{step.body}</p>
+                  </div>
+                </div>
+              </Reveal>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
 
-        <Reveal>
-          <section aria-label="The honest deal" className="border-t border-g-hairline py-16 gdesk:py-24">
-            <div className="mx-auto max-w-[720px] text-center">
-              <blockquote className="text-[28px] font-semibold leading-[1.2] tracking-[-0.03em] gdesk:text-[40px]">
-                &ldquo;A referral is an introduction, <span className="text-g-ink-3">never a promise of an interview or a job.</span>&rdquo;
-              </blockquote>
-              <p className="mt-4 font-g-mono text-[11px] font-medium uppercase tracking-[0.14em] text-g-ink-3">The honest deal - on every page, in every flow</p>
-            </div>
-          </section>
-        </Reveal>
+      <section className="border-b border-g-hairline">
+        <div className="mx-auto max-w-[760px] px-5 py-16 text-center gdesk:py-28">
+          <Reveal>
+            <blockquote className="text-[26px] font-semibold leading-[1.25] tracking-[-0.02em] gdesk:text-[36px]">
+              &ldquo;A referral is an introduction, <span className="text-g-ink-3">never a promise of an interview or a job.&rdquo;</span>
+            </blockquote>
+            <p className="mt-6 font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">The honest deal &mdash; on every page, in every flow</p>
+          </Reveal>
+        </div>
+      </section>
 
-        <Reveal>
-          <section aria-labelledby="for-employees-h" className="grid items-center gap-10 border-t border-g-hairline py-14 gdesk:grid-cols-2 gdesk:py-24">
-            <div>
-              <Kicker>For employees</Kicker>
-              <h2 id="for-employees-h" className="mt-3 text-g-display text-[32px] tracking-[-0.03em] gdesk:text-[40px]">Work somewhere people ask about?</h2>
-              <p className="mt-4 max-w-xl text-g-body text-g-ink-2">{`Review asks when it feels right. ${REFERRING_FREE_LINE} Seekers can trust it.`}</p>
-              <div className="mt-6">
-                <GoalButton asChild variant="outline" size="md"><Link href="/referrer">Join as a referrer <ArrowRight aria-hidden="true" /></Link></GoalButton>
-              </div>
-            </div>
-            <Reveal className="max-w-md"><AskCardArt /></Reveal>
-          </section>
-        </Reveal>
+      <section className="border-b border-g-hairline">
+        <div className="mx-auto max-w-[1120px] px-5 py-14 gdesk:px-8 gdesk:py-24">
+          <Reveal>
+            <Kicker>Why you can trust it</Kicker>
+            <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Verified people.<br />Real rules.</h2>
+          </Reveal>
+          <div className="mt-10 grid gap-4 gdesk:grid-cols-3">
+            {TRUST.map((item) => (
+              <Reveal key={item.title} className="rounded-[12px] border border-g-hairline p-5">
+                {item.blue
+                  ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-g-trust"><Check className="h-3 w-3 text-white" /></span>
+                  : <span className="mt-1 block h-1.5 w-1.5 rounded-full bg-g-ink" aria-hidden="true" />}
+                <h3 className="mt-3 text-[15px] font-semibold">{item.title}</h3>
+                <p className="mt-1.5 text-g-small leading-[1.6] text-g-ink-2">{item.body}</p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
 
-        <Reveal>
-          <section id="fair-rules" aria-labelledby="fair-rules-h" className="border-t border-g-hairline py-14 gdesk:py-24">
-            <div className="max-w-[720px]">
-              <Kicker>Fair rules</Kicker>
-              <h2 id="fair-rules-h" className="mt-3 text-g-display text-[32px] tracking-[-0.03em] gdesk:text-[40px]">What never changes</h2>
-              <ul className="mt-6 divide-y divide-g-hairline">
-                {FAIR_RULES.map((rule, index) => (
-                  <li key={rule} className="flex gap-6 py-4">
-                    <span className="font-g-mono text-g-mono text-g-ink-3">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="text-g-meta text-g-ink-2">{rule}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        </Reveal>
-      </main>
+      <section className="border-b border-g-hairline">
+        <div className="mx-auto grid max-w-[1120px] items-center gap-10 px-5 py-14 gdesk:grid-cols-2 gdesk:px-8 gdesk:py-24">
+          <Reveal>
+            <Kicker>For employees</Kicker>
+            <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Work somewhere people ask about?</h2>
+            <p className="mt-4 max-w-[440px] text-g-body leading-[1.6] text-g-ink-2">Review asks when it feels right. Referring is always free. Referrers are never paid - their help stays genuine, and seekers can trust it.</p>
+            <Link href="/referrer" className="mt-6 inline-flex h-11 items-center gap-2 rounded-full border border-g-ink px-5 text-g-small font-semibold hover:bg-g-surface-hover">Join as a referrer <span aria-hidden="true">&rarr;</span></Link>
+          </Reveal>
+          <Reveal className="justify-self-center"><AskCardArt /></Reveal>
+        </div>
+      </section>
 
-      <footer className="border-t border-g-hairline px-5 py-10 gdesk:px-10">
-        <div className="mx-auto grid max-w-[1120px] gap-8 gdesk:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
+      <section id="rules" className="border-b border-g-hairline">
+        <div className="mx-auto max-w-[1120px] px-5 py-14 gdesk:px-8 gdesk:py-24">
+          <Reveal>
+            <Kicker>Fair rules</Kicker>
+            <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">What never changes</h2>
+          </Reveal>
+          <div className="mt-10">
+            {FAIR_RULES.map((rule, i) => (
+              <Reveal key={rule} className="flex items-baseline gap-6 border-t border-g-hairline py-5">
+                <span className="font-g-mono text-[13px] text-g-ink-3">{String(i + 1).padStart(2, "0")}</span>
+                <p className="text-g-body leading-[1.6] text-g-ink-2">{rule}</p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <div className="mx-auto grid max-w-[1120px] gap-10 px-5 py-12 gdesk:grid-cols-[1.4fr_1fr_1fr_1fr] gdesk:px-8 gdesk:py-16">
           <div>
             <GoalBrandMark iconClassName="h-5 w-auto" />
-            <p className="mt-3 text-g-meta text-g-ink-2">A warmer way in. Private job referrals from verified employees.</p>
-            <p className="mt-2 text-g-meta text-g-ink-3">{BETA_NOTICE_LINE}</p>
+            <p className="mt-4 max-w-[260px] text-g-small leading-[1.6] text-g-ink-2">A warmer way in. Private job referrals from verified employees.</p>
           </div>
-          {FOOTER_COLS.map(col => (
+          {FOOTER_COLS.map((col) => (
             <nav key={col.title} aria-label={col.title}>
-              <p className="font-g-mono text-[11px] font-medium uppercase tracking-[0.14em] text-g-ink-3">{col.title}</p>
-              <ul className="mt-3 grid gap-2">
+              <h3 className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">{col.title}</h3>
+              <ul className="mt-4 space-y-2.5">
                 {col.links.map(([href, label]) => (
-                  <li key={href}><Link href={href} className="text-g-meta text-g-ink-2 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink">{label}</Link></li>
+                  <li key={label}><Link href={href} className="text-g-small text-g-ink-2 hover:text-g-ink">{label}</Link></li>
                 ))}
               </ul>
             </nav>
           ))}
         </div>
-        <div className="mx-auto mt-8 flex max-w-[1120px] items-center justify-between border-t border-g-hairline pt-4">
-          <span className="text-g-badge text-g-ink-3">skipwait.me</span>
-          <span className="text-g-badge text-g-ink-3">Made with care, in beta.</span>
+        <div className="border-t border-g-hairline">
+          <div className="mx-auto flex max-w-[1120px] items-center justify-between px-5 py-5 text-[13px] text-g-ink-3 gdesk:px-8">
+            <span>skipwait.me</span>
+            <span>Made with care, in beta.</span>
+          </div>
         </div>
       </footer>
-      <CookieConsent />
     </div>
   );
 }

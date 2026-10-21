@@ -26,7 +26,9 @@ describe("GoalLanding (D-120)", () => {
 
   it("shows the next-step block and the explore-before-sign-in honesty note", () => {
     render(<GoalLanding />);
-    expect(screen.getByTestId("goal-next-step").textContent).toContain("Your next step");
+    // v7 warm hero: the next step is the single black pill commit + honesty note.
+    const next = screen.getByTestId("goal-next-step");
+    expect(next.querySelector('[data-g-primary="true"]')?.textContent).toContain("Find your company");
     expect(screen.getByText(/Explore before signing in/)).toBeTruthy();
   });
 
