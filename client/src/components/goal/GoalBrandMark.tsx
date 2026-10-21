@@ -1,18 +1,31 @@
-// The two-person brand mark + wordmark, ONE swappable component (owner's
-// 16:27 pick: small grey person + big ink person, arc rising small-to-big).
-// Final logo geometry may still change - update THIS component only.
+// V6-B "overlapping queue" brand mark (owner pick Oct 21 16:46, verified
+// author=user phonemsg-01M5F2T2JQCD9QNM72W8N5D4DS): three people rising
+// (tokens --g-mark-1/2/3), shared baseline, flat, no strokes, no arrow.
+// Geometry from the designer's final assets (skipwait-icon.svg). Wordmark
+// W1 (owner pick, relayed by main 16:51): ink "SkipWait" + grey ".me". ONE
+// swappable component: the designer's final lockup SVG lands here.
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
+const ICON_VIEWBOX = "76 214 392 236";
+
+function V6BPaths() {
+  return (
+    <>
+      <circle cx="140" cy="337.2" r="25.04" fill="var(--g-mark-1)" />
+      <path d="M93.6 430A46.4 57.52 0 0 1 186.4 430Z" fill="var(--g-mark-1)" />
+      <circle cx="255" cy="308.2" r="32.865" fill="var(--g-mark-2)" />
+      <path d="M194.1 430A60.9 75.495 0 0 1 315.9 430Z" fill="var(--g-mark-2)" />
+      <circle cx="372" cy="273.4" r="42.255" fill="var(--g-mark-3)" />
+      <path d="M293.7 430A78.3 97.065 0 0 1 450.3 430Z" fill="var(--g-mark-3)" />
+    </>
+  );
+}
+
 export function GoalBrandIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 96 72" className={cn("h-6 w-auto", className)} aria-hidden="true" focusable="false">
-      <path d="M26 34 C28 6 80 6 78 28" fill="none" stroke="#0A0A0A" strokeWidth="6" strokeLinecap="round" />
-      <path d="M70 19 L78 30 L86 19" fill="none" stroke="#0A0A0A" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="20" cy="46" r="7" fill="#8A8A8A" />
-      <path d="M8 66 a13 11 0 0 1 24 0 Z" fill="#8A8A8A" />
-      <circle cx="70" cy="38" r="11" fill="#0A0A0A" />
-      <path d="M52 66 a19 15 0 0 1 36 0 Z" fill="#0A0A0A" />
+    <svg viewBox={ICON_VIEWBOX} className={cn("h-6 w-auto", className)} aria-hidden="true" focusable="false">
+      <V6BPaths />
     </svg>
   );
 }
@@ -21,36 +34,31 @@ export function GoalBrandMark({ className, iconClassName }: { className?: string
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
       <GoalBrandIcon className={iconClassName} />
-      <span className="text-g-label font-semibold tracking-tight text-g-ink">skipwait.me</span>
+      <span className="text-g-label font-semibold tracking-tight text-g-ink">SkipWait<span className="text-g-ink-3">.me</span></span>
     </span>
   );
 }
 
-/** The hero banner art: the SAME two-person geometry enlarged, on a ground
- *  hairline (owner 16:30: "illustration over the logo enlarged as image as
- *  banner"). aria-hidden; the arc draws once on load unless reduced motion.
- *  Geometry changes land here and in GoalBrandIcon together - one file. */
+/** The hero banner art: the SAME V6-B geometry enlarged on the warm band
+ *  (owner 16:30 banner ask + 16:43 warm pick + 16:46 mark pick). A gentle
+ *  one-time rise on load; reduced-motion renders it fully. */
 export function GoalBrandBannerArt({ className }: { className?: string }) {
-  const arcRef = useRef<SVGPathElement>(null);
+  const ref = useRef<SVGSVGElement>(null);
   useEffect(() => {
-    const path = arcRef.current;
-    if (!path || typeof path.getTotalLength !== "function") return;
+    const el = ref.current;
+    if (!el) return;
     if (typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const len = path.getTotalLength();
-    path.style.strokeDasharray = `${len}`;
-    path.style.strokeDashoffset = `${len}`;
-    path.style.transition = "stroke-dashoffset 900ms ease-out";
-    requestAnimationFrame(() => requestAnimationFrame(() => { path.style.strokeDashoffset = "0"; }));
+    el.style.opacity = "0";
+    el.style.transform = "translateY(16px)";
+    el.style.transition = "opacity 600ms ease-out, transform 600ms ease-out";
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.style.opacity = "1";
+      el.style.transform = "translateY(0)";
+    }));
   }, []);
   return (
-    <svg viewBox="0 0 720 380" className={className} aria-hidden="true" focusable="false">
-      <line x1="180" y1="336" x2="540" y2="336" stroke="#EBEBEB" strokeWidth="2" />
-      <path ref={arcRef} d="M300 220 C310 40 500 40 462 190" fill="none" stroke="#0A0A0A" strokeWidth="18" strokeLinecap="round" />
-      <path d="M428 156 L464 204 L500 156" fill="none" stroke="#0A0A0A" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="300" cy="262" r="24" fill="#8A8A8A" />
-      <path d="M258 336 a44 40 0 0 1 84 0 Z" fill="#8A8A8A" />
-      <circle cx="452" cy="238" r="38" fill="#0A0A0A" />
-      <path d="M388 336 a64 56 0 0 1 128 0 Z" fill="#0A0A0A" />
+    <svg ref={ref} viewBox={ICON_VIEWBOX} className={className} aria-hidden="true" focusable="false">
+      <V6BPaths />
     </svg>
   );
 }
