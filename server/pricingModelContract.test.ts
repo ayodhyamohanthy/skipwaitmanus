@@ -10,6 +10,10 @@ import { DESIRED_COLUMNS, DESIRED_TABLES } from "./schemaReconcile";
 // the values already stored first and in order (MySQL stores the index), and
 // the shared contracts, drizzle/schema.ts and the migration carry one list.
 const migration = readFileSync(new URL("../drizzle/deploy/0091_pricing_model.sql", import.meta.url), "utf8");
+// 0101 (D-132 plan-family checkout) appends fast_track/insider to the intent
+// enum; 0091 keeps its historical 11-value set and the latest widening carries
+// the full list.
+const migration0101 = readFileSync(new URL("../drizzle/deploy/0101_v2_plan_family_intents.sql", import.meta.url), "utf8");
 const quoted = (values: readonly string[]) => values.map(value => `''${value}''`).join(",");
 
 describe("pricing model schema contract (0091)", () => {
@@ -24,7 +28,9 @@ describe("pricing model schema contract (0091)", () => {
     expect([...tokenBalances.plan.enumValues]).toEqual([...WALLET_PLAN_IDS]);
     expect([...subscriptionCheckoutIntents.plan.enumValues]).toEqual([...INTENT_PLAN_IDS]);
     expect(migration).toContain(`MODIFY \`plan\` ENUM(${quoted(WALLET_PLAN_IDS)}) NOT NULL DEFAULT ''free''`);
-    expect(migration).toContain(`MODIFY \`plan\` ENUM(${quoted(INTENT_PLAN_IDS)}) NOT NULL`);
+    expect(INTENT_PLAN_IDS.slice(11)).toEqual(["fast_track", "insider"]);
+    expect(migration).toContain(`MODIFY \`plan\` ENUM(${quoted(INTENT_PLAN_IDS.slice(0, 11))}) NOT NULL`);
+    expect(migration0101).toContain(`MODIFY \`plan\` ENUM(${quoted(INTENT_PLAN_IDS)}) NOT NULL`);
   });
 
   it("billing periods append the 30- and 90-day passes after monthly and yearly, on every period column", () => {
