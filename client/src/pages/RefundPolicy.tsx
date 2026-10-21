@@ -2,14 +2,17 @@ import { Link } from "wouter";
 import { ReceiptText } from "lucide-react";
 import { PolicyPageShell, PolicySection, SUPPORT_EMAIL } from "@/components/PolicyPageShell";
 import { BUSINESS } from "@/lib/business";
+import { CREDIT_RULE } from "@shared/moneyCopy";
 
 /**
  * /refunds — Refunds & cancellation.
  *
- * Mirrors the real billing behaviour: credit reservation/return on withdraw
- * and expiry (a decline keeps the credit spent), end-of-term subscription cancellation (Chargebee
- * `cancel_option=end_of_term`), and administrator-reviewed refunds that
- * deduct the credited tokens.
+ * Mirrors the real billing behaviour: the canonical credit rule (CREDIT_RULE
+ * in @shared/moneyCopy - a credit is used only when a verified employee can
+ * see the request, returned once on withdraw-before-pickup or unclaimed
+ * expiry, spent once picked up even on a pass), end-of-term subscription
+ * cancellation (Chargebee `cancel_option=end_of_term`), and
+ * administrator-reviewed refunds that deduct the credited tokens.
  */
 export default function RefundPolicy() {
   return <PolicyPageShell
@@ -17,14 +20,14 @@ export default function RefundPolicy() {
     icon={ReceiptText}
     eyebrow="Refunds & cancellation"
     title="You only pay for what actually happened."
-    intro="Credits are reserved, not spent, until a Referrer acts. Subscriptions stop at the end of the cycle you already paid for. When something goes wrong with a payment, a person reviews it."
-    updated="September 23, 2026"
+    intro="A credit is used only when a verified employee can see your request, never before. Subscriptions stop at the end of the cycle you already paid for. When something goes wrong with a payment, a person reviews it."
+    updated="October 21, 2026"
     footnote="Statutory consumer rights in your country apply in addition to this policy and are not limited by it."
   >
     <PolicySection number="01" title="How a credit is used">
       <ul>
-        <li>Sending a referral request <strong>reserves one credit</strong>. The credit is returned to your balance automatically if you <strong>withdraw before a verified employee claims</strong> the request, or if it <strong>expires</strong> without a decision.</li>
-        <li>If a Referrer <strong>declines</strong>, the credit stays spent: that employee invested time reviewing your request, and your request stays open for other employees at the company. A credit is also used when a Referrer <strong>accepts</strong>. Acceptance is an introduction; it does not guarantee an interview or an offer, and no refund is due for a hiring outcome.</li>
+        <li>{CREDIT_RULE}</li>
+        <li>Once a Referrer <strong>picks your request up</strong>, the credit stays spent - whether they accept or pass: that employee invested time reviewing your request, and after a pass your request stays open for other employees at the company. Acceptance is an introduction; it does not guarantee an interview or an offer, and no refund is due for a hiring outcome.</li>
         <li>Free monthly credits reset each month and do not carry over. Purchased credits never expire.</li>
         <li><strong>Delivery.</strong> skipwait.me is a digital service: there is no physical shipping. Purchased credits appear in your account <strong>immediately after the payment provider confirms payment</strong>; plan allowances activate on the first paid invoice. If credits do not appear, section 04 explains the automatic re-check.</li>
       </ul>
@@ -36,7 +39,7 @@ export default function RefundPolicy() {
 
     <PolicySection number="03" title="Paid plans">
       <ul>
-        <li>Paid plans (Keep warm, Start, Momentum, Land) renew at the end of the term you chose until cancelled. You can <strong>cancel renewal at any time from Plans</strong>; paid access and the plan allowance stay active <strong>until the end of the current billing cycle</strong>, and no further charges are made.</li>
+        <li>If you have an active paid plan, it renews at the end of the term you chose until cancelled. You can <strong>cancel renewal at any time from Plans</strong>; paid access and the plan allowance stay active <strong>until the end of the current billing cycle</strong>, and no further charges are made. New paid plans are not on sale right now; extra credits are sold as one-off packs that never expire.</li>
         <li>We do not pro-rate partially used months. If you were charged after cancelling, or charged twice, tell us and the duplicate charge is refunded in full.</li>
         <li>Prices are shown before checkout in INR (Razorpay) or USD (PayPal) via Chargebee, including applicable taxes where the provider collects them.</li>
       </ul>
