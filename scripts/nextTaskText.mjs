@@ -5,7 +5,7 @@ import { slugOf } from "./nextTaskCore.mjs";
 const CMD = "node scripts/next-task.mjs";
 const land = [
   "Land under D-082: push the branch, open a pull request, and wait until every check on that exact commit is green and main's own CI is green.",
-  "Then merge the pull request (or fast-forward main to that commit). Watch main's CI and both deploys to the end and run the live check from docs/BRIEF.md \"How to ship\".",
+  "Then fast-forward main to that exact commit (`git push origin <sha>:main`; never GitHub's merge button and never squash: the ruleset checks the exact commit). Watch main's CI and both deploys to the end and run the live check from docs/BRIEF.md \"How to ship\".",
   "If anything goes red, revert or fix your commit before anything else.",
 ];
 
@@ -21,6 +21,10 @@ const yours = who => `This is already yours (${who}): nothing new was claimed, a
 /** D-085: pending work ranked above your own comes first; your own claim stays yours, pushed. */
 /** D-127: a task whose dependency is not done stops at a green pull request; the picker hands out its landing later. */
 const waitLand = after => `Do not land yet: this task lands only after ${after.join(", ")} (D-127). Stop at a green pull request, report \`--report review\` with that note, and run \`${CMD}\` again: it hands out the landing once they are done.`;
+/** D-127: where a task's status goes: its own §3b row, or, when several tasks share that row, its line in its packet's Status section. */
+const statusAt = task => task.sharedRow ? `its line in the Status section of ${task.packet ?? "its packet"} (\"${task.id}: ...\"; the §3b row \"${task.row}\" is shared by several tasks, so never edit it)` : `the §3b row \"${task.row}\"`;
+/** D-127: the claimant's own landings that wait for a dependency stay theirs. */
+const waiting = pick => (pick.waitingLandings ?? []).map(w => `Your ${w.id} (${w.branch}) is green and yours to land, but it lands only after ${w.landsAfter.join(", ")} (D-127); the picker hands it back when they are done.`);
 const holding = pick => (pick.holds ? [`You also hold ${pick.holds.id} (${pick.holds.branch}). This higher priority needs hands first (D-085): your own work is pushed (the picker checked), and it stays yours for 2 hours; come back to it with \`${CMD} --claim\` as soon as this is done.`] : []);
 
 function workSteps(task, who, branch, after = []) {
@@ -29,7 +33,7 @@ function workSteps(task, who, branch, after = []) {
     keepAlive(who),
     task.tier === 1
       ? `Tier 1: push the branch, open a DRAFT pull request, set the row to "review — ${branch} — <sha>", report, and end the session (one packet per session, D-074). Never land it yourself: \`${CMD}\` hands the review to a different session.`
-      : after.length ? waitLand(after) : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and the §3b row to "done — <sha>".`,
+      : after.length ? waitLand(after) : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(task)} to "done — <sha>".`,
     unclear,
     report(task, who),
   ];
@@ -39,7 +43,7 @@ function buildSteps(task, who, date, branch, after = []) {
   return steps([
     worktree(branch),
     `Read docs/BRIEF.md, then ${task.packet}. Read nothing else unless the packet names it. The branch above replaces the packet's agent/<model>/... name.`,
-    `First commit: set the docs/KIT_V4_BUILD_PLAN.md §3b row "${task.row}" to "in progress — ${who} — ${date} — branch ${branch}".`,
+    `First commit: set ${task.sharedRow ? statusAt(task) : `the docs/KIT_V4_BUILD_PLAN.md §3b row "${task.row}"`} to "in progress — ${who} — ${date} — branch ${branch}".`,
     ...workSteps(task, who, branch, after),
   ]);
 }
@@ -58,7 +62,7 @@ const reviewSteps = (pick, who) => steps([
   "Post the verdict on the pull request.",
   pick.landsAfter?.length
     ? `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\` and stop. ${waitLand(pick.landsAfter)}`
-    : `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\`. Merge the latest origin/main into ${pick.work}, set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set the §3b row to "done — <sha>".`,
+    : `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\`. Merge the latest origin/main into ${pick.work}, set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`,
   `Findings: list each with file:line, severity and the failing test to add first, then run \`${CMD} --verdict findings --task ${pick.task.id} --as "${who}"\` and stop. The verdict moves the task to its fix stage; you never fix code you reviewed.`,
   `Run \`${CMD} --heartbeat --as "${who}"\` before any long step: a review lock nobody has pushed to for 2 hours goes to the next agent (D-085).`,
   report(pick.task, who),
@@ -79,7 +83,7 @@ const greenSteps = (pick, who) => steps([
   keepAlive(who),
   pick.task.tier === 1
     ? `Tier 1: once green, set the row to "review — ${pick.work} — <sha>" and stop; \`${CMD}\` hands the review to a different session.`
-    : pick.landsAfter?.length ? waitLand(pick.landsAfter) : `Then land it: ${land.slice(1).join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and the §3b row to "done — <sha>".`,
+    : pick.landsAfter?.length ? waitLand(pick.landsAfter) : `Then land it: ${land.slice(1).join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(pick.task)} to "done — <sha>".`,
   report(pick.task, who),
 ]);
 
@@ -87,8 +91,8 @@ const landSteps = (pick, who) => steps([
   worktree(pick.work),
   `Read docs/BRIEF.md and the §3b row "${pick.task.row}". Merge the latest origin/main into ${pick.work} and re-run the full gate yourself; never land on someone else's word.`,
   pick.tier1
-    ? `Set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set the §3b row to "done — <sha>".`
-    : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and the §3b row to "done — <sha>".`,
+    ? `Set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`
+    : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(pick.task)} to "done — <sha>".`,
   keepAlive(who),
   report(pick.task, who),
 ]);
@@ -166,6 +170,7 @@ export function renderPick(pick, { who, date, claimed }) {
     case "unblock": return head(`UNBLOCK ${pick.task.id} — ${pick.task.title}`, [
       `${pick.report.who} reported it ${pick.report.status}${pick.report.note ? `: ${pick.report.note}` : ""}. Every lower priority waits on it (D-085). Lock ${pick.lock}${pick.from ? ` · taken over from ${pick.from}, quiet for 2 hours` : ""}.`,
       ...holding(pick),
+      ...waiting(pick),
       unblockSteps(pick, who),
     ]) + take;
     case "ceo": return head("CEO REVIEW (D-085)", [
@@ -182,6 +187,7 @@ export function renderPick(pick, { who, date, claimed }) {
       `Tier 1 · pull request ${pick.pr} · branch ${pick.work} · review lock ${pick.lock}`,
       `You must not have built or fixed this (built by ${pick.builder ?? "unknown"}).`,
       ...holding(pick),
+      ...waiting(pick),
       reviewSteps(pick, who),
     ]) + take;
     case "fix": return head(`FIX REVIEW FINDINGS ${pick.task.id} — ${pick.task.title}`, [
@@ -189,17 +195,20 @@ export function renderPick(pick, { who, date, claimed }) {
       ...(pick.why ? [`${pick.why}.`] : []),
       "You must not be a reviewer of it.",
       ...holding(pick),
+      ...waiting(pick),
       fixSteps(pick, who),
     ]) + take;
     case "green": return head(`MAKE GREEN ${pick.task.id} — ${pick.task.title}`, [
       `${pick.why ?? `Pull request ${pick.pr} has red CI`}, and nobody has pushed to ${pick.work} since ${new Date(pick.since).toISOString()} (started by ${pick.from ?? "unknown"}; D-085).`,
-      `Continue on the same branch and keep every commit on it. Note the takeover in the §3b row "${pick.task.row}".`,
+      `Continue on the same branch and keep every commit on it. Note the takeover in ${statusAt(pick.task)}.`,
       ...holding(pick),
+      ...waiting(pick),
       greenSteps(pick, who),
     ]) + take;
     case "land": return head(`LAND ${pick.task.id} — ${pick.task.title}`, [
       `Pull request ${pick.pr} is ${pick.tier1 ? "reviewed and passed" : "built"}, but nobody has landed it for 2 hours (last held by ${pick.from ?? "unknown"}; D-085).${pick.tier1 ? " You must not have built or fixed it." : ""}`,
       ...holding(pick),
+      ...waiting(pick),
       landSteps(pick, who),
     ]) + take;
     case "architect": return head(`WRITE THE PACKET FOR ${pick.task.id} — ${pick.task.title}`, [
@@ -208,8 +217,9 @@ export function renderPick(pick, { who, date, claimed }) {
     ]) + take;
     case "takeover": return head(`TAKE OVER ${pick.task.id} — ${pick.task.title}`, [
       `Half-built and quiet: nobody has pushed to ${pick.work} since ${new Date(pick.since).toISOString()} (queue rule 2, D-085; started by ${pick.from ?? "unknown"}).${pick.why ? ` ${pick.why}.` : ""}`,
-      `Continue on the same branch and keep every commit on it. Note the takeover in the §3b row "${pick.task.row}".`,
+      `Continue on the same branch and keep every commit on it. Note the takeover in ${statusAt(pick.task)}.`,
       ...holding(pick),
+      ...waiting(pick),
       resumeSteps(pick.task, who, pick.work, pick.landsAfter),
     ]) + take;
     case "build": return head(`BUILD ${pick.task.id} — ${pick.task.title}`, [
@@ -218,7 +228,7 @@ export function renderPick(pick, { who, date, claimed }) {
       buildSteps(pick.task, who, date, pick.task.branch, pick.landsAfter),
     ]) + take;
     case "continue": {
-      const intro = yours(who);
+      const intro = [yours(who), ...waiting(pick)].join("\n");
       switch (pick.of) {
         case "fix-main": return head(`CONTINUE: FIX RED MAIN (P0) — ${pick.sha.slice(0, 8)}`, [intro, `Failing run: ${pick.url ?? "see main's CI"} · lock ${pick.lock}`, fixMainSteps(pick, who)]);
         case "review": return head(`CONTINUE REVIEW ${pick.task.id} — ${pick.task.title}`, [intro, `Tier 1 · pull request ${pick.pr} · branch ${pick.work} · review lock ${pick.lock}`, reviewSteps(pick, who)]);

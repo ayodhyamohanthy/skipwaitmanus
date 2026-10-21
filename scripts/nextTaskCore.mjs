@@ -371,10 +371,25 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     return { kind: "build", task: v.task, ciRunning: mainCi.state === "running" };
   };
 
-  let mine = claimant ? ownWork(view, claimant) : null;
-  if (mine?.of === "land" && unmetOf(byId.get(mine.task.id)).length) { skip(byId.get(mine.task.id), `yours to land after ${unmetOf(byId.get(mine.task.id)).join(", ")}`); mine = null; }
-  // D-127: any pick whose task still waits on a dependency says so, and its printed steps stop before landing.
-  const withHold = pick => { const v = pick?.task ? byId.get(pick.task.id) : null; const after = v ? unmetOf(v) : []; return after.length ? { ...pick, landsAfter: after } : pick; };
+  const mine = claimant ? ownWork(view, claimant) : null;
+  // D-127: the claimant's own landings that wait for a dependency stay theirs; they are skipped here and named on the pick.
+  const landHeld = !claimant ? [] : view.filter(v => v.open && v.pr && v.ci !== "red" && unmetOf(v).length && (
+    v.task.tier === 1 ? ["Land claim", "Verdict"].includes(stageMarkers(v.lock, v.task.id).at(-1)?.verb) && stageMarkers(v.lock, v.task.id).at(-1)?.who === claimant
+      : v.owner === claimant));
+  const landHeldIds = new Set(landHeld.map(v => v.task.id));
+  for (const v of landHeld) skip(v, `yours to land after ${unmetOf(v).join(", ")}; the picker hands it back when they are done`);
+  // D-127: every pick says what its task still waits on (its steps then stop before landing), whether its plan row is shared,
+  // and which landing of the claimant's waits.
+  const sharedRows = new Set(view.filter(v => !v.done).map(v => v.task.row).filter((r, k, all) => all.indexOf(r) !== k));
+  const withHold = pick => {
+    if (!pick) return pick;
+    const v = pick.task ? byId.get(pick.task.id) : null;
+    const after = v ? unmetOf(v) : [];
+    let out = after.length ? { ...pick, landsAfter: after } : pick;
+    if (out.task && sharedRows.has(out.task.row)) out = { ...out, task: { ...out.task, sharedRow: true } };
+    if (landHeld.length && !out.holds) out = { ...out, waitingLandings: landHeld.map(h => ({ id: h.task.id, branch: h.work, landsAfter: unmetOf(h) })) };
+    return out;
+  };
 
   // Claude Code is the CEO: never development work. Pass 1: pending work top down,
   // stopping at your own work; pass 2: new work. A red or blocked priority holds
@@ -382,10 +397,12 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   const actions = [];
   let gateAt = -1, gateAction = null;
   const heldLanes = new Map(), heldIds = new Map();
-  const heldBy = v => heldLanes.get(v.task.lane) ?? v.task.dependsOn.map(d => heldIds.get(d)).find(Boolean);
+  // A red or blocked holder never holds a task it depends on itself: that task is what it waits for (D-127).
+  const heldBy = v => { const lh = heldLanes.get(v.task.lane); return (lh && !dependsOnTask(byId.get(lh), v.task.id) ? lh : undefined) ?? v.task.dependsOn.map(d => heldIds.get(d)).find(Boolean); };
   for (let i = 0; i < view.length; i++) {
     if (mine && i >= mine.at) break;
     const holder = heldBy(view[i]);
+    if (landHeldIds.has(view[i].task.id)) continue;
     if (holder && !view[i].done) { heldIds.set(view[i].task.id, holder); skip(view[i], `waits for red or blocked ${holder} (same lane or depends on it)`); continue; }
     const action = actions[i] = actionFor(view[i]);
     if (!action) continue;
@@ -415,6 +432,9 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
 /** D-085: what this agent already holds, in queue order. A Tier 1 builder waiting for review holds nothing. */
 function ownWork(view, claimant) {
   let blockedOwn = null;
+  // D-127: a landing that still waits for a dependency is not work the agent can do now; keep scanning.
+  const doneIds = new Set(view.filter(x => x.done).map(x => x.task.id));
+  const waitsToLand = v => v.task.dependsOn.some(d => !doneIds.has(d));
   for (const v of view) {
     if (v.open && v.pr && v.task.tier === 1 && v.lock) {
       const last = stageMarkers(v.lock, v.task.id).at(-1);
@@ -423,7 +443,10 @@ function ownWork(view, claimant) {
         if (last.verb === "Review claim") return { ...base, of: "review", builder: v.owner };
         if (last.verb === "Fix claim") return { ...base, of: "fix" };
         // A passed review whose CI went red is not landed: it goes to a fix stage (pickNextTask), never back to its lander.
-        if ((last.verb === "Land claim" || (last.verb === "Verdict" && last.verdict === "pass")) && v.ci !== "red") return { ...base, of: "land", tier1: true };
+        if ((last.verb === "Land claim" || (last.verb === "Verdict" && last.verdict === "pass")) && v.ci !== "red") {
+          if (waitsToLand(v)) continue;
+          return { ...base, of: "land", tier1: true };
+        }
       }
     }
     if (v.open && v.owner === claimant) {
@@ -434,7 +457,9 @@ function ownWork(view, claimant) {
       }
       // The builder side holds a Tier 1 pull request only while its CI is red before any review passed or any fix stage owns it.
       if (v.pr && v.task.tier === 1 && !(v.ci === "red" && ["needs-review", "in-review"].includes(v.review))) continue;
-      return { kind: "continue", of: v.pr ? (v.ci === "red" ? "green" : "land") : "build", task: v.task, work: v.work, pr: v.pr, tier1: v.task.tier === 1, at: v.at };
+      const of = v.pr ? (v.ci === "red" ? "green" : "land") : "build";
+      if (of === "land" && waitsToLand(v)) continue;
+      return { kind: "continue", of, task: v.task, work: v.work, pr: v.pr, tier1: v.task.tier === 1, at: v.at };
     }
     if (v.task.status === "architect" && v.arch && holderOf(v.arch, v.task.id) === claimant) {
       return { kind: "continue", of: "architect", task: v.task, lock: v.archName, at: v.at };

@@ -338,6 +338,44 @@ describe("dependsOn holds a landing, not only a build (D-127)", () => {
     const passedByMe: [string, Branch] = ["agent/review/m", { tipMs: NOW - 0.2 * HOUR, merged: false, markers: [{ verb: "Review claim", id: "M", who: "Gemini · s3" }, { verb: "Verdict", id: "M", who: "Gemini · s3", verdict: "pass" }] }];
     expect(pick([t1, task("A", { lane: "X" })], { branches: [built, passedByMe], prs: [prM], claimant: "Gemini · s3" })).toMatchObject({ kind: "build", task: { id: "A" } });
   });
+  it("a landing that waits for a dependency is not own work: the agent continues its real work, and its heartbeat follows it", () => {
+    const tasks = [task("A", { lane: "X" }), task("B", { dependsOn: ["A"] }), task("Y")];
+    const mineB: [string, Branch] = ["agent/queue/b", claimBy("Kimi · s2", "B", 0.5)];
+    const mineY: [string, Branch] = ["agent/queue/y", claimBy("Kimi · s2", "Y", 0.5)];
+    const opts = { branches: [mineB, mineY] as [string, Branch][], prs: [prB], prCi: [["agent/queue/b", "green"]] as [string, string][], claimant: "Kimi · s2" };
+    const result = pick(tasks, opts);
+    expect(result).toMatchObject({ kind: "continue", of: "build", task: { id: "Y" } });
+    expect(result).toMatchObject({ waitingLandings: [{ id: "B", landsAfter: ["A"] }] });
+    expect(renderPick(result, { who: "Kimi · s2", date: "d", claimed: true })).toContain("Your B (agent/queue/b) is green and yours to land, but it lands only after A");
+    const held = core.heldBy({ tasks, branches: new Map(opts.branches), openPrs: new Map(opts.prs), prCi: new Map([["agent/queue/b", { state: "green" }]]), claimant: "Kimi · s2", now: NOW });
+    expect(held).toMatchObject({ of: "build", task: { id: "Y" } });
+  });
+  it("a reviewer whose passed review waits to land continues the next review it holds", () => {
+    const t1 = task("M", { tier: 1, lane: "money", dependsOn: ["A"] });
+    const t2 = task("N", { tier: 1, lane: "money2" });
+    const builtM: [string, Branch] = ["agent/queue/m", claimBy("DeepSeek · s4", "M", 3)];
+    const builtN: [string, Branch] = ["agent/queue/n", claimBy("DeepSeek · s5", "N", 3)];
+    const passedM: [string, Branch] = ["agent/review/m", { tipMs: NOW - 0.2 * HOUR, merged: false, markers: [{ verb: "Review claim", id: "M", who: "Gemini · s3" }, { verb: "Verdict", id: "M", who: "Gemini · s3", verdict: "pass" }] }];
+    const reviewingN: [string, Branch] = ["agent/review/n", { tipMs: NOW - 0.2 * HOUR, merged: false, markers: [{ verb: "Review claim", id: "N", who: "Gemini · s3" }] }];
+    const prs: [string, string][] = [["agent/queue/m", "https://github.com/o/r/pull/9"], ["agent/queue/n", "https://github.com/o/r/pull/10"]];
+    expect(pick([t1, t2, task("A", { lane: "X" })], { branches: [builtM, builtN, passedM, reviewingN], prs, claimant: "Gemini · s3" })).toMatchObject({ kind: "continue", of: "review", task: { id: "N" } });
+  });
+  it("a red dependent ranked above its dependency never holds that dependency's lane", () => {
+    const busyB: [string, Branch] = ["agent/queue/b", claimBy("Qwen · s1", "B", 0.5)];
+    const tasks = [task("B", { lane: "L", dependsOn: ["A"] }), task("A", { lane: "L" })];
+    expect(pick(tasks, { branches: [busyB], prs: [prB], prCi: [["agent/queue/b", "red"]], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "A" } });
+  });
+  it("tasks that share a plan row write their status in their packet, and landing is fast-forward only", () => {
+    const ctx = { who: "Kimi · s2", date: "2026-10-21", claimed: true };
+    const shared = [task("A", { row: "D-048", lane: "a" }), task("B", { row: "D-048", lane: "b" })];
+    const text = renderPick(pick(shared, { claimant: "Kimi · s2" }), ctx);
+    expect(text).toContain("Status section of");
+    expect(text).not.toContain("§3b row \"D-048\" to \"in progress");
+    const own = renderPick(pick([task("C")], { claimant: "Kimi · s2" }), ctx);
+    expect(own).toContain("§3b row \"C\"");
+    expect(own).toContain("git push origin <sha>:main");
+    expect(own).not.toContain("merge the pull request");
+  });
   it("a lane-mate that depends on a task never makes that task's lane busy (no deadlock)", () => {
     const tasks = [task("A", { lane: "L" }), task("B", { lane: "L", dependsOn: ["A"] })];
     const quietB: [string, Branch] = ["agent/queue/b", claimBy("Qwen · s1", "B", 3)];
