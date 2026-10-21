@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { ReceiptText } from "lucide-react";
 import { PolicyPageShell, PolicySection, SUPPORT_EMAIL } from "@/components/PolicyPageShell";
 import { BUSINESS } from "@/lib/business";
-import { CREDIT_RULE } from "@shared/moneyCopy";
+import { CREDIT_RULE_V2 } from "@shared/moneyCopy";
 
 /**
  * /refunds — Refunds & cancellation.
@@ -26,7 +26,7 @@ export default function RefundPolicy() {
   >
     <PolicySection number="01" title="How a credit is used">
       <ul>
-        <li>{CREDIT_RULE}</li>
+        <li>{CREDIT_RULE_V2}</li>
         <li>Once a Referrer <strong>picks your request up</strong>, the credit stays spent - whether they accept or pass: that employee invested time reviewing your request, and after a pass your request stays open for other employees at the company. Acceptance is an introduction; it does not guarantee an interview or an offer, and no refund is due for a hiring outcome.</li>
         <li>Free monthly credits reset each month and do not carry over. Purchased credits never expire.</li>
         <li><strong>Delivery.</strong> skipwait.me is a digital service: there is no physical shipping. Purchased credits appear in your account <strong>immediately after the payment provider confirms payment</strong>; plan allowances activate on the first paid invoice. If credits do not appear, section 04 explains the automatic re-check.</li>

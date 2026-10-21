@@ -1,8 +1,9 @@
 import { AlertTriangle, ArrowRight, Clock3, FileText, Globe2, Lightbulb, LoaderCircle, Sparkles, X } from "lucide-react";
+import { Link } from "wouter";
 import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useEffect, useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
-import { CREDIT_RULE_SHORT } from "@shared/moneyCopy";
+import { CREDIT_RULE_SHORT, CREDIT_RULE_SHORT_V2 } from "@shared/moneyCopy";
 import { isValidTargetRoleUrl } from "@shared/referralUrl";
 import { parseOpportunityAskSearch } from "@shared/companyOpportunities";
 import { inferAskJobFunction } from "@shared/jobFunctionClassifier";
@@ -83,6 +84,11 @@ export default function Ask() {
   const [sent, setSent] = useState<SentAsk | null>(null);
   // The plan's open-ask cap refused the send (server 409): the kit slot-cap nudge.
   const [slotCap, setSlotCap] = useState<OpenAskSlots | null>(null);
+  // D-132 (flag VITE_ASK_LEVEL_COST): the pre-send cost quote on the primary
+  // composer - "This ask costs N credits. You have M. Add K more." Flag off
+  // keeps the flat one-credit line below.
+  const ASK_LEVEL_COST_ON = import.meta.env.VITE_ASK_LEVEL_COST === "true";
+  const [askQuote, setAskQuote] = useState<{ cost: number; totalAvailable: number; shortfall: number } | null>(null);
 
   const words = countWords(note);
   const officialUrl = isValidTargetRoleUrl(url || undefined);
@@ -102,6 +108,20 @@ export default function Ask() {
     setUrl(current => current || draft.targetRoleUrl);
     setNote(current => current || draft.note.slice(0, NOTE_LIMIT));
   }, [draft]);
+  useEffect(() => {
+    if (!ASK_LEVEL_COST_ON || !isSignedIn || !officialUrl) { setAskQuote(null); return; }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const token = await fetchToken();
+        const response = await fetch(`/api/company-referrals/quote?url=${encodeURIComponent(url.trim())}`, { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        if (!response.ok) { if (!cancelled) setAskQuote(null); return; }
+        const payload = await response.json() as { cost?: unknown; totalAvailable?: unknown; shortfall?: unknown };
+        if (!cancelled) setAskQuote(typeof payload.cost === "number" && typeof payload.totalAvailable === "number" && typeof payload.shortfall === "number" ? { cost: payload.cost, totalAvailable: payload.totalAvailable, shortfall: payload.shortfall } : null);
+      } catch { if (!cancelled) setAskQuote(null); /* the flat one-credit line below stays */ }
+    })();
+    return () => { cancelled = true; };
+  }, [ASK_LEVEL_COST_ON, isSignedIn, officialUrl, url, fetchToken]);
   const askCompany = useAskCompany(prefill?.companySlug ?? (draft && url === draft.targetRoleUrl ? draft.companySlug : undefined), url, officialUrl);
   const shownFunction = pickedFunction ?? (officialUrl ? inferAskJobFunction({ targetRoleUrl: url.trim() }) : null);
 
@@ -248,9 +268,13 @@ export default function Ask() {
           <Panel tone="muted"><Lightbulb className="mb-2 size-5" /><p className="text-sm">The referrer sees your role and note — not your name or resume — until they accept.</p></Panel>
           {slotCap ? <SlotCapNudge slots={slotCap} onWait={() => { dismissNudge("slot_cap", nudgeAccount); setSlotCap(null); }} /> : null}
           {sendError ? <p role="alert" className="flex gap-2 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" />{sendError}</p> : null}
-          <Button className="w-full" disabled={!officialUrl || words < 10 || sending || uploading} onClick={() => { void send(); }}>{sending || uploading ? (sending && sendStage === "ask" ? "Sending your ask…" : "Uploading your resume…") : <>Send ask <ArrowRight /></>}</Button>
+          {ASK_LEVEL_COST_ON && askQuote && askQuote.shortfall > 0
+            ? <Link href={`/premium?role=job_seeker&quantity=${askQuote.shortfall}`} className={buttonVariants({ className: "w-full" })}>Add {askQuote.shortfall} more credit{askQuote.shortfall === 1 ? "" : "s"} <ArrowRight /></Link>
+            : <Button className="w-full" disabled={!officialUrl || words < 10 || sending || uploading} onClick={() => { void send(); }}>{sending || uploading ? (sending && sendStage === "ask" ? "Sending your ask…" : "Uploading your resume…") : <>Send ask <ArrowRight /></>}</Button>}
           <p role="status" aria-live="polite" className="sr-only">{sending ? (sendStage === "ask" ? "Sending your ask" : "Uploading your resume") : ""}</p>
-          <p className="text-center text-xs text-muted-foreground">Uses 1 credit and 1 open slot when a verified employee can see it · {CREDIT_RULE_SHORT}</p>
+          {ASK_LEVEL_COST_ON && askQuote
+            ? <p className="text-center text-xs text-muted-foreground">This ask costs {askQuote.cost} credit{askQuote.cost === 1 ? "" : "s"}. You have {askQuote.totalAvailable}.{askQuote.shortfall > 0 ? ` Add ${askQuote.shortfall} more.` : ""} Uses 1 open slot when a verified employee can see it · {CREDIT_RULE_SHORT_V2}</p>
+            : <p className="text-center text-xs text-muted-foreground">Uses 1 credit and 1 open slot when a verified employee can see it · {CREDIT_RULE_SHORT}</p>}
         </aside>
       </div>
     </main>
