@@ -67,7 +67,7 @@ describe("ledger-spent ask credit refund", () => {
     await spendCredits(SEEKER, "job_seeker", ask(5));
     await refund(504);
     expect(db.wallets[0]).toMatchObject({ monthlyCreditsRemaining: 2 });
-    expect(db.txns.filter(row => row.kind === "withdrawal_refund").map(row => row.referenceId)).toEqual(["504#refund"]);
+    expect(db.txns.filter(row => row.kind === "withdrawal_refund").map(row => row.referenceId)).toEqual(["504#refund#1"]);
   });
 
   it("an empty wallet refuses the spend and records nothing", async () => {
