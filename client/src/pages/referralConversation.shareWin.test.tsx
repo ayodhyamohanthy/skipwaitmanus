@@ -40,7 +40,7 @@ const fail = (status: number, error: string) => ({ ok: false, status, json: asyn
 
 const named = { ...seekerApproved, companyName: "Quillmint", companyInitials: "Q", referrerName: "Priya Nair", referrerTitle: "Staff Designer", referrerMessage: "Happy to help, Priya here." };
 const mine = (request: unknown) => stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [request] }) : ok({ messages: [] })));
-function clipboard() { const writeText = vi.fn(async () => undefined); vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } }); return writeText; }
+function clipboard() { const writeText = vi.fn(async (_text: string) => undefined); vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } }); return writeText; }
 
 describe("Seeker win card on the thread", () => {
   it("flag off (shipped state): an accepted seeker thread shows no card", async () => {
