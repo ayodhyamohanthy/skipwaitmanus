@@ -34,7 +34,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       # Deploy migrations include historic real-user imports. NEVER run them on QA.
+      # Stale leftover tables make drizzle-kit ask interactive rename questions and
+      # hang CI; reset the scratch schema first (guarded: scratch DB + scoped login only).
+      - name: Reset scratch QA schema (guarded)
+        env:
+          DATABASE_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
+        run: npx tsx scripts/qa-reset-scratch.ts
       - name: Sync scratch QA schema from definitions only
+        timeout-minutes: 15
         env:
           DATABASE_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
         run: npx drizzle-kit push --force
