@@ -82,11 +82,11 @@ describe("plan catalog follows the Oct 14 2026 pricing decision", () => {
     expect(CATALOG_PLANS.map(p => p.id)).toEqual([...CATALOG_PLAN_IDS]);
   });
 
-  it("credit packs differ by currency: USD 5/$5 25/$22 60/$48 150/$105, INR 2/₹99 25/₹1,199 60/₹2,599 150/₹5,999", () => {
+  it("credit packs differ by currency: USD 1/$1 5/$4.79 10/$8.99 25/$19.99 50/$39.99, INR 1/₹99 5/₹479 10/₹899 25/₹1,979 50/₹3,959", () => {
     const sold = (currency: CatalogCurrency) => CREDIT_PACKS.flatMap(p => (p.prices[currency] === undefined ? [] : [[p.credits, p.prices[currency]! / 100]]));
-    expect(sold("USD")).toEqual([[5, 5], [25, 22], [60, 48], [150, 105]]);
-    expect(sold("INR")).toEqual([[2, 99], [25, 1_199], [60, 2_599], [150, 5_999]]);
-    expect(CREDIT_PACKS.filter(p => p.firstPack).map(p => [p.id, Object.keys(p.prices)])).toEqual([["pack_2", ["INR"]], ["pack_5", ["USD"]]]);
+    expect(sold("USD")).toEqual([[1, 1], [5, 4.79], [10, 8.99], [25, 19.99], [50, 39.99]]);
+    expect(sold("INR")).toEqual([[1, 99], [5, 479], [10, 899], [25, 1_979], [50, 3_959]]);
+    expect(CREDIT_PACKS.filter(p => p.firstPack).map(p => [p.id, Object.keys(p.prices)])).toEqual([]);
   });
 
   it("human sessions are one-time products: written review $49 / ₹799, live 45 minutes $99 / ₹1,499", () => {
@@ -113,14 +113,14 @@ describe("structure", () => {
   it("item price ids extend the catalogItemPriceId convention for 30d, 90d and yearly, all unique", () => {
     expect(catalogItemPriceId("momentum", "90d", "INR")).toBe("skipwait_momentum_90d-INR");
     expect(catalogItemPriceId("keep_warm", "yearly", "USD")).toBe("skipwait_keep_warm_yearly-USD");
-    expect(catalogPackItemPriceId("pack_2", "INR")).toBe("skipwait_pack_2-INR");
+    expect(catalogPackItemPriceId("pack_1", "INR")).toBe("skipwait_pack_1-INR");
     expect(catalogSessionItemPriceId("written_review", "USD")).toBe("skipwait_written_review-USD");
     const ids = [
       ...CATALOG_PLANS.flatMap(p => planIntervals(p).flatMap(i => (["USD", "INR"] as const).map(c => catalogItemPriceId(p.id, i, c)))),
       ...CREDIT_PACKS.flatMap(p => (["USD", "INR"] as const).filter(c => p.prices[c] !== undefined).map(c => catalogPackItemPriceId(p.id, c))),
       ...HUMAN_SESSIONS.flatMap(s => (["USD", "INR"] as const).map(c => catalogSessionItemPriceId(s.id, c))),
     ];
-    expect(ids).toHaveLength(22 + 8 + 4);
+    expect(ids).toHaveLength(22 + 8 + 6);
     expect(new Set(ids).size).toBe(ids.length);
   });
 

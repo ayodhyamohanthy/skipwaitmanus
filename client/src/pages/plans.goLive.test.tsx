@@ -5,7 +5,7 @@
 // planCatalogResponseSchema bodies with every item price marked available.
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Plans from "./Plans";
 
@@ -29,8 +29,8 @@ const catalogPayload = (packsAvailable: Record<string, boolean> = {}, passesAvai
     { id: "land_concierge", tier: "land", level: 5, label: "Land", levelLabel: "Concierge", displayName: "Land Concierge", openRequests: 75, creditsPerMonth: 200, carryover: "subscribed", humanTime: { writtenReviews: 8, liveSessions: 4, hours: 6 }, humanTimeOffered: true, byApplication: true, recommended: false, terms: [{ interval: "30d", days: 30, amount: amount(499900), available: false, autoExtend: [] }] },
   ],
   packs: [
-    { id: "pack_2", credits: 2, amount: amount(9900), available: packsAvailable["pack_2"] ?? true, firstPack: true, recommended: false },
-    { id: "pack_25", credits: 25, amount: amount(119900), available: packsAvailable["pack_25"] ?? true, firstPack: false, recommended: true },
+    { id: "pack_1", credits: 1, amount: amount(9900), available: packsAvailable["pack_1"] ?? true, firstPack: false, recommended: false },
+    { id: "pack_25", credits: 25, amount: amount(197900), available: packsAvailable["pack_25"] ?? true, firstPack: false, recommended: true },
   ],
   sessions: [], creditCosts: [],
   fairness: { maxOpenAsksPerCompany: 2, planVisibleToReferrers: false },
@@ -66,9 +66,10 @@ describe("/plans sells credit packs from the live catalog", () => {
     const calls = stubFetch();
     renderPlans();
     expect(await screen.findByText("25 credits")).toBeTruthy();
-    expect(screen.getByText("₹1,199")).toBeTruthy();
+    expect(screen.getByText("₹1,979")).toBeTruthy();
     expect(screen.getAllByText("₹99").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "Buy pack" }));
+    const pack25 = screen.getByText("25 credits").closest("article") as HTMLElement;
+    fireEvent.click(within(pack25).getByRole("button", { name: "Buy pack" }));
     await waitFor(() => expect(checkout.openChargebeeCheckout).toHaveBeenCalledWith("https://chargebee.test/hp_9"));
     const buy = calls.find(call => call.url === "/api/chargebee/checkout");
     expect(JSON.parse(String(buy?.init?.body))).toEqual({ packId: "pack_25", billingCountry: "IN", role: "job_seeker" });
@@ -78,7 +79,9 @@ describe("/plans sells credit packs from the live catalog", () => {
     window.history.pushState({}, "", "/plans?role=job_seeker&currency=INR");
     stubFetch({ checkout: { status: 409, body: { error: "The 25-credit pack is not on sale yet. Nothing has been charged.", code: "not_available_yet" } } });
     renderPlans();
-    fireEvent.click(await screen.findByRole("button", { name: "Buy pack" }));
+    await screen.findByText("25 credits");
+    const pack25off = screen.getByText("25 credits").closest("article") as HTMLElement;
+    fireEvent.click(within(pack25off).getByRole("button", { name: "Buy pack" }));
     expect(await screen.findByText("The 25-credit pack is not on sale yet. Nothing has been charged.")).toBeTruthy();
     await waitFor(() => expect(screen.getAllByRole("button", { name: "Not on sale yet" }).length).toBeGreaterThan(0));
     expect(checkout.openChargebeeCheckout).not.toHaveBeenCalled();

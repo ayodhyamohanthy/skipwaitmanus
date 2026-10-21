@@ -66,12 +66,12 @@ describe("billing catalog", () => {
     expect(resolveItemPrice("skipwait_momentum_90d-USD")).toEqual({ kind: "plan", plan: "momentum", interval: "90d", currency: "USD", amount: 5_900, itemPriceId: "skipwait_momentum_90d-USD" });
     expect(resolveItemPrice("skipwait_land_sprint_30d-INR")).toMatchObject({ plan: "land_sprint", amount: 1_199_900 });
     expect(resolveItemPrice("skipwait_keep_warm_yearly-INR")).toMatchObject({ plan: "keep_warm", interval: "yearly", amount: 99_900 });
-    expect(resolveItemPrice("skipwait_pack_25-USD")).toEqual({ kind: "pack", packId: "pack_25", credits: 25, currency: "USD", amount: 2_200, itemPriceId: "skipwait_pack_25-USD" });
-    expect(resolveItemPrice("skipwait_pack_2-INR")).toMatchObject({ kind: "pack", credits: 2, amount: 9_900 });
+    expect(resolveItemPrice("skipwait_pack_25-USD")).toEqual({ kind: "pack", packId: "pack_25", credits: 25, currency: "USD", amount: 1_999, itemPriceId: "skipwait_pack_25-USD" });
+    expect(resolveItemPrice("skipwait_pack_1-INR")).toMatchObject({ kind: "pack", credits: 1, amount: 9_900 });
     expect(resolveItemPrice("skipwait_written_review-USD")).toEqual({ kind: "session", sessionId: "written_review", currency: "USD", amount: 4_900, itemPriceId: "skipwait_written_review-USD" });
-    for (const unsold of ["skipwait_pack_2-USD", "skipwait_pack_5-INR", "skipwait_keep_warm_30d-USD", "skipwait_start_yearly-USD", "skipwait_momentum_monthly-USD", "skipwait_land_500_monthly-USD", "skipwait_pro_yearly-USD", "skipwait_token_1-USD"]) expect(resolveItemPrice(unsold)).toBeUndefined();
+    for (const unsold of ["skipwait_pack_2-USD", "skipwait_pack_60-INR", "skipwait_keep_warm_30d-USD", "skipwait_start_yearly-USD", "skipwait_momentum_monthly-USD", "skipwait_land_500_monthly-USD", "skipwait_pro_yearly-USD", "skipwait_token_1-USD"]) expect(resolveItemPrice(unsold)).toBeUndefined();
     expect(resolveItemPrice(undefined)).toBeUndefined();
-    expect(sellableItemPrices()).toHaveLength(34);
+    expect(sellableItemPrices()).toHaveLength(36);
   });
 
   // D-067: Pro and Max are removed completely. The price book neither sells nor
@@ -112,10 +112,10 @@ describe("billing catalog", () => {
   });
 
   it("recognises a paid amount that is exactly one pack in its currency, never an approximation", () => {
-    expect(catalogPackForAmount(2_200, "USD")?.packId).toBe("pack_25");
-    expect(catalogPackForAmount(119_900, "INR")?.packId).toBe("pack_25");
-    expect(catalogPackForAmount(9_900, "INR")?.packId).toBe("pack_2");
-    expect(catalogPackForAmount(2_201, "USD")).toBeUndefined();
+    expect(catalogPackForAmount(1_999, "USD")?.packId).toBe("pack_25");
+    expect(catalogPackForAmount(197_900, "INR")?.packId).toBe("pack_25");
+    expect(catalogPackForAmount(9_900, "INR")?.packId).toBe("pack_1");
+    expect(catalogPackForAmount(2_001, "USD")).toBeUndefined();
     expect(catalogPackForAmount(2_200, "INR")).toBeUndefined();
   });
 
@@ -181,7 +181,7 @@ describe("public catalog payload (GET /api/plans/catalog)", () => {
     // D-041: Focus/Sprint human time reads as "coming later" until reviewers are staffed; everything else is offered.
     expect(catalog.plans.map(plan => [plan.id, plan.humanTimeOffered])).toEqual([["keep_warm", true], ["start", true], ["momentum", true], ["land_focus", false], ["land_sprint", false], ["land_concierge", true]]);
     expect(catalog.plans.find(plan => plan.id === "land_concierge")).toMatchObject({ byApplication: true, openRequests: 75 });
-    expect(catalog.packs.map(pack => [pack.id, pack.credits, pack.amount, pack.available, pack.firstPack, pack.recommended])).toEqual([["pack_5", 5, 500, true, true, false], ["pack_25", 25, 2_200, false, false, true], ["pack_60", 60, 4_800, false, false, false], ["pack_150", 150, 10_500, false, false, false]]);
+    expect(catalog.packs.map(pack => [pack.id, pack.credits, pack.amount, pack.available, pack.firstPack, pack.recommended])).toEqual([["pack_1", 1, 100, false, false, false], ["pack_5", 5, 479, true, false, false], ["pack_10", 10, 899, false, false, false], ["pack_25", 25, 1_999, false, false, true], ["pack_50", 50, 3_999, false, false, false]]);
     expect(catalog.sessions).toEqual([{ id: "written_review", label: "Written expert review", detail: "Returned within 48 hours", amount: 4_900, available: false }, { id: "live_session", label: "Live 45-minute session", detail: "Mock interview or search strategy", amount: 9_900, available: false }]);
     expect(catalog.creditCosts).toHaveLength(11);
   });
@@ -195,7 +195,7 @@ describe("public catalog payload (GET /api/plans/catalog)", () => {
       { interval: "30d", days: 30, amount: 99_900, available: true, autoExtend: ["upi_autopay", "card_netbanking_mandate"] },
       { interval: "90d", days: 90, amount: 249_900, available: false, autoExtend: ["upi_autopay", "card_netbanking_mandate"] },
     ]);
-    expect(catalog.packs.map(pack => [pack.id, pack.credits, pack.amount])).toEqual([["pack_2", 2, 9_900], ["pack_25", 25, 119_900], ["pack_60", 60, 259_900], ["pack_150", 150, 599_900]]);
+    expect(catalog.packs.map(pack => [pack.id, pack.credits, pack.amount])).toEqual([["pack_1", 1, 9_900], ["pack_5", 5, 47_900], ["pack_10", 10, 89_900], ["pack_25", 25, 197_900], ["pack_50", 50, 395_900]]);
   });
 
   it("human sessions sell only once staffed and live; Concierge never sells from checkout", () => {
@@ -227,7 +227,7 @@ describe("checkout and lifecycle requests", () => {
     expect(SUBSCRIPTION_REFUSALS.planRetired).toBe(PLAN_RETIRED_CODE);
     expect(kitPlanCheckoutRequestSchema.safeParse({ plan: "pro", currency: "INR", billingCountry: "IN" }).success).toBe(false);
     expect(packCheckoutRequestSchema.safeParse({ packId: "pack_25", billingCountry: "IN" }).success).toBe(true);
-    expect(packCheckoutRequestSchema.safeParse({ packId: "pack_10", billingCountry: "IN" }).success).toBe(false);
+    expect(packCheckoutRequestSchema.safeParse({ packId: "pack_60", billingCountry: "IN" }).success).toBe(false);
     expect(packCheckoutRequestSchema.safeParse({ packId: "pack_25", billingCountry: "IN", amount: 1 }).success).toBe(true);
     expect(packCheckoutRequestSchema.parse({ packId: "pack_25", billingCountry: "IN", amount: 1 })).not.toHaveProperty("amount");
   });

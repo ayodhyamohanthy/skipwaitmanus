@@ -90,8 +90,8 @@ describe("item price availability", () => {
     expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 1, period_unit: "year" }, yearly)).toBe(true);
     expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 12, period_unit: "month" }, yearly)).toBe(true);
     expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 1, period_unit: "month" }, yearly)).toBe(false);
-    expect(itemPriceMatches({ id: pack.itemPriceId, status: "active", currency_code: "USD", price: 2_200, item_type: "charge" }, pack)).toBe(true);
-    expect(itemPriceMatches({ id: pack.itemPriceId, status: "active", currency_code: "USD", price: 2_200, item_type: "plan" }, pack)).toBe(false);
+    expect(itemPriceMatches({ id: pack.itemPriceId, status: "active", currency_code: "USD", price: 1_999, item_type: "charge" }, pack)).toBe(true);
+    expect(itemPriceMatches({ id: pack.itemPriceId, status: "active", currency_code: "USD", price: 1_999, item_type: "plan" }, pack)).toBe(false);
     expect(itemPriceMatches({ id: session.itemPriceId, status: "active", currency_code: "INR", price: 79_900, item_type: "charge" }, session)).toBe(true);
     expect(itemPriceMatches(null, pack)).toBe(false);
   });

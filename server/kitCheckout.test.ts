@@ -106,20 +106,20 @@ describe("kit credit pack checkout decision", () => {
       req, request: { packId: "pack_25", billingCountry: "IN", role: "job_seeker" }, customer: { billingCountry: "IN" }, urls,
       deps: { isAvailable: () => true, createPackCheckout, newCheckoutIntentId: () => "intent_pack" },
     });
-    expect(india).toMatchObject({ ok: true, price: { packId: "pack_25", credits: 25, currency: "INR", amount: 119_900, itemPriceId: "skipwait_pack_25-INR" } });
+    expect(india).toMatchObject({ ok: true, price: { packId: "pack_25", credits: 25, currency: "INR", amount: 197_900, itemPriceId: "skipwait_pack_25-INR" } });
     expect(createPackCheckout).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ itemPriceId: "skipwait_pack_25-INR", currency: "INR" }));
 
     const globally = await startKitPackCheckout({
       req, request: { packId: "pack_5", billingCountry: "INTL", role: "job_seeker" }, customer: {}, urls,
       deps: { isAvailable: () => true, createPackCheckout, newCheckoutIntentId: () => "intent_pack" },
     });
-    expect(globally).toMatchObject({ ok: true, price: { packId: "pack_5", credits: 5, currency: "USD", amount: 500 } });
+    expect(globally).toMatchObject({ ok: true, price: { packId: "pack_5", credits: 5, currency: "USD", amount: 479 } });
   });
 
   it("refuses a pack whose item price is not live", async () => {
     const createPackCheckout = vi.fn();
     const started = await startKitPackCheckout({
-      req, request: { packId: "pack_150", billingCountry: "INTL", role: "job_seeker" }, customer: {}, urls,
+      req, request: { packId: "pack_50", billingCountry: "INTL", role: "job_seeker" }, customer: {}, urls,
       deps: { isAvailable: nothingLive, createPackCheckout },
     });
     expect(started).toMatchObject({ ok: false, status: 409, code: NOT_AVAILABLE_CODE });
@@ -175,9 +175,9 @@ describe("kit checkout over the two money routes", () => {
     const createPackCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/pack", hostedPageId: "hp_pack" }));
     const response = await request(app({ createPaymentIntent, kitCheckout: { isAvailable: () => true, createPackCheckout, newCheckoutIntentId: () => "intent_pack" } }))
       .post("/api/chargebee/checkout")
-      .send({ packId: "pack_60", billingCountry: "IN" });
+      .send({ packId: "pack_10", billingCountry: "IN" });
     expect(response.status).toBe(200);
-    expect(createPaymentIntent).toHaveBeenCalledWith({ hostedPageId: "hp_pack", checkoutIntentId: "intent_pack", userId: 7, role: "job_seeker", tokenCount: 60, amount: 259_900, currency: "INR" });
+    expect(createPaymentIntent).toHaveBeenCalledWith({ hostedPageId: "hp_pack", checkoutIntentId: "intent_pack", userId: 7, role: "job_seeker", tokenCount: 10, amount: 89_900, currency: "INR" });
   });
 
   // D-067: Pro and Max are removed completely. An old client that still sends the

@@ -210,7 +210,7 @@ describe("Chargebee webhook route", () => {
       createCheckout: async () => { providerCalls += 1; return { checkoutUrl: "https://chargebee.test/hp_legacy", hostedPageId: "hp_legacy", checkoutIntentId: "intent_legacy" }; },
       createPaymentIntent: async () => undefined,
       fulfillPayment: async () => ({ status: "credited" }),
-      kitCheckout: { isAvailable: async (_req, price) => price.itemPriceId === "skipwait_pack_2-INR" },
+      kitCheckout: { isAvailable: async (_req, price) => price.itemPriceId === "skipwait_pack_1-INR" },
     });
     const inr = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", role: "job_seeker" });
     expect(inr.status).toBe(410);
