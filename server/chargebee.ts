@@ -118,8 +118,10 @@ export function parsePaidPaymentEvent(payload: any) {
   // D-132 crediting is provider-truth: the invoice's own line items name the
   // credits rung and plan fee sold, for the first month and every renewal
   // alike (renewals carry no hosted page). Kit invoices classify to nothing.
+  // PC 2.0 line items carry the price id as entity_id (entity_type
+  // "*_item_price"); item_price_id is the newer alias when present.
   const lineItemPriceIds: string[] = Array.isArray(invoice?.line_items)
-    ? invoice.line_items.map((item: any) => item?.item_price_id).filter((id: any): id is string => typeof id === "string")
+    ? invoice.line_items.map((item: any) => (typeof item?.item_price_id === "string" ? item.item_price_id : typeof item?.entity_id === "string" ? item.entity_id : undefined)).filter((id: any): id is string => typeof id === "string")
     : [];
   const v2 = classifyV2SubscriptionItems(lineItemPriceIds);
   const subscriptionId = typeof payment.subscription_id === "string" ? payment.subscription_id : typeof invoice?.subscription_id === "string" ? invoice.subscription_id : undefined;
