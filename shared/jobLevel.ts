@@ -57,7 +57,11 @@ const LADDER_TAGS: ReadonlyArray<readonly [digits: string, level: JobLevel]> = [
 const LADDER_RE = /\b(sde|swe|sdet|ic|l|p|e|g|grade|band|level)\s*-?\s*(\d{1,2})\b/g;
 
 function ladderTagLevel(title: string): { level: JobLevel; confidence: LevelConfidence; basis: string } | null {
-  for (const match of title.toLowerCase().matchAll(LADDER_RE)) {
+  const lower = title.toLowerCase();
+  let tagMatch: RegExpExecArray | null;
+  LADDER_RE.lastIndex = 0;
+  while ((tagMatch = LADDER_RE.exec(lower)) !== null) {
+    const match = tagMatch;
     const digits = Number(match[2]);
     // A bare "(L5)" style tag maps to its own number, capped at L6, medium
     // confidence (growth review): company ladders differ too much to trust more.
@@ -139,12 +143,16 @@ const YEARS_EXCLUSION = /in business|of excellence|of legacy|of service|since\b/
 
 export function parseYearsOfExperience(text: string): number | null {
   const candidates: Array<{ years: number; experienced: boolean }> = [];
-  for (const match of text.toLowerCase().matchAll(YEARS_RE)) {
+  const lower = text.toLowerCase();
+  let yearMatch: RegExpExecArray | null;
+  YEARS_RE.lastIndex = 0;
+  while ((yearMatch = YEARS_RE.exec(lower)) !== null) {
+    const match = yearMatch;
     const after = text.slice((match.index ?? 0) + match[0].length, (match.index ?? 0) + match[0].length + 8);
     if (/^\s*of age/.test(after)) continue; // "18 years of age" is not experience
     const years = Math.floor(Number(match[1] ?? match[3] ?? match[4] + (match[5] ? `.${match[5]}` : "")));
     if (years > 40) continue;
-    const around = text.slice(Math.max(0, (match.index ?? 0) - 40), (match.index ?? 0) + match[0].length + 20);
+    const around = lower.slice(Math.max(0, (match.index ?? 0) - 40), (match.index ?? 0) + match[0].length + 20);
     if (YEARS_EXCLUSION.test(around) && !/experience|exp\b/.test(around)) continue; // company age, not experience
     candidates.push({ years, experienced: /experience|exp\b|professional|industry/.test(around) });
   }
@@ -204,10 +212,10 @@ export function assignJobLevel(input: JobLevelInput): JobLevelResult {
   if (yearsLevel !== null && verbLevel !== null) {
     // Signals disagree -> take the lower (owner rule: bias down).
     const level = Math.min(yearsLevel, verbLevel) as JobLevel;
-    return { level, confidence: "medium", basis: `years:${years}+verb:${verbHit[0]}` };
+    return { level, confidence: "medium", basis: `years:${years}+verb` };
   }
   if (yearsLevel !== null) return { level: yearsLevel, confidence: "medium", basis: `years:${years}` };
-  if (verbLevel !== null) return { level: verbLevel, confidence: "low", basis: `verb:${verbHit[0]}` };
+  if (verbLevel !== null) return { level: verbLevel, confidence: "low", basis: "verb" };
 
   // Last resort (growth's layer 9): L2, low confidence. Never "unread".
   return { level: 2, confidence: "low", basis: "fallback" };

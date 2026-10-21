@@ -61,4 +61,22 @@
     "CHARGEBEE_LIVE_SITE": "skipwait"
   },
   "observability": { "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": true, "persist": true }, "traces": { "enabled": false } }
+
+  ,
+  "env": {
+    "qa": {
+      "name": "skipwait-qa",
+      "vars": {
+        "NODE_ENV": "production",
+        "API_RELEASE": "qa",
+        "SKIPWAIT_ADMIN_EMAIL": "ayodhya@skipwait.me",
+        "ENABLE_ADMIN_BOOTSTRAP": "false",
+        "ENABLE_ADMIN_SMOKE_FIXTURE": "true",
+        "BILLING_ENV": "test",
+        "CHARGEBEE_LIVE_ENABLED": "false",
+        "COMPANY_RESPONSE_SIGNAL_ENABLED": "true",
+        "SHARE_IMPACT_CARD_ENABLED": "true"
+      }
+    }
+  }
 }
