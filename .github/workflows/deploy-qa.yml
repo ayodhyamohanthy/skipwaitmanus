@@ -7,19 +7,6 @@ name: Deploy QA preview (share/signal flags)
 # credentials as the prod pipeline.
 
 on:
-  push:
-    branches: [agent/instinct/qa-preview-share]
-    paths:
-      - "server/**"
-      - "shared/**"
-      - "client/**"
-      - "drizzle/**"
-      - "scripts/**"
-      - "src/worker.ts"
-      - "wrangler.jsonc"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/deploy-qa.yml"
   workflow_dispatch:
     inputs:
       seed:
@@ -35,22 +22,7 @@ permissions:
   contents: read
 
 jobs:
-  migrate-qa-db:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - name: Apply pending migrations to the scratch QA database
-        env:
-          DB_HOST: ${{ vars.SKIPWAIT_NEWDB_HOST }}
-          DB_USER: ${{ vars.SKIPWAIT_NEWDB_USER }}
-          DB_NAME: skipwait_qa
-          DB_PORT: ${{ vars.SKIPWAIT_DB_PORT }}
-          MYSQL_PWD: ${{ secrets.SKIPWAIT_NEWDB_PASSWORD }}
-        run: bash scripts/apply-deploy-migrations.sh
-
   deploy:
-    needs: migrate-qa-db
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -61,26 +33,41 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      # Deploy migrations include historic real-user imports. NEVER run them on QA.
+      - name: Sync scratch QA schema from definitions only
+        env:
+          DATABASE_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
+        run: npx drizzle-kit push --force
       - name: Typecheck
         run: npx tsc --noEmit
+      - name: Stamp QA release
+        run: |
+          echo "${{ github.sha }}" > commit-sha.txt
+          node -e 'const fs=require("fs"); const p="wrangler.jsonc"; let s=fs.readFileSync(p,"utf8"); s=s.replace(/"API_RELEASE": "qa"/, `"API_RELEASE": "${process.env.GITHUB_SHA}"`);fs.writeFileSync(p,s)'
       - name: Build with share/signal client flags ON
         env:
           VITE_COMPANY_RESPONSE_SIGNAL: "true"
           VITE_SHARE_WIN_CARD: "true"
           VITE_SHARE_IMPACT_CARD: "true"
         run: pnpm build
-      - name: Ensure qa worker secrets exist (DATABASE_URL to scratch DB, JWT_SECRET)
+      - name: Deploy skipwait-qa (creates the worker if absent)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          QA_DB_URL: mysql://${{ vars.SKIPWAIT_NEWDB_USER }}:${{ secrets.SKIPWAIT_NEWDB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
+        run: npx wrangler deploy --env qa
+      - name: Ensure qa worker secrets exist (DATABASE_URL to scratch DB, JWT_SECRET, gate)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          QA_DB_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
         shell: bash
         run: |
           set +x
           existing=$(npx wrangler secret list --env qa 2>/dev/null || echo "[]")
           echo "$existing" | jq -e '.[] | select(.name == "DATABASE_URL")' >/dev/null || printf '%s' "$QA_DB_URL" | npx wrangler secret put DATABASE_URL --env qa >/dev/null
           echo "$existing" | jq -e '.[] | select(.name == "JWT_SECRET")' >/dev/null || openssl rand -base64 32 | npx wrangler secret put JWT_SECRET --env qa >/dev/null
-      - name: Deploy skipwait-qa
+          echo "$existing" | jq -e '.[] | select(.name == "QA_GATE_SECRET")' >/dev/null || printf '%s' "${{ secrets.SKIPWAIT_QA_GATE }}" | npx wrangler secret put QA_GATE_SECRET --env qa >/dev/null
+      - name: Redeploy to bind any newly added secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -88,5 +75,5 @@ jobs:
       - name: Seed fictional share fixtures (manual runs only, when requested)
         if: github.event_name == 'workflow_dispatch' && inputs.seed == 'true'
         env:
-          DATABASE_URL: mysql://${{ vars.SKIPWAIT_NEWDB_USER }}:${{ secrets.SKIPWAIT_NEWDB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
+          DATABASE_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
         run: npx tsx scripts/qa-seed-share-fixtures.ts

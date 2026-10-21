@@ -66,8 +66,14 @@
   "env": {
     "qa": {
       "name": "skipwait-qa",
+      "workers_dev": true,
+      "routes": [],
+      "triggers": { "crons": [] },
+      "containers": [{ "class_name": "SkipwaitApi", "image": "./Dockerfile.qa", "max_instances": 1, "instance_type": "lite", "name": "skipwait-qa-api" }],
+      "durable_objects": { "bindings": [{ "name": "SkipwaitApi", "class_name": "SkipwaitApi" }] },
       "vars": {
-        "NODE_ENV": "production",
+        "NODE_ENV": "test",
+        "QA_PREVIEW": "true",
         "API_RELEASE": "qa",
         "SKIPWAIT_ADMIN_EMAIL": "ayodhya@skipwait.me",
         "ENABLE_ADMIN_BOOTSTRAP": "false",

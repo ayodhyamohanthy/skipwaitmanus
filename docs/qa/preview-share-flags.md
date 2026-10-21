@@ -20,3 +20,9 @@ The script refuses any database whose name does not contain "qa" (override: SKIP
 - Referrer A sees the impact card on /referrer-home; clipboard text carries aggregates + screen name only; B sees nothing.
 - Seeker sees the win card on their accepted thread; "Accepted" badge (not "Referred") until intro_made.
 - Level classifier: no surface consumes it yet; nothing to click (flag-off groundwork).
+
+## Safety correction (Oct 21)
+Deployment is NOT approved: a second container has usage costs. Workflow is manual-only; no branch push deploys it. No successful deploy or preview URL exists yet.
+QA uses only skipwaitqa, whose grants are scoped to skipwait_qa.*. Never use the admin login in QA Actions.
+Initialize schema with drizzle-kit push from schema.ts, NOT the deploy migrations: those include historical real-user imports. Never copy production rows.
+Dockerfile.qa bakes the three client flags on. env.qa uses a separate lite container, no production routes, no cron, NODE_ENV=test (otherwise missing WorkOS fails closed). Basic Auth gates the entire workers.dev origin. QA_PREVIEW=true with no gate secret returns 503, never opens the preview. Store the generated gate only in vault/repo/Worker secret stores, never chat.

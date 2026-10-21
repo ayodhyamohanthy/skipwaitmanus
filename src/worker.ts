@@ -62,6 +62,26 @@ function releaseOf(env: WorkerEnv): string {
   return typeof env.API_RELEASE === "string" && /^[a-f0-9]{40}$/.test(env.API_RELEASE) ? env.API_RELEASE.slice(0, 12) : "legacy";
 }
 
+/**
+ * QA preview gate (skipwait-qa on workers.dev only). When QA_GATE_SECRET is set,
+ * the whole origin - static app included - requires HTTP basic auth as
+ * qa:<QA_GATE_SECRET>, so the preview's dev-auth path is never open to the
+ * world. Prod (skipwait.me/api/*) never sets this secret and is unaffected.
+ */
+export function qaGate(request: Request, env: WorkerEnv): Response | null {
+  const secret = typeof env.QA_GATE_SECRET === "string" ? env.QA_GATE_SECRET : "";
+  if (!secret) return new Response("QA preview unavailable", { status: 503, headers: { "cache-control": "no-store" } });
+  const header = request.headers.get("Authorization") ?? "";
+  const expected = "Basic " + btoa(`qa:${secret}`);
+  if (header !== expected) {
+    return new Response("QA preview - sign in required", {
+      status: 401,
+      headers: { "WWW-Authenticate": 'Basic realm="skipwait-qa"', "cache-control": "no-store", "X-Robots-Tag": "noindex, nofollow" },
+    });
+  }
+  return null;
+}
+
 export default {
   async fetch(
     request: Request,
@@ -72,7 +92,15 @@ export default {
     // forwarded host headers: callers can supply them, while request.url is set
     // by Cloudflare from the matched route.
     const url = new URL(request.url);
-    if (url.protocol !== "https:" || url.hostname !== "skipwait.me" || !url.pathname.startsWith("/api/")) {
+    const isQa = env.QA_PREVIEW === "true";
+    if (isQa) {
+      // QA preview: gated at the edge, serves the whole app (API + static) from workers.dev.
+      if (url.protocol !== "https:" || !url.hostname.endsWith(".workers.dev")) {
+        return new Response("Not Found", { status: 404, headers: { "cache-control": "no-store" } });
+      }
+      const denied = qaGate(request, env);
+      if (denied) return denied;
+    } else if (url.protocol !== "https:" || url.hostname !== "skipwait.me" || !url.pathname.startsWith("/api/")) {
       return new Response("Not Found", { status: 404, headers: { "cache-control": "no-store" } });
     }
     // Internal routes (the scheduled-jobs tick) are reachable only from
@@ -86,7 +114,13 @@ export default {
     // A public request can never present the cron's tick token to the container.
     // Client-supplied X-Forwarded-For is never trusted: the container sees one
     // forwarding header, set here from Cloudflare's CF-Connecting-IP.
-    return fetchContainerWithStoppedRecovery(container, withEdgeClientIp(withoutJobsTickHeader(request)));
+    const res = await fetchContainerWithStoppedRecovery(container, withEdgeClientIp(withoutJobsTickHeader(request)));
+    if (isQa) {
+      const gated = new Response(res.body, res);
+      gated.headers.set("X-Robots-Tag", "noindex, nofollow");
+      return gated;
+    }
+    return res;
   },
 
   // Cron trigger (wrangler.jsonc triggers.crons): POST the scheduled-jobs tick
