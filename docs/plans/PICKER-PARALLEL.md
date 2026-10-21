@@ -2,7 +2,7 @@
 
 > Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code as CEO (D-109, D-127) on Oct 21 2026 from a read-only study of `scripts/nextTaskCore.mjs`, `scripts/next-task.mjs` and the D-048 rollout. The picker hands out one task from this packet at a time; do only the task it prints. The register wins any conflict.
 
-All tasks here are Tier 2 and live in lane `picker` (they edit the same files, so they run one after another). Every task: red-first tests in `scripts/nextTask.test.ts`, no new dependency, `scripts/briefContract.test.ts` and the full gate green, every affected doc updated in the same pull request (D-068), landed under D-082. Keep `scripts/nextTaskCore.mjs` pure (no I/O): GitHub and git reads stay in `scripts/next-task.mjs`.
+All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker` (they edit the same files, so they run one after another). Every task: red-first tests in `scripts/nextTask.test.ts`, no new dependency, `scripts/briefContract.test.ts` and the full gate green, every affected doc updated in the same pull request (D-068), landed under D-082. Keep `scripts/nextTaskCore.mjs` pure (no I/O): GitHub and git reads stay in `scripts/next-task.mjs`.
 
 ## PICKER-landing-slot: one landing at a time, without discipline
 **Why.** D-082 says one landing at a time, but nothing enforces it. With eight or more lanes, landers who merged the same `main` race each other: each loser re-merges and re-runs CI (about 4.4 minutes), and six simultaneous CI runs use 18 of GitHub Free's 20 concurrent jobs, which delays `main`'s own CI.
@@ -15,9 +15,9 @@ All tasks here are Tier 2 and live in lane `picker` (they edit the same files, s
 1. An optional `owns` key on a task: an array of repository paths, folder prefixes ending in `/`, or globs with `*` and `**`, matched by a small built-in matcher (no dependency).
 2. `validateAssignments` refuses two tasks that are not done whose `owns` overlap, unless one depends on the other.
 3. A `filesBusy` check beside `laneBusy`: a new build waits while an open task owns an overlapping path.
-4. `scripts/scope-check.mjs <task-id>`: reads `owns` from `origin/main`'s task list and `git diff --name-only origin/main...HEAD`, and fails on any changed path outside `owns`, any edited or deleted existing `*.test.ts(x)`, any path under `shared/` or `server/` for a task whose `owns` has none, and more than 12 changed lines in a file the task owns as `(switch only)`. It fails open (exit 0 with a warning) only on its own internal error, never on a definite violation.
+4. `scripts/scope-check.mjs <task-id>`: reads `owns` from `origin/main`'s task list and `git diff --name-only origin/main...HEAD`, and fails on any changed path outside `owns`, any edited or deleted existing `*.test.ts(x)` that is not in the task's `owns` (a retirement row may delete kit tests together with the code they cover), any path under `shared/` or `server/` for a task whose `owns` has none, and more than 12 changed lines in a file the task owns as `(switch only)`. It fails open (exit 0 with a warning) only on its own internal error, never on a definite violation.
 5. The `land` and review steps print `node scripts/scope-check.mjs <id>` and the pairwise conflict probe against every other open branch of the same goal: `git merge-tree $(git merge-base origin/main origin/<a>) origin/<a> origin/<b> | grep -c '^+<<<<<<<'` must be 0.
-6. Running it inside CI is a follow-up the owner approves (it edits `.github/workflows/ci.yml`, never-do 9); until then the reviewer and lander run it.
+6. Add it as a step in the required typecheck job in `.github/workflows/ci.yml`: this packet authorizes that one edit (DELEGATION never-do 9; CEO ruling, D-127). It reads the task from the branch name.
 **Tests.** Overlap refused by the validator; overlap allowed with a dependency; `filesBusy` holds a build; the scope check passes inside `owns`, fails outside it, fails on a deleted test, and fails open on a crash.
 
 ## PICKER-status-rows: no two tasks rewrite the same status line

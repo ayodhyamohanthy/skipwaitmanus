@@ -35,14 +35,14 @@ The goal kit's type scale: a shared merge helper dropped the goal type tokens. I
 ### D-048-p3-map (#358, `agent/workbuddy/d048-phase3-plan`, Tier 3)
 The D-048 phase 3 rollout map (eight waves, one pull request each). Done: merged with `main`, consistent with `DESIGN.md`, D-077 and docs/plans/D-048-phase-3-split.md (D-127 wins where they differ: cluster lanes, dark landing, one-line releases), landed.
 
-### D-048-p3-w0-shell (#361, `agent/instinct/goal-ui-w0-shell`, Tier 2, after the map)
-Wave 0: the app shell onto the goal system. Its CI is red: make it green first. Done: merged with `main`, gate green, 1280 and 390 captures attached to the pull request, landed. No surface outside the shell is re-skinned (D-048).
+### D-048-p3-w0-shell (#361, `agent/instinct/goal-ui-w0-shell`, Tier 2, lane `design-core`)
+Wave 0: the app shell. Rework it per `docs/plans/D-048-phase-3-split.md` (row D-048-p3-w0-shell): `AppShell.tsx` becomes a switch, today's body moves verbatim into `KitAppShell.tsx`, the goal frame renders only on routes whose own surface id is on, and it keeps the D-063 sentence until the money pages move. It lands dark after the flag module (D-048-F-flags) and the type scale (#379). Done: merged with `main`, gate green, kit shell tests unchanged, 1280 and 390 captures, landed with every surface off.
 
-### D-048-p3-explore (#362, `agent/qoder/d048-phase-3-explore`, Tier 2)
-Find a referral (`/explore`) moves to the goal directory. Done: merged with `main`, gate green, 1280 and 390 captures, landed.
+### D-048-p3-explore (#362, `agent/qoder/d048-phase-3-explore`, Tier 1, lane `d048-find`)
+Find a referral (`/explore`), the seeker home. Rework per the split (row D-048-p3-explore): the goal version moves to `client/src/pages/goal/explore/`, `Explore.tsx` gets only the three-line `goalSurfaceOn('explore')` switch, the kit page and its tests stay byte-identical, and the commits #360 stacked into this branch are dropped. It lands dark after the foundation's harness and primitives (the foundation packet sets those dependencies). Done: merged with `main`, gate green, 1280 and 390 captures, independent review passed (it shows credits), landed with the flag off.
 
-### D-048-p3-requests (#360, `agent/qoder/d048-phase-3-requests`, Tier 2)
-My asks (`/requests`) moves to the goal list. Done: merged with `main`, gate green, 1280 and 390 captures, landed.
+### D-048-p3-requests (#360, `agent/qoder/d048-phase-3-requests`, Tier 1, lane `d048-asks`)
+My asks (`/requests`). Rework per the split (row D-048-p3-requests): restore `client/src/pages/myRequests.kit.test.tsx` and the three kit tests #360 rewrote to main's exact text (its withdraw test asserted the opposite behaviour), put goal assertions only in `myRequests.goal.test.tsx`, move the goal version to `client/src/pages/goal/requests/` behind the `goalSurfaceOn('requests')` switch. It lands dark after the foundation's harness and primitives. Done: merged with `main`, gate green, captures, independent review passed (it shows credits), landed with the flag off.
 
 ### ROW20-A (#310), ROW20-B (#311), ROW20-CD (#314) — queue row 20, in that order
 FND-7 left the row-20 set to the CEO: finish it, in order. A (`agent/qoder/row20-referral-lifecycle`, Tier 2) counts the kit Impact metrics from real history; B (`agent/qoder/row20b-company-demand`, Tier 2) counts seeker company demand as one vote per person, the count D-086 makes public; C+D (`agent/qoder/row20cd-thank-you-wall`, Tier 1 because of its migration) delivers the landed thank-you to its referrer exactly once. C+D named migration 0097, which the brand rename took: renumber it (rule 3). Done for each: merged with `main`, gate green, every number from the database and none invented (D-088), landed (C+D after its review).

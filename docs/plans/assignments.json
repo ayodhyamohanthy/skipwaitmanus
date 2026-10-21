@@ -3,7 +3,7 @@
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083)",
   "updated": "2026-10-21",
-  "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks. An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (Claude Code writes the packet first), owner (waits on the owner). Run `node scripts/next-task.mjs`.",
+  "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks, except that a packet's pull request adds exactly the rows the CEO's split lists for that packet (D-127). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (Claude Code writes the packet first), owner (waits on the owner). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
       "id": "D-069-chargebee-catalog-sync",
@@ -212,16 +212,16 @@
       "title": "D-048 phase 3 foundation packet: flag module, W0 switch, primitives, harness, credits hook, static frame, route table",
       "row": "D-048",
       "packet": null,
-      "tier": 2,
+      "tier": 3,
       "lane": "d048-packets",
       "branch": "agent/queue/d048-foundation-packet",
       "status": "architect",
       "dependsOn": [],
-      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds the D-048-F-* rows exactly as that file lists them."
+      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds the D-048-F-* rows exactly as that file lists them, sets D-048-p3-w0-shell's dependsOn to add D-048-F-flags and D-048-p3-explore's and D-048-p3-requests' to [D-048-F-harness, D-048-F-primitives], and sets this row to done."
     },
     {
       "id": "D-048-p3-w0-shell",
-      "title": "D-048 phase 3 wave 0 (#361): the app shell onto the goal system; CI red first",
+      "title": "D-048 phase 3 wave 0 (#361): the app shell onto the goal system, reworked to land dark",
       "row": "D-048",
       "packet": "docs/plans/OCT21-BUILT-PRS.md",
       "tier": 2,
@@ -230,9 +230,10 @@
       "status": "todo",
       "dependsOn": [
         "D-048-p3-map",
+        "D-048-F-typescale",
         "D-048-phase-3"
       ],
-      "note": "Rework per docs/plans/D-048-phase-3-split.md: AppShell becomes a switch; the goal frame renders only on released routes. The foundation packet adds D-048-F-flags and D-048-F-typescale to this row's dependencies."
+      "note": "Rework per docs/plans/D-048-phase-3-split.md: AppShell becomes a switch; the goal frame renders only on released routes and keeps the D-063 sentence until the money pages move. The foundation packet adds D-048-F-flags to this row's dependencies."
     },
     {
       "id": "D-048-p3-explore",
@@ -247,7 +248,7 @@
         "D-048-phase-3",
         "D-048-p3-w0-shell"
       ],
-      "note": "Lands dark behind goalSurfaceOn('explore') once the foundation is in; 27+ commits behind main, merge first. Tier 1: it shows credits."
+      "note": "Lands dark behind goalSurfaceOn('explore') once the foundation is in; 27+ commits behind main, merge first. Tier 1: it shows credits. The foundation packet sets this row's dependsOn to [D-048-F-harness, D-048-F-primitives]."
     },
     {
       "id": "D-048-p3-requests",
@@ -262,7 +263,7 @@
         "D-048-phase-3",
         "D-048-p3-w0-shell"
       ],
-      "note": "Lands dark behind goalSurfaceOn('requests'); restore the deleted client/src/pages/myRequests.kit.test.tsx (kit tests are never edited or deleted). Tier 1: it shows credits."
+      "note": "Lands dark behind goalSurfaceOn('requests'); restore the deleted client/src/pages/myRequests.kit.test.tsx (kit tests are never edited or deleted). Tier 1: it shows credits. The foundation packet sets this row's dependsOn to [D-048-F-harness, D-048-F-primitives]."
     },
     {
       "id": "D-048-P-seeker",
@@ -276,7 +277,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows whose dependsOn names it, as the split lists them, and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-referrer",
@@ -290,7 +291,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows whose dependsOn names it, as the split lists them, and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-money",
@@ -304,7 +305,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows whose dependsOn names it, as the split lists them, and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-auth",
@@ -318,7 +319,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows whose dependsOn names it, as the split lists them, and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-account",
@@ -332,7 +333,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows whose dependsOn names it, as the split lists them, and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-admin",
@@ -346,7 +347,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows whose dependsOn names it, as the split lists them, and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-employer",
@@ -360,7 +361,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows whose dependsOn names it, as the split lists them, and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-public",
@@ -374,7 +375,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows whose dependsOn names it, as the split lists them, and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-marketing",
@@ -388,7 +389,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md and the landing contract in docs/plans/GOAL_UI_MIGRATION.md; open questions decided there under D-123. Its pull request adds this lane's rows."
+      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md and the landing contract in docs/plans/GOAL_UI_MIGRATION.md; its pull request adds exactly the rows whose dependsOn names it, as the split lists them, and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "ROW20-A",

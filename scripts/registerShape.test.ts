@@ -33,6 +33,11 @@ describe("the decision register's shape", () => {
     expect(ids.filter((id, k) => ids.indexOf(id) !== k).map(id => `D-${id}`)).toEqual([]);
   });
 
+  it("starts every decision row at the beginning of its own line (none glued onto another row or bullet)", () => {
+    const glued = lines.flatMap((l, i) => [...l.matchAll(/\| D-(\d+) \| \d{4}-\d{2}-\d{2} \|/g)].filter(m => (m.index ?? 0) > 0).map(m => `D-${m[1]} on line ${i + 1}`));
+    expect(glued).toEqual([]);
+  });
+
   it("lists the decisions in ID order", () => {
     const ids = rows.map(r => r.id);
     const firstOutOfOrder = ids.findIndex((id, k) => k > 0 && id < ids[k - 1]);
