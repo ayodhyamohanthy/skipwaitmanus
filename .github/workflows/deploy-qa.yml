@@ -58,8 +58,9 @@ jobs:
       - name: Typecheck
         if: inputs.seed_only != 'true' && inputs.rotate_gate != 'true'
         run: npx tsc --noEmit
+      # commit-sha.txt is needed by every deploy, including rotate_gate redeploys.
       - name: Stamp QA release
-        if: inputs.seed_only != 'true' && inputs.rotate_gate != 'true'
+        if: inputs.seed_only != 'true'
         run: |
           echo "${{ github.sha }}" > commit-sha.txt
           node -e 'const fs=require("fs"); const p="wrangler.jsonc"; let s=fs.readFileSync(p,"utf8"); s=s.replace(/"API_RELEASE": "qa"/, `"API_RELEASE": "${process.env.GITHUB_SHA}"`);fs.writeFileSync(p,s)'
