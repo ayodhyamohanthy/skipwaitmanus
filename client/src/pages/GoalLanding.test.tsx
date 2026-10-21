@@ -26,13 +26,15 @@ describe("GoalLanding (D-120)", () => {
 
   it("shows the next-step block and the explore-before-sign-in honesty note", () => {
     render(<GoalLanding />);
-    expect(screen.getByTestId("goal-next-step").textContent).toContain("Your next step");
+    // v7 warm hero: the next step is the single black pill commit + honesty note.
+    const next = screen.getByTestId("goal-next-step");
+    expect(next.querySelector('[data-g-primary="true"]')?.textContent).toContain("Find your company");
     expect(screen.getByText(/Explore before signing in/)).toBeTruthy();
   });
 
   it("teaches the 3 steps with the real cost before any ask", () => {
     render(<GoalLanding />);
-    const section = screen.getByRole("heading", { name: "How it goes" }).closest("section")!;
+    const section = screen.getByRole("heading", { name: "Three steps. No noise." }).closest("section")!;
     const steps = section.querySelector("ol")!;
     expect(steps.textContent).toContain("Find your company");
     expect(steps.textContent).toContain("Send one thoughtful ask");

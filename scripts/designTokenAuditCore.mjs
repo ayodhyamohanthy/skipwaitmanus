@@ -31,6 +31,8 @@ export const GOAL_BLOCK_MARKER = "D-048 phase 2 · goal-UI tokens";
 export const GOAL_BLOCK_HEXES = new Set([
   "#ffffff", "#fafafa", "#f4f4f5", "#0a0a0a", "#52525b", "#6b6b73", "#ebebeb",
   "#8a8a8a", "#262626", "#404040", "#1d4ed8", "#047857", "#b45309", "#b91c1c",
+  // D-130: warm hero band (landing only) + V6-B mark values.
+  "#fce9da", "#f6cfdd", "#e7d6f4", "#c9c9c9",
 ]);
 
 /** R7: the expected @theme entries of the phase-2 block (name -> normalized value). */
@@ -82,6 +84,9 @@ export const G_VARS = {
   "--g-rail-w": "104px", "--g-rail-tile-w": "88px", "--g-rail-tile-h": "56px", "--g-topbar-h": "56px", "--g-bottombar-h": "56px",
   "--g-drawer-w": "480px", "--g-list-w": "360px", "--g-detail-max": "680px", "--g-asks-list-w": "440px",
   "--g-decision-bar-h": "72px", "--g-subheader-h-phone": "48px", "--g-control-h": "40px", "--g-control-h-phone": "48px", "--g-touch": "44px",
+  // D-130: warm hero band + V6-B mark (comp record: design/goal-ui/pick/tokens.css).
+  "--g-warm-1": "#fce9da", "--g-warm-2": "#f6cfdd", "--g-warm-3": "#e7d6f4",
+  "--g-mark-1": "#c9c9c9", "--g-mark-2": "#8a8a8a", "--g-mark-3": "#0a0a0a",
 };
 
 const HEX_TOKEN = /[a-z-]*\[#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})\](?:\/[0-9]{1,3})?/g;
