@@ -1140,3 +1140,40 @@ export const companyClaimChallenges = mysqlTable("companyClaimChallenges", {
   expiresAt: timestamp("expiresAt").notNull(),
   consumedAt: timestamp("consumedAt"),
 }, t => [index("company_claim_user_created").on(t.userId, t.createdAt)]);
+const billingReviewDigest = customType<{ data: string; driverData: string }>({ dataType() { return "varchar(64) CHARACTER SET ascii COLLATE ascii_bin"; } });
+
+/** D-067 review notifications, no user cascade may erase unresolved evidence. */
+export const billingReviewOutbox = mysqlTable("billingReviewOutbox", {
+  id: int("id").autoincrement().primaryKey(),
+  obligationKey: billingReviewDigest("obligationKey").notNull(),
+  payload: text("payload"),
+  conflictDigest: billingReviewDigest("conflictDigest").notNull(),
+  envelope: text("envelope"),
+  submissionState: varchar("submissionState", { length: 20 }).default("never_submitted").notNull(),
+  updatedAt: timestamp("updatedAt", { fsp: 3 }).notNull(),
+  status: varchar("status", { length: 16 }).default("pending").notNull(),
+  attempts: int("attempts").default(0).notNull(),
+  nextAttemptAt: timestamp("nextAttemptAt", { fsp: 3 }).notNull(),
+  leaseOwner: varchar("leaseOwner", { length: 64 }),
+  leaseUntil: timestamp("leaseUntil", { fsp: 3 }),
+  firstAttemptAt: timestamp("firstAttemptAt", { fsp: 3 }),
+  acceptedAt: timestamp("acceptedAt", { fsp: 3 }),
+  providerMessageId: varchar("providerMessageId", { length: 255 }),
+  lastError: varchar("lastError", { length: 80 }),
+  createdAt: timestamp("createdAt", { fsp: 3 }).notNull(),
+}, table => [uniqueIndex("billing_review_obligation_unique").on(table.obligationKey), index("billing_review_due_idx").on(table.status, table.nextAttemptAt, table.id)]);
+
+// D-115 plan family (main, Oct 21): one row per AI tool call so benefit caps
+// can be set from real cost before pricing go-live. costUsdMicros is null
+// until the model is priced in shared/aiCost.ts; tokens are always captured.
+export const aiToolCallLogs = mysqlTable("aiToolCallLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  tool: varchar("tool", { length: 64 }).notNull(),
+  model: varchar("model", { length: 128 }).notNull(),
+  tokensIn: int("tokensIn").notNull(),
+  tokensOut: int("tokensOut").notNull(),
+  costUsdMicros: bigint("costUsdMicros", { mode: "number" }),
+  planFamilyId: varchar("planFamilyId", { length: 32 }),
+  userId: int("userId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("ai_tool_call_log_tool_idx").on(table.tool, table.createdAt)]);

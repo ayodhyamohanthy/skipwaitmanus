@@ -273,7 +273,7 @@ describe("private referral HTTP routes", () => {
     expect(claimed).toEqual({ userId: 10, inviteCode: "r9-abcdef12", verifiedEmail: "joiner@example.com" });
   });
 
-  it("creates a private Fast-Track Link only for the verified Referrer and resolves no employee identity publicly", async () => {
+  it("creates a private referral link (D-128 \"Your link\") only for the verified Referrer and resolves no employee identity publicly", async () => {
     const app = express(); app.use(express.json());
     const activity: Array<{ action: string; companyDomain?: string; metadata?: Record<string, unknown> }> = [];
     const identities = new Map([
@@ -287,7 +287,7 @@ describe("private referral HTTP routes", () => {
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme-corp.com" }), createCompanyReferralRequest: async (_userId, input) => { receivedFastTrackCode = input.fastTrackCode; receivedVanity = { companySlug: input.fastTrackCompanySlug, alias: input.fastTrackAlias }; return { requestId: 802, companyDomain: "acme-corp.com", notifiedEmployees: 1, fastTrack: true }; }, listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 802, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
       listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
-      getOrCreateReferrerFastTrackLink: async userId => { if (userId !== 31) throw new Error("Verify your company email before creating a Fast-Track Link"); return { linkCode: "a".repeat(32), vanityAlias: "ref-a1b2c3d4e5", companyDomain: "acme-corp.com", isActive: true }; },
+      getOrCreateReferrerFastTrackLink: async userId => { if (userId !== 31) throw new Error("Verify your company email before creating your link"); return { linkCode: "a".repeat(32), vanityAlias: "ref-a1b2c3d4e5", companyDomain: "acme-corp.com", isActive: true }; },
       getPublicReferrerFastTrackLink: async code => code === "a".repeat(32) ? { companyDomain: "acme-corp.com", isActive: true } : undefined,
       getPublicReferrerFastTrackVanityLink: async (companySlug, alias) => companySlug === "acme-corp" && alias === "ref-a1b2c3d4e5" ? { companyDomain: "acme-corp.com", isActive: true } : undefined,
       deactivateReferrerFastTrackLink: async userId => ({ deactivated: userId === 31 }), recordActivity: async entry => { activity.push(entry); },

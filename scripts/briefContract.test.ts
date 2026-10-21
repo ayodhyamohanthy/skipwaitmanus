@@ -54,3 +54,31 @@ describe("the owner's `build` command (D-083)", () => {
     expect(brief).toContain("docs/plans/assignments.json");
   });
 });
+
+/**
+ * D-085: a claim is free after 2 hours with no push or heartbeat (queue rule 2
+ * said 24 hours), and the picker claims on origin, never on `main` first. The
+ * old rules must not come back into the brief, the packet index or any agent
+ * entry doc, or two agents would follow different rules for the same task.
+ */
+const read = (file: string) => readFileSync(path.join(root, file), "utf8");
+const TAKEOVER_DOCS = [BRIEF, "docs/plans/README.md", ...AGENT_ENTRY_DOCS];
+const CLAIM_DOCS = [...ENTRY_DOCS, "docs/plans/README.md"];
+
+describe("how agents share the queue (D-085)", () => {
+  it.each(TAKEOVER_DOCS)("%s states no 24-hour takeover rule", file => {
+    expect(read(file)).not.toMatch(/24 ?h(ours)? (with|pass with) no (new )?commits|until 24 hours pass/i);
+  });
+
+  it.each(CLAIM_DOCS)("%s does not send an agent to claim on `main`", file => {
+    expect(read(file)).not.toMatch(/on `main` before changing code|pushed to `main`\) before coding|claim it there before coding|old timestamp does not authorize/);
+  });
+
+  it("CLAUDE.md gives the CEO its claim name", () => {
+    expect(read("CLAUDE.md")).toContain('--claim "Claude Code"');
+  });
+
+  it("the hand-over prompt follows the picker over the packet it names", () => {
+    expect(read("docs/DELEGATION.md")).toContain("If it prints a different task");
+  });
+});

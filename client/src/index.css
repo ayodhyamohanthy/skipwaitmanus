@@ -286,6 +286,11 @@ input, textarea { caret-color: var(--primary); }
   --g-ink: #0a0a0a; --g-ink-2: #52525b; --g-ink-3: #6b6b73; --g-ink-inverse: #ffffff;
   --g-hairline: #ebebeb; --g-control-edge: #8a8a8a;
   --g-primary: #0a0a0a; --g-primary-hover: #262626; --g-primary-pressed: #404040; --g-on-primary: #ffffff; --g-on-primary-edge: rgb(255 255 255 / 0.4);
+  /* v7 warm hero (owner pick Oct 21 16:43, phonemsg-01M5F2MR5FHEZ7DESNVCJBW12Y):
+     colour lives ONLY on the landing hero band - peach/rose/lilac, no kit hues. */
+  --g-warm-1: #fce9da; --g-warm-2: #f6cfdd; --g-warm-3: #e7d6f4;
+  /* V6-B mark (designer values, D-130) */
+  --g-mark-1: #c9c9c9; --g-mark-2: #8a8a8a; --g-mark-3: #0a0a0a;
   --g-trust: #1d4ed8; --g-emerald: #047857; --g-amber: #b45309; --g-crimson: #b91c1c;
   --g-dot: 8px;
   --g-font-sans: "Instrument Sans", system-ui, sans-serif; --g-font-mono: "JetBrains Mono", ui-monospace, monospace;
@@ -308,6 +313,8 @@ input, textarea { caret-color: var(--primary); }
 .g-scope .g-focus-inner:focus-visible { box-shadow: none; }          /* only for a field drawn inside a card that rings via :focus-within (find-a-referral.css:91,94). Same specificity (0,3,0) as the rule above, so it MUST stay after it. */
 .g-scope :is(input, textarea) { caret-color: var(--g-ink); }
 .g-scope :is(a, button) { transition-timing-function: revert-layer; }
+.g-hero-warm { background: linear-gradient(180deg, var(--g-warm-1) 0%, var(--g-warm-2) 52%, var(--g-warm-3) 100%); }
+
 .g-num { font-family: var(--g-font-mono); font-weight: 500; font-size: min(1em, 13px); letter-spacing: 0; word-spacing: -0.2em; white-space: nowrap; font-variant-numeric: tabular-nums; font-variant-ligatures: none; }
 .g-hit { position: relative; }
 .g-hit::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, var(--g-touch)); height: max(100%, var(--g-touch)); transform: translate(-50%, -50%); }
@@ -334,3 +341,16 @@ input, textarea { caret-color: var(--primary); }
 @media(max-width:600px){.company-claim-main{margin-top:30px;padding-inline:20px}.company-claim-main h1{font-size:34px}.company-claim-header{padding:18px 20px}.company-claim-kpis{gap:10px}.company-claim-kpis strong{font-size:22px}.company-claim-main .company-claim-verified{flex-wrap:wrap}}
 
 .company-claim-public{border:1px solid var(--g-hairline);border-radius:14px;padding:12px 18px;margin:12px 0}.company-claim-public .company-claim-kpis{margin:12px 0}.company-claim-public .company-claim-kpis strong{font-size:20px}
+
+/* Seeker win card shares the impact-card visual language. No kit imports. */
+.share-win .share-win-card{border:2px solid var(--foreground);background:var(--background);border-radius:12px;display:grid;gap:8px;padding:20px;margin:0}
+.share-win-card .sharecard__status{font-size:12px;text-transform:none;letter-spacing:normal;margin:0 0 4px}
+.share-win-dot{width:7px;height:7px;border-radius:50%;background:var(--foreground);display:inline-block}
+.sharecard__status[data-status="Referred"] .share-win-dot{background:var(--g-emerald)}
+.share-win-card .share-win-company{font-size:28px;line-height:1.1;letter-spacing:-.03em;font-weight:600}
+.share-win-card .share-win-role{font-size:14px;color:var(--muted-foreground)}
+.share-win-primary,.share-win-ghost{width:100%;border-radius:10px;padding:12px 16px;font-size:14px;font-weight:600;cursor:pointer}
+.share-win-primary{background:var(--foreground);color:var(--background);border:1px solid var(--foreground)}
+.share-win-ghost{background:transparent;color:var(--foreground);border:1px solid var(--border)}
+.share-win-primary:focus-visible,.share-win-ghost:focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
+.share-win-card .sharecard__status{display:flex;align-items:center;gap:7px;color:var(--foreground);font-family:var(--font-label)}
