@@ -12,11 +12,11 @@ import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalNum } from "@/components/goal/GoalNum";
 import CookieConsent from "@/components/CookieConsent";
 import { applySeo } from "@/lib/seo";
-import { FREE_ASKS_CHIP, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
+import { ASK_COST_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
 
 const STEPS: Array<{ title: string; body: string }> = [
   { title: "Find your company", body: "See the companies with verified employees inside, and the roles you can ask about." },
-  { title: "Send one thoughtful ask", body: `You see the cost before you ask: ${FREE_ASKS_CHIP}; more use credits. The price depends only on the job's level, never on who is asking.` },
+  { title: "Send one thoughtful ask", body: `You see the cost before you ask: ${ASK_COST_SENTENCE} The price depends only on the job's level, never on who is asking.` },
   { title: "They decide", body: "An accepted ask opens a private conversation. A referral is an introduction, never a promise of an interview or a job." },
 ];
 

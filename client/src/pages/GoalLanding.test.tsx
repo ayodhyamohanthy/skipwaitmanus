@@ -5,7 +5,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import GoalLanding from "./GoalLanding";
-import { FREE_ASKS_CHIP, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
+import { ASK_COST_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
 
 afterEach(cleanup);
 
@@ -37,7 +37,7 @@ describe("GoalLanding (D-120)", () => {
     expect(steps.textContent).toContain("Find your company");
     expect(steps.textContent).toContain("Send one thoughtful ask");
     expect(steps.textContent).toContain("They decide");
-    expect(steps.textContent).toContain(FREE_ASKS_CHIP);
+    expect(steps.textContent).toContain(ASK_COST_SENTENCE);
     expect(steps.textContent).toContain("level, never on who is asking");
   });
 
