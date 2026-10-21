@@ -57,6 +57,22 @@ export function createPlanCheckout(credentials: ChargebeeCredentials, input: Che
   return hostedPage(credentials, "/hosted_pages/checkout_new_for_items", form);
 }
 
+/** A D-132 bundle: the plan fee plus the in-plan monthly credits rung as one renewing monthly subscription ("change or cancel any time" - unlike the kit passes there is no single-term cap). */
+export function createBundleCheckout(credentials: ChargebeeCredentials, input: CheckoutCustomer & ReturnUrls & { planItemPriceId: string; creditsItemPriceId?: string; checkoutIntentId: string }): Promise<HostedPageResult> {
+  const form = new URLSearchParams();
+  form.set("subscription_items[item_price_id][0]", input.planItemPriceId);
+  form.set("subscription_items[quantity][0]", "1");
+  if (input.creditsItemPriceId) {
+    form.set("subscription_items[item_price_id][1]", input.creditsItemPriceId);
+    form.set("subscription_items[quantity][1]", "1");
+  }
+  setCustomer(form, input);
+  form.set("redirect_url", input.redirectUrl);
+  form.set("cancel_url", input.cancelUrl);
+  form.set("pass_thru_content", input.checkoutIntentId);
+  return hostedPage(credentials, "/hosted_pages/checkout_new_for_items", form);
+}
+
 /** A one-time credit pack: one unit of the pack's own item price, never a computed charge. */
 export function createPackCheckout(credentials: ChargebeeCredentials, input: CheckoutCustomer & ReturnUrls & { itemPriceId: string; currency: "USD" | "INR"; checkoutIntentId: string }): Promise<HostedPageResult> {
   const form = new URLSearchParams();

@@ -10,6 +10,8 @@ import { PLAN_RETIRED_CODE, kitPlanCheckoutRequestSchema, packCheckoutRequestSch
 import { isRetiredPlanId, isRetiredPlanItemPrice, resolvePlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId } from "../shared/billingCatalog";
 import { SINGLE_CREDIT_RETIRED_CODE, SINGLE_CREDIT_RETIRED_ERROR, singleCreditRetired } from "../shared/planCatalog";
 import { anyPackAvailableForCurrency, refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
+import { startV2PackCheckout, startV2PlanCheckout, type V2CheckoutDeps } from "./v2Checkout";
+import { v2PackCheckoutRequestSchema, v2PlanCheckoutRequestSchema } from "../shared/subscriptionManagement";
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
 import type { RetiredPlanAlertInput } from "./errorAlerting";
 
@@ -23,9 +25,11 @@ type Deps = {
   createCheckout?: typeof createChargebeeCheckout;
   createPaymentIntent: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; tokenCount: number; amount: number; currency: string }) => Promise<unknown>;
   fulfillPayment: (input: { eventId: string; hostedPageId?: string; invoiceId?: string; passThruContent?: string; amount: number; currency: string }) => Promise<unknown>;
-  createSubscriptionIntent?: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; plan: BillablePlanId; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) => Promise<unknown>;
+  createSubscriptionIntent?: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; plan: BillablePlanId | "fast_track" | "insider"; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) => Promise<unknown>;
   /** Kit checkout (a 30/90-day pass, Keep warm yearly, a credit pack): availability and provider calls. */
   kitCheckout?: KitCheckoutDeps;
+  /** D-132 plan family checkout (flag PLAN_FAMILY_V2): availability and provider calls. */
+  v2Checkout?: V2CheckoutDeps;
   applySubscriptionEvent?: (input: NonNullable<ReturnType<typeof parseSubscriptionEvent>>) => Promise<unknown>;
   getUserSubscription?: (userId: number, role: TokenRole) => Promise<{ subscriptionId: string; status: string; currentTermEnd?: Date } | undefined>;
   markSubscriptionNonRenewing?: (userId: number, role: TokenRole, subscriptionId: string, currentTermEnd?: Date) => Promise<unknown>;
@@ -96,6 +100,23 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if (!identity) return res.status(401).json({ error: "Sign in before purchasing tokens" });
       // Covers both arms below: a kit credit pack and the /premium per-credit token checkout.
       if (isReferrerPurchaseRefused(req.body?.role)) return refuseReferrerPurchase(res, identity.account.id, "billing.credit_checkout_refused");
+      // D-132 one-time top-up pack (flag PLAN_FAMILY_V2): named by rung, priced
+      // from shared/planFamilyBilling, availability-gated like the kit packs.
+      const v2Pack = v2PackCheckoutRequestSchema.safeParse(req.body);
+      if (v2Pack.success) {
+        const origin = publicOutboundOrigin(req);
+        const started = await startV2PackCheckout({
+          req,
+          request: v2Pack.data,
+          customer: { email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined, firstName: identity.account.name?.split(" ")[0], lastName: identity.account.name?.split(" ").slice(1).join(" "), billingCountry: v2Pack.data.billingCountry },
+          urls: { redirectUrl: `${origin}/plans?role=${v2Pack.data.role}&payment=pending`, cancelUrl: `${origin}/plans?role=${v2Pack.data.role}&payment=cancelled` },
+          deps: deps.v2Checkout,
+        });
+        if (!started.ok) return res.status(started.status).json(refusalBody(started));
+        await deps.createPaymentIntent({ hostedPageId: started.checkout.hostedPageId, checkoutIntentId: started.checkoutIntentId, userId: identity.account.id, role: v2Pack.data.role, tokenCount: started.credits, amount: started.amount, currency: started.currency });
+        record({ actorUserId: identity.account.id, action: "billing.credit_checkout_started", outcome: "success", resourceType: "payment_intent", resourceId: started.checkout.hostedPageId, metadata: { role: v2Pack.data.role, v2Rung: v2Pack.data.v2Rung, tokenCount: started.credits, amount: started.amount, currency: started.currency, billingCountry: v2Pack.data.billingCountry } });
+        return res.json({ checkoutUrl: started.checkout.checkoutUrl, hostedPageId: started.checkout.hostedPageId });
+      }
       const itemPriceId = req.body?.itemPriceId;
       // A kit credit pack names a pack, not a legacy token item price. Refuse
       // before anything else so a pack body never falls through to "unsupported".
@@ -160,6 +181,24 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if (isReferrerPurchaseRefused(req.body?.role)) return refuseReferrerPurchase(res, identity.account.id, "billing.subscription_checkout_refused");
       // A kit pass/Keep warm body names a plan term. The pre-kit monthly body
       // ({plan: "pro" | "max", ...}) is retired (D-067) and refused below.
+      // D-132 plan family (flag PLAN_FAMILY_V2): fee + optional monthly credits
+      // rung as one renewing monthly subscription.
+      const v2Plan = v2PlanCheckoutRequestSchema.safeParse(req.body);
+      if (v2Plan.success) {
+        if (!deps.createSubscriptionIntent) return res.status(503).json({ error: "Subscription checkout is not configured" });
+        const origin = publicOutboundOrigin(req);
+        const started = await startV2PlanCheckout({
+          req,
+          request: v2Plan.data,
+          customer: { email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined, firstName: identity.account.name?.split(" ")[0], lastName: identity.account.name?.split(" ").slice(1).join(" "), billingCountry: v2Plan.data.billingCountry },
+          urls: { redirectUrl: `${origin}/plans?role=${v2Plan.data.role}&payment=pending`, cancelUrl: `${origin}/plans?role=${v2Plan.data.role}&payment=cancelled` },
+          deps: deps.v2Checkout,
+        });
+        if (!started.ok) return res.status(started.status).json(refusalBody(started));
+        await deps.createSubscriptionIntent({ hostedPageId: started.checkout.hostedPageId, checkoutIntentId: started.checkoutIntentId, userId: identity.account.id, role: v2Plan.data.role, plan: started.plan, itemPriceId: started.planItemPriceId, amount: started.amount, currency: started.currency, billingPeriod: "monthly", kind: "new" });
+        record({ actorUserId: identity.account.id, action: "billing.subscription_checkout_started", outcome: "success", resourceType: "subscription_intent", resourceId: started.checkout.hostedPageId, metadata: { role: v2Plan.data.role, v2Plan: started.plan, v2Rung: started.rung, amount: started.amount, currency: started.currency, billingCountry: v2Plan.data.billingCountry } });
+        return res.json({ checkoutUrl: started.checkout.checkoutUrl, hostedPageId: started.checkout.hostedPageId });
+      }
       const kitPlan = kitPlanCheckoutRequestSchema.safeParse(req.body);
       if (kitPlan.success) {
         if (!deps.createSubscriptionIntent) return res.status(503).json({ error: "Subscription checkout is not configured" });
