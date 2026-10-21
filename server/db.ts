@@ -4438,7 +4438,7 @@ export async function markSubscriptionCheckoutIntentCancelled(hostedPageId: stri
   await db.update(subscriptionCheckoutIntents).set({ status: "cancelled", failureReason }).where(and(eq(subscriptionCheckoutIntents.hostedPageId, hostedPageId), eq(subscriptionCheckoutIntents.status, "pending")));
 }
 
-export async function applyChargebeeSubscriptionEvent(input: { eventId: string; eventType: string; hostedPageId?: string; passThruContent?: string; subscriptionId: string; plan?: BillablePlanId; itemPriceId?: string; interval?: BillingPeriod; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number }) {
+export async function applyChargebeeSubscriptionEvent(input: { eventId: string; eventType: string; hostedPageId?: string; passThruContent?: string; subscriptionId: string; plan?: BillablePlanId; planFamily?: PlanFamilyId; planFamilyRung?: PlanCreditRung; itemPriceId?: string; interval?: BillingPeriod; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
@@ -4480,6 +4480,47 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     if (!sameSubscription && intent && intent.status !== "pending") return { status: "ignored" as const, reason: "checkout_already_reconciled" };
     if (wallet && !sameSubscription && (wallet.plan !== "free" || wallet.subscriptionStatus === "active" || wallet.subscriptionStatus === "non_renewing")) return { status: "ignored" as const, reason: "subscription_conflict" };
     if (intent && input.currency && input.currency !== intent.currency) return { status: "ignored" as const, reason: "currency_mismatch" };
+    // D-132 v2 plan family (flag PLAN_FAMILY_V2): the bundle's monthly credits
+    // arrive per paid invoice through grantV2PaidCredits (paid credits never
+    // expire), never from a kit plan cycle, so this branch only moves the
+    // wallet onto the family plan with its subscription and term. It diverts
+    // before the catalog checks: a v2 family is not a BillablePlanId and must
+    // never park as unsupported_plan, and the event's first item price is not
+    // matched against the intent (Chargebee owns the subscription item order);
+    // the family itself is the plan match.
+    if (input.planFamily) {
+      const recordV2Event = () => tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+      if (intent && intent.plan !== input.planFamily) {
+        await recordV2Event();
+        return { status: "ignored" as const, reason: "plan_mismatch" };
+      }
+      const currentV2 = sameSubscription ? wallet : undefined;
+      if (currentV2?.subscriptionResourceVersion && input.resourceVersion && input.resourceVersion <= currentV2.subscriptionResourceVersion) {
+        await recordV2Event();
+        return { status: "stale" as const };
+      }
+      if (!wallet && !intent) {
+        await recordV2Event();
+        return { status: "ignored" as const, reason: "unknown_subscription" };
+      }
+      const v2UserId = wallet?.userId ?? intent!.userId;
+      const v2Role = wallet?.role ?? intent!.role;
+      const retainsAccess = input.status === "active" || input.status === "non_renewing";
+      const v2Patch = {
+        plan: retainsAccess ? input.planFamily : ("free" as const),
+        subscriptionId: input.subscriptionId,
+        subscriptionStatus: input.status,
+        subscriptionCurrency: input.currency ?? wallet?.subscriptionCurrency ?? null,
+        subscriptionCurrentTermStart: input.currentTermStart ?? wallet?.subscriptionCurrentTermStart ?? null,
+        subscriptionCurrentTermEnd: input.currentTermEnd ?? wallet?.subscriptionCurrentTermEnd ?? null,
+        subscriptionResourceVersion: input.resourceVersion ?? wallet?.subscriptionResourceVersion ?? null,
+      };
+      if (wallet) await tx.update(tokenBalances).set(v2Patch).where(eq(tokenBalances.id, wallet.id));
+      else await tx.insert(tokenBalances).values({ userId: v2UserId, role: v2Role, balance: 0, ...freshWalletCycle(v2Role), ...v2Patch });
+      if (intent) await tx.update(subscriptionCheckoutIntents).set({ status: retainsAccess ? "activated" : "cancelled" }).where(and(eq(subscriptionCheckoutIntents.id, intent.id), eq(subscriptionCheckoutIntents.status, "pending")));
+      await recordV2Event();
+      return { status: "applied" as const, plan: input.planFamily };
+    }
     // A pass's term is part of what was bought: a 90-day delivery must never
     // activate the 30-day intent that started it (each term has its own item price).
     if (intent && input.itemPriceId && input.itemPriceId !== intent.itemPriceId) return { status: "ignored" as const, reason: "item_price_mismatch" };
