@@ -335,3 +335,33 @@ describe("reverse trial credits", () => {
     expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
   });
 });
+
+describe("D-132 family plan wallets (QA go-live blocker: fast_track reverted on first read)", () => {
+  it("a fast_track wallet survives the summary read: plan, subscription and invoice-granted credits intact, no phantom cycle", async () => {
+    fixture.reset({
+      wallets: [wallet({ plan: "fast_track", balance: 17, monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: "fresh", subscriptionId: "sub_v2", subscriptionCurrentTermStart: at("2026-10-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-11-01T00:00:00Z") })],
+      txns: [purchaseRow(), { ...purchaseRow(), id: 2, tokenCount: 15, referenceType: "chargebee_invoice", referenceId: "inv_v2_1", idempotencyKey: "v2credits-inv_v2_1" }],
+      users: [{ id: SEEKER, canonicalPersonId: 1 }],
+    });
+    const summary = await getTokenWallet(SEEKER, "job_seeker");
+    expect(db.wallets[0]).toMatchObject({ plan: "fast_track", subscriptionId: "sub_v2", subscriptionStatus: "active", balance: 17, monthlyCreditsRemaining: 0, monthlyAllowance: 0 });
+    expect(summary).toMatchObject({ plan: "fast_track", totalAvailable: 17 });
+    // No kit cycle machinery touched the family wallet: nothing granted, expired or carried.
+    expect(txns({ kind: "plan_credit_expiry" })).toEqual([]);
+    expect(txns({ kind: "plan_grant" })).toEqual([]);
+    expect(txns({ kind: "plan_credit_carryover" })).toEqual([]);
+    expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
+  });
+
+  it("a fast_track wallet whose term truly ended lapses to Free by the shared rules", async () => {
+    fixture.reset({
+      wallets: [wallet({ plan: "fast_track", balance: 15, monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: "fresh", subscriptionId: "sub_v2", subscriptionStatus: "non_renewing", subscriptionCurrentTermStart: at("2026-09-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-10-01T00:00:00Z") })],
+      txns: [{ ...purchaseRow(), tokenCount: 15, referenceType: "chargebee_invoice", referenceId: "inv_v2_2", idempotencyKey: "v2credits-inv_v2_2" }],
+      users: [{ id: SEEKER, canonicalPersonId: 1 }],
+    });
+    const summary = await getTokenWallet(SEEKER, "job_seeker");
+    expect(db.wallets[0]).toMatchObject({ plan: "free", subscriptionStatus: "cancelled" });
+    // The paid invoice credits were purchases: they never lapse with the plan.
+    expect(summary.totalAvailable).toBe(18);
+  });
+});

@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { operationalActivityLogs, paymentFulfillments, promoCreditGrants, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, notifications } from "../drizzle/schema";
+import { operationalActivityLogs, paymentFulfillments, promoCreditGrants, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, notifications, users } from "../drizzle/schema";
+import { PLAN_CREDIT_RUNGS } from "../shared/planFamily";
+import { expectedBundleAmount } from "./v2Crediting";
 import { grantV2PaidCredits } from "./db";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -20,6 +22,7 @@ let promoGrants: Array<Record<string, unknown>>;
 let promoTxns: Array<Record<string, unknown>>;
 let promoNotes: Array<Record<string, unknown>>;
 let activityLogs: Array<Record<string, unknown>>;
+let userRows: Array<Record<string, unknown>>;
 
 function matches(condition: SQL, row: object) {
   const query = dialect.sqlToQuery(condition);
@@ -39,6 +42,7 @@ function fixtureDatabase() {
     if (table === subscriptionEvents) return [];
     if (table === notifications) return promoNotes;
     if (table === operationalActivityLogs) return activityLogs;
+    if (table === users) return userRows as never;
     throw new Error("Unexpected table");
   };
   const tx = {
@@ -87,6 +91,7 @@ beforeEach(() => {
   promoTxns = [];
   promoNotes = [];
   activityLogs = [];
+  userRows = [{ id: 9, email: "qa-preview-dev@skipwait.me" }];
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(fixtureDatabase());
 });
@@ -129,6 +134,27 @@ describe("D-132 grantV2PaidCredits", () => {
     expect(txns).toHaveLength(0);
     expect(fulfillments[0]).toMatchObject({ status: "requires_review", reconciliationReason: "checkout_amount_mismatch" });
     expect(activityLogs.some(row => row.action === "billing.payment_amount_mismatch")).toBe(true);
+  });
+
+  it("the first invoice before the subscription event lands resolves the buyer by customer email", async () => {
+    wallets = [];
+    intents = [];
+    const result = await grantV2PaidCredits({ eventId: "ev_e1", invoiceId: "inv_e1", subscriptionId: "sub_new_1", customerId: "cust_1", customerEmail: "qa-preview-dev@skipwait.me", planFamily: "fast_track", rung: 5, amount: 1_489, currency: "USD" });
+    expect(result).toMatchObject({ status: "credited", tokenCount: 5, userId: 9, role: "job_seeker" });
+    expect(wallets).toHaveLength(1);
+    expect(wallets[0]).toMatchObject({ userId: 9, role: "job_seeker", balance: 5, subscriptionId: "sub_new_1" });
+    expect(activityLogs.some(row => row.action === "billing.v2_grant_unknown_subscription")).toBe(false);
+  });
+
+  it("every v2 rung credits exactly its own credit count against its bundle total", async () => {
+    for (const rung of PLAN_CREDIT_RUNGS) {
+      fulfillments = [];
+      const amount = expectedBundleAmount("fast_track", rung, "USD");
+      const result = await grantV2PaidCredits({ eventId: `ev_rung_${rung}`, invoiceId: `inv_rung_${rung}`, subscriptionId: "sub_v2_1", planFamily: "fast_track", rung, amount, currency: "USD" });
+      expect(result).toMatchObject({ status: "credited", tokenCount: rung, userId: 7 });
+    }
+    // 6 rungs credited once each on top of the 12 the wallet started with.
+    expect(wallets[0].balance).toBe(12 + PLAN_CREDIT_RUNGS.reduce((sum, rung) => sum + rung, 0));
   });
 
   it("a subscription nobody knows is logged and ignored for the unmatched-payment alert", async () => {

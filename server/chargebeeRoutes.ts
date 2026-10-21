@@ -29,7 +29,7 @@ type Deps = {
   // Optional so older tests and tools can mount the router without the v2
   // arm; a bundle invoice with no grant wired fails loudly (500 -> provider
   // retry), never silently. Production always wires it.
-  grantV2Credits?: (input: { eventId: string; invoiceId?: string; subscriptionId?: string; hostedPageId?: string; passThruContent?: string; planFamily: PlanFamilyId; rung: PlanCreditRung; amount: number; currency: string }) => Promise<unknown>;
+  grantV2Credits?: (input: { eventId: string; invoiceId?: string; subscriptionId?: string; hostedPageId?: string; passThruContent?: string; customerId?: string; customerEmail?: string; planFamily: PlanFamilyId; rung: PlanCreditRung; amount: number; currency: string }) => Promise<unknown>;
   createSubscriptionIntent?: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; plan: BillablePlanId | "fast_track" | "insider"; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) => Promise<unknown>;
   /** Kit checkout (a 30/90-day pass, Keep warm yearly, a credit pack): availability and provider calls. */
   kitCheckout?: KitCheckoutDeps;

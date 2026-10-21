@@ -25,6 +25,9 @@ export type ParsedPaidPaymentEvent = {
   currency: string;
   /** The subscription this payment belongs to (renewals carry no hosted page). */
   subscriptionId?: string;
+  /** Chargebee customer behind the payment: binds a first invoice whose subscription event has not landed yet. */
+  customerId?: string;
+  customerEmail?: string;
   /** D-132: the credits rung this invoice's line items sell (bundle renewal or one-time pack). */
   v2CreditsRung?: PlanCreditRung;
   /** D-132: the family plan fee on this invoice's line items, when present. */
@@ -125,7 +128,10 @@ export function parsePaidPaymentEvent(payload: any) {
     : [];
   const v2 = classifyV2SubscriptionItems(lineItemPriceIds);
   const subscriptionId = typeof payment.subscription_id === "string" ? payment.subscription_id : typeof invoice?.subscription_id === "string" ? invoice.subscription_id : undefined;
-  return { eventId, invoiceId, hostedPageId, passThruContent, amount, currency, subscriptionId, v2CreditsRung: v2.credits?.rung ?? v2.pack?.rung, v2PlanFamily: v2.plan?.planId } satisfies ParsedPaidPaymentEvent;
+  const customer = payload?.content?.customer;
+  const customerId = typeof customer?.id === "string" ? customer.id : typeof invoice?.customer_id === "string" ? invoice.customer_id : typeof payment.customer_id === "string" ? payment.customer_id : undefined;
+  const customerEmail = typeof customer?.email === "string" && customer.email ? customer.email : undefined;
+  return { eventId, invoiceId, hostedPageId, passThruContent, amount, currency, subscriptionId, customerId, customerEmail, v2CreditsRung: v2.credits?.rung ?? v2.pack?.rung, v2PlanFamily: v2.plan?.planId } satisfies ParsedPaidPaymentEvent;
 }
 
 export type ParsedRefundEvent = { eventId: string; invoiceId?: string; refundAmount?: number; currency?: string };

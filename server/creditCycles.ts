@@ -7,7 +7,7 @@ import { and, eq } from "drizzle-orm";
 import { planCreditGrants, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { BUCKET_SOURCES } from "../shared/creditLedger";
 import { grantShouldExpire, paidPlanLapsed, planCreditsExpireAt, planCycleAt, planCycleByIndex, planCycleIndexOfKey, walletCycleStart } from "../shared/creditCycles";
-import { isPaidPlanActive } from "../shared/planEntitlements";
+import { isPaidPlanActive, isPlanFamilyPaidPlan } from "../shared/planEntitlements";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { CreditSpendConflictError, asLedgerGrant, cycleRulesFor, digest, readGrantsTx, writeLedgerRow, type CyclePatch, type GrantRow, type LedgerTx, type WalletRole, type WalletRow } from "./creditLedger";
@@ -175,7 +175,11 @@ export async function reconcileSeekerWalletTx(tx: LedgerTx, locked: WalletRow, n
   };
   const termStart = wallet.subscriptionCurrentTermStart;
   const termEnd = wallet.subscriptionCurrentTermEnd;
-  if (wallet.plan !== "free" && isPaidPlanActive(wallet, now)) {
+  // D-132 family plans (fast_track/insider) grant their monthly credits per
+  // paid invoice through grantV2PaidCredits (purchased balance, never
+  // expiring) - never from a kit plan cycle - so an active family wallet has
+  // no cycles to roll here. Its lapse still runs the shared branch below.
+  if (wallet.plan !== "free" && isPaidPlanActive(wallet, now) && !isPlanFamilyPaidPlan(wallet.plan)) {
     for (const index of paidCycleSteps(wallet, now)) {
       const cycle = termStart && termEnd ? planCycleByIndex(termStart, termEnd, index) : null;
       if (!cycle) break;

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { billingReviewOutbox, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, promoCreditGrants, tokenTransactions, notifications } from "../drizzle/schema";
+import { billingReviewOutbox, operationalActivityLogs, paymentFulfillments, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, promoCreditGrants, tokenTransactions, notifications } from "../drizzle/schema";
 
 import { applyChargebeeSubscriptionEvent } from "./db";
 
@@ -28,15 +28,23 @@ let promoGrants: Array<Record<string, unknown>>;
 let promoTxns: Array<Record<string, unknown>>;
 let promoNotes: Array<Record<string, unknown>>;
 let locks: Array<{ table: unknown; params: unknown[] }>;
+let activityLogs: Array<Record<string, unknown>>;
+let fulfillments: Array<Record<string, unknown>>;
 let walletInserts: ReturnType<typeof vi.fn>;
 let walletUpdates: ReturnType<typeof vi.fn>;
 
 function matches(condition: SQL, row: object) {
   const query = dialect.sqlToQuery(condition);
-  const columns = [...query.sql.matchAll(/`[^`]+`\.`([^`]+)` = \?/g)].map(match => match[1]);
+  const columns = [...query.sql.matchAll(/`[^`]+`\.`([^`]+)` (?:=|like) \?/gi)].map(match => match[1]);
   expect(columns.length).toBe(query.params.length);
   expect(columns.length).toBeGreaterThan(0);
-  return columns.every((column, index) => (row as Record<string, unknown>)[column] === query.params[index]);
+  return columns.every((column, index) => {
+    const param = query.params[index];
+    const value = (row as Record<string, unknown>)[column];
+    // A LIKE parameter is a substring check without its % anchors.
+    if (typeof param === "string" && param.startsWith("%")) return typeof value === "string" && value.includes(param.replaceAll("%", ""));
+    return value === param;
+  });
 }
 
 function fixtureDatabase() {
@@ -48,6 +56,8 @@ function fixtureDatabase() {
     if (table === promoCreditGrants) return promoGrants;
     if (table === tokenTransactions) return promoTxns;
     if (table === notifications) return promoNotes;
+    if (table === operationalActivityLogs) return activityLogs;
+    if (table === paymentFulfillments) return fulfillments;
     throw new Error("Unexpected table");
   };
   const tx = {
@@ -65,7 +75,15 @@ function fixtureDatabase() {
     update: (table: unknown) => ({ set: (patch: object) => ({ where: async (condition: SQL) => {
       const selected = rows(table).filter(row => matches(condition, row));
       if (table === tokenBalances) walletUpdates(patch);
-      selected.forEach(row => Object.assign(row, patch));
+      selected.forEach(row => {
+        for (const [key, value] of Object.entries(patch as Record<string, unknown>)) {
+          // balance += N arrives as an SQL fragment, not a plain value.
+          if (value && typeof value === "object" && Array.isArray((value as { queryChunks?: unknown }).queryChunks)) {
+            const amount = Number(dialect.sqlToQuery(value as SQL).params[0]);
+            (row as Record<string, unknown>)[key] = Number((row as Record<string, unknown>)[key] ?? 0) + amount;
+          } else (row as Record<string, unknown>)[key] = value;
+        }
+      });
       return [{ affectedRows: selected.length }];
     } }) }),
     insert: (table: unknown) => ({ values: (row: Record<string, unknown>) => {
@@ -82,11 +100,12 @@ function fixtureDatabase() {
     } }),
   };
   return { transaction: async (callback: (transaction: typeof tx) => Promise<unknown>) => {
-    const snapshot = structuredClone({ wallets, intents, events, promoGrants, promoTxns, promoNotes });
+    const snapshot = structuredClone({ wallets, intents, events, promoGrants, promoTxns, promoNotes, activityLogs, fulfillments });
     try { return await callback(tx); }
     catch (error) {
       wallets = snapshot.wallets; intents = snapshot.intents; events = snapshot.events;
       promoGrants = snapshot.promoGrants; promoTxns = snapshot.promoTxns; promoNotes = snapshot.promoNotes;
+      activityLogs = snapshot.activityLogs; fulfillments = snapshot.fulfillments;
       throw error;
     }
   } };
@@ -103,6 +122,8 @@ beforeEach(() => {
   promoGrants = [];
   promoTxns = [];
   promoNotes = [];
+  activityLogs = [];
+  fulfillments = [];
   locks = [];
   walletInserts = vi.fn();
   walletUpdates = vi.fn();
@@ -178,5 +199,32 @@ describe("D-132 v2 plan-family subscription events", () => {
     expect(result).toMatchObject({ status: "ignored", reason: "unknown_subscription" });
     expect(reviewRows).toEqual([]);
     expect(events.map(event => event.providerEventId)).toEqual(["event_v2_new"]);
+  });
+
+  it("replays a first-invoice grant that parked while the subscription was unbound", async () => {
+    // payment_succeeded arrived first: no wallet named the subscription, no
+    // intent matched, nobody credited - only the durable parked receipt.
+    activityLogs.push({
+      id: 1,
+      actorUserId: null,
+      action: "billing.v2_grant_unknown_subscription",
+      outcome: "failure",
+      resourceType: "chargebee_invoice",
+      resourceId: "inv_parked_1",
+      metadata: JSON.stringify({ eventId: "ev_parked_1", subscriptionId: "subscription_v2", planFamily: "fast_track", rung: 25, amount: 162_400, currency: "INR" }),
+    });
+    const before = wallets[0].balance;
+    const result = await applyChargebeeSubscriptionEvent(input);
+    expect(result).toMatchObject({ status: "applied", plan: "fast_track" });
+    // The parked grant landed with the binding: +25 rung credits, once.
+    expect(wallets[0].balance).toBe(before + 25);
+    expect(fulfillments).toHaveLength(1);
+    expect(fulfillments[0]).toMatchObject({ providerEventId: "ev_parked_1", providerInvoiceId: "inv_parked_1", status: "credited", tokenCount: 25 });
+    expect(activityLogs.some(row => row.action === "billing.v2_grant_replayed" && row.outcome === "success")).toBe(true);
+    // A redelivery of the same parked event is a duplicate, never a second grant.
+    const again = await applyChargebeeSubscriptionEvent({ ...input, eventId: "event_v2_new_2", resourceVersion: 11 });
+    expect(again).toMatchObject({ status: "applied" });
+    expect(wallets[0].balance).toBe(before + 25);
+    expect(fulfillments).toHaveLength(1);
   });
 });
