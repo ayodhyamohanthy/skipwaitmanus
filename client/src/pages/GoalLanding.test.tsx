@@ -2,7 +2,7 @@
 // Goal-first landing (D-120): pins the migration-spec acceptance checklist -
 // goal line opens the screen, exactly one black commit, no kit/yellow-blue
 // classes, fair rules + honest copy from shared moneyCopy, footer legal links.
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import GoalLanding from "./GoalLanding";
 import { ASK_COST_SENTENCE, REFERRING_FREE_LINE } from "@shared/moneyCopy";
@@ -60,6 +60,15 @@ describe("GoalLanding (D-120)", () => {
     const { container } = render(<GoalLanding />);
     expect(container.querySelector('[class*="launch-"]')).toBeNull();
     expect(container.querySelector(".brand-dot")).toBeNull();
+  });
+
+  it("shows the beta badge + honest beta line from one config (owner Oct 21)", () => {
+    render(<GoalLanding />);
+    expect(screen.getByTestId("beta-badge").textContent).toBe("Beta");
+    const line = screen.getByTestId("beta-notice-line");
+    expect(line.textContent).toContain("skipwait.me is in beta");
+    expect(line.textContent).toContain("feedback shapes it");
+    expect(within(line).getByRole("link", { name: "feedback" }).getAttribute("href")).toBe("/help");
   });
 
   it("keeps the legal footer links", () => {
