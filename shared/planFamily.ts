@@ -27,13 +27,72 @@ export type PlanFamilyEntry = {
   monthlyUsdCents: number;
   /** Monthly price, INR paise (India book). */
   monthlyInrPaise: number;
+  /**
+   * Insider is automated-only: no human reviewer, no live session (main,
+   * Oct 21). Open Door and Fast Track keep the normal flow.
+   */
+  automatedOnly: boolean;
+  /** Features folded into the plan instead of billed separately. */
+  includes: { stealth: boolean; reachUp: boolean };
 };
 
 export const PLAN_FAMILY: readonly PlanFamilyEntry[] = [
-  { id: "open_door", label: "Open Door", monthlyUsdCents: 0, monthlyInrPaise: 0 },
-  { id: "fast_track", label: "Fast Track", monthlyUsdCents: 999, monthlyInrPaise: 49900 },
-  { id: "insider", label: "Insider", monthlyUsdCents: 5900, monthlyInrPaise: 129900 },
+  { id: "open_door", label: "Open Door", monthlyUsdCents: 0, monthlyInrPaise: 0, automatedOnly: false, includes: { stealth: false, reachUp: false } },
+  { id: "fast_track", label: "Fast Track", monthlyUsdCents: 999, monthlyInrPaise: 49900, automatedOnly: false, includes: { stealth: false, reachUp: true } },
+  { id: "insider", label: "Insider", monthlyUsdCents: 5900, monthlyInrPaise: 129900, automatedOnly: true, includes: { stealth: true, reachUp: true } },
 ] as const;
+
+/**
+ * Benefit caps per plan, transcribed verbatim from the growth table (main,
+ * Oct 21): open asks 3/4/6; ask coach 0/10/30; profile check 0/2/4; resume
+ * tailoring 0/3/10; follow-up drafts 0/6/20; company brief 0/0/10; interview
+ * dossier 0/0/4; mock interview 0/0/4; offer comparison 0/0/2; salary coach
+ * 0/0/2. Stealth is included in Insider; reach-up in Fast Track and Insider.
+ *
+ * Past a cap, normal credits apply (PLAN_CAP_OVERAGE). The metering window and
+ * enforcement are the pricing build's call (D-115); this module only owns the
+ * numbers, from one config source. AI cost per tool call is logged
+ * (server/aiCostLog.ts) so caps can be re-set from real cost before go-live.
+ */
+export const PLAN_BENEFIT_TOOL_IDS = [
+  "ask_coach",
+  "profile_check",
+  "resume_tailoring",
+  "follow_up_drafts",
+  "company_brief",
+  "interview_dossier",
+  "mock_interview",
+  "offer_comparison",
+  "salary_coach",
+] as const;
+export type PlanBenefitToolId = (typeof PLAN_BENEFIT_TOOL_IDS)[number];
+
+export type PlanBenefitCaps = {
+  openAsks: number;
+  tools: Record<PlanBenefitToolId, number>;
+};
+
+export const PLAN_BENEFIT_CAPS: Record<PlanFamilyId, PlanBenefitCaps> = {
+  open_door: {
+    openAsks: 3,
+    tools: { ask_coach: 0, profile_check: 0, resume_tailoring: 0, follow_up_drafts: 0, company_brief: 0, interview_dossier: 0, mock_interview: 0, offer_comparison: 0, salary_coach: 0 },
+  },
+  fast_track: {
+    openAsks: 4,
+    tools: { ask_coach: 10, profile_check: 2, resume_tailoring: 3, follow_up_drafts: 6, company_brief: 0, interview_dossier: 0, mock_interview: 0, offer_comparison: 0, salary_coach: 0 },
+  },
+  insider: {
+    openAsks: 6,
+    tools: { ask_coach: 30, profile_check: 4, resume_tailoring: 10, follow_up_drafts: 20, company_brief: 10, interview_dossier: 4, mock_interview: 4, offer_comparison: 2, salary_coach: 2 },
+  },
+};
+
+/** Past a cap, usage bills from the member's normal credits. */
+export const PLAN_CAP_OVERAGE = "credits" as const;
+
+export function planBenefitCaps(id: PlanFamilyId): PlanBenefitCaps {
+  return PLAN_BENEFIT_CAPS[id];
+}
 
 export function planFamilyEntry(id: PlanFamilyId): PlanFamilyEntry {
   const entry = PLAN_FAMILY.find(plan => plan.id === id);

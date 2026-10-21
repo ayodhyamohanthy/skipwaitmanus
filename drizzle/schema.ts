@@ -1123,3 +1123,18 @@ export const oauthAuthCodes = mysqlTable("oauthAuthCodes", {
   usedAt: timestamp("usedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("oauth_auth_codes_user_idx").on(table.userId), index("oauth_auth_codes_expiry_idx").on(table.expiresAt)]);
+
+// D-115 plan family (main, Oct 21): one row per AI tool call so benefit caps
+// can be set from real cost before pricing go-live. costUsdMicros is null
+// until the model is priced in shared/aiCost.ts; tokens are always captured.
+export const aiToolCallLogs = mysqlTable("aiToolCallLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  tool: varchar("tool", { length: 64 }).notNull(),
+  model: varchar("model", { length: 128 }).notNull(),
+  tokensIn: int("tokensIn").notNull(),
+  tokensOut: int("tokensOut").notNull(),
+  costUsdMicros: bigint("costUsdMicros", { mode: "number" }),
+  planFamilyId: varchar("planFamilyId", { length: 32 }),
+  userId: int("userId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("ai_tool_call_log_tool_idx").on(table.tool, table.createdAt)]);
