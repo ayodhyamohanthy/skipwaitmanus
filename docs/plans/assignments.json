@@ -163,8 +163,9 @@
       "tier": 2,
       "lane": "design",
       "branch": "agent/qoder/d048-phase-3-explore",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging main: /explore is owned by the page in App.tsx, the wave keeps its rewrite and carries main's #407 ?q= pre-filter into its query state, Explore.tsx joins MOVED_SURFACES, and three stale expectations are realigned (Neutrinos rebrand changes the row order and SEO line; the meta description carries main's current money copy). Captures at 1280/390 in five states (directory, drawer, not-open, empty, error). Gate: tsc, token audit, deploy triggers, 50 focused tests, build green; migration lint runs in CI."
     },
     {
       "id": "D-048-p3-requests",

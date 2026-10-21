@@ -22,7 +22,7 @@ function initialsOf(user: ReturnType<typeof useUser>["user"]): string {
   return email.replace(/[^a-z0-9]/gi, "").slice(0, 2).toUpperCase();
 }
 
-export function GoalAppShell({ active, pageTitle, children }: { active: GoalNavId; pageTitle: string; children: ReactNode }) {
+export function GoalAppShell({ active, pageTitle, drawer, children }: { active: GoalNavId; pageTitle: string; drawer?: ReactNode; children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
   const access = useReferrerAccess();
@@ -38,6 +38,7 @@ export function GoalAppShell({ active, pageTitle, children }: { active: GoalNavI
       credits={credits}
       account={{ initials: isSignedIn && isLoaded ? initialsOf(user) : "" }}
       alertsHref="/alerts"
+      drawer={drawer}
     >
       {children}
     </GoalShell>
