@@ -10,7 +10,7 @@
     "companies": "Fictional names, so no preview implies that a real company has verified referrers on SkipWait. Live on 17 Oct: 39 companies listed, 1 open.",
     "money": "Money lines follow what the code does today (client/src/pages/Help.tsx line 13). D-034, D-035, D-038 and D-047 are approved but not built, so no comp shows their outcomes.",
     "privacy": "Before acceptance a referrer sees the role, job function, job link, the three reasons, ask-quality checks, a day-level clock and a document count. Never the seeker's name, file names, links, photo or plan.",
-    "noMetrics": "No per-referrer numbers anywhere: no response rates, speeds, rankings, streaks or counts of referrers. No read receipts. Exception (D-104): the company responsiveness signal shows company-level aggregates only, min 3, never per person or ranked.",
+    "noMetrics": "No per-referrer numbers anywhere: no response rates, speeds, rankings, streaks or counts of referrers. No read receipts.",
     "typography": "Copy uses typographic apostrophes (’), the true minus sign (−), the en dash (–), the middle dot (·) and the ellipsis character (…). Keep them."
   },
   "shell": {
@@ -1068,5 +1068,17 @@
     "insufficient": "Not enough data yet",
     "day": "day",
     "days": "days"
+  },
+  "shareWin": {
+    "heading": "Share the win?",
+    "intro": "Your ask was accepted at {company}. Tell people if you want to – it is always your choice.",
+    "badgeAccepted": "Accepted",
+    "badgeReferred": "Referred",
+    "quote": "Someone who works there is vouching for me. Asked through skipwait.me – my name stayed private until they said yes.",
+    "footer": "skipwait.me · A warmer way in",
+    "copyText": "Copy card as text",
+    "copyLinkedIn": "Copy for LinkedIn",
+    "copied": "Copied.",
+    "note": "Nothing posts itself. The card never names your referrer – their help stays between you two unless they say otherwise."
   }
 }
