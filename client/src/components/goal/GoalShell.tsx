@@ -114,7 +114,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
     >
       {/* Desktop rail */}
       <nav aria-label="Primary" className="max-gdesk:hidden gdesk:row-span-2 gdesk:col-start-1 gdesk:row-start-1 flex flex-col items-center border-r border-g-hairline bg-g-surface-sunken px-2 pb-5">
-        <span className="flex h-14 items-center gap-1.5"><a href="/" className="text-[16px]/6 font-bold tracking-[-0.02em] text-g-ink">skipwait.me</a><BetaBadge tone="goal" /></span>
+        <span className="flex h-14 items-center"><a href="/" className="text-[16px]/6 font-bold tracking-[-0.02em] text-g-ink">skipwait.me</a></span>
         <div className="mt-2 flex w-full flex-col items-center gap-1">
           {items.map(item => (
             <a
@@ -147,7 +147,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
         </span>
         <h1 className="max-gdesk:hidden text-g-meta text-g-ink-3">{pageTitle}</h1>
         <span className="ml-auto flex items-center gap-2">
-          <span className="gdesk:hidden"><BetaBadge tone="goal" /></span>
+          <BetaBadge tone="goal" />
           <span className="max-gdesk:hidden"><CreditsPill credits={credits} /></span>
           <span className="gdesk:hidden"><CreditsPill credits={credits} compact /></span>
           {showAlerts ? (
@@ -159,7 +159,8 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
       </header>
 
       {/* Main */}
-      <main className="gdesk:col-start-2 gdesk:row-start-2 min-w-0">{children}</main>
+      {/* Phone: explicit row 2, else the row-2 bottom bar pushes main into an implicit fourth row. */}
+      <main className="max-gdesk:col-start-1 max-gdesk:row-start-2 gdesk:col-start-2 gdesk:row-start-2 min-w-0">{children}</main>
 
       {/* Desktop drawer column */}
       {drawer ? <div className="max-gdesk:hidden gdesk:col-start-3 gdesk:row-start-2">{drawer}</div> : null}

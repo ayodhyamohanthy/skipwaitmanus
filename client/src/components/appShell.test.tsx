@@ -44,8 +44,10 @@ describe("AppShell on GoalShell (W0)", () => {
     expect(within(rail).queryByRole("link", { name: /Queue/ })).toBeNull();
     // A non-referrer gets the quiet Give a referral link (D-070).
     expect(screen.getAllByTestId("goal-give-referral")[0].getAttribute("href")).toContain("intent=referrer");
-    // Owner (Oct 21, #402): the beta badge survives the shell migration.
-    expect(screen.getAllByTestId("beta-badge").length).toBeGreaterThan(0);
+    // Owner (Oct 21, #402): the beta badge survives in the top bar; the 104px
+    // rail cannot hold wordmark + badge without clipping the wordmark.
+    expect(within(rail).queryByTestId("beta-badge")).toBeNull();
+    expect(within(screen.getByRole("banner")).getAllByTestId("beta-badge").length).toBe(1);
   });
 
   it("adds Referral queue and drops Give a referral for a verified referrer", () => {
@@ -90,9 +92,12 @@ describe("AppShell on GoalShell (W0)", () => {
 
   it("pins the phone bottom bar sticky in view, and drops bar plus track on an opened request", () => {
     state.path = "/explore"; state.referrer = "unverified"; state.signedIn = true;
-    render(<AppShell><p>page</p></AppShell>);
+    const { container } = render(<AppShell><p>page</p></AppShell>);
     const bars = screen.getAllByRole("navigation", { name: "Primary" });
     expect(bars.some(bar => bar.className.includes("sticky") && bar.className.includes("bottom-0"))).toBe(true);
+    // The sticky bar spans rows 2..-1; main must claim phone row 2 explicitly or
+    // auto-placement drops it into an implicit fourth row below a blank screen.
+    expect(container.querySelector("main")?.className).toContain("max-gdesk:row-start-2");
     cleanup();
     for (const hidden of ["/conversation/req-1", "/thread/req-1", "/messages"]) {
       state.path = hidden;
