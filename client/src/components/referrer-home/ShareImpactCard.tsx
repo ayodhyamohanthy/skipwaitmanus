@@ -58,7 +58,7 @@ export function ShareImpactCard() {
         </div>
         <p className="share-impact-link">skipwait.me{input.linkPath}</p>
       </div>
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={() => void copy("text")}>
           {copied === "text" ? <Check /> : <Copy />}{copied === "text" ? IMPACT_CARD_COPY.copied : IMPACT_CARD_COPY.copyText}
         </Button>
