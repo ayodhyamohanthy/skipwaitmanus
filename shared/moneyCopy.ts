@@ -42,14 +42,16 @@ export const MONEY_SENTENCE_SHORT = `${ASK_COST_SENTENCE} ${REFERRERS_NEVER_PAID
  * and an unclaimed expiry return it once (refundLedgerSpendTx) — the unclaimed
  * window is ASK_TTL_DAYS from first visibility and a waiting or held ask that
  * never reaches an employee closes after COVERAGE_WAIT_DAYS, having spent
- * nothing (D-061). After a pickup the credit stays spent, even when that
- * employee passes (passReferralRequestTx moves no credit). A credit goes back
+ * nothing (D-061). After a pickup the credit stays spent, unless that employee
+ * passes for a reason the seeker can't fix (passReferralRequestTx moves no
+ * credit; the reason's fixable flag, decided on the server from the code,
+ * releases the pickup — D-035, D-038). A credit goes back
  * to the bucket it came from, so one whose month, plan cycle or grant has
  * already ended cannot come back (refundLedgerSpendTx logs 0).
  * A personal-link ask (D-017) is visible to its link owner from creation, so it
  * follows the same rule with the clock starting at creation (D-050). D-035 and
- * D-038 change this rule; update this copy in the change that ships them, never
- * before (D-042: copy never promises what the product does not do).
+ * D-038 have shipped; this comment tracks the string below and must be
+ * corrected with it (D-068).
  */
 export const CREDIT_RULE = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, 1 credit is used; if you have none then, we hold the ask until you add one. The credit comes back once if you withdraw before someone picks the ask up, if a referrer's 48-hour hold lapses, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee, as long as the credit itself has not expired by then. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credit stays spent, unless they pass for a reason you can't fix. If an accepted ask is not marked Referred in time, or the referrer steps back, the ask reopens to other employees with that credit still on it, and the credit comes back if the ask is then withdrawn or expires unclaimed.`;
 
