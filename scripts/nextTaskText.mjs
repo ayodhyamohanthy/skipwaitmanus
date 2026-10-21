@@ -93,7 +93,7 @@ const landSteps = (pick, who) => steps([
 const architectSteps = (pick, who, claimed) => steps([
   `git fetch origin && git worktree add ../skipwaitmanus-wt/architect-${slugOf(pick.lock)} ${pick.lockExists || claimed ? pick.lock : `-b ${pick.lock} origin/main`} (if it already exists, use it). Never force-push this branch: its first commit is your claim.`,
   `Read the §3b row "${pick.task.row}", the task's note in docs/plans/assignments.json and every decision it names in docs/DECISIONS.md.`,
-  "Write the packet in docs/plans/ exactly as docs/DELEGATION.md describes (goal, binding rules quoted, current behaviour verified in code with file:line, rulings, files in and out of scope, red-first tests, definition of done, review checklist, stop-and-ask). Record any ruling you make as a register entry marked \"decided under D-074\".",
+  "Write the packet in docs/plans/ exactly as docs/DELEGATION.md describes (goal, binding rules quoted, current behaviour verified in code with file:line, rulings, files in and out of scope, red-first tests, definition of done, review checklist, stop-and-ask). Claude Code records its rulings as register entries marked \"decided under D-074\"; any other agent makes no ruling the decisions do not already make: a real choice they leave open on money, sign-in, identity, privacy or prices goes to the CEO as `--report blocked` with the question, and any other gap gets a stated, changeable assumption in the packet (D-109).",
   `In the same pull request set the task's "packet" and "status": "todo" in docs/plans/assignments.json, so the next \`${CMD}\` hands it to a builder.`,
   `Land it like any docs change (D-082: pull request, every check green on that exact commit). ${keepAlive(who)}`,
   report(pick.task, who),
@@ -145,7 +145,7 @@ export function renderBoard(rows) {
     if (r.report) bits.push(`report: ${r.report.status} — ${r.report.who}${r.report.note ? `: ${r.report.note}` : ""}`);
     return bits.join(" · ");
   });
-  return ["STATUS BOARD (priorities top down; a red or blocked one holds everything below it)", ...lines, ""].join("\n");
+  return ["STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)", ...lines, ""].join("\n");
 }
 
 /** The steps for one pick. ctx: { who, date, claimed } (claimed = this run took the lock or holds it). */
@@ -199,7 +199,7 @@ export function renderPick(pick, { who, date, claimed }) {
       landSteps(pick, who),
     ]) + take;
     case "architect": return head(`WRITE THE PACKET FOR ${pick.task.id} — ${pick.task.title}`, [
-      `Claude Code only (D-074, D-085) · lock ${pick.lock}${pick.from ? ` · taken over from ${pick.from}, quiet for 2 hours` : ""}`,
+      `Any agent (D-109); Claude Code may revise it · lock ${pick.lock}${pick.from ? ` · taken over from ${pick.from}, quiet for 2 hours` : ""}`,
       architectSteps(pick, who, claimed),
     ]) + take;
     case "takeover": return head(`TAKE OVER ${pick.task.id} — ${pick.task.title}`, [

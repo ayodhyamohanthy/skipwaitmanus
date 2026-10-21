@@ -6,6 +6,7 @@ import { AccountMenu } from "./AccountMenu";
 import { Button } from "@/components/kit/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FREE_ASKS_CHIP, FREE_ASKS_PER_MONTH, REFERRER_MONEY_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
+import { BetaBadge } from "@/components/BetaNotice";
 
 /**
  * Kit-exact app shell (skipwait-shell.tsx): desktop sidebar + mobile bottom
@@ -58,7 +59,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <aside className={`app-sidebar overflow-y-auto${drawer ? " is-open" : ""}`}>
-        <Link href="/" className="wordmark" onClick={close}><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
+        <span className="inline-flex items-center gap-2"><Link href="/" className="wordmark" onClick={close}><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link><BetaBadge tone="kit" /></span>
         <div className="sidebar-caption">A LITTLE CONNECTION.<br />A BIG NEXT STEP.</div>
         <nav aria-label="Main navigation">
           {navigation.map(item => (
@@ -76,7 +77,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="sidebar-bottom !pt-6">
           {/* D-063: the money sentence, split so the sidebar keeps its two short rows. */}
-          <div className="free-promise"><ShieldCheck size={21} /><strong>{FREE_ASKS_PER_MONTH} asks free a month.<br />More use credits.</strong></div>
+          <div className="free-promise"><ShieldCheck size={21} /><strong>{FREE_ASKS_CHIP}.<br />Extra asks use credits.</strong></div>
           <p>{REFERRER_MONEY_SENTENCE}</p>
           {isSignedIn ? <AccountMenu /> : <Button variant="outline" asChild><Link href="/sign-in" onClick={close}>Sign in</Link></Button>}
           <div className="global-note"><Globe2 size={14} />Built for your next move.</div>
@@ -87,7 +88,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="app-topbar">
           <div className="mobile-brand">
             <Button variant="ghost" size="icon" aria-label={drawer ? "Close menu" : "Open menu"} onClick={() => setDrawer(!drawer)}>{drawer ? <X /> : <Menu />}</Button>
-            <Link href="/" className="wordmark"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
+            <span className="inline-flex items-center gap-2"><Link href="/" className="wordmark"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link><BetaBadge tone="kit" /></span>
             <Button variant="ghost" size="icon" asChild className="ml-auto md:hidden"><Link href="/alerts" aria-label="Alerts"><Bell /></Link></Button>
           </div>
           <span className="desktop-top-label">GOOD OPPORTUNITIES START WITH PEOPLE.</span>

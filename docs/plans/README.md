@@ -4,9 +4,12 @@
 
 How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. The machine order every agent's `build` uses is [`assignments.json`](assignments.json) (D-083): change the two together. System map: [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md). Packet format: [`TEMPLATE.md`](TEMPLATE.md).
 
+## Oct 21 (CEO sync, D-085)
+The picker's order (`assignments.json`) after the money lane (GO-LIVE-1b, D-038 reconcile, D-035): the pull requests built before they had a packet, finished through [`OCT21-BUILT-PRS.md`](OCT21-BUILT-PRS.md) — D-067 review outbox (#322), D-104 company signal (#373), D-107 claim your company (#384), D-105 win card (#375), D-106 impact card (#382), D-048 phase 3 (#358, #361, #362, #360), row 20 (#310, #311, #314), task 13 slice A (#308). Then the packets Claude Code owes (D-090 BYOR, D-095 one-tap, D-100 security audit, D-099 bonus pages, D-093 language, D-094 AI-in-UI). The pricing pull requests #380 and #381 wait for the owner (D-056, D-091).
+
 ## Rules for this page
 - A row may be delegated only when its packet below is **ready**. "Architect" means Claude Code writes or refreshes the packet first.
-- Nobody picks or claims a row by hand: every agent runs `node scripts/next-task.mjs --claim "<your model name>"` and does only what it prints (D-083, D-085). It walks [`assignments.json`](assignments.json) top down: red `main`, then your own unfinished work (pending work ranked above it with nobody on it first), then pending work nobody is on, then new work whose packet is ready, whose dependencies are done and whose lane is free. A red or blocked priority holds everything below it.
+- Nobody picks or claims a row by hand: every agent runs `node scripts/next-task.mjs --claim "<your model name>"` and does only what it prints (D-083, D-085). It walks [`assignments.json`](assignments.json) top down: red `main`, then your own unfinished work (pending work ranked above it with nobody on it first), then pending work nobody is on, then new work whose packet is ready, whose dependencies are done and whose lane is free. A red or blocked priority holds its own lane and the tasks that depend on it; red `main` holds everything (D-109).
 - A claim is the task's branch on origin; your first commit on it sets the §3b row, which reaches `main` with the work. A claim is free after 2 hours with no push to its branch or lock and no `--heartbeat` (D-085; queue rule 2 said 24 hours); the picker then hands it to the next agent on the same branch.
 - Within a stage, anything marked parallel-safe may run at the same time with different models (D-075). Pushes to `main` stay one at a time.
 
@@ -29,7 +32,7 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. T
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on | Runs beside |
 |---|---|---|---|---|---|---|---|
 | 2.1 | 1 (go-live slice: `/plans` packs and passes, coverage before payment, no accidental renewal) | [GO-LIVE-1-plans-purchase.md](GO-LIVE-1-plans-purchase.md) | 1 | M | done — #351; passes switched off again by the D-084 P0 until 2.1b | 1.1 live, 1.3 built | 3.1 |
-| 2.1b | 1 (pass slice: a paid pass always activates, then passes go back on sale; D-084) | [GO-LIVE-1b-pass-activation.md](GO-LIVE-1b-pass-activation.md) | 1 | M | ready — first in the queue | 2.1 live | 3.1 |
+| 2.1b | 1 (pass slice: a paid pass always activates, then passes go back on sale; D-084) | [GO-LIVE-1b-pass-activation.md](GO-LIVE-1b-pass-activation.md) | 1 | M | landed — PR #359 (merge of `agent/queue/go-live-passes`); passes stay off until the owner's §4.5 test-site evidence | 2.1 live | 3.1 |
 | 2.2 | D-065-daily-money-check | live (`eed80e5f`, PR #317); follow-up [D-065-B-slice-checks.md](D-065-B-slice-checks.md) | 2 | S | done — `dc8d0bf3` (PR #333) | — | everything |
 | 2.3 | Owner: read the D-069 dry run, apply, fix `billing_cycles` mismatches in Chargebee, add the pass-refund wording to `/refunds`, then the one live ₹99 UPI buy-and-refund (D-065) | plan §6 | — | — | owner action | 1.3, 2.1 | — |
 

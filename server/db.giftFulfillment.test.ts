@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { canonicalPeople, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, users, verifiedLoginAliases } from "../drizzle/schema";
+import { billingReviewOutbox, canonicalPeople, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, users, verifiedLoginAliases } from "../drizzle/schema";
 import * as db from "./db";
 import {
   claimGiftSubscription,
@@ -15,6 +15,7 @@ vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
 vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
 
 const dialect = new MySqlDialect();
+let reviewRows: Array<Record<string, unknown>> = [];
 const NOW = new Date("2026-10-01T00:00:00.000Z");
 
 let gifts: Array<Record<string, unknown>>;
@@ -25,6 +26,7 @@ let accountRows: Array<Record<string, unknown>>;
 let ledgerRows: Array<Record<string, unknown>>;
 
 function tableFor(table: unknown): Array<Record<string, unknown>> {
+  if (table === billingReviewOutbox) return reviewRows;
   if (table === giftSubscriptionFulfillments) return gifts;
   if (table === tokenBalances) return wallets;
   if (table === canonicalPeople) return people;
@@ -65,12 +67,15 @@ function fixtureDatabase() {
     }),
   });
   const insert = (table: unknown) => ({
-    values: async (row: Record<string, unknown>) => {
+    values: (row: Record<string, unknown>) => {
+      if (table === billingReviewOutbox) return { onDuplicateKeyUpdate: async () => { if (!reviewRows.some(r => r.obligationKey === row.obligationKey)) reviewRows.push({ ...row }); return [{ affectedRows: 1, insertId: reviewRows.length }]; } };
+      return (async () => {
       const rows = tableFor(table);
       if (table === giftSubscriptionFulfillments && rows.some(r => r.giftId === row.giftId)) throw Object.assign(new Error("Duplicate entry"), { code: "ER_DUP_ENTRY" });
       const id = rows.length + 1;
       rows.push({ id, ...structuredClone(row) });
       return [{ affectedRows: 1, insertId: id }];
+      })();
     },
   });
   const api = { select, update, insert };
@@ -82,6 +87,8 @@ const alias = (id: number, personId: number, userId: number, email: string) => (
 const account = (id: number, personId: number, suspended = false) => ({ id, openId: `oid-${id}`, canonicalPersonId: personId, name: "Recipient", email: "james@user.com", role: "user", suspended });
 
 beforeEach(() => {
+  vi.stubEnv("BILLING_ENV", "test"); vi.stubEnv("CHARGEBEE_SITE", "fixture-test");
+  reviewRows = [];
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
   gifts = []; wallets = []; ledgerRows = [];
   people = [person(1, "james@user.com")];
@@ -188,4 +195,15 @@ describe("gift receipts after D-067", () => {
     await recordGiftProviderEvent({ eventId: "e3", eventType: "gift_cancelled", giftId: "gift_8", status: "cancelled" });
     expect(gifts[1]).toMatchObject({ fulfillmentStatus: "cancelled", failureReason: "provider_cancelled" });
   });
+});
+
+it("enqueues one durable review obligation across claim and webhook without changing economic rows", async () => {
+  await recordGiftProviderEvent(scheduled);
+  await claimGiftSubscription(7, scheduled.giftId);
+  await recordGiftProviderEvent(claimed);
+  await claimGiftSubscription(7, scheduled.giftId);
+  expect(reviewRows).toHaveLength(1);
+  expect(reviewRows[0]).toMatchObject({ status: "pending", attempts: 0 });
+  expect(JSON.parse(String(reviewRows[0].payload))).toMatchObject({ version: 1, classification: "unsupported", trigger: "gift", evidence: { giftId: "gift_1", reason: "unsupported_plan" } });
+  expect(wallets).toEqual([]); expect(ledgerRows).toEqual([]);
 });

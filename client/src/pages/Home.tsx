@@ -8,6 +8,8 @@ import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { VisualJourney } from "@/components/VisualJourney";
 import { LANDING_H1_LINES, LANDING_HERO_LEAD_PARTS } from "@shared/landingContent";
 import { FREE_ASKS_CHIP, MONEY_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
+import GoalLanding from "./GoalLanding";
+import { GOAL_UI_LANDING } from "@/lib/goalFlags";
 import CookieConsent from "@/components/CookieConsent";
 
 const QUESTIONS = [
@@ -18,12 +20,18 @@ const QUESTIONS = [
 ];
 
 export default function Home() {
-  const { isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
   const [menu, setMenu] = useState(false);
   const [faq, setFaq] = useState<number | null>(0);
+  // D-120 migration: signed-out visitors get the goal-first landing behind the
+  // flag (off in production until QA verifies). Signed-in visitors keep the
+  // existing page until the Home surface migrates.
+  const goalLanding = GOAL_UI_LANDING && isLoaded && !isSignedIn;
   useEffect(() => {
+    if (goalLanding) return;
     applySeo({ title: `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}`, description: `skipwait.me connects job seekers with people inside the companies they want to join. ${MONEY_SENTENCE}`, path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
-  }, []);
+  }, [goalLanding]);
+  if (goalLanding) return <GoalLanding />;
 
   return (
     <div className="launch-page">

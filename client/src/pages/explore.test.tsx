@@ -215,7 +215,7 @@ describe("Explore company detail", () => {
     renderWithQuery(<ExploreCompany />);
     await screen.findByRole("heading", { level: 1 });
     expect(document.title).toBe("Referrals at Wipro · skipwait.me");
-    expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Request a private introduction to someone at Wipro. 3 asks free every month; more use credits.");
+    expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Request a private introduction to someone at Wipro. 3 free credits every month; extra asks use credits.");
     expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore/wipro");
   });
 });
