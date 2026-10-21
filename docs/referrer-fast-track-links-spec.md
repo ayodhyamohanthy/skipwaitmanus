@@ -1,5 +1,7 @@
 # Referrer Fast-Track Links
 
+> RENAMED (D-128, Oct 21 2026): the user-facing feature is "Your referral link" - "Fast Track" is the seeker plan. Internal identifiers, the /fast/:linkCode route, aliases and the table name below are unchanged and historical.
+
 ## Purpose
 
 **Referrer Fast-Track Links** give a verified employee one branded, shareable entry point for referrals at their exact company. The link is intended for a LinkedIn bio or a one-to-one message. It is an invitation to begin a **private referral request**, not a promise of an interview, priority, acceptance, or a public “queue.”

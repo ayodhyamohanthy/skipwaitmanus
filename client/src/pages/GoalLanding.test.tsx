@@ -5,7 +5,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import GoalLanding from "./GoalLanding";
-import { ASK_COST_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
+import { ASK_COST_SENTENCE, REFERRING_FREE_LINE } from "@shared/moneyCopy";
 
 afterEach(cleanup);
 
@@ -43,7 +43,7 @@ describe("GoalLanding (D-120)", () => {
 
   it("states the fair rules from shared money copy - no invented claims", () => {
     render(<GoalLanding />);
-    expect(screen.getByText(REFERRERS_NEVER_PAID)).toBeTruthy();
+    expect(screen.getByText(REFERRING_FREE_LINE)).toBeTruthy();
     expect(screen.getByText(/never on the person asking/)).toBeTruthy();
     expect(screen.getByText(/not an interview or a job/)).toBeTruthy();
     expect(screen.getByText(/hidden until a referrer accepts/)).toBeTruthy();
