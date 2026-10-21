@@ -49,3 +49,6 @@ FND-7 left the row-20 set to the CEO: finish it, in order. A (`agent/qoder/row20
 
 ### TASK13-pinned-work (#308, `agent/qoder/ask-pinned-work`, Tier 1)
 Queue task 13 slice A: pinned showcase work rides with the ask as a snapshot. It named migration 0096, which card validation took: renumber it (rule 3). Done: renumbered, merged with `main`, gate green, review passed (ids ownership-checked, count capped by the plan's existing `showcase.pins`, a later edit never rewrites an open ask), landed.
+
+## Status
+Rows here that share a plan row (the D-048 rows share "D-048"; ROW20-A, -B and -CD share "20") write their status here, one line per task, never in the shared §3b row (D-127).

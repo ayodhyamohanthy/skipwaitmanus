@@ -40,7 +40,7 @@ Nobody claims a surface by editing this file: two agents could each claim the sa
 
 | Surface | Row | Note |
 | --- | --- | --- |
-| Landing (signed out) | `D-048-p3-home` | from the `D-048-P-marketing` packet; Instinct's landing work continues on that row's branch |
+| Landing (signed out) | `D-048-p3-home` | from the `D-048-P-marketing` packet; PR #396 (Instinct's landing) is reworked as this row onto `goalSurfaces.ts` once D-048-F-flags lands, never landed as built |
 | Home (seeker) | `D-048-p3-explore` | PR #362 |
 | Company | `D-048-p3-company` | from the `D-048-P-seeker` packet |
 | Requests / My asks | `D-048-p3-requests` | PR #360 |

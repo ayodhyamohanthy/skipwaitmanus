@@ -6,7 +6,7 @@ All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker
 
 ## PICKER-landing-slot: one landing at a time, without discipline
 **Why.** D-082 says one landing at a time, but nothing enforces it. With eight or more lanes, landers who merged the same `main` race each other: each loser re-merges and re-runs CI (about 4.4 minutes), and six simultaneous CI runs use 18 of GitHub Free's 20 concurrent jobs, which delays `main`'s own CI.
-**What.** A marker ref `agent/queue/landing` (add it to `RESERVED` and `MARKER_ONLY` beside `agent/review/`), with the verbs `Land claim` and `Landed`. A lander takes the slot with an empty marker commit (first push wins, like every claim), holds it for at most 30 minutes, and releases it with `--landed --task <id> --as "<name>"` after main's CI and deploys finish. A quiet slot (30 minutes, no push) is free. Every `land` step and `continue land` step tells the agent to take the slot first; an agent that cannot take it gets `WAIT` naming the holder.
+**What.** A marker ref `agent/queue/landing` (add it to `RESERVED` and `MARKER_ONLY` beside `agent/review/`), with the verbs `Land claim` and `Landed`. A lander takes the slot with an empty marker commit (first push wins, like every claim), keeps it alive with `--heartbeat` (a deploy can run 25 minutes), and releases it with `--landed --task <id> --as "<name>"` after main's CI and deploys finish. Only a slot nobody pushed to for 30 minutes is free. Every `land` step and `continue land` step tells the agent to take the slot first; an agent that cannot take it gets `WAIT` naming the holder.
 **Tests.** Two landers: the second waits and names the first; a quiet slot is taken over; `--landed` by someone else is refused; red `main` still beats everything.
 
 ## PICKER-owns-scope: file ownership, checked
@@ -20,7 +20,7 @@ All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker
 6. Add it as a step in the required typecheck job in `.github/workflows/ci.yml`: this packet authorizes that one edit (DELEGATION never-do 9; CEO ruling, D-127). It reads the task from the branch name.
 **Tests.** Overlap refused by the validator; overlap allowed with a dependency; `filesBusy` holds a build; the scope check passes inside `owns`, fails outside it, fails on a deleted test, and fails open on a crash.
 
-## PICKER-status-rows: no two tasks rewrite the same status line
+## PICKER-status-rows: no two tasks rewrite the same status line (done by D-127: printed steps send tasks that share a row to their packet's Status section)
 **Why.** All D-048 rows carry the §3b row `D-048`, and each task's first commit rewrites that same plan line. With about 60 surface tasks that guarantees conflicts, and one landing can overwrite another's status.
 **What.** Either `validateAssignments` requires a unique `row` among tasks that are not done, or tasks that share a row write their status in their packet's own section and the printed steps say so (`scripts/nextTaskText.mjs`, every place that tells an agent to set the §3b row). Prefer the second: a goal like D-048 keeps one plan row whose cell points to `docs/plans/D-048-phase-3-split.md`.
 **Tests.** Two tasks with one row print the packet-section instruction; a unique row prints the plan-row instruction.
@@ -34,3 +34,6 @@ All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker
 **Why.** `roleOf` maps only the exact lane `design` to CDO, so every `d048-*` lane shows CTO; the board lists 74 rows with no roll-up; and it shows a pull request as mergeable while it is many commits behind `main`.
 **What.** `ROLE_BY_LANE` becomes a prefix match (`design*` and `d048-*` map to CDO). An optional `epic` key groups rows, and `--status` prints one roll-up line per epic (for example `D-048-p3: 12/74 done, 6 PR, 1 red, released: shell, explore`). Each open pull request shows `behind main N` from `git rev-list --count` (no GitHub read).
 **Tests.** Prefix roles; the epic roll-up counts; `behind main` from a fixture.
+
+## Status
+The PICKER rows share the plan row "D-127", so each writes its status here, one line per task, never in the shared §3b row (D-127).
