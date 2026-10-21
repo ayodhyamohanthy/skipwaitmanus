@@ -2892,7 +2892,7 @@ function latestByEventId<T extends { id: unknown }>(rows: readonly T[]): T | nul
 }
 
 /** The actions that start or end a pickup. D-038-B and D-035 add more release actions here. */
-const PICKUP_OR_RELEASE_ACTIONS = ["claim", "claim_lapse", "referred_lapse", "step_back", "pass_release"] as const;
+export const PICKUP_OR_RELEASE_ACTIONS = ["claim", "claim_lapse", "referred_lapse", "step_back", "pass_release"] as const;
 
 /** D-038-A: "pickup since the latest release" — true only when the most recent
  * pickup-or-release event for this request is a claim. Release actions (claim_lapse,

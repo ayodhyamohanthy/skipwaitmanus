@@ -472,4 +472,26 @@ describe("released_pass_unrefunded over the in-memory database", () => {
     expect(output.failed).toBe(0);
     expect(sent).toEqual([]);
   });
+
+  // D-035 §9: only an ask whose LATEST pickup-or-release event is pass_release is in scope. A later
+  // claim re-picks the ask up: the colleague may get the referral, the credit stays spent by design,
+  // and the close carries no refund — flagging it would alert the owner on a healthy referral.
+  it("stays quiet when a later claim is the latest pickup-or-release after the release", async () => {
+    const release = (id: number, requestId: number) => ({ ...claimEvent(requestId, id), action: "pass_release", operationKey: `pass:${requestId}`, resultingStatus: "pending", createdAt: daysAgo(5) });
+    seedHeldAsks({
+      asks: [askRow({ id: 804, status: "closed", referrerId: null, debitTransactionId: 68 })],
+      spends: [spendRow({ id: 68, referenceId: "804#1", idempotencyKey: "k804#1", tokenCount: -1 })],
+      events: [
+        { ...claimEvent(804, 95), createdAt: daysAgo(6) },
+        release(96, 804),
+        { ...claimEvent(804, 97), createdAt: daysAgo(4) },
+      ],
+    });
+
+    const { deps, sent } = makeDeps({ listReleasedPassUnrefunded });
+    const output = await createDailyMoneyCheck(deps)({ nowMs: KIT_NOW, windowKey: "2026-10-18T12:00Z" });
+
+    expect(output.failed).toBe(0);
+    expect(sent).toEqual([]);
+  });
 });

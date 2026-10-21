@@ -18,7 +18,7 @@
 import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, referredDueAtMs } from "../shared/referral";
-import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
+import { getDb, getFullCreditLedgerAudit, PICKUP_OR_RELEASE_ACTIONS, recordOperationalActivity } from "./db";
 import { ASK_DELIVERY_KEY_PREFIX } from "./coverageDelivery";
 import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
@@ -329,22 +329,33 @@ export async function listReferredPastDeadline(nowMs: number, limit: number): Pr
 export async function listReleasedPassUnrefunded(limit: number): Promise<ReleasedPassUnrefundedRow[]> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
   // D-035: a not-fixable pass releases the pickup, so when the ask later closes it must have exactly one
-  // refund row. Two means the release ran twice; zero means the release never reached the ledger.
+  // refund row. Two means the release ran twice; zero means the release never reached the ledger. Only an
+  // ask whose LATEST pickup-or-release event is the release is in scope (§9): a later claim re-picked the
+  // ask up (usually accepted and referred), the credit stays spent by design and owes no refund.
   const releases = await db.select({ requestId: referralTransitionEvents.referralRequestId }).from(referralTransitionEvents)
     .where(eq(referralTransitionEvents.action, "pass_release")).orderBy(desc(referralTransitionEvents.id)).limit(limit * 2);
-  const seen = new Set<number>();
+  const candidates: number[] = [];
+  for (const release of releases) if (!candidates.includes(release.requestId)) candidates.push(release.requestId);
+  if (candidates.length === 0) return [];
+  const pickups = await db.select({ requestId: referralTransitionEvents.referralRequestId, id: referralTransitionEvents.id, action: referralTransitionEvents.action })
+    .from(referralTransitionEvents)
+    .where(and(inArray(referralTransitionEvents.referralRequestId, candidates), inArray(referralTransitionEvents.action, [...PICKUP_OR_RELEASE_ACTIONS])));
+  const latestByRequest = new Map<number, { id: number; action: string }>();
+  for (const event of pickups) {
+    const previous = latestByRequest.get(event.requestId);
+    if (!previous || Number(event.id) > previous.id) latestByRequest.set(event.requestId, { id: Number(event.id), action: event.action });
+  }
   const found: ReleasedPassUnrefundedRow[] = [];
-  for (const release of releases) {
-    if (seen.has(release.requestId)) continue;
-    seen.add(release.requestId);
+  for (const requestId of candidates) {
+    if (latestByRequest.get(requestId)?.action !== "pass_release") continue;
     const ask = (await db.select({ id: referralRequests.id, status: referralRequests.status, debitTransactionId: referralRequests.debitTransactionId })
-      .from(referralRequests).where(eq(referralRequests.id, release.requestId)).limit(1))[0];
+      .from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1))[0];
     if (!ask || (ask.status !== "closed" && ask.status !== "withdrawn") || ask.debitTransactionId === null) continue;
     // Both refund writers reference the ask: refundLedgerSpendTx writes "<id>#refund" and the
     // pre-ledger refundReferralDebitTx writes the bare id, so the one owed refund may be either.
     const refundRows = (await db.select({ id: tokenTransactions.id }).from(tokenTransactions)
-      .where(and(eq(tokenTransactions.referenceType, "referral_request"), inArray(tokenTransactions.referenceId, [String(release.requestId), `${release.requestId}#refund`]), inArray(tokenTransactions.kind, ["withdrawal_refund", "expiry_refund"])))).length;
-    if (refundRows !== 1) found.push({ requestId: release.requestId, status: ask.status, refundRows });
+      .where(and(eq(tokenTransactions.referenceType, "referral_request"), inArray(tokenTransactions.referenceId, [String(requestId), `${requestId}#refund`]), inArray(tokenTransactions.kind, ["withdrawal_refund", "expiry_refund"])))).length;
+    if (refundRows !== 1) found.push({ requestId, status: ask.status, refundRows });
     if (found.length >= limit) break;
   }
   return found;
