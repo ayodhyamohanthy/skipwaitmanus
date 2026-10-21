@@ -1,3 +1,5 @@
+import { expectedBundleAmount, v2CreditIdempotencyKey } from "./v2Crediting";
+import type { PlanCreditRung, PlanFamilyId } from "../shared/planFamily";
 import { enqueueBillingReviewTx } from "./billingReviewOutbox";
 import { buildReferrerHome, monthStartUtc } from "./referrerHome";
 import { enrichInboxRow } from "./inboxEnrichment";
@@ -4174,6 +4176,84 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
   });
 }
 
+/**
+ * D-132 bundle crediting (flag PLAN_FAMILY_V2): a paid v2 invoice = plan fee +
+ * the picked monthly rung in one total (provider truth, parsed from the
+ * invoice's own line items). The rung credits are PAID: they never expire
+ * (D-132), so they land in the purchased balance like a pack, once per
+ * invoice, for the first month and every renewal alike. Plan entitlements
+ * arrive via the subscription events, never here. An amount that disagrees
+ * with the frozen ladder is parked for admin review; a subscription nobody
+ * knows is logged for the webhook's unmatched-payment alert. Nothing drops
+ * silently.
+ */
+export async function grantV2PaidCredits(input: { eventId: string; invoiceId?: string; subscriptionId?: string; hostedPageId?: string; passThruContent?: string; planFamily: PlanFamilyId; rung: PlanCreditRung; amount: number; currency: string }) {
+  if (!input.invoiceId) return { status: "ignored" as const, reason: "missing_invoice" };
+  const invoiceId = input.invoiceId;
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const expected = expectedBundleAmount(input.planFamily, input.rung, input.currency as "INR" | "USD");
+  return db.transaction(async tx => {
+    const duplicate = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, input.eventId))).limit(1);
+    if (duplicate[0]) return { status: "duplicate" as const, tokenCount: duplicate[0].tokenCount };
+    // Renewal: the wallet already carries the subscription. First month: the
+    // bundle checkout intent names the buyer. Both are locked for the grant.
+    const walletBySubscription = input.subscriptionId
+      ? (await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update"))[0]
+      : undefined;
+    const intent = input.hostedPageId && input.passThruContent
+      ? (await tx.select().from(subscriptionCheckoutIntents).where(and(eq(subscriptionCheckoutIntents.hostedPageId, input.hostedPageId), eq(subscriptionCheckoutIntents.checkoutIntentId, input.passThruContent))).limit(1).for("update"))[0]
+      : undefined;
+    if (intent && walletBySubscription && (walletBySubscription.userId !== intent.userId || walletBySubscription.role !== intent.role)) return { status: "ignored" as const, reason: "subscription_owner_mismatch" };
+    const userId = walletBySubscription?.userId ?? intent?.userId;
+    const role = walletBySubscription?.role ?? intent?.role;
+    if (userId === undefined || !role) {
+      // No wallet or checkout intent names this subscriber: the webhook's #77
+      // unmatched-payment alert carries it to a human. Logged so it is never
+      // silent; no receipt row exists (paymentFulfillments needs a user), so a
+      // redelivery re-enters and alerts again until a human maps it.
+      await tx.insert(operationalActivityLogs).values({ actorUserId: null, action: "billing.v2_grant_unknown_subscription", outcome: "failure", resourceType: "chargebee_invoice", resourceId: invoiceId, metadata: JSON.stringify({ eventId: input.eventId, subscriptionId: input.subscriptionId ?? null, planFamily: input.planFamily, rung: input.rung, amount: input.amount, currency: input.currency }) });
+      return { status: "ignored" as const, reason: "unknown_v2_subscription" };
+    }
+    if (input.amount !== expected) {
+      // Tax, coupon, rounding or catalog drift: the user has paid but the
+      // amount is untrusted. Park it where the admin review list already
+      // looks; the route raises the payment-review alert.
+      const parked = await tx.insert(paymentFulfillments).values({ provider: "chargebee", providerEventId: input.eventId, providerInvoiceId: invoiceId, providerHostedPageId: input.hostedPageId ?? null, checkoutIntentId: input.passThruContent ?? null, userId, role, tokenCount: input.rung, amount: input.amount, currency: input.currency, status: "requires_review", reconciliationReason: "checkout_amount_mismatch", lastCheckedAt: new Date() });
+      const paymentId = Number(parked[0]?.insertId ?? 0);
+      await tx.insert(operationalActivityLogs).values({ actorUserId: userId, action: "billing.payment_amount_mismatch", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify({ role, planFamily: input.planFamily, rung: input.rung, expectedAmount: expected, expectedCurrency: input.currency, paidAmount: input.amount, paidCurrency: input.currency, invoiceId }) });
+      return { status: "requires_review" as const, reason: "checkout_amount_mismatch" as const, paymentId, userId, role, expectedAmount: expected, expectedCurrency: input.currency, paidAmount: input.amount, paidCurrency: input.currency };
+    }
+    const creditedAt = new Date();
+    await tx.insert(paymentFulfillments).values({ provider: "chargebee", providerEventId: input.eventId, providerInvoiceId: invoiceId, providerHostedPageId: input.hostedPageId ?? null, checkoutIntentId: input.passThruContent ?? null, userId, role, tokenCount: input.rung, amount: input.amount, currency: input.currency, status: "credited", creditedAt, lastCheckedAt: creditedAt });
+    if (walletBySubscription) {
+      await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} + ${input.rung}` }).where(eq(tokenBalances.id, walletBySubscription.id));
+    } else {
+      // First month, and the subscription event has not landed yet: credit the
+      // buyer's wallet anyway (create it when absent) and attach the
+      // subscription only when the slot is free, never overwriting another.
+      const existing = (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1).for("update"))[0];
+      if (existing) await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} + ${input.rung}`, ...(input.subscriptionId && !existing.subscriptionId ? { subscriptionId: input.subscriptionId } : {}) }).where(eq(tokenBalances.id, existing.id));
+      else await tx.insert(tokenBalances).values({ userId, role, balance: input.rung, subscriptionId: input.subscriptionId ?? null, ...freshWalletCycle(role) });
+    }
+    // One purchase row per invoice: the idempotency key refuses a second grant
+    // for the same invoice however often the event is redelivered.
+    await tx.insert(tokenTransactions).values({ userId, role, tokenCount: input.rung, kind: "purchase", source: "purchased_balance", referenceType: "chargebee_invoice", referenceId: invoiceId, idempotencyKey: v2CreditIdempotencyKey(invoiceId) });
+    // The frozen copy: "First verified payment earns 5 bonus credits" - a
+    // bundle's first paid invoice earns the same promo as a kit pack or
+    // subscription. Idempotent by the unique (userId, role) grant row; a
+    // pending schema migration degrades loudly without blocking paid credits.
+    try {
+      await grantPromoCreditsTx(tx, { userId, role, source: "first_paid_invoice", providerRef: invoiceId, now: creditedAt });
+    } catch (error) {
+      if (!isSchemaMissingError(error)) throw error;
+      captureServerError(error, { source: "promo-grant-skipped", userId, role });
+      await tx.insert(operationalActivityLogs).values({ actorUserId: userId, action: "promo.grant_skipped_schema_pending", outcome: "failure", resourceType: "promo_credit_grant", metadata: JSON.stringify({ role, providerRef: invoiceId }) });
+    }
+    return { status: "credited" as const, tokenCount: input.rung, userId, role };
+  });
+}
+
 export async function listRequiresReviewPayments(limit = 100) {
   const db = await getDb();
   if (!db) return [];
@@ -4326,7 +4406,7 @@ export async function applyChargebeePaymentRefund(input: { eventId: string; invo
   });
 }
 
-export async function createChargebeeSubscriptionIntent(input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: WalletRole; plan: BillablePlanId; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) {
+export async function createChargebeeSubscriptionIntent(input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: WalletRole; plan: BillablePlanId | "fast_track" | "insider"; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   // A kit pass names its term (30d/90d, yearly for Keep warm) so the webhook can
@@ -4369,7 +4449,7 @@ export async function markSubscriptionCheckoutIntentCancelled(hostedPageId: stri
   await db.update(subscriptionCheckoutIntents).set({ status: "cancelled", failureReason }).where(and(eq(subscriptionCheckoutIntents.hostedPageId, hostedPageId), eq(subscriptionCheckoutIntents.status, "pending")));
 }
 
-export async function applyChargebeeSubscriptionEvent(input: { eventId: string; eventType: string; hostedPageId?: string; passThruContent?: string; subscriptionId: string; plan?: BillablePlanId; itemPriceId?: string; interval?: BillingPeriod; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number }) {
+export async function applyChargebeeSubscriptionEvent(input: { eventId: string; eventType: string; hostedPageId?: string; passThruContent?: string; subscriptionId: string; plan?: BillablePlanId; planFamily?: PlanFamilyId; planFamilyRung?: PlanCreditRung; itemPriceId?: string; interval?: BillingPeriod; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
@@ -4411,6 +4491,52 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     if (!sameSubscription && intent && intent.status !== "pending") return { status: "ignored" as const, reason: "checkout_already_reconciled" };
     if (wallet && !sameSubscription && (wallet.plan !== "free" || wallet.subscriptionStatus === "active" || wallet.subscriptionStatus === "non_renewing")) return { status: "ignored" as const, reason: "subscription_conflict" };
     if (intent && input.currency && input.currency !== intent.currency) return { status: "ignored" as const, reason: "currency_mismatch" };
+    // D-132 v2 plan family (flag PLAN_FAMILY_V2): the bundle's monthly credits
+    // arrive per paid invoice through grantV2PaidCredits (paid credits never
+    // expire), never from a kit plan cycle, so this branch only moves the
+    // wallet onto the family plan with its subscription and term. It diverts
+    // before the catalog checks: a v2 family is not a BillablePlanId and must
+    // never park as unsupported_plan, and the event's first item price is not
+    // matched against the intent (Chargebee owns the subscription item order);
+    // the family itself is the plan match.
+    if (input.planFamily) {
+      const recordV2Event = () => tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+      // Open Door is free: it has no subscription and no wallet plan row.
+      if (input.planFamily === "open_door") {
+        await recordV2Event();
+        return { status: "ignored" as const, reason: "open_door_is_free" };
+      }
+      if (intent && intent.plan !== input.planFamily) {
+        await recordV2Event();
+        return { status: "ignored" as const, reason: "plan_mismatch" };
+      }
+      const currentV2 = sameSubscription ? wallet : undefined;
+      if (currentV2?.subscriptionResourceVersion && input.resourceVersion && input.resourceVersion <= currentV2.subscriptionResourceVersion) {
+        await recordV2Event();
+        return { status: "stale" as const };
+      }
+      if (!wallet && !intent) {
+        await recordV2Event();
+        return { status: "ignored" as const, reason: "unknown_subscription" };
+      }
+      const v2UserId = wallet?.userId ?? intent!.userId;
+      const v2Role = wallet?.role ?? intent!.role;
+      const retainsAccess = input.status === "active" || input.status === "non_renewing";
+      const v2Patch = {
+        plan: retainsAccess ? input.planFamily : ("free" as const),
+        subscriptionId: input.subscriptionId,
+        subscriptionStatus: input.status,
+        subscriptionCurrency: input.currency ?? wallet?.subscriptionCurrency ?? null,
+        subscriptionCurrentTermStart: input.currentTermStart ?? wallet?.subscriptionCurrentTermStart ?? null,
+        subscriptionCurrentTermEnd: input.currentTermEnd ?? wallet?.subscriptionCurrentTermEnd ?? null,
+        subscriptionResourceVersion: input.resourceVersion ?? wallet?.subscriptionResourceVersion ?? null,
+      };
+      if (wallet) await tx.update(tokenBalances).set(v2Patch).where(eq(tokenBalances.id, wallet.id));
+      else await tx.insert(tokenBalances).values({ userId: v2UserId, role: v2Role, balance: 0, ...freshWalletCycle(v2Role), ...v2Patch });
+      if (intent) await tx.update(subscriptionCheckoutIntents).set({ status: retainsAccess ? "activated" : "cancelled" }).where(and(eq(subscriptionCheckoutIntents.id, intent.id), eq(subscriptionCheckoutIntents.status, "pending")));
+      await recordV2Event();
+      return { status: "applied" as const, plan: input.planFamily };
+    }
     // A pass's term is part of what was bought: a 90-day delivery must never
     // activate the 30-day intent that started it (each term has its own item price).
     if (intent && input.itemPriceId && input.itemPriceId !== intent.itemPriceId) return { status: "ignored" as const, reason: "item_price_mismatch" };

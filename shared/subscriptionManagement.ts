@@ -38,6 +38,27 @@ export type KitPlanCheckoutRequest = z.infer<typeof kitPlanCheckoutRequestSchema
 export const packCheckoutRequestSchema = z.object({ packId: z.enum(CATALOG_PACK_IDS), billingCountry, role });
 export type PackCheckoutRequest = z.infer<typeof packCheckoutRequestSchema>;
 
+// ---------------------------------------------------------------------------
+// D-132 plan family (flag PLAN_FAMILY_V2; OFF until QA's payment-path check
+// passes and main relays the owner's enable word). Prices never come from the
+// client: a request names a plan, a credits rung and a billing route, and the
+// server charges the planFamily amount (shared/planFamilyBilling.ts).
+const v2PaidRung = z.union([z.literal(5), z.literal(10), z.literal(25), z.literal(50), z.literal(100), z.literal(200)]);
+
+/** POST /api/chargebee/subscription-checkout for a D-132 plan: the fee plus an optional in-plan monthly credits rung (one monthly total). */
+export const v2PlanCheckoutRequestSchema = z.object({
+  v2Plan: z.enum(["fast_track", "insider"]),
+  v2Rung: v2PaidRung.or(z.literal(0)).default(0),
+  currency: z.enum(BILLING_CURRENCIES),
+  billingCountry,
+  role,
+}).refine(currencyMatchesCountry, { message: "That currency is not available for the selected billing route", path: ["currency"] });
+export type V2PlanCheckoutRequest = z.infer<typeof v2PlanCheckoutRequestSchema>;
+
+/** POST /api/chargebee/checkout for a D-132 one-time top-up pack (same frozen ladder prices as the monthly dropdown). */
+export const v2PackCheckoutRequestSchema = z.object({ v2Rung: v2PaidRung, billingCountry, role });
+export type V2PackCheckoutRequest = z.infer<typeof v2PackCheckoutRequestSchema>;
+
 export const checkoutResponseSchema = z.object({ checkoutUrl: z.string().url(), hostedPageId: z.string().min(1).max(80) }).strict();
 
 /** The plan or pack is in the catalog but its Chargebee item price is not live on the billing site yet. */

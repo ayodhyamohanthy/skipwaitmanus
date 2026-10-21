@@ -1,5 +1,8 @@
 import crypto from "node:crypto";
 import { resolvePlanItemPrice, type BillablePlanId, type BillingPeriod } from "../shared/billingCatalog";
+import { classifyV2SubscriptionItems } from "../shared/planFamilyBilling";
+import type { PlanFamilyId } from "../shared/planFamily";
+import type { PlanCreditRung } from "../shared/planFamily";
 import { buyerUserIdFromGifter, normalizeGiftEmail } from "../shared/giftSubscriptions";
 
 export type TokenRole = "job_seeker" | "referrer";
@@ -20,6 +23,12 @@ export type ParsedPaidPaymentEvent = {
   passThruContent?: string;
   amount: number;
   currency: string;
+  /** The subscription this payment belongs to (renewals carry no hosted page). */
+  subscriptionId?: string;
+  /** D-132: the credits rung this invoice's line items sell (bundle renewal or one-time pack). */
+  v2CreditsRung?: PlanCreditRung;
+  /** D-132: the family plan fee on this invoice's line items, when present. */
+  v2PlanFamily?: PlanFamilyId;
 };
 
 export type VerifiedChargebeeHostedPage = {
@@ -46,6 +55,10 @@ export type ParsedSubscriptionEvent = {
   interval?: BillingPeriod;
   /** The item price itself, so a webhook can be tied to the term the checkout intent named. */
   itemPriceId?: string;
+  /** D-132 bundle: the family plan this subscription bills (present only on v2 plan-family subscriptions). */
+  planFamily?: PlanFamilyId;
+  /** D-132 bundle: the in-plan monthly credits rung, when the checkout picked one. */
+  planFamilyRung?: PlanCreditRung;
   status: string;
   currency?: "INR" | "USD";
   currentTermStart?: Date;
@@ -102,7 +115,15 @@ export function parsePaidPaymentEvent(payload: any) {
     : typeof payment.pass_thru_content === "string"
       ? payment.pass_thru_content
       : undefined;
-  return { eventId, invoiceId, hostedPageId, passThruContent, amount, currency } satisfies ParsedPaidPaymentEvent;
+  // D-132 crediting is provider-truth: the invoice's own line items name the
+  // credits rung and plan fee sold, for the first month and every renewal
+  // alike (renewals carry no hosted page). Kit invoices classify to nothing.
+  const lineItemPriceIds: string[] = Array.isArray(invoice?.line_items)
+    ? invoice.line_items.map((item: any) => item?.item_price_id).filter((id: any): id is string => typeof id === "string")
+    : [];
+  const v2 = classifyV2SubscriptionItems(lineItemPriceIds);
+  const subscriptionId = typeof payment.subscription_id === "string" ? payment.subscription_id : typeof invoice?.subscription_id === "string" ? invoice.subscription_id : undefined;
+  return { eventId, invoiceId, hostedPageId, passThruContent, amount, currency, subscriptionId, v2CreditsRung: v2.credits?.rung ?? v2.pack?.rung, v2PlanFamily: v2.plan?.planId } satisfies ParsedPaidPaymentEvent;
 }
 
 export type ParsedRefundEvent = { eventId: string; invoiceId?: string; refundAmount?: number; currency?: string };
@@ -156,7 +177,13 @@ export function parseSubscriptionEvent(payload: any): ParsedSubscriptionEvent | 
   const subscription = payload?.content?.subscription;
   const subscriptionId = typeof subscription?.id === "string" ? subscription.id : undefined;
   if (!eventId || !subscriptionId) return undefined;
-  const itemPriceId = subscription?.subscription_items?.find?.((item: any) => typeof item?.item_price_id === "string")?.item_price_id;
+  const itemPriceIds: string[] = Array.isArray(subscription?.subscription_items)
+    ? subscription.subscription_items.map((item: any) => item?.item_price_id).filter((id: any): id is string => typeof id === "string")
+    : [];
+  const itemPriceId = itemPriceIds[0];
+  // D-132 bundle: a v2 plan-family subscription carries its plan fee item and
+  // optional monthly credits item; kit item prices never classify (kit resolve below is untouched).
+  const v2 = classifyV2SubscriptionItems(itemPriceIds);
   // One price book decides which plan and term an item price sells: the kit
   // catalog (30/90-day passes, Keep warm yearly) resolves here, so a live kit
   // pass can never arrive unmatched. A retired Pro/Max item price (D-067)
@@ -174,6 +201,8 @@ export function parseSubscriptionEvent(payload: any): ParsedSubscriptionEvent | 
     plan: resolvedPrice?.plan,
     interval: resolvedPrice?.interval,
     itemPriceId: typeof itemPriceId === "string" ? itemPriceId : undefined,
+    planFamily: v2.plan?.planId,
+    planFamilyRung: v2.credits?.rung,
     status: typeof subscription?.status === "string" ? subscription.status : "cancelled",
     currency: currency === "INR" || currency === "USD" ? currency : resolvedPrice?.currency,
     currentTermStart: dateFromChargebeeSeconds(subscription?.current_term_start),

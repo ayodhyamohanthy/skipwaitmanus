@@ -65,7 +65,7 @@ describe("admin catalog sync routes", () => {
     expect(response.status).toBe(200);
     expect(response.headers["cache-control"]).toBe("no-store");
     const dryRun = catalogSyncDryRunSchema.parse(response.body);
-    expect(dryRun).toMatchObject({ site: "skipwait", environment: "live", counts: { desired: 26, toCreate: 37, itemPricesToCreate: 26, correct: 0, excluded: 8 } });
+    expect(dryRun).toMatchObject({ site: "skipwait", environment: "live", counts: { desired: 54, toCreate: 79, itemPricesToCreate: 54, correct: 0, excluded: 8 } });
     expect(dryRun.planHash).toMatch(/^[0-9a-f]{64}$/);
   });
 
@@ -115,7 +115,7 @@ describe("admin catalog sync routes", () => {
     expect(response.headers["cache-control"]).toBe("no-store");
     const report = catalogSyncApplyResponseSchema.parse(response.body);
     expect(report).toMatchObject({ outcome: "applied", stoppedReason: null });
-    expect(report.created).toHaveLength(37);
+    expect(report.created).toHaveLength(79);
     expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "billing.catalog_sync.apply_started", actorUserId: 1 }));
 
     live = true;
@@ -137,7 +137,7 @@ describe("admin catalog sync routes", () => {
       if (path === "items") object.type = form.type ?? "";
       if (path === "item_prices") {
         const item = store.get(`items:${form.item_id}`);
-        Object.assign(object, { item_type: item?.type ?? "", price: Number(form.price), ...(form.period ? { period: Number(form.period), billing_cycles: Number(form.billing_cycles) } : {}) });
+        Object.assign(object, { item_type: item?.type ?? "", price: Number(form.price), ...(form.period ? { period: Number(form.period) } : {}), ...(form.billing_cycles ? { billing_cycles: Number(form.billing_cycles) } : {}) });
       }
       store.set(`${path}:${form.id}`, object);
       const key = path === "item_families" ? "item_family" : path === "items" ? "item" : "item_price";
@@ -150,7 +150,7 @@ describe("admin catalog sync routes", () => {
     const plan = catalogSyncDryRunSchema.parse((await request(app).get("/api/admin/billing/catalog-sync")).body);
     const response = await request(app).post("/api/admin/billing/catalog-sync/apply").send({ planHash: plan.planHash, confirmSite: "skipwait" });
     expect(catalogSyncApplyResponseSchema.parse(response.body).outcome).toBe("applied");
-    expect(urls.length).toBeGreaterThan(37);
+    expect(urls.length).toBeGreaterThan(79);
     for (const { method, url } of urls) {
       expect(url).toMatch(/^https:\/\/skipwait\.chargebee\.com\/api\/v2\/(item_families|items|item_prices)(\?|$)/);
       if (method === "POST") expect(url).toMatch(/\/api\/v2\/(item_families|items|item_prices)$/);
