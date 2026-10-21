@@ -36,7 +36,7 @@ The goal kit's type scale: a shared merge helper dropped the goal type tokens. I
 The D-048 phase 3 rollout map (eight waves, one pull request each). Done: merged with `main`, consistent with `DESIGN.md`, D-077 and docs/plans/D-048-phase-3-split.md (D-134 wins where they differ: cluster lanes, dark landing, one-line releases), landed.
 
 ### D-048-p3-w0-shell (#361, `agent/instinct/goal-ui-w0-shell`, Tier 2) — done
-Wave 0: the app shell. Landed live without a flag: every shell route renders `GoalShell`, with today's page bodies inside. The kit/goal switch this section first asked for was not built and nothing needs it; the shell's titles and credits pill move to D-048-F-credits (`docs/plans/D-048-phase-3-split.md`, "State on `main`").
+Wave 0: the app shell. Landed as `a89a0e60` (live fixes in #412), live without a flag: every shell route renders `GoalShell`, with today's page bodies inside. The kit/goal switch this section first asked for was not built and nothing needs it; the shell's titles and credits pill move to D-048-F-credits (`docs/plans/D-048-phase-3-split.md`, "State on `main`").
 
 ### D-048-p3-explore (#362, `agent/qoder/d048-phase-3-explore`, Tier 1, lane `d048-find`)
 Find a referral (`/explore`), the seeker home. Rework per the split (row D-048-p3-explore): the goal version moves to `client/src/pages/goal/explore/`, `Explore.tsx` gets only the three-line `goalSurfaceOn('explore')` switch, the kit page and its tests stay byte-identical, and the commits #360 stacked into this branch are dropped. It lands dark after the foundation's harness and primitives (the foundation packet sets those dependencies). Done: merged with `main`, gate green, 1280 and 390 captures, independent review passed (it shows credits), landed with the flag off.

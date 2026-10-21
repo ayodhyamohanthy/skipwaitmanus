@@ -4,7 +4,7 @@
 > live; this is the first build. It changes the frame of every shell-wrapped route and touches no
 > page body.
 
-> **Status (Oct 21): landed — `3cd221df` (PR #361).** This packet is kept as the record of what W0
+> **Status (Oct 21): landed — `a89a0e60` (PR #361; live fixes in PR #412).** This packet is kept as the record of what W0
 > was: the shell, the nav model and the credits pill, with no page body touched.
 
 | Field | Value |
