@@ -119,6 +119,10 @@ export function reminderAtMs(lapseAtMs: number): number {
 export const REFERRED_LAPSE_DAYS = 5;
 /** D-038-B: one optional extension moves the deadline by this many days (5 -> 8). */
 export const REFERRED_EXTENSION_DAYS = 3;
+/** D-038-reconcile B-1: the extension's operation key — one per acceptance, never one per ask. */
+export function referredExtensionOperationKey(acceptEventId: number): string {
+  return `referred-extension:${acceptEventId}`;
+}
 /** D-038-B: reminder days after acceptance, before the deadline. */
 export const REFERRED_REMINDER_DAYS = [2, 4] as const;
 

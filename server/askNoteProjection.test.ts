@@ -157,13 +157,13 @@ describe("referrer-facing reads", () => {
     expect(exposesNote(select)).toBe(true);
     // `coverageVisibleAt` joined the projection with D-038-A: the decision deadline for an allocated ask is
     // computed from first visibility. It stays internal — the returned object names its fields one by one.
-    expect(columnsOf(select)).toEqual(["acceptedByActorAt", "candidateMessage", "candidateName", "companyDomain", "coverageVisibleAt", "grantExpiresAt", "grantId", "grantRevokedAt", "id", "jobFunction", "passId", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
+    expect(columnsOf(select)).toEqual(["acceptedByActorAt", "acceptedByActorEventId", "candidateMessage", "candidateName", "companyDomain", "coverageVisibleAt", "grantExpiresAt", "grantId", "grantRevokedAt", "id", "jobFunction", "passId", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
     // D-019(e): the ask loads on its assignment alone (a claim writes no grant); no grant condition gates the row.
     const where = select?.where ? dialect.sqlToQuery(select.where) : undefined;
     expect(where?.params).toEqual([501, REFERRER, "pending", "approved", "intro_made", "interview", "offer"]);
     expect(where?.sql).not.toContain("referralDocumentAccessGrants");
     expect(detail).toMatchObject({ id: 501, title: "Product Designer", candidateMessage: NOTE, candidateName: "Avery", documentAccessActive: true });
-    for (const internal of ["grantId", "grantRevokedAt", "grantExpiresAt", "passId", "acceptedByActorAt", "grantVersion", "grantRevision"]) expect(detail).not.toHaveProperty(internal);
+    for (const internal of ["grantId", "grantRevokedAt", "grantExpiresAt", "passId", "acceptedByActorAt", "acceptedByActorEventId", "grantVersion", "grantRevision"]) expect(detail).not.toHaveProperty(internal);
 
     // Claimed but pending, holding a claim-era grant: no name and no document access before acceptance.
     rowsByTable.set(referralRequests, [{ ...ask, status: "pending", grantId: 9, grantRevokedAt: null, grantExpiresAt: new Date(Date.now() + DAY), acceptedByActorAt: null }]);

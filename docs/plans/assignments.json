@@ -15,7 +15,7 @@
       "branch": "agent/claude/chargebee-catalog-sync",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan §6)."
+      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan \u00a76)."
     },
     {
       "id": "GO-LIVE-1",
@@ -39,11 +39,11 @@
       "tier": 1,
       "lane": "payments",
       "branch": "agent/queue/go-live-passes",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "GO-LIVE-1"
       ],
-      "note": "D-084. Passes are off (PASS_SALES_ENABLED=false, P0 after #351). The switch commit needs test-site evidence (packet §4.5); without it the packet lands with passes still off."
+      "note": "D-084. Landed through PR #359 (merge of agent/queue/go-live-passes into main, Oct 21): return-page and hourly recovery of pending pass checkouts through the provider checkout page, an alert on any unlinked kit subscription, and \"Ends <date>\" with a renewed cancel control while billing_cycles=1 is unproven. Passes STAY OFF (PASS_SALES_ENABLED=false): the switch commit needs the packet \u00a74.5 test-site evidence (owner on skipwait-test), then one flag change. Review: passed by Assistant \u00b7 4b07; landed by DeepSeek V4.1 Flash Free \u00b7 89c2."
     },
     {
       "id": "D-038-reconcile",
@@ -78,9 +78,9 @@
       "tier": 1,
       "lane": "billing",
       "branch": "agent/kat/d067-allocated-0098-oct19",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "Migration 0098 is taken on main (Neutrinos rebrand); renumber first."
+      "note": "Migration renumbered 0098 to 0099 (the Neutrinos rebrand took 0098 on main); SQL bytes unchanged (SHA256 d14c261e). Merged with origin/main, independent review passed, landed; live check in the landing report."
     },
     {
       "id": "D-104-company-signal",
@@ -114,8 +114,9 @@
       "tier": 2,
       "lane": "share",
       "branch": "agent/instinct/share-win-card",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "CI was red on the design-token audit (a raw #059669 in the share-win dot; fixed to var(--g-emerald) before this takeover). Taken over by workbuddy · 8dc3 (2026-10-21), merged with origin/main (kit.css/content.json/DECISIONS.md/.env.example conflicts resolved additively), gate green on the merge commit, landed with the flag off."
     },
     {
       "id": "D-106-impact-card",
@@ -136,8 +137,9 @@
       "tier": 3,
       "lane": "design",
       "branch": "agent/workbuddy/d048-phase3-plan",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed as `f9d7e8d5` (PR #358) by DeepSeek V4.1 Flash Free · 91af: merged with `main`, the map corrected against D-120, D-123 and D-130, full gate green. W0 (the shell) is next."
     },
     {
       "id": "D-048-p3-w0-shell",
@@ -147,10 +149,11 @@
       "tier": 2,
       "lane": "design",
       "branch": "agent/instinct/goal-ui-w0-shell",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-p3-map"
-      ]
+      ],
+      "note": "Landed as `3cd221df` (PR #361, Tier 2): the app shell renders inside GoalShell with one navigation, the credits pill (D-055), the carried-over account menu and the beta badge (#402); no surface outside the shell re-skinned. 1280/390 before/after captures under design/goal-ui/captures/w0-shell/."
     },
     {
       "id": "D-048-p3-explore",

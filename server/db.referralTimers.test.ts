@@ -132,7 +132,7 @@ describe("D-038-B: referred deadline (5 days)", () => {
       asks: [acceptedAsk({ revision: 2 })],
       events: [
         { id: 100, referralRequestId: REQUEST_ID, operationKey: "review:2:approved", actorUserId: REFERRER, action: "review", fromStatus: "pending", resultingStatus: "approved", resultingRevision: 1, createdAt: new Date(T0) },
-        { id: 101, referralRequestId: REQUEST_ID, operationKey: "referred-extension:1", actorUserId: REFERRER, action: "referred_extension", fromStatus: "approved", resultingStatus: "approved", resultingRevision: 2, createdAt: new Date(T0 + DAY_MS) },
+        { id: 101, referralRequestId: REQUEST_ID, operationKey: "referred-extension:100", actorUserId: REFERRER, action: "referred_extension", fromStatus: "approved", resultingStatus: "approved", resultingRevision: 2, createdAt: new Date(T0 + DAY_MS) },
       ],
     });
 
@@ -151,7 +151,7 @@ describe("D-038-B: referred deadline (5 days)", () => {
       asks: [acceptedAsk({ revision: 2 })],
       events: [
         { id: 100, referralRequestId: REQUEST_ID, operationKey: "review:2:approved", actorUserId: REFERRER, action: "review", fromStatus: "pending", resultingStatus: "approved", resultingRevision: 1, createdAt: new Date(T0) },
-        { id: 101, referralRequestId: REQUEST_ID, operationKey: "referred-extension:1", actorUserId: REFERRER, action: "referred_extension", fromStatus: "approved", resultingStatus: "approved", resultingRevision: 2, createdAt: new Date(T0 + DAY_MS) },
+        { id: 101, referralRequestId: REQUEST_ID, operationKey: "referred-extension:100", actorUserId: REFERRER, action: "referred_extension", fromStatus: "approved", resultingStatus: "approved", resultingRevision: 2, createdAt: new Date(T0 + DAY_MS) },
       ],
     });
 

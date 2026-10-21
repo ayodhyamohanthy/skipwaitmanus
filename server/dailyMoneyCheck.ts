@@ -17,7 +17,7 @@
 // ids, amounts, currencies and reasons — never names, emails, or request content.
 import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
-import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, referredDueAtMs } from "../shared/referral";
+import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, referredDueAtMs, referredExtensionOperationKey } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, PICKUP_OR_RELEASE_ACTIONS, recordOperationalActivity } from "./db";
 import { ASK_DELIVERY_KEY_PREFIX } from "./coverageDelivery";
 import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
@@ -307,16 +307,18 @@ export async function listReferredPastDeadline(nowMs: number, limit: number): Pr
   const found: ReferredDeadlineStuckRow[] = [];
   for (const ask of asks) {
     if (!ask.referrerId) continue;
-    const events = await db.select({ id: referralTransitionEvents.id, action: referralTransitionEvents.action, createdAt: referralTransitionEvents.createdAt, resultingStatus: referralTransitionEvents.resultingStatus })
+    const events = await db.select({ id: referralTransitionEvents.id, action: referralTransitionEvents.action, operationKey: referralTransitionEvents.operationKey, createdAt: referralTransitionEvents.createdAt, resultingStatus: referralTransitionEvents.resultingStatus })
       .from(referralTransitionEvents)
       .where(and(eq(referralTransitionEvents.referralRequestId, ask.id), inArray(referralTransitionEvents.action, ["approve", "review", "referred_lapse", "step_back", "referred_extension"])));
     let latestAcceptance: { id: number; action: string; createdAt: Date | string; resultingStatus: string | null } | null = null;
-    let extended = false;
     for (const event of events) {
-      if (event.action === "referred_extension") { extended = true; continue; }
-      if (latestAcceptance === null || Number(event.id) > Number(latestAcceptance.id)) latestAcceptance = { id: Number(event.id), action: event.action, createdAt: event.createdAt, resultingStatus: event.resultingStatus ?? null };
+      if (event.action === "referred_extension") continue;
+      if (latestAcceptance === null || Number(event.id) > latestAcceptance.id) latestAcceptance = { id: Number(event.id), action: event.action, createdAt: event.createdAt, resultingStatus: event.resultingStatus ?? null };
     }
     if (latestAcceptance === null || latestAcceptance.resultingStatus !== "approved") continue;
+    // D-038-reconcile B-1: only the latest acceptance's own extension moves its deadline.
+    const acceptance = latestAcceptance;
+    const extended = events.some(event => event.action === "referred_extension" && event.operationKey === referredExtensionOperationKey(acceptance.id));
     const acceptedAtMs = latestAcceptance.createdAt instanceof Date ? latestAcceptance.createdAt.getTime() : Date.parse(String(latestAcceptance.createdAt));
     if (!Number.isFinite(acceptedAtMs)) continue;
     const dueAt = referredDueAtMs(acceptedAtMs, extended);

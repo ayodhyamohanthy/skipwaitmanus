@@ -1,7 +1,7 @@
-// D-079: with FREE_CREDITS_REQUIRE_CARD_VALIDATION on, a seeker's Free monthly
-// credits open locked (no plan_grant row) until the provider confirms a card;
-// validation then grants the current month exactly once. The flag-off path is
-// the control: today's behaviour, untouched.
+// D-127 (supersedes D-079): free monthly credits are NEVER gated on card
+// validation at sign-up, whatever the retired flag says - card validation
+// belongs to the first purchase. The grant-on-validation heal stays as an
+// idempotent repair for historical wallets and grants nothing twice.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ensureTokenWallet, grantFreeCreditsOnValidation, reconcileSeekerCredits } from "./db";
 import { createLedgerFixture, type Row } from "./ledgerFixtureDb";
@@ -19,7 +19,7 @@ const planGrants = () => db.txns.filter(row => row.kind === "plan_grant");
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
-  vi.stubEnv("FREE_CREDITS_REQUIRE_CARD_VALIDATION", "true");
+  vi.stubEnv("FREE_CREDITS_REQUIRE_CARD_VALIDATION", "true"); // retired flag, set to prove it no longer gates
   fixture.reset({ wallets: [], txns: [], users: [{ id: SEEKER, canonicalPersonId: 1 }] });
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(fixture.database);
@@ -28,35 +28,30 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
 
-describe("the card-validation gate on Free cycle grants (flag on)", () => {
-  it("a new seeker's first cycle opens locked: 0 credits, current month, no plan_grant row", async () => {
-    await ensureTokenWallet(SEEKER, "job_seeker");
-    expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2026-10", monthlyAllowance: 0, monthlyCreditsRemaining: 0 });
-    expect(db.wallets[0].cardValidatedAt ?? null).toBeNull();
-    expect(planGrants()).toHaveLength(0);
-  });
-
-  it("control: flag off grants 3 on the first cycle, as today", async () => {
-    vi.stubEnv("FREE_CREDITS_REQUIRE_CARD_VALIDATION", "false");
+describe("Free cycle grants are never gated on card validation (D-127)", () => {
+  it("a free user can spend free credits without a validated card - first cycle grants 3 even with the retired flag on", async () => {
     await ensureTokenWallet(SEEKER, "job_seeker");
     expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2026-10", monthlyAllowance: 3, monthlyCreditsRemaining: 3 });
+    expect(db.wallets[0].cardValidatedAt ?? null).toBeNull();
     expect(planGrants()).toHaveLength(1);
     expect(planGrants()[0]).toMatchObject({ tokenCount: 3, sourceCycleKey: "2026-10" });
   });
 
-  it("a monthly roll stays locked while no card is validated, and grants once validated", async () => {
-    fixture.reset({ wallets: [freeWallet()], txns: [], users: [{ id: SEEKER, canonicalPersonId: 1 }] });
-    expect(await reconcileSeekerCredits(SEEKER, at("2026-10-06T00:05:00Z"))).toEqual({ changed: true });
-    expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2026-10", monthlyAllowance: 0, monthlyCreditsRemaining: 0 });
-    expect(planGrants()).toHaveLength(0);
-
-    Object.assign(db.wallets[0], { cardValidatedAt: at("2026-10-07T09:00:00Z") });
-    expect(await reconcileSeekerCredits(SEEKER, at("2026-10-07T09:00:00Z"))).toEqual({ changed: true });
+  it("flag off behaves identically", async () => {
+    vi.stubEnv("FREE_CREDITS_REQUIRE_CARD_VALIDATION", "false");
+    await ensureTokenWallet(SEEKER, "job_seeker");
     expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2026-10", monthlyAllowance: 3, monthlyCreditsRemaining: 3 });
     expect(planGrants()).toHaveLength(1);
   });
 
-  it("validation mid-cycle grants the current month once, and a repeat signal grants nothing", async () => {
+  it("a monthly roll grants without validation (one plan_grant per month)", async () => {
+    fixture.reset({ wallets: [freeWallet({ monthlyCycleKey: "2026-10", monthlyAllowance: 3, monthlyCreditsRemaining: 3 })], txns: [], users: [{ id: SEEKER, canonicalPersonId: 1 }] });
+    expect(await reconcileSeekerCredits(SEEKER, at("2026-11-15T00:00:00Z"))).toEqual({ changed: true });
+    expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2026-11", monthlyAllowance: 3, monthlyCreditsRemaining: 3 });
+    expect(planGrants().map(row => row.sourceCycleKey)).toEqual(["2026-11"]);
+  });
+
+  it("the validation heal grants a grant-less current cycle once, and a repeat signal grants nothing", async () => {
     fixture.reset({ wallets: [freeWallet({ monthlyCycleKey: "2026-10", cardValidatedAt: at("2026-10-06T08:00:00Z") })], txns: [], users: [{ id: SEEKER, canonicalPersonId: 1 }] });
     expect(await grantFreeCreditsOnValidation(SEEKER, at("2026-10-06T08:05:00Z"))).toEqual({ granted: true });
     expect(db.wallets[0]).toMatchObject({ monthlyAllowance: 3, monthlyCreditsRemaining: 3 });
@@ -68,36 +63,9 @@ describe("the card-validation gate on Free cycle grants (flag on)", () => {
     expect(db.wallets[0]).toMatchObject({ monthlyAllowance: 3, monthlyCreditsRemaining: 3 });
   });
 
-  it("grant-on-validation refuses a cycle that is behind (reconcile owns the roll)", async () => {
+  it("the heal refuses a cycle that is behind (reconcile owns the roll)", async () => {
     fixture.reset({ wallets: [freeWallet({ cardValidatedAt: at("2026-10-06T08:00:00Z") })], txns: [], users: [{ id: SEEKER, canonicalPersonId: 1 }] });
     expect(await grantFreeCreditsOnValidation(SEEKER, at("2026-10-06T08:05:00Z"))).toEqual({ granted: false });
-    expect(planGrants()).toHaveLength(0);
-  });
-
-  it("the next month's roll grants normally once validated (one plan_grant per month)", async () => {
-    fixture.reset({ wallets: [freeWallet({ monthlyCycleKey: "2026-10", monthlyAllowance: 3, monthlyCreditsRemaining: 3, cardValidatedAt: at("2026-10-06T08:00:00Z") })], txns: [], users: [{ id: SEEKER, canonicalPersonId: 1 }] });
-    expect(await reconcileSeekerCredits(SEEKER, at("2026-11-15T00:00:00Z"))).toEqual({ changed: true });
-    expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2026-11", monthlyAllowance: 3, monthlyCreditsRemaining: 3 });
-    expect(planGrants().map(row => row.sourceCycleKey)).toEqual(["2026-11"]);
-  });
-
-  it("heals a missed validation signal: a validated wallet on a locked cycle is granted on the next read", async () => {
-    fixture.reset({ wallets: [freeWallet({ monthlyCycleKey: "2026-10" })], txns: [], users: [{ id: SEEKER, canonicalPersonId: 1 }] });
-    await ensureTokenWallet(SEEKER, "job_seeker");
-    expect(db.wallets[0]).toMatchObject({ monthlyCreditsRemaining: 0 });
-    expect(planGrants()).toHaveLength(0);
-
-    Object.assign(db.wallets[0], { cardValidatedAt: at("2026-10-06T09:00:00Z") });
-    await ensureTokenWallet(SEEKER, "job_seeker");
-    expect(db.wallets[0]).toMatchObject({ monthlyAllowance: 3, monthlyCreditsRemaining: 3 });
-    expect(planGrants()).toHaveLength(1);
-  });
-
-  it("an unvalidated wallet stays locked through later reconciles (no grant sneaks in)", async () => {
-    fixture.reset({ wallets: [freeWallet()], txns: [], users: [{ id: SEEKER, canonicalPersonId: 1 }] });
-    await reconcileSeekerCredits(SEEKER, at("2026-10-06T00:05:00Z"));
-    expect(await reconcileSeekerCredits(SEEKER, at("2026-10-20T00:05:00Z"))).toEqual({ changed: false });
-    expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2026-10", monthlyCreditsRemaining: 0 });
     expect(planGrants()).toHaveLength(0);
   });
 });

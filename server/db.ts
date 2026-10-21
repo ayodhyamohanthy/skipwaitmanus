@@ -1,3 +1,4 @@
+import { enqueueBillingReviewTx } from "./billingReviewOutbox";
 import { buildReferrerHome, monthStartUtc } from "./referrerHome";
 import { enrichInboxRow } from "./inboxEnrichment";
 import { transitionNotificationKind } from "./notificationKinds";
@@ -36,7 +37,7 @@ import {
 import { FREE_MONTHLY_ALLOWANCE, currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { isBillablePlanId, isRetiredPlanId, isRetiredPlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId, type WalletPlanId } from "../shared/billingCatalog";
 import { PLAN_RETIRED_CODE } from "../shared/subscriptionManagement";
-import { ASK_TTL_MS, COVERAGE_WAIT_DAYS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, referredDueAtMs, referredReminderAtMs, REFERRED_DEADLINE_ENABLED, REFERRED_REMINDER_DAYS, claimLapseAtMs, allocationLapseAtMs, reminderAtMs, MAX_ACTIVE_CLAIMS, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
+import { ASK_TTL_MS, COVERAGE_WAIT_DAYS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, referredDueAtMs, referredReminderAtMs, referredExtensionOperationKey, REFERRED_DEADLINE_ENABLED, REFERRED_REMINDER_DAYS, claimLapseAtMs, allocationLapseAtMs, reminderAtMs, MAX_ACTIVE_CLAIMS, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { firstLookUntilFrom, isOpportunityExpired, ownerOpportunityPostSchema, publicOpportunityPostSchema, OPPORTUNITY_TTL_MS, type OpportunityPoster, type OwnerOpportunityPost, type PublicOpportunityPost } from "../shared/companyOpportunities";
 import { isCorporateEmailDomain } from "../shared/const";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
@@ -1295,7 +1296,7 @@ export function isSafeFastTrackAlias(alias: string) {
 
 export async function getOrCreateReferrerFastTrackLink(userId: number): Promise<ReferrerFastTrackLink> {
   const profile = await getProfileByUserId(userId);
-  if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) throw new Error("Verify your company email before creating a Fast-Track Link");
+  if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) throw new Error("Verify your company email before creating your link");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const companyDomain = profile.workEmailDomain.trim().toLowerCase();
   const existing = await db.select({ linkCode: referrerFastTrackLinks.linkCode, vanityAlias: referrerFastTrackLinks.vanityAlias, companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive }).from(referrerFastTrackLinks).where(eq(referrerFastTrackLinks.referrerId, userId)).limit(1);
@@ -1311,7 +1312,7 @@ export async function getOrCreateReferrerFastTrackLink(userId: number): Promise<
       if (attempt === 3) throw error;
     }
   }
-  throw new Error("We could not create your Fast-Track Link");
+  throw new Error("We could not create your link");
 }
 
 export async function getPublicReferrerFastTrackLink(linkCode: string): Promise<{ companyDomain: string; isActive: true } | undefined> {
@@ -1877,7 +1878,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     // A waiting ask reaches no one yet, so it writes no referrer notice and no review link (delivery writes them).
     const notified=isWaiting?[]:firstLook?[firstLook]:reachable;
     for(const employee of notified){
-      await tx.insert(notifications).values({ kind: "ask_new",userId:employee.userId,category:"referral",title:firstLook?"A candidate asked from your post":fastTrackLink?"A Fast-Track referral request is ready":"A private referral request is available",body:firstLook?`A Job Seeker asked for a referral at ${companyDomain} after seeing your opening. You have the first look for 48 hours; if you cannot take it, it opens to other verified employees.`:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
+      await tx.insert(notifications).values({ kind: "ask_new",userId:employee.userId,category:"referral",title:firstLook?"A candidate asked from your post":fastTrackLink?"A referral request from your link is ready":"A private referral request is available",body:firstLook?`A Job Seeker asked for a referral at ${companyDomain} after seeing your opening. You have the first look for 48 hours; if you cannot take it, it opens to other verified employees.`:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
       const email=employee.email?.trim().toLowerCase()||"";if(email&&email.split("@")[1]===companyDomain){const token=reviewLinkToken();const expiresAt=new Date(Date.now()+reviewEmailLifetimeMs);await tx.insert(referrerReviewEmailLinks).values({referralRequestId:requestId,referrerId:employee.userId,linkToken:token,expiresAt});await tx.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId:employee.userId,channel:"email",grantVersion:1,status:"pending"});}
     }
     let inviteCode:string|undefined;if(!fastTrackLink&&isWaiting){inviteCode=randomUUID().replace(/-/g,"");await tx.insert(companyCoverageInvitations).values({inviteCode,inviterUserId:userId,companyDomain:companyDomain.trim().toLowerCase(),referralRequestId:requestId});}
@@ -2793,12 +2794,6 @@ async function auditLedgerWallets(db: LedgerAuditDb, wallets: LedgerAuditWallet[
     // (a cycle that began before the ledger has no opening row), and every grant against the rows that name it.
     const cycleRows=rows.filter(row=>row.source===BUCKET_SOURCES.cycle&&row.sourceCycleKey===wallet.monthlyCycleKey);
    
-    // D-079: with the flag on, a locked wallet must hold no free credits, and a
-    // validated free wallet's current cycle must show its grant rows.
-    if(freeCreditsRequireCardValidation()&&wallet.role==="job_seeker"&&wallet.plan==="free"){
-      if(wallet.cardValidatedAt==null&&wallet.monthlyCreditsRemaining>0)integrity.push({type:"locked_wallet_holds_free_credits",userId:wallet.userId,role:wallet.role,monthlyCreditsRemaining:wallet.monthlyCreditsRemaining,cycleKey:wallet.monthlyCycleKey});
-      if(wallet.cardValidatedAt!=null&&wallet.monthlyCreditsRemaining>0&&cycleRows.filter(row=>row.kind==="plan_grant").length===0)integrity.push({type:"validated_wallet_missing_cycle_grant",userId:wallet.userId,role:wallet.role,monthlyCreditsRemaining:wallet.monthlyCreditsRemaining,cycleKey:wallet.monthlyCycleKey});
-    }
     if(cycleRows.filter(row=>row.kind==="plan_grant").length===1){const expected=cycleRows.reduce((sum,row)=>sum+row.tokenCount,0);if(expected!==wallet.monthlyCreditsRemaining)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:"cycle",cycleKey:wallet.monthlyCycleKey,expected,actual:wallet.monthlyCreditsRemaining,delta:wallet.monthlyCreditsRemaining-expected});}
     const grants=await readGrantsTx(db,wallet.userId,wallet.role,false);
     for(const grant of grants){const expected=rows.filter(row=>row.creditGrantId===grant.id).reduce((sum,row)=>sum+row.tokenCount,0);if(expected!==grant.creditsRemaining)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:`grant:${grant.source}`,grantId:grant.id,expected,actual:grant.creditsRemaining,delta:grant.creditsRemaining-expected});if(grant.creditsRemaining<0)integrity.push({type:"negative_grant",userId:wallet.userId,role:wallet.role,grantId:grant.id});}
@@ -2859,7 +2854,9 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
     const passed = (await tx.select({id:referralRequestPasses.id}).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId,requestId),eq(referralRequestPasses.referrerId,userId))).limit(1))[0];
     if (passed) throw new Error("You already passed on this referral request");
     // D-038-A (§4.7): a referrer holds at most 5 open claims at once. The claimant's own profiles row
-    // is locked first so two simultaneous claims by one person cannot both slip past the count.
+    // is locked first so two simultaneous claims by one person take turns, and this transaction runs
+    // at READ COMMITTED (D-038-reconcile A-1) so the count below sees what the other claim committed
+    // while this one waited, instead of a snapshot taken when the transaction started.
     // Allocations and personal-link holds are not claims and never count (D-076 (2)).
     // D-038-reconcile R-4: the count is one bounded aggregate over the claimant's own current asks and
     // takes no lock on any other request's row. A claim event on an ask still assigned to the claimant
@@ -2876,7 +2873,7 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
     const result = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "claim", operationKey: `claim:${userId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null && row.referrerId !== userId) throw new Error("Another verified employee already claimed this request"); }, patch: { referrerId: userId }, notification: { userId: current.request.jobSeekerId, title: "Your referral request was claimed", body: "A verified employee at the target company is reviewing your request." } });
     // A claim grants no document access (D-019(e)); acceptance does, in transitionReferralRequestTx.
     return { requestId, claimed: true as const, replayed: result.replayed, revision: result.revision, jobSeekerId: current.request.jobSeekerId, companyDomain: current.company };
-  });
+  }, { isolationLevel: "read committed" });
 }
 
 /** The latest event of a set, chosen by event id in code.
@@ -2889,6 +2886,11 @@ function latestByEventId<T extends { id: unknown }>(rows: readonly T[]): T | nul
   let latest: T | null = null;
   for (const row of rows) if (latest === null || Number(row.id) > Number(latest.id)) latest = row;
   return latest;
+}
+
+/** D-038-reconcile B-1: the extension belongs to one acceptance, keyed by that acceptance's event id. */
+function referredExtensionOn(requestId: number, acceptEventId: number) {
+  return and(eq(referralTransitionEvents.referralRequestId, requestId), eq(referralTransitionEvents.action, "referred_extension"), eq(referralTransitionEvents.operationKey, referredExtensionOperationKey(acceptEventId)));
 }
 
 /** The actions that start or end a pickup. D-038-B and D-035 add more release actions here. */
@@ -2966,7 +2968,7 @@ export async function lapseReferredTx(tx: LedgerTx, requestId: number, nowMs: nu
   const acceptEventId = Number(acceptEvent.id);
   const acceptCreatedAt = acceptEvent.createdAt instanceof Date ? acceptEvent.createdAt.getTime() : Date.parse(String(acceptEvent.createdAt));
   if (!Number.isFinite(acceptCreatedAt)) return { lapsed: false };
-  const extended = (await tx.select({ id: referralTransitionEvents.id }).from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId, requestId), eq(referralTransitionEvents.action, "referred_extension"))).limit(1)).length > 0;
+  const extended = (await tx.select({ id: referralTransitionEvents.id }).from(referralTransitionEvents).where(referredExtensionOn(requestId, acceptEventId)).limit(1)).length > 0;
   if (nowMs < referredDueAtMs(acceptCreatedAt, extended)) return { lapsed: false };
   const referrerId = current.referrerId;
   const companyDomain = current.companyDomain;
@@ -3017,14 +3019,14 @@ export async function extendReferredDeadlineTx(tx: LedgerTx, requestId: number, 
   const latest = latestByEventId(latestEvents);
   if (!latest || latest.resultingStatus !== "approved") throw new ReferralTransitionConflict("This referral request is not in an accepted state", { status: current.status, revision: current.revision });
   const acceptEventId = Number(latest.id);
-  const already = await tx.select({ id: referralTransitionEvents.id }).from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId, requestId), eq(referralTransitionEvents.action, "referred_extension"))).limit(1);
+  const already = await tx.select({ id: referralTransitionEvents.id }).from(referralTransitionEvents).where(referredExtensionOn(requestId, acceptEventId)).limit(1);
   if (already.length > 0) return { extended: false, replayed: true };
   // D-038-B §4.3: the extension is offered "before the deadline". Past it the ask belongs back with
   // colleagues, and an extension would keep the seeker's name and resume open for three more days.
   const acceptedAtMs = latest.createdAt instanceof Date ? latest.createdAt.getTime() : Date.parse(String(latest.createdAt));
   if (!Number.isFinite(acceptedAtMs)) throw new ReferralTransitionConflict("This referral request is not in an accepted state", { status: current.status, revision: current.revision });
   if (nowMs >= referredDueAtMs(acceptedAtMs, false)) throw new ReferralTransitionConflict("The deadline to mark this referral as referred has passed", { status: current.status, revision: current.revision });
-  await transitionReferralRequestTx(tx, { requestId, actorUserId: current.referrerId, action: "referred_extension", operationKey: `referred-extension:${acceptEventId}`, toStatus: "approved", allowedFrom: ["approved"], authorize: row => { if (row.referrerId !== current.referrerId) throw new Error("Referral Request not found"); }, patch: {} });
+  await transitionReferralRequestTx(tx, { requestId, actorUserId: current.referrerId, action: "referred_extension", operationKey: referredExtensionOperationKey(acceptEventId), toStatus: "approved", allowedFrom: ["approved"], authorize: row => { if (row.referrerId !== current.referrerId) throw new Error("Referral Request not found"); }, patch: {} });
   return { extended: true };
 }
 
@@ -3122,7 +3124,7 @@ export async function listReferralTimerCandidates(limit: number, nowMs: number =
     const acceptEventId = Number(latest.id);
     const acceptCreatedAt = latest.createdAt instanceof Date ? latest.createdAt.getTime() : Date.parse(String(latest.createdAt));
     if (!Number.isFinite(acceptCreatedAt)) continue;
-    const extended = (await db.select({ id: referralTransitionEvents.id }).from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId, row.id), eq(referralTransitionEvents.action, "referred_extension"))).limit(1)).length > 0;
+    const extended = (await db.select({ id: referralTransitionEvents.id }).from(referralTransitionEvents).where(referredExtensionOn(row.id, acceptEventId)).limit(1)).length > 0;
     const candidate: ReferralTimerCandidate = { id: row.id, referrerId: row.referrerId, companyDomain: row.companyDomain, acceptEventId, acceptCreatedAt, extended };
     const dueAt = referredDueAtMs(acceptCreatedAt, extended);
     if (nowMs >= dueAt) referredToLapse.push(candidate);
@@ -3151,7 +3153,7 @@ async function referralWasClaimedTxFromDb(db: NonNullable<Awaited<ReturnType<typ
 // documentAccessActive is the same rule as GET /api/documents/:id. server/referrerAskView.ts builds the response.
 export async function getClaimedCompanyReferralDetail(userId: number, requestId: number) {
   const db = await getDb(); if (!db) return undefined;
-  const rows = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateName: users.name, candidateMessage: referralRequests.personalPitch, referrerId: referralRequests.referrerId, status: referralRequests.status, revision: referralRequests.revision, coverageVisibleAt: referralRequests.coverageVisibleAt, grantId: referralDocumentAccessGrants.id, grantRevokedAt: referralDocumentAccessGrants.revokedAt, grantExpiresAt: referralDocumentAccessGrants.expiresAt, passId: referralRequestPasses.id, acceptedByActorAt: referralTransitionEvents.createdAt })
+  const rows = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateName: users.name, candidateMessage: referralRequests.personalPitch, referrerId: referralRequests.referrerId, status: referralRequests.status, revision: referralRequests.revision, coverageVisibleAt: referralRequests.coverageVisibleAt, grantId: referralDocumentAccessGrants.id, grantRevokedAt: referralDocumentAccessGrants.revokedAt, grantExpiresAt: referralDocumentAccessGrants.expiresAt, passId: referralRequestPasses.id, acceptedByActorAt: referralTransitionEvents.createdAt, acceptedByActorEventId: referralTransitionEvents.id })
     .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id))
     .leftJoin(referralDocumentAccessGrants, and(eq(referralDocumentAccessGrants.referralRequestId, referralRequests.id), eq(referralDocumentAccessGrants.referrerId, userId)))
     .leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId)))
@@ -3164,14 +3166,15 @@ export async function getClaimedCompanyReferralDetail(userId: number, requestId:
   if (row.status !== "pending" && !accepted) return undefined;
   const attachments = await db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.referralRequestId, requestId));
   // D-038-B: when the Referred decision is due for an accepted ask, and whether
-  // the one 3-day extension was already used. D-038-reconcile R-2: part B omits
-  // both fields while it is switched off, so no client can offer its controls.
+  // this acceptance's one 3-day extension was already used (D-038-reconcile B-1).
+  // D-038-reconcile R-2: part B omits both fields while it is switched off, so no
+  // client can offer its controls.
   let referredDueAt: string | null = null;
   let extensionUsed = false;
   if (REFERRED_DEADLINE_ENABLED && accepted && row.acceptedByActorAt) {
     const acceptedAtMs = row.acceptedByActorAt instanceof Date ? row.acceptedByActorAt.getTime() : Date.parse(String(row.acceptedByActorAt));
     const hasExtension = await db.select({ id: referralTransitionEvents.id }).from(referralTransitionEvents)
-      .where(and(eq(referralTransitionEvents.referralRequestId, requestId), eq(referralTransitionEvents.action, "referred_extension"))).limit(1);
+      .where(referredExtensionOn(requestId, Number(row.acceptedByActorEventId))).limit(1);
     extensionUsed = hasExtension.length > 0;
     if (Number.isFinite(acceptedAtMs)) referredDueAt = new Date(referredDueAtMs(acceptedAtMs, extensionUsed)).toISOString();
   }
@@ -3726,7 +3729,9 @@ function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect, prom
     subscriptionStatus: wallet.subscriptionStatus ?? null,
     subscriptionCurrentTermEnd: wallet.subscriptionCurrentTermEnd ?? null,
     cardValidated: wallet.role === "job_seeker" && wallet.cardValidatedAt != null,
-    freeCreditsLocked: wallet.role === "job_seeker" && freeCreditsRequireCardValidation() && wallet.cardValidatedAt == null,
+    // D-127: the sign-up card-validation gate is retired; the field stays on the
+    // payload for older clients and is always false.
+    freeCreditsLocked: false,
   };
 }
 
@@ -4409,17 +4414,66 @@ export async function createChargebeeSubscriptionIntent(input: { hostedPageId: s
   return { id: Number(result[0].insertId), hostedPageId: input.hostedPageId };
 }
 
+/** GO-LIVE-1b: one checkout intent by its hosted page (recovery ownership check). */
+export async function getSubscriptionCheckoutIntent(hostedPageId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(subscriptionCheckoutIntents).where(eq(subscriptionCheckoutIntents.hostedPageId, hostedPageId)).limit(1);
+  return rows[0];
+}
+
+/** GO-LIVE-1b: pending pass checkouts for the hourly reconcile, oldest first. */
+export async function listPendingSubscriptionCheckoutIntents(olderThan: Date, newerThan: Date, limit: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.select().from(subscriptionCheckoutIntents)
+    // An intent parked for human review (failureReason set) is out of the automatic loop:
+    // it was already alerted when parked, so re-reading it hourly would only re-alert.
+    .where(and(eq(subscriptionCheckoutIntents.status, "pending"), isNull(subscriptionCheckoutIntents.failureReason), lt(subscriptionCheckoutIntents.createdAt, olderThan), gt(subscriptionCheckoutIntents.createdAt, newerThan)))
+    .orderBy(asc(subscriptionCheckoutIntents.createdAt), asc(subscriptionCheckoutIntents.id))
+    .limit(limit);
+}
+
+/** GO-LIVE-1b (QA #359): park a pending intent for human review; it stops re-alerting and is never reported cancelled. */
+export async function markSubscriptionCheckoutIntentReview(hostedPageId: string, reviewReason: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(subscriptionCheckoutIntents).set({ failureReason: reviewReason.slice(0, 32) }).where(and(eq(subscriptionCheckoutIntents.hostedPageId, hostedPageId), eq(subscriptionCheckoutIntents.status, "pending"), isNull(subscriptionCheckoutIntents.failureReason)));
+}
+
+/** GO-LIVE-1b: an expired checkout page marks its pending intent cancelled; never an activated one. */
+export async function markSubscriptionCheckoutIntentCancelled(hostedPageId: string, failureReason: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(subscriptionCheckoutIntents).set({ status: "cancelled", failureReason }).where(and(eq(subscriptionCheckoutIntents.hostedPageId, hostedPageId), eq(subscriptionCheckoutIntents.status, "pending")));
+}
+
 export async function applyChargebeeSubscriptionEvent(input: { eventId: string; eventType: string; hostedPageId?: string; passThruContent?: string; subscriptionId: string; plan?: BillablePlanId; itemPriceId?: string; interval?: BillingPeriod; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const duplicate = await tx.select().from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee"), eq(subscriptionEvents.providerEventId, input.eventId))).limit(1);
-    if (duplicate[0]) return { status: "duplicate" as const };
+    if (duplicate[0]) {
+      if (duplicate[0].subscriptionId !== input.subscriptionId) throw new Error("Duplicate receipt identity conflict");
+      if (isRetiredPlanItemPrice(input.itemPriceId)) await enqueueBillingReviewTx(tx, { eventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId, itemPriceId: input.itemPriceId, reason: "plan_retired" });
+      if (isRetiredPlanItemPrice(input.itemPriceId)) return { status: "duplicate" as const };
+      // Reconstruct from the original authoritative wallet/checkout identity before acknowledging.
+      const receiptIntent = input.hostedPageId && input.passThruContent
+        ? (await tx.select().from(subscriptionCheckoutIntents).where(and(eq(subscriptionCheckoutIntents.hostedPageId, input.hostedPageId), eq(subscriptionCheckoutIntents.checkoutIntentId, input.passThruContent))).limit(1).for("update"))[0] : undefined;
+      const receiptWallet = (await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update"))[0];
+      if (duplicate[0].subscriptionId !== input.subscriptionId) throw new Error("Duplicate receipt identity conflict");
+      const receiptPlan = receiptIntent?.plan ?? input.plan ?? (receiptWallet?.plan !== "free" ? receiptWallet?.plan : undefined);
+      if ((receiptWallet || receiptIntent) && (!receiptPlan || !isBillablePlanId(receiptPlan))) {
+        await enqueueBillingReviewTx(tx, { eventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId, itemPriceId: input.itemPriceId, reason: isRetiredPlanId(receiptPlan) ? "plan_retired" : "unsupported_plan" });
+      }
+      return { status: "duplicate" as const };
+    }
     // D-067: an event naming a retired Pro/Max item price grants nothing, whatever wallet or intent it
     // names (even a kit wallet whose subscription was moved to one). Recorded once so a redelivery is a
     // duplicate; the webhook alerts it (plan_retired) so a human cancels and refunds it in Chargebee.
     if (isRetiredPlanItemPrice(input.itemPriceId)) {
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+      await enqueueBillingReviewTx(tx, { eventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId, itemPriceId: input.itemPriceId, reason: "plan_retired" });
       return { status: "ignored" as const, reason: PLAN_RETIRED_CODE };
     }
 
@@ -4453,6 +4507,7 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
       // A wallet or intent still stored as Pro/Max is a retired plan (cancel and refund); anything
       // else is a price skipwait.me cannot place, reviewed without a Pro/Max label.
+      await enqueueBillingReviewTx(tx, { eventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId, itemPriceId: input.itemPriceId, reason: isRetiredPlanId(expectedPlan) ? "plan_retired" : "unsupported_plan" });
       return { status: "ignored" as const, reason: isRetiredPlanId(expectedPlan) ? PLAN_RETIRED_CODE : "unsupported_plan" };
     }
     const currentSubscription = sameSubscription ? wallet : undefined;
@@ -4601,6 +4656,7 @@ export async function recordGiftProviderEvent(input: RecordGiftEventInput) {
         failureReason: terminal ? `provider_${terminal}` : claimed ? GIFT_RETIRED_REASON : null,
       });
       const inserted = (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, input.giftId)).limit(1))[0];
+      if (!terminal && claimed) await enqueueBillingReviewTx(tx, { giftId: input.giftId, subscriptionId: input.subscriptionId, eventId: input.eventId, eventType: input.eventType, reason: isRetiredPlanId(input.plan) ? "gift_claimed" : "unsupported_plan" });
       return { ...inserted, parked: !terminal && claimed };
     }
     if (existing.fulfillmentStatus === "credited") return { ...existing, parked: false };
@@ -4621,6 +4677,7 @@ export async function recordGiftProviderEvent(input: RecordGiftEventInput) {
       patch.failureReason = GIFT_RETIRED_REASON;
     }
     await tx.update(giftSubscriptionFulfillments).set(patch).where(eq(giftSubscriptionFulfillments.id, existing.id));
+    if (parked || existing.failureReason === GIFT_RETIRED_REASON) await enqueueBillingReviewTx(tx, { giftId: input.giftId, subscriptionId: input.subscriptionId ?? existing.subscriptionId ?? undefined, eventId: input.eventId, eventType: input.eventType, reason: isRetiredPlanId(input.plan ?? existing.plan) ? "gift_claimed" : "unsupported_plan" });
     return { ...existing, ...patch, parked };
   });
 }
@@ -4644,6 +4701,7 @@ export async function claimGiftSubscription(callerUserId: number, giftId: string
     if (resolution.status !== "resolved" || resolution.userId !== callerUserId) throw new Error("This gift was sent to a different email address");
     const parked = row.fulfillmentStatus === "pending";
     if (parked) await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "conflict", failureReason: GIFT_RETIRED_REASON }).where(and(eq(giftSubscriptionFulfillments.id, row.id), eq(giftSubscriptionFulfillments.fulfillmentStatus, "pending")));
+    if (parked || row.failureReason === GIFT_RETIRED_REASON) await enqueueBillingReviewTx(tx, { giftId: row.giftId, subscriptionId: row.subscriptionId ?? undefined, reason: isRetiredPlanId(row.plan) ? "gift_claim_refused" : "unsupported_plan" });
     return { status: "retired" as const, giftId: row.giftId, parked };
   });
 }
