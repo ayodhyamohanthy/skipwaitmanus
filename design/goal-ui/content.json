@@ -1080,5 +1080,20 @@
     "copyLinkedIn": "Copy for LinkedIn",
     "copied": "Copied.",
     "note": "Nothing posts itself. The card never names your referrer – their help stays between you two unless they say otherwise."
+  },
+  "shareImpact": {
+    "heading": "Your impact, shareable",
+    "intro": "A card for your bio or your next post. Screen name only - no seeker ever appears.",
+    "verifiedLine": "{screenName} · Verified at {company}",
+    "referredBig": "{count} people",
+    "referredLine": "referred into {company} through my link this month.",
+    "medianReplyValue": "{hours}h",
+    "medianReplyLabel": "median first reply",
+    "acceptRateValue": "{pct}%",
+    "acceptRateLabel": "asks accepted",
+    "copyText": "Copy card as text",
+    "copyLinkedIn": "Copy for LinkedIn",
+    "copied": "Copied.",
+    "note": "Your numbers are real and yours. Seeker names never appear, and sharing is always your choice."
   }
 }
