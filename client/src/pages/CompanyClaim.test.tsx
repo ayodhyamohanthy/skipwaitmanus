@@ -10,6 +10,20 @@ import CompanyClaim from "./CompanyClaim";
 beforeEach(() => { vi.stubEnv("VITE_COMPANY_CLAIM", "true"); state.signed = true; state.dashboard = false; state.go.mockClear(); window.history.replaceState(null, "", "/company/claim"); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 describe("company access UI", () => {
+  it("company sign-in never uses the referrer enrollment funnel", () => {
+    state.signed = false;
+    render(<CompanyClaim />);
+    expect(screen.getByText("Company account sign-in")).toBeTruthy();
+    expect(document.querySelector('a[href*="intent=referrer"]')).toBeNull();
+  });
+  it("flag off never reads or exposes company stats", () => {
+    vi.stubEnv("VITE_COMPANY_CLAIM", "false");
+    const fetcher = vi.fn(); vi.stubGlobal("fetch", fetcher);
+    state.dashboard = true;
+    render(<CompanyClaim />);
+    expect(screen.getByText("Page not available")).toBeTruthy();
+    expect(fetcher).not.toHaveBeenCalled();
+  });
   it("shows the min-three privacy boundary and sends only a work email", async () => {
     const fetcher = vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: true, json: async () => ({ sent: true }) })); vi.stubGlobal("fetch", fetcher);
     render(<CompanyClaim />);
