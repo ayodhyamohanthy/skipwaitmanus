@@ -1,3 +1,4 @@
+import { creditsForLevel } from "./jobLevel";
 /**
  * The D-115/D-128 seeker plan family: Open Door, Fast Track, Insider.
  * ONE config source for display names and prices (D-124's single-source rule).
@@ -164,7 +165,7 @@ export const PLAN_REACH_LEVELS_ABOVE: Record<PlanFamilyId, number> = {
  * sending, e.g. "This ask costs 5 credits. You have 3. Add 2 more.", with a
  * one-tap top-up (owner, phonemsg-01M5FBZE51NZYPG6MZAQ7N9XXS, 19:26 IST).
  */
-export const ASK_CREDITS_BY_LEVEL = (level: number): number => Math.min(10, Math.max(1, Math.round(level)));
+export const ASK_CREDITS_BY_LEVEL = (level: number): number => creditsForLevel(Math.min(10, Math.max(1, Math.round(level))) as Parameters<typeof creditsForLevel>[0]);
 
 /**
  * Mentor (referrer side): opt-in Rs199/$2.99 per month, first 60 days free;
