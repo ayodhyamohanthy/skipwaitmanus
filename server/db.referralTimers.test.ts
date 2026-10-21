@@ -296,7 +296,7 @@ describe("D-038-reconcile R-2: the job's part B switch", () => {
 
     // The reopened ask returns its credit once when its own window ends.
     const { expireStalePendingReferralRequest } = await import("./db");
-    const refunds = () => store.rows(tokenTransactions).filter(row => row.kind === "expiry_refund" && row.referenceId === `${REQUEST_ID}#refund`);
+    const refunds = () => store.rows(tokenTransactions).filter(row => row.kind === "expiry_refund" && row.referenceId === `${REQUEST_ID}#refund#1`);
     expect(refunds()).toHaveLength(0);
     await expireStalePendingReferralRequest(SEEKER, REQUEST_ID, T0 + 8 * DAY_MS);
     expect(refunds()).toHaveLength(1);
