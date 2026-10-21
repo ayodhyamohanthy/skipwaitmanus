@@ -149,15 +149,15 @@ export type CreditPack = {
 };
 
 /**
- * USD 5/$5, 25/$22, 60/$48, 150/$105. INR 2/₹198, 25/₹2,475, 60/₹5,940, 150/₹14,850 (floor: ₹99 per credit).
+ * USD 5/$5, 25/$25, 60/$60, 150/$150. INR 2/₹198, 25/₹2,475, 60/₹5,940, 150/₹14,850 (floor: ₹99 per credit).
  * Purchased credits never expire and never affect referral access or queue position.
  */
 export const CREDIT_PACKS: readonly CreditPack[] = [
   { id: "pack_2", credits: 2, prices: { INR: inr(198) }, firstPack: true, recommended: false },
   { id: "pack_5", credits: 5, prices: { USD: usd(5) }, firstPack: true, recommended: false },
-  { id: "pack_25", credits: 25, prices: { USD: usd(22), INR: inr(2_475) }, firstPack: false, recommended: true },
-  { id: "pack_60", credits: 60, prices: { USD: usd(48), INR: inr(5_940) }, firstPack: false, recommended: false },
-  { id: "pack_150", credits: 150, prices: { USD: usd(105), INR: inr(14_850) }, firstPack: false, recommended: false },
+  { id: "pack_25", credits: 25, prices: { USD: usd(25), INR: inr(2_475) }, firstPack: false, recommended: true },
+  { id: "pack_60", credits: 60, prices: { USD: usd(60), INR: inr(5_940) }, firstPack: false, recommended: false },
+  { id: "pack_150", credits: 150, prices: { USD: usd(150), INR: inr(14_850) }, firstPack: false, recommended: false },
 ];
 
 export function catalogPackById(id: unknown): CreditPack | undefined {

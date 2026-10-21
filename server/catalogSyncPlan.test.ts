@@ -48,7 +48,7 @@ describe("desired catalog", () => {
     expect(amount("skipwait_pack_2-INR")).toBe(19800);
     expect(amount("skipwait_pack_5-USD")).toBe(500);
     expect(amount("skipwait_pack_25-INR")).toBe(247500);
-    expect(amount("skipwait_pack_150-USD")).toBe(10500);
+    expect(amount("skipwait_pack_150-USD")).toBe(15000);
     expect(amount("skipwait_momentum_90d-INR")).toBe(249900);
     expect(amount("skipwait_land_sprint_90d-INR")).toBe(2799900);
     expect(amount("skipwait_keep_warm_yearly-USD")).toBe(2900);
