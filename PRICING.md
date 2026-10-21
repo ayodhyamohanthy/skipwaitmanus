@@ -61,6 +61,10 @@ priority, visibility or queue position (D-006). Plan credits end with the pass t
 - Costs: Ask rewrite 1, Profile check 1, Thank-you pack 1, Ask One-Pager 2, extra open ask for
   30 days 2, Company research 3, Resume overhaul 3, Offer comparison 3, Interview dossier 4,
   AI mock interview 5, Salary coach 5.
+- Ask cost, level pricing (DRAFT, flag-off, D-110): an ask costs its job level in credits
+  (L1..L10, `shared/jobLevel.ts`). Free monthly credits are ordinary credits: one L3 ask or
+  three L1 asks a month at no cost, with "covered by your free credits" shown before the first
+  send. Nothing live changes until the flag, a QA pass and the owner's go-live (D-056).
 
 ## Employers (/for-companies)
 
