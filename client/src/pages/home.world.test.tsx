@@ -32,7 +32,7 @@ describe("landing kit composition", () => {
 
   it("states what asking costs as an assurance instead of inventing proof", () => {
     render(<Home />);
-    expect(screen.getByText("3 asks free every month")).toBeTruthy();
+    expect(screen.getByText("3 free credits every month")).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/Referrals are free|free\.\s*Always|always free|Free job referrals/i);
     expect(screen.getByText("Explore before signing in")).toBeTruthy();
     // No fabricated activity anywhere on the page.
@@ -51,7 +51,7 @@ describe("landing kit composition", () => {
   it("lists the five launch companies with links to their doors", () => {
     render(<Home />);
     const section = screen.getByText("Start somewhere real.").closest("section") as HTMLElement;
-    for (const [name, slug] of [["skipwait.me", "skipwait"], ["Wipro", "wipro"], ["Go Neutrinos", "go-neutrinos"], ["TCS", "tcs"], ["Merkle", "merkle"]]) {
+    for (const [name, slug] of [["skipwait.me", "skipwait"], ["Wipro", "wipro"], ["Neutrinos", "go-neutrinos"], ["TCS", "tcs"], ["Merkle", "merkle"]]) {
       const link = within(section).getByText(name).closest("a");
       expect(link?.getAttribute("href")).toBe(`/explore/${slug}`);
     }
@@ -68,7 +68,7 @@ describe("landing kit composition", () => {
     fireEvent.click(ask);
     expect(ask.getAttribute("aria-pressed")).toBe("true");
     expect(ask.className).toContain("is-selected");
-    expect(within(journey).getByText("Make a thoughtful request. The referrer chooses whether to accept. 3 asks free every month; more use credits. No paid priority.")).toBeTruthy();
+    expect(within(journey).getByText("Make a thoughtful request. The referrer chooses whether to accept. 3 free credits every month; extra asks use credits. No paid priority.")).toBeTruthy();
   });
 
   it("shows every referrer commitment, never a promise of an outcome", () => {
@@ -80,13 +80,13 @@ describe("landing kit composition", () => {
   it("closes with the D-063 money sentence", () => {
     render(<Home />);
     expect(screen.getByText("What’s on the other side?")).toBeTruthy();
-    expect(screen.getByText("3 asks free every month; more use credits. Referrers are never paid and never ask you for money.")).toBeTruthy();
+    expect(screen.getByText("3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money.")).toBeTruthy();
   });
 
   it("answers the cost question with the money sentence, not a bare yes", () => {
     render(<Home />);
     const answer = document.getElementById("faq-0")?.textContent ?? "";
-    expect(answer.startsWith("3 asks free every month; more use credits. Referrers are never paid and never ask you for money.")).toBe(true);
+    expect(answer.startsWith("3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money.")).toBe(true);
     expect(answer).not.toMatch(/^Yes/);
   });
 });

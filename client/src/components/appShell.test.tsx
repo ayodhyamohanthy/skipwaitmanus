@@ -44,6 +44,8 @@ describe("AppShell on GoalShell (W0)", () => {
     expect(within(rail).queryByRole("link", { name: /Queue/ })).toBeNull();
     // A non-referrer gets the quiet Give a referral link (D-070).
     expect(screen.getAllByTestId("goal-give-referral")[0].getAttribute("href")).toContain("intent=referrer");
+    // Owner (Oct 21, #402): the beta badge survives the shell migration.
+    expect(screen.getAllByTestId("beta-badge").length).toBeGreaterThan(0);
   });
 
   it("adds Referral queue and drops Give a referral for a verified referrer", () => {

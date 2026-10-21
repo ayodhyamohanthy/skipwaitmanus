@@ -1,12 +1,14 @@
-// Phase-2/3 boundary: only a moved surface imports components/goal (phase 3 adds
-// each one to MOVED_SURFACES as its wave lands; W0 is the shell), and the token
-// block sits exactly once, appended after the previous last rule of index.css (§6b).
+// Phase-2/3 boundary: live files may not import components/goal until their
+// surface migrates. Goal-native surfaces are allowlisted here as they land
+// (Landing, D-120; sign-in), phase-3 waves add each moved surface to
+// MOVED_SURFACES (W0 is the shell), and the token block sits exactly once,
+// appended after the previous last rule of index.css (§6b).
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const CLIENT_SRC = join(__dirname, "..", "..");
-const ALLOWLIST = /components[\\/]goal[\\/]|pages[\\/]ComponentShowcase\.tsx$|\.test\.tsx?$/;
+const ALLOWLIST = /components[\\/]goal[\\/]|pages[\\/]ComponentShowcase\.tsx$|pages[\\/]GoalLanding\.tsx$|pages[\\/]GoalSignIn\.tsx$|\.test\.tsx?$/;
 
 // Phase-3 waves that have landed, one entry per moved surface.
 const MOVED_SURFACES = new Set(["components/AppShell.tsx"]); // W0: the app shell

@@ -5,6 +5,7 @@ import { Bell, Coins } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
+import { BetaBadge } from "@/components/BetaNotice";
 import { goalNavFor, type GoalNavId } from "./nav";
 import { GoalMoreMenu } from "./GoalMoreMenu";
 import { GoalNum } from "./GoalNum";
@@ -113,7 +114,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
     >
       {/* Desktop rail */}
       <nav aria-label="Primary" className="max-gdesk:hidden gdesk:row-span-2 gdesk:col-start-1 gdesk:row-start-1 flex flex-col items-center border-r border-g-hairline bg-g-surface-sunken px-2 pb-5">
-        <a href="/" className="flex h-14 items-center text-[16px]/6 font-bold tracking-[-0.02em] text-g-ink">skipwait.me</a>
+        <span className="flex h-14 items-center gap-1.5"><a href="/" className="text-[16px]/6 font-bold tracking-[-0.02em] text-g-ink">skipwait.me</a><BetaBadge tone="goal" /></span>
         <div className="mt-2 flex w-full flex-col items-center gap-1">
           {items.map(item => (
             <a
@@ -146,6 +147,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
         </span>
         <h1 className="max-gdesk:hidden text-g-meta text-g-ink-3">{pageTitle}</h1>
         <span className="ml-auto flex items-center gap-2">
+          <span className="gdesk:hidden"><BetaBadge tone="goal" /></span>
           <span className="max-gdesk:hidden"><CreditsPill credits={credits} /></span>
           <span className="gdesk:hidden"><CreditsPill credits={credits} compact /></span>
           {showAlerts ? (

@@ -1,4 +1,4 @@
-> Status (Oct 19 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-048/D-071; live tokens on unmoved surfaces are the Kit v4 layer of `client/src/index.css`, and the goal-UI contract for moved surfaces is `DESIGN.md` with the phase-2 token block, not the "Scoreboard" values in the note below).
+> Status (Oct 19 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-048/D-071/D-120 (Kit v4 retired - historical only); live tokens on unmoved surfaces are the Kit v4 layer of `client/src/index.css`, and the goal-UI contract for moved surfaces is `DESIGN.md` with the phase-2 token block, not the "Scoreboard" values in the note below).
 
 # skipwait.me — Brand-Level Design System Specification
 ## Swiss Grid Clarity · Pentagram/Bierut Aesthetic
