@@ -12,7 +12,22 @@ import { Link, useLocation } from "wouter";
 import { GoalBrandMark } from "@/components/goal/GoalBrandMark";
 import { GoalVerifiedMark } from "@/components/goal/GoalVerifiedMark";
 import { BetaBadge, BetaNoticeLine } from "@/components/BetaNotice";
-import { STEPS, TRUST, FAIR_RULES, FOOTER_COLS, Kicker, Reveal, AskCardArt } from "./GoalLanding";
+import { FAIR_RULES, FOOTER_COLS, Kicker, Reveal, AskCardArt } from "./GoalLanding";
+
+// Benefit-led copy (owner 17:59:41 phonemsg-01M5F70MEJM3WQEYVW9JZJKP6N
+// "Have outcome benfit oriented wording" + 18:00:59
+// phonemsg-01M5F730N3AZPJ5P2JZ3FMH9VH; designer m3do sheets relayed by
+// main 18:02). V7 keeps its own wording - these arrays are V9-only.
+const V9_STEPS: Array<{ title: string; body: string }> = [
+  { title: "Pick where you want in", body: "See the companies with verified employees inside, and the roles you can ask about." },
+  { title: "Ask with the cost up front", body: "You see the cost before you ask: 3 free credits every month; extra asks use credits. Every ask costs the same." },
+  { title: "A yes opens a conversation", body: "An accepted ask opens a private conversation. A referral is an introduction, never a promise of an interview or a job." },
+];
+const V9_TRUST: Array<{ title: string; body: string; blue: boolean }> = [
+  { title: "A real insider reads you", body: "Every referrer proves their company email before they can see a single ask.", blue: true },
+  { title: "Private until it counts", body: "Your name stays private until a referrer chooses to open the conversation.", blue: false },
+  { title: "Nothing spent while it waits", body: "1 credit only when a verified employee can see your ask - back if you withdraw first.", blue: false },
+];
 
 // Single swappable band photo: "d" (handshake, default per main 17:54) or
 // "e" (walking-in). Final owner pick pending; swap = this one constant.
@@ -65,8 +80,8 @@ export default function GoalLandingV9() {
       <section className="border-b border-g-hairline">
         <div className="mx-auto max-w-[1120px] px-5 pb-16 pt-14 gdesk:px-8 gdesk:pb-24 gdesk:pt-24">
           <Kicker>Private job referrals</Kicker>
-          <h1 className="mt-5 text-[56px] font-semibold leading-[0.98] tracking-[-0.045em] gdesk:text-[96px]">Get referred.</h1>
-          <p className="mt-5 max-w-[520px] text-g-body leading-[1.6] text-g-ink-2">Ask a verified employee at the company you want to join. They choose every referral: no commissions, no outcome promises.</p>
+          <h1 className="mt-5 text-[56px] font-semibold leading-[0.98] tracking-[-0.045em] gdesk:text-[96px]">Get read by someone inside.</h1>
+          <p className="mt-5 max-w-[520px] text-g-body leading-[1.6] text-g-ink-2">A verified employee at the company you want to join reads your ask and can open a private conversation. They choose every referral: no commissions, no outcome promises.</p>
           <SearchCTA />
           <p className="mt-3 text-[13px] text-g-ink-3">Explore before signing in.</p>
           <div className="mt-3"><BetaNoticeLine tone="goal" /></div>
@@ -78,12 +93,39 @@ export default function GoalLandingV9() {
       <section className="bg-g-ink text-g-ink-inverse">
         <div className="mx-auto grid max-w-[1120px] items-center gap-10 px-5 py-14 gdesk:grid-cols-2 gdesk:px-8 gdesk:py-20">
           <Reveal>
-            <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] opacity-60">The idea, in one picture</p>
-            <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">From the back of the line to the front.</h2>
-            <p className="mt-4 max-w-[440px] text-g-body leading-[1.6] opacity-70">A referral moves you past the pile: a verified employee inside the company picks your ask and opens a private conversation.</p>
+            <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] opacity-60">What you gain</p>
+            <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Past the pile, into a conversation.</h2>
+            <p className="mt-4 max-w-[440px] text-g-body leading-[1.6] opacity-70">A verified employee inside the company picks your ask and opens a private conversation - so you arrive as a person, not one more application in the pile.</p>
           </Reveal>
           <Reveal className="justify-self-center">
             <img src={`/brand/banner-take-${V9_BAND_PHOTO}.jpg`} alt={BAND_ALT[V9_BAND_PHOTO]} className="w-full max-w-[520px] rounded-[16px] object-cover" data-testid="goal-v9-banner" />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Mass applying vs a referral (owner 18:00:59
+          phonemsg-01M5F730N3AZPJ5P2JZ3FMH9VH). Figure from Jobvite's own
+          blog; inline footnote with source link. Copy is the engineering
+          draft - the designer's final copy list swaps in verbatim. */}
+      <section className="border-b border-g-hairline">
+        <div className="mx-auto max-w-[1120px] px-5 py-14 gdesk:px-8 gdesk:py-24">
+          <Reveal>
+            <Kicker>The honest comparison</Kicker>
+            <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Mass applying vs a referral.</h2>
+          </Reveal>
+          <div className="mt-10 grid gap-4 gdesk:grid-cols-2">
+            <Reveal className="rounded-[12px] border border-g-hairline p-5">
+              <h3 className="text-[15px] font-semibold text-g-ink-2">Mass applying</h3>
+              <p className="mt-1.5 text-g-small leading-[1.6] text-g-ink-2">Hundreds of blind applications into forms and filters. Your resume waits in a pile; most piles are never read by a person.</p>
+            </Reveal>
+            <Reveal className="rounded-[12px] border border-g-ink p-5">
+              <h3 className="text-[15px] font-semibold">One referral on skipwait.me</h3>
+              <p className="mt-1.5 text-g-small leading-[1.6] text-g-ink-2">One thoughtful ask. A verified employee inside the company reads it and can open a private conversation - you arrive as a person.</p>
+            </Reveal>
+          </div>
+          <Reveal>
+            <p className="mt-6 text-g-small leading-[1.6] text-g-ink-3">Referrals are about 7% of applicants yet account for nearly 40% of hires.<sup><a href="#vs-source" className="ml-0.5 underline underline-offset-2">1</a></sup></p>
+            <p id="vs-source" className="mt-2 font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">1. <a href="https://www.jobvite.com/blog/4-reasons-to-invest-in-employee-referrals/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Jobvite - 4 reasons to invest in employee referrals</a></p>
           </Reveal>
         </div>
       </section>
@@ -95,7 +137,7 @@ export default function GoalLandingV9() {
             <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Three steps. No noise.</h2>
           </Reveal>
           <ol className="mt-10 grid gap-8 gdesk:grid-cols-3 gdesk:gap-10">
-            {STEPS.map((step, i) => (
+            {V9_STEPS.map((step, i) => (
               <li key={step.title}>
                 <Reveal className="border-t-2 border-g-ink pt-6">
                   <span className="font-g-mono text-[13px] text-g-ink-3" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
@@ -123,10 +165,10 @@ export default function GoalLandingV9() {
         <div className="mx-auto max-w-[1120px] px-5 py-14 gdesk:px-8 gdesk:py-24">
           <Reveal>
             <Kicker>Why you can trust it</Kicker>
-            <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Verified people.<br />Real rules.</h2>
+            <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Real insiders.<br />Real rules.</h2>
           </Reveal>
           <div className="mt-10 grid gap-4 gdesk:grid-cols-3">
-            {TRUST.map((item) => (
+            {V9_TRUST.map((item) => (
               <Reveal key={item.title} className="rounded-[12px] border border-g-hairline p-5">
                 {item.blue
                   ? <GoalVerifiedMark as="span" className="text-g-small font-semibold">{item.title}</GoalVerifiedMark>
@@ -142,8 +184,8 @@ export default function GoalLandingV9() {
         <div className="mx-auto grid max-w-[1120px] items-center gap-10 px-5 py-14 gdesk:grid-cols-2 gdesk:px-8 gdesk:py-24">
           <Reveal>
             <Kicker>For employees</Kicker>
-            <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Work somewhere people ask about?</h2>
-            <p className="mt-4 max-w-[440px] text-g-body leading-[1.6] text-g-ink-2">Review asks when it feels right. Referring is always free. Referrers are never paid - their help stays genuine, and seekers can trust it.</p>
+            <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Be the way in for someone good.</h2>
+            <p className="mt-4 max-w-[440px] text-g-body leading-[1.6] text-g-ink-2">Review asks when it feels right and open a door you believe in. Referring is always free - and referrers are never paid, so every yes stays genuine.</p>
             <Link href="/referrer" className="mt-6 inline-flex h-11 items-center gap-2 rounded-full border border-g-ink px-5 text-g-small font-semibold hover:bg-g-surface-hover">Join as a referrer <span aria-hidden="true">&rarr;</span></Link>
           </Reveal>
           <Reveal className="justify-self-center"><AskCardArt /></Reveal>
