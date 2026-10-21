@@ -5,7 +5,7 @@
 How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. The machine order every agent's `build` uses is [`assignments.json`](assignments.json) (D-083): change the two together. System map: [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md). Packet format: [`TEMPLATE.md`](TEMPLATE.md).
 
 ## Oct 21 (CEO sync, D-085)
-The picker's order (`assignments.json`) after the money lane (GO-LIVE-1b, D-038 reconcile, D-035): the pull requests built before they had a packet, finished through [`OCT21-BUILT-PRS.md`](OCT21-BUILT-PRS.md) — D-067 review outbox (#322), D-104 company signal (#373), D-107 claim your company (#384), D-105 win card (#375), D-106 impact card (#382), D-048 phase 3 (#358, #361, #362, #360), row 20 (#310, #311, #314), task 13 slice A (#308). Then the packets Claude Code owes (D-090 BYOR, D-095 one-tap, D-100 security audit, D-099 bonus pages, D-093 language, D-094 AI-in-UI). The pricing pull requests #380 and #381 wait for the owner (D-056, D-091).
+The picker's order (`assignments.json`) after the money lane (GO-LIVE-1b, D-038 reconcile, D-035): the post-landing review of the live `/explore` and `/requests` (D-048-p3-live-review), the frozen pricing rows (D-132-audit; #381 and #410 are done, flag off), the picker follow-ups (`PICKER-*`), then the pull requests built before they had a packet, finished through [`OCT21-BUILT-PRS.md`](OCT21-BUILT-PRS.md) — D-067 review outbox (#322), D-104 company signal (#373), D-107 claim your company (#384), D-105 win card (#375), D-106 impact card (#382), D-048 phase 3 (#358 and #361 done; #362 and #360 live), row 20 (#310, #311, #314), task 13 slice A (#308). Then the packets Claude Code owes (D-090 BYOR, D-095 one-tap, D-100 security audit, D-099 bonus pages, D-093 language, D-094 AI-in-UI). #381 landed (flag off); #380 left the queue, because D-132's rungs replace it (D-135 (5)).
 
 ## Frozen pricing (D-132, D-135)
 The owner froze the bundled pricing on Oct 21 (three plans with in-plan credit dropdowns; asks cost their job level in credits). It is built dark from [`D-132-pricing-v2.md`](D-132-pricing-v2.md): the level classifier (#381), the plans page (#410) and the per-level spend, which runs after D-035 in lane `money-core`. Switching it on is a separate step that needs the owner's word.
@@ -70,7 +70,7 @@ The goal-UI rollout runs as one foundation chain (lane `design-core`) and then u
 | D-060-pending-action-emails | Needs task 21 (notification kinds and preferences); D-038's reminders ship in-app first |
 | D-057-referrer-continuity | After the session gate (1.2b) |
 | P2 (D-028 link previews and company pages) | After stage 1; parallel-safe with stage 3 |
-| D-048 phase 3 (surface by surface) | Mapped in [D-048-phase-3-rollout.md](D-048-phase-3-rollout.md): eight waves, one PR each. W0 (shell) is ready to packet; each later wave gets its own packet. The four former owner calls are decided on merit (D-123), §6. |
+| D-048 phase 3 (parallel split) | Runs as the 75-row split in [D-048-phase-3-split.md](D-048-phase-3-split.md) (D-134; the rollout map, #358, yields to it): W0, the signed-out landing, `/requests` and `/explore` are live; the foundation and lane packets come next. Open questions are decided there under D-123. |
 | Tasks 12, 13, 20 | Owned by opencode and Qoder (open PRs #308, #310, #311, #314) |
 | The rest of §3b | D-053 order; parked rows stay parked (29, 30, 31, lite mode, 40) |
 

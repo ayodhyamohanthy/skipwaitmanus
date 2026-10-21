@@ -94,12 +94,12 @@ describe("D-038-B: referred deadline (5 days)", () => {
     await lapseReferredTx(store.db as any, REQUEST_ID, T0 + 5 * DAY_MS + 1);
 
     // Expiry after lapse should return the credit
-    const refunds = store.rows(tokenTransactions).filter(row => row.kind === "expiry_refund" && row.referenceId === `${REQUEST_ID}#refund`);
+    const refunds = store.rows(tokenTransactions).filter(row => row.kind === "expiry_refund" && row.referenceId === `${REQUEST_ID}#refund#1`);
     expect(refunds.length).toBe(0); // expiry not yet run
 
     const { expireStalePendingReferralRequest } = await import("./db");
     await expireStalePendingReferralRequest(SEEKER, REQUEST_ID, T0 + 8 * DAY_MS);
-    const refundsAfter = store.rows(tokenTransactions).filter(row => row.kind === "expiry_refund" && row.referenceId === `${REQUEST_ID}#refund`);
+    const refundsAfter = store.rows(tokenTransactions).filter(row => row.kind === "expiry_refund" && row.referenceId === `${REQUEST_ID}#refund#1`);
     expect(refundsAfter.length).toBe(1);
   });
 

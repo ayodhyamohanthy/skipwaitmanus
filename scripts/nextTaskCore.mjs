@@ -280,9 +280,10 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   const byId = new Map(view.map(v => [v.task.id, v]));
   // D-134: dependsOn holds every kind of work on a task, not only a new build.
   const unmetOf = v => v.task.dependsOn.filter(d => !byId.get(d)?.done);
-  // D-134: a lane-mate that depends on v (directly or through others) cannot land before v, so it never makes v's lane busy.
+  // D-134: a lane-mate that depends on v (directly or through others) cannot land before v, so it never makes v's lane busy;
+  // neither does a lane-mate that waits for a dependency: nobody can work on it, so holding its lane could deadlock two lanes.
   const dependsOnTask = (o, id, seen = new Set()) => o.task.dependsOn.some(d => d === id || (!seen.has(d) && seen.add(d) && byId.has(d) && dependsOnTask(byId.get(d), id, seen)));
-  const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id));
+  const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length);
   const { workAt, lockAt, archAt, quiet } = clock(branches, now);
   const ceo = isArchitect(claimant);
 
@@ -314,6 +315,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     if (v.ci === "running" || v.ci === "running-after-red") return skip(v, `CI is running on ${v.pr}`);
     if (state === "needs-review" || (state === "in-review" && lockQuiet)) {
       if (did(v, ["builders", "fixers"])) return skip(v, "needs a review, and you built or fixed it");
+      // A branch built outside the picker has no claim naming its builder: its review waits until nobody has pushed for 2 hours.
+      if (!v.builders.length && !quiet(workAt(v))) return skip(v, `built outside the picker and still being pushed; its review waits until ${v.work} is quiet for 2 hours`);
       return { kind: "review", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner };
     }
     if (state === "needs-fix" || (state === "fixing" && lockQuiet)) {
@@ -441,12 +444,12 @@ function ownStage(v, claimant) {
  * D-085: everything this agent holds, in queue order, and its first blocked task. A Tier 1 builder waiting for
  * review holds nothing; a task whose dependency is not done is nobody's work yet (D-134).
  */
-function ownWorkList(view, claimant) {
+function ownWorkList(view, claimant, { includeWaiting = false } = {}) {
   const doneIds = new Set(view.filter(x => x.done).map(x => x.task.id));
   const found = [];
   let blockedOwn = null;
   for (const v of view) {
-    if (v.task.dependsOn.some(d => !doneIds.has(d))) continue;
+    if (!includeWaiting && v.task.dependsOn.some(d => !doneIds.has(d))) continue;
     const hit = ownStage(v, claimant);
     if (hit?.kind === "wait") blockedOwn ??= hit;
     else if (hit) found.push(hit);
@@ -488,7 +491,10 @@ export function heldBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads
   return pick;
 }
 
-/** D-134: every claim this agent holds (the fix-main lock first), so a heartbeat keeps all of them alive, not only the first. */
+/**
+ * D-134: every claim this agent holds (the fix-main lock first), so a heartbeat keeps all of them alive, not only
+ * the first; that includes a claim on a task that waits for a dependency, which is nobody's work yet but stays its holder's.
+ */
 export function heldAllBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
   const out = [];
   if (mainSha) {
@@ -497,7 +503,7 @@ export function heldAllBy({ tasks, branches, openPrs, prCi = new Map(), mergedHe
     if (mine) out.push({ kind: "continue", of: "fix-main", sha: mine.sha8, lock: mine.lock });
   }
   const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports });
-  for (const { at, ...pick } of ownWorkList(view, claimant).found) out.push(pick);
+  for (const { at, ...pick } of ownWorkList(view, claimant, { includeWaiting: true }).found) out.push(pick);
   return out;
 }
 
@@ -621,8 +627,11 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), merged
     // Reports gate only open tasks, so only they colour the board; a Tier 1 pull request is green only once its review passed.
     // The picker lets a Tier 1 pull request's review lock decide over red reports, so the board does too.
     const said = !v.open ? null : review && v.said?.status === "red" ? null : v.said;
+    // A built task that waits for a dependency keeps its pull request's colour: red when its CI or team says so, else in progress.
+    const waitingBuilt = state === "waiting" && v.open;
     const health = state === "done" ? "done"
       : state === "owner" ? "owner"
+      : waitingBuilt ? ((pr && v.ci === "red") || said?.status === "red" || said?.status === "blocked" ? "red" : "progress")
       : state === "pr-red" || state === "quiet" || said?.status === "red" || said?.status === "blocked" ? "red"
       : state === "pr-green" ? (!review || review === "passed" || review === "landing" ? "green" : "progress")
       : ["todo", "waiting", "architect"].includes(state) ? "open" : "progress";

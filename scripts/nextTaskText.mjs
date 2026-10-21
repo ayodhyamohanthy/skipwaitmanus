@@ -5,7 +5,8 @@ import { slugOf } from "./nextTaskCore.mjs";
 const CMD = "node scripts/next-task.mjs";
 const land = [
   "Land under D-082: push the branch, open a pull request, and wait until every check on that exact commit is green and main's own CI is green.",
-  "Then fast-forward main to that exact commit (`git push origin <sha>:main`; never GitHub's merge button and never squash: the ruleset checks the exact commit). Watch main's CI and both deploys to the end and run the live check from docs/BRIEF.md \"How to ship\".",
+  "Then fast-forward main to that exact commit (`git push origin <sha>:main`; never GitHub's merge button and never squash: \"require branches to be up to date\" is off, so a merge commit from a pull request behind main was never tested, D-134). If that push is refused because main moved, merge the latest origin/main into your branch, re-run the full gate, push, wait until every check on the new commit is green and fast-forward again; never force-push.",
+  "Watch main's CI and both deploys to the end and run the live check from docs/BRIEF.md \"How to ship\".",
   "If anything goes red, revert or fix your commit before anything else.",
 ];
 
@@ -96,7 +97,7 @@ const architectSteps = (pick, who, claimed) => steps([
   `git fetch origin && git worktree add ../skipwaitmanus-wt/architect-${slugOf(pick.lock)} ${pick.lockExists || claimed ? pick.lock : `-b ${pick.lock} origin/main`} (if it already exists, use it). Never force-push this branch: its first commit is your claim.`,
   `Read the §3b row "${pick.task.row}", the task's note in docs/plans/assignments.json and every decision it names in docs/DECISIONS.md.`,
   "Write the packet in docs/plans/ exactly as docs/DELEGATION.md describes (goal, binding rules quoted, current behaviour verified in code with file:line, rulings, files in and out of scope, red-first tests, definition of done, review checklist, stop-and-ask). Claude Code records its rulings as register entries marked \"decided under D-074\"; any other agent makes no ruling the decisions do not already make: a real choice they leave open on money, sign-in, identity, privacy or prices goes to the CEO as `--report blocked` with the question, and any other gap gets a stated, changeable assumption in the packet (D-109).",
-  `In the same pull request update docs/plans/assignments.json: a packet-only task (its note says so: its work is the rows it adds) gets "status": "done" and its rows are added exactly as the split lists them; any other task gets its "packet" and "status": "todo", so the next \`${CMD}\` hands it to a builder (D-134).`,
+  `In the same pull request update docs/plans/assignments.json: a packet-only task (its note says so: its work is the rows it adds) gets "status": "done" and its rows are added exactly as its packet's list gives them (the D-048 split, or the packet the CEO wrote); any other task gets its "packet" and "status": "todo", so the next \`${CMD}\` hands it to a builder (D-134).`,
   `Land it like any docs change (D-082: pull request, every check green on that exact commit). ${keepAlive(who)}`,
   report(pick.task, who),
 ]);
@@ -107,7 +108,7 @@ const fixMainSteps = (pick, who) => steps([
   "Find the commit that turned main red (the run above and `gh run list --branch main --workflow CI`).",
   `Fix it red-first on ${pick.lock}, or revert that commit if the fix is not obvious. Nothing else: no other change rides along.`,
   keepAlive(who),
-  `Open a pull request from ${pick.lock} and wait until every check on that exact commit is green: main is red, so this fix is the one push D-082 allows. Then merge it, watch main's CI and both deploys to the end, and run the live check from docs/BRIEF.md "How to ship".`,
+  `Open a pull request from ${pick.lock} and wait until every check on that exact commit is green: main is red, so this fix is the one push D-082 allows. Then fast-forward main to that exact commit (\`git push origin <sha>:main\`; never the merge button or squash, D-134), watch main's CI and both deploys to the end, and run the live check from docs/BRIEF.md "How to ship".`,
   "Tell the owner what broke, which commit, and how you fixed it.",
 ]);
 

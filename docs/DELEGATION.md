@@ -53,13 +53,20 @@ handles real money: a mistake reaches real users.
 7. When all steps are done, merge the latest origin/main into your branch,
    run the full gate from docs/BRIEF.md "How to ship", and fill in the
    evidence block from docs/DELEGATION.md section 5.
-   - Tier 1: push the branch, open a draft pull request, set the §3b row
-     to "review — <BRANCH> — <sha>", and stop. Do not push to main.
+   - Your status line is your task's §3b row, or, when several tasks share
+     that row, your line in the packet's Status section (the picker says
+     which, D-134); never edit a shared §3b row.
+   - Tier 1: push the branch, open a draft pull request, set your status
+     line to "review — <BRANCH> — <sha>", and stop. Do not push to main.
    - Tier 2 or 3: push the branch, open a pull request and wait until
      every check on that exact commit is green. Then confirm main's latest
-     CI is green and fast-forward main to that commit (or merge the pull
-     request). Watch main's CI and both deploys to the end, run the live
-     check, set the row to "done — <sha>" with the evidence block.
+     CI is green and fast-forward main to that exact commit
+     (`git push origin <sha>:main`; never the merge button or squash,
+     D-134 (6)). If that push is refused because main moved, merge the
+     latest origin/main, re-run the gate, wait for every check on the new
+     commit and fast-forward again; never force-push. Watch main's CI and
+     both deploys to the end, run the live check, set your status line to
+     "done — <sha>" with the evidence block.
    - Never push to main while main's CI is red (stop and report), while a
      check on your commit is failing, skipped or still running, or with
      --no-verify. If main goes red after your landing, revert or fix your
@@ -68,17 +75,17 @@ handles real money: a mistake reaches real users.
      per session.
 8. If anything is unclear, a test fails for an unexpected reason, or a rule
    seems to conflict with docs/DECISIONS.md: stop. Write the question in
-   the §3b row, push your branch, end the session. Never guess about
+   your status line, push your branch, end the session. Never guess about
    money, sign-in, identity or privacy.
 ```
 
 ### 4a. Starting any model: the owner says `build`, `resume`, `continue` or `next` (D-083, D-085)
 Every agent entry doc tells an agent that all four words mean one thing: run `node scripts/next-task.mjs --claim "<your model name>"` and do only what it prints. If the name has no ` · <session>` part, the picker adds a unique session tag (for example `Qwen 3 · k3f9`) and prints it. Use exactly that full name for `--heartbeat`, `--report`, `--fixed`, `--verdict` and when you resume: on resume, read your name from the holder column of the board (`--status`); never invent a new one, or your own half-built work sits idle. Two sessions never share a name, so two sessions of one model count as different people for reviews.
 
-The script reads Claude Code's order from `docs/plans/assignments.json` on `origin/main`, main's CI and each task pull request's CI from GitHub, and the local clone, then decides:
+The script reads Claude Code's order from `docs/plans/assignments.json` on `origin/main`, main's CI and each task pull request's CI from GitHub, and the local clone, then decides (a task whose dependency is not done gets no work at all from any of these passes, D-134: no build, takeover, make-green, review, findings fix, packet or landing; the board shows it as waiting, it never holds its lane, and your claim on it stays yours, kept alive by `--heartbeat`, until the dependency is done):
 1. **Red `main` first**, fixed by one agent only. The fixer works on the lock branch itself (`agent/queue/fix-main-<sha8>`) and opens the fix pull request from it, so its commits keep the lock alive; its holder gets it back instead of waiting on itself. Because `main` is red, landing the fix is the one push D-082 allows, once every check on that commit is green. One fix-main lock at a time: a newer red commit while someone is on the fix does not open a second one.
 2. **Your own unfinished work** (a build, a review, findings to fix, a landing, a packet). Except: pending work ranked above your own task with nobody on it (a review, findings to fix, a red pull request whose owner is quiet, a landing, a half-built claim quiet for 2 hours, an unblock for the CEO) is handed to you first. You push your own work first (the picker enforces it), and your own claim stays yours for 2 hours.
-3. **Pending work nobody is on, top down** (owner: "completing a pending task is important than taking new one"): a Tier 1 review (never by the agent that built or fixed it), findings to fix (never by its reviewer), a pull request with red CI whose owner is quiet (make it green), a green pull request nobody lands, a passed review whose reviewer went quiet (landed by someone who neither built nor fixed it, `Land claim` on the review lock), a half-built claim quiet for 2 hours (take it over on the same branch), a blocked task (the CEO unblocks it). A Tier 1 pull request whose CI turns red after its review passed goes to a fix stage and is reviewed again; it is never landed as it is.
+3. **Pending work nobody is on, top down** (owner: "completing a pending task is important than taking new one"): a Tier 1 review (never by the agent that built or fixed it), findings to fix (never by its reviewer), a pull request with red CI whose owner is quiet (make it green), a green pull request nobody lands, a passed review whose reviewer went quiet (landed by someone who neither built nor fixed it, `Land claim` on the review lock), a half-built claim quiet for 2 hours (take it over on the same branch), a blocked task (the CEO unblocks it). A Tier 1 pull request built outside the picker (no claim names its builder) is reviewed only once its branch has been quiet for 2 hours. A Tier 1 pull request whose CI turns red after its review passed goes to a fix stage and is reviewed again; it is never landed as it is.
 4. **New work, top down:** the next `todo` whose dependencies are done and whose lane is free. A squash-merged pull request counts as done even before its status is set to done.
 5. **A red or blocked priority** (red CI, or a red or blocked report) holds its own lane and the tasks that depend on it for everyone else: nothing there starts, other lanes go on; red `main` holds everything (D-109). An agent already holding work below a red priority whose owner is active keeps going on its own work (its hands cannot help the red one); a red priority with nobody on it is handed out first.
 6. **Quiet** means no push to the task's branch or lock and no heartbeat for 2 hours (D-085; queue rule 2 said 24 hours). Push after every commit, run `--heartbeat --as "<name>"` before a long step (the full gate), and commit and push before you stop. A holder that comes back after 90 minutes or more re-takes its claim on the same branch a takeover would push to, so the first push wins and two agents never both hold it.

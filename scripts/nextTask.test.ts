@@ -341,10 +341,37 @@ describe("dependsOn holds a landing, not only a build (D-134)", () => {
     const prCi = new Map([["agent/queue/b", { state: "green" }]]);
     expect(pick(tasks, { branches: [mineB, mineY], prs: [prB], prCi: [["agent/queue/b", "green"]], claimant: "Kimi · s2" })).toMatchObject({ kind: "continue", of: "build", task: { id: "Y" } });
     expect(core.heldBy({ tasks, branches, openPrs: new Map([prB]), prCi, claimant: "Kimi · s2", now: NOW })).toMatchObject({ of: "build", task: { id: "Y" } });
-    expect(core.heldAllBy({ tasks, branches, openPrs: new Map([prB]), prCi, claimant: "Kimi · s2", now: NOW }).map((h: { task: { id: string } }) => h.task.id)).toEqual(["Y"]);
-    // Once A is done, both of Kimi's claims are its work, and one heartbeat keeps both alive.
+    // The heartbeat keeps the waiting claim alive too: it is nobody's work yet, but it stays Kimi's.
+    expect(core.heldAllBy({ tasks, branches, openPrs: new Map([prB]), prCi, claimant: "Kimi · s2", now: NOW }).map((h: { task: { id: string } }) => h.task.id)).toEqual(["B", "Y"]);
+    // Once A is done, B is Kimi's work again.
     const done = [{ ...tasks[0], status: "done" }, tasks[1], tasks[2]];
-    expect(core.heldAllBy({ tasks: done, branches, openPrs: new Map([prB]), prCi, claimant: "Kimi · s2", now: NOW }).map((h: { task: { id: string } }) => h.task.id)).toEqual(["B", "Y"]);
+    expect(pick(done, { branches: [mineB, mineY], prs: [prB], prCi: [["agent/queue/b", "green"]], claimant: "Kimi · s2" })).toMatchObject({ kind: "continue", task: { id: "B" } });
+  });
+  it("a task that waits for a dependency never holds its lane, so two waiting tasks cannot deadlock one lane or two", () => {
+    const oneLane = [task("O", { lane: "L", dependsOn: ["X"] }), task("P", { lane: "L", dependsOn: ["Q"] }), task("X", { lane: "L" }), task("Q", { lane: "L" })];
+    const builtO: [string, Branch] = ["agent/queue/o", claimBy("Qwen · s1", "O", 0.5)];
+    const builtP: [string, Branch] = ["agent/queue/p", claimBy("Kimi · s2", "P", 0.5)];
+    expect(pick(oneLane, { branches: [builtO, builtP], claimant: "Mistral · s5" })).toMatchObject({ kind: "build", task: { id: "X" } });
+    const crossLane = [task("O1", { lane: "L", dependsOn: ["X"] }), task("O2", { lane: "M", dependsOn: ["Y"] }), task("X", { lane: "M" }), task("Y", { lane: "L" })];
+    const built1: [string, Branch] = ["agent/queue/o1", claimBy("Qwen · s1", "O1", 3)];
+    const built2: [string, Branch] = ["agent/queue/o2", claimBy("Kimi · s2", "O2", 3)];
+    expect(pick(crossLane, { branches: [built1, built2], claimant: "Mistral · s5" })).toMatchObject({ kind: "build", task: { id: "X" } });
+    expect(pick(crossLane, { branches: [built1, built2, ["agent/queue/x", claimBy("Mistral · s5", "X", 0.2)]], claimant: "Gemini · s3" })).toMatchObject({ kind: "build", task: { id: "Y" } });
+  });
+  it("a Tier 1 pull request built outside the picker is not reviewed while its branch is still being pushed", () => {
+    const t1 = task("M", { tier: 1, lane: "money" });
+    const prM: [string, string] = ["agent/queue/m", "https://github.com/o/r/pull/9"];
+    const outside = (hoursAgo: number): [string, Branch] => ["agent/queue/m", { tipMs: NOW - hoursAgo * HOUR, merged: false, markers: [] }];
+    const fresh = pick([t1], { branches: [outside(0.5)], prs: [prM], prCi: [["agent/queue/m", "green"]], claimant: "Gemini · s3" });
+    expect(fresh).toMatchObject({ kind: "none" });
+    expect(fresh.kind === "none" && fresh.skipped.find(x => x.id === "M")?.reason).toContain("built outside the picker");
+    expect(pick([t1], { branches: [outside(3)], prs: [prM], prCi: [["agent/queue/m", "green"]], claimant: "Gemini · s3" })).toMatchObject({ kind: "review", task: { id: "M" } });
+  });
+  it("the board keeps a built task's colour while it waits: red for a red pull request, in progress otherwise", () => {
+    const built: [string, Branch] = ["agent/queue/b", claimBy("Qwen · s1", "B", 3)];
+    const board = (ci: string) => statusBoard({ tasks: [task("A"), task("B", { dependsOn: ["A"] }), task("C", { dependsOn: ["A"] })], branches: new Map([built]), openPrs: new Map([prB]), prCi: new Map([["agent/queue/b", { state: ci }]]), reports: [], now: NOW });
+    expect(board("red").map(r => [r.id, r.state, r.health])).toEqual([["A", "todo", "open"], ["B", "waiting", "red"], ["C", "waiting", "open"]]);
+    expect(board("green").find(r => r.id === "B")?.health).toBe("progress");
   });
   it("a reviewer whose passed review waits to land continues the next review it holds", () => {
     const t1 = task("M", { tier: 1, lane: "money", dependsOn: ["A"] });
@@ -559,6 +586,12 @@ describe("markers and printed steps", () => {
     const land1 = renderPick({ kind: "land", task: task("M", { tier: 1 }), work: "agent/queue/m", pr: "https://github.com/o/r/pull/9", lock: "agent/review/m", tier1: true, from: "Mistral · r1" }, ctx);
     expect(land1).toContain("LAND M");
     expect(land1).toContain("re-run the full gate");
+    // D-134: landing is a fast-forward to the exact green commit, never the merge button, with a step for a refused push.
+    expect(land1).toContain("git push origin <sha>:main");
+    expect(land1).toContain("If that push is refused because main moved");
+    const fixMain = renderPick({ kind: "fix-main", sha: "c".repeat(40), url: "https://ci/run/2", lock: "agent/queue/fix-main-cccccccc", parent: null, from: null }, ctx);
+    expect(fixMain).toContain("git push origin <sha>:main");
+    expect(fixMain).not.toContain("Then merge it");
     const arch = renderPick({ kind: "architect", task: task("P", { status: "architect", packet: null }), lock: "agent/architect/p", lockExists: false }, { ...ctx, who: "Claude Code · s9" });
     expect(arch).toContain("WRITE THE PACKET FOR P");
     expect(arch).toContain("docs/DELEGATION.md");

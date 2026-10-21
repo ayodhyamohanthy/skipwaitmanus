@@ -38,11 +38,18 @@ The D-048 phase 3 rollout map (eight waves, one pull request each). Done: merged
 ### D-048-p3-w0-shell (#361, `agent/instinct/goal-ui-w0-shell`, Tier 2) — done
 Wave 0: the app shell. Landed as `a89a0e60` (live fixes in #412), live without a flag: every shell route renders `GoalShell`, with today's page bodies inside. The kit/goal switch this section first asked for was not built and nothing needs it; the shell's titles and credits pill move to D-048-F-credits (`docs/plans/D-048-phase-3-split.md`, "State on `main`").
 
-### D-048-p3-explore (#362, `agent/qoder/d048-phase-3-explore`, Tier 1, lane `d048-find`)
-Find a referral (`/explore`), the seeker home. Rework per the split (row D-048-p3-explore): the goal version moves to `client/src/pages/goal/explore/`, `Explore.tsx` gets only the three-line `goalSurfaceOn('explore')` switch, the kit page and its tests stay byte-identical, and the commits #360 stacked into this branch are dropped. It lands dark after the foundation's harness and primitives (the foundation packet sets those dependencies). Done: merged with `main`, gate green, 1280 and 390 captures, independent review passed (it shows credits), landed with the flag off.
+### D-048-p3-explore (#362) and D-048-p3-requests (#360) — done, live
+Both pages were replaced in place and went live on Oct 21 (taken over by workbuddy · 8dc3; `375174aa` and `097cf144`), landed with the merge button and without the independent review their tier needs (D-134 (6)). D-048-p3-live-review checks them.
 
-### D-048-p3-requests (#360, `agent/qoder/d048-phase-3-requests`, Tier 1, lane `d048-asks`)
-My asks (`/requests`). Rework per the split (row D-048-p3-requests): restore `client/src/pages/myRequests.kit.test.tsx` and the three kit tests #360 rewrote to main's exact text (its withdraw test asserted the opposite behaviour), put goal assertions only in `myRequests.goal.test.tsx`, move the goal version to `client/src/pages/goal/requests/` behind the `goalSurfaceOn('requests')` switch. It lands dark after the foundation's harness and primitives. Done: merged with `main`, gate green, captures, independent review passed (it shows credits), landed with the flag off.
+### D-048-p3-live-review (Tier 1, lane `d048-find`, branch `agent/queue/d048-live-review`)
+Review the live goal `/explore` (with its ask drawer) and `/requests` against their kit versions on `main` before #360 and #362 (`git show 0e1ccba4:<path>` reads them), fix what fails red-first, and pass an independent review. Check, with file:line:
+1. **The send path matches the kit composer:** idempotency key, company routing, the slot cap and the 2-per-company cap (D-006), the sign-in hand-off with a saved prefill, the free wait for an uncovered company (D-034) and the held state (D-047).
+2. **Balance:** read from the server; a failed load says so and never shows 0 (silent failure is a defect, AGENTS.md 0a; D-019); no credits pill on a referrer surface (D-055).
+3. **Money copy:** no retyped cost. Move the drawer's cost line ("Uses 1 of your N credits") into one function in `shared/moneyCopy.ts` that the drawer imports, flat 1 credit today, so D-132-audit can make it level-aware; wherever a cost is stated, `MONEY_SENTENCE` is shown.
+4. **Withdraw on `/requests`:** the credit-back text matches the ledger (D-021, D-050, D-061) and uses the existing route.
+5. **Lost tests:** every behaviour assertion in the kit tests these pages had on `main` before #360 and #362 (`client/src/pages/myRequests.kit.test.tsx`, `client/src/pages/explore.test.tsx`) still exists in the current tests; restore any that is gone.
+6. **States and pixels:** loading, empty, error and offline; keyboard and focus; 1280 and 390 captures of each state.
+A defect that hurts money or sign-in live is a P0: fix it first. Owned paths: `client/src/pages/Explore.tsx`, `client/src/pages/explore/**`, `client/src/pages/MyRequests.tsx`, `shared/moneyCopy.ts` (the new cost-line function only), their tests and `design/goal-ui/captures/{explore,requests}/**`. Done: every item verified or fixed, gate green, independent review passed, landed by fast-forward.
 
 ### ROW20-A (#310), ROW20-B (#311), ROW20-CD (#314) — queue row 20, in that order
 FND-7 left the row-20 set to the CEO: finish it, in order. A (`agent/qoder/row20-referral-lifecycle`, Tier 2) counts the kit Impact metrics from real history; B (`agent/qoder/row20b-company-demand`, Tier 2) counts seeker company demand as one vote per person, the count D-086 makes public; C+D (`agent/qoder/row20cd-thank-you-wall`, Tier 1 because of its migration) delivers the landed thank-you to its referrer exactly once. C+D named migration 0097, which the brand rename took: renumber it (rule 3). Done for each: merged with `main`, gate green, every number from the database and none invented (D-088), landed (C+D after its review).
@@ -51,4 +58,4 @@ FND-7 left the row-20 set to the CEO: finish it, in order. A (`agent/qoder/row20
 Queue task 13 slice A: pinned showcase work rides with the ask as a snapshot. It named migration 0096, which card validation took: renumber it (rule 3). Done: renumbered, merged with `main`, gate green, review passed (ids ownership-checked, count capped by the plan's existing `showcase.pins`, a later edit never rewrites an open ask), landed.
 
 ## Status
-Rows here that share a plan row (the D-048 rows share "D-048"; ROW20-A, -B and -CD share "20") write their status here, one line per task, never in the shared §3b row (D-134).
+Rows whose packet is this file and that share a plan row (the D-048 rows listed here share "D-048"; ROW20-A, -B and -CD share "20") write their status here, one line per task, never in the shared §3b row (D-134). Other D-048 rows write in the packet their task row names.

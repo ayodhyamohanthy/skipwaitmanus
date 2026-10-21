@@ -69,7 +69,7 @@ Related: level pricing (D-110) is direction + draft-scope tapback only - flag-of
 | D-048 phase 3 rollout map (8 waves) | #358 | draft | planning doc |
 | QA preview worker (share cards + company signal ON, fictional data, Basic Auth + noindex) | #383 | draft; deploy authorized and running Oct 21 12:20 IST | spend approved by the owner's word: "We have cloudflare credits of 10k$ so no worries" (Oct 21 12:20 IST, phonemsg-01M5EKJP736W2B4BA35WYT83ES; scope: lite, test sessions only, fictional data). Whether the $10k Cloudflare credit applies to this account is unverified |
 | D-107 claim your company (aggregate-only, free) | #384 | draft, flags OFF; owner build approval phonemsg-01M5DRBEBDB0P0HV7KW39075EM + phonemsg-01M5DRBHX150843DKETYP9FS7K (Oct 21 4:24 IST) | QA preview for flag-on verification |
-| Credit pack ladder 1/5/10/25/50 (₹99/$1 per credit) + D-110 level-denominated free credits | #380 | draft, flags OFF; D-110 evidence phonemsg-01M5E5BK5611HF5YHCDXKC3JZF | owner reviewing the pack table view |
+| Credit pack ladder 1/5/10/25/50 (₹99/$1 per credit) + D-110 level-denominated free credits | #380 | draft, flags OFF; D-110 evidence phonemsg-01M5E5BK5611HF5YHCDXKC3JZF | left the queue (D-135 (5)): D-132's credit rungs replace it; the owner closes #380 |
 | Job level classifier L1-L10 (level-scaled ask cost groundwork) | #381 | draft, flag OFF | feeds level pricing research below |
 | Referrer impact card (slice C, aggregates only) | #382 | draft, flags OFF | QA preview |
 | Seeker win card (opt-in copy card on accepted asks) | #375 | draft, flag OFF | QA preview |
@@ -110,7 +110,7 @@ Related: level pricing (D-110) is direction + draft-scope tapback only - flag-of
 - Referrer tips (seeker → referrer money) - NB: Swap's tip design (below) was approved for Swap only; SkipWait referrers stay never-paid (D-055) until he answers for SkipWait.
 - Machine translation of 6 languages vs preferences-only (D-093 builds the picker either way).
 - Human expert-review staffing; employer referral campaigns; PayPal reference transactions for USD auto-extend; CA advice on SAC/export once GST-registered; NY/CA counsel for Concierge.
-- Pack ladder table view (#380) and the D-056 pricing-freeze lift (two-week baseline gate).
+- The D-056 pricing-freeze lift (two-week baseline gate); #380's pack ladder is superseded by D-132 (D-135 (5)), for the owner to close.
 
 ## Swap (priority 2)
 

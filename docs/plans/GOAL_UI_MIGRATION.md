@@ -41,8 +41,9 @@ Nobody claims a surface by editing this file: two agents could each claim the sa
 | Surface | Row | Note |
 | --- | --- | --- |
 | Landing (signed out) | `D-048-p3-home` | done and live (#396, #407, #409; D-131); D-048-F-flags moves its env flags into `goalSurfaces.ts` |
-| Home (seeker) | `D-048-p3-explore` | PR #362 |
+| Home (signed in) | `D-048-p3-home-signed-in` | from the `D-048-P-marketing` packet: a signed-in seeker goes to /explore, a verified referrer to /referrer-home |
+| Home (seeker) | `D-048-p3-explore` | done, live in place (#362); D-048-p3-live-review checks it |
 | Company | `D-048-p3-company` | from the `D-048-P-seeker` packet |
-| Requests / My asks | `D-048-p3-requests` | PR #360 |
-| Plans | `D-132-plans-v2`, then `D-048-p3-plans` (/billing) | the frozen pricing page (#410, D-132, D-135, `docs/plans/D-132-pricing-v2.md`); prices go live only on the owner's enable word (D-123) |
+| Requests / My asks | `D-048-p3-requests` | done, live in place (#360); D-048-p3-live-review checks it |
+| Plans | `D-132-plans-v2` (done, flag off), then `D-048-p3-plans` (/billing) | the frozen pricing page (#410, D-132, D-135); D-132-audit checks it before the owner's enable word (D-123), `docs/plans/D-132-pricing-v2.md` |
 | Everything else | the rest of the split | one lane packet per cluster |
