@@ -27,20 +27,26 @@ export function CurrentPlanPanel({ summary, onCancel }: { summary: CreditSummary
       {CREDIT_PACKS_ON_SALE ? <Button asChild className="mt-4"><Link href="/premium?role=job_seeker">Add credits</Link></Button> : null}
     </Panel>;
   }
+  // GO-LIVE-1b ruling 6, QA review (#359 finding 1): only a confirmed fixed-term
+  // (non_renewing) subscription drops the cancel control; an active one keeps it.
   const cancelling = summary.subscriptionStatus === "non_renewing";
+  const renewing = summary.subscriptionStatus === "active";
   const termEnd = summary.subscriptionCurrentTermEnd ? kitDate(summary.subscriptionCurrentTermEnd) : null;
-  // Kit: "Renews 6 Nov 2026 · 8 open asks · 30 credits/month", every part from the server.
   const credits = summary.ledger && summary.ledger.creditsPerMonth > 0 ? `${summary.ledger.creditsPerMonth} credits/month` : null;
-  const renewing = [termEnd ? `Renews ${termEnd}` : null, openAsks(summary), credits].filter(Boolean).join(" · ");
+  const parts = [openAsks(summary), credits].filter(Boolean).join(" · ");
   return <Panel>
     <div className="flex flex-wrap items-start justify-between gap-3"><div>
       <span className="eyebrow">CURRENT PLAN</span>
       <h2 className="mt-1 text-2xl font-semibold">{billingPlanLabel(summary.plan)}</h2>
-      <p className="text-sm text-muted-foreground">{cancelling
-        ? `${termEnd ? `Ends ${termEnd}` : "Ends at the end of this paid cycle"} — you keep everything until then.`
-        : renewing || "Renews with your plan cycle"}</p>
+      <p className="text-sm text-muted-foreground">{[
+        termEnd ? `${renewing ? "Renews" : "Ends"} ${termEnd}` : (cancelling ? "Ends at the end of this paid cycle" : null),
+        parts || null,
+      ].filter(Boolean).join(" · ") || "Renews with your plan cycle"}{!renewing && (termEnd || cancelling) ? " — you keep everything until then." : ""}</p>
     </div></div>
-    {!cancelling && <div className="mt-5 grid gap-2 sm:grid-cols-3"><Button variant="outline" asChild><Link href="/plans">See plans<ArrowRight /></Link></Button><Button variant="ghost" className="sm:col-start-3" onClick={onCancel}>Cancel plan</Button></div>}
+    <div className="mt-5 grid gap-2 sm:grid-cols-3">
+      <Button variant="outline" asChild><Link href="/plans">See plans<ArrowRight /></Link></Button>
+      {renewing ? <Button variant="ghost" onClick={onCancel}>Cancel renewal</Button> : null}
+    </div>
   </Panel>;
 }
 

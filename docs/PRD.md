@@ -38,3 +38,9 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 - "{N} people are asking for a referral at {Company}." (singular for 1)
 - Empty: "No one has asked for {Company} yet." / "Nobody at {Company} is waiting right now. We'll tell you if that changes."
 - Bonus honesty: "Most companies pay their own referral bonus when a referral they make is hired. That programme is your employer's and they pay it - skipwait.me never pays referrers."
+
+## Go-to-market (D-102, changeable)
+- Referrers join any company free. Seekers ask for any company and see its true state: "Open: N verified employees" / "Not open yet: M people waiting. We'll tell you when {Company} opens." Under 3 shows "a few people". Empty: "No one has asked for {Company} yet."
+- No fake counters, countdowns or "only N spots". Every number is from the DB and may be zero.
+- Public launch when the 10 most-asked companies each have a verified referrer (confirmed by the owner, Oct 21; no payment test in the trigger).
+- Loops L1 to L4. Measure: asks per company, companies with a verified referrer, asks answered within 5 days, reports-as-annoying.

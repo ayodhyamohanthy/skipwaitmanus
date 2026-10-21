@@ -176,7 +176,7 @@ const CHOOSING_A_JOB_REFERRAL_PLATFORM: Guide = {
   faq: [
     { question: "What should I check before signing up for a job referral platform?", answer: "Four things: how a reviewer is tied to the employer, whether the employer sees your application before someone accepts it, when a credit is actually consumed and what the refund window is, and whether you can withdraw an unclaimed request and delete your resume." },
     { question: "How do I tell if a referral service actually has employees at the company?", answer: "Look for verification tied to the employer's email domain, such as a one-time code sent to a work address. A LinkedIn connection or a self-declared job title does not prove the person currently works there." },
-    { question: "Is it normal for a referral service to charge per request?", answer: "Yes. The detail that matters is timing: a credit reserved when you submit and only spent once an employee picks it up is a different product from one spent at submission. Check the refund window before you start sending requests." },
+    { question: "Is it normal for a referral service to charge per request?", answer: "Yes. The detail that matters is timing: a credit that costs nothing until a verified employee can see your request, comes back if you withdraw before pickup, and stays spent only once an employee picks it up is a different product from one spent at submission. Check the refund window before you start sending requests." },
   ],
 };
 

@@ -15,14 +15,15 @@ export const FREE_ASKS_PER_MONTH = FREE_PLAN.creditsPerMonth;
 
 /** A chip or trust-row label: the seeker half alone, never "free" on its own. */
 /** D-079: with card validation on, the seeker's free asks wait behind a one-time card check the provider owns (no charge). */
-export const FREE_ASKS_LOCKED_LINE = `Validate your card to unlock your ${FREE_ASKS_PER_MONTH} free asks every month. You won't be charged.`;
-export const FREE_ASKS_CHIP = `${FREE_ASKS_PER_MONTH} asks free every month`;
+export const FREE_ASKS_CHIP = `${FREE_ASKS_PER_MONTH} free credits every month`;
 
 /** The seeker half of the money sentence: what asking costs. */
-export const ASK_COST_SENTENCE = `${FREE_ASKS_CHIP}; more use credits.`;
+export const ASK_COST_SENTENCE = `${FREE_ASKS_CHIP}; extra asks use credits.`;
 
 /** The shortest referrer fact, for chips and footers. */
 export const REFERRERS_NEVER_PAID = "Referrers are never paid.";
+/** D-120 landing fair rules, line one (designer Oct 21): referring costs nothing and is never bought. */
+export const REFERRING_FREE_LINE = "Referring is always free. Referrers are never paid - their help stays genuine.";
 
 /** The referrer half: nobody pays a referrer, and a referrer never asks for money. */
 export const REFERRER_MONEY_SENTENCE = "Referrers are never paid and never ask you for money.";
@@ -53,11 +54,28 @@ export const MONEY_SENTENCE_SHORT = `${ASK_COST_SENTENCE} ${REFERRERS_NEVER_PAID
  */
 export const CREDIT_RULE = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, 1 credit is used; if you have none then, we hold the ask until you add one. The credit comes back once if you withdraw before someone picks the ask up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee, as long as the credit itself has not expired by then. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credit stays spent, even if they pass.`;
 
+/**
+ * D-132 (frozen Oct 21 18:42 IST): PAID credits never expire; free monthly
+ * credits still end with the month. These v2 strings are for the flagged
+ * pricing build ONLY (PLAN_FAMILY_V2, off) - the live strings above stay
+ * until the new model ships (D-042: copy never promises what the product
+ * does not do).
+ */
+export const CREDIT_RULE_V2 = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, credits are used by the role's level; if you have none then, we hold the ask until you add them. Credits used on an ask come back once if you withdraw before someone picks the ask up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee - paid credits never expire, so they always come back; free monthly credits come back only if their month has not ended. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credits stay spent, even if they pass.`;
+
+export const CREDIT_ENDED_CAVEAT_V2 = "paid credits never expire; free monthly credits end with the month";
+
 /** A credit goes back to the bucket it came from, so one whose month or plan cycle ended cannot come back (refundLedgerSpendTx logs 0). */
 export const CREDIT_ENDED_CAVEAT = "unless its month or plan has ended by then";
 
 /** The same rule as a footnote clause, after "Uses 1 credit and 1 open slot when a verified employee can see it". */
 export const CREDIT_RULE_SHORT = `nothing is used while it waits for coverage, and the credit comes back once if you withdraw before pickup or the ask expires unclaimed, ${CREDIT_ENDED_CAVEAT}`;
 
-/** What a paid plan does to the monthly allowance: it replaces the free asks, it does not add to them (planEntitlementsFor). */
-export const PAID_PLANS_SENTENCE = `Passes and Keep warm replace the ${FREE_ASKS_PER_MONTH} free asks with more credits each month.`;
+/**
+ * Neutral /plans SEO + sitemap copy (designer Oct 21): paid plans are not
+ * live, so the meta must not promise what they do ("Passes and Keep warm
+ * replace the 3 free asks" pre-announced D-115 mechanics - D-042: copy never
+ * promises what the product does not do). One config source; change here when
+ * the plan family goes live.
+ */
+export const PAID_PLANS_SENTENCE = "Extra credits when you need them; paid plans arrive soon.";

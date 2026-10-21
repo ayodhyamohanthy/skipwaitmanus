@@ -67,7 +67,9 @@ export async function openCycleTx(tx: LedgerTx, input: { userId: number; role: W
   // opens locked (no plan_grant row) until the provider confirms a card;
   // grantFreeCycleOnValidationTx grants the same month later under the same key.
   // The wallet patch matches the once-per-month shape the code already handles.
-  if (allowance > 0 && !input.subscriptionId && input.plan === "free" && role === "job_seeker" && freeCreditsRequireCardValidation() && !input.cardValidatedAt) allowance = 0;
+  // D-127 (supersedes D-079): free monthly credits are never gated on card
+  // validation at sign-up; validation happens at first purchase instead.
+  // The D-079 flag is retired and intentionally not read here.
   if (allowance > 0) {
     const cycleId = input.subscriptionId ? digest(input.subscriptionId, next.startsAt.toISOString()) : digest("free", next.key);
     const idempotencyKey = `plan-cycle:${cycleId}`;

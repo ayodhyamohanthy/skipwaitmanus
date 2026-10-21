@@ -8,7 +8,7 @@ import { FREE_MONTHLY_ALLOWANCE } from "../shared/subscriptionPlans";
 // actually grants.
 describe("D-063 money copy", () => {
   it("is the owner's sentence, verbatim", () => {
-    expect(MONEY_SENTENCE).toBe("3 asks free every month; more use credits. Referrers are never paid and never ask you for money.");
+    expect(MONEY_SENTENCE).toBe("3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money.");
     expect(MONEY_SENTENCE).toBe(`${ASK_COST_SENTENCE} ${REFERRER_MONEY_SENTENCE}`);
   });
 
@@ -18,10 +18,10 @@ describe("D-063 money copy", () => {
   });
 
   it("keeps both facts in the shorter form", () => {
-    expect(MONEY_SENTENCE_SHORT).toBe("3 asks free every month; more use credits. Referrers are never paid.");
+    expect(MONEY_SENTENCE_SHORT).toBe("3 free credits every month; extra asks use credits. Referrers are never paid.");
     expect(MONEY_SENTENCE_SHORT).toContain(ASK_COST_SENTENCE);
     expect(MONEY_SENTENCE_SHORT).toContain(REFERRERS_NEVER_PAID);
-    expect(FREE_ASKS_CHIP).toBe("3 asks free every month");
+    expect(FREE_ASKS_CHIP).toBe("3 free credits every month");
   });
 
   it("never calls referrals free without the monthly limit", () => {

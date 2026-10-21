@@ -13,7 +13,7 @@
 // pending work ranked above it has nobody on it; then pending work (a review,
 // findings to fix, a red pull request, a landing, a half-built claim nobody has
 // pushed to for 2 hours, a blocked priority for the CEO), top down; then new
-// work, top down. A red or blocked priority holds everything below it.
+// work, top down. A red or blocked priority holds its own lane and the tasks that depend on it; red `main` holds everything (D-109).
 
 export const IDLE_MS = 2 * 60 * 60 * 1000;
 /** A holder whose claim has been quiet this long re-takes it on the takeover ref instead of a side heartbeat. */
@@ -277,8 +277,6 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   if (mergedHeads === null) return { kind: "stop", reason: "cannot read the merged pull requests from GitHub; a landed task would look half-built, so nothing may be picked until they are known (D-085)" };
 
   const view = buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports });
-  const broken = view.find(v => v.open && v.pr && v.ci === "error");
-  if (broken) return { kind: "stop", reason: `cannot read CI for ${broken.pr} (${broken.task.id}); whether it is red decides what may run below it, so nothing may be picked until it is known (D-085)` };
   const byId = new Map(view.map(v => [v.task.id, v]));
   const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open));
   const { workAt, lockAt, archAt, quiet } = clock(branches, now);
@@ -286,7 +284,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
 
   const skipped = [];
   const skip = (v, reason) => { skipped.push({ id: v.task.id, reason }); return null; };
-  // D-085: a priority that is red (CI, or its team reported red or blocked) holds everything below it.
+  // D-085, narrowed by D-109: a priority that is red (CI, or its team reported red or blocked) holds its own lane
+  // and every task that depends on it, never unrelated lanes; red main (above) still holds everything.
   const gate = (reason, extra = {}) => ({ kind: "gate", reason, ...extra });
   const did = (v, roles) => Boolean(claimant) && roles.some(r => v[r].includes(claimant));
   const green = (v, why) => ({ kind: "green", task: v.task, work: v.work, pr: v.pr, from: v.owner, since: workAt(v), why });
@@ -333,6 +332,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
         if (v.unblocker && v.unblocker !== claimant && !quiet(archAt(v))) return gate(`${v.unblocker} is unblocking ${v.task.id}`);
         return { kind: "unblock", task: v.task, report: said, lock: v.archName, lockExists: Boolean(v.arch), from: v.unblocker };
       }
+      // D-109: one pull request whose CI cannot be read is skipped, never a stop for everyone (GitHub refuses a red landing anyway, D-082).
+      if (v.pr && v.ci === "error") return skip(v, `cannot read CI for ${v.pr}; skipped until it can be read`);
       if (v.pr && v.task.tier === 1) return tier1(v);
       const idle = quiet(workAt(v));
       if (v.pr && v.ci === "red") {
@@ -352,7 +353,6 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v) };
     }
     if (v.task.status === "architect") {
-      if (!ceo) return skip(v, "waits for Claude Code's packet");
       const writer = holderOf(v.arch, v.task.id);
       if (writer && !quiet(archAt(v))) return skip(v, `${writer} is writing its packet`);
       return { kind: "architect", task: v.task, lock: v.archName, lockExists: Boolean(v.arch), from: writer };
@@ -366,30 +366,33 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
 
   const mine = claimant ? ownWork(view, claimant) : null;
 
-  // Claude Code is the CEO: never development work, and below a red priority
-  // only packets and unblocking. Pass 1: pending work top down, stopping at your
-  // own work; pass 2: new work.
+  // Claude Code is the CEO: never development work. Pass 1: pending work top down,
+  // stopping at your own work; pass 2: new work. A red or blocked priority holds
+  // only its lane and its dependents (D-109).
   const actions = [];
   let gateAt = -1, gateAction = null;
+  const heldLanes = new Map(), heldIds = new Map();
+  const heldBy = v => heldLanes.get(v.task.lane) ?? v.task.dependsOn.map(d => heldIds.get(d)).find(Boolean);
   for (let i = 0; i < view.length; i++) {
     if (mine && i >= mine.at) break;
+    const holder = heldBy(view[i]);
+    if (holder && !view[i].done) { heldIds.set(view[i].task.id, holder); skip(view[i], `waits for red or blocked ${holder} (same lane or depends on it)`); continue; }
     const action = actions[i] = actionFor(view[i]);
     if (!action) continue;
     if (action.kind === "gate") {
       if (gateAt < 0) { gateAt = i; gateAction = action; }
-      if (!ceo) break;
+      heldLanes.set(view[i].task.lane, view[i].task.id); heldIds.set(view[i].task.id, view[i].task.id);
       skip(view[i], action.reason);
       continue;
     }
     if (!PENDING_KINDS.has(action.kind)) continue;
     if (ceo && (DEV_KINDS.has(action.kind) || (action.kind === "land" && !action.tier1))) { skip(view[i], "development work: the open models build it (D-085)"); continue; }
-    if (ceo && gateAt >= 0 && action.kind !== "unblock") { skip(view[i], `waits below red priority ${view[gateAt].task.id}`); continue; }
     // D-085: pending work ranked above your own comes first; your own claim waits, pushed.
     return mine ? { ...action, holds: { id: mine.task.id, branch: mine.work ?? mine.lock } } : action;
   }
   // Your own work: a red priority above it whose owner is on it does not stop you (your hands cannot help it).
   if (mine) { const { at, ...pick } = mine; return pick; }
-  for (let i = 0; i < (gateAt >= 0 && !ceo ? gateAt : view.length); i++) {
+  for (let i = 0; i < view.length; i++) {
     const action = actions[i];
     if (!action || action.kind === "gate" || PENDING_KINDS.has(action.kind)) continue;
     if (ceo && action.kind !== "architect") { skip(view[i], "development work: the open models build it (D-085)"); continue; }

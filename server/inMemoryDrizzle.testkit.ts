@@ -120,6 +120,14 @@ function countTarget(field: SQL): Column | "*" | undefined {
   return is(target, SQL) && significant(target).map(textOf).join("") === "*" ? "*" : undefined;
 }
 
+/** The target of a `min(col)` field as drizzle renders it; undefined for any other SQL. */
+function minTarget(field: SQL): Column | undefined {
+  const chunks = significant(field);
+  const [open, target, close] = chunks;
+  if (chunks.length !== 3 || textOf(open) !== "min(" || textOf(close) !== ")") return undefined;
+  return is(target, Column) ? target : undefined;
+}
+
 /** One output row per GROUP BY group (one group over every row for a bare count, as MySQL does). */
 function aggregate(projection: Projection, groups: readonly Column[] | undefined, kept: readonly Joined[]): Selected[] {
   const fields = Object.entries(projection);
@@ -133,7 +141,9 @@ function aggregate(projection: Projection, groups: readonly Column[] | undefined
     const out: Selected = {};
     for (const [key, field] of fields) {
       const target = is(field, SQL) ? countTarget(field) : undefined;
+      const minColumn = is(field, SQL) ? minTarget(field) : undefined;
       if (target) out[key] = target === "*" ? members.length : members.filter((member: Joined) => cellOf(target, member) !== null).length;
+      else if (minColumn) { const values = members.map((member: Joined) => cellOf(minColumn, member)).filter((value): value is NonNullable<Cell> => value !== null); if (values.length === 0) out[key] = null; else { let lowest = values[0]; for (const value of values) { const a = comparable(value); const b = comparable(lowest); if (a !== null && b !== null && a < b) lowest = value; } out[key] = lowest; } }
       else if (is(field, Column)) out[key] = members[0] ? structuredClone(cellOf(field, members[0])) : null;
       else return fail(`computed projection ${key}`);
     }

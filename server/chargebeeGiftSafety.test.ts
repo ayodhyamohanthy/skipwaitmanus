@@ -1,3 +1,4 @@
+// D-067 recovery: transport belongs exclusively to the durable scheduled consumer.
 import express from "express";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -79,7 +80,7 @@ describe("gift event safety", () => {
     expect(response.status).toBe(200);
     expect(applySubscriptionEvent).toHaveBeenCalledWith(expect.objectContaining({ subscriptionId: "sub_gifted_1", plan: undefined, itemPriceId: "skipwait_pro_monthly-USD" }));
     expect(fulfillPayment).not.toHaveBeenCalled();
-    expect(alertRetiredPlanEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_gift_claim", subscriptionId: "sub_gifted_1", itemPriceId: "skipwait_pro_monthly-USD" }));
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
   });
 
   it("never resolves a gift payment against another checkout's hosted page", async () => {
