@@ -107,9 +107,10 @@ describe("AppShell on GoalShell (W0)", () => {
     for (const hidden of ["/conversation/req-1", "/thread/req-1", "/messages"]) {
       state.path = hidden;
       const { container, unmount } = render(<AppShell><p>page</p></AppShell>);
-      // Only the desktop rail remains; the grid reserves no empty 56px third track.
+      // Only the desktop rail remains (its gdesk:sticky is desktop-only); the
+      // phone bar and its third track are gone.
       const navs = screen.getAllByRole("navigation", { name: "Primary" });
-      expect(navs.some(bar => bar.className.includes("sticky"))).toBe(false);
+      expect(navs.some(bar => bar.className.includes("max-gdesk:sticky"))).toBe(false);
       expect(container.querySelector('[data-testid="goal-shell"]')?.className ?? "").not.toContain("_56px]");
       unmount();
     }
