@@ -319,7 +319,8 @@ describe("PublicProfile page", () => {
     expect(await screen.findByText("Asha R.")).toBeTruthy();
     expect(screen.getByText("Verified at wipro.com via work email")).toBeTruthy();
     expect(screen.getByText("Redesign")).toBeTruthy();
-    expect(document.head.querySelector('meta[name="robots"]')?.getAttribute("content")).toBe("noindex");
+    // The robots tag is written by an effect after the profile paints; under CI load findByText can resolve first.
+    await waitFor(() => expect(document.head.querySelector('meta[name="robots"]')?.getAttribute("content")).toBe("noindex"));
     expect(screen.queryByText("Rahul")).toBeNull();
   });
 
