@@ -16,7 +16,7 @@ Approval evidence rule: an item is "approved" only with a real owner phone-messa
 2. **Swap** - works whenever SkipWait is waiting on the owner.
 3. **FreeCoffee** - after Swap.
 
-(Owner, Oct 21 7:48 IST, phonemsg-01M5E422R3ZS8K9K0MCMEXZ5FV.)
+Owner, Oct 21 7:48 IST (phonemsg-01M5E422R3ZS8K9K0MCMEXZ5FV): "reshuffle tasks according to priorities". The explicit SkipWait > Swap > FreeCoffee order was relayed and confirmed via the main agent's reply, not quoted from the owner directly.
 
 Standing rules that shape every item: win-win verdict - if any side (seeker, referrer, company) loses, including on monetization feel, the idea is REDESIGN NOT SHIP (D-096; owner Oct 21 7:45, phonemsg-01M5E3VRPA4VBPK9BDXV998J48); value-adding features are pre-approved to design and build, but cash spend, posts in the owner's name, pricing/credit-rule changes and charging for the basic ask still need his per-item yes (D-091); every feature ships behind a flag that stays off until QA verifies (D-097).
 
@@ -39,7 +39,7 @@ Standing rules that shape every item: win-win verdict - if any side (seeker, ref
 
 Idea lab items also unapproved: the PPP premium price book (proposal with cited comparables sent Oct 21 7:44; owner gave propose-and-set authority for OPTIONAL extras only, phonemsg-01M5E3RT62VJKQJFK59XNR2AMX - the prices themselves await his yes); launch-bang hook ideas (deliverable due in the lab's 1:40 PM IST cycle). Every lab idea now ends with a win-win verdict: any side losing = REDESIGN NOT SHIP (phonemsg-01M5E3VRPA4VBPK9BDXV998J48).
 
-Related: the owner ❤️-reacted (Oct 21 10:13) to levels applying to the 3 free monthly credits (3 free credits = one L3 ask or three L1 asks) - tapback-based yes for the DRAFT price book only, flag-off and changeable; not a go-live approval. Recorded as D-110 in the #380 draft (phonemsg-01M5E5BK5611HF5YHCDXKC3JZF).
+Related (D-110, in the #380 draft): in discussion the owner said "Im sure about level pricing" (Oct 21 8:11, phonemsg-01M5E5BK5611HF5YHCDXKC3JZF) - direction, not the recorded approval. The recorded yes is his ❤️ tapback (Oct 21 10:13) on the recommendation that levels apply to the 3 free monthly credits (3 free credits = one L3 ask or three L1 asks): tapback-based, draft-scope only, flag-off and changeable; not a go-live approval.
 
 ## SkipWait (priority 1)
 
@@ -65,7 +65,7 @@ Related: the owner ❤️-reacted (Oct 21 10:13) to levels applying to the 3 fre
 | D-048 phase 3: /explore to goal directory | #362 | open | designer/QA flow |
 | D-048 phase 3: /requests to goal list | #360 | open | same |
 | D-048 phase 3 rollout map (8 waves) | #358 | draft | planning doc |
-| QA preview worker (share cards + company signal ON, fictional data, Basic Auth + noindex) | #383 | draft; deploy run in flight Oct 21 ~11:00 IST | infra deploy; spend approved on lite-only terms |
+| QA preview worker (share cards + company signal ON, fictional data, Basic Auth + noindex) | #383 | draft; pipeline proven up to the deploy gate Oct 21 11:53 IST | spend approval is tapback-based (owner 👍 at 10:57 and 10:58 on main's cost message: lite only, sleep-after-idle, test sessions only); an explicit "yes" word has been requested and the worker deploy step waits for it |
 | D-107 claim your company (aggregate-only, free) | #384 | draft, flags OFF; owner build approval phonemsg-01M5DRBEBDB0P0HV7KW39075EM + phonemsg-01M5DRBHX150843DKETYP9FS7K (Oct 21 4:24 IST) | QA preview for flag-on verification |
 | Credit pack ladder 1/5/10/25/50 (₹99/$1 per credit) + D-110 level-denominated free credits | #380 | draft, flags OFF; D-110 evidence phonemsg-01M5E5BK5611HF5YHCDXKC3JZF | owner reviewing the pack table view |
 | Job level classifier L1-L10 (level-scaled ask cost groundwork) | #381 | draft, flag OFF | feeds level pricing research below |
@@ -124,7 +124,7 @@ Swap rule: it builds whenever SkipWait is waiting on the owner (priority steer a
 | Item | Status |
 | --- | --- |
 | Site live at freecoffee.tech, backend health green (checked Oct 21 11:17 IST) | shipped |
-| New scope | none today - owner: "no new big scope, no spend" for priority 3 (phonemsg-01M5E422R3ZS8K9K0MCMEXZ5FV) |
+| New scope | none today - "no new big scope, no spend" for priority 3 (priority steer relayed via main, Oct 21 7:48 IST) |
 
 ---
 Last updated: Oct 21 2026 ~11:25 IST by the SkipWait engineering desk, on the owner's request (phonemsg-01M5EG36HRXEZYJN5XDGG2W1CS). Update this file whenever an item changes status.
