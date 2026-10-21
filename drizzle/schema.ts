@@ -1021,7 +1021,7 @@ export const referralAttachments = mysqlTable("referralAttachments", {
   fileSize: int("fileSize").notNull(),
   uploadSessionId: varchar("uploadSessionId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("referral_attachments_request_idx").on(table.referralRequestId), index("referral_attachments_owner_idx").on(table.ownerId), uniqueIndex("referral_attachments_upload_session_unique").on(table.uploadSessionId)]);
+}, table => [foreignKey({ name: "referralAttachments_uploadSessionId_fk", columns: [table.uploadSessionId], foreignColumns: [resumeUploadSessions.id] }).onDelete("set null"), index("referral_attachments_request_idx").on(table.referralRequestId), index("referral_attachments_owner_idx").on(table.ownerId), uniqueIndex("referral_attachments_upload_session_unique").on(table.uploadSessionId)]);
 
 export const resumeUploadSessions = mysqlTable("resumeUploadSessions", {
   id: varchar("id", { length: 64 }).primaryKey(),
