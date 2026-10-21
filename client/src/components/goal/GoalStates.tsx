@@ -10,7 +10,7 @@ export function GoalEmptyState({ title, body, action, className }: { title: stri
       <p className="text-g-label text-g-ink">{title}</p>
       {body ? <p className="mt-1 text-g-meta text-g-ink-2">{body}</p> : null}
       {action ? (
-        <GoalButton className="mt-3" size="sm" variant="ghost" onClick={action.onClick} {...(action.href ? { asChild: true } : {})}>
+        <GoalButton className="mt-3" size="sm" variant="outline" onClick={action.onClick} {...(action.href ? { asChild: true } : {})}>
           {action.href ? <a href={action.href}>{action.label}</a> : action.label}
         </GoalButton>
       ) : null}

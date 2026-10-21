@@ -2,9 +2,12 @@
 // Goal-UI composite pins (packet §6b). Behaviour only; pixel checks are §6c.
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
+import { Router } from "wouter";
+import { memoryLocation } from "wouter/memory-location";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GoalShell } from "./GoalShell";
-import { GoalListRow } from "./GoalListRow";
+import { GoalCompanyRow, GoalListRow } from "./GoalListRow";
 import { GoalDetailPane } from "./GoalDetailPane";
 import { GoalDecisionBar } from "./GoalDecisionBar";
 import { GoalPassReasons } from "./GoalPassReasons";
@@ -40,9 +43,16 @@ const SHELL_PROPS = {
   alertsHref: "/alerts",
 };
 
+/** The shell and its rows navigate with wouter Links, so they need a router even in jsdom. */
+function renderInRouter(ui: ReactElement) {
+  const location = memoryLocation({ path: "/queue", record: true });
+  render(<Router hook={location.hook} searchHook={location.searchHook}>{ui}</Router>);
+  return location;
+}
+
 describe("GoalShell", () => {
   it("links every nav item to its route, with aria-current on the active one", () => {
-    render(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
     const primaryNavs = screen.getAllByRole("navigation", { name: /primary/i });
     expect(primaryNavs.length).toBeGreaterThan(0);
     const current = screen.getAllByRole("link", { current: "page" });
@@ -52,7 +62,7 @@ describe("GoalShell", () => {
   });
 
   it("hides the queue for a non-referrer and shows Give a referral to the referrer sign-in", () => {
-    render(<GoalShell {...SHELL_PROPS} active="find" verifiedReferrer={false}><p>content</p></GoalShell>);
+    renderInRouter(<GoalShell {...SHELL_PROPS} active="find" verifiedReferrer={false}><p>content</p></GoalShell>);
     const navs = screen.getAllByRole("navigation", { name: /primary/i });
     const hrefs = navs.flatMap(nav => Array.from(nav.querySelectorAll("a")).map(a => a.getAttribute("href")));
     expect(hrefs).not.toContain("/queue");
@@ -76,19 +86,39 @@ describe("GoalShell", () => {
   });
 
   it("renders no credits pill when credits is null", () => {
-    render(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
     expect(screen.queryByTestId("goal-credits-pill")).toBeNull();
   });
 
+  it("a ready credit balance is a real link to the credit details, never a dead number", () => {
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer credits={{ state: "ready", count: 4 }}><p>content</p></GoalShell>);
+    const pills = screen.getAllByTestId("goal-credits-pill");
+    expect(pills[0].textContent).toBe("4 credits");
+    expect(pills[0].getAttribute("href")).toBe("/plans");
+    expect(pills[0].getAttribute("aria-label")).toBe("4 credits available. Open credit details");
+  });
+
+  it("the account slot prefers the adapter's menu (sign-in when signed out) and otherwise shows the account-menu button", () => {
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
+    const avatar = screen.getAllByTestId("goal-avatar")[0];
+    expect(avatar.tagName).toBe("BUTTON");
+    expect(avatar.getAttribute("aria-label")).toBe("Account menu");
+    cleanup();
+    // AppShell passes account.menu for signed-out visitors (a Sign in link); the shell must render it, not an avatar.
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer account={{ initials: "·", menu: <a href="/sign-in">Sign in</a> }}><p>content</p></GoalShell>);
+    expect(screen.queryByTestId("goal-avatar")).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Sign in" }).length).toBeGreaterThan(0);
+  });
+
   it("credits error renders the error copy and never 0", () => {
-    render(<GoalShell {...SHELL_PROPS} verifiedReferrer credits={{ state: "error", onRetry: () => {} }}><p>content</p></GoalShell>);
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer credits={{ state: "error", onRetry: () => {} }}><p>content</p></GoalShell>);
     const pills = screen.getAllByTestId("goal-credits-pill");
     expect(pills[0].textContent).toContain("Balance didn't load");
     expect(pills[0].textContent).not.toContain("0");
   });
 
   it("root carries g-scope", () => {
-    render(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
     expect(screen.getByTestId("goal-shell").className).toContain("g-scope");
   });
 });
@@ -178,6 +208,26 @@ describe("GoalDrawer and GoalSheet", () => {
     render(<GoalSheet open onOpenChange={() => {}} title="Pass on this ask"><p>body</p></GoalSheet>);
     expect(screen.getByRole("dialog", { name: /pass on this ask/i })).toBeTruthy();
     expect(screen.getByTestId("goal-sheet").className).toContain("g-scope");
+  });
+});
+
+describe("GoalCompanyRow", () => {
+  it("is a 52px selectable row named by company and availability, never a fake link", async () => {
+    const onSelect = vi.fn();
+    render(<GoalCompanyRow name="Wipro" initials="W" functions={["Engineering", "Data"]} open onSelect={onSelect} />);
+    const row = screen.getByRole("button", { name: "Wipro, open to requests" });
+    expect(row.className).toContain("h-[52px]");
+    expect(row.getAttribute("href")).toBeNull();
+    expect(screen.getByTestId("goal-availability").textContent).toBe("Open to requests");
+    await userEvent.click(row);
+    expect(onSelect).toHaveBeenCalled();
+  });
+
+  it("marks the selected row with the ink bar and aria-current", () => {
+    render(<GoalCompanyRow name="Merkle" initials="M" functions={["Design"]} open={false} selected />);
+    const row = screen.getByRole("button", { name: "Merkle, not open yet" });
+    expect(row.getAttribute("aria-current")).toBe("true");
+    expect(row.className).toContain("bg-g-surface-selected");
   });
 });
 
