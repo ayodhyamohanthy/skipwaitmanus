@@ -82,13 +82,6 @@ export function numberWord(value: number): string {
   return word ?? String(value);
 }
 
-/** Kit /explore eyebrow, counting only companies that are open right now. */
-export function openDoorsEyebrow(openCount: number | undefined): string {
-  if (openCount === undefined) return "OPEN DOORS · MORE TO COME";
-  if (openCount === 0) return "NO OPEN DOORS YET · MORE TO COME";
-  return `${numberWord(openCount).toUpperCase()} OPEN ${openCount === 1 ? "DOOR" : "DOORS"} · MORE TO COME`;
-}
-
 /** "Find people open to referral requests at A, B, and C." from the live directory. */
 export function exploreDescription(companies: readonly PublicCompany[]): string | undefined {
   if (companies.length === 0) return undefined;

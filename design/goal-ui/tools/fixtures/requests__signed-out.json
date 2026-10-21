@@ -1,0 +1,14 @@
+{
+  "signedIn": false,
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 401,
+      "body": {
+        "error": "Sign in"
+      }
+    }
+  ]
+}
