@@ -1,4 +1,5 @@
 import { bigint, boolean, customType, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar, foreignKey, ForeignKeyBuilder } from "drizzle-orm/mysql-core";
+import type { AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const canonicalPeople = mysqlTable("canonicalPeople", {
   id: int("id").autoincrement().primaryKey(),
@@ -1036,7 +1037,7 @@ export const resumeUploadSessions = mysqlTable("resumeUploadSessions", {
   finalizationOwner: varchar("finalizationOwner", { length: 64 }),
   finalizationLeaseUntil: timestamp("finalizationLeaseUntil"),
   permanentStorageKey: varchar("permanentStorageKey", { length: 1024 }),
-  attachmentId: int("attachmentId").references(() => referralAttachments.id, { onDelete: "set null" }),
+  attachmentId: int("attachmentId").references((): AnyMySqlColumn => referralAttachments.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("resume_upload_sessions_owner_status_idx").on(table.ownerId, table.status, table.createdAt), uniqueIndex("resume_upload_sessions_owner_client_unique").on(table.ownerId, table.clientUploadId)]);
