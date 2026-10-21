@@ -2,7 +2,7 @@
 // GO-LIVE-1b ruling 5: the pending return recovers a pass checkout through
 // /api/chargebee/subscription-recovery with bounded retries, then tells the
 // truth - active with its end date, review, expired, or still confirming.
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PendingCheckoutReturn } from "./PendingCheckoutReturn";
 
@@ -37,8 +37,26 @@ describe("pending checkout return (GO-LIVE-1b)", () => {
     expect(screen.getByRole("heading", { name: "We’re confirming your payment." })).toBeTruthy();
   });
 
-  it("an expired checkout says nothing was charged and stops", async () => {
+  it("re-checks on window focus when the payment event is late, still within three tries", async () => {
+    // QA review (#359 finding 2): the credit recovery this ruling points at re-checks on
+    // focus; a seeker who comes back to the tab must not sit on "confirming" for an hour.
     seedPass();
+    const fetchMock = vi.fn(async () => ok({ status: "pending" }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<PendingCheckoutReturn role="job_seeker" getToken={getToken} />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1), { timeout: 4_000 });
+    act(() => { window.dispatchEvent(new Event("focus")); });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2), { timeout: 4_000 });
+    act(() => { window.dispatchEvent(new Event("focus")); });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3), { timeout: 4_000 });
+    // Capped: a fourth focus and every scheduled retry add nothing.
+    act(() => { window.dispatchEvent(new Event("focus")); });
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(screen.getByRole("heading", { name: "We’re confirming your payment." })).toBeTruthy();
+  });
+
+  it("an expired checkout says nothing was charged and stops", async () => {    seedPass();
     const fetchMock = vi.fn(async () => ok({ status: "cancelled" }));
     vi.stubGlobal("fetch", fetchMock);
     render(<PendingCheckoutReturn role="job_seeker" getToken={getToken} />);

@@ -4334,7 +4334,6 @@ export async function listPendingSubscriptionCheckoutIntents(olderThan: Date, ne
     .limit(limit);
 }
 
-/** GO-LIVE-1b: an expired checkout page marks its pending intent cancelled; never an activated one. */
 /** GO-LIVE-1b (QA #359): park a pending intent for human review; it stops re-alerting and is never reported cancelled. */
 export async function markSubscriptionCheckoutIntentReview(hostedPageId: string, reviewReason: string) {
   const db = await getDb();
@@ -4342,6 +4341,7 @@ export async function markSubscriptionCheckoutIntentReview(hostedPageId: string,
   await db.update(subscriptionCheckoutIntents).set({ failureReason: reviewReason.slice(0, 32) }).where(and(eq(subscriptionCheckoutIntents.hostedPageId, hostedPageId), eq(subscriptionCheckoutIntents.status, "pending"), isNull(subscriptionCheckoutIntents.failureReason)));
 }
 
+/** GO-LIVE-1b: an expired checkout page marks its pending intent cancelled; never an activated one. */
 export async function markSubscriptionCheckoutIntentCancelled(hostedPageId: string, failureReason: string) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");

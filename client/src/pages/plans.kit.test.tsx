@@ -122,7 +122,7 @@ describe("Plans on live data", () => {
   });
 
   it("marks the account's active plan from the summary, with its enforced limits, its end date and the renewal control (QA #359)", async () => {
-    stub(start);
+    const fetchMock = stub(start, url => url.includes("/subscription-cancel") ? ok({ currentTermEnd: "2026-11-06T00:00:00.000Z" }) : undefined);
     render(<Plans />);
     const card = (await screen.findByRole("heading", { name: "Start", level: 2 })).closest("article") as HTMLElement;
     expect(card.className).toContain("featured");
@@ -141,7 +141,25 @@ describe("Plans on live data", () => {
     expect(screen.getByText("9 credits")).toBeTruthy();
     expect(screen.getByText("3 of 12")).toBeTruthy();
     expect(screen.getByText(/Your plan adds 10 each cycle\./)).toBeTruthy();
+    // QA review (#359 finding 1): the cancel-renewal walk-through is restored under
+    // the card's live labels, so a broken confirm fails here.
+    fireEvent.click(within(card).getByRole("button", { name: "Cancel renewal" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Yes, cancel renewal" }));
+    expect(await screen.findByText("Renewal is off")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith("/api/chargebee/subscription-cancel", expect.objectContaining({ method: "POST" }));
     expect(openedCheckout).not.toHaveBeenCalled();
+  });
+
+  // Review round 2: a cancel request that never reaches skipwait.me shows the plain network
+  // message, never the browser's raw "Failed to fetch". Restored under the live labels (QA #359 finding 1).
+  it("says plainly when cancel renewal cannot reach skipwait.me", async () => {
+    stub(start, url => { if (url.includes("/subscription-cancel")) throw new TypeError("Failed to fetch"); return undefined; });
+    render(<Plans />);
+    const card = (await screen.findByRole("heading", { name: "Start", level: 2 })).closest("article") as HTMLElement;
+    fireEvent.click(within(card).getByRole("button", { name: "Cancel renewal" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Yes, cancel renewal" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("We couldn’t reach skipwait.me. Check your connection and try again.");
+    expect(within(card).getByText("Your plan is active")).toBeTruthy();
   });
 
   it("reads a stale Pro or Max summary as Free: no plan card, no cancel, no retired name", async () => {

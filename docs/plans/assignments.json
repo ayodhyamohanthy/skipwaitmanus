@@ -43,7 +43,7 @@
       "dependsOn": [
         "GO-LIVE-1"
       ],
-      "note": "D-084. Passes are off (PASS_SALES_ENABLED=false, P0 after #351). The switch commit needs test-site evidence (packet \u00a74.5); without it the packet lands with passes still off."
+      "note": "D-084. Passes are off (PASS_SALES_ENABLED=false, P0 after #351). The switch commit needs test-site evidence (packet \u00a74.5); without it the packet lands with passes still off. Review findings (PR #359) fixed by Buffy \u00b7 freebuff-9c81a63a, Oct 21; back for re-review."
     },
     {
       "id": "D-038-reconcile",

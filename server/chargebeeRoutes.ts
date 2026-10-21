@@ -332,9 +332,16 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       // Parked for human review (mismatch, refused or a non-access subscription status): say so,
       // never "cancelled", and never alert again - the park already alerted once.
       if (intent.failureReason) return res.json({ status: "requires_review", summary: await summary() });
-      const runtime = deps.retrieveCheckout ? undefined : resolveChargebeeRuntime(req.hostname);
-      if (!deps.retrieveCheckout && !runtime) return res.status(503).json({ error: "Chargebee is not configured" });
-      const page = await (deps.retrieveCheckout ?? ((id: string) => retrieveCheckoutSubscription(runtime!, id)))(hostedPageId);
+      // QA review (#359 finding 4): no non-null assertion - the injected reader wins,
+      // else the configured site is resolved and a missing one answers 503.
+      let page: RetrievedCheckoutSubscription | null;
+      if (deps.retrieveCheckout) {
+        page = await deps.retrieveCheckout(hostedPageId);
+      } else {
+        const runtime = resolveChargebeeRuntime(req.hostname);
+        if (!runtime) return res.status(503).json({ error: "Chargebee is not configured" });
+        page = await retrieveCheckoutSubscription(runtime, hostedPageId);
+      }
       if (!page) return res.json({ status: "pending", summary: await summary() });
       if (page.state === "cancelled" || page.state === "expired") {
         await deps.markSubscriptionCheckoutIntentCancelled?.(hostedPageId, "checkout_expired");

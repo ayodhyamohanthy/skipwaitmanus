@@ -14,7 +14,8 @@ import type { Role } from "./PlansKitSections";
 type RecoveryState = "checking" | "activated" | "review" | "cancelled" | "still_pending";
 type RecoveryResponse = { status?: string; summary?: { subscriptionCurrentTermEnd?: string | null } };
 
-const RETRY_DELAYS_MS = [0, 2_500, 7_500] as const; // bounded: three tries, then stop
+// Bounded: three tries in all, shared by the delays and the focus re-check (ruling 2).
+const RETRY_DELAYS_MS = [0, 2_500, 7_500] as const;
 
 export function PendingCheckoutReturn({ role, getToken }: { role: Role; getToken: () => Promise<string | null> }) {
   const pending = readPendingCheckout();
@@ -25,8 +26,14 @@ export function PendingCheckoutReturn({ role, getToken }: { role: Role; getToken
   useEffect(() => {
     if (!isPass || !pending) return;
     let stopped = false;
+    let settled = false; // a terminal answer needs no further try
+    let tries = 0;
+    let inFlight = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const attempt = async (index: number): Promise<void> => {
+    const attempt = async (): Promise<void> => {
+      if (stopped || settled || inFlight) return;
+      inFlight = true;
+      tries += 1;
       try {
         const token = await getToken();
         const response = await fetch("/api/chargebee/subscription-recovery", {
@@ -37,20 +44,29 @@ export function PendingCheckoutReturn({ role, getToken }: { role: Role; getToken
         const payload = await response.json().catch(() => ({})) as RecoveryResponse;
         if (stopped) return;
         if (payload.status === "activated") {
+          settled = true;
           setEndsAt(payload.summary?.subscriptionCurrentTermEnd ? kitDate(payload.summary.subscriptionCurrentTermEnd) : null);
           setState("activated");
           clearPendingCheckout();
           return;
         }
-        if (payload.status === "requires_review") { setState("review"); return; }
-        if (payload.status === "cancelled") { setState("cancelled"); clearPendingCheckout(); return; }
+        if (payload.status === "requires_review") { settled = true; setState("review"); return; }
+        if (payload.status === "cancelled") { settled = true; setState("cancelled"); clearPendingCheckout(); return; }
       } catch { /* one failed try only means "still confirming" */ }
-      if (stopped) return;
-      if (index + 1 < RETRY_DELAYS_MS.length) timer = setTimeout(() => void attempt(index + 1), RETRY_DELAYS_MS[index + 1]);
+      finally { inFlight = false; }
+      if (stopped || settled) return;
+      if (tries < RETRY_DELAYS_MS.length) timer = setTimeout(() => void attempt(), RETRY_DELAYS_MS[tries]);
       else setState("still_pending");
     };
-    timer = setTimeout(() => void attempt(0), RETRY_DELAYS_MS[0]);
-    return () => { stopped = true; if (timer) clearTimeout(timer); };
+    // Ruling 2: coming back to the tab re-checks at once, inside the same three tries.
+    const onFocus = () => {
+      if (stopped || settled || inFlight || tries >= RETRY_DELAYS_MS.length) return;
+      if (timer) { clearTimeout(timer); timer = undefined; }
+      void attempt();
+    };
+    timer = setTimeout(() => void attempt(), RETRY_DELAYS_MS[0]);
+    window.addEventListener("focus", onFocus);
+    return () => { stopped = true; if (timer) clearTimeout(timer); window.removeEventListener("focus", onFocus); };
   }, [isPass, pending?.hostedPageId, pending?.role, getToken]);
 
   if (state === "activated") {

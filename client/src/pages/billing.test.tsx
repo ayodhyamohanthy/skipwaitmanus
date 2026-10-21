@@ -43,6 +43,7 @@ describe("Billing page", () => {
       { id: 1, provider: "chargebee", amount: 9900, currency: "INR", tokenCount: 1, status: "refunded", providerInvoiceId: "inv-1", createdAt: "2026-09-06T06:00:00.000Z" },
     ];
     const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("/subscription-cancel")) return ok({ currentTermEnd: "2026-11-06T00:00:00.000Z" });
       if (String(url).includes("/billing/receipts")) return ok({ receipts });
       return ok({ summary: startSummary });
     });
@@ -60,13 +61,46 @@ describe("Billing page", () => {
     expect(screen.getByText("$5")).toBeTruthy();
     expect(screen.getByText("₹99")).toBeTruthy();
     expect(screen.getByText("Refunded")).toBeTruthy();
+    // QA review (#359 finding 1): the cancel walk-through is restored under the
+    // control's live name ("Cancel renewal"), so a broken dialog fails here.
+    fireEvent.click(screen.getByRole("button", { name: "Cancel renewal" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Before you go" })).toBeTruthy();
+    expect(within(dialog).getByText(/You keep Start until 6 Nov\./)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel anyway" }));
+    expect(await within(screen.getByRole("dialog")).findByRole("heading", { name: "Plan cancelled." })).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith("/api/chargebee/subscription-cancel", expect.objectContaining({ method: "POST" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText("Ends 6 Nov 2026 · 8 open asks · 10 credits/month — you keep everything until then.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Cancel renewal" })).toBeNull();
+  });
+
+  it("keeps the renewal when the user backs out, and announces a failed cancellation in the dialog", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("/subscription-cancel")) return { ok: false, status: 502, json: async () => ({ error: "We could not schedule your cancellation" }) };
+      if (String(url).includes("/billing/receipts")) return ok({ receipts: [] });
+      return ok({ summary: startSummary });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Billing />);
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel renewal" }));
+    fireEvent.click(screen.getByRole("button", { name: "Keep my plan" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/chargebee/subscription-cancel", expect.anything());
+    fireEvent.click(screen.getByRole("button", { name: "Cancel renewal" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel anyway" }));
+    expect((await within(screen.getByRole("dialog")).findByRole("alert")).textContent).toContain("We could not schedule your cancellation");
+    expect(screen.getByText(/^Renews 6 Nov 2026/)).toBeTruthy();
   });
 
   it("shows a non-renewing plan as ending, with no cancel action", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: { ...startSummary, subscriptionStatus: "non_renewing" } })));
     render(<Billing />);
     expect(await screen.findByText("Ends 6 Nov 2026 · 8 open asks · 10 credits/month — you keep everything until then.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Cancel plan" })).toBeNull();
+    // QA review (#359 finding 1): asserted under the live name, so this fails if a
+    // cancel control ever appears on a non-renewing plan.
+    expect(screen.queryByRole("button", { name: "Cancel renewal" })).toBeNull();
   });
 
   it("leaves out open asks and monthly credits the server did not send, never guessing them", async () => {
@@ -116,7 +150,7 @@ describe("Billing page", () => {
       vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: { ...startSummary, plan, slots: null } })));
       render(<Billing />);
       expect(await screen.findByRole("heading", { name: "Free" })).toBeTruthy();
-      expect(screen.queryByRole("button", { name: "Cancel plan" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Cancel renewal" })).toBeNull();
       expect(document.body.textContent).not.toMatch(/\bPro\b|\bMax\b/);
       cleanup();
     }
