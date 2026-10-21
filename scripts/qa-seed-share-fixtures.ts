@@ -43,7 +43,7 @@ async function main() {
   const companyId = company.id;
   await db.insert(companyDomains).values({ companyId, domain: "quillmint.com", isPrimary: true });
 
-  const mkUser = async (openId: string, name: string, email: string) => (await db.insert(users).values({ openId, name, email, loginMethod: "qa-fixture" }).$returningId()).id;
+  const mkUser = async (openId: string, name: string, email: string) => (await db.insert(users).values({ openId, name, email, loginMethod: "qa-fixture" }).$returningId())[0].id;
 
   // Three verified referrers at quillmint.com (+ one more for the company signal's referrer count).
   const referrerIds: number[] = [];
@@ -59,10 +59,10 @@ async function main() {
 
   // Seeker with asks.
   const seeker = await mkUser("qa_seeker", "QA Seeker", "seeker@qa-fixtures.invalid");
-  const mkJob = async (title: string) => (await db.insert(jobs).values({ title, company: "quillmint.com", targetRoleUrl: `https://careers.quillmint.example/${title.toLowerCase().replaceAll(" ", "-")}`, jobFunction: "engineering", createdAt: ago(72) }).$returningId()).id;
+  const mkJob = async (title: string) => (await db.insert(jobs).values({ title, company: "quillmint.com", targetRoleUrl: `https://careers.quillmint.example/${title.toLowerCase().replaceAll(" ", "-")}`, jobFunction: "engineering", createdAt: ago(72) }).$returningId())[0].id;
 
   const mkAsk = async (jobId: number, hoursAgo: number, visibleHoursAgo: number) =>
-    (await db.insert(referralRequests).values({ jobId, jobSeekerId: seeker, status: "pending", createdAt: ago(hoursAgo), coverageVisibleAt: ago(visibleHoursAgo) }).$returningId()).id;
+    (await db.insert(referralRequests).values({ jobId, jobSeekerId: seeker, status: "pending", createdAt: ago(hoursAgo), coverageVisibleAt: ago(visibleHoursAgo) }).$returningId())[0].id;
   const decide = async (requestId: number, actor: number, action: "approve" | "pass", hoursAgo: number, revision = 1) =>
     db.insert(referralTransitionEvents).values({ referralRequestId: requestId, operationKey: `${action}:${actor}:${requestId}:${revision}`, actorUserId: actor, action, fromStatus: "pending", resultingStatus: action === "approve" ? "approved" : "declined", resultingRevision: revision, createdAt: ago(hoursAgo) });
 
