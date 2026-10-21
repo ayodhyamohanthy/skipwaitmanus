@@ -25,6 +25,7 @@ export function registerCompanyClaimRoutes(app: Express, deps: Deps) {
     } catch (error) {
       if (error instanceof CompanyClaimError) return res.status(error.status).json({ error: error.message });
       if (error instanceof z.ZodError) return res.status(400).json({ error: "Check the verification details and try again" });
+      console.error("[CompanyClaim]", error);
       res.status(503).json({ error: "Company verification is unavailable right now" });
     }
   };

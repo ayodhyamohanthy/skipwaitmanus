@@ -47,4 +47,19 @@ describe("company claim aggregate routes", () => {
     expect(res.status).toBe(503); expect(res.text).not.toContain("mysql");
     expect(res.headers["cache-control"]).toBe("private, no-store");
   });
+  it("logs an unexpected 503 with a [CompanyClaim] tag and still leaks nothing", async () => {
+    const { app, dashboard } = setup();
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const failure = new Error("mysql private credentials");
+      dashboard.mockRejectedValueOnce(failure);
+      const res = await request(app).get("/api/company-claim/dashboard/quillmint");
+      expect(res.status).toBe(503);
+      expect(res.text).not.toContain("mysql");
+      expect(res.headers["cache-control"]).toBe("private, no-store");
+      expect(logged).toHaveBeenCalledWith("[CompanyClaim]", failure);
+    } finally {
+      logged.mockRestore();
+    }
+  });
 });
