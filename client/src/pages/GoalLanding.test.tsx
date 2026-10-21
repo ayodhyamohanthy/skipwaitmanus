@@ -38,13 +38,13 @@ describe("GoalLanding (D-120)", () => {
     expect(steps.textContent).toContain("Send one thoughtful ask");
     expect(steps.textContent).toContain("They decide");
     expect(steps.textContent).toContain(ASK_COST_SENTENCE);
-    expect(steps.textContent).toContain("level, never on who is asking");
+    expect(steps.textContent).toContain("Every ask costs the same.");
   });
 
   it("states the fair rules from shared money copy - no invented claims", () => {
     render(<GoalLanding />);
     expect(screen.getByText(REFERRING_FREE_LINE)).toBeTruthy();
-    expect(screen.getByText(/never on the person asking/)).toBeTruthy();
+    expect(screen.getByText(/Every ask costs the same: 1 credit/)).toBeTruthy();
     expect(screen.getByText(/not an interview or a job/)).toBeTruthy();
     expect(screen.getByText(/hidden until a referrer accepts/)).toBeTruthy();
   });

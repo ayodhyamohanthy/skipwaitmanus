@@ -16,13 +16,13 @@ import { ASK_COST_SENTENCE, REFERRING_FREE_LINE } from "@shared/moneyCopy";
 
 const STEPS: Array<{ title: string; body: string }> = [
   { title: "Find your company", body: "See the companies with verified employees inside, and the roles you can ask about." },
-  { title: "Send one thoughtful ask", body: `You see the cost before you ask: ${ASK_COST_SENTENCE} The price depends only on the job's level, never on who is asking.` },
+  { title: "Send one thoughtful ask", body: `You see the cost before you ask: ${ASK_COST_SENTENCE} Every ask costs the same.` },
   { title: "They decide", body: "An accepted ask opens a private conversation. A referral is an introduction, never a promise of an interview or a job." },
 ];
 
 const FAIR_RULES = [
   REFERRING_FREE_LINE,
-  "The price depends only on the job's level, never on the person asking.",
+  "Every ask costs the same: 1 credit when a verified employee can see it, nothing while it waits.",
   "No outcome promises: a referral is an introduction, not an interview or a job.",
   "Private by default: your name stays hidden until a referrer accepts.",
 ];
