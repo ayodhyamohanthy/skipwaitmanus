@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, REFERRAL_TIMERS_SINCE } from "../shared/referral";
-import { createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listReferredPastDeadline, listReleasedPassUnrefunded, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
+import { createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, listReleasedPassUnrefunded, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
 import { DAY_MS, LINK_OWNER, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -377,6 +377,46 @@ describe("referred_deadline_stuck over the in-memory database", () => {  beforeE
   });
 });
 
+describe("refund_after_pickup over the in-memory database", () => {
+  beforeEach(() => {
+    vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+    mocks.createPool.mockResolvedValue({});
+    mocks.drizzle.mockReturnValue(store.db);
+  });
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  // D-035: a not-fixable pass releases the pickup before the ask closes, so the release — not
+  // the earlier claim — is the ask's latest pickup-or-release event and the refund is correct.
+  it("stays quiet when a not-fixable pass released the pickup before the refund, and still flags a refund after a bare claim", async () => {
+    const passRelease = (id: number, requestId: number, at: Date) => ({ ...claimEvent(requestId, id), action: "pass_release", operationKey: `pass:${requestId}`, resultingStatus: "pending", createdAt: at });
+    const refund = (id: number, requestId: number, at: Date) => spendRow({ id, referenceId: `${requestId}#refund`, idempotencyKey: `r${requestId}`, tokenCount: 1, kind: "expiry_refund", createdAt: at });
+    seedHeldAsks({
+      spends: [
+        // Released by a pass, then closed past its window: the credit comes back by design.
+        spendRow({ id: 71, referenceId: "811#1", idempotencyKey: "k811#1", tokenCount: -1 }),
+        refund(170, 811, daysAgo(1)),
+        // Never released: the claim is still the latest event, so a refund here is a leak.
+        spendRow({ id: 73, referenceId: "812#1", idempotencyKey: "k812#1", tokenCount: -1 }),
+        refund(171, 812, daysAgo(1)),
+      ],
+      events: [
+        { ...claimEvent(811, 110), createdAt: daysAgo(5) },
+        passRelease(111, 811, daysAgo(4)),
+        { ...claimEvent(812, 112), createdAt: daysAgo(5) },
+      ],
+    });
+
+    const { deps, sent } = makeDeps({ listRefundsAfterPickup });
+    const output = await createDailyMoneyCheck(deps)({ nowMs: KIT_NOW, windowKey: "2026-10-18T12:00Z" });
+
+    expect(output.failed).toBe(0);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("refund_after_pickup: ledger row #171 returned a credit for ask #812 (expiry_refund)");
+    expect(sent[0]!.text).not.toContain("ask #811");
+    expect(sent[0]!.text).not.toContain("@");
+  });
+});
+
 describe("released_pass_unrefunded over the in-memory database", () => {
   beforeEach(() => {
     vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
@@ -410,5 +450,26 @@ describe("released_pass_unrefunded over the in-memory database", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]!.text).toContain("released_pass_unrefunded: ask #801");
     expect(sent[0]!.text).not.toContain("ask #802");
+  });
+
+  it("counts the legacy bare-id refund format exactly like the ledger's #refund suffix", async () => {
+    // A pre-ledger ask refunds through refundReferralDebitTx, which references the bare request
+    // id, while refundLedgerSpendTx writes "<id>#refund"; the check must see both as the one
+    // refund a released ask owes, or every legacy-debited ask reads as unrefunded.
+    const release = (id: number, requestId: number) => ({ ...claimEvent(requestId, id), action: "pass_release", operationKey: `pass:${requestId}`, resultingStatus: "pending", createdAt: new Date(KIT_NOW) });
+    seedHeldAsks({
+      asks: [askRow({ id: 803, status: "closed", referrerId: null, debitTransactionId: 66 })],
+      spends: [
+        spendRow({ id: 66, referenceId: "803#1", idempotencyKey: "k803#1", tokenCount: -1 }),
+        spendRow({ id: 67, referenceId: "803", idempotencyKey: "r803", tokenCount: 1, kind: "expiry_refund", reversesTransactionId: 66 }),
+      ],
+      events: [release(92, 803)],
+    });
+
+    const { deps, sent } = makeDeps({ listReleasedPassUnrefunded });
+    const output = await createDailyMoneyCheck(deps)({ nowMs: KIT_NOW, windowKey: "2026-10-18T12:00Z" });
+
+    expect(output.failed).toBe(0);
+    expect(sent).toEqual([]);
   });
 });

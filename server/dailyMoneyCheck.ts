@@ -270,9 +270,11 @@ export async function listDoublyReversedSpends(limit: number): Promise<DoublyRev
  * D-038-A: a refund whose ask had already been picked up. Once a referrer claimed the ask the
  * credit stays spent (D-034, D-076 (1)), so a withdrawal_refund or expiry_refund row whose ask's
  * latest pickup-or-release event before the refund was a claim is a money leak, not a refund.
+ * D-035: pass_release is a release too (the pickup-or-release set, same as referralWasClaimedTx),
+ * so a refund after a not-fixable pass is the release working, not a leak.
  * Read-only and bounded: the newest `limit * 4` refund rows are examined, `limit` findings returned.
  */
-async function listRefundsAfterPickup(limit: number): Promise<RefundAfterPickupRow[]> {
+export async function listRefundsAfterPickup(limit: number): Promise<RefundAfterPickupRow[]> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
   const refunds = await db.select({ id: tokenTransactions.id, kind: tokenTransactions.kind, referenceId: tokenTransactions.referenceId, createdAt: tokenTransactions.createdAt })
     .from(tokenTransactions)
@@ -283,7 +285,7 @@ async function listRefundsAfterPickup(limit: number): Promise<RefundAfterPickupR
     const requestId = Number(String(refund.referenceId ?? "").split("#")[0]);
     if (!Number.isInteger(requestId) || requestId <= 0) continue;
     const events = await db.select({ id: referralTransitionEvents.id, action: referralTransitionEvents.action }).from(referralTransitionEvents)
-      .where(and(eq(referralTransitionEvents.referralRequestId, requestId), inArray(referralTransitionEvents.action, ["claim", "claim_lapse", "referred_lapse", "step_back"]), refund.createdAt ? lte(referralTransitionEvents.createdAt, refund.createdAt) : undefined));
+      .where(and(eq(referralTransitionEvents.referralRequestId, requestId), inArray(referralTransitionEvents.action, ["claim", "claim_lapse", "referred_lapse", "step_back", "pass_release"]), refund.createdAt ? lte(referralTransitionEvents.createdAt, refund.createdAt) : undefined));
     let latest: { id: number; action: string } | null = null;
     for (const event of events) if (latest === null || Number(event.id) > Number(latest.id)) latest = event;
     if (latest?.action !== "claim") continue;
@@ -338,8 +340,10 @@ export async function listReleasedPassUnrefunded(limit: number): Promise<Release
     const ask = (await db.select({ id: referralRequests.id, status: referralRequests.status, debitTransactionId: referralRequests.debitTransactionId })
       .from(referralRequests).where(eq(referralRequests.id, release.requestId)).limit(1))[0];
     if (!ask || (ask.status !== "closed" && ask.status !== "withdrawn") || ask.debitTransactionId === null) continue;
+    // Both refund writers reference the ask: refundLedgerSpendTx writes "<id>#refund" and the
+    // pre-ledger refundReferralDebitTx writes the bare id, so the one owed refund may be either.
     const refundRows = (await db.select({ id: tokenTransactions.id }).from(tokenTransactions)
-      .where(and(eq(tokenTransactions.referenceType, "referral_request"), eq(tokenTransactions.referenceId, `${release.requestId}#refund`), inArray(tokenTransactions.kind, ["withdrawal_refund", "expiry_refund"])))).length;
+      .where(and(eq(tokenTransactions.referenceType, "referral_request"), inArray(tokenTransactions.referenceId, [String(release.requestId), `${release.requestId}#refund`]), inArray(tokenTransactions.kind, ["withdrawal_refund", "expiry_refund"])))).length;
     if (refundRows !== 1) found.push({ requestId: release.requestId, status: ask.status, refundRows });
     if (found.length >= limit) break;
   }
