@@ -2,7 +2,7 @@
 // catalog. These pins prove the names/prices come from one source, the flag
 // defaults off, and Rs 1,299 belongs to Insider alone.
 import { describe, expect, it } from "vitest";
-import { PLAN_BENEFIT_CAPS, PLAN_BENEFIT_TOOL_IDS, PLAN_CAP_OVERAGE, PLAN_FAMILY, PLAN_FAMILY_IDS, planBenefitCaps, planFamilyEntry, planFamilyV2Enabled } from "./planFamily";
+import { PLAN_BENEFIT_CAPS, PLAN_BENEFIT_TOOL_IDS, PLAN_CAP_OVERAGE, PLAN_CREDIT_LADDER, PLAN_FAMILY, PLAN_FAMILY_IDS, perCreditMinor, planBenefitCaps, planFamilyEntry, planFamilyV2Enabled, rungPriceMinor, rungSavingsMinor, thisMonthMinor } from "./planFamily";
 
 describe("plan family (Open Door / Fast Track / Insider, flag OFF)", () => {
   it("locks the D-128 names in order", () => {
@@ -83,5 +83,40 @@ describe("plan service model + included features", () => {
     expect(planFamilyEntry("insider").includes).toEqual({ stealth: true, reachUp: true });
     expect(planFamilyEntry("fast_track").includes).toEqual({ stealth: false, reachUp: true });
     expect(planFamilyEntry("open_door").includes).toEqual({ stealth: false, reachUp: false });
+  });
+});
+
+describe("D-132 derivation helpers", () => {
+  it("per-credit prices match the owner's screenshot (INR): 48/47/45/43/41/39.20", () => {
+    expect(perCreditMinor(5, "INR")).toBe(4800);
+    expect(perCreditMinor(10, "INR")).toBe(4700);
+    expect(perCreditMinor(25, "INR")).toBe(4500);
+    expect(perCreditMinor(50, "INR")).toBe(4300);
+    expect(perCreditMinor(100, "INR")).toBe(4100);
+    expect(perCreditMinor(200, "INR")).toBe(3920);
+  });
+  it("save amounts match the screenshot: 25cr saves Rs100 (8%), 50cr saves Rs300 (12%)", () => {
+    expect(rungSavingsMinor(25, "INR")).toBe(10_000);
+    expect(rungSavingsMinor(50, "INR")).toBe(30_000);
+  });
+  it("This month totals: Open Door free pick is Rs0; Fast Track + 25cr = Rs1,624; Insider + 50cr = Rs3,449", () => {
+    expect(thisMonthMinor("open_door", null, "INR")).toBe(0);
+    expect(thisMonthMinor("fast_track", 25, "INR")).toBe(162_400);
+    expect(thisMonthMinor("insider", 50, "INR")).toBe(344_900);
+  });
+  it("USD This month: Fast Track + 25cr = $32.99 (the old $30.99 example used D-115's superseded $21 rung)", () => {
+    expect(thisMonthMinor("fast_track", 25, "USD")).toBe(3_299);
+  });
+  it("every rung divides exactly into per-credit minor units in both books", () => {
+    for (const rung of PLAN_CREDIT_LADDER) {
+      for (const book of ["USD", "INR"] as const) {
+        expect(rungPriceMinor(rung.credits, book) % rung.credits).toBe(0);
+      }
+    }
+  });
+  it("Insider is by application; Open Door and Fast Track are not", () => {
+    expect(planFamilyEntry("insider").byApplication).toBe(true);
+    expect(planFamilyEntry("open_door").byApplication ?? false).toBe(false);
+    expect(planFamilyEntry("fast_track").byApplication ?? false).toBe(false);
   });
 });
