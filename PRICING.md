@@ -56,8 +56,8 @@ free or billed later (D-034, D-047; not built yet). Purchased credits never expi
 priority, visibility or queue position (D-006). Plan credits end with the pass that granted them
 (renewing passes keep the rollover above, after a 3-day grace).
 
-- Packs (one-time): USD 5/$5 (first), 25/$25, 60/$60, 150/$150 (floor of $1 per credit).
-  India: 2/₹198 (first), 25/₹2,475, 60/₹5,940, 150/₹14,850 (floor of ₹99 per credit, owner Oct 21 07:51 IST).
+- Packs (one-time, proposal pending owner): USD 1/$1, 5/$4.75, 10/$9, 25/$20 (one credit is ₹99 / $1; no pack under about ₹79 / $0.80 a credit, owner 07:54 IST).
+  India: 1/₹99, 5/₹475, 10/₹890, 25/₹1,975.
 - Costs: Ask rewrite 1, Profile check 1, Thank-you pack 1, Ask One-Pager 2, extra open ask for
   30 days 2, Company research 3, Resume overhaul 3, Offer comparison 3, Interview dossier 4,
   AI mock interview 5, Salary coach 5.
