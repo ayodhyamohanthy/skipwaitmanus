@@ -21,7 +21,7 @@ import { packItemPriceId as v2PackItemPriceId, planCreditsItemPriceId as v2Credi
 export type ItemSpec = {
   id: string;
   name: string;
-  type: "plan" | "charge";
+  type: "plan" | "addon" | "charge";
   externalName: string;
   enabledInPortal: boolean | null;
 };
