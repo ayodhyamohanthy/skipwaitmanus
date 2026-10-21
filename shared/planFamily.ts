@@ -176,9 +176,10 @@ export const MENTOR_ADD_ON = {
   feeReturnThresholdAsksPerMonth: 2,
 } as const;
 
-/** Each accepted ask earns the referrer 1 credit on their own asks (D-132;
- *  amends D-055, superseding the D-059 freeze on that point). */
-export const REFERRER_CREDIT_PER_ACCEPTED_ASK = 1;
+/* Referrers earn NOTHING for referring or accepting asks - no credits, no
+ * money, ever (D-055; the D-059 freeze STANDS: the owner reversed the 18:46
+ * approval with a thumbs-down 19:15, relayed by main). Mentor (above) is the
+ * only referrer-side programme, and its fee return is credits, never cash. */
 
 /**
  * Company tier: DRAFT, unbuilt. Name FROZEN by the owner Oct 21 19:10
