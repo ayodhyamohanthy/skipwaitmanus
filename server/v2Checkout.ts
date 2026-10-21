@@ -15,7 +15,7 @@ import { planFamilyEntry, planFamilyV2Enabled, type PlanCreditRung } from "../sh
 import { packItemPriceId, planCreditsItemPriceId, planItemPriceId, parseV2ItemPriceId } from "../shared/planFamilyBilling";
 import { NOT_AVAILABLE_CODE, type V2PackCheckoutRequest, type V2PlanCheckoutRequest } from "../shared/subscriptionManagement";
 import { itemPriceAvailability, type AvailabilityDeps, type PriceAvailability } from "./billingAvailability";
-import type { CatalogPrice } from "../shared/billingCatalog";
+import { resolveItemPrice, type CatalogPrice } from "../shared/billingCatalog";
 import { createBundleCheckout, createPackCheckout, type CheckoutCustomer, type HostedPageResult } from "./chargebeeSubscriptionApi";
 import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
 
@@ -46,11 +46,10 @@ function credentialsFor(req: Request, deps: V2CheckoutDeps): AvailabilityDeps["c
 }
 
 async function availabilityOf(req: Request, itemPriceId: string, deps: V2CheckoutDeps): Promise<PriceAvailability> {
-  const parsed = parseV2ItemPriceId(itemPriceId);
-  if (!parsed) return "missing";
-  // itemPriceAvailability reads itemPriceId + amount + currency; the kind/packId
-  // fields exist only for the CatalogPrice union shape.
-  const expected = { kind: "pack", packId: "pack_5", credits: 5, currency: parsed.currency, amount: parsed.amount, itemPriceId } as CatalogPrice;
+  // The price book (shared/billingCatalog) resolves v2 ids to their true
+  // kinds: plan fee, monthly addon rung or one-time charge pack.
+  const expected = resolveItemPrice(itemPriceId);
+  if (!expected) return "missing";
   if (deps.isAvailable) return (await deps.isAvailable(req, expected)) ? "available" : "missing";
   return itemPriceAvailability(expected, { credentials: credentialsFor(req, deps), lookup: deps.lookup, probeTimeoutMs: deps.probeTimeoutMs });
 }

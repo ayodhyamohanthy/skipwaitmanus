@@ -10,7 +10,7 @@ const ID_PATTERN = /^[A-Za-z0-9_.@-]+$/;
 const idSchema = z.string().min(1).max(100).regex(ID_PATTERN);
 const planHashSchema = z.string().regex(/^[0-9a-f]{64}$/);
 const currencySchema = z.enum(["INR", "USD"]);
-const termSchema = z.enum(["one_time", "30d", "90d", "yearly"]);
+const termSchema = z.enum(["one_time", "monthly", "30d", "90d", "yearly"]);
 const environmentSchema = z.enum(["test", "live"]);
 const kindSchema = z.enum(["item_family", "item", "item_price"]);
 const checkedAtSchema = z.string().refine(value => !Number.isNaN(Date.parse(value)), { message: "checkedAt must be an ISO timestamp" });
@@ -27,7 +27,7 @@ export const itemPriceSpecSchema = z
     id: idSchema,
     name: idSchema,
     itemId: idSchema,
-    itemType: z.enum(["plan", "charge"]),
+    itemType: z.enum(["plan", "addon", "charge"]),
     pricingModel: z.enum(["flat_fee", "per_unit"]),
     price: z.number().int().nonnegative(),
     currencyCode: currencySchema,
@@ -50,10 +50,10 @@ export const itemPriceSpecSchema = z
       return;
     }
     if (spec.pricingModel !== "flat_fee") {
-      ctx.addIssue({ code: "custom", path: ["pricingModel"], message: "A plan item price is flat_fee." });
+      ctx.addIssue({ code: "custom", path: ["pricingModel"], message: "A plan or addon item price is flat_fee." });
     }
     if (spec.period === null || spec.periodUnit === null) {
-      ctx.addIssue({ code: "custom", path: ["period"], message: "A plan item price needs its billing period." });
+      ctx.addIssue({ code: "custom", path: ["period"], message: "A plan or addon item price needs its billing period." });
     }
   });
 export type ItemPriceSpec = z.infer<typeof itemPriceSpecSchema>;
@@ -68,7 +68,7 @@ const itemActionSchema = z.strictObject({
   params: z.strictObject({
     id: idSchema,
     name: idSchema,
-    type: z.enum(["plan", "charge"]),
+    type: z.enum(["plan", "addon", "charge"]),
     itemFamilyId: idSchema.nullable(),
     externalName: z.string().min(1).max(140),
     enabledInPortal: z.boolean().nullable(),
