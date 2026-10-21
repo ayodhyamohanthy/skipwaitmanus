@@ -29,8 +29,11 @@ Seeker win card (D-105): an opt-in copy card on an accepted ask, client-only, fl
 ### D-106-impact-card (#382, `agent/instinct/share-impact-card`, Tier 1)
 Referrer impact card (D-106): shareable aggregates under the referrer's screen name only, flag off. Tier 1 because it publishes referrer data. Done: merged with `main`, gate green, review passed (screen name only, never the legal name, employer email or any seeker detail; aggregates only), landed with the flag off.
 
+### D-048-F-typescale (#379, `agent/opencode/goal-kit-type-scale`, Tier 2, first in lane `design-core`)
+The goal kit's type scale: a shared merge helper dropped the goal type tokens. It is the first foundation step of D-048 phase 3 (docs/plans/D-048-phase-3-split.md). Done: merged with `main`, gate green including the design-token audit, goal component tests unchanged or extended (never weakened), landed.
+
 ### D-048-p3-map (#358, `agent/workbuddy/d048-phase3-plan`, Tier 3)
-The D-048 phase 3 rollout map (eight waves, one pull request each). Done: merged with `main`, consistent with `DESIGN.md` and D-077, landed. It is the order the design tasks below follow.
+The D-048 phase 3 rollout map (eight waves, one pull request each). Done: merged with `main`, consistent with `DESIGN.md`, D-077 and docs/plans/D-048-phase-3-split.md (D-126 wins where they differ: cluster lanes, dark landing, one-line releases), landed.
 
 ### D-048-p3-w0-shell (#361, `agent/instinct/goal-ui-w0-shell`, Tier 2, after the map)
 Wave 0: the app shell onto the goal system. Its CI is red: make it green first. Done: merged with `main`, gate green, 1280 and 390 captures attached to the pull request, landed. No surface outside the shell is re-skinned (D-048).

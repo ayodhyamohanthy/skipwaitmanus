@@ -7,6 +7,9 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. T
 ## Oct 21 (CEO sync, D-085)
 The picker's order (`assignments.json`) after the money lane (GO-LIVE-1b, D-038 reconcile, D-035): the pull requests built before they had a packet, finished through [`OCT21-BUILT-PRS.md`](OCT21-BUILT-PRS.md) — D-067 review outbox (#322), D-104 company signal (#373), D-107 claim your company (#384), D-105 win card (#375), D-106 impact card (#382), D-048 phase 3 (#358, #361, #362, #360), row 20 (#310, #311, #314), task 13 slice A (#308). Then the packets Claude Code owes (D-090 BYOR, D-095 one-tap, D-100 security audit, D-099 bonus pages, D-093 language, D-094 AI-in-UI). The pricing pull requests #380 and #381 wait for the owner (D-056, D-091).
 
+## D-048 phase 3 in parallel (D-126)
+The goal-UI rollout runs as one foundation chain (lane `design-core`) and then up to 13 cluster lanes at once, every page landing dark behind its own flag and released in waves: [`D-048-phase-3-split.md`](D-048-phase-3-split.md) (74 rows, owned paths, landing steps, bug controls). The picker changes that make it safer are in [`PICKER-PARALLEL.md`](PICKER-PARALLEL.md).
+
 ## Rules for this page
 - A row may be delegated only when its packet below is **ready**. "Architect" means Claude Code writes or refreshes the packet first.
 - Nobody picks or claims a row by hand: every agent runs `node scripts/next-task.mjs --claim "<your model name>"` and does only what it prints (D-083, D-085). It walks [`assignments.json`](assignments.json) top down: red `main`, then your own unfinished work (pending work ranked above it with nobody on it first), then pending work nobody is on, then new work whose packet is ready, whose dependencies are done and whose lane is free. A red or blocked priority holds its own lane and the tasks that depend on it; red `main` holds everything (D-109).

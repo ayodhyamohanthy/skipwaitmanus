@@ -71,6 +71,63 @@
       ]
     },
     {
+      "id": "PICKER-landing-slot",
+      "title": "One landing at a time, enforced: the agent/queue/landing slot",
+      "row": "D-126",
+      "packet": "docs/plans/PICKER-PARALLEL.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-landing-slot",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "PICKER-owns-scope",
+      "title": "File ownership (owns) on tasks, filesBusy, and scripts/scope-check.mjs",
+      "row": "D-126",
+      "packet": "docs/plans/PICKER-PARALLEL.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-owns-scope",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "PICKER-status-rows",
+      "title": "Tasks that share a plan row write status in their packet section",
+      "row": "D-126",
+      "packet": "docs/plans/PICKER-PARALLEL.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-status-rows",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "PICKER-lane-busy",
+      "title": "A green pull request waiting for review stops blocking its lane when owns are disjoint",
+      "row": "D-126",
+      "packet": "docs/plans/PICKER-PARALLEL.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-lane-busy",
+      "status": "todo",
+      "dependsOn": [
+        "PICKER-owns-scope"
+      ]
+    },
+    {
+      "id": "PICKER-board-epic",
+      "title": "Board: role by lane prefix, one roll-up line per epic, behind-main counts",
+      "row": "D-126",
+      "packet": "docs/plans/PICKER-PARALLEL.md",
+      "tier": 3,
+      "lane": "picker",
+      "branch": "agent/queue/picker-board-epic",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
       "id": "D-067-review-outbox",
       "title": "Billing review recovery outbox (#322): renumber its migration, then review and land",
       "row": "D-067-pro-max-removal",
@@ -129,15 +186,38 @@
       "dependsOn": []
     },
     {
+      "id": "D-048-F-typescale",
+      "title": "Goal kit type scale (#379): the merge helper ate the goal type tokens",
+      "row": "D-048",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 2,
+      "lane": "design-core",
+      "branch": "agent/opencode/goal-kit-type-scale",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
       "id": "D-048-p3-map",
       "title": "D-048 phase 3 rollout map (#358): eight waves, one pull request each",
       "row": "D-048",
       "packet": "docs/plans/OCT21-BUILT-PRS.md",
       "tier": 3,
-      "lane": "design",
+      "lane": "d048-packets",
       "branch": "agent/workbuddy/d048-phase3-plan",
       "status": "todo",
       "dependsOn": []
+    },
+    {
+      "id": "D-048-phase-3",
+      "title": "D-048 phase 3 foundation packet: flag module, W0 switch, primitives, harness, credits hook, static frame, route table",
+      "row": "D-048",
+      "packet": null,
+      "tier": 2,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-foundation-packet",
+      "status": "architect",
+      "dependsOn": [],
+      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds the D-048-F-* rows exactly as that file lists them."
     },
     {
       "id": "D-048-p3-w0-shell",
@@ -145,34 +225,170 @@
       "row": "D-048",
       "packet": "docs/plans/OCT21-BUILT-PRS.md",
       "tier": 2,
-      "lane": "design",
+      "lane": "design-core",
       "branch": "agent/instinct/goal-ui-w0-shell",
       "status": "todo",
       "dependsOn": [
-        "D-048-p3-map"
-      ]
+        "D-048-p3-map",
+        "D-048-phase-3"
+      ],
+      "note": "Rework per docs/plans/D-048-phase-3-split.md: AppShell becomes a switch; the goal frame renders only on released routes. The foundation packet adds D-048-F-flags and D-048-F-typescale to this row's dependencies."
     },
     {
       "id": "D-048-p3-explore",
       "title": "D-048 phase 3 (#362): Find a referral (/explore) moves to the goal directory",
       "row": "D-048",
       "packet": "docs/plans/OCT21-BUILT-PRS.md",
-      "tier": 2,
-      "lane": "design",
+      "tier": 1,
+      "lane": "d048-find",
       "branch": "agent/qoder/d048-phase-3-explore",
       "status": "todo",
-      "dependsOn": []
+      "dependsOn": [
+        "D-048-phase-3",
+        "D-048-p3-w0-shell"
+      ],
+      "note": "Lands dark behind goalSurfaceOn('explore') once the foundation is in; 27+ commits behind main, merge first. Tier 1: it shows credits."
     },
     {
       "id": "D-048-p3-requests",
       "title": "D-048 phase 3 (#360): My asks (/requests) moves to the goal list",
       "row": "D-048",
       "packet": "docs/plans/OCT21-BUILT-PRS.md",
-      "tier": 2,
-      "lane": "design",
+      "tier": 1,
+      "lane": "d048-asks",
       "branch": "agent/qoder/d048-phase-3-requests",
       "status": "todo",
-      "dependsOn": []
+      "dependsOn": [
+        "D-048-phase-3",
+        "D-048-p3-w0-shell"
+      ],
+      "note": "Lands dark behind goalSurfaceOn('requests'); restore the deleted client/src/pages/myRequests.kit.test.tsx (kit tests are never edited or deleted). Tier 1: it shows credits."
+    },
+    {
+      "id": "D-048-P-seeker",
+      "title": "D-048 phase 3 seeker lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-seeker",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+    },
+    {
+      "id": "D-048-P-referrer",
+      "title": "D-048 phase 3 referrer lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-referrer",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+    },
+    {
+      "id": "D-048-P-money",
+      "title": "D-048 phase 3 money lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-money",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+    },
+    {
+      "id": "D-048-P-auth",
+      "title": "D-048 phase 3 auth lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-auth",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+    },
+    {
+      "id": "D-048-P-account",
+      "title": "D-048 phase 3 account lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-account",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+    },
+    {
+      "id": "D-048-P-admin",
+      "title": "D-048 phase 3 admin lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-admin",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+    },
+    {
+      "id": "D-048-P-employer",
+      "title": "D-048 phase 3 employer lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-employer",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+    },
+    {
+      "id": "D-048-P-public",
+      "title": "D-048 phase 3 public lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-public",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds this lane's rows exactly as listed there."
+    },
+    {
+      "id": "D-048-P-marketing",
+      "title": "D-048 phase 3 marketing packet (home, wall, jobs, public profile)",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-marketing",
+      "status": "owner",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Waits for the owner's answers on the marketing shell and the home page (split, owner questions)."
     },
     {
       "id": "ROW20-A",
@@ -428,18 +644,6 @@
       "dependsOn": [
         "seeker-passwords"
       ]
-    },
-    {
-      "id": "D-048-phase-3",
-      "title": "Goal UI phase 3: the surfaces after the rollout map's first waves",
-      "row": "D-048",
-      "packet": null,
-      "tier": 2,
-      "lane": "design",
-      "branch": "agent/claude/d048-phase-3",
-      "status": "architect",
-      "dependsOn": [],
-      "note": "Claude Code writes one packet per surface from the rollout map (#358) once its first waves land."
     },
     {
       "id": "SYNC-LOG-off-main",
