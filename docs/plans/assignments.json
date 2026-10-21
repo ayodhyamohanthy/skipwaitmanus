@@ -147,10 +147,11 @@
       "tier": 2,
       "lane": "design",
       "branch": "agent/instinct/goal-ui-w0-shell",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-p3-map"
-      ]
+      ],
+      "note": "Landed as `3cd221df` (PR #361, Tier 2): the app shell renders inside GoalShell with one navigation, the credits pill (D-055), the carried-over account menu and the beta badge (#402); no surface outside the shell re-skinned. 1280/390 before/after captures under design/goal-ui/captures/w0-shell/."
     },
     {
       "id": "D-048-p3-explore",
