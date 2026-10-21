@@ -1,6 +1,7 @@
 import { ArrowLeft, Check, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { BetaNoticeLine } from "@/components/BetaNotice";
 import { Button } from "@/components/kit/button";
 import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
 import { SeekerSignIn } from "@/components/SeekerSignIn";
@@ -37,6 +38,7 @@ export default function SignIn() {
     <section className="auth-panel"><div className="auth-panel-inner">
       <Link className="auth-back" href="/"><ArrowLeft /> Back to home</Link>
       <div className="auth-heading"><span className="auth-step">YOUR DOOR STARTS HERE</span><h2>Welcome to skipwait.me.</h2><p>Pick your side. You can switch any time on this screen.</p></div>
+      <BetaNoticeLine tone="kit" />
       <p className="intent-prompt" id="intent-prompt">I’m here to…</p>
       <div className="intent-switch intent-cards" role="group" aria-labelledby="intent-prompt">
         <Button type="button" variant="ghost" className={intent === "seeker" ? "selected" : ""} aria-pressed={intent === "seeker"} onClick={() => setIntent("seeker")}><Sparkles /><span className="intent-title">Find a referral</span><span className="intent-sub">I’m looking for a job</span>{intent === "seeker" && <Check className="intent-check" aria-hidden="true" />}</Button>
