@@ -2,6 +2,7 @@
 // phase 2; phase 3 adds each moved surface (goalBoundary.test.ts pins it).
 export { GOAL_NAV, goalNavFor, type GoalNavId, type GoalNavItem } from "./nav";
 export { GoalNum } from "./GoalNum";
+export { GoalClock } from "./GoalClock";
 export { GoalKeycap, type GoalKeycapIcon } from "./GoalKeycap";
 export { GoalButton, type GoalButtonProps } from "./GoalButton";
 export { GoalIconButton, type GoalIconButtonProps } from "./GoalIconButton";

@@ -6,7 +6,9 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const CLIENT_SRC = join(__dirname, "..", "..");
-const ALLOWLIST = /components[\\/]goal[\\/]|pages[\\/]ComponentShowcase\.tsx$|\.test\.tsx?$/;
+// Phase 3 adds each moved surface (and the components it composes): /queue on
+// 2026-10-21, surface parts in components/queue and the page itself.
+const ALLOWLIST = /components[\\/]goal[\\/]|components[\\/]queue[\\/]|pages[\\/]ComponentShowcase\.tsx$|pages[\\/]MyCompanyInbox\.tsx$|\.test\.tsx?$/;
 
 function* walk(dir: string): Generator<string> {
   for (const entry of readdirSync(dir)) {

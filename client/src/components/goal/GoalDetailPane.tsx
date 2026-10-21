@@ -13,7 +13,8 @@ export type GoalDetailPaneProps = {
   meta?: ReactNode[];
   children: ReactNode;
   dock?: ReactNode;
-  phoneBack?: { href: string; label: string };
+  // A moved surface can keep the phone back control in-page (no reload) with onClick.
+  phoneBack?: { href: string; label: string; onClick?(): void };
   phonePosition?: ReactNode;
   className?: string;
 };
@@ -24,7 +25,7 @@ export function GoalDetailPane({ labelledBy, eyebrow, refId, title, titleSize, m
       {(phoneBack || phonePosition) ? (
         <div className="gdesk:hidden flex h-12 items-center gap-2 border-b border-g-hairline px-2">
           {phoneBack ? (
-            <a href={phoneBack.href} className="flex min-h-11 items-center gap-1 px-1 text-g-label text-g-ink">
+            <a href={phoneBack.href} onClick={phoneBack.onClick ? event => { event.preventDefault(); phoneBack.onClick?.(); } : undefined} className="flex min-h-11 items-center gap-1 px-1 text-g-label text-g-ink">
               <ChevronLeft aria-hidden="true" className="size-[18px]" strokeWidth={1.75} />
               {phoneBack.label}
             </a>

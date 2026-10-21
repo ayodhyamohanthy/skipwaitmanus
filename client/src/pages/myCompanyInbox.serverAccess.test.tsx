@@ -54,17 +54,17 @@ describe("queue gate follows the server's verified-referrer verdict", () => {
   it("opens the queue for a Google SSO account whose work email was verified by code (the QA case)", async () => {
     accessReplies = [VERIFIED];
     renderQueue();
-    expect(await screen.findByRole("article", { name: "Private request Ref-1013" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Referral request/ })).toBeTruthy();
     expect(screen.queryByText("Verify your work email.")).toBeNull();
     expect(screen.queryByRole("button", { name: "Add work email" })).toBeNull();
-    expect(document.querySelector('[data-skipwait-screen="company-inbox"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="goal-shell"]')).toBeTruthy();
   });
 
   it("opens the empty queue's capacity panel for a verified referrer with nothing waiting", async () => {
     accessReplies = [VERIFIED];
     newRows = [];
     renderQueue();
-    await waitFor(() => expect(document.querySelector('[aria-label="Open referral capacity"]')).toBeTruthy());
+    expect(await screen.findByRole("button", { name: "Open referral capacity" })).toBeTruthy();
     expect(screen.queryByText("Verify your work email.")).toBeNull();
   });
 
@@ -73,7 +73,7 @@ describe("queue gate follows the server's verified-referrer verdict", () => {
     renderQueue();
     expect(await screen.findByText("Verify your work email.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add work email" })).toBeTruthy();
-    expect(screen.queryByRole("article")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Referral request/ })).toBeNull();
     // The private queue is requested only once the server confirms the verification.
     expect(inboxCalls()).toBe(0);
   });
@@ -83,7 +83,7 @@ describe("queue gate follows the server's verified-referrer verdict", () => {
     accessReplies = [UNVERIFIED];
     renderQueue();
     expect(await screen.findByText("Verify your work email.")).toBeTruthy();
-    expect(screen.queryByRole("article")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Referral request/ })).toBeNull();
     expect(accessCalls()).toBe(1);
   });
 
@@ -91,9 +91,9 @@ describe("queue gate follows the server's verified-referrer verdict", () => {
     accessReplies = ["hang"];
     renderQueue();
     expect(await screen.findByText("Checking your verification.")).toBeTruthy();
-    expect(document.querySelector('[data-skipwait-screen="company-inbox-checking"] [aria-busy="true"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="goal-shell"] [aria-busy="true"]')).toBeTruthy();
     expect(screen.queryByText("Verify your work email.")).toBeNull();
-    expect(screen.queryByRole("article")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Referral request/ })).toBeNull();
   });
 
   it("shows a retryable error, never the gate, when the verification check fails, then opens the queue on retry", async () => {
@@ -107,7 +107,7 @@ describe("queue gate follows the server's verified-referrer verdict", () => {
     expect(alert.textContent).not.toMatch(/your verification and/i);
     expect(screen.queryByText("Verify your work email.")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByRole("article", { name: "Private request Ref-1013" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Referral request/ })).toBeTruthy();
     expect(screen.queryByText("We couldn’t check your verification")).toBeNull();
   });
 
@@ -118,7 +118,7 @@ describe("queue gate follows the server's verified-referrer verdict", () => {
     expect(await screen.findByText("We couldn’t check your verification", undefined, { timeout: 4000 })).toBeTruthy();
     networkDown = false;
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByRole("article", { name: "Private request Ref-1013" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Referral request/ })).toBeTruthy();
     expect(screen.queryByText("We couldn’t load your queue")).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });
