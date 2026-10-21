@@ -2,6 +2,7 @@
 // is a 2px ink bar inside the left edge — the only stripe in the system
 // (BRIEF.md §185). Hover is instant; no filled badges, no row actions.
 import type { ReactNode } from "react";
+import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { GoalNum } from "./GoalNum";
 
@@ -51,7 +52,7 @@ export function GoalListRow({ href, onSelect, selected = false, selectable = tru
   return (
     <li data-testid="goal-list-row">
       {href !== undefined ? (
-        <a href={href} aria-current={selected && selectable ? "true" : undefined} onClick={onSelect ? event => { event.preventDefault(); onSelect(); } : undefined} className={className}>{body}</a>
+        <Link href={href} aria-current={selected && selectable ? "true" : undefined} onClick={onSelect ? event => { event.preventDefault(); onSelect(); } : undefined} className={className}>{body}</Link>
       ) : (
         <button type="button" aria-current={selected && selectable ? "true" : undefined} onClick={onSelect} className={className}>{body}</button>
       )}
