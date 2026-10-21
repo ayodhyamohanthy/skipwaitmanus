@@ -90,7 +90,7 @@
       "tier": 1,
       "lane": "company",
       "branch": "agent/instinct/company-response-signal",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
