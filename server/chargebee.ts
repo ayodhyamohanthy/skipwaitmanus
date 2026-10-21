@@ -151,6 +151,32 @@ export function parseRefundEvent(payload: any): ParsedRefundEvent | undefined {
   return { eventId, invoiceId, refundAmount: Number.isInteger(amount) && amount > 0 ? amount : undefined, currency };
 }
 
+export type ParsedFailedPaymentEvent = { eventId: string; invoiceId?: string; subscriptionId?: string; customerId?: string; amount?: number; currency?: string };
+
+/**
+ * A provider payment failure (event `payment_failed`). Nothing settled and no
+ * credits moved; every field that cannot be read is left undefined and the
+ * handler still alerts: the owner rule is that a failed payment never passes
+ * silently.
+ */
+export function parseFailedPaymentEvent(payload: any): ParsedFailedPaymentEvent | undefined {
+  if (payload?.event_type !== "payment_failed") return undefined;
+  const eventId = getChargebeeEventId(payload);
+  if (!eventId) return undefined;
+  const content = payload?.content ?? {};
+  const payment = content.payment ?? content.transaction;
+  const invoice = content.invoice;
+  const customer = content.customer;
+  const invoiceId = typeof payment?.invoice_id === "string" ? payment.invoice_id : typeof invoice?.id === "string" ? invoice.id : undefined;
+  const subscriptionId = typeof payment?.subscription_id === "string" ? payment.subscription_id : typeof invoice?.subscription_id === "string" ? invoice.subscription_id : undefined;
+  const customerId = typeof customer?.id === "string" ? customer.id : typeof invoice?.customer_id === "string" ? invoice.customer_id : undefined;
+  const rawAmount = payment?.amount ?? invoice?.amount_paid ?? invoice?.total;
+  const amount = Number(rawAmount);
+  const rawCurrency = payment?.currency_code ?? payment?.currency ?? invoice?.currency_code;
+  const currency = typeof rawCurrency === "string" ? rawCurrency.toUpperCase() : undefined;
+  return { eventId, invoiceId, subscriptionId, customerId, amount: Number.isInteger(amount) && amount > 0 ? amount : undefined, currency };
+}
+
 function dateFromChargebeeSeconds(value: unknown) {
   const seconds = Number(value);
   return Number.isSafeInteger(seconds) && seconds > 0 ? new Date(seconds * 1000) : undefined;

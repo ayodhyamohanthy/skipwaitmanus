@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
-import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parsePaymentSourceEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
+import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, isTokenPackId, isTokenQuantity, parseFailedPaymentEvent, parseGiftEvent, parsePaidPaymentEvent, parsePaymentSourceEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole, VerifiedChargebeeHostedPage } from "./chargebee";
 import type { PlanCreditRung, PlanFamilyId } from "../shared/planFamily";
 import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
@@ -52,6 +52,8 @@ type Deps = {
   applyPaymentRefund?: (input: { eventId: string; invoiceId?: string; refundAmount?: number; currency?: string }) => Promise<{ status: string; paymentId?: number; reason?: string }>;
   alertPaymentRefund?: (input: { eventId: string; invoiceId?: string; paymentId?: number; reason: string; refundAmount?: number; currency?: string }) => Promise<unknown>;
   alertUnmatchedPayment?: (input: { eventId: string; invoiceId?: string; hostedPageId?: string; reason: string; paidAmount: number; paidCurrency: string }) => Promise<unknown>;
+  /** Owner rule (Oct 22): every provider payment failure reaches the owner at once. */
+  alertFailedPayment?: (input: { eventId: string; invoiceId?: string; subscriptionId?: string; customerId?: string; amount?: number; currency?: string }) => Promise<unknown>;
   /** Durable receipt for a provider gift event (D-067: receipts only; a claimed gift is parked as plan_retired). */
   recordGiftEvent?: (input: { eventId: string; eventType: string; giftId: string; status: string; receiverEmail?: string; receiverCustomerId?: string; subscriptionId?: string; buyerUserId?: number }) => Promise<{ giftId: string; fulfillmentStatus: string; parked: boolean }>;
   listBuyerGifts?: (buyerUserId: number) => Promise<Array<{ giftId: string; plan: RetiredPlanId | null; currency: string | null; amount: number | null; receiverEmail: string | null; providerStatus: string | null; fulfillmentStatus: string; subscriptionId: string | null; creditedAt: Date | null; createdAt: Date }>>;
@@ -564,6 +566,14 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       console.error("[Chargebee] unmatched paid invoice needs review", { eventId: payment.eventId, invoiceId: payment.invoiceId, reason });
       record({ action: "billing.payment_unmatched", outcome: "failure", resourceType: "chargebee_invoice", resourceId: payment.invoiceId ?? payment.eventId, metadata: { eventId: payment.eventId, hostedPageId: payment.hostedPageId, reason, amount: payment.amount, currency: payment.currency } });
       void deps.alertUnmatchedPayment?.({ eventId: payment.eventId, invoiceId: payment.invoiceId, hostedPageId: payment.hostedPageId, reason, paidAmount: payment.amount, paidCurrency: payment.currency });
+    }
+
+    const failedPayment = parseFailedPaymentEvent(req.body);
+    if (failedPayment) {
+      handled = true;
+      console.error("[Chargebee] payment failed", { eventId: failedPayment.eventId, invoiceId: failedPayment.invoiceId, subscriptionId: failedPayment.subscriptionId });
+      record({ action: "billing.payment_failed", outcome: "failure", resourceType: "chargebee_invoice", resourceId: failedPayment.invoiceId ?? failedPayment.eventId, metadata: { eventId: failedPayment.eventId, invoiceId: failedPayment.invoiceId ?? null, subscriptionId: failedPayment.subscriptionId ?? null, customerId: failedPayment.customerId ?? null, amount: failedPayment.amount ?? null, currency: failedPayment.currency ?? null } });
+      void deps.alertFailedPayment?.({ eventId: failedPayment.eventId, invoiceId: failedPayment.invoiceId, subscriptionId: failedPayment.subscriptionId, customerId: failedPayment.customerId, amount: failedPayment.amount, currency: failedPayment.currency }).catch(() => undefined);
     }
 
     const gift = parseGiftEvent(req.body);
