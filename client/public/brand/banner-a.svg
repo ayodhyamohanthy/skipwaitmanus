@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" fill="none">
+  <line x1="30" y1="340" x2="450" y2="340" stroke="#0A0A0A" stroke-width="3"/>
+  <circle cx="96" cy="120" r="10" fill="#FFFFFF" opacity="0.75"/>
+  <circle cx="150" cy="72" r="6" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="414" cy="96" r="8" fill="#FFFFFF" opacity="0.7"/>
+  <!-- open door -->
+  <rect x="276" y="128" width="104" height="212" rx="10" fill="#FFFFFF" stroke="#0A0A0A" stroke-width="5"/>
+  <rect x="292" y="144" width="72" height="196" rx="6" fill="url(#gA)"/>
+  <defs><linearGradient id="gA" x1="292" y1="144" x2="364" y2="340" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#fce9da"/><stop offset="0.55" stop-color="#f6cfdd"/><stop offset="1" stop-color="#e7d6f4"/></linearGradient></defs>
+  <circle cx="300" cy="244" r="4.5" fill="#0A0A0A"/>
+  <!-- employee (ink) in the doorway, arm extended left -->
+  <circle cx="328" cy="218" r="27" fill="#0A0A0A"/>
+  <path d="M278 340A50 62 0 0 1 378 340Z" fill="#0A0A0A"/>
+  <path d="M300 262L262 284" stroke="#0A0A0A" stroke-width="13" stroke-linecap="round"/>
+  <!-- seeker (grey) approaching from the left, arm extended right -->
+  <circle cx="160" cy="238" r="24" fill="#8A8A8A"/>
+  <path d="M116 340A44 55 0 0 1 204 340Z" fill="#8A8A8A"/>
+  <path d="M188 276L250 288" stroke="#8A8A8A" stroke-width="12" stroke-linecap="round"/>
+  <!-- the meeting hands -->
+  <circle cx="258" cy="287" r="9" fill="#0A0A0A"/>
+</svg>

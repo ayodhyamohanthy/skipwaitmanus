@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 360" fill="none">
+  <line x1="24" y1="340" x2="536" y2="340" stroke="#0A0A0A" stroke-width="3"/>
+  <!-- the waiting queue (greys) -->
+  <g>
+    <circle cx="96" cy="252" r="22" fill="#B9B9B9"/><path d="M52 340A44 55 0 0 1 140 340Z" fill="#B9B9B9"/>
+    <circle cx="176" cy="258" r="20" fill="#A9A9A9"/><path d="M136 340A40 50 0 0 1 216 340Z" fill="#A9A9A9"/>
+    <circle cx="248" cy="264" r="18" fill="#999999"/><path d="M212 340A36 45 0 0 1 284 340Z" fill="#999999"/>
+    <circle cx="312" cy="270" r="16" fill="#8A8A8A"/><path d="M280 340A32 40 0 0 1 344 340Z" fill="#8A8A8A"/>
+  </g>
+  <!-- the skip: dotted arc over the queue -->
+  <path d="M120 268Q 300 96 428 236" stroke="#0A0A0A" stroke-width="5" stroke-linecap="round" stroke-dasharray="2 14" fill="none"/>
+  <!-- the referred one (ink), ahead and rising -->
+  <g transform="translate(452 268)">
+    <circle cx="0" cy="-72" r="24" fill="#0A0A0A"/>
+    <path d="M-44 0A44 55 0 0 1 44 0Z" fill="#0A0A0A"/>
+  </g>
+  <!-- destination mark -->
+  <circle cx="452" cy="120" r="26" fill="#0A0A0A"/>
+  <path d="M440 120L449 129L465 111" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="60" cy="120" r="7" fill="#FFFFFF" opacity="0.7"/>
+  <circle cx="510" cy="180" r="6" fill="#FFFFFF" opacity="0.6"/>
+</svg>
