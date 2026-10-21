@@ -4239,6 +4239,17 @@ export async function grantV2PaidCredits(input: { eventId: string; invoiceId?: s
     // One purchase row per invoice: the idempotency key refuses a second grant
     // for the same invoice however often the event is redelivered.
     await tx.insert(tokenTransactions).values({ userId, role, tokenCount: input.rung, kind: "purchase", source: "purchased_balance", referenceType: "chargebee_invoice", referenceId: invoiceId, idempotencyKey: v2CreditIdempotencyKey(invoiceId) });
+    // The frozen copy: "First verified payment earns 5 bonus credits" - a
+    // bundle's first paid invoice earns the same promo as a kit pack or
+    // subscription. Idempotent by the unique (userId, role) grant row; a
+    // pending schema migration degrades loudly without blocking paid credits.
+    try {
+      await grantPromoCreditsTx(tx, { userId, role, source: "first_paid_invoice", providerRef: invoiceId, now: creditedAt });
+    } catch (error) {
+      if (!isSchemaMissingError(error)) throw error;
+      captureServerError(error, { source: "promo-grant-skipped", userId, role });
+      await tx.insert(operationalActivityLogs).values({ actorUserId: userId, action: "promo.grant_skipped_schema_pending", outcome: "failure", resourceType: "promo_credit_grant", metadata: JSON.stringify({ role, providerRef: invoiceId }) });
+    }
     return { status: "credited" as const, tokenCount: input.rung, userId, role };
   });
 }
