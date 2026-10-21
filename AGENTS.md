@@ -462,19 +462,25 @@ which rules were adopted or rejected when this section changes.
   desktop/mobile visual verification when layout or appearance is at stake.
 
 ## Styling and dependency boundary
+- **D-120 (Oct 21): the yellow/blue Kit v4 visual language is RETIRED.** New
+  screens and new UI work follow the designer's goal-based system (`DESIGN.md`)
+  only - no new electric-blue `#0000FF` / invitation-yellow `#FFFC52` UI ships.
+  The visual migration of existing surfaces is HELD until the designer's
+  approved screens arrive; existing flag-off work is unaffected.
 - **D-048 phase 2 shipped (Oct 19):** `DESIGN.md` is the goal-UI visual contract
   (comps approved by D-071, `design/goal-ui/pick/`). It governs each surface once
   phase 3 moves it to `client/src/components/goal/` (tokens: the phase-2 block at
   the end of `client/src/index.css`). Until a surface moves, its live Kit v4
-  tokens and components stay binding: nobody re-skins a surface ad hoc.
+  tokens and components stay in place: nobody re-skins a surface ad hoc.
 - Goal UI (moved surfaces): white surfaces with hairlines, ink `#0a0a0a`, trust
   blue `#1d4ed8` on verified marks only, status hues by role, Instrument Sans +
   JetBrains Mono numerals. `node scripts/design-token-audit.mjs` enforces both
   worlds. Do not drift the palette, typography, radii, motion, disabled states,
   or one-primary-action rule. Do not reintroduce legacy palette shims.
-- Kit v4 (unmoved surfaces): white canvas, ink `#141414`, electric blue
-  `#0000FF`, invitation yellow `#FFFC52`; Instrument Sans UI, IBM Plex Mono
-  labels; oklch tokens in `client/src/index.css` above the phase-2 block.
+- Kit v4 (unmoved surfaces, legacy per D-120 - maintain, never extend): white
+  canvas, ink `#141414`, electric blue `#0000FF`, invitation yellow `#FFFC52`;
+  Instrument Sans UI, IBM Plex Mono labels; oklch tokens in
+  `client/src/index.css` above the phase-2 block.
 - Prohibited UI choices: gradients (except the single work-thumbnail tint
   blend), glassmorphism, neon/glow decoration, blurred
   orbs, cream/brown/terracotta colors, condensed uppercase headings, Unicode

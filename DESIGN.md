@@ -3,6 +3,7 @@
 > Start with [`docs/BRIEF.md`](docs/BRIEF.md) (D-073).
 
 > Approved comps: `design/goal-ui/pick/` (D-071, Oct 18 2026, without the compensation row) — Find a referral with the ask drawer, Referral queue with the 7-reason pass picker, My asks, at 1280 and 390. Design brief: `design/goal-ui/BRIEF.md` (where it disagrees with `pick/`, the comps, D-070 and D-052 win). Tokens: the "D-048 phase 2" block at the end of `client/src/index.css`. Primitives: `client/src/components/goal/`.
+> **D-120 (Oct 21): the yellow/blue Kit v4 visual language is retired.** New screens and new UI follow this contract only. The migration build stays held until the designer's approved screens are forwarded; existing flag-off work is unaffected.
 > Rollout: phase 2 (this contract, tokens, primitives, token audit) changes no live surface. Phase 3 moves one surface at a time, each through the full gate with captures at 1280 and 390. Until a surface moves, it keeps its live Kit v4 tokens and components (`client/src/index.css` above the phase-2 block, `client/src/styles/kit.css`, `client/src/components/ui`, `client/src/components/kit`). Nobody re-skins a surface ad hoc.
 
 ## Overview
