@@ -54,6 +54,19 @@ export const onRequest: PagesFunction<{ API_ORIGIN?: string }> = async (context)
     }
   } catch { /* sitemap still serves the static routes if the API is cold */ }
 
+  try {
+    // Listed company pages (/explore/<slug>): each is a real, linkable page,
+    // so every card in the directory is an anchor a crawler can follow.
+    const response = await fetch(`${apiOrigin}/api/companies`, { headers: { accept: "application/json" } });
+    if (response.ok) {
+      const payload = (await response.json()) as { companies?: Array<{ slug?: string }> };
+      for (const company of payload.companies ?? []) {
+        if (typeof company.slug !== "string" || company.slug.length === 0) continue;
+        urls.push({ loc: `${origin}/explore/${encodeURIComponent(company.slug)}`, changefreq: "weekly", priority: "0.7" });
+      }
+    }
+  } catch { /* company entries are additive; static routes still serve */ }
+
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(entry => `  <url>\n    <loc>${escapeXml(entry.loc)}</loc>\n${entry.lastmod ? `    <lastmod>${entry.lastmod}</lastmod>\n` : ""}    <changefreq>${entry.changefreq}</changefreq>\n    <priority>${entry.priority}</priority>\n  </url>`).join("\n")}\n</urlset>\n`;
 
   return new Response(body, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });

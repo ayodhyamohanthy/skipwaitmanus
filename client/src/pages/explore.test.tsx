@@ -100,7 +100,7 @@ describe("Find a referral directory", () => {
     renderWithQuery(<Explore />);
     expect(await screen.findByText("Where do you want a referral?")).toBeTruthy();
     expect(screen.getByTestId("goal-directory-summary").textContent).toMatch(/^5 companies\s*·\s*5 open to requests$/);
-    expect(screen.getAllByRole("button", { name: /(open to requests|not open yet)$/ }).map(row => row.getAttribute("aria-label"))).toEqual(rowNames);
+    expect(screen.getAllByRole("link", { name: /(open to requests|not open yet)$/ }).map(row => row.getAttribute("aria-label"))).toEqual(rowNames);
     expect(screen.getAllByTestId("goal-availability").map(dot => dot.textContent)).toEqual(Array(5).fill("Open to requests"));
     // Never the comp's sample company, and no preview state.
     expect(screen.queryByText("Kestrel Pay")).toBeNull();
@@ -114,7 +114,7 @@ describe("Find a referral directory", () => {
     renderWithQuery(<Explore />);
     expect((await screen.findByTestId("goal-directory-summary")).textContent).toMatch(/^5 companies\s*·\s*2 open to requests$/);
     expect(screen.getAllByTestId("goal-availability").map(dot => dot.textContent).filter(text => text === "Not open yet")).toHaveLength(3);
-    fireEvent.click(screen.getByRole("button", { name: "Merkle, not open yet" }));
+    fireEvent.click(screen.getByRole("link", { name: "Merkle, not open yet" }));
     const drawer = await screen.findByTestId("goal-drawer");
     expect(within(drawer).getByText("No verified employee at Merkle can take a new ask right now.")).toBeTruthy();
     expect(within(drawer).getByText("An alert is not a referral.")).toBeTruthy();
@@ -129,7 +129,7 @@ describe("Find a referral directory", () => {
     const search = screen.getByRole("searchbox", { name: "Search companies" });
     fireEvent.change(search, { target: { value: "tcs" } });
     expect(screen.getByTestId("goal-directory-summary").textContent).toMatch(/^1 company\s*·\s*1 open to requests$/);
-    expect(screen.queryByRole("button", { name: "Wipro, open to requests" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Wipro, open to requests" })).toBeNull();
     fireEvent.change(search, { target: { value: "" } });
     expect(screen.getAllByTestId("goal-filter-chip")).toHaveLength(12);
     const product = screen.getByRole("button", { name: "Product", pressed: false });
@@ -165,7 +165,7 @@ describe("Find a referral directory", () => {
     fireEvent.change(screen.getByRole("searchbox", { name: "Search companies" }), { target: { value: "zzz-no-such-company" } });
     expect(screen.getByText("No matching companies yet")).toBeTruthy();
     expect(screen.getByText("Try a wider search. If your company is missing, request it and we’ll open the door.")).toBeTruthy();
-    expect(screen.queryAllByRole("button", { name: /open to requests$/ })).toHaveLength(0);
+    expect(screen.queryAllByRole("link", { name: /open to requests$/ })).toHaveLength(0);
     expect(screen.getByRole("link", { name: "Request a company" }).getAttribute("href")).toBe("/invite");
     fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(screen.getByTestId("goal-directory-summary").textContent).toMatch(/^5 companies\s*·\s*5 open to requests$/);
@@ -194,7 +194,7 @@ describe("Find a referral directory", () => {
     stubDirectory();
     renderWithQuery(<Explore />);
     await screen.findByTestId("goal-directory-summary");
-    expect(screen.getByRole("button", { name: "Wipro, open to requests" }).getAttribute("aria-current")).toBe("true");
+    expect(screen.getByRole("link", { name: "Wipro, open to requests" }).getAttribute("aria-current")).toBe("true");
     const drawer = await screen.findByTestId("goal-drawer");
     expect(within(drawer).getByRole("heading", { name: "Ask for a referral" })).toBeTruthy();
     expect(within(drawer).getByText("Wipro")).toBeTruthy();
