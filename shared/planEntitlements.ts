@@ -126,7 +126,7 @@ function isCatalogPlan(plan: string): boolean {
  * subscriber - never grandfathered-away like the retired Pro/Max ids - so it
  * follows the same active/lapse rules as a catalog plan.
  */
-export function isPlanFamilyPaidPlan(plan: string): plan is PlanFamilyId {
+export function isPlanFamilyPaidPlan(plan: string): plan is Exclude<PlanFamilyId, "open_door"> {
   return (PLAN_FAMILY_IDS as readonly string[]).includes(plan) && plan !== "open_door";
 }
 
