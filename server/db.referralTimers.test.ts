@@ -23,6 +23,16 @@ const person = (id: number, name: string, email: string): Row => full(users, { i
 const employee = (id: number, userId: number, over: Row = {}): Row => full(profiles, { id, userId, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: new Date("2026-09-01T00:00:00Z"), paused: false, referralCapacity: 3, ...over });
 const wallet = (id: number, userId: number, over: Row = {}): Row => full(tokenBalances, { id, userId, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 3, monthlyAllowance: 3, monthlyCycleKey: "2026-10", plan: "free", ...over });
 const acceptedAsk = (over: Row = {}): Row => full(referralRequests, { id: REQUEST_ID, jobId: 11, jobSeekerId: SEEKER, referrerId: REFERRER, personalPitch: "I led two launches.", status: "approved", revision: 1, waitingForCoverage: false, coverageVisibleAt: new Date(T0), coverageHeldAt: null, debitTransactionId: 11, createdAt: new Date(T0), updatedAt: new Date(T0), ...over });
+/** A claim nobody accepted or passed: its 48-hour lapse is due at the switch test's clock. */
+const claimedAsk = (): Row => full(referralRequests, { id: 601, jobId: 11, jobSeekerId: SEEKER, referrerId: REFERRER, personalPitch: "I shipped two releases.", status: "pending", revision: 1, waitingForCoverage: false, coverageVisibleAt: new Date(T0), coverageHeldAt: null, debitTransactionId: 12, createdAt: new Date(T0), updatedAt: new Date(T0) });
+/** An allocation nobody claimed: its 48-hour lapse is due at the switch test's clock. */
+const allocatedAsk = (): Row => full(referralRequests, { id: 602, jobId: 11, jobSeekerId: SEEKER, referrerId: REFERRER, personalPitch: "I led design systems.", status: "pending", revision: 1, waitingForCoverage: false, coverageVisibleAt: new Date(T0), coverageHeldAt: null, debitTransactionId: 13, createdAt: new Date(T0), updatedAt: new Date(T0) });
+const acceptEvent = (): Row => ({ id: 100, referralRequestId: REQUEST_ID, operationKey: "review:2:approved", actorUserId: REFERRER, action: "review", fromStatus: "pending", resultingStatus: "approved", resultingRevision: 1, createdAt: new Date(T0) });
+const claimEventRow = (): Row => ({ id: 210, referralRequestId: 601, operationKey: `claim:${REFERRER}`, actorUserId: REFERRER, action: "claim", fromStatus: "pending", resultingStatus: "pending", resultingRevision: 1, createdAt: new Date(T0) });
+const allocationSlot = (): Row => ({ id: 9102, referralRequestId: 602, referrerId: REFERRER, status: "allocated", openedAt: new Date(T0) });
+const acceptedGrant = (): Row => ({ id: 1, referralRequestId: REQUEST_ID, referrerId: REFERRER, requestRevision: 1, grantVersion: 1, grantedAt: new Date(T0), expiresAt: new Date(T0 + 7 * DAY_MS), revokedAt: null, revokeReason: null });
+/** Six days after the cut-off: the claim/allocation lapses and the 5-day referred deadline are all due. */
+const SWITCH_NOW = T0 + 6 * DAY_MS;
 
 function seed(options: { asks?: readonly Row[]; referrers?: readonly Row[]; events?: readonly Row[]; slots?: readonly Row[]; passes?: readonly Row[]; grants?: readonly Row[]; spends?: readonly Row[] } = {}) {
   store.reset([
@@ -195,6 +205,7 @@ describe("D-038-B: referred deadline (5 days)", () => {
 
     const { createReferralTimers } = await import("./referralTimers");
     const job = createReferralTimers({
+      referredDeadlineEnabled: true,
       listCandidates: (limit: number, nowMs: number) => import("./db").then(m => m.listReferralTimerCandidates(limit, nowMs)),
       lapseClaim: (tx: any, requestId: number, nowMs: number) => import("./db").then(m => m.lapseClaimTx(tx, requestId, nowMs)),
       lapseAllocation: (tx: any, requestId: number, nowMs: number) => import("./db").then(m => m.lapseAllocationTx(tx, requestId, nowMs)),
@@ -235,5 +246,61 @@ describe("D-038-B: referred deadline (5 days)", () => {
     const result = await lapseReferredTx(store.db as any, REQUEST_ID, REFERRAL_TIMERS_SINCE + 5 * DAY_MS + 1);
     expect(result).toEqual({ lapsed: true, reason: "lapsed_referred" });
     expect(askById(REQUEST_ID)?.referrerId).toBeNull();
+  });
+});
+
+/*
+ * D-038-reconcile R-2: part B (the referred reminders and lapses, and the
+ * extend/step-back/confirm actions) touched money and privacy before its own
+ * review. The job runs steps 1–3 only while REFERRED_DEADLINE_ENABLED is false
+ * and reports the skipped steps; with the switch on, the same window pins part
+ * B's behaviour for that review. Nothing is deleted either way.
+ */
+describe("D-038-reconcile R-2: the job's part B switch", () => {
+  const seedSwitchFixture = () => seed({ asks: [acceptedAsk(), claimedAsk(), allocatedAsk()], events: [acceptEvent(), claimEventRow()], slots: [allocationSlot()], grants: [acceptedGrant()] });
+
+  it("off: lapses the claim and the allocation, leaves the accepted ask, its credit and grant untouched, and reports steps 4–5 skipped", async () => {
+    seedSwitchFixture();
+    const { createReferralTimers } = await import("./referralTimers");
+
+    const output = await createReferralTimers()({ nowMs: SWITCH_NOW } as never);
+
+    expect(askById(601)?.referrerId).toBeNull();
+    expect(store.rows(referralAvailabilitySlots).find(row => row.id === 9102)?.status).toBe("released");
+    // The accepted ask is untouched: still accepted, same referrer, grant open, no referred event or reminder.
+    expect(askById(REQUEST_ID)?.status).toBe("approved");
+    expect(askById(REQUEST_ID)?.referrerId).toBe(REFERRER);
+    expect(grantsFor(REQUEST_ID)[0]?.revokedAt).toBeNull();
+    expect(eventsFor(REQUEST_ID).map(event => event.action)).not.toContain("referred_lapse");
+    expect(store.rows(notifications).some(row => row.title === "Did you submit the referral?")).toBe(false);
+    expect(output.skipped).toBe("referred-deadline off");
+    expect(output.failed).toBe(0);
+  });
+
+  it("on: the same window reopens the accepted ask, revokes the grant, and the credit returns exactly once", async () => {
+    seedSwitchFixture();
+    const { createReferralTimers } = await import("./referralTimers");
+    const job = createReferralTimers({ referredDeadlineEnabled: true });
+
+    const output = await job({ nowMs: SWITCH_NOW } as never);
+    expect(output.skipped).toBeUndefined();
+    expect(askById(REQUEST_ID)?.status).toBe("pending");
+    expect(askById(REQUEST_ID)?.referrerId).toBeNull();
+    expect(grantsFor(REQUEST_ID)[0]?.revokedAt).not.toBeNull();
+    expect(grantsFor(REQUEST_ID)[0]?.revokeReason).toBe("referred_lapse");
+    expect(eventsFor(REQUEST_ID).map(event => event.action)).toContain("referred_lapse");
+
+    // A repeated window writes no second lapse.
+    await job({ nowMs: SWITCH_NOW + 60 * 60 * 1000 } as never);
+    expect(eventsFor(REQUEST_ID).filter(event => event.action === "referred_lapse")).toHaveLength(1);
+
+    // The reopened ask returns its credit once when its own window ends.
+    const { expireStalePendingReferralRequest } = await import("./db");
+    const refunds = () => store.rows(tokenTransactions).filter(row => row.kind === "expiry_refund" && row.referenceId === `${REQUEST_ID}#refund`);
+    expect(refunds()).toHaveLength(0);
+    await expireStalePendingReferralRequest(SEEKER, REQUEST_ID, T0 + 8 * DAY_MS);
+    expect(refunds()).toHaveLength(1);
+    await expireStalePendingReferralRequest(SEEKER, REQUEST_ID, T0 + 8 * DAY_MS + 1000);
+    expect(refunds()).toHaveLength(1);
   });
 });

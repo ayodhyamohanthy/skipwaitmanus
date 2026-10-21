@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { notifications, referralAvailabilitySlots, referralRequestPasses } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
+import { notifications, referralAvailabilitySlots, referralRequestPasses, referralRequests } from "../drizzle/schema";
 import { REFERRAL_TIMERS_SINCE } from "../shared/referral";
 import { claimCompanyReferralRequest, getClaimedCompanyReferralDetail, lapseAllocationTx, lapseClaimTx, listCompanyReferralInboxByState, reviewReferralRequest, withdrawCompanyReferralRequest } from "./db";
 import { drizzleFlowBaselineSource } from "./flowBaselineSource";
@@ -178,6 +179,34 @@ describe("D-038-A: the reminder and the cap", () => {
     expect(output.processed).toBeGreaterThanOrEqual(1);
     expect(output.failed).toBeGreaterThanOrEqual(1);
   });
+
+  it("R-5: a re-allocated ask reminds its new holder, not only the one who lapsed", async () => {
+    seedHeldAsks({ asks: [askRow({ coverageVisibleAt: new Date(T), updatedAt: new Date(T) })], slots: [allocatedSlot()] });
+    const job = createReferralTimers();
+
+    await job({ nowMs: T + 24 * HOUR } as never);
+    expect(decisionNotices(LINK_OWNER)).toHaveLength(1);
+
+    // The lapsed owner is excluded; the same ask is handed to a colleague (a new slot).
+    await lapseAllocationTx(store.db as never, REQUEST_ID, LAPSE);
+    await store.db.update(referralRequests).set({ referrerId: COLLEAGUE, coverageVisibleAt: new Date(LAPSE), updatedAt: new Date(LAPSE) }).where(eq(referralRequests.id, REQUEST_ID));
+    await store.db.insert(referralAvailabilitySlots).values({ ...allocatedSlot(REQUEST_ID, 92), referrerId: COLLEAGUE, activeRequestKey: "request:501:b" });
+
+    await job({ nowMs: LAPSE + 24 * HOUR } as never);
+    expect(decisionNotices(COLLEAGUE)).toHaveLength(1);
+    expect(String(decisionNotices(COLLEAGUE)[0]?.eventKey)).toBe("allocation-reminder:92");
+  });
+
+  it("R-6: repeating a claim on an ask the claimant already holds answers as before, never the cap", async () => {
+    const held = [501, 502, 503, 504, 505];
+    seedHeldAsks({
+      asks: held.map(id => askRow({ id, revision: 1, updatedAt: new Date(T), createdAt: new Date(T) })),
+      events: held.map((id, index) => claimAt(id, 100 + index)),
+    });
+
+    await expect(claimCompanyReferralRequest(LINK_OWNER, 501)).resolves.toMatchObject({ claimed: true, replayed: true });
+    expect(askById(501)?.referrerId).toBe(LINK_OWNER);
+  });
 });
 
 describe("D-038-A: what the surfaces show", () => {
@@ -206,5 +235,18 @@ describe("D-038-A: what the surfaces show", () => {
     seedHeldAsks({ asks: [claimedByOwner()], events: [claimAt()] });
     const inbox = await listCompanyReferralInboxByState(COLLEAGUE, "new");
     expect(inbox.every(row => row.decisionDueAt === null)).toBe(true);
+  });
+
+  it("R-2: the thread detail omits the referred deadline and extension while part B is off", async () => {
+    seedHeldAsks({
+      asks: [askRow({ status: "approved", revision: 1, updatedAt: new Date(T) })],
+      events: [{ ...claimEvent(), action: "review", operationKey: `review:${LINK_OWNER}:approved`, resultingStatus: "approved", createdAt: new Date(T) }],
+    });
+
+    const detail = await getClaimedCompanyReferralDetail(LINK_OWNER, REQUEST_ID);
+    expect(detail).toBeDefined();
+    expect(detail).not.toHaveProperty("referredDueAt");
+    expect(detail).not.toHaveProperty("extensionUsed");
+    expect(detail?.decisionDueAt).toBeNull();
   });
 });
