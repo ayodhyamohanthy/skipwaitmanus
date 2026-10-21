@@ -65,7 +65,7 @@ jobs:
           echo "${{ github.sha }}" > commit-sha.txt
           node -e 'const fs=require("fs"); const p="wrangler.jsonc"; let s=fs.readFileSync(p,"utf8"); s=s.replace(/"API_RELEASE": "qa"/, `"API_RELEASE": "${process.env.GITHUB_SHA}"`);fs.writeFileSync(p,s)'
       - name: Build with share/signal client flags ON
-        if: inputs.seed_only != 'true' && inputs.rotate_gate != 'true'
+        if: inputs.seed_only != 'true'  # also runs for rotate_gate: the container image builds from the checkout, so a deploy without dist/ exits on boot
         env:
           VITE_COMPANY_RESPONSE_SIGNAL: "true"
           VITE_SHARE_WIN_CARD: "true"
