@@ -12,6 +12,7 @@
  * Run: DATABASE_URL=mysql://user:pass@host/skipwait_qa npx tsx scripts/qa-seed-share-fixtures.ts
  */
 import { drizzle } from "drizzle-orm/mysql2";
+import { eq } from "drizzle-orm";
 import mysql from "mysql2/promise";
 import { companies, companyDomains, jobs, profiles, referralRequests, referralTransitionEvents, referrerFastTrackLinks, users } from "../drizzle/schema";
 
@@ -86,8 +87,8 @@ async function main() {
   await decide(a1, refA, "approve", 46); // ~3h first reply
   await decide(a2, refA, "approve", 34);
   await decide(a3, refA, "pass", 26);
-  await db.update(referralRequests).set({ status: "approved" }).where((t, { eq }) => eq(t.id, a1));
-  await db.update(referralRequests).set({ status: "approved" }).where((t, { eq }) => eq(t.id, a2));
+  await db.update(referralRequests).set({ status: "approved" }).where(eq(referralRequests.id, a1));
+  await db.update(referralRequests).set({ status: "approved" }).where(eq(referralRequests.id, a2));
   await db.insert(referralTransitionEvents).values({ referralRequestId: a1, operationKey: `progress:${refA}:${a1}`, actorUserId: refA, action: "progress", fromStatus: "approved", resultingStatus: "intro_made", resultingRevision: 2, createdAt: ago(20) });
 
   // Referrer B: 2 answered asks - the impact card must stay HIDDEN (min-3 gate).
