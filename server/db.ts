@@ -4501,6 +4501,11 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     // the family itself is the plan match.
     if (input.planFamily) {
       const recordV2Event = () => tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+      // Open Door is free: it has no subscription and no wallet plan row.
+      if (input.planFamily === "open_door") {
+        await recordV2Event();
+        return { status: "ignored" as const, reason: "open_door_is_free" };
+      }
       if (intent && intent.plan !== input.planFamily) {
         await recordV2Event();
         return { status: "ignored" as const, reason: "plan_mismatch" };
