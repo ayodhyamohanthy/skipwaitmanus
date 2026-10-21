@@ -155,3 +155,8 @@ per PR.
 **Live order (Oct 21):** the queue already runs these as separate tickets and PRs — W0 shell
 (`D-048-p3-w0-shell`), `/explore` (`D-048-p3-explore`), `/requests` (`D-048-p3-requests`) — so the
 combined branch is no longer needed; the wave boundaries below still decide what each PR may touch.
+
+**Per-screen content and claims:** `docs/plans/GOAL_UI_MIGRATION.md` (D-120) carries each screen's
+goal line, its one commit step and the claim table. Claim the surface there before you start. This
+map supplies the order the queue tickets follow; the spec supplies what each screen says, and where
+they disagree on content, the spec's owner-directed contract wins and this map is corrected.
