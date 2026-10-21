@@ -27,7 +27,8 @@ function SearchCTA() {
   const [q, setQ] = useState("");
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    setLocation("/explore");
+    const term = q.trim();
+    setLocation(term ? `/explore?q=${encodeURIComponent(term)}` : "/explore");
   };
   return (
     <form onSubmit={submit} className="mt-8 flex max-w-[560px] flex-col gap-2 rounded-[14px] border border-g-hairline p-1.5 gdesk:flex-row gdesk:items-center" data-testid="goal-next-step">
