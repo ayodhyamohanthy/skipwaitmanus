@@ -116,7 +116,12 @@ jobs:
         run: |
           sleep 20
           code_no=$(curl -s -o /dev/null -w '%{http_code}' -m 30 https://skipwait-qa.ayodhya-711.workers.dev/api/health)
-          code_yes=$(curl -s -o /dev/null -w '%{http_code}' -m 30 -u "qa:${GATE}" https://skipwait-qa.ayodhya-711.workers.dev/api/health)
+          code_yes=""
+          for i in 1 2 3 4 5; do
+            code_yes=$(curl -s -o /dev/null -w '%{http_code}' -m 30 -u "qa:${GATE}" https://skipwait-qa.ayodhya-711.workers.dev/api/health)
+            [ "$code_yes" = "200" ] && break
+            sleep 15
+          done
           echo "without-creds=${code_no} with-creds=${code_yes}"
           [ "$code_no" = "401" ] && [ "$code_yes" = "200" ]
       - name: Seed fictional share fixtures (manual runs only, when requested)
