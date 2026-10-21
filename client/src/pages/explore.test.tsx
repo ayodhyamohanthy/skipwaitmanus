@@ -93,7 +93,7 @@ const companyPaths = (fetchMock: ReturnType<typeof vi.fn>) => paths(fetchMock).f
 // availability is the server's boolean, and selecting a row opens the ask
 // drawer. The drawer's own flows live in exploreDrawer.test.tsx.
 describe("Find a referral directory", () => {
-  const rowNames = ["Go Neutrinos, open to requests", "Merkle, open to requests", "skipwait.me, open to requests", "TCS, open to requests", "Wipro, open to requests"];
+  const rowNames = ["Merkle, open to requests", "Neutrinos, open to requests", "skipwait.me, open to requests", "TCS, open to requests", "Wipro, open to requests"];
 
   it("renders the goal directory in alphabetical order from GET /api/companies", async () => {
     const fetchMock = stubDirectory();
@@ -176,7 +176,7 @@ describe("Find a referral directory", () => {
     renderWithQuery(<Explore />);
     await screen.findByTestId("goal-directory-summary");
     await waitFor(() => expect(document.title).toBe("Find a referral · skipwait.me"));
-    await waitFor(() => expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Find people open to referral requests at skipwait.me, Wipro, Go Neutrinos, TCS, and Merkle."));
+    await waitFor(() => expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Find people open to referral requests at skipwait.me, Wipro, Neutrinos, TCS, and Merkle."));
     expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore");
   });
 
@@ -253,7 +253,7 @@ describe("Explore company detail", () => {
     renderWithQuery(<ExploreCompany />);
     await screen.findByRole("heading", { level: 1 });
     expect(document.title).toBe("Referrals at Wipro · skipwait.me");
-    expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Request a private introduction to someone at Wipro. 3 asks free every month; more use credits.");
+    expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Request a private introduction to someone at Wipro. 3 free credits every month; extra asks use credits.");
     expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore/wipro");
   });
 });
