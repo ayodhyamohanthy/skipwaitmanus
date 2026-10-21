@@ -164,7 +164,8 @@ describe("Saved alerts tab", () => {
 describe("saved alert helpers", () => {
   it("resolves directory identity by any company domain, case-insensitively", () => {
     expect(alertIdentity("Merkle.com", DIRECTORY)).toEqual({ name: "Merkle", mark: "M" });
-    expect(alertIdentity("goneutrinos.com", DIRECTORY)).toEqual({ name: "Go Neutrinos", mark: "GN" });
+    expect(alertIdentity("goneutrinos.com", DIRECTORY)).toEqual({ name: "Neutrinos", mark: "N" });
+    expect(alertIdentity("neutrinos.com", DIRECTORY)).toEqual({ name: "Neutrinos", mark: "N" });
     expect(alertIdentity("tata-consultancy.com", DIRECTORY)).toEqual({ name: "tata-consultancy.com", mark: "TC" });
     expect(alertIdentity("merkle.com", [])).toEqual({ name: "merkle.com", mark: "M" });
   });

@@ -6,6 +6,7 @@ import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
 import { SeekerSignIn } from "@/components/SeekerSignIn";
 import { safeReturnTo } from "@/lib/referrerSignIn";
 import { safeSignInReturnTo } from "@shared/authReturnTo";
+import { ONE_TAP_PAY_SIGNIN } from "@/lib/oneTap";
 import { MONEY_SENTENCE_SHORT } from "@shared/moneyCopy";
 import { PASSWORD_AUTH_COPY, USE_PASSWORD_SIGN_IN_COPY, USE_PASSWORD_SIGN_IN_REASON, USE_WORK_EMAIL_CODE_REASON } from "@shared/passwordAuth";
 
@@ -27,8 +28,9 @@ export default function SignIn() {
   const [intent, setIntent] = useState<Intent>(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("intent") === "referrer" ? "referrer" : "seeker"));
   // Where the work-email OTP lands the referrer (same-origin path only).
   const referrerReturnTo = typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.referrer) : INTENT_RETURN_TO.referrer;
-  // Where a seeker lands: the page that sent them here when it is same-site and not an auth page, else the job search.
-  const seekerReturnTo = typeof window !== "undefined" ? safeSignInReturnTo(new URLSearchParams(window.location.search).get("returnTo"), window.location.origin) ?? INTENT_RETURN_TO.seeker : INTENT_RETURN_TO.seeker;
+  // D-095: with one-tap pay on, a seeker returns to the page that sent them when it is same-site and not an auth page
+  // (safeSignInReturnTo); with the flag off, seekers always land on the job search.
+  const seekerReturnTo = ONE_TAP_PAY_SIGNIN && typeof window !== "undefined" ? safeSignInReturnTo(new URLSearchParams(window.location.search).get("returnTo"), window.location.origin) ?? INTENT_RETURN_TO.seeker : INTENT_RETURN_TO.seeker;
   // A social sign-in with a verified work email is refused and sent here (D-078 ruling 4); say why, on the referrer side only.
   const reason = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("reason") : null;
   const workEmailRefused = reason === USE_WORK_EMAIL_CODE_REASON;

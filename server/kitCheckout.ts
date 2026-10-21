@@ -16,7 +16,8 @@
 import { randomUUID } from "node:crypto";
 import type { Request } from "express";
 import { billingPlanLabel, packPrice, planPrice, type CatalogPrice, type PackPrice, type PlanPrice } from "../shared/billingCatalog";
-import { catalogPlanById } from "../shared/planCatalog";
+import { CREDIT_PACKS, type CatalogCurrency } from "../shared/planCatalog";
+import { PASS_SALES_ENABLED, catalogPlanById } from "../shared/planCatalog";
 import { NOT_AVAILABLE_CODE, type KitPlanCheckoutRequest, type PackCheckoutRequest } from "../shared/subscriptionManagement";
 import { itemPriceAvailability, type AvailabilityDeps, type PriceAvailability } from "./billingAvailability";
 import { createPackCheckout, createPlanCheckout, type CheckoutCustomer, type HostedPageResult } from "./chargebeeSubscriptionApi";
@@ -75,6 +76,9 @@ export async function startKitPlanCheckout(input: { req: Request; request: KitPl
   if (!price) return { ok: false, status: 400, error: "That plan is not sold for this term" };
   // A by-application plan (Land Concierge) is never self-serve: refuse before any provider call, whatever the client sends.
   if (catalogPlanById(planId)?.byApplication) return { ok: false, status: 403, code: APPLICATION_REQUIRED_CODE, error: `${billingPlanLabel(price.plan)} is by application. Apply and we'll set it up with you; nothing has been charged.` };
+  // D-084: passes and Keep warm are not sold until a paid pass can always be activated
+  // (GO-LIVE-1b). Refused before credentials or any probe, so nothing reaches the provider.
+  if (!PASS_SALES_ENABLED) return { ok: false, status: 409, code: NOT_AVAILABLE_CODE, error: kitPriceError(price) };
   const credentials = credentialsFor(input.req, deps);
   if (!credentials && !deps.createPlanCheckout) return notConfigured;
   const verdict = await availabilityOf(input.req, price, deps);
@@ -113,6 +117,21 @@ export async function startKitPackCheckout(input: { req: Request; request: PackC
     cancelUrl: input.urls.cancelUrl,
   });
   return { ok: true, price, checkoutIntentId, checkout };
+}
+
+/**
+ * GO-LIVE-1 (D-036): is any credit pack on sale in this currency right now?
+ * Drives the per-currency retirement of the legacy single credit. An
+ * unreachable or unconfigured provider answers false, so an outage never
+ * retires a checkout path.
+ */
+export async function anyPackAvailableForCurrency(req: Request, currency: CatalogCurrency, deps: KitCheckoutDeps = {}): Promise<boolean> {
+  for (const pack of CREDIT_PACKS) {
+    const price = packPrice(pack.id, currency);
+    if (!price) continue;
+    if ((await availabilityOf(req, price, deps)) === "available") return true;
+  }
+  return false;
 }
 
 /** The JSON body for a refusal: the code lets the kit UI branch, `error` is shown as written. */

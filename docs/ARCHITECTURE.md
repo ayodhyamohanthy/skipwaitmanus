@@ -218,13 +218,10 @@ A new job needs its name in both registries and a contract test (`server/schedul
    - `styles/globals.css` (the D-048 phase-2 packet deletes it; its `--sw-*` names collide with the goal tokens);
    - the unrouted pages `Notifications.tsx` (read as text by `server/notificationCenterUi.test.ts`) and `ReferralRequest.tsx` (kept by D-067; `client/src/pages/referralRequest.auth.test.tsx` imports it).
 2. **Test blind spots:**
-   - `shared/` tests never run;
    - `*.test.ts` files are not type-checked;
-   - one copy-guard assertion always passes (`scripts/productCopyGuard.test.ts:21`).
 3. **Privacy hygiene:**
    - server Sentry and admin-alert paths do not redact the token-bearing API routes (`/api/referrer-fast-track/:linkCode`, `/api/referral-share-cards/public/:shareToken`, `/api/referrer-review-links/:linkToken`);
    - the Pages CSP is report-only with nowhere to report.
 4. **Toolchain:**
-   - `engines.node` says `>=22`, but the jsdom tests need 22.12 or newer;
    - deploys do not wait for CI;
    - `deploy-pages.yml` builds without running tests.

@@ -118,14 +118,15 @@ async function startServer() {
   // Recovery retries read-only validation with backoff until it passes.
   startSchemaReconcileRecovery();
   // Managed deployments terminate TLS at a trusted reverse proxy. This lets
-  // req.hostname reflect the canonical public host for host-scoped billing.
+  // req.hostname and req.protocol reflect the canonical public host/protocol.
   // `true` stays intentional: the Worker (src/worker.ts, shared/clientIp.ts)
-  // deletes every client-supplied forwarding header and writes one
-  // X-Forwarded-For from Cloudflare's CF-Connecting-IP, so req.ip cannot be
-  // spoofed. Any route that reaches this server without passing through that
-  // Worker would trust a caller-supplied X-Forwarded-For and reopen the
-  // rate-limit bypass. Do not add a direct-to-container path without
-  // re-applying withEdgeClientIp (or change this setting).
+  // deletes every client-supplied forwarding header, writes one X-Forwarded-For
+  // from Cloudflare's CF-Connecting-IP, and fixes X-Forwarded-Host and
+  // X-Forwarded-Proto to the zone host and https, so req.ip, req.hostname and
+  // req.protocol cannot be spoofed. Any route that reaches this server without
+  // passing through that Worker would trust caller-supplied forwarding headers
+  // and reopen the rate-limit bypass. Do not add a direct-to-container path
+  // without re-applying withEdgeClientIp (or change this setting).
   app.set("trust proxy", true);
   app.disable("x-powered-by");
   app.use(globalSecurityHeaders);

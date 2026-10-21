@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { ONE_TAP_PAY_SIGNIN } from "@/lib/oneTap";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { ArrowLeft, Check, CreditCard, LoaderCircle, Minus, Plus } from "lucide-react";
 import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
 import { alternatePaymentRoute, browserPaymentRoute, paymentRouteDetails, type PaymentRoute } from "@/lib/paymentRoute";
 import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
+import { usePlansCatalog } from "@/components/plans/plansCatalogApi";
 import { tokenReturnPath, type TokenRole } from "@/lib/tokens";
 import { applySeo } from "@/lib/seo";
 import { ASK_COST_SENTENCE } from "@shared/moneyCopy";
@@ -40,6 +42,11 @@ export default function Premium() {
   const [creditedTokens, setCreditedTokens] = useState(0);
   const [error, setError] = useState("");
   const selected = useMemo(() => packs.find(pack => pack.currency === route) ?? packs[1], [route]);
+  // D-036/GO-LIVE-1: once any pack is on sale in this currency, the single
+  // credit is retired here too (the server answers 410 as well); /plans#packs
+  // sells the packs. Until the catalog answers, the legacy UI stays up.
+  const catalogQuery = usePlansCatalog(!referrerPurchasesOff && CREDIT_PACKS_ON_SALE);
+  const singleCreditRetired = catalogQuery.data !== undefined && catalogQuery.data.currency === route && catalogQuery.data.packs.some(pack => pack.available);
   const routeDetails = paymentRouteDetails(route);
   const returnPath = tokenReturnPath(role);
   const total = selected.price * quantity;
@@ -114,7 +121,10 @@ export default function Premium() {
       destination.searchParams.set("role", role);
       destination.searchParams.set("quantity", String(quantity));
       destination.searchParams.set("currency", route);
-      openSignIn({ returnTo: `${destination.pathname}${destination.search}${destination.hash}` });
+      const backToPack = `${destination.pathname}${destination.search}${destination.hash}`;
+      // D-095 one-tap: seekers use the in-app sign-in (all providers) and come back to this exact pack; referrers keep the work-email flow.
+      if (ONE_TAP_PAY_SIGNIN && role === "job_seeker") { window.location.assign(`/sign-in?${new URLSearchParams({ returnTo: backToPack })}`); return; }
+      openSignIn({ returnTo: backToPack });
       return;
     }
     setError("");
@@ -143,6 +153,10 @@ export default function Premium() {
   if (referrerPurchasesOff) {
     // Payment recovery above still finishes a referrer checkout started before the switch-off.
     return <main data-skipwait-screen="premium" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center"><Link href={returnPath} className="inline-flex items-center gap-1 text-sm font-semibold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link></header><section className="flex min-h-0 flex-1 flex-col justify-center"><h1 className="font-display text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">{REFERRERS_NEVER_PAY}</h1><p className="mt-4 text-sm leading-6 text-[#505050]">Reviewing asks and referring are free, with nothing to buy. If you paid before and do not see your credits, open Support and we will check the payment.</p></section><footer className="shrink-0 border-t border-[#e5e5e5] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4"><Link href={returnPath} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-5 py-3.5 text-sm font-semibold text-white">Back to referring</Link><Link href="/support" className="mt-3 block text-center text-sm font-semibold text-black">Contact Support</Link></footer></div></main>;
+  }
+
+  if (singleCreditRetired) {
+    return <main data-skipwait-screen="premium" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center"><Link href={returnPath} className="inline-flex items-center gap-1 text-sm font-semibold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link></header><section className="flex min-h-0 flex-1 flex-col justify-center"><h1 className="font-display text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">Credit packs replace single credits.</h1><p className="mt-4 text-sm leading-6 text-[#505050]">More credits, better value, same ₹99 floor. Packs are bought on the plans page; credits you already bought never expire and still work.</p></section><footer className="shrink-0 border-t border-[#e5e5e5] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4"><Link href="/plans#packs" className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-5 py-3.5 text-sm font-semibold text-white">See credit packs</Link></footer></div></main>;
   }
 
   if (!CREDIT_PACKS_ON_SALE) {

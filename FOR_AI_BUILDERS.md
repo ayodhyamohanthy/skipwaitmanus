@@ -2,7 +2,7 @@
 
 > Read [`docs/BRIEF.md`](docs/BRIEF.md) first (D-073), then `AGENTS.md`. The platform is already live: update it, do not rebuild it.
 >
-> **Owner says `build`?** Run `node scripts/next-task.mjs --claim "<your model name · session>"` and do only the task it prints, step by step. Never choose work yourself: Claude Code sets the order in `docs/plans/assignments.json` (D-083).
+> **Owner says `build`, `resume`, `continue` or `next`?** They all mean one thing: run `node scripts/next-task.mjs --claim "<your model name>"` and do only what it prints, step by step. It adds a session tag and prints your full name (for example `Qwen 3 · k3f9`): use exactly that name for every later flag and when you resume (read it from the holder column of `--status`; never invent a new one), and never share a name with another session. Order, each top down: red `main`; your own unfinished work (pending work ranked above it with nobody on it comes first); pending work nobody is on; new work. A red or blocked priority holds everything below it, so agents never take the same task and the top stays green first. A claim with no push and no `--heartbeat` for 2 hours is free. Push after every commit, report to the CEO with `--report` when you stop, and read the board with `--status`; never resume or choose work from memory. Claude Code is the CEO, claims as `--claim "Claude Code"` and sets the order in `docs/plans/assignments.json`; the open models (CTO, CDO and the team) build (D-083, D-085).
 
 
 You are turning the SkipWait **design preview** into a working product. The designs in `app/src/routes` are a reference, no longer the spec: Kit v4 is not binding, the UI is designed for the goal, and the owner approved the goal-UI key screens on Oct 18 (D-048, D-071; comps in `design/goal-ui/pick/`), rolled out in phases. Where this file conflicts with `docs/DECISIONS.md` or `AGENTS.md`, they win. Everything below is what the designs do NOT do, and what you must build or decide.
@@ -15,7 +15,7 @@ Read in this order: `AGENTS.md` and `docs/DECISIONS.md` (D-026) → this file �
 - Money, in one sentence: **"3 asks free every month; more use credits. Referrers are never paid and never ask you for money."** (D-063). Never charge for, or let money influence, queue order, visibility, or a referrer's decision (D-006).
 - Plans and packs sell credits: **1 credit = 1 ask**, spent only when a verified referrer can first see it; a seeker with no credit at that moment has the ask held, never delivered free or billed later (D-034, D-047; not built yet). Credits also pay for preparation tools, and paid plans add open asks.
 - **Never fabricate** users, counts, activity, testimonials or outcomes. Any number shown must come from real data; if there is none, show the empty state that is already designed.
-- Launch companies with real people open to referrals: SkipWait, Wipro, Go Neutrinos, TCS, Merkle. Do not invent people or counts for them.
+- Launch companies with real people open to referrals: SkipWait, Wipro, Neutrinos, TCS, Merkle. Do not invent people or counts for them.
 - Seeker identity + resume and referrer name are hidden until the referrer **accepts**. Passing is private.
 - Referrers verify with a **one-time code sent to their work email**.
 - Never promise jobs/interviews. Companies decide hiring.

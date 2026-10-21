@@ -16,6 +16,12 @@ describe("withEdgeClientIp", () => {
     const out = withEdgeClientIp(req({ "x-real-ip": "1.1.1.1", forwarded: "for=1.1.1.1", "true-client-ip": "1.1.1.1", "x-client-ip": "1.1.1.1", "cf-connecting-ip": "203.0.113.9" }));
     for (const h of ["x-real-ip", "forwarded", "true-client-ip", "x-client-ip"]) expect(out.headers.has(h)).toBe(false);
   });
+  it("overwrites client-supplied host and protocol forwarding headers", () => {
+    const out = withEdgeClientIp(req({ "x-forwarded-host": "evil.example", "x-forwarded-proto": "http", "x-forwarded-scheme": "http" }));
+    expect(out.headers.get("x-forwarded-host")).toBe("skipwait.me");
+    expect(out.headers.get("x-forwarded-proto")).toBe("https");
+    expect(out.headers.has("x-forwarded-scheme")).toBe(false);
+  });
   it("sends no forwarding header when CF-Connecting-IP is missing or invalid (fail to the shared bucket)", () => {
     expect(withEdgeClientIp(req({ "x-forwarded-for": "1.2.3.4" })).headers.has("x-forwarded-for")).toBe(false);
     expect(withEdgeClientIp(req({ "x-forwarded-for": "1.2.3.4", "cf-connecting-ip": "not-an-ip" })).headers.has("x-forwarded-for")).toBe(false);
@@ -50,6 +56,19 @@ describe("edge contract end to end with the API's trust proxy setting", () => {
         const r = await fetch(`http://127.0.0.1:${port}/ip`, { headers: { "x-forwarded-for": fwd.headers.get("x-forwarded-for") ?? "" } });
         expect(((await r.json()) as { ip: string }).ip).toBe("203.0.113.9");
       }
+    } finally { server.close(); }
+  });
+  it("req.hostname and req.protocol stay canonical under spoofed forwarding headers", async () => {
+    const app = express();
+    app.set("trust proxy", true);
+    app.get("/who", (r, res) => { res.json({ host: r.hostname, proto: r.protocol }); });
+    const server = createServer(app);
+    await new Promise<void>((ok) => server.listen(0, ok));
+    const port = (server.address() as { port: number }).port;
+    try {
+      const fwd = withEdgeClientIp(req({ "x-forwarded-host": "evil.example", "x-forwarded-proto": "http" }));
+      const r = await fetch(`http://127.0.0.1:${port}/who`, { headers: { "x-forwarded-host": fwd.headers.get("x-forwarded-host") ?? "", "x-forwarded-proto": fwd.headers.get("x-forwarded-proto") ?? "" } });
+      expect(await r.json()).toEqual({ host: "skipwait.me", proto: "https" });
     } finally { server.close(); }
   });
 });

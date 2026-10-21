@@ -51,7 +51,7 @@ describe("landing kit composition", () => {
   it("lists the five launch companies with links to their doors", () => {
     render(<Home />);
     const section = screen.getByText("Start somewhere real.").closest("section") as HTMLElement;
-    for (const [name, slug] of [["skipwait.me", "skipwait"], ["Wipro", "wipro"], ["Go Neutrinos", "go-neutrinos"], ["TCS", "tcs"], ["Merkle", "merkle"]]) {
+    for (const [name, slug] of [["skipwait.me", "skipwait"], ["Wipro", "wipro"], ["Neutrinos", "go-neutrinos"], ["TCS", "tcs"], ["Merkle", "merkle"]]) {
       const link = within(section).getByText(name).closest("a");
       expect(link?.getAttribute("href")).toBe(`/explore/${slug}`);
     }

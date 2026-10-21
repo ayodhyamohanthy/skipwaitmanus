@@ -1,4 +1,5 @@
 import { setRetryAfter } from "./retryAfter";
+import { publicOutboundOrigin } from "./_core/authPostGuard";
 import { buildClaimedAskDetailView, claimResponseView } from "./referrerAskView";
 import { isOpenAskAttachment, toLockedAskAttachment } from "../shared/referrerAskView";
 import { captureServerError } from "./sentry";
@@ -732,7 +733,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         try {
           reviewLinks = await deps.prepareReferrerReviewEmailNotifications(result.requestId);
           const reviewEmailSender = deps.sendReferrerReviewEmail ?? sendReferrerReviewEmail;
-          const origin = `${req.protocol}://${req.get("host")}`;
+          const origin = publicOutboundOrigin(req);
           const delivery = await Promise.all(reviewLinks.map(async link => { const leaseOwner=randomUUID();const claim=deps.claimReferralReviewDelivery?await deps.claimReferralReviewDelivery(result.requestId,link.referrerId,"email",leaseOwner):{id:0};if(!claim)return{sent:false,reason:"already_claimed"};try{const sent=await reviewEmailSender({to:link.email,companyDomain:link.companyDomain,reviewUrl:`${origin}/email-review/${encodeURIComponent(link.linkToken)}`});await deps.completeReferralReviewDelivery?.(claim.id,leaseOwner,{status:sent.sent?"sent":"failed",error:sent.sent?undefined:sent.reason});return sent;}catch(error){await deps.completeReferralReviewDelivery?.(claim.id,leaseOwner,{status:"unknown",error:error instanceof Error?error.message:"delivery interrupted"});throw error;}}));
           const sentCount = delivery.filter(item => item.sent).length;
           record({ actorUserId: identity.account.id, action: "company_referral.review_email_dispatched", outcome: sentCount === reviewLinks.length ? "success" : "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { intendedRecipientCount: reviewLinks.length, sentCount, elapsedMs: Date.now() - t0 } });
@@ -742,7 +743,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         try {
           const slackTargets = await deps.getActiveReferrerSlackWebhooks(reviewLinks.map(link => link.referrerId));
           const slackSender = deps.sendReferrerSlackDelivery ?? sendReferrerSlackDelivery;
-          const origin = `${req.protocol}://${req.get("host")}`;
+          const origin = publicOutboundOrigin(req);
           const slackDelivery = await Promise.all(slackTargets.map(async target => {
             const link = reviewLinks.find(item => item.referrerId === target.referrerId);
             if (!link) return { sent: false as const, reason: "not_configured" as const };
@@ -916,7 +917,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to create a Fast-Track Link" });
       if (!deps.getOrCreateReferrerFastTrackLink) return res.status(503).json({ error: "Fast-Track Links are unavailable right now" });
       const link = await deps.getOrCreateReferrerFastTrackLink(identity.account.id);
-      const origin = `${req.protocol}://${req.get("host")}`;
+      const origin = publicOutboundOrigin(req);
       const url = `${origin}/fast/${encodeURIComponent(link.linkCode)}`;
       const vanityUrl = `${origin}/refer/${encodeURIComponent(link.companyDomain.split(".")[0] || link.companyDomain)}/${encodeURIComponent(link.vanityAlias)}`;
       record({ actorUserId: identity.account.id, action: "referrer_fast_track.link_accessed", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { active: link.isActive } });
@@ -977,7 +978,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in to create a share card" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral reference" });
       const card = await (deps.getOrCreateReferralShareCard ?? getOrCreateReferralShareCard)(identity.account.id, requestId);
-      const shareUrl = `${req.protocol}://${req.get("host")}/share-card/${encodeURIComponent(card.shareToken)}`;
+      const shareUrl = `${publicOutboundOrigin(req)}/share-card/${encodeURIComponent(card.shareToken)}`;
       record({ actorUserId: identity.account.id, action: "referral_share_card.created", outcome: "success", resourceType: "referral_share_card", resourceId: requestId, companyDomain: card.companyDomain, metadata: { status: card.status } });
       res.set("Cache-Control", "private, no-store"); res.status(201).json({ shareToken: card.shareToken, shareUrl, companyDomain: card.companyDomain, status: "accepted" });
     } catch (error) { const message = error instanceof Error ? error.message : "We could not create a share card"; res.status(/only available after approval|not part of this private referral/i.test(message) ? 403 : 500).json({ error: message }); }
@@ -1017,7 +1018,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!isOpaqueShareToken(req.params.shareToken)) return res.status(404).type("html").send("<!doctype html><title>Share card unavailable</title><meta name=\"robots\" content=\"noindex\"><body style=\"margin:0;background:#f4f4f1;color:#131311;font-family:Barlow,'Helvetica Neue',Arial,sans-serif\"><main style=\"min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box\"><section style=\"max-width:420px;border:1px solid #dcdcd4;border-radius:3px;background:#fbfbf8;padding:28px;text-align:center\"><h1 style=\"margin:0;font-size:26px\">Share card unavailable</h1><p style=\"margin:12px 0 0;color:#5f5f58;line-height:1.5\">This voluntary milestone card may have been removed.</p></section></main></body>");
       const card = await (deps.getPublicReferralShareCard ?? getPublicReferralShareCard)(req.params.shareToken);
       if (!card) return res.status(404).type("html").send("<!doctype html><title>Share card unavailable</title><meta name=\"robots\" content=\"noindex\"><body style=\"margin:0;background:#f4f4f1;color:#131311;font-family:Barlow,'Helvetica Neue',Arial,sans-serif\"><main style=\"min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box\"><section style=\"max-width:420px;border:1px solid #dcdcd4;border-radius:3px;background:#fbfbf8;padding:28px;text-align:center\"><h1 style=\"margin:0;font-size:26px\">Share card unavailable</h1><p style=\"margin:12px 0 0;color:#5f5f58;line-height:1.5\">This voluntary milestone card may have been removed.</p></section></main></body>");
-      const origin = `${req.protocol}://${req.get("host")}`; const canonicalUrl = `${origin}/share-card/${encodeURIComponent(req.params.shareToken)}`; const imageUrl = `${origin}/api/referral-share-cards/public/${encodeURIComponent(req.params.shareToken)}/image.png`; const companyDomain = escapeHtml(card.companyDomain);
+      const origin = publicOutboundOrigin(req); const canonicalUrl = `${origin}/share-card/${encodeURIComponent(req.params.shareToken)}`; const imageUrl = `${origin}/api/referral-share-cards/public/${encodeURIComponent(req.params.shareToken)}/image.png`; const companyDomain = escapeHtml(card.companyDomain);
       record({ action: "referral_share_card.viewed", outcome: "success", resourceType: "referral_share_card", companyDomain: card.companyDomain, metadata: { public: true } });
       const joinHref = card.inviteCode ? `${origin}/start?invite=${encodeURIComponent(card.inviteCode)}` : `${origin}/start`;
       res.set("Cache-Control", "no-store"); res.type("html").send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Accepted referral at ${companyDomain} | skipwait.me</title><meta name="description" content="A voluntarily shared referral acceptance milestone at ${companyDomain}. No hiring outcome is implied."><link rel="canonical" href="${canonicalUrl}"><meta property="og:type" content="website"><meta property="og:site_name" content="skipwait.me"><meta property="og:title" content="Accepted at ${companyDomain}"><meta property="og:description" content="Shared voluntarily. No hiring outcome is implied."><meta property="og:url" content="${canonicalUrl}"><meta property="og:image" content="${imageUrl}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Accepted at ${companyDomain}"><meta name="twitter:description" content="Shared voluntarily. No hiring outcome is implied."><meta name="twitter:image" content="${imageUrl}"><style>body{margin:0;background:#f4f4f1;color:#131311;font-family:Barlow,'Helvetica Neue',Arial,sans-serif}.card{box-sizing:border-box;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}.panel{width:min(100%,520px);border:1px solid #dcdcd4;border-radius:3px;background:#fbfbf8;padding:32px}.mark{display:grid;place-items:center;width:48px;height:48px;border-radius:2px;background:#e8442e;color:#131311;font-weight:800;font-size:24px}.eyebrow{margin:24px 0 0;color:#131311;font-size:12px;font-weight:800;letter-spacing:.14em}.title{margin:12px 0 0;font-size:38px;font-weight:700;line-height:.95;text-transform:uppercase;letter-spacing:.005em}.copy{margin:20px 0 0;color:#505050;font-size:16px;line-height:1.55}.note{margin:20px 0 0;border-radius:2px;background:#fbe0da;padding:14px;color:#131311;font-size:14px;line-height:1.45}.cta{display:block;margin:24px 0 0;border-radius:2px;background:#131311;color:#f4f4f1;text-align:center;text-decoration:none;font-weight:800;font-size:16px;padding:16px}</style></head><body><main class="card"><section class="panel" aria-label="Referral acceptance milestone"><div class="mark">✓</div><p class="eyebrow">SKIPWAIT.ME · PRIVATE REFERRAL</p><h1 class="title">Accepted at ${companyDomain}</h1><p class="copy">A private referral request was accepted at ${companyDomain}.</p><p class="note">Shared voluntarily. No hiring outcome is implied.</p><a class="cta" href="${joinHref}">Get your own referral</a></section></main></body></html>`);
@@ -1130,7 +1131,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         try {
           const recipients = await deps.getSlotOpenedAlertRecipients(identity.account.id, result.allocatedRequestIds);
           const sender = deps.sendSlotOpenedAlertEmail ?? sendSlotOpenedAlertEmail;
-          const origin = `${req.protocol}://${req.get("host")}`;
+          const origin = publicOutboundOrigin(req);
           const deliveries = await Promise.all(recipients.map(recipient => sender({ to: recipient.email ?? "", companyDomain: recipient.companyDomain, requestsUrl: `${origin}/requests` })));
           record({ actorUserId: identity.account.id, action: "company_referral.slot_open_alert_dispatched", outcome: deliveries.some(delivery => delivery.sent) ? "success" : "failure", resourceType: "referral_availability", companyDomain: result.companyDomain, metadata: { allocatedCount: result.allocatedCount, alertRecipientCount: recipients.length, deliveredCount: deliveries.filter(delivery => delivery.sent).length } });
         } catch {

@@ -19,14 +19,18 @@ import { LAUNCH_COMPANY_SEED, type CompanySeed } from "../shared/companyDirector
 const migration = readFileSync(join(__dirname, "..", "drizzle", "deploy", "0076_company_directory.sql"), "utf8");
 const renameMigration = readFileSync(join(__dirname, "..", "drizzle", "deploy", "0097_brand_rename_skipwait_me.sql"), "utf8");
 // 0076 inserted the operator row under the old brand; 0097 renames it to the seed name.
-const insertedName = (seed: CompanySeed) => (seed.slug === "skipwait" ? "SkipWait" : seed.name);
+// 0098 rebrands go-neutrinos the same way (name, initials, primary domain).
+const insertedName = (seed: CompanySeed) => (seed.slug === "skipwait" ? "SkipWait" : seed.slug === "go-neutrinos" ? "Go Neutrinos" : seed.name);
+const insertedInitials = (seed: CompanySeed) => (seed.slug === "go-neutrinos" ? "GN" : seed.initials);
+const insertedDomain = (seed: CompanySeed) => (seed.slug === "go-neutrinos" ? "goneutrinos.com" : seed.domains[0]!);
+const neutrinosMigration = readFileSync(join(__dirname, "..", "drizzle", "deploy", "0098_neutrinos_rebrand.sql"), "utf8");
 const sqlText = (value: string) => `'${value.replace(/'/g, "''")}'`;
 const toPublic = (seed: CompanySeed, openToReferrals = false): PublicCompany => ({ slug: seed.slug, name: seed.name, initials: seed.initials, industry: seed.industry, location: seed.location, functions: [...seed.functions], blurb: seed.blurb, domains: [...seed.domains], openToReferrals });
 
 describe("company directory seed", () => {
   it("is the five launch companies in kit order", () => {
-    expect(LAUNCH_COMPANY_SEED.map(company => company.name)).toEqual(["skipwait.me", "Wipro", "Go Neutrinos", "TCS", "Merkle"]);
-    expect(LAUNCH_COMPANY_SEED.map(company => company.domains[0])).toEqual(["skipwait.me", "wipro.com", "goneutrinos.com", "tcs.com", "merkle.com"]);
+    expect(LAUNCH_COMPANY_SEED.map(company => company.name)).toEqual(["skipwait.me", "Wipro", "Neutrinos", "TCS", "Merkle"]);
+    expect(LAUNCH_COMPANY_SEED.map(company => company.domains[0])).toEqual(["skipwait.me", "wipro.com", "neutrinos.com", "tcs.com", "merkle.com"]);
     const orders = LAUNCH_COMPANY_SEED.map(company => company.sortOrder);
     expect([...orders].sort((a, b) => a - b)).toEqual(orders);
     expect(new Set(LAUNCH_COMPANY_SEED.map(company => company.slug)).size).toBe(LAUNCH_COMPANY_SEED.length);
@@ -39,16 +43,19 @@ describe("company directory seed", () => {
 
   it("the deploy migration inserts exactly the seed rows and primary domains", () => {
     for (const [index, seed] of LAUNCH_COMPANY_SEED.entries()) {
-      const values = [sqlText(seed.slug), sqlText(insertedName(seed)), sqlText(seed.initials), sqlText(seed.industry), sqlText(seed.location), sqlText(JSON.stringify(seed.functions)), sqlText(seed.blurb)];
+      const values = [sqlText(seed.slug), sqlText(insertedName(seed)), sqlText(insertedInitials(seed)), sqlText(seed.industry), sqlText(seed.location), sqlText(JSON.stringify(seed.functions)), sqlText(seed.blurb)];
       const row = index === 0
         ? `SELECT ${values[0]} AS slug, ${values[1]} AS name, ${values[2]} AS initials, ${values[3]} AS industry, ${values[4]} AS location, ${values[5]} AS functions, ${values[6]} AS blurb, ${seed.sortOrder} AS sortOrder`
         : `UNION ALL SELECT ${values.join(", ")}, ${seed.sortOrder}`;
       expect(migration).toContain(row);
-      const domain = index === 0 ? `SELECT ${sqlText(seed.slug)} AS slug, ${sqlText(seed.domains[0]!)} AS domain` : `UNION ALL SELECT ${sqlText(seed.slug)}, ${sqlText(seed.domains[0]!)}`;
+      const domain = index === 0 ? `SELECT ${sqlText(seed.slug)} AS slug, ${sqlText(insertedDomain(seed))} AS domain` : `UNION ALL SELECT ${sqlText(seed.slug)}, ${sqlText(insertedDomain(seed))}`;
       expect(migration).toContain(domain);
     }
     expect(migration.match(/UNION ALL SELECT/g)).toHaveLength((LAUNCH_COMPANY_SEED.length - 1) * 2);
     expect(migration).toContain("SET NAMES utf8mb4;");
+    expect(neutrinosMigration).toContain("SET `name` = 'Neutrinos', `initials` = 'N' WHERE `slug` = 'go-neutrinos' AND `name` = 'Go Neutrinos'");
+    expect(neutrinosMigration).toContain("'neutrinos.com'");
+    expect(LAUNCH_COMPANY_SEED.find(company => company.slug === "go-neutrinos")!.domains).toEqual(["neutrinos.com", "goneutrinos.com"]);
     expect(renameMigration).toContain("UPDATE `companies` SET `name` = 'skipwait.me' WHERE `slug` = 'skipwait'");
     expect(migration).toMatch(/WHERE NOT EXISTS \(SELECT 1 FROM `companies` c WHERE c\.slug = v\.slug\)/);
     expect(migration).toMatch(/WHERE NOT EXISTS \(SELECT 1 FROM `companyDomains` d WHERE d\.domain = v\.domain\)/);
