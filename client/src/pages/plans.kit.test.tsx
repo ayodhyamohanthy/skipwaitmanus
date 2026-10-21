@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render as rtlRender, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { CreditsLedger } from "@shared/creditLedger";
+import { FREE_ASKS_CHIP } from "@shared/moneyCopy";
 import Plans from "./Plans";
 
 // GO-LIVE-1: /plans reads the live catalog through React Query, so tests wrap a client.
@@ -69,7 +70,9 @@ describe("Plans on live data", () => {
     // Review round 2 (D-063): the credit cost strip never calls a referral request free.
     const costs = screen.getByRole("list", { name: "Credit costs" });
     expect(within(costs).getAllByRole("listitem").map(item => item.textContent)).toEqual(["1 creditEach ask a verified employee can see", "$1Each credit you buy", "NeverBought credits expire"]);
-    const text = document.body.textContent ?? "";
+    // The canonical free-allowance sentence (D-127 copy) is allowed; the guard
+    // still bans any OTHER "free credits" framing (paid credits are never free).
+    const text = (document.body.textContent ?? "").split(FREE_ASKS_CHIP).join("");
     expect(text).not.toMatch(RETIRED);
     for (const banned of ["DESIGN PREVIEW", "EXAMPLE PRICING", "PREVIEW DATA", "Most chosen", "Momentum", "Land", "Yearly", "2 mo free", "checkout preview", "YOUR BALANCE", "free credits", "every month are free", "One private referral request", "Compare every individual plan", "monthly credits", "Your plan"]) expect(text).not.toContain(banned);
     expect(screen.queryAllByRole("button").filter(button => PLAN_PURCHASE.test(button.textContent ?? ""))).toEqual([]);
@@ -208,12 +211,13 @@ describe("Plans on live data", () => {
   });
 });
 
-describe("Plans free-credits card check (D-079)", () => {
-  it("a locked free seeker sees the Validate-your-card CTA where the no-credits error points", async () => {
+describe("Plans free-credits card check (D-079 superseded by D-127)", () => {
+  it("D-127: a locked free seeker no longer sees a Validate-your-card gate - card validation moved to first purchase", async () => {
     stub({ ...free(), freeCreditsLocked: true, cardValidated: false, cycleKey: "2026-10" });
     render(<Plans />);
-    expect(await screen.findByRole("button", { name: /Validate your card/ })).toBeTruthy();
-    expect(screen.getByText(/Validate your card to unlock your 3 free asks every month/)).toBeTruthy();
+    await screen.findByText("YOUR BALANCE");
+    expect(screen.queryByRole("button", { name: /Validate your card/ })).toBeNull();
+    expect(screen.queryByText(/Validate your card to unlock/)).toBeNull();
   });
 
   it("an unlocked free seeker does not see the validate CTA", async () => {

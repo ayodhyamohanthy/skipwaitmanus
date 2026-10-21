@@ -11,7 +11,6 @@ import { readApiJson } from "@/lib/apiResponse";
 import { applySeo } from "@/lib/seo";
 import { failureMessage, parseSummary, type CreditSummary } from "@/components/plans/billingApi";
 import { CreditCta, CreditsSection, UsagePanel } from "@/components/plans/PlansCredits";
-import { SeekerCreditsCard } from "@/components/SeekerCreditsCard";
 import { FairBand, PlansReference } from "@/components/plans/PlansReference";
 import { PlanCards } from "@/components/plans/PlanCards";
 import { PendingCheckoutReturn } from "@/components/plans/PendingCheckoutReturn";
@@ -120,23 +119,6 @@ export default function Plans() {
         <p className="plan-grid-note">{routeDetails.gateway} · {routeDetails.gatewayDescriptor}. <button type="button" onClick={() => setRoute(current => alternatePaymentRoute(current))} className="font-semibold text-foreground underline underline-offset-4">Different billing country? {routeDetails.alternateLabel}</button></p>
         {cancelError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{cancelError}</p> : null}
 
-        {summary?.freeCreditsLocked ? (
-          // D-079: a locked free seeker must be able to reach card validation from the
-          // place the no-credits error points to. The card renders the provider-owned
-          // "Validate your card" flow; nothing is charged.
-          <SeekerCreditsCard credits={{
-            plan: summary.plan,
-            monthlyAllowance: summary.monthlyAllowance,
-            monthlyCreditsRemaining: summary.monthlyCreditsRemaining,
-            purchasedCreditsRemaining: summary.purchasedCreditsRemaining ?? 0,
-            totalAvailable: summary.totalAvailable,
-            cycleKey: summary.cycleKey ?? "",
-            subscriptionStatus: summary.subscriptionStatus,
-            subscriptionCurrentTermEnd: summary.subscriptionCurrentTermEnd,
-            cardValidated: summary.cardValidated,
-            freeCreditsLocked: summary.freeCreditsLocked,
-          }} />
-        ) : null}
         <CreditsSection summary={summary} currency={currency} creditsHref={creditsHref} />
         {summary ? <UsagePanel summary={summary} /> : null}
         {summary ? <UpgradeMoments moments={upgradeMoments(summary, new Date(), creditsHref)} /> : null}

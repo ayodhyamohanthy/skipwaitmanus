@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { PolicyPageShell, PolicySection, SUPPORT_EMAIL } from "@/components/PolicyPageShell";
+import { CREDIT_RULE } from "@shared/moneyCopy";
 
 /**
  * /terms — Terms of Service.
@@ -54,8 +55,8 @@ export default function Terms() {
 
     <PolicySection number="03" title="Credits, plans, and payment">
       <ul>
-        <li>Every Job Seeker account includes <strong>3 free referral credits each month</strong>. One credit is reserved when a request is sent and <strong>returned automatically</strong> if you withdraw before a Referrer claims it, or if the request expires without a decision. If a Referrer declines, the credit stays spent and your request stays open for other employees at that company.</li>
-        <li>Additional credits can be bought individually and never expire. Paid plans (Keep warm, Start, Momentum, Land) add an allowance and renew at the end of the term you chose until you cancel.</li>
+        <li>Every Job Seeker account includes <strong>3 free referral credits each month</strong>. {CREDIT_RULE} After a pass your request stays open for other employees at that company.</li>
+        <li>Additional credits can be bought as one-off packs and never expire. If you have an active paid plan, it adds an allowance and renews at the end of the term you chose until you cancel; new paid plans are not on sale right now.</li>
         <li>Payments are processed by a hosted checkout (Chargebee with Razorpay for India/INR and PayPal internationally). Credits are added only after the payment is verified. Refund and cancellation rules are in the <Link href="/refunds" className="font-semibold text-foreground">Refunds & cancellation policy</Link>.</li>
         <li>Reviewing and accepting referrals is always free for Referrers.</li>
       </ul>
