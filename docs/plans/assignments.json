@@ -152,7 +152,7 @@
       "dependsOn": [
         "D-048-p3-map"
       ],
-      "note": "Landed as `3cd221df` (PR #361, Tier 2): the app shell renders inside GoalShell with one navigation, the credits pill (D-055), the carried-over account menu and the beta badge (#402); no surface outside the shell re-skinned. 1280/390 before/after captures under design/goal-ui/captures/w0-shell/."
+      "note": "Landed as `a89a0e60` (PR #361, Tier 2): the app shell renders inside GoalShell with one navigation, the credits pill (D-055), the carried-over account menu and the beta badge in the top bar (#402); no surface outside the shell re-skinned. Live follow-up `56e2a702` fixes the phone shell (main claims row 2, no blank screen under the sticky bottom bar) and the clipped rail wordmark; corrected 1280/390 captures in design/goal-ui/captures/w0-shell/fix-explore-*.png."
     },
     {
       "id": "D-048-p3-explore",
