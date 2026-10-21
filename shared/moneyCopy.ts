@@ -15,11 +15,10 @@ export const FREE_ASKS_PER_MONTH = FREE_PLAN.creditsPerMonth;
 
 /** A chip or trust-row label: the seeker half alone, never "free" on its own. */
 /** D-079: with card validation on, the seeker's free asks wait behind a one-time card check the provider owns (no charge). */
-export const FREE_ASKS_LOCKED_LINE = `Validate your card to unlock your ${FREE_ASKS_PER_MONTH} free asks every month. You won't be charged.`;
-export const FREE_ASKS_CHIP = `${FREE_ASKS_PER_MONTH} asks free every month`;
+export const FREE_ASKS_CHIP = `${FREE_ASKS_PER_MONTH} free credits every month`;
 
 /** The seeker half of the money sentence: what asking costs. */
-export const ASK_COST_SENTENCE = `${FREE_ASKS_CHIP}; more use credits.`;
+export const ASK_COST_SENTENCE = `${FREE_ASKS_CHIP}; extra asks use credits.`;
 
 /** The shortest referrer fact, for chips and footers. */
 export const REFERRERS_NEVER_PAID = "Referrers are never paid.";

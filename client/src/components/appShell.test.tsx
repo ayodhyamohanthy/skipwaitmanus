@@ -43,13 +43,13 @@ describe("AppShell", () => {
       expect(link.getAttribute("href")).toBe(href);
     }
     // D-063: the sidebar states what asking costs and that referrers take no money, never "free. Always".
-    expect(within(sidebar).getByText(/3 asks free a month\.\s*More use credits\./)).toBeTruthy();
+    expect(within(sidebar).getByText(/3 free credits every month\.\s*Extra asks use credits\./)).toBeTruthy();
     expect(within(sidebar).getByText("Referrers are never paid and never ask you for money.")).toBeTruthy();
     expect(sidebar.textContent).not.toMatch(/free\.\s*Always|always free|Referrals are free/i);
     const bells = screen.getAllByRole("link", { name: "Alerts" });
     expect(bells.length).toBe(2);
     expect(bells.every(bell => bell.getAttribute("href") === "/alerts")).toBe(true);
-    expect(screen.getByRole("link", { name: "3 asks free every month. Referrers are never paid." }).getAttribute("href")).toBe("/safety");
+    expect(screen.getByRole("link", { name: "3 free credits every month. Referrers are never paid." }).getAttribute("href")).toBe("/safety");
   });
 
   it("marks the current route active without inventing destinations", () => {

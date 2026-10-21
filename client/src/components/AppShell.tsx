@@ -76,7 +76,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="sidebar-bottom !pt-6">
           {/* D-063: the money sentence, split so the sidebar keeps its two short rows. */}
-          <div className="free-promise"><ShieldCheck size={21} /><strong>{FREE_ASKS_PER_MONTH} asks free a month.<br />More use credits.</strong></div>
+          <div className="free-promise"><ShieldCheck size={21} /><strong>{FREE_ASKS_CHIP}.<br />Extra asks use credits.</strong></div>
           <p>{REFERRER_MONEY_SENTENCE}</p>
           {isSignedIn ? <AccountMenu /> : <Button variant="outline" asChild><Link href="/sign-in" onClick={close}>Sign in</Link></Button>}
           <div className="global-note"><Globe2 size={14} />Built for your next move.</div>
