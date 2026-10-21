@@ -1,9 +1,9 @@
 // V6-B "overlapping queue" brand mark (owner pick Oct 21 16:46, verified
-// author=user phonemsg-01M5F2T2JQCD9QNM72W8N5D4DS): three people, small
-// #C9C9C9 / mid #8A8A8A / big #0A0A0A, shared baseline, flat, no strokes, no
-// arrow. Geometry from the designer's final assets (skipwait-icon.svg). ONE
-// swappable component: the wordmark lockup lands here when the designer's
-// wordmark track finishes. SVG fills are the designer's own hex values.
+// author=user phonemsg-01M5F2T2JQCD9QNM72W8N5D4DS): three people rising
+// (tokens --g-mark-1/2/3), shared baseline, flat, no strokes, no arrow.
+// Geometry from the designer's final assets (skipwait-icon.svg). Wordmark
+// W1 (owner pick, relayed by main 16:51): ink "SkipWait" + grey ".me". ONE
+// swappable component: the designer's final lockup SVG lands here.
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +34,7 @@ export function GoalBrandMark({ className, iconClassName }: { className?: string
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
       <GoalBrandIcon className={iconClassName} />
-      <span className="text-g-label font-semibold tracking-tight text-g-ink">skipwait.me</span>
+      <span className="text-g-label font-semibold tracking-tight text-g-ink">SkipWait<span className="text-g-ink-3">.me</span></span>
     </span>
   );
 }

@@ -17,6 +17,7 @@ import CookieConsent from "@/components/CookieConsent";
 import { applySeo } from "@/lib/seo";
 import { BetaBadge, BetaNoticeLine } from "@/components/BetaNotice";
 import { GoalBrandBannerArt, GoalBrandMark } from "@/components/goal/GoalBrandMark";
+import { GoalVerifiedMark } from "@/components/goal/GoalVerifiedMark";
 import { BETA_NOTICE_LINE } from "@/lib/betaNotice";
 import { ASK_COST_SENTENCE, REFERRING_FREE_LINE } from "@shared/moneyCopy";
 
@@ -126,7 +127,7 @@ export default function GoalLanding() {
           <h1 className="mt-5 text-[52px] font-semibold leading-[0.98] tracking-[-0.045em] gdesk:text-[88px]">Get referred.</h1>
           <p className="mx-auto mt-5 max-w-[480px] text-g-body leading-[1.6] text-g-ink-2">Ask a verified employee at the company you want to join. They choose every referral: no commissions, no outcome promises.</p>
           <div className="mt-8" data-testid="goal-next-step">
-            <Link href="/explore" data-g-primary="true" className="inline-flex h-12 items-center gap-2 rounded-full bg-g-ink px-6 text-g-small font-semibold text-g-ink-inverse hover:bg-[#262626]">Find your company <span aria-hidden="true">&rarr;</span></Link>
+            <Link href="/explore" data-g-primary="true" className="inline-flex h-12 items-center gap-2 rounded-full bg-g-ink px-6 text-g-small font-semibold text-g-ink-inverse hover:bg-g-primary-hover">Find your company <span aria-hidden="true">&rarr;</span></Link>
           </div>
           <p className="mt-3 text-[13px] text-g-ink-3">Explore before signing in.</p>
           <div className="mt-3 flex justify-center"><BetaNoticeLine tone="goal" /></div>
@@ -181,9 +182,8 @@ export default function GoalLanding() {
             {TRUST.map((item) => (
               <Reveal key={item.title} className="rounded-[12px] border border-g-hairline p-5">
                 {item.blue
-                  ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-g-trust"><Check className="h-3 w-3 text-white" /></span>
-                  : <span className="mt-1 block h-1.5 w-1.5 rounded-full bg-g-ink" aria-hidden="true" />}
-                <h3 className="mt-3 text-[15px] font-semibold">{item.title}</h3>
+                  ? <GoalVerifiedMark as="span" className="text-g-small font-semibold">{item.title}</GoalVerifiedMark>
+                  : <><span className="mt-1 block h-1.5 w-1.5 rounded-full bg-g-ink" aria-hidden="true" /><h3 className="mt-3 text-[15px] font-semibold">{item.title}</h3></>}
                 <p className="mt-1.5 text-g-small leading-[1.6] text-g-ink-2">{item.body}</p>
               </Reveal>
             ))}

@@ -89,3 +89,10 @@
   --sw-type-row-phone: 600 16px/24px var(--sw-font-sans);  /* row titles on phones (Signal's card titles) */
 }
 @media (prefers-reduced-motion: reduce) { :root { --sw-dur-hover: 0ms; --sw-dur-menu: 0ms; --sw-dur-drawer-in: 0ms; --sw-dur-drawer-out: 0ms; } }
+
+/* D-130 (owner Oct 21 16:43/16:46): warm landing hero band + V6-B mark.
+   Colour on the landing hero band only; mark values are the designer's V6-B. */
+:root {
+  --sw-warm-1: #fce9da; --sw-warm-2: #f6cfdd; --sw-warm-3: #e7d6f4;
+  --sw-mark-1: #c9c9c9; --sw-mark-2: #8a8a8a; --sw-mark-3: #0a0a0a;
+}
