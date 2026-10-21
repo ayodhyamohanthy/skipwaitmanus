@@ -2,7 +2,7 @@
 // Goal-first landing (D-120): pins the migration-spec acceptance checklist -
 // goal line opens the screen, exactly one black commit, no kit/yellow-blue
 // classes, fair rules + honest copy from shared moneyCopy, footer legal links.
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import GoalLanding from "./GoalLanding";
 import { ASK_COST_SENTENCE, REFERRING_FREE_LINE } from "@shared/moneyCopy";
@@ -10,6 +10,13 @@ import { ASK_COST_SENTENCE, REFERRING_FREE_LINE } from "@shared/moneyCopy";
 afterEach(cleanup);
 
 describe("GoalLanding (D-120)", () => {
+  it("mounts the cookie consent banner when no choice is stored", () => {
+    window.localStorage.removeItem("skipwait:cookie-consent");
+    render(<GoalLanding />);
+    expect(screen.getByRole("dialog", { name: /cookie choices/i })).toBeTruthy();
+  });
+
+
   it("opens with the user's goal, not a welcome or a tagline", () => {
     render(<GoalLanding />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Get referred.");
@@ -26,25 +33,27 @@ describe("GoalLanding (D-120)", () => {
 
   it("shows the next-step block and the explore-before-sign-in honesty note", () => {
     render(<GoalLanding />);
-    expect(screen.getByTestId("goal-next-step").textContent).toContain("Your next step");
+    // v7 warm hero: the next step is the single black pill commit + honesty note.
+    const next = screen.getByTestId("goal-next-step");
+    expect(next.querySelector('[data-g-primary="true"]')?.textContent).toContain("Find your company");
     expect(screen.getByText(/Explore before signing in/)).toBeTruthy();
   });
 
   it("teaches the 3 steps with the real cost before any ask", () => {
     render(<GoalLanding />);
-    const section = screen.getByRole("heading", { name: "How it goes" }).closest("section")!;
+    const section = screen.getByRole("heading", { name: "Three steps. No noise." }).closest("section")!;
     const steps = section.querySelector("ol")!;
     expect(steps.textContent).toContain("Find your company");
     expect(steps.textContent).toContain("Send one thoughtful ask");
     expect(steps.textContent).toContain("They decide");
     expect(steps.textContent).toContain(ASK_COST_SENTENCE);
-    expect(steps.textContent).toContain("level, never on who is asking");
+    expect(steps.textContent).toContain("Every ask costs the same.");
   });
 
   it("states the fair rules from shared money copy - no invented claims", () => {
     render(<GoalLanding />);
     expect(screen.getByText(REFERRING_FREE_LINE)).toBeTruthy();
-    expect(screen.getByText(/never on the person asking/)).toBeTruthy();
+    expect(screen.getByText(/Every ask costs the same: 1 credit/)).toBeTruthy();
     expect(screen.getByText(/not an interview or a job/)).toBeTruthy();
     expect(screen.getByText(/hidden until a referrer accepts/)).toBeTruthy();
   });
@@ -60,6 +69,15 @@ describe("GoalLanding (D-120)", () => {
     const { container } = render(<GoalLanding />);
     expect(container.querySelector('[class*="launch-"]')).toBeNull();
     expect(container.querySelector(".brand-dot")).toBeNull();
+  });
+
+  it("shows the beta badge + honest beta line from one config (owner Oct 21)", () => {
+    render(<GoalLanding />);
+    expect(screen.getByTestId("beta-badge").textContent).toBe("Beta");
+    const line = screen.getByTestId("beta-notice-line");
+    expect(line.textContent).toContain("skipwait.me is in beta");
+    expect(line.textContent).toContain("feedback shapes it");
+    expect(within(line).getByRole("link", { name: "feedback" }).getAttribute("href")).toBe("/help");
   });
 
   it("keeps the legal footer links", () => {

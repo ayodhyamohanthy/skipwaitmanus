@@ -1,6 +1,9 @@
 import { ArrowLeft, Check, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { BetaNoticeLine } from "@/components/BetaNotice";
+import GoalSignIn from "@/pages/GoalSignIn";
+import { GOAL_UI_SIGNIN } from "@/lib/goalFlags";
 import { Button } from "@/components/kit/button";
 import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
 import { SeekerSignIn } from "@/components/SeekerSignIn";
@@ -22,6 +25,9 @@ const INTENT_RETURN_TO: Readonly<Record<Intent, string>> = { seeker: "/explore",
 const legalLink = "hover:underline focus-visible:underline";
 
 export default function SignIn() {
+  // Goal-UI migration (D-120): the goal sign-in replaces this page when its
+  // build flag is on; the kit page below stays the default until QA passes.
+  if (GOAL_UI_SIGNIN) return <GoalSignIn />;
   const [intent, setIntent] = useState<Intent>(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("intent") === "referrer" ? "referrer" : "seeker"));
   // Where the work-email OTP lands the referrer (same-origin path only).
   const referrerReturnTo = typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.referrer) : INTENT_RETURN_TO.referrer;
@@ -29,7 +35,7 @@ export default function SignIn() {
   const seekerReturnTo = ONE_TAP_PAY_SIGNIN && typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.seeker) : INTENT_RETURN_TO.seeker;
   return <main data-skipwait-screen="sign-in" className="auth-page">
     <section className="auth-story" aria-label="skipwait.me introduction">
-      <Link className="wordmark auth-wordmark" href="/"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
+      <Link className="wordmark auth-wordmark" href="/"><img src="/brand/lockup.svg" alt="SkipWait.me" className="wordmark-logo" /></Link>
       <img src="/launch-door.jpg" alt="An open blue door with a yellow path" width={1600} height={1008} />
       <div className="auth-story-copy"><span className="eyebrow">A WARMER WAY IN</span><h1>One sign-in.<br />More open doors.</h1><p>Explore first. Sign in only when you’re ready to ask for—or <span className="whitespace-nowrap">offer—a</span> real introduction.</p></div>
       <div className="auth-story-proof"><ShieldCheck /><span><strong>Private by default</strong>Your details stay yours until you choose to share.</span></div>
@@ -37,6 +43,7 @@ export default function SignIn() {
     <section className="auth-panel"><div className="auth-panel-inner">
       <Link className="auth-back" href="/"><ArrowLeft /> Back to home</Link>
       <div className="auth-heading"><span className="auth-step">YOUR DOOR STARTS HERE</span><h2>Welcome to skipwait.me.</h2><p>Pick your side. You can switch any time on this screen.</p></div>
+      <BetaNoticeLine tone="kit" />
       <p className="intent-prompt" id="intent-prompt">I’m here to…</p>
       <div className="intent-switch intent-cards" role="group" aria-labelledby="intent-prompt">
         <Button type="button" variant="ghost" className={intent === "seeker" ? "selected" : ""} aria-pressed={intent === "seeker"} onClick={() => setIntent("seeker")}><Sparkles /><span className="intent-title">Find a referral</span><span className="intent-sub">I’m looking for a job</span>{intent === "seeker" && <Check className="intent-check" aria-hidden="true" />}</Button>

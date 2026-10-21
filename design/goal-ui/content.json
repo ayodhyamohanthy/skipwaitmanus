@@ -1058,6 +1058,18 @@
       "rule": "Never show 0 when the balance failed to load."
     }
   },
+  "shareWin": {
+    "heading": "Share the win?",
+    "intro": "Your ask was accepted at {company}. Tell people if you want to – it is always your choice.",
+    "badgeAccepted": "Accepted",
+    "badgeReferred": "Referred",
+    "quote": "Someone who works there is vouching for me. Asked through skipwait.me – my name stayed private until they said yes.",
+    "footer": "skipwait.me · A warmer way in",
+    "copyText": "Copy card as text",
+    "copyLinkedIn": "Copy for LinkedIn",
+    "copied": "Copied.",
+    "note": "Nothing posts itself. The card never names your referrer – their help stays between you two unless they say otherwise."
+  },
   "companySignal": {
     "intro": "What askers can expect here – from real activity, updated monthly.",
     "usualFirstReply": "usual first reply",

@@ -32,7 +32,7 @@ The picker's order (`assignments.json`) after the money lane (GO-LIVE-1b, D-038 
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on | Runs beside |
 |---|---|---|---|---|---|---|---|
 | 2.1 | 1 (go-live slice: `/plans` packs and passes, coverage before payment, no accidental renewal) | [GO-LIVE-1-plans-purchase.md](GO-LIVE-1-plans-purchase.md) | 1 | M | done — #351; passes switched off again by the D-084 P0 until 2.1b | 1.1 live, 1.3 built | 3.1 |
-| 2.1b | 1 (pass slice: a paid pass always activates, then passes go back on sale; D-084) | [GO-LIVE-1b-pass-activation.md](GO-LIVE-1b-pass-activation.md) | 1 | M | ready — first in the queue | 2.1 live | 3.1 |
+| 2.1b | 1 (pass slice: a paid pass always activates, then passes go back on sale; D-084) | [GO-LIVE-1b-pass-activation.md](GO-LIVE-1b-pass-activation.md) | 1 | M | landed — PR #359 (merge of `agent/queue/go-live-passes`); passes stay off until the owner's §4.5 test-site evidence | 2.1 live | 3.1 |
 | 2.2 | D-065-daily-money-check | live (`eed80e5f`, PR #317); follow-up [D-065-B-slice-checks.md](D-065-B-slice-checks.md) | 2 | S | done — `dc8d0bf3` (PR #333) | — | everything |
 | 2.3 | Owner: read the D-069 dry run, apply, fix `billing_cycles` mismatches in Chargebee, add the pass-refund wording to `/refunds`, then the one live ₹99 UPI buy-and-refund (D-065) | plan §6 | — | — | owner action | 1.3, 2.1 | — |
 
@@ -64,7 +64,7 @@ The picker's order (`assignments.json`) after the money lane (GO-LIVE-1b, D-038 
 | D-060-pending-action-emails | Needs task 21 (notification kinds and preferences); D-038's reminders ship in-app first |
 | D-057-referrer-continuity | After the session gate (1.2b) |
 | P2 (D-028 link previews and company pages) | After stage 1; parallel-safe with stage 3 |
-| D-048 phase 3 (surface by surface) | After 1.4; each surface is its own packet |
+| D-048 phase 3 (surface by surface) | Mapped in [D-048-phase-3-rollout.md](D-048-phase-3-rollout.md): eight waves, one PR each. W0 (shell) is ready to packet; each later wave gets its own packet. The four former owner calls are decided on merit (D-123), §6. |
 | Tasks 12, 13, 20 | Owned by opencode and Qoder (open PRs #308, #310, #311, #314) |
 | The rest of §3b | D-053 order; parked rows stay parked (29, 30, 31, lite mode, 40) |
 

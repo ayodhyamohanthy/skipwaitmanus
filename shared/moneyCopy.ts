@@ -60,5 +60,11 @@ export const CREDIT_ENDED_CAVEAT = "unless its month or plan has ended by then";
 /** The same rule as a footnote clause, after "Uses 1 credit and 1 open slot when a verified employee can see it". */
 export const CREDIT_RULE_SHORT = `nothing is used while it waits for coverage, and the credit comes back once if you withdraw before pickup or the ask expires unclaimed, ${CREDIT_ENDED_CAVEAT}`;
 
-/** What a paid plan does to the monthly allowance: it replaces the free asks, it does not add to them (planEntitlementsFor). */
-export const PAID_PLANS_SENTENCE = `Passes and Keep warm replace the ${FREE_ASKS_PER_MONTH} free asks with more credits each month.`;
+/**
+ * Neutral /plans SEO + sitemap copy (designer Oct 21): paid plans are not
+ * live, so the meta must not promise what they do ("Passes and Keep warm
+ * replace the 3 free asks" pre-announced D-115 mechanics - D-042: copy never
+ * promises what the product does not do). One config source; change here when
+ * the plan family goes live.
+ */
+export const PAID_PLANS_SENTENCE = "Extra credits when you need them; paid plans arrive soon.";
