@@ -32,6 +32,8 @@ export type PlanFamilyEntry = {
    * Oct 21). Open Door and Fast Track keep the normal flow.
    */
   automatedOnly: boolean;
+  /** Insider joins by application only (D-132). Absent = open signup. */
+  byApplication?: boolean;
   /** Features folded into the plan instead of billed separately. */
   includes: { stealth: boolean; reachUp: boolean };
 };
@@ -39,7 +41,7 @@ export type PlanFamilyEntry = {
 export const PLAN_FAMILY: readonly PlanFamilyEntry[] = [
   { id: "open_door", label: "Open Door", monthlyUsdCents: 0, monthlyInrPaise: 0, automatedOnly: false, includes: { stealth: false, reachUp: false } },
   { id: "fast_track", label: "Fast Track", monthlyUsdCents: 999, monthlyInrPaise: 49900, automatedOnly: false, includes: { stealth: false, reachUp: true } },
-  { id: "insider", label: "Insider", monthlyUsdCents: 5900, monthlyInrPaise: 129900, automatedOnly: true, includes: { stealth: true, reachUp: true } },
+  { id: "insider", label: "Insider", monthlyUsdCents: 5900, monthlyInrPaise: 129900, automatedOnly: true, byApplication: true, includes: { stealth: true, reachUp: true } },
 ] as const;
 
 /**
@@ -103,4 +105,133 @@ export function planFamilyEntry(id: PlanFamilyId): PlanFamilyEntry {
 /** Server-side gate for every reader of the new family. Default off. */
 export function planFamilyV2Enabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return (env.PLAN_FAMILY_V2 ?? "").trim().toLowerCase() === "true";
+}
+
+// ---------------------------------------------------------------------------
+// D-132 (frozen Oct 21 18:42 IST, phonemsg-01M5F9FRS2N26EMEYNEBHK65Q0 "Now
+// freeze", author=user): the bundled Lovable-style model. Each plan = perks
+// fee (PLAN_FAMILY above) + an in-plan monthly credits dropdown; one monthly
+// total = plan fee + credits. Supersedes D-115's plan-less dropdown model.
+// All numbers CURRENT BEST AND CHANGEABLE (D-116). NOTHING here is live:
+// PLAN_FAMILY_V2 stays OFF until QA's payment-path check passes (stop at the
+// hosted payment form) and the owner's enable word is relayed by main.
+// ---------------------------------------------------------------------------
+
+/** Dropdown rungs inside every plan (credits per month). */
+export const PLAN_CREDIT_RUNGS = [5, 10, 25, 50, 100, 200] as const;
+export type PlanCreditRung = (typeof PLAN_CREDIT_RUNGS)[number];
+
+/** Single-credit reference prices the "Save %" is measured against. */
+export const CREDIT_SINGLE_PRICE = { usdCents: 100, inrPaise: 4_900 } as const;
+
+/**
+ * The frozen ladder (screenshot phonemsg-01M5F8EDCXCWN99MSM1V433WA9):
+ * INR Rs240/470/1,125/2,150/4,100/7,840 = Save 2/4/8/12/16/20% vs Rs49 single.
+ * USD derived at the same percent off the $1 single (changeable default,
+ * confirmed by main Oct 21 18:50). "This month" on the plans page =
+ * plan fee + the picked rung.
+ */
+export const PLAN_CREDIT_LADDER: readonly { credits: PlanCreditRung; savePct: number; usdCents: number; inrPaise: number }[] = [
+  { credits: 5, savePct: 2, usdCents: 490, inrPaise: 24_000 },
+  { credits: 10, savePct: 4, usdCents: 960, inrPaise: 47_000 },
+  { credits: 25, savePct: 8, usdCents: 2_300, inrPaise: 112_500 },
+  { credits: 50, savePct: 12, usdCents: 4_400, inrPaise: 215_000 },
+  { credits: 100, savePct: 16, usdCents: 8_400, inrPaise: 410_000 },
+  { credits: 200, savePct: 20, usdCents: 16_000, inrPaise: 784_000 },
+] as const;
+
+/** Open Door is truly free: 3 free credits a month, no paid default pick. */
+export const OPEN_DOOR_FREE_CREDITS_PER_MONTH = 3;
+
+/** Paid credits never expire; free monthly credits still end with the month. */
+export const PAID_CREDITS_NEVER_EXPIRE = true;
+
+/**
+ * Plan reach (owner liked main's pick, changeable): how far above the
+ * seeker's profile level the plan's asks may target. Open Door = own level.
+ */
+export const PLAN_REACH_LEVELS_ABOVE: Record<PlanFamilyId, number> = {
+  open_door: 0,
+  fast_track: 2,
+  insider: 4,
+} as const;
+
+/**
+ * Ask cost in credits by target job level: L1 = 1 credit up to L10 = 10
+ * credits, linear (D-132; owner confirmed "Yes",
+ * phonemsg-01M5FBYVJEA1TA99YPH6HZCQX5, 2026-10-21 19:26 IST, author=user).
+ * Changeable default per owner. The ask screen must state this plainly before
+ * sending, e.g. "This ask costs 5 credits. You have 3. Add 2 more.", with a
+ * one-tap top-up (owner, phonemsg-01M5FBZE51NZYPG6MZAQ7N9XXS, 19:26 IST).
+ */
+export const ASK_CREDITS_BY_LEVEL = (level: number): number => Math.min(10, Math.max(1, Math.round(level)));
+
+/**
+ * Mentor (referrer side): opt-in Rs199/$2.99 per month, first 60 days free;
+ * the month's fee returns as earned credits when the mentor handles 2 asks
+ * that month. Referrers are never paid cash (D-006); credits are usable on
+ * their own asks.
+ */
+export const MENTOR_ADD_ON = {
+  monthlyUsdCents: 299,
+  monthlyInrPaise: 19_900,
+  freeDays: 60,
+  feeReturnThresholdAsksPerMonth: 2,
+} as const;
+
+/* Referrers earn NOTHING for referring or accepting asks - no credits, no
+ * money, ever (D-055; the D-059 freeze STANDS: the owner reversed the 18:46
+ * approval with a thumbs-down 19:15, relayed by main). Mentor (above) is the
+ * only referrer-side programme, and its fee return is credits, never cash. */
+
+/**
+ * Company tier: DRAFT, unbuilt. Name FROZEN by the owner Oct 21 19:10
+ * (phonemsg-01M5FB1XYT5GY6VAGH7GCEC0SZ "Lets stick to organisations",
+ * author=user): "Organisation" - Organisation Free / Organisation Plus,
+ * subtitle "for companies, colleges and training institutes buying for many
+ * people" (supersedes the 18:52 "Group Plan" pick). Draft shape only:
+ * Organisation Plus gives verified employees Mentor free. Do not build
+ * while draft.
+ */
+export const COMPANY_TIER_DRAFT = { built: false, name: "Organisation" } as const;
+
+// ---- D-132 derivation helpers (plans page "Choose your reach.") ----
+
+export type PlanPriceBook = "USD" | "INR";
+
+export function ladderRung(credits: number): (typeof PLAN_CREDIT_LADDER)[number] {
+  const rung = PLAN_CREDIT_LADDER.find(entry => entry.credits === credits);
+  if (!rung) throw new Error(`unknown credit rung: ${credits}`);
+  return rung;
+}
+
+/** Rung price in minor units for a price book. */
+export function rungPriceMinor(credits: PlanCreditRung, book: PlanPriceBook): number {
+  const rung = ladderRung(credits);
+  return book === "INR" ? rung.inrPaise : rung.usdCents;
+}
+
+/** Per-credit minor units for a rung (exact for every frozen rung). */
+export function perCreditMinor(credits: PlanCreditRung, book: PlanPriceBook): number {
+  return rungPriceMinor(credits, book) / credits;
+}
+
+/** What the rung saves vs buying the same credits at the single price. */
+export function rungSavingsMinor(credits: PlanCreditRung, book: PlanPriceBook): number {
+  const single = book === "INR" ? CREDIT_SINGLE_PRICE.inrPaise : CREDIT_SINGLE_PRICE.usdCents;
+  return single * credits - rungPriceMinor(credits, book);
+}
+
+/** Plan perks fee per month in minor units. */
+export function planFeeMinor(id: PlanFamilyId, book: PlanPriceBook): number {
+  const entry = planFamilyEntry(id);
+  return book === "INR" ? entry.monthlyInrPaise : entry.monthlyUsdCents;
+}
+
+/**
+ * "This month" = plan fee + picked rung. A null rung is the free pick
+ * (Open Door's default: its 3 free monthly credits, no charge).
+ */
+export function thisMonthMinor(id: PlanFamilyId, rung: PlanCreditRung | null, book: PlanPriceBook): number {
+  return planFeeMinor(id, book) + (rung === null ? 0 : rungPriceMinor(rung, book));
 }
