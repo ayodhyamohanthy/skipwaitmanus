@@ -295,7 +295,7 @@ describe("built but not green, or green but not landed, and nobody on it (D-085)
   });
 });
 
-describe("dependsOn holds a landing, not only a build (D-126)", () => {
+describe("dependsOn holds a landing, not only a build (D-127)", () => {
   const prB: [string, string] = ["agent/queue/b", "https://github.com/o/r/pull/8"];
   it("a green pull request whose dependency is not done is never handed out to land", () => {
     const quietB: [string, Branch] = ["agent/queue/b", claimBy("Qwen · s1", "B", 3)];

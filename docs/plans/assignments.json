@@ -73,7 +73,7 @@
     {
       "id": "PICKER-landing-slot",
       "title": "One landing at a time, enforced: the agent/queue/landing slot",
-      "row": "D-126",
+      "row": "D-127",
       "packet": "docs/plans/PICKER-PARALLEL.md",
       "tier": 2,
       "lane": "picker",
@@ -84,7 +84,7 @@
     {
       "id": "PICKER-owns-scope",
       "title": "File ownership (owns) on tasks, filesBusy, and scripts/scope-check.mjs",
-      "row": "D-126",
+      "row": "D-127",
       "packet": "docs/plans/PICKER-PARALLEL.md",
       "tier": 2,
       "lane": "picker",
@@ -95,7 +95,7 @@
     {
       "id": "PICKER-status-rows",
       "title": "Tasks that share a plan row write status in their packet section",
-      "row": "D-126",
+      "row": "D-127",
       "packet": "docs/plans/PICKER-PARALLEL.md",
       "tier": 2,
       "lane": "picker",
@@ -106,7 +106,7 @@
     {
       "id": "PICKER-lane-busy",
       "title": "A green pull request waiting for review stops blocking its lane when owns are disjoint",
-      "row": "D-126",
+      "row": "D-127",
       "packet": "docs/plans/PICKER-PARALLEL.md",
       "tier": 2,
       "lane": "picker",
@@ -119,7 +119,7 @@
     {
       "id": "PICKER-board-epic",
       "title": "Board: role by lane prefix, one roll-up line per epic, behind-main counts",
-      "row": "D-126",
+      "row": "D-127",
       "packet": "docs/plans/PICKER-PARALLEL.md",
       "tier": 3,
       "lane": "picker",
@@ -378,17 +378,17 @@
     },
     {
       "id": "D-048-P-marketing",
-      "title": "D-048 phase 3 marketing packet (home, wall, jobs, public profile)",
+      "title": "D-048 phase 3 marketing packet (landing, wall, jobs, public profile)",
       "row": "D-048",
       "packet": null,
       "tier": 3,
       "lane": "d048-packets",
       "branch": "agent/queue/d048-p-marketing",
-      "status": "owner",
+      "status": "architect",
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Waits for the owner's answers on the marketing shell and the home page (split, owner questions)."
+      "note": "Any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md and the landing contract in docs/plans/GOAL_UI_MIGRATION.md; open questions decided there under D-123. Its pull request adds this lane's rows."
     },
     {
       "id": "ROW20-A",

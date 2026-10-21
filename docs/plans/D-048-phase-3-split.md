@@ -1,4 +1,4 @@
-# D-048 phase 3 split: many agents, one goal UI rollout (D-126)
+# D-048 phase 3 split: many agents, one goal UI rollout (D-127)
 
 > Read [`docs/BRIEF.md`](../BRIEF.md) first. Decided by Claude Code as CEO under D-109 on Oct 21 2026, from a read-only study of the code (eight agents: surface map, rollout map, shared hotspots, picker mechanics; three designs judged). The register wins any conflict. Nobody picks a row from this file by hand: rows enter `docs/plans/assignments.json` as described below and `node scripts/next-task.mjs` hands them out.
 
@@ -148,7 +148,7 @@ Every surface lands dark and green under D-082, one landing at a time. Going liv
 - **later, Tier 2:** Never hold architect tasks in the D-109 hold loop (:374-386). Why: Packets sit in their own d048-packets lane in this split, so nothing red holds them today. The rule protects any lane that mixes packets and builds.
 - **later, Tier 3:** ROLE_BY_LANE (:28) becomes a prefix match (/^(design\|d048-)/ maps to CDO). An optional epic key gives one roll-up line on the board, for example 'D-048-p3: 12/74 done, 6 PR, 1 red, released: shell, explore, requests, inbox'. Also show 'behind main N' per open PR (local git rev-list --count, no API cost). Why: Display only. Today roleOf would label every d048-* lane CTO. The board also shows #362 green and CLEAN while it is 27 commits behind main and conflicts with it in explore.test.tsx.
 
-Already done by D-126 (Oct 21): dependsOn now holds landings and packets, not only new builds.
+Already done by D-127 (Oct 21): dependsOn now holds landings and packets, not only new builds.
 
 ## Methods considered (CEO ratings)
 - **Audience lanes (one lane per user type: seeker, referrer, admin, employer, public): 6/10.** It works with the picker today, since lanes are free strings. But it is too coarse: work inside a lane is serial, and laneBusy (nextTaskCore.mjs:281) blocks the whole audience while any one of its PRs is open or waiting for review. Measured load is uneven: the seeker side holds about 27% of the code and 12 surfaces, employer about 5%. One audience becomes the critical path while others sit idle.
@@ -157,14 +157,18 @@ Already done by D-126 (Oct 21): dependsOn now holds landings and packets, not on
 - **Contract-first layer split (one agent writes the shared contract, then an API agent and a UI agent build in parallel): 6/10.** The repo has the contract layer for it: shared/ holds Zod contracts such as shared/referrerAccess.ts and shared/askNote.ts, and AGENTS.md says to lock contracts before logic. Flagged-endpoint PRs like #373 and #384 already ship API work dark. But the standing owner rule (D-087/D-088) says every slice ships fullstack in one PR, so a three-PR split meets the intent only if each PR is dark behind the same flag. Web and API must also deploy from compatible source (invariant 6). A shared/** contract PR triggers both deploys, and deploy-api has a median of 16.4 min, which slows landings. It does not apply to D-048, which is client-only.
 - **Many agents on one file: 1/10.** Git merges by line. App.tsx line 113 holds all 87 routes on one 5,378-character line, and the goalBoundary ALLOWLIST is one regex line. A read-only git merge-tree of #361 against #360 already gives 8 conflict hunks in GoalShell.tsx and goalBoundary.test.ts. Every extra agent on a shared file adds a guaranteed re-merge and another 4.4-min CI run. Never do it; give each shared file one owner lane.
 
-## Owner questions
-- Rollout map §6 q1: should /wall, /jobs and /p/:handle use the goal app shell or a separate marketing shell? Until you answer, D-048-P-marketing, D-048-p3-discovery and D-048-p3-public-profile wait at owner.
-- Rollout map §6 q2: should the employer pages (/employer, /employer/talent, /employer/billing, /employer/opportunities, /for-companies) use the seeker goal system or a denser admin-like sibling?
-- Rollout map §6 q3: do you confirm that admin keeps its current density and only gets the goal tokens, type scale and focus ring?
-- Rollout map §6 q4: should home (/) be the goal shell with a hero, or a separate marketing surface?
-- D-063 money sentence: should the app frame keep it until the money pages move (the W0 packet's recommendation), or should it appear only on /plans and /safety, as PR #361 already chose?
-- Release sign-off: do you want to approve the 1280 and 390 captures yourself for each of the 7 wave releases? Or will you delegate release sign-off to CEO plus QA for surfaces built from your approved comps (D-071: /explore, /requests, /queue) and keep the yes only for surfaces without an approved comp?
-- D-097 scope: do you accept that a pure re-skin counts as a new behaviour that ships behind an off-by-default flag? The cost is two versions of each page in the code for about 7 days after its release, in return for landing dark and a one-line rollback.
-- GitHub settings (your ruleset 25433342): turn on 'require branches to be up to date' and allow_update_branch, free, rated 8/10? That stops the merge button from landing a stale green PR as an untested merge commit.
-- Move the repo to a free GitHub organization to get the native merge queue (rated 7/10)? It would batch and test landings automatically. Merge queues are not offered for user-owned repos (mergeQueue is null today). Unknowns: whether ruleset 25433342 and the Cloudflare GitHub app carry over cleanly.
-- QA preview: should QA of dark surfaces happen only in local or preview builds (#383's QA preview Worker needs your Cloudflare credentials), or do you allow a production override such as ?goal=<id>? That would let anyone who knows the parameter see an unreleased skin of their own data.
+## Open questions, decided under D-123 (changeable; reported to the owner)
+D-123 says: no open questions to the owner, decide on merit, report. D-120 makes the goal UI the one design from the landing page to the platform. So:
+1. **/wall, /jobs and /p/:handle** use the goal design on the static frame (the app shell without signed-in navigation), not a separate marketing system (D-120: one design).
+2. **Employer pages** (/employer, /employer/talent, /employer/billing, /employer/opportunities, /for-companies) use the goal system at standard density, like the referrer workspace.
+3. **Admin** keeps its density and gets the goal tokens, type scale and focus ring only (internal tools, least churn).
+4. **Home (/)** is the goal landing from `docs/plans/GOAL_UI_MIGRATION.md`: "Get referred." with "Find your company" as the one commit.
+5. **The D-063 money sentence** stays in the app frame until the money pages (/plans, /billing, /premium, /pricing) move, then lives on those pages.
+6. **Release sign-off:** each wave is signed off by an independent reviewer and the CEO against the doctrine checklist in `GOAL_UI_MIGRATION.md`, the approved comps and the 1280 and 390 captures; the owner gets the captures in the report. A page that shows prices goes live only under the money gates (D-111, D-123: pricing going live needs the owner's word).
+7. **Re-skins land dark** (D-097): two versions of a page live in the code for up to 7 days after its release, for a one-line rollback.
+8. **"Require branches to be up to date" stays off:** landing is fast-forward only, which already requires an up-to-date branch; strict mode would add a re-merge and CI run for every lander. The merge button stays forbidden.
+9. **No move to a GitHub organization for now (6/10):** the native merge queue is the prize, but the Cloudflare app, secrets and ruleset may not carry over; revisit if landing contention persists after PICKER-landing-slot ships.
+10. **QA of dark pages** happens in local and preview builds (`VITE_GOAL_SURFACES=all`) only; no production override, so production always equals the code on main.
+
+## Order and screen contracts (D-120)
+Releases follow the owner's sequence: landing (/), seeker home (/explore), company (/explore/:slug), requests (/requests), plans (/plans), then the rest. Every packet builds each screen from its contract in `docs/plans/GOAL_UI_MIGRATION.md` (goal line, one next step, supporting content) and passes its acceptance checklist; `design/goal-ui/DOCTRINE.md` wins any visual conflict.

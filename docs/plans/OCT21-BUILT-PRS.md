@@ -33,7 +33,7 @@ Referrer impact card (D-106): shareable aggregates under the referrer's screen n
 The goal kit's type scale: a shared merge helper dropped the goal type tokens. It is the first foundation step of D-048 phase 3 (docs/plans/D-048-phase-3-split.md). Done: merged with `main`, gate green including the design-token audit, goal component tests unchanged or extended (never weakened), landed.
 
 ### D-048-p3-map (#358, `agent/workbuddy/d048-phase3-plan`, Tier 3)
-The D-048 phase 3 rollout map (eight waves, one pull request each). Done: merged with `main`, consistent with `DESIGN.md`, D-077 and docs/plans/D-048-phase-3-split.md (D-126 wins where they differ: cluster lanes, dark landing, one-line releases), landed.
+The D-048 phase 3 rollout map (eight waves, one pull request each). Done: merged with `main`, consistent with `DESIGN.md`, D-077 and docs/plans/D-048-phase-3-split.md (D-127 wins where they differ: cluster lanes, dark landing, one-line releases), landed.
 
 ### D-048-p3-w0-shell (#361, `agent/instinct/goal-ui-w0-shell`, Tier 2, after the map)
 Wave 0: the app shell onto the goal system. Its CI is red: make it green first. Done: merged with `main`, gate green, 1280 and 390 captures attached to the pull request, landed. No surface outside the shell is re-skinned (D-048).

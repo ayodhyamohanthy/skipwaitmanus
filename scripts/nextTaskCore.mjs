@@ -278,7 +278,7 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
 
   const view = buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports });
   const byId = new Map(view.map(v => [v.task.id, v]));
-  // D-126: dependsOn holds a landing, not only a build: a built pull request never lands before what it depends on.
+  // D-127: dependsOn holds a landing, not only a build: a built pull request never lands before what it depends on.
   const unmetOf = v => v.task.dependsOn.filter(d => !byId.get(d)?.done);
   const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open));
   const { workAt, lockAt, archAt, quiet } = clock(branches, now);

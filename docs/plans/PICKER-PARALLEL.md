@@ -1,6 +1,6 @@
 # Packet PICKER-PARALLEL: let many agents work on one goal safely
 
-> Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code as CEO (D-109, D-126) on Oct 21 2026 from a read-only study of `scripts/nextTaskCore.mjs`, `scripts/next-task.mjs` and the D-048 rollout. The picker hands out one task from this packet at a time; do only the task it prints. The register wins any conflict.
+> Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code as CEO (D-109, D-127) on Oct 21 2026 from a read-only study of `scripts/nextTaskCore.mjs`, `scripts/next-task.mjs` and the D-048 rollout. The picker hands out one task from this packet at a time; do only the task it prints. The register wins any conflict.
 
 All tasks here are Tier 2 and live in lane `picker` (they edit the same files, so they run one after another). Every task: red-first tests in `scripts/nextTask.test.ts`, no new dependency, `scripts/briefContract.test.ts` and the full gate green, every affected doc updated in the same pull request (D-068), landed under D-082. Keep `scripts/nextTaskCore.mjs` pure (no I/O): GitHub and git reads stay in `scripts/next-task.mjs`.
 
