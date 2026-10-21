@@ -23,6 +23,29 @@ function seed() {
   return store;
 }
 
+// D-035 records a not-fixable pass as `pass_release`; it is still the referrer
+// answering, so it must count exactly like an approve or a legacy pass.
+const pendingAsk = (id: number, jobId: number): Row => ({ ...ask(id, jobId), status: "pending" });
+const passRelease = (id: number, requestId: number, hours: number): Row => ({ id, referralRequestId: requestId, operationKey: `pass:${requestId}`, actorUserId: 1, action: "pass_release", fromStatus: "pending", resultingStatus: "pending", resultingRevision: 1, referenceId: null, createdAt: new Date(Date.UTC(2026, 9, 2, 1 + hours)) });
+
+describe("D-035: a not-fixable pass is still a first decision", () => {
+  it("asks decided only by pass_release count like any pass", async () => {
+    const store = createInMemoryDrizzle();
+    store.reset([
+      [profiles, [referrer(1, "quillmint.com"), referrer(2, "quillmint.com"), referrer(3, "quillmint.com")]],
+      [jobs, [job(10, "quillmint.com"), job(11, "quillmint.com"), job(12, "quillmint.com")]],
+      [referralRequests, [pendingAsk(100, 10), pendingAsk(101, 11), pendingAsk(102, 12)]],
+      [referralTransitionEvents, [passRelease(1000, 100, 24), passRelease(1001, 101, 48), passRelease(1002, 102, 72)]],
+    ]);
+    const signal = await loadCompanyResponseSignal(["quillmint.com"], NOW, store.db);
+    expect(signal.state).toBe("shown");
+    if (signal.state !== "shown") return;
+    expect(signal.answeredThisMonth).toBe(3);
+    expect(signal.usualFirstReplyDays).toBe(2);
+    expect(signal.referrersInside).toBe(3);
+  });
+});
+
 describe("jobs.company <-> companyDomains fixture (QA)", () => {
   it("only jobs whose company column is the owned domain count", async () => {
     const store = seed();
