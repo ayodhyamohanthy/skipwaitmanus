@@ -14,7 +14,9 @@ import { companyOpportunitiesResponseSchema } from "../shared/companyOpportuniti
 import { getCompanyDirectoryEntry, listAdminCompanies, listCompanyDirectory } from "./companyDirectory";
 import { CompanyConflictError, CompanyInputError, CompanyNotFoundError, createCompany, listUnmatchedWorkDomains, updateCompany, type UnmatchedWorkDomain } from "./companyDirectoryAdmin";
 import { CompanyDirectoryUnavailableError } from "./companyDirectorySource";
+import { companyResponseSignalEnabled, loadCompanyResponseSignal } from "./companyResponseSignal";
 import { listCompanyOpportunityPosts } from "./db";
+import type { CompanyResponseSignal } from "../shared/companyResponseSignal";
 
 type Identity = { account: { id: number; role?: "user" | "admin" } };
 type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number };
@@ -32,6 +34,9 @@ export type CompanyDirectoryRouteDeps = {
   /** D-097: off until QA verifies. Defaults to UNMATCHED_DOMAINS_ENABLED=true. */
   unmatchedDomainsEnabled?: () => boolean;
   listUnmatchedWorkDomains?: () => Promise<UnmatchedWorkDomain[]>;
+  /** Flag company_response_signal (D-097): off until QA. */
+  responseSignalEnabled?: () => boolean;
+  loadResponseSignal?: (domains: readonly string[]) => Promise<CompanyResponseSignal>;
 };
 
 const PUBLIC_CACHE = "public, max-age=60";
@@ -96,6 +101,18 @@ export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirect
       const opportunities = await listOpportunities(company.domains, Date.now());
       res.set("Cache-Control", PUBLIC_CACHE).json(companyOpportunitiesResponseSchema.parse({ opportunities }));
     } catch (error) { failure(res, error, "We could not load this company's openings"); }
+  });
+
+  // Aggregate responsiveness for one listed company. 404 while the flag is off, so the surface does not exist.
+  app.get("/api/companies/:slug/response-signal", async (req, res) => {
+    if (!(deps.responseSignalEnabled ?? companyResponseSignalEnabled)()) return res.status(404).set("Cache-Control", "no-store").json({ error: "Not found" });
+    const slug = req.params.slug ?? "";
+    if (!COMPANY_SLUG_PATTERN.test(slug)) return res.status(400).set("Cache-Control", "no-store").json({ error: "Invalid company link" });
+    try {
+      const company = await getOne(slug);
+      if (!company) return res.status(404).set("Cache-Control", "public, max-age=30").json({ error: COMPANY_NOT_FOUND_ERROR });
+      res.set("Cache-Control", PUBLIC_CACHE).json({ signal: await (deps.loadResponseSignal ?? loadCompanyResponseSignal)(company.domains) });
+    } catch (error) { failure(res, error, "We could not load this company's signal"); }
   });
 
   app.get("/api/admin/companies", async (req, res) => {
