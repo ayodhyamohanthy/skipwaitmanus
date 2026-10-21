@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { REFERRED_DEADLINE_ENABLED } from "@shared/referral";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ReferralConversation from "./ReferralConversation";
 
@@ -168,10 +169,16 @@ describe("ReferralConversation thread", () => {
     await waitFor(() => expect(screen.getByText("Thank you — what should I prepare next?")).toBeTruthy());
   });
 
-  it("asks the accepted seeker to confirm the referral email; progress opens once referred (kit v4)", async () => {
+  it("asks the accepted seeker to confirm the referral email only while part B is on; progress opens once referred (kit v4)", async () => {
     stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [seekerApproved] }) : ok({ messages: [] })));
     render(<ReferralConversation />);
-    expect(await screen.findByText("Did you get the referral email?")).toBeTruthy();
+    // D-038-reconcile R-2: the confirm control exists only with part B switched on.
+    if (REFERRED_DEADLINE_ENABLED) {
+      expect(await screen.findByText("Did you get the referral email?")).toBeTruthy();
+    } else {
+      expect(await screen.findByText(/Use messages to coordinate/)).toBeTruthy();
+      expect(screen.queryByText("Did you get the referral email?")).toBeNull();
+    }
     expect(screen.queryByText("Update your progress")).toBeNull();
     expect(screen.queryByRole("button", { name: "Interviewing" })).toBeNull();
   });
