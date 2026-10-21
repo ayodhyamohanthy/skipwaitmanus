@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
 import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parsePaymentSourceEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole, VerifiedChargebeeHostedPage } from "./chargebee";
+import type { PlanCreditRung, PlanFamilyId } from "../shared/planFamily";
 import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 import { retrieveCheckoutSubscription, subscriptionEventFromCheckoutPage, type RetrievedCheckoutSubscription } from "./chargebeeSubscriptionApi";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
@@ -25,6 +26,10 @@ type Deps = {
   createCheckout?: typeof createChargebeeCheckout;
   createPaymentIntent: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; tokenCount: number; amount: number; currency: string }) => Promise<unknown>;
   fulfillPayment: (input: { eventId: string; hostedPageId?: string; invoiceId?: string; passThruContent?: string; amount: number; currency: string }) => Promise<unknown>;
+  // Optional so older tests and tools can mount the router without the v2
+  // arm; a bundle invoice with no grant wired fails loudly (500 -> provider
+  // retry), never silently. Production always wires it.
+  grantV2Credits?: (input: { eventId: string; invoiceId?: string; subscriptionId?: string; hostedPageId?: string; passThruContent?: string; planFamily: PlanFamilyId; rung: PlanCreditRung; amount: number; currency: string }) => Promise<unknown>;
   createSubscriptionIntent?: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; plan: BillablePlanId | "fast_track" | "insider"; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) => Promise<unknown>;
   /** Kit checkout (a 30/90-day pass, Keep warm yearly, a credit pack): availability and provider calls. */
   kitCheckout?: KitCheckoutDeps;
@@ -506,20 +511,30 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     // invoice with tax/coupon/rounding is not a pack multiple, and dropping it
     // here would be a silent loss of a real payment. fulfillPayment parks
     // amount mismatches for admin review.
-    if (payment && (tokenPackFromAmount(payment.amount, payment.currency) || payment.passThruContent)) {
+    if (payment && (payment.v2PlanFamily || payment.v2CreditsRung || tokenPackFromAmount(payment.amount, payment.currency) || payment.passThruContent)) {
       handled = true;
       try {
-        const runtime = (!payment.hostedPageId || !payment.passThruContent) && deps.resolveHostedPage
-          ? resolveChargebeeRuntime(req.hostname)
-          : undefined;
-        const resolvedHostedPage = runtime && deps.resolveHostedPage
-          ? await deps.resolveHostedPage({ invoiceId: payment.invoiceId, amount: payment.amount, currency: payment.currency, site: runtime.site, apiKey: runtime.apiKey })
-          : undefined;
-        obligations.payment = await deps.fulfillPayment({
-          ...payment,
-          hostedPageId: payment.hostedPageId ?? resolvedHostedPage?.hostedPageId,
-          passThruContent: payment.passThruContent ?? resolvedHostedPage?.passThruContent,
-        });
+        if (payment.v2PlanFamily && payment.v2CreditsRung) {
+          // D-132 bundle month (first month or renewal): plan fee + rung in
+          // one invoice, provider truth from the line items. The rung credits
+          // are paid and never expire; entitlements arrive via the
+          // subscription events. A v2 pack (rung without a plan fee) falls
+          // through to the pack fulfillment below.
+          if (!deps.grantV2Credits) throw new Error("v2 credit grant is not wired");
+          obligations.payment = await deps.grantV2Credits({ ...payment, planFamily: payment.v2PlanFamily, rung: payment.v2CreditsRung });
+        } else {
+          const runtime = (!payment.hostedPageId || !payment.passThruContent) && deps.resolveHostedPage
+            ? resolveChargebeeRuntime(req.hostname)
+            : undefined;
+          const resolvedHostedPage = runtime && deps.resolveHostedPage
+            ? await deps.resolveHostedPage({ invoiceId: payment.invoiceId, amount: payment.amount, currency: payment.currency, site: runtime.site, apiKey: runtime.apiKey })
+            : undefined;
+          obligations.payment = await deps.fulfillPayment({
+            ...payment,
+            hostedPageId: payment.hostedPageId ?? resolvedHostedPage?.hostedPageId,
+            passThruContent: payment.passThruContent ?? resolvedHostedPage?.passThruContent,
+          });
+        }
         const fulfilled = obligations.payment;
         if (isReviewResult(fulfilled)) {
           console.error("[Chargebee] paid invoice parked for review", { paymentId: fulfilled.paymentId, reason: fulfilled.reason });
@@ -539,7 +554,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     const subscriptionHandled = Boolean(subscription && obligations.subscription && (obligations.subscription as { status?: string }).status !== "ignored");
     const paymentResult = obligations.payment as { status?: string; reason?: string } | undefined;
     const paymentUnmatched = payment && !subscriptionHandled && (
-      (paymentResult?.status === "ignored" && ["unknown_checkout", "missing_hosted_page", "missing_checkout_intent"].includes(paymentResult.reason ?? ""))
+      (paymentResult?.status === "ignored" && ["unknown_checkout", "missing_hosted_page", "missing_checkout_intent", "unknown_v2_subscription", "missing_invoice"].includes(paymentResult.reason ?? ""))
       || (!paymentResult && !subscriptionHandled)
     );
     if (payment && paymentUnmatched) {

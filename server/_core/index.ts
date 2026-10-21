@@ -273,6 +273,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     recordActivity: db.recordOperationalActivity,
     createPaymentIntent: db.createChargebeePaymentIntent,
     fulfillPayment: db.fulfillChargebeePayment,
+    grantV2Credits: db.grantV2PaidCredits,
     createSubscriptionIntent: db.createChargebeeSubscriptionIntent,
     applySubscriptionEvent: db.applyChargebeeSubscriptionEvent,
     recordGiftEvent: db.recordGiftProviderEvent,
