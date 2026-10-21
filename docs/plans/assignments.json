@@ -114,8 +114,9 @@
       "tier": 2,
       "lane": "share",
       "branch": "agent/instinct/share-win-card",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "CI was red on the design-token audit (a raw #059669 in the share-win dot; fixed to var(--g-emerald) before this takeover). Taken over by workbuddy · 8dc3 (2026-10-21), merged with origin/main (kit.css/content.json/DECISIONS.md/.env.example conflicts resolved additively), gate green on the merge commit, landed with the flag off."
     },
     {
       "id": "D-106-impact-card",
@@ -147,10 +148,11 @@
       "tier": 2,
       "lane": "design",
       "branch": "agent/instinct/goal-ui-w0-shell",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-p3-map"
-      ]
+      ],
+      "note": "Landed as `3cd221df` (PR #361, Tier 2): the app shell renders inside GoalShell with one navigation, the credits pill (D-055), the carried-over account menu and the beta badge (#402); no surface outside the shell re-skinned. 1280/390 before/after captures under design/goal-ui/captures/w0-shell/."
     },
     {
       "id": "D-048-p3-explore",

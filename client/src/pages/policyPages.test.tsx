@@ -21,6 +21,8 @@ vi.mock("@/_core/auth", () => ({
   SignedIn: ({ children }: { children: React.ReactNode }) => children,
   SignedOut: () => null,
 }));
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: undefined, isError: false, refetch: () => Promise.resolve() }) }));
+vi.mock("@/hooks/useReferrerAccess", () => ({ useReferrerAccess: () => ({ status: "none", access: { verified: false } }) }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div>, LogoMark: () => <div /> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));

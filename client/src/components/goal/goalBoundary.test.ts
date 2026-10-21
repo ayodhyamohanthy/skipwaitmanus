@@ -1,13 +1,17 @@
-// Phase-2 boundary: live files may not import components/goal until their
-// surface migrates (phase 3). Migrated goal-native surfaces are allowlisted
-// here as they land: Landing (GoalLanding, D-120). The token block sits
-// exactly once, appended after the previous last rule of index.css (§6b).
+// Phase-2/3 boundary: live files may not import components/goal until their
+// surface migrates. Goal-native surfaces are allowlisted here as they land
+// (Landing, D-120; sign-in), phase-3 waves add each moved surface to
+// MOVED_SURFACES (W0 is the shell), and the token block sits exactly once,
+// appended after the previous last rule of index.css (§6b).
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const CLIENT_SRC = join(__dirname, "..", "..");
 const ALLOWLIST = /components[\\/]goal[\\/]|pages[\\/]ComponentShowcase\.tsx$|pages[\\/]GoalLanding\.tsx$|pages[\\/]GoalLandingV9\.tsx$|pages[\\/]GoalSignIn\.tsx$|\.test\.tsx?$/;
+
+// Phase-3 waves that have landed, one entry per moved surface.
+const MOVED_SURFACES = new Set(["components/AppShell.tsx"]); // W0: the app shell
 
 function* walk(dir: string): Generator<string> {
   for (const entry of readdirSync(dir)) {
@@ -18,11 +22,11 @@ function* walk(dir: string): Generator<string> {
 }
 
 describe("goal boundary", () => {
-  it("no live file imports components/goal", () => {
+  it("only moved surfaces import components/goal", () => {
     const offenders: string[] = [];
     for (const file of walk(CLIENT_SRC)) {
       const rel = relative(CLIENT_SRC, file);
-      if (ALLOWLIST.test(rel)) continue;
+      if (ALLOWLIST.test(rel) || MOVED_SURFACES.has(rel)) continue;
       if (/components\/goal|@\/components\/goal/.test(readFileSync(file, "utf8"))) offenders.push(rel);
     }
     expect(offenders).toEqual([]);
