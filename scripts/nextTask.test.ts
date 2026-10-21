@@ -295,6 +295,30 @@ describe("built but not green, or green but not landed, and nobody on it (D-085)
   });
 });
 
+describe("dependsOn holds a landing, not only a build (D-126)", () => {
+  const prB: [string, string] = ["agent/queue/b", "https://github.com/o/r/pull/8"];
+  it("a green pull request whose dependency is not done is never handed out to land", () => {
+    const quietB: [string, Branch] = ["agent/queue/b", claimBy("Qwen · s1", "B", 3)];
+    const tasks = [task("A"), task("B", { dependsOn: ["A"] }), task("C")];
+    expect(pick(tasks, { branches: [quietB], prs: [prB], prCi: [["agent/queue/b", "green"]], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "A" } });
+    const doneA: [string, Branch] = ["agent/queue/a", claimBy("Mistral · s5", "A", 5, true)];
+    expect(pick(tasks, { branches: [doneA, quietB], prs: [prB], prCi: [["agent/queue/b", "green"]], claimant: "Kimi · s2" })).toMatchObject({ kind: "land", task: { id: "B" } });
+  });
+  it("a packet whose dependency is not done waits; the packet it depends on comes first", () => {
+    const tasks = [task("F", { status: "architect", packet: null }), task("P", { status: "architect", packet: null, dependsOn: ["F"] }), task("C")];
+    const writingF: [string, Branch] = ["agent/architect/f", claimBy("Qwen · s1", "F", 1)];
+    expect(pick(tasks, { branches: [writingF], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "C" } });
+    expect(pick(tasks, { claimant: "Kimi · s2" })).toMatchObject({ kind: "architect", task: { id: "F" } });
+  });
+  it("a Tier 1 pull request whose review passed waits to land until its dependency is done", () => {
+    const t1 = task("M", { tier: 1, lane: "money", dependsOn: ["A"] });
+    const built: [string, Branch] = ["agent/queue/m", claimBy("DeepSeek · s4", "M", 3)];
+    const prM: [string, string] = ["agent/queue/m", "https://github.com/o/r/pull/9"];
+    const passed: [string, Branch] = ["agent/review/m", { tipMs: NOW - 3 * HOUR, merged: false, markers: [{ verb: "Review claim", id: "M", who: "Kimi · r1" }, { verb: "Verdict", id: "M", who: "Kimi · r1", verdict: "pass" }] }];
+    expect(pick([t1, task("A")], { branches: [built, passed], prs: [prM], claimant: "Gemini · s3" })).toMatchObject({ kind: "build", task: { id: "A" } });
+  });
+});
+
 describe("a red priority holds its lane and its dependents (D-085, narrowed by D-109: \"dont block tasks let open models execute\")", () => {
   const busyA: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 1)];
   const quietA: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 3)];

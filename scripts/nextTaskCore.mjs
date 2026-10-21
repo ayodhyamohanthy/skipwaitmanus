@@ -278,6 +278,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
 
   const view = buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports });
   const byId = new Map(view.map(v => [v.task.id, v]));
+  // D-126: dependsOn holds a landing, not only a build: a built pull request never lands before what it depends on.
+  const unmetOf = v => v.task.dependsOn.filter(d => !byId.get(d)?.done);
   const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open));
   const { workAt, lockAt, archAt, quiet } = clock(branches, now);
   const ceo = isArchitect(claimant);
@@ -318,6 +320,7 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     }
     if ((state === "passed" || state === "landing") && lockQuiet) {
       if (did(v, ["builders", "fixers"])) return skip(v, "its review passed, and you built or fixed it");
+      if (unmetOf(v).length) return skip(v, `review passed; it lands after ${unmetOf(v).join(", ")}`);
       return { kind: "land", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, tier1: true, from: v.lander ?? v.reviewer };
     }
     return skip(v, { passed: `review passed; ${v.reviewer} lands it`, landing: `${v.lander} is landing it`, fixing: `findings being fixed by ${v.fixer}` }[state] ?? `under review by ${v.reviewer}`);
@@ -347,18 +350,20 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       if (v.pr && (v.ci === "running" || v.ci === "running-after-red")) return skip(v, `CI is running on ${v.pr}`);
       if (v.pr) {
         if (!idle) return skip(v, `${v.owner ?? "its builder"} is landing ${v.pr}`);
+        if (unmetOf(v).length) return skip(v, `${v.pr} is green; it lands after ${unmetOf(v).join(", ")}`);
         return { kind: "land", task: v.task, work: v.work, pr: v.pr, tier1: false, from: v.owner };
       }
       if (!idle) return skip(v, `in progress by ${v.owner ?? "another agent"} on ${v.work}`);
       return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v) };
     }
     if (v.task.status === "architect") {
+      if (unmetOf(v).length) return skip(v, `its packet waits for ${unmetOf(v).join(", ")}`);
       const writer = holderOf(v.arch, v.task.id);
       if (writer && !quiet(archAt(v))) return skip(v, `${writer} is writing its packet`);
       return { kind: "architect", task: v.task, lock: v.archName, lockExists: Boolean(v.arch), from: writer };
     }
     if (v.task.status !== "todo") return skip(v, { "in-review": "being landed by its reviewer", owner: "waits for the owner" }[v.task.status]);
-    const unmet = v.task.dependsOn.filter(d => !byId.get(d)?.done);
+    const unmet = unmetOf(v);
     if (unmet.length) return skip(v, `waits for ${unmet.join(", ")}`);
     if (laneBusy(v)) return skip(v, `lane ${v.task.lane} is busy`);
     return { kind: "build", task: v.task, ciRunning: mainCi.state === "running" };
