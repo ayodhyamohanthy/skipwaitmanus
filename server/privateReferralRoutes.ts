@@ -685,6 +685,24 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.status(isValidationError ? 400 : 500).json({ error: message });
     }
   });
+  // D-132/D-110 (flag ASK_LEVEL_COST): the pre-send cost quote for the compose
+  // screen - "This ask costs N credits. You have M. Add K more." The link is
+  // normalized exactly as at creation, so the quote always matches the charge.
+  app.get("/api/company-referrals/quote", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to see what this ask costs" });
+      const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
+      if (!url || !isValidTargetRoleUrl(url)) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
+      const level = assignJobLevel({ url: normalizeTargetRoleUrl(url) }).level;
+      const cost = askLevelCostEnabled() ? creditsForLevel(level) : 1;
+      const summary = (await deps.getCreditSummary?.(identity.account.id, "job_seeker")) as { totalAvailable?: unknown } | undefined;
+      const totalAvailable = typeof summary?.totalAvailable === "number" ? summary.totalAvailable : null;
+      if (totalAvailable === null) return res.status(500).json({ error: "We could not load your referral credits" });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ level, cost, totalAvailable, shortfall: Math.max(0, cost - totalAvailable) });
+    } catch { res.status(500).json({ error: "We could not price this ask" }); }
+  });
   app.post("/api/company-referrals", async (req, res) => {
     let actorUserId: number | undefined;
     try {
@@ -1655,3 +1673,5 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
 }
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
+import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
+import { askLevelCostEnabled } from "./db";
