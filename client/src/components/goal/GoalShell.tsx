@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { goalNavFor, type GoalNavId } from "./nav";
+import { GoalMoreMenu } from "./GoalMoreMenu";
 import { GoalNum } from "./GoalNum";
 import { GoalButton } from "./GoalButton";
 
@@ -130,6 +131,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
           ))}
         </div>
         <div className="mt-auto flex w-full flex-col items-center gap-4">
+          <GoalMoreMenu variant="rail" />
           {!verifiedReferrer ? <GiveReferralLink href={giveReferralHref} variant="rail" /> : null}
           <AccountSlot account={account} />
         </div>
@@ -177,6 +179,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
               {item.railLabel}
             </a>
           ))}
+          <GoalMoreMenu variant="bar" />
         </nav>
       ) : null}
     </div>
