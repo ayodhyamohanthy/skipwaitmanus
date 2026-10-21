@@ -18,8 +18,8 @@ describe("employer plan catalog", () => {
     expect(`${fromCatalog}.`).toBe(priceBookLine());
   });
 
-  it("features exactly one plan and keeps ids unique", () => {
-    expect(EMPLOYER_PLANS.filter(plan => plan.featured).map(plan => plan.id)).toEqual(["referral_programme"]);
+  it("features no plan (D-133 removed the featured programme) and keeps ids unique", () => {
+    expect(EMPLOYER_PLANS.filter(plan => plan.featured)).toEqual([]);
     expect(new Set(EMPLOYER_PLANS.map(plan => plan.id)).size).toBe(EMPLOYER_PLANS.length);
   });
 
