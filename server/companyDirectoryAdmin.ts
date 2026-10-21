@@ -4,8 +4,8 @@
 // transaction; slug and domain uniqueness are re-checked inside it and backed
 // by the unique indexes, so a lost race surfaces as a conflict, never a
 // half-written company. Timestamps come from the JS clock (invariant 5).
-import { and, eq, inArray } from "drizzle-orm";
-import { companies, companyDomains } from "../drizzle/schema";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
+import { companies, companyDomains, profiles } from "../drizzle/schema";
 import { COMPANY_SLUG_PATTERN, deriveCompanyInitials, deriveCompanySlug, type AdminCompany, type AdminCompanyCreate, type AdminCompanyUpdate } from "../shared/companies";
 import { getAdminCompany } from "./companyDirectory";
 import { CompanyDirectoryUnavailableError } from "./companyDirectorySource";
@@ -88,4 +88,34 @@ export async function updateCompany(id: number, patch: AdminCompanyUpdate, now: 
     throw error;
   }
   return reread(id);
+}
+
+export type UnmatchedWorkDomain = { domain: string; verifiedReferrers: number; firstVerifiedAt: string };
+
+/**
+ * Pure: verified work-email domains that no company owns (D-100 follow-up). Counts only; never ids, names or
+ * emails. Sorted by most referrers, then domain, so the admin sees what to map first.
+ */
+export function planUnmatchedWorkDomains(verified: ReadonlyArray<{ domain: string | null; verifiedAt: Date | null }>, owned: readonly string[]): UnmatchedWorkDomain[] {
+  const ownedSet = new Set(owned.map(domain => domain.trim().toLowerCase()));
+  const byDomain = new Map<string, { n: number; first: Date }>();
+  for (const row of verified) {
+    const domain = row.domain?.trim().toLowerCase();
+    if (!domain || !row.verifiedAt || ownedSet.has(domain)) continue;
+    const entry = byDomain.get(domain);
+    if (!entry) byDomain.set(domain, { n: 1, first: row.verifiedAt });
+    else { entry.n += 1; if (row.verifiedAt < entry.first) entry.first = row.verifiedAt; }
+  }
+  return Array.from(byDomain.entries()).map(([domain, v]) => ({ domain, verifiedReferrers: v.n, firstVerifiedAt: v.first.toISOString() }))
+    .sort((a, b) => b.verifiedReferrers - a.verifiedReferrers || a.domain.localeCompare(b.domain));
+}
+
+export async function listUnmatchedWorkDomains(): Promise<UnmatchedWorkDomain[]> {
+  const db = await getDb();
+  if (!db) throw new CompanyDirectoryUnavailableError();
+  const [verified, owned] = await Promise.all([
+    db.select({ domain: profiles.workEmailDomain, verifiedAt: profiles.workEmailVerifiedAt }).from(profiles).where(and(eq(profiles.accountType, "referrer"), isNotNull(profiles.workEmailVerifiedAt))),
+    db.select({ domain: companyDomains.domain }).from(companyDomains),
+  ]);
+  return planUnmatchedWorkDomains(verified, owned.map(row => row.domain));
 }

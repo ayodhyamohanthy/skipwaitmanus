@@ -2,7 +2,7 @@
   "version": 1,
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083)",
-  "updated": "2026-10-20",
+  "updated": "2026-10-21",
   "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks. An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (Claude Code writes the packet first), owner (waits on the owner). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
@@ -47,15 +47,15 @@
     },
     {
       "id": "D-038-reconcile",
-      "title": "Reconcile the D-038 timers: part B reached main unreviewed (c53ea471 + #330), part A sits on agent/opencode/d038-a-lapses, both add server/referralTimers.ts",
+      "title": "Land PR #353 (D-038-A complete, timers job registered) with part B's money steps switched off until their own review",
       "row": "D-038-B",
-      "packet": null,
+      "packet": "docs/plans/D-038-reconcile.md",
       "tier": 1,
       "lane": "money-core",
-      "branch": "agent/claude/d038-reconcile",
-      "status": "architect",
+      "branch": "agent/workbuddy/d038-a-lapses",
+      "status": "todo",
       "dependsOn": [],
-      "note": "Claude Code writes the reconcile packet (independent review of the code on main against both D-038 packets, then part A through a draft PR, then register the referral-timers job)."
+      "note": "Builds on workbuddy's PR #353 and qoder's audit #354 (docs/reviews/D-038-reconcile-evidence.md). Rulings R-1..R-6 (D-103): fix R1-R5 on #353's branch, REFERRED_DEADLINE_ENABLED=false unless part B's own review passes, the lander sets REFERRAL_TIMERS_SINCE. Never merge agent/opencode/d038-a-lapses."
     },
     {
       "id": "D-035",
@@ -69,6 +69,249 @@
       "dependsOn": [
         "D-038-reconcile"
       ]
+    },
+    {
+      "id": "D-067-review-outbox",
+      "title": "Billing review recovery outbox (#322): renumber its migration, then review and land",
+      "row": "D-067-pro-max-removal",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "billing",
+      "branch": "agent/kat/d067-allocated-0098-oct19",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "Migration 0098 is taken on main (Neutrinos rebrand); renumber first."
+    },
+    {
+      "id": "D-104-company-signal",
+      "title": "Company responsiveness signal (#373): company-level aggregates, min 3, flag off",
+      "row": "D-104",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "company",
+      "branch": "agent/instinct/company-response-signal",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "D-107-claim-company",
+      "title": "Free claim-your-company (#384): mailbox link, aggregate-only dashboard, flags off",
+      "row": "D-107",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "company",
+      "branch": "agent/instinct/claim-company",
+      "status": "todo",
+      "dependsOn": [
+        "D-104-company-signal"
+      ]
+    },
+    {
+      "id": "D-105-win-card",
+      "title": "Seeker win card (#375): opt-in copy card on an accepted ask, flag off; CI red first",
+      "row": "D-105",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 2,
+      "lane": "share",
+      "branch": "agent/instinct/share-win-card",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "D-106-impact-card",
+      "title": "Referrer impact card (#382): screen name and aggregates only, flag off",
+      "row": "D-106",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "share",
+      "branch": "agent/instinct/share-impact-card",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "D-048-p3-map",
+      "title": "D-048 phase 3 rollout map (#358): eight waves, one pull request each",
+      "row": "D-048",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 3,
+      "lane": "design",
+      "branch": "agent/workbuddy/d048-phase3-plan",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "D-048-p3-w0-shell",
+      "title": "D-048 phase 3 wave 0 (#361): the app shell onto the goal system; CI red first",
+      "row": "D-048",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 2,
+      "lane": "design",
+      "branch": "agent/instinct/goal-ui-w0-shell",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-p3-map"
+      ]
+    },
+    {
+      "id": "D-048-p3-explore",
+      "title": "D-048 phase 3 (#362): Find a referral (/explore) moves to the goal directory",
+      "row": "D-048",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 2,
+      "lane": "design",
+      "branch": "agent/qoder/d048-phase-3-explore",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "D-048-p3-requests",
+      "title": "D-048 phase 3 (#360): My asks (/requests) moves to the goal list",
+      "row": "D-048",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 2,
+      "lane": "design",
+      "branch": "agent/qoder/d048-phase-3-requests",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "ROW20-A",
+      "title": "Queue row 20 slice A (#310): kit Impact metrics counted from real history",
+      "row": "20",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 2,
+      "lane": "row20",
+      "branch": "agent/qoder/row20-referral-lifecycle",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "ROW20-B",
+      "title": "Queue row 20 slice B (#311): seeker company demand counted as one vote per person",
+      "row": "20",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 2,
+      "lane": "row20",
+      "branch": "agent/qoder/row20b-company-demand",
+      "status": "todo",
+      "dependsOn": [
+        "ROW20-A"
+      ]
+    },
+    {
+      "id": "ROW20-CD",
+      "title": "Queue row 20 C+D (#314): the landed thank-you reaches its referrer exactly once; renumber its migration",
+      "row": "20",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "row20",
+      "branch": "agent/qoder/row20cd-thank-you-wall",
+      "status": "todo",
+      "dependsOn": [
+        "ROW20-B"
+      ]
+    },
+    {
+      "id": "TASK13-pinned-work",
+      "title": "Queue task 13 slice A (#308): pinned work rides with the ask; renumber its migration",
+      "row": "13",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "ask-flow",
+      "branch": "agent/qoder/ask-pinned-work",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "D-090-BYOR",
+      "title": "Bring-your-own-referrer one-time link (D-090, loop L2)",
+      "row": "D-090",
+      "packet": null,
+      "tier": 1,
+      "lane": "supply",
+      "branch": "agent/claude/d090-byor",
+      "status": "architect",
+      "dependsOn": [],
+      "note": "Claude Code writes the packet (standard credit rules, the four approved surfaces)."
+    },
+    {
+      "id": "D-095-one-tap",
+      "title": "One-tap queue items 1-5 (D-095): sign-in keeps the cart, email up front, /jobs prefills /start, /pricing CTA, /plans collapses unsold passes",
+      "row": "D-095",
+      "packet": null,
+      "tier": 2,
+      "lane": "one-tap",
+      "branch": "agent/claude/d095-one-tap",
+      "status": "architect",
+      "dependsOn": []
+    },
+    {
+      "id": "D-100-security-audit",
+      "title": "Security, availability and payments hardening: read-only audit first, then flagged fixes (D-100)",
+      "row": "D-100",
+      "packet": null,
+      "tier": 3,
+      "lane": "security",
+      "branch": "agent/claude/d100-security-audit",
+      "status": "architect",
+      "dependsOn": []
+    },
+    {
+      "id": "D-099-bonus-pages",
+      "title": "Public referral-bonus pages, one per company, every figure sourced (D-099, loop L5)",
+      "row": "D-099",
+      "packet": null,
+      "tier": 2,
+      "lane": "seo",
+      "branch": "agent/claude/d099-bonus-pages",
+      "status": "architect",
+      "dependsOn": []
+    },
+    {
+      "id": "D-093-language",
+      "title": "Language experience: endonym picker, no flags (D-093)",
+      "row": "D-093",
+      "packet": null,
+      "tier": 2,
+      "lane": "i18n",
+      "branch": "agent/claude/d093-language",
+      "status": "architect",
+      "dependsOn": []
+    },
+    {
+      "id": "D-094-ai-in-ui",
+      "title": "AI-in-UI wave 1: the reasons coach in the ask drawer and the rest of D-094",
+      "row": "D-094",
+      "packet": null,
+      "tier": 2,
+      "lane": "ai",
+      "branch": "agent/claude/d094-ai-in-ui",
+      "status": "architect",
+      "dependsOn": []
+    },
+    {
+      "id": "PRICING-pack-ladder",
+      "title": "Credit pack ladder 1/5/10/25/50 (#380): a pricing change",
+      "row": "D-036",
+      "packet": null,
+      "tier": 1,
+      "lane": "pricing",
+      "branch": "agent/instinct/credit-pack-ladder",
+      "status": "owner",
+      "dependsOn": [],
+      "note": "Prices are frozen (D-056) and D-091 excludes pricing: waits for the owner's yes; never landed by an agent."
+    },
+    {
+      "id": "JOB-LEVELS",
+      "title": "Job level classifier L1-L10 (#381): groundwork for level-scaled ask cost",
+      "row": "open owner question",
+      "packet": null,
+      "tier": 1,
+      "lane": "pricing",
+      "branch": "agent/instinct/job-levels",
+      "status": "owner",
+      "dependsOn": [],
+      "note": "Level-based pricing is an open owner question and a credit-rule change (D-056, D-091): waits for the owner."
     },
     {
       "id": "D-065-B",
@@ -188,7 +431,7 @@
     },
     {
       "id": "D-048-phase-3",
-      "title": "Goal UI phase 3: move one surface at a time",
+      "title": "Goal UI phase 3: the surfaces after the rollout map's first waves",
       "row": "D-048",
       "packet": null,
       "tier": 2,
@@ -196,7 +439,7 @@
       "branch": "agent/claude/d048-phase-3",
       "status": "architect",
       "dependsOn": [],
-      "note": "Claude Code writes one packet per surface; each becomes its own task here."
+      "note": "Claude Code writes one packet per surface from the rollout map (#358) once its first waves land."
     },
     {
       "id": "SYNC-LOG-off-main",
