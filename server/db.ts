@@ -1223,9 +1223,11 @@ export async function getPrivateReferrerImpactSummary(userId: number): Promise<P
   const rows = await db.select({ status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.referrerId, userId));
   const statusCount = (status: ReferralStatus) => rows.filter(row => row.status === status).length;
   // Reply latency from the append-only transition log: claim instant vs the
-  // referrer's first decision (approve, review, or pass) on the same ask.
-  // Computed in JS from stored timestamps; null when nothing decided yet.
-  const DECISION_ACTIONS = new Set(["approve", "review", "pass"]);
+  // referrer's first decision (approve, review, pass or pass_release) on the
+  // same ask. D-035: a not-fixable pass is recorded as pass_release and is a
+  // decision the referrer made like any other, so it counts here exactly like
+  // "pass". Computed in JS from stored timestamps; null when nothing decided yet.
+  const DECISION_ACTIONS = new Set(["approve", "review", "pass", "pass_release"]);
   const trail = await db.select({ requestId: referralTransitionEvents.referralRequestId, action: referralTransitionEvents.action, at: referralTransitionEvents.createdAt }).from(referralTransitionEvents).where(eq(referralTransitionEvents.actorUserId, userId));
   const claimedAt = new Map<number, number>();
   const decidedAt = new Map<number, number>();

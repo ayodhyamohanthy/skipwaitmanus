@@ -89,6 +89,21 @@ describe("referrer impact reply latency", () => {
     expect(summary.repliedWithin3DaysPct).toBeNull();
   });
 
+  it("counts a not-fixable pass (pass_release) as the referrer's own decision", async () => {
+    // D-035: a not-fixable pass is recorded as pass_release and is a decision the referrer
+    // made like any other, so the reply latency must count it exactly like "pass" — otherwise
+    // a referrer who passes "not my team" never counts as having replied.
+    tables.requests.push({ id: 104, status: "pending", referrerId: 9 });
+    tables.events.push(
+      { id: 6, referralRequestId: 104, operationKey: "claim:9", actorUserId: 9, action: "claim", fromStatus: "pending", resultingStatus: "pending", resultingRevision: 1, createdAt: new Date(T0 + 2 * DAY) },
+      { id: 7, referralRequestId: 104, operationKey: "one-click:9:declined:role_not_a_fit", actorUserId: 9, action: "pass_release", fromStatus: "pending", resultingStatus: "pending", resultingRevision: 2, createdAt: new Date(T0 + 3 * DAY) },
+    );
+    const summary = await getPrivateReferrerImpactSummary(9);
+    expect(summary).toMatchObject({ reviewed: 4 });
+    // Three decisions (approve +1d, pass_release +3d, review +5d); the first two are inside 3 days.
+    expect(summary.repliedWithin3DaysPct).toBe(67);
+  });
+
   it("ignores other referrers' events and unverified access", async () => {
     tables.events.push({ id: 5, referralRequestId: 101, operationKey: "claim:4", actorUserId: 4, action: "claim", fromStatus: "pending", resultingStatus: "pending", resultingRevision: 1, createdAt: new Date(T0) });
     const summary = await getPrivateReferrerImpactSummary(9);
