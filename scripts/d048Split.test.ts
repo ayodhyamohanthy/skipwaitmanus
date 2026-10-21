@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * D-127: the D-048 phase 3 split lists 74 rows, and each one reaches the task
+ * D-134: the D-048 phase 3 split lists 74 rows, and each one reaches the task
  * list through exactly one packet's pull request (or the CEO for release and
  * retirement rows). A row with no adder would never be built; a row with two
  * would be added twice and fail validateAssignments for every agent.
@@ -20,7 +20,7 @@ const listLines = split.slice(listStart, listEnd).split("\n").filter(l => l.star
 const listed = listLines.flatMap(l => [...l.slice(l.indexOf(":") + 1).matchAll(/`(D-048-[^`]+)`/g)].map(m => m[1]));
 const adders = listLines.map(l => /^- `([^`]+)` adds/.exec(l)?.[1]).filter((x): x is string => Boolean(x));
 
-describe("the D-048 phase 3 split (D-127)", () => {
+describe("the D-048 phase 3 split (D-134)", () => {
   it("lists 74 rows", () => {
     expect(tableIds.length).toBe(74);
     expect(new Set(tableIds).size).toBe(74);

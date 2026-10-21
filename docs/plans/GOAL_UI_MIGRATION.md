@@ -35,14 +35,14 @@ The next-step block is contextual: it shows the single most important pending ac
 - Agent/build instructions: point every UI task at the doctrine + these captures; delete references to the yellow/blue kit and its screens.
 - Old comp images and kit storybook entries: remove or mark retired.
 
-## Surface claims (through the picker, D-083, D-127)
+## Surface claims (through the picker, D-083, D-134)
 Nobody claims a surface by editing this file: two agents could each claim the same page and collide. Claims go through `node scripts/next-task.mjs --claim "<model>"`, which hands out each surface as its own row from `docs/plans/D-048-phase-3-split.md` (lanes, dependencies, owned paths), first push wins. The rows for the owner's sequence:
 
 | Surface | Row | Note |
 | --- | --- | --- |
-| Landing (signed out) | `D-048-p3-home` | from the `D-048-P-marketing` packet; PR #396 (Instinct's landing) is reworked as this row onto `goalSurfaces.ts` once D-048-F-flags lands, never landed as built |
+| Landing (signed out) | `D-048-p3-home` | done and live (#396, #407, #409; D-131); D-048-F-flags moves its env flags into `goalSurfaces.ts` |
 | Home (seeker) | `D-048-p3-explore` | PR #362 |
 | Company | `D-048-p3-company` | from the `D-048-P-seeker` packet |
 | Requests / My asks | `D-048-p3-requests` | PR #360 |
-| Plans | `D-048-p3-plans` | from the `D-048-P-money` packet; prices go live only under D-111 and D-123 |
+| Plans | `D-132-plans-v2`, then `D-048-p3-plans` (/billing) | the frozen pricing page (#410, D-132, D-135, `docs/plans/D-132-pricing-v2.md`); prices go live only on the owner's enable word (D-123) |
 | Everything else | the rest of the split | one lane packet per cluster |

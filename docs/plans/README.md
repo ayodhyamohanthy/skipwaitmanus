@@ -7,7 +7,10 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. T
 ## Oct 21 (CEO sync, D-085)
 The picker's order (`assignments.json`) after the money lane (GO-LIVE-1b, D-038 reconcile, D-035): the pull requests built before they had a packet, finished through [`OCT21-BUILT-PRS.md`](OCT21-BUILT-PRS.md) — D-067 review outbox (#322), D-104 company signal (#373), D-107 claim your company (#384), D-105 win card (#375), D-106 impact card (#382), D-048 phase 3 (#358, #361, #362, #360), row 20 (#310, #311, #314), task 13 slice A (#308). Then the packets Claude Code owes (D-090 BYOR, D-095 one-tap, D-100 security audit, D-099 bonus pages, D-093 language, D-094 AI-in-UI). The pricing pull requests #380 and #381 wait for the owner (D-056, D-091).
 
-## D-048 phase 3 in parallel (D-127)
+## Frozen pricing (D-132, D-135)
+The owner froze the bundled pricing on Oct 21 (three plans with in-plan credit dropdowns; asks cost their job level in credits). It is built dark from [`D-132-pricing-v2.md`](D-132-pricing-v2.md): the level classifier (#381), the plans page (#410) and the per-level spend, which runs after D-035 in lane `money-core`. Switching it on is a separate step that needs the owner's word.
+
+## D-048 phase 3 in parallel (D-134)
 The goal-UI rollout runs as one foundation chain (lane `design-core`) and then up to 13 cluster lanes at once, every page landing dark behind its own flag and released in waves: [`D-048-phase-3-split.md`](D-048-phase-3-split.md) (74 rows, owned paths, landing steps, bug controls). The picker changes that make it safer are in [`PICKER-PARALLEL.md`](PICKER-PARALLEL.md).
 
 ## Rules for this page
@@ -35,7 +38,7 @@ The goal-UI rollout runs as one foundation chain (lane `design-core`) and then u
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on | Runs beside |
 |---|---|---|---|---|---|---|---|
 | 2.1 | 1 (go-live slice: `/plans` packs and passes, coverage before payment, no accidental renewal) | [GO-LIVE-1-plans-purchase.md](GO-LIVE-1-plans-purchase.md) | 1 | M | done — #351; passes switched off again by the D-084 P0 until 2.1b | 1.1 live, 1.3 built | 3.1 |
-| 2.1b | 1 (pass slice: a paid pass always activates, then passes go back on sale; D-084) | [GO-LIVE-1b-pass-activation.md](GO-LIVE-1b-pass-activation.md) | 1 | M | ready — first in the queue | 2.1 live | 3.1 |
+| 2.1b | 1 (pass slice: a paid pass always activates, then passes go back on sale; D-084) | [GO-LIVE-1b-pass-activation.md](GO-LIVE-1b-pass-activation.md) | 1 | M | landed — PR #359 (merge of `agent/queue/go-live-passes`); passes stay off until the owner's §4.5 test-site evidence | 2.1 live | 3.1 |
 | 2.2 | D-065-daily-money-check | live (`eed80e5f`, PR #317); follow-up [D-065-B-slice-checks.md](D-065-B-slice-checks.md) | 2 | S | done — `dc8d0bf3` (PR #333) | — | everything |
 | 2.3 | Owner: read the D-069 dry run, apply, fix `billing_cycles` mismatches in Chargebee, add the pass-refund wording to `/refunds`, then the one live ₹99 UPI buy-and-refund (D-065) | plan §6 | — | — | owner action | 1.3, 2.1 | — |
 
@@ -67,7 +70,7 @@ The goal-UI rollout runs as one foundation chain (lane `design-core`) and then u
 | D-060-pending-action-emails | Needs task 21 (notification kinds and preferences); D-038's reminders ship in-app first |
 | D-057-referrer-continuity | After the session gate (1.2b) |
 | P2 (D-028 link previews and company pages) | After stage 1; parallel-safe with stage 3 |
-| D-048 phase 3 (surface by surface) | After 1.4; each surface is its own packet |
+| D-048 phase 3 (surface by surface) | Mapped in [D-048-phase-3-rollout.md](D-048-phase-3-rollout.md): eight waves, one PR each. W0 (shell) is ready to packet; each later wave gets its own packet. The four former owner calls are decided on merit (D-123), §6. |
 | Tasks 12, 13, 20 | Owned by opencode and Qoder (open PRs #308, #310, #311, #314) |
 | The rest of §3b | D-053 order; parked rows stay parked (29, 30, 31, lite mode, 40) |
 

@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render as rtlRender, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { CreditsLedger } from "@shared/creditLedger";
+import { FREE_ASKS_CHIP } from "@shared/moneyCopy";
 import Plans from "./Plans";
 
 // GO-LIVE-1: /plans reads the live catalog through React Query, so tests wrap a client.
@@ -69,7 +70,9 @@ describe("Plans on live data", () => {
     // Review round 2 (D-063): the credit cost strip never calls a referral request free.
     const costs = screen.getByRole("list", { name: "Credit costs" });
     expect(within(costs).getAllByRole("listitem").map(item => item.textContent)).toEqual(["1 creditEach ask a verified employee can see", "$1Each credit you buy", "NeverBought credits expire"]);
-    const text = document.body.textContent ?? "";
+    // The canonical free-allowance sentence (D-127 copy) is allowed; the guard
+    // still bans any OTHER "free credits" framing (paid credits are never free).
+    const text = (document.body.textContent ?? "").split(FREE_ASKS_CHIP).join("");
     expect(text).not.toMatch(RETIRED);
     for (const banned of ["DESIGN PREVIEW", "EXAMPLE PRICING", "PREVIEW DATA", "Most chosen", "Momentum", "Land", "Yearly", "2 mo free", "checkout preview", "YOUR BALANCE", "free credits", "every month are free", "One private referral request", "Compare every individual plan", "monthly credits", "Your plan"]) expect(text).not.toContain(banned);
     expect(screen.queryAllByRole("button").filter(button => PLAN_PURCHASE.test(button.textContent ?? ""))).toEqual([]);
@@ -121,13 +124,15 @@ describe("Plans on live data", () => {
     expect(screen.queryByText("You're out of credits")).toBeNull();
   });
 
-  it("marks the account's active plan from the summary, with its enforced limits, and schedules cancel renewal", async () => {
+  it("marks the account's active plan from the summary, with its enforced limits, its end date and the renewal control (QA #359)", async () => {
     const fetchMock = stub(start, url => url.includes("/subscription-cancel") ? ok({ currentTermEnd: "2026-11-06T00:00:00.000Z" }) : undefined);
     render(<Plans />);
     const card = (await screen.findByRole("heading", { name: "Start", level: 2 })).closest("article") as HTMLElement;
     expect(card.className).toContain("featured");
     expect(within(card).getByText("Your plan")).toBeTruthy();
-    expect(within(card).getByText("Your current plan is active")).toBeTruthy();
+    expect(within(card).getByText("Your plan is active")).toBeTruthy();
+    expect(within(card).getByText("Ends 6 Nov 2026 — your allowance stays until then.")).toBeTruthy();
+    expect(within(card).getByRole("button", { name: "Cancel renewal" })).toBeTruthy();
     expect(within(card).getByText("8 referral requests open at once")).toBeTruthy();
     expect(within(card).getByText("10 credits every month")).toBeTruthy();
     expect(within(card).getByText("Unused plan credits carry over 1 month")).toBeTruthy();
@@ -139,6 +144,8 @@ describe("Plans on live data", () => {
     expect(screen.getByText("9 credits")).toBeTruthy();
     expect(screen.getByText("3 of 12")).toBeTruthy();
     expect(screen.getByText(/Your plan adds 10 each cycle\./)).toBeTruthy();
+    // QA review (#359 finding 1): the cancel-renewal walk-through is restored under
+    // the card's live labels, so a broken confirm fails here.
     fireEvent.click(within(card).getByRole("button", { name: "Cancel renewal" }));
     fireEvent.click(within(card).getByRole("button", { name: "Yes, cancel renewal" }));
     expect(await screen.findByText("Renewal is off")).toBeTruthy();
@@ -147,7 +154,7 @@ describe("Plans on live data", () => {
   });
 
   // Review round 2: a cancel request that never reaches skipwait.me shows the plain network
-  // message, never the browser's raw "Failed to fetch".
+  // message, never the browser's raw "Failed to fetch". Restored under the live labels (QA #359 finding 1).
   it("says plainly when cancel renewal cannot reach skipwait.me", async () => {
     stub(start, url => { if (url.includes("/subscription-cancel")) throw new TypeError("Failed to fetch"); return undefined; });
     render(<Plans />);
@@ -155,7 +162,7 @@ describe("Plans on live data", () => {
     fireEvent.click(within(card).getByRole("button", { name: "Cancel renewal" }));
     fireEvent.click(within(card).getByRole("button", { name: "Yes, cancel renewal" }));
     expect((await screen.findByRole("alert")).textContent).toBe("We couldn’t reach skipwait.me. Check your connection and try again.");
-    expect(within(card).getByText("Your current plan is active")).toBeTruthy();
+    expect(within(card).getByText("Your plan is active")).toBeTruthy();
   });
 
   it("reads a stale Pro or Max summary as Free: no plan card, no cancel, no retired name", async () => {
@@ -204,12 +211,13 @@ describe("Plans on live data", () => {
   });
 });
 
-describe("Plans free-credits card check (D-079)", () => {
-  it("a locked free seeker sees the Validate-your-card CTA where the no-credits error points", async () => {
+describe("Plans free-credits card check (D-079 superseded by D-127)", () => {
+  it("D-127: a locked free seeker no longer sees a Validate-your-card gate - card validation moved to first purchase", async () => {
     stub({ ...free(), freeCreditsLocked: true, cardValidated: false, cycleKey: "2026-10" });
     render(<Plans />);
-    expect(await screen.findByRole("button", { name: /Validate your card/ })).toBeTruthy();
-    expect(screen.getByText(/Validate your card to unlock your 3 free asks every month/)).toBeTruthy();
+    await screen.findByText("YOUR BALANCE");
+    expect(screen.queryByRole("button", { name: /Validate your card/ })).toBeNull();
+    expect(screen.queryByText(/Validate your card to unlock/)).toBeNull();
   });
 
   it("an unlocked free seeker does not see the validate CTA", async () => {

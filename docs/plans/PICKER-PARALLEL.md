@@ -1,6 +1,6 @@
 # Packet PICKER-PARALLEL: let many agents work on one goal safely
 
-> Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code as CEO (D-109, D-127) on Oct 21 2026 from a read-only study of `scripts/nextTaskCore.mjs`, `scripts/next-task.mjs` and the D-048 rollout. The picker hands out one task from this packet at a time; do only the task it prints. The register wins any conflict.
+> Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code as CEO (D-109, D-134) on Oct 21 2026 from a read-only study of `scripts/nextTaskCore.mjs`, `scripts/next-task.mjs` and the D-048 rollout. The picker hands out one task from this packet at a time; do only the task it prints. The register wins any conflict.
 
 All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker` (they edit the same files, so they run one after another). Every task: red-first tests in `scripts/nextTask.test.ts`, no new dependency, `scripts/briefContract.test.ts` and the full gate green, every affected doc updated in the same pull request (D-068), landed under D-082. Keep `scripts/nextTaskCore.mjs` pure (no I/O): GitHub and git reads stay in `scripts/next-task.mjs`.
 
@@ -17,10 +17,10 @@ All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker
 3. A `filesBusy` check beside `laneBusy`: a new build waits while an open task owns an overlapping path.
 4. `scripts/scope-check.mjs <task-id>`: reads `owns` from `origin/main`'s task list and `git diff --name-only origin/main...HEAD`, and fails on any changed path outside `owns`, any edited or deleted existing `*.test.ts(x)` that is not in the task's `owns` (a retirement row may delete kit tests together with the code they cover), any path under `shared/` or `server/` for a task whose `owns` has none, and more than 12 changed lines in a file the task owns as `(switch only)`. It fails open (exit 0 with a warning) only on its own internal error, never on a definite violation.
 5. The `land` and review steps print `node scripts/scope-check.mjs <id>` and the pairwise conflict probe against every other open branch of the same goal: `git merge-tree $(git merge-base origin/main origin/<a>) origin/<a> origin/<b> | grep -c '^+<<<<<<<'` must be 0.
-6. Add it as a step in the required typecheck job in `.github/workflows/ci.yml`: this packet authorizes that one edit (DELEGATION never-do 9; CEO ruling, D-127). It reads the task from the branch name.
+6. Add it as a step in the required typecheck job in `.github/workflows/ci.yml`: this packet authorizes that one edit (DELEGATION never-do 9; CEO ruling, D-134). It reads the task from the branch name.
 **Tests.** Overlap refused by the validator; overlap allowed with a dependency; `filesBusy` holds a build; the scope check passes inside `owns`, fails outside it, fails on a deleted test, and fails open on a crash.
 
-## PICKER-status-rows: no two tasks rewrite the same status line (done by D-127: printed steps send tasks that share a row to their packet's Status section)
+## PICKER-status-rows: no two tasks rewrite the same status line (done by D-134: printed steps send tasks that share a row to their packet's Status section)
 **Why.** All D-048 rows carry the §3b row `D-048`, and each task's first commit rewrites that same plan line. With about 60 surface tasks that guarantees conflicts, and one landing can overwrite another's status.
 **What.** Either `validateAssignments` requires a unique `row` among tasks that are not done, or tasks that share a row write their status in their packet's own section and the printed steps say so (`scripts/nextTaskText.mjs`, every place that tells an agent to set the §3b row). Prefer the second: a goal like D-048 keeps one plan row whose cell points to `docs/plans/D-048-phase-3-split.md`.
 **Tests.** Two tasks with one row print the packet-section instruction; a unique row prints the plan-row instruction.
@@ -36,4 +36,4 @@ All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker
 **Tests.** Prefix roles; the epic roll-up counts; `behind main` from a fixture.
 
 ## Status
-The PICKER rows share the plan row "D-127", so each writes its status here, one line per task, never in the shared §3b row (D-127).
+The PICKER rows share the plan row "D-134", so each writes its status here, one line per task, never in the shared §3b row (D-134).

@@ -3,7 +3,7 @@
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083)",
   "updated": "2026-10-21",
-  "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks, except that a packet's pull request adds exactly the rows the CEO's split lists for that packet and makes the dependsOn edits its note names (D-127). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (Claude Code writes the packet first), owner (waits on the owner). Run `node scripts/next-task.mjs`.",
+  "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks, except that a packet's pull request adds exactly the rows the CEO's split lists for that packet and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (Claude Code writes the packet first), owner (waits on the owner). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
       "id": "D-069-chargebee-catalog-sync",
@@ -39,11 +39,11 @@
       "tier": 1,
       "lane": "payments",
       "branch": "agent/queue/go-live-passes",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "GO-LIVE-1"
       ],
-      "note": "D-084. Passes are off (PASS_SALES_ENABLED=false, P0 after #351). The switch commit needs test-site evidence (packet §4.5); without it the packet lands with passes still off."
+      "note": "D-084. Landed through PR #359 (merge of agent/queue/go-live-passes into main, Oct 21): return-page and hourly recovery of pending pass checkouts through the provider checkout page, an alert on any unlinked kit subscription, and \"Ends <date>\" with a renewed cancel control while billing_cycles=1 is unproven. Passes STAY OFF (PASS_SALES_ENABLED=false): the switch commit needs the packet §4.5 test-site evidence (owner on skipwait-test), then one flag change. Review: passed by Assistant · 4b07; landed by DeepSeek V4.1 Flash Free · 89c2."
     },
     {
       "id": "D-038-reconcile",
@@ -71,9 +71,45 @@
       ]
     },
     {
+      "id": "JOB-LEVELS",
+      "title": "Job level classifier L1-L10 (#381): the rules D-110 and D-132 price asks by",
+      "row": "D-132",
+      "packet": "docs/plans/D-132-pricing-v2.md",
+      "tier": 1,
+      "lane": "levels",
+      "branch": "agent/instinct/job-levels",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "Unblocked by the owner's \"Yes\" (19:26, D-132; D-135 (5)): build, review and land with nothing reading it on a live path."
+    },
+    {
+      "id": "D-132-plans-v2",
+      "title": "Frozen pricing (#410): plans page and plan family config behind VITE_PLAN_FAMILY_V2, off",
+      "row": "D-132",
+      "packet": "docs/plans/D-132-pricing-v2.md",
+      "tier": 1,
+      "lane": "pricing",
+      "branch": "agent/instinct/pricing-plans-v2",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-132, D-135: merge main first and drop the branch's own copy of the D-132 row; flag off, no checkout call, no Mentor surface."
+    },
+    {
+      "id": "D-132-ask-cost-packet",
+      "title": "Packet: per-level ask spend and the ask screen's cost line (D-132, D-135 (3))",
+      "row": "D-132",
+      "packet": null,
+      "tier": 3,
+      "lane": "d132-packets",
+      "branch": "agent/queue/d132-ask-cost-packet",
+      "status": "architect",
+      "dependsOn": [],
+      "note": "Packet-only: any agent writes the D-132-ask-cost section of docs/plans/D-132-pricing-v2.md from its list; its pull request adds the D-132-ask-cost row exactly as that file says and sets this row to done."
+    },
+    {
       "id": "PICKER-landing-slot",
       "title": "One landing at a time, enforced: the agent/queue/landing slot",
-      "row": "D-127",
+      "row": "D-134",
       "packet": "docs/plans/PICKER-PARALLEL.md",
       "tier": 2,
       "lane": "picker",
@@ -84,7 +120,7 @@
     {
       "id": "PICKER-owns-scope",
       "title": "File ownership (owns) on tasks, filesBusy, and scripts/scope-check.mjs",
-      "row": "D-127",
+      "row": "D-134",
       "packet": "docs/plans/PICKER-PARALLEL.md",
       "tier": 2,
       "lane": "picker",
@@ -95,19 +131,19 @@
     {
       "id": "PICKER-status-rows",
       "title": "Tasks that share a plan row write status in their packet section",
-      "row": "D-127",
+      "row": "D-134",
       "packet": "docs/plans/PICKER-PARALLEL.md",
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-status-rows",
       "status": "done",
       "dependsOn": [],
-      "note": "Done in D-127 (PR #395): the picker marks shared rows and the printed steps send their status to the packet's Status section."
+      "note": "Done in D-134 (PR #395): the picker marks shared rows and the printed steps send their status to the packet's Status section."
     },
     {
       "id": "PICKER-lane-busy",
       "title": "A green pull request waiting for review stops blocking its lane when owns are disjoint",
-      "row": "D-127",
+      "row": "D-134",
       "packet": "docs/plans/PICKER-PARALLEL.md",
       "tier": 2,
       "lane": "picker",
@@ -120,7 +156,7 @@
     {
       "id": "PICKER-board-epic",
       "title": "Board: role by lane prefix, one roll-up line per epic, behind-main counts",
-      "row": "D-127",
+      "row": "D-134",
       "packet": "docs/plans/PICKER-PARALLEL.md",
       "tier": 3,
       "lane": "picker",
@@ -136,9 +172,9 @@
       "tier": 1,
       "lane": "billing",
       "branch": "agent/kat/d067-allocated-0098-oct19",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "Migration 0098 is taken on main (Neutrinos rebrand); renumber first."
+      "note": "Migration renumbered 0098 to 0099 (the Neutrinos rebrand took 0098 on main); SQL bytes unchanged (SHA256 d14c261e). Merged with origin/main, independent review passed, landed; live check in the landing report."
     },
     {
       "id": "D-104-company-signal",
@@ -172,8 +208,9 @@
       "tier": 2,
       "lane": "share",
       "branch": "agent/instinct/share-win-card",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "CI was red on the design-token audit (a raw #059669 in the share-win dot; fixed to var(--g-emerald) before this takeover). Taken over by workbuddy · 8dc3 (2026-10-21), merged with origin/main (kit.css/content.json/DECISIONS.md/.env.example conflicts resolved additively), gate green on the merge commit, landed with the flag off."
     },
     {
       "id": "D-106-impact-card",
@@ -203,10 +240,11 @@
       "row": "D-048",
       "packet": "docs/plans/OCT21-BUILT-PRS.md",
       "tier": 3,
-      "lane": "d048-packets",
+      "lane": "design",
       "branch": "agent/workbuddy/d048-phase3-plan",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed as `f9d7e8d5` (PR #358) by DeepSeek V4.1 Flash Free · 91af: merged with `main`, the map corrected against D-120, D-123 and D-130, full gate green. W0 (the shell) is next."
     },
     {
       "id": "D-048-phase-3",
@@ -218,23 +256,33 @@
       "branch": "agent/queue/d048-foundation-packet",
       "status": "architect",
       "dependsOn": [],
-      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds the six D-048-F-* rows the split's list gives it, adds D-048-F-flags to D-048-p3-w0-shell's dependsOn and sets D-048-p3-explore's and D-048-p3-requests' dependsOn to [D-048-F-harness, D-048-F-primitives] (the rules field allows exactly these edits), and sets this row to done."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds the six D-048-F-* rows the split's list gives it, adds D-048-F-flags to D-048-p3-w0-shell's dependsOn and sets D-048-p3-explore's and D-048-p3-requests' dependsOn to [D-048-F-harness, D-048-F-primitives] (the rules field allows exactly these edits), and sets this row to done."
     },
     {
       "id": "D-048-p3-w0-shell",
-      "title": "D-048 phase 3 wave 0 (#361): the app shell onto the goal system, reworked to land dark",
+      "title": "D-048 phase 3 wave 0 (#361): the app shell onto the goal system; CI red first",
       "row": "D-048",
       "packet": "docs/plans/OCT21-BUILT-PRS.md",
       "tier": 2,
-      "lane": "design-core",
+      "lane": "design",
       "branch": "agent/instinct/goal-ui-w0-shell",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
-        "D-048-p3-map",
-        "D-048-F-typescale",
-        "D-048-phase-3"
+        "D-048-p3-map"
       ],
-      "note": "Rework per docs/plans/D-048-phase-3-split.md: AppShell becomes a switch; the goal frame renders only on released routes and keeps the D-063 sentence until the money pages move. The foundation packet adds D-048-F-flags to this row's dependencies."
+      "note": "Landed as `3cd221df` (PR #361, Tier 2): the app shell renders inside GoalShell with one navigation, the credits pill (D-055), the carried-over account menu and the beta badge (#402); no surface outside the shell re-skinned. 1280/390 before/after captures under design/goal-ui/captures/w0-shell/."
+    },
+    {
+      "id": "D-048-p3-home",
+      "title": "D-048 phase 3 landing (#396, #407, #409): the goal landing (D-131), live",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 2,
+      "lane": "d048-home",
+      "branch": "agent/instinct/goal-landing",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed through env flags (VITE_GOAL_UI_LANDING, VITE_GOAL_UI_LANDING_V9); D-048-F-flags folds them into goalSurfaces.ts."
     },
     {
       "id": "D-048-p3-explore",
@@ -246,10 +294,9 @@
       "branch": "agent/qoder/d048-phase-3-explore",
       "status": "todo",
       "dependsOn": [
-        "D-048-phase-3",
-        "D-048-p3-w0-shell"
+        "D-048-phase-3"
       ],
-      "note": "Lands dark behind goalSurfaceOn('explore') once the foundation is in; 27+ commits behind main, merge first. Tier 1: it shows credits. The foundation packet sets this row's dependsOn to [D-048-F-harness, D-048-F-primitives]."
+      "note": "Lands dark behind goalSurfaceOn('explore') once the foundation is in; far behind main, merge first. Tier 1: it shows credits. The foundation packet sets this row's dependsOn to [D-048-F-harness, D-048-F-primitives]."
     },
     {
       "id": "D-048-p3-requests",
@@ -261,8 +308,7 @@
       "branch": "agent/qoder/d048-phase-3-requests",
       "status": "todo",
       "dependsOn": [
-        "D-048-phase-3",
-        "D-048-p3-w0-shell"
+        "D-048-phase-3"
       ],
       "note": "Lands dark behind goalSurfaceOn('requests'); restore the deleted client/src/pages/myRequests.kit.test.tsx (kit tests are never edited or deleted). Tier 1: it shows credits. The foundation packet sets this row's dependsOn to [D-048-F-harness, D-048-F-primitives]."
     },
@@ -278,7 +324,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-referrer",
@@ -292,7 +338,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-money",
@@ -306,7 +352,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-auth",
@@ -320,7 +366,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-account",
@@ -334,7 +380,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-admin",
@@ -348,7 +394,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-employer",
@@ -362,7 +408,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-public",
@@ -376,7 +422,7 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "D-048-P-marketing",
@@ -391,7 +437,7 @@
         "D-048-phase-3",
         "D-048-P-account"
       ],
-      "note": "Packet-only (D-127): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md and the landing contract in docs/plans/GOAL_UI_MIGRATION.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md and the landing contract in docs/plans/GOAL_UI_MIGRATION.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
     },
     {
       "id": "ROW20-A",
@@ -507,30 +553,6 @@
       "branch": "agent/claude/d094-ai-in-ui",
       "status": "architect",
       "dependsOn": []
-    },
-    {
-      "id": "PRICING-pack-ladder",
-      "title": "Credit pack ladder 1/5/10/25/50 (#380): a pricing change",
-      "row": "D-036",
-      "packet": null,
-      "tier": 1,
-      "lane": "pricing",
-      "branch": "agent/instinct/credit-pack-ladder",
-      "status": "owner",
-      "dependsOn": [],
-      "note": "Prices are frozen (D-056) and D-091 excludes pricing: waits for the owner's yes; never landed by an agent."
-    },
-    {
-      "id": "JOB-LEVELS",
-      "title": "Job level classifier L1-L10 (#381): groundwork for level-scaled ask cost",
-      "row": "open owner question",
-      "packet": null,
-      "tier": 1,
-      "lane": "pricing",
-      "branch": "agent/instinct/job-levels",
-      "status": "owner",
-      "dependsOn": [],
-      "note": "Level-based pricing is an open owner question and a credit-rule change (D-056, D-091): waits for the owner."
     },
     {
       "id": "D-065-B",

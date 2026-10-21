@@ -33,10 +33,10 @@ Referrer impact card (D-106): shareable aggregates under the referrer's screen n
 The goal kit's type scale: a shared merge helper dropped the goal type tokens. It is the first foundation step of D-048 phase 3 (docs/plans/D-048-phase-3-split.md). Done: merged with `main`, gate green including the design-token audit, goal component tests unchanged or extended (never weakened), landed.
 
 ### D-048-p3-map (#358, `agent/workbuddy/d048-phase3-plan`, Tier 3)
-The D-048 phase 3 rollout map (eight waves, one pull request each). Done: merged with `main`, consistent with `DESIGN.md`, D-077 and docs/plans/D-048-phase-3-split.md (D-127 wins where they differ: cluster lanes, dark landing, one-line releases), landed.
+The D-048 phase 3 rollout map (eight waves, one pull request each). Done: merged with `main`, consistent with `DESIGN.md`, D-077 and docs/plans/D-048-phase-3-split.md (D-134 wins where they differ: cluster lanes, dark landing, one-line releases), landed.
 
-### D-048-p3-w0-shell (#361, `agent/instinct/goal-ui-w0-shell`, Tier 2, lane `design-core`)
-Wave 0: the app shell. Rework it per `docs/plans/D-048-phase-3-split.md` (row D-048-p3-w0-shell): `AppShell.tsx` becomes a switch, today's body moves verbatim into `KitAppShell.tsx`, the goal frame renders only on routes whose own surface id is on, and it keeps the D-063 sentence until the money pages move. It lands dark after the flag module (D-048-F-flags) and the type scale (#379). Done: merged with `main`, gate green, kit shell tests unchanged, 1280 and 390 captures, landed with every surface off.
+### D-048-p3-w0-shell (#361, `agent/instinct/goal-ui-w0-shell`, Tier 2) — done
+Wave 0: the app shell. Landed live without a flag: every shell route renders `GoalShell`, with today's page bodies inside. The kit/goal switch this section first asked for was not built and nothing needs it; the shell's titles and credits pill move to D-048-F-credits (`docs/plans/D-048-phase-3-split.md`, "State on `main`").
 
 ### D-048-p3-explore (#362, `agent/qoder/d048-phase-3-explore`, Tier 1, lane `d048-find`)
 Find a referral (`/explore`), the seeker home. Rework per the split (row D-048-p3-explore): the goal version moves to `client/src/pages/goal/explore/`, `Explore.tsx` gets only the three-line `goalSurfaceOn('explore')` switch, the kit page and its tests stay byte-identical, and the commits #360 stacked into this branch are dropped. It lands dark after the foundation's harness and primitives (the foundation packet sets those dependencies). Done: merged with `main`, gate green, 1280 and 390 captures, independent review passed (it shows credits), landed with the flag off.
@@ -51,4 +51,4 @@ FND-7 left the row-20 set to the CEO: finish it, in order. A (`agent/qoder/row20
 Queue task 13 slice A: pinned showcase work rides with the ask as a snapshot. It named migration 0096, which card validation took: renumber it (rule 3). Done: renumbered, merged with `main`, gate green, review passed (ids ownership-checked, count capped by the plan's existing `showcase.pins`, a later edit never rewrites an open ask), landed.
 
 ## Status
-Rows here that share a plan row (the D-048 rows share "D-048"; ROW20-A, -B and -CD share "20") write their status here, one line per task, never in the shared §3b row (D-127).
+Rows here that share a plan row (the D-048 rows share "D-048"; ROW20-A, -B and -CD share "20") write their status here, one line per task, never in the shared §3b row (D-134).

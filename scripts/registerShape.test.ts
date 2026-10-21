@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
  * new rows were appended at the end of the file, under "## Superseded", where
  * they did not render as a table and read as superseded; once two decisions
  * shared one ID. Every decision row lives in the active table, once, in ID
- * order (D-127 sync).
+ * order (D-134 sync).
  */
 const text = readFileSync(path.resolve(__dirname, "../docs/DECISIONS.md"), "utf8");
 const lines = text.split("\n");
