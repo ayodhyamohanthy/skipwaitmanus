@@ -16,10 +16,12 @@ import { and, asc, eq, gt, isNull, lt, like, or } from "drizzle-orm";
 import { paymentFulfillments } from "../drizzle/schema";
 import { retrieveChargebeeHostedPage } from "./chargebee";
 import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
-import { fulfillChargebeePayment, getDb, markChargebeePaymentForReview } from "./db";
-import { createPaymentReviewAlerter } from "./errorAlerting";
+import { applyChargebeeSubscriptionEvent, fulfillChargebeePayment, getDb, listPendingSubscriptionCheckoutIntents, markChargebeePaymentForReview, markSubscriptionCheckoutIntentCancelled, markSubscriptionCheckoutIntentReview } from "./db";
+import { createPaymentReviewAlerter, createRetiredPlanAlerter } from "./errorAlerting";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
 import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
+import { retrieveCheckoutSubscription, subscriptionEventFromCheckoutPage, type RetrievedCheckoutSubscription } from "./chargebeeSubscriptionApi";
+import type { TokenRole } from "./chargebee";
 
 /** Wait this long after checkout: the webhook and Chargebee's first retries (2 and 8 minutes) normally land first. */
 export const PENDING_GRACE_MS = 15 * 60_000;
@@ -116,5 +118,103 @@ export function createChargebeePendingReconcile(deps: PendingReconcileDeps = {
     // fail the window so it is retried and reaches Sentry instead of looking clean.
     if (unverifiable >= UNVERIFIABLE_ALARM_MIN && unverifiable === pending.length) fail(new Error(`Chargebee could not be read for ${unverifiable} pending checkouts in one window; check the API key, site and BILLING_ENV`));
     return output;
+  };
+}
+
+// ---- GO-LIVE-1b ruling 3: pending pass checkouts reconcile the same way ----
+
+export const SUBSCRIPTION_PENDING_GRACE_MS = 10 * 60_000; // >10 minutes old
+export const SUBSCRIPTION_PENDING_MAX_AGE_MS = 3 * 86_400_000; // <3 days old
+export const SUBSCRIPTION_RECONCILE_BATCH = 25; // <=25 per run
+
+export type PendingSubscriptionIntentRow = {
+  id: number;
+  hostedPageId: string;
+  checkoutIntentId: string;
+  userId: number;
+  role: TokenRole;
+  plan: string;
+  itemPriceId: string;
+  currency: string;
+};
+
+export type SubscriptionReconcileDeps = {
+  listPendingIntents: (olderThan: Date, newerThan: Date, limit: number) => Promise<PendingSubscriptionIntentRow[]>;
+  retrieveCheckout: (hostedPageId: string) => Promise<RetrievedCheckoutSubscription | null>;
+  applySubscriptionEvent: (input: NonNullable<ReturnType<typeof subscriptionEventFromCheckoutPage>>) => Promise<{ status?: string; reason?: string }>;
+  cancelIntent: (hostedPageId: string, failureReason: string) => Promise<void>;
+  markIntentReview: (hostedPageId: string, reviewReason: string) => Promise<void>;
+  alert: (input: { eventId?: string; eventType?: string; subscriptionId?: string; itemPriceId?: string }) => Promise<unknown>;
+};
+
+async function retrieveCheckoutFromConfiguredSite(hostedPageId: string) {
+  const runtime = resolveChargebeeRuntime(undefined);
+  return retrieveCheckoutSubscription(runtime, hostedPageId);
+}
+
+/**
+ * GO-LIVE-1b: the safety net under a missed webhook. Pending pass checkouts
+ * older than 10 minutes (the return page recovers fresher ones) and younger
+ * than 3 days re-check their provider checkout page: a paid one activates
+ * through the same single activation path, an expired unpaid one marks its
+ * intent cancelled, a disagreement alerts the owner, and one failure never
+ * stops the run. The 3-day window is a hard bound: a paid pass never sits
+ * unactivated beyond it without the webhook alert (GO-LIVE-1b ruling 4).
+ */
+export function createSubscriptionPendingReconcile(deps: SubscriptionReconcileDeps = {
+  listPendingIntents: (olderThan, newerThan, limit) => listPendingSubscriptionCheckoutIntents(olderThan, newerThan, limit),
+  retrieveCheckout: retrieveCheckoutFromConfiguredSite,
+  applySubscriptionEvent: applyChargebeeSubscriptionEvent,
+  cancelIntent: markSubscriptionCheckoutIntentCancelled,
+  markIntentReview: markSubscriptionCheckoutIntentReview,
+  alert: input => createRetiredPlanAlerter()({ ...input, reason: "unlinked_subscription" }),
+}) {
+  return async function runSubscriptionPendingReconcile({ nowMs }: JobRunContext): Promise<JobRunOutput> {
+    let firstError: unknown;
+    const current = new Date(nowMs);
+    const olderThan = new Date(current.getTime() - SUBSCRIPTION_PENDING_GRACE_MS);
+    const newerThan = new Date(current.getTime() - SUBSCRIPTION_PENDING_MAX_AGE_MS);
+    const intents = await deps.listPendingIntents(olderThan, newerThan, SUBSCRIPTION_RECONCILE_BATCH);
+    let activated = 0, cancelled = 0, stillPending = 0, review = 0, failed = 0;
+    for (const intent of intents) {
+      try {
+        const page = await deps.retrieveCheckout(intent.hostedPageId);
+        if (!page) { stillPending += 1; continue; }
+        if (page.state === "cancelled" || page.state === "expired") {
+          await deps.cancelIntent(intent.hostedPageId, "checkout_expired");
+          cancelled += 1;
+          continue;
+        }
+        if (page.state !== "succeeded") { stillPending += 1; continue; }
+        const event = subscriptionEventFromCheckoutPage(page);
+        const mismatched = !event || page.passThruContent !== intent.checkoutIntentId
+          || (event.itemPriceId && event.itemPriceId !== intent.itemPriceId)
+          || (event.currency && event.currency !== intent.currency);
+        if (mismatched) {
+          review += 1;
+          await deps.markIntentReview(intent.hostedPageId, "review_mismatch");
+          void deps.alert({ eventId: event?.eventId ?? `hosted_page:${intent.hostedPageId}`, eventType: "subscription_reconcile", subscriptionId: event?.subscriptionId, itemPriceId: event?.itemPriceId }).catch(() => undefined);
+          continue;
+        }
+        // QA review (#359 finding 2): "activated" is only claimed for a status that keeps access.
+        if (event.status !== "active" && event.status !== "non_renewing") {
+          review += 1;
+          await deps.markIntentReview(intent.hostedPageId, "review_status");
+          void deps.alert({ eventId: event.eventId, eventType: "subscription_reconcile", subscriptionId: event.subscriptionId, itemPriceId: event.itemPriceId }).catch(() => undefined);
+          continue;
+        }
+        const result = await deps.applySubscriptionEvent(event);
+        if (result?.status === "applied" || result?.status === "duplicate") { activated += 1; continue; }
+        review += 1;
+        await deps.markIntentReview(intent.hostedPageId, "review_refused");
+        void deps.alert({ eventId: event.eventId, eventType: "subscription_reconcile", subscriptionId: event.subscriptionId, itemPriceId: event.itemPriceId }).catch(() => undefined);
+      } catch (error) {
+        failed += 1;
+        if (firstError === undefined) firstError = error;
+        console.error("[Chargebee] subscription reconcile intent failed", { hostedPageId: intent.hostedPageId, error });
+      }
+    }
+    console.log(`[Chargebee] subscription reconcile: ${activated} activated, ${cancelled} expired, ${stillPending} pending, ${review} review, ${failed} failed of ${intents.length}`);
+    return { processed: intents.length, failed, firstError };
   };
 }

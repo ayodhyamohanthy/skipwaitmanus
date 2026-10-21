@@ -3,6 +3,7 @@
 // server picked from the catalog; nothing here reads a client price. Each call
 // is mocked in tests: real payment execution is prohibited in engineering/QA.
 import { z } from "zod";
+import { resolvePlanItemPrice } from "../shared/billingCatalog";
 import { ChargebeeApiError, chargebeeRequest, idPath, providerDate, toProviderSeconds, type ChargebeeCredentials } from "./chargebeeApi";
 
 const hostedPageSchema = z.object({
@@ -154,14 +155,86 @@ const subscriptionHostedPageSchema = z.object({
     id: z.string(),
     state: z.string().optional(),
     pass_thru_content: z.string().optional(),
-    content: z.object({ subscription: z.object({ id: z.string(), customer_id: z.string().optional() }).optional() }).optional(),
+    content: z.object({
+      subscription: z.object({
+        id: z.string(),
+        customer_id: z.string().optional(),
+        status: z.string().optional(),
+        currency_code: z.string().optional(),
+        current_term_start: z.number().optional(),
+        current_term_end: z.number().optional(),
+        resource_version: z.number().optional(),
+        subscription_items: z.array(z.object({ item_price_id: z.string().optional() })).optional(),
+      }).optional(),
+    }).optional(),
   }),
 });
 
+/** The provider's own record of one checkout page's subscription: every field recovery activates from. */
+export type CheckoutPageSubscription = {
+  id: string;
+  customerId?: string;
+  status: string;
+  currency?: "INR" | "USD";
+  itemPriceId?: string;
+  currentTermStart?: Date;
+  currentTermEnd?: Date;
+  resourceVersion?: number;
+};
+
+export type RetrievedCheckoutSubscription = {
+  hostedPageId: string;
+  state: string;
+  passThruContent: string | null;
+  subscriptionId: string | null;
+  customerId: string | null;
+  subscription: CheckoutPageSubscription | null;
+};
+
 /** The subscription a hosted checkout created, read server-to-server to tie a webhook to its intent. */
-export async function retrieveCheckoutSubscription(credentials: ChargebeeCredentials, hostedPageId: string): Promise<{ hostedPageId: string; state: string; passThruContent: string | null; subscriptionId: string | null; customerId: string | null } | null> {
+export async function retrieveCheckoutSubscription(credentials: ChargebeeCredentials, hostedPageId: string): Promise<RetrievedCheckoutSubscription | null> {
   const body = await chargebeeRequest(credentials, { method: "GET", path: `/hosted_pages/${idPath(hostedPageId)}`, timeoutMs: 8_000 }, subscriptionHostedPageSchema).catch(() => null);
   if (!body || body.hosted_page.id !== hostedPageId) return null;
   const subscription = body.hosted_page.content?.subscription;
-  return { hostedPageId, state: (body.hosted_page.state ?? "unknown").toLowerCase(), passThruContent: body.hosted_page.pass_thru_content ?? null, subscriptionId: subscription?.id ?? null, customerId: subscription?.customer_id ?? null };
+  const record: CheckoutPageSubscription | null = subscription
+    ? {
+        id: subscription.id,
+        customerId: subscription.customer_id,
+        status: (subscription.status ?? "unknown").toLowerCase(),
+        currency: subscription.currency_code === "INR" || subscription.currency_code === "USD" ? subscription.currency_code : undefined,
+        itemPriceId: subscription.subscription_items?.find(item => typeof item.item_price_id === "string")?.item_price_id,
+        currentTermStart: typeof subscription.current_term_start === "number" ? new Date(subscription.current_term_start * 1000) : undefined,
+        currentTermEnd: typeof subscription.current_term_end === "number" ? new Date(subscription.current_term_end * 1000) : undefined,
+        resourceVersion: Number.isSafeInteger(subscription.resource_version) && (subscription.resource_version ?? 0) > 0 ? subscription.resource_version : undefined,
+      }
+    : null;
+  return { hostedPageId, state: (body.hosted_page.state ?? "unknown").toLowerCase(), passThruContent: body.hosted_page.pass_thru_content ?? null, subscriptionId: subscription?.id ?? null, customerId: subscription?.customer_id ?? null, subscription: record };
+}
+
+/**
+ * GO-LIVE-1b ruling 1: recovery builds the same activation input the webhook
+ * builds, from the provider's own checkout page - never from the client. The
+ * event id keys it `hosted_page:<id>`, so a replay, and a webhook for the same
+ * subscription after recovery, grant once. Null when the page does not carry a
+ * complete subscription (an unfinished checkout; the caller stays pending).
+ */
+export function subscriptionEventFromCheckoutPage(page: RetrievedCheckoutSubscription) {
+  const subscription = page.subscription;
+  if (!subscription) return null;
+  const resolvedPrice = resolvePlanItemPrice(subscription.itemPriceId);
+  return {
+    eventId: `hosted_page:${page.hostedPageId}`,
+    eventType: "subscription_created",
+    hostedPageId: page.hostedPageId,
+    passThruContent: page.passThruContent ?? undefined,
+    subscriptionId: subscription.id,
+    plan: resolvedPrice?.plan,
+    interval: resolvedPrice?.interval,
+    itemPriceId: subscription.itemPriceId,
+    status: subscription.status,
+    currency: subscription.currency ?? resolvedPrice?.currency,
+    currentTermStart: subscription.currentTermStart,
+    currentTermEnd: subscription.currentTermEnd,
+    resourceVersion: subscription.resourceVersion,
+  };
 }

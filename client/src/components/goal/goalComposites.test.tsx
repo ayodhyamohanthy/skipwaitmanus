@@ -71,6 +71,20 @@ describe("GoalShell", () => {
     }
   });
 
+  it("phone layout: main is pinned to grid row 2 so it never drops into an implicit row", () => {
+    // Regression (Oct 21): the sticky phone bottom bar spans rows 2..-1, so an
+    // auto-placed <main> skipped the occupied rows and landed in an implicit
+    // 4th row - signed-in pages rendered a blank first viewport at 390px.
+    render(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
+    const main = screen.getByRole("main");
+    expect(main.className).toContain("max-gdesk:row-start-2");
+    expect(main.className).toContain("max-gdesk:col-start-1");
+    // The bottom bar must keep its explicit span; removing either side of this
+    // contract re-opens the implicit-row bug above.
+    const bottomBar = screen.getAllByRole("navigation", { name: /primary/i }).find(nav => nav.className.includes("max-gdesk:sticky"));
+    expect(bottomBar?.className).toContain("max-gdesk:row-start-2");
+  });
+
   it("renders no credits pill when credits is null", () => {
     renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
     expect(screen.queryByTestId("goal-credits-pill")).toBeNull();
@@ -84,11 +98,14 @@ describe("GoalShell", () => {
     expect(pills[0].getAttribute("aria-label")).toBe("4 credits available. Open credit details");
   });
 
-  it("the account avatar opens settings; a missing initial falls back to a sign-in link", () => {
+  it("the account slot prefers the adapter's menu (sign-in when signed out) and otherwise shows the account-menu button", () => {
     renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer><p>content</p></GoalShell>);
-    expect(screen.getAllByTestId("goal-avatar")[0].getAttribute("href")).toBe("/settings");
+    const avatar = screen.getAllByTestId("goal-avatar")[0];
+    expect(avatar.tagName).toBe("BUTTON");
+    expect(avatar.getAttribute("aria-label")).toBe("Account menu");
     cleanup();
-    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer account={{ initials: "" }}><p>content</p></GoalShell>);
+    // AppShell passes account.menu for signed-out visitors (a Sign in link); the shell must render it, not an avatar.
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer account={{ initials: "·", menu: <a href="/sign-in">Sign in</a> }}><p>content</p></GoalShell>);
     expect(screen.queryByTestId("goal-avatar")).toBeNull();
     expect(screen.getAllByRole("link", { name: "Sign in" }).length).toBeGreaterThan(0);
   });

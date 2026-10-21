@@ -72,7 +72,8 @@ export default function Explore() {
   // The company the form was written for. Reopening the same company keeps the
   // draft; picking another one starts empty instead of carrying its link and reasons.
   const formCompany = useRef<string | null>(selectedSlug);
-  const [query, setQuery] = useState("");
+  // Pre-filter from the landing search bar (QA fix, #407, kept in this wave): /explore?q=...
+  const [query, setQuery] = useState(() => new URLSearchParams(search).get("q") ?? "");
   const [openOnly, setOpenOnly] = useState(false);
   const [fn, setFn] = useState<(typeof FILTER_FUNCTIONS)[number] | null>(null);
 
