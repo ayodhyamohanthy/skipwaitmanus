@@ -1,12 +1,11 @@
-// V9 "Uber style" landing (owner 17:32:58, verified author=user
-// phonemsg-01M5F5FQC3B8YB2HAP1B403RNX: "Reverse the apple landing page
-// design. Do uber style"). Stark black-and-white, left-aligned hero with a
-// company search bar; the warm gradient moves OFF the hero onto the "idea
-// in one picture" banner band (still the only colour block, landing only).
-// Banner = a real illustration, never the enlarged logo (owner 17:37:45,
-// phonemsg-01M5F5RFTJPQ5Y9MG95ASK4JZY); owner picks take A/B/C before
-// this ships - V9_BANNER is the swap point. Behind GOAL_UI_LANDING_V9,
-// OFF everywhere; live landing untouched until main relays pick + "ship".
+// V9 "Uber style" landing, M3 hybrid (owner pick 17:51:26 "M3", verified
+// author=user phonemsg-01M5F6HGTM5DCRVFW73SKFSKKV; direction 17:32:58
+// phonemsg-01M5F5FQC3B8YB2HAP1B403RNX "Do uber style" + 17:37:45
+// phonemsg-01M5F5RFTJPQ5Y9MG95ASK4JZY real banner, not the enlarged logo).
+// Per designer m3-sheet: pure white Uber hero with the company search bar,
+// then a BLACK band carrying the warm walking-in photo (Pexels 7651982,
+// self-hosted /brand/banner-take-e.jpg). Behind GOAL_UI_LANDING_V9, OFF
+// everywhere; live landing untouched until main relays the owner's "ship".
 import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { Link, useLocation } from "wouter";
@@ -14,8 +13,6 @@ import { GoalBrandMark } from "@/components/goal/GoalBrandMark";
 import { GoalVerifiedMark } from "@/components/goal/GoalVerifiedMark";
 import { BetaBadge, BetaNoticeLine } from "@/components/BetaNotice";
 import { STEPS, TRUST, FAIR_RULES, FOOTER_COLS, Kicker, Reveal, AskCardArt } from "./GoalLanding";
-
-const V9_BANNER = "a";
 
 function SearchCTA() {
   const [, setLocation] = useLocation();
@@ -25,13 +22,13 @@ function SearchCTA() {
     setLocation("/explore");
   };
   return (
-    <form onSubmit={submit} className="mt-8 flex max-w-[560px] items-center gap-2 rounded-[14px] border border-g-hairline p-1.5" data-testid="goal-next-step">
+    <form onSubmit={submit} className="mt-8 flex max-w-[560px] flex-col gap-2 rounded-[14px] border border-g-hairline p-1.5 gdesk:flex-row gdesk:items-center" data-testid="goal-next-step">
       <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-[10px] bg-g-surface-hover px-4">
         <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-g-ink-3" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="9" cy="9" r="6" /><path d="m14 14 3.5 3.5" strokeLinecap="round" /></svg>
         <span className="sr-only">Search companies</span>
         <input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Search companies" className="w-full min-w-0 bg-transparent text-g-small text-g-ink outline-none placeholder:text-g-ink-3" />
       </label>
-      <button type="submit" className="h-11 shrink-0 rounded-[10px] bg-g-ink px-5 text-g-small font-semibold text-g-ink-inverse hover:bg-g-primary-hover">Find your company <span aria-hidden="true">&rarr;</span></button>
+      <button type="submit" className="h-12 w-full shrink-0 rounded-[10px] bg-g-ink px-5 text-g-small font-semibold text-g-ink-inverse hover:bg-g-primary-hover gdesk:h-11 gdesk:w-auto">Find your company <span aria-hidden="true">&rarr;</span></button>
     </form>
   );
 }
@@ -67,16 +64,17 @@ export default function GoalLandingV9() {
         </div>
       </section>
 
-      {/* The idea band: the warm gradient lives here now (only colour block). */}
-      <section className="g-hero-warm border-b border-g-hairline">
+      {/* M3: BLACK idea band carrying the warm walking-in photo (only photo
+          on the page; no warm gradient anywhere). */}
+      <section className="bg-g-ink text-g-ink-inverse">
         <div className="mx-auto grid max-w-[1120px] items-center gap-10 px-5 py-14 gdesk:grid-cols-2 gdesk:px-8 gdesk:py-20">
           <Reveal>
-            <Kicker>The idea, in one picture</Kicker>
+            <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] opacity-60">The idea, in one picture</p>
             <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">From the back of the line to the front.</h2>
-            <p className="mt-4 max-w-[440px] text-g-body leading-[1.6] text-g-ink-2">A referral moves you past the pile: a verified employee inside the company picks your ask and opens a private conversation.</p>
+            <p className="mt-4 max-w-[440px] text-g-body leading-[1.6] opacity-70">A referral moves you past the pile: a verified employee inside the company picks your ask and opens a private conversation.</p>
           </Reveal>
           <Reveal className="justify-self-center">
-            <img src={`/brand/banner-${V9_BANNER}.svg`} alt="A person steps through the one open door" className="h-[220px] w-auto gdesk:h-[320px]" data-testid="goal-v9-banner" />
+            <img src="/brand/banner-take-e.jpg" alt="Two colleagues walking into a bright office together" className="w-full max-w-[520px] rounded-[16px] object-cover" data-testid="goal-v9-banner" />
           </Reveal>
         </div>
       </section>
