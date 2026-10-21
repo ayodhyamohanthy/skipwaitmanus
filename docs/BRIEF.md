@@ -42,5 +42,4 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 - Migrations: take the next free number after `drizzle/deploy/` and the numbers claimed in plan §5; never destructive; schema-dependent code lands only after its migration is verified.
 - Owner actions waiting: plan §6. System map: `AGENTS.md`, "Living system map".
 
-## Claim-your-company (D-107, draft)
-Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COMPANY_CLAIM (off). No per-person data or account-role changes. Same-account, single-use email link. Current-month aggregates hidden below 3 referrers or answered asks. See docs/DECISIONS.md D-107. QA and delivery verification required before enablement.
+D-107 company access: flags OFF; aggregate-only mailbox proof, min-3. See DECISIONS and docs/qa/claim-company.md.
