@@ -61,9 +61,15 @@ jobs:
         env:
           DATABASE_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
         run: npx tsx scripts/qa-reset-scratch.ts
+      # Skipped when skip_reset is set: drizzle-kit push cannot run non-interactively
+      # against the populated scratch DB - Azure MySQL lower_case_table_names=1 makes
+      # introspection return lowercase names, so push prompts create-vs-rename for every
+      # table and hangs with no TTY. Code-only ships rely on runtime schemaReconcile +
+      # guarded drizzle/deploy/*.sql for incremental schema. Schema-changing releases use
+      # a full (reset) deploy with QA warned first.
       - name: Sync scratch QA schema from definitions only
-        if: inputs.seed_only != 'true' && inputs.rotate_gate != 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true'
-        timeout-minutes: 35
+        if: inputs.seed_only != 'true' && inputs.rotate_gate != 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true' && inputs.skip_reset != 'true'
+        timeout-minutes: 15
         env:
           DATABASE_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
         run: npx drizzle-kit push --force
