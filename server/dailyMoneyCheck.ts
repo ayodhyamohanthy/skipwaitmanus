@@ -16,10 +16,11 @@ import { sendTransactionalEmail } from "./emailDelivery";
 // row; the only writes are the job's own run record (the runner) and one
 // operational-activity row when an alert email goes out. The email carries
 // ids, amounts, currencies and reasons — never names, emails, or request content.
-import { and, asc, count, eq, gt, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
-import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs } from "../shared/referral";
+import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, referredDueAtMs, referredExtensionOperationKey } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
+import { ABANDONED_CHECKOUT_REASON } from "./abandonedCheckouts";
 import { ASK_DELIVERY_KEY_PREFIX } from "./coverageDelivery";
 import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
@@ -51,6 +52,10 @@ export type LegacyPlanWalletRow = { id: number; role: string; plan: string; term
 export type AskSpentWhileWaitingRow = { transactionId: number; requestId: number };
 /** One spend that two or more ledger rows reverse; the unique index should make this impossible. */
 export type DoublyReversedSpendRow = { reversesTransactionId: number; reversalRows: number; ledgerRowIds: number[] };
+/** D-038-A: a withdrawal or expiry refund whose ask had already been picked up by a claim. */
+export type RefundAfterPickupRow = { transactionId: number; requestId: number; kind: string; createdAt: Date | null };
+/** D-038-B: an approved ask still holding a referrer more than a day past its Referred deadline. */
+export type ReferredDeadlineStuckRow = { id: number; referrerId: number; dueAt: Date };
 
 export type DailyMoneyCheckDeps = {
   auditWallets: () => Promise<WalletAuditResult>;
@@ -63,6 +68,9 @@ export type DailyMoneyCheckDeps = {
   listLegacyPlanWallets: (now: Date, limit: number) => Promise<LegacyPlanWalletRow[]>;
   listAskDeliverySpendsWhileWaiting: (limit: number) => Promise<AskSpentWhileWaitingRow[]>;
   listDoublyReversedSpends: (limit: number) => Promise<DoublyReversedSpendRow[]>;
+  summarizeStaleCheckouts: (olderThan: Date) => Promise<StaleCheckoutSummary>;
+  listRefundsAfterPickup: (limit: number) => Promise<RefundAfterPickupRow[]>;
+  listReferredPastDeadline: (nowMs: number, limit: number) => Promise<ReferredDeadlineStuckRow[]>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
   recordActivity: typeof recordOperationalActivity;
 };
@@ -110,10 +118,20 @@ async function listUnmatchedRefunds(limit: number): Promise<UnmatchedRefundRow[]
   return unmatched;
 }
 
+export type StaleCheckoutSummary = { total: number; users: number; oldest: Date | null; newest: Date | null };
+
+/** One line for every abandoned pending checkout: how many, how many accounts, and the date range. */
+async function summarizeStaleCheckouts(olderThan: Date): Promise<StaleCheckoutSummary> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  const [row] = await db.select({ total: count(), users: sql<number>`COUNT(DISTINCT ${paymentFulfillments.userId})`, oldest: sql<Date | null>`MIN(${paymentFulfillments.createdAt})`, newest: sql<Date | null>`MAX(${paymentFulfillments.createdAt})` })
+    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan), or(isNull(paymentFulfillments.reconciliationReason), ne(paymentFulfillments.reconciliationReason, ABANDONED_CHECKOUT_REASON))));
+  return { total: Number(row?.total ?? 0), users: Number(row?.users ?? 0), oldest: row?.oldest ? new Date(row.oldest) : null, newest: row?.newest ? new Date(row.newest) : null };
+}
+
 async function listStaleCheckouts(olderThan: Date, limit: number): Promise<StaleCheckoutRow[]> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
   return db.select({ id: paymentFulfillments.id, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, createdAt: paymentFulfillments.createdAt })
-    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan)))
+    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan), or(isNull(paymentFulfillments.reconciliationReason), ne(paymentFulfillments.reconciliationReason, ABANDONED_CHECKOUT_REASON))))
     .orderBy(asc(paymentFulfillments.id)).limit(limit);
 }
 
@@ -258,6 +276,66 @@ export async function listDoublyReversedSpends(limit: number): Promise<DoublyRev
   return found;
 }
 
+/**
+ * D-038-A: a refund whose ask had already been picked up. Once a referrer claimed the ask the
+ * credit stays spent (D-034, D-076 (1)), so a withdrawal_refund or expiry_refund row whose ask's
+ * latest pickup-or-release event before the refund was a claim is a money leak, not a refund.
+ * Read-only and bounded: the newest `limit * 4` refund rows are examined, `limit` findings returned.
+ */
+export async function listRefundsAfterPickup(limit: number): Promise<RefundAfterPickupRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  const refunds = await db.select({ id: tokenTransactions.id, kind: tokenTransactions.kind, referenceId: tokenTransactions.referenceId, createdAt: tokenTransactions.createdAt })
+    .from(tokenTransactions)
+    .where(and(eq(tokenTransactions.referenceType, "referral_request"), inArray(tokenTransactions.kind, ["withdrawal_refund", "expiry_refund"])))
+    .orderBy(desc(tokenTransactions.id)).limit(limit * 4);
+  const found: RefundAfterPickupRow[] = [];
+  for (const refund of refunds) {
+    const requestId = Number(String(refund.referenceId ?? "").split("#")[0]);
+    if (!Number.isInteger(requestId) || requestId <= 0) continue;
+    const events = await db.select({ id: referralTransitionEvents.id, action: referralTransitionEvents.action }).from(referralTransitionEvents)
+      .where(and(eq(referralTransitionEvents.referralRequestId, requestId), inArray(referralTransitionEvents.action, ["claim", "claim_lapse", "referred_lapse", "step_back"]), refund.createdAt ? lte(referralTransitionEvents.createdAt, refund.createdAt) : undefined));
+    let latest: { id: number; action: string } | null = null;
+    for (const event of events) if (latest === null || Number(event.id) > Number(latest.id)) latest = event;
+    if (latest?.action !== "claim") continue;
+    found.push({ transactionId: refund.id, requestId, kind: refund.kind, createdAt: refund.createdAt ?? null });
+    if (found.length >= limit) break;
+  }
+  return found;
+}
+
+/**
+ * D-038-B: an approved ask more than a day past its Referred deadline. The `referral-timers` job should
+ * have reopened it to colleagues with the credit released; if it is still approved, that release is
+ * overdue and the referrer still holds the seeker's name and files. Read-only, bounded.
+ */
+export async function listReferredPastDeadline(nowMs: number, limit: number): Promise<ReferredDeadlineStuckRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  const asks = await db.select({ id: referralRequests.id, referrerId: referralRequests.referrerId }).from(referralRequests)
+    .where(and(eq(referralRequests.status, "approved"), isNotNull(referralRequests.referrerId))).limit(MONEY_CHECK_BATCH);
+  const found: ReferredDeadlineStuckRow[] = [];
+  for (const ask of asks) {
+    if (!ask.referrerId) continue;
+    const events = await db.select({ id: referralTransitionEvents.id, action: referralTransitionEvents.action, operationKey: referralTransitionEvents.operationKey, createdAt: referralTransitionEvents.createdAt, resultingStatus: referralTransitionEvents.resultingStatus })
+      .from(referralTransitionEvents)
+      .where(and(eq(referralTransitionEvents.referralRequestId, ask.id), inArray(referralTransitionEvents.action, ["approve", "review", "referred_lapse", "step_back", "referred_extension"])));
+    let latestAcceptance: { id: number; action: string; createdAt: Date | string; resultingStatus: string | null } | null = null;
+    for (const event of events) {
+      if (event.action === "referred_extension") continue;
+      if (latestAcceptance === null || Number(event.id) > latestAcceptance.id) latestAcceptance = { id: Number(event.id), action: event.action, createdAt: event.createdAt, resultingStatus: event.resultingStatus ?? null };
+    }
+    if (latestAcceptance === null || latestAcceptance.resultingStatus !== "approved") continue;
+    // D-038-reconcile B-1: only the latest acceptance's own extension moves its deadline.
+    const acceptance = latestAcceptance;
+    const extended = events.some(event => event.action === "referred_extension" && event.operationKey === referredExtensionOperationKey(acceptance.id));
+    const acceptedAtMs = latestAcceptance.createdAt instanceof Date ? latestAcceptance.createdAt.getTime() : Date.parse(String(latestAcceptance.createdAt));
+    if (!Number.isFinite(acceptedAtMs)) continue;
+    const dueAt = referredDueAtMs(acceptedAtMs, extended);
+    if (nowMs - dueAt > ALLOCATED_ASK_GRACE_MS) found.push({ id: ask.id, referrerId: ask.referrerId, dueAt: new Date(dueAt) });
+    if (found.length >= limit) break;
+  }
+  return found;
+}
+
 async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {
   try {
     const delivery = await sendTransactionalEmail({ to: MONEY_CHECK_RECIPIENT, subject: input.subject, text: input.text });
@@ -280,6 +358,9 @@ const defaultMoneyCheckDeps: DailyMoneyCheckDeps = {
   listLegacyPlanWallets,
   listAskDeliverySpendsWhileWaiting,
   listDoublyReversedSpends,
+  summarizeStaleCheckouts,
+  listRefundsAfterPickup,
+  listReferredPastDeadline,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
 };
@@ -319,8 +400,14 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCh
     const refunds = await deps.listUnmatchedRefunds(FINDINGS_PREVIEW_LIMIT);
     for (const refund of refunds) findings.push(`unmatched refund: log #${refund.logId} (${refund.resourceId ?? "no invoice id"}, ${refund.createdAt.toISOString()})`);
 
-    const stale = await deps.listStaleCheckouts(new Date(nowMs - STALE_CHECKOUT_AGE_MS), FINDINGS_PREVIEW_LIMIT);
-    for (const checkout of stale) findings.push(`stale checkout: payment #${checkout.id} ${checkout.amount} ${checkout.currency} pending since ${checkout.createdAt.toISOString()}`);
+    // One summary line, not one line per checkout: abandoned checkout pages are common, no money moved, and a long list
+    // buried the real findings. The oldest few ids are named so someone can look them up.
+    const staleCutoff = new Date(nowMs - STALE_CHECKOUT_AGE_MS);
+    const staleSummary = await deps.summarizeStaleCheckouts(staleCutoff);
+    if (staleSummary.total > 0) {
+      const sample = await deps.listStaleCheckouts(staleCutoff, 3);
+      findings.push(`stale checkouts: ${staleSummary.total} unpaid checkout page(s) from ${staleSummary.users} account(s) still pending after a day, oldest ${staleSummary.oldest?.toISOString() ?? "unknown"}, newest ${staleSummary.newest?.toISOString() ?? "unknown"}; none credited, no money moved (oldest ids: ${sample.map(row => `#${row.id}`).join(", ")})`);
+    }
 
     // P0-allocated-ask-stuck: paged by id until a short batch, so claimed asks (which keep their slot and
     // never expire) can never fill a page and hide a stuck one; at most FINDINGS_PREVIEW_LIMIT are listed.
@@ -350,6 +437,14 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCh
 
     const doubleReversals = await deps.listDoublyReversedSpends(FINDINGS_PREVIEW_LIMIT);
     for (const row of doubleReversals) findings.push(`spend_reversed_twice: transaction #${row.reversesTransactionId} is reversed by ${row.reversalRows} rows (ledger rows ${row.ledgerRowIds.map(id => `#${id}`).join(", ")})`);
+
+    // D-038-A: once a referrer claimed the ask the credit stays spent, so a refund after a pickup is a leak.
+    const refundsAfterPickup = await deps.listRefundsAfterPickup(FINDINGS_PREVIEW_LIMIT);
+    for (const row of refundsAfterPickup) findings.push(`refund_after_pickup: ledger row #${row.transactionId} returned a credit for ask #${row.requestId} (${row.kind}) although the ask's latest pickup was a claim`);
+
+    // D-038-B: an accepted ask nobody marked Referred should have reopened a day ago, with the credit released.
+    const referredStuck = await deps.listReferredPastDeadline(nowMs, FINDINGS_PREVIEW_LIMIT);
+    for (const row of referredStuck) findings.push(`referred_deadline_stuck: ask #${row.id} is still approved more than a day past its Referred deadline (${row.dueAt.toISOString()}); the referral-timers job has not reopened it`);
 
     const output: JobRunOutput = { processed: audit.checkedWallets + checkedPayments, failed: 0 };
     if (findings.length === 0) return output;

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AdminNav } from "@/components/AdminNav";
 
 type Card = { id: string; will: string; affects: string; undo: string; expiresAt: string };
 type Turn = { question: string; answer: string; toolsUsed: string[]; cards: Card[] };
@@ -62,6 +63,7 @@ export default function AdminSkippie() {
   };
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
+      <AdminNav current="skippy" badge="Administrator diagnostics" />
       <h1 className="text-2xl font-semibold">Skippy</h1>
       <p className="mt-1 text-sm text-muted-foreground">Skippy can look at the money check, parked payments, scheduled jobs, deploy health and Sentry. It cannot change anything by itself: for a low-risk action it shows a card, and nothing happens until you press Approve. Every question, card and result is logged in Activity.</p>
       <ol className="mt-6 space-y-5">
