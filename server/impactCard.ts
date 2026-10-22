@@ -4,9 +4,10 @@
 // or company name of any seeker can leave this file: there is no field for one.
 // The min-3 gate (D-104 rule) lives in shared/shareImpactCard.ts.
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { companies, companyDomains, referralRequests, referralTransitionEvents, referrerFastTrackLinks } from "../drizzle/schema";
+import { companies, companyDomains, profiles, referralRequests, referralTransitionEvents, referrerFastTrackLinks } from "../drizzle/schema";
 import { IMPACT_DECISION_ACTIONS, impactCardVisible, summarizeImpact, type ImpactEvent, type ImpactStats } from "../shared/shareImpactCard";
 import { getDb } from "./db";
+import { isVerifiedEmployeeOfCompany } from "./referrerAvailability";
 
 export const IMPACT_CARD_FLAG = "SHARE_IMPACT_CARD_ENABLED";
 export const impactCardEnabled = () => process.env[IMPACT_CARD_FLAG] === "true";
@@ -32,13 +33,25 @@ export async function loadImpactCard(referrerId: number, now: Date = new Date())
   if (!db) throw new Error("database unavailable");
 
   // The referrer's fast-track link carries the screen name and the public path.
+  // Every public fast-track surface also requires the referrer to still be a
+  // verified employee at the link's company (F3): a job change overwrites the
+  // profile's work domain (D-057) while the link keeps the old one until it is
+  // recreated, and the card must not publish "Verified at {old company}".
   const [link] = await db
-    .select({ vanityAlias: referrerFastTrackLinks.vanityAlias, linkCode: referrerFastTrackLinks.linkCode, companyDomain: referrerFastTrackLinks.companyDomain })
+    .select({
+      vanityAlias: referrerFastTrackLinks.vanityAlias,
+      linkCode: referrerFastTrackLinks.linkCode,
+      companyDomain: referrerFastTrackLinks.companyDomain,
+      accountType: profiles.accountType,
+      workEmailDomain: profiles.workEmailDomain,
+      workEmailVerifiedAt: profiles.workEmailVerifiedAt,
+    })
     .from(referrerFastTrackLinks)
+    .innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId))
     .where(and(eq(referrerFastTrackLinks.referrerId, referrerId), eq(referrerFastTrackLinks.isActive, true)))
     .orderBy(desc(referrerFastTrackLinks.id))
     .limit(1);
-  if (!link) return { state: "insufficient" };
+  if (!link || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return { state: "insufficient" };
 
   const [domainRow] = await db.select({ companyId: companyDomains.companyId }).from(companyDomains).where(eq(companyDomains.domain, link.companyDomain.toLowerCase())).limit(1);
   if (!domainRow) return { state: "insufficient" };

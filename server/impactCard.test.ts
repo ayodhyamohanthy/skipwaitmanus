@@ -1,7 +1,7 @@
 import { getTableColumns } from "drizzle-orm";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { companies, companyDomains, referralRequests, referralTransitionEvents, referrerFastTrackLinks } from "../drizzle/schema";
+import { companies, companyDomains, profiles, referralRequests, referralTransitionEvents, referrerFastTrackLinks } from "../drizzle/schema";
 import { createInMemoryDrizzle, type Row } from "./inMemoryDrizzle.testkit";
 import { loadImpactCard } from "./impactCard";
 
@@ -26,16 +26,19 @@ const NOW = new Date("2026-10-22T12:00:00.000Z");
 const at = (iso: string) => new Date(iso);
 
 const link = (over: Row = {}): Row => full(referrerFastTrackLinks, { id: 1, referrerId: REFERRER, companyDomain: "acme.com", linkCode: "abc12345", vanityAlias: "QuietFalcon", isActive: true, ...over });
+/** The referrer's profile: a verified employee at the link's company by default (F3). */
+const profile = (over: Row = {}): Row => full(profiles, { id: 1, userId: REFERRER, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: at("2026-01-05T00:00:00.000Z"), ...over });
 const companyDomain = (): Row => full(companyDomains, { id: 1, companyId: 5, domain: "acme.com", isPrimary: true });
 const company = (status = "listed"): Row => full(companies, { id: 5, slug: "acme", name: "Acme", initials: "AC", industry: "Software", location: "Remote", functions: "[]", blurb: "", status, sortOrder: 0 });
 /** An answered ask. `visibleAt` is the coverage clock; null falls back to createdAt. */
 const ask = (id: number, createdAt: string, visibleAt: string | null, over: Row = {}): Row => full(referralRequests, { id, jobId: 11, jobSeekerId: 7, referrerId: REFERRER, status: "approved", createdAt: at(createdAt), coverageVisibleAt: visibleAt === null ? null : at(visibleAt), ...over });
 const event = (id: number, requestId: number, action: string, resultingStatus: string, createdAt: string, actorUserId = REFERRER): Row => full(referralTransitionEvents, { id, referralRequestId: requestId, operationKey: `${action}:${id}`, actorUserId, action, fromStatus: "pending", resultingStatus, resultingRevision: id, createdAt: at(createdAt) });
 
-type Seed = { links?: Row[]; domains?: Row[]; companies?: Row[]; asks?: Row[]; events?: Row[] };
+type Seed = { links?: Row[]; domains?: Row[]; companies?: Row[]; asks?: Row[]; events?: Row[]; profiles?: Row[] };
 function seed(over: Seed = {}) {
   store.reset([
     [referrerFastTrackLinks, over.links ?? [link()]],
+    [profiles, over.profiles ?? [profile()]],
     [companyDomains, over.domains ?? [companyDomain()]],
     [companies, over.companies ?? [company()]],
     [referralRequests, over.asks ?? []],
@@ -70,6 +73,26 @@ describe("loadImpactCard: the gates", () => {
     const { asks, events } = threeAnswers();
     seed({ links: [link({ isActive: false })], asks, events });
     expect(await loadImpactCard(REFERRER, NOW)).toEqual({ state: "insufficient" });
+  });
+
+  it("F3: insufficient when the referrer is no longer a verified employee (no verified work email)", async () => {
+    const { asks, events } = threeAnswers();
+    seed({ profiles: [profile({ workEmailVerifiedAt: null })], asks, events });
+    const card = await loadImpactCard(REFERRER, NOW);
+    expect(card).toEqual({ state: "insufficient" });
+    expect(card).not.toHaveProperty("screenName");
+  });
+
+  it("F3: insufficient when the verified work email is at a different company (job change, D-057)", async () => {
+    const { asks, events } = threeAnswers();
+    seed({ profiles: [profile({ workEmailDomain: "oldco.com" })], asks, events });
+    expect(await loadImpactCard(REFERRER, NOW)).toEqual({ state: "insufficient" });
+  });
+
+  it("F3: a verified employee at the link's domain keeps the card ready, whatever the case", async () => {
+    const { asks, events } = threeAnswers();
+    seed({ profiles: [profile({ workEmailDomain: "ACME.com" })], asks, events });
+    expect(await loadImpactCard(REFERRER, NOW)).toMatchObject({ state: "ready", screenName: "QuietFalcon" });
   });
 
   it("insufficient when the company is not listed", async () => {
