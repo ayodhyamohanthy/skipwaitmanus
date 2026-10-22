@@ -67,7 +67,12 @@ export const CREDIT_RULE = `An ask at a company where no verified employee is av
  * until the new model ships (D-042: copy never promises what the product
  * does not do).
  */
-export const CREDIT_RULE_V2 = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, credits are used by the role's level; if you have none then, we hold the ask until you add them. Credits used on an ask come back once if you withdraw before someone picks the ask up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee - paid credits never expire, so they always come back; free monthly credits come back only if their month has not ended. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credits stay spent, even if they pass.`;
+/** Same switch and promise as REFERRED_REOPEN_SENTENCE, worded for credits. */
+const REFERRED_REOPEN_SENTENCE_V2 = REFERRED_DEADLINE_ENABLED
+  ? " If an accepted ask is not marked Referred in time, or the referrer steps back, the ask reopens to other employees with those credits still on it, and the credits come back if the ask is then withdrawn or expires unclaimed."
+  : "";
+
+export const CREDIT_RULE_V2 = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, credits are used by the role's level; if you do not have enough then, we hold the ask until you add more. Credits used on an ask come back once if you withdraw before someone picks the ask up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee - paid credits never expire, so they always come back; free monthly credits come back only if their month has not ended. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credits stay spent, even if they pass.${REFERRED_REOPEN_SENTENCE_V2}`;
 
 export const CREDIT_ENDED_CAVEAT_V2 = "paid credits never expire; free monthly credits end with the month";
 
