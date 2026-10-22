@@ -316,8 +316,9 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     if (state === "needs-review" || (state === "in-review" && lockQuiet)) {
       if (did(v, ["builders", "fixers"])) return skip(v, "needs a review, and you built or fixed it");
       // A branch built outside the picker has no claim naming its builder: its review waits until nobody has pushed for 2 hours.
-      // Once a picker session has taken a stage (a fix round), the pushes are the fixer's, so the review is not held back.
-      if (!v.builders.length && !v.fixers.length && !quiet(workAt(v))) return skip(v, `built outside the picker and still being pushed; its review waits until ${v.work} is quiet for 2 hours`);
+      // After a picker fix round whose Fixed marker came after the last push, those pushes were the fixer's: the review is not held back.
+      const fixerPushedLast = v.fixers.length > 0 && lockAt(v) >= workAt(v);
+      if (!v.builders.length && !fixerPushedLast && !quiet(workAt(v))) return skip(v, `built outside the picker and still being pushed; its review waits until ${v.work} is quiet for 2 hours`);
       return { kind: "review", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner };
     }
     if (state === "needs-fix" || (state === "fixing" && lockQuiet)) {

@@ -371,6 +371,9 @@ describe("dependsOn holds a landing, not only a build (D-134)", () => {
       { verb: "Review claim", id: "M", who: "Mistral · r1" }, { verb: "Verdict", id: "M", who: "Mistral · r1", verdict: "findings" },
       { verb: "Fix claim", id: "M", who: "Kimi · f1" }, { verb: "Fixed", id: "M", who: "Kimi · f1" }] }];
     expect(pick([t1], { branches: [outside(0.2), lockM], prs: [prM], prCi: [["agent/queue/m", "green"]], claimant: "Gemini · s3" })).toMatchObject({ kind: "review", task: { id: "M" } });
+    // But an outside push after the Fixed marker is new work the fix round never saw: the review waits again.
+    const lockOld: [string, Branch] = ["agent/review/m", { ...lockM[1], tipMs: NOW - 5 * HOUR }];
+    expect(pick([t1], { branches: [outside(0.2), lockOld], prs: [prM], prCi: [["agent/queue/m", "green"]], claimant: "Gemini · s3" })).toMatchObject({ kind: "none" });
   });
   it("the board keeps a built task's colour while it waits: red for a red pull request, in progress otherwise", () => {
     const built: [string, Branch] = ["agent/queue/b", claimBy("Qwen · s1", "B", 3)];
@@ -608,9 +611,11 @@ describe("markers and printed steps", () => {
     expect(fixMain).not.toContain("Then merge it");
     expect(fixMain).toContain("if that push is refused because main moved");
     // D-074: a Tier 1 landing checks that nothing was pushed after the pass verdict.
-    expect(land1).toContain("those commits were never reviewed");
+    expect(land1).toContain("was never reviewed (D-074)");
+    expect(land1).toContain("<reviewed>..origin/agent/queue/m ^origin/main");
     const review = renderPick({ kind: "review", task: task("M", { tier: 1 }), work: "agent/queue/m", pr: "https://github.com/o/r/pull/9", lock: "agent/review/m", lockExists: true, builder: "Qwen · s1" }, ctx);
-    expect(review).toContain("after your verdict");
+    expect(review).toContain("naming the exact head commit you reviewed");
+    expect(review).not.toContain("goes back to review");
     const arch = renderPick({ kind: "architect", task: task("P", { status: "architect", packet: null }), lock: "agent/architect/p", lockExists: false }, { ...ctx, who: "Claude Code · s9" });
     expect(arch).toContain("WRITE THE PACKET FOR P");
     expect(arch).toContain("docs/DELEGATION.md");

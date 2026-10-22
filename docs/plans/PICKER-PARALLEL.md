@@ -32,7 +32,7 @@ All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker
 
 ## PICKER-board-epic: the board shows a goal at a glance
 **Why.** `roleOf` maps only the exact lane `design` to CDO, so every `d048-*` lane shows CTO; the board lists 76 rows with no roll-up; and it shows a pull request as mergeable while it is many commits behind `main`.
-**What.** `ROLE_BY_LANE` becomes a prefix match (`design*` and `d048-*` map to CDO). An optional `epic` key groups rows, and `--status` prints one roll-up line per epic (for example `D-048-p3: 12/75 done, 6 PR, 1 red, released: inbox`). Each open pull request shows `behind main N` from `git rev-list --count` (no GitHub read).
+**What.** `ROLE_BY_LANE` becomes a prefix match (`design*` and `d048-*` map to CDO). An optional `epic` key groups rows, and `--status` prints one roll-up line per epic (for example `D-048-p3: 12/76 done, 6 PR, 1 red, released: inbox`). Each open pull request shows `behind main N` from `git rev-list --count` (no GitHub read).
 **Tests.** Prefix roles; the epic roll-up counts; `behind main` from a fixture.
 
 ## Status

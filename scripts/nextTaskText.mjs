@@ -55,12 +55,12 @@ function resumeSteps(task, who, branch) {
 }
 
 /** D-074: a Tier 1 change lands only as reviewed; a commit pushed after the pass verdict was never reviewed. */
-const unreviewed = pick => `Before you land, compare the branch with the pass verdict: \`git log --no-merges --format="%h %ci %s" origin/${pick.work}\` against the time of the "Verdict ${pick.task.id}: pass" commit on ${pick.lock}. If any commit after it changes files (merges of main do not count), do not land: those commits were never reviewed (D-074). Report it blocked to the CEO with --report blocked.`;
+const unreviewed = pick => `Before you land, take the head commit the pass verdict names on the pull request (the newest pass, if there were several) as <reviewed> and run \`git fetch origin && git log --no-merges --name-only --format="%h %s" <reviewed>..origin/${pick.work} ^origin/main\`. Every commit it lists, except one that only changes docs/plans/assignments.json (the status commit a landing makes), was never reviewed (D-074): do not land, and report it blocked to the CEO with --report blocked.`;
 
 const reviewSteps = (pick, who) => steps([
   `Read docs/BRIEF.md and ${pick.task.packet}, then review exactly as docs/DELEGATION.md §6 says, reproducing every claim yourself.`,
-  "Post the verdict on the pull request.",
-  `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\`. If you land it later, first check that nobody pushed to ${pick.work} after your verdict except merges of main; anything else goes back to review (D-074). Merge the latest origin/main into ${pick.work}, set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`,
+  `Post the verdict on the pull request, naming the exact head commit you reviewed (\`git rev-parse origin/${pick.work}\`): a lander checks that nothing but merges of main came after it.`,
+  `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\`. If you land it, first run the check in the landing steps: a commit after the one you reviewed, other than merges of main and the status commit, means do not land; report it blocked (D-074). Merge the latest origin/main into ${pick.work}, set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`,
   `Findings: list each with file:line, severity and the failing test to add first, then run \`${CMD} --verdict findings --task ${pick.task.id} --as "${who}"\` and stop. The verdict moves the task to its fix stage; you never fix code you reviewed.`,
   `Run \`${CMD} --heartbeat --as "${who}"\` before any long step: a review lock nobody has pushed to for 2 hours goes to the next agent (D-085).`,
   report(pick.task, who),

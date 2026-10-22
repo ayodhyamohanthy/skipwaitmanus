@@ -83,6 +83,18 @@
       "note": "D-134 (6): both pages went live in place with the merge button and no independent review; this checks them against their kit versions and the money rules, fixes what fails red-first, and passes an independent review."
     },
     {
+      "id": "D-065-C",
+      "title": "The daily money check finds delivery spends by their real key (<id>#1), so ask_spent_while_waiting can fire",
+      "row": "D-065-B",
+      "packet": "docs/plans/D-065-C-delivery-spend-key.md",
+      "tier": 2,
+      "lane": "money-check",
+      "branch": "agent/queue/d065c-delivery-key",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "A silent money-check failure found by the PR #395 review: the lookup matches the bare request id, which no spend row has; red-first with the real key shape."
+    },
+    {
       "id": "JOB-LEVELS",
       "title": "Job level classifier L1-L10 (#381): the rules D-110 and D-132 price asks by",
       "row": "D-132",
@@ -117,9 +129,11 @@
       "status": "todo",
       "dependsOn": [
         "D-035",
-        "D-048-p3-live-review"
+        "D-048-p3-live-review",
+        "TASK13-pinned-work",
+        "D-065-C"
       ],
-      "note": "D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. After D-035 (same spend and refund code) and the live review (which moves the explore cost line into shared/moneyCopy.ts)."
+      "note": "D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. After D-035 (same spend and refund code), the live review (which moves the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends)."
     },
     {
       "id": "PICKER-landing-slot",
@@ -508,7 +522,7 @@
       "branch": "agent/claude/d090-byor",
       "status": "architect",
       "dependsOn": [],
-      "note": "Claude Code writes the packet (standard credit rules, the four approved surfaces)."
+      "note": "Any agent writes the packet (D-109): standard credit rules, the four approved surfaces."
     },
     {
       "id": "D-095-one-tap",
@@ -691,7 +705,7 @@
       "branch": "agent/claude/sync-log-off-main",
       "status": "architect",
       "dependsOn": [],
-      "note": "Claude Code writes the packet: write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected."
+      "note": "Any agent writes the packet (D-109): write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected."
     }
   ]
 }
