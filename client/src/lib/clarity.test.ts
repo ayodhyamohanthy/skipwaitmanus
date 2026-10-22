@@ -18,6 +18,8 @@ describe("Clarity wiring", () => {
     expect(shouldTrackClarityPath("/share-card/xyz")).toBe(false);
     expect(shouldTrackClarityPath("/fast/r12-34")).toBe(false);
     expect(shouldTrackClarityPath("/refer/a/b")).toBe(false);
+    expect(shouldTrackClarityPath("/company/claim")).toBe(false);
+    expect(shouldTrackClarityPath("/company/dashboard/quillmint")).toBe(false);
     expect(shouldTrackClarityPath("/")).toBe(true);
     expect(shouldTrackClarityPath("/feed")).toBe(true);
     expect(shouldTrackClarityPath("/pricing")).toBe(true);

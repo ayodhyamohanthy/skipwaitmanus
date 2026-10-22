@@ -9,7 +9,7 @@ import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { readApiJson } from "@/lib/apiResponse";
 
 // D-055: recognition only. Referrers earn no credits, so this page shows no credit balance.
-type ReferrerImpactSummary = { acceptedReferrals: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> };
+type ReferrerImpactSummary = { acceptedReferrals: number; introductions: number; activeConversations: number; outcomesShared: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> };
 
 function relativeDays(iso: string) {
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -53,12 +53,12 @@ export default function ReferrerImpact() {
       const response = await fetch("/api/referrer/impact-summary", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
       const payload = await readApiJson<ReferrerImpactSummary & { error?: string }>(response, "We could not load your referral impact");
       if (!response.ok) throw new Error(payload.error || "We could not load your referral impact");
-      setSummary({ acceptedReferrals: Math.max(0, Number(payload.acceptedReferrals) || 0), pendingRequests: Math.max(0, Number(payload.pendingRequests) || 0), declinedRequests: Math.max(0, Number(payload.declinedRequests) || 0), unreadMessages: Math.max(0, Number(payload.unreadMessages) || 0), recentAccepted: Array.isArray(payload.recentAccepted) ? payload.recentAccepted.slice(0, 5) : [] });
+      setSummary({ acceptedReferrals: Math.max(0, Number(payload.acceptedReferrals) || 0), introductions: Math.max(0, Number(payload.introductions) || 0), activeConversations: Math.max(0, Number(payload.activeConversations) || 0), outcomesShared: Math.max(0, Number(payload.outcomesShared) || 0), pendingRequests: Math.max(0, Number(payload.pendingRequests) || 0), declinedRequests: Math.max(0, Number(payload.declinedRequests) || 0), unreadMessages: Math.max(0, Number(payload.unreadMessages) || 0), recentAccepted: Array.isArray(payload.recentAccepted) ? payload.recentAccepted.slice(0, 5) : [] });
     } catch (reason) { setSummary(null); setError(reason instanceof Error ? reason.message : "We could not load your referral impact"); }
     finally { setLoading(false); }
   };
   useEffect(() => { if (isSignedIn && hasVerifiedWorkEmail) void loadSummary(); }, [isSignedIn, hasVerifiedWorkEmail]);
-  const frame = (screen: string, content: ReactNode) => <ReferrerWorkspace view="impact" screen={screen} isSignedIn={Boolean(isSignedIn)} onSignIn={() => go(REFERRER_SIGN_IN_HREF)}>{content}</ReferrerWorkspace>;
+  const frame = (screen: string, content: ReactNode) => <ReferrerWorkspace view="impact" screen={screen} isSignedIn={Boolean(isSignedIn)} isSetUp={Boolean(isSignedIn) && hasVerifiedWorkEmail} onSignIn={() => go(REFERRER_SIGN_IN_HREF)}>{content}</ReferrerWorkspace>;
   const loadingState = <LoadingNote>Loading your private impact…</LoadingNote>;
 
   if (!isLoaded) return frame("referrer-impact-loading", loadingState);
@@ -86,12 +86,13 @@ export default function ReferrerImpact() {
   if (!summary) return null;
 
   if (summary.acceptedReferrals === 0) return frame("referrer-impact", <ImpactState icon={HeartHandshake} eyebrow="YOUR IMPACT STARTS AT ZERO" title="No invented scoreboards." text="When real introductions happen, this space can reflect actions you control: thoughtful replies, introductions made, and people helped. It will never rank generosity.">
-    <div aria-label="Your private impact"><Stat value={summary.acceptedReferrals} label="referrals accepted" /><Stat value={summary.pendingRequests} label="pending decisions" /><Stat value={summary.unreadMessages} label="unread messages" /></div>
+    <div aria-label="Your private impact"><Stat value={summary.introductions} label="introductions" /><Stat value={summary.activeConversations} label="active conversations" /><Stat value={summary.outcomesShared} label="outcomes shared" /></div>
     <Button asChild><Link href="/queue">See how a request looks <ArrowRight /></Link></Button>
   </ImpactState>);
 
-  return frame("referrer-impact", <ImpactState icon={HeartHandshake} eyebrow="ONLY YOU CAN SEE THIS" title="Your private impact at a glance." text="Acceptances, pending decisions, and private messages from the requests you covered. skipwait.me never pays referrers.">
-    <div aria-label="Your private impact"><Stat value={summary.acceptedReferrals} label="referrals accepted" /><Stat value={summary.pendingRequests} label="pending decisions" /><Stat value={summary.unreadMessages} label="unread messages" /></div>
+  return frame("referrer-impact", <ImpactState icon={HeartHandshake} eyebrow="ONLY YOU CAN SEE THIS" title="Your private impact at a glance." text="Introductions you made, conversations still open, and outcomes the seekers shared — from the requests you covered. skipwait.me never pays referrers.">
+    {/* .impact-zero>div only wraps below 768px; six metrics overflow the frame on desktop, so wrap here at every width. */}
+    <div aria-label="Your private impact" className="flex-wrap justify-center"><Stat value={summary.introductions} label="introductions" /><Stat value={summary.activeConversations} label="active conversations" /><Stat value={summary.outcomesShared} label="outcomes shared" /><Stat value={summary.acceptedReferrals} label="referrals accepted" /><Stat value={summary.pendingRequests} label="pending decisions" /><Stat value={summary.unreadMessages} label="unread messages" /></div>
     {summary.recentAccepted.length ? (
       <section aria-label="Recent referrals" className="mb-8 w-full max-w-xl rounded-[8px] border border-border p-5 text-left">
         <span className="eyebrow">Recent referrals</span>

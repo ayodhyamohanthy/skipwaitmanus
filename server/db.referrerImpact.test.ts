@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SQL as SQLQuery } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { profiles, referralRequests, referralTransitionEvents } from "../drizzle/schema";
-import { getPrivateReferrerImpactSummary } from "./db";
+import { getPrivateReferrerImpactSummary, summarizeReferrerImpact } from "./db";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
@@ -110,5 +110,47 @@ describe("referrer impact reply latency", () => {
     expect(summary.repliedWithin3DaysPct).toBe(50);
     tables.profiles = [];
     await expect(getPrivateReferrerImpactSummary(9)).rejects.toThrow(/verify your company email/i);
+  });
+});
+
+describe("referrer impact kit metrics", () => {
+  const ask = (id: number, status: string, updatedAtDays = 0) => ({ id, status, companyDomain: "acme.com", updatedAt: new Date(T0 + updatedAtDays * DAY) });
+  const base = { milestones: [], threadedRequestIds: [], unreadMessageCount: 0, creditsRemaining: 0 };
+
+  it("counts an introduction from the recorded milestone, not the status it later collapsed into", () => {
+    const summary = summarizeReferrerImpact({
+      ...base,
+      requests: [ask(1, "closed"), ask(2, "approved")],
+      milestones: [{ referralRequestId: 1, resultingStatus: "intro_made" }],
+    });
+    expect(summary).toMatchObject({ acceptedReferrals: 2, introductions: 1, outcomesShared: 0 });
+  });
+
+  it("counts each ask once for outcomes shared, however many milestones it collected", () => {
+    const summary = summarizeReferrerImpact({
+      ...base,
+      requests: [ask(1, "offer")],
+      milestones: [
+        { referralRequestId: 1, resultingStatus: "intro_made" },
+        { referralRequestId: 1, resultingStatus: "interview" },
+        { referralRequestId: 1, resultingStatus: "offer" },
+      ],
+    });
+    expect(summary).toMatchObject({ introductions: 1, outcomesShared: 1 });
+  });
+
+  it("counts an active conversation only while the referral is still running, once per ask", () => {
+    const summary = summarizeReferrerImpact({
+      ...base,
+      requests: [ask(1, "approved"), ask(2, "closed"), ask(3, "pending")],
+      threadedRequestIds: [1, 1, 2, 3],
+    });
+    expect(summary.activeConversations).toBe(1);
+  });
+
+  it("keeps the accepted list newest-first and capped at five", () => {
+    const summary = summarizeReferrerImpact({ ...base, requests: [0, 1, 2, 3, 4, 5, 6].map(offset => ask(offset, "approved", offset)) });
+    expect(summary.recentAccepted.map(row => row.id)).toEqual([6, 5, 4, 3, 2]);
+    expect(summary.acceptedReferrals).toBe(7);
   });
 });

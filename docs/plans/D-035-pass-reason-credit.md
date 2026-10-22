@@ -41,7 +41,7 @@ When a verified employee passes on an ask they picked up:
 5. After D-038-B, `referralWasClaimedTx` treats {`claim`, `claim_lapse`, `referred_lapse`, `step_back`} as the pickup-or-release set: the latest must be a `claim`.
 
 ## 4. Target behaviour
-1. **Action names.** A pass whose code is not fixable, or which carries no code (legacy), is recorded as transition `action: "pass_release"`. A fixable pass stays `action: "pass"`. Everything else in `passReferralRequestTx` is unchanged: the pass row, revoked grant, released slot, deleted save, consumed link, reopen.
+1. **Action names.** A pass by the current pickup owner whose code is not fixable, or which carries no code (legacy), is recorded as transition `action: "pass_release"`. A fixable pass stays `action: "pass"`. Everything else in `passReferralRequestTx` is unchanged: the pass row, revoked grant, released slot, deleted save, consumed link, reopen.
 2. **Release set.** `referralWasClaimedTx`'s set adds `pass_release`. A fixable pass is not in the set, so an earlier claim stays the latest pickup and the credit stays spent (today's D-021 behaviour).
 3. **Seeker notice** for a pass on an ask the referrer had claimed. Title "Update on your referral request — <company>". The body has three parts:
    - opening: "A verified employee at <company> said: <label>.";
@@ -118,3 +118,5 @@ In `server/db.referralPassReopen.test.ts` (its bespoke fake supports this path),
 
 ## 12. Owner questions
 None open (D-076 (1), (7)).
+
+Oct 22 repair in progress, Kat D035 fixer · 30e5, a separate owner-authorized fixer session from reviewer Kat · 0a2c. F1 reproduced in four withdrawal/expiry and coded/legacy colleague-pass regressions. Only the current pickup owner may record pass_release; an unclaimed pass stays pass and cannot erase a prior paid review. Integrated with main 84f4deb4; full gate and a new independent review remain required. Not landed or live.

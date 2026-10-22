@@ -95,7 +95,7 @@ describe("D-038-B: referred deadline (5 days)", () => {
     expect(noticesFor(REFERRER).some(n => n.title === "An accepted ask went back to your colleagues")).toBe(true);
   });
 
-  it("the credit is released after lapse", async () => {
+  it("a referred lapse moves no money; the credit comes back only when the reopened ask expires", async () => {
     seed({
       asks: [acceptedAsk({ revision: 1, debitTransactionId: 11 })],
       events: [{ id: 100, referralRequestId: REQUEST_ID, operationKey: "review:2:approved", actorUserId: REFERRER, action: "review", fromStatus: "pending", resultingStatus: "approved", resultingRevision: 1, createdAt: new Date(T0) }],
@@ -175,6 +175,37 @@ describe("D-038-B: referred deadline (5 days)", () => {
     expect(askById(REQUEST_ID)?.status).toBe("intro_made");
   });
 
+  it("a confirmation for an earlier acceptance does not count as this one (F5)", async () => {
+    // The operation key is scoped to the acceptance (seeker-confirmed:<acceptEventId>), so the
+    // replay check must be too: an old confirmation from a previous cycle cannot answer for the
+    // current acceptance.
+    seed({
+      asks: [acceptedAsk({ revision: 3 })],
+      events: [
+        { id: 50, referralRequestId: REQUEST_ID, operationKey: "seeker-confirmed:40", actorUserId: SEEKER, action: "seeker_confirmed_referred", fromStatus: "approved", resultingStatus: "intro_made", resultingRevision: 1, createdAt: new Date(T0 - 30 * DAY_MS) },
+        { id: 100, referralRequestId: REQUEST_ID, operationKey: "review:2:approved", actorUserId: REFERRER, action: "review", fromStatus: "pending", resultingStatus: "approved", resultingRevision: 3, createdAt: new Date(T0) },
+      ],
+    });
+
+    const result = await confirmReferredBySeeker(store.db as any, REQUEST_ID, T0 + 2 * DAY_MS);
+    expect(result).toEqual({ confirmed: true });
+    expect(askById(REQUEST_ID)?.status).toBe("intro_made");
+    expect(eventsFor(REQUEST_ID).filter(e => e.action === "seeker_confirmed_referred" && e.operationKey === "seeker-confirmed:100").length).toBe(1);
+  });
+
+  it("a duplicate confirmation for the same acceptance is still a replay (F5)", async () => {
+    seed({
+      asks: [acceptedAsk({ revision: 2 })],
+      events: [
+        { id: 100, referralRequestId: REQUEST_ID, operationKey: "review:2:approved", actorUserId: REFERRER, action: "review", fromStatus: "pending", resultingStatus: "approved", resultingRevision: 1, createdAt: new Date(T0) },
+        { id: 101, referralRequestId: REQUEST_ID, operationKey: "seeker-confirmed:100", actorUserId: SEEKER, action: "seeker_confirmed_referred", fromStatus: "approved", resultingStatus: "intro_made", resultingRevision: 2, createdAt: new Date(T0 + DAY_MS) },
+      ],
+    });
+
+    expect(await confirmReferredBySeeker(store.db as any, REQUEST_ID, T0 + 2 * DAY_MS)).toEqual({ confirmed: false, replayed: true });
+    expect(eventsFor(REQUEST_ID).filter(e => e.action === "seeker_confirmed_referred").length).toBe(1);
+  });
+
   it("stepping back reopens with no fault", async () => {
     seed({
       asks: [acceptedAsk({ revision: 1 })],
@@ -210,7 +241,6 @@ describe("D-038-B: referred deadline (5 days)", () => {
       lapseClaim: (tx: any, requestId: number, nowMs: number) => import("./db").then(m => m.lapseClaimTx(tx, requestId, nowMs)),
       lapseAllocation: (tx: any, requestId: number, nowMs: number) => import("./db").then(m => m.lapseAllocationTx(tx, requestId, nowMs)),
       lapseReferred: (tx: any, requestId: number, nowMs: number) => import("./db").then(m => m.lapseReferredTx(tx, requestId, nowMs)),
-      stepBack: (tx: any, requestId: number, nowMs: number) => import("./db").then(m => m.stepBackFromReferral(tx, requestId, nowMs)),
     });
 
     // Day 2 reminder

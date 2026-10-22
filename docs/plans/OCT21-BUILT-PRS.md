@@ -7,7 +7,7 @@ These pull requests were built before they had a packet. This packet is their pa
 ## Rules for every task here
 1. **Green before `main` (D-082).** Merge the latest `origin/main` into the pull request's branch (never rebase or force-push), run the full gate from `docs/BRIEF.md` "How to ship", and land only when every check on that exact commit is green. GitHub refuses anything else.
 2. **Flags stay off (D-097).** Every new behaviour lands behind its flag, off. Turning a flag on is a separate step after QA, never part of these tasks.
-3. **Migrations.** A pull request whose migration number is already used on `main` takes the next free number (plan §5 says which; today 0101 or higher) before anything else, and records it in plan §5 in the same pull request. Renumbering never changes the SQL.
+3. **Migrations.** A pull request whose migration number is already used on `main` takes the next free number (plan §5 says which; today 0103 or higher) before anything else, and records it in plan §5 in the same pull request. Renumbering never changes the SQL.
 4. **Tier 1** (money, sign-in, identity, privacy, migrations): the builder stops at a green draft pull request; a different session reviews it (`docs/DELEGATION.md` §6) and lands it. Tier 2 and 3: the builder lands it.
 5. **Never change prices or credit rules (D-056, D-091).** Tasks marked `owner` in the list wait for the owner's yes and are never landed by an agent.
 6. In the same pull request that lands a task, set its `status` to `done` in `docs/plans/assignments.json` and update the decision's `Sync` cell and any doc the change makes stale (D-068).
@@ -30,7 +30,7 @@ Seeker win card (D-105): an opt-in copy card on an accepted ask, client-only, fl
 Referrer impact card (D-106): shareable aggregates under the referrer's screen name only, flag off. Tier 1 because it publishes referrer data. Done: merged with `main`, gate green, review passed (screen name only, never the legal name, employer email or any seeker detail; aggregates only), landed with the flag off.
 
 ### D-048-F-typescale (#379, `agent/opencode/goal-kit-type-scale`, Tier 2, first in lane `design-core`)
-The goal kit's type scale: a shared merge helper dropped the goal type tokens. It is the first foundation step of D-048 phase 3 (docs/plans/D-048-phase-3-split.md). Done: merged with `main`, gate green including the design-token audit, goal component tests unchanged or extended (never weakened), landed.
+The goal kit's type scale: a shared merge helper dropped the goal type tokens. It is the first foundation step of D-048 phase 3 (docs/plans/D-048-phase-3-split.md). Done: merged with `main`, gate green including the design-token audit, goal component tests unchanged or extended (never weakened), landed 2026-10-22 as PR #379. The lander re-ran the gate on the merged candidate: `pnpm check`, the token audit, the deploy-trigger check and `pnpm build` green; `client/src/lib/utils.test.ts` 4/4; full suite 3,917 passed with only the nine macOS bash-3.2 `deployMigrations` failures plus two load-flaky server files that pass in isolation and on CI.
 
 ### D-048-p3-map (#358, `agent/workbuddy/d048-phase3-plan`, Tier 3)
 The D-048 phase 3 rollout map (eight waves, one pull request each). Done: merged with `main`, consistent with `DESIGN.md`, D-077 and docs/plans/D-048-phase-3-split.md (D-134 wins where they differ: cluster lanes, dark landing, one-line releases), landed.
@@ -59,3 +59,5 @@ Queue task 13 slice A: pinned showcase work rides with the ask as a snapshot. It
 
 ## Status
 Rows whose packet is this file and that share a plan row (the D-048 rows listed here share "D-048"; ROW20-A, -B and -CD share "20") write their status here, one line per task, never in the shared §3b row (D-134). Other D-048 rows write in the packet their task row names.
+
+- **ROW20-A (#310) — done, landed 2026-10-22.** The Impact frame now counts the kit's three metrics (introductions, active conversations, outcomes shared) from `referralTransitionEvents` history instead of the collapsed `referralRequests.status`, via the exported pure `summarizeReferrerImpact` with `getReferrerImpactSummary` as the loader; `privateReferralRoutes` re-uses the shared `ReferrerImpactSummary` type. Landed after merging `origin/main` `938a4c18`, where D-055 had removed the referrer credit balance: the page keeps that (no `creditsRemaining` in the type, the edge coercion or the frame) and the client test reads each stat per label, with `/credits remaining/` absent and "never pays referrers" present. Verified at 1280 (one row of six, no credit stat) and 390 (wraps to two rows that clear the fixed bottom nav on scroll) with the API mocked at the network layer.

@@ -1,3 +1,4 @@
+import { sendTransactionalEmail } from "./emailDelivery";
 // Scheduled job "daily-money-check" (D-065, the payments bar under D-058).
 //
 // Once a day this reads the money tables and emails the owner anything that
@@ -93,7 +94,7 @@ async function countPaymentCreditRows(paymentIds: number[]): Promise<PaymentCred
   return rows.map(row => ({ paymentId: Number(row.referenceId), creditRows: Number(row.creditRows), creditedTokens: Number(row.creditedTokens) }));
 }
 
-async function listParkedPayments(limit: number): Promise<ParkedPaymentRow[]> {
+export async function listParkedPayments(limit: number): Promise<ParkedPaymentRow[]> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
   return db.select({ id: paymentFulfillments.id, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, reconciliationReason: paymentFulfillments.reconciliationReason, createdAt: paymentFulfillments.createdAt })
     .from(paymentFulfillments).where(eq(paymentFulfillments.status, "requires_review"))
@@ -366,17 +367,10 @@ export async function listReleasedPassUnrefunded(limit: number): Promise<Release
   return found;
 }
 
-async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {  try {
-    const apiKey = process.env.RESEND_API_KEY;
-    const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-    if (!apiKey || !sender) throw new Error("Money check email delivery is not configured");
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: sender, to: [MONEY_CHECK_RECIPIENT], subject: input.subject, text: input.text }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {
+  try {
+    const delivery = await sendTransactionalEmail({ to: MONEY_CHECK_RECIPIENT, subject: input.subject, text: input.text });
+    if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Money check email delivery is not configured" : "Money check email delivery failed");
     return true;
   } catch (error) {
     console.warn("[DailyMoneyCheck] Unable to send the owner email", error instanceof Error ? error.message : error);
@@ -384,7 +378,7 @@ async function sendMoneyCheckEmail(input: { subject: string; text: string }): Pr
   }
 }
 
-export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
+const defaultMoneyCheckDeps: DailyMoneyCheckDeps = {
   auditWallets: getFullCreditLedgerAudit,
   listCreditedPayments,
   countPaymentCreditRows,
@@ -400,7 +394,9 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
   listReleasedPassUnrefunded,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
-}) {
+};
+
+export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCheckDeps) {
   return async ({ nowMs }: JobRunContext): Promise<JobRunOutput> => {
     const findings: string[] = [];
 
@@ -504,4 +500,34 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
     }
     return output;
   };
+}
+
+export type MoneyCheckRunResult = { emailSent: boolean; findingsEmailed: boolean; subject: string | null; text: string | null };
+
+/**
+ * One on-demand run of the same read-only audit the daily job uses. It never
+ * touches the job window or any money row. It returns the exact owner-email
+ * text so an admin can read the findings even when delivery is down, and it
+ * sends that same owner email through the normal adapter.
+ */
+export async function runMoneyCheckNow(nowMs: number, deps: DailyMoneyCheckDeps = defaultMoneyCheckDeps): Promise<MoneyCheckRunResult> {
+  let captured: { subject: string; text: string } | null = null;
+  let delivered = false;
+  const run = createDailyMoneyCheck({
+    ...deps,
+    sendEmail: async input => {
+      captured = input;
+      delivered = await deps.sendEmail(input);
+      return delivered;
+    },
+  });
+  await run({ nowMs, windowKey: "manual" });
+  const sent = captured as { subject: string; text: string } | null;
+  return { emailSent: delivered, findingsEmailed: sent !== null, subject: sent?.subject ?? null, text: sent?.text ?? null };
+}
+
+/** The same audit with no email: findings text only (used by admin Skippie). */
+export async function readMoneyCheckFindings(nowMs: number): Promise<{ findingsFound: boolean; subject: string | null; text: string | null }> {
+  const result = await runMoneyCheckNow(nowMs, { ...defaultMoneyCheckDeps, sendEmail: async () => false });
+  return { findingsFound: result.findingsEmailed, subject: result.subject, text: result.text };
 }

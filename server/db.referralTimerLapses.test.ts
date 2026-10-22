@@ -177,7 +177,6 @@ describe("D-038-A: the reminder and the cap", () => {
       lapseClaim: async (tx, requestId, nowMs) => lapseClaimTx(tx, requestId, nowMs),
       lapseAllocation: async () => { throw new Error("allocation step exploded"); },
       lapseReferred: async () => ({ lapsed: false }),
-      stepBack: async () => ({ lapsed: false }),
     });
 
     const output = await job({ nowMs: LAPSE } as never);

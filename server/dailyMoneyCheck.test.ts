@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, REFERRAL_TIMERS_SINCE } from "../shared/referral";
-import { createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, listReleasedPassUnrefunded, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
+import { runMoneyCheckNow, createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, listReleasedPassUnrefunded, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
 import { DAY_MS, LINK_OWNER, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -601,6 +601,32 @@ describe("released_pass_unrefunded over the in-memory database", () => {
     const output = await createDailyMoneyCheck(deps)({ nowMs: KIT_NOW, windowKey: "2026-10-18T12:00Z" });
 
     expect(output.failed).toBe(0);
+    expect(sent).toEqual([]);
+  });
+});
+
+describe("runMoneyCheckNow (on-demand admin run)", () => {
+  it("returns the exact owner-email text and reports delivery", async () => {
+    const { deps, sent } = makeDeps({ listParkedPayments: vi.fn(async () => [{ id: 7, amount: 99, currency: "INR", reconciliationReason: "unmatched", createdAt: NOW } as never]) });
+    const result = await runMoneyCheckNow(NOW.getTime(), deps);
+    expect(result.findingsEmailed).toBe(true);
+    expect(result.emailSent).toBe(true);
+    expect(result.text).toContain("parked payment: #7");
+    expect(result.text).toBe(sent[0].text);
+  });
+
+  it("still returns the findings when email delivery fails, so they are never silent", async () => {
+    const { deps } = makeDeps({ listParkedPayments: vi.fn(async () => [{ id: 8, amount: 1, currency: "USD", reconciliationReason: null, createdAt: NOW } as never]), sendEmail: vi.fn(async () => false) });
+    const result = await runMoneyCheckNow(NOW.getTime(), deps);
+    expect(result.emailSent).toBe(false);
+    expect(result.findingsEmailed).toBe(true);
+    expect(result.text).toContain("parked payment: #8");
+  });
+
+  it("a clean ledger sends nothing and returns no findings", async () => {
+    const { deps, sent } = makeDeps();
+    const result = await runMoneyCheckNow(NOW.getTime(), deps);
+    expect(result).toEqual({ emailSent: false, findingsEmailed: false, subject: null, text: null });
     expect(sent).toEqual([]);
   });
 });

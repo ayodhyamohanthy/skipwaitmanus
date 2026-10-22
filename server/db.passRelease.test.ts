@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { referralTransitionEvents } from "../drizzle/schema";
 import { CREDIT_ENDED_CAVEAT } from "../shared/moneyCopy";
 import { expireStalePendingReferralRequest, oneClickReviewReferralRequest, withdrawCompanyReferralRequest } from "./db";
-import { LINK_OWNER, REQUEST_ID, SEEKER, askRow, claimEvent, eventActions, noticesFor, reversalsOf, seedHeldAsks, store } from "./heldAsk.testkit";
+import { COLLEAGUE, LINK_OWNER, REQUEST_ID, SEEKER, askRow, claimEvent, eventActions, noticesFor, reversalsOf, seedHeldAsks, store } from "./heldAsk.testkit";
 
 /*
  * D-035: the pass reason decides the credit.
@@ -116,4 +116,23 @@ describe("D-035: the release set stays exact", () => {
     expect(await withdrawCompanyReferralRequest(SEEKER, REQUEST_ID)).toMatchObject({ withdrawn: true, creditRefunded: false });
     expect(reversalsOf()).toEqual([]);
   });
+});
+
+
+describe("D-035: an unclaimed colleague cannot release a paid review", () => {
+  for (const terminal of ["withdraw", "expiry"] as const) {
+    it.each(["role_closed", undefined])(`keeps the fixable pickup spent after an unclaimed %s pass and ${terminal}`, async passReason => {
+      await pass({ declineReason: "role_not_a_fit", passReason: "needs_experience" });
+      await oneClickReviewReferralRequest(COLLEAGUE, { requestId: REQUEST_ID, decision: "declined", declineReason: "role_not_a_fit", passReason });
+      // The colleague never owned the pickup. Neither their coded nor legacy pass releases it.
+      if (terminal === "withdraw") {
+        expect(await withdrawCompanyReferralRequest(SEEKER, REQUEST_ID)).toMatchObject({ withdrawn: true, creditRefunded: false });
+        expect(await withdrawCompanyReferralRequest(SEEKER, REQUEST_ID)).toMatchObject({ withdrawn: true, creditRefunded: false });
+      } else {
+        expect(await expireStalePendingReferralRequest(SEEKER, REQUEST_ID, SHELF_END)).toMatchObject({ expired: true, status: "closed" });
+      }
+      expect(passEvents().map(event => event.action)).toEqual(["pass", "pass"]);
+      expect(reversalsOf()).toEqual([]);
+    });
+  }
 });
