@@ -2,7 +2,7 @@
  * Canonical registry for every public, indexable skipwait.me URL.
  *
  * One table is the source of truth for the sitemap
- * (shared/sitemap.ts, served by the API container), the no-JavaScript HTML the build writes
+ * (@functions/sitemap.xml.ts), the no-JavaScript HTML the build writes
  * (@scripts/prerender-public-pages.tsx), and the client <head>
  * (@client/src/lib/seo.ts). A path that is not listed here is not a page we ask
  * a crawler to index, which is what stops the site from advertising an infinite
