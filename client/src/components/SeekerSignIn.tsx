@@ -69,7 +69,7 @@ export function SeekerSignIn({ returnTo = "/explore", goal = false }: { returnTo
       <p className="text-xs leading-relaxed text-muted-foreground">We’ll email you a six-digit code. New here? That creates your account.</p>
       {error && <p role="alert" className="text-sm text-[#B91C1C]">{error}</p>}
       <Button type="submit" className={commit} disabled={busy || !email.trim()}>{busy ? "Sending code…" : "Send sign-in code"} <ArrowRight /></Button>
-      <Button type="button" variant="ghost" className="sr-only" onClick={() => document.getElementById("seeker-email")?.focus()}>Continue with email</Button>
+      <Button type="button" variant="ghost" className={commit ? `sr-only ${commit}` : "sr-only"} onClick={() => document.getElementById("seeker-email")?.focus()}>Continue with email</Button>
       <div className="auth-divider"><span>or</span></div>
       <div className="auth-options">
         {SEEKER_SOCIAL.map(item => <Button key={item.id} type="button" variant="outline" className="google-button" onClick={() => window.location.assign(seekerSocialUrl(item.id, returnTo))}><span className="google-g" aria-hidden="true">{item.mark}</span>Continue with {item.label}</Button>)}
