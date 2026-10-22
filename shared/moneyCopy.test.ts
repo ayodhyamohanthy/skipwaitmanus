@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "./referral";
-import { askCostLine } from "./moneyCopy";
+import { askCostLanding, askCostLine } from "./moneyCopy";
 
 /*
  * D-038-reconcile F3 (R-2, D-042): the credit rule may promise the reopen path
@@ -69,5 +69,30 @@ describe("CREDIT_RULE follows the part B switch", () => {
     const rule = await ruleWithSwitch(true);
     expect(rule).toMatch(REOPEN);
     expect(rule).toContain("steps back");
+  });
+});
+
+describe("level-aware ask cost (D-132 item 7)", () => {
+  it("default cost is 1 credit: every existing line is unchanged", () => {
+    expect(askCostLine({ open: true, balance: 2 }).line).toBe("Uses 1 of your 2 credits");
+    expect(askCostLine({ open: null, balance: null }).line).toBe("Uses 1 credit when a verified employee can see it");
+    expect(askCostLine({ open: false, balance: 7 }).detail).toContain("1 credit is used");
+  });
+  it("a level cost is stated in the same line", () => {
+    expect(askCostLine({ open: true, balance: 8, cost: 5 }).line).toBe("Uses 5 of your 8 credits");
+    expect(askCostLine({ open: null, balance: null, cost: 5 }).line).toBe("Uses 5 credits when a verified employee can see it");
+    expect(askCostLine({ open: false, balance: 8, cost: 5 }).detail).toContain("5 credits are used");
+  });
+  it("short of credits names the gap and blocks", () => {
+    const line = askCostLine({ open: true, balance: 3, cost: 5 });
+    expect(line.line).toBe("This ask costs 5 credits. You have 3. Add 2 more.");
+    expect(line.blockedReason).toBe("This ask costs 5 credits. You have 3. Add 2 more.");
+  });
+  it("landing copy: flat wording with the flag off, level wording with it on, never 'costs the same' under levels", () => {
+    expect(askCostLanding(false).fairRule).toContain("1 credit");
+    expect(askCostLanding(false).stepBody).toContain("Every ask costs the same");
+    const on = askCostLanding(true);
+    for (const text of [on.stepBody, on.waitBody, on.fairRule]) { expect(text).not.toMatch(/costs the same|\b1 credit only\b/); }
+    expect(on.fairRule).toContain("its job level");
   });
 });
