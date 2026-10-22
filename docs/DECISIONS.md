@@ -187,3 +187,7 @@ Earlier questions: referrer tips (seeker→referrer money) · machine translatio
 - The Kit v4 visual contract (`DESIGN.md`), D-001's PNG fidelity for visuals and layout, and D-044's "the kit governs layout" → D-048 (goal-focused UI; designs approved by the owner before rollout).
 - D-013's "40-task kit order" → D-053 (goal order; developer platform, lite mode and T2–T4 pricing parked).
 - D-030's seeker email method (six-digit code) → D-049 (social or personal email + password; no code). D-002 is revived for seekers only; referrers keep the work-email code on every sign-in.
+
+## Owner registration attestation, Oct 22
+
+registered by owner Ayu, coordinator unavailable, Oct 22. Scoped owner exception to D-083/D-134 registration authority for PR #462 (`PREMIUM-total-label`) and PR #463 (`D-067-outbox-fixture-repair`) only. Both packets are registered together at the front of assignments; all pre-existing rows retain their order and content. Normal origin/main picker claims, full exact-candidate gate, GitHub CI and independent Tier 1 review still apply. Neither implementation nor production operations are authorized by registration alone. See the two packets for owned paths and evidence.

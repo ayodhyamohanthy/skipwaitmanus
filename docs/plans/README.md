@@ -81,3 +81,7 @@ The goal-UI rollout runs as one foundation chain (lane `design-core`) and then u
 - **The D-038 and D-035 slices (3.x):** each edits the claim, accept, pass and transition functions. One at a time, never beside each other or beside a P0 in those functions.
 - **F-4 waits for the sign-in branch:** that branch already rewrites `server/sentry.ts`.
 - **F-5 waits for D-067:** D-067 removes the gift keys from `.env.example`.
+
+## Owner-registered follow-ups, Oct 22
+
+registered by owner Ayu, coordinator unavailable, Oct 22. Scoped owner exception to D-083/D-134 registration authority for PR #462 (`PREMIUM-total-label`) and PR #463 (`D-067-outbox-fixture-repair`) only. Both packets are registered together at the front of assignments; all pre-existing rows retain their order and content. Normal origin/main picker claims, full exact-candidate gate, GitHub CI and independent Tier 1 review still apply. Neither implementation nor production operations are authorized by registration alone. See the two packets for owned paths and evidence.

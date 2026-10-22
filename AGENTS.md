@@ -559,3 +559,7 @@ The build brief, rules, step-by-step tests and proof, name decision and pre-laun
 
 ## Claim-your-company (D-107, draft)
 Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COMPANY_CLAIM (off). No per-person data or account-role changes. Same-account, single-use email link. Current-month aggregates hidden below 3 referrers or answered asks. See docs/DECISIONS.md D-107. QA and delivery verification required before enablement.
+
+## Owner-registered follow-ups, Oct 22
+
+registered by owner Ayu, coordinator unavailable, Oct 22. Scoped owner exception to D-083/D-134 registration authority for PR #462 (`PREMIUM-total-label`) and PR #463 (`D-067-outbox-fixture-repair`) only. Both packets are registered together at the front of assignments; all pre-existing rows retain their order and content. Normal origin/main picker claims, full exact-candidate gate, GitHub CI and independent Tier 1 review still apply. Neither implementation nor production operations are authorized by registration alone. See the two packets for owned paths and evidence.

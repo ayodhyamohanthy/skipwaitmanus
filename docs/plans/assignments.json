@@ -1,10 +1,34 @@
 {
   "version": 1,
   "repo": "ayodhyamohanthy/skipwaitmanus",
-  "decidedBy": "Claude Code (architect, D-074, D-083)",
-  "updated": "2026-10-21",
+  "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
+  "updated": "2026-10-22",
   "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks, except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
   "tasks": [
+    {
+      "id": "PREMIUM-total-label",
+      "title": "Premium Pay callout shows the selected total, not the unit price",
+      "row": "PREMIUM-total-label",
+      "packet": "docs/plans/PREMIUM-total-label.md",
+      "tier": 1,
+      "lane": "premium-display",
+      "branch": "agent/kat/premium-total-repair-oct22",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "registered by owner Ayu, coordinator unavailable, Oct 22; PR #462. Display only; independent exact-head review and full gate before main."
+    },
+    {
+      "id": "D-067-outbox-fixture-repair",
+      "title": "Repair stale outbox MySQL fixtures without changing runtime or SQL",
+      "row": "D-067-outbox-fixture-repair",
+      "packet": "docs/plans/D-067-outbox-fixture-repair.md",
+      "tier": 1,
+      "lane": "outbox-test-evidence",
+      "branch": "agent/kat/outbox-fixture-repair-oct22",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "registered by owner Ayu, coordinator unavailable, Oct 22; PR #463. Isolated actual MySQL evidence; no production operation."
+    },
     {
       "id": "D-069-chargebee-catalog-sync",
       "title": "Admin-only Chargebee catalog sync: dry run, then one owner-triggered apply",
@@ -15,7 +39,7 @@
       "branch": "agent/claude/chargebee-catalog-sync",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan §6)."
+      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan \u00a76)."
     },
     {
       "id": "GO-LIVE-1",
@@ -43,7 +67,7 @@
       "dependsOn": [
         "GO-LIVE-1"
       ],
-      "note": "D-084. Landed through PR #359 (merge of agent/queue/go-live-passes into main, Oct 21): return-page and hourly recovery of pending pass checkouts through the provider checkout page, an alert on any unlinked kit subscription, and \"Ends <date>\" with a renewed cancel control while billing_cycles=1 is unproven. Passes STAY OFF (PASS_SALES_ENABLED=false): the switch commit needs the packet §4.5 test-site evidence (owner on skipwait-test), then one flag change. Review: passed by Assistant · 4b07; landed by DeepSeek V4.1 Flash Free · 89c2."
+      "note": "D-084. Landed through PR #359 (merge of agent/queue/go-live-passes into main, Oct 21): return-page and hourly recovery of pending pass checkouts through the provider checkout page, an alert on any unlinked kit subscription, and \"Ends <date>\" with a renewed cancel control while billing_cycles=1 is unproven. Passes STAY OFF (PASS_SALES_ENABLED=false): the switch commit needs the packet \u00a74.5 test-site evidence (owner on skipwait-test), then one flag change. Review: passed by Assistant \u00b7 4b07; landed by DeepSeek V4.1 Flash Free \u00b7 89c2."
     },
     {
       "id": "D-038-reconcile",
@@ -239,7 +263,7 @@
       "branch": "agent/instinct/share-win-card",
       "status": "done",
       "dependsOn": [],
-      "note": "CI was red on the design-token audit (a raw #059669 in the share-win dot; fixed to var(--g-emerald) before this takeover). Taken over by workbuddy · 8dc3 (2026-10-21), merged with origin/main (kit.css/content.json/DECISIONS.md/.env.example conflicts resolved additively), gate green on the merge commit, landed with the flag off."
+      "note": "CI was red on the design-token audit (a raw #059669 in the share-win dot; fixed to var(--g-emerald) before this takeover). Taken over by workbuddy \u00b7 8dc3 (2026-10-21), merged with origin/main (kit.css/content.json/DECISIONS.md/.env.example conflicts resolved additively), gate green on the merge commit, landed with the flag off."
     },
     {
       "id": "D-106-impact-card",
@@ -273,7 +297,7 @@
       "branch": "agent/workbuddy/d048-phase3-plan",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed as `f9d7e8d5` (PR #358) by DeepSeek V4.1 Flash Free · 91af: merged with `main`, the map corrected against D-120, D-123 and D-130, full gate green. W0 (the shell) is next."
+      "note": "Landed as `f9d7e8d5` (PR #358) by DeepSeek V4.1 Flash Free \u00b7 91af: merged with `main`, the map corrected against D-120, D-123 and D-130, full gate green. W0 (the shell) is next."
     },
     {
       "id": "D-048-phase-3",
@@ -323,7 +347,7 @@
       "branch": "agent/qoder/d048-phase-3-explore",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging main: /explore is owned by the page in App.tsx, the wave keeps its rewrite and carries main's #407 ?q= pre-filter into its query state, Explore.tsx joins MOVED_SURFACES, and three stale expectations are realigned (Neutrinos rebrand changes the row order and SEO line; the meta description carries main's current money copy). Captures at 1280/390 in five states (directory, drawer, not-open, empty, error). Gate: tsc, token audit, deploy triggers, 50 focused tests, build green; migration lint runs in CI."
+      "note": "Landed by workbuddy \u00b7 8dc3 (takeover, 2026-10-21) after merging main: /explore is owned by the page in App.tsx, the wave keeps its rewrite and carries main's #407 ?q= pre-filter into its query state, Explore.tsx joins MOVED_SURFACES, and three stale expectations are realigned (Neutrinos rebrand changes the row order and SEO line; the meta description carries main's current money copy). Captures at 1280/390 in five states (directory, drawer, not-open, empty, error). Gate: tsc, token audit, deploy triggers, 50 focused tests, build green; migration lint runs in CI."
     },
     {
       "id": "D-048-p3-requests",
@@ -335,7 +359,7 @@
       "branch": "agent/qoder/d048-phase-3-requests",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging origin/main: the shared goal/ shell takes main's newer W0 version (designer review 01:52: pill mono numeral + g-hit + /plans, account-menu slot, BetaBadge), MyRequests joins MOVED_SURFACES, and the pilot's superseded avatar assertion is re-pinned to the shell's real contract. Captures at 1280/390 in four states added with a reusable live-route capture tool (design/goal-ui/tools/capture-live.mjs). Gate: tsc, token audit, deploy triggers, 54 focused tests, build green; migration lint runs in CI (macOS bash 3.2 lacks declare -A)."
+      "note": "Landed by workbuddy \u00b7 8dc3 (takeover, 2026-10-21) after merging origin/main: the shared goal/ shell takes main's newer W0 version (designer review 01:52: pill mono numeral + g-hit + /plans, account-menu slot, BetaBadge), MyRequests joins MOVED_SURFACES, and the pilot's superseded avatar assertion is re-pinned to the shell's real contract. Captures at 1280/390 in four states added with a reusable live-route capture tool (design/goal-ui/tools/capture-live.mjs). Gate: tsc, token audit, deploy triggers, 54 focused tests, build green; migration lint runs in CI (macOS bash 3.2 lacks declare -A)."
     },
     {
       "id": "D-048-P-seeker",
