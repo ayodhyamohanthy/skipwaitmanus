@@ -1,13 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
 
 type Result = { ranAt: string; findingsFound: boolean; emailSent: boolean; subject: string | null; findings: string | null };
+
+type AlertStatus = { latestOutcome: string | null; latestAt: string | null; lastSuccessAt: string | null; failuresLast7Days: number; ownerNotReached: boolean };
 
 /** One button for the founder: runs the read-only money check and shows the findings here. */
 export default function AdminMoneyCheck() {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [alertStatus, setAlertStatus] = useState<AlertStatus | null>(null);
+  useEffect(() => {
+    void fetch("/api/admin/money-check/status", { credentials: "include" }).then(r => (r.ok ? r.json() : null)).then(b => setAlertStatus(b as AlertStatus | null)).catch(() => undefined);
+  }, []);
   const run = async () => {
     if (busy) return;
     setBusy(true); setError(""); setResult(null);
@@ -27,6 +33,11 @@ export default function AdminMoneyCheck() {
           <p className="text-sm text-muted-foreground">Checks every wallet, credited payment, parked payment and refund for entries that do not add up. It only reads. It changes no money. If it finds something, it also sends the usual owner email once. You can run it every 5 minutes at most.</p>
           <button type="button" onClick={() => void run()} disabled={busy} className="min-h-11 rounded-lg bg-[#141414] px-5 text-sm font-bold text-white disabled:opacity-50">{busy ? "Running" : "Run money check now"}</button>
         </section>
+        {alertStatus?.ownerNotReached ? (
+          <p role="alert" className="rounded-lg border border-red-700 p-3 text-sm font-semibold text-red-700">
+            The owner alert email FAILED to send. Latest attempt {alertStatus.latestAt ? new Date(alertStatus.latestAt).toLocaleString() : ""}. {alertStatus.failuresLast7Days} failed in the last 7 days. {alertStatus.lastSuccessAt ? `Last delivered ${new Date(alertStatus.lastSuccessAt).toLocaleString()}.` : "It has never been delivered."} Run the check below and read the findings here.
+          </p>
+        ) : null}
         {error ? <p role="alert" className="text-sm font-medium text-red-700">{error}</p> : null}
         {result ? (
           <section aria-label="Money check result" className="space-y-2">
