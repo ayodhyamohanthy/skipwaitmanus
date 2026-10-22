@@ -13,11 +13,25 @@ async function enqueue(input = { giftId: "gift_fixture", reason: "gift_claimed" 
 beforeEach(() => {
   memory.reset([]); clock = new Date("2026-10-19T00:00:00Z"); vi.useFakeTimers(); vi.setSystemTime(clock);
   vi.stubEnv("BILLING_ENV", "test"); vi.stubEnv("CHARGEBEE_SITE", "fixture-test");
-  vi.stubEnv("ERROR_ALERT_FROM_EMAIL", "fixture@example.invalid"); vi.stubEnv("RESEND_API_KEY", "fixture");
+  vi.stubEnv("ERROR_ALERT_FROM_EMAIL", "fixture@example.invalid"); vi.stubEnv("RESEND_API_KEY", "fixture"); vi.stubEnv("ZEPTOMAIL_API_KEY", "");
 });
 afterEach(() => {
   for (const table of [tokenBalances, tokenTransactions, paymentFulfillments, subscriptionEvents]) expect(memory.rows(table)).toEqual([]);
   vi.useRealTimers(); vi.unstubAllEnvs();
+});
+it("sends through ZeptoMail when it is the only configured provider, accepts its request_id, and sends once", async () => {
+  vi.stubEnv("RESEND_API_KEY", ""); vi.stubEnv("ZEPTOMAIL_API_KEY", "zepto_fixture");
+  await enqueue(); await enqueue();
+  const transport = vi.fn<typeof fetch>().mockImplementation(async () => new Response(JSON.stringify({ data: [], request_id: "req_zepto_1" }), { status: 200 }));
+  expect(await runBillingReviewOutbox({ now, fetchImpl: transport })).toEqual({ processed: 1, failed: 0 });
+  await runBillingReviewOutbox({ now, fetchImpl: transport });
+  expect(transport).toHaveBeenCalledTimes(1);
+  const [url, init] = transport.mock.calls[0];
+  expect(url).toBe("https://api.zeptomail.com/v1.1/email");
+  expect(init?.headers).toMatchObject({ Authorization: "Zoho-enczapikey zepto_fixture" });
+  expect(JSON.parse(String(init?.body)).to[0].email_address.address).toBe("ayodhya@skipwait.me");
+  const row = memory.rows(billingReviewOutbox)[0];
+  expect(row.status).toBe("accepted"); expect(row.providerMessageId).toBe("req_zepto_1");
 });
 it("uses the same opaque identity for claim and webhook, different subscription events remain distinct", () => {
   expect(billingReviewKey({ giftId: "g", reason: "gift_claimed" })).toBe(billingReviewKey({ giftId: "g", reason: "gift_claim_refused", eventId: "e" }));
