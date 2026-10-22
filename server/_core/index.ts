@@ -80,6 +80,7 @@ import { WorkOS } from "@workos-inc/node";
 import { registerAccountSessionRoutes } from "../accountSessions";
 import { registerAccountPreferenceRoutes } from "../accountPreferences";
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
+import { registerReviewerLoginRoutes } from "./reviewerLogin";
 import { sessionRenewal } from "./sessionRenewal";
 import { registerPaymentRoutes, findRazorpayOrdersByReceipt, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
@@ -200,6 +201,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Referrer OTP-first login is a public surface, always registered.
   app.use("/api", sessionRenewal);
   registerReferrerOtpLoginRoutes(app);
+  registerReviewerLoginRoutes(app);
   registerPasswordResetRoutes(app);
   if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);
   else registerDevAuthRoutes(app);

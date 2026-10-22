@@ -124,3 +124,9 @@ export function companyIdentityOf(source: CompanyIdentitySource): CompanyIdentit
   const mark = source.companyInitials?.trim();
   return { name: name || source.companyDomain, mark: mark || (source.companyDomain.charAt(0) || "?").toUpperCase() };
 }
+
+/** An ask from a shared job link can carry the platform's own domain instead of an employer; that is not a company name to show. */
+export function isUnknownCompany(source: CompanyIdentitySource): boolean {
+  const shown = companyIdentityOf(source).name.trim().toLowerCase().replace(/^www\./, "");
+  return shown === "" || shown === "skipwait.me";
+}

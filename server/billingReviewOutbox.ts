@@ -26,6 +26,22 @@ export const reviewStateSchema = z.object({
   if (row.status === "unknown" && !row.lastError) ctx.addIssue({ code: "custom", message: "Unknown reason missing" });
 });
 const DAY = 24 * 60 * 60_000;
+// ZeptoMail first (prod transactional provider), Resend only when Zepto is not configured.
+// ZeptoMail has no idempotency key, so a retry after an ambiguous attempt can send the owner a
+// second copy (at-least-once). The obligationKey row still makes the obligation itself unique.
+function providerConfigured() { return Boolean(process.env.ZEPTOMAIL_API_KEY || process.env.RESEND_API_KEY); }
+function providerRequest(bytes: string, obligationKey: string): [string, RequestInit] {
+  if (process.env.ZEPTOMAIL_API_KEY) {
+    const e = envelopeSchema.parse(JSON.parse(bytes));
+    return ["https://api.zeptomail.com/v1.1/email", { method: "POST", headers: { Authorization: `Zoho-enczapikey ${process.env.ZEPTOMAIL_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: { address: e.from, name: process.env.ZEPTOMAIL_FROM_NAME || "skipwait.me" }, to: [{ email_address: { address: e.to[0] } }], subject: e.subject, textbody: e.text, client_reference: obligationKey.slice(0, 64) }), signal: AbortSignal.timeout(10_000) }];
+  }
+  return ["https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json", "Idempotency-Key": `billing-review-v1/${obligationKey}` }, body: bytes, signal: AbortSignal.timeout(10_000) }];
+}
+function parseReceipt(body: unknown): { id: string } {
+  const resend = z.object({ id: z.string().min(1).max(255) }).safeParse(body);
+  if (resend.success) return resend.data;
+  return { id: z.object({ request_id: z.string().min(1).max(255) }).parse(body).request_id };
+}
 export function billingReviewKey(input: RetiredPlanAlertInput) {
   const environment = resolveBillingEnvironment();
   const site = environment === "live" ? process.env.CHARGEBEE_LIVE_SITE : process.env.CHARGEBEE_SITE;
@@ -72,7 +88,7 @@ export async function runBillingReviewOutbox(options: { now?: () => Date; fetchI
   let processed = 0, failed = Number(unknownCount);
   if (Number(unknownCount)) console.error("[BillingReview] unresolved quarantine", { unknownCount: Number(unknownCount) });
   // Outage remains failed on subsequent ticks even while individual rows are backed off.
-  if (Number(pendingCount) && (!process.env.ERROR_ALERT_FROM_EMAIL || !process.env.RESEND_API_KEY)) {
+  if (Number(pendingCount) && (!process.env.ERROR_ALERT_FROM_EMAIL || !providerConfigured())) {
     console.error("[BillingReview] configuration repair required", { code: "configuration_missing", pendingCount: Number(pendingCount) });
     failed++;
   }
@@ -90,7 +106,7 @@ export async function runBillingReviewOutbox(options: { now?: () => Date; fetchI
         return undefined;
       }
       const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!sender || !process.env.RESEND_API_KEY) {
+      if (!sender || !providerConfigured()) {
         await tx.update(billingReviewOutbox).set({ updatedAt: at, lastError: "configuration_missing", nextAttemptAt: new Date(at.getTime() + 60 * 60_000) }).where(eq(billingReviewOutbox.id, current.id));
         console.error("[BillingReview] configuration repair required", { obligationKey: current.obligationKey, code: "configuration_missing" });
         return undefined;
@@ -109,7 +125,7 @@ export async function runBillingReviewOutbox(options: { now?: () => Date; fetchI
     try {
       const frozen = frozenEnvelopeSchema.parse(JSON.parse(row.envelope));
       envelopeSchema.parse(JSON.parse(frozen.bytes));
-      const response = await (options.fetchImpl ?? fetch)("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json", "Idempotency-Key": `billing-review-v1/${row.obligationKey}` }, body: frozen.bytes, signal: AbortSignal.timeout(10_000) });
+      const response = await (options.fetchImpl ?? fetch)(...providerRequest(frozen.bytes, row.obligationKey));
       if (!response.ok) {
         const body: unknown = await response.json().catch(() => null);
         const conflict = response.status === 409 && typeof body === "object" && body !== null && "name" in body && body.name === "invalid_idempotent_request";
@@ -127,7 +143,7 @@ export async function runBillingReviewOutbox(options: { now?: () => Date; fetchI
         }
         throw new Error(`provider_${response.status}`);
       }
-      const receipt = z.object({ id: z.string().min(1).max(255) }).parse(await response.json());
+      const receipt = parseReceipt(await response.json());
       const accepted = await db.update(billingReviewOutbox).set({ updatedAt: now(), status: "accepted", acceptedAt: now(), providerMessageId: receipt.id, lastError: null, leaseOwner: null, leaseUntil: null }).where(fence);
       if (accepted[0].affectedRows === 1) processed++;
     } catch {

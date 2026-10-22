@@ -6,6 +6,7 @@ import { buildEvidenceRows, cleanNote as cleanModerationNote, groupEvents as gro
 import { checkPostingAllowance, opportunityLimits } from "./opportunityLimits";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, notInArray, or, sql } from "drizzle-orm";
 import { workEmailStorageKeys } from "./workEmailKey";
+import { publicDisplayName } from "../shared/publicDisplayName";
 import { passReasonSeekerLabel } from "../shared/passReasons";
 import { REFERRER_EXCLUSION_CODES } from "../shared/passReasons";
 import { CREDIT_ENDED_CAVEAT } from "../shared/moneyCopy";
@@ -2448,8 +2449,8 @@ export async function listJobSeekerCompanyReferrals(userId: number) {
   const revealIds = Array.from(new Set(rows.filter(row => row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status)).map(row => row.referrerId as number)));
   const revealed = new Map<number, { name: string | null; title: string | null }>();
   if (revealIds.length) {
-    const people = await db.select({ id: users.id, name: users.name, title: profiles.currentTitle }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).where(inArray(users.id, revealIds));
-    for (const person of people) revealed.set(person.id, { name: person.name ?? null, title: person.title ?? null });
+    const people = await db.select({ id: users.id, name: users.name, email: users.email, title: profiles.currentTitle }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).where(inArray(users.id, revealIds));
+    for (const person of people) revealed.set(person.id, { name: publicDisplayName(person.name, person.email), title: person.title ?? null });
   }
   // D-050: a personal-link ask its employee has not acted on still counts as unclaimed (heldForReferrer: Withdraw, expiry
   // countdown). P0-allocated-ask-stuck: so does a queue allocation nobody claimed; unclaimedAssignment covers both kinds
