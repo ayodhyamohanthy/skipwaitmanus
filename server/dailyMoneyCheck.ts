@@ -85,7 +85,7 @@ async function countPaymentCreditRows(paymentIds: number[]): Promise<PaymentCred
   return rows.map(row => ({ paymentId: Number(row.referenceId), creditRows: Number(row.creditRows), creditedTokens: Number(row.creditedTokens) }));
 }
 
-async function listParkedPayments(limit: number): Promise<ParkedPaymentRow[]> {
+export async function listParkedPayments(limit: number): Promise<ParkedPaymentRow[]> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
   return db.select({ id: paymentFulfillments.id, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, reconciliationReason: paymentFulfillments.reconciliationReason, createdAt: paymentFulfillments.createdAt })
     .from(paymentFulfillments).where(eq(paymentFulfillments.status, "requires_review"))
@@ -400,4 +400,10 @@ export async function runMoneyCheckNow(nowMs: number, deps: DailyMoneyCheckDeps 
   await run({ nowMs, windowKey: "manual" });
   const sent = captured as { subject: string; text: string } | null;
   return { emailSent: delivered, findingsEmailed: sent !== null, subject: sent?.subject ?? null, text: sent?.text ?? null };
+}
+
+/** The same audit with no email: findings text only (used by admin Skippie). */
+export async function readMoneyCheckFindings(nowMs: number): Promise<{ findingsFound: boolean; subject: string | null; text: string | null }> {
+  const result = await runMoneyCheckNow(nowMs, { ...defaultMoneyCheckDeps, sendEmail: async () => false });
+  return { findingsFound: result.findingsEmailed, subject: result.subject, text: result.text };
 }
