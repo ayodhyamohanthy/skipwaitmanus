@@ -197,6 +197,9 @@ Earlier questions: referrer tips (seeker→referrer money) · machine translatio
 - D-013's "40-task kit order" → D-053 (goal order; developer platform, lite mode and T2–T4 pricing parked).
 - D-030's seeker email method (six-digit code) → D-049 (social or personal email + password; no code). D-002 is revived for seekers only; referrers keep the work-email code on every sign-in.
 
+## Owner registration attestation, Oct 22
+
+registered by owner Ayu, coordinator unavailable, Oct 22. Scoped owner exception to D-083/D-134 registration authority for PR #462 (`PREMIUM-total-label`) and PR #463 (`D-067-outbox-fixture-repair`) only. Both packets are registered together immediately after the two live regressions that newer D-149 puts first; all pre-existing rows retain their order and content. Normal origin/main picker claims, full exact-candidate gate, GitHub CI and independent Tier 1 review still apply. Neither implementation nor production operations are authorized by registration alone. See the two packets for owned paths and evidence.
 
 ## D-144 (proposed - pending owner registration). Skippy's seeker chat never invents, never charges, and always goes through the normal ask
 Proposed by the step-2 build from the delegated task brief and the founder's two steers ("help him get the referral 100%, help him make a 100% great referral taking the job requirements" and "help him generate a new resume if he agrees that he know the concepts"), both relayed by the coordinating agent. The owner has not yet registered this as a decision; the rules below are what the code enforces and what QA proves, and this entry becomes a decision only when the owner confirms it.
@@ -211,3 +214,7 @@ Proposed by the step-2 build from the delegated task brief and the founder's two
 - **The referrer sees no more than the normal flow shows.** Name, resume and note stay hidden until the referrer accepts (D-022).
 - **Job pages and notes are data, never instructions.** Text pasted from a job post or resume is never treated as a command.
 - **Scope and limits.** Ask-only (no payments, no account changes, no messages to referrers), 20 messages per person per day, off unless `SKIPPIE_SEEKER_ENABLED` is set, and then visible only to the test-seeker accounts in `SKIPPIE_SEEKER_USER_IDS` until proved (QA before any wider list).
+
+## Scoped owner merge-policy amendment, Oct 23, 2026
+
+Direct owner authorization supersedes repeated full-local-gate requirements solely because main advances. For docs/registry-only PRs such as #466, a conflict-free integration that introduces no runtime delta against current main may land after focused checks, a separate independent delta review and required GitHub CI; a fresh full local gate is not required solely for main movement. Runtime PRs use GitHub's supported merge or merge-queue mechanism with actual required CI on the merge result, not historical-head CI, without bypassing required checks. Conflicts require explicit resolution and renewed independent review; they do not qualify automatically. This changes no product rule, task ownership, D-035 founder hold, phone-file/history hold, production verification or other applicable safety gate.

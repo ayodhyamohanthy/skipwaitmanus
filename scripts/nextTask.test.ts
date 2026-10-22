@@ -41,13 +41,15 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
   });
 
   it("hands a fresh agent the first pickable task in order", () => {
-    // D-038-reconcile is done (landed Oct 22; part A and part B both passed the
-    // independent Tier 1 review on PR #353), so the queue head moves to the next
-    // pickable task: D-035, the pass-reason credit rule, whose pull request #357
-    // waits on its review - one money rule at a time comes before anything new (D-085).
+    // D-149 keeps the two live regressions first. Owner-registered follow-ups
+    // remain together immediately afterward; all existing rows keep their order.
+    expect(real.tasks.slice(0, 4).map(t => t.id)).toEqual([
+      "P0-ask-link-signin", "P1-queue-attestation", "PREMIUM-total-label", "D-067-outbox-fixture-repair",
+    ]);
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    // D-149 (Oct 22): the two live regressions from the in-place goal pages go first.
     expect(first).toMatchObject({ kind: "build", task: { id: "P0-ask-link-signin" } });
+    const followUps = pickNextTask({ tasks: real.tasks.slice(2), mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
+    expect(followUps).toMatchObject({ kind: "build", task: { id: "PREMIUM-total-label" } });
   });
 
   it("rejects unknown keys, duplicates, bad branches, missing packets, unknown dependencies and cycles", () => {

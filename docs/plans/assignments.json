@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo": "ayodhyamohanthy/skipwaitmanus",
-  "decidedBy": "Claude Code (architect, D-074, D-083)",
+  "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
   "updated": "2026-10-23",
   "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks, except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
   "tasks": [
@@ -28,6 +28,30 @@
       "status": "todo",
       "dependsOn": [],
       "note": "D-149 (1): the goal /queue always sends ethicsConfirmed: true without showing the sentence; the CEO ruling in the packet says show it above Accept, no checkbox."
+    },
+    {
+      "id": "PREMIUM-total-label",
+      "title": "Premium Pay callout shows the selected total, not the unit price",
+      "row": "PREMIUM-total-label",
+      "packet": "docs/plans/PREMIUM-total-label.md",
+      "tier": 1,
+      "lane": "premium-display",
+      "branch": "agent/kat/premium-total-repair-oct22",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "registered by owner Ayu, coordinator unavailable, Oct 22; PR #462. Display only; independent exact-head review and full gate before main."
+    },
+    {
+      "id": "D-067-outbox-fixture-repair",
+      "title": "Repair stale outbox MySQL fixtures without changing runtime or SQL",
+      "row": "D-067-outbox-fixture-repair",
+      "packet": "docs/plans/D-067-outbox-fixture-repair.md",
+      "tier": 1,
+      "lane": "outbox-test-evidence",
+      "branch": "agent/kat/outbox-fixture-repair-oct22",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "registered by owner Ayu, coordinator unavailable, Oct 22; PR #463. Isolated actual MySQL evidence; no production operation."
     },
     {
       "id": "D-069-chargebee-catalog-sync",
