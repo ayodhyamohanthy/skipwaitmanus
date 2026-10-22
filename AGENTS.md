@@ -556,3 +556,6 @@ Queue task 20 slice A, referrer impact metrics (Qoder, Oct 17 2026). Claim scope
 
 ## Skippy (in-product assistant)
 The build brief, rules, step-by-step tests and proof, name decision and pre-launch checklist live in `docs/SKIPPY.md` (decisions D-136 to D-142 in `docs/DECISIONS.md`, product summary in `docs/PRD.md`). Read it before touching anything named Skippy or Skippie. Code name Skippie; user-facing name Skippy.
+
+## Claim-your-company (D-107, draft)
+Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COMPANY_CLAIM (off). No per-person data or account-role changes. Same-account, single-use email link. Current-month aggregates hidden below 3 referrers or answered asks. See docs/DECISIONS.md D-107. QA and delivery verification required before enablement.

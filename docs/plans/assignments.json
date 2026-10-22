@@ -224,7 +224,7 @@
       "tier": 1,
       "lane": "company",
       "branch": "agent/instinct/claim-company",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-104-company-signal"
       ]

@@ -46,6 +46,8 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/explore/:slug",
   "/fast/:linkCode",
   "/for-companies",
+  "/company/claim",
+  "/company/dashboard/:slug",
   "/forgot-password",
   "/guidelines",
   "/help",
