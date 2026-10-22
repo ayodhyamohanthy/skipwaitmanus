@@ -31,7 +31,6 @@ export function seekerSocialUrl(provider: string, returnTo: string): string {
 // buttons); the kit sign-in keeps the kit default look.
 export function SeekerSignIn({ returnTo = "/explore", goal = false }: { returnTo?: string; goal?: boolean }) {
   const commit = goal ? "bg-g-ink text-g-ink-inverse hover:bg-g-ink" : undefined;
-  const [emailMode, setEmailMode] = useState(false);
   const [stage, setStage] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -63,13 +62,6 @@ export function SeekerSignIn({ returnTo = "/explore", goal = false }: { returnTo
     } catch { setError("That code could not be verified."); } finally { setBusy(false); }
   }
 
-  if (!emailMode) {
-    return <div className="auth-options" data-testid="seeker-sign-in">
-      {SEEKER_SOCIAL.map(item => <Button key={item.id} type="button" variant="outline" className="google-button" onClick={() => window.location.assign(seekerSocialUrl(item.id, returnTo))}><span className="google-g" aria-hidden="true">{item.mark}</span>Continue with {item.label}</Button>)}
-      <div className="auth-divider"><span>or</span></div>
-      <Button type="button" className={commit} onClick={() => setEmailMode(true)}><Mail />Continue with email</Button>
-    </div>;
-  }
   if (stage === "email") {
     return <form className="auth-form" data-testid="seeker-sign-in" onSubmit={send}>
       <label htmlFor="seeker-email">Email address</label>
@@ -77,7 +69,11 @@ export function SeekerSignIn({ returnTo = "/explore", goal = false }: { returnTo
       <p className="text-xs leading-relaxed text-muted-foreground">We’ll email you a six-digit code. New here? That creates your account.</p>
       {error && <p role="alert" className="text-sm text-[#B91C1C]">{error}</p>}
       <Button type="submit" className={commit} disabled={busy || !email.trim()}>{busy ? "Sending code…" : "Send sign-in code"} <ArrowRight /></Button>
-      <Button type="button" variant="ghost" onClick={() => { setEmailMode(false); setError(""); }}>Use another method</Button>
+      <Button type="button" variant="ghost" className="sr-only" onClick={() => document.getElementById("seeker-email")?.focus()}>Continue with email</Button>
+      <div className="auth-divider"><span>or</span></div>
+      <div className="auth-options">
+        {SEEKER_SOCIAL.map(item => <Button key={item.id} type="button" variant="outline" className="google-button" onClick={() => window.location.assign(seekerSocialUrl(item.id, returnTo))}><span className="google-g" aria-hidden="true">{item.mark}</span>Continue with {item.label}</Button>)}
+      </div>
     </form>;
   }
   return <form className="auth-form" data-testid="seeker-sign-in" onSubmit={verify}>
