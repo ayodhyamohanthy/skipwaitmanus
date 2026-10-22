@@ -286,3 +286,5 @@ body {font-family:var(--font-ui);letter-spacing:0;} h1,h2,h3,p{letter-spacing:0;
   .credits-bar .cost-strip{flex:1 1 100%;}
   .credits-bar .cost-strip li{width:100%;border-radius:16px;}
 }
+/* Disabled buy buttons ("Not on sale yet") use the grey disabled tokens, not a faded brand blue. */
+.brand-button:disabled{background:var(--muted);color:var(--muted-foreground);border-color:var(--border);box-shadow:none;opacity:1;cursor:not-allowed;}

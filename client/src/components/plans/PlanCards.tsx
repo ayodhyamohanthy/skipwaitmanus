@@ -18,6 +18,7 @@ export type CancelRenewalState = {
 
 type PlanCardsProps = {
   currency: CatalogCurrency;
+  creditPrice?: string | null;
   activePlan: PaidCatalogPlan | null;
   endsAt: string | null;
   renewing: boolean;
@@ -43,9 +44,9 @@ function CurrentPlanAction({ renewing, endsAt, cancelRenewal }: { renewing: bool
   </div>;
 }
 
-export function PlanCards({ currency, activePlan, endsAt, renewing, cancelRenewal }: PlanCardsProps) {
+export function PlanCards({ currency, creditPrice = null, activePlan, endsAt, renewing, cancelRenewal }: PlanCardsProps) {
   return <section className="plan-grid individual-plan-grid" aria-label="Individual plans">
-    {planCards(currency, activePlan).map(card => {
+    {planCards(currency, activePlan, creditPrice).map(card => {
       const isActive = activePlan !== null && card.id === activePlan.id;
       return <article key={card.id} className={`plan-card ${isActive || (activePlan === null && card.id === "free") ? "featured" : ""}`}>
         {isActive && <span className="plan-flag"><Crown />Your plan</span>}

@@ -46,7 +46,7 @@ export default function Premium() {
   // credit is retired here too (the server answers 410 as well); /plans#packs
   // sells the packs. Until the catalog answers, the legacy UI stays up.
   const catalogQuery = usePlansCatalog(!referrerPurchasesOff && CREDIT_PACKS_ON_SALE);
-  const singleCreditRetired = catalogQuery.data !== undefined && catalogQuery.data.currency === route && catalogQuery.data.packs.some(pack => pack.available);
+  const singleCreditRetired = catalogQuery.data !== undefined && catalogQuery.data.packs.some(pack => pack.available);
   const routeDetails = paymentRouteDetails(route);
   const returnPath = tokenReturnPath(role);
   const total = selected.price * quantity;
@@ -54,7 +54,7 @@ export default function Premium() {
   const updateQuantity = (next: number) => setQuantity(Math.max(1, Math.min(1000, Number.isFinite(next) ? Math.round(next) : 1)));
 
   useEffect(() => {
-    applySeo({ title: "Buy referral credits for $1 each", description: `${ASK_COST_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire.`, path: "/premium" });
+    applySeo({ title: "Buy referral credits", description: `${ASK_COST_SENTENCE} Extra credits are sold in packs and never expire.`, path: "/premium" });
   }, []);
 
   useEffect(() => {
