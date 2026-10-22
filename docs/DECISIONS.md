@@ -189,7 +189,7 @@ Earlier questions: referrer tips (seeker→referrer money) · machine translatio
 - D-030's seeker email method (six-digit code) → D-049 (social or personal email + password; no code). D-002 is revived for seekers only; referrers keep the work-email code on every sign-in.
 
 
-## D-143 (proposed - pending owner registration). Skippy's seeker chat never invents, never charges, and always goes through the normal ask
+## D-144 (proposed - pending owner registration). Skippy's seeker chat never invents, never charges, and always goes through the normal ask
 Proposed by the step-2 build from the delegated task brief and the founder's two steers ("help him get the referral 100%, help him make a 100% great referral taking the job requirements" and "help him generate a new resume if he agrees that he know the concepts"), both relayed by the coordinating agent. The owner has not yet registered this as a decision; the rules below are what the code enforces and what QA proves, and this entry becomes a decision only when the owner confirms it.
 
 - **The chat creates asks through the same function as the ask page.** The "Send it" step calls `db.createCompanyReferralRequest` with the normal after-create work (referrer email/Slack, /requests, activity log, D-114 outbox); it never charges in the chat. There is no parallel path.
