@@ -67,6 +67,7 @@ export type DailyMoneyCheckDeps = {
   listLegacyPlanWallets: (now: Date, limit: number) => Promise<LegacyPlanWalletRow[]>;
   listAskDeliverySpendsWhileWaiting: (limit: number) => Promise<AskSpentWhileWaitingRow[]>;
   listDoublyReversedSpends: (limit: number) => Promise<DoublyReversedSpendRow[]>;
+  summarizeStaleCheckouts: (olderThan: Date) => Promise<StaleCheckoutSummary>;
   listRefundsAfterPickup: (limit: number) => Promise<RefundAfterPickupRow[]>;
   listReferredPastDeadline: (nowMs: number, limit: number) => Promise<ReferredDeadlineStuckRow[]>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
@@ -114,6 +115,16 @@ async function listUnmatchedRefunds(limit: number): Promise<UnmatchedRefundRow[]
     if (unmatched.length >= limit) break;
   }
   return unmatched;
+}
+
+export type StaleCheckoutSummary = { total: number; users: number; oldest: Date | null; newest: Date | null };
+
+/** One line for every abandoned pending checkout: how many, how many accounts, and the date range. */
+async function summarizeStaleCheckouts(olderThan: Date): Promise<StaleCheckoutSummary> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  const [row] = await db.select({ total: count(), users: sql<number>`COUNT(DISTINCT ${paymentFulfillments.userId})`, oldest: sql<Date | null>`MIN(${paymentFulfillments.createdAt})`, newest: sql<Date | null>`MAX(${paymentFulfillments.createdAt})` })
+    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan)));
+  return { total: Number(row?.total ?? 0), users: Number(row?.users ?? 0), oldest: row?.oldest ? new Date(row.oldest) : null, newest: row?.newest ? new Date(row.newest) : null };
 }
 
 async function listStaleCheckouts(olderThan: Date, limit: number): Promise<StaleCheckoutRow[]> {
@@ -346,6 +357,7 @@ const defaultMoneyCheckDeps: DailyMoneyCheckDeps = {
   listLegacyPlanWallets,
   listAskDeliverySpendsWhileWaiting,
   listDoublyReversedSpends,
+  summarizeStaleCheckouts,
   listRefundsAfterPickup,
   listReferredPastDeadline,
   sendEmail: sendMoneyCheckEmail,
@@ -387,8 +399,14 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCh
     const refunds = await deps.listUnmatchedRefunds(FINDINGS_PREVIEW_LIMIT);
     for (const refund of refunds) findings.push(`unmatched refund: log #${refund.logId} (${refund.resourceId ?? "no invoice id"}, ${refund.createdAt.toISOString()})`);
 
-    const stale = await deps.listStaleCheckouts(new Date(nowMs - STALE_CHECKOUT_AGE_MS), FINDINGS_PREVIEW_LIMIT);
-    for (const checkout of stale) findings.push(`stale checkout: payment #${checkout.id} ${checkout.amount} ${checkout.currency} pending since ${checkout.createdAt.toISOString()}`);
+    // One summary line, not one line per checkout: abandoned checkout pages are common, no money moved, and a long list
+    // buried the real findings. The oldest few ids are named so someone can look them up.
+    const staleCutoff = new Date(nowMs - STALE_CHECKOUT_AGE_MS);
+    const staleSummary = await deps.summarizeStaleCheckouts(staleCutoff);
+    if (staleSummary.total > 0) {
+      const sample = await deps.listStaleCheckouts(staleCutoff, 3);
+      findings.push(`stale checkouts: ${staleSummary.total} unpaid checkout page(s) from ${staleSummary.users} account(s) still pending after a day, oldest ${staleSummary.oldest?.toISOString() ?? "unknown"}, newest ${staleSummary.newest?.toISOString() ?? "unknown"}; none credited, no money moved (oldest ids: ${sample.map(row => `#${row.id}`).join(", ")})`);
+    }
 
     // P0-allocated-ask-stuck: paged by id until a short batch, so claimed asks (which keep their slot and
     // never expire) can never fill a page and hide a stuck one; at most FINDINGS_PREVIEW_LIMIT are listed.
