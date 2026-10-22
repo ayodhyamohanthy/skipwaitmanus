@@ -253,10 +253,11 @@ describe("a claimed decline reopens the ask (D-021)", () => {
     expect(rows.referralAvailabilitySlots[0]).toMatchObject({ status: "released", referrerId: 9 });
     // The seeker is told in plain words, in the same transaction as the pass.
     expect(seekerNotice()).toMatchObject({ userId: 7, category: "status", kind: expect.any(String), refId: 501, title: "Update on your referral request — acme.com" });
-    expect(String(seekerNotice().body)).toContain("Your ask is open again to other verified employees at acme.com.");
+    expect(String(seekerNotice().body)).toContain("Your ask is open again to other verified employees there.");
     expect(ask().status).not.toBe("declined");
-    // One deterministic event records the pass without changing the status.
-    const events = rows.referralTransitionEvents.filter(event => event.action === "pass");
+    // One deterministic event records the pass without changing the status. D-035: at_capacity
+    // is not fixable, so the action is pass_release and the credit releases at the terminal.
+    const events = rows.referralTransitionEvents.filter(event => event.action === "pass_release");
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({ operationKey: "one-click:9:declined:timing", actorUserId: 9, fromStatus: "pending", resultingStatus: "pending", resultingRevision: 5 });
   });
@@ -305,7 +306,8 @@ describe("a claimed decline reopens the ask (D-021)", () => {
     await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "cannot_support", passReason: "only_refer_known" });
 
     expect(rows.referralRequestPasses).toEqual([expect.objectContaining({ referrerId: 9, reason: "cannot_support", reasonCode: "only_refer_known" })]);
-    expect(String(seekerNotice().body)).toContain("(I only refer people I know)");
+    expect(String(seekerNotice().body)).toContain("A verified employee at acme.com said: I only refer people I know.");
+    expect(String(seekerNotice().body)).not.toContain("(I only refer people I know)");
     expect(ask()).toMatchObject({ status: "pending", referrerId: null });
   });
 });
@@ -317,7 +319,7 @@ describe("the claimed-review decline is the same pass (D-021)", () => {
     expect(result).toMatchObject({ status: "passed" });
     expect(ask()).toMatchObject({ status: "pending", referrerId: null, referrerMessage: null, revision: 5 });
     expect(rows.referralRequestPasses).toEqual([expect.objectContaining({ referrerId: 9, reason: "Not the team I can help this cycle", reasonCode: null })]);
-    expect(String(seekerNotice().body)).toContain("Your ask is open again to other verified employees at acme.com.");
+    expect(String(seekerNotice().body)).toContain("Your ask is open again to other verified employees there.");
     expect(String(seekerNotice().body)).not.toContain("Not the team I can help");
     expect(rows.referralTransitionEvents.some(event => event.resultingStatus === "declined")).toBe(false);
     expect(rows.referralDocumentAccessGrants[0].revokeReason).toBe("passed");
@@ -436,35 +438,27 @@ describe("pickup permanently spends the ask credit", () => {
     expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2); expect(rows.tokenTransactions).toEqual([]);
   });
 
-  it("reports no refund after actual claim, pass and withdrawal", async () => {
+  it("releases the credit after actual claim, a legacy declined review and withdrawal (D-035)", async () => {
     await claimCompanyReferralRequest(9, 501);
     await reviewReferralRequest(9, { requestId: 501, decision: "declined" });
-    expect(await withdrawCompanyReferralRequest(7, 501)).toMatchObject({ withdrawn: true, creditRefunded: false });
-    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
-    expect(rows.tokenTransactions.filter(row => row.reversesTransactionId != null)).toEqual([]);
+    expect(await withdrawCompanyReferralRequest(7, 501)).toMatchObject({ withdrawn: true, creditRefunded: true });
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(3);
+    expect(rows.tokenTransactions.filter(row => row.reversesTransactionId === 11)).toHaveLength(1);
   });
 
   for (const terminal of ["withdraw", "expiry"] as const) {
-    it(`never refunds after actual claim then declined review then ${terminal}`, async () => {
+    it(`releases the credit after actual claim then a legacy declined review then ${terminal} (D-035)`, async () => {
       await claimCompanyReferralRequest(9, 501);
       expect(ask().referrerId).toBe(9);
       expect(rows.referralTransitionEvents.some(event => event.action === "claim")).toBe(true);
       await reviewReferralRequest(9, { requestId: 501, decision: "declined" });
       expect(ask()).toMatchObject({ status: "pending", referrerId: null });
-      expect(rows.referralTransitionEvents.some(event => event.action === "pass")).toBe(true);
+      expect(rows.referralTransitionEvents.some(event => event.action === "pass_release")).toBe(true);
       await finish(terminal);
       await finish(terminal);
-      if (terminal === "withdraw") {
-        expect(String(rows.notifications.at(-1)?.body)).toContain("credit stays spent");
-        expect(rows.referralTransitionEvents.filter(event => event.action === "withdraw")).toHaveLength(1);
-      }
-      if (terminal === "expiry") {
-        expect(ask().status).toBe("closed");
-        expect(String(rows.notifications.at(-1)?.body)).not.toContain("No verified employee claimed");
-        expect(String(rows.notifications.at(-1)?.body)).toContain("stays spent");
-      }
-      expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
-      expect(rows.tokenTransactions.filter(row => row.reversesTransactionId != null)).toEqual([]);
+      expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(3);
+      expect(rows.tokenTransactions.filter(row => row.reversesTransactionId === 11)).toHaveLength(1);
+      expect(rows.tokenTransactions.filter(row => row.reversesTransactionId != null)).toHaveLength(1);
     });
 
     it(`returns a never-claimed credit once on ${terminal}`, async () => {
@@ -480,8 +474,12 @@ describe("pickup permanently spends the ask credit", () => {
       await claimCompanyReferralRequest(9, 501);
       await reviewReferralRequest(9, { requestId: 501, decision: "declined" });
       await finish(terminal);
-      expect(String(rows.notifications.at(-1)?.body)).not.toContain("credit");
-      expect(String(rows.notifications.at(-1)?.body)).toContain("open slot is free");
+      if (terminal === "expiry") {
+        expect(String(rows.notifications.at(-1)?.body)).not.toContain("credit");
+        expect(String(rows.notifications.at(-1)?.body)).toContain("open slot is free");
+      } else {
+        expect(rows.referralTransitionEvents.some(event => event.action === "withdraw")).toBe(true);
+      }
       expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
       expect(rows.tokenTransactions).toEqual([]);
     });
@@ -508,4 +506,92 @@ describe("pickup permanently spends the ask credit", () => {
       expect(rows.tokenTransactions.filter(row => row.reversesTransactionId != null)).toEqual([]);
     });
   }
+});
+
+
+describe("the pass reason decides the credit (D-035)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    ask().referrerId = null;
+    rows.referralDocumentAccessGrants = [];
+    rows.referralAvailabilitySlots = [];
+    rows.referrerReviewEmailLinks = [];
+    rows.tokenBalances = [{ id: 1, userId: 7, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 2, monthlyAllowance: 3, monthlyCycleKey: "2026-10", plan: "free" }];
+    rows.tokenTransactions = [{ id: 11, userId: 7, role: "job_seeker", kind: "credit_spend", tokenCount: -1, source: "monthly_allowance", sourceCycleKey: "2026-10", referenceType: "referral_request", referenceId: "501#1", reversesTransactionId: null }];
+    rows.planCreditGrants = [];
+    rows.promoCreditGrants = [];
+    sequence.tokenTransactions = 11;
+  });
+
+  async function finish(terminal: "withdraw" | "expiry") {
+    if (terminal === "withdraw") {
+      const result = await withdrawCompanyReferralRequest(7, 501);
+      expect(result).toMatchObject({ withdrawn: true, status: "withdrawn" });
+      expect(ask().status).toBe("withdrawn");
+    } else {
+      const later = new Date("2026-10-23T12:00:00Z");
+      vi.setSystemTime(later);
+      await expireStalePendingReferralRequest(7, 501, later.getTime());
+    }
+  }
+
+  it("keeps the credit spent after a claim when the pass reason is fixable", async () => {
+    await claimCompanyReferralRequest(9, 501);
+    await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "role_not_a_fit", passReason: "needs_experience" });
+    expect(rows.referralTransitionEvents.some(event => event.action === "pass_release")).toBe(false);
+    expect(rows.referralTransitionEvents.some(event => event.action === "pass")).toBe(true);
+    await finish("expiry");
+    expect(ask().status).toBe("closed");
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+    expect(rows.tokenTransactions.filter(row => row.reversesTransactionId != null)).toEqual([]);
+    expect(String(rows.notifications.at(-1)?.body)).toContain("stays spent");
+  });
+
+  it("releases the credit after a claim when the pass reason is not fixable, once, on expiry and on withdrawal", async () => {
+    await claimCompanyReferralRequest(9, 501);
+    await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "role_not_a_fit", passReason: "role_closed" });
+    expect(rows.referralTransitionEvents.filter(event => event.action === "pass_release")).toHaveLength(1);
+    expect(rows.referralTransitionEvents.some(event => event.action === "pass")).toBe(false);
+    await finish("expiry");
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(3);
+    expect(rows.tokenTransactions.filter(row => row.reversesTransactionId === 11)).toHaveLength(1);
+    expect(String(rows.notifications.at(-1)?.body)).toContain("Your credit is back on your balance");
+  });
+
+  it("releases the credit after a claim when the pass reason is not fixable, on withdrawal", async () => {
+    await claimCompanyReferralRequest(9, 501);
+    await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "role_not_a_fit", passReason: "role_closed" });
+    await finish("withdraw");
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(3);
+    expect(rows.tokenTransactions.filter(row => row.reversesTransactionId === 11)).toHaveLength(1);
+  });
+
+  it("tells the seeker why, and that the credit comes back, when the pass releases", async () => {
+    await claimCompanyReferralRequest(9, 501);
+    await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "role_not_a_fit", passReason: "role_closed" });
+    const body = String(rows.notifications.at(-1)?.body);
+    expect(body).toContain("A verified employee at acme.com said: Role is closed.");
+    expect(body).toContain("Your ask is open again to other verified employees there.");
+    expect(body).toContain("If nobody picks it up, your credit comes back, unless its month or plan has ended by then.");
+    expect(body).not.toContain("Updating your profile");
+  });
+
+  it("tells the seeker what to fix when the pass is fixable, without promising the credit back", async () => {
+    await claimCompanyReferralRequest(9, 501);
+    await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "role_not_a_fit", passReason: "needs_experience" });
+    const body = String(rows.notifications.at(-1)?.body);
+    expect(body).toContain("A verified employee at acme.com said: Role needs more experience.");
+    expect(body).toContain("Updating your profile or note can help the next employee decide.");
+    expect(body).not.toContain("credit comes back");
+  });
+
+  it("omits the reason line for a legacy pass with no code and still promises the credit back", async () => {
+    await claimCompanyReferralRequest(9, 501);
+    await reviewReferralRequest(9, { requestId: 501, decision: "declined" });
+    const body = String(rows.notifications.at(-1)?.body);
+    expect(body).not.toContain("A verified employee");
+    expect(body).toContain("Your ask is open again to other verified employees there.");
+    expect(body).toContain("If nobody picks it up, your credit comes back");
+  });
 });
