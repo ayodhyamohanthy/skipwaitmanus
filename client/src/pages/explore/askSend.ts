@@ -23,6 +23,8 @@ export function buildAskBody(input: {
   companySlug: string | null;
   fastTrack: FastTrackAskFields;
   confirmedCompanyDomain: string | undefined;
+  /** D-022: an ask opened from a posted role keeps the post so the poster sees it first. */
+  opportunityId?: number;
 }): Record<string, string | number | number[]> {
   const body: Record<string, string | number | number[]> = {
     targetRoleUrl: input.targetRoleUrl.trim(),
@@ -36,5 +38,6 @@ export function buildAskBody(input: {
     body.fastTrackAlias = input.fastTrack.fastTrackAlias;
   }
   if (input.confirmedCompanyDomain) body.confirmedCompanyDomain = input.confirmedCompanyDomain;
+  if (input.opportunityId) body.opportunityId = input.opportunityId;
   return body;
 }
