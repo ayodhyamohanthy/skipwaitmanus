@@ -231,13 +231,14 @@ export default function PlansV2({ book = "INR", seekerLevel = null, onPickLevel 
       {onPickLevel ? (
         <label className="mt-3 flex max-w-[360px] flex-col gap-1 text-g-small">
           <span className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Your level</span>
-          <select aria-label="Your level" value={seekerLevel ?? ""} onChange={e => onPickLevel(e.target.value === "" ? null : Number(e.target.value))} className="rounded-g-tile border border-g-hairline bg-g-surface px-3 py-2.5">
+          <select aria-label="Your level" aria-describedby={seekerLevel === null ? "level-hint" : undefined} value={seekerLevel ?? ""} onChange={e => onPickLevel(e.target.value === "" ? null : Number(e.target.value))} className="rounded-g-tile border border-g-hairline bg-g-surface px-3 py-2.5">
             <option value="">Not set</option>
             {Object.entries(REACH_LEVEL_NAMES).map(([n, label]) => <option key={n} value={n}>{`L${n} - ${label}`}</option>)}
           </select>
         </label>
       ) : null}
-      {seekerLevel === null && !onPickLevel ? <p className="mt-1 text-g-small text-g-ink-3">Add your level in your <a href="/profile" className="underline">profile</a> to see exactly who each plan reaches.</p> : null}
+      {seekerLevel === null && onPickLevel ? <p id="level-hint" className="mt-1 text-g-small text-g-ink-3">Set your level here to see exactly who each plan reaches.</p> : null}
+      {seekerLevel === null && !onPickLevel ? <p className="mt-1 text-g-small text-g-ink-3">Sign in and set your level to see exactly who each plan reaches.</p> : null}
       <div className="mt-8 grid gap-4 gdesk:grid-cols-3">
         <PlanCard planId="open_door" book={book} seekerLevel={seekerLevel} />
         <PlanCard planId="fast_track" book={book} seekerLevel={seekerLevel} />

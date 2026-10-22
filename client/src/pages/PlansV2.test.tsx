@@ -76,7 +76,8 @@ describe("PlansV2 (D-132, flag OFF)", () => {
     expect(screen.getByTestId("reach-open_door").textContent).toContain("Your own level");
     expect(screen.getByTestId("reach-fast_track").textContent).toContain("Up to 2 levels above yours");
     expect(screen.getByTestId("reach-insider").textContent).toContain("Up to 4 levels above yours");
-    expect(screen.getByText(/Add your level in your/).textContent).toContain("who each plan reaches");
+    expect(screen.getByText("Sign in and set your level to see exactly who each plan reaches.")).toBeTruthy()
+    expect(document.querySelector('a[href="/profile"]')).toBeNull();
     expect(screen.getByText("Reach sets who you can ask. It never changes your place in a queue.")).toBeTruthy();
     expect(screen.queryByText(/1-2 levels up/)).toBeNull();
     expect(screen.getByText("Reach up to 2 levels above your own")).toBeTruthy();
@@ -100,5 +101,12 @@ describe("PlansV2 (D-132, flag OFF)", () => {
     fireEvent.change(select, { target: { value: "7" } });
     fireEvent.change(select, { target: { value: "" } });
     expect(picks).toEqual([7, null]);
+  });
+
+  it("signed in with no level: hint sits at the picker, no profile link", () => {
+    render(<PlansV2 book="INR" onPickLevel={() => {}} />);
+    expect(screen.getByText("Set your level here to see exactly who each plan reaches.")).toBeTruthy();
+    expect(screen.queryByText(/Sign in and set your level/)).toBeNull();
+    expect(document.querySelector('a[href="/profile"]')).toBeNull();
   });
 });
