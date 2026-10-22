@@ -1,6 +1,6 @@
 # Packet LIVE-OCT22: two live regressions from the in-place goal pages
 
-> Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code as CEO (D-085, D-136) on Oct 22 2026, from the inventory of the goal pages that went live in place on Oct 21-22. The picker hands out one task from this packet at a time; do only the task it prints. The register wins any conflict.
+> Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code as CEO (D-085, D-144) on Oct 22 2026, from the inventory of the goal pages that went live in place on Oct 21-22. The picker hands out one task from this packet at a time; do only the task it prints. The register wins any conflict.
 
 Both are live on skipwait.me now. Both are Tier 1: red-first tests, a green draft pull request, an independent review by a session that did not build it **before** landing (D-074), landing by fast-forward (D-134 (6)), then the live check. Write your status in the Status section below (the two rows share one plan row, D-134).
 

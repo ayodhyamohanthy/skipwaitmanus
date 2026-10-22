@@ -137,3 +137,88 @@ describe("GET /api/admin/jobs", () => {
     expect((await request(app).get("/api/admin/jobs").set("x-test-user", "admin")).status).toBe(503);
   });
 });
+
+describe("POST /api/admin/money-check/run", () => {
+  const result = { emailSent: true, findingsEmailed: true, subject: "skipwait.me daily money check · 1 finding", text: "parked payment: #7" };
+  it("rejects anonymous callers (401) and non-admins (403) without running the audit", async () => {
+    const runMoneyCheck = vi.fn(async () => result);
+    const { app, activity } = appWith({ runMoneyCheck });
+    expect((await request(app).post("/api/admin/money-check/run")).status).toBe(401);
+    const denied = await request(app).post("/api/admin/money-check/run").set("x-test-user", "member");
+    expect(denied.status).toBe(403);
+    expect(runMoneyCheck).not.toHaveBeenCalled();
+    expect(activity).toContain("admin.money_check_denied:denied");
+  });
+  it("returns the findings text to an admin and logs the run", async () => {
+    const runMoneyCheck = vi.fn(async () => result);
+    const { app, activity } = appWith({ runMoneyCheck });
+    const response = await request(app).post("/api/admin/money-check/run").set("x-test-user", "admin");
+    expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toContain("no-store");
+    expect(response.body).toMatchObject({ findingsFound: true, emailSent: true, findings: "parked payment: #7" });
+    expect(activity).toContain("admin.money_check_run:success");
+  });
+  it("logs a failure when findings exist but the email did not send, and still returns them", async () => {
+    const { app, activity } = appWith({ runMoneyCheck: async () => ({ ...result, emailSent: false }) });
+    const response = await request(app).post("/api/admin/money-check/run").set("x-test-user", "admin");
+    expect(response.body).toMatchObject({ emailSent: false, findings: "parked payment: #7" });
+    expect(activity).toContain("admin.money_check_run:failure");
+  });
+  it("rate limits to one run per 5 minutes and reports errors without leaking them", async () => {
+    const { app } = appWith({ runMoneyCheck: async () => result });
+    await request(app).post("/api/admin/money-check/run").set("x-test-user", "admin");
+    expect((await request(app).post("/api/admin/money-check/run").set("x-test-user", "admin")).status).toBe(429);
+    const failing = appWith({ runMoneyCheck: async () => { throw new Error("db password leaked"); } });
+    const response = await request(failing.app).post("/api/admin/money-check/run").set("x-test-user", "admin");
+    expect(response.status).toBe(500);
+    expect(JSON.stringify(response.body)).not.toContain("leaked");
+    expect(failing.capture).toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/admin/money-check/close-abandoned", () => {
+  const plan = { cutoff: "2026-10-15T00:00:00.000Z", candidates: 3, accounts: 2, oldest: null, newest: null, byCurrency: [], applied: false, closed: 0 };
+  it("is admin only", async () => {
+    const close = vi.fn(async () => plan);
+    const { app } = appWith({ closeAbandonedCheckouts: close });
+    expect((await request(app).post("/api/admin/money-check/close-abandoned")).status).toBe(401);
+    expect((await request(app).post("/api/admin/money-check/close-abandoned").set("x-test-user", "member")).status).toBe(403);
+    expect(close).not.toHaveBeenCalled();
+  });
+  it("previews by default and only applies when asked", async () => {
+    const close = vi.fn(async (_n: number, o: { apply: boolean }) => ({ ...plan, applied: o.apply, closed: o.apply ? 3 : 0 }));
+    const { app, activity } = appWith({ closeAbandonedCheckouts: close });
+    await request(app).post("/api/admin/money-check/close-abandoned").set("x-test-user", "admin").send({});
+    expect(close.mock.calls[0]![1]).toEqual({ apply: false });
+    const applied = await request(app).post("/api/admin/money-check/close-abandoned").set("x-test-user", "admin").send({ apply: true });
+    expect(close.mock.calls[1]![1]).toEqual({ apply: true });
+    expect(applied.body).toMatchObject({ applied: true, closed: 3 });
+    expect(activity).toContain("admin.abandoned_checkouts_previewed:success");
+    expect(activity).toContain("admin.abandoned_checkouts_closed:success");
+  });
+});
+
+describe("GET /api/admin/money-check/status", () => {
+  const rows = [
+    { outcome: "failure", createdAt: new Date() },
+    { outcome: "failure", createdAt: new Date(Date.now() - 3600_000) },
+    { outcome: "success", createdAt: new Date(Date.now() - 86400_000) },
+  ];
+  it("is admin only", async () => {
+    const { app } = appWith({ listMoneyCheckAlerts: async () => rows });
+    expect((await request(app).get("/api/admin/money-check/status")).status).toBe(401);
+    expect((await request(app).get("/api/admin/money-check/status").set("x-test-user", "member")).status).toBe(403);
+  });
+  it("says the owner was not reached when the latest alert email failed", async () => {
+    const { app } = appWith({ listMoneyCheckAlerts: async () => rows });
+    const response = await request(app).get("/api/admin/money-check/status").set("x-test-user", "admin");
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ ownerNotReached: true, failuresLast7Days: 2, latestOutcome: "failure" });
+    expect(response.body.lastSuccessAt).toBeTruthy();
+  });
+  it("is calm when the latest alert was delivered", async () => {
+    const { app } = appWith({ listMoneyCheckAlerts: async () => [rows[2]!] });
+    const response = await request(app).get("/api/admin/money-check/status").set("x-test-user", "admin");
+    expect(response.body).toMatchObject({ ownerNotReached: false, failuresLast7Days: 0 });
+  });
+});

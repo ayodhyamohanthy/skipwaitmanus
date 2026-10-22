@@ -41,12 +41,12 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
   });
 
   it("hands a fresh agent the first pickable task in order", () => {
-    // GO-LIVE-1b is done (landed through PR #359; passes stay off until its §4.5
-    // test-site evidence), so the queue head moves to the next pickable task:
-    // D-038-reconcile, whose pull request #353 waits on its review findings - finishing
-    // half-built money work comes before starting anything new (D-085).
+    // D-038-reconcile is done (landed Oct 22; part A and part B both passed the
+    // independent Tier 1 review on PR #353), so the queue head moves to the next
+    // pickable task: D-035, the pass-reason credit rule, whose pull request #357
+    // waits on its review - one money rule at a time comes before anything new (D-085).
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    // D-136 (Oct 22): the two live regressions from the in-place goal pages go first.
+    // D-144 (Oct 22): the two live regressions from the in-place goal pages go first.
     expect(first).toMatchObject({ kind: "build", task: { id: "P0-ask-link-signin" } });
   });
 

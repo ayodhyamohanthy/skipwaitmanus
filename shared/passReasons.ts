@@ -31,3 +31,9 @@ export function passReasonSeekerLabel(code: string | null | undefined): string |
  * They are not pass reasons: isPassReasonCode stays false for them, nothing shows them to anyone. */
 export const REFERRER_EXCLUSION_CODES = ["lapsed_claim", "lapsed_allocation", "lapsed_referred", "stepped_back"] as const;
 export type ReferrerExclusionCode = (typeof REFERRER_EXCLUSION_CODES)[number];
+
+/** True for the codes above. They exclude a referrer exactly like a pass, but they are not
+ * decisions the referrer made, so nothing may count them as one (the D-018 baseline). */
+export function isReferrerExclusionCode(value: unknown): value is ReferrerExclusionCode {
+  return typeof value === "string" && (REFERRER_EXCLUSION_CODES as readonly string[]).includes(value);
+}
