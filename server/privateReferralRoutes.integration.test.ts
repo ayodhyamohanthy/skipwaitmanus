@@ -410,3 +410,37 @@ describe("withdrawal activity reports only authoritative credit movement", () =>
     expect(withdrawalEvents()).toEqual([]);
   });
 });
+
+describe("/api/company-referrals/mine hasEverAsked (sample empty states)", () => {
+  function setup(hasEver: ((userId: number) => Promise<boolean>) | undefined) {
+    const app = express();
+    app.use(express.json());
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") ? { account: { id: 1, openId: "workos-test" } } : undefined,
+      listJobSeekerCompanyReferrals: async () => [],
+      hasEverCreatedReferralRequest: hasEver,
+    } as unknown as PrivateReferralRouteDeps);
+    return app;
+  }
+
+  it("passes a first-timer's false through to the payload", async () => {
+    const app = setup(async () => false);
+    const response = await request(app).get("/api/company-referrals/mine").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverAsked).toBe(false);
+  });
+
+  it("fails closed to true when the durable check throws", async () => {
+    const app = setup(async () => { throw new Error("db down"); });
+    const response = await request(app).get("/api/company-referrals/mine").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverAsked).toBe(true);
+  });
+
+  it("fails closed to true when the dep is absent (old wiring)", async () => {
+    const app = setup(undefined);
+    const response = await request(app).get("/api/company-referrals/mine").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverAsked).toBe(true);
+  });
+});
