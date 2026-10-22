@@ -2082,7 +2082,10 @@ async function passReferralRequestTx(tx: any, input: { requestId: number; actorU
   const reasonOption = PASS_REASON_OPTIONS.find((item) => item.code === input.reasonCode);
   // D-035/D-052: a pass the seeker cannot act on releases the credit; a fixable one is payment for the review.
   // D-076 (7): a legacy pass with no seven-reason code counts as not fixable.
-  const passReleasesCredit = !reasonOption || !reasonOption.fixable;
+  // D-035 §4.7/§8: only the employee who holds the pickup may release it. A colleague who never claimed the
+  // ask may pass on it (D-021 reopens it either way), but their pass must never erase a review the seeker
+  // already paid for — so the release needs the pickup, not just a not-fixable reason.
+  const passReleasesCredit = input.releasedClaim && (!reasonOption || !reasonOption.fixable);
   const passAction = passReleasesCredit ? "pass_release" : "pass";
   const releasedNoticeBody = input.releasedClaim
     ? `${reasonLabel ? `A verified employee at ${input.companyDomain} said: ${reasonLabel}. ` : ""}Your ask is open again to other verified employees there.${passReleasesCredit ? ` If nobody picks it up, your credit comes back, ${CREDIT_ENDED_CAVEAT}.` : " Updating your profile or note can help the next employee decide."}`

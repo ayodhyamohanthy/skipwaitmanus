@@ -567,6 +567,25 @@ describe("the pass reason decides the credit (D-035)", () => {
     expect(rows.tokenTransactions.filter(row => row.reversesTransactionId === 11)).toHaveLength(1);
   });
 
+  // D-035 §4.7 / §8: only the employee who holds the pickup can release the credit. A colleague who
+  // never claimed the ask may pass on it, and that pass must not erase the review the seeker already
+  // paid for — otherwise one unclaimed click refunds money the claimer's fixable pass had settled.
+  it.each(["withdraw", "expiry"] as const)(
+    "keeps the paid review spent when an unclaimed colleague passes afterwards, on %s",
+    async (terminal) => {
+      await claimCompanyReferralRequest(9, 501);
+      await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "role_not_a_fit", passReason: "needs_experience" });
+      // Employee 10 is a verified Acme employee who never claimed this ask.
+      await oneClickReviewReferralRequest(10, { requestId: 501, decision: "declined", declineReason: "role_not_a_fit", passReason: "role_closed" });
+      const actions = rows.referralTransitionEvents.map(event => event.action);
+      expect(actions.filter(action => action === "claim")).toHaveLength(1);
+      expect(actions.filter(action => action === "pass_release")).toHaveLength(0);
+      await finish(terminal);
+      expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+      expect(rows.tokenTransactions.filter(row => row.reversesTransactionId === 11)).toEqual([]);
+    },
+  );
+
   it("tells the seeker why, and that the credit comes back, when the pass releases", async () => {
     await claimCompanyReferralRequest(9, 501);
     await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "role_not_a_fit", passReason: "role_closed" });
