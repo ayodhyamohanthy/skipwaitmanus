@@ -10,7 +10,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
-import { ASK_TTL_DAYS } from "@shared/referral";
+import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { CREDIT_ENDED_CAVEAT, MONEY_SENTENCE } from "@shared/moneyCopy";
 import { COMPANY_CAP_REACHED, companyCapCopy, SLOT_CAP_REACHED } from "@shared/openAskSlots";
 import { ASK_PREFILL_KEY } from "@/lib/askPrefill";
@@ -160,6 +160,18 @@ describe("ask drawer", () => {
     fireEvent.click(within(active).getByRole("button", { name: "Ask at another company" }));
     await waitFor(() => expect(screen.queryByTestId("goal-drawer")).toBeNull());
     expect(go).toHaveBeenCalledWith("/explore", { replace: true });
+  });
+
+  it("states the uncovered company's free wait and the later hold, verbatim (D-034, D-047)", async () => {
+    stub({ send: () => ({ status: 200, body: { ...CREATED, coverageStatus: "waiting_for_company_coverage" } }) });
+    const drawer = await openWipro();
+    fillLink(drawer);
+    fillReasons(drawer);
+    await within(drawer).findByText("ada-resume.pdf");
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    const active = await screen.findByTestId("goal-drawer");
+    expect(within(active).getByText(`No verified employee there can see it yet, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, 1 credit is used and it goes live; if you have no credit then, we hold it until you add one.`)).toBeTruthy();
+    expect(within(active).getByRole("link", { name: "Track this ask" }).getAttribute("href")).toBe("/conversation/501");
   });
 
   it("holds the send until the link, resume and reasons are there", async () => {

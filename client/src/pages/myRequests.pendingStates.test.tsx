@@ -73,6 +73,20 @@ describe("My asks pending states", () => {
     expect(document.querySelector("main")?.textContent).not.toContain("Ref-");
   });
 
+  it("names the D-047 hold and the D-034 free wait on their rows, with no countdown", async () => {
+    stubRequests(
+      [
+        { ...pendingRequest, id: 41, referrerId: null, queueStatus: "held_for_credit", createdAt: "2026-09-01T09:41:00.000Z", updatedAt: "2026-09-02T14:05:00.000Z" },
+        { ...pendingRequest, id: 42, referrerId: null, queueStatus: "waiting_for_coverage", waitingForCoverage: true, createdAt: "2026-09-01T09:41:00.000Z", updatedAt: "2026-09-02T14:05:00.000Z" },
+      ],
+      { plan: "free", planLabel: "Free", open: 2, cap: 3, full: false, nextPlan: null },
+    );
+    renderPage();
+    expect((await screen.findByText("Add a credit to send it")).closest("a")?.getAttribute("href")).toBe("/conversation/41");
+    expect(screen.getByText("Waiting for coverage").closest("a")?.getAttribute("href")).toBe("/conversation/42");
+    expect(screen.queryByText(/Expires/)).toBeNull();
+  });
+
   it("labels a lapsed ask Expired under Closed instead of hiding it", async () => {
     const now = Date.now();
     const day = 24 * 60 * 60 * 1000;
