@@ -46,7 +46,7 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
     // pickable task: D-035, the pass-reason credit rule, whose pull request #357
     // waits on its review - one money rule at a time comes before anything new (D-085).
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    // D-148 (Oct 22): the two live regressions from the in-place goal pages go first.
+    // D-149 (Oct 22): the two live regressions from the in-place goal pages go first.
     expect(first).toMatchObject({ kind: "build", task: { id: "P0-ask-link-signin" } });
   });
 

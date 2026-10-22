@@ -478,15 +478,15 @@ which rules were adopted or rejected when this section changes.
   `docs/plans/GOAL_UI_MIGRATION.md`; the rows, lanes and owned paths:
   `docs/plans/D-048-phase-3-split.md`, handed out by the picker, D-134). Do not
   resurrect old designs or kit code.
-- **D-149 (owner, Oct 22): a real goal-focused redesign of UI and UX across the
+- **D-150 (owner, Oct 22): a real goal-focused redesign of UI and UX across the
   whole platform, landing to admin, never "black colour over the previous design
   system".** A screen counts as moved only when it opens with the user's goal
   line, has one "Your next step" block with exactly one black commit, shows
   dot-and-text status and the cost before every ask, matches its approved comp,
   and its flow is rebuilt around that goal. The seven pages that went live in
-  place on Oct 21-22 (D-148) do not meet it yet; the D-048 live-review rows
+  place on Oct 21-22 (D-149) do not meet it yet; the D-048 live-review rows
   redesign them. A re-skin may land in place only as such a redesign, with a
-  parity check and a Tier 1 review before landing (D-148).
+  parity check and a Tier 1 review before landing (D-149).
 - **D-048 phase 2 shipped (Oct 19):** `DESIGN.md` is the goal-UI visual contract
   (comps approved by D-071, `design/goal-ui/pick/`). It governs each surface as
   the migration moves it to `client/src/components/goal/` (tokens: the phase-2
