@@ -45,4 +45,4 @@ Switching the flags on needs, in this order: D-132-audit landed; the D-132 plans
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 - JOB-LEVELS: done — `0e1ccba4` (#381, flag off)
 - D-132-plans-v2: done — `f2b8fd05` (#410, flag off)
-- D-132-audit: in progress — Instinct Agent — 2026-10-23 — one pull request per item, in the order of `docs/plans/D-132-audit-findings.md` (#481); item 2 (the stored level and cost, `askCosts`, migration 0106, nothing written with the flag off) on `main` — `3ffb70c5` (#482). Recorded by the CEO from `main`; live state not checked here.
+- D-132-audit: in progress — Instinct Agent — 2026-10-23 — one pull request per item, in the order of `docs/plans/D-132-audit-findings.md` (#481); item 2 (the stored level and cost, `askCosts`, migration 0106, nothing written with the flag off) on `main` — `3ffb70c5` (#482); item 6 (the daily money check flags an ask whose spend differs from its stored cost, read-only) on `main` — `d20aa969` (#487). Recorded by the CEO from `main`; live state not checked here.

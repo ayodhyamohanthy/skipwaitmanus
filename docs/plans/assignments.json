@@ -214,7 +214,7 @@
         "TASK13-pinned-work",
         "D-065-C"
       ],
-      "note": "D-146 (founder, Oct 23): the D-132 audit is next, so it no longer waits on D-035, which D-147 holds for the founder. D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. First-pass findings are in docs/plans/D-132-audit-findings.md (#481) and item 2 (the stored level and cost, migration 0106) is on main (#482); the remaining items land one pull request each. It runs after the live review (which moved the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends). The D-048 rows that redesign the compose screens and the seeker conversation (D-048-p3-live-review-find, D-048-p3-live-review-conversation) wait for it, because it edits their cost lines first."
+      "note": "D-146 (founder, Oct 23): the D-132 audit is next, so it no longer waits on D-035, which D-147 holds for the founder. D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. First-pass findings are in docs/plans/D-132-audit-findings.md (#481) and items 2 (the stored level and cost, migration 0106, #482) and 6 (the money check against the stored cost, #487) are on main; the remaining items land one pull request each. It runs after the live review (which moved the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends). The D-048 rows that redesign the compose screens and the seeker conversation (D-048-p3-live-review-find, D-048-p3-live-review-conversation) wait for it, because it edits their cost lines first."
     },
     {
       "id": "PICKER-landing-slot",
@@ -634,13 +634,13 @@
       "id": "D-090-BYOR",
       "title": "Bring-your-own-referrer one-time link (D-090, loop L2)",
       "row": "D-090",
-      "packet": null,
+      "packet": "docs/plans/D-090-BYOR.md",
       "tier": 1,
       "lane": "supply",
       "branch": "agent/claude/d090-byor",
-      "status": "architect",
+      "status": "todo",
       "dependsOn": [],
-      "note": "Any agent writes the packet (D-109): standard credit rules, the four approved surfaces."
+      "note": "Packet written. Build gate: D-090 orders BYOR after the demand list (D-086), which is not live and has no queue task; verify D-086 before starting or stop and report. The four approved mocks are not in the repo (packet §12 Q5)."
     },
     {
       "id": "D-095-one-tap",
