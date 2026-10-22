@@ -7,7 +7,7 @@ import { Button, buttonVariants } from "@/components/kit/button";
 import { ReferrerPanel } from "@/components/thread/ThreadDecisionPanels";
 import { ThreadMain } from "@/components/thread/ThreadMain";
 import { AppShell } from "@/components/AppShell";
-import { SeekerConversation } from "./conversation/SeekerConversation";
+import { ConversationSignInGate, SeekerConversation } from "./conversation/SeekerConversation";
 import { ShareWinCard } from "@/components/thread/ShareWinCard";
 import { canMessage, companyName, isAccepted } from "@/components/thread/threadModel";
 import { usePersistFn } from "@/hooks/usePersistFn";
@@ -61,18 +61,7 @@ export default function ReferralConversation({ framed = false }: { framed?: bool
 
   const wrap = (node: React.ReactElement) => (framed ? <AppShell>{node}</AppShell> : node);
 
-  if (!isSignedIn) {
-    return wrap(
-      <main data-skipwait-screen="referral-conversation-sign-in" className="page-content">
-        {back}
-        <section className="mt-6 max-w-xl">
-          <h1 className="text-3xl font-semibold">Continue securely.</h1>
-          <p className="mt-3 text-sm text-muted-foreground">Sign in to access your accepted referral conversation.</p>
-          <div className="mt-6"><SignInButton><button type="button" className={buttonVariants({ className: "w-full sm:w-auto" })}>Secure sign in</button></SignInButton></div>
-        </section>
-      </main>,
-    );
-  }
+  if (!isSignedIn) return <ConversationSignInGate returnPath={returnPath} />;
 
   const send = async () => {
     const body = draft.trim();
@@ -90,7 +79,7 @@ export default function ReferralConversation({ framed = false }: { framed?: bool
   const seekerName = user?.fullName ?? null;
   const headline = profile.data?.headline ?? profile.data?.currentTitle ?? null;
   // Names are revealed only after the referrer accepts: the referrer sees their own name, the seeker the name the server returns (never before accept).
-  const seekerSeesReferrer = request && role === "seeker" && isAccepted(request) && request.referrerName ? (request.referrerTitle ? `${request.referrerName} · ${request.referrerTitle}` : request.referrerName) : null;
+  const seekerSeesReferrer = request && role === "seeker" && isAccepted(request) && request.referrerName && !request.referrerName.includes("@") ? (request.referrerTitle ? `${request.referrerName} · ${request.referrerTitle}` : request.referrerName) : null;
   const referrerLabel = seekerSeesReferrer ?? (request && isAccepted(request) && user?.fullName ? user.fullName : request ? `Someone at ${companyName(request)}` : "");
 
   // The seeker's side is a goal page (W2). While the role is still loading the
