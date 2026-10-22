@@ -119,7 +119,7 @@ export type ThreadRequest = {
   /** Referrer side only: whether the one 3-day extension was already used (D-038-B). */
   extensionUsed?: boolean;
 };
-export type ThreadMessage = { id: number; body: string; isMine: boolean };
+export type ThreadMessage = { id: number; body: string; isMine: boolean; createdAt?: string | number | null };
 export type ThreadRole = "seeker" | "referrer-pending" | "referrer-claimed";
 type TokenGetter = () => Promise<string | null>;
 
@@ -195,7 +195,7 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
 
 export async function loadConversation(requestId: number, getToken: TokenGetter): Promise<{ messages: ThreadMessage[]; referenceId: string | null }> {
   const payload = parse(conversationSchema, await authedFetch(`/api/company-referrals/${requestId}/conversation`, getToken));
-  return { messages: (payload.messages ?? []).map(message => ({ id: message.id, body: message.body, isMine: message.isMine })), referenceId: payload.referenceId ?? null };
+  return { messages: (payload.messages ?? []).map(message => ({ id: message.id, body: message.body, isMine: message.isMine, createdAt: message.createdAt })), referenceId: payload.referenceId ?? null };
 }
 
 export async function sendConversationMessage(requestId: number, body: string, getToken: TokenGetter) {

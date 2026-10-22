@@ -1,10 +1,13 @@
 import { ArrowLeft, BadgeCheck, ShieldCheck } from "lucide-react";
+import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { SignInButton, useAuth, useUser } from "@/_core/auth";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { ReferrerPanel, SeekerPanel } from "@/components/thread/ThreadDecisionPanels";
 import { ThreadMain } from "@/components/thread/ThreadMain";
+import { AppShell } from "@/components/AppShell";
+import { SeekerConversation } from "./conversation/SeekerConversation";
 import { ShareWinCard } from "@/components/thread/ShareWinCard";
 import { canMessage, companyName, isAccepted } from "@/components/thread/threadModel";
 import { usePersistFn } from "@/hooks/usePersistFn";
@@ -13,7 +16,7 @@ import { trpc } from "@/lib/trpc";
 
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error ? reason.message : fallback);
 
-export default function ReferralConversation() {
+export default function ReferralConversation({ framed = false }: { framed?: boolean } = {}) {
   const [, params] = useRoute("/conversation/:requestId");
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
@@ -56,8 +59,10 @@ export default function ReferralConversation() {
 
   const back = <Link href={returnPath} className="text-link flex items-center gap-1 text-sm"><ArrowLeft className="size-4" />All requests</Link>;
 
+  const wrap = (node: React.ReactElement) => (framed ? <AppShell>{node}</AppShell> : node);
+
   if (!isSignedIn) {
-    return (
+    return wrap(
       <main data-skipwait-screen="referral-conversation-sign-in" className="page-content">
         {back}
         <section className="mt-6 max-w-xl">
@@ -65,7 +70,7 @@ export default function ReferralConversation() {
           <p className="mt-3 text-sm text-muted-foreground">Sign in to access your accepted referral conversation.</p>
           <div className="mt-6"><SignInButton><button type="button" className={buttonVariants({ className: "w-full sm:w-auto" })}>Secure sign in</button></SignInButton></div>
         </section>
-      </main>
+      </main>,
     );
   }
 
@@ -88,7 +93,36 @@ export default function ReferralConversation() {
   const seekerSeesReferrer = request && role === "seeker" && isAccepted(request) && request.referrerName ? (request.referrerTitle ? `${request.referrerName} · ${request.referrerTitle}` : request.referrerName) : null;
   const referrerLabel = seekerSeesReferrer ?? (request && role !== "seeker" && isAccepted(request) && user?.fullName ? user.fullName : request ? `Someone at ${companyName(request)}` : "");
 
-  return (
+  // The seeker's side is a goal page (W2). While the role is still loading the
+  // seeker frame shows, since the seeker is by far the common viewer; referrers
+  // keep the kit page until W4.
+  if (role === null || role === "seeker") {
+    return (
+      <SeekerConversation
+        request={request}
+        failure={failure}
+        loading={loading}
+        onReload={() => { void reload(); }}
+        returnPath={returnPath}
+        referrerLabel={seekerSeesReferrer ?? "Referrer"}
+        referrerName={seekerSeesReferrer}
+        messages={messages}
+        messageError={messageError}
+        referenceId={referenceId}
+        canMessage={Boolean(request) && canMessage("seeker", request!)}
+        draft={draft}
+        setDraft={setDraft}
+        sending={sending}
+        onSend={() => { void send(); }}
+        onWithdraw={async () => { await withdrawThreadRequest(request!.id, fetchToken); await reload(); }}
+        onProgress={async status => { await recordProgress(request!.id, status, fetchToken); await reload(); }}
+        onConfirmReferredEmail={async () => { await confirmReferredBySeeker(request!.id, fetchToken); await reload(); }}
+        extra={request && isAccepted(request) ? <div className="mt-6"><ShareWinCard roleTitle={request.title} companyName={companyName(request)} status={request.status} /></div> : null}
+      />
+    );
+  }
+
+  return wrap(
     <main data-skipwait-screen="referral-conversation" className="page-content">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">{back}</div>
       {loading && !request ? <p className="mt-10 text-center text-sm text-muted-foreground">Opening this private thread…</p> : null}
@@ -162,6 +196,6 @@ export default function ReferralConversation() {
           </aside>
         </div>
       ) : null}
-    </main>
+    </main>,
   );
 }
