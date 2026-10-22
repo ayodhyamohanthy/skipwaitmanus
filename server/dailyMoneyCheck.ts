@@ -269,7 +269,7 @@ export async function listDoublyReversedSpends(limit: number): Promise<DoublyRev
  * latest pickup-or-release event before the refund was a claim is a money leak, not a refund.
  * Read-only and bounded: the newest `limit * 4` refund rows are examined, `limit` findings returned.
  */
-async function listRefundsAfterPickup(limit: number): Promise<RefundAfterPickupRow[]> {
+export async function listRefundsAfterPickup(limit: number): Promise<RefundAfterPickupRow[]> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
   const refunds = await db.select({ id: tokenTransactions.id, kind: tokenTransactions.kind, referenceId: tokenTransactions.referenceId, createdAt: tokenTransactions.createdAt })
     .from(tokenTransactions)
