@@ -46,7 +46,7 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 - Loops L1 to L4. Measure: asks per company, companies with a verified referrer, asks answered within 5 days, reports-as-annoying.
 
 ## Skipper (in-product assistant, code name Skippie; D-136 to D-142)
-Skipper is a chat front door to what the product already does. It asks, shows an approve or deny card, then acts through the same server functions as the normal pages. User-facing name Skipper (founder, final word Oct 22). Code and routes keep the name Skippie for now.
+Skipper is a chat front door to what the product already does. It asks, shows an approve or deny card, then acts through the same server functions as the normal pages. User-facing name Skipper (FROZEN by the founder, Oct 22). Code and routes keep the name Skippie for now.
 - **Audiences:** seekers (ask for a referral by chat), admins (read first, then approved actions), and seekers' own AI agents (only with permission).
 - **Rules (binding):** same checks as the pages, never a second rulebook (D-137). Live prices, never hardcoded. Never promises a referral. Referrers never pay or get paid (D-055).
 - **Model and cost:** free model first. Paid model only with the owner's one-word yes and a hard daily cap. Per-user and global daily caps (D-138).
