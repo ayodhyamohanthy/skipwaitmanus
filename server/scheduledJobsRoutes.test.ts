@@ -175,3 +175,28 @@ describe("POST /api/admin/money-check/run", () => {
     expect(failing.capture).toHaveBeenCalled();
   });
 });
+
+describe("GET /api/admin/money-check/status", () => {
+  const rows = [
+    { outcome: "failure", createdAt: new Date() },
+    { outcome: "failure", createdAt: new Date(Date.now() - 3600_000) },
+    { outcome: "success", createdAt: new Date(Date.now() - 86400_000) },
+  ];
+  it("is admin only", async () => {
+    const { app } = appWith({ listMoneyCheckAlerts: async () => rows });
+    expect((await request(app).get("/api/admin/money-check/status")).status).toBe(401);
+    expect((await request(app).get("/api/admin/money-check/status").set("x-test-user", "member")).status).toBe(403);
+  });
+  it("says the owner was not reached when the latest alert email failed", async () => {
+    const { app } = appWith({ listMoneyCheckAlerts: async () => rows });
+    const response = await request(app).get("/api/admin/money-check/status").set("x-test-user", "admin");
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ ownerNotReached: true, failuresLast7Days: 2, latestOutcome: "failure" });
+    expect(response.body.lastSuccessAt).toBeTruthy();
+  });
+  it("is calm when the latest alert was delivered", async () => {
+    const { app } = appWith({ listMoneyCheckAlerts: async () => [rows[2]!] });
+    const response = await request(app).get("/api/admin/money-check/status").set("x-test-user", "admin");
+    expect(response.body).toMatchObject({ ownerNotReached: false, failuresLast7Days: 0 });
+  });
+});
