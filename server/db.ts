@@ -1257,25 +1257,62 @@ export async function getPrivateReferrerImpactSummary(userId: number): Promise<P
   };
 }
 
-export type ReferrerImpactSummary = { acceptedReferrals: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; creditsRemaining: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> };
+export type ReferrerImpactSummary = { acceptedReferrals: number; introductions: number; activeConversations: number; outcomesShared: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; creditsRemaining: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> };
+
+export type ReferrerImpactSource = {
+  requests: Array<{ id: number; status: ReferralStatus; companyDomain: string; updatedAt: Date }>;
+  /** The append-only milestone history of those asks; statuses collapse, this does not. */
+  milestones: Array<{ referralRequestId: number; resultingStatus: string }>;
+  /** Ask ids with at least one message exchanged with the seeker. */
+  threadedRequestIds: number[];
+  unreadMessageCount: number;
+  creditsRemaining: number;
+};
+
+const ACCEPTED_STATUSES = new Set<ReferralStatus>(["approved", "intro_made", "interview", "offer", "closed"]);
+// A conversation is live only while the referral itself is running: a closed or
+// withdrawn ask is a finished one, so a message in it is not an active thread.
+const OPEN_ACCEPTED_STATUSES = new Set<ReferralStatus>(["approved", "intro_made", "interview", "offer"]);
+// Kit impact labels. Each counts a recorded transition, so an ask that reached
+// "interview" and later closed still counts — the referrer's history is real.
+const INTRODUCTION_MILESTONES = new Set<string>(["intro_made", "interview", "offer"]);
+const SHARED_OUTCOME_MILESTONES = new Set<string>(["interview", "offer"]);
+
+export function summarizeReferrerImpact(source: ReferrerImpactSource): ReferrerImpactSummary {
+  const accepted = [...source.requests].filter(row => ACCEPTED_STATUSES.has(row.status)).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  const openAcceptedIds = new Set(source.requests.filter(row => OPEN_ACCEPTED_STATUSES.has(row.status)).map(row => row.id));
+  const requestsWithMilestone = (allowed: Set<string>) => new Set(source.milestones.filter(event => allowed.has(event.resultingStatus)).map(event => event.referralRequestId)).size;
+  return {
+    acceptedReferrals: accepted.length,
+    introductions: requestsWithMilestone(INTRODUCTION_MILESTONES),
+    activeConversations: new Set(source.threadedRequestIds.filter(id => openAcceptedIds.has(id))).size,
+    outcomesShared: requestsWithMilestone(SHARED_OUTCOME_MILESTONES),
+    pendingRequests: source.requests.filter(row => row.status === "pending").length,
+    declinedRequests: source.requests.filter(row => row.status === "declined").length,
+    unreadMessages: source.unreadMessageCount,
+    creditsRemaining: source.creditsRemaining,
+    recentAccepted: accepted.slice(0, 5).map(row => ({ id: row.id, companyDomain: row.companyDomain, acceptedAt: row.updatedAt.toISOString() })),
+  };
+}
 
 export async function getReferrerImpactSummary(userId: number): Promise<ReferrerImpactSummary> {
   const access = await getVerifiedWorkEmailAccess(userId);
   if (!access) throw new Error("Verify your company email to view your private impact");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const rows = await db.select({ id: referralRequests.id, status: referralRequests.status, companyDomain: jobs.company, updatedAt: referralRequests.updatedAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(eq(referralRequests.referrerId, userId));
-  const acceptedStatuses = new Set<ReferralStatus>(["approved", "intro_made", "interview", "offer", "closed"]);
-  const accepted = rows.filter(row => acceptedStatuses.has(row.status)).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  const requests = await db.select({ id: referralRequests.id, status: referralRequests.status, companyDomain: jobs.company, updatedAt: referralRequests.updatedAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(eq(referralRequests.referrerId, userId));
   const unreadRows = await db.select({ unreadMessageCount: count(messages.id) }).from(messages).where(and(eq(messages.recipientId, userId), isNull(messages.readAt)));
   const wallet = await ensureTokenWallet(userId, "referrer");
-  return {
-    acceptedReferrals: accepted.length,
-    pendingRequests: rows.filter(row => row.status === "pending").length,
-    declinedRequests: rows.filter(row => row.status === "declined").length,
-    unreadMessages: Number(unreadRows[0]?.unreadMessageCount ?? 0),
+  const requestIds = requests.map(row => row.id);
+  const milestones = requestIds.length === 0 ? [] : await db.select({ referralRequestId: referralTransitionEvents.referralRequestId, resultingStatus: referralTransitionEvents.resultingStatus }).from(referralTransitionEvents).where(inArray(referralTransitionEvents.referralRequestId, requestIds));
+  const messageRows = requestIds.length === 0 ? [] : await db.select({ referralRequestId: messages.referralRequestId }).from(messages).where(inArray(messages.referralRequestId, requestIds));
+  const milestoneEvents = milestones.filter((event): event is { referralRequestId: number; resultingStatus: string } => event.referralRequestId !== null);
+  return summarizeReferrerImpact({
+    requests,
+    milestones: milestoneEvents,
+    threadedRequestIds: messageRows.map(row => row.referralRequestId).filter((id): id is number => id !== null),
+    unreadMessageCount: Number(unreadRows[0]?.unreadMessageCount ?? 0),
     creditsRemaining: Math.max(0, wallet.monthlyCreditsRemaining + wallet.balance),
-    recentAccepted: accepted.slice(0, 5).map(row => ({ id: row.id, companyDomain: row.companyDomain, acceptedAt: row.updatedAt.toISOString() })),
-  };
+  });
 }
 
 export type ReferrerFastTrackLink = { linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean };

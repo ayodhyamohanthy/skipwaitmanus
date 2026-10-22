@@ -18,6 +18,12 @@ function stubFetch(handler: (url: string) => { ok: boolean; status?: number; jso
   vi.stubGlobal("fetch", vi.fn(async (input: string) => handler(String(input))));
 }
 
+/** Read one stat by its label. A bare getByText("3") passes on any stat, so it cannot prove a number is in the right slot. */
+function statValue(label: string): string | undefined {
+  const node = Array.from(screen.getByLabelText("Your private impact").querySelectorAll("span")).find(span => span.textContent?.endsWith(label));
+  return node?.querySelector("strong")?.textContent;
+}
+
 beforeEach(() => { authState.isSignedIn = false; });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -44,7 +50,7 @@ describe("ReferrerImpact dashboard", () => {
     authState.isSignedIn = true;
     stubFetch(url => {
       if (url.endsWith("/api/company-referrals/access")) return { ok: true, json: async () => ({ verifiedCompanyAccess: true, workEmailDomain: "acme.com" }) };
-      if (url.endsWith("/api/referrer/impact-summary")) return { ok: true, json: async () => ({ acceptedReferrals: 0, pendingRequests: 0, declinedRequests: 0, unreadMessages: 0, creditsRemaining: 3, recentAccepted: [] }) };
+      if (url.endsWith("/api/referrer/impact-summary")) return { ok: true, json: async () => ({ acceptedReferrals: 0, introductions: 0, activeConversations: 0, outcomesShared: 0, pendingRequests: 0, declinedRequests: 0, unreadMessages: 0, creditsRemaining: 3, recentAccepted: [] }) };
       return { ok: true, json: async () => ({}) };
     });
     renderImpact();
@@ -53,7 +59,8 @@ describe("ReferrerImpact dashboard", () => {
     expect(screen.getByText("YOUR IMPACT STARTS AT ZERO")).toBeTruthy();
     const stats = screen.getByLabelText("Your private impact");
     expect(Array.from(stats.querySelectorAll("strong")).map(node => node.textContent)).toEqual(["0", "0", "0"]);
-    expect(stats.textContent).toContain("referrals accepted");
+    // The kit's three labels, in the kit's order.
+    expect(Array.from(stats.querySelectorAll("span")).map(node => node.textContent?.replace(/^\d+/, "")).slice(0, 3)).toEqual(["introductions", "active conversations", "outcomes shared"]);
     expect(screen.queryByText("Recent referrals")).toBeNull();
     expect(screen.getByRole("link", { name: "See how a request looks" }).getAttribute("href")).toBe("/queue");
   });
@@ -63,16 +70,21 @@ describe("ReferrerImpact dashboard", () => {
     const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000).toISOString();
     stubFetch(url => {
       if (url.endsWith("/api/company-referrals/access")) return { ok: true, json: async () => ({ verifiedCompanyAccess: true, workEmailDomain: "acme.com" }) };
-      if (url.endsWith("/api/referrer/impact-summary")) return { ok: true, json: async () => ({ acceptedReferrals: 4, pendingRequests: 2, declinedRequests: 1, unreadMessages: 1, creditsRemaining: 3, recentAccepted: [{ id: 9, companyDomain: "acme.com", acceptedAt: twoDaysAgo }] }) };
+      if (url.endsWith("/api/referrer/impact-summary")) return { ok: true, json: async () => ({ acceptedReferrals: 4, introductions: 2, activeConversations: 1, outcomesShared: 3, pendingRequests: 5, declinedRequests: 1, unreadMessages: 6, creditsRemaining: 3, recentAccepted: [{ id: 9, companyDomain: "acme.com", acceptedAt: twoDaysAgo }] }) };
       return { ok: true, json: async () => ({}) };
     });
     renderImpact();
     expect(await screen.findByText("Recent referrals")).toBeTruthy();
-    expect(screen.getByText("4")).toBeTruthy();
-    expect(screen.getByText("2")).toBeTruthy();
-    expect(screen.getByText("1")).toBeTruthy();
+    // Kit v4 impact: the three metrics the referrer controls come from history, then the operational counts.
+    // Read per label: a loose getByText("3") would pass on whichever stat rendered first, and D-055's
+    // "no 3 on screen" guard can no longer express anything now that a real metric can be 3.
+    expect(statValue("introductions")).toBe("2");
+    expect(statValue("active conversations")).toBe("1");
+    expect(statValue("outcomes shared")).toBe("3");
+    expect(statValue("referrals accepted")).toBe("4");
+    expect(statValue("pending decisions")).toBe("5");
+    expect(statValue("unread messages")).toBe("6");
     // D-055: recognition only. The server still sends creditsRemaining; a referrer is never shown a credit balance.
-    expect(screen.queryByText("3")).toBeNull();
     expect(screen.queryByText(/credits remaining/i)).toBeNull();
     expect(screen.getByText(/skipwait.me never pays referrers\./)).toBeTruthy();
     expect(screen.getByText("acme.com")).toBeTruthy();
@@ -91,6 +103,8 @@ describe("ReferrerImpact dashboard", () => {
     renderImpact();
     expect(await screen.findByText("No invented scoreboards.")).toBeTruthy();
     expect(screen.queryByText("Verify your work email")).toBeNull();
+    // This payload predates the three kit metrics; the edge normalises them to honest zeros, never "undefined".
+    expect(Array.from(screen.getByLabelText("Your private impact").querySelectorAll("strong")).map(node => node.textContent)).toEqual(["0", "0", "0"]);
   });
 
   it("shows a retryable error, never the work-email setup, when the verification check fails", async () => {
