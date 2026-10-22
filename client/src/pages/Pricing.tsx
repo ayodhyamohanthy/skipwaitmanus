@@ -1,5 +1,6 @@
 import { Link } from "wouter";
-import { Tag } from "lucide-react";
+import { ArrowRight, Tag } from "lucide-react";
+import { Button } from "@/components/kit/button";
 import { PolicyPageShell, PolicySection } from "@/components/PolicyPageShell";
 import { ASK_COST_SENTENCE, CREDIT_RULE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 
@@ -29,5 +30,10 @@ export default function Pricing() {
     <PolicySection number="04" title="Employers">
       <p>Everything above prices the job-seeker and employee side. Companies pay separately to sponsor roles and unlock anonymized opt-in talent; see <Link href="/employer" className="font-semibold text-black">Hire on skipwait.me</Link>.</p>
     </PolicySection>
+    <div className="pt-4">
+      <Button asChild size="lg" className="brand-button">
+        <Link href="/plans">See plans and prices <ArrowRight className="size-4" /></Link>
+      </Button>
+    </div>
   </PolicyPageShell>;
 }
