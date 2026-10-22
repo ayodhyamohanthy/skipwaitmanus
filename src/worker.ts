@@ -103,7 +103,7 @@ export default {
       // webhook path skips the gate. Every other path stays gated.
       const denied = url.pathname === "/api/chargebee/webhook" ? null : qaGate(request, env);
       if (denied) return denied;
-    } else if (url.protocol !== "https:" || url.hostname !== "skipwait.me" || !url.pathname.startsWith("/api/")) {
+    } else if (url.protocol !== "https:" || url.hostname !== "skipwait.me" || !(url.pathname.startsWith("/api/") || url.pathname === "/sitemap.xml")) {
       return new Response("Not Found", { status: 404, headers: { "cache-control": "no-store" } });
     }
     // Internal routes (the scheduled-jobs tick) are reachable only from

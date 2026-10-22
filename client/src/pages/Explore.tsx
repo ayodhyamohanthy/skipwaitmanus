@@ -334,6 +334,7 @@ export default function Explore() {
               functions={item.functions}
               open={item.openToReferrals}
               selected={company?.slug === item.slug}
+              href={`/explore/${item.slug}`}
               onSelect={() => selectCompany(item.slug)}
             />
           ))}

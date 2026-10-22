@@ -9,7 +9,9 @@
   "compatibility_date": "2026-08-01",
   "workers_dev": false,
   "routes": [
-    { "pattern": "skipwait.me/api/*", "zone_name": "skipwait.me" }
+    { "pattern": "skipwait.me/api/*", "zone_name": "skipwait.me" },
+    // The sitemap is served by the container (direct DB reads); Pages keeps its function as the fallback shape.
+    { "pattern": "skipwait.me/sitemap.xml", "zone_name": "skipwait.me" }
   ],
   // Scheduled jobs: src/worker.ts scheduled() POSTs the container's
   // /api/internal/jobs/tick, signed from JWT_SECRET (shared/jobsTick.ts JOBS_CRON).
