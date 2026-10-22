@@ -73,7 +73,7 @@ function AskRow({ request, nowMs }: { request: ReferralRequest; nowMs: number })
   );
 }
 
-function PageHeading({ slots, loading, onReload, showAction = true }: { slots: Awaited<ReturnType<typeof fetchMyRequests>>["slots"]; loading: boolean; onReload: () => void; showAction?: boolean }) {
+function PageHeading({ slots, loading, failed = false, onReload, showAction = true }: { slots: Awaited<ReturnType<typeof fetchMyRequests>>["slots"]; loading: boolean; failed?: boolean; onReload: () => void; showAction?: boolean }) {
   return (
     <header className="grid gap-1 px-4 pt-6 pb-1 gdesk:px-5 gdesk:pt-7 gdesk:pb-2">
       <div className="flex items-center justify-between gap-3">
@@ -85,7 +85,7 @@ function PageHeading({ slots, loading, onReload, showAction = true }: { slots: A
         ) : null}
       </div>
       <p className="text-g-body text-g-ink-2">{SUBTITLE}</p>
-      {loading ? null : slots ? (
+      {loading || failed ? null : slots ? (
         <p data-testid="asks-slots" className="mt-1 text-g-meta text-g-ink-2">
           Open asks <GoalNum>{slots.open}</GoalNum> of <GoalNum>{slots.cap}</GoalNum> · {slots.planLabel} plan
         </p>
@@ -240,7 +240,7 @@ export default function MyRequests() {
 
   return shell(
     <main data-skipwait-screen="my-requests" className="w-full max-w-[var(--g-asks-list-w)] pb-10 gdesk:min-h-[calc(100vh-var(--g-topbar-h))] gdesk:border-r gdesk:border-g-hairline">
-      <PageHeading slots={slots} loading={false} onReload={() => { void requestsQuery.refetch(); }} />
+      <PageHeading slots={slots} loading={false} failed={Boolean(loadError)} onReload={() => { void requestsQuery.refetch(); }} />
       {body}
     </main>,
   );

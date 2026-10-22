@@ -161,6 +161,17 @@ describe("My asks pending states", () => {
     expect(go).toHaveBeenCalledWith("/");
   });
 
+  it("shows one error for a failed list, not a second slots line in the heading", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/api/credits/summary")
+      ? { ok: true, status: 200, json: async () => ({ summary: { totalAvailable: 4 } }) }
+      : { ok: false, status: 503, json: async () => ({ error: "Referral service is temporarily unavailable" }) }));
+    renderPage();
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.queryByTestId("asks-slots-error")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reload" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+  });
+
   it("keeps the kit's loading copy while the list loads", async () => {
     let release: (() => void) | undefined;
     const fetchMock = vi.fn((url: string) => {
