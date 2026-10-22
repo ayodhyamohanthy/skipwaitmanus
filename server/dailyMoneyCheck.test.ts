@@ -24,6 +24,7 @@ function makeDeps(overrides: Partial<DailyMoneyCheckDeps> = {}) {
     listParkedPayments: vi.fn(async () => []),
     listUnmatchedRefunds: vi.fn(async () => []),
     listStaleCheckouts: vi.fn(async () => []),
+    summarizeStaleCheckouts: vi.fn(async () => ({ total: 0, users: 0, oldest: null, newest: null })),
     listAllocatedAsks: vi.fn(async () => []),
     listLegacyPlanWallets: vi.fn(async () => []),
     listAskDeliverySpendsWhileWaiting: vi.fn(async () => []),
@@ -107,14 +108,17 @@ describe("daily-money-check (D-065)", () => {
     const { deps, sent } = makeDeps({
       listParkedPayments: vi.fn(async () => [{ id: 21, amount: 9900, currency: "INR", reconciliationReason: "checkout_amount_mismatch", createdAt: new Date("2026-10-17T10:00:00Z") }]),
       listUnmatchedRefunds: vi.fn(async () => [{ logId: 31, resourceId: "inv_123", createdAt: new Date("2026-10-18T11:00:00Z") }]),
-      listStaleCheckouts: vi.fn(async (olderThan: Date) => { staleSeen.push(olderThan); return [{ id: 41, amount: 9900, currency: "INR", createdAt: new Date("2026-10-17T01:00:00Z") }]; }),
+      listStaleCheckouts: vi.fn(async () => [{ id: 41, amount: 9900, currency: "INR", createdAt: new Date("2026-10-17T01:00:00Z") }]),
+      summarizeStaleCheckouts: vi.fn(async (olderThan: Date) => { staleSeen.push(olderThan); return { total: 1221, users: 3, oldest: new Date("2026-09-23T03:02:28Z"), newest: new Date("2026-10-17T01:00:00Z") }; }),
     });
     await runJob(deps);
     expect(staleSeen[0]!.getTime()).toBe(NOW.getTime() - DAY);
     expect(sent).toHaveLength(1);
     expect(sent[0]!.text).toContain("parked payment: #21 9900 INR (checkout_amount_mismatch");
     expect(sent[0]!.text).toContain("unmatched refund: log #31 (inv_123");
-    expect(sent[0]!.text).toContain("stale checkout: payment #41 9900 INR pending since 2026-10-17T01:00:00.000Z");
+    expect(sent[0]!.text).toContain("stale checkouts: 1221 unpaid checkout page(s) from 3 account(s) still pending after a day, oldest 2026-09-23T03:02:28.000Z");
+    expect(sent[0]!.text).toContain("none credited, no money moved (oldest ids: #41)");
+    expect(sent[0]!.text).not.toContain("stale checkout: payment");
   });
 
   it("caps the email lines while the subject keeps the full count", async () => {
