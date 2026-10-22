@@ -45,8 +45,8 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 - Public launch when the 10 most-asked companies each have a verified referrer (confirmed by the owner, Oct 21; no payment test in the trigger).
 - Loops L1 to L4. Measure: asks per company, companies with a verified referrer, asks answered within 5 days, reports-as-annoying.
 
-## Reffy (in-product assistant, code name Skippie; D-136 to D-142)
-Reffy is a chat front door to what the product already does. It asks, shows an approve or deny card, then acts through the same server functions as the normal pages. User-facing name Reffy (frozen by the owner, Oct 22). Code and routes keep the name Skippie for now.
+## Doorway (in-product assistant, code name Skippie; D-136 to D-142)
+Doorway is a chat front door to what the product already does. It asks, shows an approve or deny card, then acts through the same server functions as the normal pages. User-facing name Doorway (founder, Oct 22; Reffy dropped because of reffy.io). Code and routes keep the name Skippie for now.
 - **Audiences:** seekers (ask for a referral by chat), admins (read first, then approved actions), and seekers' own AI agents (only with permission).
 - **Rules (binding):** same checks as the pages, never a second rulebook (D-137). Live prices, never hardcoded. Never promises a referral. Referrers never pay or get paid (D-055).
 - **Model and cost:** free model first. Paid model only with the owner's one-word yes and a hard daily cap. Per-user and global daily caps (D-138).
@@ -54,4 +54,4 @@ Reffy is a chat front door to what the product already does. It asks, shows an a
 - **Approvals:** cards inside Skippie. Money cards show exact amount, currency and undo cost, one-use, short expiry, fresh re-login, payment through Chargebee checkout only. Text in user data is never an instruction (D-140).
 - **Seeker agents:** seeker-granted, scoped, limited, expiring (7 days default, 30 max), revocable, hashed key shown once, ask-me-every-time by default, never buy credits, audit log (D-141). Referrers see "sent via the seeker's assistant" (D-142).
 - **Build order and proof:** Step 1 admin read-only. Step 2 seeker ask-only (flag on only for the test seeker). Step 3 in-chat plan or credit choice via Chargebee. Step 4 admin approval cards. Step 5 agents draft-only. Step 6 agents send with ask-every-time. Step 7 opt-in auto-send within limits. Each step ships behind a flag that stays off in prod until proven with screenshots or test output. Nothing live-money until test payments pass.
-- **Before any seeker-facing launch:** confirm provider data terms, set the global spend cap, pass the red-team injection test, founder sees a demo on the live URL, run a trademark and name-clearance search for "Reffy" (owner kept the name Oct 22).
+- **Before any seeker-facing launch:** confirm provider data terms, set the global spend cap, pass the red-team injection test, founder sees a demo on the live URL, run a trademark and name-clearance search for "Doorway".
