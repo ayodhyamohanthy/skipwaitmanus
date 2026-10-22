@@ -154,11 +154,11 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
   });
 });
 
-describe("the pass reason decides the credit (D-035, superseding the Oct 14 2026 rule)", () => {
-  it("Terms say the credit comes back only on a pass you can't fix", () => {
+describe("decline keeps the credit spent (founder decision, Oct 14 2026)", () => {
+  it("Terms say a decline does not return the credit", () => {
     const { container } = render(<Terms />);
     const text = container.textContent ?? "";
-    expect(text).toContain("the credit stays spent, unless they pass for a reason you can't fix");
+    expect(text).toContain("the credit stays spent, even if they pass");
     expect(text).not.toMatch(/reserved when a request is sent/);
     expect(text).not.toMatch(/Momentum|Keep warm/);
   });
