@@ -3502,13 +3502,23 @@ export async function listReferralConversation(userId: number, requestId: number
   return rows.map(row => ({ id: row.id, body: row.body, createdAt: row.createdAt, isMine: row.senderId === userId }));
 }
 
+/**
+ * The message and its notification are one write: a notice that fails after the
+ * message landed must not leave a message the caller could resend.
+ */
+async function sendReferralConversationMessageTx(tx: LedgerTx, userId: number, requestId: number, trimmedBody: string) {
+  const request = await tx.select({ jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1);
+  const { recipientId } = authorizeApprovedReferralConversation(userId, request[0]);
+  const result = await tx.insert(messages).values({ senderId: userId, recipientId, body: trimmedBody.slice(0, 3000), referralRequestId: requestId });
+  await tx.insert(notifications).values({ kind: "message_new", userId: recipientId, category: "message", title: "New private referral message", body: "You have a new message in an accepted referral request." });
+  return { id: Number(result[0].insertId) };
+}
+
 export async function sendReferralConversationMessage(userId: number, requestId: number, body: string) {
   const trimmedBody = body.trim();
   if (!trimmedBody) throw new Error("Write a message before sending");
-  const { db, recipientId } = await getApprovedReferralConversationParticipants(userId, requestId);
-  const result = await db.insert(messages).values({ senderId: userId, recipientId, body: trimmedBody.slice(0, 3000), referralRequestId: requestId });
-  await db.insert(notifications).values({ kind: "message_new", userId: recipientId, category: "message", title: "New private referral message", body: "You have a new message in an accepted referral request." });
-  return { id: Number(result[0].insertId) };
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(tx => sendReferralConversationMessageTx(tx, userId, requestId, trimmedBody));
 }
 
 /**
@@ -3518,9 +3528,10 @@ export async function sendReferralConversationMessage(userId: number, requestId:
  * the referrer, then it is final and reaches them through the existing referral
  * conversation exactly once — `deliveredAt` is
  * claimed with a conditional update before the send, so a double click or a retry
- * after a lost response cannot hand the referrer the same note twice. A failed send
- * releases the claim, so the seeker's own next attempt can deliver it and the response
- * says truthfully that it has not gone yet.
+ * after a lost response cannot hand the referrer the same note twice. The claim, the
+ * message and its notification commit together, so a failed send rolls the claim back
+ * with it and the seeker's own next attempt can deliver the note; the response says
+ * truthfully that it has not gone yet.
  */
 export async function recordLandedJourney(userId: number, input: LandedJourneyRequest): Promise<LandedJourneyState> {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
@@ -3540,21 +3551,23 @@ export async function recordLandedJourney(userId: number, input: LandedJourneyRe
   await db.update(landedJourney).set({ thankYouMessage, shareOnWall, payForwardChoice: payForward, updatedAt: now }).where(eq(landedJourney.referralRequestId, ask.id));
   let delivered = Boolean(row.deliveredAt);
   if (!delivered && message) {
-    const claimed = await db.update(landedJourney).set({ deliveredAt: now }).where(and(eq(landedJourney.referralRequestId, ask.id), isNull(landedJourney.deliveredAt)));
-    if (Number(claimed[0]?.affectedRows ?? 0) === 1) {
-      try {
-        const sent = await sendReferralConversationMessage(userId, ask.id, message);
-        await db.update(landedJourney).set({ conversationMessageId: sent.id }).where(eq(landedJourney.referralRequestId, ask.id));
-        delivered = true;
-      } catch (error) {
-        captureServerError(error, { area: "landedJourney", referralRequestId: ask.id });
-        const released = await db.update(landedJourney).set({ deliveredAt: null }).where(and(eq(landedJourney.referralRequestId, ask.id), isNull(landedJourney.conversationMessageId)));
-        if (Number(released[0]?.affectedRows ?? 0) !== 1) captureServerError(new Error("Landed thank-you claim could not be released"), { area: "landedJourney", referralRequestId: ask.id });
-      }
-    } else {
-      // Another of this seeker's own submits holds the claim; report what it settled on.
-      const after = (await db.select({ deliveredAt: landedJourney.deliveredAt }).from(landedJourney).where(eq(landedJourney.referralRequestId, ask.id)).limit(1))[0];
-      delivered = Boolean(after?.deliveredAt);
+    try {
+      // The claim, the message and the link back to it commit together; a send that
+      // dies anywhere leaves no claim and no half-delivered note for a retry to duplicate.
+      delivered = await db.transaction(async tx => {
+        const claimed = await tx.update(landedJourney).set({ deliveredAt: now }).where(and(eq(landedJourney.referralRequestId, ask.id), isNull(landedJourney.deliveredAt)));
+        if (Number(claimed[0]?.affectedRows ?? 0) !== 1) {
+          // Another of this seeker's own submits holds the claim; report what it settled on.
+          const after = (await tx.select({ deliveredAt: landedJourney.deliveredAt }).from(landedJourney).where(eq(landedJourney.referralRequestId, ask.id)).limit(1))[0];
+          return Boolean(after?.deliveredAt);
+        }
+        const sent = await sendReferralConversationMessageTx(tx, userId, ask.id, message);
+        await tx.update(landedJourney).set({ conversationMessageId: sent.id }).where(eq(landedJourney.referralRequestId, ask.id));
+        return true;
+      });
+    } catch (error) {
+      captureServerError(error, { area: "landedJourney", referralRequestId: ask.id });
+      delivered = false;
     }
   }
   return { referralRequestId: ask.id, thankYouMessage, shareOnWall, payForward, delivered };

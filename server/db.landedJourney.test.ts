@@ -31,6 +31,9 @@ const UNIQUE_BY_NAME: Record<string, string[]> = { landedJourney: ["referralRequ
 let rows: Record<string, Row[]>;
 let sequence: Record<string, number>;
 let conversationSendFails = false;
+let notificationInsertFails = false;
+/** Simulates another submit claiming the send between this call's read and its claim. */
+let onClaimAttempt: (() => void) | null = null;
 
 const tableNameOf = (table: unknown) => getTableName(table as never);
 const bucket = (table: unknown) => (rows[tableNameOf(table)] ??= []);
@@ -172,6 +175,11 @@ function fixtureDatabase() {
     set: (patch: Row) => ({
       where: async (condition: unknown) => {
         const name = tableNameOf(table);
+        if (name === "landedJourney" && patch.deliveredAt instanceof Date && onClaimAttempt) {
+          const hook = onClaimAttempt;
+          onClaimAttempt = null;
+          hook();
+        }
         const matched = bucket(table).filter(row => matches(condition, flatten([{ table: name, row }])));
         for (const row of matched) for (const [key, value] of Object.entries(patch)) row[key] = structuredClone(value);
         return [{ affectedRows: matched.length }];
@@ -182,14 +190,15 @@ function fixtureDatabase() {
     values: (input: Row | Row[]) => {
       const name = tableNameOf(table);
       if (name === "messages" && conversationSendFails) throw new Error("conversation send failed");
+      if (name === "notifications" && notificationInsertFails) throw new Error("notification insert failed");
       const created: Row[] = [];
       for (const item of Array.isArray(input) ? input : [input]) {
         const unique = UNIQUE_BY_NAME[name] ?? [];
         const clash = unique.length > 0 ? bucket(table).find(row => unique.every(column => row[column] === item[column])) : undefined;
         if (clash) return Object.assign(Promise.resolve([{ affectedRows: 2 }]), { onDuplicateKeyUpdate: async (patch: { set: Row }) => { for (const [key, value] of Object.entries(patch.set)) clash[key] = structuredClone(value); return [{ affectedRows: 2 }]; } });
         const id = (sequence[name] = (sequence[name] ?? 0) + 1);
-        // Mirrors the DDL defaults: autoincrement id, shareOnWall false, timestamps default now.
-        const row: Row = { shareOnWall: false, createdAt: SENT_AT, updatedAt: SENT_AT, ...structuredClone(item), id };
+        // Mirrors the DDL defaults: autoincrement id, shareOnWall false, nullable deliveredAt, timestamps default now.
+        const row: Row = { shareOnWall: false, deliveredAt: null, createdAt: SENT_AT, updatedAt: SENT_AT, ...structuredClone(item), id };
         bucket(table).push(row);
         created.push(row);
       }
@@ -206,7 +215,21 @@ function fixtureDatabase() {
     },
   });
   const api = { select, update, insert, delete: remove };
-  return { ...api, transaction: async (cb: (tx: unknown) => Promise<unknown>) => cb(api) };
+  // A real transaction rolls every write back on a throw; the fixture copies the
+  // tables so a failed step cannot leave a half-written message behind.
+  return {
+    ...api,
+    transaction: async (cb: (tx: unknown) => Promise<unknown>) => {
+      const snapshot = { rows: structuredClone(rows), sequence: structuredClone(sequence) };
+      try {
+        return await cb(api);
+      } catch (error) {
+        rows = snapshot.rows;
+        sequence = snapshot.sequence;
+        throw error;
+      }
+    },
+  };
 }
 
 const userRow = (id: number, name: string) => ({ id, openId: `u${id}`, name, email: `u${id}@example.test`, role: "user", suspended: false });
@@ -225,6 +248,8 @@ function seed() {
   };
   sequence = { users: 11, jobs: 4, referralRequests: 505, landedJourney: 0, messages: 0, notifications: 0 };
   conversationSendFails = false;
+  notificationInsertFails = false;
+  onClaimAttempt = null;
 }
 
 beforeEach(() => {
@@ -273,6 +298,19 @@ describe("the landed thank-you reaches one referrer once", () => {
     expect(rows.messages).toHaveLength(1);
   });
 
+  it("sends nothing when another submit wins the claim between the read and the claim", async () => {
+    rows.landedJourney = [wallRow(501, { thankYouMessage: null, shareOnWall: false, deliveredAt: null, conversationMessageId: null })];
+    rows.messages = [{ id: 77, senderId: 7, recipientId: 9, body: "From the other click.", referralRequestId: 501 }];
+    // The other submit claims and sends while this call is between its read and its
+    // conditional claim; only the isNull guard turns that into affectedRows 0.
+    onClaimAttempt = () => { saved().deliveredAt = SENT_AT; saved().conversationMessageId = 77; };
+    const state = await recordLandedJourney(7, note({ message: "This click must not send." }));
+    expect(state.delivered).toBe(true);
+    expect(rows.messages).toHaveLength(1);
+    expect(rows.messages[0]).toMatchObject({ id: 77, body: "From the other click." });
+    expect(saved().conversationMessageId).toBe(77);
+  });
+
   it("reports a note another submit already claimed instead of sending a second copy", async () => {
     // The state a double click leaves behind: this seeker's earlier submit took the
     // delivery claim and is still in flight, so nothing here may send again.
@@ -296,6 +334,23 @@ describe("the landed thank-you reaches one referrer once", () => {
     expect(rows.messages).toHaveLength(1);
     expect(rows.messages[0]).toMatchObject({ body: "Edited before it ever reached them.", recipientId: 9 });
     expect(saved().deliveredAt).toBeInstanceOf(Date);
+    expect(saved().conversationMessageId).toBe(rows.messages[0]?.id);
+  });
+
+  it("rolls the message back when the referrer notice fails, so the retry sends exactly one", async () => {
+    notificationInsertFails = true;
+    const failed = await recordLandedJourney(7, note({ message: "One copy only." }));
+    expect(failed).toMatchObject({ thankYouMessage: "One copy only.", delivered: false });
+    expect(rows.messages).toHaveLength(0);
+    expect(rows.notifications).toHaveLength(0);
+    expect(saved().deliveredAt).toBeNull();
+
+    notificationInsertFails = false;
+    const retried = await recordLandedJourney(7, note({ message: "One copy only." }));
+    expect(retried.delivered).toBe(true);
+    expect(rows.messages).toHaveLength(1);
+    expect(rows.messages[0]).toMatchObject({ body: "One copy only.", recipientId: 9 });
+    expect(rows.notifications).toHaveLength(1);
     expect(saved().conversationMessageId).toBe(rows.messages[0]?.id);
   });
 
