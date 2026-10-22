@@ -30,14 +30,11 @@ When a verified employee passes on an ask they picked up:
 ## 3. Current behaviour (verified)
 1. `shared/passReasons.ts` holds 7 codes with a `fixable` flag (only `needs_experience` and `not_enough_context`), a legacy mapping, and `passReasonSeekerLabel`.
 2. `passReferralRequestTx` (`server/db.ts`, about 2035) writes transition `action: "pass"` for every pass, and a `referralRequestPasses` row with `reason` (legacy enum) and `reasonCode`. The seeker notice says the ask is open again, with the reason label in brackets.
-3. Two surfaces still offer only the 3 legacy reasons and send no `passReason`:
-   - the `/queue` opened-request decline (`client/src/components/referrer/CandidatePreviewCard.tsx`, the `DECLINE_REASONS` list near the top);
-   - the email review page (`client/src/pages/EmailReviewAction.tsx`).
-
-   The queue card's "Pass privately" and the thread already use the shared 7 (`PassPrivatelyPanel.tsx`, `ThreadDecisionPanels.tsx`).
+3. One surface still offers only the 3 legacy reasons and sends no `passReason`: the email review page (`client/src/pages/EmailReviewAction.tsx`). The `/queue` opened-request decline (`client/src/pages/MyCompanyInbox.tsx` with `client/src/components/goal/GoalPassReasons.tsx`) and the thread (`client/src/components/thread/ThreadDecisionPanels.tsx`) already use the shared 7 and send `passReason`; that queue surface is unchanged and pinned by `client/src/pages/myCompanyInbox.pendingStates.test.tsx`. (The older `CandidatePreviewCard.tsx` and `PassPrivatelyPanel.tsx` are gone after the goal-UI migration.)
 4. Consumers of the action name `pass`:
    - `server/flowBaseline.ts` (`DECISION_ACTIONS`, `ACTIVITY_ACTIONS`);
-   - `server/notificationKinds.ts` (`pass` → `ask_passed`).
+   - `server/notificationKinds.ts` (`pass` → `ask_passed`);
+   - also `server/companyResponseSignal.ts`, `getPrivateReferrerImpactSummary`'s local decision set in `server/db.ts`, and `listRefundsAfterPickup` in `server/dailyMoneyCheck.ts`; the first two count a pass as a decision, the last decides whether a refund is a leak. Round 1 missed the last three.
 5. After D-038-B, `referralWasClaimedTx` treats {`claim`, `claim_lapse`, `referred_lapse`, `step_back`} as the pickup-or-release set: the latest must be a `claim`.
 
 ## 4. Target behaviour
@@ -51,11 +48,14 @@ When a verified employee passes on an ask they picked up:
      - fixable: "Updating your profile or note can help the next employee decide." (no promise of "Send again" yet; the next packet adds it).
 
    An unclaimed pass keeps today's notice. Never include the referrer's name. `<label>` is `passReasonSeekerLabel(code)`; for a legacy pass with no code, omit the opening.
-4. **Legacy surfaces.** `CandidatePreviewCard.tsx`'s decline and `EmailReviewAction.tsx` use the shared seven reasons (reuse `client/src/components/referrer/PassPrivatelyPanel.tsx` or its list): no preselection, Pass disabled until a pick, no credit wording. They send `declineReason` (legacy, from the mapping) plus `passReason` (the code), like the thread does.
+4. **Legacy surfaces.** `client/src/pages/EmailReviewAction.tsx` offers the shared seven reasons (`PASS_REASON_OPTIONS`) with nothing preselected and no credit wording; each reason button records the pass immediately. It sends `declineReason` (legacy, from the mapping) plus `passReason` (the code), like the thread and the queue decline already do (`client/src/pages/MyCompanyInbox.tsx` + `client/src/components/goal/GoalPassReasons.tsx`, unchanged).
 5. **Consumers.**
    - `server/flowBaseline.ts`: add `pass_release` to `DECISION_ACTIONS` and `ACTIVITY_ACTIONS`, so the weekly "Passed" outcome counts both.
    - `server/notificationKinds.ts`: map `pass_release` → `ask_passed`.
    - `server/notificationKinds.test.ts`: add the case.
+   - `server/companyResponseSignal.ts`: count `pass_release` as the company's first decision.
+   - `server/db.ts` (`getPrivateReferrerImpactSummary`): count `pass_release` in the reply-latency decision set.
+   - `server/dailyMoneyCheck.ts`: `listRefundsAfterPickup` treats `pass_release` as a release (otherwise every correct D-035 refund alerts as a leak), and `released_pass_unrefunded` checks the terminal refund.
 6. **Copy.** `shared/moneyCopy.ts` `CREDIT_RULE` and `CREDIT_RULE_SHORT`: "once someone picks the ask up, the credit stays spent, even if they pass" becomes "once someone picks the ask up, the credit stays spent, unless they pass for a reason you can't fix". Keep the D-063 sentence.
 7. **Unchanged.**
    - The referrer never sees a credit effect (D-066 (4)).
@@ -64,11 +64,11 @@ When a verified employee passes on an ask they picked up:
 
 ## 5. Files
 - **In scope:**
-  - `server/db.ts` (`passReferralRequestTx` and `referralWasClaimedTx` only);
-  - `server/flowBaseline.ts`, `server/notificationKinds.ts`;
+  - `server/db.ts` (`passReferralRequestTx`, `referralWasClaimedTx`, and `getPrivateReferrerImpactSummary`'s decision set);
+  - `server/flowBaseline.ts`, `server/notificationKinds.ts`, `server/companyResponseSignal.ts`, `server/dailyMoneyCheck.ts`;
   - `shared/moneyCopy.ts`;
-  - `client/src/components/referrer/CandidatePreviewCard.tsx`, `client/src/pages/EmailReviewAction.tsx`;
-  - tests in §7;
+  - `client/src/pages/EmailReviewAction.tsx`, `client/src/content/guides.ts`;
+  - tests in §7 (including `client/src/pages/ask.test.tsx`);
   - docs in §9.
 - **Out of scope:**
   - Send again (next packet);
