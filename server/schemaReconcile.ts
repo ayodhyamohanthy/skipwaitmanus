@@ -7,6 +7,10 @@ import { getDb } from "./db";
 // New tables are created idempotently (IF NOT EXISTS) so a drifted live DB
 // self-heals without manual migration runs. Keep in sync with drizzle/schema.ts.
 export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
+  { table: "seekerAgentGrants", createSql: `CREATE TABLE IF NOT EXISTS \`seekerAgentGrants\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`name\` varchar(120) NOT NULL, \`keyPrefix\` varchar(16) NOT NULL, \`keyHash\` varchar(64) NOT NULL, \`canLookup\` boolean NOT NULL DEFAULT true, \`canDraft\` boolean NOT NULL DEFAULT true, \`maxCreditsPerAsk\` int NOT NULL, \`maxCreditsPerDay\` int NOT NULL, \`maxCreditsPerWeek\` int NOT NULL, \`maxAsksPerDay\` int NOT NULL, \`expiresAt\` timestamp NOT NULL, \`revokedAt\` timestamp NULL, \`lastUsedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`seekerAgentGrants_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`seeker_agent_grants_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`seeker_agent_grants_key_hash_unique\`(\`keyHash\`), INDEX \`seeker_agent_grants_user_idx\`(\`userId\`))` },
+  { table: "seekerAgentControls", createSql: `CREATE TABLE IF NOT EXISTS \`seekerAgentControls\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`pausedAt\` timestamp NULL, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`seekerAgentControls_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`seeker_agent_controls_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`seeker_agent_controls_user_unique\`(\`userId\`))` },
+  { table: "seekerAgentDrafts", createSql: `CREATE TABLE IF NOT EXISTS \`seekerAgentDrafts\` (\`id\` int AUTO_INCREMENT NOT NULL, \`grantId\` int NOT NULL, \`userId\` int NOT NULL, \`companySlug\` varchar(48) NOT NULL, \`targetRoleUrl\` varchar(2048) NOT NULL, \`note\` varchar(2000) NOT NULL DEFAULT '', \`jobLevel\` int NOT NULL, \`creditCost\` int NOT NULL, \`status\` ENUM('draft','discarded') NOT NULL DEFAULT 'draft', \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`seekerAgentDrafts_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`seeker_agent_drafts_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`seeker_agent_drafts_grant_idx\`(\`grantId\`,\`createdAt\`), INDEX \`seeker_agent_drafts_user_idx\`(\`userId\`,\`createdAt\`))` },
+  { table: "seekerAgentEvents", createSql: `CREATE TABLE IF NOT EXISTS \`seekerAgentEvents\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`grantId\` int NULL, \`agentName\` varchar(120) NOT NULL, \`action\` varchar(48) NOT NULL, \`outcome\` ENUM('success','denied','failure') NOT NULL, \`detail\` varchar(600) NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`seekerAgentEvents_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`seeker_agent_events_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`seeker_agent_events_grant_idx\`(\`grantId\`,\`createdAt\`), INDEX \`seeker_agent_events_user_idx\`(\`userId\`,\`createdAt\`))` },
   { table: "billingReviewOutbox", createSql: `CREATE TABLE IF NOT EXISTS \`billingReviewOutbox\` (
  \`id\` int AUTO_INCREMENT NOT NULL PRIMARY KEY,
  \`obligationKey\` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
@@ -187,6 +191,13 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
 // skipped, and mismatched uniqueness is dropped and recreated.
 // Keep in sync with drizzle/schema.ts.
 export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: string; nonUnique?: boolean }> = [
+  { table: "seekerAgentGrants", name: "seeker_agent_grants_key_hash_unique", columns: "`keyHash`" },
+  { table: "seekerAgentGrants", name: "seeker_agent_grants_user_idx", columns: "`userId`", nonUnique: true },
+  { table: "seekerAgentControls", name: "seeker_agent_controls_user_unique", columns: "`userId`" },
+  { table: "seekerAgentDrafts", name: "seeker_agent_drafts_grant_idx", columns: "`grantId`,`createdAt`", nonUnique: true },
+  { table: "seekerAgentDrafts", name: "seeker_agent_drafts_user_idx", columns: "`userId`,`createdAt`", nonUnique: true },
+  { table: "seekerAgentEvents", name: "seeker_agent_events_grant_idx", columns: "`grantId`,`createdAt`", nonUnique: true },
+  { table: "seekerAgentEvents", name: "seeker_agent_events_user_idx", columns: "`userId`,`createdAt`", nonUnique: true },
   { table: "workEmailOtpCodes", name: "work_email_otp_active_idx", columns: "`email`,`consumedAt`,`expiresAt`,`createdAt`", nonUnique: true },
   { table: "resumeUploadSessions", name: "resume_upload_sessions_owner_client_unique", columns: "`ownerId`,`clientUploadId`" },
   { table: "referralAttachments", name: "referral_attachments_upload_session_unique", columns: "`uploadSessionId`" },
@@ -264,6 +275,10 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
 // pass and would sit at /api/health/ready 503 forever. Nothing reads the column.
 // The live table it implies is undocumented source/prod drift, not a requirement.
 export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; referencedTable: string; referencedColumn: string }> = [
+  { table: "seekerAgentGrants", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "seekerAgentControls", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "seekerAgentDrafts", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "seekerAgentEvents", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "referralAttachments", column: "uploadSessionId", referencedTable: "resumeUploadSessions", referencedColumn: "id" },
   { table: "workItems", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "safetyReports", column: "reporterUserId", referencedTable: "users", referencedColumn: "id" },
