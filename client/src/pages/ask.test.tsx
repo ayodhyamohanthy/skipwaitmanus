@@ -100,7 +100,7 @@ describe("Ask composer page (goal, W2)", () => {
     expect(screen.getAllByText(/\/ 140|\/140/).length).toBe(3);
     await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 credit when a verified employee can see it"));
     expect(screen.getByText(/Comes back if you withdraw before anyone picks it up/)).toBeTruthy();
-    expect(screen.getByText(/Once picked up, it stays spent, even if they pass\./)).toBeTruthy();
+    expect(screen.getByText(/Once picked up, it stays spent, unless they pass for a reason you can't fix\./)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Send ask" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save draft" })).toBeTruthy();
     // No kit composer survives: no strength meter, no function eyebrow, no panels.
