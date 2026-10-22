@@ -17,9 +17,10 @@ import { runScheduledJobs, type JobCapture, type ScheduledJobDefinition } from "
 import { captureServerError } from "./sentry";
 import { listOperationalActivity } from "./db";
 import { runMoneyCheckNow, type MoneyCheckRunResult } from "./dailyMoneyCheck";
+import { SKIPPIE_DAILY_CAP, SKIPPIE_QUESTION_MAX, askSkippieAdmin, type SkippieDeps } from "./skippieAdmin";
 
 type Identity = { account: { id: number; role?: "user" | "admin" } };
-type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number };
+type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; metadata?: Record<string, string | number | boolean | null | undefined> };
 
 export type ScheduledJobsRouteDeps = {
   resolveIdentity: (req: Request) => Promise<Identity | undefined>;
@@ -34,6 +35,8 @@ export type ScheduledJobsRouteDeps = {
   runMoneyCheck?: (nowMs: number) => Promise<MoneyCheckRunResult>;
   /** Recent owner-alert attempts of the money check, newest first. */
   listMoneyCheckAlerts?: () => Promise<Array<{ outcome: string; createdAt: Date | string }>>;
+  /** Admin Skippie (read-only). Off unless enabled. */
+  skippie?: { enabled: () => boolean; deps: () => SkippieDeps };
 };
 
 export function summarizeMoneyCheckAlerts(rows: Array<{ outcome: string; createdAt: Date | string }>, nowMs: number) {
@@ -154,6 +157,35 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
       lastMoneyCheckAt = 0;
       capture(error, { path: "/api/admin/money-check/run" });
       res.status(500).json({ error: "The money check could not run" });
+    }
+  });
+
+  // Admin Skippie, read-only. 404 while the flag is off. Same admin guard as /api/admin/jobs.
+  const skippieAsks = new Map<number, { day: string; count: number }>();
+  app.post("/api/admin/skippie/ask", async (req: Request, res: Response) => {
+    res.set("Cache-Control", "private, no-store");
+    if (!deps.skippie?.enabled()) return res.status(404).json({ error: "Not found" });
+    const identity = await deps.resolveIdentity(req);
+    if (!identity) return res.status(401).json({ error: "Sign in to continue" });
+    if (identity.account.role !== "admin") {
+      record({ actorUserId: identity.account.id, action: "admin.skippie_denied", outcome: "denied", resourceType: "skippie" });
+      return res.status(403).json({ error: "Administrator access is required" });
+    }
+    const question = typeof req.body?.question === "string" ? req.body.question.trim() : "";
+    if (!question || question.length > SKIPPIE_QUESTION_MAX) return res.status(400).json({ error: `Ask a question of 1 to ${SKIPPIE_QUESTION_MAX} characters` });
+    const day = new Date(now()).toISOString().slice(0, 10);
+    const seen = skippieAsks.get(identity.account.id);
+    const count = seen && seen.day === day ? seen.count : 0;
+    if (count >= SKIPPIE_DAILY_CAP) return res.status(429).json({ error: "Daily Skippy limit reached" });
+    skippieAsks.set(identity.account.id, { day, count: count + 1 });
+    try {
+      const out = await askSkippieAdmin(question, deps.skippie.deps());
+      record({ actorUserId: identity.account.id, action: "admin.skippie_ask", outcome: "success", resourceType: "skippie", metadata: { question, answer: out.answer.slice(0, 1500), tools: out.toolsUsed.join(","), mode: out.mode } });
+      res.json({ answer: out.answer, toolsUsed: out.toolsUsed, mode: out.mode });
+    } catch (error) {
+      record({ actorUserId: identity.account.id, action: "admin.skippie_ask", outcome: "failure", resourceType: "skippie", metadata: { question } });
+      capture(error, { path: "/api/admin/skippie/ask" });
+      res.status(500).json({ error: "Skippy could not answer" });
     }
   });
 }

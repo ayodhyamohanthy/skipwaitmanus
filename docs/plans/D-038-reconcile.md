@@ -153,3 +153,15 @@ Out of scope:
 
 - May `agent/opencode/d038-a-lapses` be deleted? It is superseded, and merging it would delete part B's tests.
 - After landing, read the first job windows at `/admin/jobs`. The first claim reminders can fire 24 hours after the cut-off and the first lapses 48 hours after it, so there is a day to look at the counts.
+
+## 13. Landed (2026-10-22)
+
+`907bf2cd` (PR #353) is the reviewed head `abcaaae8` merged with `origin/main` through `a14cc67a`, plus the landing edits.
+
+- Part A and part B both passed the independent Tier 1 review on `abcaaae8`; the lander set `REFERRED_DEADLINE_ENABLED = true` (R-2) and `REFERRAL_TIMERS_SINCE = 2026-10-23T00:00:00.000Z` (R-3, merge day Oct 22 UTC).
+- `docs/plans/assignments.json` marks `D-038-reconcile` done; the picker's head moves to `D-035`.
+- Merge conflicts, all disclosed: `server/dailyMoneyCheck.test.ts` (PR #440's on-demand money-check tests vs this branch's detector tests — resolved as a union, every assertion kept); every other merge was clean. `server/dailyMoneyCheck.ts` auto-merged, and `runMoneyCheckNow` passes the full deps, so the admin on-demand run includes both new detectors.
+- Gate on the landed candidate: `pnpm check`, focused 11 files / 194 tests, `pnpm build`, design-token audit, deploy-trigger check; GitHub CI green on `907bf2cd` (typecheck, unit+component+route, production build, Workers Builds).
+- Live: `/api/health/ready` serves `907bf2cd` in state `ready` (the exact timestamp and deploy run ids are in the PR #353 landing comment).
+
+The three review notes stand as non-blocking follow-ups: N-1 (`listReferredPastDeadline` does not honour `REFERRED_DEADLINE_ENABLED`; the daily check flags an overdue ask even while part B is off), N-2 (`server/referralTimers.ts:11` says the lapse "releases the credit" although D-076 (1) moves no ledger row), N-3 (the switch-on test title is precise only in its body).

@@ -53,9 +53,9 @@
       "tier": 1,
       "lane": "money-core",
       "branch": "agent/workbuddy/d038-a-lapses",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "Builds on workbuddy's PR #353 and qoder's audit #354 (docs/reviews/D-038-reconcile-evidence.md). Rulings R-1..R-6 (D-103): fix R1-R5 on #353's branch, REFERRED_DEADLINE_ENABLED=false unless part B's own review passes, the lander sets REFERRAL_TIMERS_SINCE. Never merge agent/opencode/d038-a-lapses."
+      "note": "Landed after an independent Tier 1 review passed part A and part B: REFERRED_DEADLINE_ENABLED=true and REFERRAL_TIMERS_SINCE=2026-10-23T00:00:00Z in the landing commit (D-103, R-2/R-3). Builds on workbuddy's PR #353 and qoder's audit #354 (docs/reviews/D-038-reconcile-evidence.md). Never merge agent/opencode/d038-a-lapses."
     },
     {
       "id": "D-035",
@@ -224,7 +224,7 @@
       "tier": 1,
       "lane": "company",
       "branch": "agent/instinct/claim-company",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-104-company-signal"
       ]

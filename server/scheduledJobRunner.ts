@@ -12,8 +12,9 @@ import { JobRunStoreUnavailableError, type JobRunStore } from "./jobRunStore";
 import { redactReconcileLogText } from "./schemaReconcile";
 
 export type JobRunContext = { nowMs: number; windowKey: string };
-/** `firstError` is the first per-item failure, kept so Sentry sees the real cause. */
-export type JobRunOutput = { processed: number; failed: number; firstError?: unknown };
+/** `firstError` is the first per-item failure, kept so Sentry sees the real cause. `skipped`
+ * names steps a job deliberately did not run (a switched-off money path), which is not a failure. */
+export type JobRunOutput = { processed: number; failed: number; firstError?: unknown; skipped?: string };
 
 export type ScheduledJobDefinition = {
   name: ScheduledJobName;
