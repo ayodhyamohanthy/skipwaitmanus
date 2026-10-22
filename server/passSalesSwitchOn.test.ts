@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../shared/planCatalog", async importOriginal => {
   const original = await importOriginal<typeof import("../shared/planCatalog")>();
-  return { ...original, PASS_SALES_ENABLED: true };
+  return { ...original, PASS_SALES_ENABLED: true, PASS_SALES_HELD_PLAN_IDS: [] };
 });
 
 import { planCatalogResponse } from "../shared/billingCatalog";
