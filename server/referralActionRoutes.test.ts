@@ -1,7 +1,7 @@
 import request from "supertest";
 import express from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { referralRequests } from "../drizzle/schema";
+import { notifications, referralRequests, referralTransitionEvents, tokenTransactions } from "../drizzle/schema";
 import { COLLEAGUE, OUTSIDER, REFERRER, REQUEST_ID, SEEKER, resetStore, store } from "./documentAccess.testkit";
 import { confirmReferredBySeekerForUser, extendReferredDeadlineForUser, stepBackFromReferralForUser } from "./db";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
@@ -23,11 +23,13 @@ vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
 type RequiredDepName = { [K in keyof PrivateReferralRouteDeps]-?: undefined extends PrivateReferralRouteDeps[K] ? never : K }[keyof PrivateReferralRouteDeps];
 const unusedDep = (name: RequiredDepName) => (): never => { throw new Error(`referral action routes test: the route reached ${name}, which this test does not provide`); };
 
-const actionApp = () => {
+/** On unless a test says otherwise, so the pre-switch behaviour stays pinned; the off-state is its own suite. */
+const actionApp = (options: { referredDeadlineEnabled?: boolean } = {}) => {
   const server = express();
   server.use(express.json());
   const people = new Set([SEEKER, REFERRER, COLLEAGUE, OUTSIDER]);
   registerPrivateReferralRoutes(server, {
+    referredDeadlineEnabled: options.referredDeadlineEnabled ?? true,
     dataUrlToBuffer: unusedDep("dataUrlToBuffer"), sanitizeDocumentName: unusedDep("sanitizeDocumentName"), storagePut: unusedDep("storagePut"),
     createReferralAttachment: unusedDep("createReferralAttachment"), saveVerifiedWorkEmail: unusedDep("saveVerifiedWorkEmail"),
     createCompanyReferralRequest: unusedDep("createCompanyReferralRequest"), listCompanyReferralInbox: unusedDep("listCompanyReferralInbox"),
@@ -118,5 +120,38 @@ describe("referral action routes (D-038-B)", () => {
     const res = await post(actionApp(), "confirm-referred", REFERRER);
     expect(res.status).toBe(404);
     expect(ask()?.status).toBe("approved");
+  });
+});
+
+/*
+ * D-038-reconcile R-2: part B touched money and privacy before it was reviewed.
+ * While REFERRED_DEADLINE_ENABLED is false these routes refuse first — before
+ * identity, the block check, or any read/write — and nothing moves.
+ */
+describe("part B is switched off (D-038-reconcile R-2)", () => {
+  const OFF = { code: "not_available_yet", error: "This option is not available yet. Nothing has changed." };
+
+  it("answers 409 not_available_yet on all three actions and changes nothing", async () => {
+    for (const action of ["step-back", "extend-referred-deadline", "confirm-referred"]) {
+      acceptedSeed();
+      const user = action === "confirm-referred" ? SEEKER : REFERRER;
+      const beforeEvents = store.rows(referralTransitionEvents).length;
+      const beforeLedger = store.rows(tokenTransactions).length;
+      const res = await post(actionApp({ referredDeadlineEnabled: false }), action, user);
+      expect(res.status).toBe(409);
+      expect(res.body).toEqual(OFF);
+      expect(store.rows(referralTransitionEvents).length).toBe(beforeEvents);
+      expect(store.rows(tokenTransactions).length).toBe(beforeLedger);
+      expect(store.rows(notifications)).toEqual([]);
+      expect(ask()?.status).toBe("approved");
+      expect(ask()?.referrerId).toBe(REFERRER);
+    }
+  });
+
+  it("refuses a signed-out caller with the same 409, before any auth read", async () => {
+    acceptedSeed();
+    const res = await post(actionApp({ referredDeadlineEnabled: false }), "step-back");
+    expect(res.status).toBe(409);
+    expect(res.body).toEqual(OFF);
   });
 });
