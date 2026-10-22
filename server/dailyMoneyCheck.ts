@@ -269,7 +269,7 @@ async function sendMoneyCheckEmail(input: { subject: string; text: string }): Pr
   }
 }
 
-export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
+const defaultMoneyCheckDeps: DailyMoneyCheckDeps = {
   auditWallets: getFullCreditLedgerAudit,
   listCreditedPayments,
   countPaymentCreditRows,
@@ -282,7 +282,9 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
   listDoublyReversedSpends,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
-}) {
+};
+
+export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCheckDeps) {
   return async ({ nowMs }: JobRunContext): Promise<JobRunOutput> => {
     const findings: string[] = [];
 
@@ -374,4 +376,28 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
     }
     return output;
   };
+}
+
+export type MoneyCheckRunResult = { emailSent: boolean; findingsEmailed: boolean; subject: string | null; text: string | null };
+
+/**
+ * One on-demand run of the same read-only audit the daily job uses. It never
+ * touches the job window or any money row. It returns the exact owner-email
+ * text so an admin can read the findings even when delivery is down, and it
+ * sends that same owner email through the normal adapter.
+ */
+export async function runMoneyCheckNow(nowMs: number, deps: DailyMoneyCheckDeps = defaultMoneyCheckDeps): Promise<MoneyCheckRunResult> {
+  let captured: { subject: string; text: string } | null = null;
+  let delivered = false;
+  const run = createDailyMoneyCheck({
+    ...deps,
+    sendEmail: async input => {
+      captured = input;
+      delivered = await deps.sendEmail(input);
+      return delivered;
+    },
+  });
+  await run({ nowMs, windowKey: "manual" });
+  const sent = captured as { subject: string; text: string } | null;
+  return { emailSent: delivered, findingsEmailed: sent !== null, subject: sent?.subject ?? null, text: sent?.text ?? null };
 }

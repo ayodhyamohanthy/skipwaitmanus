@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS } from "../shared/referral";
-import { createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
+import { runMoneyCheckNow, createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
 import { DAY_MS, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -339,5 +339,31 @@ describe("D-065-B slice checks over the in-memory database", () => {
     // Read-only: no ask or ledger row moved.
     expect(store.rows(referralRequests)).toEqual(before.requests);
     expect(store.rows(tokenTransactions)).toEqual(before.ledger);
+  });
+});
+
+describe("runMoneyCheckNow (on-demand admin run)", () => {
+  it("returns the exact owner-email text and reports delivery", async () => {
+    const { deps, sent } = makeDeps({ listParkedPayments: vi.fn(async () => [{ id: 7, amount: 99, currency: "INR", reconciliationReason: "unmatched", createdAt: NOW } as never]) });
+    const result = await runMoneyCheckNow(NOW.getTime(), deps);
+    expect(result.findingsEmailed).toBe(true);
+    expect(result.emailSent).toBe(true);
+    expect(result.text).toContain("parked payment: #7");
+    expect(result.text).toBe(sent[0].text);
+  });
+
+  it("still returns the findings when email delivery fails, so they are never silent", async () => {
+    const { deps } = makeDeps({ listParkedPayments: vi.fn(async () => [{ id: 8, amount: 1, currency: "USD", reconciliationReason: null, createdAt: NOW } as never]), sendEmail: vi.fn(async () => false) });
+    const result = await runMoneyCheckNow(NOW.getTime(), deps);
+    expect(result.emailSent).toBe(false);
+    expect(result.findingsEmailed).toBe(true);
+    expect(result.text).toContain("parked payment: #8");
+  });
+
+  it("a clean ledger sends nothing and returns no findings", async () => {
+    const { deps, sent } = makeDeps();
+    const result = await runMoneyCheckNow(NOW.getTime(), deps);
+    expect(result).toEqual({ emailSent: false, findingsEmailed: false, subject: null, text: null });
+    expect(sent).toEqual([]);
   });
 });

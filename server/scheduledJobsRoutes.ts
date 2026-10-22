@@ -15,6 +15,7 @@ import { createMysqlJobRunStore, JobRunStoreUnavailableError, type JobRunRecord,
 import { SCHEDULED_JOBS } from "./scheduledJobRegistry";
 import { runScheduledJobs, type JobCapture, type ScheduledJobDefinition } from "./scheduledJobRunner";
 import { captureServerError } from "./sentry";
+import { runMoneyCheckNow, type MoneyCheckRunResult } from "./dailyMoneyCheck";
 
 type Identity = { account: { id: number; role?: "user" | "admin" } };
 type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number };
@@ -28,6 +29,8 @@ export type ScheduledJobsRouteDeps = {
   store?: JobRunStore;
   jobs?: readonly ScheduledJobDefinition[];
   capture?: JobCapture;
+  /** On-demand read-only money check; defaults to the real audit. */
+  runMoneyCheck?: (nowMs: number) => Promise<MoneyCheckRunResult>;
 };
 
 /** No success within this many windows marks a job overdue on the admin read. */
@@ -94,6 +97,31 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
       if (error instanceof JobRunStoreUnavailableError) return res.status(503).json({ error: "Scheduled jobs are unavailable" });
       capture(error, { path: "/api/admin/jobs" });
       res.status(500).json({ error: "We could not load scheduled jobs" });
+    }
+  });
+
+  // Admin-only, read-only on demand money check: returns the findings text and
+  // sends the same owner email. Writes nothing but the activity-log row.
+  let lastMoneyCheckAt = 0;
+  app.post("/api/admin/money-check/run", async (req: Request, res: Response) => {
+    res.set("Cache-Control", "private, no-store");
+    const identity = await deps.resolveIdentity(req);
+    if (!identity) return res.status(401).json({ error: "Sign in to continue" });
+    if (identity.account.role !== "admin") {
+      record({ actorUserId: identity.account.id, action: "admin.money_check_denied", outcome: "denied", resourceType: "scheduled_job", resourceId: "daily-money-check" });
+      return res.status(403).json({ error: "Administrator access is required" });
+    }
+    const nowMs = now();
+    if (nowMs - lastMoneyCheckAt < 5 * 60_000) return res.status(429).json({ error: "The money check ran a moment ago. Wait 5 minutes." });
+    lastMoneyCheckAt = nowMs;
+    try {
+      const result = await (deps.runMoneyCheck ?? runMoneyCheckNow)(nowMs);
+      record({ actorUserId: identity.account.id, action: "admin.money_check_run", outcome: result.findingsEmailed && !result.emailSent ? "failure" : "success", resourceType: "scheduled_job", resourceId: "daily-money-check" });
+      res.json({ ranAt: new Date(nowMs).toISOString(), findingsFound: result.findingsEmailed, emailSent: result.emailSent, subject: result.subject, findings: result.text });
+    } catch (error) {
+      lastMoneyCheckAt = 0;
+      capture(error, { path: "/api/admin/money-check/run" });
+      res.status(500).json({ error: "The money check could not run" });
     }
   });
 }
