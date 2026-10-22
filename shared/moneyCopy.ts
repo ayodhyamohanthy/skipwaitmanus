@@ -77,6 +77,29 @@ export const CREDIT_ENDED_CAVEAT = "unless its month or plan has ended by then";
 /** The same rule as a footnote clause, after "Uses 1 credit and 1 open slot when a verified employee can see it". */
 export const CREDIT_RULE_SHORT = `nothing is used while it waits for coverage, and the credit comes back once if you withdraw before pickup or the ask expires unclaimed, ${CREDIT_ENDED_CAVEAT}`;
 
+export type AskCostLine = { line: string; detail: string; blockedReason: string | null };
+
+/**
+ * The ask composer's cost line, visible from the moment the drawer opens (no
+ * drip pricing). Flat 1 credit today (D-006); D-132's level model is frozen
+ * behind its flags, so when it ships this function alone changes and every
+ * surface that quotes a cost follows (D-048-p3-live-review item 3).
+ */
+export function askCostLine(input: { open: boolean | null; balance: number | null }): AskCostLine {
+  if (input.open === false) {
+    return {
+      line: "No credit used until a verified employee can see it",
+      detail: `It waits up to ${COVERAGE_WAIT_DAYS} days. When one can, 1 credit is used; if you have none then, we hold it until you add one.`,
+      blockedReason: null,
+    };
+  }
+  const detail = `Comes back if you withdraw before anyone picks it up, or if nobody picks it up within ${ASK_TTL_DAYS} days, ${CREDIT_ENDED_CAVEAT}. Once picked up, it stays spent, even if they pass.`;
+  if (input.open === null) return { line: "Uses 1 credit when a verified employee can see it", detail, blockedReason: null };
+  if (input.balance === null) return { line: "Uses 1 credit", detail, blockedReason: null };
+  if (input.balance <= 0) return { line: "You have no credits left", detail: "Add a credit pack in Plans and credits to send this ask now.", blockedReason: "You have no credits left. Add a credit pack in Plans and credits." };
+  return { line: `Uses 1 of your ${input.balance} ${input.balance === 1 ? "credit" : "credits"}`, detail, blockedReason: null };
+}
+
 /**
  * Neutral /plans SEO + sitemap copy (designer Oct 21): paid plans are not
  * live, so the meta must not promise what they do ("Passes and Keep warm

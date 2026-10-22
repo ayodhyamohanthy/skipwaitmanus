@@ -1028,6 +1028,24 @@ export const referralAttachments = mysqlTable("referralAttachments", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [new ForeignKeyBuilder(() => ({ name: "referralAttachments_uploadSessionId_fk", columns: [table.uploadSessionId], foreignColumns: [resumeUploadSessions.id] })).onDelete("set null"), index("referral_attachments_request_idx").on(table.referralRequestId), index("referral_attachments_owner_idx").on(table.ownerId), uniqueIndex("referral_attachments_upload_session_unique").on(table.uploadSessionId)]);
 
+/**
+ * The work a seeker pinned onto one ask (task 13). Columns are copied at send
+ * time, not joined on read, so editing or deleting a showcase piece later never
+ * rewrites what a referrer was already shown. How many pieces ride along is the
+ * plan's existing `showcase.pins` entitlement, enforced in server/db.ts.
+ */
+export const askWorkItems = mysqlTable("askWorkItems", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  workItemId: int("workItemId").references(() => workItems.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 160 }).notNull(),
+  kind: mysqlEnum("kind", ["case_study", "project", "article", "code", "other"]).default("other").notNull(),
+  source: varchar("source", { length: 80 }),
+  url: varchar("url", { length: 2048 }),
+  position: int("position").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("ask_work_items_request_piece_unique").on(table.referralRequestId, table.workItemId), index("ask_work_items_request_idx").on(table.referralRequestId, table.position)]);
+
 export const resumeUploadSessions = mysqlTable("resumeUploadSessions", {
   id: varchar("id", { length: 64 }).primaryKey(),
   ownerId: int("ownerId").notNull().references(() => users.id, { onDelete: "cascade" }),
