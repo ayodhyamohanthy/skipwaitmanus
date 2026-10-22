@@ -228,7 +228,7 @@ export default function PlansV2({ book = "INR", seekerLevel = null }: { book?: P
       </p>
       <p className="mt-2 max-w-[640px] text-g-small text-g-ink-3">Plan names say how far you can reach, not how senior you are.</p>
       <p className="mt-1 max-w-[640px] text-g-small text-g-ink-3">Reach sets who you can ask. It never changes your place in a queue.</p>
-      {seekerLevel === null ? <p className="mt-1 text-g-small text-g-ink-3">Add your level in your <a href="/profile" className="underline">profile</a> to see exactly who each plan reaches.</p> : null}
+      {seekerLevel === null ? <p className="mt-1 text-g-small text-g-ink-3">Sign in and set your level to see exactly who each plan reaches.</p> : null}
       <div className="mt-8 grid gap-4 gdesk:grid-cols-3">
         <PlanCard planId="open_door" book={book} seekerLevel={seekerLevel} />
         <PlanCard planId="fast_track" book={book} seekerLevel={seekerLevel} />
