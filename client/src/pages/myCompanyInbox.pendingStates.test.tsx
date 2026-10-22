@@ -129,3 +129,36 @@ describe("My Company Inbox pending states", () => {
     expect(screen.getByRole("status").textContent).toContain("Still loading. Your queue is intact.");
   });
 });
+
+describe("queue empty state follows routing state", () => {
+  const stubRouting = (state: string) => stubFetch((url) => {
+    if (url.includes("/api/referrer/home")) return { home: { routing: { state } } };
+    if (url.includes("/inbox")) return { requests: [] };
+    return {};
+  });
+
+  it("paused referrers see the paused state with a settings path and no open-capacity button", async () => {
+    stubRouting("paused");
+    render(<Queue />);
+    expect(await screen.findByText("New asks are paused")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open settings" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Open referral capacity/ })).toBeNull();
+  });
+
+  it("active referrers with capacity left see the quiet state and no open-capacity button", async () => {
+    stubRouting("active");
+    render(<Queue />);
+    expect(await screen.findByText("No asks right now.")).toBeTruthy();
+    expect(screen.getByText(/New asks show up here/)).toBeTruthy();
+    // No email promise until the Resend key is live in prod (designer copy-truth rule).
+    expect(screen.queryByText(/email you/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Open referral capacity/ })).toBeNull();
+  });
+
+  it("at-capacity referrers keep the open-capacity nudge", async () => {
+    stubRouting("at_capacity");
+    render(<Queue />);
+    expect(await screen.findByText("Ready to help?")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open referral capacity" })).toBeTruthy();
+  });
+});

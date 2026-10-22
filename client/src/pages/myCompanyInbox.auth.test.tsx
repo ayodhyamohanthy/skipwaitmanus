@@ -64,6 +64,7 @@ describe("My Company Inbox auth and composition", () => {
     expect(screen.getByText(/waiting/)).toBeTruthy();
     expect(screen.getByText(/Verified/)).toBeTruthy();
     expect(screen.getByText(/Names and resumes stay hidden until you accept/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Settings/ }).getAttribute("href")).toBe("/referrer?view=setup");
     const queueRow = screen.getByRole("button", { name: /Product Designer 3/ });
     expect(queueRow.textContent).toContain("New");
     expect(queueRow.textContent).toContain("Product");

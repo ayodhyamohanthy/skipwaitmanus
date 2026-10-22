@@ -126,4 +126,12 @@ describe("GoalVerifiedMark", () => {
     expect(mark.className).toContain("text-g-trust");
     expect(mark.textContent).toBe("Verified · Acme");
   });
+
+  it("mutedText keeps the check blue and quiets the label to ink-2 (queue header rule)", () => {
+    render(<GoalVerifiedMark mutedText>Verified · Acme</GoalVerifiedMark>);
+    const mark = screen.getByTestId("goal-verified-mark");
+    expect(mark.className).toContain("text-g-ink-2");
+    expect(mark.className).not.toContain("text-g-trust");
+    expect(mark.querySelector("svg")?.getAttribute("class")).toContain("text-g-trust");
+  });
 });

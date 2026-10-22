@@ -4,10 +4,10 @@
 import { BadgeCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function GoalVerifiedMark({ children, as: Comp = "p", className }: { children: string; as?: "p" | "span"; className?: string }) {
+export function GoalVerifiedMark({ children, as: Comp = "p", className, mutedText = false }: { children: string; as?: "p" | "span"; className?: string; mutedText?: boolean }) {
   return (
-    <Comp data-testid="goal-verified-mark" className={cn("flex items-center gap-1.5 text-g-meta text-g-trust", className)}>
-      <BadgeCheck aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.75} />
+    <Comp data-testid="goal-verified-mark" className={cn("flex items-center gap-1.5 text-g-meta", mutedText ? "text-g-ink-2" : "text-g-trust", className)}>
+      <BadgeCheck aria-hidden="true" className={cn("size-4 shrink-0", mutedText && "text-g-trust")} strokeWidth={1.75} />
       {children}
     </Comp>
   );
