@@ -127,7 +127,7 @@ describe("POST /api/landed/journey", () => {
       expect.objectContaining({ message: expect.stringContaining("ER_DUP_ENTRY") }),
       expect.objectContaining({ route: "POST /api/landed/journey" })
     );
-    expect(activity).toContainEqual(expect.objectContaining({ action: "landed.thanks_recorded", outcome: "failed" }));
+    expect(activity).toContainEqual(expect.objectContaining({ action: "landed.thanks_recorded", outcome: "failure" }));
   });
 
   it("says the thank-you is unavailable rather than inventing a state", async () => {
@@ -172,6 +172,6 @@ describe("GET /api/referrer/thank-yous", () => {
       expect.objectContaining({ message: "boom" }),
       expect.objectContaining({ route: "GET /api/referrer/thank-yous" })
     );
-    expect(activity).toContainEqual(expect.objectContaining({ action: "landed.wall_viewed", outcome: "failed", resourceType: "thank_you_wall" }));
+    expect(activity).toContainEqual(expect.objectContaining({ action: "landed.wall_viewed", outcome: "failure", resourceType: "thank_you_wall" }));
   });
 });

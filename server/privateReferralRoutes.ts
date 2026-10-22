@@ -1367,7 +1367,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         record({ actorUserId, action: "landed.thanks_recorded", outcome: "denied", resourceType: "landed_journey" });
         res.status(/not available to you/i.test(message) ? 404 : /database unavailable/i.test(message) ? 503 : 409).json({ error: message });
       } else {
-        record({ actorUserId, action: "landed.thanks_recorded", outcome: "failed", resourceType: "landed_journey" });
+        record({ actorUserId, action: "landed.thanks_recorded", outcome: "failure", resourceType: "landed_journey" });
         captureServerError(error, { route: "POST /api/landed/journey", actorUserId });
         res.status(500).json({ error: "We could not send your thank-you" });
       }
@@ -1389,7 +1389,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "landed.wall_viewed", outcome: "success", resourceType: "thank_you_wall", metadata: { noteCount: wall.thankYous.length, total: wall.total } });
       res.json(wall);
     } catch (error) {
-      if (actorUserId) record({ actorUserId, action: "landed.wall_viewed", outcome: "failed", resourceType: "thank_you_wall" });
+      if (actorUserId) record({ actorUserId, action: "landed.wall_viewed", outcome: "failure", resourceType: "thank_you_wall" });
       captureServerError(error, { route: "GET /api/referrer/thank-yous", actorUserId });
       res.status(500).json({ error: "We could not load your thank-yous" });
     }
