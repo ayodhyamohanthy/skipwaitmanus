@@ -27,15 +27,22 @@ export type { CreditSummary } from "./billingApi";
 
 /** One extra credit, as sold on /premium. */
 /**
- * The lowest per-credit price across the packs on sale, from the live catalog only (no price is
- * written here). null until the catalog loads or when no pack is on sale.
+ * The per-credit price range across the packs on sale ("₹39.99 to ₹49.50", or one figure when they
+ * match), from the live catalog only (no price is written here). null until the catalog loads or
+ * when no pack is on sale.
  */
 export function creditFrom(catalog: { currency: CatalogCurrency; packs: ReadonlyArray<{ credits: number; amount: number; available: boolean }> } | null | undefined): string | null {
   const per = (catalog?.packs ?? []).filter(pack => pack.available && pack.credits > 0).map(pack => pack.amount / pack.credits);
   if (!catalog || per.length === 0) return null;
-  const minor = Math.round(Math.min(...per));
-  const whole = minor % 100 === 0;
-  try { return `from ${new Intl.NumberFormat("en-US", { style: "currency", currency: catalog.currency, minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 }).format(minor / 100)}`; } catch { return null; }
+  const lowMinor = Math.round(Math.min(...per));
+  const highMinor = Math.round(Math.max(...per));
+  const whole = lowMinor % 100 === 0 && highMinor % 100 === 0;
+  const fmt = (minor: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: catalog.currency, minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 }).format(minor / 100);
+  try {
+    const low = fmt(lowMinor);
+    const high = fmt(highMinor);
+    return low === high ? low : `${low} to ${high}`;
+  } catch { return null; }
 }
 
 function paidPlan(plan: string): PaidCatalogPlan | undefined {

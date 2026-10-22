@@ -92,12 +92,12 @@ describe("creditFrom: the per-credit line comes only from live packs", () => {
     { credits: 25, amount: 119_900, available: true },
     { credits: 150, amount: 599_900, available: true },
   ];
-  it("is the lowest pack price per credit, from the catalog amounts", () => {
-    expect(creditFrom({ currency: "INR", packs })).toBe("from ₹39.99");
-    expect(creditFrom({ currency: "USD", packs: [{ credits: 5, amount: 500, available: true }, { credits: 150, amount: 10_500, available: true }] })).toBe("from $0.70");
+  it("is the cheapest to dearest pack price per credit, from the catalog amounts", () => {
+    expect(creditFrom({ currency: "INR", packs })).toBe("₹39.99 to ₹49.50");
+    expect(creditFrom({ currency: "USD", packs: [{ credits: 5, amount: 500, available: true }, { credits: 150, amount: 10_500, available: true }] })).toBe("$0.70 to $1.00");
   });
   it("ignores packs off sale and is null with no pack or no catalog", () => {
-    expect(creditFrom({ currency: "INR", packs: packs.map(p => (p.credits === 150 ? { ...p, available: false } : p)) })).toBe("from ₹47.96");
+    expect(creditFrom({ currency: "INR", packs: packs.map(p => (p.credits === 150 ? { ...p, available: false } : p)) })).toBe("₹47.96 to ₹49.50");
     expect(creditFrom({ currency: "INR", packs: packs.map(p => ({ ...p, available: false })) })).toBeNull();
     expect(creditFrom(null)).toBeNull();
   });
