@@ -20,6 +20,12 @@ import { COLLEAGUE, DAY_MS, LINK_OWNER, REQUEST_ID, SEEKER, allocatedSlot, askBy
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
 vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
+// The R-2 case below proves the off state, so it pins the switch off rather than reading the
+// module default; it stays honest on the day the lander flips the real constant.
+vi.mock("../shared/referral", async () => {
+  const actual = await vi.importActual<typeof import("../shared/referral")>("../shared/referral");
+  return { ...actual, REFERRED_DEADLINE_ENABLED: false };
+});
 
 const HOUR = 60 * 60 * 1000;
 /** A claim made 12 h after the cut-off. */

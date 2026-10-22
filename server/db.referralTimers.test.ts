@@ -263,7 +263,9 @@ describe("D-038-reconcile R-2: the job's part B switch", () => {
     seedSwitchFixture();
     const { createReferralTimers } = await import("./referralTimers");
 
-    const output = await createReferralTimers()({ nowMs: SWITCH_NOW } as never);
+    // The default reads the module constant; inject the state so this case proves the off state
+    // on the day the lander flips the real constant (D-038-reconcile R-2).
+    const output = await createReferralTimers({ referredDeadlineEnabled: false })({ nowMs: SWITCH_NOW } as never);
 
     expect(askById(601)?.referrerId).toBeNull();
     expect(store.rows(referralAvailabilitySlots).find(row => row.id === 9102)?.status).toBe("released");
