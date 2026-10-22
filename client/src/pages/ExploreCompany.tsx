@@ -52,7 +52,7 @@ export default function ExploreCompany() {
           <div data-testid="goal-error-state" role="alert" className="mt-6">
             <p className="text-g-label text-g-ink">We couldn’t load this company.</p>
             <p className="mt-1 text-g-meta text-g-ink-2">Check your connection and try again.</p>
-            <GoalButton className="mt-3 -ml-3" size="sm" variant="ghost" onClick={() => { void company.refetch(); }}>Try again</GoalButton>
+            <GoalButton className="mt-3" flush size="sm" variant="ghost" onClick={() => { void company.refetch(); }}>Try again</GoalButton>
           </div>
         </div>
       </GoalAppShell>
@@ -244,7 +244,7 @@ function CompanyOpenings({ slug, companyName }: { slug: string; companyName: str
       <div role="alert" className="mt-3">
         <p className="text-g-label text-g-ink">We couldn’t load open roles.</p>
         <p className="mt-0.5 text-g-meta text-g-ink-3">{openings.error.message}</p>
-        <GoalButton className="mt-2" size="sm" variant="ghost" onClick={() => { void openings.refetch(); }}>Try again</GoalButton>
+        <GoalButton className="mt-2" flush size="sm" variant="ghost" onClick={() => { void openings.refetch(); }}>Try again</GoalButton>
       </div>
     );
   } else if (posts.length === 0) {

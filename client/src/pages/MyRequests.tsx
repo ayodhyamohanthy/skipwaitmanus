@@ -19,8 +19,8 @@ import {
   GoalNum,
   GoalSkeletonRows,
   GoalStatus,
-  type GoalStatusValue,
 } from "@/components/goal";
+import { askView } from "@/components/requests/askView";
 import { companyIdentity } from "@/components/inbox/inboxThreads";
 import { GoalSampleRows, type GoalSampleRow } from "@/components/goal/GoalSampleRows";
 import { canWithdrawRequest, isClosedRequest, requestNote, slotsFullCopy } from "@/components/requests/requestModel";
@@ -30,33 +30,6 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { formatDay, useDisplayPrefs } from "@/lib/displayPrefs";
 
 const SUBTITLE = "Where each ask stands and what happens next.";
-
-type AskView = { status: GoalStatusValue; label: string; stepper?: { stage: number; terminal?: "expired" | "withdrawn" }; verb: string };
-
-/**
- * The goal status vocabulary is dot + text by role (DESIGN.md §5). Interview
- * and Offer are post-referral outcomes with no goal tone of their own, so they
- * stay neutral ink; a decline is an ended state, so it reads crimson.
- */
-function askView(request: ReferralRequest): AskView {
-  switch (request.status) {
-    case "pending": {
-      const claimed = request.referrerId !== null && request.heldForReferrer !== true && request.unclaimedAssignment !== true;
-      return claimed
-        ? { status: "under_review", label: "Under review", stepper: { stage: 1 }, verb: "Picked up" }
-        : { status: "waiting", label: "Waiting", stepper: { stage: 0 }, verb: "Sent" };
-    }
-    case "approved": return { status: "accepted", label: "Accepted", stepper: { stage: 2 }, verb: "Accepted" };
-    case "intro_made": return { status: "referred", label: "Referred", stepper: { stage: 3 }, verb: "Referred" };
-    case "interview": return { status: "accepted", label: "Interviewing", stepper: { stage: 3 }, verb: "Updated" };
-    case "offer": return { status: "accepted", label: "Offer", stepper: { stage: 3 }, verb: "Updated" };
-    case "declined": return { status: "expired", label: "Declined", stepper: { stage: 1, terminal: "expired" }, verb: "Declined" };
-    case "withdrawn": return { status: "withdrawn", label: "Withdrawn", stepper: { stage: 2, terminal: "withdrawn" }, verb: "Withdrawn" };
-    case "closed": return request.referrerId
-      ? { status: "withdrawn", label: "Closed", stepper: { stage: 2, terminal: "withdrawn" }, verb: "Closed" }
-      : { status: "expired", label: "Expired", stepper: { stage: 1, terminal: "expired" }, verb: "Expired" };
-  }
-}
 
 /**
  * The row's third line (my-asks comp): the next real step in plain words. Only
