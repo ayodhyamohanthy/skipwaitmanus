@@ -509,30 +509,30 @@
       "tier": 1,
       "lane": "ask-flow",
       "branch": "agent/qoder/ask-pinned-work",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
       "id": "D-090-BYOR",
       "title": "Bring-your-own-referrer one-time link (D-090, loop L2)",
       "row": "D-090",
-      "packet": null,
+      "packet": "docs/plans/D-090-BYOR.md",
       "tier": 1,
       "lane": "supply",
       "branch": "agent/claude/d090-byor",
-      "status": "architect",
+      "status": "todo",
       "dependsOn": [],
-      "note": "Any agent writes the packet (D-109): standard credit rules, the four approved surfaces."
+      "note": "Packet written. Build gate: D-090 orders BYOR after the demand list (D-086), which is not live and has no queue task; verify D-086 before starting or stop and report. The four approved mocks are not in the repo (packet §12 Q5)."
     },
     {
       "id": "D-095-one-tap",
       "title": "One-tap queue items 1-5 (D-095): sign-in keeps the cart, email up front, /jobs prefills /start, /pricing CTA, /plans collapses unsold passes",
       "row": "D-095",
-      "packet": null,
+      "packet": "docs/plans/D-095-one-tap.md",
       "tier": 2,
       "lane": "one-tap",
       "branch": "agent/claude/d095-one-tap",
-      "status": "architect",
+      "status": "todo",
       "dependsOn": []
     },
     {
