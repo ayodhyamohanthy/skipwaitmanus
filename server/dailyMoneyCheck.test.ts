@@ -1,9 +1,9 @@
 // D-065 daily money check: the job reconciles, reports, and never writes.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
-import { ASK_TTL_MS, COVERAGE_WAIT_MS } from "../shared/referral";
-import { runMoneyCheckNow, createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
-import { DAY_MS, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
+import { ASK_TTL_MS, COVERAGE_WAIT_MS, REFERRAL_TIMERS_SINCE } from "../shared/referral";
+import { runMoneyCheckNow, createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
+import { DAY_MS, LINK_OWNER, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
@@ -29,6 +29,8 @@ function makeDeps(overrides: Partial<DailyMoneyCheckDeps> = {}) {
     listLegacyPlanWallets: vi.fn(async () => []),
     listAskDeliverySpendsWhileWaiting: vi.fn(async () => []),
     listDoublyReversedSpends: vi.fn(async () => []),
+    listRefundsAfterPickup: vi.fn(async () => []),
+    listReferredPastDeadline: vi.fn(async () => []),
     sendEmail: vi.fn(async (input: Sent) => { sent.push(input); return true; }),
     recordActivity: vi.fn(async (row: { action: string }) => { activity.push(row as { action: string; outcome: string }); }),
     ...overrides,
@@ -343,6 +345,149 @@ describe("D-065-B slice checks over the in-memory database", () => {
     // Read-only: no ask or ledger row moved.
     expect(store.rows(referralRequests)).toEqual(before.requests);
     expect(store.rows(tokenTransactions)).toEqual(before.ledger);
+  });
+});
+
+describe("referred_deadline_stuck over the in-memory database", () => {
+  beforeEach(() => {
+    vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+    mocks.createPool.mockResolvedValue({});
+    mocks.drizzle.mockReturnValue(store.db);
+  });
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  // D-038-B: an accepted ask the referral-timers job should have reopened a day ago. The clock is
+  // measured from the acceptance, clamped to REFERRAL_TIMERS_SINCE, so the job runs nine days later.
+  it("flags an approved ask more than a day past its referred deadline, and only that one", async () => {
+    const later = REFERRAL_TIMERS_SINCE + 9 * DAY_MS;
+    const acceptance = (id: number, requestId: number, atMs: number) => ({ ...claimEvent(requestId, id), action: "approve", operationKey: `one-click:2:approved`, resultingStatus: "approved", createdAt: new Date(atMs) });
+    seedHeldAsks({
+      asks: [
+        // Accepted a day after the cut-off: due on day 6, so nine days in it is three days overdue.
+        askRow({ id: 701, status: "approved", referrerId: LINK_OWNER }),
+        // Accepted seven days after the cut-off: due on day 12, so it is not due yet.
+        askRow({ id: 702, status: "approved", referrerId: LINK_OWNER }),
+      ],
+      events: [acceptance(80, 701, REFERRAL_TIMERS_SINCE + DAY_MS), acceptance(81, 702, REFERRAL_TIMERS_SINCE + 7 * DAY_MS)],
+    });
+
+    const { deps, sent } = makeDeps({ listReferredPastDeadline });
+    const output = await createDailyMoneyCheck(deps)({ nowMs: later, windowKey: "2026-10-29T02:00Z" });
+
+    expect(output.failed).toBe(0);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("referred_deadline_stuck: ask #701");
+    expect(sent[0]!.text).not.toContain("ask #702");
+  });
+
+  // D-038-reconcile B-1: the first acceptance's extension must not excuse the second acceptance.
+  // Accepted seven days before the check: its own 5-day deadline is two days overdue, while reading
+  // any extension on the ask would put it at day 8 — a day in the future — and hide the stuck ask.
+  it("does not let a first acceptance's extension hide a second acceptance's missed deadline", async () => {
+    const later = REFERRAL_TIMERS_SINCE + 10 * DAY_MS;
+    const event = (id: number, action: string, operationKey: string, atMs: number, resultingStatus: string) => ({ ...claimEvent(703, id), action, operationKey, resultingStatus, createdAt: new Date(atMs) });
+    seedHeldAsks({
+      asks: [askRow({ id: 703, status: "approved", referrerId: LINK_OWNER })],
+      events: [
+        event(90, "approve", "one-click:2:approved", REFERRAL_TIMERS_SINCE + DAY_MS, "approved"),
+        event(91, "referred_extension", "referred-extension:90", REFERRAL_TIMERS_SINCE + 2 * DAY_MS, "approved"),
+        event(92, "referred_lapse", "referred-lapse:90", REFERRAL_TIMERS_SINCE + 2 * DAY_MS + 60 * 60_000, "pending"),
+        event(93, "approve", "one-click:4:approved", later - 7 * DAY_MS, "approved"),
+      ],
+    });
+
+    const rows = await listReferredPastDeadline(later, 50);
+    expect(rows.map(row => row.id)).toContain(703);
+  });
+});
+
+/*
+ * D-038-A (F4): `refund_after_pickup`. Once a referrer claimed the ask the credit stays spent
+ * (D-034, D-076 (1)), so a withdrawal or expiry refund whose latest pickup-or-release event before
+ * it was a claim is a money leak. The refund window is bounded (limit * 4 newest rows); the event
+ * read is not, so an old claim cannot hide behind newer rows.
+ */
+describe("refund_after_pickup over the in-memory database", () => {
+  beforeEach(() => {
+    vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+    mocks.createPool.mockResolvedValue({});
+    mocks.drizzle.mockReturnValue(store.db);
+  });
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  const at = (msAgo: number) => new Date(NOW.getTime() - msAgo);
+  const HOUR = 60 * 60_000;
+  const event = (id: number, action: string, createdAt: Date, requestId = 501) => ({ ...claimEvent(requestId, id), action, operationKey: `${action}:${id}`, createdAt });
+  const refund = (id: number, kind: string, createdAt: Date, requestId = 501): Record<string, unknown> =>
+    spendRow({ id, kind, tokenCount: 1, createdAt, referenceId: `${requestId}#refund#1`, reversesTransactionId: 600 + id });
+
+  it("flags a withdrawal refund and an expiry refund after a claim", async () => {
+    seedHeldAsks({
+      asks: [askRow()],
+      events: [event(39, "claim", at(3 * DAY))],
+      spends: [refund(61, "withdrawal_refund", at(DAY)), refund(62, "expiry_refund", at(12 * HOUR))],
+    });
+
+    const rows = await listRefundsAfterPickup(10);
+    expect(rows.map(row => row.transactionId).sort((a, b) => a - b)).toEqual([61, 62]);
+    expect(rows.map(row => row.requestId)).toEqual([501, 501]);
+  });
+
+  it("does not flag a refund after a lapse or a step-back released the ask", async () => {
+    seedHeldAsks({
+      asks: [askRow(), askRow({ id: 502 })],
+      events: [
+        event(39, "claim", at(4 * DAY)),
+        event(40, "claim_lapse", at(3 * DAY)),
+        event(41, "claim", at(3 * DAY), 502),
+        event(42, "step_back", at(2 * DAY), 502),
+      ],
+      spends: [refund(63, "expiry_refund", at(DAY)), refund(64, "withdrawal_refund", at(HOUR), 502)],
+    });
+
+    expect(await listRefundsAfterPickup(10)).toEqual([]);
+  });
+
+  it("finds an old claim behind more than limit x 4 newer rows for other asks", async () => {
+    // The refund window covers the newest limit * 4 refund rows, and the event read has no window,
+    // so a ten-day-old claim still convicts a recent refund among 30 newer rows for other asks.
+    // (The kit ignores ORDER BY, so this pins the unbounded event lookup, not the ordering.)
+    const newerRefunds = Array.from({ length: 30 }, (_, i) => refund(700 + i, "withdrawal_refund", at(2 * DAY), 900 + i));
+    seedHeldAsks({
+      asks: [askRow()],
+      events: [event(39, "claim", at(10 * DAY))],
+      // The leak's id is the highest (newest under ORDER BY id DESC), so the bounded window holds it.
+      spends: [refund(800, "withdrawal_refund", at(HOUR)), ...newerRefunds],
+    });
+
+    expect((await listRefundsAfterPickup(5)).map(row => row.transactionId)).toEqual([800]);
+  });
+
+  it("returns at most limit findings, so the owner email stays bounded", async () => {
+    seedHeldAsks({
+      asks: [askRow()],
+      events: [event(39, "claim", at(3 * DAY))],
+      spends: [refund(61, "withdrawal_refund", at(2 * DAY)), refund(62, "expiry_refund", at(DAY))],
+    });
+
+    // Two leaks, one slot: the query's LIMIT bounds what the email can carry. Which row survives is
+    // the SQL's ORDER BY id DESC, which the in-memory kit ignores by design.
+    expect(await listRefundsAfterPickup(1)).toHaveLength(1);
+  });
+
+  it("reaches the owner email as one finding line per leak", async () => {
+    seedHeldAsks({
+      asks: [askRow()],
+      events: [event(39, "claim", at(3 * DAY))],
+      spends: [refund(61, "withdrawal_refund", at(DAY))],
+    });
+
+    const { deps, sent } = makeDeps({ listRefundsAfterPickup });
+    await createDailyMoneyCheck(deps)({ nowMs: NOW.getTime(), windowKey: "2026-10-19T02:00Z" });
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("refund_after_pickup: ledger row #61 returned a credit for ask #501 (withdrawal_refund) although the ask's latest pickup was a claim");
+    expect(sent[0]!.text).not.toContain("@");
   });
 });
 

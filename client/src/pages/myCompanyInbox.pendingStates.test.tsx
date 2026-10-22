@@ -161,4 +161,19 @@ describe("queue empty state follows routing state", () => {
     expect(await screen.findByText("Ready to help?")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open referral capacity" })).toBeTruthy();
   });
+
+  // D-038-A: the referrer's own claim carries a 48-hour decision deadline; an ask nobody claimed does not.
+  it("shows the decision deadline on the viewer's own claim, and only there", async () => {
+    const dueAt = new Date(Date.now() + 30 * 3_600_000).toISOString();
+    stubFetch((url) => {
+      if (url.includes("/inbox?scope=new")) return { requests: [{ ...inboxItem, id: 7, referrerId: 2, isClaimedByYou: true, decisionDueAt: dueAt }, { ...inboxItem, id: 8, isClaimedByYou: false, decisionDueAt: null }] };
+      if (url.includes("/inbox")) return { requests: [] };
+      return {};
+    });
+    render(<Queue />);
+
+    expect(await screen.findByText("Decide within 30 hours")).toBeTruthy();
+    // One chip, not one per card.
+    expect(screen.getAllByText(/Decide within/)).toHaveLength(1);
+  });
 });

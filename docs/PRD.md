@@ -39,6 +39,9 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 - Empty: "No one has asked for {Company} yet." / "Nobody at {Company} is waiting right now. We'll tell you if that changes."
 - Bonus honesty: "Most companies pay their own referral bonus when a referral they make is hired. That programme is your employer's and they pay it - skipwait.me never pays referrers."
 
+## Claim-your-company (D-107, draft)
+Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COMPANY_CLAIM (off). No per-person data or account-role changes. Same-account, single-use email link. Current-month aggregates hidden below 3 referrers or answered asks. See docs/DECISIONS.md D-107. QA and delivery verification required before enablement.
+
 ## Go-to-market (D-102, changeable)
 - Referrers join any company free. Seekers ask for any company and see its true state: "Open: N verified employees" / "Not open yet: M people waiting. We'll tell you when {Company} opens." Under 3 shows "a few people". Empty: "No one has asked for {Company} yet."
 - No fake counters, countdowns or "only N spots". Every number is from the DB and may be zero.
