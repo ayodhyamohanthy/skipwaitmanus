@@ -22,6 +22,8 @@ So: before writing code, check that D-086 is live (its ask-to-any-company path s
 
 The four designer mocks the owner approved (D-090, "Lovely") are **not in the repository**: no file under `design/`, `docs/` or the remote branches contains a BYOR mock. §4 is therefore the changeable functional interpretation (D-109) and §12 Q5 asks the owner to attach the mocks. Nothing in §4's server behaviour depends on the visual mocks.
 
+**Gate waived by the owner (D-148, 2026-10-23 02:26 IST).** Asked in-session, the owner chose "Waive the gate, build BYOR now". The dependency is ordering, not code: BYOR needs only a *waiting* ask, and D-034 already produces those whenever a company has no available referrer. Nothing else in this packet changes — every rule stands, both flags stay off (D-097), and the Tier 1 gate and independent review are unchanged. D-086 stays approved for build; BYOR simply no longer waits for it.
+
 ## 1. Goal
 
 A seeker who already knows someone at the company — a friend, a former colleague — can put their ask directly in that person's hands instead of waiting for coverage to appear. My asks shows "Invite someone you know"; the seeker gets one private one-time link to send outside SkipWait; the insider opens it, signs in with their work email at that company, and takes the ask. The credit follows the standard rules: nothing is spent while the ask waits, one credit at first visibility, and no credit means the ask is held with one notice — never delivered free, never billed later. The seeker's name and files stay hidden until the insider accepts, exactly as on every other surface. This closes loop L2 (D-087) and is the first product surface that turns a seeker's own network into supply.
@@ -281,3 +283,5 @@ D-090-BYOR: **stopped at the §0 build gate — workbuddy · b0eb — 2026-10-23
 - **D-086's own sync cell still reads "approved for build, after W0 #361 and W1 drawer"** — approved, not done.
 
 Per §0 and §11 nothing was written and no test was added. **Question for the CEO/owner:** build D-086 first and give it a queue task so this row can depend on it, or rule that BYOR may start ahead of it and amend §0. This row's `dependsOn` is `[]`, which is why the picker keeps offering a task that cannot start; changing queue gating is the CEO's call (D-085), so it was left alone and reported as blocked instead.
+
+D-090-BYOR: **in progress — workbuddy · b0eb — 2026-10-23 — branch `agent/claude/d090-byor`.** The owner waived the gate in-session (D-148); §0 records it. Building C1–C6 in order, one commit each, both flags off.
