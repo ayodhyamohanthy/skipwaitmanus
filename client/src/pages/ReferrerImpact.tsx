@@ -58,7 +58,7 @@ export default function ReferrerImpact() {
     finally { setLoading(false); }
   };
   useEffect(() => { if (isSignedIn && hasVerifiedWorkEmail) void loadSummary(); }, [isSignedIn, hasVerifiedWorkEmail]);
-  const frame = (screen: string, content: ReactNode) => <ReferrerWorkspace view="impact" screen={screen} isSignedIn={Boolean(isSignedIn)} onSignIn={() => go(REFERRER_SIGN_IN_HREF)}>{content}</ReferrerWorkspace>;
+  const frame = (screen: string, content: ReactNode) => <ReferrerWorkspace view="impact" screen={screen} isSignedIn={Boolean(isSignedIn)} isSetUp={Boolean(isSignedIn) && hasVerifiedWorkEmail} onSignIn={() => go(REFERRER_SIGN_IN_HREF)}>{content}</ReferrerWorkspace>;
   const loadingState = <LoadingNote>Loading your private impact…</LoadingNote>;
 
   if (!isLoaded) return frame("referrer-impact-loading", loadingState);

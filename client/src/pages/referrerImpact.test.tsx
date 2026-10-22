@@ -42,6 +42,7 @@ describe("ReferrerImpact dashboard", () => {
     stubFetch(url => url.endsWith("/api/company-referrals/access") ? { ok: true, json: async () => ({ verifiedCompanyAccess: false, workEmailDomain: null }) } : { ok: true, json: async () => ({}) });
     renderImpact();
     expect(await screen.findByText("Verify your work email")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Set up as a referrer/ })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Add work email" }).getAttribute("href")).toBe("/referrer?setup=work-email");
     expect(screen.queryByText(/Accepted referrals/)).toBeNull();
   });
@@ -62,6 +63,8 @@ describe("ReferrerImpact dashboard", () => {
     // The kit's three labels, in the kit's order.
     expect(Array.from(stats.querySelectorAll("span")).map(node => node.textContent?.replace(/^\d+/, "")).slice(0, 3)).toEqual(["introductions", "active conversations", "outcomes shared"]);
     expect(screen.queryByText("Recent referrals")).toBeNull();
+    // A verified referrer is already set up: no setup button in the workspace header.
+    expect(screen.queryByRole("button", { name: /Set up as a referrer/ })).toBeNull();
     expect(screen.getByRole("link", { name: "See how a request looks" }).getAttribute("href")).toBe("/queue");
   });
 
