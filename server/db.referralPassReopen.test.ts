@@ -586,6 +586,19 @@ describe("the pass reason decides the credit (D-035)", () => {
     },
   );
 
+  it("does not promise a credit back when the ask never reserved one", async () => {
+    // A free ask (a waiting ask that spent nothing, or a legacy one with no debit) owes no refund, so the
+    // released-pass notice must not offer one: D-044 forbids offering what the code cannot grant.
+    ask().debitTransactionId = null;
+    rows.tokenTransactions = [];
+    await claimCompanyReferralRequest(9, 501);
+    await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "role_not_a_fit", passReason: "role_closed" });
+    const body = String(rows.notifications.at(-1)?.body);
+    expect(body).toContain("A verified employee at acme.com said: Role is closed.");
+    expect(body).toContain("Your ask is open again to other verified employees there.");
+    expect(body).not.toContain("credit comes back");
+  });
+
   it("tells the seeker why, and that the credit comes back, when the pass releases", async () => {
     await claimCompanyReferralRequest(9, 501);
     await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "role_not_a_fit", passReason: "role_closed" });
