@@ -303,9 +303,12 @@ describe("the landed thank-you reaches one referrer once", () => {
     rows.messages = [{ id: 77, senderId: 7, recipientId: 9, body: "From the other click.", referralRequestId: 501 }];
     // The other submit claims and sends while this call is between its read and its
     // conditional claim; only the isNull guard turns that into affectedRows 0.
-    onClaimAttempt = () => { saved().deliveredAt = SENT_AT; saved().conversationMessageId = 77; };
+    onClaimAttempt = () => { saved().deliveredAt = SENT_AT; saved().conversationMessageId = 77; saved().thankYouMessage = "From the other click."; };
     const state = await recordLandedJourney(7, note({ message: "This click must not send." }));
     expect(state.delivered).toBe(true);
+    // The note that reached the referrer is the one the wall reports, not this submit's.
+    expect(state.thankYouMessage).toBe("From the other click.");
+    expect(saved().thankYouMessage).toBe("From the other click.");
     expect(rows.messages).toHaveLength(1);
     expect(rows.messages[0]).toMatchObject({ id: 77, body: "From the other click." });
     expect(saved().conversationMessageId).toBe(77);

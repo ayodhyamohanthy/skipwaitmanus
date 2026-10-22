@@ -3545,26 +3545,31 @@ export async function recordLandedJourney(userId: number, input: LandedJourneyRe
   const rows = await db.select({ thankYouMessage: landedJourney.thankYouMessage, shareOnWall: landedJourney.shareOnWall, payForwardChoice: landedJourney.payForwardChoice, deliveredAt: landedJourney.deliveredAt }).from(landedJourney).where(eq(landedJourney.referralRequestId, ask.id)).limit(1);
   const row = rows[0];
   if (!row) throw new Error("We could not save that thank-you");
-  const thankYouMessage = row.deliveredAt ? row.thankYouMessage ?? message ?? null : message ?? row.thankYouMessage ?? null;
+  let thankYouMessage = row.deliveredAt ? row.thankYouMessage ?? message ?? null : message ?? row.thankYouMessage ?? null;
   const shareOnWall = input.shareOnWall ?? row.shareOnWall;
   const payForward = input.payForward ?? PAY_FORWARD_CHOICES.find(choice => choice === row.payForwardChoice) ?? null;
-  await db.update(landedJourney).set({ thankYouMessage, shareOnWall, payForwardChoice: payForward, updatedAt: now }).where(eq(landedJourney.referralRequestId, ask.id));
+  await db.update(landedJourney).set({ shareOnWall, payForwardChoice: payForward, updatedAt: now }).where(eq(landedJourney.referralRequestId, ask.id));
+  // A note is final once it reaches the referrer: a submit that read an undelivered
+  // row but lands after the delivery must not rewrite the note the wall shows.
+  if (!row.deliveredAt) await db.update(landedJourney).set({ thankYouMessage, updatedAt: now }).where(and(eq(landedJourney.referralRequestId, ask.id), isNull(landedJourney.deliveredAt)));
   let delivered = Boolean(row.deliveredAt);
   if (!delivered && message) {
     try {
       // The claim, the message and the link back to it commit together; a send that
       // dies anywhere leaves no claim and no half-delivered note for a retry to duplicate.
-      delivered = await db.transaction(async tx => {
+      const settled: { delivered: boolean; thankYouMessage?: string | null } = await db.transaction(async tx => {
         const claimed = await tx.update(landedJourney).set({ deliveredAt: now }).where(and(eq(landedJourney.referralRequestId, ask.id), isNull(landedJourney.deliveredAt)));
         if (Number(claimed[0]?.affectedRows ?? 0) !== 1) {
-          // Another of this seeker's own submits holds the claim; report what it settled on.
-          const after = (await tx.select({ deliveredAt: landedJourney.deliveredAt }).from(landedJourney).where(eq(landedJourney.referralRequestId, ask.id)).limit(1))[0];
-          return Boolean(after?.deliveredAt);
+          // Another of this seeker's own submits holds the claim; report the note it settled on.
+          const after = (await tx.select({ deliveredAt: landedJourney.deliveredAt, thankYouMessage: landedJourney.thankYouMessage }).from(landedJourney).where(eq(landedJourney.referralRequestId, ask.id)).limit(1))[0];
+          return { delivered: Boolean(after?.deliveredAt), thankYouMessage: after?.thankYouMessage ?? null };
         }
         const sent = await sendReferralConversationMessageTx(tx, userId, ask.id, message);
         await tx.update(landedJourney).set({ conversationMessageId: sent.id }).where(eq(landedJourney.referralRequestId, ask.id));
-        return true;
+        return { delivered: true };
       });
+      delivered = settled.delivered;
+      if (settled.thankYouMessage !== undefined) thankYouMessage = settled.thankYouMessage;
     } catch (error) {
       captureServerError(error, { area: "landedJourney", referralRequestId: ask.id });
       delivered = false;
