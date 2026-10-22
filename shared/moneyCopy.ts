@@ -58,7 +58,7 @@ const REFERRED_REOPEN_SENTENCE = REFERRED_DEADLINE_ENABLED
   ? " If an accepted ask is not marked Referred in time, or the referrer steps back, the ask reopens to other employees with that credit still on it, and the credit comes back if the ask is then withdrawn or expires unclaimed."
   : "";
 
-export const CREDIT_RULE = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, 1 credit is used; if you have none then, we hold the ask until you add one. The credit comes back once if you withdraw before someone picks the ask up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee, as long as the credit itself has not expired by then. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credit stays spent, unless they pass for a reason you can't fix.${REFERRED_REOPEN_SENTENCE}`;
+export const CREDIT_RULE = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, 1 credit is used; if you have none then, we hold the ask until you add one. The credit comes back once if you withdraw before someone picks the ask up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee, as long as the credit itself has not expired by then. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credit stays spent, even if they pass.${REFERRED_REOPEN_SENTENCE}`;
 
 /**
  * D-132 (frozen Oct 21 18:42 IST): PAID credits never expire; free monthly
@@ -67,7 +67,7 @@ export const CREDIT_RULE = `An ask at a company where no verified employee is av
  * until the new model ships (D-042: copy never promises what the product
  * does not do).
  */
-export const CREDIT_RULE_V2 = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, credits are used by the role's level; if you have none then, we hold the ask until you add them. Credits used on an ask come back once if you withdraw before someone picks the ask up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee - paid credits never expire, so they always come back; free monthly credits come back only if their month has not ended. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credits stay spent, unless they pass for a reason you can't fix.`;
+export const CREDIT_RULE_V2 = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, credits are used by the role's level; if you have none then, we hold the ask until you add them. Credits used on an ask come back once if you withdraw before someone picks the ask up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee - paid credits never expire, so they always come back; free monthly credits come back only if their month has not ended. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credits stay spent, even if they pass.`;
 
 export const CREDIT_ENDED_CAVEAT_V2 = "paid credits never expire; free monthly credits end with the month";
 
@@ -93,7 +93,7 @@ export function askCostLine(input: { open: boolean | null; balance: number | nul
       blockedReason: null,
     };
   }
-  const detail = `Comes back if you withdraw before anyone picks it up, or if nobody picks it up within ${ASK_TTL_DAYS} days, ${CREDIT_ENDED_CAVEAT}. Once picked up, it stays spent, unless they pass for a reason you can't fix.`;
+  const detail = `Comes back if you withdraw before anyone picks it up, or if nobody picks it up within ${ASK_TTL_DAYS} days, ${CREDIT_ENDED_CAVEAT}. Once picked up, it stays spent, even if they pass.`;
   if (input.open === null) return { line: "Uses 1 credit when a verified employee can see it", detail, blockedReason: null };
   if (input.balance === null) return { line: "Uses 1 credit", detail, blockedReason: null };
   if (input.balance <= 0) return { line: "You have no credits left", detail: "Add a credit pack in Plans and credits to send this ask now.", blockedReason: "You have no credits left. Add a credit pack in Plans and credits." };
