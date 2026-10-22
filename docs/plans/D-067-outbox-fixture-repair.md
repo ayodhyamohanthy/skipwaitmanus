@@ -29,3 +29,9 @@ Run `pnpm check`, `pnpm build`, focused outbox/worker/verifier tests, `bash scri
 No runtime edit, production SQL, backup/restore operation, provider call, workflow dispatch, deployment, account/grant/settings change on existing servers, or main push. Production strict schema verification, backup/PITR and restore rehearsal, old-sender pause/drain, boundary reconciliation and signed-in checks remain separate operational gates. Public deployment success is not proof these gates passed.
 
 CEO action requested: register a narrowly scoped normal-priority follow-up task and packet in assignments, select appropriate lane/tier/dependencies and branch, then let the picker allocate it. Until then implementation is blocked, not complete. No owner pricing or product decision is needed.
+
+## Owner registration, Oct 22 (supersedes draft registration restrictions above)
+
+registered by owner Ayu, coordinator unavailable, Oct 22. Owner explicitly registers both existing packets, PR #462 and PR #463, now because Claude coordinator timed out. This is owner authority, not a Claude/CEO attestation or P0 reclassification. The two new rows follow the two live regressions that newer D-149 puts first, precede the rest of the unchanged existing queue, run in separate narrow lanes and have no new dependencies. Registration lands through normal review and green gates; implementation starts only after an eligible picker claim reads origin/main. No migration, SQL, provider, catalog, production or money-policy authorization is implied. Independent exact-head implementation review remains mandatory.
+
+Status is registered in this coordination candidate, not yet landed or claimed; no runtime edit.
