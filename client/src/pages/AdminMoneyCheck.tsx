@@ -8,6 +8,18 @@ export default function AdminMoneyCheck() {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [plan, setPlan] = useState<{ candidates: number; accounts: number; oldest: string | null; newest: string | null; applied: boolean; closed: number } | null>(null);
+  const [closing, setClosing] = useState(false);
+  const closeAbandoned = async (apply: boolean) => {
+    if (closing) return;
+    setClosing(true); setError("");
+    try {
+      const response = await fetch("/api/admin/money-check/close-abandoned", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apply }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) { setError(body.error ?? "We could not check abandoned checkouts."); return; }
+      setPlan(body);
+    } finally { setClosing(false); }
+  };
   const run = async () => {
     if (busy) return;
     setBusy(true); setError(""); setResult(null);
@@ -35,6 +47,17 @@ export default function AdminMoneyCheck() {
             {result.findings ? <pre className="whitespace-pre-wrap break-words rounded-lg border border-[#e5e5e5] p-3 text-sm">{result.findings}</pre> : null}
           </section>
         ) : null}
+        <section aria-label="Abandoned checkouts" className="space-y-2 border-t border-[#e5e5e5] pt-6">
+          <h2 className="text-lg font-semibold">Abandoned checkout pages</h2>
+          <p className="text-sm text-muted-foreground">Checkout pages opened and never paid, older than 7 days. Closing them only adds a note to each row so the money check stops listing them. Nothing is deleted and no money moves. If one of them was ever paid, it is still credited.</p>
+          <button type="button" onClick={() => void closeAbandoned(false)} disabled={closing} className="min-h-11 rounded-lg border border-[#141414] px-5 text-sm font-bold disabled:opacity-50">Preview what would close</button>
+          {plan ? (
+            <div className="space-y-2" role="status">
+              <p className="text-sm">{plan.applied ? `Closed ${plan.closed} abandoned checkout pages.` : `${plan.candidates} checkout pages from ${plan.accounts} accounts would close${plan.oldest ? `, oldest ${new Date(plan.oldest).toLocaleDateString()}` : ""}.`}</p>
+              {!plan.applied && plan.candidates > 0 ? <button type="button" onClick={() => void closeAbandoned(true)} disabled={closing} className="min-h-11 rounded-lg bg-[#141414] px-5 text-sm font-bold text-white disabled:opacity-50">{`Close these ${plan.candidates}`}</button> : null}
+            </div>
+          ) : null}
+        </section>
       </div>
     </main>
   );
