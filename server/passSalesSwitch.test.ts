@@ -3,7 +3,7 @@
 // it does not, so passes and Keep warm are listed but never sold until
 // GO-LIVE-1b can always activate one. Credit packs keep selling.
 import { describe, expect, it, vi } from "vitest";
-import { PASS_SALES_ENABLED } from "../shared/planCatalog";
+vi.mock("../shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("../shared/planCatalog")>()), PASS_SALES_ENABLED: false }));
 import { planCatalogResponse } from "../shared/billingCatalog";
 import { startKitPackCheckout, startKitPlanCheckout } from "./kitCheckout";
 import { NOT_AVAILABLE_CODE } from "../shared/subscriptionManagement";
@@ -14,9 +14,7 @@ const customer = { email: "member@example.com", billingCountry: "INTL" as const 
 const everythingLive = () => true;
 
 describe("passes are listed but not sold until a paid pass can always be activated (D-084)", () => {
-  it("ships with pass sales off", () => {
-    expect(PASS_SALES_ENABLED).toBe(false);
-  });
+  // The shipped value is asserted in passSalesShipsOn.test.ts; this file pins the OFF behaviour with the switch mocked off.
 
   it("the catalog reports every pass and Keep warm term unavailable even when its price is live, and packs stay on sale", () => {
     for (const region of ["IN", "INTL"] as const) {

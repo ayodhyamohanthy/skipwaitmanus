@@ -91,14 +91,14 @@ export type PaidCatalogPlan = CatalogPlan & { id: CatalogPlanId };
 export const CREDIT_PACKS_ON_SALE = true;
 
 /**
- * D-084 (P0, Oct 20): passes and Keep warm are sold only once a paid pass can
+ * D-084 (P0, Oct 20; switched ON Oct 22 on the owner's go-live word relayed by Main, after GO-LIVE-1b evidence in docs/plans/GO-LIVE-1b-pass-activation.md section 4.5): passes and Keep warm are sold only once a paid pass can
  * always be activated. Today one activates only when the subscription webhook
  * names its checkout page, and nothing recovers it otherwise (GO-LIVE-1b adds
  * the recovery). While false, the catalog reports every plan term unavailable
  * and the subscription checkout refuses with 409 not_available_yet before any
  * provider call. Kept in code and switched on when it can deliver (D-042).
  */
-export const PASS_SALES_ENABLED: boolean = false;
+export const PASS_SALES_ENABLED: boolean = true;
 
 export const FREE_PLAN: CatalogPlan & { id: "free" } = {
   id: "free", tier: "free", level: 1, label: "Free", levelLabel: null,
