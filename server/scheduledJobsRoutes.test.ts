@@ -176,6 +176,28 @@ describe("POST /api/admin/money-check/run", () => {
   });
 });
 
+describe("POST /api/admin/money-check/close-abandoned", () => {
+  const plan = { cutoff: "2026-10-15T00:00:00.000Z", candidates: 3, accounts: 2, oldest: null, newest: null, byCurrency: [], applied: false, closed: 0 };
+  it("is admin only", async () => {
+    const close = vi.fn(async () => plan);
+    const { app } = appWith({ closeAbandonedCheckouts: close });
+    expect((await request(app).post("/api/admin/money-check/close-abandoned")).status).toBe(401);
+    expect((await request(app).post("/api/admin/money-check/close-abandoned").set("x-test-user", "member")).status).toBe(403);
+    expect(close).not.toHaveBeenCalled();
+  });
+  it("previews by default and only applies when asked", async () => {
+    const close = vi.fn(async (_n: number, o: { apply: boolean }) => ({ ...plan, applied: o.apply, closed: o.apply ? 3 : 0 }));
+    const { app, activity } = appWith({ closeAbandonedCheckouts: close });
+    await request(app).post("/api/admin/money-check/close-abandoned").set("x-test-user", "admin").send({});
+    expect(close.mock.calls[0]![1]).toEqual({ apply: false });
+    const applied = await request(app).post("/api/admin/money-check/close-abandoned").set("x-test-user", "admin").send({ apply: true });
+    expect(close.mock.calls[1]![1]).toEqual({ apply: true });
+    expect(applied.body).toMatchObject({ applied: true, closed: 3 });
+    expect(activity).toContain("admin.abandoned_checkouts_previewed:success");
+    expect(activity).toContain("admin.abandoned_checkouts_closed:success");
+  });
+});
+
 describe("GET /api/admin/money-check/status", () => {
   const rows = [
     { outcome: "failure", createdAt: new Date() },

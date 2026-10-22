@@ -15,6 +15,7 @@ import { createMysqlJobRunStore, JobRunStoreUnavailableError, type JobRunRecord,
 import { SCHEDULED_JOBS } from "./scheduledJobRegistry";
 import { runScheduledJobs, type JobCapture, type ScheduledJobDefinition } from "./scheduledJobRunner";
 import { captureServerError } from "./sentry";
+import { closeAbandonedCheckouts, type AbandonedCheckoutResult } from "./abandonedCheckouts";
 import { listOperationalActivity } from "./db";
 import { runMoneyCheckNow, type MoneyCheckRunResult } from "./dailyMoneyCheck";
 import { SKIPPIE_DAILY_CAP, SKIPPIE_QUESTION_MAX, askSkippieAdmin, type SkippieDeps } from "./skippieAdmin";
@@ -33,6 +34,7 @@ export type ScheduledJobsRouteDeps = {
   capture?: JobCapture;
   /** On-demand read-only money check; defaults to the real audit. */
   runMoneyCheck?: (nowMs: number) => Promise<MoneyCheckRunResult>;
+  closeAbandonedCheckouts?: (nowMs: number, options: { apply: boolean }) => Promise<AbandonedCheckoutResult>;
   /** Recent owner-alert attempts of the money check, newest first. */
   listMoneyCheckAlerts?: () => Promise<Array<{ outcome: string; createdAt: Date | string }>>;
   /** Admin Skippie (read-only). Off unless enabled. */
@@ -117,6 +119,27 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
       if (error instanceof JobRunStoreUnavailableError) return res.status(503).json({ error: "Scheduled jobs are unavailable" });
       capture(error, { path: "/api/admin/jobs" });
       res.status(500).json({ error: "We could not load scheduled jobs" });
+    }
+  });
+
+  // Admin-only: close out abandoned checkout pages older than 7 days. Preview unless the body says apply:true.
+  // It only marks a reason on rows that are still pending with no invoice; nothing is deleted or credited.
+  app.post("/api/admin/money-check/close-abandoned", async (req: Request, res: Response) => {
+    res.set("Cache-Control", "private, no-store");
+    const identity = await deps.resolveIdentity(req);
+    if (!identity) return res.status(401).json({ error: "Sign in to continue" });
+    if (identity.account.role !== "admin") {
+      record({ actorUserId: identity.account.id, action: "admin.abandoned_checkouts_denied", outcome: "denied", resourceType: "payment", resourceId: "abandoned-checkouts" });
+      return res.status(403).json({ error: "Administrator access is required" });
+    }
+    const apply = (req.body as { apply?: unknown } | undefined)?.apply === true;
+    try {
+      const result = await (deps.closeAbandonedCheckouts ?? closeAbandonedCheckouts)(now(), { apply });
+      record({ actorUserId: identity.account.id, action: apply ? "admin.abandoned_checkouts_closed" : "admin.abandoned_checkouts_previewed", outcome: "success", resourceType: "payment", resourceId: "abandoned-checkouts", metadata: { candidates: result.candidates, closed: result.closed, accounts: result.accounts } });
+      res.json(result);
+    } catch (error) {
+      capture(error, { path: "/api/admin/money-check/close-abandoned" });
+      res.status(500).json({ error: "We could not check abandoned checkouts" });
     }
   });
 
