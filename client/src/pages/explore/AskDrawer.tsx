@@ -18,6 +18,8 @@ import {
 import type { PublicCompany } from "@shared/companies";
 import { MONEY_SENTENCE, type AskCostLine } from "@shared/moneyCopy";
 import { WHY_ME_MAX } from "@shared/whyMe";
+import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
+import { PinnedWorkPicker } from "@/components/ask/PinnedWorkPicker";
 import type { LinkHint } from "./findModel";
 
 export type AskResume = { name: string } | null;
@@ -45,6 +47,8 @@ export type AskDrawerProps = {
   reasons: readonly [string, string, string];
   onReasonChange(index: number, value: string): void;
   reasonsError: string;
+  /** Task 13: the pieces this ask carries; the parent owns the state. */
+  work: PinnedWorkState;
   watch: { state: "idle" | "busy" | "done" | "error"; message: string; onWatch(): void } | null;
   cost: AskCostLine;
   sendLabel: string;
@@ -181,6 +185,8 @@ export function AskDrawer(props: AskDrawerProps) {
             {/* A screen names no status hue (R3): field-level errors stay inside GoalField. */}
             {props.reasonsError ? <p role="alert" className="text-g-meta text-g-ink">{props.reasonsError}</p> : null}
           </fieldset>
+
+          <PinnedWorkPicker work={props.work} />
         </div>
       )}
     </GoalDrawer>

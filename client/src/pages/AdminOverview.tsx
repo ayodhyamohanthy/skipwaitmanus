@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { AdminSignInCta } from "@/components/admin/AdminSignInCta";
 import { adminCompanyListResponseSchema } from "@shared/companies";
 import { ShieldCheck } from "lucide-react";
 import { useState } from "react";
@@ -32,7 +33,7 @@ export default function AdminOverview() {
   const retry = () => { for (const query of queries) if (query.error) void query.refetch(); };
 
   return <AdminShell view={view} onView={setView}><main data-skipwait-screen="admin-overview" className="admin-content">
-    {denied ? <section className="admin-empty" role="alert"><span><ShieldCheck /></span><h2>Administrator access is required.</h2><p>Sign in with the designated administrator account. Operations data is never shown to other accounts.</p></section> : <>
+    {denied ? <section className="admin-empty" role="alert"><span><ShieldCheck /></span><h2>Administrator access is required.</h2><p>Sign in with the designated administrator account. Operations data is never shown to other accounts.</p><AdminSignInCta /></section> : <>
       {failure ? <div role="alert" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[7px] border border-destructive bg-background p-4 text-sm"><span className="text-destructive">{failure.message}</span><Button variant="outline" size="sm" onClick={retry}>Try again</Button></div> : null}
       {view === "overview" && <OverviewView onView={setView} verificationQueue={verificationQueue} openReports={reportsMetric} companyCoverage={companyCoverageMetric(companies.data, companies.isLoading, Boolean(companies.error))} health={health.data} healthLoading={health.isLoading} healthFailed={Boolean(health.error)} />}
       {view === "companies" && <CompaniesView companies={companies.data} loading={companies.isLoading} failed={Boolean(companies.error)} />}
