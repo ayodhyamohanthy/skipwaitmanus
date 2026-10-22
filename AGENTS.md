@@ -242,7 +242,8 @@ add that exact path and reason to the plan, check ownership/conflicts, then edit
   the gate in `docs/KIT_V4_BUILD_PLAN.md` §3 passes and GitHub CI is green on
   that exact commit (D-003 as amended by D-082 and D-134 (6): pull request first,
   then fast-forward `main` to that exact commit with `git push origin <sha>:main`,
-  never the merge button or squash; while `main` is red, push nothing but the fix), serialized,
+  or GitHub's merge-commit button, which the ruleset allows only for an up-to-date branch;
+  never squash or rebase-merge; while `main` is red, push nothing but the fix), serialized,
   never as concurrent automatic pushes to main. Follow applicable user/tool
   authorization before committing, pushing, merging, or deploying.
 - Validate the integrated result (`pnpm check` + affected Vitest files;
