@@ -45,7 +45,7 @@ SkipWait is already running in production. You are **updating an existing app**,
 - To run locally: `cd app && bun install && bun run dev` (or npm).
 
 ## Non-negotiable product rules (short version — full list in FOR_AI_BUILDERS.md)
-- 3 asks free every month; more use credits. Referrers are never paid and never ask you for money (D-063). Money never buys queue position, acceptance odds or referrer attention (D-006).
+- 3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money (D-063 as worded by D-135). Money never buys queue position, acceptance odds or referrer attention (D-006).
 - Never invent counts, names, outcomes or activity. Initial companies: SkipWait, Wipro, Neutrinos, TCS, Merkle.
 - Referrers are never automated. The work-email code (OTP via ZeptoMail) proves employment and is the referrer sign-in on every visit; reviewing or accepting asks always needs it, even after a referrer adds a personal login (D-030, D-049, D-057).
 - Every ask and every credit spend made through an assistant or app needs the user's approval.

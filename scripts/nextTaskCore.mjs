@@ -316,7 +316,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     if (state === "needs-review" || (state === "in-review" && lockQuiet)) {
       if (did(v, ["builders", "fixers"])) return skip(v, "needs a review, and you built or fixed it");
       // A branch built outside the picker has no claim naming its builder: its review waits until nobody has pushed for 2 hours.
-      if (!v.builders.length && !quiet(workAt(v))) return skip(v, `built outside the picker and still being pushed; its review waits until ${v.work} is quiet for 2 hours`);
+      // Once a picker session has taken a stage (a fix round), the pushes are the fixer's, so the review is not held back.
+      if (!v.builders.length && !v.fixers.length && !quiet(workAt(v))) return skip(v, `built outside the picker and still being pushed; its review waits until ${v.work} is quiet for 2 hours`);
       return { kind: "review", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner };
     }
     if (state === "needs-fix" || (state === "fixing" && lockQuiet)) {
@@ -627,8 +628,8 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), merged
     // Reports gate only open tasks, so only they colour the board; a Tier 1 pull request is green only once its review passed.
     // The picker lets a Tier 1 pull request's review lock decide over red reports, so the board does too.
     const said = !v.open ? null : review && v.said?.status === "red" ? null : v.said;
-    // A built task that waits for a dependency keeps its pull request's colour: red when its CI or team says so, else in progress.
-    const waitingBuilt = state === "waiting" && v.open;
+    // A built task (or a held packet) that waits for a dependency keeps its colour: red when its CI or team says so, else in progress.
+    const waitingBuilt = state === "waiting" && (v.open || archHeld);
     const health = state === "done" ? "done"
       : state === "owner" ? "owner"
       : waitingBuilt ? ((pr && v.ci === "red") || said?.status === "red" || said?.status === "blocked" ? "red" : "progress")

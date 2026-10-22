@@ -41,7 +41,9 @@ handles real money: a mistake reaches real users.
    from now on and when you resume. It pushes <BRANCH> to origin (the
    first push wins). If it prints a different task than <PACKET FILE>, do
    the printed task instead and tell me. Work in a worktree on it. Your
-   first commit sets its docs/KIT_V4_BUILD_PLAN.md §3b row to
+   first commit sets your status line (its docs/KIT_V4_BUILD_PLAN.md §3b
+   row, or your line in the packet's Status section when several tasks
+   share that row; the picker says which, D-134) to
    "in progress — <your model> — <date> — branch <BRANCH>".
 4. Write the tests in packet section 7 first. Run them; they must fail for
    the reason the packet gives. Never change a test the packet gave you.
@@ -120,7 +122,7 @@ Use this prompt instead of `build` in any folder that is behind `main` (its entr
 Claude Code keeps the list: a task goes in only with a ready packet (or as `architect` until it has one), and an agent changes only its own task's status, to done, in the pull request that lands it.
 
 ## 5. What the implementer returns (evidence block)
-Paste into the §3b row (keep it under 1,200 characters; details go in commit messages):
+Paste into your status line, the §3b row or your line in the packet's Status section (keep it under 1,200 characters; details go in commit messages):
 
 ```text
 Evidence — <packet> — <model> — <date>

@@ -366,12 +366,26 @@ describe("dependsOn holds a landing, not only a build (D-134)", () => {
     expect(fresh).toMatchObject({ kind: "none" });
     expect(fresh.kind === "none" && fresh.skipped.find(x => x.id === "M")?.reason).toContain("built outside the picker");
     expect(pick([t1], { branches: [outside(3)], prs: [prM], prCi: [["agent/queue/m", "green"]], claimant: "Gemini · s3" })).toMatchObject({ kind: "review", task: { id: "M" } });
+    // After a picker fix round the fresh pushes are the fixer's, so the re-review is handed out at once.
+    const lockM: [string, Branch] = ["agent/review/m", { tipMs: NOW - 0.2 * HOUR, merged: false, markers: [
+      { verb: "Review claim", id: "M", who: "Mistral · r1" }, { verb: "Verdict", id: "M", who: "Mistral · r1", verdict: "findings" },
+      { verb: "Fix claim", id: "M", who: "Kimi · f1" }, { verb: "Fixed", id: "M", who: "Kimi · f1" }] }];
+    expect(pick([t1], { branches: [outside(0.2), lockM], prs: [prM], prCi: [["agent/queue/m", "green"]], claimant: "Gemini · s3" })).toMatchObject({ kind: "review", task: { id: "M" } });
   });
   it("the board keeps a built task's colour while it waits: red for a red pull request, in progress otherwise", () => {
     const built: [string, Branch] = ["agent/queue/b", claimBy("Qwen · s1", "B", 3)];
     const board = (ci: string) => statusBoard({ tasks: [task("A"), task("B", { dependsOn: ["A"] }), task("C", { dependsOn: ["A"] })], branches: new Map([built]), openPrs: new Map([prB]), prCi: new Map([["agent/queue/b", { state: ci }]]), reports: [], now: NOW });
     expect(board("red").map(r => [r.id, r.state, r.health])).toEqual([["A", "todo", "open"], ["B", "waiting", "red"], ["C", "waiting", "open"]]);
     expect(board("green").find(r => r.id === "B")?.health).toBe("progress");
+    // A red or blocked report on a waiting built task also reads red.
+    for (const status of ["red", "blocked"]) {
+      const rows = statusBoard({ tasks: [task("A"), task("B", { dependsOn: ["A"] })], branches: new Map([built]), openPrs: new Map([prB]), prCi: new Map([["agent/queue/b", { state: "green" }]]), reports: [{ id: "B", status, who: "Qwen · s1", at: NOW - HOUR, note: "stuck" }], now: NOW });
+      expect(rows.find(r => r.id === "B")?.health).toBe("red");
+    }
+    // A packet being written for a task that waits keeps reading in progress, not 'not started'.
+    const held: [string, Branch] = ["agent/architect/p", claimBy("Qwen · s1", "P", 0.5)];
+    const packet = statusBoard({ tasks: [task("A"), task("P", { status: "architect", packet: null, dependsOn: ["A"] })], branches: new Map([held]), openPrs: new Map(), reports: [], now: NOW });
+    expect(packet.find(r => r.id === "P")).toMatchObject({ state: "waiting", health: "progress" });
   });
   it("a reviewer whose passed review waits to land continues the next review it holds", () => {
     const t1 = task("M", { tier: 1, lane: "money", dependsOn: ["A"] });
@@ -383,7 +397,7 @@ describe("dependsOn holds a landing, not only a build (D-134)", () => {
     const prs: [string, string][] = [["agent/queue/m", "https://github.com/o/r/pull/9"], ["agent/queue/n", "https://github.com/o/r/pull/10"]];
     expect(pick([t1, t2, task("A", { lane: "X" })], { branches: [builtM, builtN, passedM, reviewingN], prs, claimant: "Gemini · s3" })).toMatchObject({ kind: "continue", of: "review", task: { id: "N" } });
   });
-  it("a red dependent ranked above its dependency never holds that dependency's lane", () => {
+  it("a red dependent that waits for its dependency never gates or holds that dependency's lane", () => {
     const busyB: [string, Branch] = ["agent/queue/b", claimBy("Qwen · s1", "B", 0.5)];
     const tasks = [task("B", { lane: "L", dependsOn: ["A"] }), task("A", { lane: "L" })];
     expect(pick(tasks, { branches: [busyB], prs: [prB], prCi: [["agent/queue/b", "red"]], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "A" } });
@@ -592,6 +606,11 @@ describe("markers and printed steps", () => {
     const fixMain = renderPick({ kind: "fix-main", sha: "c".repeat(40), url: "https://ci/run/2", lock: "agent/queue/fix-main-cccccccc", parent: null, from: null }, ctx);
     expect(fixMain).toContain("git push origin <sha>:main");
     expect(fixMain).not.toContain("Then merge it");
+    expect(fixMain).toContain("if that push is refused because main moved");
+    // D-074: a Tier 1 landing checks that nothing was pushed after the pass verdict.
+    expect(land1).toContain("those commits were never reviewed");
+    const review = renderPick({ kind: "review", task: task("M", { tier: 1 }), work: "agent/queue/m", pr: "https://github.com/o/r/pull/9", lock: "agent/review/m", lockExists: true, builder: "Qwen · s1" }, ctx);
+    expect(review).toContain("after your verdict");
     const arch = renderPick({ kind: "architect", task: task("P", { status: "architect", packet: null }), lock: "agent/architect/p", lockExists: false }, { ...ctx, who: "Claude Code · s9" });
     expect(arch).toContain("WRITE THE PACKET FOR P");
     expect(arch).toContain("docs/DELEGATION.md");

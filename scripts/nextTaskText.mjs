@@ -54,10 +54,13 @@ function resumeSteps(task, who, branch) {
   ]);
 }
 
+/** D-074: a Tier 1 change lands only as reviewed; a commit pushed after the pass verdict was never reviewed. */
+const unreviewed = pick => `Before you land, compare the branch with the pass verdict: \`git log --no-merges --format="%h %ci %s" origin/${pick.work}\` against the time of the "Verdict ${pick.task.id}: pass" commit on ${pick.lock}. If any commit after it changes files (merges of main do not count), do not land: those commits were never reviewed (D-074). Report it blocked to the CEO with --report blocked.`;
+
 const reviewSteps = (pick, who) => steps([
   `Read docs/BRIEF.md and ${pick.task.packet}, then review exactly as docs/DELEGATION.md §6 says, reproducing every claim yourself.`,
   "Post the verdict on the pull request.",
-  `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\`. Merge the latest origin/main into ${pick.work}, set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`,
+  `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\`. If you land it later, first check that nobody pushed to ${pick.work} after your verdict except merges of main; anything else goes back to review (D-074). Merge the latest origin/main into ${pick.work}, set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`,
   `Findings: list each with file:line, severity and the failing test to add first, then run \`${CMD} --verdict findings --task ${pick.task.id} --as "${who}"\` and stop. The verdict moves the task to its fix stage; you never fix code you reviewed.`,
   `Run \`${CMD} --heartbeat --as "${who}"\` before any long step: a review lock nobody has pushed to for 2 hours goes to the next agent (D-085).`,
   report(pick.task, who),
@@ -85,6 +88,7 @@ const greenSteps = (pick, who) => steps([
 const landSteps = (pick, who) => steps([
   worktree(pick.work),
   `Read docs/BRIEF.md and the §3b row "${pick.task.row}". Merge the latest origin/main into ${pick.work} and re-run the full gate yourself; never land on someone else's word.`,
+  ...(pick.tier1 ? [unreviewed(pick)] : []),
   pick.tier1
     ? `Set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`
     : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(pick.task)} to "done — <sha>".`,
@@ -108,7 +112,7 @@ const fixMainSteps = (pick, who) => steps([
   "Find the commit that turned main red (the run above and `gh run list --branch main --workflow CI`).",
   `Fix it red-first on ${pick.lock}, or revert that commit if the fix is not obvious. Nothing else: no other change rides along.`,
   keepAlive(who),
-  `Open a pull request from ${pick.lock} and wait until every check on that exact commit is green: main is red, so this fix is the one push D-082 allows. Then fast-forward main to that exact commit (\`git push origin <sha>:main\`; never the merge button or squash, D-134), watch main's CI and both deploys to the end, and run the live check from docs/BRIEF.md "How to ship".`,
+  `Open a pull request from ${pick.lock} and wait until every check on that exact commit is green: main is red, so this fix is the one push D-082 allows. Then fast-forward main to that exact commit (\`git push origin <sha>:main\`; never the merge button or squash, D-134); if that push is refused because main moved, merge the latest origin/main into the lock branch, re-run the full gate, push, wait until every check on the new commit is green and fast-forward again, never force-push. Watch main's CI and both deploys to the end, and run the live check from docs/BRIEF.md "How to ship".`,
   "Tell the owner what broke, which commit, and how you fixed it.",
 ]);
 

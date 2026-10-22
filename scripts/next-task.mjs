@@ -310,6 +310,8 @@ async function main() {
   }
   if (args.heartbeat) {
     const { doc, mainCi, openPrs, mergedHeads, prCi, branches, reports } = await state();
+    // Without the pull requests, a Tier 1 branch under review would look like a build to keep alive, and a claim marker would land on it.
+    if (openPrs === null || mergedHeads === null) fail("cannot read the pull requests from GitHub; a heartbeat now could push a claim onto a branch under review (D-085); run this again when GitHub answers", 2);
     const mainSha = mainCi.state === "red" || mainCi.state === "running-after-red" ? mainCi.sha : null;
     // A heartbeat keeps what you hold alive whatever main's CI says (D-085).
     // D-134: every claim you hold stays alive, not only the first one in queue order.
