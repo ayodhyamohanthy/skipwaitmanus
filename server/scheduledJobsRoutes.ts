@@ -19,7 +19,7 @@ import { closeAbandonedCheckouts, type AbandonedCheckoutResult } from "./abandon
 import { runMoneyCheckNow, type MoneyCheckRunResult } from "./dailyMoneyCheck";
 
 type Identity = { account: { id: number; role?: "user" | "admin" } };
-type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number };
+type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; metadata?: Record<string, string | number | boolean | null> };
 
 export type ScheduledJobsRouteDeps = {
   resolveIdentity: (req: Request) => Promise<Identity | undefined>;
