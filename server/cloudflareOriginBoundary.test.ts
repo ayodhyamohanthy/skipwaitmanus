@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const config = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
 const worker = readFileSync(new URL("../src/worker.ts", import.meta.url), "utf8");
-const sitemap = readFileSync(new URL("../functions/sitemap.xml.ts", import.meta.url), "utf8");
 
 describe("Cloudflare API origin boundary", () => {
   it("disables workers.dev and exposes only the canonical API route", () => {
@@ -21,8 +20,7 @@ describe("Cloudflare API origin boundary", () => {
     expect(guard).toContain('status: 404');
   });
 
-  it("does not leave internal callers coupled to the public workers.dev origin", () => {
-    expect(sitemap).not.toContain("workers.dev");
-    expect(sitemap).toContain('const DEFAULT_API_ORIGIN = "https://skipwait.me"');
+  it("keeps /sitemap.xml free of a same-zone Pages function (it shadows the Worker route and 404s API reads)", () => {
+    expect(existsSync(new URL("../functions/sitemap.xml.ts", import.meta.url))).toBe(false);
   });
 });

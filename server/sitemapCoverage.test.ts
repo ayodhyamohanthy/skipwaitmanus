@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { STATIC_ROUTES } from "../functions/sitemap.xml";
+import { SITEMAP_STATIC_ROUTES as STATIC_ROUTES } from "../shared/sitemap";
 import { PUBLIC_PAGES, publicSnapshots } from "../scripts/prerender-public-pages";
 
 const robots = readFileSync(new URL("../client/public/robots.txt", import.meta.url), "utf8");
-const sitemapFunction = readFileSync(new URL("../functions/sitemap.xml.ts", import.meta.url), "utf8");
+const wrangler = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
 
 describe("public crawl coverage", () => {
   const advertised = STATIC_ROUTES.map(route => route.path);
@@ -19,9 +19,11 @@ describe("public crawl coverage", () => {
     expect(new Set(advertised).size).toBe(advertised.length);
   });
 
-  it("keeps the sitemap on the canonical origin and off the workers.dev fallback", () => {
-    expect(sitemapFunction).toContain('const DEFAULT_API_ORIGIN = "https://skipwait.me"');
-    expect(sitemapFunction).not.toContain("workers.dev");
+  it("routes the sitemap to the API container, never a same-zone Pages function", () => {
+    // A Pages function for /sitemap.xml shadows the Worker route and its
+    // same-zone subrequests to /api/* loop back into Pages (404). The
+    // container serves the sitemap with direct DB reads instead.
+    expect(wrangler).toContain('"pattern": "skipwait.me/sitemap.xml"');
     expect(STATIC_ROUTES[0]).toEqual({ path: "/", changefreq: "daily", priority: "1.0" });
   });
 
@@ -30,36 +32,5 @@ describe("public crawl coverage", () => {
       expect(robots).toContain(`Disallow: ${path}`);
     }
     expect(robots).toContain("Sitemap: https://skipwait.me/sitemap.xml");
-  });
-});
-describe("sitemap.xml function at runtime", () => {
-  const contextFor = (url: string, env: Record<string, string> = {}) => ({ request: new Request(url), env } as never);
-
-  it("lists live jobs and companies, stamped with the read outcome", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.endsWith("/api/jobs")) return new Response(JSON.stringify({ jobs: [{ id: 7, updatedAt: "2026-10-20T00:00:00Z" }] }), { status: 200 });
-      if (url.endsWith("/api/companies")) return new Response(JSON.stringify({ companies: [{ slug: "wipro" }] }), { status: 200 });
-      throw new Error(`unexpected fetch ${url}`);
-    }));
-    const { onRequest } = await import("../functions/sitemap.xml");
-    const body = await (await onRequest(contextFor("https://skipwait.me/sitemap.xml"))).text();
-    expect(body).toContain("<loc>https://skipwait.me/jobs?job=7</loc>");
-    expect(body).toContain("<lastmod>2026-10-20</lastmod>");
-    expect(body).toContain("<loc>https://skipwait.me/explore/wipro</loc>");
-    expect(body).toContain("<!-- live: jobs=1 (ok), companies=1 (ok), api=https://skipwait.me -->");
-    vi.unstubAllGlobals();
-  });
-
-  it("a failed API read is loud: logged and stamped, never a silent drop", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("blocked", { status: 403 })));
-    const { onRequest } = await import("../functions/sitemap.xml");
-    const body = await (await onRequest(contextFor("https://skipwait.me/sitemap.xml"))).text();
-    expect(body).toContain("<!-- live: jobs=0 (http-403), companies=0 (http-403)");
-    expect(body).not.toContain("/jobs?job=");
-    expect(errorSpy).toHaveBeenCalled();
-    vi.unstubAllGlobals();
-    errorSpy.mockRestore();
   });
 });

@@ -1,7 +1,8 @@
 /**
  * The sitemap's single source of truth. Two surfaces serve it:
  *  - the API container (skipwait.me/sitemap.xml, direct DB reads), and
- *  - the Pages Function fallback (functions/sitemap.xml.ts, API fetch).
+ *  - the API container route (server/sitemapRoutes.ts, direct DB reads). A Pages
+ *    function for this path shadows the Worker route - never reintroduce one.
  * Both build the XML through buildSitemapXml so they can never drift.
  */
 export const SITEMAP_STATIC_ROUTES: Array<{ path: string; changefreq: string; priority: string }> = [
