@@ -29,7 +29,7 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 | W0 goal shell (PR #361) | L6 | build | designer fixes pushed; re-review pending |
 | W1 comps: /explore + ask drawer (w1-comps) | L1 | build | pushed; designer review pending; /queue held for #353 |
 | Demand list (D-086) | L1 | build | approved; after #361 + drawer review; mocks in hand |
-| BYOR one-time link (idea 2) | L2 | design | mocks with owner 3:06 AM; approval pending; takes next free D-number |
+| BYOR one-time link (idea 2) | L2 | build | approved (D-090); packet `docs/plans/D-090-BYOR.md`; gated on the demand list (D-086) |
 | Employee request-inbox link (idea 1) | L4 | design | after idea 2 |
 | Sourced bonus pages (idea 3) | L5 | design | after idea 1 |
 | Bedrock AI provider plan | - | build | plan with owner; AWS access needed |
@@ -58,3 +58,6 @@ Skippy is a chat front door to what the product already does. It asks, shows an 
 - **Seeker agents:** seeker-granted, scoped, limited, expiring (7 days default, 30 max), revocable, hashed key shown once, ask-me-every-time by default, never buy credits, audit log (D-141). Referrers see "sent via the seeker's assistant" (D-142).
 - **Build order and proof:** Step 1 admin read-only. Step 2 seeker ask-only (flag on only for the test seeker). Step 3 in-chat plan or credit choice via Chargebee. Step 4 admin approval cards. Step 5 agents draft-only. Step 6 agents send with ask-every-time. Step 7 opt-in auto-send within limits. Each step ships behind a flag that stays off in prod until proven with screenshots or test output. Nothing live-money until test payments pass. Step 5 is built behind `SKIPPIE_AGENT_ENABLED` (off in prod): the seeker grants an agent on `/agents` (scope, limits, 7-day default expiry capped at 30, instant revoke, pause-all), the key is shown once and stored hashed, the agent can look up companies/prices and draft asks only (no send, no purchases, lower call caps than people), and every call lands in the seeker-readable audit log.
 - **Before any seeker-facing launch:** confirm provider data terms, set the global spend cap, pass the red-team injection test, founder sees a demo on the live URL, run a trademark and name-clearance search for "Skippy" (also a known food brand).
+
+## Pricing
+One source of truth: [`docs/PRICING.md`](PRICING.md) (D-146: Lovable-style plans with credit dropdowns only; fixed passes off; packs on). Decisions are recorded in `docs/DECISIONS.md` before anything is built on them.

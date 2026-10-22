@@ -12,7 +12,7 @@ import { CREDIT_ENDED_CAVEAT } from "../shared/moneyCopy";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { accountPreferences, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { accountPreferences, askCosts, seekerLevels, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
@@ -47,7 +47,8 @@ import { resolveAskJobFunction } from "../shared/jobFunctionClassifier";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { isPaidPlanActive, resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
-import { AssistantPlanRequiredError, CompanyCapReachedError, OpenAskSlotCapError, openAskCondition, showcaseLimitViolation } from "./planGates";
+import { askWorkItemIdsSchema, dedupeAskWorkItemIds, type AskWorkItem } from "../shared/askWorkItems";
+import { AssistantPlanRequiredError, CompanyCapReachedError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskWindow, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks, type UnclaimedAssignmentKind, type UnclaimedAssignments } from "./heldAsk";
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
@@ -273,6 +274,15 @@ export async function getUserByOpenId(openId: string) {
   return { ...account, suspended: account.suspended || person.suspended, sessionsValidAfter: person.sessionsValidAfter > account.sessionsValidAfter ? person.sessionsValidAfter : account.sessionsValidAfter };
 }
 export async function revokeUserSessions(openId: string): Promise<void> { const db = await getDb(); if (!db) return; const account=await getUserByOpenId(openId);if(!account)return;const now=new Date();await db.update(users).set({sessionsValidAfter:now}).where(eq(users.id,account.id));if(account.canonicalPersonId)await db.update(canonicalPeople).set({sessionsValidAfter:now}).where(eq(canonicalPeople.id,account.canonicalPersonId)); }
+export async function getSeekerLevel(userId: number): Promise<number | null> { const db = await getDb(); if (!db) return null; const r = await db.select({ level: seekerLevels.level }).from(seekerLevels).where(eq(seekerLevels.userId, userId)).limit(1); return r[0]?.level ?? null; }
+/** D-148: the seeker's own pick (1-10). Display only. */
+export async function setSeekerLevel(userId: number, level: number | null): Promise<number | null> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  if (level === null) { await db.delete(seekerLevels).where(eq(seekerLevels.userId, userId)); return null; }
+  if (!Number.isInteger(level) || level < 1 || level > 10) throw new Error("Level must be 1 to 10");
+  await db.insert(seekerLevels).values({ userId, level }).onDuplicateKeyUpdate({ set: { level } });
+  return level;
+}
 export async function getProfileByUserId(userId: number) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1); return result[0]; }
 
 const RESERVED_HANDLES = new Set(["admin", "api", "app", "ask", "alerts", "billing", "explore", "help", "inbox", "invite", "jobs", "landed", "messages", "notifications", "onboarding", "plans", "premium", "pricing", "privacy", "profile", "queue", "referrer", "report", "requests", "settings", "share", "sign-in", "start", "support", "terms", "thread", "verify", "wall", "work", "p", "developers", "employer", "request"]);
@@ -1836,7 +1846,7 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   return { id: requestId };
 }
 
-export type CreateCompanyReferralInput = { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number };
+export type CreateCompanyReferralInput = { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; workItemIds?: number[] };
 /**
  * The private `jobs` row behind a company ask. Its function is the seeker's
  * explicit choice ("seeker") or the shared classifier's guess from the job
@@ -1849,10 +1859,12 @@ export function companyAskJobRow(input: { companyDomain: string; targetRoleUrl: 
   return { title: "Role from shared job link", company: input.companyDomain, location: "Not specified", compensation: input.compensation, description: "Private referral request routed from a Target Role URL.", targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", jobFunction: decided.jobFunction, jobFunctionSource: decided.source, publishedAt: input.publishedAt };
 }
 export class CompanyLinkMismatchError extends Error { constructor(companyName: string) { super(`This job link is not from ${companyName}. Paste a job link from ${companyName}’s own careers page.`); this.name="CompanyLinkMismatchError"; } }
+/** Task 13: an id that is not one of the caller's own showcase pieces, or vanished while the ask was being written. */
+export class AskWorkItemNotInShowcaseError extends Error { constructor() { super("That work is no longer in your showcase. Add it again, or choose a piece you still have."); this.name="AskWorkItemNotInShowcaseError"; } }
 export class ReferralIdempotencyConflictError extends Error { constructor() { super("This submission key was already used for a different referral request"); this.name="ReferralIdempotencyConflictError"; } }
-/** Idempotency fingerprint. An explicit job function is part of it only when sent, so retries from before 0077 still match. A post selection is part of it only when sent, so a retry that drops it can never silently become a different ask. */
+/** Idempotency fingerprint. An explicit job function is part of it only when sent, so retries from before 0077 still match. A post selection is part of it only when sent, so a retry that drops it can never silently become a different ask. Pinned work follows the same rule (0095), deduplicated so an order-only or repeated-id retry replays instead of conflicting. */
 export function companyReferralFingerprint(input: CreateCompanyReferralInput, companyDomain: string) {
-  const canonical={targetRoleUrl:normalizeTargetRoleUrl(input.targetRoleUrl),attachmentIds:Array.from(new Set(input.attachmentIds)).sort((a,b)=>a-b),pitchHash:createHash("sha256").update(input.personalPitch).digest("hex"),companyDomain,confirmedCompanyDomain:input.confirmedCompanyDomain?.trim().toLowerCase()||null,compensation:input.compensation?.trim().slice(0,80)||null,fastTrackCode:input.fastTrackCode||null,fastTrackCompanySlug:input.fastTrackCompanySlug||null,fastTrackAlias:input.fastTrackAlias||null,...(input.jobFunction?{jobFunction:input.jobFunction}:{}),...(input.opportunityId?{opportunityId:input.opportunityId}:{})};
+  const canonical={targetRoleUrl:normalizeTargetRoleUrl(input.targetRoleUrl),attachmentIds:Array.from(new Set(input.attachmentIds)).sort((a,b)=>a-b),pitchHash:createHash("sha256").update(input.personalPitch).digest("hex"),companyDomain,confirmedCompanyDomain:input.confirmedCompanyDomain?.trim().toLowerCase()||null,compensation:input.compensation?.trim().slice(0,80)||null,fastTrackCode:input.fastTrackCode||null,fastTrackCompanySlug:input.fastTrackCompanySlug||null,fastTrackAlias:input.fastTrackAlias||null,...(input.jobFunction?{jobFunction:input.jobFunction}:{}),...(input.opportunityId?{opportunityId:input.opportunityId}:{}),...(input.workItemIds?.length?{workItemIds:dedupeAskWorkItemIds(input.workItemIds)}:{})};
   return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }
 
@@ -1912,6 +1924,22 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const uniqueAttachmentIds=Array.from(new Set(input.attachmentIds));
     const owned=await tx.select({id:referralAttachments.id}).from(referralAttachments).where(and(inArray(referralAttachments.id,uniqueAttachmentIds),eq(referralAttachments.ownerId,userId),isNull(referralAttachments.referralRequestId))).for("update");
     if(owned.length!==uniqueAttachmentIds.length)throw new Error("One or more resume documents are unavailable or already attached");
+    // Task 13 (0105): the showcase pieces pinned to this ask. How many ride
+    // along is the plan's existing pin entitlement, so no new limit is sold.
+    // The read is deliberately not locked: withdraw and expiry take the ask row
+    // before the wallet, and the reverse order here could deadlock. A piece
+    // deleted between this read and the send still snapshots honestly, because
+    // only rows owned by this seeker were ever selected.
+    const workItemIds=dedupeAskWorkItemIds(askWorkItemIdsSchema.parse(input.workItemIds??[]));
+    const pins=entitlements.showcase.pins;
+    if(workItemIds.length>pins)throw new PlanLimitError("showcase_pins",pins,`Your ${entitlements.planLabel} plan puts ${pins} ${pins===1?"piece":"pieces"} of work in front of a referrer. Choose the ${pins===1?"one":"ones"} that best proves this role.`);
+    let pinnedWork:Array<{id:number}&AskWorkItem>=[];
+    if(workItemIds.length){
+      const found=await tx.select({id:workItems.id,title:workItems.title,kind:workItems.kind,source:workItems.source,url:workItems.url}).from(workItems).where(and(inArray(workItems.id,workItemIds),eq(workItems.userId,userId)));
+      if(found.length!==workItemIds.length)throw new AskWorkItemNotInShowcaseError();
+      const byId=new Map(found.map(item=>[item.id,item]));
+      pinnedWork=workItemIds.map(id=>byId.get(id)).filter((item):item is {id:number}&AskWorkItem=>item!==undefined);
+    }
     // P0-block-delivery: one lookup over everyone this ask could reach (fail-open, server/blockedPairs.ts). A personal
     // link whose owner is blocked with the seeker (either way) is refused here, before any write or credit, with the
     // inactive-link words. Anyone else blocked is never told and gets no review link; a blocked poster gets no first
@@ -1946,6 +1974,11 @@ export async function createCompanyReferralRequest(userId: number, input: Create
       remaining=await creditSummaryTx(tx,{wallet:spent.wallet,grants:spent.grants,promo:promoAfter,now:summaryNow});
     }
     const bound=await tx.update(referralAttachments).set({referralRequestId:requestId}).where(and(inArray(referralAttachments.id,uniqueAttachmentIds),eq(referralAttachments.ownerId,userId),isNull(referralAttachments.referralRequestId)));if(Number(bound[0]?.affectedRows??0)!==uniqueAttachmentIds.length)throw new Error("One or more resume documents changed during submission");
+    // Task 13 (0105): the pinned-work snapshot, copied once at the send instant so
+    // a later showcase edit or delete never rewrites what a referrer was shown.
+    // D-132 audit item 2 (0106): with ASK_LEVEL_COST on, the level and cost this ask was priced at are stored once, here. Flag off writes nothing.
+    if(askLevelCostEnabled()){const price=askPriceAtCreate({title:jobRow.title,description:jobRow.description,url:jobRow.targetRoleUrl});await tx.insert(askCosts).values({referralRequestId:requestId,jobLevel:price.jobLevel,creditCost:price.creditCost,source:"classified_at_create"});}
+    for(let index=0;index<pinnedWork.length;index++){const item=pinnedWork[index];await tx.insert(askWorkItems).values({referralRequestId:requestId,workItemId:item.id,title:item.title,kind:item.kind,source:item.source,url:item.url,position:index});}
     // Invite rewards never fund this request. They unlock only after its separately funded, durable creation is
     // complete inside this transaction; a waiting ask has not gone out yet, so its rewards unlock at delivery (see
     // deliverWaitingAskTx).
@@ -2215,7 +2248,10 @@ export async function getUnclaimedCompanyReferralPreview(userId: number, request
     or(isNull(referralRequests.firstLookReferrerId), isNull(referralRequests.firstLookUntil), lt(referralRequests.firstLookUntil, freshNow), eq(referralRequests.firstLookUntil, freshNow), eq(referralRequests.firstLookReferrerId, userId)))).limit(1);
   if (!request[0]) return undefined;
   const attachments = await db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.referralRequestId, requestId));
-  return { ...request[0], attachments };
+  // Task 13 (0095): the work pinned at send time, in the order the seeker chose.
+  // Title, kind, source and link only — no showcase row ids, no seeker identity.
+  const pinnedWork = await db.select({ title: askWorkItems.title, kind: askWorkItems.kind, source: askWorkItems.source, url: askWorkItems.url }).from(askWorkItems).where(eq(askWorkItems.referralRequestId, requestId)).orderBy(asc(askWorkItems.position));
+  return { ...request[0], attachments, workItems: pinnedWork };
 }
 
 export async function saveCompanyReferralRequest(userId: number, requestId: number, saved: boolean) {
@@ -2678,7 +2714,9 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
     // D-110/D-132: the waiting ask pays the same level cost the covered ask
     // paid at creation, classified from the same stored job row.
     const deliveryJob = (await tx.select({ title: jobs.title, description: jobs.description, url: jobs.targetRoleUrl }).from(jobs).where(eq(jobs.id, request.jobId)).limit(1))[0];
-    const deliveryCost = askCreditCost({ title: deliveryJob?.title, description: deliveryJob?.description, url: deliveryJob?.url });
+    // D-132 audit item 2: read the cost stored at creation; only an ask with no stored row (made with the flag off) is priced again.
+    const storedCost = (await tx.select({ creditCost: askCosts.creditCost }).from(askCosts).where(eq(askCosts.referralRequestId, input.requestId)).limit(1))[0];
+    const deliveryCost = storedCost ? storedCost.creditCost : askCreditCost({ title: deliveryJob?.title, description: deliveryJob?.description, url: deliveryJob?.url });
     try {
       await spendCreditsTx(tx, { wallet: reconciled.wallet, grants: reconciled.grants, promo: promoGrantsEnabled() ? promoHolding(promo.grant) : null, credits: deliveryCost, meta: { idempotencyKey: askDeliveryKey(input.requestId), referenceType: "referral_request", referenceId: String(input.requestId) }, now });
     } catch (error) {
@@ -3934,6 +3972,11 @@ export function askLevelCostEnabled(): boolean { return process.env.ASK_LEVEL_CO
 export function askCreditCost(job: { title?: string | null; description?: string | null; url?: string | null }): number {
   if (!askLevelCostEnabled()) return 1;
   return creditsForLevel(assignJobLevel({ title: job.title, description: job.description, url: job.url }).level);
+}
+/** D-132 audit item 2: the level and cost an ask is priced at, for the one row stored at creation. */
+export function askPriceAtCreate(job: { title?: string | null; description?: string | null; url?: string | null }): { jobLevel: number; creditCost: number } {
+  const jobLevel = assignJobLevel({ title: job.title, description: job.description, url: job.url }).level;
+  return { jobLevel, creditCost: creditsForLevel(jobLevel) };
 }
 
 export async function grantPromoCreditsTx(tx: any, input: { userId: number; role: WalletRole; source: string; providerRef: string; now?: Date }): Promise<{ granted: boolean; grantId?: number; reason?: "already_granted" | "disabled" }> {
