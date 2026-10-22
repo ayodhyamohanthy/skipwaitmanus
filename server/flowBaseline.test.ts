@@ -71,6 +71,24 @@ describe("D-018 baseline aggregation", () => {
     expect(baseline.decisionLatency).toEqual({ sampleSize: 2, medianHours: 40, p90Hours: 50 });
   });
 
+  it("counts a pass_release as the referrer's decision and as passed (D-035)", async () => {
+    // A not-fixable pass is stored as pass_release, not pass. It is still a decision by the referrer and
+    // still a passed ask, so the weekly outcome and the latency sample must not lose it.
+    const baseline = await buildFlowBaseline(fixture({
+      loadRequests: async () => [request(1, "acme.com", "pending", Date.UTC(2026, 9, 12, 9))],
+      loadPassedRequestIds: async () => [1],
+      loadTransitionsSince: async () => [
+        { requestId: 1, actorUserId: 11, action: "claim", createdAt: new Date(Date.UTC(2026, 9, 12, 10)) },
+        { requestId: 1, actorUserId: 11, action: "pass_release", createdAt: new Date(Date.UTC(2026, 9, 13, 9)) }, // +24 h
+      ],
+      loadCompanyDomains: async () => [{ companyId: 1, domain: "acme.com" }],
+      loadReferrerProfiles: async () => [referrer(11, "acme.com")],
+    }), { nowMs: NOW, operatorDomains: ["skipwait.me"] });
+
+    expect(baseline.weeks.at(-1)).toMatchObject({ weekStart: "2026-10-12", passed: 1 });
+    expect(baseline.decisionLatency).toEqual({ sampleSize: 1, medianHours: 24, p90Hours: 24 });
+  });
+
   it("counts uncovered asks from current coverage, and only asks inside the window", async () => {
     const baseline = await buildFlowBaseline(fixture({
       loadRequests: async () => [

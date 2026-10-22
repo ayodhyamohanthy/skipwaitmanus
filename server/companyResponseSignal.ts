@@ -16,10 +16,11 @@ export async function loadCompanyResponseSignal(domains: readonly string[], now:
   if (owned.length === 0) return { state: "insufficient" };
   const [referrers, asks] = await Promise.all([
     db.select({ userId: profiles.userId }).from(profiles).where(and(eq(profiles.accountType, "referrer"), isNotNull(profiles.workEmailVerifiedAt), inArray(profiles.workEmailDomain, owned))),
-    // First decision (approve or pass) per ask; the ask clock starts when a referrer could first see it.
+    // First decision (approve or either pass) per ask; the ask clock starts when a referrer could first see it.
+    // D-035: a not-fixable pass is recorded as pass_release, and it answers the ask exactly like a pass does.
     db.select({ requestId: referralRequests.id, createdAt: referralRequests.createdAt, visibleAt: referralRequests.coverageVisibleAt, firstDecisionAt: min(referralTransitionEvents.createdAt) })
       .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id))
-      .leftJoin(referralTransitionEvents, and(eq(referralTransitionEvents.referralRequestId, referralRequests.id), inArray(referralTransitionEvents.action, ["approve", "pass"])))
+      .leftJoin(referralTransitionEvents, and(eq(referralTransitionEvents.referralRequestId, referralRequests.id), inArray(referralTransitionEvents.action, ["approve", "pass", "pass_release"])))
       .where(inArray(jobs.company, owned)).groupBy(referralRequests.id, referralRequests.createdAt, referralRequests.coverageVisibleAt),
   ]);
   return computeResponseSignal(asks.map(row => ({ askedAt: row.visibleAt ?? row.createdAt, firstDecisionAt: row.firstDecisionAt ? new Date(row.firstDecisionAt) : null })), referrers.length, now);

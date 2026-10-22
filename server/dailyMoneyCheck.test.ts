@@ -31,6 +31,7 @@ function makeDeps(overrides: Partial<DailyMoneyCheckDeps> = {}) {
     listDoublyReversedSpends: vi.fn(async () => []),
     listRefundsAfterPickup: vi.fn(async () => []),
     listReferredPastDeadline: vi.fn(async () => []),
+    listReleasedPassesUnrefunded: vi.fn(async () => []),
     sendEmail: vi.fn(async (input: Sent) => { sent.push(input); return true; }),
     recordActivity: vi.fn(async (row: { action: string }) => { activity.push(row as { action: string; outcome: string }); }),
     ...overrides,
@@ -448,6 +449,28 @@ describe("refund_after_pickup over the in-memory database", () => {
     expect(await listRefundsAfterPickup(10)).toEqual([]);
   });
 
+  it("does not flag a refund after a not-fixable pass released the credit (D-035)", async () => {
+    seedHeldAsks({
+      asks: [askRow()],
+      events: [event(39, "claim", at(3 * DAY)), event(40, "pass_release", at(2 * DAY))],
+      spends: [refund(61, "withdrawal_refund", at(DAY))],
+    });
+
+    // D-035: pass_release is a release, so the ask is no longer picked up and the refund is correct.
+    expect(await listRefundsAfterPickup(10)).toEqual([]);
+  });
+
+  it("still flags a refund after a fixable pass left the credit spent (D-035)", async () => {
+    seedHeldAsks({
+      asks: [askRow()],
+      events: [event(39, "claim", at(3 * DAY)), event(40, "pass", at(2 * DAY))],
+      spends: [refund(61, "withdrawal_refund", at(DAY))],
+    });
+
+    // The control: a fixable pass is not in the release set, so the claim stays the latest pickup.
+    expect((await listRefundsAfterPickup(10)).map(row => row.transactionId)).toEqual([61]);
+  });
+
   it("finds an old claim behind more than limit x 4 newer rows for other asks", async () => {
     // The refund window covers the newest limit * 4 refund rows, and the event read has no window,
     // so a ten-day-old claim still convicts a recent refund among 30 newer rows for other asks.
@@ -513,6 +536,32 @@ describe("runMoneyCheckNow (on-demand admin run)", () => {
     const { deps, sent } = makeDeps();
     const result = await runMoneyCheckNow(NOW.getTime(), deps);
     expect(result).toEqual({ emailSent: false, findingsEmailed: false, subject: null, text: null });
+    expect(sent).toEqual([]);
+  });
+});
+
+
+describe("released_pass_unrefunded (D-035)", () => {
+  it("reaches the owner email when a released pass closed without exactly one refund", async () => {
+    const { deps, sent } = makeDeps({
+      listReleasedPassesUnrefunded: vi.fn(async () => [
+        { requestId: 701, closedAction: "expire", refundRows: 0 },
+        { requestId: 702, closedAction: "withdraw", refundRows: 2 },
+      ]),
+    });
+    const output = await runJob(deps);
+    expect(output.failed).toBe(0);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("released_pass_unrefunded: ask #701 was released by a pass and closed by expire, but no credit refund row exists (expected exactly one)");
+    expect(sent[0]!.text).toContain("released_pass_unrefunded: ask #702 was released by a pass and closed by withdraw, but 2 refund rows exist (expected exactly one)");
+  });
+
+  it("stays quiet when every released pass refunded exactly once, and never flags an ask still open or a free ask", async () => {
+    const { deps, sent } = makeDeps({
+      listReleasedPassesUnrefunded: vi.fn(async () => []),
+    });
+    const output = await runJob(deps);
+    expect(output.failed).toBe(0);
     expect(sent).toEqual([]);
   });
 });

@@ -40,3 +40,27 @@ describe("jobs.company <-> companyDomains fixture (QA)", () => {
     expect(signal.state).toBe("insufficient");
   });
 });
+
+// D-035: a not-fixable pass is recorded as pass_release. It is still the company answering the ask, so
+// the signal must count it; otherwise a company whose employees pass for reasons the seeker cannot fix
+// looks like nobody there ever responds.
+describe("D-035: a not-fixable pass is the company's answer", () => {
+  it("counts pass_release as a first decision", async () => {
+    const store = createInMemoryDrizzle();
+    store.reset([
+      [profiles, [referrer(1, "quillmint.com"), referrer(2, "quillmint.com"), referrer(3, "quillmint.com")]],
+      [jobs, [job(10, "quillmint.com"), job(11, "quillmint.com"), job(12, "quillmint.com")]],
+      [referralRequests, [ask(100, 10), ask(101, 11), ask(102, 12)]],
+      [referralTransitionEvents, [
+        { ...decision(1000, 100, 24), action: "pass_release", operationKey: "one-click:1:declined:role_not_a_fit" },
+        { ...decision(1001, 101, 48), action: "pass_release", operationKey: "one-click:1:declined:role_closed" },
+        { ...decision(1002, 102, 72), action: "pass_release", operationKey: "one-click:1:declined:at_capacity" },
+      ]],
+    ]);
+    const signal = await loadCompanyResponseSignal(["quillmint.com"], NOW, store.db);
+    expect(signal.state).toBe("shown");
+    if (signal.state !== "shown") return;
+    expect(signal.answeredThisMonth).toBe(3);
+    expect(signal.usualFirstReplyDays).toBe(2);
+  });
+});

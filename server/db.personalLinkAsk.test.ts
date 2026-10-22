@@ -106,7 +106,7 @@ describe("withdrawing a personal-link ask its employee has not acted on", () => 
     expect(walletOf()?.monthlyCreditsRemaining).toBe(2);
   });
 
-  it("after a pass the ask is an ordinary open ask: an unclaimed pass refunds once, a claim then pass refunds nothing", async () => {
+  it("after a pass the ask is an ordinary open ask: an unclaimed pass refunds once, a claim then a legacy pass releases the credit (D-035)", async () => {
     await reviewReferralRequest(LINK_OWNER, { requestId: REQUEST_ID, decision: "declined" });
     expect(askById()).toMatchObject({ status: "pending", referrerId: null });
     expect(await withdraw()).toMatchObject({ withdrawn: true, creditRefunded: true });
@@ -115,9 +115,11 @@ describe("withdrawing a personal-link ask its employee has not acted on", () => 
     seedHeldAsks();
     await claim();
     await reviewReferralRequest(LINK_OWNER, { requestId: REQUEST_ID, decision: "declined" });
-    expect(await withdraw()).toMatchObject({ withdrawn: true, creditRefunded: false });
-    expect(reversalsOf()).toEqual([]);
-    expect(walletOf()?.monthlyCreditsRemaining).toBe(2);
+    // D-035: the legacy pass carries no reason code, so it is not fixable and releases the credit.
+    expect(await withdraw()).toMatchObject({ withdrawn: true, creditRefunded: true });
+    expect(eventActions()).toEqual(["claim", "pass_release", "withdraw"]);
+    expect(reversalsOf()).toEqual([expect.objectContaining({ kind: "withdrawal_refund", tokenCount: 1 })]);
+    expect(walletOf()?.monthlyCreditsRemaining).toBe(3);
     expect(releaseLogs()).toEqual([]);
   });
 
@@ -178,7 +180,7 @@ describe("withdrawing a personal-link ask its employee has not acted on", () => 
       }
       // A pass reopens the ask to the company (D-021): never claimed, so its credit comes back.
       expect(await withdraw()).toMatchObject({ withdrawn: true, creditRefunded: true });
-      expect(eventActions()).toEqual(["pass", "withdraw"]);
+      expect(eventActions()).toEqual(["pass_release", "withdraw"]);
       expect(reversalsOf()).toHaveLength(1);
     });
   });

@@ -20,8 +20,8 @@ import { drizzleFlowBaselineSource, type BaselineReferrerRow, type BaselineReque
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
 const MAX_COMPANY_ROWS = 12;
-const DECISION_ACTIONS = new Set(["approve", "pass"]);
-const ACTIVITY_ACTIONS = new Set(["claim", "approve", "pass", "review"]);
+const DECISION_ACTIONS = new Set(["approve", "pass", "pass_release"]); // D-035: a not-fixable pass releases the credit and still counts as the referrer passing.
+const ACTIVITY_ACTIONS = new Set(["claim", "approve", "pass", "pass_release", "review"]); // D-035
 
 /** skipwait.me's own domains: the launch seed's own page, plus the admin mailbox domain. */
 export function operatorDomains(adminEmail: string | null | undefined = process.env.SKIPWAIT_ADMIN_EMAIL): string[] {
