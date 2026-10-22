@@ -149,6 +149,9 @@ describe("queue empty state follows routing state", () => {
     stubRouting("active");
     render(<Queue />);
     expect(await screen.findByText("No asks right now.")).toBeTruthy();
+    expect(screen.getByText(/New asks show up here/)).toBeTruthy();
+    // No email promise until the Resend key is live in prod (designer copy-truth rule).
+    expect(screen.queryByText(/email you/)).toBeNull();
     expect(screen.queryByRole("button", { name: /Open referral capacity/ })).toBeNull();
   });
 

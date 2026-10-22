@@ -58,6 +58,10 @@ type InboxPayload = { requests?: QueueItem[] };
 /** Read model for the honest empty state: paused / active (capacity left) / at_capacity. */
 type RoutingState = "paused" | "active" | "at_capacity";
 type ReferrerHomePayload = { home?: { routing?: { state?: string } } };
+type ReferrerPrefsPayload = { preferences?: { notifyNewAsk?: boolean } };
+/** Prod has no Resend key yet, so ask emails are not reliably sent. Do not promise
+    email in copy until the key is live; then the promise also respects notifyNewAsk. */
+const EMAIL_DELIVERY_LIVE = false;
 
 const DAY_MS = 86_400_000;
 
@@ -93,6 +97,7 @@ export default function MyCompanyInbox() {
   const [passOpen, setPassOpen] = useState(false);
   const [openingCapacity, setOpeningCapacity] = useState(false);
   const [routingState, setRoutingState] = useState<RoutingState | null>(null);
+  const [notifyNewAsk, setNotifyNewAsk] = useState<boolean | null>(null);
   const { showSkeleton, isSlow } = useSlowLoad(loading);
 
   const companyFetch = async <T extends object>(path: string, init?: RequestInit): Promise<T & { error?: string }> => {
@@ -107,13 +112,15 @@ export default function MyCompanyInbox() {
     if (!isSignedIn) return;
     setLoading(true); setError(""); setLoadFailed(false);
     try {
-      const [fresh, saved, home] = await Promise.all([
+      const [fresh, saved, home, prefs] = await Promise.all([
         companyFetch<InboxPayload>("/api/company-referrals/inbox?scope=new"),
         companyFetch<InboxPayload>("/api/company-referrals/inbox?scope=saved"),
         companyFetch<ReferrerHomePayload>("/api/referrer/home").catch(() => null),
+        companyFetch<ReferrerPrefsPayload>("/api/referrer-preferences").catch(() => null),
       ]);
       const state = home?.home?.routing?.state;
       setRoutingState(state === "paused" || state === "active" || state === "at_capacity" ? state : null);
+      setNotifyNewAsk(typeof prefs?.preferences?.notifyNewAsk === "boolean" ? prefs.preferences.notifyNewAsk : null);
       const withFunction = (row: QueueItem): QueueItem => ({ ...row, jobFunction: parseJobFunction(row.jobFunction) });
       const freshRows = (fresh.requests || []).map(withFunction);
       const seen = new Set(freshRows.map(row => row.id));
@@ -211,7 +218,7 @@ export default function MyCompanyInbox() {
         <span className="text-g-meta text-g-ink-3"><GoalNum>{requests.length}</GoalNum> waiting</span>
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-3">
-        <GoalVerifiedMark as="span">{`Verified${company ? ` · ${company}` : ""}`}</GoalVerifiedMark>
+        <GoalVerifiedMark as="span" mutedText>{`Verified${company ? ` · ${company}` : ""}`}</GoalVerifiedMark>
         <Link href="/referrer/impact" className="flex min-h-11 items-center gap-1 text-g-meta text-g-ink-2"><HandHelping aria-hidden="true" className="size-4" />Impact</Link>
         <Link href="/referrer?view=setup" className="flex min-h-11 items-center gap-1 text-g-meta text-g-ink-2"><Settings aria-hidden="true" className="size-4" />Settings</Link>
       </div>
@@ -234,7 +241,7 @@ export default function MyCompanyInbox() {
       action={{ label: "Open settings", onClick: () => go("/referrer?view=setup") }}
     />
   ) : routingState === "active" ? (
-    <GoalEmptyState title="No asks right now." body="Enjoy the quiet. We'll email you when a private ask for your company arrives." />
+    <GoalEmptyState title="No asks right now." body={EMAIL_DELIVERY_LIVE && notifyNewAsk ? "Enjoy the quiet. We'll email you when a private ask for your company arrives." : "Enjoy the quiet. New asks show up here."} />
   ) : (
     <GoalEmptyState
       title="Ready to help?"
