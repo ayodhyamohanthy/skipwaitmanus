@@ -47,7 +47,7 @@ export default function TrustPrivacy() {
     </PolicySection>
 
     <PolicySection number="04" title="Hosted payment checkout">
-      <p>Payment details are handled by the payment provider’s checkout. Referral decisions are always free for Referrers.</p>
+      <p>Payment details are handled by the payment provider’s checkout. Referral decisions never cost Referrers anything.</p>
     </PolicySection>
 
     <PolicySection number="05" title="What we collect">

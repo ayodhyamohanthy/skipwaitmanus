@@ -52,7 +52,7 @@ export default function Landed() {
           <h1 className="text-3xl font-semibold">Say thanks.</h1>
           <p className="mt-2 text-muted-foreground">The single message referrers remember most.</p>
           <textarea aria-label="Thank-you message" value={message} maxLength={600} onChange={event => setMessage(event.target.value)} className="mt-6 min-h-36 w-full rounded-2xl border border-input bg-background p-4 text-base" />
-          <Panel tone="muted" className="mt-6 text-sm"><Gift className="mb-2 size-5" />Gifts or payments for referrals aren&apos;t allowed on SkipWait. A real thank-you is enough.</Panel>
+          <Panel tone="muted" className="mt-6 text-sm"><Gift className="mb-2 size-5" />Gifts or payments for referrals aren&apos;t allowed on skipwait.me. A real thank-you is enough.</Panel>
           <div className="mt-8 flex justify-between">
             <Button variant="ghost" onClick={() => setStep(2)}>Skip</Button>
             <Button onClick={() => { void copyThanks().then(() => setStep(2)); }}><Send />{copied ? "Copied" : "Copy thanks"}</Button>
@@ -71,7 +71,7 @@ export default function Landed() {
             ))}
           </div>
           <div className="mt-8 grid gap-2 sm:grid-cols-2">
-            <Button variant="outline" asChild><Link href="/explore">Back to SkipWait</Link></Button>
+            <Button variant="outline" asChild><Link href="/explore">Back to skipwait.me</Link></Button>
             <Button onClick={() => { setPayForward("yes"); setStep(3); }}>Yes, I&apos;ll pay it forward</Button>
           </div>
         </section>

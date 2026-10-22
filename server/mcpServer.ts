@@ -29,7 +29,7 @@ const MAX_RESULTS = 25;
 export const MCP_TOOLS = [
   {
     name: "search_jobs",
-    description: "Search the public SkipWait catalog of roles at companies open to referrals. Read-only.",
+    description: "Search the public skipwait.me catalog of roles at companies open to referrals. Read-only.",
     inputSchema: { type: "object", properties: { query: { type: "string", description: "Words in the title, company or description" }, company: { type: "string", description: "Exact company name" } }, additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   },
@@ -53,7 +53,7 @@ export const MCP_TOOLS = [
   },
   {
     name: "propose_ask",
-    description: "Propose a referral ask for the member. This does NOT send anything and spends nothing: it creates a pending approval the member must approve in SkipWait, where the exact credit cost is shown. The member's approval is the only thing that sends it. You do not choose a referrer.",
+    description: "Propose a referral ask for the member. This does NOT send anything and spends nothing: it creates a pending approval the member must approve in skipwait.me, where the exact credit cost is shown. The member's approval is the only thing that sends it. You do not choose a referrer.",
     inputSchema: { type: "object", properties: { targetRoleUrl: { type: "string", description: "Public link to the job posting" }, attachmentIds: { type: "array", items: { type: "number" }, description: "Ids from list_my_resumes (1 to 5)" }, message: { type: "string", description: "Optional note to the referrer, up to 600 characters" } }, required: ["targetRoleUrl", "attachmentIds"], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
@@ -114,7 +114,7 @@ export async function callMcpTool(name: unknown, args: unknown, ctx: McpContext,
   if (name === "propose_ask") {
     try {
       const created = await deps.proposeAsk(ctx.userId, { targetRoleUrl: input.targetRoleUrl, attachmentIds: input.attachmentIds, message: input.message });
-      return textResult({ approvalId: created.id, status: created.status, creditCostIfApproved: created.creditCost, expiresAt: created.expiresAt, nextStep: "Nothing has been sent and no credit has been spent. Tell the member to open SkipWait > Approve and approve it there." });
+      return textResult({ approvalId: created.id, status: created.status, creditCostIfApproved: created.creditCost, expiresAt: created.expiresAt, nextStep: "Nothing has been sent and no credit has been spent. Tell the member to open skipwait.me > Approve and approve it there." });
     } catch (error) {
       return toolError(error instanceof Error ? error.message.slice(0, 200) : "We could not create that proposal.");
     }
@@ -133,7 +133,7 @@ export async function handleMcpMessage(message: unknown, ctx: McpContext, deps: 
   if (!hasId) return null; // notifications (e.g. notifications/initialized) get no response
   const rpcId = id as RpcId;
   if (method === "initialize") {
-    return { jsonrpc: "2.0", id: rpcId, result: { protocolVersion: MCP_PROTOCOL_VERSION, capabilities: { tools: {} }, serverInfo: { name: "skipwait", version: "1.0.0" }, instructions: "Read your SkipWait requests and alerts and search roles. propose_ask only creates a pending approval: the member approves it in SkipWait, where the exact credit cost is shown, and nothing is sent or spent before that." } };
+    return { jsonrpc: "2.0", id: rpcId, result: { protocolVersion: MCP_PROTOCOL_VERSION, capabilities: { tools: {} }, serverInfo: { name: "skipwait", version: "1.0.0" }, instructions: "Read your skipwait.me requests and alerts and search roles. propose_ask only creates a pending approval: the member approves it in skipwait.me, where the exact credit cost is shown, and nothing is sent or spent before that." } };
   }
   if (method === "ping") return { jsonrpc: "2.0", id: rpcId, result: {} };
   if (method === "tools/list") return { jsonrpc: "2.0", id: rpcId, result: { tools: MCP_TOOLS } };

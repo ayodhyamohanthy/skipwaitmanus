@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-048).
+
 # Task 25 design check: region-preferences + settings-kit-shell (DESIGN ONLY, nothing built)
 
 Read from main at cc39db8. Not built; needs approval of the scope cuts below.

@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { EMPLOYER_PLANS, employerPlanPriceLabel } from "@/components/employer/employerPlans";
 import { useCompanyDirectory } from "@/lib/companyDirectory";
+import { FREE_ASKS_CHIP } from "@shared/moneyCopy";
 
 // Cards 2-4 keep claims the product backs today; the kit's insight, ATS and
 // campaign cards land with the employer-insights wave.
@@ -11,17 +12,18 @@ const VALUE = [
   { icon: Users, title: "Referrals from people who know the work", text: "Employees choose who to refer. You get context, not cold applications." },
   { icon: BarChart3, title: "Private by default", text: "Candidate names and resumes stay hidden until a verified employee accepts." },
   { icon: ShieldCheck, title: "Your team stays in control", text: "Passing is private and always okay. Nobody is ranked or pressured." },
-  { icon: Check, title: "Candidates never pay", text: "No commissions, no paid ranking of candidates — the only paid placement is a labeled featured listing, enforced in the product." },
+  // D-063: candidates do pay for asks past the monthly allowance; what never happens is paying a referrer.
+  { icon: Check, title: "Referrers are never paid", text: `Candidates get ${FREE_ASKS_CHIP} and use credits for more. No commissions, no paid ranking of candidates — the only paid placement is a labeled featured listing, enforced in the product.` },
 ];
 
-const FAIR = ["Candidates never pay to be referred", "No paid ranking of candidates", "Employees can decline without pressure", "Privacy-first: names shared only on acceptance"];
+const FAIR = ["Referrers are never paid and never ask candidates for money", "No paid ranking of candidates", "Employees can decline without pressure", "Privacy-first: names shared only on acceptance"];
 const TEAM_SIZES = ["1–200", "201–2,000", "2,000+"];
 
 /** Demo requests have no backend yet, so the form opens a prefilled email to the team. */
 export function demoRequestMailto({ email, company, teamSize }: { email: string; company: string; teamSize: string }) {
   const name = company.trim();
   const subject = `Demo request${name ? ` — ${name}` : ""}`;
-  const body = `Hi SkipWait team,\n\nWe'd like a 20-minute demo for ${name || "our company"} (team size ${teamSize}).\n\nContact: ${email.trim()}\n\nThanks!`;
+  const body = `Hi skipwait.me team,\n\nWe'd like a 20-minute demo for ${name || "our company"} (team size ${teamSize}).\n\nContact: ${email.trim()}\n\nThanks!`;
   return `mailto:hello@skipwait.me?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
@@ -38,8 +40,9 @@ export default function ForCompanies() {
   return (
     <div data-skipwait-screen="for-companies" className="companies-site">
       <header className="launch-header">
-        <Link className="wordmark" href="/" aria-label="SkipWait home">SkipWait<span className="brand-dot">.</span></Link>
+        <Link className="wordmark" href="/" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         <nav aria-label="Company navigation" className="launch-nav">
+          {import.meta.env.VITE_COMPANY_CLAIM === "true" ? <Link href="/company/claim">Claim your company</Link> : null}
           <Link href="/explore">Explore</Link>
           <Link href="/plans">Plans</Link>
           <Button asChild className="brand-button"><a href="#demo">Book a demo</a></Button>
@@ -49,7 +52,7 @@ export default function ForCompanies() {
         <section className="launch-section co-hero">
           <span className="eyebrow">FOR EMPLOYERS</span>
           <h1>Your best hires already<br />know someone inside<span className="brand-dot">.</span></h1>
-          <p>SkipWait turns employee referrals into a trusted, measurable channel. Candidates never pay. Your team stays in control.</p>
+          <p>skipwait.me turns employee referrals into a trusted, measurable channel. Referrers are never paid. Your team stays in control.</p>
           <div className="done-actions">
             <Button asChild className="brand-button"><a href="#demo">Book a demo <ArrowRight /></a></Button>
             <Button asChild variant="outline" className="brand-button"><a href="#pricing">See pricing</a></Button>
@@ -95,7 +98,7 @@ export default function ForCompanies() {
         </section>
       </main>
       <footer className="launch-footer">
-        <Link className="wordmark" href="/" aria-label="SkipWait home">SkipWait<span className="brand-dot">.</span></Link>
+        <Link className="wordmark" href="/" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         <span>A warmer way in. · skipwait.me</span>
         <Link href="/employer">Employer workspace</Link>
         <Link href="/safety">Help &amp; safety</Link>

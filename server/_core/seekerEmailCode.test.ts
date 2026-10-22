@@ -34,6 +34,7 @@ describe("job-seeker email code sign-in (own code, no WorkOS Magic Auth)", () =>
   it("correct code resolves the canonical account and sets the session cookie; no work email is enrolled", async () => {
     const res = await request(app()).post("/api/auth/workos/email-code/verify").send({ email: "asha@gmail.com", code: "482913" });
     expect(res.status).toBe(200); expect(res.body).toEqual({ signedIn: true });
+    expect(m.verifyCode).toHaveBeenCalledWith("asha@gmail.com", "482913", expect.objectContaining({ seeker: true }));
     expect(m.resolve).toHaveBeenCalledWith(expect.objectContaining({ provider: "email_code", email: "asha@gmail.com", emailVerified: true }));
     expect(m.createSessionToken).toHaveBeenCalledWith("workos_user_1", expect.anything());
     expect(res.headers["set-cookie"]?.[0]).toContain("tok");

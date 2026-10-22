@@ -60,7 +60,9 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
         return res.status(400).json({ error: "That code could not be verified. Check the latest code and try again." });
       }
       const openId = `workemail_${email}`;
-      const account = await db.resolveLoginIdentity({ provider: "work_email_otp", subject: email, openId, email, emailVerified: true, name: email.split("@")[0], loginMethod: "otp_work_email" });
+      // No display name from the address: its local part plus the company rebuilds the work
+      // email, and a referrer stays anonymous until they accept. Existing names are untouched.
+      const account = await db.resolveLoginIdentity({ provider: "work_email_otp", subject: email, openId, email, emailVerified: true, name: null, loginMethod: "otp_work_email" });
       // Do not refresh profile, sign-in timestamps, or identity state for a
       // suspended account. Keep this response generic to avoid account-state
       // disclosure from the OTP endpoint.

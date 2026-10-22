@@ -105,4 +105,23 @@ describe("administrator flow-health baseline panel (D-018)", () => {
     await waitFor(() => expect(screen.getByText(/The baseline is unavailable in this session/)).toBeTruthy());
     expect(screen.queryByText("Week of")).toBeNull();
   });
+
+  it("leaves the reverse trial out while it is not on offer, unless a wallet is inside one anyway (D-051)", async () => {
+    const serve = (trialing: number) => vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes("/api/admin/revenue")) return { ok: true, json: async () => ({ revenue: { byProvider: [], totalsByCurrency: [], refundedTotalByCurrency: [], recordedAt: "" } }) };
+      return { ok: true, json: async () => ({ health, baseline: { ...baseline, subscribers: { ...baseline.subscribers, trialing } } }) };
+    }));
+    serve(0);
+    render(<AdminFlowHealth />);
+    await waitFor(() => expect(screen.getByText("Paying subscribers")).toBeTruthy());
+    expect(screen.getByText("Wallets on a paid plan.")).toBeTruthy();
+    expect(screen.queryByText("In reverse trial")).toBeNull();
+    expect(screen.queryByText(/14-day window/)).toBeNull();
+    cleanup();
+    // A trial wallet with no offer running is an anomaly the operator must see, never hide.
+    serve(1);
+    render(<AdminFlowHealth />);
+    await waitFor(() => expect(screen.getByText("In reverse trial")).toBeTruthy());
+    expect(screen.getByText(/while the trial is not on offer \(D-051\): check how it started/)).toBeTruthy();
+  });
 });

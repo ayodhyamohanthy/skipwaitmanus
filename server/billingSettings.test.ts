@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { employerSponsorshipEnabled, humanReviewersStaffed, indiaGstRegistered, usdRecurringConfirmed } from "./billingSettings";
+import { employerSponsorshipEnabled, freeCreditsRequireCardValidation, humanReviewersStaffed, indiaGstRegistered, usdRecurringConfirmed } from "./billingSettings";
 
 describe("billing switches", () => {
   it("is off by default and on only for a literal \"true\"", () => {
@@ -24,4 +24,14 @@ describe("billing switches", () => {
     expect(employerSponsorshipEnabled({ EMPLOYER_SPONSORSHIP_ENABLED: "false" })).toBe(false);
     expect(employerSponsorshipEnabled({ EMPLOYER_SPONSORSHIP_ENABLED: " false " })).toBe(false);
   });
+  it("gates free credits on card validation only for a literal \"true\" (D-079)", () => {
+    // Default off: unset, empty or any other string keeps today's grants.
+    expect(freeCreditsRequireCardValidation({})).toBe(false);
+    expect(freeCreditsRequireCardValidation({ FREE_CREDITS_REQUIRE_CARD_VALIDATION: "" })).toBe(false);
+    expect(freeCreditsRequireCardValidation({ FREE_CREDITS_REQUIRE_CARD_VALIDATION: "1" })).toBe(false);
+    expect(freeCreditsRequireCardValidation({ FREE_CREDITS_REQUIRE_CARD_VALIDATION: "yes" })).toBe(false);
+    expect(freeCreditsRequireCardValidation({ FREE_CREDITS_REQUIRE_CARD_VALIDATION: "true" })).toBe(true);
+    expect(freeCreditsRequireCardValidation({ FREE_CREDITS_REQUIRE_CARD_VALIDATION: " TRUE " })).toBe(true);
+  });
 });
+

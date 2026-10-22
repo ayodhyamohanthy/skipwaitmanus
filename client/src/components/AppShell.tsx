@@ -1,111 +1,134 @@
-import { useAuth } from "@/_core/auth";
-import { ArrowRight, ArrowUpRight, Bell, Bot, Briefcase, Building2, ChevronDown, Compass, Crown, Ellipsis, Globe2, Inbox, ListChecks, Menu, ShieldCheck, UserRound, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
-import { Link, useLocation } from "wouter";
+// AppShell (D-048 phase 3, W0): the app frame moves onto the goal system.
+// Every shell-wrapped route renders inside GoalShell (rail + top bar on
+// desktop, top bar + bottom bar on phones) with the one navigation from
+// goalNavFor (D-070/D-077): Find, My asks, Inbox, plus Referral queue when
+// the server's verdict says verified referrer. The account menu is carried
+// over unchanged (its restyle is a later wave); the credits pill shows the
+// live seeker summary and hides on referrer surfaces (D-055).
+import { useAuth, useUser } from "@/_core/auth";
+import { useReferrerAccess } from "@/hooks/useReferrerAccess";
+import { readApiJson } from "@/lib/apiResponse";
+import { failureMessage, parseSummary } from "@/components/plans/billingApi";
 import { AccountMenu } from "./AccountMenu";
-import { Button } from "@/components/kit/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { GoalShell, type GoalShellCredits } from "@/components/goal/GoalShell";
+import type { GoalNavId } from "@/components/goal/nav";
+import { GoalButton } from "@/components/goal/GoalButton";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, type ReactNode } from "react";
+import { Link, useLocation } from "wouter";
 
-/**
- * Kit-exact app shell (skipwait-shell.tsx): desktop sidebar + mobile bottom
- * tab bar, More menu, alerts bell, safe-area insets. Destinations are live
- * routes; kit-only destinations swap in with their batches (/help and
- * /for-companies are live). Signed-in users see account controls where the
- * kit (signed-out preview) shows Sign in.
- */
-const navigation = [
-  { to: "/explore", label: "Explore", mobileLabel: "Explore", icon: Compass },
-  { to: "/requests", label: "Requests", mobileLabel: "Requests", icon: ListChecks },
-  { to: "/inbox", label: "Inbox", mobileLabel: "Inbox", icon: Inbox },
-  { to: "/referrer-home", label: "Refer", mobileLabel: "Refer", icon: ArrowUpRight },
-] as const;
+const authHeaders = (token: string | null | undefined): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
 
-const accountLinks = [
-  { to: "/profile", label: "Profile", mobileLabel: "Profile", icon: UserRound },
-  { to: "/work", label: "My work", mobileLabel: "Work", icon: Briefcase },
-  { to: "/plans", label: "Plans & credits", mobileLabel: "Plans", icon: Crown },
-] as const;
+// Referrer surfaces never show a credits pill (D-055): referrers are never charged or paid.
+const REFERRER_SURFACE = /^\/(queue|referrer(\/|$))/;
+// DESIGN.md:72 + BRIEF.md §149: no bottom bar on an opened request (conversation, and its
+// /thread alias) or under sheets; sheets arrive with the W1 drawer and wire in there.
+const HIDE_BOTTOM_BAR = /^\/(conversation|messages|thread)\b/;
 
-export const SHELL_TABS = [...navigation, ...accountLinks].map(item => ({ to: item.to, label: item.label, shortLabel: item.mobileLabel, icon: item.icon }));
+function activeNav(path: string): GoalNavId {
+  if (path.startsWith("/queue")) return "queue";
+  if (path.startsWith("/requests") || path.startsWith("/ask")) return "asks";
+  if (path.startsWith("/inbox") || path.startsWith("/conversation") || path.startsWith("/messages")) return "inbox";
+  return "find";
+}
 
-function MoreMenu({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate: () => void }) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" aria-label="More" className={mobile ? "!flex h-auto min-h-[45px] flex-col gap-[5px] rounded-none p-0 text-[9px] text-muted-foreground" : "nav-item h-auto min-h-12 w-full justify-start"}>
-          <Ellipsis size={20} /><span>More</span>{!mobile && <ChevronDown className="ml-auto" />}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align={mobile ? "end" : "start"} side={mobile ? "top" : "bottom"} sideOffset={8} className="w-56 max-w-[calc(100vw-2rem)]">
-        <DropdownMenuLabel>Help &amp; info</DropdownMenuLabel>
-        <DropdownMenuItem asChild className="min-h-11"><Link href="/help" onClick={onNavigate}><ShieldCheck />Help &amp; safety</Link></DropdownMenuItem>
-        <DropdownMenuItem asChild className="min-h-11"><Link href="/assistants" onClick={onNavigate}><Bot />Connected assistants</Link></DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>For teams</DropdownMenuLabel>
-        <DropdownMenuItem asChild className="min-h-11"><Link href="/for-companies" onClick={onNavigate}><Building2 />For companies</Link></DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+const PAGE_TITLES: Array<[RegExp, string]> = [
+  [/^\/explore/, "Find a referral"],
+  [/^\/requests/, "My asks"],
+  [/^\/ask/, "Ask for a referral"],
+  [/^\/queue/, "Referral queue"],
+  [/^\/inbox/, "Inbox"],
+  [/^\/conversation/, "Conversation"],
+  [/^\/alerts/, "Alerts"],
+  [/^\/plans/, "Plans and credits"],
+  [/^\/billing/, "Billing"],
+  [/^\/profile/, "Profile"],
+  [/^\/settings/, "Settings"],
+  [/^\/help/, "Help and safety"],
+  [/^\/referrer-home/, "Refer"],
+];
+
+function pageTitle(path: string): string {
+  for (const [re, title] of PAGE_TITLES) if (re.test(path)) return title;
+  return "skipwait.me";
+}
+
+function initialsFor(name: string | null | undefined, email: string | null | undefined): string {
+  const source = (name ?? "").trim();
+  if (source) {
+    const parts = source.split(/\s+/);
+    return (parts[0]?.[0] ?? "") + (parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "") || "·";
+  }
+  const handle = (email ?? "").split("@")[0] ?? "";
+  return handle.slice(0, 2).toUpperCase() || "·";
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [path] = useLocation();
-  const { isSignedIn } = useAuth();
-  const [drawer, setDrawer] = useState(false);
-  const isActive = (to: string) => path === to || path.startsWith(`${to}/`);
-  const close = () => setDrawer(false);
-  return (
-    <div className="app-shell">
-      <aside className={`app-sidebar overflow-y-auto${drawer ? " is-open" : ""}`}>
-        <Link href="/" className="wordmark" onClick={close}><span className="brand-mark"><ArrowUpRight /></span>SkipWait<span className="brand-dot">.</span></Link>
-        <div className="sidebar-caption">A LITTLE CONNECTION.<br />A BIG NEXT STEP.</div>
-        <nav aria-label="Main navigation">
-          {navigation.map(item => (
-            <Link key={item.to} href={item.to} onClick={close} aria-current={isActive(item.to) ? "page" : undefined} className={`nav-item${isActive(item.to) ? " active" : ""}`}>
-              <item.icon size={20} />{item.label}{isActive(item.to) && <ArrowRight size={16} className="nav-arrow" />}
-            </Link>
-          ))}
-          <div className="nav-caption">Your space</div>
-          {accountLinks.map(item => (
-            <Link key={item.to} href={item.to} onClick={close} aria-current={isActive(item.to) ? "page" : undefined} className={`nav-item${isActive(item.to) ? " active" : ""}`}>
-              <item.icon size={20} />{item.label}{isActive(item.to) && <ArrowRight size={16} className="nav-arrow" />}
-            </Link>
-          ))}
-          <MoreMenu onNavigate={close} />
-        </nav>
-        <div className="sidebar-bottom !pt-6">
-          <div className="free-promise"><ShieldCheck size={21} /><strong>Referrals are free.<br />Always.</strong></div>
-          <p>No commissions. No paid priority.<br />Just people opening doors.</p>
-          {isSignedIn ? <AccountMenu /> : <Button variant="outline" asChild><Link href="/sign-in" onClick={close}>Sign in</Link></Button>}
-          <div className="global-note"><Globe2 size={14} />Built for your next move.</div>
-        </div>
-      </aside>
-      {drawer ? <div className="drawer-scrim" onClick={close} aria-hidden="true" /> : null}
-      <div className="app-main">
-        <header className="app-topbar">
-          <div className="mobile-brand">
-            <Button variant="ghost" size="icon" aria-label={drawer ? "Close menu" : "Open menu"} onClick={() => setDrawer(!drawer)}>{drawer ? <X /> : <Menu />}</Button>
-            <Link href="/" className="wordmark">SkipWait<span className="brand-dot">.</span></Link>
-            <Button variant="ghost" size="icon" asChild className="ml-auto md:hidden"><Link href="/alerts" aria-label="Alerts"><Bell /></Link></Button>
-          </div>
-          <span className="desktop-top-label">GOOD OPPORTUNITIES START WITH PEOPLE.</span>
-          <div className="topbar-actions">
-            <span className="private-note"><ShieldCheck size={15} />Private by default</span>
-            <Button variant="ghost" size="icon" asChild><Link href="/alerts" aria-label="Alerts"><Bell /></Link></Button>
-            {isSignedIn ? <AccountMenu /> : <Button variant="ghost" asChild><Link href="/sign-in">Sign in</Link></Button>}
-          </div>
-        </header>
-        {children}
-        <footer className="app-footer"><span>SkipWait · A warmer way in.</span><Link href="/safety">Free referrals. Real expectations. <ArrowUpRight size={13} /></Link></footer>
-      </div>
-      <nav className="mobile-tabs" aria-label="Mobile navigation">
-        {[...navigation, ...accountLinks].map(item => (
-          <Link key={item.to} href={item.to} aria-current={isActive(item.to) ? "page" : undefined} className={isActive(item.to) ? "active" : ""}>
-            <item.icon size={20} /><span>{item.mobileLabel}</span>
+  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { user } = useUser();
+  const access = useReferrerAccess();
+  const verifiedReferrer = access.status === "verified";
+  const onReferrerSurface = REFERRER_SURFACE.test(path);
+
+  const creditsQuery = useQuery({
+    queryKey: ["app-shell-credits", isSignedIn],
+    enabled: Boolean(isSignedIn) && !onReferrerSurface,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const response = await fetch("/api/credits/summary?role=job_seeker", { credentials: "include", headers: authHeaders(await getToken()) });
+      if (!response.ok) throw new Error(`Credit summary failed (${response.status})`);
+      const payload = await readApiJson<Record<string, unknown>>(response, "Credit summary failed");
+      const parsed = parseSummary(payload);
+      if (!parsed) throw new Error("Credit summary unreadable");
+      return parsed;
+    },
+  });
+
+  const credits: GoalShellCredits = useMemo(() => {
+    if (!isSignedIn || onReferrerSurface) return null;
+    if (creditsQuery.data) return { state: "ready", count: creditsQuery.data.totalAvailable };
+    if (creditsQuery.isError) return { state: "error", onRetry: () => { void creditsQuery.refetch(); } };
+    return { state: "loading" };
+  }, [isSignedIn, onReferrerSurface, creditsQuery.data, creditsQuery.isError, creditsQuery.refetch]);
+
+  // The pill retries on its own after a failure without the user hunting for it.
+  const _ = creditsQuery.failureCount;
+
+  const account = useMemo(() => {
+    if (!isLoaded || !isSignedIn) {
+      return {
+        initials: "·",
+        menu: (
+          <Link href="/sign-in">
+            <GoalButton variant="ghost" size="sm">Sign in</GoalButton>
           </Link>
-        ))}
-        <MoreMenu mobile onNavigate={close} />
-      </nav>
-    </div>
+        ),
+      };
+    }
+    return {
+      initials: initialsFor(user?.fullName, user?.primaryEmailAddress?.emailAddress ?? null),
+      // Carried over unchanged (phase-3 W0): the account menu restyles in a later wave.
+      menu: <AccountMenu />,
+    };
+  }, [isLoaded, isSignedIn, user?.fullName, user?.primaryEmailAddress?.emailAddress]);
+
+  return (
+    <GoalShell
+      active={activeNav(path)}
+      verifiedReferrer={verifiedReferrer}
+      pageTitle={pageTitle(path)}
+      credits={credits}
+      account={account}
+      alertsHref="/alerts"
+      showAlerts={isLoaded && isSignedIn === true}
+      hideBottomBar={HIDE_BOTTOM_BAR.test(path)}
+    >
+      {children}
+    </GoalShell>
   );
 }
+
+// Kept for any import sites that typed against the old export list.
+export const SHELL_TABS: Array<{ to: string; label: string; shortLabel: string }> = [];

@@ -22,7 +22,7 @@ describe("SignIn", () => {
     const assign = stubAssign();
     render(<SignIn />);
     expect(screen.getByText(/One sign-in/)).toBeTruthy();
-    expect(screen.getByText("Welcome to SkipWait.")).toBeTruthy();
+    expect(screen.getByText("Welcome to skipwait.me.")).toBeTruthy();
     expect(screen.getByText("YOUR DOOR STARTS HERE")).toBeTruthy();
     expect(screen.getByAltText(/open blue door/)).toBeTruthy();
     expect(screen.queryByLabelText(/Password/)).toBeNull();
@@ -62,5 +62,42 @@ describe("SignIn", () => {
   it("ships no design-preview scaffolding", () => {
     render(<SignIn />);
     expect(screen.queryByText(/whole flow|design preview|preview/i)).toBeNull();
+  });
+});
+
+describe("SignIn seeker returnTo (D-095)", () => {
+  it("flag off: seekers always land on /explore even with a returnTo query", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/oneTap", () => ({ ONE_TAP_PAY_SIGNIN: false }));
+    window.history.pushState({}, "", "/sign-in?returnTo=%2Fpremium%3Fquantity%3D7");
+    const assign = stubAssign();
+    const { default: Fresh } = await import("./SignIn");
+    render(<Fresh />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with Google/ }));
+    expect(String(assign.mock.calls[0][0])).toContain(encodeURIComponent("/explore"));
+    window.history.replaceState({}, "", "/");
+    vi.doUnmock("@/lib/oneTap");
+  });
+
+  it("flag on: a same-origin returnTo is kept; an off-site one falls back to /explore", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/oneTap", () => ({ ONE_TAP_PAY_SIGNIN: true }));
+    window.history.pushState({}, "", "/sign-in?returnTo=%2Fpremium%3Fquantity%3D7");
+    let assign = stubAssign();
+    let mod = await import("./SignIn");
+    const first = render(<mod.default />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with Google/ }));
+    expect(decodeURIComponent(String(assign.mock.calls[0][0]))).toContain("/premium?quantity=7");
+    first.unmount();
+    vi.resetModules();
+    vi.unstubAllGlobals();
+    window.history.pushState({}, "", "/sign-in?returnTo=https%3A%2F%2Fevil.test%2Fx");
+    assign = stubAssign();
+    mod = await import("./SignIn");
+    render(<mod.default />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with Google/ }));
+    expect(decodeURIComponent(String(assign.mock.calls[0][0]))).toContain("returnTo=/explore");
+    window.history.replaceState({}, "", "/");
+    vi.doUnmock("@/lib/oneTap");
   });
 });

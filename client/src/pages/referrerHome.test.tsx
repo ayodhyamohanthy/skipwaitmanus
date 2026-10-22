@@ -192,6 +192,7 @@ describe("referrer home derivation", () => {
       access: { verified: true, domain: "wipro.com", companyName: "Wipro", companyInitials: "W" },
       preferences: { referralCapacity: 3, preferAreas: [], preferLevels: [], referrerVisibility: "anon", notifyNewAsk: true, paused: false },
       verifiedAt: "2026-09-20T06:00:00.000Z", profileCapacity: 3, impact: null,
+      hasEverReviewed: null,
       fresh: [{ id: 1, companyDomain: "wipro.com", jobFunction: null, status: "pending", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: false, unreadMessageCount: 0 }, { id: 2, companyDomain: "wipro.com", jobFunction: null, status: "approved", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: true, unreadMessageCount: 0 }],
       completed: [{ id: 2, companyDomain: "wipro.com", jobFunction: null, status: "approved", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: true, unreadMessageCount: 0 }, { id: 3, companyDomain: "wipro.com", jobFunction: null, status: "declined", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: true, unreadMessageCount: 0 }],
     };
@@ -280,9 +281,9 @@ describe("Invite colleagues and request companies", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderWithQuery(<Invite />);
     await waitFor(() => expect(document.querySelectorAll("#launch-companies option")).toHaveLength(5));
-    expect(Array.from(document.querySelectorAll("#launch-companies option")).map(option => option.getAttribute("value"))).toEqual(["SkipWait", "Wipro", "Go Neutrinos", "TCS", "Merkle"]);
+    expect(Array.from(document.querySelectorAll("#launch-companies option")).map(option => option.getAttribute("value"))).toEqual(["skipwait.me", "Wipro", "Neutrinos", "TCS", "Merkle"]);
     fireEvent.change(screen.getByLabelText("Company name"), { target: { value: "wipro" } });
-    expect(screen.getByText(/Wipro already has a door on SkipWait/)).toBeTruthy();
+    expect(screen.getByText(/Wipro already has a door on skipwait.me/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open it" }).getAttribute("href")).toBe("/explore/wipro");
     fireEvent.click(screen.getByRole("button", { name: "Send company request" }));
     expect(suggestionPosts(fetchMock)).toHaveLength(0);
@@ -292,7 +293,7 @@ describe("Invite colleagues and request companies", () => {
     const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => (url === "/api/companies" ? fail(503, { error: "The company directory is unavailable right now" }) : ok({ suggestion: { id: 8, companyName: "Wipro" } })));
     vi.stubGlobal("fetch", fetchMock);
     renderWithQuery(<Invite />);
-    expect(await screen.findByText(/couldn’t load the companies already on SkipWait/)).toBeTruthy();
+    expect(await screen.findByText(/couldn’t load the companies already on skipwait.me/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Company name"), { target: { value: "Wipro" } });
     fireEvent.click(screen.getByRole("button", { name: "Send company request" }));
     expect(await screen.findByText("That’s the growth loop.")).toBeTruthy();

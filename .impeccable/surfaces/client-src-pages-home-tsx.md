@@ -5,6 +5,8 @@ primary_target: "client/src/pages/Home.tsx"
 related_targets: []
 ---
 
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-048).
+
 # Surface brief — skipwait.me rebrand ("Scoreboard"), primary: client/src/pages/Home.tsx
 
 Scope: whole-frontend rebrand (Persuade landing first, Operate flow screens in the same world). Visitor mode: Persuade on `/`, Operate everywhere else.

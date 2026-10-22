@@ -24,7 +24,7 @@ function CookiePanel() {
     <p className="mt-1 text-sm text-muted-foreground">Saved on this device only. Never sold, never used for ads.</p>
     <div className="mt-3 divide-y">
       <div className={row}><span className="text-sm"><strong className="block">Essential</strong><small className="block text-muted-foreground">Keeps you signed in and the site working. Always on.</small></span><span className="text-sm text-muted-foreground">Always on</span></div>
-      <button type="button" role="switch" aria-checked={analytics} aria-label="Product analytics" onClick={toggle} className={row}><span className="text-sm"><strong className="block">Product analytics</strong><small className="block text-muted-foreground">Anonymous usage recordings that help us fix and improve SkipWait.</small></span><span className="text-sm font-medium">{analytics ? "On" : "Off"}</span></button>
+      <button type="button" role="switch" aria-checked={analytics} aria-label="Product analytics" onClick={toggle} className={row}><span className="text-sm"><strong className="block">Product analytics</strong><small className="block text-muted-foreground">Anonymous usage recordings that help us fix and improve skipwait.me.</small></span><span className="text-sm font-medium">{analytics ? "On" : "Off"}</span></button>
     </div>
   </Panel>;
 }

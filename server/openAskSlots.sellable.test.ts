@@ -6,7 +6,7 @@ describe("slot nudge only names plans that are on sale", () => {
   it("names no plan while no catalog plan is sellable", () => {
     expect(SLOT_NUDGE_SELLABLE_PLAN_IDS).toEqual([]);
     expect(nextSlotPlan(planEntitlementsFor("free"))).toBeNull();
-    expect(nextSlotPlan(planEntitlementsFor("pro"))).toBeNull();
+    expect(nextSlotPlan(planEntitlementsFor("start"))).toBeNull();
   });
 
   it("falls back to the wait-for-an-answer copy with no CTA", () => {

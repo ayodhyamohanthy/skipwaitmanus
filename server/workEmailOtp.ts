@@ -34,7 +34,17 @@ export async function hasDeliverableMailDomain(domain: string): Promise<boolean>
 }
 export function limiterKey(kind: string, value: string) { return `${kind}:${createHash("sha256").update(value).digest("hex")}`; }
 export function isValidWorkEmailOtpEmail(value: string): boolean {
+  return isValidOtpLoginEmail(value);
+}
+
+/**
+ * Email shape gate for the OTP planes. Referrers are work-email-only; job seekers sign in with
+ * personal email, so the seeker plane accepts consumer domains (FOUNDER-LOCKED login rule, Oct 16 2026).
+ * Deliverability is still enforced on send by hasDeliverableMailDomain (MX/A lookup).
+ */
+export function isValidOtpLoginEmail(value: string, opts: { seeker?: boolean } = {}): boolean {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value) || value.length > 320) return false;
+  if (opts.seeker) return true;
   return isWorkEmailDomain(value.slice(value.lastIndexOf("@") + 1).toLowerCase());
 }
 export function hashCode(email: string, code: string): string { return createHash("sha256").update(`${email.toLowerCase()}:${code}`).digest("hex"); }
@@ -85,7 +95,7 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
   return {
     async sendCode(rawEmail: string, context: { ip?: string; seeker?: boolean } = {}): Promise<WorkEmailOtpSendResult> {
       const email = rawEmail.trim().toLowerCase();
-      if (!isValidWorkEmailOtpEmail(email)) return { sent: false, reason: "invalid_email" };
+      if (!isValidOtpLoginEmail(email, { seeker: context.seeker })) return { sent: false, reason: "invalid_email" };
       const domain = email.slice(email.lastIndexOf("@") + 1);
       if (!(await hasDeliverableMailDomain(domain))) return { sent: false, reason: "invalid_domain" };
       const db = await getDb(); if (!db) return { sent: false, reason: "not_configured" };
@@ -109,9 +119,9 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
       await db.insert(workEmailOtpCodes).values({ email: workEmailStorageKeys(email).write, codeHash: hashCode(email, code), expiresAt: new Date(now() + CODE_TTL_MS), attempts: 0, createdAt: new Date(now()) });
       return { sent: true, reason: "sent" };
     },
-    async verifyCode(rawEmail: string, rawCode: string, context: { ip?: string } = {}): Promise<boolean> {
+    async verifyCode(rawEmail: string, rawCode: string, context: { ip?: string; seeker?: boolean } = {}): Promise<boolean> {
       const email = rawEmail.trim().toLowerCase(), code = rawCode.trim();
-      if (!isValidWorkEmailOtpEmail(email) || !/^\d{6}$/.test(code)) return false;
+      if (!isValidOtpLoginEmail(email, { seeker: context.seeker }) || !/^\d{6}$/.test(code)) return false;
       const db = await getDb(); if (!db) return false;
       const timestamp = now();
       const clientIp = context.ip || "unknown";

@@ -6,7 +6,7 @@ import { readApiJson } from "@/lib/apiResponse";
 /** Thrown for 401/403 so admin screens can show the access gate instead of retrying. */
 export class AdminAccessError extends Error {}
 
-export const ADMIN_NETWORK_ERROR = "We could not reach SkipWait. Check your connection and try again.";
+export const ADMIN_NETWORK_ERROR = "We could not reach skipwait.me. Check your connection and try again.";
 export const ADMIN_ACCESS_MESSAGE = "Administrator access is required.";
 
 export type TokenSource = () => Promise<string | null | undefined>;

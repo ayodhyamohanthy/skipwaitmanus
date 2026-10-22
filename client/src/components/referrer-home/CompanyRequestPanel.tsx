@@ -52,8 +52,8 @@ export function CompanyRequestPanel({ fetchToken, onOtherPath }: { fetchToken: T
         <option value="">Choose a function</option>
         {JOB_FUNCTIONS.map(item => <option key={item} value={item}>{item}</option>)}
       </select></label>
-      {directory.isError ? <p className="text-muted-foreground">We couldn’t load the companies already on SkipWait, so suggestions are off. You can still send your request.</p> : null}
-      {listed ? <p className="flex items-start gap-2"><Building2 className="mt-1 size-4 shrink-0" /><span>{listed.name} already has a door on SkipWait. <Link href={`/explore/${listed.slug}`} className="text-link">Open it</Link></span></p> : null}
+      {directory.isError ? <p className="text-muted-foreground">We couldn’t load the companies already on skipwait.me, so suggestions are off. You can still send your request.</p> : null}
+      {listed ? <p className="flex items-start gap-2"><Building2 className="mt-1 size-4 shrink-0" /><span>{listed.name} already has a door on skipwait.me. <Link href={`/explore/${listed.slug}`} className="text-link">Open it</Link></span></p> : null}
       {tooShort ? <p role="alert" className="font-semibold text-destructive">Name the company you want to see.</p> : null}
       {request.isError ? <p role="alert" className="font-semibold text-destructive">{request.error.message || "We could not save this request. Try again."}</p> : null}
       <Button type="submit" disabled={request.isPending}>{request.isPending ? "Sending…" : "Send company request"}</Button>

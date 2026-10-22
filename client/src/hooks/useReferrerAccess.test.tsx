@@ -8,7 +8,7 @@ import { referrerAccessKey, useReferrerAccess, type ReferrerAccessState } from "
 const { authState } = vi.hoisted(() => ({ authState: { isSignedIn: true, userId: "12" as string | null } }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ ...authState, getToken: vi.fn().mockResolvedValue("t") }) }));
 
-const VERIFIED = { verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "SkipWait", companyInitials: "SW" };
+const VERIFIED = { verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "skipwait.me", companyInitials: "SW" };
 const UNVERIFIED = { verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null };
 let reply: { status: number; body: unknown };
 const fetchMock = vi.fn(async () => ({ ok: reply.status < 400, status: reply.status, json: async () => reply.body }));
@@ -34,7 +34,7 @@ describe("useReferrerAccess", () => {
     const { result, seen } = renderAccess();
     await waitFor(() => expect(result.current.status).toBe("verified"));
     expect(seen[0]).toBe("checking");
-    expect(result.current).toMatchObject({ access: { verified: true, domain: "skipwait.me", companyName: "SkipWait" } });
+    expect(result.current).toMatchObject({ access: { verified: true, domain: "skipwait.me", companyName: "skipwait.me" } });
     expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/access", expect.objectContaining({ credentials: "include", headers: { Authorization: "Bearer t" } }));
   });
 
@@ -67,7 +67,7 @@ describe("useReferrerAccess", () => {
 
   it("keeps a verified referrer verified while the re-check runs", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    client.setQueryData(referrerAccessKey("12"), { verified: true, domain: "skipwait.me", companyName: "SkipWait", companyInitials: "SW" });
+    client.setQueryData(referrerAccessKey("12"), { verified: true, domain: "skipwait.me", companyName: "skipwait.me", companyInitials: "SW" });
     let release: (() => void) | undefined;
     fetchMock.mockImplementationOnce(() => new Promise(resolve => { release = () => resolve({ ok: true, status: 200, json: async () => VERIFIED }); }));
     const { result, seen } = renderAccess(client);

@@ -1,4 +1,4 @@
-
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-004, D-036, D-069).
 
 ## Current routing decision
 

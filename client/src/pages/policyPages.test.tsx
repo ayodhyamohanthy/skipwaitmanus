@@ -21,6 +21,8 @@ vi.mock("@/_core/auth", () => ({
   SignedIn: ({ children }: { children: React.ReactNode }) => children,
   SignedOut: () => null,
 }));
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: undefined, isError: false, refetch: () => Promise.resolve() }) }));
+vi.mock("@/hooks/useReferrerAccess", () => ({ useReferrerAccess: () => ({ status: "none", access: { verified: false } }) }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div>, LogoMark: () => <div /> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
@@ -57,7 +59,7 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     // The kit's design-only banner never ships.
     expect(document.body.textContent).not.toMatch(/DRAFT FOR DESIGN|placeholder address/i);
     expect(policyLinks(container)).toEqual(["/terms", "/guidelines", "/privacy", "/refunds", "/cancellations", "/shipping", "/pricing", "/about", "/contact", "/support"]);
-    expect(screen.getByRole("link", { name: "SkipWait home" }).getAttribute("href")).toBe("/");
+    expect(screen.getByRole("link", { name: "skipwait.me home" }).getAttribute("href")).toBe("/");
     expect(screen.getByRole("navigation", { name: "Legal" }).querySelector('[aria-current="page"]')?.getAttribute("href")).toBe("/terms");
   });
 
@@ -74,13 +76,15 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getAllByRole("link", { name: "support@skipwait.me" }).every(link => link.getAttribute("href") === "mailto:support@skipwait.me")).toBe(true);
   });
 
-  it("Guidelines carry the kit free-referral rules, published, with no intro paragraph", () => {
+  it("Guidelines carry the no-money rules and the D-063 cost line, published, with no intro paragraph", () => {
     const { container } = render(<Guidelines />);
     expect(document.querySelector('[data-skipwait-screen="guidelines"]')).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "Guidelines." })).toBeTruthy();
     expect(screen.getByText(/No money, gifts, or favours — before or after\. Seekers: if anyone asks for payment, report it\./)).toBeTruthy();
     expect(screen.getByRole("heading", { name: "The short version" })).toBeTruthy();
-    expect(screen.getByText("Never pay or charge for a referral.")).toBeTruthy();
+    expect(screen.getByText("Never pay a referrer, and never ask a seeker for money.")).toBeTruthy();
+    expect(screen.getByText("3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money.")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/Referrals are free|free referrals/i);
     expect(screen.queryByText(/Draft · pending legal review/)).toBeNull();
     expect(screen.queryByText(/Breaking these rules can limit or close an account/)).toBeNull();
     expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).toContain("6. What happens if rules are broken");
@@ -92,8 +96,10 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
   it("Refund policy matches the billing rules the product enforces", () => {
     render(<RefundPolicy />);
     expect(document.querySelector('[data-skipwait-screen="refund-policy"]')).toBeTruthy();
-    expect(screen.getByText(/reserves one credit/)).toBeTruthy();
-    expect(screen.getByText(/withdraw before a verified employee claims/)).toBeTruthy();
+    expect(screen.getByText(/The moment one can see your ask, 1 credit is used/)).toBeTruthy();
+    expect(screen.getByText(/withdraw before someone picks the ask up/)).toBeTruthy();
+    expect(screen.getByText(/not on sale right now/)).toBeTruthy();
+    expect(screen.queryByText(/Momentum|Keep warm/)).toBeNull();
     expect(screen.getByText(/until the end of the current billing cycle/)).toBeTruthy();
     expect(screen.getByText(/approved by a skipwait.me administrator/)).toBeTruthy();
     expect(screen.getByText(/free for Referrers/)).toBeTruthy();
@@ -117,9 +123,11 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getAllByRole("link", { name: "support@skipwait.me" })[0].getAttribute("href")).toBe("mailto:support@skipwait.me");
     cleanup();
     render(<Pricing />);
-    expect(screen.getByText(/₹599\/month or \$7\/month/)).toBeTruthy();
-    expect(screen.getByText(/₹1,299\/month or \$15\/month/)).toBeTruthy();
+    // D-067 removed the Pro/Max plans: /pricing lists only what can be bought today.
     expect(screen.getByText(/₹99 per credit/)).toBeTruthy();
+    expect(screen.getByText(/\$1 per credit/)).toBeTruthy();
+    const text = document.body.textContent ?? "";
+    for (const retired of ["₹599", "$7/month", "₹1,299", "$15/month", "Pro", "Max"]) expect(text).not.toContain(retired);
   });
 
   it("Support offers one primary email action plus self-serve routes to existing screens", () => {
@@ -150,15 +158,16 @@ describe("decline keeps the credit spent (founder decision, Oct 14 2026)", () =>
   it("Terms say a decline does not return the credit", () => {
     const { container } = render(<Terms />);
     const text = container.textContent ?? "";
-    expect(text).toContain("If a Referrer declines, the credit stays spent");
-    expect(text).not.toMatch(/returned automatically if you withdraw before a Referrer claims it, or if a Referrer declines/);
+    expect(text).toContain("the credit stays spent, even if they pass");
+    expect(text).not.toMatch(/reserved when a request is sent/);
+    expect(text).not.toMatch(/Momentum|Keep warm/);
   });
   it("Refund policy lists withdraw and expiry as returns, and a decline as spent", () => {
     const { container } = render(<RefundPolicy />);
     const text = container.textContent ?? "";
-    expect(text).toMatch(/If a Referrer declines, the credit stays spent/);
-    expect(text).not.toMatch(/or if the Referrer declines\./);
-    expect(text).toMatch(/or if it expires without a decision/);
+    expect(text).toMatch(/picks your request up, the credit stays spent/);
+    expect(text).not.toMatch(/reserves one credit/);
+    expect(text).toMatch(/expires unclaimed/);
   });
 });
 
@@ -167,7 +176,11 @@ describe("public credit copy matches the decline rule", () => {
     const { LANDING_FAQ } = await import("@shared/landingContent").then(m => ({ LANDING_FAQ: Object.values(m).flat().map(v => JSON.stringify(v)).join(" ") }));
     const routes = await import("@shared/publicRoutes").then(m => JSON.stringify(Object.values(m)));
     const guides = await import("@/content/guides").then(m => JSON.stringify(Object.values(m)));
-    for (const blob of [LANDING_FAQ, routes, guides]) expect(blob).not.toMatch(/only when an employee accepts|only spent when an employee accepts|consumed on acceptance/);
-    expect(LANDING_FAQ).toContain("spent once a verified employee picks up your request");
+    for (const blob of [LANDING_FAQ, routes, guides]) expect(blob).not.toMatch(/only when an employee accepts|only spent when an employee accepts|consumed on acceptance|spent on acceptance/);
+    // D-063: the cost answer is the credit rule exactly as the ledger keeps it,
+    // never "spent once picked up" with an unconditional credit back.
+    const { CREDIT_RULE } = await import("@shared/moneyCopy");
+    expect(LANDING_FAQ).toContain(CREDIT_RULE);
+    expect(LANDING_FAQ).not.toMatch(/withdrawn or expired asks get the credit back|spent once a verified employee picks up/);
   });
 });

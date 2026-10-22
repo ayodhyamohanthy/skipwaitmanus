@@ -28,7 +28,7 @@ describe("hosted checkouts send only catalog item prices", () => {
     const result = await createPlanCheckout(credentials, { itemPriceId: "skipwait_momentum_90d-USD", customerId: "cust_1", email: "a@example.com", redirectUrl: "https://skipwait.me/billing", cancelUrl: "https://skipwait.me/plans", checkoutIntentId: "intent_1" });
     expect(result).toEqual({ checkoutUrl: "https://fixture-test.chargebee.com/pages/hp_1", hostedPageId: "hp_1" });
     expect(calls[0].url).toBe("https://fixture-test.chargebee.com/api/v2/hosted_pages/checkout_new_for_items");
-    expect(Object.fromEntries(calls[0].form!)).toEqual({ "subscription_items[item_price_id][0]": "skipwait_momentum_90d-USD", "subscription_items[quantity][0]": "1", "customer[id]": "cust_1", "customer[email]": "a@example.com", redirect_url: "https://skipwait.me/billing", cancel_url: "https://skipwait.me/plans", pass_thru_content: "intent_1" });
+    expect(Object.fromEntries(calls[0].form!)).toEqual({ "subscription_items[item_price_id][0]": "skipwait_momentum_90d-USD", "subscription_items[quantity][0]": "1", "subscription_items[billing_cycles][0]": "1", "customer[id]": "cust_1", "customer[email]": "a@example.com", redirect_url: "https://skipwait.me/billing", cancel_url: "https://skipwait.me/plans", pass_thru_content: "intent_1" });
   });
 
   it("a pack checkout is one unit of the pack's own item price, never an ad hoc amount", async () => {
@@ -74,7 +74,6 @@ describe("item price availability", () => {
   const pass30 = planPrice("momentum", "30d", "USD")!;
   const pass90 = planPrice("momentum", "90d", "USD")!;
   const yearly = planPrice("keep_warm", "yearly", "INR")!;
-  const legacy = planPrice("pro", "monthly", "USD")!;
   const pack = packPrice("pack_25", "USD")!;
   const session = sessionPrice("written_review", "INR")!;
 
@@ -91,7 +90,6 @@ describe("item price availability", () => {
     expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 1, period_unit: "year" }, yearly)).toBe(true);
     expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 12, period_unit: "month" }, yearly)).toBe(true);
     expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 1, period_unit: "month" }, yearly)).toBe(false);
-    expect(itemPriceMatches({ ...live, id: legacy.itemPriceId, price: 700, period: 1, period_unit: "month" }, legacy)).toBe(true);
     expect(itemPriceMatches({ id: pack.itemPriceId, status: "active", currency_code: "USD", price: 2_200, item_type: "charge" }, pack)).toBe(true);
     expect(itemPriceMatches({ id: pack.itemPriceId, status: "active", currency_code: "USD", price: 2_200, item_type: "plan" }, pack)).toBe(false);
     expect(itemPriceMatches({ id: session.itemPriceId, status: "active", currency_code: "INR", price: 79_900, item_type: "charge" }, session)).toBe(true);

@@ -2,7 +2,7 @@
 // plus the slots-full nudge, ported from app/src/routes/requests.tsx. The meter
 // is the seeker's open asks against the plan's open-ask cap, counted by the
 // server (/api/company-referrals/mine `slots`); the nudge names the next plan
-// and its cap from the plan catalog.
+// and its cap from the plan catalog, and links to /plans only when there is one.
 import { Clock3 } from "lucide-react";
 import { Link } from "wouter";
 import type { OpenAskSlots } from "@shared/openAskSlots";
@@ -65,7 +65,8 @@ export function RequestSummary({ slots, inConversation, expiringSoon, hasWithdra
         <div role="status">
           <Panel tone="muted" className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <span className="text-sm"><span>{full.lead}</span> {full.next}</span>
-            <Button size="sm" variant="outline" asChild><Link href="/plans">See plans</Link></Button>
+            {/* Only when a plan on sale raises the cap (the server's nextPlan); otherwise /plans has nothing for this. */}
+            {slots?.nextPlan ? <Button size="sm" variant="outline" asChild><Link href="/plans">See plans</Link></Button> : null}
           </Panel>
         </div>
       ) : null}

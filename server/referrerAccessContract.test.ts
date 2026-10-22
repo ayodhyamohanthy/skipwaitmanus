@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isVerifiedReferrer, referrerAccessResponseSchema, type ReferrerAccessResponse } from "../shared/referrerAccess";
 
-const verified: ReferrerAccessResponse = { verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "SkipWait", companyInitials: "SW" };
+const verified: ReferrerAccessResponse = { verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "skipwait.me", companyInitials: "SW" };
 
 describe("referrer access contract", () => {
   it("round-trips the server response unchanged", () => {

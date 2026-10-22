@@ -2,7 +2,7 @@ import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import * as ai from "./ai";
 import * as db from "./db";
@@ -28,7 +28,8 @@ export const appRouter = router({
     revokeEmployer: protectedProcedure.input(z.object({ employerUserId: z.number().int().positive() })).mutation(({ ctx, input }) => db.revokeTalentEmployerAccess(ctx.user.id, input.employerUserId)),
   }),
   jobs: router({ list: publicProcedure.input(z.object({ query: z.string().optional(), company: z.string().optional(), location: z.string().optional(), seniority: z.string().optional() }).optional()).query(({ input }) => db.listJobs(input ?? {})) }),
-  community: router({ listReferrers: protectedProcedure.input(z.object({ query: z.string().optional(), company: z.string().optional(), role: z.string().optional() }).optional()).query(({ input }) => db.listReferrers(input ?? {})) }),
+  // Administrators only: members never see a referrer list or ranking; referrers stay anonymous until they accept.
+  community: router({ listReferrers: adminProcedure.input(z.object({ query: z.string().optional(), company: z.string().optional(), role: z.string().optional() }).optional()).query(({ input }) => db.listReferrers(input ?? {})) }),
   savedRoles: router({ list: protectedProcedure.query(({ ctx }) => db.listSavedRoles(ctx.user.id)), set: protectedProcedure.input(z.object({ jobId: z.number().int().positive(), saved: z.boolean() })).mutation(({ ctx, input }) => db.setSavedRole(ctx.user.id, input.jobId, input.saved)) }),
   referrals: router({ listMine: protectedProcedure.query(disabledReferralList), create: protectedProcedure.input(z.any()).mutation(disabledReferralCreate), review: protectedProcedure.input(z.any()).mutation(disabledReferralReview), stats: protectedProcedure.query(disabledReferralStats) }),
   messaging: router({ list: protectedProcedure.query(disabledMessageList), send: protectedProcedure.input(z.any()).mutation(disabledMessageSend) }),
@@ -36,7 +37,7 @@ export const appRouter = router({
   ai: router({
     copilot: protectedProcedure.input(z.object({ message: z.string().min(1).max(2000) })).mutation(async ({ ctx, input }) => ({ reply: await ai.runCareerCopilot({ message: input.message, context: await db.getAiWorkspaceContext(ctx.user.id) }) })),
     briefing: protectedProcedure.query(async ({ ctx }) => ai.createProactiveBrief({ context: await db.getAiWorkspaceContext(ctx.user.id) })),
-    matchReferrers: protectedProcedure.input(z.object({ jobTitle: z.string().min(1), company: z.string().min(1) })).mutation(async ({ ctx, input }) => ai.matchReferrers({ ...input, context: await db.getAiWorkspaceContext(ctx.user.id) })),
+    matchReferrers: adminProcedure.input(z.object({ jobTitle: z.string().min(1), company: z.string().min(1) })).mutation(async ({ ctx, input }) => ai.matchReferrers({ ...input, context: await db.getAiWorkspaceContext(ctx.user.id) })),
     draftReferralPitch: protectedProcedure.input(z.object({ jobTitle: z.string().min(1), company: z.string().min(1), referrerName: z.string().min(1), notes: z.string().min(1).max(2000) })).mutation(async ({ ctx, input }) => ({ draft: await ai.draftReferralPitch({ ...input, profile: await db.getProfileByUserId(ctx.user.id) }) })),
     draftHiringManagerEmail: protectedProcedure.input(z.object({ candidateName: z.string().min(1).max(120), targetRoleUrl: z.string().url().max(2048), accomplished: z.string().max(500).optional(), measuredBy: z.string().max(500).optional(), byDoing: z.string().max(500).optional() })).mutation(async ({ input }) => ({ draft: await ai.draftHiringManagerEmail(input) })),
     referralFit: protectedProcedure.input(z.object({ candidateName: z.string().min(1), jobTitle: z.string().min(1), company: z.string().min(1), personalPitch: z.string().min(1).max(4000) })).mutation(({ input }) => ai.summarizeReferralFit(input)),

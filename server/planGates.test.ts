@@ -21,11 +21,15 @@ describe("server plan gates", () => {
     // Unlimited showcases still stop at the abuse ceiling.
     expect(showcaseLimitViolation(ent("momentum"), items(199), { adding: true, pinning: false })).toBeNull();
     expect(showcaseLimitViolation(ent("momentum"), items(200), { adding: true, pinning: false })).toMatchObject({ limit: "showcase_pieces", cap: 200, message: "Showcases hold up to 200 pieces of work." });
-    expect(showcaseLimitViolation(ent("pro"), items(19), { adding: true, pinning: false })).toBeNull();
+    // D-067: no grandfathered 20 pieces; a wallet still marked pro reads as Free.
+    expect(showcaseLimitViolation(ent("pro"), items(3), { adding: true, pinning: false })).toMatchObject({ limit: "showcase_pieces", cap: 3 });
+    expect(showcaseLimitViolation(ent("start"), items(9), { adding: true, pinning: false })).toBeNull();
   });
 
   it("assistant refusals carry the kit copy and a stable code", () => {
     const error = new AssistantPlanRequiredError();
-    expect(error).toMatchObject({ code: "assistant_plan_required", message: "Assistants are part of Land and Concierge. Upgrade to Land to connect ChatGPT, Claude or your own tools." });
+    expect(error).toMatchObject({ code: "assistant_plan_required", message: "Assistants are part of Land and Concierge, which are not on sale yet, so ChatGPT, Claude and your own tools cannot connect to this account." });
+    // Review round 2 (D-067): nothing sells Land yet, so the refusal (shown by MCP and OAuth clients) never says to upgrade.
+    expect(error.message).not.toMatch(/upgrade/i);
   });
 });

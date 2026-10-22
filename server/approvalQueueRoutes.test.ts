@@ -91,4 +91,15 @@ describe("unified admin approval queue routes", () => {
     const app = buildApp(minimalDeps({ resolveAdminApproval: async () => { throw new Error("This referral request could not be found"); } }));
     expect((await request(app).post("/api/admin/approval-queue/referral_request/999/decision").set("x-test-user", "admin").send({ decision: "rejected" })).status).toBe(404);
   });
+
+  it("returns an approval of a refund-parked payment as 409 with the plain refusal, not 500 (P0-refund-review)", async () => {
+    const { PaymentReviewRefusedError } = await import("./paymentRefundReview");
+    const message = "This payment's credits were already added before it was refunded, so it cannot be credited again or rejected. Take back the unused credits, or keep them and close it.";
+    const activity: Array<{ action: string }> = [];
+    const app = buildApp(minimalDeps({ resolveAdminApproval: async () => { throw new PaymentReviewRefusedError(message); }, recordActivity: async entry => { activity.push(entry); } }));
+    const response = await request(app).post("/api/admin/approval-queue/payment/33/decision").set("x-test-user", "admin").send({ decision: "approved" });
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ error: message });
+    expect(activity.some(entry => entry.action === "admin.approval_approved")).toBe(false);
+  });
 });

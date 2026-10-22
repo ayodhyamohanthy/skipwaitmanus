@@ -2,6 +2,9 @@ import express from "express";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerChargebeeRoutes } from "./chargebeeRoutes";
+// These cases test selling passes, so they run with pass sales on; the shipped
+// off state (D-084) is pinned in server/passSalesSwitch.test.ts.
+vi.mock("../shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("../shared/planCatalog")>()), PASS_SALES_ENABLED: true }));
 
 function auth(secret: string) {
   return `Basic ${Buffer.from(`skipwait:${secret}`).toString("base64")}`;
@@ -18,11 +21,13 @@ afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(
 describe("Chargebee checkout readiness", () => {
   it("does not create a provider page without subscription intent storage", async () => {
     const app = express(); app.use(express.json());
-    const createSubscriptionCheckout = vi.fn();
-    registerChargebeeRoutes(app, { resolveIdentity: async () => ({ account: { id: 7 } }), createPaymentIntent: vi.fn(), fulfillPayment: vi.fn(), createSubscriptionCheckout });
-    const response = await request(app).post("/api/chargebee/subscription-checkout").send({ plan: "pro", currency: "USD", billingCountry: "INTL" });
+    const isAvailable = vi.fn(() => true);
+    const createPlanCheckout = vi.fn();
+    registerChargebeeRoutes(app, { resolveIdentity: async () => ({ account: { id: 7 } }), createPaymentIntent: vi.fn(), fulfillPayment: vi.fn(), kitCheckout: { isAvailable, createPlanCheckout } });
+    const response = await request(app).post("/api/chargebee/subscription-checkout").send({ planId: "start", interval: "30d", currency: "USD", billingCountry: "INTL" });
     expect(response.status).toBe(503);
-    expect(createSubscriptionCheckout).not.toHaveBeenCalled();
+    expect(isAvailable).not.toHaveBeenCalled();
+    expect(createPlanCheckout).not.toHaveBeenCalled();
   });
 
   it.each(["IN", "INTL"])("prefills only the known country for the %s credit route", async billingCountry => {
@@ -34,24 +39,19 @@ describe("Chargebee checkout readiness", () => {
     expect(createCheckout).toHaveBeenCalledWith(expect.objectContaining({ billingAddress: billingCountry === "IN" ? { country: "IN" } : undefined }));
   });
 
-  it.each(["Bearer", "Cookie"])("passes %s identity through the subscription helper and stores its intent", async transport => {
-    const provider = vi.fn(async (_url: unknown, options?: RequestInit) => {
-      const form = options?.body as URLSearchParams;
-      return new Response(JSON.stringify({ hosted_page: { id: "hp_plan", url: "https://checkout.example/plan" } }), { status: form.get("subscription_items[item_price_id][0]") === "skipwait_pro_monthly-INR" ? 200 : 400 });
-    });
-    vi.stubGlobal("fetch", provider);
+  it.each(["Bearer", "Cookie"])("passes %s identity through the kit plan checkout and stores its intent", async transport => {
+    const createPlanCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/plan", hostedPageId: "hp_plan" }));
     const app = express(); app.use(express.json());
     const storeIntent = vi.fn();
     registerChargebeeRoutes(app, {
       resolveIdentity: async req => req.header(transport === "Bearer" ? "authorization" : "cookie") ? { account: { id: 7, email: "member@example.com" } } : undefined,
       createPaymentIntent: vi.fn(), fulfillPayment: vi.fn(), createSubscriptionIntent: storeIntent,
+      kitCheckout: { isAvailable: () => true, createPlanCheckout, newCheckoutIntentId: () => "intent_transport" },
     });
-    const response = await request(app).post("/api/chargebee/subscription-checkout").set(transport === "Bearer" ? "Authorization" : "Cookie", transport === "Bearer" ? "Bearer fixture-token" : "app_session_id=fixture-session").send({ plan: "pro", currency: "INR", billingCountry: "IN", role: "referrer" });
+    const response = await request(app).post("/api/chargebee/subscription-checkout").set(transport === "Bearer" ? "Authorization" : "Cookie", transport === "Bearer" ? "Bearer fixture-token" : "app_session_id=fixture-session").send({ planId: "start", interval: "30d", currency: "INR", billingCountry: "IN", role: "job_seeker" });
     expect(response.status).toBe(200);
-    const form = provider.mock.calls[0][1]?.body as URLSearchParams;
-    expect(form.get("billing_address[country]")).toBe("IN");
-    expect(form.get("customer[email]")).toBe("member@example.com");
-    expect(storeIntent).toHaveBeenCalledWith(expect.objectContaining({ userId: 7, role: "referrer", hostedPageId: "hp_plan", checkoutIntentId: form.get("pass_thru_content"), amount: 59_900 }));
+    expect(createPlanCheckout).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ billingCountry: "IN", email: "member@example.com", itemPriceId: "skipwait_start_30d-INR", checkoutIntentId: "intent_transport" }));
+    expect(storeIntent).toHaveBeenCalledWith(expect.objectContaining({ userId: 7, role: "job_seeker", hostedPageId: "hp_plan", checkoutIntentId: "intent_transport", plan: "start", amount: 29_900 }));
   });
 
   it.each(["/api/chargebee/checkout", "/api/chargebee/subscription-checkout"])("returns unavailable without provider access when configuration is missing at %s", async path => {
@@ -60,7 +60,7 @@ describe("Chargebee checkout readiness", () => {
     const provider = vi.fn(); vi.stubGlobal("fetch", provider);
     const app = express(); app.use(express.json());
     registerChargebeeRoutes(app, { resolveIdentity: async () => ({ account: { id: 7 } }), createPaymentIntent: vi.fn(), createSubscriptionIntent: vi.fn(), fulfillPayment: vi.fn() });
-    expect((await request(app).post(path).send({ itemPriceId: "skipwait_token_1-INR", plan: "pro", currency: "INR", billingCountry: "IN" })).status).toBe(503);
+    expect((await request(app).post(path).send({ itemPriceId: "skipwait_token_1-INR", planId: "start", interval: "30d", currency: "INR", billingCountry: "IN" })).status).toBe(503);
     expect(provider).not.toHaveBeenCalled();
   });
 });
@@ -179,6 +179,48 @@ describe("Chargebee webhook route", () => {
     expect((await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", quantity: 1001 })).status).toBe(400);
   });
 
+  it("builds hosted-page return URLs from the configured public origin, never a spoofed request host", async () => {
+    const prev = { PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL, WORKOS_REDIRECT_URI: process.env.WORKOS_REDIRECT_URI };
+    process.env.WORKOS_REDIRECT_URI = "https://skipwait.me/api/auth/workos/callback"; delete process.env.PUBLIC_BASE_URL;
+    try {
+      const app = express();
+      app.use(express.json());
+      let seen: { redirectUrl?: string; cancelUrl?: string } = {};
+      registerChargebeeRoutes(app, {
+        resolveIdentity: async () => ({ account: { id: 7, openId: "workos_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+        createCheckout: async input => { seen = { redirectUrl: input.redirectUrl, cancelUrl: input.cancelUrl }; return { checkoutUrl: "https://chargebee.test/hp_origin", hostedPageId: "hp_origin", checkoutIntentId: "intent_origin" }; },
+        createPaymentIntent: async () => undefined,
+        fulfillPayment: async () => ({ status: "credited" }),
+      });
+      const res = await request(app).post("/api/chargebee/checkout").set("Host", "evil.example").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", role: "job_seeker" });
+      expect(res.status).toBe(200);
+      expect(seen.redirectUrl).toBe("https://skipwait.me/premium?role=job_seeker&payment=pending");
+      expect(seen.cancelUrl).toBe("https://skipwait.me/premium?role=job_seeker&payment=cancelled");
+    } finally {
+      for (const [key, value] of Object.entries(prev)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+    }
+  });
+
+  it("retires the single credit per currency once a pack is on sale, and never calls the provider", async () => {
+    const app = express();
+    app.use(express.json());
+    let providerCalls = 0;
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 7, openId: "workos_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      createCheckout: async () => { providerCalls += 1; return { checkoutUrl: "https://chargebee.test/hp_legacy", hostedPageId: "hp_legacy", checkoutIntentId: "intent_legacy" }; },
+      createPaymentIntent: async () => undefined,
+      fulfillPayment: async () => ({ status: "credited" }),
+      kitCheckout: { isAvailable: async (_req, price) => price.itemPriceId === "skipwait_pack_2-INR" },
+    });
+    const inr = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", role: "job_seeker" });
+    expect(inr.status).toBe(410);
+    expect(inr.body.code).toBe("single_credit_retired");
+    expect(inr.body.error).toBe("Single credits are replaced by credit packs. Nothing has been charged.");
+    const usd = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-USD", billingCountry: "INTL", role: "job_seeker" });
+    expect(usd.status).toBe(200);
+    expect(providerCalls).toBe(1);
+  });
+
   it("rejects unsigned payment delivery before any fulfillment call", async () => {
     const app = express();
     app.use(express.json());
@@ -272,7 +314,7 @@ describe("Chargebee webhook route", () => {
     expect(response.body.status).toBe("pending"); expect(fulfilled).toBe(0);
   });
 
-  it("creates a Pro subscription checkout with the approved INR plan price and synchronizes its verified lifecycle event", async () => {
+  it("creates a kit pass checkout at the catalog INR price and synchronizes its verified lifecycle event", async () => {
     const app = express();
     app.use(express.json());
     const secret = "subscription-flow-secret";
@@ -283,17 +325,17 @@ describe("Chargebee webhook route", () => {
       resolveIdentity: async () => ({ account: { id: 7, openId: "workos_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
       createPaymentIntent: async () => undefined,
       fulfillPayment: async () => ({ status: "credited" }),
-      createSubscriptionCheckout: async input => { expect(input.plan).toBe("pro"); expect(input.currency).toBe("INR"); return { checkoutUrl: "https://chargebee.test/hp_pro", hostedPageId: "hp_pro", checkoutIntentId: "intent_pro" }; },
+      kitCheckout: { isAvailable: () => true, createPlanCheckout: async () => ({ checkoutUrl: "https://chargebee.test/hp_start", hostedPageId: "hp_start" }), newCheckoutIntentId: () => "intent_start" },
       createSubscriptionIntent: async input => { storedIntent = input; },
-      applySubscriptionEvent: async input => { appliedEvent = input; return { status: "applied", plan: "pro" }; },
+      applySubscriptionEvent: async input => { appliedEvent = input; return { status: "applied", plan: "start" }; },
     });
-    const checkout = await request(app).post("/api/chargebee/subscription-checkout").send({ plan: "pro", currency: "INR", billingCountry: "IN", role: "job_seeker" });
-    const webhook = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send({ id: "ev_pro_active", event_type: "subscription_created", content: { hosted_page: { id: "hp_pro", pass_thru_content: "intent_pro" }, subscription: { id: "sub_pro_1", status: "active", currency_code: "INR", resource_version: 10, current_term_start: 1_786_900_000, current_term_end: 1_789_500_000, subscription_items: [{ item_price_id: "skipwait_pro_monthly-INR" }] } } });
+    const checkout = await request(app).post("/api/chargebee/subscription-checkout").send({ planId: "start", interval: "30d", currency: "INR", billingCountry: "IN", role: "job_seeker" });
+    const webhook = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send({ id: "ev_start_active", event_type: "subscription_created", content: { hosted_page: { id: "hp_start", pass_thru_content: "intent_start" }, subscription: { id: "sub_start_1", status: "active", currency_code: "INR", resource_version: 10, current_term_start: 1_786_900_000, current_term_end: 1_789_500_000, subscription_items: [{ item_price_id: "skipwait_start_30d-INR" }] } } });
     expect(checkout.status).toBe(200);
-    expect(storedIntent).toMatchObject({ hostedPageId: "hp_pro", checkoutIntentId: "intent_pro", plan: "pro", itemPriceId: "skipwait_pro_monthly-INR", amount: 59_900, currency: "INR" });
+    expect(storedIntent).toMatchObject({ hostedPageId: "hp_start", checkoutIntentId: "intent_start", plan: "start", itemPriceId: "skipwait_start_30d-INR", amount: 29_900, currency: "INR", billingPeriod: "30d" });
     expect(webhook.status).toBe(200);
-    expect(webhook.body.result).toMatchObject({ status: "applied", plan: "pro" });
-    expect(appliedEvent).toMatchObject({ subscriptionId: "sub_pro_1", plan: "pro", status: "active", currency: "INR" });
+    expect(webhook.body.result).toMatchObject({ status: "applied", plan: "start" });
+    expect(appliedEvent).toMatchObject({ subscriptionId: "sub_start_1", plan: "start", interval: "30d", status: "active", currency: "INR" });
     delete process.env.CHARGEBEE_WEBHOOK_SECRET;
   });
 
@@ -312,7 +354,7 @@ describe("Chargebee webhook route", () => {
         transaction: { amount: 9900, currency_code: "INR", invoice_id: "inv_mixed" },
         invoice: { id: "inv_mixed", total: 9900, currency_code: "INR" },
         hosted_page: { id: "hp_mixed", pass_thru_content: "intent_mixed" },
-        subscription: { id: "sub_mixed", status: "active", currency_code: "INR", resource_version: 12, subscription_items: [{ item_price_id: "skipwait_pro_monthly-INR" }] },
+        subscription: { id: "sub_mixed", status: "active", currency_code: "INR", resource_version: 12, subscription_items: [{ item_price_id: "skipwait_start_30d-INR" }] },
       },
     });
     expect(response.status).toBe(200);
@@ -332,7 +374,7 @@ describe("Chargebee webhook route", () => {
     });
     const response = await request(app).post("/api/chargebee/webhook").set("Authorization", auth("mixed-fail-secret")).send({
       id: "ev_mixed_fail", event_type: "payment_succeeded",
-      content: { transaction: { amount: 9900, currency_code: "INR" }, subscription: { id: "sub_mixed", status: "active", subscription_items: [{ item_price_id: "skipwait_pro_monthly-INR" }] } },
+      content: { transaction: { amount: 9900, currency_code: "INR" }, subscription: { id: "sub_mixed", status: "active", subscription_items: [{ item_price_id: "skipwait_start_30d-INR" }] } },
     });
     expect(response.status).toBe(500);
     expect(paymentCalls).toBe(0);
@@ -355,5 +397,55 @@ describe("Chargebee webhook route", () => {
     expect(response.status).toBe(200);
     expect(response.body.status).toBe("non_renewing");
     expect(persisted).toEqual({ userId: 7, role: "job_seeker", subscriptionId: "sub_owned" });
+  });
+});
+
+describe("unlinked kit subscription alert (GO-LIVE-1b ruling 4)", () => {
+  const kitSubscriptionEvent = {
+    id: "evt_unlinked_1",
+    event_type: "subscription_created",
+    content: {
+      subscription: {
+        id: "sub_orphan_1", status: "active", currency_code: "USD",
+        current_term_start: 1792531200, current_term_end: 1795123200, resource_version: 7,
+        subscription_items: [{ item_price_id: "skipwait_momentum_30d-USD" }],
+      },
+    },
+  };
+
+  function buildApp(apply: ReturnType<typeof vi.fn>, alert: ReturnType<typeof vi.fn>) {
+    vi.stubEnv("CHARGEBEE_WEBHOOK_SECRET", "test-secret");
+    const app = express();
+    app.use(express.json());
+    registerChargebeeRoutes(app, {
+      resolveIdentity: vi.fn(),
+      createPaymentIntent: vi.fn(),
+      applySubscriptionEvent: apply,
+      alertRetiredPlanEvent: alert,
+    });
+    return app;
+  }
+  const postWebhook = (app: express.Express, payload: unknown) =>
+    request(app).post("/api/chargebee/webhook").set("Authorization", auth("test-secret")).send(payload);
+
+  it("alerts the owner when a kit pass subscription matches no intent or wallet", async () => {
+    const alert = vi.fn(async () => undefined);
+    const app = buildApp(vi.fn(async () => ({ status: "ignored", reason: "unknown_subscription" })), alert);
+    const response = await postWebhook(app, kitSubscriptionEvent);
+    expect(response.status).toBe(200);
+    expect(alert).toHaveBeenCalledTimes(1);
+    expect(alert.mock.calls[0][0]).toMatchObject({ reason: "unlinked_subscription", subscriptionId: "sub_orphan_1", itemPriceId: "skipwait_momentum_30d-USD" });
+  });
+
+  it("alerts on checkout_intent_mismatch for a kit price, but not on a duplicate", async () => {
+    const alert = vi.fn(async () => undefined);
+    const app = buildApp(vi.fn(async () => ({ status: "ignored", reason: "checkout_intent_mismatch" })), alert);
+    expect((await postWebhook(app, kitSubscriptionEvent)).status).toBe(200);
+    expect(alert).toHaveBeenCalledTimes(1);
+
+    const quiet = vi.fn(async () => undefined);
+    const app2 = buildApp(vi.fn(async () => ({ status: "duplicate" })), quiet);
+    expect((await postWebhook(app2, kitSubscriptionEvent)).status).toBe(200);
+    expect(quiet).not.toHaveBeenCalled();
   });
 });

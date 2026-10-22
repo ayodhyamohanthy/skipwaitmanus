@@ -1,5 +1,7 @@
 # Referrer Fast-Track Links
 
+> RENAMED (D-128, Oct 21 2026): the user-facing feature is "Your referral link" - "Fast Track" is the seeker plan. Internal identifiers, the /fast/:linkCode route, aliases and the table name below are unchanged and historical.
+
 ## Purpose
 
 **Referrer Fast-Track Links** give a verified employee one branded, shareable entry point for referrals at their exact company. The link is intended for a LinkedIn bio or a one-to-one message. It is an invitation to begin a **private referral request**, not a promise of an interview, priority, acceptance, or a public “queue.”
@@ -17,10 +19,10 @@ The recipient-facing page uses factual copy: **“Request a private referral at 
 | Company binding | A submitted Target Role URL must resolve to the link’s exact verified company domain. Job-board hostnames alone are never treated as an employer match. |
 | Request destination | A valid request made through an active link is assigned directly to that verified link owner. It is visible only in their private company inbox. |
 | Referrer autonomy | The link owner may review, approve, decline, or ignore a request for free. A link does not create a referral obligation. |
-| Candidate privacy | Resumes and notes remain private. The Referrer sees them only through the established private-preview and claim authorization path. |
+| Candidate privacy | Resumes and notes remain private. The Referrer sees the role and note in the established private preview, and the seeker's name and resume only after accepting the request (D-019(e)). |
 | Candidate messaging | Conversation remains unavailable until the Referrer approves the request. |
 | Abuse protection | Only one active link exists per verified Referrer; inactive links do not route requests. Link retrieval and creation are idempotent. A candidate never receives a public position, capacity number, ranking, or scarcity signal. |
-| Credits | A Fast-Track request follows the established server-side Job Seeker credit policy. No browser callback can grant or deduct credit. |
+| Credits | A Fast-Track request follows the established server-side Job Seeker credit policy. No browser callback can grant or deduct credit. Until the link owner claims, accepts or passes, the request counts as unclaimed: the seeker can withdraw it with the credit back, and the unclaimed 7-day expiry returns the credit (D-050; code pending). |
 | Auditability | Creation, deactivation, public resolution, and request routing log privacy-safe operational metadata without copying resumes, candidate messages, or Referrer identity into public responses. |
 
 ## Routes

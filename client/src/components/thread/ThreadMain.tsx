@@ -38,6 +38,8 @@ export function ThreadMain({ request, role, seekerIdentity, passed, messages, dr
   const hidden = role === "referrer-pending";
   const seeker = role === "seeker";
   const composer = canMessage(role, request);
+  // An accepted referrer's file without a link: their document access has ended (D-019(e)).
+  const accessEnded = role === "referrer-claimed" && accepted && request.attachments.some(file => !file.url);
 
   return (
     <section className="min-w-0 rounded-3xl border border-border bg-card">
@@ -70,13 +72,17 @@ export function ThreadMain({ request, role, seekerIdentity, passed, messages, dr
               {!accepted ? (
                 <span className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><EyeOff className="size-3.5" />Resume and profile shared after acceptance</span>
               ) : role === "referrer-claimed" ? (
-                request.attachments.map(file => (
-                  <a key={file.id} href={file.url ?? `/api/documents/${file.id}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{file.fileName}</a>
-                ))
+                // A file without a link is one whose document access has ended: named, never linked to a dead page.
+                request.attachments.map(file => (file.url ? (
+                  <a key={file.id} href={file.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{file.fileName}</a>
+                ) : (
+                  <span key={file.id} className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{file.fileName}</span>
+                )))
               ) : request.attachmentCount > 0 ? (
                 <span className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{request.attachmentCount === 1 ? "1 file shared" : `${request.attachmentCount} files shared`}</span>
               ) : null}
             </div>
+            {accessEnded ? <p className="mt-2 text-xs text-muted-foreground">Resume access has ended. Message the Job Seeker here if you still need it.</p> : null}
           </div>
         </div>
 
@@ -85,7 +91,7 @@ export function ThreadMain({ request, role, seekerIdentity, passed, messages, dr
         {passed ? <Notice tone="muted" title="You passed privately." text="The request stays active for other verified employees. Your identity was never revealed." /> : null}
         {stage === "Declined" ? <Notice tone="muted" title="This referrer passed." text={`It's not a judgment of you. Your slot is open again — try another verified referrer at ${company}.`} /> : null}
         {stage === "Expired" ? <Notice tone="muted" title="This request expired." text="Nobody could take it within 7 days. Your slot is free — refresh your note and ask again." /> : null}
-        {stage === "Withdrawn" ? <Notice tone="muted" title="You withdrew this request." text="Your credit was returned to your balance." /> : null}
+        {stage === "Withdrawn" ? <Notice tone="muted" title="You withdrew this request." text="Its open slot is free again. The credit came back only if no verified employee had picked it up." /> : null}
 
         {accepted ? <p className="text-center text-xs text-muted-foreground">— {seeker ? "Request accepted. You can now message privately." : "Request accepted. Their name and resume are now shared."} —</p> : null}
         {messages.map(message => (
@@ -93,7 +99,7 @@ export function ThreadMain({ request, role, seekerIdentity, passed, messages, dr
             <p className={`max-w-[80%] break-words rounded-2xl px-4 py-2.5 ${message.isMine ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-muted"}`}>{message.body}</p>
           </div>
         ))}
-        {stage === "Referred" ? <Notice tone="accent" title="Referral submitted" text={`Submitted through ${company}'s internal referral process. Companies decide hiring; SkipWait never promises outcomes.`} /> : null}
+        {stage === "Referred" ? <Notice tone="accent" title="Referral submitted" text={`Submitted through ${company}'s internal referral process. Companies decide hiring; skipwait.me never promises outcomes.`} /> : null}
         {stage === "Hired" ? <Notice tone="accent" title="Hired. Congratulations." text={seeker ? "Thank your referrer, then pay it forward — become a referrer once you're verified." : "Thank you for opening this door."} /> : null}
       </div>
 

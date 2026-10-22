@@ -5,19 +5,17 @@
 // and below their referral capacity. Only that boolean ever leaves the
 // server: never a count, an id or a name.
 import { adminCompanySchema, companyDirectoryResponseSchema, companyFunctionsSchema, publicCompanySchema, type AdminCompany, type CompanyDirectoryResponse, type PublicCompany } from "../shared/companies";
-import { resolveCompanySource, type CompanyDirectorySource, type CompanyDomainRecord, type CompanyRecord, type ReferrerCandidate } from "./companyDirectorySource";
-import { isVerifiedEmployeeOfCompany, notifySeekerAlertsForCompany } from "./db";
+import { resolveCompanySource, type CompanyDirectorySource, type CompanyDomainRecord, type CompanyRecord } from "./companyDirectorySource";
+import { notifySeekerAlertsForCompany } from "./db";
+import { isOpenReferrer, type ReferrerCandidate } from "./referrerAvailability";
 
-export const DEFAULT_REFERRAL_CAPACITY = 3;
+// The availability rule moved to server/referrerAvailability.ts (D-034/D-047/
+// D-062) so db.ts can use the exact same predicate; these re-exports keep every
+// existing caller green.
+export { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer } from "./referrerAvailability";
 
 const normalize = (domain: string) => domain.trim().toLowerCase();
 const unique = <T,>(values: readonly T[]) => Array.from(new Set(values));
-
-export function isOpenReferrer(candidate: ReferrerCandidate, companyDomain: string, allocatedSlots: number): boolean {
-  if (!isVerifiedEmployeeOfCompany(candidate, companyDomain)) return false;
-  if (candidate.paused || candidate.userSuspended || candidate.personSuspended === true) return false;
-  return allocatedSlots < (candidate.referralCapacity ?? DEFAULT_REFERRAL_CAPACITY);
-}
 
 export function computeOpenCompanyIds(domains: readonly CompanyDomainRecord[], candidates: readonly ReferrerCandidate[], allocated: ReadonlyMap<number, number>): Set<number> {
   const companyByDomain = new Map(domains.map(row => [normalize(row.domain), row.companyId]));

@@ -103,7 +103,7 @@ export function deriveCompanySlug(name: string): string {
   return name.normalize("NFKD").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48).replace(/-+$/g, "");
 }
 
-/** "Go Neutrinos" -> "GN", "Merkle" -> "M". Admins may override (SkipWait is "SW"). */
+/** "Go Neutrinos" -> "GN", "Merkle" -> "M". Admins may override (skipwait.me is "SW"). */
 export function deriveCompanyInitials(name: string): string {
   const words = name.trim().split(/\s+/).filter(word => /[a-z0-9]/i.test(word));
   return words.slice(0, 2).map(word => (word.match(/[a-z0-9]/i)?.[0] ?? "")).join("").toUpperCase() || "?";
@@ -123,4 +123,10 @@ export function companyIdentityOf(source: CompanyIdentitySource): CompanyIdentit
   const name = source.companyName?.trim();
   const mark = source.companyInitials?.trim();
   return { name: name || source.companyDomain, mark: mark || (source.companyDomain.charAt(0) || "?").toUpperCase() };
+}
+
+/** An ask from a shared job link can carry the platform's own domain instead of an employer; that is not a company name to show. */
+export function isUnknownCompany(source: CompanyIdentitySource): boolean {
+  const shown = companyIdentityOf(source).name.trim().toLowerCase().replace(/^www\./, "");
+  return shown === "" || shown === "skipwait.me";
 }

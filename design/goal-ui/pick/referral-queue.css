@@ -1,0 +1,228 @@
+/* Screen B · Referral queue, verified referrer at Kestrel Pay who also seeks, before acceptance.
+   Triage Desk layout, Signal's type. Desktop: rail 104 | queue list 360 | opened ask (content capped at
+   680) with the pinned decision bar. Frame 1 shows the bar at rest at the viewport bottom; frame 2
+   shows Pass privately open as a 368px popover anchored above the button, floating over the ask so
+   the bar never moves.
+   Phone: the queue list with the four-item bottom bar, then the opened ask with a 72px decision bar,
+   then the pass-reason sheet (medium height: the role and its clock stay in view above it). */
+
+.app--queue {
+  grid-template-columns: var(--sw-rail-w) var(--sw-list-w) minmax(0, 1fr);
+  grid-template-areas: "rail top top" "rail list detail";
+}
+.app--qlist { grid-template-areas: "top" "list" "nav"; }
+
+/* ---------- Queue list ---------- */
+.q-list { grid-area: list; display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--sw-hairline); }
+.q-list__head { display: grid; gap: 8px; padding: 20px 20px 16px; border-bottom: 1px solid var(--sw-hairline); }
+.q-list__titlebar { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.q-list__title { font: var(--sw-type-heading); letter-spacing: var(--sw-track-heading); }
+.q-list__count { font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); white-space: nowrap; }
+.q-list__count .mono { color: var(--sw-ink-2); }
+.q-list__id { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 28px; }
+/* Impact, reached from the queue: a quiet ink link, so the rail and the phone bar keep four places. */
+.impact-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; margin-right: -8px; padding: 0 8px; border-radius: var(--sw-radius-control);
+  color: var(--sw-ink-2); font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); white-space: nowrap;
+  transition: background-color var(--sw-dur-hover) var(--sw-ease-out);
+}
+.impact-link span { text-decoration: underline; text-decoration-color: var(--sw-control-edge); text-underline-offset: 3px; }
+.impact-link:hover { background: var(--sw-surface-hover); color: var(--sw-ink); }
+.q-list__sub { font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); text-wrap: pretty; }
+
+.q-rows { display: grid; gap: 2px; padding: 8px; }
+/* The role takes the whole first line; the state sits at the right of the meta line. */
+.q-row {
+  display: grid; align-content: center; column-gap: 12px; row-gap: 2px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "role role" "meta state";
+  min-height: 64px; padding: 10px 12px;
+}
+.q-row__role { grid-area: role; min-width: 0; font: var(--sw-type-label); letter-spacing: var(--sw-track-label); color: var(--sw-ink); text-wrap: pretty; }
+.q-row__state { grid-area: state; display: inline-flex; align-items: center; gap: 6px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); white-space: nowrap; }
+.q-row__state--new { color: var(--sw-ink); }
+.q-row__state--review { color: var(--sw-ink-3); }
+.q-row__meta { grid-area: meta; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); white-space: nowrap; }
+.q-row__meta .sep { padding: 0 6px; }
+.is-soon { color: var(--sw-amber); }                    /* 2 days left or fewer; never crimson here */
+/* Same height as the decision bar (72 + its 1px rule), so the two bottom hairlines meet in one line. */
+.q-list__foot {
+  display: flex; align-items: center;
+  height: calc(var(--sw-decision-bar-h) + 1px); margin-top: auto; padding: 0 20px;
+  font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); border-top: 1px solid var(--sw-hairline);
+}
+
+/* ---------- Opened ask ---------- */
+.q-detail { grid-area: detail; display: flex; flex-direction: column; min-width: 0; }
+.q-sub { display: flex; align-items: center; justify-content: space-between; }
+.q-detail__body { width: 100%; max-width: calc(var(--sw-detail-max) + 80px); padding: 36px 40px 0; }
+
+.eyebrow { font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-2); }
+.q-detail__role { margin-top: 4px; font: var(--sw-type-display); letter-spacing: var(--sw-track-display); text-wrap: balance; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; margin-top: 12px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); }
+.meta__ref { color: var(--sw-ink-2); }
+.meta__time { display: inline-flex; align-items: center; gap: 6px; color: var(--sw-amber); }
+
+.props { display: grid; gap: 10px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--sw-hairline); }
+.props__row { display: grid; grid-template-columns: 120px minmax(0, 1fr); column-gap: 16px; align-items: baseline; }
+.props dt { font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); }
+.props dd { min-width: 0; font: var(--sw-type-body); color: var(--sw-ink); }
+.props .link { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+.props .link .icon { color: var(--sw-ink-2); }
+.props__note { margin-left: 12px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); }
+
+.label { font: var(--sw-type-label); letter-spacing: var(--sw-track-label); color: var(--sw-ink); }
+.why { margin-top: 32px; }
+.why ol { display: grid; gap: 14px; margin-top: 12px; }
+.why li { display: grid; grid-template-columns: 32px minmax(0, 1fr); }
+.why__n { font: var(--sw-type-mono); line-height: 24px; color: var(--sw-ink-3); }
+.why p { font: var(--sw-type-body); color: var(--sw-ink); text-wrap: pretty; }
+
+.quality { margin-top: 32px; }
+.quality ul { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 12px; }
+.quality li { display: inline-flex; align-items: center; gap: 6px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-2); }
+.quality li .icon { color: var(--sw-ink); }
+.quality__note { margin-top: 10px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); }
+
+/* ---------- Dock: the identity lock and the accept consequence sit directly above the bar ---------- */
+.dock { margin-top: auto; padding-top: 32px; }
+.dock__promise { max-width: calc(var(--sw-detail-max) + 80px); padding: 0 40px; }
+.locked {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: var(--sw-surface-sunken); border: 1px solid var(--sw-hairline); border-radius: var(--sw-radius-tile);
+}
+.locked > .icon { color: var(--sw-ink-2); }
+.locked__title { flex: 1; min-width: 0; font: var(--sw-type-label); letter-spacing: var(--sw-track-label); color: var(--sw-ink); text-wrap: balance; }
+.locked__docs { display: inline-flex; align-items: center; gap: 6px; font: var(--sw-type-meta); color: var(--sw-ink-3); white-space: nowrap; }
+.accept-note { margin: 12px 0 16px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-2); text-wrap: pretty; }
+
+/* Pinned in the build (position: sticky; bottom: 0). It wraps the 72px bar only: the pass reasons
+   float above it in a popover, so pressing P never pushes Accept & connect up. */
+.decision { background: var(--sw-surface); border-top: 1px solid var(--sw-hairline); }
+.decision__bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  max-width: calc(var(--sw-detail-max) + 80px); height: var(--sw-decision-bar-h); padding: 0 40px;
+}
+.pos { display: flex; align-items: center; gap: 4px; }
+.pos__text { margin-right: 8px; font: var(--sw-type-mono); color: var(--sw-ink-2); }
+.pos__btn { padding: 0 6px; }
+.pos__btn .kbd { color: var(--sw-ink-3); }
+.decision__actions { display: flex; align-items: center; gap: 8px; }
+
+/* Pass reasons (BRIEF section 4): a popover anchored above Pass privately, its right edge on the
+   button's, so it rises from Pass and leaves Accept & connect clear. The seven shipped reasons
+   (shared/passReasons.ts, D-052) as 40px radio rows in the shipped order, none preselected, keycaps 1-7
+   at the right (keys pick, never commit); Pass is an ink outline, disabled until a reason is picked.
+   368px wide so the Prefer-not-to-say note reads as one line; at seven rows that keeps the popover
+   497 -> 477px tall, its top clear of the job details behind it.
+   Opens in var(--sw-dur-menu); instant under reduced motion. */
+.pass-anchor { position: relative; display: flex; }
+.pass-pop {
+  position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 2;
+  width: 368px; padding: 16px 12px 12px;
+  background: var(--sw-surface); border-radius: var(--sw-radius-popover); box-shadow: var(--sw-shadow-popover);
+}
+.pass-pop__title { padding: 0 8px; font: var(--sw-type-heading); letter-spacing: var(--sw-track-heading); }
+/* Greedy wrap, not pretty: the generator binds the closing "Never your name." (lib.mjs bindTail), and
+   pretty would treat that bound phrase as an orphan word and pull "reason." down after it. Greedy
+   breaks at the sentence: "…with your reason." / "Never your name." */
+.pass-pop__desc { margin-top: 4px; padding: 0 8px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-2); text-wrap: wrap; }
+.pass-pop__list { display: grid; margin-top: 8px; }
+.pop-row {
+  display: flex; align-items: center; gap: 12px;
+  height: 40px; padding: 0 8px; border-radius: var(--sw-radius-control);
+  font: var(--sw-type-body); color: var(--sw-ink); cursor: pointer;
+  transition: background-color var(--sw-dur-hover) var(--sw-ease-out);
+}
+.pop-row:hover { background: var(--sw-surface-hover); }
+.pop-row input {
+  appearance: none; flex: none; width: 18px; height: 18px; margin: 0;
+  border: 1.5px solid var(--sw-control-edge); border-radius: 50%; background: var(--sw-surface);
+}
+.pop-row input:checked { border: 5px solid var(--sw-ink); }
+.pop-row__label { flex: 1; min-width: 0; white-space: nowrap; }
+.pop-row .kbds { margin-left: 0; }
+.pass-pop__note { margin-top: 8px; padding: 0 8px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); text-wrap: pretty; }
+.pass-pop__foot {
+  display: flex; justify-content: flex-end; gap: 8px;
+  margin: 12px -12px 0; padding: 12px 12px 0; border-top: 1px solid var(--sw-hairline);
+}
+
+/* Comp presentation only: the two desktop frames are separated by a hairline-grey band. */
+.frame-gap { height: 24px; background: var(--sw-hairline); }
+
+.pass-frame { display: none; }
+
+/* ---------- Phone ---------- */
+@media (max-width: 640px) {
+  /* The queue list: the page's one display title, rows with 16/24 titles, the four-item bottom bar. */
+  .app--qlist .q-list { border-right: 0; }
+  .app--qlist .q-list__head { padding: 24px 16px 16px; }
+  .app--qlist .q-list__title { font: var(--sw-type-display); letter-spacing: var(--sw-track-display); }
+  .app--qlist .q-rows { padding: 8px 4px; }
+  .app--qlist .q-row { min-height: 72px; padding: 12px; }
+  .app--qlist .q-row__role { font: var(--sw-type-row-phone); letter-spacing: 0; }
+  .app--qlist .q-list__foot { height: auto; margin-top: 8px; padding: 16px; }
+  .impact-link { margin-right: -4px; }
+
+  /* The opened ask under the app top bar, with its pinned decision bar (the bottom bar hides here). */
+  .app--queue {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--sw-topbar-h) minmax(calc(100vh - var(--sw-topbar-h)), auto) auto;
+    grid-template-areas: "top" "detail" "passframe";
+  }
+  .app--queue .q-list { display: none; }
+
+  .q-sub { height: var(--sw-subheader-h-phone); padding: 0 4px 0 8px; border-bottom: 1px solid var(--sw-hairline); background: var(--sw-surface); }
+  .q-sub__back { display: inline-flex; align-items: center; gap: 4px; height: 44px; padding: 0 8px 0 4px; color: var(--sw-ink); font: var(--sw-type-label); letter-spacing: var(--sw-track-label); }
+  .q-sub .pos { gap: 0; }
+  .q-sub .pos__btn { min-width: 44px; }
+
+  .q-detail__body { padding: 20px 16px 0; }
+  .q-detail__verified { margin-bottom: 16px; }
+  .props__row { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
+  .props .link { display: block; overflow-wrap: anywhere; }   /* two 24px lines: a 48px target */
+  .props .link .icon { display: inline-block; vertical-align: -2px; margin-left: 4px; }
+  .props__note { display: block; margin: 2px 0 0; }
+
+  .dock { padding-top: 28px; }
+  .dock__promise { padding: 0 16px; }
+  .locked { align-items: flex-start; flex-wrap: wrap; row-gap: 6px; }
+  .locked__title { flex-basis: calc(100% - 32px); }
+  .locked__docs { margin-left: 32px; }
+
+  .decision__bar { height: var(--sw-decision-bar-h-phone); padding: 12px 16px; }
+  .decision__actions { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .decision__actions .btn { height: var(--sw-control-h-phone); }
+  .pass-anchor { display: grid; }   /* the Pass button fills its half; on phones the reasons open in a sheet */
+
+  /* The pass reasons in a medium sheet over the scrim: seven 48px rows (44px targets with room), so the
+     sheet stays about two-thirds of an 844px phone and the role, its ref and its clock stay in view. */
+  .pass-frame { grid-area: passframe; display: block; position: relative; height: calc(100vh + 24px); overflow: hidden; }
+  .pass-frame__backdrop { background: var(--sw-canvas); }
+  .pass-frame::after { content: ""; position: absolute; inset: 0; background: var(--sw-scrim); }
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 1;
+    padding: 8px 16px 20px;
+    background: var(--sw-surface); border-radius: var(--sw-radius-sheet) var(--sw-radius-sheet) 0 0;
+  }
+  .sheet__grabber { width: 32px; height: 4px; margin: 0 auto 12px; border-radius: 2px; background: var(--sw-control-edge); }
+  .sheet__title { font: var(--sw-type-heading); letter-spacing: var(--sw-track-heading); }
+  .sheet__desc { margin-top: 4px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-2); text-wrap: wrap; }   /* greedy: see .pass-pop__desc */
+  .radio-list { margin-top: 12px; border-top: 1px solid var(--sw-hairline); }
+  .radio-row {
+    display: flex; align-items: center; gap: 12px;
+    min-height: 48px; border-bottom: 1px solid var(--sw-hairline);
+    font: var(--sw-type-body); color: var(--sw-ink); cursor: pointer;
+  }
+  .radio-row input {
+    appearance: none; flex: none; width: 20px; height: 20px; margin: 0;
+    border: 1.5px solid var(--sw-control-edge); border-radius: 50%; background: var(--sw-surface);
+  }
+  .radio-row input:checked { border: 6px solid var(--sw-ink); }
+  .sheet__note { margin-top: 12px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); }
+  .sheet__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+  .sheet__actions .btn { height: var(--sw-control-h-phone); }
+}

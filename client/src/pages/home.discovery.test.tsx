@@ -34,11 +34,11 @@ describe("landing discovery and search metadata", () => {
 
   it("answers the pre-signup questions in visible copy and in FAQ structured data", () => {
     render(<Home />);
-    expect(screen.getByText("Are job referrals really free?")).toBeTruthy();
+    expect(screen.getByText("What does asking for a referral cost?")).toBeTruthy();
     const jsonLd = JSON.parse(document.getElementById("route-jsonld")?.textContent ?? "{}");
     expect(jsonLd["@type"]).toBe("FAQPage");
     expect(jsonLd.mainEntity).toHaveLength(4);
-    expect(jsonLd.mainEntity[0].name).toBe("Are job referrals really free?");
+    expect(jsonLd.mainEntity[0].name).toBe("What does asking for a referral cost?");
   });
 
   it("links the kit footer set plus the payment-provider policy pages (refunds, cancellation, shipping, contact) (Help & safety lives in the header)", () => {

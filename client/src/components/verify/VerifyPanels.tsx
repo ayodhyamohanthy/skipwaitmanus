@@ -53,7 +53,7 @@ export function VerifyAside({ company }: { company: VerifyCompany | undefined })
   const name = company?.name ?? "your company";
   return (
     <aside className="space-y-4">
-      <div className="rounded-3xl bg-muted p-5"><span className="eyebrow">WHY A CODE?</span><p className="mt-2 text-sm">It proves you can receive email at {name} today. It doesn&apos;t prove your role or that {name} endorses SkipWait.</p></div>
+      <div className="rounded-3xl bg-muted p-5"><span className="eyebrow">WHY A CODE?</span><p className="mt-2 text-sm">It proves you can receive email at {name} today. It doesn&apos;t prove your role or that {name} endorses skipwait.me.</p></div>
       <div className="rounded-3xl border border-border p-5 text-sm">
         <span className="eyebrow">WE STORE</span>
         <ul className="mt-2 space-y-2">
