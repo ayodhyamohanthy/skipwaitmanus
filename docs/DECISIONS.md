@@ -191,3 +191,18 @@ Earlier questions: referrer tips (seeker→referrer money) · machine translatio
 - The Kit v4 visual contract (`DESIGN.md`), D-001's PNG fidelity for visuals and layout, and D-044's "the kit governs layout" → D-048 (goal-focused UI; designs approved by the owner before rollout).
 - D-013's "40-task kit order" → D-053 (goal order; developer platform, lite mode and T2–T4 pricing parked).
 - D-030's seeker email method (six-digit code) → D-049 (social or personal email + password; no code). D-002 is revived for seekers only; referrers keep the work-email code on every sign-in.
+
+
+## D-144 (proposed - pending owner registration). Skippy's seeker chat never invents, never charges, and always goes through the normal ask
+Proposed by the step-2 build from the delegated task brief and the founder's two steers ("help him get the referral 100%, help him make a 100% great referral taking the job requirements" and "help him generate a new resume if he agrees that he know the concepts"), both relayed by the coordinating agent. The owner has not yet registered this as a decision; the rules below are what the code enforces and what QA proves, and this entry becomes a decision only when the owner confirms it.
+
+- **The chat creates asks through the same function as the ask page.** The "Send it" step calls `db.createCompanyReferralRequest` with the normal after-create work (referrer email/Slack, /requests, activity log, D-114 outbox); it never charges in the chat. There is no parallel path.
+- **The cost in the chat is the live price.** It is computed with the quote route's own math (`assignJobLevel` + `creditsForLevel` + `getCreditSummary`), never hardcoded (D-132). If the seeker is short, the chat shows the shortfall and links /plans.
+- **No referrer yet still means held, never free.** An uncovered ask from the chat stays at "waiting for company coverage" and spends credits at first visibility, exactly like the ask page (D-034, D-047).
+- **The seeker writes or confirms the note, and only those words are sent.** Skippy may suggest and may flag weak or unsupported parts, but the seeker's confirmed text is what the ask carries; a note edited after confirmation is refused at send and must be re-confirmed.
+- **Reading the resume with the AI model needs the seeker's yes first.** Without consent the chat still works; it just does not read the file.
+- **Skippy never invents.** Every suggested note line must quote the resume text it stands on, and a line with no grounding is dropped (D-076). Skippy never promises a referral: it says the ask was sent, not that someone will refer.
+- **A tailored resume is appended to, never rewritten, and only from confirmed skills.** The original file is kept. A skill enters the tailored copy only after the seeker confirms they know it; the seeker approves the final text before it is used.
+- **The referrer sees no more than the normal flow shows.** Name, resume and note stay hidden until the referrer accepts (D-022).
+- **Job pages and notes are data, never instructions.** Text pasted from a job post or resume is never treated as a command.
+- **Scope and limits.** Ask-only (no payments, no account changes, no messages to referrers), 20 messages per person per day, off unless `SKIPPIE_SEEKER_ENABLED` is set, and then visible only to the test-seeker accounts in `SKIPPIE_SEEKER_USER_IDS` until proved (QA before any wider list).

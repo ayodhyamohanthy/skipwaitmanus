@@ -1,5 +1,6 @@
 import { setRetryAfter } from "./retryAfter";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
+import { dispatchReferralReviewDeliveries } from "./referralReviewDispatch";
 import { buildClaimedAskDetailView, claimResponseView } from "./referrerAskView";
 import { isOpenAskAttachment, toLockedAskAttachment } from "../shared/referrerAskView";
 import { captureServerError } from "./sentry";
@@ -753,37 +754,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         : opportunityAskSelectionSchema.safeParse({ opportunityId: req.body.opportunityId });
       if (opportunitySelection && !opportunitySelection.success) return res.status(400).json({ error: "That opening is no longer available. Refresh the company page and choose again." });
       const result = await deps.createCompanyReferralRequest(identity.account.id, { ...(selectedCompany ? { selectedCompany: { name: selectedCompany.name, domains: selectedCompany.domains } } : {}), ...(opportunitySelection?.success ? { opportunityId: opportunitySelection.data.opportunityId } : {}), targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias, submittedTargetRoleUrl: targetRoleUrl.trim(), ...(chosenFunction.data ? { jobFunction: chosenFunction.data } : {}) });
-      // Referrer email + Slack delivery runs after the response: the ask is already committed, each send has a durable claim/lease row, and every outcome (with elapsedMs) goes to the audit log, so a slow or dead send never holds the seeker on "Sending your ask...".
-      const dispatchReviewDeliveries = async () => {
-      const t0 = Date.now();
-      let reviewLinks: Array<{ referrerId: number; email: string; linkToken: string; companyDomain: string }> = [];
-      if (!result.replayed && deps.prepareReferrerReviewEmailNotifications) {
-        try {
-          reviewLinks = await deps.prepareReferrerReviewEmailNotifications(result.requestId);
-          const reviewEmailSender = deps.sendReferrerReviewEmail ?? sendReferrerReviewEmail;
-          const origin = publicOutboundOrigin(req);
-          const delivery = await Promise.all(reviewLinks.map(async link => { const leaseOwner=randomUUID();const claim=deps.claimReferralReviewDelivery?await deps.claimReferralReviewDelivery(result.requestId,link.referrerId,"email",leaseOwner):{id:0};if(!claim)return{sent:false,reason:"already_claimed"};try{const sent=await reviewEmailSender({to:link.email,companyDomain:link.companyDomain,reviewUrl:`${origin}/email-review/${encodeURIComponent(link.linkToken)}`});await deps.completeReferralReviewDelivery?.(claim.id,leaseOwner,{status:sent.sent?"sent":"failed",error:sent.sent?undefined:sent.reason});return sent;}catch(error){await deps.completeReferralReviewDelivery?.(claim.id,leaseOwner,{status:"unknown",error:error instanceof Error?error.message:"delivery interrupted"});throw error;}}));
-          const sentCount = delivery.filter(item => item.sent).length;
-          record({ actorUserId: identity.account.id, action: "company_referral.review_email_dispatched", outcome: sentCount === reviewLinks.length ? "success" : "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { intendedRecipientCount: reviewLinks.length, sentCount, elapsedMs: Date.now() - t0 } });
-        } catch (error) { record({ actorUserId: identity.account.id, action: "company_referral.review_email_dispatched", outcome: "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain , metadata: { error: error instanceof Error ? error.message : "dispatch failed", elapsedMs: Date.now() - t0 } }); }
-      }
-      if (deps.getActiveReferrerSlackWebhooks && reviewLinks.length > 0) {
-        try {
-          const slackTargets = await deps.getActiveReferrerSlackWebhooks(reviewLinks.map(link => link.referrerId));
-          const slackSender = deps.sendReferrerSlackDelivery ?? sendReferrerSlackDelivery;
-          const origin = publicOutboundOrigin(req);
-          const slackDelivery = await Promise.all(slackTargets.map(async target => {
-            const link = reviewLinks.find(item => item.referrerId === target.referrerId);
-            if (!link) return { sent: false as const, reason: "not_configured" as const };
-            const leaseOwner=randomUUID();const claim=deps.claimReferralReviewDelivery?await deps.claimReferralReviewDelivery(result.requestId,target.referrerId,"slack",leaseOwner):{id:0};if(!claim)return{sent:false as const,reason:"already_claimed" as const};
-            try{const sent=await slackSender({to:target.webhookUrl,companyDomain:link.companyDomain,reviewUrl:`${origin}/email-review/${encodeURIComponent(link.linkToken)}`});await deps.completeReferralReviewDelivery?.(claim.id,leaseOwner,{status:sent.sent?"sent":"failed",error:sent.sent?undefined:sent.reason});return sent;}catch(error){await deps.completeReferralReviewDelivery?.(claim.id,leaseOwner,{status:"unknown",error:error instanceof Error?error.message:"delivery interrupted"});return{sent:false as const,reason:"delivery_failed" as const};}
-          }));
-          const slackSentCount = slackDelivery.filter((item: { sent: boolean }) => item.sent).length;
-          record({ actorUserId: identity.account.id, action: "company_referral.review_slack_dispatched", outcome: slackSentCount === slackTargets.length ? "success" : "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { intendedRecipientCount: slackTargets.length, sentCount: slackSentCount, elapsedMs: Date.now() - t0 } });
-        } catch (error) { record({ actorUserId: identity.account.id, action: "company_referral.review_slack_dispatched", outcome: "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain , metadata: { error: error instanceof Error ? error.message : "dispatch failed", elapsedMs: Date.now() - t0 } }); }
-      }
-      };
-      void dispatchReviewDeliveries().catch(error => record({ actorUserId: identity.account.id, action: "company_referral.review_dispatch_crashed", outcome: "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { error: error instanceof Error ? error.message : "dispatch crashed" } }));
+      // Referrer email + Slack delivery runs after the response (shared dispatcher, D-137):
+      // the ask is already committed, each send has a durable claim/lease row, and every
+      // outcome (with elapsedMs) goes to the audit log, so a slow or dead send never holds
+      // the seeker on "Sending your ask...".
+      dispatchReferralReviewDeliveries({ deps, record, origin: publicOutboundOrigin(req), result, actorUserId: identity.account.id });
       const requests = await deps.listJobSeekerCompanyReferrals?.(identity.account.id);
       const lifetimeRequestCount = Array.isArray(requests) ? requests.length : undefined;
       record({ actorUserId: identity.account.id, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { attachmentCount: attachmentIds.length, notifiedEmployees: result.notifiedEmployees, creditReserved: result.coverageStatus !== "waiting_for_company_coverage", coverageStatus: result.coverageStatus ?? "covered", fastTrack: Boolean(result.fastTrack), fromPost: Boolean(result.fromPost), firstLook: Boolean(result.firstLook), jobFunctionChosen: Boolean(chosenFunction.data) } });
