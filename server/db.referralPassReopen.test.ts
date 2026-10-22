@@ -205,7 +205,7 @@ function fixtureDatabase() {
 /** A verified Acme employee (referrerId 9 claims; referrerId 10 is another employee). */
 const profileRow = (userId: number) => ({ id: userId, userId, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: NOW, paused: false, notifyNewAsk: true });
 
-const requestRow = (over: Row = {}): Row => ({ id: 501, jobSeekerId: 7, jobId: 3, referrerId: 9, personalPitch: "I led two launches.", status: "pending", revision: 4, referrerMessage: null, createdAt: new Date("2026-10-14T12:00:00.000Z"), updatedAt: new Date("2026-10-14T12:00:00.000Z"), debitTransactionId: 11, ...over });
+const requestRow = (over: Row = {}): Row => ({ id: 501, jobSeekerId: 7, jobId: 3, referrerId: 9, personalPitch: "I led two launches.", status: "pending", revision: 4, referrerMessage: null, waitingForCoverage: false, coverageVisibleAt: null, coverageHeldAt: null, createdAt: new Date("2026-10-14T12:00:00.000Z"), updatedAt: new Date("2026-10-14T12:00:00.000Z"), debitTransactionId: 11, ...over });
 
 function seed() {
   rows = {
@@ -300,6 +300,14 @@ describe("a claimed decline reopens the ask (D-021)", () => {
     expect(String(seekerNotice().body)).toContain("Your request stays active for other employees.");
     expect(String(seekerNotice().body)).not.toContain("open again");
   });
+
+  it("records a D-052 reason code and names the reason to the seeker, never the referrer", async () => {
+    await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "cannot_support", passReason: "only_refer_known" });
+
+    expect(rows.referralRequestPasses).toEqual([expect.objectContaining({ referrerId: 9, reason: "cannot_support", reasonCode: "only_refer_known" })]);
+    expect(String(seekerNotice().body)).toContain("(I only refer people I know)");
+    expect(ask()).toMatchObject({ status: "pending", referrerId: null });
+  });
 });
 
 describe("the claimed-review decline is the same pass (D-021)", () => {
@@ -350,6 +358,13 @@ describe("attachment lookup scopes the requested file before limiting", () => {
   });
 
   it("preserves assigned-referrer grant, expiry and pass checks", async () => {
+    // D-019(e): the claimed ask is still pending, so its active claim-era grant opens nothing.
+    expect(await getAccessibleReferralAttachment(9, 72)).toBeUndefined();
+    ask().status = "approved";
+    // Approved without referrer 9's own acceptance (an administrator approved the claim before ee226f3): still nothing.
+    expect(await getAccessibleReferralAttachment(9, 72)).toBeUndefined();
+    // Referrer 9's own acceptance, older than 30 days, so the grant's window decides each check below.
+    rows.referralTransitionEvents.push({ id: 1, referralRequestId: 501, operationKey: "one-click:9:approved", actorUserId: 9, action: "approve", fromStatus: "pending", resultingStatus: "approved", resultingRevision: 5, referenceId: null, createdAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000) });
     expect(await getAccessibleReferralAttachment(9, 72)).toMatchObject({ id: 72 });
     rows.referralDocumentAccessGrants[0].expiresAt = new Date(0);
     expect(await getAccessibleReferralAttachment(9, 72)).toBeUndefined();

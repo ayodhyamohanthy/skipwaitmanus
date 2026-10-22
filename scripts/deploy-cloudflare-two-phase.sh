@@ -37,9 +37,30 @@ deploy 1
 if [[ -n "${NEWDB_PASSWORD:-}" ]]; then
   : "${NEWDB_HOST:?}" "${NEWDB_USER:?}"
   enc=$(NEWDB_PASSWORD="$NEWDB_PASSWORD" node -e 'process.stdout.write(encodeURIComponent(process.env.NEWDB_PASSWORD))')
-  printf '%s' "mysql://${NEWDB_USER}:${enc}@${NEWDB_HOST}:3306/skipwait" | npx wrangler secret put DATABASE_URL >/dev/null \
-    || { echo '::error::Could not set DATABASE_URL to the new database'; exit 5; }
-  echo "DATABASE_URL set to ${NEWDB_HOST}/skipwait (value not printed)"
+  # Cloudflare briefly refuses secret edits right after a version deploy
+  # ("latest version isn't currently deployed"); retry until the version settles.
+  secret_set=0
+  for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    if printf '%s' "mysql://${NEWDB_USER}:${enc}@${NEWDB_HOST}:3306/skipwait" | npx wrangler secret put DATABASE_URL >/dev/null 2>&1; then
+      secret_set=1
+      break
+    fi
+    echo "DATABASE_URL secret put attempt ${attempt} failed; retrying in 20s"
+    sleep 20
+  done
+  if [[ "$secret_set" != "1" ]]; then
+    # Cloudflare refuses secret edits while the newest Worker version is another branch's PR preview
+    # upload (error 10215). The code already shipped in phase 1. If the secret already exists on the
+    # Worker, the production database is already wired, so warn loudly and let the exact-SHA readiness
+    # gate below decide. If it does not exist, fail: the Worker would have no database.
+    if npx wrangler secret list 2>/dev/null | grep -q '"name": "DATABASE_URL"'; then
+      echo "::warning::DATABASE_URL secret put was refused after 12 attempts (a PR preview upload was the newest Worker version). The secret already exists, so it was NOT refreshed this run. If the database password was rotated, re-run this workflow."
+    else
+      echo '::error::Could not set DATABASE_URL to the new database'; exit 5
+    fi
+  else
+    echo "DATABASE_URL set to ${NEWDB_HOST}/skipwait (value not printed)"
+  fi
 fi
 # Worker-version activation plus container cold start (edge image pull + node
 # boot + first schema pass) takes 15-40 minutes to converge on live traffic;

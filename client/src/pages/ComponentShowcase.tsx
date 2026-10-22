@@ -1,3 +1,4 @@
+import { GoalGallery } from "@/components/goal/dev/GoalGallery";
 import {
   Accordion,
   AccordionContent,
@@ -174,6 +175,7 @@ import { toast as sonnerToast } from "sonner";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
 
 export default function ComponentsShowcase() {
+  if (window.location.hash === "#goal-ui") return <GoalGallery />;
   const { theme, toggleTheme } = useTheme();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [datePickerDate, setDatePickerDate] = useState<Date>();

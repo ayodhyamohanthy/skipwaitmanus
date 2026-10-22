@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-005, D-039, D-048, D-049, D-053, D-059, D-067; D-120 (Oct 21) retires Kit v4 outright - the PNGs below are history, not a spec).
+
 # Kit v4 screen audit — every PNG, fullstack
 
 Audited Oct 9 2026 on production `main` (1fc4214) at 1280 (web) and 390 @2x (mobile) with `scripts/kit-screens/capture.mjs`, against `screens/web` (105 PNGs) and `screens/mobile` (106 PNGs; `03_sign-in__step1-continue-with-email` is mobile-only).
@@ -379,7 +381,7 @@ Kinds: **data** = needs server data, tables, endpoints or jobs; **ui** = markup,
 - preview scaffolding not shipped: 1 item(s)
 
 ### `12_referrer-home__re-verify-due`
-- **reversal** (both) — feature `work-email-reverify`: kit: 'Re-verify your Wipro email within 5 days to keep receiving asks.' · live: 'Re-verify your Wipro email soon to keep receiving asks.' (a client-only nudge 76 days after workEmailVerifiedAt; · fix: Read reverify.daysLeft from the server and render 'within {n} day(s)'.
+- **reversal** (both) — feature `work-email-reverify`: kit: 'Re-verify your Wipro email within 5 days to keep receiving asks.' · live: 'Re-verify your Wipro email soon to keep receiving asks.' (a client-only nudge 76 days after workEmailVerifiedAt; · fix: Read reverify.daysLeft from the server and render 'within {n} day(s)'. **Done (#229, Oct 15):** `shared/reverify.ts` carries the policy (`REVERIFY_DAYS 90`, grandfathering epoch 2026-10-16) and the referrer home renders "within {n} day(s)" from it.
 - **data** (both) — feature `ask-quality-signals`: kit: Rows with role title / function · ask strength · live: 'Private ask · Ref-…' / 'Wipro · 1 file attached' · fix: Same as default.
 - **data** (both) — feature `thank-you-wall`: kit: Thank-you wall + Thank-yous metric · live: Invite card; · fix: thank-you-wall.
 - **reversal** (both): kit: Ghost 'Become a referrer' · live: Hidden · fix: Always render it.
@@ -398,8 +400,8 @@ Kinds: **data** = needs server data, tables, endpoints or jobs; **ui** = markup,
 ### `14_verify__default`
 - **data** (both) — feature `company-directory`: kit: Company grid of real verifiable companies with their domains · live: Grid from the static client constant LAUNCH_COMPANIES (client/src/lib/companies.ts). · fix: Load the list from GET /api/companies?purpose=verify.
 - **reversal** (both) — feature `work-email-hmac-storage`: kit: WE STORE: 'A one-way fingerprint of your email' · live: 'Your work email, kept private' (workEmailOtpCodes and workEmailOtpReceipts hold the plaintext email and are never purged) · fix: Store an HMAC of the email, purge plaintext and spent rows, then use the kit line verbatim. **Done (Freebuff, Oct 16):** the fingerprint is unconditional, `work-email-otp-purge` rewrites legacy plaintext and drops spent rows hourly, and the verify aside ships the kit line.
-- **reversal** (both) — feature `work-email-reverify`: kit: LEFT YOUR COMPANY?: 'Your badge is removed at the next re-check. · live: 'Pass on open requests so seekers get a kind note, then ask us through Help to remove your badge.' · fix: Build the 90-day re-check that removes the badge and returns claimed asks with a kind note, then use the kit copy.
-- **reversal** (both) — feature `work-email-reverify`: kit: Kit source, Verified (done) state: 'Verified via work email · Design', 'We'll ask you to re-verify every 90 days, or sooner if your company email stops working.', outline 'View my profile' (→ /p/:handle) · live: 'Verified via work email' (no function), 'Your badge stays on your account. · fix: Show the primary function (function-taxonomy / preferAreas[0]) when set, the kit re-verify sentence once re-verification is live, and link to /p/{handle}.
+- **reversal** (both) — feature `work-email-reverify`: kit: LEFT YOUR COMPANY?: 'Your badge is removed at the next re-check. · live: 'Pass on open requests so seekers get a kind note, then ask us through Help to remove your badge.' · fix: Build the 90-day re-check that removes the badge and returns claimed asks with a kind note, then use the kit copy. **Parked (PR 2, founder):** the enforcement is designed and parked in `docs/PAYMENTS_TEST_RUNBOOK.md` ("revisit early January 2027, or sooner if referral volume matters"; ships only after QA and an explicit OK). Until then the Help copy stays the truthful path.
+- **reversal** (both) — feature `work-email-reverify`: kit: Kit source, Verified (done) state: 'Verified via work email · Design', 'We'll ask you to re-verify every 90 days, or sooner if your company email stops working.', outline 'View my profile' (→ /p/:handle) · live: 'Verified via work email' (no function), 'Your badge stays on your account. · fix: Show the primary function (function-taxonomy / preferAreas[0]) when set, the kit re-verify sentence once re-verification is live, and link to /p/{handle}. **Partly done (#229, Oct 15):** the panel names the primary function when one is saved and "View my profile" links `/p/{handle}`; the 90-day re-verify sentence waits for the parked enforcement (PR 2) so the copy never promises a check that does not run.
 - preview scaffolding not shipped: 1 item(s)
 
 ### `14_verify__step1-continue`
@@ -407,8 +409,8 @@ Kinds: **data** = needs server data, tables, endpoints or jobs; **ui** = markup,
 - preview scaffolding not shipped: 1 item(s)
 
 ### `14_verify__step2-send-code`
-- **reversal** (both) — feature `otp-policy-kit`: kit: 'Resend in 0:30' · live: 'Resend in 1:00' (the server limits sends to 1 per email per fixed 60s window, plus 3 per 10 min) · fix: Use a 30s server cooldown that returns retryAfterSeconds, and set the client RESEND_SECONDS from the response.
-- **reversal** (both) — feature `otp-policy-kit`: kit: Kit lockout state: 'Too many tries. · live: 'Too many tries. · fix: Add a server-side 15-minute lockout after 5 failures that returns lockedUntil and attemptsRemaining, then use the kit copy.
+- **reversal** (both) — feature `otp-policy-kit`: kit: 'Resend in 0:30' · live: 'Resend in 1:00' (the server limits sends to 1 per email per fixed 60s window, plus 3 per 10 min) · fix: Use a 30s server cooldown that returns retryAfterSeconds, and set the client RESEND_SECONDS from the response. **Done (#225, Oct 15):** `server/otpPolicy.ts` sets `OTP_RESEND_COOLDOWN_SECONDS = 30`, the send route returns `retryAfterSeconds`, and the client counts down on the same 30 s policy.
+- **reversal** (both) — feature `otp-policy-kit`: kit: Kit lockout state: 'Too many tries. · live: 'Too many tries. · fix: Add a server-side 15-minute lockout after 5 failures that returns lockedUntil and attemptsRemaining, then use the kit copy. **Done (#225, Oct 15):** 15-minute lockout after 5 wrong codes per email+IP (`OtpLockedError` → 429) plus a large per-IP spray lock; the client shows the kit lock copy ("Too many tries. For your safety, wait 15 minutes, then send a new code.") with attempts remaining.
 - **ui** (both): kit: Disabled 'Verify' is the faded primary (blue at reduced opacity). · live: Grey #e0e0e0 with dark text and border, from 'button:disabled {… !important}' (client/src/index.css:177). · fix: This conflicts with AGENTS.md ('no faded disabled controls'), and the rule is global, not a recorded founder call.
 - preview scaffolding not shipped: 1 item(s)
 
@@ -577,7 +579,7 @@ Kinds: **data** = needs server data, tables, endpoints or jobs; **ui** = markup,
 - preview scaffolding not shipped: 1 item(s)
 
 ### `22_assistants__momentum-or-start`
-- **reversal** (both) — feature `assistant-land-entitlement`: kit: 'Assistants and API tokens come with Land' / 'Land and Concierge members can sign in, connect and apply from ChatGPT, Claude, bots and their own tools.' / 'Upgrade to Land' · live: '…come with Max' / 'Max members can…' / 'Upgrade to Max' · fix: Kit copy verbatim in PlanGate.
+- **reversal** (both) — feature `assistant-land-entitlement`: kit: 'Assistants and API tokens come with Land' / 'Land and Concierge members can sign in, connect and apply from ChatGPT, Claude, bots and their own tools.' / 'Upgrade to Land' · live: '…come with Max' / 'Max members can…' / 'Upgrade to Max' · fix: Kit copy verbatim in PlanGate. (D-067 review round 2: the 'Upgrade to Land' button is held back, replaced by the line 'Land is not on sale yet. It arrives with the 30 and 90-day passes.', until /plans sells Land.)
 - preview scaffolding not shipped: 1 item(s)
 
 ### `23_approve__declined`
@@ -641,7 +643,7 @@ Kinds: **data** = needs server data, tables, endpoints or jobs; **ui** = markup,
 - preview scaffolding not shipped: 1 item(s)
 
 ### `24_connect-assistant__not-on-land`
-- **reversal** (both) — feature `assistant-land-entitlement`: kit: 'Assistants need Land' / '…is part of Land and Concierge.' / 'Upgrade to Land' · live: 'Assistants need Max' / '…is part of Max.' / 'Upgrade to Max' · fix: Kit copy verbatim.
+- **reversal** (both) — feature `assistant-land-entitlement`: kit: 'Assistants need Land' / '…is part of Land and Concierge.' / 'Upgrade to Land' · live: 'Assistants need Max' / '…is part of Max.' / 'Upgrade to Max' · fix: Kit copy verbatim. (D-067 review round 2: 'Upgrade to Land' is held back the same way until /plans sells Land; 'Keep using SkipWait yourself' stays.)
 - **data** (both) — feature `assistant-land-entitlement`: kit: A non-Land member arriving from ChatGPT sees this screen · live: In OAuth mode the unverified stage wins the race (the plan check only replaces 'consent'). · fix: Resolve access before choosing the stage (the plan gate takes precedence).
 - preview scaffolding not shipped: 1 item(s)
 
@@ -995,7 +997,7 @@ Kinds: **data** = needs server data, tables, endpoints or jobs; **ui** = markup,
 | `app-display-preferences` | S | 1 | Settings → App Dark mode (sw-theme, defaulting to the system setting) and a Reduce motion override, using the existing .dark tokens. | Choose whether the Dark mode hint keeps the kit wording 'Preview — some older screens are still being tuned'. |
 | `ask-company-context` | S | 1 | Resolves the company and team (function) the seeker is asking about before sending, for the kit eyebrow 'NEW ASK · WIPRO · DESIGN', the careers-domain placeholder, function-scoped routing and the sent… | — |
 | `assistant-land-entitlement` | S | 4 | Gate assistants, tokens, OAuth and the developer console on the kit Land tier (Land / Land Sprint / Land Concierge) instead of the live 'max' plan, and switch all Max copy to Land. | Decide whether existing Max subscribers keep assistant access. |
-| `company-demand` | S | 1 | Seeker 'Request a company' becomes a counted demand signal with an optional work function. | — |
+| `company-demand` | S | 1 | Seeker 'Request a company' becomes a counted demand signal with an optional work function. | **Done (Qoder, Oct 17, §3b row 20 slice B, PR #311):** `createCompanySuggestion` records one vote per seeker (a repeat returns the seeker's own row unless a reviewer dismissed it, a second seeker is counted instead of rejected with 400 'This company was already suggested and is under review'), carries the optional `jobFunction` (0104), and `/admin-review` shows the distinct-seeker count and function per company. Owner action: apply `drizzle/deploy/0104_company_suggestion_demand.sql` needs no manual apply step: the deploy pipeline runs `migrate-db` before the container, and `server/schemaReconcile.ts` also carries the column. |
 | `developer-app-usage-stats` | S | 1 | Real per-app counts on App details: connected users, asks sent via the app, approval rate. | — |
 | `error-reference` | S | 1 | Real error references on error screens, from the Sentry event id or a server-logged client ref, plus the kit error design in the real boundaries. | — |
 | `explore-kit-polish` | S | 4 | Markup and copy fixes so the explore screens match the kit: 'Request a company' links to /invite; | — |

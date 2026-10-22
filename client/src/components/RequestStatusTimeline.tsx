@@ -19,13 +19,15 @@ function formatStamp(value: string | null) {
   return formatDayTime(value);
 }
 
-export function buildRequestTimeline(request: { status: ReferralStatus; referrerId: number | null; createdAt: string; updatedAt: string; queueStatus?: "available_for_review" | "waiting_for_coverage" | null }): TimelineEntry[] {
+export function buildRequestTimeline(request: { status: ReferralStatus; referrerId: number | null; createdAt: string; updatedAt: string; queueStatus?: "available_for_review" | "waiting_for_coverage" | "held_for_credit" | null }): TimelineEntry[] {
   const sent: TimelineEntry = { label: "Request sent", date: request.createdAt, tone: "green", state: "done" };
-  if (request.status === "withdrawn") return [sent, { label: "Withdrawn — credit returned", date: request.updatedAt, tone: "slate", state: "done" }];
+  // A withdrawal frees the open slot in every case; the credit only comes back
+  // when no employee had picked the ask up, so the timeline never claims a return.
+  if (request.status === "withdrawn") return [sent, { label: "Withdrawn — slot freed", date: request.updatedAt, tone: "slate", state: "done" }];
   const claimed = Boolean(request.referrerId);
   const claimedEntry: TimelineEntry = claimed
     ? { label: request.status === "pending" && request.queueStatus === "available_for_review" ? "Available to a verified employee" : "Claimed by a verified employee", date: request.status === "pending" ? request.updatedAt : null, tone: "blue", state: "done" }
-    : { label: request.queueStatus === "waiting_for_coverage" ? "Waiting for company coverage" : "Waiting for a verified employee", date: null, tone: "slate", state: "waiting" };
+    : { label: request.queueStatus === "waiting_for_coverage" ? "Waiting for company coverage" : request.queueStatus === "held_for_credit" ? "An employee can see asks — adding a credit is the next step" : "Waiting for a verified employee", date: null, tone: request.queueStatus === "held_for_credit" ? "amber" : "slate", state: "waiting" };
   if (request.status === "pending") return [sent, claimedEntry, { label: "Decision", date: null, tone: "slate", state: "waiting" }];
   if (request.status === "declined") return [sent, claimedEntry, { label: "Declined", date: request.updatedAt, tone: "red", state: "done" }];
   const decided: TimelineEntry = { label: "Referral accepted", date: request.status === "approved" ? request.updatedAt : null, tone: "green", state: "done" };

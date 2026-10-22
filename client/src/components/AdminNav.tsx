@@ -1,4 +1,4 @@
-import { Activity, CheckSquare, CreditCard, Database, Gauge, HeartPulse, ShieldCheck, UsersRound, Wallet, EyeOff, Handshake } from "lucide-react";
+import { Activity, CheckSquare, CreditCard, Database, Gauge, HeartPulse, ShieldCheck, UsersRound, Wallet, EyeOff, Handshake, MessageCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Brand } from "@/components/Brand";
 import { Link } from "wouter";
@@ -12,12 +12,13 @@ import { Link } from "wouter";
  * quiet pills. On narrow viewports the row scrolls horizontally instead of
  * wrapping into a wall of buttons.
  */
-export type AdminSection = "overview" | "approvals" | "payments" | "privacy-requests" | "token-recovery" | "activity" | "flow-health" | "users" | "partners" | "schema";
+export type AdminSection = "overview" | "approvals" | "payments" | "catalog" | "privacy-requests" | "token-recovery" | "activity" | "flow-health" | "users" | "partners" | "schema" | "money-check" | "skippy";
 
 const sections: Array<{ id: AdminSection; href: string; label: string; icon: LucideIcon }> = [
   { id: "overview", href: "/admin", label: "Overview", icon: Gauge },
   { id: "approvals", href: "/admin/approvals", label: "Approvals", icon: CheckSquare },
   { id: "payments", href: "/admin/payments", label: "Payment reviews", icon: CreditCard },
+  { id: "catalog", href: "/admin/catalog-sync", label: "Catalog sync", icon: Database },
   { id: "partners", href: "/admin/partners", label: "Partners", icon: Handshake },
   { id: "privacy-requests", href: "/admin/privacy-requests", label: "Privacy requests", icon: EyeOff },
   { id: "token-recovery", href: "/admin/token-recovery", label: "Token recovery", icon: Wallet },
@@ -25,6 +26,8 @@ const sections: Array<{ id: AdminSection; href: string; label: string; icon: Luc
   { id: "flow-health", href: "/admin/flow-health", label: "Flow health", icon: HeartPulse },
   { id: "users", href: "/admin/users", label: "Users", icon: UsersRound },
   { id: "schema", href: "/admin/schema", label: "Schema", icon: Database },
+  { id: "money-check", href: "/admin/money-check", label: "Money check", icon: Wallet },
+  { id: "skippy", href: "/admin/skippie", label: "Skippy", icon: MessageCircle },
 ];
 
 export function AdminNav({ current, badge = "Admin only" }: { current: AdminSection; badge?: string }) {

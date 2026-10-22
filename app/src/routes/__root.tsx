@@ -19,7 +19,7 @@ function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-5">
       <div className="max-w-md text-center">
-        <p className="wordmark text-2xl">SkipWait<span className="brand-dot">.</span></p>
+        <p className="wordmark text-2xl">skipwait<span className="brand-dot">.</span>me</p>
         <h1 className="mt-8 text-4xl font-semibold text-foreground">This door doesn't lead anywhere.</h1>
         <p className="mt-3 text-muted-foreground">The page may have moved, or the link was mistyped.</p>
         <div className="mt-8 flex flex-wrap justify-center gap-2">
@@ -41,7 +41,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-5">
       <div className="max-w-md text-center">
-        <p className="wordmark text-2xl">SkipWait<span className="brand-dot">.</span></p>
+        <p className="wordmark text-2xl">skipwait<span className="brand-dot">.</span>me</p>
         <h1 className="mt-8 text-3xl font-semibold text-foreground">Something went wrong on our side.</h1>
         <p className="mt-3 text-muted-foreground">Nothing you did. Your asks and messages are safe.</p>
         <div className="mt-8 flex flex-wrap justify-center gap-2">
@@ -58,9 +58,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "SkipWait — A warmer way in" },
+      { title: "skipwait.me — A warmer way in" },
       { name: "description", content: "Private connections. Free job referrals. A warmer way to your next chapter." },
-      { name: "author", content: "SkipWait" },
+      { name: "author", content: "skipwait.me" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

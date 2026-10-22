@@ -10,6 +10,7 @@
 // makes a replayed step fail loudly instead of applying twice. Dates come from
 // the JS clock the caller passes in (invariant 5), never from DB NOW().
 import { createHash } from "node:crypto";
+import { isDuplicateKeyError } from "./dbErrors";
 import { and, eq } from "drizzle-orm";
 import type { MySql2Database } from "drizzle-orm/mysql2";
 import { planCreditGrants, promoCreditGrants, tokenBalances, tokenTransactions } from "../drizzle/schema";
@@ -18,7 +19,7 @@ import { REVERSE_TRIAL } from "../shared/planCatalog";
 import { allocateSpend, buildCreditsLedger, spendableBuckets, usedInCycle, type SpendAllocation } from "../shared/creditSpend";
 import type { Carryover } from "../shared/planCatalog";
 import { planEntitlementsFor } from "../shared/planEntitlements";
-import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan } from "../shared/subscriptionPlans";
+import { FREE_MONTHLY_ALLOWANCE, currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 
 /** The transaction db.ts opens (drizzle(pool) without a relational schema). */
 export type LedgerTx = Parameters<Parameters<MySql2Database<Record<string, unknown>>["transaction"]>[0]>[0];
@@ -45,15 +46,17 @@ export class InsufficientCreditsError extends Error {
 
 /**
  * The credit rules of the plan that grants a cycle. Seekers follow the kit
- * plans (legacy Pro/Max grandfathered at Start/Momentum); referrer wallets keep
- * the pre-kit rules: the plan's allowance each term, Free 3 a month, no carryover.
+ * plans (a retired Pro/Max id or any id outside the catalog reads as Free,
+ * D-067); referrer wallets keep the pre-kit rule: Free's 3 a month whatever
+ * the plan, no carryover (the Pro/Max allowance that was the only exception is
+ * gone with those plans).
  */
 export function cycleRulesFor(plan: string, role: WalletRole): CycleRules {
   if (role === "job_seeker") {
     const entitlements = planEntitlementsFor(plan);
     return { creditsPerMonth: entitlements.creditsPerMonth, carryover: entitlements.carryover };
   }
-  return { creditsPerMonth: isPaidSubscriptionPlan(plan) ? SUBSCRIPTION_PLANS[plan].monthlyAllowance : FREE_MONTHLY_ALLOWANCE, carryover: 0 };
+  return { creditsPerMonth: FREE_MONTHLY_ALLOWANCE, carryover: 0 };
 }
 
 /**
@@ -73,17 +76,14 @@ export function digest(...parts: Array<string | number>): string {
   return createHash("sha256").update(parts.join("|")).digest("hex").slice(0, 40);
 }
 
-function isDuplicateKey(error: unknown): boolean {
-  const seen = new Set<unknown>();
-  let current: unknown = error;
-  while (current && typeof current === "object" && !seen.has(current)) {
-    seen.add(current);
-    const typed = current as { code?: unknown; errno?: unknown; cause?: unknown };
-    if (typed.code === "ER_DUP_ENTRY" || typed.errno === 1062) return true;
-    current = typed.cause;
-  }
-  return false;
-}
+/** A unique-key collision, read through drizzle's DrizzleQueryError wrapper (the mysql2 error is its cause). */
+export { isDuplicateKeyError };
+/**
+ * The ledger's name for the shared check. Existing ledger call sites and the
+ * source pins in `paymentWalletConcurrency.test.ts` read this name; both names
+ * are the same cause-walking function from `dbErrors.ts`.
+ */
+export const isDuplicateKey = isDuplicateKeyError;
 
 function isMissingTable(error: unknown): boolean {
   const seen = new Set<unknown>();

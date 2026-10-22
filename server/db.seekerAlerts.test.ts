@@ -138,16 +138,21 @@ describe("seeker alerts", () => {
     ];
     await expect(createSeekerAlert(7, { companyDomain: "d.com" })).rejects.toThrow(/3 alerts/);
     // A plan that lapsed reads as Free (the entitlement checks status and term end, not the plan column).
-    tables.wallets = [{ ...walletRow("pro"), subscriptionStatus: "active", subscriptionCurrentTermEnd: new Date(Date.now() - 60_000) }];
+    tables.wallets = [{ ...walletRow("start"), subscriptionStatus: "active", subscriptionCurrentTermEnd: new Date(Date.now() - 60_000) }];
     await expect(createSeekerAlert(7, { companyDomain: "d.com" })).rejects.toThrow(/3 alerts/);
-    tables.wallets = [{ ...walletRow("pro"), subscriptionStatus: "active", subscriptionCurrentTermEnd: new Date(Date.now() + 30 * 86_400_000) }];
+    // D-067: a wallet still marked pro or max reads as Free, mid-term and active.
+    for (const retired of ["pro", "max"]) {
+      tables.wallets = [{ ...walletRow(retired), subscriptionStatus: "active", subscriptionCurrentTermEnd: new Date(Date.now() + 30 * 86_400_000) }];
+      await expect(createSeekerAlert(7, { companyDomain: "d.com" })).rejects.toThrow(/3 alerts/);
+    }
+    tables.wallets = [{ ...walletRow("start"), subscriptionStatus: "active", subscriptionCurrentTermEnd: new Date(Date.now() + 30 * 86_400_000) }];
     const created = await createSeekerAlert(7, { companyDomain: "d.com" });
     expect(created.companyDomain).toBe("d.com");
   });
 
   it("counts only the caller's own alerts and reads only the caller's own plan (cross-user)", async () => {
     tables.alerts = ["a.com", "b.com", "c.com"].map((companyDomain, index) => ({ id: index + 1, userId: 8, companyDomain, paused: false, notifiedAt: null, createdAt: NOW }));
-    tables.wallets = [walletRow("free"), { ...walletRow("max"), id: 2, userId: 8, subscriptionStatus: "active", subscriptionCurrentTermEnd: new Date(Date.now() + 30 * 86_400_000) }];
+    tables.wallets = [walletRow("free"), { ...walletRow("momentum"), id: 2, userId: 8, subscriptionStatus: "active", subscriptionCurrentTermEnd: new Date(Date.now() + 30 * 86_400_000) }];
     expect((await createSeekerAlert(7, { companyDomain: "d.com" })).companyDomain).toBe("d.com");
     tables.alerts.push(...["e.com", "f.com"].map((companyDomain, index) => ({ id: 10 + index, userId: 7, companyDomain, paused: false, notifiedAt: null, createdAt: NOW })));
     await expect(createSeekerAlert(7, { companyDomain: "g.com" })).rejects.toThrow(/3 alerts/);

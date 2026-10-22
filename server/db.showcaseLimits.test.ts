@@ -79,7 +79,7 @@ describe("showcase limits read the plan entitlement", () => {
   });
 
   it("counts only the owner's pieces and reads only the owner's plan (cross-user)", async () => {
-    tables.wallets = [paidWallet(8, "max")];
+    tables.wallets = [paidWallet(8, "momentum")];
     tables.items = [item(8, 1), item(8, 2), item(8, 3), item(8, 4), item(7, 5), item(7, 6)];
     expect(await createWorkItem(7, { title: "Mine", kind: "project" })).toMatchObject({ userId: 7 });
     expect(await createWorkItem(8, { title: "Theirs", kind: "project" })).toMatchObject({ userId: 8 });
@@ -103,16 +103,25 @@ describe("showcase limits read the plan entitlement", () => {
     expect(tables.items).toHaveLength(8);
   });
 
-  it("Momentum has an unlimited showcase and 6 pins; grandfathered Pro keeps the pre-kit 20 pieces", async () => {
+  it("Momentum has an unlimited showcase and 6 pins; Start holds 10 pieces", async () => {
     tables.wallets = [paidWallet(7, "momentum")];
     tables.items = Array.from({ length: 25 }, (_, index) => item(7, index + 1, index < 5));
     expect(await createWorkItem(7, { title: "Twenty-sixth", kind: "project" })).toMatchObject({ userId: 7 });
     expect(await updateWorkItem(7, 10, { pinned: true })).toMatchObject({ pinned: true });
     await expect(updateWorkItem(7, 11, { pinned: true })).rejects.toMatchObject({ limit: "showcase_pins", cap: 6 });
-    tables.wallets = [paidWallet(7, "pro")];
-    tables.items = Array.from({ length: 19 }, (_, index) => item(7, index + 1));
-    expect(await createWorkItem(7, { title: "Twentieth", kind: "project" })).toMatchObject({ userId: 7 });
-    await expect(createWorkItem(7, { title: "Twenty-first", kind: "project" })).rejects.toMatchObject({ limit: "showcase_pieces", cap: 20 });
+    tables.wallets = [paidWallet(7, "start")];
+    tables.items = Array.from({ length: 9 }, (_, index) => item(7, index + 1));
+    expect(await createWorkItem(7, { title: "Tenth", kind: "project" })).toMatchObject({ userId: 7 });
+    await expect(createWorkItem(7, { title: "Eleventh", kind: "project" })).rejects.toMatchObject({ limit: "showcase_pieces", cap: 10 });
+  });
+
+  // D-067: no grandfathered 20 pieces; a wallet still marked pro or max holds Free's 3.
+  it.each(["pro", "max"])("a wallet still marked %s holds Free's 3 pieces and 1 pin", async plan => {
+    tables.wallets = [paidWallet(7, plan)];
+    tables.items = [item(7, 1, true), item(7, 2), item(7, 3)];
+    await expect(createWorkItem(7, { title: "Fourth", kind: "project" })).rejects.toMatchObject({ limit: "showcase_pieces", cap: 3 });
+    await expect(updateWorkItem(7, 2, { pinned: true })).rejects.toMatchObject({ limit: "showcase_pins", cap: 1 });
+    expect(tables.items).toHaveLength(3);
   });
 
   it("never edits another owner's piece", async () => {

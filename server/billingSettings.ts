@@ -14,7 +14,7 @@ function flag(env: BillingEnv, key: string): boolean {
 }
 
 /**
- * SkipWait is an Indian sole proprietorship with Udyam (MSME) registration and
+ * skipwait.me is an Indian sole proprietorship with Udyam (MSME) registration and
  * is not GST-registered, so no GST is charged and INR prices say only "India
  * price" (D-007). Set INDIA_GST_REGISTERED=true once a GSTIN exists; that also
  * requires turning on Chargebee tax mode and GST invoices in the same change.
@@ -43,4 +43,15 @@ export function humanReviewersStaffed(env: BillingEnv = process.env): boolean {
  */
 export function employerSponsorshipEnabled(env: BillingEnv = process.env): boolean {
   return (env.EMPLOYER_SPONSORSHIP_ENABLED ?? "").trim().toLowerCase() !== "false";
+}
+
+/**
+ * RETIRED (D-127, owner Oct 21 2026, supersedes D-079): free monthly credits
+ * are never gated on card validation at sign-up; validation belongs to the
+ * first purchase. No live code reads this flag; it remains only so historical
+ * env entries do not confuse operators. Do not reintroduce the gate without a
+ * new owner decision.
+ */
+export function freeCreditsRequireCardValidation(env: BillingEnv = process.env): boolean {
+  return flag(env, "FREE_CREDITS_REQUIRE_CARD_VALIDATION");
 }

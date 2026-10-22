@@ -13,7 +13,7 @@ export type BearerAuth = { userId: number; tokenId: number };
 export type McpRouteDeps = McpDeps & {
   /** Looks up a non-revoked token by its hash and records last use. Returns null for unknown or revoked. */
   verifyBearer: (tokenHash: string) => Promise<BearerAuth | null>;
-  /** False when the token owner has no assistant entitlement (not on Land or legacy Max, or the plan lapsed). */
+  /** False when the token owner has no assistant entitlement (not on Land, or the plan lapsed). */
   hasAccess: (userId: number) => Promise<boolean>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; metadata?: Record<string, string | number | boolean | null | undefined> }) => Promise<void>;
   /** Calls allowed per token per minute. */
@@ -46,7 +46,7 @@ export function registerMcpRoutes(app: Express, deps: McpRouteDeps) {
     const token = bearerFrom(req);
     if (!token || !ASSISTANT_BEARER_RE.test(token)) {
       res.set("WWW-Authenticate", 'Bearer realm="skipwait", resource_metadata="https://skipwait.me/.well-known/oauth-protected-resource"');
-      return res.status(401).json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Send your SkipWait token as a Bearer token" } });
+      return res.status(401).json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Send your skipwait.me token as a Bearer token" } });
     }
     try {
       const auth = await deps.verifyBearer(hashBearer(token));

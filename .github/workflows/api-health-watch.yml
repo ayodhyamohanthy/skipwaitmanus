@@ -1,0 +1,62 @@
+name: API health watch
+
+# Every 5 minutes: GET /api/health on the live API. Three tries 20 seconds apart.
+# If it is not 200 with ok:true, open (or comment on) one "API DOWN" issue so the
+# owner is notified by GitHub within minutes. When it answers again, comment and close it.
+# This exists because the 2026-10-22 outage (Cloudflare error 1101) was found by a hand check.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: api-health-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe /api/health
+        id: probe
+        run: |
+          ok=false; detail=""
+          for i in 1 2 3; do
+            body=$(curl -s -m 20 -w '\n%{http_code}' https://skipwait.me/api/health || true)
+            code=$(printf '%s' "$body" | tail -n1)
+            json=$(printf '%s' "$body" | sed '$d' | head -c 300)
+            detail="HTTP ${code}: ${json}"
+            if [ "$code" = "200" ] && printf '%s' "$json" | grep -q '"ok":true'; then ok=true; break; fi
+            sleep 20
+          done
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+          { echo "detail<<EOF_DETAIL"; echo "$detail"; echo "EOF_DETAIL"; } >> "$GITHUB_OUTPUT"
+      - name: Open or update the API DOWN issue
+        if: steps.probe.outputs.ok != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DETAIL: ${{ steps.probe.outputs.detail }}
+        run: |
+          n=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search 'API DOWN in:title' --json number --jq '.[0].number // empty')
+          msg="skipwait.me API health failed 3 times in a row at $(date -u +%FT%TZ). Last answer: ${DETAIL}"
+          if [ -z "$n" ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "API DOWN: /api/health is failing" --body "$msg"
+          else
+            gh issue comment "$n" --repo "$GITHUB_REPOSITORY" --body "$msg"
+          fi
+          exit 1
+      - name: Close the issue when healthy again
+        if: steps.probe.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search 'API DOWN in:title' --json number --jq '.[0].number // empty')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --repo "$GITHUB_REPOSITORY" --body "Health is ok:true again at $(date -u +%FT%TZ)."
+            gh issue close "$n" --repo "$GITHUB_REPOSITORY"
+          fi

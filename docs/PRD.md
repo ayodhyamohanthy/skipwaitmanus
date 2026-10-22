@@ -1,0 +1,60 @@
+# skipwait.me PRD (product truth)
+
+One page. DECISIONS.md owns rulings; this owns what the product is, who it serves, and what ships next. Update in the same PR as the slice that changes it (D-088).
+
+## Who it serves
+Job seekers and job referrers (owner, Oct 21 02:50 IST, D-089). Every product, design and growth choice is judged by their happiness: task success, trust, effort saved. Anything that would annoy either side is reported, not shipped.
+
+## Growth loops (D-087)
+Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
+
+| Loop | Name | Feed (output that becomes the next input) | Ships with |
+| --- | --- | --- | --- |
+| L1 | demand-to-supply | public ask counts attract verified employees | demand list, /suggest-company |
+| L2 | seeker invites referrer | a seeker's one-time link brings their own insider | bring-your-own-referrer |
+| L3 | outcome-to-next-ask | a real referral outcome creates the next ask | post-outcome prompts only |
+| L4 | employee request-inbox | an employee's link routes asks to them | request-inbox link |
+| L5 | sourced bonus pages | sourced bonus figures pull search traffic | bonus pages (source + date) |
+| L6 | saved progress | saved drafts/setups bring the seeker back | existing drafts |
+
+## Happiness measures (count-only, weekly three-count report)
+- Seeker: asks answered within 5 days vs expired.
+- Referrer: second action within 30 days; median time to first action.
+- Annoyance: report-as-annoying taps; per idea opened / acted / annoying counts.
+
+## Roadmap (status board)
+| Slice | Loop | Owner lane | Status |
+| --- | --- | --- | --- |
+| GO-LIVE-1b (PR #359) | - | QA + build | awaiting QA second review + PASS_SALES_ENABLED confirmation |
+| W0 goal shell (PR #361) | L6 | build | designer fixes pushed; re-review pending |
+| W1 comps: /explore + ask drawer (w1-comps) | L1 | build | pushed; designer review pending; /queue held for #353 |
+| Demand list (D-086) | L1 | build | approved; after #361 + drawer review; mocks in hand |
+| BYOR one-time link (idea 2) | L2 | design | mocks with owner 3:06 AM; approval pending; takes next free D-number |
+| Employee request-inbox link (idea 1) | L4 | design | after idea 2 |
+| Sourced bonus pages (idea 3) | L5 | design | after idea 1 |
+| Bedrock AI provider plan | - | build | plan with owner; AWS access needed |
+
+## Demand-list copy (D-086, verbatim)
+- "{N} people are asking for a referral at {Company}." (singular for 1)
+- Empty: "No one has asked for {Company} yet." / "Nobody at {Company} is waiting right now. We'll tell you if that changes."
+- Bonus honesty: "Most companies pay their own referral bonus when a referral they make is hired. That programme is your employer's and they pay it - skipwait.me never pays referrers."
+
+## Claim-your-company (D-107, draft)
+Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COMPANY_CLAIM (off). No per-person data or account-role changes. Same-account, single-use email link. Current-month aggregates hidden below 3 referrers or answered asks. See docs/DECISIONS.md D-107. QA and delivery verification required before enablement.
+
+## Go-to-market (D-102, changeable)
+- Referrers join any company free. Seekers ask for any company and see its true state: "Open: N verified employees" / "Not open yet: M people waiting. We'll tell you when {Company} opens." Under 3 shows "a few people". Empty: "No one has asked for {Company} yet."
+- No fake counters, countdowns or "only N spots". Every number is from the DB and may be zero.
+- Public launch when the 10 most-asked companies each have a verified referrer (confirmed by the owner, Oct 21; no payment test in the trigger).
+- Loops L1 to L4. Measure: asks per company, companies with a verified referrer, asks answered within 5 days, reports-as-annoying.
+
+## Skippy (in-product assistant, code name Skippie; D-136 to D-142)
+Skippy is a chat front door to what the product already does. It asks, shows an approve or deny card, then acts through the same server functions as the normal pages. User-facing name Skippy (founder's final word, Oct 22). Code and routes keep the name Skippie for now.
+- **Audiences:** seekers (ask for a referral by chat), admins (read first, then approved actions), and seekers' own AI agents (only with permission).
+- **Rules (binding):** same checks as the pages, never a second rulebook (D-137). Live prices, never hardcoded. Never promises a referral. Referrers never pay or get paid (D-055).
+- **Model and cost:** free model first. Paid model only with the owner's one-word yes and a hard daily cap. Per-user and global daily caps (D-138).
+- **Words and data:** the seeker writes or confirms the final note. Resume-to-AI consent first. Provider data terms confirmed before launch (D-139).
+- **Approvals:** cards inside Skippie. Money cards show exact amount, currency and undo cost, one-use, short expiry, fresh re-login, payment through Chargebee checkout only. Text in user data is never an instruction (D-140).
+- **Seeker agents:** seeker-granted, scoped, limited, expiring (7 days default, 30 max), revocable, hashed key shown once, ask-me-every-time by default, never buy credits, audit log (D-141). Referrers see "sent via the seeker's assistant" (D-142).
+- **Build order and proof:** Step 1 admin read-only. Step 2 seeker ask-only (flag on only for the test seeker). Step 3 in-chat plan or credit choice via Chargebee. Step 4 admin approval cards. Step 5 agents draft-only. Step 6 agents send with ask-every-time. Step 7 opt-in auto-send within limits. Each step ships behind a flag that stays off in prod until proven with screenshots or test output. Nothing live-money until test payments pass. Step 5 is built behind `SKIPPIE_AGENT_ENABLED` (off in prod): the seeker grants an agent on `/agents` (scope, limits, 7-day default expiry capped at 30, instant revoke, pause-all), the key is shown once and stored hashed, the agent can look up companies/prices and draft asks only (no send, no purchases, lower call caps than people), and every call lands in the seeker-readable audit log.
+- **Before any seeker-facing launch:** confirm provider data terms, set the global spend cap, pass the red-team injection test, founder sees a demo on the live URL, run a trademark and name-clearance search for "Skippy" (also a known food brand).

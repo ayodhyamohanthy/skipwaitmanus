@@ -37,7 +37,7 @@ describe("System galleries", () => {
     expect(nav.querySelectorAll("button")).toHaveLength(13);
     // The first template is selected and previewed as an email, with the code masked.
     expect(screen.getByRole("button", { name: "Work-email code" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("article", { name: "Work-email code" }).textContent).toContain("SkipWait <noreply@skipwait.me>");
+    expect(screen.getByRole("article", { name: "Work-email code" }).textContent).toContain("skipwait.me <noreply@skipwait.me>");
     expect(screen.getByText(/6 digits, 10-minute expiry, 5 attempts/)).toBeTruthy();
     // Selecting another template swaps the preview; in-app templates are not shown as mail.
     fireEvent.click(screen.getByRole("button", { name: "Ask passed" }));
@@ -52,7 +52,7 @@ describe("System galleries", () => {
 
   it("documents only the live assistant surface, never preview APIs", () => {
     render(<Developers />);
-    expect(screen.getByText(/Use SkipWait from ChatGPT, Claude, or your own code/)).toBeTruthy();
+    expect(screen.getByText(/Use skipwait.me from ChatGPT, Claude, or your own code/)).toBeTruthy();
     expect(screen.getAllByText("https://skipwait.me/api/mcp").length).toBeGreaterThan(0);
     for (const [tool] of DOCUMENTED_MCP_TOOLS) expect(screen.getByText(tool)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Connect an assistant" }).getAttribute("href")).toBe("/connect-assistant");

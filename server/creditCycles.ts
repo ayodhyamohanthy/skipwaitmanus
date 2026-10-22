@@ -9,6 +9,7 @@ import { BUCKET_SOURCES } from "../shared/creditLedger";
 import { grantShouldExpire, paidPlanLapsed, planCreditsExpireAt, planCycleAt, planCycleByIndex, planCycleIndexOfKey, walletCycleStart } from "../shared/creditCycles";
 import { isPaidPlanActive } from "../shared/planEntitlements";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
+import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { CreditSpendConflictError, asLedgerGrant, cycleRulesFor, digest, readGrantsTx, writeLedgerRow, type CyclePatch, type GrantRow, type LedgerTx, type WalletRole, type WalletRow } from "./creditLedger";
 
 /**
@@ -20,7 +21,7 @@ import { CreditSpendConflictError, asLedgerGrant, cycleRulesFor, digest, readGra
  */
 export async function rollCycleTx(tx: LedgerTx, input: { wallet: WalletRow; next: { startsAt: Date; key: string }; plan: string; subscriptionId: string | null; now: Date }): Promise<CyclePatch> {
   await closeCycleTx(tx, input);
-  return openCycleTx(tx, { userId: input.wallet.userId, role: input.wallet.role, next: input.next, plan: input.plan, subscriptionId: input.subscriptionId });
+  return openCycleTx(tx, { userId: input.wallet.userId, role: input.wallet.role, next: input.next, plan: input.plan, subscriptionId: input.subscriptionId, cardValidatedAt: input.wallet.cardValidatedAt });
 }
 
 /** Carries or expires what the wallet's current cycle left unspent (see rollCycleTx). */
@@ -59,9 +60,16 @@ async function planGrantRecordedTx(tx: LedgerTx, userId: number, role: WalletRol
  * keyed by its calendar month: Free gets its 3 credits once per person per
  * month, however many times the wallet returns to Free inside that month.
  */
-export async function openCycleTx(tx: LedgerTx, input: { userId: number; role: WalletRole; next: { startsAt: Date; key: string }; plan: string; subscriptionId: string | null }): Promise<CyclePatch> {
+export async function openCycleTx(tx: LedgerTx, input: { userId: number; role: WalletRole; next: { startsAt: Date; key: string }; plan: string; subscriptionId: string | null; cardValidatedAt?: Date | null }): Promise<CyclePatch> {
   const { userId, role, next } = input;
   let allowance = cycleRulesFor(input.plan, role).creditsPerMonth;
+  // D-079: with FREE_CREDITS_REQUIRE_CARD_VALIDATION on, a Free seeker cycle
+  // opens locked (no plan_grant row) until the provider confirms a card;
+  // grantFreeCycleOnValidationTx grants the same month later under the same key.
+  // The wallet patch matches the once-per-month shape the code already handles.
+  // D-127 (supersedes D-079): free monthly credits are never gated on card
+  // validation at sign-up; validation happens at first purchase instead.
+  // The D-079 flag is retired and intentionally not read here.
   if (allowance > 0) {
     const cycleId = input.subscriptionId ? digest(input.subscriptionId, next.startsAt.toISOString()) : digest("free", next.key);
     const idempotencyKey = `plan-cycle:${cycleId}`;
@@ -69,6 +77,28 @@ export async function openCycleTx(tx: LedgerTx, input: { userId: number; role: W
     else await writeLedgerRow(tx, { userId, role, tokenCount: allowance, kind: "plan_grant", source: BUCKET_SOURCES.cycle, sourceCycleKey: next.key, referenceType: "plan_cycle", referenceId: `${next.key}:${cycleId.slice(0, 24)}`, idempotencyKey, monthlyCreditsAfter: allowance });
   }
   return { monthlyAllowance: allowance, monthlyCreditsRemaining: allowance, monthlyCycleKey: next.key };
+}
+
+/**
+ * D-079: after the provider confirms a card, grant the current Free month once.
+ * Same month key as openCycleTx, so the once-per-month guard and the daily
+ * money check see one ordinary plan_grant row. Strict: the wallet must already
+ * be on the current cycle (reconcile owns the roll; this never opens a cycle).
+ */
+export async function grantFreeCycleOnValidationTx(tx: LedgerTx, input: { wallet: WalletRow; now: Date }): Promise<{ granted: boolean; patch?: CyclePatch }> {
+  const { wallet, now } = input;
+  if (wallet.role !== "job_seeker" || wallet.plan !== "free") return { granted: false };
+  const key = currentMonthlyCycleKey(now);
+  if (wallet.monthlyCycleKey !== key) return { granted: false };
+  const allowance = cycleRulesFor("free", wallet.role).creditsPerMonth;
+  if (allowance <= 0) return { granted: false };
+  const cycleId = digest("free", key);
+  const idempotencyKey = `plan-cycle:${cycleId}`;
+  if (await planGrantRecordedTx(tx, wallet.userId, wallet.role, idempotencyKey)) return { granted: false };
+  await writeLedgerRow(tx, { userId: wallet.userId, role: wallet.role, tokenCount: allowance, kind: "plan_grant", source: BUCKET_SOURCES.cycle, sourceCycleKey: key, referenceType: "plan_cycle", referenceId: `${key}:${cycleId.slice(0, 24)}`, idempotencyKey, monthlyCreditsAfter: allowance });
+  const updated = await tx.update(tokenBalances).set({ monthlyAllowance: allowance, monthlyCreditsRemaining: allowance }).where(eq(tokenBalances.id, wallet.id));
+  if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new CreditSpendConflictError();
+  return { granted: true, patch: { monthlyAllowance: allowance, monthlyCreditsRemaining: allowance, monthlyCycleKey: key } };
 }
 
 /** The cycle a new or renewed term opens: the term's current monthly cycle, else the term start's month. */
@@ -100,7 +130,10 @@ async function expireGrantsTx(tx: LedgerTx, wallet: WalletRow, grants: GrantRow[
 export function seekerCycleDue(wallet: WalletRow, now: Date): boolean {
   if (wallet.plan !== "free" && isPaidPlanActive(wallet, now)) return paidCycleSteps(wallet, now).length > 0;
   if (paidPlanLapsed(wallet, now)) return true;
-  return wallet.plan === "free" && freeCycleBehind(wallet.monthlyCycleKey, now);
+  if (wallet.plan === "free" && freeCycleBehind(wallet.monthlyCycleKey, now)) return true;
+  // D-079: a validated wallet on a locked current cycle is due, so reconcile
+  // grants it even when the webhook signal was missed.
+  return wallet.plan === "free" && wallet.monthlyCycleKey === currentMonthlyCycleKey(now) && freeCreditsRequireCardValidation() && wallet.cardValidatedAt != null && wallet.monthlyAllowance === 0;
 }
 
 const CYCLE_KEY_PATTERN = /^\d{4}-\d{2}$/;
@@ -156,6 +189,15 @@ export async function reconcileSeekerWalletTx(tx: LedgerTx, locked: WalletRow, n
   } else if (wallet.plan === "free" && freeCycleBehind(wallet.monthlyCycleKey, now)) {
     const startsAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
     await write(await rollCycleTx(tx, { wallet, next: { startsAt, key: currentMonthlyCycleKey(now) }, plan: "free", subscriptionId: null, now }));
+  }
+  // D-079 heal: under the flag, a Free cycle that opened locked is granted
+  // here once the provider has confirmed a card (covers a missed validation
+  // signal). planGrantRecordedTx keeps this once-only per month. A wallet left
+  // locked when the flag switches off stays at 0 until the next monthly roll:
+  // flag-off behaviour must stay byte-for-byte today's behaviour.
+  if (wallet.plan === "free" && wallet.monthlyCycleKey === currentMonthlyCycleKey(now) && freeCreditsRequireCardValidation() && wallet.cardValidatedAt) {
+    const healed = await grantFreeCycleOnValidationTx(tx, { wallet, now });
+    if (healed.granted && healed.patch) { wallet = { ...wallet, ...healed.patch }; changed = true; }
   }
   const expired = await expireGrantsTx(tx, wallet, await readGrantsTx(tx, wallet.userId, wallet.role, true), now);
   return { wallet, grants: expired.grants, changed: changed || expired.changed };

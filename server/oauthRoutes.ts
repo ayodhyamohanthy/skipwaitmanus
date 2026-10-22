@@ -95,7 +95,7 @@ export function registerOAuthRoutes(app: Express, deps: OAuthRouteDeps) {
       record({ actorUserId: identity.account.id, action: "assistant.oauth_allowed", outcome: "success", resourceType: "oauth_client", resourceId: client.clientId, metadata: { client: client.clientName } });
       res.set("Cache-Control", "no-store").json({ redirectTo: target.toString() });
     } catch (error) {
-      // Not on Land (or legacy Max): 402 so the consent screen shows the plan gate, never a code.
+      // Not on Land: 402 so the consent screen shows the plan gate, never a code.
       if (error instanceof AssistantPlanRequiredError) return res.set("Cache-Control", "no-store").status(402).json({ error: error.message, code: error.code, upgradePath: "/plans" });
       res.status(500).json({ error: "We could not connect this assistant" });
     }

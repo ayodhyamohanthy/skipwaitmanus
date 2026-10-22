@@ -27,9 +27,9 @@ vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
 
 type Reply = { status: number; body: unknown } | "hang";
-const VERIFIED: Reply = { status: 200, body: { verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "SkipWait", companyInitials: "SW" } };
+const VERIFIED: Reply = { status: 200, body: { verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "skipwait.me", companyInitials: "SW" } };
 const UNVERIFIED: Reply = { status: 200, body: { verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null } };
-const ASK = { id: 13, targetRoleUrl: null, companyDomain: "skipwait.me", companyName: "SkipWait", companyInitials: "SW", status: "pending", savedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), attachmentCount: 1, isClaimedByYou: false, unreadMessageCount: 0 };
+const ASK = { id: 13, publicRef: "R-T13ST", targetRoleUrl: null, companyDomain: "skipwait.me", companyName: "skipwait.me", companyInitials: "SW", status: "pending", savedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), attachmentCount: 1, isClaimedByYou: false, unreadMessageCount: 0 };
 
 let accessReplies: Reply[];
 let newRows: unknown[];
@@ -54,17 +54,16 @@ describe("queue gate follows the server's verified-referrer verdict", () => {
   it("opens the queue for a Google SSO account whose work email was verified by code (the QA case)", async () => {
     accessReplies = [VERIFIED];
     renderQueue();
-    expect(await screen.findByRole("article", { name: "Private request Ref-1013" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Private ask/ })).toBeTruthy();
     expect(screen.queryByText("Verify your work email.")).toBeNull();
     expect(screen.queryByRole("button", { name: "Add work email" })).toBeNull();
-    expect(document.querySelector('[data-skipwait-screen="company-inbox"]')).toBeTruthy();
   });
 
   it("opens the empty queue's capacity panel for a verified referrer with nothing waiting", async () => {
     accessReplies = [VERIFIED];
     newRows = [];
     renderQueue();
-    await waitFor(() => expect(document.querySelector('[aria-label="Open referral capacity"]')).toBeTruthy());
+    expect(await screen.findByRole("button", { name: "Open referral capacity" })).toBeTruthy();
     expect(screen.queryByText("Verify your work email.")).toBeNull();
   });
 
@@ -73,7 +72,7 @@ describe("queue gate follows the server's verified-referrer verdict", () => {
     renderQueue();
     expect(await screen.findByText("Verify your work email.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add work email" })).toBeTruthy();
-    expect(screen.queryByRole("article")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Private ask/ })).toBeNull();
     // The private queue is requested only once the server confirms the verification.
     expect(inboxCalls()).toBe(0);
   });
@@ -83,7 +82,7 @@ describe("queue gate follows the server's verified-referrer verdict", () => {
     accessReplies = [UNVERIFIED];
     renderQueue();
     expect(await screen.findByText("Verify your work email.")).toBeTruthy();
-    expect(screen.queryByRole("article")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Private ask/ })).toBeNull();
     expect(accessCalls()).toBe(1);
   });
 
@@ -91,9 +90,9 @@ describe("queue gate follows the server's verified-referrer verdict", () => {
     accessReplies = ["hang"];
     renderQueue();
     expect(await screen.findByText("Checking your verification.")).toBeTruthy();
-    expect(document.querySelector('[data-skipwait-screen="company-inbox-checking"] [aria-busy="true"]')).toBeTruthy();
+    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
     expect(screen.queryByText("Verify your work email.")).toBeNull();
-    expect(screen.queryByRole("article")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Private ask/ })).toBeNull();
   });
 
   it("shows a retryable error, never the gate, when the verification check fails, then opens the queue on retry", async () => {
@@ -107,7 +106,7 @@ describe("queue gate follows the server's verified-referrer verdict", () => {
     expect(alert.textContent).not.toMatch(/your verification and/i);
     expect(screen.queryByText("Verify your work email.")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByRole("article", { name: "Private request Ref-1013" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Private ask/ })).toBeTruthy();
     expect(screen.queryByText("We couldn’t check your verification")).toBeNull();
   });
 
@@ -118,7 +117,7 @@ describe("queue gate follows the server's verified-referrer verdict", () => {
     expect(await screen.findByText("We couldn’t check your verification", undefined, { timeout: 4000 })).toBeTruthy();
     networkDown = false;
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByRole("article", { name: "Private request Ref-1013" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Private ask/ })).toBeTruthy();
     expect(screen.queryByText("We couldn’t load your queue")).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });

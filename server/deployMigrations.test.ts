@@ -28,6 +28,12 @@ describe("deploy-time migration gate", () => {
   ])("rejects %s", (name, body) => {
     expect(lint({ [name]: body })).toBe(1);
   });
+  it("rejects duplicate numeric prefixes", () => {
+    expect(lint({
+      "0106_first.sql": "CREATE TABLE IF NOT EXISTS `a` (id int);",
+      "0106_second.sql": "CREATE TABLE IF NOT EXISTS `b` (id int);",
+    })).toBe(1);
+  });
   it("runs before the API deploy and blocks it on failure", () => {
     const workflow = readFileSync(".github/workflows/deploy-api.yml", "utf8");
     expect(workflow).toMatch(/migrate-db:\n[\s\S]*apply-deploy-migrations\.sh/);

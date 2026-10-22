@@ -8,7 +8,7 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 
 const REASONS = [
-  ["Asked for or offered money", "Referrals on SkipWait are always free"],
+  ["Asked for or offered money", "Referrers are never paid and never ask for money"],
   ["Harassment or inappropriate messages", ""],
   ["Fake job or scam", "Suspicious links, fees, or personal data requests"],
   ["Pretending to work at a company", ""],

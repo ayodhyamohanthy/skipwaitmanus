@@ -1,6 +1,6 @@
 # Agent & assistant access (ChatGPT, Claude, Cursor, custom bots)
 
-Status: designed (/connect-assistant, /assistants, /approve, /developers). Backend not built.
+Status: designed (/connect-assistant, /assistants, /approve, /developers). Backend partly built (`server/assistantRoutes.ts`, `server/mcpRoutes.ts`, `server/oauthRoutes.ts`). **Parked by D-053 (Oct 18 2026):** the developer platform — public MCP endpoint, public REST API, developer console and webhooks (queue tasks 29–31) — waits until the owner un-parks it; connected assistants and approvals (task 27) stay in the queue.
 
 ## What to build
 1. **SkipWait MCP server** at `https://skipwait.me/mcp`, protected with OAuth 2.1 (WorkOS as authorization server). The user signs in and approves on a SkipWait consent screen. No API keys pasted into chats.
@@ -8,7 +8,7 @@ Status: designed (/connect-assistant, /assistants, /approve, /developers). Backe
 3. **Connected assistants** screen in `/settings`: list of connected apps, scopes, last used, revoke, activity log.
 
 ## Who gets it
-- Land (Pro tiers) and Concierge (ultra) ONLY: assistants/bots can sign in on the user's behalf via OAuth, connect, search, draft, and apply (send asks with approval) from ChatGPT, Claude, custom bots or the user's own tools via API tokens/webhooks. Concierge: higher rate limits.
+- Land (Focus, Sprint) and Land Concierge ONLY: assistants/bots can sign in on the user's behalf via OAuth, connect, search, draft, and apply (send asks with approval) from ChatGPT, Claude, custom bots or the user's own tools via API tokens/webhooks. Concierge: higher rate limits.
 - Start and Momentum: no assistant or API access; consent screen shows upgrade.
 - Credits are spent exactly as in the app. Every paid action asks the human first.
 

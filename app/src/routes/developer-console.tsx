@@ -6,12 +6,12 @@ import { pageMeta } from "@/lib/page-meta";
 import { Panel, StateChips, field } from "@/components/preview-kit";
 
 export const Route = createFileRoute("/developer-console")({
-  head: () => pageMeta("Developer console", "Register your app, AI agent or MCP client so its users can search and apply for referrals on SkipWait."),
+  head: () => pageMeta("Developer console", "Register your app, AI agent or MCP client so its users can search and apply for referrals on skipwait.me."),
   component: Console,
 });
 
 const kinds = [["Web or mobile app", "Job trackers, career tools, ATS-like apps", AppWindow], ["AI agent or MCP client", "Assistants that apply on a user's behalf", Bot], ["Server integration", "Back-office sync with webhooks", Webhook]] as const;
-const scopes = [["companies:read", "Search companies open to referrals", false], ["requests:read", "Read the user's requests and replies", false], ["asks:draft", "Create draft asks", false], ["asks:send", "Send asks — user approves each one in SkipWait", true], ["profile:read", "Basic profile and resume (with user consent)", true], ["credits:spend", "Run paid tools — user approves cost each time", true], ["webhooks", "Accepted / passed / message events", false]] as const;
+const scopes = [["companies:read", "Search companies open to referrals", false], ["requests:read", "Read the user's requests and replies", false], ["asks:draft", "Create draft asks", false], ["asks:send", "Send asks — user approves each one in skipwait.me", true], ["profile:read", "Basic profile and resume (with user consent)", true], ["credits:spend", "Run paid tools — user approves cost each time", true], ["webhooks", "Accepted / passed / message events", false]] as const;
 const states = ["My apps", "New app", "App details", "In review", "Rejected", "Suspended"] as const;
 
 function Console() {
@@ -21,7 +21,7 @@ function Console() {
   const t = (k: string) => setSel(x => x.includes(k) ? x.filter(y => y !== k) : [...x, k]);
 
   return <div className="min-h-screen">
-    <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5"><Link to="/developers" className="wordmark text-xl">SkipWait<span className="brand-dot">.</span> <small className="font-mono text-xs text-muted-foreground">developers</small></Link><span className="text-sm text-muted-foreground">dev@instinct.app</span></header>
+    <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5"><Link to="/developers" className="wordmark text-xl">skipwait<span className="brand-dot">.</span>me <small className="font-mono text-xs text-muted-foreground">developers</small></Link><span className="text-sm text-muted-foreground">dev@instinct.app</span></header>
     <main className="mx-auto max-w-3xl px-4 pb-20">
       <StateChips states={states} value={s} onChange={setS} />
 
@@ -45,7 +45,7 @@ function Console() {
         <Panel className="mt-6"><h2 className="font-semibold">Credentials</h2><div className="mt-3 space-y-3 text-sm"><div><small className="text-muted-foreground">Client ID</small><div className="flex gap-2"><code className="flex-1 truncate rounded-xl bg-muted px-3 py-2">sw_app_7f3k29ab</code><Button variant="outline" size="sm"><Copy />Copy</Button></div></div><div><small className="text-muted-foreground">Client secret</small><div className="flex gap-2"><code className="flex-1 rounded-xl bg-muted px-3 py-2">••••••••••••</code><Button variant="outline" size="sm">Rotate</Button></div></div></div></Panel>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">{[["Connected users", "Shown once live"], ["Asks sent via app", "Shown once live"], ["Approval rate", "Shown once live"]].map(([a, b]) => <Panel key={a}><small className="text-muted-foreground">{a}</small><strong className="block text-lg">—</strong><small className="text-muted-foreground">{b}</small></Panel>)}</div>
         <Panel className="mt-4"><h2 className="font-semibold">Webhooks</h2><input className={field} defaultValue="https://instinct.app/hooks/skipwait" aria-label="Webhook URL" /><p className="mt-2 text-xs text-muted-foreground">Events are signed. Verify the signature header before trusting them.</p></Panel>
-        <Panel tone="muted" className="mt-4 text-sm"><strong>Limits:</strong> per user, the same open-request and daily-ask limits as the SkipWait app. Per app: 600 requests/min. Users on any plan can connect; what they can do follows their own plan.</Panel>
+        <Panel tone="muted" className="mt-4 text-sm"><strong>Limits:</strong> per user, the same open-request and daily-ask limits as the skipwait.me app. Per app: 600 requests/min. Users on any plan can connect; what they can do follows their own plan.</Panel>
       </>}
 
       {s === "In review" && <Panel className="text-center"><Clock className="mx-auto size-8" /><h1 className="mt-3 text-2xl font-semibold">Instinct is in review</h1><p className="mt-2 text-sm text-muted-foreground">Test mode works now for up to 10 test users. Review for send and profile permissions usually takes 2–5 business days.</p><Button className="mt-4" onClick={() => setS("App details")}>Open test credentials</Button></Panel>}

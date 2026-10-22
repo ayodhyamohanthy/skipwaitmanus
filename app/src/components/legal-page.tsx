@@ -4,7 +4,7 @@ export type LegalSection = { id: string; title: string; body: string[] };
 
 export function LegalPage({ eyebrow, title, updated, summary, sections }: { eyebrow: string; title: string; updated: string; summary: string[]; sections: LegalSection[] }) {
   return <div className="min-h-screen bg-background">
-    <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4"><Link to="/" className="wordmark">SkipWait<span className="brand-dot">.</span></Link><nav className="flex gap-4 text-sm"><Link to="/terms" activeProps={{ className: "font-semibold" }}>Terms</Link><Link to="/privacy" activeProps={{ className: "font-semibold" }}>Privacy</Link><Link to="/guidelines" activeProps={{ className: "font-semibold" }}>Guidelines</Link><Link to="/help" className="hidden sm:inline">Help</Link></nav></header>
+    <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4"><Link to="/" className="wordmark">skipwait<span className="brand-dot">.</span>me</Link><nav className="flex gap-4 text-sm"><Link to="/terms" activeProps={{ className: "font-semibold" }}>Terms</Link><Link to="/privacy" activeProps={{ className: "font-semibold" }}>Privacy</Link><Link to="/guidelines" activeProps={{ className: "font-semibold" }}>Guidelines</Link><Link to="/help" className="hidden sm:inline">Help</Link></nav></header>
     <main className="mx-auto max-w-5xl px-5 pb-20">
       <p className="example-banner mb-6">DRAFT FOR DESIGN · HAVE A LAWYER REVIEW BEFORE LAUNCH</p>
       <span className="eyebrow">{eyebrow}</span><h1 className="mt-2 text-4xl font-semibold sm:text-5xl">{title}<span className="brand-dot">.</span></h1><p className="mt-2 text-sm text-muted-foreground">Last updated {updated}</p>

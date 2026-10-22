@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-004, D-007, D-053).
+
 # SkipWait payment and regional pricing: constraints and recommended tiers
 
 All sources were seen on 2026-10-14. FX basis: ECB reference rates for 2026-10-13 [24] give **₹95.28, R$5.02, Rp17,881, ₱62.77, £0.755 and €0.894 per US$**. AED is pegged at 3.6725 per US$ (per the World Bank FCRF series [26]). NGN is about ₦1,328 per US$ (NFEM, 2026-10-02 [25]). A separate press report puts the rupee at ₹95.46 per US$ on 2026-08-25 [41].

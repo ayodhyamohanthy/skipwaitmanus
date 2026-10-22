@@ -1,0 +1,143 @@
+{
+  "signedIn": false,
+  "route": "/ask",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 4
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/profile/setup",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "goal": "Actively looking",
+        "roles": [],
+        "level": "",
+        "links": [],
+        "city": "",
+        "countries": "",
+        "remote": true,
+        "visa": "No sponsorship needed",
+        "resume": {
+          "id": 77,
+          "fileName": "asha-resume.pdf"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/ask-drafts",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "draft": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "companies": [
+          {
+            "slug": "skipwait",
+            "name": "skipwait.me",
+            "initials": "SW",
+            "industry": "Technology",
+            "location": "Global \u00b7 Remote",
+            "functions": [
+              "Engineering",
+              "Product",
+              "Design"
+            ],
+            "blurb": "Build the platform making warm introductions more accessible.",
+            "domains": [
+              "skipwait.me"
+            ],
+            "openToReferrals": true
+          },
+          {
+            "slug": "wipro",
+            "name": "Wipro",
+            "initials": "W",
+            "industry": "Technology services",
+            "location": "Global",
+            "functions": [
+              "Engineering",
+              "Data",
+              "Operations"
+            ],
+            "blurb": "Explore roles across technology, consulting, and business operations.",
+            "domains": [
+              "wipro.com"
+            ],
+            "openToReferrals": true
+          },
+          {
+            "slug": "go-neutrinos",
+            "name": "Neutrinos",
+            "initials": "N",
+            "industry": "Digital products",
+            "location": "India \u00b7 Remote",
+            "functions": [
+              "Engineering",
+              "Product",
+              "Design"
+            ],
+            "blurb": "Connect around product, design, and engineering opportunities.",
+            "domains": [
+              "neutrinos.com",
+              "goneutrinos.com"
+            ],
+            "openToReferrals": true
+          },
+          {
+            "slug": "tcs",
+            "name": "TCS",
+            "initials": "T",
+            "industry": "Technology services",
+            "location": "Global",
+            "functions": [
+              "Engineering",
+              "Data",
+              "Operations"
+            ],
+            "blurb": "Find a warmer path into global technology and consulting teams.",
+            "domains": [
+              "tcs.com"
+            ],
+            "openToReferrals": true
+          },
+          {
+            "slug": "merkle",
+            "name": "Merkle",
+            "initials": "M",
+            "industry": "Customer experience",
+            "location": "Global",
+            "functions": [
+              "Data",
+              "Design",
+              "Operations"
+            ],
+            "blurb": "Explore opportunities across experience, data, media, and technology.",
+            "domains": [
+              "merkle.com"
+            ],
+            "openToReferrals": true
+          }
+        ],
+        "openCount": 5
+      }
+    }
+  ]
+}

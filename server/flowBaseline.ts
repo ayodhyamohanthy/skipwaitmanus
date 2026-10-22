@@ -4,7 +4,7 @@
 // Rules this file keeps:
 //  - aggregate only: every number is a count over rows, never a name, email,
 //    user id or request text;
-//  - operator domains (SkipWait's own company and the admin mailbox) are
+//  - operator domains (skipwait.me's own company and the admin mailbox) are
 //    excluded from "external referrers", because operator activity is not
 //    marketplace supply;
 //  - availability uses the company directory's own predicate
@@ -23,7 +23,7 @@ const MAX_COMPANY_ROWS = 12;
 const DECISION_ACTIONS = new Set(["approve", "pass"]);
 const ACTIVITY_ACTIONS = new Set(["claim", "approve", "pass", "review"]);
 
-/** SkipWait's own domains: the launch seed's own page, plus the admin mailbox domain. */
+/** skipwait.me's own domains: the launch seed's own page, plus the admin mailbox domain. */
 export function operatorDomains(adminEmail: string | null | undefined = process.env.SKIPWAIT_ADMIN_EMAIL): string[] {
   const own = LAUNCH_COMPANY_SEED.filter(seed => seed.slug === OPERATOR_COMPANY_SLUG).flatMap(seed => seed.domains);
   const admin = (adminEmail ?? "").split("@")[1]?.trim().toLowerCase();
@@ -117,6 +117,35 @@ export async function buildFlowBaseline(source: FlowBaselineSource, options: Bui
   }
   const latency = decisionLatencyHours(latencySamples);
 
+  // D-038-B north star: asks first marked Referred within 7 days of first visibility.
+  // A referral "counts" when it reaches intro_made via the referrer's mark or the
+  // seeker's confirmation. The clock starts at first visibility (coverageVisibleAt;
+  // pre-0095 rows: creation).
+  const firstReferredAt = new Map<number, number>();
+  for (const transition of transitions) {
+    const at = toMs(transition.createdAt);
+    if (!Number.isFinite(at)) continue;
+    const isReferralMark = (transition.action === "progress" && transition.resultingStatus === "intro_made") ||
+      (transition.action === "seeker_confirmed_referred" && transition.resultingStatus === "intro_made");
+    if (!isReferralMark) continue;
+    const current = firstReferredAt.get(transition.requestId);
+    if (current === undefined || at < current) firstReferredAt.set(transition.requestId, at);
+  }
+  let referredWithin7DaysTotal = 0;
+  let referredWithin7DaysCount = 0;
+  for (const request of requests) {
+    const referredAt = firstReferredAt.get(request.id);
+    if (referredAt === undefined) continue;
+    referredWithin7DaysCount += 1;
+    const visibleAt = request.coverageVisibleAt != null ? toMs(request.coverageVisibleAt) : toMs(request.createdAt);
+    if (visibleAt !== null && referredAt - visibleAt <= 7 * DAY_MS) {
+      referredWithin7DaysTotal += 1;
+      const bucket = buckets.get(weekKeyFor(toMs(request.createdAt), weeks) ?? "");
+      if (bucket) bucket.referredWithin7Days = (bucket.referredWithin7Days ?? 0) + 1;
+    }
+  }
+  const referredWithin7DaysPct = referredWithin7DaysCount === 0 ? 0 : Math.round((referredWithin7DaysTotal / referredWithin7DaysCount) * 100);
+
   // External referrer activity: distinct verified referrers who acted, operator domains excluded.
   const referrerById = new Map(referrerProfiles.map(row => [row.userId, row]));
   const activeInWindow = new Set<number>();
@@ -171,6 +200,7 @@ export async function buildFlowBaseline(source: FlowBaselineSource, options: Bui
     demand,
     externalReferrers: { activeLast7Days: activeLast7.size, activeInWindow: activeInWindow.size, excludedOperatorDomains: [...operator] },
     subscribers,
+    referredWithin7DaysPct,
     dataQuality,
   };
 }

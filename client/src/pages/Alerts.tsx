@@ -16,7 +16,7 @@ import { readApiJson } from "@/lib/apiResponse";
 const TABS = ["Notifications", "Saved alerts"] as const;
 const FILTERS = ["All", "Unread"] as const;
 const LOAD_ERROR = "We could not load your alerts";
-const NETWORK_ERROR = "We could not reach SkipWait. Check your connection and try again.";
+const NETWORK_ERROR = "We could not reach skipwait.me. Check your connection and try again.";
 const HEADING = { eyebrow: "STAY IN THE LOOP", title: "Alerts", text: "Only things that need you. No marketing, no “you might like”." } as const;
 // Kit visual height, 44px tap target: a transparent ::before stretched past the control's edges.
 const HIT_AREA_Y = "relative before:absolute before:inset-x-0";

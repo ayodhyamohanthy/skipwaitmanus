@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, or } from "drizzle-orm";
 import express, { type Express, type Request } from "express";
 import { referralRequests, userBlocks, users } from "../drizzle/schema";
 import { getDb } from "./db";
+import { isDuplicateKeyError } from "./dbErrors";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type Identity = { account: Account };
@@ -18,9 +19,7 @@ export type BlocksRouteDeps = {
   findCounterpart?: (userId: number, referralRequestId: number) => Promise<{ counterpartUserId: number }>;
 };
 
-function isDuplicateKeyError(error: unknown) {
-  return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ER_DUP_ENTRY";
-}
+// The cause-walking duplicate check (FND-3): drizzle wraps the mysql2 error.
 
 async function defaultBlockUser(blockerUserId: number, blockedUserId: number, reason: string | null): Promise<BlockResult> {
   const db = await getDb();

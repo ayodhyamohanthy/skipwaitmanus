@@ -7,7 +7,7 @@ import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/explore/$slug")({
   loader: ({ params }) => { const company = getCompany(params.slug); if (!company) throw notFound(); return company; },
-  head: ({ loaderData }) => pageMeta(loaderData ? `Referrals at ${loaderData.name}` : "Company not found", loaderData ? `Request a free, private introduction to someone at ${loaderData.name}.` : "This company is not available on SkipWait."),
+  head: ({ loaderData }) => pageMeta(loaderData ? `Referrals at ${loaderData.name}` : "Company not found", loaderData ? `Request a free, private introduction to someone at ${loaderData.name}.` : "This company is not available on skipwait.me."),
   component: CompanyPage,
 });
 

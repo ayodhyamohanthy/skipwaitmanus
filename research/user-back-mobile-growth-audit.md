@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-055).
+
 # skipwait.me User-Back Mobile and Organic-Growth Audit
 
 ## Scope and standard

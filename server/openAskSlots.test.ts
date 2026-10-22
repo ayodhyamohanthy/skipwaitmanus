@@ -4,6 +4,7 @@ import { CATALOG_PLAN_IDS } from "../shared/planCatalog";
 import { COMPANY_CAP_REACHED, companyCapCopy, companyCapReachedSchema, nextSlotPlan, nextSlotPlanAmong, openAskSlots, openAskSlotsSchema, slotCapNudgeCopy, slotCapReachedSchema, slotsFullCopy } from "../shared/openAskSlots";
 import { resolvePlanEntitlements, type EntitlementWallet } from "../shared/planEntitlements";
 import { ASK_TTL_MS } from "../shared/referral";
+import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
 import { OpenAskSlotCapError, openAskCondition } from "./planGates";
 
 const NOW = new Date("2026-10-14T12:00:00.000Z");
@@ -18,11 +19,10 @@ describe("open-ask slots contract", () => {
     expect(nextSlotPlanAmong(ent("free"), ALL_ON_SALE)).toEqual({ id: "start", label: "Start", openRequests: 8 });
     expect(nextSlotPlanAmong(ent("keep_warm"), ALL_ON_SALE)).toEqual({ id: "start", label: "Start", openRequests: 8 });
     expect(nextSlotPlanAmong(ent("start"), ALL_ON_SALE)).toEqual({ id: "momentum", label: "Momentum", openRequests: 15 });
-    // Legacy Pro holds 10 (above Start's 8), so the next plan with more room is Momentum.
-    expect(nextSlotPlanAmong(ent("pro"), ALL_ON_SALE)).toEqual({ id: "momentum", label: "Momentum", openRequests: 15 });
     expect(nextSlotPlanAmong(ent("momentum"), ALL_ON_SALE)).toEqual({ id: "land_focus", label: "Land Focus", openRequests: 30 });
-    // Legacy Max already holds 30, so Land Focus (30) adds nothing; Sprint does.
-    expect(nextSlotPlanAmong(ent("max"), ALL_ON_SALE)).toEqual({ id: "land_sprint", label: "Land Sprint", openRequests: 50 });
+    // D-067: a wallet still marked pro or max reads as Free, so its next plan is Start, like Free's.
+    expect(nextSlotPlanAmong(ent("pro"), ALL_ON_SALE)).toEqual({ id: "start", label: "Start", openRequests: 8 });
+    expect(nextSlotPlanAmong(ent("max"), ALL_ON_SALE)).toEqual({ id: "start", label: "Start", openRequests: 8 });
     expect(nextSlotPlanAmong(ent("land_focus"), ALL_ON_SALE)).toEqual({ id: "land_sprint", label: "Land Sprint", openRequests: 50 });
     // Concierge is by application: no nudge points at it.
     expect(nextSlotPlanAmong(ent("land_sprint"), ALL_ON_SALE)).toBeNull();
@@ -36,7 +36,9 @@ describe("open-ask slots contract", () => {
     expect(slotsOnSale(ent("land_concierge"), 74)).toMatchObject({ cap: 75, full: false, nextPlan: null });
     expect(slotsOnSale(ent("land_concierge"), 75).full).toBe(true);
     expect(openAskSlots(ent("free"), -1).open).toBe(0);
-    for (const plan of ["free", "keep_warm", "start", "momentum", "land_focus", "land_sprint", "land_concierge", "pro", "max"]) expect(openAskSlotsSchema.safeParse(openAskSlots(ent(plan), 1)).success).toBe(true);
+    for (const plan of ["free", "keep_warm", "start", "momentum", "land_focus", "land_sprint", "land_concierge"]) expect(openAskSlotsSchema.safeParse(openAskSlots(ent(plan), 1)).success).toBe(true);
+    for (const plan of ["pro", "max"]) expect(openAskSlots(ent(plan), 1)).toMatchObject({ plan: "free", planLabel: "Free", cap: 3 });
+    expect(openAskSlotsSchema.safeParse({ ...openAskSlots(ent("free"), 1), plan: "pro" }).success).toBe(false);
     expect(openAskSlotsSchema.safeParse({ ...slotsOnSale(ent("free"), 1), cap: null }).success).toBe(false);
   });
 
@@ -50,7 +52,7 @@ describe("open-ask slots contract", () => {
 
   it("writes the UPGRADE_NUDGES slot-cap moment, saying queue position never changes", () => {
     expect(slotCapNudgeCopy(slotsOnSale(ent("free"), 3))).toEqual({ title: "Your 3 requests are all open", body: "Wait for an answer to free a slot, or move to Start for 8 open requests. Queue position stays equal either way.", cta: "See Start" });
-    expect(slotCapNudgeCopy(slotsOnSale(ent("max"), 30)).cta).toBe("See Land Sprint");
+    expect(slotCapNudgeCopy(slotsOnSale(ent("land_focus"), 30)).cta).toBe("See Land Sprint");
     expect(slotCapNudgeCopy(slotsOnSale(ent("land_sprint"), 50))).toEqual({ title: "Your 50 requests are all open", body: "Wait for an answer to free a slot. Queue position stays equal either way.", cta: null });
   });
 
@@ -79,11 +81,14 @@ describe("per-company cap contract (every plan)", () => {
 });
 
 describe("open-ask predicate", () => {
-  it("counts only the one seeker's pending, unexpired asks; claimed asks never expire", () => {
+  it("counts only the one seeker's pending, unexpired, covered asks; waiting asks never hold a slot; claimed and pre-history assigned asks never expire, a held personal-link ask and an unclaimed queue allocation do (D-050/D-061, P0-allocated-ask-stuck)", () => {
     const query = new MySqlDialect().sqlToQuery(openAskCondition(7, NOW.getTime()));
-    expect(query.sql).toBe("(`referralRequests`.`jobSeekerId` = ? and `referralRequests`.`status` = ? and (`referralRequests`.`referrerId` is not null or `referralRequests`.`createdAt` > ?))");
-    expect(query.params).toEqual([7, "pending", "2026-10-07 12:00:00.000"]);
-    expect(Date.parse(`${String(query.params[2]).replace(" ", "T")}Z`)).toBe(NOW.getTime() - ASK_TTL_MS);
+    expect(query.sql).toBe("(`referralRequests`.`jobSeekerId` = ? and `referralRequests`.`status` = ? and `referralRequests`.`waitingForCoverage` = ? and ((`referralRequests`.`referrerId` is not null and (`referralRequests`.`createdAt` < ? or exists (select 1 from `referralTransitionEvents` where `referralTransitionEvents`.`referralRequestId` = `referralRequests`.`id` and `referralTransitionEvents`.`action` = ?))) or (`referralRequests`.`coverageVisibleAt` is not null and `referralRequests`.`coverageVisibleAt` > ?) or (`referralRequests`.`coverageVisibleAt` is null and `referralRequests`.`createdAt` > ?)))");
+    expect(query.params).toEqual([7, "pending", false, "2026-09-21 00:00:00.000", "claim", "2026-10-07 12:00:00.000", "2026-10-07 12:00:00.000"]);
+    expect(Date.parse(`${String(query.params[3]).replace(" ", "T")}Z`)).toBe(HELD_ASK_HISTORY_SINCE.getTime());
+    // D-061: the 7-day clock runs from first visibility; pre-0095 rows (no coverageVisibleAt) keep the creation clock.
+    expect(Date.parse(`${String(query.params[5]).replace(" ", "T")}Z`)).toBe(NOW.getTime() - ASK_TTL_MS);
+    expect(Date.parse(`${String(query.params[6]).replace(" ", "T")}Z`)).toBe(NOW.getTime() - ASK_TTL_MS);
     expect(new MySqlDialect().sqlToQuery(openAskCondition(8, NOW.getTime())).params[0]).toBe(8);
   });
 });

@@ -24,9 +24,9 @@ export function TalentConsentPanel() {
   return <Panel>
     <div data-skipwait-screen="talent-consent">
       <h2 className="text-lg font-semibold">Talent discovery consent</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Preview and control what approved employers can see. SkipWait uses this only for anonymous talent discovery and employer introduction requests. Employers may spend {state?.unlockCreditCost ?? 5} credits to unlock the exact approved snapshot for {state?.unlockDays ?? 30} days. You choose whether to respond to contact requests.</p>
+      <p className="mt-1 text-sm text-muted-foreground">Preview and control what approved employers can see. skipwait.me uses this only for anonymous talent discovery and employer introduction requests. Employers may spend {state?.unlockCreditCost ?? 5} credits to unlock the exact approved snapshot for {state?.unlockDays ?? 30} days. You choose whether to respond to contact requests.</p>
       <dl className="mt-4 space-y-1 rounded-xl bg-muted p-3 text-sm">
-        <div><dt className="inline font-semibold">Audience: </dt><dd className="inline">{state?.audience ?? "Approved employers on SkipWait"}</dd></div>
+        <div><dt className="inline font-semibold">Audience: </dt><dd className="inline">{state?.audience ?? "Approved employers on skipwait.me"}</dd></div>
         <div><dt className="inline font-semibold">Retention: </dt><dd className="inline">Discovery consent records are retained for {state?.retentionDays ?? 90} days for access history and safety controls.</dd></div>
         <div><dt className="inline font-semibold">Policy: </dt><dd className="inline">{state?.policyVersion ?? "Loading current policy"}</dd></div>
       </dl>

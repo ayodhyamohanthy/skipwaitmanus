@@ -18,7 +18,7 @@ import {
 import { PlanLimitError } from "./planGates";
 
 /*
- * Task 13 slice A (0095): the showcase pieces a seeker pins to an ask travel as
+ * Task 13 slice A (0105): the showcase pieces a seeker pins to an ask travel as
  * a copy taken at the send instant. These are real calls into server/db.ts
  * against a fixture client that implements the slice of SQL the create path and
  * the pre-acceptance preview use.
@@ -390,7 +390,7 @@ describe("pinned work and the idempotency fingerprint", () => {
     expect(snapshots().map(item => item.workItemId)).toEqual([11]);
   });
 
-  it("keeps every pre-0095 fingerprint: no pins, empty pins and a repeated id all match", () => {
+  it("keeps every pre-0105 fingerprint: no pins, empty pins and a repeated id all match", () => {
     expect(companyReferralFingerprint(ask(), "acme.com"))
       .toBe(companyReferralFingerprint(ask({ workItemIds: [] }), "acme.com"));
     expect(companyReferralFingerprint(ask({ workItemIds: [11, 12] }), "acme.com"))
