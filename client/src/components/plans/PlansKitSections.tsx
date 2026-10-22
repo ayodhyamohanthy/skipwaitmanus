@@ -146,8 +146,8 @@ export function PassesSection({ catalog, activePlan, checkout }: { catalog: Plan
       <p>Every pass is paid once and never renews by itself. You can switch or level up anytime; a pass simply ends when its days are over.</p>
     </div>
     <div role="group" aria-label="Pass length" className="heading-aside">
-      <Button variant={term === "30d" ? "default" : "outline"} size="sm" onClick={() => setTerm("30d")}>30 days</Button>
-      <Button variant={term === "90d" ? "default" : "outline"} size="sm" onClick={() => setTerm("90d")}>90 days</Button>
+      <Button variant={term === "30d" ? "default" : "outline"} size="sm" aria-pressed={term === "30d"} onClick={() => setTerm("30d")}>30 days</Button>
+      <Button variant={term === "90d" ? "default" : "outline"} size="sm" aria-pressed={term === "90d"} onClick={() => setTerm("90d")}>90 days</Button>
     </div></div>
     <div className="plan-grid">
       {cards.map(card => {
