@@ -15,10 +15,13 @@ import { createMysqlJobRunStore, JobRunStoreUnavailableError, type JobRunRecord,
 import { SCHEDULED_JOBS } from "./scheduledJobRegistry";
 import { runScheduledJobs, type JobCapture, type ScheduledJobDefinition } from "./scheduledJobRunner";
 import { captureServerError } from "./sentry";
+import { closeAbandonedCheckouts, type AbandonedCheckoutResult } from "./abandonedCheckouts";
+import { listOperationalActivity } from "./db";
 import { runMoneyCheckNow, type MoneyCheckRunResult } from "./dailyMoneyCheck";
+import { SKIPPIE_DAILY_CAP, SKIPPIE_QUESTION_MAX, askSkippieAdmin, type SkippieDeps } from "./skippieAdmin";
 
 type Identity = { account: { id: number; role?: "user" | "admin" } };
-type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number };
+type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; metadata?: Record<string, string | number | boolean | null | undefined> };
 
 export type ScheduledJobsRouteDeps = {
   resolveIdentity: (req: Request) => Promise<Identity | undefined>;
@@ -31,7 +34,26 @@ export type ScheduledJobsRouteDeps = {
   capture?: JobCapture;
   /** On-demand read-only money check; defaults to the real audit. */
   runMoneyCheck?: (nowMs: number) => Promise<MoneyCheckRunResult>;
+  closeAbandonedCheckouts?: (nowMs: number, options: { apply: boolean }) => Promise<AbandonedCheckoutResult>;
+  /** Recent owner-alert attempts of the money check, newest first. */
+  listMoneyCheckAlerts?: () => Promise<Array<{ outcome: string; createdAt: Date | string }>>;
+  /** Admin Skippie (read-only). Off unless enabled. */
+  skippie?: { enabled: () => boolean; deps: () => SkippieDeps };
 };
+
+export function summarizeMoneyCheckAlerts(rows: Array<{ outcome: string; createdAt: Date | string }>, nowMs: number) {
+  const sorted = [...rows].map(row => ({ outcome: row.outcome, at: new Date(row.createdAt).getTime() })).sort((a, b) => b.at - a.at);
+  const week = nowMs - 7 * 24 * 60 * 60_000;
+  const latest = sorted[0] ?? null;
+  const lastSuccess = sorted.find(row => row.outcome === "success") ?? null;
+  return {
+    latestOutcome: latest ? latest.outcome : null,
+    latestAt: latest ? new Date(latest.at).toISOString() : null,
+    lastSuccessAt: lastSuccess ? new Date(lastSuccess.at).toISOString() : null,
+    failuresLast7Days: sorted.filter(row => row.outcome === "failure" && row.at >= week).length,
+    ownerNotReached: latest?.outcome === "failure",
+  };
+}
 
 /** No success within this many windows marks a job overdue on the admin read. */
 export const OVERDUE_WINDOWS = 3;
@@ -100,6 +122,42 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
     }
   });
 
+  // Admin-only: close out abandoned checkout pages older than 7 days. Preview unless the body says apply:true.
+  // It only marks a reason on rows that are still pending with no invoice; nothing is deleted or credited.
+  app.post("/api/admin/money-check/close-abandoned", async (req: Request, res: Response) => {
+    res.set("Cache-Control", "private, no-store");
+    const identity = await deps.resolveIdentity(req);
+    if (!identity) return res.status(401).json({ error: "Sign in to continue" });
+    if (identity.account.role !== "admin") {
+      record({ actorUserId: identity.account.id, action: "admin.abandoned_checkouts_denied", outcome: "denied", resourceType: "payment", resourceId: "abandoned-checkouts" });
+      return res.status(403).json({ error: "Administrator access is required" });
+    }
+    const apply = (req.body as { apply?: unknown } | undefined)?.apply === true;
+    try {
+      const result = await (deps.closeAbandonedCheckouts ?? closeAbandonedCheckouts)(now(), { apply });
+      record({ actorUserId: identity.account.id, action: apply ? "admin.abandoned_checkouts_closed" : "admin.abandoned_checkouts_previewed", outcome: "success", resourceType: "payment", resourceId: "abandoned-checkouts", metadata: { candidates: result.candidates, closed: result.closed, accounts: result.accounts } });
+      res.json(result);
+    } catch (error) {
+      capture(error, { path: "/api/admin/money-check/close-abandoned" });
+      res.status(500).json({ error: "We could not check abandoned checkouts" });
+    }
+  });
+
+  // Admin-only: did the owner alert email actually go out? A failed send must be visible, not silent.
+  app.get("/api/admin/money-check/status", async (req: Request, res: Response) => {
+    res.set("Cache-Control", "private, no-store");
+    const identity = await deps.resolveIdentity(req);
+    if (!identity) return res.status(401).json({ error: "Sign in to continue" });
+    if (identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+    try {
+      const rows = await (deps.listMoneyCheckAlerts ?? (async () => (await listOperationalActivity({ action: "billing.daily_money_check_alert", limit: 100 })) as Array<{ outcome: string; createdAt: Date | string }>))();
+      res.json(summarizeMoneyCheckAlerts(rows, now()));
+    } catch (error) {
+      capture(error, { path: "/api/admin/money-check/status" });
+      res.status(500).json({ error: "We could not load the alert status" });
+    }
+  });
+
   // Admin-only, read-only on demand money check: returns the findings text and
   // sends the same owner email. Writes nothing but the activity-log row.
   let lastMoneyCheckAt = 0;
@@ -122,6 +180,35 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
       lastMoneyCheckAt = 0;
       capture(error, { path: "/api/admin/money-check/run" });
       res.status(500).json({ error: "The money check could not run" });
+    }
+  });
+
+  // Admin Skippie, read-only. 404 while the flag is off. Same admin guard as /api/admin/jobs.
+  const skippieAsks = new Map<number, { day: string; count: number }>();
+  app.post("/api/admin/skippie/ask", async (req: Request, res: Response) => {
+    res.set("Cache-Control", "private, no-store");
+    if (!deps.skippie?.enabled()) return res.status(404).json({ error: "Not found" });
+    const identity = await deps.resolveIdentity(req);
+    if (!identity) return res.status(401).json({ error: "Sign in to continue" });
+    if (identity.account.role !== "admin") {
+      record({ actorUserId: identity.account.id, action: "admin.skippie_denied", outcome: "denied", resourceType: "skippie" });
+      return res.status(403).json({ error: "Administrator access is required" });
+    }
+    const question = typeof req.body?.question === "string" ? req.body.question.trim() : "";
+    if (!question || question.length > SKIPPIE_QUESTION_MAX) return res.status(400).json({ error: `Ask a question of 1 to ${SKIPPIE_QUESTION_MAX} characters` });
+    const day = new Date(now()).toISOString().slice(0, 10);
+    const seen = skippieAsks.get(identity.account.id);
+    const count = seen && seen.day === day ? seen.count : 0;
+    if (count >= SKIPPIE_DAILY_CAP) return res.status(429).json({ error: "Daily Skippy limit reached" });
+    skippieAsks.set(identity.account.id, { day, count: count + 1 });
+    try {
+      const out = await askSkippieAdmin(question, deps.skippie.deps());
+      record({ actorUserId: identity.account.id, action: "admin.skippie_ask", outcome: "success", resourceType: "skippie", metadata: { question, answer: out.answer.slice(0, 1500), tools: out.toolsUsed.join(","), mode: out.mode } });
+      res.json({ answer: out.answer, toolsUsed: out.toolsUsed, mode: out.mode });
+    } catch (error) {
+      record({ actorUserId: identity.account.id, action: "admin.skippie_ask", outcome: "failure", resourceType: "skippie", metadata: { question } });
+      capture(error, { path: "/api/admin/skippie/ask" });
+      res.status(500).json({ error: "Skippy could not answer" });
     }
   });
 }

@@ -23,7 +23,7 @@ import { sendReferrerReviewEmail } from "./referrerReviewEmail";
 import { createReferrerSlackDeliverySender, isValidSlackIncomingWebhookUrl, sendReferrerSlackDelivery } from "./referrerSlackDelivery";
 import { sendSlotOpenedAlertEmail } from "./slotOpenedAlertEmail";
 import sharp from "sharp";
-import { getAskShelfLifeEndsAtMs, isReferralProgressUpdateStatus, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
+import { getAskShelfLifeEndsAtMs, isReferralProgressUpdateStatus, REFERRED_DEADLINE_ENABLED, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { getBlockedRequestIds as defaultBlockedRequestIds } from "./blocksRoutes";
 import { attachCompanyIdentities, getCompanyDirectoryEntry as defaultCompanyDirectoryEntry, notifySeekerAlertsForCompanyDomain, resolveCompanyIdentities, type CompanyIdentityLookup } from "./companyDirectory";
 import { askJobFunctionInputSchema, withParsedJobFunction, type JobFunction } from "../shared/jobFunctions";
@@ -113,6 +113,8 @@ export type PrivateReferralRouteDeps = {
   extendReferredDeadlineTx: (userId: number, requestId: number, nowMs: number) => Promise<{ extended: boolean; replayed?: boolean }>;
   stepBackFromReferral: (userId: number, requestId: number, nowMs: number) => Promise<{ lapsed: boolean; reason?: string }>;
   confirmReferredBySeeker: (userId: number, requestId: number, nowMs: number) => Promise<{ confirmed: boolean; replayed?: boolean }>;
+  /** D-038-reconcile R-2: part B's three actions answer 409 until an independent review passes it. */
+  referredDeadlineEnabled?: boolean;
   lapseReferredTx: (tx: any, requestId: number, nowMs: number) => Promise<{ lapsed: boolean; reason?: string }>;
   getClaimedCompanyReferralDetail: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   reviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) => Promise<{ status: string }>;
@@ -209,6 +211,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     next();
   });
   app.use("/api/admin", (req, res, next) => { if (req.method === "GET") res.set("Cache-Control", "private, no-store"); next(); });
+  // D-038-reconcile R-2: part B's actions touched money and privacy before their own review. While
+  // switched off they refuse first — before identity, the block check, or any read or write.
+  const referredActionsEnabled = deps.referredDeadlineEnabled ?? REFERRED_DEADLINE_ENABLED;
+  const refuseReferredAction = (res: ExpressResponse) => res.status(409).json({ code: "not_available_yet", error: "This option is not available yet. Nothing has changed." });
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
   // Additive companyName/companyInitials from the company directory on every
   // row that carries a companyDomain; non-object rows pass through untouched.
@@ -1365,10 +1371,13 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     } catch (error) {
       const message = error instanceof Error ? error.message : "This referral request is no longer available";
       const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
-      res.status(/verify your (work|company) email/i.test(message) ? 403 : /no longer available|already claimed|conflicts with the current state|expired/i.test(message) ? 409 : /not in your account|not found|no longer exists/i.test(message) ? 404 : 500).json({ error: message, currentState });
+      // D-038-A: the 5-claim cap is a state conflict (the referrer must accept or pass one first), never a server fault.
+      const capReached = error instanceof Error && error.name === "ReferralTransitionConflict" && /asks at once/i.test(message);
+      res.status(/verify your (work|company) email/i.test(message) ? 403 : capReached || /no longer available|already claimed|conflicts with the current state|expired/i.test(message) ? 409 : /not in your account|not found|no longer exists/i.test(message) ? 404 : 500).json({ error: message, currentState });
     }
   });
   app.post("/api/company-referrals/:requestId/extend-referred-deadline", async (req, res) => {
+    if (!referredActionsEnabled) return refuseReferredAction(res);
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
       if (!identity) return res.status(401).json({ error: "Sign in to extend this referral deadline" });
@@ -1384,6 +1393,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     }
   });
   app.post("/api/company-referrals/:requestId/step-back", async (req, res) => {
+    if (!referredActionsEnabled) return refuseReferredAction(res);
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
       if (!identity) return res.status(401).json({ error: "Sign in to step back from this referral" });
@@ -1399,6 +1409,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     }
   });
   app.post("/api/company-referrals/:requestId/confirm-referred", async (req, res) => {
+    if (!referredActionsEnabled) return refuseReferredAction(res);
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
       if (!identity) return res.status(401).json({ error: "Sign in to confirm this referral" });
