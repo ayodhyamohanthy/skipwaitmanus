@@ -260,7 +260,7 @@
       "tier": 2,
       "lane": "design-core",
       "branch": "agent/opencode/goal-kit-type-scale",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
