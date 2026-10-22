@@ -9,10 +9,11 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 
 // Kit v4 /suggest-company (app/src/routes/suggest-company.tsx) on the live
-// POST /api/company-suggestions intake (auth required, 3 a day, open-duplicate
-// check server side). The duplicate hint is the kit's prefix match against the
-// live company directory (the same list /explore shows), and a website is
-// required before Submit, as in the kit.
+// POST /api/company-suggestions intake (auth required, 3 a day, and one vote
+// per seeker per company: asking again returns the existing request instead of
+// an error). The duplicate hint is the kit's prefix match against the live
+// company directory (the same list /explore shows), and a website is required
+// before Submit, as in the kit.
 type SuggestRole = "seeker" | "employee";
 const ROLES: ReadonlyArray<readonly [SuggestRole, string]> = [["seeker", "Looking to join"], ["employee", "Working there now"]];
 const SITE_PATTERN = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+/i;

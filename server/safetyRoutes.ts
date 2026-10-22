@@ -63,12 +63,12 @@ export function registerSafetyRoutes(app: Express, deps: SafetyRouteDeps) {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to suggest a company" });
       const body = (req.body ?? {}) as Record<string, unknown>;
-      const suggestion = await suggestCompany(identity.account.id, { companyName: body.companyName, website: body.website, role: body.role });
+      const suggestion = await suggestCompany(identity.account.id, { companyName: body.companyName, website: body.website, role: body.role, jobFunction: body.jobFunction });
       record({ actorUserId: identity.account.id, action: "company_suggestion.filed", outcome: "success", resourceType: "company_suggestion", resourceId: suggestion.id });
       res.status(201).json({ suggestion });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not save this suggestion";
-      res.status(/name|website|up to 3|already suggested|seeker|employee/i.test(message) ? 400 : 500).json({ error: message });
+      res.status(/name|website|choose|up to 3|seeker|employee/i.test(message) ? 400 : 500).json({ error: message });
     }
   });
 

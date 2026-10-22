@@ -26,6 +26,15 @@ export default function AdminMoneyCheck() {
   useEffect(() => {
     void fetch("/api/admin/money-check/status", { credentials: "include" }).then(r => (r.ok ? r.json() : null)).then(b => setAlertStatus(b as AlertStatus | null)).catch(() => undefined);
   }, []);
+  const [testMsg, setTestMsg] = useState("");
+  const sendTest = async () => {
+    setTestMsg("Sending");
+    try {
+      const response = await fetch("/api/admin/alerts/test", { method: "POST", credentials: "include" });
+      const body = await response.json().catch(() => ({}));
+      setTestMsg(!response.ok ? (response.status === 429 ? "Sent a moment ago. Wait 5 minutes." : body.error ?? "The test alert could not be sent.") : body.sent ? "Test alert sent. Check the owner inbox." : "The test alert was not accepted by the mail service.");
+    } catch { setTestMsg("The test alert could not be sent."); }
+  };
   const run = async () => {
     if (busy) return;
     setBusy(true); setError(""); setResult(null);
@@ -44,6 +53,8 @@ export default function AdminMoneyCheck() {
           <h1 className="text-2xl font-semibold">Money check</h1>
           <p className="text-sm text-muted-foreground">Checks every wallet, credited payment, parked payment and refund for entries that do not add up. It only reads. It changes no money. If it finds something, it also sends the usual owner email once. You can run it every 5 minutes at most.</p>
           <button type="button" onClick={() => void run()} disabled={busy} className="min-h-11 rounded-lg bg-[#141414] px-5 text-sm font-bold text-white disabled:opacity-50">{busy ? "Running" : "Run money check now"}</button>
+          <button type="button" onClick={() => void sendTest()} className="ml-3 min-h-11 rounded-lg border border-[#141414] px-5 text-sm font-bold text-[#141414]">Send test alert</button>
+          {testMsg ? <p role="status" className="text-sm">{testMsg}</p> : null}
         </section>
         {alertStatus?.ownerNotReached ? (
           <p role="alert" className="rounded-lg border border-red-700 p-3 text-sm font-semibold text-red-700">

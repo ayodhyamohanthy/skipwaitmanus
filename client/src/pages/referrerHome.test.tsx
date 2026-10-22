@@ -265,6 +265,17 @@ describe("Invite colleagues and request companies", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/company-suggestions", expect.objectContaining({ method: "POST", body: JSON.stringify({ companyName: "Acme Labs", role: "seeker" }) }));
   });
 
+  it("sends the kit's work function with the vote and stays truthful about a vote already filed", async () => {
+    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => (url === "/api/companies" ? ok(DIRECTORY) : ok({ suggestion: { id: 7, companyName: "Acme Labs", jobFunction: "Design", alreadyRecorded: true } })));
+    vi.stubGlobal("fetch", fetchMock);
+    renderWithQuery(<Invite />);
+    fireEvent.change(screen.getByLabelText("Company name"), { target: { value: "Acme Labs" } });
+    fireEvent.change(screen.getByLabelText("Work function"), { target: { value: "Design" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send company request" }));
+    expect(await screen.findByText(/You had already asked for Acme Labs, so your vote counts once/)).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith("/api/company-suggestions", expect.objectContaining({ method: "POST", body: JSON.stringify({ companyName: "Acme Labs", role: "seeker", jobFunction: "Design" }) }));
+  });
+
   it("points a listed company to its door instead of filing a request", async () => {
     const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => (url === "/api/companies" ? ok(DIRECTORY) : fail(500, {})));
     vi.stubGlobal("fetch", fetchMock);
@@ -290,11 +301,11 @@ describe("Invite colleagues and request companies", () => {
   });
 
   it("shows the server's reason when a company request is refused", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => fail(400, { error: "This company was already suggested and is under review" })));
+    vi.stubGlobal("fetch", vi.fn(async () => fail(400, { error: "You can suggest up to 3 companies a day" })));
     renderWithQuery(<Invite />);
     fireEvent.change(screen.getByLabelText("Company name"), { target: { value: "Acme Labs" } });
     fireEvent.click(screen.getByRole("button", { name: "Send company request" }));
-    expect(await screen.findByText("This company was already suggested and is under review")).toBeTruthy();
+    expect(await screen.findByText("You can suggest up to 3 companies a day")).toBeTruthy();
   });
 
   it("keeps requests and invites behind sign-in", () => {
