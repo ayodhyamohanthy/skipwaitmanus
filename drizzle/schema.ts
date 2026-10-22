@@ -151,6 +151,10 @@ export const companySuggestions = mysqlTable("companySuggestions", {
   submitterUserId: int("submitterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   companyName: varchar("companyName", { length: 160 }).notNull(),
   website: varchar("website", { length: 512 }),
+  // Job function taxonomy (0104): a JOB_FUNCTIONS value from shared/jobFunctions.ts
+  // chosen on a seeker demand vote; NULL means the seeker chose nothing. Reads
+  // parse with parseJobFunction, so an unknown stored value becomes null.
+  jobFunction: varchar("jobFunction", { length: 32 }),
   role: mysqlEnum("role", ["seeker", "employee"]).default("seeker").notNull(),
   status: mysqlEnum("status", ["open", "under_review", "approved", "dismissed"]).default("open").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
