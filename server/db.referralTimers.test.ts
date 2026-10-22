@@ -95,7 +95,7 @@ describe("D-038-B: referred deadline (5 days)", () => {
     expect(noticesFor(REFERRER).some(n => n.title === "An accepted ask went back to your colleagues")).toBe(true);
   });
 
-  it("the credit is released after lapse", async () => {
+  it("a referred lapse moves no money; the credit comes back only when the reopened ask expires", async () => {
     seed({
       asks: [acceptedAsk({ revision: 1, debitTransactionId: 11 })],
       events: [{ id: 100, referralRequestId: REQUEST_ID, operationKey: "review:2:approved", actorUserId: REFERRER, action: "review", fromStatus: "pending", resultingStatus: "approved", resultingRevision: 1, createdAt: new Date(T0) }],
@@ -241,7 +241,6 @@ describe("D-038-B: referred deadline (5 days)", () => {
       lapseClaim: (tx: any, requestId: number, nowMs: number) => import("./db").then(m => m.lapseClaimTx(tx, requestId, nowMs)),
       lapseAllocation: (tx: any, requestId: number, nowMs: number) => import("./db").then(m => m.lapseAllocationTx(tx, requestId, nowMs)),
       lapseReferred: (tx: any, requestId: number, nowMs: number) => import("./db").then(m => m.lapseReferredTx(tx, requestId, nowMs)),
-      stepBack: (tx: any, requestId: number, nowMs: number) => import("./db").then(m => m.stepBackFromReferral(tx, requestId, nowMs)),
     });
 
     // Day 2 reminder

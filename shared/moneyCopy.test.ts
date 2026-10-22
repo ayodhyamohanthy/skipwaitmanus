@@ -27,7 +27,11 @@ describe("CREDIT_RULE follows the part B switch", () => {
     expect(rule).not.toMatch(REOPEN);
     expect(rule).not.toContain("steps back");
     // The rest of the rule, the part the product does deliver, stays intact.
-    expect(rule).toContain("48-hour hold lapses");
+    // D-042: a 48-hour claim or allocation lapse moves no ledger row (D-076 (1)) — the credit comes
+    // back only if the reopened ask is then withdrawn or expires unclaimed, and never if a colleague
+    // picks it up. The rule may not promise a return at the lapse itself.
+    expect(rule).not.toMatch(/48-hour hold lapses/);
+    expect(rule).not.toMatch(/lapse/i);
   });
 
   it("states the reopen path when the switch is on", async () => {

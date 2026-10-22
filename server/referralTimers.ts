@@ -16,7 +16,7 @@
 // is picked up next window. A failing step is reported to Sentry and the other steps still run.
 import { notifications } from "../drizzle/schema";
 import { REFERRED_DEADLINE_ENABLED } from "../shared/referral";
-import { getDb, lapseAllocationTx, lapseClaimTx, lapseReferredTx, listReferralTimerCandidates, stepBackFromReferral } from "./db";
+import { getDb, lapseAllocationTx, lapseClaimTx, lapseReferredTx, listReferralTimerCandidates } from "./db";
 import type { LedgerTx } from "./creditLedger";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
 import { captureServerError } from "./sentry";
@@ -41,7 +41,6 @@ type ReferralTimersDeps = {
   lapseClaim: (tx: LedgerTx, requestId: number, nowMs: number) => Promise<{ lapsed: boolean; reason?: string }>;
   lapseAllocation: (tx: LedgerTx, requestId: number, nowMs: number) => Promise<{ lapsed: boolean; reason?: string }>;
   lapseReferred: (tx: LedgerTx, requestId: number, nowMs: number) => Promise<{ lapsed: boolean; reason?: string }>;
-  stepBack: (tx: LedgerTx, requestId: number, nowMs: number) => Promise<{ lapsed: boolean; reason?: string }>;
   referredDeadlineEnabled: boolean;
 };
 
@@ -71,7 +70,6 @@ const defaultDeps: ReferralTimersDeps = {
   lapseClaim: lapseClaimTx,
   lapseAllocation: lapseAllocationTx,
   lapseReferred: lapseReferredTx,
-  stepBack: stepBackFromReferral,
   referredDeadlineEnabled: REFERRED_DEADLINE_ENABLED,
 };
 
