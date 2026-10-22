@@ -193,7 +193,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   });
 
   registerAccountPreferenceRoutes(app, { resolveIdentity, getPreferences: db.getAccountPreferences, savePreferences: db.saveAccountPreferences });
-  registerImpactCardRoutes(app, { resolveIdentity });
+  registerImpactCardRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
 
   // Dev session routes read JSON bodies, so they register after the parsers.
   // WorkOS AuthKit takes precedence over the dev fallback when configured.

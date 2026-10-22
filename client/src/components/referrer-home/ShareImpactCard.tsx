@@ -11,6 +11,7 @@ import { BadgeCheck, Check, Copy, Linkedin } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
 import { SHARE_IMPACT_CARD } from "@/lib/shareFlags";
+import { trackClarityEvent } from "@/lib/clarity";
 import { IMPACT_CARD_COPY, impactCardLinkedIn, impactCardText, impactVerifiedLine, impactReferredBig, impactReferredLine, impactStatPairs, type ImpactCardInput } from "@shared/shareImpactCard";
 
 type Payload = { state: "ready" | "insufficient"; screenName?: string; companyName?: string; companySlug?: string; linkPath?: string; stats?: ImpactCardInput["stats"] };
@@ -45,6 +46,7 @@ export function ShareImpactCard() {
       area.remove();
     }
     setCopied(kind);
+    trackClarityEvent(kind === "text" ? "impact_card_copy_text" : "impact_card_copy_linkedin");
     setTimeout(() => setCopied(null), 2000);
   };
 

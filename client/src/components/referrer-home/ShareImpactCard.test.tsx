@@ -3,7 +3,9 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 const flag = vi.hoisted(() => ({ on: true }));
+const clarity = vi.hoisted(() => ({ trackClarityEvent: vi.fn() }));
 vi.mock("@/lib/shareFlags", () => ({ get SHARE_IMPACT_CARD() { return flag.on; } }));
+vi.mock("@/lib/clarity", () => ({ trackClarityEvent: clarity.trackClarityEvent }));
 import { ShareImpactCard } from "./ShareImpactCard";
 
 const ready = {
@@ -23,7 +25,7 @@ function clipboard() {
   vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
   return writeText;
 }
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); flag.on = true; });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); flag.on = true; clarity.trackClarityEvent.mockClear(); });
 
 describe("Referrer impact card", () => {
   it("flag off (shipped state): nothing renders, no fetch", async () => {
@@ -61,11 +63,13 @@ describe("Referrer impact card", () => {
     await screen.findByTestId("share-impact-card");
     fireEvent.click(screen.getByRole("button", { name: "Copy card as text" }));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(clarity.trackClarityEvent).toHaveBeenCalledWith("impact_card_copy_text");
     const text = writeText.mock.calls[0][0] as string;
     expect(text).toContain("QuietFalcon · Verified at Kestrel Pay");
     expect(text).not.toMatch(/seeker|pitch|hired/i);
     fireEvent.click(screen.getByRole("button", { name: "Copy for LinkedIn" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+    expect(clarity.trackClarityEvent).toHaveBeenCalledWith("impact_card_copy_linkedin");
     expect(writeText.mock.calls[1][0] as string).toContain("Ask me for a referral: https://skipwait.me/refer/kestrel-pay/quietfalcon");
   });
   it("fetch failure renders nothing", async () => {

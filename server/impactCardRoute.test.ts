@@ -53,6 +53,24 @@ describe("GET /api/referrer/impact-card", () => {
     const failed = await request(failing).get("/api/referrer/impact-card").expect(503);
     expect(failed.headers["cache-control"]).toBe("private, no-store");
   });
+  it("F6: records one viewed activity row on a successful load, and none when signed out", async () => {
+    const recordActivity = vi.fn(async () => undefined);
+    const app = express();
+    registerImpactCardRoutes(app, { resolveIdentity: async () => ({ account: { id: 42 } }), loadImpactCard: async () => ready, recordActivity });
+    await request(app).get("/api/referrer/impact-card").expect(200);
+    expect(recordActivity).toHaveBeenCalledTimes(1);
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({
+      actorUserId: 42,
+      action: "referrer_impact_card.viewed",
+      outcome: "success",
+      resourceType: "referrer_impact_card",
+      metadata: { state: "ready" },
+    }));
+    const denied = express();
+    registerImpactCardRoutes(denied, { resolveIdentity: async () => null, loadImpactCard: async () => ready, recordActivity });
+    await request(denied).get("/api/referrer/impact-card").expect(401);
+    expect(recordActivity).toHaveBeenCalledTimes(1);
+  });
   it("503 when the load throws, and the failure is logged", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     const app = express();
