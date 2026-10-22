@@ -11,7 +11,7 @@ import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
 import { displayJobFunction } from "@shared/jobFunctions";
 import { askCountdown, type ReferrerHomeView } from "./referrerData";
-import { GoalReferrerSampleRows } from "@/components/goal/GoalReferrerSampleRows";
+import { ReferrerSampleRows } from "./ReferrerSampleRows";
 
 export function WaitingAsks({ view, nowMs }: { view: ReferrerHomeView; nowMs: number }) {
   const company = view.company;
@@ -24,7 +24,7 @@ export function WaitingAsks({ view, nowMs }: { view: ReferrerHomeView; nowMs: nu
         // Sample-filled first-run state (owner override, Oct 21 11:35 PM): two inert
         // SAMPLE rows teach the accept/pass anatomy. Server-durable flag only -
         // hasEverReviewed===false strictly; real counts/capacity untouched.
-        <GoalReferrerSampleRows
+        <ReferrerSampleRows
           rows={[
             { name: "A. Sample · Product Analyst", time: "2H AGO", reason: "Asked for you by name. Three lines of why, no pile.", next: "Waiting on you · releases the credit if you pass" },
             { name: "B. Example · Data Engineer", time: "1D AGO", reason: "Sent to the company queue · fits what you said you can judge.", next: "Waiting on you" },

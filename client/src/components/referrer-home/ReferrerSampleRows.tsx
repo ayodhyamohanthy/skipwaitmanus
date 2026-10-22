@@ -10,7 +10,7 @@
  * - rows are inert: no link, no onClick, cursor default, aria-hidden, untabbable;
  * - samples never touch capacity, counts, credits, or any route.
  */
-export type GoalReferrerSampleRow = {
+export type ReferrerSampleRow = {
   /** Anonymized placeholder name line, e.g. "A. Sample · Product Analyst". */
   name: string;
   /** Relative-time label rendered mono uppercase, e.g. "2H AGO". */
@@ -21,7 +21,7 @@ export type GoalReferrerSampleRow = {
   next: string;
 };
 
-export function GoalReferrerSampleRows({ rows, caption, kick = "SAMPLE · NOT REAL ASKS" }: { rows: GoalReferrerSampleRow[]; caption: string; kick?: string }) {
+export function ReferrerSampleRows({ rows, caption, kick = "SAMPLE · NOT REAL ASKS" }: { rows: ReferrerSampleRow[]; caption: string; kick?: string }) {
   return (
     <section data-testid="goal-referrer-sample-rows" aria-labelledby="goal-referrer-sample-rows-kick" className="mt-2">
       <div className="flex items-center gap-3">
