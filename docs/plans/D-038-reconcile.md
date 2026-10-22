@@ -78,6 +78,7 @@ In scope (smallest change that satisfies §4):
 - `server/privateReferralRoutes.ts` (the three part B routes only)
 - the thread API projection that sends the deadline fields (find it from `client/src/lib/threadApi.ts`'s types)
 - `client/src/components/thread/ThreadDecisionPanels.tsx` (hide the controls when the fields are absent)
+- `client/src/pages/conversation/SeekerConversation.tsx` (the seeker's "I got the referral email" control, the same gate): since #432 (Oct 22, D-136) the live seeker conversation is this goal page and no longer renders the kit seeker panel, so a change made only in `ThreadDecisionPanels.tsx` never reaches seekers
 - tests: `server/db.referralTimers.test.ts`, `server/db.referralTimerLapses.test.ts`, `server/claimAtomicity.test.ts` and the route tests from #330
 - docs: `docs/KIT_V4_BUILD_PLAN.md` rows `D-038-A` and `D-038-B`, `AGENTS.md` living-map "Scheduled jobs" row, `docs/RELEASES.md` at landing
 

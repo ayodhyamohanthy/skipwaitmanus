@@ -6,6 +6,30 @@
   "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks, except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
+      "id": "P0-ask-link-signin",
+      "title": "P0: a personal-link ask from a signed-out seeker keeps its referrer across sign-in on /ask (live since #431)",
+      "row": "LIVE-OCT22",
+      "packet": "docs/plans/LIVE-OCT22-regressions.md",
+      "tier": 1,
+      "lane": "ask-signin",
+      "branch": "agent/queue/p0-ask-link-signin",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-136 (1): since #431 the signed-out send returns to a bare /ask, so ?fast= / ?referCompany&referAlias / ?post= are lost and the ask reaches the whole company. Red-first, independent review before landing, live check."
+    },
+    {
+      "id": "P1-queue-attestation",
+      "title": "P1: accepting on /queue shows the official-process attestation the server records (live since #426)",
+      "row": "LIVE-OCT22",
+      "packet": "docs/plans/LIVE-OCT22-regressions.md",
+      "tier": 1,
+      "lane": "queue-attest",
+      "branch": "agent/queue/p1-queue-attestation",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-136 (1): the goal /queue always sends ethicsConfirmed: true without showing the sentence; the CEO ruling in the packet says show it above Accept, no checkbox."
+    },
+    {
       "id": "D-069-chargebee-catalog-sync",
       "title": "Admin-only Chargebee catalog sync: dry run, then one owner-triggered apply",
       "row": "D-069-chargebee-catalog-sync",
@@ -72,15 +96,45 @@
     },
     {
       "id": "D-048-p3-live-review",
-      "title": "Post-landing review of the live goal /explore and /requests (#362, #360): send path, credits, money copy, states",
+      "title": "Redesign the live /explore, /explore/:slug and /ask to the goal doctrine (D-137), then review them (D-136)",
       "row": "D-048",
       "packet": "docs/plans/OCT21-BUILT-PRS.md",
       "tier": 1,
       "lane": "d048-find",
       "branch": "agent/queue/d048-live-review",
       "status": "todo",
-      "dependsOn": [],
-      "note": "D-134 (6): both pages went live in place with the merge button and no independent review; this checks them against their kit versions and the money rules, fixes what fails red-first, and passes an independent review."
+      "dependsOn": [
+        "P0-ask-link-signin"
+      ],
+      "note": "D-137: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-136: these pages went live in place with no independent review; checks them against their kit versions, moves their cost lines into shared/moneyCopy.ts, restores lost test pins, fixes red-first, independent review before landing. After P0-ask-link-signin, which edits the same composer."
+    },
+    {
+      "id": "D-048-p3-live-review-asks",
+      "title": "Redesign the live /requests and seeker /conversation to the goal doctrine (D-137), then review them (D-136)",
+      "row": "D-048",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "d048-asks",
+      "branch": "agent/queue/d048-live-review-asks",
+      "status": "todo",
+      "dependsOn": [
+        "D-038-reconcile"
+      ],
+      "note": "D-137: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-136: checks both pages against their kit versions, ports D-038's referred-email gate into the live seeker page, money lines from shared/moneyCopy.ts, restores lost test pins. After D-038-reconcile, whose gate it ports."
+    },
+    {
+      "id": "D-048-p3-live-review-queue",
+      "title": "Redesign the live /queue to the goal doctrine (D-137), then review it (D-136)",
+      "row": "D-048",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "d048-workspace",
+      "branch": "agent/queue/d048-live-review-queue",
+      "status": "todo",
+      "dependsOn": [
+        "P1-queue-attestation"
+      ],
+      "note": "D-137: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-136: checks the referral queue against its kit version (pass codes, pre-acceptance privacy, verified-referrer check, lost test pins). After P1-queue-attestation, which edits the same page."
     },
     {
       "id": "D-065-C",
@@ -131,9 +185,10 @@
         "D-035",
         "D-048-p3-live-review",
         "TASK13-pinned-work",
-        "D-065-C"
+        "D-065-C",
+        "D-048-p3-live-review-asks"
       ],
-      "note": "D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. After D-035 (same spend and refund code), the live review (which moves the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends)."
+      "note": "D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. After D-035 (same spend and refund code), the live review (which moves the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) D-065-C (the money check item 6 extends) and D-048-p3-live-review-asks (the seeker conversation's cost lines)."
     },
     {
       "id": "PICKER-landing-slot",
@@ -314,6 +369,42 @@
       "note": "Landed through env flags (VITE_GOAL_UI_LANDING, VITE_GOAL_UI_LANDING_V9); D-048-F-flags folds them into goalSurfaces.ts. Signed-in visitors to / still get the old page until D-048-p3-home-signed-in."
     },
     {
+      "id": "D-048-p3-queue",
+      "title": "D-048 phase 3: the referral queue (/queue), live in place (#426, #428)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-workspace",
+      "branch": "agent/instinct/w1-queue",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed in place as c1690f40 (#426) and f1812bf1 (#428), no flag, no independent review (D-136); its attestation gap is P1-queue-attestation, and D-048-p3-live-review checks the rest. Landed, but not yet goal-focused (D-137): D-048-p3-live-review-queue redesigns it to the doctrine."
+    },
+    {
+      "id": "D-048-p3-company",
+      "title": "D-048 phase 3: the company door (/explore/:slug), live in place (#429)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-company",
+      "branch": "agent/instinct/w2-explore-company",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed in place as 4e6f32c1 (#429), no flag, no independent review (D-136); it now sends asks itself through the shared composer, so it is Tier 1. D-048-p3-live-review checks it. Landed, but not yet goal-focused (D-137): D-048-p3-live-review redesigns it to the doctrine."
+    },
+    {
+      "id": "D-048-p3-ask",
+      "title": "D-048 phase 3: the ask page (/ask), live in place (#431)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-find",
+      "branch": "agent/instinct/w2-ask",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed in place as d3da2497 (#431), no flag, no independent review (D-136); its sign-in regression is P0-ask-link-signin, and D-048-p3-live-review checks the rest. Landed, but not yet goal-focused (D-137): D-048-p3-live-review redesigns it to the doctrine."
+    },
+    {
       "id": "D-048-p3-explore",
       "title": "D-048 phase 3 (#362): Find a referral (/explore) moves to the goal directory",
       "row": "D-048",
@@ -323,7 +414,7 @@
       "branch": "agent/qoder/d048-phase-3-explore",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging main: /explore is owned by the page in App.tsx, the wave keeps its rewrite and carries main's #407 ?q= pre-filter into its query state, Explore.tsx joins MOVED_SURFACES, and three stale expectations are realigned (Neutrinos rebrand changes the row order and SEO line; the meta description carries main's current money copy). Captures at 1280/390 in five states (directory, drawer, not-open, empty, error). Gate: tsc, token audit, deploy triggers, 50 focused tests, build green; migration lint runs in CI."
+      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging main: /explore is owned by the page in App.tsx, the wave keeps its rewrite and carries main's #407 ?q= pre-filter into its query state, Explore.tsx joins MOVED_SURFACES, and three stale expectations are realigned (Neutrinos rebrand changes the row order and SEO line; the meta description carries main's current money copy). Captures at 1280/390 in five states (directory, drawer, not-open, empty, error). Gate: tsc, token audit, deploy triggers, 50 focused tests, build green; migration lint runs in CI. Landed, but not yet goal-focused (D-137): D-048-p3-live-review redesigns it to the doctrine."
     },
     {
       "id": "D-048-p3-requests",
@@ -335,7 +426,7 @@
       "branch": "agent/qoder/d048-phase-3-requests",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging origin/main: the shared goal/ shell takes main's newer W0 version (designer review 01:52: pill mono numeral + g-hit + /plans, account-menu slot, BetaBadge), MyRequests joins MOVED_SURFACES, and the pilot's superseded avatar assertion is re-pinned to the shell's real contract. Captures at 1280/390 in four states added with a reusable live-route capture tool (design/goal-ui/tools/capture-live.mjs). Gate: tsc, token audit, deploy triggers, 54 focused tests, build green; migration lint runs in CI (macOS bash 3.2 lacks declare -A)."
+      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging origin/main: the shared goal/ shell takes main's newer W0 version (designer review 01:52: pill mono numeral + g-hit + /plans, account-menu slot, BetaBadge), MyRequests joins MOVED_SURFACES, and the pilot's superseded avatar assertion is re-pinned to the shell's real contract. Captures at 1280/390 in four states added with a reusable live-route capture tool (design/goal-ui/tools/capture-live.mjs). Gate: tsc, token audit, deploy triggers, 54 focused tests, build green; migration lint runs in CI (macOS bash 3.2 lacks declare -A). Landed, but not yet goal-focused (D-137): D-048-p3-live-review-asks redesigns it to the doctrine."
     },
     {
       "id": "D-048-P-seeker",
@@ -498,7 +589,8 @@
       "branch": "agent/qoder/row20cd-thank-you-wall",
       "status": "todo",
       "dependsOn": [
-        "ROW20-B"
+        "ROW20-B",
+        "D-048-p3-live-review-asks"
       ]
     },
     {
