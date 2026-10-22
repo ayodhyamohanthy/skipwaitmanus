@@ -13,7 +13,7 @@ import { GoalAppShell, GoalButton, GoalErrorState, GoalMiniStepper, GoalNum, Goa
 import { askView } from "@/components/requests/askView";
 import { SEEKER_MILESTONES } from "@/components/thread/ThreadDecisionPanels";
 import { isUnknownCompany } from "@shared/companies";
-import { companyName, isAccepted as isAcceptedRequest, seekerWaitingCopy, stageIndex, stageOf } from "@/components/thread/threadModel";
+import { companyName, seekerWaitingCopy, stageIndex, stageOf } from "@/components/thread/threadModel";
 import { formatDay, formatDayTime } from "@/lib/displayPrefs";
 import type { ThreadMessage, ThreadRequest } from "@/lib/threadApi";
 
@@ -99,7 +99,6 @@ export function SeekerConversation(props: Props) {
   const idx = stageIndex(stage);
   const sent = formatDay(request.createdAt === null ? "" : typeof request.createdAt === "number" ? new Date(request.createdAt) : request.createdAt);
   const line = nextLine(request, company, unknown);
-  const accepted = isAcceptedRequest(request);
   const canWithdraw = request.status === "pending" && (request.referrerId === null || request.heldForReferrer === true || request.unclaimedAssignment === true);
   const awaitingCoverage = request.queueStatus === "waiting_for_coverage" || request.queueStatus === "held_for_credit";
   const closedFor = ["Declined", "Expired", "Withdrawn"].includes(stage);
@@ -122,7 +121,7 @@ export function SeekerConversation(props: Props) {
           {view.stepper ? <GoalMiniStepper stage={view.stepper.stage} terminal={view.stepper.terminal} label={`Stage ${view.stepper.stage + 1} of 4: ${view.label}`} /> : null}
         </div>
         {line ? <p className="mt-2 text-pretty text-g-meta text-g-ink-2">{line}</p> : null}
-        {props.referrerName ? <p className="mt-1 text-g-meta text-g-ink-2">Your referrer <span className="text-g-ink">{props.referrerName}</span></p> : accepted ? <p className="mt-1 text-g-meta text-g-ink-2">Your referrer</p> : null}
+        {props.referrerName ? <p className="mt-1 text-g-meta text-g-ink-2">Your referrer <span className="text-g-ink">{props.referrerName}</span></p> : null}
         {request.status === "approved" && request.referredDueAt ? (
           <p className="mt-1 text-g-meta text-g-ink-3">The referrer’s deadline to mark Referred is {formatDay(request.referredDueAt)}.</p>
         ) : null}

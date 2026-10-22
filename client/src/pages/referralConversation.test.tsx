@@ -74,11 +74,11 @@ describe("ReferralConversation thread", () => {
     expect(within(document.querySelector("[data-skipwait-screen]") as HTMLElement).queryByText(/skipwait\.me/)).toBeNull();
   });
 
-  it("shows plain 'Your referrer' when the accepted referrer has no display name", async () => {
+  it("shows no referrer line when the accepted referrer has no display name", async () => {
     stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerApproved, referrerName: "priya@acme.com" }] }) : ok({ messages: [] })));
     renderPage();
     await screen.findByText(/through acme\.com’s process/);
-    expect(screen.getByText("Your referrer")).toBeTruthy();
+    expect(screen.queryByText(/Your referrer/)).toBeNull();
     expect(screen.queryByText(/priya/)).toBeNull();
   });
 
