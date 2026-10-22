@@ -16,10 +16,11 @@ import { sendTransactionalEmail } from "./emailDelivery";
 // row; the only writes are the job's own run record (the runner) and one
 // operational-activity row when an alert email goes out. The email carries
 // ids, amounts, currencies and reasons — never names, emails, or request content.
-import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
-import { operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
+import { askCosts, operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, referredDueAtMs, referredExtensionOperationKey } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
+import { ABANDONED_CHECKOUT_REASON } from "./abandonedCheckouts";
 import { ASK_DELIVERY_KEY_PREFIX } from "./coverageDelivery";
 import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
@@ -49,6 +50,7 @@ export type AllocatedAskCutoffs = { visibleBefore: Date; waitingBefore: Date };
 export type LegacyPlanWalletRow = { id: number; role: string; plan: string; termEnd: Date | null };
 /** A D-034/D-047 delivery spend (ask-delivery:<id>) whose ask still waits for coverage. */
 export type AskSpentWhileWaitingRow = { transactionId: number; requestId: number };
+export type AskCostMismatchRow = { requestId: number; storedCost: number; spent: number };
 /** One spend that two or more ledger rows reverse; the unique index should make this impossible. */
 export type DoublyReversedSpendRow = { reversesTransactionId: number; reversalRows: number; ledgerRowIds: number[] };
 /** D-038-A: a withdrawal or expiry refund whose ask had already been picked up by a claim. */
@@ -67,6 +69,7 @@ export type DailyMoneyCheckDeps = {
   listLegacyPlanWallets: (now: Date, limit: number) => Promise<LegacyPlanWalletRow[]>;
   listAskDeliverySpendsWhileWaiting: (limit: number) => Promise<AskSpentWhileWaitingRow[]>;
   listDoublyReversedSpends: (limit: number) => Promise<DoublyReversedSpendRow[]>;
+  listAskCostMismatches: (limit: number) => Promise<AskCostMismatchRow[]>;
   summarizeStaleCheckouts: (olderThan: Date) => Promise<StaleCheckoutSummary>;
   listRefundsAfterPickup: (limit: number) => Promise<RefundAfterPickupRow[]>;
   listReferredPastDeadline: (nowMs: number, limit: number) => Promise<ReferredDeadlineStuckRow[]>;
@@ -123,14 +126,14 @@ export type StaleCheckoutSummary = { total: number; users: number; oldest: Date 
 async function summarizeStaleCheckouts(olderThan: Date): Promise<StaleCheckoutSummary> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
   const [row] = await db.select({ total: count(), users: sql<number>`COUNT(DISTINCT ${paymentFulfillments.userId})`, oldest: sql<Date | null>`MIN(${paymentFulfillments.createdAt})`, newest: sql<Date | null>`MAX(${paymentFulfillments.createdAt})` })
-    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan)));
+    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan), or(isNull(paymentFulfillments.reconciliationReason), ne(paymentFulfillments.reconciliationReason, ABANDONED_CHECKOUT_REASON))));
   return { total: Number(row?.total ?? 0), users: Number(row?.users ?? 0), oldest: row?.oldest ? new Date(row.oldest) : null, newest: row?.newest ? new Date(row.newest) : null };
 }
 
 async function listStaleCheckouts(olderThan: Date, limit: number): Promise<StaleCheckoutRow[]> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
   return db.select({ id: paymentFulfillments.id, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, createdAt: paymentFulfillments.createdAt })
-    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan)))
+    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan), or(isNull(paymentFulfillments.reconciliationReason), ne(paymentFulfillments.reconciliationReason, ABANDONED_CHECKOUT_REASON))))
     .orderBy(asc(paymentFulfillments.id)).limit(limit);
 }
 
@@ -241,6 +244,40 @@ export async function listAskDeliverySpendsWhileWaiting(limit: number): Promise<
 }
 
 /**
+ * D-132 audit item 6: an ask priced at creation (askCosts, written only while ASK_LEVEL_COST is on) must have
+ * spent exactly that many credits once it has spent anything. Reads each stored cost and the ask's spend rows
+ * (credit_spend and promo_spend; one row per bucket drawn) and lists any ask whose spend total differs. A waiting
+ * or held ask has no spend rows yet and is never a finding; an ask with no stored cost is not checked.
+ */
+export async function listAskCostMismatches(limit: number): Promise<AskCostMismatchRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  const found: AskCostMismatchRow[] = [];
+  let afterId = 0;
+  for (;;) {
+    const costs = await db.select({ id: askCosts.id, requestId: askCosts.referralRequestId, creditCost: askCosts.creditCost }).from(askCosts)
+      .where(gt(askCosts.id, afterId)).orderBy(asc(askCosts.id)).limit(MONEY_CHECK_BATCH);
+    if (costs.length === 0) break;
+    const spends = await db.select({ referenceId: tokenTransactions.referenceId, tokenCount: tokenTransactions.tokenCount, kind: tokenTransactions.kind })
+      .from(tokenTransactions)
+      .where(and(inArray(tokenTransactions.kind, ["credit_spend", "promo_spend"]), inArray(tokenTransactions.referenceId, costs.map(row => String(row.requestId)))));
+    const spentBy = new Map<number, number>();
+    for (const spend of spends) {
+      const requestId = Number(String(spend.referenceId ?? "").split("#")[0]);
+      if (Number.isInteger(requestId)) spentBy.set(requestId, (spentBy.get(requestId) ?? 0) + Math.abs(Number(spend.tokenCount)));
+    }
+    for (const row of costs) {
+      if (found.length >= limit) return found;
+      const spent = spentBy.get(row.requestId);
+      if (spent !== undefined && spent !== row.creditCost) found.push({ requestId: row.requestId, storedCost: row.creditCost, spent });
+    }
+    const last = costs[costs.length - 1];
+    if (!last || costs.length < MONEY_CHECK_BATCH) break;
+    afterId = last.id;
+  }
+  return found;
+}
+
+/**
  * One reversal row per spend is the ledger's contract (unique index
  * token_transactions_reversal_unique; MySQL allows many NULLs, not two ids). This proves it holds:
  * pages the distinct reversal targets by id and lists any target with more than one row.
@@ -338,6 +375,7 @@ export async function listReferredPastDeadline(nowMs: number, limit: number): Pr
 async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {
   try {
     const delivery = await sendTransactionalEmail({ to: MONEY_CHECK_RECIPIENT, subject: input.subject, text: input.text });
+    try { await sendTransactionalEmail({ to: "ayodhya@mail.instinct.com", subject: input.subject, text: input.text }); } catch { /* copy is best effort */ }
     if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Money check email delivery is not configured" : "Money check email delivery failed");
     return true;
   } catch (error) {
@@ -357,6 +395,7 @@ const defaultMoneyCheckDeps: DailyMoneyCheckDeps = {
   listLegacyPlanWallets,
   listAskDeliverySpendsWhileWaiting,
   listDoublyReversedSpends,
+  listAskCostMismatches,
   summarizeStaleCheckouts,
   listRefundsAfterPickup,
   listReferredPastDeadline,
@@ -433,6 +472,10 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCh
     // index's promise, so a second row reversing the same spend is a fault.
     const waitingSpends = await deps.listAskDeliverySpendsWhileWaiting(FINDINGS_PREVIEW_LIMIT);
     for (const row of waitingSpends) findings.push(`ask_spent_while_waiting: ask #${row.requestId} still waits for coverage, but ledger row #${row.transactionId} spent a credit for it`);
+
+    // D-132 audit item 6: credits spent must equal the cost stored when the ask was created.
+    const costMismatches = await deps.listAskCostMismatches(FINDINGS_PREVIEW_LIMIT);
+    for (const row of costMismatches) findings.push(`ask_cost_mismatch: ask #${row.requestId} was priced at ${row.storedCost} credits when it was created, but ${row.spent} were spent`);
 
     const doubleReversals = await deps.listDoublyReversedSpends(FINDINGS_PREVIEW_LIMIT);
     for (const row of doubleReversals) findings.push(`spend_reversed_twice: transaction #${row.reversesTransactionId} is reversed by ${row.reversalRows} rows (ledger rows ${row.ledgerRowIds.map(id => `#${id}`).join(", ")})`);

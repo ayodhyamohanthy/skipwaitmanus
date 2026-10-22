@@ -48,12 +48,18 @@ import { registerCompanyDirectoryRoutes } from "../companyDirectoryRoutes";
 import { registerSitemapRoutes } from "../sitemapRoutes";
 import { listCompanyDirectory } from "../companyDirectory";
 import { registerScheduledJobsRoutes } from "../scheduledJobsRoutes";
+import { dispatchReferralReviewDeliveries } from "../referralReviewDispatch";
+import { publicOutboundOrigin } from "./authPostGuard";
+import { registerSkippieSeekerRoutes, skippieSeekerAllowedIds } from "../skippieSeekerRoutes";
+import { createSkippieSeekerDeps } from "../skippieSeekerDeps";
 import { createSkippieAdminDeps } from "../skippieAdminDeps";
 import { registerEmployerRoutes } from "../employerRoutes";
 import { employerSponsorshipEnabled } from "../billingSettings";
 import { registerDmRoutes } from "../dmRoutes";
 import { registerFollowRoutes } from "../followRoutes";
 import { registerAssistantRoutes } from "../assistantRoutes";
+import { registerSeekerAgentRoutes } from "../seekerAgentRoutes";
+import { createSeekerAgentSourceDeps, createSeekerAgentStore } from "../seekerAgentDeps";
 import { registerOAuthRoutes } from "../oauthRoutes";
 import { consumeAuthCode, getOAuthClient, issueAuthCode, registerOAuthClient } from "../oauthStore";
 import { registerMcpRoutes } from "../mcpRoutes";
@@ -217,6 +223,25 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // forwards it here: the sitemap's live reads come straight from the DB.
   registerSitemapRoutes(app, { listJobs: input => db.listJobs(input), listCompanySlugs: async () => (await listCompanyDirectory()).companies });
   registerScheduledJobsRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, skippie: { enabled: () => process.env.SKIPPIE_ADMIN_ENABLED === "true", deps: () => createSkippieAdminDeps() } }); // Worker cron tick + admin job status
+  // Seeker Skippy (D-136..D-142, step 2): ask-only chat. Off unless SKIPPIE_SEEKER_ENABLED=true,
+  // and then only for the account ids in SKIPPIE_SEEKER_USER_IDS (the test seeker).
+  registerSkippieSeekerRoutes(app, {
+    resolveIdentity,
+    recordActivity: db.recordOperationalActivity,
+    enabled: () => process.env.SKIPPIE_SEEKER_ENABLED === "true",
+    allowedUserIds: () => skippieSeekerAllowedIds(),
+    deps: () => {
+      // The storagePut selection above is a union of three backends with slightly different
+      // signatures (dbStoragePut takes no content type and returns no URL). Adapt once here.
+      const put = storagePut as (key: string, data: Buffer, contentType?: string) => Promise<{ key: string; url?: string }>;
+      return createSkippieSeekerDeps({
+        storagePut: async (key, data, contentType) => { const stored = await put(key, Buffer.from(data), contentType); return { key: stored.key, url: stored.url ?? "" }; },
+        storageGetBytes: async key => { const bytes = await storageGetBytes(key); if (!bytes) throw new Error("Stored file is missing."); return bytes; },
+      });
+    },
+    listOwnedResumes: userId => db.listOwnedResumeAttachments(userId),
+    afterCreate: (req, actorUserId, result) => dispatchReferralReviewDeliveries({ deps: { prepareReferrerReviewEmailNotifications: db.prepareReferrerReviewEmailNotifications, claimReferralReviewDelivery: db.claimReferralReviewDelivery, completeReferralReviewDelivery: db.completeReferralReviewDelivery, getActiveReferrerSlackWebhooks: db.getActiveReferrerSlackWebhooks }, record: entry => { void db.recordOperationalActivity(entry).catch(() => undefined); }, origin: publicOutboundOrigin(req), result, actorUserId }),
+  });
   // B2B monetization surface: employer accounts, unlock credits, anonymized
   // talent discovery, sponsored roles, and contextual partner modules.
   registerEmployerRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, isEmployer: db.isEmployer, ensureEmployerAccount: db.ensureEmployerAccount, getEmployerAccount: db.getEmployerAccount, listAnonymizedSeekerProfiles: db.listAnonymizedSeekerProfiles, resolveEmployerTalentRef: db.resolveEmployerTalentRef, spendEmployerUnlockCredit: db.spendEmployerUnlockCredit, getUnlockedProfile: db.getUnlockedProfile, requestEmployerTalentIntro: db.requestEmployerTalentIntro, createNotification: db.createNotification, sponsorCompanyOpportunity: db.sponsorCompanyOpportunity, employerSponsorshipEnabled: () => employerSponsorshipEnabled(), endCompanyOpportunitySponsorship: db.endCompanyOpportunitySponsorship, listSponsoredCompanyOpportunities: db.listSponsoredCompanyOpportunities, listEmployerOpportunities: db.listEmployerOpportunities, listPartnerModules: db.listPartnerModules, recordPartnerImpression: db.recordPartnerImpression, recordPartnerClick: db.recordPartnerClick, createPartnerModule: db.createPartnerModule, updatePartnerModule: db.updatePartnerModule, listAllPartnerModules: db.listAllPartnerModules, listEmployerSpendHistory: db.listEmployerSpendHistory, prepareUnlockCreditCheckout: db.prepareUnlockCreditCheckout, bindUnlockCreditProviderOrder: db.bindUnlockCreditProviderOrder, markUnlockCheckoutRequiresReview: db.markUnlockCheckoutRequiresReview, findRazorpayOrdersByReceipt, createRazorpayUnlockOrder: razorpayConfigured() ? razorpayOrderInPaise : undefined });
@@ -229,6 +254,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Assistant access (kit screens 22/23/24/26): connections, API
   // tokens, assistant approvals and the developer app console.
   registerAssistantRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  // Skippy step 5 (D-141): seeker agents, draft-only. Off unless SKIPPIE_AGENT_ENABLED.
+  registerSeekerAgentRoutes(app, { enabled: () => process.env.SKIPPIE_AGENT_ENABLED === "true", resolveIdentity, store: createSeekerAgentStore(), ...createSeekerAgentSourceDeps() });
   // MCP endpoint for connected assistants (read tools plus propose_ask, which only creates a pending approval) (bearer-token auth, skipwait.me/api/mcp).
   registerMcpRoutes(app, {
     verifyBearer: db.verifyAssistantBearer,

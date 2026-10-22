@@ -28,7 +28,7 @@ function renderPage() {
 
 const pendingRequest = { id: 12, title: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", companyName: null, companyInitials: null, status: "pending", referrerId: 77, queueStatus: "available_for_review", referrerMessage: null, unreadMessageCount: 0, createdAt: "2026-09-01T09:41:00.000Z", updatedAt: "2026-09-02T14:05:00.000Z", attachmentCount: 1 };
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
+afterEach(() => { cleanup(); go.mockClear(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 function stubRequests(requests: unknown[], slots?: unknown) {
   vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/api/credits/summary")
@@ -71,6 +71,20 @@ describe("My asks pending states", () => {
     // The count comes from createdAt, not a server expiresAt that would extend it.
     expect(screen.getByText("Expires in 3 days")).toBeTruthy();
     expect(document.querySelector("main")?.textContent).not.toContain("Ref-");
+  });
+
+  it("names the D-047 hold and the D-034 free wait on their rows, with no countdown", async () => {
+    stubRequests(
+      [
+        { ...pendingRequest, id: 41, referrerId: null, queueStatus: "held_for_credit", createdAt: "2026-09-01T09:41:00.000Z", updatedAt: "2026-09-02T14:05:00.000Z" },
+        { ...pendingRequest, id: 42, referrerId: null, queueStatus: "waiting_for_coverage", waitingForCoverage: true, createdAt: "2026-09-01T09:41:00.000Z", updatedAt: "2026-09-02T14:05:00.000Z" },
+      ],
+      { plan: "free", planLabel: "Free", open: 2, cap: 3, full: false, nextPlan: null },
+    );
+    renderPage();
+    expect((await screen.findByText("Add a credit to send it")).closest("a")?.getAttribute("href")).toBe("/conversation/41");
+    expect(screen.getByText("Waiting for coverage").closest("a")?.getAttribute("href")).toBe("/conversation/42");
+    expect(screen.queryByText(/Expires/)).toBeNull();
   });
 
   it("labels a lapsed ask Expired under Closed instead of hiding it", async () => {
@@ -136,6 +150,40 @@ describe("My asks pending states", () => {
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
     expect(await screen.findByText("Product Designer")).toBeTruthy();
     expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/company-referrals/mine")).length).toBe(2);
+  });
+
+  it("offers a way home from a failed load", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
+    renderPage();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("We couldn’t reach skipwait.me. Check your connection and try again.");
+    fireEvent.click(screen.getByRole("button", { name: "Back to home" }));
+    expect(go).toHaveBeenCalledWith("/");
+  });
+
+  it("shows one error for a failed list, not a second slots line in the heading", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/api/credits/summary")
+      ? { ok: true, status: 200, json: async () => ({ summary: { totalAvailable: 4 } }) }
+      : { ok: false, status: 503, json: async () => ({ error: "Referral service is temporarily unavailable" }) }));
+    renderPage();
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.queryByTestId("asks-slots-error")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reload" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+  });
+
+  it("keeps the kit's loading copy while the list loads", async () => {
+    let release: (() => void) | undefined;
+    const fetchMock = vi.fn((url: string) => {
+      if (String(url).includes("/api/credits/summary")) return Promise.resolve({ ok: true, status: 200, json: async () => ({ summary: { totalAvailable: 4 } }) });
+      return new Promise(resolve => { release = () => resolve({ ok: true, status: 200, json: async () => ({ requests: [] }) }); });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage();
+    expect(screen.getByText("Loading your requests… Routing checks usually take a second.")).toBeTruthy();
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/company-referrals/mine"))).toBe(true));
+    await act(async () => { release?.(); });
+    await waitFor(() => expect(document.querySelector('[data-skipwait-loading="true"]')).toBeNull(), { timeout: 3000 });
   });
 
   it("adds the taking-longer notice once loading passes 15 seconds", async () => {

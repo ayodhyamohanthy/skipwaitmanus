@@ -38,6 +38,18 @@ export function parseSlotCapReached(status: number, payload: Record<string, unkn
   return parsed.success ? parsed.data : null;
 }
 
+// A change the plan does not include (server/planGates.ts PlanLimitError). The
+// /ask path meets it only for pinned work today; `limit` stays a string so a new
+// limit kind still reaches the seeker as the server's own words.
+const planLimitSchema = z.object({ error: z.string().min(1), code: z.literal("plan_limit"), limit: z.string(), cap: z.number().int().min(0) });
+
+/** The server's typed plan-limit refusal, or null for any other response. */
+export function parsePlanLimit(status: number, payload: Record<string, unknown>): { limit: string; cap: number } | null {
+  if (status !== 409 || payload.code !== "plan_limit") return null;
+  const parsed = planLimitSchema.safeParse(payload);
+  return parsed.success ? { limit: parsed.data.limit, cap: parsed.data.cap } : null;
+}
+
 /** The confirmed employer domain, only when it was confirmed for exactly this job link. */
 export function confirmedDomainFor(targetRoleUrl: string, stored: string | null): string | undefined {
   if (!stored) return undefined;
