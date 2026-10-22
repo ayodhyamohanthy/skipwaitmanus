@@ -20,6 +20,7 @@ import {
   type PlanFamilyId,
   type PlanPriceBook,
 } from "@shared/planFamily";
+import { JOB_LEVEL_LABELS } from "@shared/jobLevel";
 import { money } from "@/components/plans/format";
 
 type Pick = PlanCreditRung | null; // null = the free pick (Open Door default)
@@ -215,7 +216,7 @@ const COMPARE_ROWS: { label: string; cell: (id: PlanFamilyId) => string }[] = [
   { label: "Smart timing", cell: id => (id === "insider" ? "Yes" : "-") },
 ];
 
-export default function PlansV2({ book = "INR", seekerLevel = null }: { book?: PlanPriceBook; seekerLevel?: number | null }) {
+export default function PlansV2({ book = "INR", seekerLevel = null, onPickLevel }: { book?: PlanPriceBook; seekerLevel?: number | null; onPickLevel?: (level: number | null) => void }) {
   return (
     <div className="mx-auto max-w-[1120px] px-5 py-8 gdesk:px-8 gdesk:py-12">
       <h1 className="text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Choose your reach.</h1>
@@ -226,7 +227,16 @@ export default function PlansV2({ book = "INR", seekerLevel = null }: { book?: P
           : "Global prices - set by your profile location, confirmed against your card's billing country at checkout."}
       </p>
       <p className="mt-2 max-w-[640px] text-g-small text-g-ink-3">Reach sets who you can ask. It never changes your place in a queue.</p>
-      {seekerLevel === null ? <p className="mt-1 text-g-small text-g-ink-3">Add your level in your <a href="/profile" className="underline">profile</a> to see exactly who this reaches.</p> : null}
+      {onPickLevel ? (
+        <label className="mt-3 flex max-w-[360px] flex-col gap-1 text-g-small">
+          <span className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Your level</span>
+          <select aria-label="Your level" value={seekerLevel ?? ""} onChange={e => onPickLevel(e.target.value === "" ? null : Number(e.target.value))} className="rounded-g-tile border border-g-hairline bg-g-surface px-3 py-2.5">
+            <option value="">Not set</option>
+            {Object.entries(JOB_LEVEL_LABELS).map(([n, label]) => <option key={n} value={n}>{`L${n} - ${label}`}</option>)}
+          </select>
+        </label>
+      ) : null}
+      {seekerLevel === null && !onPickLevel ? <p className="mt-1 text-g-small text-g-ink-3">Add your level in your <a href="/profile" className="underline">profile</a> to see exactly who this reaches.</p> : null}
       <div className="mt-8 grid gap-4 gdesk:grid-cols-3">
         <PlanCard planId="open_door" book={book} seekerLevel={seekerLevel} />
         <PlanCard planId="fast_track" book={book} seekerLevel={seekerLevel} />

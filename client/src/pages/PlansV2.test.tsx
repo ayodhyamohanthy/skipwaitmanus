@@ -83,4 +83,15 @@ describe("PlansV2 (D-132, flag OFF)", () => {
     expect(screen.getByTestId("reach-insider").textContent).toContain("Junior to Senior+ · L2 to L6");
     expect(screen.queryByText(/Add your level/)).toBeNull();
   });
+
+  it("signed-in level picker lists L1-L10, shows the chosen band, and reports the pick", () => {
+    const picks: (number | null)[] = [];
+    render(<PlansV2 book="INR" seekerLevel={4} onPickLevel={l => picks.push(l)} />);
+    const select = screen.getByLabelText("Your level") as HTMLSelectElement;
+    expect(select.options.length).toBe(11);
+    expect(screen.getByTestId("reach-fast_track").textContent).toContain("Mid to Senior+ · L4 to L6");
+    fireEvent.change(select, { target: { value: "7" } });
+    fireEvent.change(select, { target: { value: "" } });
+    expect(picks).toEqual([7, null]);
+  });
 });
