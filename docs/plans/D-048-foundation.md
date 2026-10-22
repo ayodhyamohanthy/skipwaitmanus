@@ -51,7 +51,7 @@ None of the six changes what a user sees, except `F-credits` fixing the pill on 
 8. `scripts/designTokenAuditCore.mjs:24` `GOAL_SCOPE = /^client\/src\/components\/goal\//` — `pages/goal/**` is not audited yet.
 9. `client/src/test/goalShellHarness.tsx` does not exist, and there is no shared way to render a goal surface signed in. `scripts/kit-screens/capture.mjs` has no `--goal` or `--ids` support; `scripts/kitScreenFixtures.test.ts` exists, and `scripts/kit-screens/fixtures/00_goal-*.json` does not (0 files).
 10. `client/src/App.tsx` imports `PLAN_FAMILY_V2_CLIENT` from `@/lib/goalFlags` (14). The whole router is one line: `function Router(){return ...<Switch><Route path="/" component={Home}/>...` (121) with 97 `<Route>` elements and a longest line of 5,958 characters.
-11. `scripts/prerenderPublicPages.test.ts` exists; the 12 prerendered public pages are the ones `@shared/publicRoutes.ts` lists, and `GoalStaticFrame` does not exist.
+11. `scripts/prerender-public-pages.tsx` owns what gets prerendered: `PUBLIC_PAGES` (page modules: the policy and company pages plus every guide) and `publicSnapshots()` (fetch-free markup for `/jobs`, `/explore`, `/wall`, `/premium`, `/plans`, `/referrer` and the rest), each titled and described from `@shared/publicRoutes.ts`; `scripts/prerenderPublicPages.test.ts` covers them. `GoalStaticFrame` does not exist, and nothing yet proves a goal frame renders one of these pages without fetching.
 12. The `/explore`, `/requests` and shell rows already import goal components without a flag (`MOVED_SURFACES`), so any change here is measured against live pages, not only against dark ones.
 
 ## 4. The six rows
@@ -131,7 +131,7 @@ Every row's owned paths are the ones its line in the split's table lists, verbat
 ### `D-048-F-static-frame`
 1. `GoalStaticFrame.tsx`: the goal frame with no `useAuth`, no `useQuery` and no router state — a header, a footer and children.
 2. `goalStaticFrame.test.tsx`: rendering it with `fetch` spied proves no request; rendering a flag-on surface inside it keeps the same text.
-3. `scripts/prerenderPublicPages.test.ts`: prerender with every id on (`VITE_GOAL_SURFACES=all`) and assert every listed public page still renders its text.
+3. `scripts/prerenderPublicPages.test.ts`: prerender with every id on (`VITE_GOAL_SURFACES=all`) and assert every `PUBLIC_PAGES` module and every `publicSnapshots()` entry still renders its text and fetches nothing.
 4. Commit: `Goal static frame: a frame that fetches nothing for the prerendered pages (D-134)`.
 
 ### `D-048-F-routes`
