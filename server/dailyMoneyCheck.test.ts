@@ -449,6 +449,28 @@ describe("refund_after_pickup over the in-memory database", () => {
     expect(await listRefundsAfterPickup(10)).toEqual([]);
   });
 
+  it("does not flag a refund after a not-fixable pass released the credit (D-035)", async () => {
+    seedHeldAsks({
+      asks: [askRow()],
+      events: [event(39, "claim", at(3 * DAY)), event(40, "pass_release", at(2 * DAY))],
+      spends: [refund(61, "withdrawal_refund", at(DAY))],
+    });
+
+    // D-035: pass_release is a release, so the ask is no longer picked up and the refund is correct.
+    expect(await listRefundsAfterPickup(10)).toEqual([]);
+  });
+
+  it("still flags a refund after a fixable pass left the credit spent (D-035)", async () => {
+    seedHeldAsks({
+      asks: [askRow()],
+      events: [event(39, "claim", at(3 * DAY)), event(40, "pass", at(2 * DAY))],
+      spends: [refund(61, "withdrawal_refund", at(DAY))],
+    });
+
+    // The control: a fixable pass is not in the release set, so the claim stays the latest pickup.
+    expect((await listRefundsAfterPickup(10)).map(row => row.transactionId)).toEqual([61]);
+  });
+
   it("finds an old claim behind more than limit x 4 newer rows for other asks", async () => {
     // The refund window covers the newest limit * 4 refund rows, and the event read has no window,
     // so a ten-day-old claim still convicts a recent refund among 30 newer rows for other asks.

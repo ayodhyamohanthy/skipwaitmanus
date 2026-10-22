@@ -556,6 +556,7 @@ describe("the pass reason decides the credit (D-035)", () => {
     await finish("expiry");
     expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(3);
     expect(rows.tokenTransactions.filter(row => row.reversesTransactionId === 11)).toHaveLength(1);
+    expect(rows.tokenTransactions.filter(row => row.reversesTransactionId === 11).map(row => row.kind)).toEqual(["expiry_refund"]);
     expect(String(rows.notifications.at(-1)?.body)).toContain("Your credit is back on your balance");
   });
 
@@ -565,6 +566,7 @@ describe("the pass reason decides the credit (D-035)", () => {
     await finish("withdraw");
     expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(3);
     expect(rows.tokenTransactions.filter(row => row.reversesTransactionId === 11)).toHaveLength(1);
+    expect(rows.tokenTransactions.filter(row => row.reversesTransactionId === 11).map(row => row.kind)).toEqual(["withdrawal_refund"]);
   });
 
   // D-035 §4.7 / §8: only the employee who holds the pickup can release the credit. A colleague who
