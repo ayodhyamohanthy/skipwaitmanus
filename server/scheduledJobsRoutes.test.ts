@@ -137,3 +137,41 @@ describe("GET /api/admin/jobs", () => {
     expect((await request(app).get("/api/admin/jobs").set("x-test-user", "admin")).status).toBe(503);
   });
 });
+
+describe("POST /api/admin/money-check/run", () => {
+  const result = { emailSent: true, findingsEmailed: true, subject: "skipwait.me daily money check · 1 finding", text: "parked payment: #7" };
+  it("rejects anonymous callers (401) and non-admins (403) without running the audit", async () => {
+    const runMoneyCheck = vi.fn(async () => result);
+    const { app, activity } = appWith({ runMoneyCheck });
+    expect((await request(app).post("/api/admin/money-check/run")).status).toBe(401);
+    const denied = await request(app).post("/api/admin/money-check/run").set("x-test-user", "member");
+    expect(denied.status).toBe(403);
+    expect(runMoneyCheck).not.toHaveBeenCalled();
+    expect(activity).toContain("admin.money_check_denied:denied");
+  });
+  it("returns the findings text to an admin and logs the run", async () => {
+    const runMoneyCheck = vi.fn(async () => result);
+    const { app, activity } = appWith({ runMoneyCheck });
+    const response = await request(app).post("/api/admin/money-check/run").set("x-test-user", "admin");
+    expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toContain("no-store");
+    expect(response.body).toMatchObject({ findingsFound: true, emailSent: true, findings: "parked payment: #7" });
+    expect(activity).toContain("admin.money_check_run:success");
+  });
+  it("logs a failure when findings exist but the email did not send, and still returns them", async () => {
+    const { app, activity } = appWith({ runMoneyCheck: async () => ({ ...result, emailSent: false }) });
+    const response = await request(app).post("/api/admin/money-check/run").set("x-test-user", "admin");
+    expect(response.body).toMatchObject({ emailSent: false, findings: "parked payment: #7" });
+    expect(activity).toContain("admin.money_check_run:failure");
+  });
+  it("rate limits to one run per 5 minutes and reports errors without leaking them", async () => {
+    const { app } = appWith({ runMoneyCheck: async () => result });
+    await request(app).post("/api/admin/money-check/run").set("x-test-user", "admin");
+    expect((await request(app).post("/api/admin/money-check/run").set("x-test-user", "admin")).status).toBe(429);
+    const failing = appWith({ runMoneyCheck: async () => { throw new Error("db password leaked"); } });
+    const response = await request(failing.app).post("/api/admin/money-check/run").set("x-test-user", "admin");
+    expect(response.status).toBe(500);
+    expect(JSON.stringify(response.body)).not.toContain("leaked");
+    expect(failing.capture).toHaveBeenCalled();
+  });
+});

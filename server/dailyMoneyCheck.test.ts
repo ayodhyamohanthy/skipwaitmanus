@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, REFERRAL_TIMERS_SINCE } from "../shared/referral";
-import { createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
+import { runMoneyCheckNow, createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
 import { DAY_MS, LINK_OWNER, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -484,5 +484,31 @@ describe("refund_after_pickup over the in-memory database", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]!.text).toContain("refund_after_pickup: ledger row #61 returned a credit for ask #501 (withdrawal_refund) although the ask's latest pickup was a claim");
     expect(sent[0]!.text).not.toContain("@");
+  });
+});
+
+describe("runMoneyCheckNow (on-demand admin run)", () => {
+  it("returns the exact owner-email text and reports delivery", async () => {
+    const { deps, sent } = makeDeps({ listParkedPayments: vi.fn(async () => [{ id: 7, amount: 99, currency: "INR", reconciliationReason: "unmatched", createdAt: NOW } as never]) });
+    const result = await runMoneyCheckNow(NOW.getTime(), deps);
+    expect(result.findingsEmailed).toBe(true);
+    expect(result.emailSent).toBe(true);
+    expect(result.text).toContain("parked payment: #7");
+    expect(result.text).toBe(sent[0].text);
+  });
+
+  it("still returns the findings when email delivery fails, so they are never silent", async () => {
+    const { deps } = makeDeps({ listParkedPayments: vi.fn(async () => [{ id: 8, amount: 1, currency: "USD", reconciliationReason: null, createdAt: NOW } as never]), sendEmail: vi.fn(async () => false) });
+    const result = await runMoneyCheckNow(NOW.getTime(), deps);
+    expect(result.emailSent).toBe(false);
+    expect(result.findingsEmailed).toBe(true);
+    expect(result.text).toContain("parked payment: #8");
+  });
+
+  it("a clean ledger sends nothing and returns no findings", async () => {
+    const { deps, sent } = makeDeps();
+    const result = await runMoneyCheckNow(NOW.getTime(), deps);
+    expect(result).toEqual({ emailSent: false, findingsEmailed: false, subject: null, text: null });
+    expect(sent).toEqual([]);
   });
 });
