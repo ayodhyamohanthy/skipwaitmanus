@@ -4,7 +4,7 @@
 // of a raw browser error string.
 import { z } from "zod";
 import { SLOT_CAP_REACHED, openAskSlotsSchema, slotCapReachedSchema, type SlotCapReached } from "@shared/openAskSlots";
-import type { SentAsk } from "@/components/ask/AskSent";
+import type { OpenAskSlots } from "@shared/openAskSlots";
 
 const sendAskResponseSchema = z.object({
   requestId: z.number().int().positive(),
@@ -22,6 +22,8 @@ const companyConfirmationSchema = z.object({ canonicalUrl: z.string(), confirmed
 export const ASK_NETWORK_ERROR = "We couldn't reach skipwait.me. Check your connection and try again.";
 
 /** The created (or idempotently replayed) ask, or null when the payload is not a send result. */
+export type SentAsk = { readonly requestId: number; readonly companyDomain: string | null; readonly waitingForCoverage: boolean; readonly fastTrack: boolean; readonly slots: OpenAskSlots | null };
+
 export function parseSentAsk(payload: Record<string, unknown>): SentAsk | null {
   const parsed = sendAskResponseSchema.safeParse(payload);
   if (!parsed.success) return null;

@@ -1,3 +1,4 @@
+import { sendTransactionalEmail } from "./emailDelivery";
 // Scheduled job "daily-money-check" (D-065, the payments bar under D-058).
 //
 // Once a day this reads the money tables and emails the owner anything that
@@ -259,16 +260,8 @@ export async function listDoublyReversedSpends(limit: number): Promise<DoublyRev
 
 async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {
   try {
-    const apiKey = process.env.RESEND_API_KEY;
-    const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-    if (!apiKey || !sender) throw new Error("Money check email delivery is not configured");
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: sender, to: [MONEY_CHECK_RECIPIENT], subject: input.subject, text: input.text }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+    const delivery = await sendTransactionalEmail({ to: MONEY_CHECK_RECIPIENT, subject: input.subject, text: input.text });
+    if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Money check email delivery is not configured" : "Money check email delivery failed");
     return true;
   } catch (error) {
     console.warn("[DailyMoneyCheck] Unable to send the owner email", error instanceof Error ? error.message : error);

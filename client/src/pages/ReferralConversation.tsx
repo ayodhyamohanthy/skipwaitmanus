@@ -1,10 +1,13 @@
 import { ArrowLeft, BadgeCheck, ShieldCheck } from "lucide-react";
+import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { SignInButton, useAuth, useUser } from "@/_core/auth";
 import { Button, buttonVariants } from "@/components/kit/button";
-import { ReferrerPanel, SeekerPanel } from "@/components/thread/ThreadDecisionPanels";
+import { ReferrerPanel } from "@/components/thread/ThreadDecisionPanels";
 import { ThreadMain } from "@/components/thread/ThreadMain";
+import { AppShell } from "@/components/AppShell";
+import { ConversationSignInGate, SeekerConversation } from "./conversation/SeekerConversation";
 import { ShareWinCard } from "@/components/thread/ShareWinCard";
 import { canMessage, companyName, isAccepted } from "@/components/thread/threadModel";
 import { usePersistFn } from "@/hooks/usePersistFn";
@@ -13,7 +16,7 @@ import { trpc } from "@/lib/trpc";
 
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error ? reason.message : fallback);
 
-export default function ReferralConversation() {
+export default function ReferralConversation({ framed = false }: { framed?: boolean } = {}) {
   const [, params] = useRoute("/conversation/:requestId");
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
@@ -56,18 +59,9 @@ export default function ReferralConversation() {
 
   const back = <Link href={returnPath} className="text-link flex items-center gap-1 text-sm"><ArrowLeft className="size-4" />All requests</Link>;
 
-  if (!isSignedIn) {
-    return (
-      <main data-skipwait-screen="referral-conversation-sign-in" className="page-content">
-        {back}
-        <section className="mt-6 max-w-xl">
-          <h1 className="text-3xl font-semibold">Continue securely.</h1>
-          <p className="mt-3 text-sm text-muted-foreground">Sign in to access your accepted referral conversation.</p>
-          <div className="mt-6"><SignInButton><button type="button" className={buttonVariants({ className: "w-full sm:w-auto" })}>Secure sign in</button></SignInButton></div>
-        </section>
-      </main>
-    );
-  }
+  const wrap = (node: React.ReactElement) => (framed ? <AppShell>{node}</AppShell> : node);
+
+  if (!isSignedIn) return <ConversationSignInGate returnPath={returnPath} />;
 
   const send = async () => {
     const body = draft.trim();
@@ -85,10 +79,39 @@ export default function ReferralConversation() {
   const seekerName = user?.fullName ?? null;
   const headline = profile.data?.headline ?? profile.data?.currentTitle ?? null;
   // Names are revealed only after the referrer accepts: the referrer sees their own name, the seeker the name the server returns (never before accept).
-  const seekerSeesReferrer = request && role === "seeker" && isAccepted(request) && request.referrerName ? (request.referrerTitle ? `${request.referrerName} · ${request.referrerTitle}` : request.referrerName) : null;
-  const referrerLabel = seekerSeesReferrer ?? (request && role !== "seeker" && isAccepted(request) && user?.fullName ? user.fullName : request ? `Someone at ${companyName(request)}` : "");
+  const seekerSeesReferrer = request && role === "seeker" && isAccepted(request) && request.referrerName && !request.referrerName.includes("@") ? (request.referrerTitle ? `${request.referrerName} · ${request.referrerTitle}` : request.referrerName) : null;
+  const referrerLabel = seekerSeesReferrer ?? (request && isAccepted(request) && user?.fullName ? user.fullName : request ? `Someone at ${companyName(request)}` : "");
 
-  return (
+  // The seeker's side is a goal page (W2). While the role is still loading the
+  // seeker frame shows, since the seeker is by far the common viewer; referrers
+  // keep the kit page until W4.
+  if (role === null || role === "seeker") {
+    return (
+      <SeekerConversation
+        request={request}
+        failure={failure}
+        loading={loading}
+        onReload={() => { void reload(); }}
+        returnPath={returnPath}
+        referrerLabel={seekerSeesReferrer ?? "Referrer"}
+        referrerName={seekerSeesReferrer}
+        messages={messages}
+        messageError={messageError}
+        referenceId={referenceId}
+        canMessage={Boolean(request) && canMessage("seeker", request!)}
+        draft={draft}
+        setDraft={setDraft}
+        sending={sending}
+        onSend={() => { void send(); }}
+        onWithdraw={async () => { await withdrawThreadRequest(request!.id, fetchToken); await reload(); }}
+        onProgress={async status => { await recordProgress(request!.id, status, fetchToken); await reload(); }}
+        onConfirmReferredEmail={async () => { await confirmReferredBySeeker(request!.id, fetchToken); await reload(); }}
+        extra={request && isAccepted(request) ? <div className="mt-6"><ShareWinCard roleTitle={request.title} companyName={companyName(request)} status={request.status} /></div> : null}
+      />
+    );
+  }
+
+  return wrap(
     <main data-skipwait-screen="referral-conversation" className="page-content">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">{back}</div>
       {loading && !request ? <p className="mt-10 text-center text-sm text-muted-foreground">Opening this private thread…</p> : null}
@@ -124,15 +147,8 @@ export default function ReferralConversation() {
           />
           <aside className="space-y-4">
             <div className="rounded-3xl border border-border p-5">
-              <span className="eyebrow">{role === "seeker" ? "YOUR NEXT STEP" : "YOUR DECISION"}</span>
-              {role === "seeker" ? (
-                <SeekerPanel
-                  request={request}
-                  onWithdraw={async () => { await withdrawThreadRequest(request.id, fetchToken); await reload(); }}
-                  onProgress={async status => { await recordProgress(request.id, status, fetchToken); await reload(); }}
-                  onConfirmReferredEmail={async () => { await confirmReferredBySeeker(request.id, fetchToken); await reload(); }}
-                />
-              ) : (
+              <span className="eyebrow">YOUR DECISION</span>
+              {(
                 <ReferrerPanel
                   request={request}
                   role={role}
@@ -158,10 +174,9 @@ export default function ReferralConversation() {
             <div className="rounded-3xl border border-border p-5 text-sm text-muted-foreground">
               <ShieldCheck className="mb-2 size-5 text-primary" />Referrers are never paid and never ask for money. Never pay or accept money for a referral. <Link href="/report" className="text-link">Report or block</Link>
             </div>
-            {role === "seeker" && isAccepted(request) ? <ShareWinCard roleTitle={request.title} companyName={companyName(request)} status={request.status} /> : null}
           </aside>
         </div>
       ) : null}
-    </main>
+    </main>,
   );
 }

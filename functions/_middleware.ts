@@ -80,6 +80,7 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/request",
   "/requests",
   "/reset-password",
+  "/reviewer-sign-in",
   "/safety",
   "/settings",
   "/share",

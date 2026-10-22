@@ -1,0 +1,85 @@
+{
+  "signedIn": {
+    "id": "7",
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "route": "/explore/wipro",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 4
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/ask-drafts",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "draft": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/wipro",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "company": {
+          "slug": "wipro",
+          "name": "Wipro",
+          "initials": "W",
+          "industry": "Technology services",
+          "location": "Bengaluru \u00b7 Hybrid",
+          "functions": [
+            "Engineering",
+            "Product",
+            "Design"
+          ],
+          "blurb": "Global technology services and consulting. Engineering, cloud and design roles across India and remote.",
+          "domains": [
+            "wipro.com"
+          ],
+          "openToReferrals": false
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/wipro/opportunities",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "opportunities": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/wipro/response-signal",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "signal": {
+          "state": "insufficient"
+        }
+      }
+    }
+  ]
+}

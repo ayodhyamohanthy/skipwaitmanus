@@ -1,3 +1,4 @@
+import { createTransactionalEmailSender } from "./emailDelivery";
 import type { RequestHandler } from "express";
 import { recordOperationalActivity } from "./db";
 
@@ -54,23 +55,8 @@ export function createMaterialErrorEscalator(dependencies: AlertDependencies = {
     ].join("\n");
 
     try {
-      const apiKey = process.env.RESEND_API_KEY;
-      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
-
-      const response = await fetchImpl("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) {
-        const detail = (await response.text().catch(() => "")).slice(0, 500);
-        throw new Error(`Resend responded with ${response.status}${detail ? `: ${detail}` : ""}`);
-      }
+      const delivery = await createTransactionalEmailSender({ fetchImpl })({ to: ADMIN_ERROR_RECIPIENT, subject, text });
+      if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
 
       await recordActivity({
         action: "system.error_alert_sent",
@@ -139,16 +125,8 @@ export function createPaymentReviewAlerter(dependencies: AlertDependencies = {})
     ].join("\n");
     const metadata = { paymentId: input.paymentId, reason: input.reason };
     try {
-      const apiKey = process.env.RESEND_API_KEY;
-      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
-      const response = await fetchImpl("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+      const delivery = await createTransactionalEmailSender({ fetchImpl })({ to: ADMIN_ERROR_RECIPIENT, subject, text });
+      if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
       await recordActivity({ action: "system.payment_review_alert_sent", outcome: "success", resourceType: "payment_fulfillment", resourceId: String(input.paymentId), metadata });
       return { alerted: true as const };
     } catch (error) {
@@ -183,16 +161,8 @@ export function createUnmatchedPaymentAlerter(dependencies: AlertDependencies = 
     ].join("\n");
     const metadata = { eventId: input.eventId, invoiceId: input.invoiceId, reason: input.reason };
     try {
-      const apiKey = process.env.RESEND_API_KEY;
-      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
-      const response = await fetchImpl("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+      const delivery = await createTransactionalEmailSender({ fetchImpl })({ to: ADMIN_ERROR_RECIPIENT, subject, text });
+      if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
       await recordActivity({ action: "system.unmatched_payment_alert_sent", outcome: "success", resourceType: "chargebee_invoice", resourceId: ref, metadata });
       return { alerted: true as const };
     } catch (error) {
@@ -228,16 +198,8 @@ export function createPaymentRefundAlerter(dependencies: AlertDependencies = {})
     ].join("\n");
     const metadata = { eventId: input.eventId, invoiceId: input.invoiceId, paymentId: input.paymentId, reason: input.reason };
     try {
-      const apiKey = process.env.RESEND_API_KEY;
-      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
-      const response = await fetchImpl("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+      const delivery = await createTransactionalEmailSender({ fetchImpl })({ to: ADMIN_ERROR_RECIPIENT, subject, text });
+      if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
       await recordActivity({ action: "system.payment_refund_alert_sent", outcome: "success", resourceType: "chargebee_invoice", resourceId: ref, metadata });
       return { alerted: true as const };
     } catch (error) {
@@ -288,16 +250,8 @@ export function createCardValidationAlerter(dependencies: AlertDependencies = {}
     ].join("\n");
     const metadata = { eventId: input.eventId, reason: input.reason, customerId: input.customerId, paymentSourceId: input.paymentSourceId };
     try {
-      const apiKey = process.env.RESEND_API_KEY;
-      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
-      const response = await fetchImpl("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+      const delivery = await createTransactionalEmailSender({ fetchImpl })({ to: ADMIN_ERROR_RECIPIENT, subject, text });
+      if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
       await recordActivity({ action: "system.card_validation_alert_sent", outcome: "success", resourceType: "chargebee_payment_source", resourceId: input.paymentSourceId ?? undefined, metadata });
       return { alerted: true as const };
     } catch (error) {
@@ -334,16 +288,8 @@ export function createRetiredPlanAlerter(dependencies: AlertDependencies = {}) {
     const action = unsupported ? "system.unsupported_plan_alert_sent" : "system.retired_plan_alert_sent";
     const metadata = { eventId: input.eventId, reason: input.reason, subscriptionId: input.subscriptionId, giftId: input.giftId };
     try {
-      const apiKey = process.env.RESEND_API_KEY;
-      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
-      const response = await fetchImpl("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+      const delivery = await createTransactionalEmailSender({ fetchImpl })({ to: ADMIN_ERROR_RECIPIENT, subject, text });
+      if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
       await recordActivity({ action, outcome: "success", resourceType: "chargebee_subscription", resourceId: ref, metadata });
       return { alerted: true as const };
     } catch (error) {

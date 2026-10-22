@@ -1,5 +1,5 @@
 import { askDaysLeft, askDaysShown, isPostApprovalReferralStatus } from "@shared/referral";
-import { companyIdentityOf, type CompanyIdentitySource } from "@shared/companies";
+import { companyIdentityOf, isUnknownCompany, type CompanyIdentitySource } from "@shared/companies";
 import type { ThreadRequest, ThreadRole } from "@/lib/threadApi";
 
 /** Kit v4 thread stages, in order. */
@@ -56,16 +56,23 @@ export function companyInitials(request: CompanyIdentitySource): string {
  * a held ask (D-047) has an available employee but no credit, so the next step is adding one.
  */
 export function seekerWaitingCopy(request: Pick<ThreadRequest, "companyDomain" | "companyName" | "companyInitials" | "referrerId" | "createdAt" | "heldForReferrer" | "queueStatus">, nowMs: number = Date.now()): string {
+  // An ask from a shared job link can have no employer on record: say "the company", never the platform's own domain.
+  const unknown = isUnknownCompany(request);
   const company = companyName(request);
+  const referrer = unknown ? "referrer at the company" : `${company} referrer`;
+  const employee = unknown ? "employee at the company" : `${company} employee`;
   const held = request.referrerId !== null && request.heldForReferrer === true;
-  if (request.referrerId !== null && !held) return `A verified ${company} employee is reviewing your request. We'll notify you the moment it's accepted.`;
-  if (request.queueStatus === "held_for_credit") return `A verified ${company} employee can see asks now. Add a credit to send yours.`;
-  if (request.queueStatus === "waiting_for_coverage") return `No verified ${company} employee is available yet. Your ask waits at no cost, and when one can see it, 1 credit is used — we'll notify you.`;
+  if (request.referrerId !== null && !held) return `A verified ${employee} is reviewing your request. We'll notify you the moment it's accepted.`;
+  if (request.queueStatus === "held_for_credit") return `A verified ${employee} can see asks now. Add a credit to send yours.`;
+  if (request.queueStatus === "waiting_for_coverage") return `No verified ${employee} is available yet. Your ask waits at no cost, and when one can see it, 1 credit is used — we'll notify you.`;
   const days = askDaysShown({ createdAt: request.createdAt }, nowMs);
   const when = days === null || days < 0 ? null : days === 0 ? "Expires today" : days === 1 ? "Expires tomorrow" : `Expires in ${days} days`;
-  if (held) return when ? `Sent privately to the ${company} employee whose link you used. ${when} if they don't respond — your slot returns automatically.` : `Sent privately to the ${company} employee whose link you used.`;
-  if (!when) return `Waiting for a verified ${company} referrer.`;
-  return `Waiting for a verified ${company} referrer. ${when} if nobody accepts — your slot returns automatically.`;
+  if (held) {
+    const lead = `Sent privately to the ${unknown ? "employee" : `${company} employee`} whose link you used.`;
+    return when ? `${lead} ${when} if they don't respond. Your credit comes back, unless its month or plan has ended by then.` : lead;
+  }
+  if (!when) return `Waiting for a verified ${referrer}.`;
+  return `Waiting for a verified ${referrer}. ${when} if nobody accepts. Your credit comes back, unless its month or plan has ended by then.`;
 }
 
 /** Referrer-side pending line: the real expiry first, then the existing "no reply needed" reassurance. */

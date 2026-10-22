@@ -6,6 +6,7 @@ import { buildEvidenceRows, cleanNote as cleanModerationNote, groupEvents as gro
 import { checkPostingAllowance, opportunityLimits } from "./opportunityLimits";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, notInArray, or, sql } from "drizzle-orm";
 import { workEmailStorageKeys } from "./workEmailKey";
+import { publicDisplayName } from "../shared/publicDisplayName";
 import { passReasonSeekerLabel } from "../shared/passReasons";
 import { REFERRER_EXCLUSION_CODES } from "../shared/passReasons";
 import { CREDIT_ENDED_CAVEAT } from "../shared/moneyCopy";
@@ -2448,8 +2449,8 @@ export async function listJobSeekerCompanyReferrals(userId: number) {
   const revealIds = Array.from(new Set(rows.filter(row => row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status)).map(row => row.referrerId as number)));
   const revealed = new Map<number, { name: string | null; title: string | null }>();
   if (revealIds.length) {
-    const people = await db.select({ id: users.id, name: users.name, title: profiles.currentTitle }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).where(inArray(users.id, revealIds));
-    for (const person of people) revealed.set(person.id, { name: person.name ?? null, title: person.title ?? null });
+    const people = await db.select({ id: users.id, name: users.name, email: users.email, title: profiles.currentTitle }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).where(inArray(users.id, revealIds));
+    for (const person of people) revealed.set(person.id, { name: publicDisplayName(person.name, person.email), title: person.title ?? null });
   }
   // D-050: a personal-link ask its employee has not acted on still counts as unclaimed (heldForReferrer: Withdraw, expiry
   // countdown). P0-allocated-ask-stuck: so does a queue allocation nobody claimed; unclaimedAssignment covers both kinds
@@ -2458,6 +2459,33 @@ export async function listJobSeekerCompanyReferrals(userId: number) {
   try { held = await listHeldForReferrerIds(db, rows); }
   catch (error) { console.warn("[requests] held flag skipped", { name: error instanceof Error ? error.name : "unknown" }); captureServerError(error, { area: "seeker_requests_held_flag" }); }
   return rows.map(row => ({ ...row, heldForReferrer: held.personalLink.has(row.id), unclaimedAssignment: held.personalLink.has(row.id) || held.queueAllocation.has(row.id), referrerName: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.name ?? null : null, referrerTitle: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.title ?? null : null, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? (row.coverageHeldAt !== null ? "held_for_credit" as const : "waiting_for_coverage" as const) : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
+}
+
+/**
+ * Sample-filled empty states (owner override, Oct 21 11:35 PM): durable "has
+ * this seeker EVER sent an ask" - true even when every ask expired or was
+ * withdrawn, so a returning user never sees first-timer sample rows. Fails
+ * CLOSED (true) when the DB is unreachable: never show fake content on doubt.
+ */
+export async function hasEverCreatedReferralRequest(userId: number): Promise<boolean> {
+  const db = await getDb(); if (!db) return true;
+  const row = await db.select({ id: referralRequests.id }).from(referralRequests).where(eq(referralRequests.jobSeekerId, userId)).limit(1);
+  return row.length > 0;
+}
+
+/**
+ * Sample-filled empty states (owner override, Oct 21 11:35 PM): durable "has
+ * this referrer EVER acted on an ask" - claimed (referralRequests.referrerId)
+ * or passed (referralRequestPasses), so a returning referrer whose queue is
+ * simply empty never sees first-timer sample rows. Fails CLOSED (true) when
+ * the DB is unreachable: never show fake content on doubt.
+ */
+export async function hasEverReviewedReferral(userId: number): Promise<boolean> {
+  const db = await getDb(); if (!db) return true;
+  const claimed = await db.select({ id: referralRequests.id }).from(referralRequests).where(eq(referralRequests.referrerId, userId)).limit(1);
+  if (claimed.length > 0) return true;
+  const passed = await db.select({ id: referralRequestPasses.id }).from(referralRequestPasses).where(eq(referralRequestPasses.referrerId, userId)).limit(1);
+  return passed.length > 0;
 }
 
 /**

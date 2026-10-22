@@ -18,6 +18,8 @@ export type GoalButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "dis
   disabledReason?: string;
   asChild?: boolean;
   leadingIcon?: LucideIcon;
+  /** Left-aligned ghost action: the label sits flush with the text column; the padding stays as hit area. */
+  flush?: boolean;
 };
 
 const SIZES = {
@@ -27,7 +29,7 @@ const SIZES = {
 } as const;
 
 export const GoalButton = forwardRef<HTMLButtonElement, GoalButtonProps>(function GoalButton(
-  { variant = "ghost", size = "md", touch = "default", keys, busy = false, busyLabel, disabledReason, asChild = false, leadingIcon: LeadingIcon, className, children, onClick, ...rest },
+  { variant = "ghost", size = "md", touch = "default", keys, busy = false, busyLabel, disabledReason, asChild = false, leadingIcon: LeadingIcon, flush = false, className, children, onClick, ...rest },
   ref,
 ) {
   const reasonId = useId();
@@ -49,6 +51,7 @@ export const GoalButton = forwardRef<HTMLButtonElement, GoalButtonProps>(functio
           SIZES[size],
           touch === "large" ? "max-gdesk:h-12" : "max-gdesk:h-11",
           keys?.length ? "pr-2.5 max-gdesk:pr-[14px]" : "",
+          flush && (size === "md" ? "-ml-[15px]" : size === "sm" ? "-ml-[13px]" : "-ml-[11px]"),
           variant === "primary" && "bg-g-primary text-g-on-primary hover:bg-g-primary-pressed active:bg-g-primary-pressed hover:not-active:bg-g-primary-hover",
           variant === "ghost" && "text-g-ink hover:bg-g-surface-hover aria-expanded:bg-g-surface-hover",
           variant === "outline" && "border-g-ink text-g-ink",

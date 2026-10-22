@@ -1,7 +1,10 @@
 // Seeker asks (goal UI, D-048 phase 3 pilot). The list and its numbers come only
 // from GET /api/company-referrals/mine (open asks against the plan's cap,
 // server-counted). Each row opens its thread, where an unclaimed ask can be
-// withdrawn. No preview states, sample asks or invented counts ship here.
+// withdrawn. No preview states or invented counts ship here. Exception (owner
+// override, Oct 21 11:35 PM, verified phonemsg-01M5FT6Z0SYN6QWFVDR3J3S2CS): a
+// first-time seeker's empty list shows unmistakably-marked SAMPLE rows
+// (GoalSampleRows) that never touch counts, slots, credits or routes.
 import { LockKeyhole, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -16,9 +19,10 @@ import {
   GoalNum,
   GoalSkeletonRows,
   GoalStatus,
-  type GoalStatusValue,
 } from "@/components/goal";
+import { askView } from "@/components/requests/askView";
 import { companyIdentity } from "@/components/inbox/inboxThreads";
+import { GoalSampleRows, type GoalSampleRow } from "@/components/goal/GoalSampleRows";
 import { canWithdrawRequest, isClosedRequest, requestNote, slotsFullCopy } from "@/components/requests/requestModel";
 import { fetchMyRequests, type ReferralRequest } from "@/components/requests/requestsApi";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
@@ -26,33 +30,6 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { formatDay, useDisplayPrefs } from "@/lib/displayPrefs";
 
 const SUBTITLE = "Where each ask stands and what happens next.";
-
-type AskView = { status: GoalStatusValue; label: string; stepper?: { stage: number; terminal?: "expired" | "withdrawn" }; verb: string };
-
-/**
- * The goal status vocabulary is dot + text by role (DESIGN.md §5). Interview
- * and Offer are post-referral outcomes with no goal tone of their own, so they
- * stay neutral ink; a decline is an ended state, so it reads crimson.
- */
-function askView(request: ReferralRequest): AskView {
-  switch (request.status) {
-    case "pending": {
-      const claimed = request.referrerId !== null && request.heldForReferrer !== true && request.unclaimedAssignment !== true;
-      return claimed
-        ? { status: "under_review", label: "Under review", stepper: { stage: 1 }, verb: "Picked up" }
-        : { status: "waiting", label: "Waiting", stepper: { stage: 0 }, verb: "Sent" };
-    }
-    case "approved": return { status: "accepted", label: "Accepted", stepper: { stage: 2 }, verb: "Accepted" };
-    case "intro_made": return { status: "referred", label: "Referred", stepper: { stage: 3 }, verb: "Referred" };
-    case "interview": return { status: "accepted", label: "Interviewing", stepper: { stage: 3 }, verb: "Updated" };
-    case "offer": return { status: "accepted", label: "Offer", stepper: { stage: 3 }, verb: "Updated" };
-    case "declined": return { status: "expired", label: "Declined", stepper: { stage: 1, terminal: "expired" }, verb: "Declined" };
-    case "withdrawn": return { status: "withdrawn", label: "Withdrawn", stepper: { stage: 2, terminal: "withdrawn" }, verb: "Withdrawn" };
-    case "closed": return request.referrerId
-      ? { status: "withdrawn", label: "Closed", stepper: { stage: 2, terminal: "withdrawn" }, verb: "Closed" }
-      : { status: "expired", label: "Expired", stepper: { stage: 1, terminal: "expired" }, verb: "Expired" };
-  }
-}
 
 /**
  * The row's third line (my-asks comp): the next real step in plain words. Only
@@ -120,6 +97,23 @@ function PageHeading({ slots, loading, onReload, showAction = true }: { slots: A
       )}
     </header>
   );
+}
+
+/**
+ * The three sample rows teach the FORWARD journey only (Waiting -> Accepted ->
+ * Referred; no failure states in a first-run teaching moment). Next-step lines
+ * reuse the shipped askNextLine copy verbatim so the teaching stays accurate
+ * (mock design/goal-ui/captures/my-asks/myasks-sample-390). Placeholder-by-
+ * inspection names; dates derive from today so they never stale.
+ */
+function sampleAskRows(nowMs: number): GoalSampleRow[] {
+  const day = 24 * 60 * 60 * 1000;
+  const at = (offsetDays: number) => formatDay(new Date(nowMs - offsetDays * day).toISOString()) ?? "";
+  return [
+    { company: "Sample Co.", title: "Product Designer", status: "waiting", label: "Waiting", stepper: { stage: 0 }, verb: "Sent", day: at(0), next: "Expires in 7 days if nobody picks it up. The credit comes back." },
+    { company: "Example Industries", title: "Frontend Engineer", status: "accepted", label: "Accepted", stepper: { stage: 2 }, verb: "Accepted", day: at(2), next: "Your referrer submits it, then marks it Referred." },
+    { company: "Placeholder Ltd.", title: "Data Analyst", status: "referred", label: "Referred", stepper: { stage: 3 }, verb: "Referred", day: at(4), next: "Watch your email for their recruiters. Companies decide hiring." },
+  ];
 }
 
 export default function MyRequests() {
@@ -217,7 +211,16 @@ export default function MyRequests() {
           )}
         </div>
         {requests.length === 0 ? (
-          <GoalEmptyState title="No asks yet." body="Pick a company, find a verified referrer, and write one great ask." action={{ label: "Explore companies", onClick: () => go("/explore") }} />
+          requestsQuery.data?.hasEverAsked === false ? (
+            <>
+              <GoalSampleRows rows={sampleAskRows(nowMs)} caption="Samples show what a real ask looks like. They are not counted in your open asks and disappear after your first real ask." />
+              <div className="mt-3 px-3 gdesk:px-4">
+                <GoalButton variant="ghost" onClick={() => go("/explore")}>Explore companies</GoalButton>
+              </div>
+            </>
+          ) : (
+            <GoalEmptyState title="No asks yet." body="Pick a company, find a verified referrer, and write one great ask." action={{ label: "Explore companies", onClick: () => go("/explore") }} />
+          )
         ) : null}
       </>
     );

@@ -25,6 +25,7 @@ const CONTAINER_ENV_KEYS = [
   "WORKOS_COOKIE_PASSWORD", "WORKOS_POST_SIGNIN_PATH", "WORKOS_REDIRECT_URI",
   "WORKOS_WEBHOOK_SECRET",
   "ZEPTOMAIL_API_KEY", "ZEPTOMAIL_FROM_EMAIL", "ZEPTOMAIL_FROM_NAME",
+  "REVIEWER_LOGIN_ENABLED", "REVIEWER_ALLOW_ADMIN", "REVIEWER_SEEKER_PASSWORD_HASH", "REVIEWER_REFERRER_PASSWORD_HASH", "REVIEWER_EMPLOYER_PASSWORD_HASH", "REVIEWER_ADMIN_PASSWORD_HASH",
   "WORK_EMAIL_HMAC_KEY",
 ] as const;
 
@@ -72,7 +73,7 @@ export default {
     // forwarded host headers: callers can supply them, while request.url is set
     // by Cloudflare from the matched route.
     const url = new URL(request.url);
-    if (url.protocol !== "https:" || url.hostname !== "skipwait.me" || !url.pathname.startsWith("/api/")) {
+    if (url.protocol !== "https:" || url.hostname !== "skipwait.me" || !(url.pathname.startsWith("/api/") || url.pathname === "/sitemap.xml")) {
       return new Response("Not Found", { status: 404, headers: { "cache-control": "no-store" } });
     }
     // Internal routes (the scheduled-jobs tick) are reachable only from
