@@ -44,8 +44,9 @@ describe("ReferralConversation thread", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     renderPage();
-    expect(screen.getByText("Continue securely.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Secure sign in" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Sign in to see this conversation." })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+    expect(screen.getByText(/stay private to the two people/)).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -63,6 +64,22 @@ describe("ReferralConversation thread", () => {
     renderPage();
     await screen.findByText(/Product Designer/);
     expect(document.querySelector("header .eyebrow")?.textContent).toBe("Data · Wipro");
+  });
+
+  it("never names the platform as the company: unknown company falls back to the role title and neutral copy", async () => {
+    stubFetch(() => ok({ requests: [{ ...seekerPending, companyDomain: "skipwait.me", title: "Product Designer" }] }));
+    renderPage();
+    expect(await screen.findByRole("heading", { level: 1, name: "Product Designer" })).toBeTruthy();
+    expect(screen.getByText(/Waiting for a verified referrer at the company\./)).toBeTruthy();
+    expect(within(document.querySelector("[data-skipwait-screen]") as HTMLElement).queryByText(/skipwait\.me/)).toBeNull();
+  });
+
+  it("shows plain 'Your referrer' when the accepted referrer has no display name", async () => {
+    stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerApproved, referrerName: "priya@acme.com" }] }) : ok({ messages: [] })));
+    renderPage();
+    await screen.findByText(/through acme\.com’s process/);
+    expect(screen.getByText("Your referrer")).toBeTruthy();
+    expect(screen.queryByText(/priya/)).toBeNull();
   });
 
   it("shows the seeker status row: Waiting word, stepper and the thread's honesty line", async () => {

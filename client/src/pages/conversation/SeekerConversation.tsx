@@ -8,22 +8,26 @@
 import { ArrowLeft } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link } from "wouter";
+import { useAuth } from "@/_core/auth";
 import { GoalAppShell, GoalButton, GoalErrorState, GoalMiniStepper, GoalNum, GoalStatus } from "@/components/goal";
 import { askView } from "@/components/requests/askView";
 import { SEEKER_MILESTONES } from "@/components/thread/ThreadDecisionPanels";
-import { companyName, seekerWaitingCopy, stageIndex, stageOf } from "@/components/thread/threadModel";
+import { isUnknownCompany } from "@shared/companies";
+import { companyName, isAccepted as isAcceptedRequest, seekerWaitingCopy, stageIndex, stageOf } from "@/components/thread/threadModel";
 import { formatDay, formatDayTime } from "@/lib/displayPrefs";
 import type { ThreadMessage, ThreadRequest } from "@/lib/threadApi";
 
 const HONESTY = "A referral is an introduction. It never promises an interview or a job. Companies decide hiring.";
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error ? reason.message : fallback);
 
-function nextLine(request: ThreadRequest, company: string): string | null {
+function nextLine(request: ThreadRequest, name: string, unknown: boolean): string | null {
+  const company = unknown ? "the company" : name;
+  const at = unknown ? "at the company" : `at ${name}`;
   switch (request.status) {
     case "pending": return seekerWaitingCopy(request);
-    case "approved": return `Your referrer submits it through ${company}’s process, then marks it Referred.`;
-    case "intro_made": return `Watch your email for ${company}’s recruiters. Companies decide hiring.`;
-    case "declined": return `It’s not a judgment of you. Your slot is open again. Try another verified referrer at ${company}.`;
+    case "approved": return `Your referrer submits it through ${unknown ? "the company’s" : `${name}’s`} process, then marks it Referred.`;
+    case "intro_made": return `Watch your email for ${unknown ? "the company’s" : `${name}’s`} recruiters. Companies decide hiring.`;
+    case "declined": return `It’s not a judgment of you. Your slot is open again. Try another verified referrer ${at}.`;
     case "withdrawn": return "You withdrew this ask. Its open slot is free again. The credit came back only if no verified employee had picked it up.";
     case "closed": return request.referrerId === null ? "Nobody could take it within 7 days. Your slot is free. Refresh your note and ask again." : null;
     default: return null;
@@ -89,11 +93,13 @@ export function SeekerConversation(props: Props) {
   }
 
   const company = companyName(request);
+  const unknown = isUnknownCompany(request);
   const view = askView(request);
   const stage = stageOf(request);
   const idx = stageIndex(stage);
   const sent = formatDay(request.createdAt === null ? "" : typeof request.createdAt === "number" ? new Date(request.createdAt) : request.createdAt);
-  const line = nextLine(request, company);
+  const line = nextLine(request, company, unknown);
+  const accepted = isAcceptedRequest(request);
   const canWithdraw = request.status === "pending" && (request.referrerId === null || request.heldForReferrer === true || request.unclaimedAssignment === true);
   const awaitingCoverage = request.queueStatus === "waiting_for_coverage" || request.queueStatus === "held_for_credit";
   const closedFor = ["Declined", "Expired", "Withdrawn"].includes(stage);
@@ -106,9 +112,9 @@ export function SeekerConversation(props: Props) {
         {failure ? (
           <p role="alert" className="mt-2 flex flex-wrap items-center gap-2 text-g-meta text-g-ink-2">{failure}<GoalButton size="xs" variant="ghost" onClick={onReload}>Try again</GoalButton></p>
         ) : null}
-        <h1 className="mt-2 text-g-display text-g-ink">{company}</h1>
+        <h1 className="mt-2 text-g-display text-g-ink">{unknown ? (request.title ?? "Your ask") : company}</h1>
         <p className="mt-1 text-g-meta text-g-ink-2">
-          {request.title ?? "Referral request"}{sent ? <> · <span className="uppercase"><GoalNum>SENT {sent}</GoalNum></span></> : null}
+          {unknown ? null : (request.title ?? "Referral request")}{sent ? <>{unknown ? null : " · "}<span className="uppercase"><GoalNum>SENT {sent}</GoalNum></span></> : null}
         </p>
 
         <div className="mt-6 flex items-center justify-between gap-3">
@@ -116,7 +122,7 @@ export function SeekerConversation(props: Props) {
           {view.stepper ? <GoalMiniStepper stage={view.stepper.stage} terminal={view.stepper.terminal} label={`Stage ${view.stepper.stage + 1} of 4: ${view.label}`} /> : null}
         </div>
         {line ? <p className="mt-2 text-pretty text-g-meta text-g-ink-2">{line}</p> : null}
-        {props.referrerName ? <p className="mt-1 text-g-meta text-g-ink-2">Your referrer <span className="text-g-ink">{props.referrerName}</span></p> : null}
+        {props.referrerName ? <p className="mt-1 text-g-meta text-g-ink-2">Your referrer <span className="text-g-ink">{props.referrerName}</span></p> : accepted ? <p className="mt-1 text-g-meta text-g-ink-2">Your referrer</p> : null}
         {request.status === "approved" && request.referredDueAt ? (
           <p className="mt-1 text-g-meta text-g-ink-3">The referrer’s deadline to mark Referred is {formatDay(request.referredDueAt)}.</p>
         ) : null}
@@ -195,6 +201,25 @@ export function SeekerConversation(props: Props) {
           Referrers are never paid and never ask for money. Never pay or accept money for a referral. <Link href="/report" className="underline underline-offset-2">Report or block</Link>
         </p>
         {props.extra}
+      </div>
+    </GoalAppShell>
+  );
+}
+
+/** Signed-out gate: the /ask pattern. One line, one black Sign in, one quiet privacy line. */
+export function ConversationSignInGate({ returnPath }: { returnPath: string }) {
+  const { openSignIn } = useAuth();
+  return (
+    <GoalAppShell active={returnPath === "/inbox" ? "inbox" : "asks"} pageTitle="Conversation">
+      <div data-skipwait-screen="referral-conversation-sign-in" className="max-w-[696px] px-8 pt-10 pb-8 max-gdesk:px-4 max-gdesk:pt-6 max-gdesk:pb-6">
+        <Link href={returnPath} className="inline-flex min-h-11 items-center gap-1 text-g-meta text-g-ink-2 hover:text-g-ink">
+          <ArrowLeft aria-hidden="true" className="size-4" />{returnPath === "/inbox" ? "Inbox" : "My asks"}
+        </Link>
+        <h1 className="mt-6 text-g-display text-g-ink">Sign in to see this conversation.</h1>
+        <p className="mt-3 text-pretty text-g-meta text-g-ink-2">Conversations stay private to the two people in them.</p>
+        <div className="mt-6 max-gdesk:grid">
+          <GoalButton variant="primary" touch="large" className="max-gdesk:w-full" onClick={() => { openSignIn(); }}>Sign in</GoalButton>
+        </div>
       </div>
     </GoalAppShell>
   );
