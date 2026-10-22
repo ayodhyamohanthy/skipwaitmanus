@@ -309,12 +309,16 @@ function QueueDetail({ item, index, count, preview, previewLoading, nowMs, worki
           <GoalLockedPanel title="Identity and resume are shared after you accept" documentCount={preview?.attachments.length ?? 0} />
           <p className="mt-2 text-g-meta text-g-ink-3">Accepting shares names both ways and their resume. Referring comes later, through {company}&rsquo;s own process.</p>
           <div className="mt-3 flex items-center gap-1.5">
-            <GoalIconButton icon={ChevronUp} iconSize={18} aria-label="Previous ask" disabledReason={index <= 0 ? "First ask" : undefined} onClick={() => onMove(-1)} />
-            <GoalIconButton icon={ChevronDown} iconSize={18} aria-label="Next ask" disabledReason={index >= count - 1 ? "Last ask" : undefined} onClick={() => onMove(1)} />
-            <span className="text-g-meta text-g-ink-3"><GoalNum>{index + 1} / {count}</GoalNum></span>
-            <span className="ml-auto" />
-            <GoalButton variant="ghost" keys={["P"]} disabledReason={working ? "Working…" : undefined} onClick={() => onPassOpen(true)}>Pass privately</GoalButton>
-            <GoalButton variant="primary" keys={["A"]} busy={working} busyLabel="Working…" onClick={onAccept}>Accept &amp; connect</GoalButton>
+            {/* Comp phone rule: position and K/J move to the sub bar (phonePosition
+                above); the two actions split the bar evenly. */}
+            <span className="contents max-gdesk:hidden">
+              <GoalIconButton icon={ChevronUp} iconSize={18} aria-label="Previous ask" disabledReason={index <= 0 ? "First ask" : undefined} onClick={() => onMove(-1)} />
+              <GoalIconButton icon={ChevronDown} iconSize={18} aria-label="Next ask" disabledReason={index >= count - 1 ? "Last ask" : undefined} onClick={() => onMove(1)} />
+              <span className="text-g-meta text-g-ink-3"><GoalNum>{index + 1} / {count}</GoalNum></span>
+            </span>
+            <span className="ml-auto max-gdesk:hidden" />
+            <GoalButton variant="ghost" keys={["P"]} disabledReason={working ? "Working…" : undefined} onClick={() => onPassOpen(true)} className="max-gdesk:flex-1">Pass privately</GoalButton>
+            <GoalButton variant="primary" keys={["A"]} busy={working} busyLabel="Working…" onClick={onAccept} className="max-gdesk:flex-1">Accept &amp; connect</GoalButton>
           </div>
         </div>
       ) : undefined}
