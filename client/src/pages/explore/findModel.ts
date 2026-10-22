@@ -81,7 +81,7 @@ export function costLine(input: { open: boolean | null; balance: number | null }
       blockedReason: null,
     };
   }
-  const detail = `Comes back if you withdraw before anyone picks it up, or if nobody picks it up within ${ASK_TTL_DAYS} days, ${CREDIT_ENDED_CAVEAT}. Once picked up, it stays spent, even if they pass.`;
+  const detail = `Comes back if you withdraw before anyone picks it up, or if nobody picks it up within ${ASK_TTL_DAYS} days, ${CREDIT_ENDED_CAVEAT}. Once picked up, it stays spent, unless they pass for a reason you can't fix.`;
   if (input.open === null) return { line: "Uses 1 credit when a verified employee can see it", detail, blockedReason: null };
   if (input.balance === null) return { line: "Uses 1 credit", detail, blockedReason: null };
   if (input.balance <= 0) return { line: "You have no credits left", detail: "Add a credit pack in Plans and credits to send this ask now.", blockedReason: "You have no credits left. Add a credit pack in Plans and credits." };
