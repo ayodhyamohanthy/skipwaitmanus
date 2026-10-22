@@ -63,4 +63,24 @@ describe("PlansV2 (D-132, flag OFF)", () => {
     expect(screen.getByRole("button", { name: "Apply for Insider" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Start free" })).toBeTruthy();
   });
+
+  it("reach row (D-148): signed out shows no band guess and the profile line", () => {
+    render(<PlansV2 book="INR" />);
+    expect(screen.getByTestId("reach-open_door").textContent).toContain("Your own level");
+    expect(screen.getByTestId("reach-fast_track").textContent).toContain("Up to 2 levels above yours");
+    expect(screen.getByTestId("reach-insider").textContent).toContain("Up to 4 levels above yours");
+    expect(screen.getByText(/Add your level in your/)).toBeTruthy();
+    expect(screen.getByText("Reach sets who you can ask. It never changes your place in a queue.")).toBeTruthy();
+    expect(screen.queryByText(/1-2 levels up/)).toBeNull();
+    expect(screen.getByText("Reach up to 2 levels above your own")).toBeTruthy();
+    expect(screen.getByText("Reach up to 4 levels above your own")).toBeTruthy();
+  });
+
+  it("reach row: L2 seeker sees Junior / Junior to Mid / Junior to Senior+ with mono levels", () => {
+    render(<PlansV2 book="USD" seekerLevel={2} />);
+    expect(screen.getByTestId("reach-open_door").textContent).toContain("Your own level: Junior · L2");
+    expect(screen.getByTestId("reach-fast_track").textContent).toContain("Junior to Mid · L2 to L4");
+    expect(screen.getByTestId("reach-insider").textContent).toContain("Junior to Senior+ · L2 to L6");
+    expect(screen.queryByText(/Add your level/)).toBeNull();
+  });
 });

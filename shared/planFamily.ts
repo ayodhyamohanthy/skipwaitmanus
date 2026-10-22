@@ -236,3 +236,22 @@ export function planFeeMinor(id: PlanFamilyId, book: PlanPriceBook): number {
 export function thisMonthMinor(id: PlanFamilyId, rung: PlanCreditRung | null, book: PlanPriceBook): number {
   return planFeeMinor(id, book) + (rung === null ? 0 : rungPriceMinor(rung, book));
 }
+
+/** Reach display (D-148): bands from the seeker's own level. Display only, never a gate. */
+export type ReachBand = "Junior" | "Mid" | "Senior+";
+export const reachBandOf = (level: number): ReachBand => (level <= 3 ? "Junior" : level === 4 ? "Mid" : "Senior+");
+
+export type PlanReach = { top: number; bandText: string; levelText: string };
+
+/** Who a plan lets the seeker ask, from the seeker's own level L (1-10). */
+export function planReachFor(planId: PlanFamilyId, seekerLevel: number): PlanReach {
+  const l = Math.min(10, Math.max(1, Math.round(seekerLevel)));
+  const top = Math.min(10, l + PLAN_REACH_LEVELS_ABOVE[planId]);
+  const from = reachBandOf(l);
+  const to = reachBandOf(top);
+  return {
+    top,
+    bandText: from === to ? from : `${from} to ${to}`,
+    levelText: top === l ? `L${l}` : `L${l} to L${top}`,
+  };
+}
