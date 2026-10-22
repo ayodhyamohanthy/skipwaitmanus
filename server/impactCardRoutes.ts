@@ -8,7 +8,7 @@ type RecordActivity = (input: { actorUserId?: number; action: string; outcome: "
 
 export function registerImpactCardRoutes(app: Express, deps: { resolveIdentity: ResolveIdentity; loadImpactCard?: (referrerId: number) => Promise<ImpactCardPayload>; recordActivity?: RecordActivity }) {
   const load = deps.loadImpactCard ?? loadImpactCard;
-  const record: RecordActivity = input => { void deps.recordActivity?.(input).catch(() => undefined); };
+  const record = (input: Parameters<RecordActivity>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
   app.get("/api/referrer/impact-card", async (req, res: Response) => {
     // This payload is one referrer's published data: never let a shared cache
     // store it for another user (F4; same header as every per-user endpoint).
