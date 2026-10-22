@@ -21,7 +21,7 @@ it.runIf(!!process.env.D067_ISOLATED_MYSQL_URL)("actual MySQL worker races, roll
   process.env.BILLING_ENV = "test"; process.env.CHARGEBEE_SITE = "fixture-test";
   process.env.ERROR_ALERT_FROM_EMAIL = "fixture@example.invalid"; process.env.RESEND_API_KEY = "fixture";
   try {
-    const sql = await readFile("drizzle/deploy/0099_billing_review_outbox.sql", "utf8");
+    const sql = await readFile("drizzle/deploy/0100_billing_review_outbox.sql", "utf8");
     await pool.query(sql); await pool.query(sql);
     const [columns] = await pool.query<mysql.RowDataPacket[]>("SHOW COLUMNS FROM billingReviewOutbox");
     expect(columns.map(r => r.Field)).toContain("submissionState"); expect(columns).toHaveLength(17);
@@ -158,7 +158,7 @@ it.runIf(!!process.env.D067_ISOLATED_MYSQL_URL)("actual MySQL worker races, roll
         if (suffix === "check") {
           await pool.query(insert, ["1".repeat(64), "2".repeat(64)]);
           await expect(pool.query(`UPDATE ${tableName} SET attempts=attempts+1`)).rejects.toMatchObject({ code: "ER_CHECK_CONSTRAINT_VIOLATED" });
-        } else await expect(pool.query(insert, ["1".repeat(64), "2".repeat(64)])).rejects.toMatchObject({ code: "ER_NO_REFERENCED_ROW" });
+        } else await expect(pool.query(insert, ["1".repeat(64), "2".repeat(64)])).rejects.toMatchObject({ code: "ER_NO_REFERENCED_ROW_2", errno: 1452, sqlState: "23000" });
       }
     }
     await pool.query(sql.replaceAll("billingReviewOutbox", "triggerBillingReviewOutbox"));
