@@ -50,6 +50,7 @@ type QueueItem = {
   attachmentCount: number;
   isClaimedByYou: boolean;
   expiresAt?: string | null;
+  decisionDueAt?: string | null;
   waitingForCoverage?: boolean | null;
   coverageVisibleAt?: string | null;
 };
@@ -77,6 +78,15 @@ function daysLeft(item: QueueItem, nowMs: number): { label: string; soon: boolea
 
 function roleTitle(item: QueueItem): string {
   return item.jobTitle?.trim() || "Private ask";
+}
+
+/** D-038-A: the server's 48-hour decision deadline for the viewer's own claim or allocation.
+    Neutral wording, never a countdown: the ask goes back to colleagues and nothing is taken. */
+function decisionDue(item: QueueItem, nowMs: number): string | null {
+  const ms = item.decisionDueAt ? Date.parse(item.decisionDueAt) : Number.NaN;
+  if (Number.isNaN(ms)) return null;
+  const hours = Math.ceil((ms - nowMs) / 3_600_000);
+  return hours <= 0 ? "Decision due now" : `Decide within ${hours} hour${hours === 1 ? "" : "s"}`;
 }
 
 export default function MyCompanyInbox() {
@@ -259,6 +269,7 @@ export default function MyCompanyInbox() {
         <ul>
           {requests.map(item => {
             const left = daysLeft(item, nowMs);
+            const due = decisionDue(item, nowMs);
             const claimed = item.status !== "pending" || item.isClaimedByYou;
             return (
               <GoalListRow
@@ -268,7 +279,7 @@ export default function MyCompanyInbox() {
                 onSelect={() => { setError(""); setNotice(""); if (claimed) go(`/conversation/${item.id}?from=inbox`); else setSelectedId(item.id); }}
                 title={roleTitle(item)}
                 trailing={<GoalStatus status={claimed ? "queue_review" : "queue_new"} label={claimed ? "Under review" : "New"} />}
-                meta={<span>{displayJobFunction(item.jobFunction) ?? item.companyName ?? item.companyDomain}{left ? <>{" · "}<GoalNum tone={left.soon ? "warn" : undefined}>{left.label}</GoalNum></> : null}</span>}
+                meta={<span>{displayJobFunction(item.jobFunction) ?? item.companyName ?? item.companyDomain}{left ? <>{" · "}<GoalNum tone={left.soon ? "warn" : undefined}>{left.label}</GoalNum></> : null}{due ? <>{" · "}<GoalNum>{due}</GoalNum></> : null}</span>}
               />
             );
           })}

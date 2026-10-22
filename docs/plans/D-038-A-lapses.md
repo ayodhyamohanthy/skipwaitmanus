@@ -144,7 +144,7 @@ Use the setup in `server/db.coverageDelivery.test.ts` and `server/heldAsk.testki
 - [ ] Gate.
 - [ ] Draft PR plus independent review.
 - [ ] The `AGENTS.md` living map: the scheduled-jobs row (new job) and the credit-ledger row ("a lapse undoes the pickup").
-- [ ] `shared/moneyCopy.ts` `CREDIT_RULE`: add "or after a referrer's 48-hour hold lapses".
+- [x] `shared/moneyCopy.ts` `CREDIT_RULE`: **rejected in review, and the line is gone.** An earlier revision added "or after a referrer's 48-hour hold lapses", but a lapse moves no ledger row (D-076 (1); `lapseClaimTx`/`lapseAllocationTx` write no `tokenTransactions` row), and if a colleague picks the reopened ask up the credit never comes back at all — so the clause promised a refund the product does not make (D-042). The rule keeps the accurate condition, "if you withdraw before someone picks the ask up, or if it expires unclaimed", and `shared/moneyCopy.test.ts` now forbids the lapse wording.
 - [ ] One check added to `server/dailyMoneyCheck.ts`: `refund_after_pickup`, any `withdrawal_refund` or `expiry_refund` row whose ask's latest pickup-or-release event before the refund was a `claim`. Such a refund is a money leak.
 - [ ] `docs/DECISIONS.md` D-038 and D-076 sync cells (slice A).
 - [ ] Live check.
