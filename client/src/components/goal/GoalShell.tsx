@@ -82,6 +82,8 @@ function GiveReferralLink({ href, variant }: { href: string; variant: "rail" | "
 }
 
 function Avatar({ initials }: { initials: string }) {
+  // Signed out there is no one to show: an empty grey circle reads as broken.
+  if (!initials) return null;
   return (
     <button
       type="button"

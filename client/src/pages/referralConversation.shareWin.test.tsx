@@ -4,7 +4,10 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const flag = vi.hoisted(() => ({ on: true }));
 vi.mock("@/lib/shareFlags", () => ({ get SHARE_WIN_CARD() { return flag.on; } }));
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ReferralConversation from "./ReferralConversation";
+
+const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralConversation /></QueryClientProvider>);
 
 const { authState, userState, go } = vi.hoisted(() => ({
   authState: { isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") },
@@ -46,14 +49,14 @@ describe("Seeker win card on the thread", () => {
   it("flag off (shipped state): an accepted seeker thread shows no card", async () => {
     flag.on = false;
     mine(named);
-    render(<ReferralConversation />);
-    expect(await screen.findByText("Product Designer")).toBeTruthy();
+    renderPage();
+    expect(await screen.findByText(/Product Designer/)).toBeTruthy();
     expect(screen.queryByTestId("share-win-card")).toBeNull();
   });
   it("flag on: an accepted seeker thread offers the card, and copying never includes the referrer", async () => {
     mine(named);
     const writeText = clipboard();
-    render(<ReferralConversation />);
+    renderPage();
     const card = await screen.findByTestId("share-win-card");
     expect(within(card).getByText("Your ask was accepted at Quillmint. Tell people if you want to – it is always your choice.")).toBeTruthy();
     expect(within(card).getByText("Accepted")).toBeTruthy();
@@ -67,19 +70,19 @@ describe("Seeker win card on the thread", () => {
   });
   it("flag on: a still-pending ask shows no card", async () => {
     mine({ ...seekerPending, companyName: "Quillmint", companyInitials: "Q" });
-    render(<ReferralConversation />);
-    expect(await screen.findByText("Product Designer")).toBeTruthy();
+    renderPage();
+    expect(await screen.findByText(/Product Designer/)).toBeTruthy();
     expect(screen.queryByTestId("share-win-card")).toBeNull();
   });
   it("flag on: later steps read Referred", async () => {
     mine({ ...named, status: "intro_made" });
-    render(<ReferralConversation />);
+    renderPage();
     expect(within(await screen.findByTestId("share-win-card")).getByText("Referred")).toBeTruthy();
   });
   it("flag on: the reviewing referrer never sees the card", async () => {
     stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [] }) : url.endsWith("/601/preview") ? ok({ request: { ...referrerPreview, companyName: "Quillmint", companyInitials: "Q" } }) : ok({ messages: [] })));
-    render(<ReferralConversation />);
-    expect(await screen.findByText("Product Designer")).toBeTruthy();
+    renderPage();
+    expect(await screen.findByText(/Product Designer/)).toBeTruthy();
     expect(screen.queryByTestId("share-win-card")).toBeNull();
   });
 });

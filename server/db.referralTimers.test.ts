@@ -13,8 +13,8 @@ const REFERRER = 2;
 const COLLEAGUE = 4;
 const REQUEST_ID = 501;
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** REFERRAL_TIMERS_SINCE is 2026-10-20T00:00:00Z. Tests use dates on/after it so the new timers run. */
-const T0 = new Date("2026-10-20T12:00:00.000Z").getTime();
+/** Half a day after the cut-off, so the new timers run. Derived: a later cut-off move cannot break this file. */
+const T0 = REFERRAL_TIMERS_SINCE + 12 * 60 * 60 * 1000;
 
 const store = createInMemoryDrizzle();
 const full = (table: any, values: Row): Row => ({ ...Object.fromEntries(Object.keys(table).map(key => [key, null])), ...values });
@@ -263,7 +263,9 @@ describe("D-038-reconcile R-2: the job's part B switch", () => {
     seedSwitchFixture();
     const { createReferralTimers } = await import("./referralTimers");
 
-    const output = await createReferralTimers()({ nowMs: SWITCH_NOW } as never);
+    // The default reads the module constant; inject the state so this case proves the off state
+    // on the day the lander flips the real constant (D-038-reconcile R-2).
+    const output = await createReferralTimers({ referredDeadlineEnabled: false })({ nowMs: SWITCH_NOW } as never);
 
     expect(askById(601)?.referrerId).toBeNull();
     expect(store.rows(referralAvailabilitySlots).find(row => row.id === 9102)?.status).toBe("released");

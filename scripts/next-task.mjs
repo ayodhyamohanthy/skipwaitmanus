@@ -23,7 +23,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
-  REPORT_STATUSES, architectLockOf, ciStateFromRuns, classifyPushError, fixMainIdOf, heartbeatOf, heldBy, leaseFor, localSyncIssues, markerSubject,
+  REPORT_STATUSES, architectLockOf, ciStateFromRuns, classifyPushError, fixMainIdOf, heartbeatOf, heldAllBy, heldBy, leaseFor, localSyncIssues, markerSubject,
   mayReport, parseMarker, pickNextTask, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
@@ -310,17 +310,21 @@ async function main() {
   }
   if (args.heartbeat) {
     const { doc, mainCi, openPrs, mergedHeads, prCi, branches, reports } = await state();
+    // Without the pull requests, a Tier 1 branch under review would look like a build to keep alive, and a claim marker would land on it.
+    if (openPrs === null || mergedHeads === null) fail("cannot read the pull requests from GitHub; a heartbeat now could push a claim onto a branch under review (D-085); run this again when GitHub answers", 2);
     const mainSha = mainCi.state === "red" || mainCi.state === "running-after-red" ? mainCi.sha : null;
     // A heartbeat keeps what you hold alive whatever main's CI says (D-085).
-    const held = heldBy({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, reports, claimant: args.as, mainSha, now: Date.now() });
-    if (!held) fail(`"${args.as}" holds no task, so there is nothing to keep alive; run --claim to take one`);
+    // D-134: every claim you hold stays alive, not only the first one in queue order.
+    const helds = heldAllBy({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, reports, claimant: args.as, mainSha, now: Date.now() });
+    if (!helds.length) fail(`"${args.as}" holds no task, so there is nothing to keep alive; run --claim to take one`);
     // Commits only on this machine are the real heartbeat: push them first, or a marker on origin would leave your branch diverged.
     const { local, mainBehind } = localState();
     const sync = localSyncIssues({ local, branches, claimant: args.as, mainBehind, tasks: doc.tasks });
-    const branch = held.work ?? held.lock;
-    if (sync.unpushed.includes(branch)) { printSync(sync); fail(`push your commits on ${branch} first (that push keeps the claim alive), then run this again`, 3); }
-    if (!keepClaim(held, args.as, branches)) fail(`another agent took ${held.task?.id ?? held.lock} first; run --claim "${args.as}" to see what is yours`);
-    console.log(`Heartbeat recorded: ${held.of === "fix-main" ? held.lock : held.task.id} stays yours for the next 2 hours.`);
+    const unpushed = helds.map(h => h.work ?? h.lock).filter(b => sync.unpushed.includes(b));
+    if (unpushed.length) { printSync(sync); fail(`push your commits on ${unpushed.join(", ")} first (that push keeps the claim alive), then run this again`, 3); }
+    const lost = helds.filter(h => !keepClaim(h, args.as, branches));
+    for (const h of helds.filter(h => !lost.includes(h))) console.log(`Heartbeat recorded: ${h.of === "fix-main" ? h.lock : h.task.id} stays yours for the next 2 hours.`);
+    if (lost.length) fail(`another agent took ${lost.map(h => h.task?.id ?? h.lock).join(", ")} first; run --claim "${args.as}" to see what is yours`);
     return;
   }
   // D-085: a bare model name gets a unique session tag, so two sessions of one model never share a claim.

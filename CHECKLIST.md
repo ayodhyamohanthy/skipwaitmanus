@@ -53,7 +53,7 @@ Hand this to your LLM together with `LLM_HANDOFF.md`, `SCREENS.md`, the `app/` s
 ---
 
 ## Rules that must never change
-- 3 asks free every month; more use credits. Referrers are never paid and never ask you for money (D-063). No pay-to-win, no paid priority.
+- 3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money (D-063 as worded by D-135). No pay-to-win, no paid priority.
 - Never invent users, counts, testimonials, response times, or outcomes.
 - The five launch companies are SkipWait, Wipro, Neutrinos, TCS, and Merkle — shown as having people open to referrals, with no fabricated numbers.
 - Private by default: seekers control what referrers see.

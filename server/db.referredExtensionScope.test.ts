@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { referralRequests } from "../drizzle/schema";
 import { claimCompanyReferralRequest, extendReferredDeadlineTx, getClaimedCompanyReferralDetail, lapseReferredTx, listReferralTimerCandidates, reviewReferralRequest } from "./db";
 import { COLLEAGUE, DAY_MS, LINK_OWNER, REQUEST_ID, askRow, seedHeldAsks, store } from "./heldAsk.testkit";
+import { REFERRAL_TIMERS_SINCE } from "../shared/referral";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
@@ -15,8 +16,8 @@ vi.mock("../shared/referral", async () => {
 });
 
 const HOUR = 60 * 60 * 1000;
-/** The first acceptance, a day after the cut-off (REFERRAL_TIMERS_SINCE is 2026-10-20T00:00Z). */
-const T0 = Date.parse("2026-10-21T12:00:00.000Z");
+/** The first acceptance, a day and a half after the cut-off. Derived: a later cut-off move cannot break this file. */
+const T0 = REFERRAL_TIMERS_SINCE + 36 * HOUR;
 const FIRST_EXTENSION = T0 + DAY_MS;
 const FIRST_LAPSE = T0 + 8 * DAY_MS + 1;
 /** The reopened ask reaches a second employee, who accepts it. */

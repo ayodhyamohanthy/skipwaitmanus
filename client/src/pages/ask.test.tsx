@@ -1,497 +1,212 @@
 // @vitest-environment jsdom
+// The ask composer page (design/goal-ui/w2/ask-*.png): the W1 drawer anatomy
+// at full width on the goal shell. Flags off: "Uses 1 of your N credits" with
+// the refund rules beside one black Send ask. The send contract (idempotency,
+// composed note, attachment, company slug, posted-role id) never changes.
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
+import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
+import { ASK_PREFILL_KEY } from "@/lib/askPrefill";
 import Ask from "./Ask";
 
-const { authState, go } = vi.hoisted(() => ({ authState: { isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") }, go: vi.fn() }));
+const { go, searchState, authState, signIn } = vi.hoisted(() => ({
+  go: vi.fn(),
+  searchState: { value: "" },
+  authState: { isLoaded: true, isSignedIn: true },
+  signIn: vi.fn(),
+}));
 
-vi.mock("@/_core/auth", () => ({ useAuth: () => authState, SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
+vi.mock("@/_core/auth", () => ({
+  useAuth: () => ({ isLoaded: authState.isLoaded, isSignedIn: authState.isSignedIn, userId: authState.isSignedIn ? "user-7" : null, getToken: async () => (authState.isSignedIn ? "test-token" : null) }),
+  useUser: () => ({ user: authState.isSignedIn ? { fullName: "Ada Byron", primaryEmailAddress: { emailAddress: "ada@example.com" }, emailAddresses: [] } : null }),
+  SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+}));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/ask", go],
+  useSearch: () => searchState.value,
+  useRoute: () => [true, {}],
 }));
+vi.mock("./explore/signInHandoff", () => ({ goToSeekerSignIn: signIn, seekerSignInUrl: (returnTo: string) => `/sign-in?returnTo=${encodeURIComponent(returnTo)}` }));
 
-beforeEach(() => { authState.isLoaded = true; authState.isSignedIn = true; go.mockReset(); sessionStorage.clear(); window.history.replaceState(null, "", "/ask"); });
-const fetchCalls = () => (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.length;
+const company = (slug: string, openToReferrals = true): PublicCompany => {
+  const seed = LAUNCH_COMPANY_SEED.find(item => item.slug === slug);
+  if (!seed) throw new Error(`unknown seed ${slug}`);
+  return { slug: seed.slug, name: seed.name, initials: seed.initials, industry: seed.industry, location: seed.location, functions: [...seed.functions], blurb: seed.blurb, domains: [...seed.domains], openToReferrals };
+};
+const directoryOf = (companies: PublicCompany[]): CompanyDirectoryResponse => ({ companies, openCount: companies.filter(item => item.openToReferrals).length });
+const ALL_OPEN = directoryOf(LAUNCH_COMPANY_SEED.map(seed => company(seed.slug)));
+const json = (status: number, body: unknown) => ({ ok: status >= 200 && status < 300, status, url: "", json: async () => body });
+const setup = { goal: "Actively looking", roles: [], level: "", links: [], city: "", countries: "", remote: true, visa: "No sponsorship needed", resume: { id: 77, fileName: "ada-resume.pdf" } };
+const CREATED = { requestId: 501, companyDomain: "wipro.com", coverageStatus: "visible", fastTrack: false, slots: { plan: "free", planLabel: "Free", open: 1, cap: 3, full: false, nextPlan: null } };
+
+function stub(options: { send?: () => { status: number; body: unknown } } = {}) {
+  const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
+    const path = String(input);
+    const method = init?.method ?? "GET";
+    if (path === "/api/companies") return json(200, ALL_OPEN);
+    if (path.startsWith("/api/credits/summary")) return json(200, { summary: { totalAvailable: 4 } });
+    if (path === "/api/profile/setup") return json(200, setup);
+    if (path === "/api/ask-drafts" && method === "GET") return json(200, { draft: null });
+    if (path === "/api/ask-drafts" && method === "PUT") return json(200, { draft: { ...(JSON.parse(String(init?.body)) as object), updatedAt: "x" } });
+    if (path === "/api/ask-drafts" && method === "DELETE") return json(200, { ok: true });
+    if (path === "/api/company-referrals" && method === "POST") { const reply = options.send?.() ?? { status: 200, body: CREATED }; return json(reply.status, reply.body); }
+    return json(404, { error: "not found" });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+const page = () => within(document.querySelector("[data-skipwait-screen='ask']") as HTMLElement);
+const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Ask /></QueryClientProvider>);
+const fillLink = (value = "https://careers.wipro.com/jobs/1234567-product-designer") => {
+  const input = screen.getByLabelText("Job link");
+  fireEvent.change(input, { target: { value } });
+  fireEvent.blur(input);
+  return input;
+};
+const fillReasons = () => {
+  fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+  fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
+  fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
+};
+const posts = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls.filter(([url, init]) => String(url) === "/api/company-referrals" && (init as RequestInit | undefined)?.method === "POST");
+
+beforeEach(() => {
+  authState.isLoaded = true;
+  authState.isSignedIn = true;
+  searchState.value = "";
+  sessionStorage.clear();
+  signIn.mockReset();
+  go.mockReset();
+  window.history.replaceState(null, "", "/ask");
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false }));
+});
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-const ok = (json: unknown) => ({ ok: true, json: async () => json });
-const WEAK_NOTE = "Please refer me for any role.";
-const STRONG_NOTE = "I've led two end-to-end redesigns of enterprise approval workflows, cutting task time by 40% for 3000 users over 4 years. This Product Designer role focuses on the same problem space and I'd value an honest fit check from someone inside the team today.";
-
-function stubCrypto() {
-  const subtle = {
-    digest: vi.fn(async () => new Uint8Array(32).buffer),
-    importKey: vi.fn(async () => ({})),
-    encrypt: vi.fn(async () => new Uint8Array(16).buffer),
-  };
-  vi.stubGlobal("crypto", { getRandomValues: (arr: Uint8Array) => arr, randomUUID: () => "12345678-1234-4123-8123-123456789012", subtle });
-}
-
-function stubUploadThen(fetchMock: ReturnType<typeof vi.fn>, sendJson: unknown) {
-  fetchMock.mockImplementation(async (url: string) => {
-    if (String(url).endsWith("/api/documents/uploads")) return ok({ sessionId: "sess-1", chunkBytes: 1024 * 1024 });
-    if (String(url).includes("/chunks")) return ok({});
-    if (String(url).includes("/complete")) return ok({ id: 77, fileName: "resume.pdf" });
-    if (String(url).endsWith("/api/smart-pitch")) return ok({ draft: STRONG_NOTE });
-    if (String(url).endsWith("/api/company-referrals")) return ok(sendJson);
-    if (String(url).endsWith("/mine")) return ok({ requests: [] });
-    return ok({});
+describe("Ask composer page (goal, W2)", () => {
+  it("renders the goal composer: one black Send ask, the cost line and the refund rules from the first moment, no kit chrome", async () => {
+    stub();
+    renderPage();
+    await waitFor(() => expect(page().getByRole("heading", { name: "Ask for a referral" })).toBeTruthy());
+    expect(screen.getByText("Referrers see your job link and reasons. Your name and resume are shared only if one accepts.")).toBeTruthy();
+    expect(screen.getByLabelText("Job link")).toBeTruthy();
+    expect(screen.getByText("ada-resume.pdf")).toBeTruthy();
+    expect(screen.getByText("Shared after a referrer accepts")).toBeTruthy();
+    expect(screen.getByText("Why me")).toBeTruthy();
+    expect(screen.getAllByText(/\/ 140|\/140/).length).toBe(3);
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 credit when a verified employee can see it"));
+    expect(screen.getByText(/Comes back if you withdraw before anyone picks it up/)).toBeTruthy();
+    expect(screen.getByText(/Once picked up, it stays spent, even if they pass\./)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Send ask" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save draft" })).toBeTruthy();
+    // No kit composer survives: no strength meter, no function eyebrow, no panels.
+    expect(screen.queryByText("Write a great ask.")).toBeNull();
+    expect(screen.queryByText("ASK STRENGTH")).toBeNull();
+    expect(screen.queryByLabelText("Job function")).toBeNull();
+    expect(document.querySelector(".page-content, .page-heading")).toBeNull();
+    expect(document.querySelector("[data-skipwait-screen='ask']")).toBeTruthy();
   });
-}
 
-describe("Ask composer", () => {
-  it("keeps composing behind sign-in", () => {
+  it("resolves the company from the job link: verified mark, back link and honest hint follow", async () => {
+    stub();
+    renderPage();
+    expect((await screen.findByRole("link", { name: /All companies/ })).getAttribute("href")).toBe("/explore");
+    fillLink();
+    expect(await screen.findByTestId("goal-verified-mark")).toBeTruthy();
+    expect(screen.getByTestId("goal-verified-mark").textContent).toContain("Goes to verified Wipro employees");
+    expect(screen.getByText("Matches Wipro’s careers site")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Wipro/ }).getAttribute("href")).toBe("/explore/wipro");
+    expect(screen.getByText("Wipro · Product Designer")).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 of your 4 credits"));
+  });
+
+  it("keeps composing behind sign-in and hands the draft to sign-in on send", async () => {
     authState.isSignedIn = false;
-    render(<Ask />);
-    expect(screen.getByRole("heading", { name: "Write a great ask." })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Sign in to ask" })).toBeTruthy();
-    expect(screen.queryByPlaceholderText(/careers.company/)).toBeNull();
+    stub();
+    renderPage();
+    await waitFor(() => expect(page().getByRole("heading", { name: "Ask for a referral" })).toBeTruthy());
+    expect(screen.getByText("You’ll sign in before it’s sent. We keep your link and reasons.")).toBeTruthy();
+    fillLink();
+    fillReasons();
+    fireEvent.click(screen.getByRole("button", { name: "Sign in and send" }));
+    await waitFor(() => expect(signIn).toHaveBeenCalledWith("/ask"));
+    const saved = JSON.parse(sessionStorage.getItem(ASK_PREFILL_KEY) ?? "null");
+    expect(saved).toMatchObject({ targetRoleUrl: "https://careers.wipro.com/jobs/1234567-product-designer" });
+    expect(posts(vi.mocked(globalThis.fetch as never) as never)).toEqual([]);
   });
 
-  it("waits for the auth check instead of flashing the sign-in gate", () => {
-    authState.isLoaded = false;
-    authState.isSignedIn = false;
-    render(<Ask />);
-    expect(screen.getByRole("status").textContent).toContain("Checking your sign-in");
-    expect(screen.queryByRole("button", { name: "Sign in to ask" })).toBeNull();
-    expect(screen.queryByPlaceholderText(/careers.company/)).toBeNull();
+  it("picks up the sign-in handoff prefill for its company and clears it once sent", async () => {
+    const fetchMock = stub();
+    sessionStorage.setItem(ASK_PREFILL_KEY, JSON.stringify({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1234567-product-designer", note: "Led a checkout redesign that cut drop-off 18%.\nShipped a design system used by 40 teams.", savedAt: Date.now() }));
+    renderPage();
+    await waitFor(() => expect((screen.getByLabelText("Job link") as HTMLInputElement).value).toBe("https://careers.wipro.com/jobs/1234567-product-designer"));
+    expect((screen.getByPlaceholderText(/One result/) as HTMLTextAreaElement).value).toBe("Led a checkout redesign that cut drop-off 18%.");
+    expect((screen.getByPlaceholderText(/Another result/) as HTMLTextAreaElement).value).toBe("Shipped a design system used by 40 teams.");
+    expect(await screen.findByTestId("goal-verified-mark")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    expect(await screen.findByRole("status")).toBeTruthy();
+    expect(sessionStorage.getItem(ASK_PREFILL_KEY)).toBeNull();
   });
 
-  it("renders the kit composer with only checks the live send path honours", () => {
-    vi.stubGlobal("fetch", vi.fn());
-    render(<Ask />);
-    expect(screen.getByRole("heading", { name: "Write a great ask." })).toBeTruthy();
-    expect(screen.getByText("ASK STRENGTH")).toBeTruthy();
-    expect(screen.getAllByRole("listitem").map(item => item.querySelector("strong")?.textContent)).toEqual(["Official job link", "30–120 words", "One specific proof of fit", "Resume attached"]);
-    expect(screen.getByText("Add resume (shared after accept)")).toBeTruthy();
-    expect(screen.getByText("The referrer sees your role and note — not your name or resume — until they accept.")).toBeTruthy();
-    expect(screen.getByText("Uses 1 credit and 1 open slot when a verified employee can see it · nothing is used while it waits for coverage, and the credit comes back once if you withdraw before pickup or the ask expires unclaimed, unless its month or plan has ended by then")).toBeTruthy();
-    const page = document.body.textContent ?? "";
-    for (const preview of ["DESIGN PREVIEW", "Fill example", "pinned", "Enterprise approvals redesign", "open slots", "Improve my note", "Wipro"]) expect(page).not.toContain(preview);
-    expect(fetchCalls()).toBe(0);
+  it("an ask from a posted role says the poster sees it first and sends the post id", async () => {
+    const fetchMock = stub();
+    window.history.replaceState(null, "", "/ask?post=91&job=https%3A%2F%2Fcareers.wipro.com%2Fjobs%2F1234567-product-designer");
+    renderPage();
+    await waitFor(() => expect((screen.getByLabelText("Job link") as HTMLInputElement).value).toBe("https://careers.wipro.com/jobs/1234567-product-designer"));
+    expect(screen.getByText("The employee who posted this role sees your ask first, for 48 hours. After that, other verified referrers at the company can pick it up.")).toBeTruthy();
+    fillReasons();
+    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    await screen.findByRole("status");
+    const call = posts(fetchMock as never)[0] as unknown as [string, { body: string }];
+    expect(JSON.parse(call[1].body)).toMatchObject({ opportunityId: 91, companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1234567-product-designer" });
   });
 
-  it("shows the picked resume as an attached chip and lets the seeker remove it", () => {
-    vi.stubGlobal("fetch", vi.fn());
-    render(<Ask />);
-    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "asha-resume.pdf", { type: "application/pdf" })] } });
-    expect(screen.getByText("asha-resume.pdf")).toBeTruthy();
-    expect(screen.getByText("(shared after accept)")).toBeTruthy();
-    expect(screen.queryByText("Add your resume — it's required to send.")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Remove asha-resume.pdf" }));
-    expect(screen.getByText("Add resume (shared after accept)")).toBeTruthy();
-    expect(screen.getByText("Add your resume — it's required to send.")).toBeTruthy();
+  it("sends the live contract: idempotency key, composed note, setup resume, and the sent state with See my asks", async () => {
+    const fetchMock = stub();
+    renderPage();
+    fillLink();
+    fillReasons();
+    await screen.findByTestId("goal-verified-mark");
+    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    const status = await screen.findByRole("status");
+    expect(within(status).getByRole("heading", { name: "Ask sent to Wipro." })).toBeTruthy();
+    expect(within(status).getByTestId("goal-status").textContent).toContain("Waiting");
+    expect(within(status).getByText(/Verified wipro\.com employees can see it now/)).toBeTruthy();
+    expect(within(status).getByRole("link", { name: "See my asks" }).getAttribute("href")).toBe("/requests");
+    expect(within(status).getByRole("link", { name: "Ask another company" }).getAttribute("href")).toBe("/explore");
+    const call = posts(fetchMock as never)[0] as unknown as [string, { headers: Record<string, string>; body: string }];
+    expect(call[1].headers["Idempotency-Key"]).toMatch(/^[\x21-\x7E]{16,64}$/);
+    expect(JSON.parse(call[1].body)).toMatchObject({
+      targetRoleUrl: "https://careers.wipro.com/jobs/1234567-product-designer",
+      attachmentIds: [77],
+      companySlug: "wipro",
+      candidateMessage: "Led a checkout redesign that cut drop-off 18%.\nShipped a design system used by 40 teams.\nBuilt the onboarding flow end to end.",
+    });
   });
 
-  it("rejects an unsupported resume type before any upload", () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-    render(<Ask />);
+  it("rejects an unsupported resume type before any upload", async () => {
+    const fetchMock = stub();
+    renderPage();
+    await waitFor(() => expect(page().getByRole("heading", { name: "Ask for a referral" })).toBeTruthy());
     const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(picker, { target: { files: [new File(["x"], "resume.txt", { type: "text/plain" })] } });
-    expect(screen.getByRole("alert").textContent).toContain("Use a PDF, Word document, PNG, or JPEG resume.");
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/Use a PDF, Word document, PNG, or JPEG resume/)).toBeTruthy();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/uploads"))).toBe(false);
   });
 
-  it("scores a weak ask honestly and keeps send disabled", () => {
-    vi.stubGlobal("fetch", vi.fn());
-    render(<Ask />);
-    expect(screen.getByText("Needs work")).toBeTruthy();
-    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "wipro jobs" } });
-    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: WEAK_NOTE } });
-    expect(screen.getByText(/doesn't look like a job posting link/)).toBeTruthy();
-    expect(screen.getByText(/Avoid “any role”/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Send ask/ }).hasAttribute("disabled")).toBe(true);
-  });
-
-  it("drafts from an uploaded resume through the free starting-draft endpoint", async () => {
-    stubCrypto();
-    const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, {});
-    vi.stubGlobal("fetch", fetchMock);
-    render(<Ask />);
-    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
-    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
-    fireEvent.click(screen.getByRole("button", { name: /Draft from my resume/ }));
-    await waitFor(() => expect((screen.getByPlaceholderText(/Name the role/) as HTMLTextAreaElement).value).toContain("40%"));
-    expect(fetchMock).toHaveBeenCalledWith("/api/smart-pitch", expect.objectContaining({ method: "POST" }));
-    expect(screen.getByText("Strong")).toBeTruthy();
-  });
-
-  it("names the stage while sending: resume upload first, then the ask", async () => {
-    stubCrypto();
-    const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, { requestId: 9, companyDomain: "wipro.com" });
-    const base = fetchMock.getMockImplementation()!;
-    let releaseSend: () => void = () => undefined;
-    fetchMock.mockImplementation((url: string, init?: unknown) => String(url).endsWith("/api/company-referrals")
-      ? new Promise(resolve => { releaseSend = () => resolve(base(url, init)); })
-      : base(url, init));
-    vi.stubGlobal("fetch", fetchMock);
-    render(<Ask />);
-    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
-    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
-    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
-    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
-    expect(await screen.findByRole("button", { name: "Sending your ask…" })).toBeTruthy();
-    releaseSend();
-    await waitFor(() => expect(screen.getByText("Ask sent to wipro.com.")).toBeTruthy());
-  });
-
-  it("settles to the sent state even when the open-asks lookup never resolves", async () => {
-    stubCrypto();
-    const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, { requestId: 9, companyDomain: "wipro.com" });
-    const base = fetchMock.getMockImplementation()!;
-    fetchMock.mockImplementation((url: string, init?: unknown) => String(url).endsWith("/mine") ? new Promise(() => undefined) : base(url, init));
-    vi.stubGlobal("fetch", fetchMock);
-    render(<Ask />);
-    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
-    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
-    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
-    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
-    await waitFor(() => expect(screen.getByText("Ask sent to wipro.com.")).toBeTruthy());
-    expect(screen.queryByText("Sending...")).toBeNull();
-  });
-
-  it("sends with an idempotency key and links the created thread", async () => {
-    stubCrypto();
-    const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, { requestId: 9, companyDomain: "wipro.com", slots: { plan: "free", planLabel: "Free", open: 2, cap: 3, full: false, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 } } });
-    vi.stubGlobal("fetch", fetchMock);
-    render(<Ask />);
-    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
-    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
-    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
-    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
-    await waitFor(() => expect(screen.getByText("Ask sent to wipro.com.")).toBeTruthy());
-    const sendCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/company-referrals"));
-    expect(sendCall).toBeTruthy();
-    const headers = (sendCall as unknown as Array<{ headers?: Record<string, string> }>)?.[1]?.headers ?? {};
-    expect(headers["Idempotency-Key"]).toMatch(/^[\x21-\x7E]{16,64}$/);
-    expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ targetRoleUrl: "https://careers.wipro.com/job/product-designer-123", attachmentIds: [77] });
-    // The note travels in the field the server stores as the seeker's pitch (shared/askNote.ts).
-    expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ candidateMessage: STRONG_NOTE });
-    expect(screen.getByRole("link", { name: /Track this ask/ }).getAttribute("href")).toBe("/conversation/9");
-    expect(screen.getByText("Verified wipro.com referrers will see it. If nobody picks it up within 7 days, it expires and the credit comes back, unless its month or plan has ended by then; once someone picks it up, the credit stays spent, unless they pass for a reason you can't fix.")).toBeTruthy();
-    expect(screen.getByText(/^Open slots:/).textContent).toBe("Open slots: 2 of 3 used");
-    // The send response carries the count; no second request is needed.
-    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/mine"))).toBe(false);
-    fireEvent.click(screen.getByRole("button", { name: "Write another" }));
-    expect((screen.getByPlaceholderText(/careers.company/) as HTMLInputElement).value).toBe("");
-    expect(screen.getByText("Add resume (shared after accept)")).toBeTruthy();
-  });
-
-  it("shows the job link's function in the eyebrow and lets the server infer it when the seeker does not pick", async () => {
-    stubCrypto();
-    const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, { requestId: 9, companyDomain: "wipro.com", jobFunction: "Design" });
-    vi.stubGlobal("fetch", fetchMock);
-    render(<Ask />);
-    const picker = () => screen.getByLabelText("Job function") as HTMLSelectElement;
-    expect(picker().value).toBe("");
-    expect(picker().selectedOptions[0]?.textContent).toBe("Choose a function");
-    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
-    expect(picker().value).toBe("Design");
-    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
-    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
-    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
-    await screen.findByText("Ask sent to wipro.com.");
-    const sendCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/company-referrals"));
-    expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).not.toHaveProperty("jobFunction");
-  });
-
-  it("sends the function the seeker picked, and forgets it for the next ask", async () => {
-    stubCrypto();
-    const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, { requestId: 10, companyDomain: "wipro.com", jobFunction: "Product" });
-    vi.stubGlobal("fetch", fetchMock);
-    render(<Ask />);
-    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
-    fireEvent.change(screen.getByLabelText("Job function"), { target: { value: "Product" } });
-    expect((screen.getByLabelText("Job function") as HTMLSelectElement).value).toBe("Product");
-    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
-    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
-    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
-    await screen.findByText("Ask sent to wipro.com.");
-    const sendCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/company-referrals"));
-    expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ jobFunction: "Product" });
-    fireEvent.click(screen.getByRole("button", { name: "Write another" }));
-    expect((screen.getByLabelText("Job function") as HTMLSelectElement).value).toBe("");
-  });
-
-  it("tells the seeker honestly when the company has no verified referrers yet", async () => {
-    stubCrypto();
-    const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, { requestId: 12, companyDomain: "merkle.com", coverageStatus: "waiting_for_company_coverage" });
-    vi.stubGlobal("fetch", fetchMock);
-    render(<Ask />);
-    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.merkle.com/job/analyst-42" } });
-    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
-    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
-    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
-    expect(await screen.findByText("Ask sent to merkle.com.")).toBeTruthy();
-    expect(screen.getByText(/No verified referrers there yet, so nothing was spent/)).toBeTruthy();
-    // D-034/D-047/D-061: nothing is spent while it waits; the credit is used at first visibility,
-    // the 7-day clock runs from then, and a creditless ask is held until the seeker adds one.
-    expect(screen.getByText(/waits for free up to 90 days: when a verified employee can see it, 1 credit is used and it goes live/)).toBeTruthy();
-    expect(screen.getByText(/unclaimed 7 days after that, it expires and the credit comes back, unless its month or plan has ended by then\./)).toBeTruthy();
-    expect(screen.getByText(/No credit then\? We hold it until you add one\./)).toBeTruthy();
-    expect(screen.queryByText(/If one verifies within 7 days/)).toBeNull();
-  });
-
-  it("picks up the job link and note handed over from a company door, and clears it once sent", async () => {
-    stubCrypto();
-    const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, { requestId: 21, companyDomain: "wipro.com" });
-    vi.stubGlobal("fetch", fetchMock);
-    sessionStorage.setItem("skipwait-ask-prefill", JSON.stringify({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/job/product-designer-123", note: STRONG_NOTE, savedAt: Date.now() }));
-    render(<Ask />);
-    expect((screen.getByPlaceholderText(/careers.company/) as HTMLInputElement).value).toBe("https://careers.wipro.com/job/product-designer-123");
-    expect((screen.getByPlaceholderText(/Name the role/) as HTMLTextAreaElement).value).toBe(STRONG_NOTE);
-    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
-    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
-    await screen.findByText("Ask sent to wipro.com.");
-    expect(sessionStorage.getItem("skipwait-ask-prefill")).toBeNull();
-  });
-
-  it("shows the company and function from the door the seeker came from, and a matching careers placeholder", async () => {
-    const company = { slug: "wipro", name: "Wipro", initials: "W", industry: "IT", location: "Bengaluru", functions: ["Design"], blurb: "b", domains: ["wipro.com"], openToReferrals: true };
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url) === "/api/companies/wipro" ? { ok: true, status: 200, json: async () => ({ company }), headers: new Headers({ "content-type": "application/json" }), text: async () => JSON.stringify({ company }) } : { ok: false, status: 404, json: async () => ({}), headers: new Headers(), text: async () => "{}" }));
-    sessionStorage.setItem("skipwait-ask-prefill", JSON.stringify({ companySlug: "wipro", targetRoleUrl: "https://example.com/x", note: "", savedAt: Date.now() }));
-    render(<Ask />);
-    expect(await screen.findByText(/NEW ASK · WIPRO ·/)).toBeTruthy();
-    expect((screen.getByLabelText(/Official job link/) as HTMLInputElement).placeholder).toBe("https://careers.wipro.com/…");
-  });
-
-  it("keeps the plain eyebrow when the company is unknown or the lookup fails", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
-    sessionStorage.setItem("skipwait-ask-prefill", JSON.stringify({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/job/1", note: "", savedAt: Date.now() }));
-    render(<Ask />);
-    await new Promise(resolve => setTimeout(resolve, 50));
-    expect(screen.queryByText(/WIPRO/)).toBeNull();
-    expect(screen.getByPlaceholderText(/careers.company/)).toBeTruthy();
-  });
-
-  it("warns, without blocking, when the chosen role location is outside the saved setup", async () => {
-    const setup = { goal: "Actively looking", roles: [], level: "", links: [], city: "Pune, India", countries: "India", remote: true, visa: "Need sponsorship for some countries", resume: null };
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url) === "/api/profile/setup" ? { ok: true, status: 200, json: async () => setup } : { ok: false, status: 404, json: async () => ({}) }));
-    render(<Ask />);
-    const select = await screen.findByLabelText(/Role location/);
-    await screen.findByRole("option", { name: "Hybrid · Pune" });
-    fireEvent.change(select, { target: { value: "other" } });
-    fireEvent.change(screen.getByLabelText("Where is the role?"), { target: { value: "Austin, USA" } });
-    expect(await screen.findByText(/may need work authorization/)).toBeTruthy();
-    expect(screen.getByText("Location works for you")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Where is the role?"), { target: { value: "Pune" } });
-    expect(screen.queryByText(/may need work authorization/)).toBeNull();
-    expect(screen.getByRole("button", { name: /Send ask/ }).hasAttribute("disabled")).toBe(true); // gated by link and note, never by location
-  });
-
-  it("continues a saved server draft into an empty composer and never overwrites typing", async () => {
-    const draft = { companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/job/1", note: "From the door.", updatedAt: "x" };
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url) === "/api/ask-drafts" ? { ok: true, status: 200, json: async () => ({ draft }) } : { ok: false, status: 404, json: async () => ({}) }));
-    render(<Ask />);
-    await waitFor(() => expect((screen.getByLabelText(/Official job link/) as HTMLInputElement).value).toBe("https://careers.wipro.com/job/1"));
-    expect((screen.getByPlaceholderText(/Name the role/) as HTMLTextAreaElement).value).toBe("From the door.");
-  });
-
-  it("leaves a note the seeker already has alone when a draft arrives", async () => {
-    sessionStorage.setItem("skipwait-ask-prefill", JSON.stringify({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/job/7", note: "Mine.", savedAt: Date.now() }));
-    const draft = { companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/job/1", note: "Old draft.", updatedAt: "x" };
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url) === "/api/ask-drafts" ? { ok: true, status: 200, json: async () => ({ draft }) } : { ok: false, status: 404, json: async () => ({}) }));
-    render(<Ask />);
-    await new Promise(resolve => setTimeout(resolve, 60));
-    expect((screen.getByLabelText(/Official job link/) as HTMLInputElement).value).toBe("https://careers.wipro.com/job/7");
-    expect((screen.getByPlaceholderText(/Name the role/) as HTMLTextAreaElement).value).toBe("Mine.");
-  });
-
-  it("ignores a malformed hand-over instead of prefilling it", () => {
-    vi.stubGlobal("fetch", vi.fn());
-    sessionStorage.setItem("skipwait-ask-prefill", JSON.stringify({ targetRoleUrl: "https://careers.wipro.com/job/1", note: "x", injected: true }));
-    render(<Ask />);
-    expect((screen.getByPlaceholderText(/careers.company/) as HTMLInputElement).value).toBe("");
-    expect((screen.getByPlaceholderText(/Name the role/) as HTMLTextAreaElement).value).toBe("");
-  });
-
-  it("forwards a fast-track code and a confirmed company domain for the same link", async () => {
-    stubCrypto();
-    const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, { requestId: 14, companyDomain: "tcs.com", fastTrack: true });
-    vi.stubGlobal("fetch", fetchMock);
-    window.history.replaceState(null, "", "/ask?fast=abcdefghijklmnop1234");
-    localStorage.setItem("bridge-company-confirmation", JSON.stringify({ canonicalUrl: "https://careers.example.com/job/42", confirmedDomain: "tcs.com" }));
-    render(<Ask />);
-    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.example.com/job/42" } });
-    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
-    fireEvent.change(screen.getByPlaceholderText(/LPA/), { target: { value: "₹18–22 LPA" } });
-    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
-    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
-    await screen.findByText("Ask sent to tcs.com.");
-    // D-050: only the link owner sees a personal-link ask, and it expires with the credit back if they never pick it up (D-063 wording).
-    expect(screen.getByText("Only the tcs.com employee whose link you used will see it. If they don't pick it up within 7 days, it expires and the credit comes back, unless its month or plan has ended by then.")).toBeTruthy();
-    expect(screen.queryByText(/referrers will see it/)).toBeNull();
-    const sendCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/company-referrals"));
-    expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ fastTrackCode: "abcdefghijklmnop1234", confirmedCompanyDomain: "tcs.com", compensation: "₹18–22 LPA" });
-    window.history.replaceState(null, "", "/ask");
-    localStorage.removeItem("bridge-company-confirmation");
-  });
-
-  it("composes an ask from a posted role with the post id and the 48-hour first look", async () => {
-    stubCrypto();
-    const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, { requestId: 41, companyDomain: "wipro.com" });
-    vi.stubGlobal("fetch", fetchMock);
-    window.history.replaceState(null, "", "/ask?post=55&job=https%3A%2F%2Fcareers.wipro.com%2Fjob%2Fproduct-designer-123");
-    render(<Ask />);
-    expect((screen.getByLabelText(/Official job link/) as HTMLInputElement).value).toBe("https://careers.wipro.com/job/product-designer-123");
-    expect(screen.getByText(/sees your ask first, for 48 hours/)).toBeTruthy();
-    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
-    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
-    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
-    await screen.findByText("Ask sent to wipro.com.");
-    const sendCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/company-referrals"));
-    expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ opportunityId: 55, targetRoleUrl: "https://careers.wipro.com/job/product-designer-123" });
-    // "Write another" drops the post selection so the next ask is a plain one.
-    fireEvent.click(screen.getByRole("button", { name: "Write another" }));
-    expect(screen.queryByText(/sees your ask first, for 48 hours/)).toBeNull();
-  });
-
-  it("asks for the official job link when the post is a walk-in", () => {
-    vi.stubGlobal("fetch", vi.fn());
-    window.history.replaceState(null, "", "/ask?post=92");
-    render(<Ask />);
-    expect((screen.getByLabelText(/Official job link/) as HTMLInputElement).value).toBe("");
-    expect(screen.getByText(/sees your ask first, for 48 hours/)).toBeTruthy();
-  });
-
-  it("surfaces server credit enforcement without inventing slot math", async () => {
-    stubCrypto();
-    const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, {});
-    fetchMock.mockImplementation(async (url: string) => {
-      if (String(url).endsWith("/api/company-referrals")) return { ok: false, status: 400, json: async () => ({ error: "You have used this month's included credits." }) };
-      if (String(url).endsWith("/api/documents/uploads")) return ok({ sessionId: "sess-1", chunkBytes: 1024 * 1024 });
-      if (String(url).includes("/chunks")) return ok({});
-      if (String(url).includes("/complete")) return ok({ id: 77, fileName: "resume.pdf" });
-      return ok({ requests: [] });
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    render(<Ask />);
-    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
-    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
-    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
-    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
-    expect(await screen.findByText(/used this month's included credits/)).toBeTruthy();
-    expect(screen.getByRole("alert").textContent).toContain("used this month's included credits");
-    expect(screen.queryByText(/Ask sent to/)).toBeNull();
-    expect(sessionStorage.getItem("skipwait-ask-idempotency-key")).toBeTruthy();
-  });
-
-  async function composeAndSend(fetchMock: ReturnType<typeof vi.fn>) {
-    vi.stubGlobal("fetch", fetchMock);
-    render(<Ask />);
-    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
-    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
-    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
-    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
-  }
-
-  it("keeps the same idempotency key and shows plain copy when the network drops mid-send", async () => {
-    stubCrypto();
-    const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, {});
-    const uploadAndPitch = fetchMock.getMockImplementation();
-    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
-      if (String(url).endsWith("/api/company-referrals")) throw new TypeError("Failed to fetch");
-      return uploadAndPitch?.(url, init);
-    });
-    await composeAndSend(fetchMock);
-    expect((await screen.findByRole("alert")).textContent).toContain("We couldn't reach skipwait.me. Check your connection and try again.");
-    expect(document.body.textContent).not.toContain("Failed to fetch");
-    const firstKey = sessionStorage.getItem("skipwait-ask-idempotency-key");
-    expect(firstKey).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
-    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/company-referrals"))).toHaveLength(2));
-    const sends = fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/company-referrals"));
-    const keys = sends.map(call => ((call as unknown as Array<{ headers?: Record<string, string> }>)[1]?.headers ?? {})["Idempotency-Key"]);
-    expect(keys[0]).toBe(keys[1]);
-    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/documents/uploads"))).toHaveLength(1);
-  });
-
-  it("does not confirm an ask the server response cannot prove was created", async () => {
-    stubCrypto();
-    const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, { requestId: "9", companyDomain: "wipro.com" });
-    await composeAndSend(fetchMock);
-    expect((await screen.findByRole("alert")).textContent).toContain("We could not send this ask");
-    expect(screen.queryByText(/Ask sent to/)).toBeNull();
-    expect(sessionStorage.getItem("skipwait-ask-idempotency-key")).toBeTruthy();
-  });
-
-  it("omits the open-slot line when the send response carries no count", async () => {
-    stubCrypto();
-    const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, { requestId: 31, companyDomain: "wipro.com" });
-    await composeAndSend(fetchMock);
-    await screen.findByText("Ask sent to wipro.com.");
-    expect(screen.queryByText(/Open slots:/)).toBeNull();
-  });
-
-  const capBody = { error: "All 3 slots are in use. Wait for an answer, withdraw an ask, or get more slots with Momentum (15).", code: "slot_cap_reached", slots: { plan: "free", planLabel: "Free", open: 3, cap: 3, full: true, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 } } };
-  function stubSlotCap(fetchMock: ReturnType<typeof vi.fn>) {
-    fetchMock.mockImplementation(async (url: string) => {
-      if (String(url).endsWith("/api/company-referrals")) return { ok: false, status: 409, json: async () => capBody };
-      if (String(url).endsWith("/api/documents/uploads")) return ok({ sessionId: "sess-1", chunkBytes: 1024 * 1024 });
-      if (String(url).includes("/chunks")) return ok({});
-      if (String(url).includes("/complete")) return ok({ id: 77, fileName: "resume.pdf" });
-      return ok({});
-    });
-  }
-
-  it("shows the kit slot-cap nudge at the cap, once per session, and remembers I'll wait for 7 days", async () => {
-    stubCrypto();
-    localStorage.clear();
-    const fetchMock = vi.fn();
-    stubSlotCap(fetchMock);
-    await composeAndSend(fetchMock);
-    const nudge = await screen.findByRole("alert");
-    expect(nudge.textContent).toContain("Your 3 requests are all open");
-    expect(nudge.textContent).toContain("Wait for an answer to free a slot, or move to Momentum for 15 open requests. Queue position stays equal either way.");
-    expect(screen.getByRole("link", { name: "See Momentum" }).getAttribute("href")).toBe("/plans");
-    expect(screen.queryByText(/Ask sent to/)).toBeNull();
-    // The same submission key is kept for a retry once a slot frees.
-    expect(sessionStorage.getItem("skipwait-ask-idempotency-key")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "I'll wait" }));
-    expect(screen.queryByText("Your 3 requests are all open")).toBeNull();
-    expect(Number(localStorage.getItem("skipwait-nudge:slot_cap:session"))).toBeGreaterThan(Date.now() + 6 * 24 * 60 * 60 * 1000);
-    // A second refusal this session states the reason plainly, without the upsell.
-    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
-    expect((await screen.findByRole("alert")).textContent).toContain("All 3 slots are in use. Wait for an answer, withdraw an ask, or get more slots with Momentum (15).");
-    expect(screen.queryByRole("link", { name: "See Momentum" })).toBeNull();
-  });
-
-  it("states the slot-cap reason plainly while the nudge is dismissed", async () => {
-    stubCrypto();
-    localStorage.setItem("skipwait-nudge:slot_cap:session", String(Date.now() + 60_000));
-    const fetchMock = vi.fn();
-    stubSlotCap(fetchMock);
-    await composeAndSend(fetchMock);
-    expect((await screen.findByRole("alert")).textContent).toContain("All 3 slots are in use.");
-    expect(screen.queryByText("Your 3 requests are all open")).toBeNull();
-    localStorage.clear();
+  it("saves a draft for the resolved company", async () => {
+    const fetchMock = stub();
+    renderPage();
+    fillLink();
+    fillReasons();
+    await screen.findByTestId("goal-verified-mark");
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    await screen.findByRole("button", { name: "Draft saved" });
+    const put = fetchMock.mock.calls.find(([url, init]) => String(url) === "/api/ask-drafts" && (init as RequestInit | undefined)?.method === "PUT");
+    expect(JSON.parse(String((put as unknown as [string, { body: string }])[1].body))).toMatchObject({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1234567-product-designer" });
   });
 });

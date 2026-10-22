@@ -37,8 +37,18 @@ deploy 1
 if [[ -n "${NEWDB_PASSWORD:-}" ]]; then
   : "${NEWDB_HOST:?}" "${NEWDB_USER:?}"
   enc=$(NEWDB_PASSWORD="$NEWDB_PASSWORD" node -e 'process.stdout.write(encodeURIComponent(process.env.NEWDB_PASSWORD))')
-  printf '%s' "mysql://${NEWDB_USER}:${enc}@${NEWDB_HOST}:3306/skipwait" | npx wrangler secret put DATABASE_URL >/dev/null \
-    || { echo '::error::Could not set DATABASE_URL to the new database'; exit 5; }
+  # Cloudflare briefly refuses secret edits right after a version deploy
+  # ("latest version isn't currently deployed"); retry until the version settles.
+  secret_set=0
+  for attempt in 1 2 3 4 5 6 7 8; do
+    if printf '%s' "mysql://${NEWDB_USER}:${enc}@${NEWDB_HOST}:3306/skipwait" | npx wrangler secret put DATABASE_URL >/dev/null 2>&1; then
+      secret_set=1
+      break
+    fi
+    echo "DATABASE_URL secret put attempt ${attempt} failed; retrying in 20s"
+    sleep 20
+  done
+  [[ "$secret_set" == "1" ]] || { echo '::error::Could not set DATABASE_URL to the new database'; exit 5; }
   echo "DATABASE_URL set to ${NEWDB_HOST}/skipwait (value not printed)"
 fi
 # Worker-version activation plus container cold start (edge image pull + node

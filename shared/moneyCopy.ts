@@ -8,7 +8,7 @@
  * cannot drift from the catalog: the number comes from the Free plan.
  */
 import { FREE_PLAN } from "./planCatalog";
-import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "./referral";
+import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS, REFERRED_DEADLINE_ENABLED } from "./referral";
 
 /** Free asks every account gets each UTC calendar month (D-039). */
 export const FREE_ASKS_PER_MONTH = FREE_PLAN.creditsPerMonth;
@@ -54,7 +54,13 @@ export const MONEY_SENTENCE_SHORT = `${ASK_COST_SENTENCE} ${REFERRERS_NEVER_PAID
  * D-038 have shipped; this comment tracks the string below and must be
  * corrected with it (D-068).
  */
-export const CREDIT_RULE = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, 1 credit is used; if you have none then, we hold the ask until you add one. The credit comes back once if you withdraw before someone picks the ask up, if a referrer's 48-hour hold lapses, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee, as long as the credit itself has not expired by then. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credit stays spent, unless they pass for a reason you can't fix. If an accepted ask is not marked Referred in time, or the referrer steps back, the ask reopens to other employees with that credit still on it, and the credit comes back if the ask is then withdrawn or expires unclaimed.`;
+/** D-042: the reopen promise is stated only while part B can deliver it (D-038-reconcile F3, R-2);
+ * the routes answer 409 and the job skips its part B steps while the switch is off. */
+const REFERRED_REOPEN_SENTENCE = REFERRED_DEADLINE_ENABLED
+  ? " If an accepted ask is not marked Referred in time, or the referrer steps back, the ask reopens to other employees with that credit still on it, and the credit comes back if the ask is then withdrawn or expires unclaimed."
+  : "";
+
+export const CREDIT_RULE = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, 1 credit is used; if you have none then, we hold the ask until you add one. The credit comes back once if you withdraw before someone picks the ask up, if a referrer's 48-hour hold lapses, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee, as long as the credit itself has not expired by then. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credit stays spent, unless they pass for a reason you can't fix.${REFERRED_REOPEN_SENTENCE}`;
 
 /**
  * D-132 (frozen Oct 21 18:42 IST): PAID credits never expire; free monthly

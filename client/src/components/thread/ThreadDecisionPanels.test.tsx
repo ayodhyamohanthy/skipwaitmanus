@@ -13,6 +13,12 @@ import { ReferrerPanel, SeekerPanel } from "./ThreadDecisionPanels";
  */
 
 vi.mock("wouter", () => ({ Link: ({ href, children, ...rest }: { href: string; children: ReactNode }) => <a href={href} {...rest}>{children}</a> }));
+// Pin the off state: these cases prove what the off state offers. Mocking the module keeps them
+// honest on the day the lander flips the real constant (D-038-reconcile R-2).
+vi.mock("@shared/referral", async () => {
+  const actual = await vi.importActual<typeof import("@shared/referral")>("@shared/referral");
+  return { ...actual, REFERRED_DEADLINE_ENABLED: false };
+});
 
 const base: ThreadRequest = {
   id: 501, title: "Product Designer", pitch: null, candidateName: null, targetRoleUrl: null,

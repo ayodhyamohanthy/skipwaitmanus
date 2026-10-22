@@ -2,7 +2,7 @@
 
 > Start with [`docs/BRIEF.md`](docs/BRIEF.md) (D-073).
 
-3 asks free every month; more use credits. Referrers are never paid and never ask you for money (D-063).
+3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money (D-063 as worded by D-135).
 Money never buys queue position, referral access or acceptance odds.
 If this file and `shared/planCatalog.ts` disagree, the code wins — change both together.
 No price, plan-content or new credit-rule change until two full weeks of baseline data exist (D-056).

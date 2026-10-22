@@ -397,6 +397,12 @@ describe("referred_deadline_stuck over the in-memory database", () => {  beforeE
   });
 });
 
+/*
+ * D-038-A (F4): `refund_after_pickup`. Once a referrer claimed the ask the credit stays spent
+ * (D-034, D-076 (1)), so a withdrawal or expiry refund whose latest pickup-or-release event before
+ * it was a claim is a money leak. The refund window is bounded (limit * 4 newest rows); the event
+ * read is not, so an old claim cannot hide behind newer rows.
+ */
 describe("refund_after_pickup over the in-memory database", () => {
   beforeEach(() => {
     vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
@@ -405,35 +411,97 @@ describe("refund_after_pickup over the in-memory database", () => {
   });
   afterEach(() => { vi.unstubAllEnvs(); });
 
-  // D-035: a not-fixable pass releases the pickup before the ask closes, so the release — not
-  // the earlier claim — is the ask's latest pickup-or-release event and the refund is correct.
-  it("stays quiet when a not-fixable pass released the pickup before the refund, and still flags a refund after a bare claim", async () => {
-    const passRelease = (id: number, requestId: number, at: Date) => ({ ...claimEvent(requestId, id), action: "pass_release", operationKey: `pass:${requestId}`, resultingStatus: "pending", createdAt: at });
-    const refund = (id: number, requestId: number, at: Date) => spendRow({ id, referenceId: `${requestId}#refund`, idempotencyKey: `r${requestId}`, tokenCount: 1, kind: "expiry_refund", createdAt: at });
+  const at = (msAgo: number) => new Date(NOW.getTime() - msAgo);
+  const HOUR = 60 * 60_000;
+  const event = (id: number, action: string, createdAt: Date, requestId = 501) => ({ ...claimEvent(requestId, id), action, operationKey: `${action}:${id}`, createdAt });
+  const refund = (id: number, kind: string, createdAt: Date, requestId = 501): Record<string, unknown> =>
+    spendRow({ id, kind, tokenCount: 1, createdAt, referenceId: `${requestId}#refund#1`, reversesTransactionId: 600 + id });
+
+  it("flags a withdrawal refund and an expiry refund after a claim", async () => {
     seedHeldAsks({
-      spends: [
-        // Released by a pass, then closed past its window: the credit comes back by design.
-        spendRow({ id: 71, referenceId: "811#1", idempotencyKey: "k811#1", tokenCount: -1 }),
-        refund(170, 811, daysAgo(1)),
-        // Never released: the claim is still the latest event, so a refund here is a leak.
-        spendRow({ id: 73, referenceId: "812#1", idempotencyKey: "k812#1", tokenCount: -1 }),
-        refund(171, 812, daysAgo(1)),
-      ],
+      asks: [askRow()],
+      events: [event(39, "claim", at(3 * DAY))],
+      spends: [refund(61, "withdrawal_refund", at(DAY)), refund(62, "expiry_refund", at(12 * HOUR))],
+    });
+
+    const rows = await listRefundsAfterPickup(10);
+    expect(rows.map(row => row.transactionId).sort((a, b) => a - b)).toEqual([61, 62]);
+    expect(rows.map(row => row.requestId)).toEqual([501, 501]);
+  });
+
+  it("does not flag a refund after a lapse or a step-back released the ask", async () => {
+    seedHeldAsks({
+      asks: [askRow(), askRow({ id: 502 })],
       events: [
-        { ...claimEvent(811, 110), createdAt: daysAgo(5) },
-        passRelease(111, 811, daysAgo(4)),
-        { ...claimEvent(812, 112), createdAt: daysAgo(5) },
+        event(39, "claim", at(4 * DAY)),
+        event(40, "claim_lapse", at(3 * DAY)),
+        event(41, "claim", at(3 * DAY), 502),
+        event(42, "step_back", at(2 * DAY), 502),
       ],
+      spends: [refund(63, "expiry_refund", at(DAY)), refund(64, "withdrawal_refund", at(HOUR), 502)],
+    });
+
+    expect(await listRefundsAfterPickup(10)).toEqual([]);
+  });
+
+  it("finds an old claim behind more than limit x 4 newer rows for other asks", async () => {
+    // The refund window covers the newest limit * 4 refund rows, and the event read has no window,
+    // so a ten-day-old claim still convicts a recent refund among 30 newer rows for other asks.
+    // (The kit ignores ORDER BY, so this pins the unbounded event lookup, not the ordering.)
+    const newerRefunds = Array.from({ length: 30 }, (_, i) => refund(700 + i, "withdrawal_refund", at(2 * DAY), 900 + i));
+    seedHeldAsks({
+      asks: [askRow()],
+      events: [event(39, "claim", at(10 * DAY))],
+      // The leak's id is the highest (newest under ORDER BY id DESC), so the bounded window holds it.
+      spends: [refund(800, "withdrawal_refund", at(HOUR)), ...newerRefunds],
+    });
+
+    expect((await listRefundsAfterPickup(5)).map(row => row.transactionId)).toEqual([800]);
+  });
+
+  it("returns at most limit findings, so the owner email stays bounded", async () => {
+    seedHeldAsks({
+      asks: [askRow()],
+      events: [event(39, "claim", at(3 * DAY))],
+      spends: [refund(61, "withdrawal_refund", at(2 * DAY)), refund(62, "expiry_refund", at(DAY))],
+    });
+
+    // Two leaks, one slot: the query's LIMIT bounds what the email can carry. Which row survives is
+    // the SQL's ORDER BY id DESC, which the in-memory kit ignores by design.
+    expect(await listRefundsAfterPickup(1)).toHaveLength(1);
+  });
+
+  it("reaches the owner email as one finding line per leak", async () => {
+    seedHeldAsks({
+      asks: [askRow()],
+      events: [event(39, "claim", at(3 * DAY))],
+      spends: [refund(61, "withdrawal_refund", at(DAY))],
     });
 
     const { deps, sent } = makeDeps({ listRefundsAfterPickup });
-    const output = await createDailyMoneyCheck(deps)({ nowMs: KIT_NOW, windowKey: "2026-10-18T12:00Z" });
+    await createDailyMoneyCheck(deps)({ nowMs: NOW.getTime(), windowKey: "2026-10-19T02:00Z" });
 
-    expect(output.failed).toBe(0);
     expect(sent).toHaveLength(1);
-    expect(sent[0]!.text).toContain("refund_after_pickup: ledger row #171 returned a credit for ask #812 (expiry_refund)");
-    expect(sent[0]!.text).not.toContain("ask #811");
+    expect(sent[0]!.text).toContain("refund_after_pickup: ledger row #61 returned a credit for ask #501 (withdrawal_refund) although the ask's latest pickup was a claim");
     expect(sent[0]!.text).not.toContain("@");
+  });
+
+  // D-035: a not-fixable pass releases the pickup, so the release — not the earlier claim — is the
+  // ask's latest pickup-or-release event, and the refund that follows it is correct.
+  it("stays quiet after a not-fixable pass released the pickup, and still flags a refund after a bare claim", async () => {
+    seedHeldAsks({
+      asks: [askRow({ id: 811 }), askRow({ id: 812 })],
+      events: [
+        event(110, "claim", at(5 * DAY), 811),
+        event(111, "pass_release", at(4 * DAY), 811),
+        event(112, "claim", at(5 * DAY), 812),
+      ],
+      spends: [refund(170, "expiry_refund", at(DAY), 811), refund(171, "expiry_refund", at(DAY), 812)],
+    });
+
+    // Released by a pass, then closed past its window: the credit comes back by design. A bare
+    // claim was never released, so its refund is still a leak.
+    expect((await listRefundsAfterPickup(10)).map(row => row.transactionId)).toEqual([171]);
   });
 });
 
