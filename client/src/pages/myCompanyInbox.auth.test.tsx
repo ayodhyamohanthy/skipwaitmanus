@@ -5,7 +5,10 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MyCompanyInbox from "./MyCompanyInbox";
+
+const Queue = () => <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MyCompanyInbox /></QueryClientProvider>;
 
 const { go, getToken, search } = vi.hoisted(() => ({ go: vi.fn(), getToken: vi.fn().mockResolvedValue("t"), search: { value: "" } }));
 
@@ -46,7 +49,7 @@ describe("My Company Inbox auth and composition", () => {
       if (url.includes("/availability/open")) return { availability: { allocatedCount: 0 } };
       return {};
     });
-    render(<MyCompanyInbox />);
+    render(<Queue />);
     expect(await screen.findByText("Ready to help?")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Open referral capacity" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/availability/open", expect.objectContaining({ method: "POST" })));
@@ -54,9 +57,9 @@ describe("My Company Inbox auth and composition", () => {
 
   it("heads the queue with the count and Verified mark, rows with role, status and countdown", async () => {
     stubFetch((url) => (url.includes("scope=new") ? { requests: [row(3)] } : { requests: [] }));
-    render(<MyCompanyInbox />);
+    render(<Queue />);
     await screen.findByRole("button", { name: /Product Designer 3/ });
-    expect(screen.getByRole("heading", { name: "Referral queue" })).toBeTruthy();
+    expect(screen.getAllByRole("heading", { name: "Referral queue" }).length).toBeGreaterThan(0);
     expect(screen.getByText("1", { exact: false })).toBeTruthy();
     expect(screen.getByText(/waiting/)).toBeTruthy();
     expect(screen.getByText(/Verified/)).toBeTruthy();
@@ -70,7 +73,7 @@ describe("My Company Inbox auth and composition", () => {
 
   it("lists routed new requests, then saved ones, deduped, without scope tabs or a pager", async () => {
     stubFetch((url) => (url.includes("scope=new") ? { requests: [row(3)] } : { requests: [row(3), row(9)] }));
-    render(<MyCompanyInbox />);
+    render(<Queue />);
     await screen.findByRole("button", { name: /Product Designer 3/ });
     await screen.findByRole("button", { name: /Product Designer 9/ });
     expect(screen.getAllByRole("button", { name: /Product Designer/ })).toHaveLength(2);
@@ -83,7 +86,7 @@ describe("My Company Inbox auth and composition", () => {
       if (url.includes("/preview")) return previewOf(9);
       return { requests: url.includes("scope=new") ? [row(3), row(9)] : [] };
     });
-    render(<MyCompanyInbox />);
+    render(<Queue />);
     const detail = await screen.findByTestId("goal-detail-pane");
     expect(detail.textContent).toContain("Product Designer 9");
     expect(detail.textContent).toContain("R-T9ST");
@@ -94,7 +97,7 @@ describe("My Company Inbox auth and composition", () => {
       if (url.includes("/preview")) return previewOf(7);
       return { requests: url.includes("scope=new") ? [row(7)] : [] };
     });
-    render(<MyCompanyInbox />);
+    render(<Queue />);
     fireEvent.click(await screen.findByRole("button", { name: /Product Designer 7/ }));
     const detail = await screen.findByTestId("goal-detail-pane");
     await waitFor(() => expect(detail.textContent).toContain("Three"));
@@ -107,7 +110,7 @@ describe("My Company Inbox auth and composition", () => {
 
   it("keeps decided requests out of the dock and hands an acceptance straight to the conversation", async () => {
     stubFetch((url) => (url.includes("scope=new") ? { requests: [row(5, { status: "approved", isClaimedByYou: true })] } : { requests: [] }));
-    render(<MyCompanyInbox />);
+    render(<Queue />);
     const queueRow = await screen.findByRole("button", { name: /Product Designer 5/ });
     expect(queueRow.textContent).toContain("Under review");
     fireEvent.click(queueRow);

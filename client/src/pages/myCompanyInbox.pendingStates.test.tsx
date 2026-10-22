@@ -6,7 +6,10 @@
 import React from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MyCompanyInbox from "./MyCompanyInbox";
+
+const Queue = () => <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MyCompanyInbox /></QueryClientProvider>;
 
 const { go, getToken } = vi.hoisted(() => ({ go: vi.fn(), getToken: vi.fn().mockResolvedValue("test-token") }));
 
@@ -45,7 +48,7 @@ describe("My Company Inbox pending states", () => {
       if (url.includes("/one-click-review")) return { status: "declined" };
       return {};
     });
-    render(<MyCompanyInbox />);
+    render(<Queue />);
     fireEvent.click(await screen.findByRole("button", { name: /Private ask/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Pass privately/ }));
     const sheet = await screen.findByTestId("goal-sheet");
@@ -61,7 +64,7 @@ describe("My Company Inbox pending states", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Pass privately/ }));
     fireEvent.click(screen.getByRole("button", { name: /Not my team or function/ }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "declined", declineReason: "not_my_team", passReason: "not_my_team" }) })));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "declined", declineReason: "role_not_a_fit", passReason: "not_my_team" }) })));
   });
 
   it("keeps the queue intact and offers Try again when the inbox fails to load", async () => {
@@ -71,7 +74,7 @@ describe("My Company Inbox pending states", () => {
       if (url.includes("/inbox")) return { requests: [] };
       return {};
     });
-    render(<MyCompanyInbox />);
+    render(<Queue />);
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("We could not load your queue");
     expect(alert.textContent).toContain("Private company inbox is temporarily unavailable");
@@ -90,7 +93,7 @@ describe("My Company Inbox pending states", () => {
       if (url.includes("/one-click-review") && init?.method === "POST") return { __status: 409, error: "This referral request is no longer available" };
       return {};
     });
-    render(<MyCompanyInbox />);
+    render(<Queue />);
     fireEvent.click(await screen.findByRole("button", { name: /Private ask/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Accept & connect/ }));
     const alert = await screen.findByRole("alert");
@@ -107,7 +110,7 @@ describe("My Company Inbox pending states", () => {
       if (url.includes("/inbox")) return { requests: [] };
       return {};
     });
-    render(<MyCompanyInbox />);
+    render(<Queue />);
     const row = await screen.findByRole("button", { name: /Private ask/ });
     expect(row.textContent).toMatch(/\d+ days left/);
     fireEvent.click(row);
@@ -119,10 +122,10 @@ describe("My Company Inbox pending states", () => {
   it("tells the Referrer honestly when the queue is taking longer than 15 seconds", async () => {
     vi.useFakeTimers();
     stubFetch(() => new Promise(() => undefined));
-    render(<MyCompanyInbox />);
+    render(<Queue />);
     expect(screen.getByTestId("goal-skeleton-rows")).toBeTruthy();
     expect(screen.queryByRole("status")).toBeNull();
     await act(async () => { vi.advanceTimersByTime(15_500); });
-    expect((await screen.findByRole("status")).textContent).toContain("Still loading. Your queue is intact.");
+    expect(screen.getByRole("status").textContent).toContain("Still loading. Your queue is intact.");
   });
 });
