@@ -22,7 +22,6 @@ import {
   type PlanFamilyId,
   type PlanPriceBook,
 } from "@shared/planFamily";
-import { JOB_LEVEL_LABELS } from "@shared/jobLevel";
 import { money } from "@/components/plans/format";
 
 type Pick = PlanCreditRung | null; // null = the free pick (Open Door default)
@@ -229,7 +228,16 @@ export default function PlansV2({ book = "INR", seekerLevel = null, onPickLevel 
       </p>
       <p className="mt-2 max-w-[640px] text-g-small text-g-ink-3">Plan names say how far you can reach, not how senior you are.</p>
       <p className="mt-1 max-w-[640px] text-g-small text-g-ink-3">Reach sets who you can ask. It never changes your place in a queue.</p>
-      {seekerLevel === null ? <p className="mt-1 text-g-small text-g-ink-3">Add your level in your <a href="/profile" className="underline">profile</a> to see exactly who each plan reaches.</p> : null}
+      {onPickLevel ? (
+        <label className="mt-3 flex max-w-[360px] flex-col gap-1 text-g-small">
+          <span className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Your level</span>
+          <select aria-label="Your level" value={seekerLevel ?? ""} onChange={e => onPickLevel(e.target.value === "" ? null : Number(e.target.value))} className="rounded-g-tile border border-g-hairline bg-g-surface px-3 py-2.5">
+            <option value="">Not set</option>
+            {Object.entries(REACH_LEVEL_NAMES).map(([n, label]) => <option key={n} value={n}>{`L${n} - ${label}`}</option>)}
+          </select>
+        </label>
+      ) : null}
+      {seekerLevel === null && !onPickLevel ? <p className="mt-1 text-g-small text-g-ink-3">Add your level in your <a href="/profile" className="underline">profile</a> to see exactly who each plan reaches.</p> : null}
       <div className="mt-8 grid gap-4 gdesk:grid-cols-3">
         <PlanCard planId="open_door" book={book} seekerLevel={seekerLevel} />
         <PlanCard planId="fast_track" book={book} seekerLevel={seekerLevel} />
