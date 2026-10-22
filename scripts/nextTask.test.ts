@@ -41,13 +41,15 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
   });
 
   it("hands a fresh agent the first pickable task in order", () => {
-    // Owner Ayu explicitly registered these two follow-ups on Oct 22 while
-    // the coordinator was unavailable; existing queue order is unchanged.
-    expect(real.tasks.slice(0, 2).map(t => t.id)).toEqual(["PREMIUM-total-label", "D-067-outbox-fixture-repair"]);
+    // D-149 keeps the two live regressions first. Owner-registered follow-ups
+    // remain together immediately afterward; all existing rows keep their order.
+    expect(real.tasks.slice(0, 4).map(t => t.id)).toEqual([
+      "P0-ask-link-signin", "P1-queue-attestation", "PREMIUM-total-label", "D-067-outbox-fixture-repair",
+    ]);
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    expect(first).toMatchObject({ kind: "build", task: { id: "PREMIUM-total-label" } });
-    const rest = pickNextTask({ tasks: real.tasks.slice(2), mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    expect(rest).toMatchObject({ kind: "build", task: { id: "D-035" } });
+    expect(first).toMatchObject({ kind: "build", task: { id: "P0-ask-link-signin" } });
+    const followUps = pickNextTask({ tasks: real.tasks.slice(2), mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
+    expect(followUps).toMatchObject({ kind: "build", task: { id: "PREMIUM-total-label" } });
   });
 
   it("rejects unknown keys, duplicates, bad branches, missing packets, unknown dependencies and cycles", () => {
