@@ -12,7 +12,7 @@ import { Link } from "wouter";
  * quiet pills. On narrow viewports the row scrolls horizontally instead of
  * wrapping into a wall of buttons.
  */
-export type AdminSection = "overview" | "approvals" | "payments" | "catalog" | "privacy-requests" | "token-recovery" | "activity" | "flow-health" | "users" | "partners" | "schema";
+export type AdminSection = "overview" | "approvals" | "payments" | "catalog" | "privacy-requests" | "token-recovery" | "activity" | "flow-health" | "users" | "partners" | "schema" | "money-check";
 
 const sections: Array<{ id: AdminSection; href: string; label: string; icon: LucideIcon }> = [
   { id: "overview", href: "/admin", label: "Overview", icon: Gauge },
@@ -26,6 +26,7 @@ const sections: Array<{ id: AdminSection; href: string; label: string; icon: Luc
   { id: "flow-health", href: "/admin/flow-health", label: "Flow health", icon: HeartPulse },
   { id: "users", href: "/admin/users", label: "Users", icon: UsersRound },
   { id: "schema", href: "/admin/schema", label: "Schema", icon: Database },
+  { id: "money-check", href: "/admin/money-check", label: "Money check", icon: Wallet },
 ];
 
 export function AdminNav({ current, badge = "Admin only" }: { current: AdminSection; badge?: string }) {
