@@ -88,7 +88,8 @@ export function itemPriceForm(spec: ItemPriceSpec): URLSearchParams {
     currency_code: spec.currencyCode,
     external_name: spec.externalName,
   });
-  if (spec.itemType === "plan") {
+  // Plans AND addons bill on a period; charges never do.
+  if (spec.itemType !== "charge") {
     if (spec.period !== null) form.set("period", String(spec.period));
     if (spec.periodUnit !== null) form.set("period_unit", spec.periodUnit);
     if (spec.billingCycles !== null) form.set("billing_cycles", String(spec.billingCycles));

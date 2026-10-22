@@ -22,8 +22,9 @@
 import { z } from "zod";
 import { FREE_ALERT_LIMIT } from "./alerts";
 import { CATALOG_PLANS, CATALOG_PLAN_IDS, FREE_PLAN, REVERSE_TRIAL, catalogPlanById, planDisplayName, tierAtLeast, type CatalogPlan, type CatalogTier } from "./planCatalog";
+import { PLAN_FAMILY_IDS, planBenefitCaps, planFamilyEntry, type PlanFamilyId } from "./planFamily";
 
-export const ENTITLED_PLAN_IDS = ["free", ...CATALOG_PLAN_IDS] as const;
+export const ENTITLED_PLAN_IDS = ["free", ...CATALOG_PLAN_IDS, "fast_track", "insider"] as const;
 export type EntitledPlanId = (typeof ENTITLED_PLAN_IDS)[number];
 
 export const CATALOG_TIERS = ["free", "keep_warm", "start", "momentum", "land"] as const satisfies readonly CatalogTier[];
@@ -120,11 +121,21 @@ function isCatalogPlan(plan: string): boolean {
 }
 
 /**
+ * A D-132 family plan id a subscription can bill (Open Door is free: it never
+ * sits on a wallet as a paid plan). A wallet carrying one is a real paying
+ * subscriber - never grandfathered-away like the retired Pro/Max ids - so it
+ * follows the same active/lapse rules as a catalog plan.
+ */
+export function isPlanFamilyPaidPlan(plan: string): plan is Exclude<PlanFamilyId, "open_door"> {
+  return (PLAN_FAMILY_IDS as readonly string[]).includes(plan) && plan !== "open_door";
+}
+
+/**
  * True while a catalog plan or pass is billing: active or non-renewing, inside the current term (JS clock, never DB NOW()).
  * A stored plan outside the catalog (retired Pro/Max, reserved Land ids) is never active, whatever its status.
  */
 export function isPaidPlanActive(wallet: Omit<EntitlementWallet, "trialEndsAt">, now: Date = new Date()): boolean {
-  if (!isCatalogPlan(wallet.plan)) return false;
+  if (!isCatalogPlan(wallet.plan) && !isPlanFamilyPaidPlan(wallet.plan)) return false;
   if (wallet.subscriptionStatus !== "active" && wallet.subscriptionStatus !== "non_renewing") return false;
   return wallet.subscriptionCurrentTermEnd !== null && wallet.subscriptionCurrentTermEnd.getTime() > now.getTime();
 }
@@ -169,16 +180,40 @@ export function planEntitlementsFor(plan: string): PlanEntitlements {
 const TRIAL_OPEN_REQUESTS = catalogPlanById(REVERSE_TRIAL.plan)?.openRequests ?? FREE_PLAN.openRequests;
 const TRIAL_LABEL = `${planDisplayName(catalogPlanById(REVERSE_TRIAL.plan) ?? FREE_PLAN)} trial`;
 
-export function resolvePlanEntitlements(wallet: EntitlementWallet | null | undefined, now: Date = new Date()): PlanEntitlements {
+/**
+ * A D-132 family plan's entitlements (flag PLAN_FAMILY_V2). Catalog-tier
+ * features stay at Free's level until the pricing build owns family metering
+ * (D-115); what the family plan itself changes is here: its label, its
+ * open-ask cap from the frozen growth table, and credits-per-month 0 because
+ * family credits arrive per paid invoice, never from a monthly allowance.
+ */
+function fromFamilyPlan(id: Exclude<PlanFamilyId, "open_door">): PlanEntitlements {
+  const free = fromCatalog(FREE_PLAN);
+  return {
+    ...free,
+    plan: id,
+    planLabel: planFamilyEntry(id).label,
+    openRequests: planBenefitCaps(id).openAsks,
+    creditsPerMonth: 0,
+    // The live alerts rule: every paid plan is unlimited.
+    savedAlerts: null,
+  };
+}
+
+export function resolvePlanEntitlements(wallet: EntitlementWallet | null | undefined, now: Date = new Date(), opts?: { planFamilyV2?: boolean }): PlanEntitlements {
   const trialEnd = wallet && isTrialActive(wallet, now) ? wallet.trialEndsAt ?? null : null;
   const paid = wallet && isPaidPlanActive(wallet, now) && wallet.subscriptionCurrentTermEnd
-    ? { ...planEntitlementsFor(wallet.plan), paidThrough: wallet.subscriptionCurrentTermEnd.toISOString() }
+    ? { ...(isPlanFamilyPaidPlan(wallet.plan) ? fromFamilyPlan(wallet.plan) : planEntitlementsFor(wallet.plan)), paidThrough: wallet.subscriptionCurrentTermEnd.toISOString() }
     : null;
   if (paid && paid.plan !== "free") {
     if (!trialEnd || paid.openRequests >= TRIAL_OPEN_REQUESTS) return paid;
     return { ...paid, openRequests: TRIAL_OPEN_REQUESTS, trialEndsAt: trialEnd.toISOString() };
   }
+  // D-132 enable item 8: under PLAN_FAMILY_V2 the free tier reads "Open Door"
+  // from the planFamily single source, never the legacy catalog label. The
+  // reverse-trial label still wins while the trial runs.
   const free = fromCatalog(FREE_PLAN);
-  if (!trialEnd) return free;
-  return { ...free, planLabel: TRIAL_LABEL, openRequests: TRIAL_OPEN_REQUESTS, trialEndsAt: trialEnd.toISOString() };
+  const freeResolved = opts?.planFamilyV2 ? { ...free, planLabel: planFamilyEntry("open_door").label } : free;
+  if (!trialEnd) return freeResolved;
+  return { ...freeResolved, planLabel: TRIAL_LABEL, openRequests: TRIAL_OPEN_REQUESTS, trialEndsAt: trialEnd.toISOString() };
 }

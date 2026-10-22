@@ -96,7 +96,7 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
   it("Refund policy matches the billing rules the product enforces", () => {
     render(<RefundPolicy />);
     expect(document.querySelector('[data-skipwait-screen="refund-policy"]')).toBeTruthy();
-    expect(screen.getByText(/The moment one can see your ask, 1 credit is used/)).toBeTruthy();
+    expect(screen.getByText(/The moment one can see your ask, credits are used by the role's level/)).toBeTruthy();
     expect(screen.getByText(/withdraw before someone picks the ask up/)).toBeTruthy();
     expect(screen.getByText(/not on sale right now/)).toBeTruthy();
     expect(screen.queryByText(/Momentum|Keep warm/)).toBeNull();
@@ -124,7 +124,7 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     cleanup();
     render(<Pricing />);
     // D-067 removed the Pro/Max plans: /pricing lists only what can be bought today.
-    expect(screen.getByText(/₹99 per credit/)).toBeTruthy();
+    expect(screen.getByText(/₹49 per credit/)).toBeTruthy();
     expect(screen.getByText(/\$1 per credit/)).toBeTruthy();
     const text = document.body.textContent ?? "";
     for (const retired of ["₹599", "$7/month", "₹1,299", "$15/month", "Pro", "Max"]) expect(text).not.toContain(retired);
@@ -179,8 +179,8 @@ describe("public credit copy matches the decline rule", () => {
     for (const blob of [LANDING_FAQ, routes, guides]) expect(blob).not.toMatch(/only when an employee accepts|only spent when an employee accepts|consumed on acceptance|spent on acceptance/);
     // D-063: the cost answer is the credit rule exactly as the ledger keeps it,
     // never "spent once picked up" with an unconditional credit back.
-    const { CREDIT_RULE } = await import("@shared/moneyCopy");
-    expect(LANDING_FAQ).toContain(CREDIT_RULE);
+    const { CREDIT_RULE_V2 } = await import("@shared/moneyCopy");
+    expect(LANDING_FAQ).toContain(CREDIT_RULE_V2);
     expect(LANDING_FAQ).not.toMatch(/withdrawn or expired asks get the credit back|spent once a verified employee picks up/);
   });
 });

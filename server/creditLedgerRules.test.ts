@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EXPIRING_SOON_MS, RENEWAL_GRACE_MS, creditLedgerEntrySchema, creditLedgerQuerySchema, creditsLedgerSchema, spendIdempotencyKeySchema, type LedgerGrant, type LedgerWallet } from "../shared/creditLedger";
 import { addMonthsUtc, grantExpiresAt, grantIsSpendable, grantShouldExpire, paidPlanLapsed, planCreditsExpireAt, planCycleAt, planCycleByIndex, planCycleCount, planCycleIndexOfKey, walletCycleStart } from "../shared/creditCycles";
+import { isPaidPlanActive } from "../shared/planEntitlements";
 import { allocateSpend, buildCreditsLedger, orderBuckets, spendableBuckets, usedInCycle } from "../shared/creditSpend";
 
 const d = (iso: string) => new Date(iso);
@@ -94,6 +95,19 @@ describe("plan lapse and grants", () => {
       expect(paidPlanLapsed(paid({ plan, subscriptionStatus }), now)).toBe(true);
     }
     expect(grantIsSpendable(carry(), paid({ plan }), now)).toBe(false);
+  });
+
+  // D-132: a stored family plan (fast_track/insider) is a real subscription.
+  // It is never instantly lapsed the way retired Pro/Max ids are (the QA
+  // go-live blocker: first wallet read reverted a paying fast_track member).
+  it.each(["fast_track", "insider"])("a wallet on the family plan %s follows the normal status/term lapse rules", plan => {
+    const ended = { subscriptionCurrentTermEnd: d("2026-10-19T00:00:00Z") };
+    expect(paidPlanLapsed(paid({ plan }), now)).toBe(false);
+    expect(isPaidPlanActive(paid({ plan }), now)).toBe(true);
+    expect(paidPlanLapsed(paid({ plan, ...ended, subscriptionStatus: "non_renewing" }), now)).toBe(true);
+    expect(paidPlanLapsed(paid({ plan, ...ended, subscriptionStatus: "cancelled" }), now)).toBe(true);
+    expect(paidPlanLapsed(paid({ plan, ...ended }), now)).toBe(false);
+    expect(paidPlanLapsed(paid({ plan, ...ended }), new Date(d("2026-10-19T00:00:00Z").getTime() + RENEWAL_GRACE_MS))).toBe(true);
   });
 
   it("carried credits are spendable only while their own subscription bills, and expire by date or when it ends", () => {

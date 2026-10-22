@@ -10,7 +10,7 @@
  * Nothing here may state an outcome, count, or identity that the product does
  * not produce itself.
  */
-import { CREDIT_RULE, MONEY_SENTENCE, MONEY_SENTENCE_SHORT, PAID_PLANS_SENTENCE } from "./moneyCopy";
+import { CREDIT_RULE_V2, MONEY_SENTENCE, MONEY_SENTENCE_SHORT, PAID_PLANS_SENTENCE } from "./moneyCopy";
 
 export type LandingStep = { title: string; body: string };
 export type LandingLink = { href: string; label: string; summary: string };
@@ -91,6 +91,6 @@ export const LANDING_FAQ_HEADING = "Common questions, answered plainly.";
 export const LANDING_FAQ: readonly { question: string; answer: string }[] = [
   { question: "Is skipwait.me a public job board?", answer: "No. A referral request is visible only to verified employees at the company behind the role link you paste, and your resume stays private." },
   { question: "Who can review my request?", answer: "Only employees who verified a company email at that employer. They see the role, your resume, and your short note — never your contact details." },
-  { question: "What does it cost?", answer: `${MONEY_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire. ${CREDIT_RULE}` },
+  { question: "What does it cost?", answer: `${MONEY_SENTENCE} Extra credits cost $1 each (₹49 in India) and never expire. ${CREDIT_RULE_V2}` },
   { question: "Does a referral guarantee an interview?", answer: "No. Employees choose whether to help, and a referral never guarantees an interview, an offer, or a job. You can withdraw an unclaimed request at any time." },
 ];

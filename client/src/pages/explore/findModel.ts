@@ -72,18 +72,40 @@ export function roleTitleFromUrl(url: string): string | null {
 
 export type CostLine = { line: string; detail: string; blockedReason: string | null };
 
-/** The cost line beside Send ask, visible from the moment the drawer opens (no drip pricing). */
-export function costLine(input: { open: boolean | null; balance: number | null }): CostLine {
+/** The /api/company-referrals/quote answer: the by-level cost under V2 (D-132). */
+export type AskCostQuote = { cost: number; totalAvailable: number; shortfall: number };
+
+/**
+ * The cost line beside Send ask, visible from the moment the drawer opens (no
+ * drip pricing). With a V2 quote it costs N by role level, like /ask, and a
+ * shortfall blocks Send with the way out; without one it holds the flat
+ * one-credit line.
+ */
+export function costLine(input: { open: boolean | null; balance: number | null; quote?: AskCostQuote | null }): CostLine {
+  const quote = input.quote ?? null;
   if (input.open === false) {
     return {
       line: "No credit used until a verified employee can see it",
-      detail: `It waits up to ${COVERAGE_WAIT_DAYS} days. When one can, 1 credit is used; if you have none then, we hold it until you add one.`,
+      detail: quote
+        ? `It waits up to ${COVERAGE_WAIT_DAYS} days. When one can, this ask costs ${quote.cost} credit${quote.cost === 1 ? "" : "s"} by role level; if you have none then, we hold it until you add some.`
+        : `It waits up to ${COVERAGE_WAIT_DAYS} days. When one can, 1 credit is used; if you have none then, we hold it until you add one.`,
       blockedReason: null,
     };
   }
   const detail = `Comes back if you withdraw before anyone picks it up, or if nobody picks it up within ${ASK_TTL_DAYS} days, ${CREDIT_ENDED_CAVEAT}. Once picked up, it stays spent, even if they pass.`;
+  if (quote) {
+    const credits = `${quote.cost} credit${quote.cost === 1 ? "" : "s"}`;
+    if (quote.shortfall > 0) {
+      return {
+        line: `This ask costs ${credits}. You have ${quote.totalAvailable}.`,
+        detail: `Add ${quote.shortfall} more in Plans & credits to send it now. ${detail}`,
+        blockedReason: `This ask costs ${credits}. You have ${quote.totalAvailable}. Add ${quote.shortfall} more in Plans & credits.`,
+      };
+    }
+    return { line: `This ask costs ${credits}. You have ${quote.totalAvailable}.`, detail, blockedReason: null };
+  }
   if (input.open === null) return { line: "Uses 1 credit when a verified employee can see it", detail, blockedReason: null };
   if (input.balance === null) return { line: "Uses 1 credit", detail, blockedReason: null };
-  if (input.balance <= 0) return { line: "You have no credits left", detail: "Add a credit pack in Plans and credits to send this ask now.", blockedReason: "You have no credits left. Add a credit pack in Plans and credits." };
+  if (input.balance <= 0) return { line: "You have no credits left", detail: "Add a credit pack in Plans & credits to send this ask now.", blockedReason: "You have no credits left. Add a credit pack in Plans & credits." };
   return { line: `Uses 1 of your ${input.balance} ${input.balance === 1 ? "credit" : "credits"}`, detail, blockedReason: null };
 }

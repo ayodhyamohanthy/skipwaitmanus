@@ -1,0 +1,172 @@
+name: Deploy QA preview (share/signal flags)
+
+# Deploys the QA integration branch to the skipwait-qa worker with the share
+# card + company signal flags ON and billing forced to test. NEVER touches
+# prod: separate worker name (wrangler.jsonc env.qa), separate scratch
+# database (skipwait_qa on the same MySQL server), same Cloudflare account
+# credentials as the prod pipeline.
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "Seed fictional share fixtures after deploy"
+        required: false
+        default: "false"
+      seed_only:
+        description: "Only (re)run the seed step - no reset, schema sync, build or deploy"
+        required: false
+        default: "false"
+      rotate_gate:
+        description: "Only force-rotate the QA_GATE_SECRET worker secret from the repo secret and redeploy to bind it"
+        required: false
+        default: "false"
+      probe_only:
+        description: "Only run the gate verify step (no stamp, build, secret put or deploy) - probes the last deployed state"
+        required: false
+        default: "false"
+      skip_reset:
+        description: "Full deploy but WITHOUT wiping the scratch QA schema - for code-only ships while QA data must survive (main's no-silent-reset rule)"
+        required: false
+        default: "false"
+      setup_local_user:
+        description: "Only (re)create the least-privilege skipwait_qa_local MySQL user on the scratch DB for QA's local fallback run"
+        required: false
+        default: "false"
+
+concurrency:
+  group: deploy-qa
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      # Deploy migrations include historic real-user imports. NEVER run them on QA.
+      # Stale leftover tables make drizzle-kit ask interactive rename questions and
+      # hang CI; reset the scratch schema first (guarded: scratch DB + scoped login only).
+      - name: Reset scratch QA schema (guarded)
+        if: inputs.seed_only != 'true' && inputs.rotate_gate != 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true' && inputs.skip_reset != 'true'
+        env:
+          DATABASE_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
+        run: npx tsx scripts/qa-reset-scratch.ts
+      # Skipped when skip_reset is set: drizzle-kit push cannot run non-interactively
+      # against the populated scratch DB - Azure MySQL lower_case_table_names=1 makes
+      # introspection return lowercase names, so push prompts create-vs-rename for every
+      # table and hangs with no TTY. Code-only ships rely on runtime schemaReconcile +
+      # guarded drizzle/deploy/*.sql for incremental schema. Schema-changing releases use
+      # a full (reset) deploy with QA warned first.
+      - name: Sync scratch QA schema from definitions only
+        if: inputs.seed_only != 'true' && inputs.rotate_gate != 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true' && inputs.skip_reset != 'true'
+        timeout-minutes: 15
+        env:
+          DATABASE_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
+        run: npx drizzle-kit push --force
+      - name: Typecheck
+        if: inputs.seed_only != 'true' && inputs.rotate_gate != 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true'
+        run: npx tsc --noEmit
+      # commit-sha.txt is needed by every deploy, including rotate_gate redeploys.
+      - name: Stamp QA release
+        if: inputs.seed_only != 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true'
+        run: |
+          echo "${{ github.sha }}" > commit-sha.txt
+          node -e 'const fs=require("fs"); const p="wrangler.jsonc"; let s=fs.readFileSync(p,"utf8"); s=s.replace(/"API_RELEASE": "qa"/, `"API_RELEASE": "${process.env.GITHUB_SHA}"`);fs.writeFileSync(p,s)'
+      - name: Build with share/signal client flags ON
+        if: inputs.seed_only != 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true'  # also runs for rotate_gate: the container image builds from the checkout, so a deploy without dist/ exits on boot
+        env:
+          VITE_COMPANY_RESPONSE_SIGNAL: "true"
+          VITE_SHARE_WIN_CARD: "true"
+          VITE_SHARE_IMPACT_CARD: "true"
+        run: pnpm build
+      - name: Deploy skipwait-qa (creates the worker if absent)
+        if: inputs.seed_only != 'true' && inputs.rotate_gate != 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --env qa
+      - name: Ensure qa worker secrets exist (DATABASE_URL to scratch DB, JWT_SECRET, gate)
+        if: inputs.seed_only != 'true' && inputs.rotate_gate != 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          QA_DB_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
+        shell: bash
+        run: |
+          set +x
+          existing=$(npx wrangler secret list --env qa 2>/dev/null || echo "[]")
+          echo "$existing" | jq -e '.[] | select(.name == "DATABASE_URL")' >/dev/null || printf '%s' "$QA_DB_URL" | npx wrangler secret put DATABASE_URL --env qa >/dev/null
+          echo "$existing" | jq -e '.[] | select(.name == "JWT_SECRET")' >/dev/null || openssl rand -base64 32 | npx wrangler secret put JWT_SECRET --env qa >/dev/null
+          echo "$existing" | jq -e '.[] | select(.name == "QA_GATE_SECRET")' >/dev/null || printf '%s' "${{ secrets.SKIPWAIT_QA_GATE }}" | npx wrangler secret put QA_GATE_SECRET --env qa >/dev/null
+      - name: Redeploy to bind any newly added secrets
+        if: inputs.seed_only != 'true' && inputs.rotate_gate != 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --env qa
+      - name: Force-rotate QA_GATE_SECRET on the qa worker
+        if: inputs.rotate_gate == 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GATE: ${{ secrets.SKIPWAIT_QA_GATE }}
+        run: printf '%s' "$GATE" | npx wrangler secret put QA_GATE_SECRET --env qa
+      - name: Redeploy to bind the rotated secret
+        if: inputs.rotate_gate == 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --env qa --var "CHARGEBEE_API_KEY:${{ secrets.QA_CHARGEBEE_TEST_API_KEY }}" --var "CHARGEBEE_WEBHOOK_SECRET:${{ secrets.QA_CHARGEBEE_WEBHOOK_SECRET }}"
+      - name: Create/re-key the skipwait_qa_local scratch-DB user
+        if: inputs.setup_local_user == 'true'
+        env:
+          ADMIN_DATABASE_URL: mysql://${{ vars.SKIPWAIT_NEWDB_USER }}:${{ secrets.SKIPWAIT_NEWDB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/mysql
+          QA_LOCAL_DB_PASSWORD: ${{ secrets.QA_LOCAL_DB_PASSWORD }}
+        run: npx tsx scripts/qa-grant-local-user.ts
+      - name: Diagnose schema validation against scratch DB
+        if: inputs.probe_only == 'true'
+        env:
+          DATABASE_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
+        run: npx tsx scripts/qa-schema-check.ts
+      - name: Verify gate (401 without creds, 200 with)
+        if: (inputs.rotate_gate == 'true' || inputs.probe_only == 'true') && inputs.setup_local_user != 'true'
+        env:
+          GATE: ${{ secrets.SKIPWAIT_QA_GATE }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          sleep 20
+          code_no=$(curl -s -o /dev/null -w '%{http_code}' -m 30 https://skipwait-qa.ayodhya-711.workers.dev/api/health)
+          code_yes=""
+          for i in 1 2 3 4 5; do
+            resp=$(curl -s -w '\n%{http_code}' -m 30 -u "qa:${GATE}" https://skipwait-qa.ayodhya-711.workers.dev/api/health)
+            code_yes="${resp##*$'\n'}"
+            [ "$code_yes" = "200" ] && break
+            sleep 15
+          done
+          echo "without-creds=${code_no} with-creds=${code_yes}"
+          if [ "$code_yes" != "200" ]; then
+            echo "health body: $(echo "$resp" | head -c 400)"
+            echo "--- capturing 40s of worker/container logs while re-probing:"
+            (timeout 40 npx wrangler tail --env qa --format pretty > tail.log 2>&1 &)
+            sleep 6
+            curl -s -o /dev/null -m 30 -u "qa:${GATE}" https://skipwait-qa.ayodhya-711.workers.dev/api/health || true
+            sleep 36
+            sed -E 's#(mysql://)[^"'"'"' ]+#\1***#g; s#(DATABASE_URL|JWT_SECRET|WORKOS_API_KEY|WORKOS_COOKIE_PASSWORD|ZEPTOMAIL_API_KEY)["'"'"'=:]+[^ ,"'"'"']+#\1=***#g' tail.log | grep -vE "^\s*$" | tail -50
+          fi
+          [ "$code_no" = "401" ] && [ "$code_yes" = "200" ]
+      - name: Seed fictional share fixtures (manual runs only, when requested)
+        if: github.event_name == 'workflow_dispatch' && (inputs.seed == 'true' || inputs.seed_only == 'true') && inputs.rotate_gate != 'true' && inputs.probe_only != 'true' && inputs.setup_local_user != 'true'
+        env:
+          DATABASE_URL: mysql://${{ secrets.SKIPWAIT_QA_DB_USER }}:${{ secrets.SKIPWAIT_QA_DB_PASSWORD }}@${{ vars.SKIPWAIT_NEWDB_HOST }}:${{ vars.SKIPWAIT_DB_PORT }}/skipwait_qa
+        run: npx tsx scripts/qa-seed-share-fixtures.ts

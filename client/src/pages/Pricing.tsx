@@ -1,7 +1,8 @@
 import { Link } from "wouter";
 import { Tag } from "lucide-react";
 import { PolicyPageShell, PolicySection } from "@/components/PolicyPageShell";
-import { ASK_COST_SENTENCE, CREDIT_RULE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { ASK_COST_SENTENCE, CREDIT_RULE_V2, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { PLAN_CREDIT_LADDER } from "@shared/planFamily";
 
 /** /pricing — public price list. Mirrors the checkout prices; no sign-in. */
 export default function Pricing() {
@@ -19,8 +20,9 @@ export default function Pricing() {
     </PolicySection>
     <PolicySection number="02" title="Extra credits (one-time)">
       <ul>
-        <li><strong>₹99 per credit</strong> (India) or <strong>$1 per credit</strong> (rest of the world). Buy 1 or more.</li>
-        <li>Purchased credits never expire. {CREDIT_RULE}</li>
+        <li><strong>₹49 per credit</strong> (India) or <strong>$1 per credit</strong> (rest of the world). An ask costs credits by the role's level, 1 to 10.</li>
+        <li>Credit packs save up to 20%: {PLAN_CREDIT_LADDER.map(rung => `${rung.credits} for ₹${(rung.inrPaise / 100).toLocaleString("en-IN")} / $${rung.usdCents % 100 === 0 ? rung.usdCents / 100 : (rung.usdCents / 100).toFixed(2)}`).join("; ")}.</li>
+        <li>Purchased credits never expire. {CREDIT_RULE_V2}</li>
       </ul>
     </PolicySection>
     <PolicySection number="03" title="Payment">

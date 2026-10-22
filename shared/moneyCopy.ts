@@ -65,6 +65,9 @@ export const CREDIT_RULE_V2 = `An ask at a company where no verified employee is
 
 export const CREDIT_ENDED_CAVEAT_V2 = "paid credits never expire; free monthly credits end with the month";
 
+/** The V2 rule as a footnote clause, after "Uses N credits and 1 open slot when a verified employee can see it". */
+export const CREDIT_RULE_SHORT_V2 = `nothing is used while it waits for coverage, and credits come back once if you withdraw before pickup or the ask expires unclaimed, ${CREDIT_ENDED_CAVEAT_V2}`;
+
 /** A credit goes back to the bucket it came from, so one whose month or plan cycle ended cannot come back (refundLedgerSpendTx logs 0). */
 export const CREDIT_ENDED_CAVEAT = "unless its month or plan has ended by then";
 

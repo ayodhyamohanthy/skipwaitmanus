@@ -109,4 +109,32 @@ describe("ask cost line", () => {
   it("describes the waiting case when availability is not known yet", () => {
     expect(costLine({ open: null, balance: null }).line).toBe("Uses 1 credit when a verified employee can see it");
   });
+
+  it("points the blocked wallet at Plans & credits", () => {
+    const none = costLine({ open: true, balance: 0 });
+    expect(none.blockedReason).toContain("Plans & credits");
+    expect(none.detail).toContain("Plans & credits");
+  });
+
+  it("quotes by role level under V2, like /ask", () => {
+    const quoted = costLine({ open: true, balance: 7, quote: { cost: 3, totalAvailable: 7, shortfall: 0 } });
+    expect(quoted.line).toBe("This ask costs 3 credits. You have 7.");
+    expect(quoted.detail).toContain(`${ASK_TTL_DAYS} days`);
+    expect(quoted.blockedReason).toBeNull();
+    expect(costLine({ open: true, balance: 7, quote: { cost: 1, totalAvailable: 7, shortfall: 0 } }).line).toBe("This ask costs 1 credit. You have 7.");
+  });
+
+  it("blocks a V2 shortfall with the way out", () => {
+    const short = costLine({ open: true, balance: 1, quote: { cost: 3, totalAvailable: 1, shortfall: 2 } });
+    expect(short.line).toBe("This ask costs 3 credits. You have 1.");
+    expect(short.detail).toContain("Add 2 more in Plans & credits");
+    expect(short.blockedReason).toBe("This ask costs 3 credits. You have 1. Add 2 more in Plans & credits.");
+  });
+
+  it("quotes the waiting company case by level under V2", () => {
+    const waiting = costLine({ open: false, balance: 7, quote: { cost: 4, totalAvailable: 7, shortfall: 0 } });
+    expect(waiting.line).toBe("No credit used until a verified employee can see it");
+    expect(waiting.detail).toContain("costs 4 credits by role level");
+    expect(waiting.blockedReason).toBeNull();
+  });
 });

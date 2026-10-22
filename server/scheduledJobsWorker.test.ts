@@ -45,7 +45,7 @@ describe("Worker scheduled() and public boundary (src/worker.ts)", () => {
     expect(guard).toBeGreaterThan(0);
     expect(dispatch).toBeGreaterThan(guard);
     expect(fetchHandler).toContain("fetchContainerWithStoppedRecovery(container, withEdgeClientIp(withoutJobsTickHeader(request)))");
-    expect(fetchHandler.match(/status: 404/g)).toHaveLength(2);
+    expect(fetchHandler.match(/status: 404/g)).toHaveLength(3);
   });
 });
 
