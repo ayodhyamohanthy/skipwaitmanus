@@ -1,4 +1,6 @@
 import { formatDay } from "@/lib/displayPrefs";
+import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
+import { addCreditPhrase } from "@shared/moneyCopy";
 // Pure view-model helpers for the seeker Requests screen (kit v4 /requests).
 // Every value here is derived from the live server payloads parsed in
 // ./requestsApi; nothing is sampled or illustrative.
@@ -44,7 +46,7 @@ export function requestNote(request: ReferralRequest, nowMs: number): string {
   if (request.status === "pending") {
     if (request.referrerId && request.heldForReferrer !== true) return request.queueStatus === "available_for_review" ? "Available for review" : getJobSeekerReferralState(request).label;
     // D-047: an available employee exists but the seeker had no credit when the ask could first reach them.
-    if (request.queueStatus === "held_for_credit") return "Add a credit to send it";
+    if (request.queueStatus === "held_for_credit") return `${addCreditPhrase(ASK_LEVEL_COST_CLIENT)} to send it`;
     // D-061: a waiting ask closes after 90 days at no cost, so no 7-day countdown applies.
     if (request.queueStatus === "waiting_for_coverage") return "Waiting for coverage";
     return formatAskExpiry(request, nowMs) ?? `Updated ${compactDate(request.updatedAt)}`;
