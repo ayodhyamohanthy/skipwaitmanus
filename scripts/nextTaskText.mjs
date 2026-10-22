@@ -5,7 +5,7 @@ import { slugOf } from "./nextTaskCore.mjs";
 const CMD = "node scripts/next-task.mjs";
 const land = [
   "Land under D-082: push the branch, open a pull request, and wait until every check on that exact commit is green and main's own CI is green.",
-  "Then fast-forward main to that exact commit (`git push origin <sha>:main`; never GitHub's merge button and never squash: \"require branches to be up to date\" is off, so a merge commit from a pull request behind main was never tested, D-134). If that push is refused because main moved, merge the latest origin/main into your branch, re-run the full gate, push, wait until every check on the new commit is green and fast-forward again; never force-push.",
+  "Then fast-forward main to that exact commit (`git push origin <sha>:main`; GitHub's \"Create a merge commit\" button is also safe, because the ruleset only lets an up-to-date branch merge, but never squash or rebase-merge: they replace the tested commits, D-134 (6)). If that push is refused because main moved, merge the latest origin/main into your branch, re-run the full gate, push, wait until every check on the new commit is green and fast-forward again; never force-push.",
   "Watch main's CI and both deploys to the end and run the live check from docs/BRIEF.md \"How to ship\".",
   "If anything goes red, revert or fix your commit before anything else.",
 ];
@@ -113,7 +113,7 @@ const fixMainSteps = (pick, who) => steps([
   "Find the commit that turned main red (the run above and `gh run list --branch main --workflow CI`).",
   `Fix it red-first on ${pick.lock}, or revert that commit if the fix is not obvious. Nothing else: no other change rides along.`,
   keepAlive(who),
-  `Open a pull request from ${pick.lock} and wait until every check on that exact commit is green: main is red, so this fix is the one push D-082 allows. Then fast-forward main to that exact commit (\`git push origin <sha>:main\`; never the merge button or squash, D-134); if that push is refused because main moved, merge the latest origin/main into the lock branch, re-run the full gate, push, wait until every check on the new commit is green and fast-forward again, never force-push. Watch main's CI and both deploys to the end, and run the live check from docs/BRIEF.md "How to ship".`,
+  `Open a pull request from ${pick.lock} and wait until every check on that exact commit is green: main is red, so this fix is the one push D-082 allows. Then fast-forward main to that exact commit (\`git push origin <sha>:main\`; never squash or rebase-merge, D-134 (6)); if that push is refused because main moved, merge the latest origin/main into the lock branch, re-run the full gate, push, wait until every check on the new commit is green and fast-forward again, never force-push. Watch main's CI and both deploys to the end, and run the live check from docs/BRIEF.md "How to ship".`,
   "Tell the owner what broke, which commit, and how you fixed it.",
 ]);
 
