@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export function GoalNum({ children, className }: { children: ReactNode; className?: string }) {
-  return <span data-testid="goal-num" className={cn("g-num", className)}>{children}</span>;
+/** Status hues stay goal-internal (audit R3): screens ask for tone="warn",
+ * the primitive names the amber. */
+export function GoalNum({ children, className, tone }: { children: ReactNode; className?: string; tone?: "warn" }) {
+  return <span data-testid="goal-num" className={cn("g-num", tone === "warn" && "text-g-amber", className)}>{children}</span>;
 }

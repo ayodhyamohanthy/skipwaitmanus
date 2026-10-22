@@ -12,7 +12,7 @@ Read in this order: `AGENTS.md` and `docs/DECISIONS.md` (D-026) â†’ this file â†
 ---
 
 ## 1. Non-negotiable product rules
-- Money, in one sentence: **"3 asks free every month; more use credits. Referrers are never paid and never ask you for money."** (D-063). Never charge for, or let money influence, queue order, visibility, or a referrer's decision (D-006).
+- Money, in one sentence: **"3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money."** (D-063 as worded by D-135). Never charge for, or let money influence, queue order, visibility, or a referrer's decision (D-006).
 - Plans and packs sell credits: **1 credit = 1 ask**, spent only when a verified referrer can first see it; a seeker with no credit at that moment has the ask held, never delivered free or billed later (D-034, D-047; not built yet). Credits also pay for preparation tools, and paid plans add open asks.
 - **Never fabricate** users, counts, activity, testimonials or outcomes. Any number shown must come from real data; if there is none, show the empty state that is already designed.
 - Launch companies with real people open to referrals: SkipWait, Wipro, Neutrinos, TCS, Merkle. Do not invent people or counts for them.

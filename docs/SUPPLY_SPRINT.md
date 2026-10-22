@@ -125,7 +125,7 @@ Please follow your company's referral policy. If it helps, I can send a calendar
 **If they ask:**
 - *Is this allowed?* "Some companies limit referrals, for example to people you know. Follow your company's referral policy. You can pass on any ask, privately."
 - *Do I get paid?* "No. SkipWait doesn't pay referrers, and seekers can't pay you through it."
-- *Do the people I refer pay?* "3 asks free every month; more use credits. Referrers are never paid and never ask you for money. Credits are paid to SkipWait, and referrers never pay." (D-063) Count this objection in section 5.
+- *Do the people I refer pay?* "3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money. Credits are paid to SkipWait, and referrers never pay." (D-063 as worded by D-135) Count this objection in section 5.
 - *Will seekers see who I am?* "Not unless you accept. Until then they see 'Someone at {Company}' and 'Verified via work email'. After you accept, they see your account name. For an account made with the work-email code, that is the part of your work email before the @."
 - *The code didn't arrive.* "Check spam or quarantine; some company filters hold new senders. You can ask for a new code after 30 seconds."
 - *Why does my queue show 'Referral credits'?* "Ignore it. Referrers never spend credits, and accepting an ask costs you nothing."
@@ -249,7 +249,7 @@ Known gaps (not fixed by this kit; tell an agent):
 - **The link card hides behind waiting asks.** On https://skipwait.me/queue the card shows only when the queue is empty (`client/src/pages/MyCompanyInbox.tsx`).
 - **The decline screen overstates refunds.** An opened ask's decline step says the seeker's credit is returned (`client/src/components/referrer/CandidatePreviewCard.tsx`). It isn't today (D-035).
 - **Referrers see a "Referral credits" meter** on an empty /queue (`client/src/components/ReferrerCreditsCard.tsx`), though referrers never spend credits (D-055).
-- **What asking costs.** The truth pass shipped (D-063, Oct 18): every product surface says "3 asks free every month; more use credits. Referrers are never paid and never ask you for money." Use the same words in outreach; the legal pages (Terms, Refund Policy) still carry older lines until the owner rewords them.
+- **What asking costs.** The truth pass shipped (D-063, Oct 18): every product surface says "3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money." (worded by D-135, Oct 21) Use the same words in outreach; the legal pages (Terms, Refund Policy) still carry older lines until the owner rewords them.
 - **Link previews are generic.** Every SkipWait link, including personal links, unfurls on WhatsApp as the general seeker card (D-028, queued).
 - **Link asks are invisible to admin.** No admin view counts asks sent through personal links, so the move-2 link numbers are self-reported for now.
 

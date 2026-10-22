@@ -19,7 +19,7 @@ const CONTAINER_ENV_KEYS = [
   "INDIA_GST_REGISTERED", "USD_RECURRING_CONFIRMED", "HUMAN_REVIEWERS_STAFFED",
   "EMPLOYER_SPONSORSHIP_ENABLED",
   "FREE_CREDITS_REQUIRE_CARD_VALIDATION",
-  "PROMO_GRANTS_ENABLED", "TRUST_CLOUDFLARE_CONNECTING_IP",
+  "PROMO_GRANTS_ENABLED", "ASK_LEVEL_COST", "PLAN_FAMILY_V2", "TRUST_CLOUDFLARE_CONNECTING_IP",
   "VITE_APP_ID", "VITE_APP_TITLE", "WORKOS_API_KEY", "WORKOS_CLIENT_ID",
   "WORKOS_COOKIE_PASSWORD", "WORKOS_POST_SIGNIN_PATH", "WORKOS_REDIRECT_URI",
   "WORKOS_WEBHOOK_SECRET",
@@ -71,7 +71,7 @@ export default {
     // forwarded host headers: callers can supply them, while request.url is set
     // by Cloudflare from the matched route.
     const url = new URL(request.url);
-    if (url.protocol !== "https:" || url.hostname !== "skipwait.me" || !url.pathname.startsWith("/api/")) {
+    if (url.protocol !== "https:" || url.hostname !== "skipwait.me" || !(url.pathname.startsWith("/api/") || url.pathname === "/sitemap.xml")) {
       return new Response("Not Found", { status: 404, headers: { "cache-control": "no-store" } });
     }
     // Internal routes (the scheduled-jobs tick) are reachable only from

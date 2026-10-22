@@ -11,7 +11,7 @@ import { companyName, stageIndex, stageOf } from "./threadModel";
 /** Pass reasons (D-052); `value` is the legacy decline reason the server routes on, `code` the reason the referrer picked. */
 export const PASS_REASONS = PASS_REASON_OPTIONS.map(option => ({ label: option.label, value: option.legacy, code: option.code }));
 
-const SEEKER_MILESTONES = [
+export const SEEKER_MILESTONES = [
   { status: "interview", stage: "Interviewing" },
   { status: "offer", stage: "Offer" },
   { status: "closed", stage: "Hired" },

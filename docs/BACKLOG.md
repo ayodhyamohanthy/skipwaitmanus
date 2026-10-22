@@ -34,7 +34,7 @@ Standing rules that shape every item: win-win verdict - if any side (seeker, ref
 8. **Premium tier name.** The optional premium bundle (Stealth pass + future extras) needs a name; idea lab supplies candidates, the owner picks; blocks all premium copy.
 9. **"Sharpen this" button name** (D-094 reasons coach). The ask-drawer coach entry: it asks the seeker targeted questions and never writes facts for them; label must carry "Coach suggests - your words, your facts". Owner picks the final button label.
 10. **Request-inbox link design (Idea 1, loop L4).** Spec stub (idea lab cycle 1): every verified employee gets a personal link (skipwait.me/r/theirname) to paste in Blind/Fishbowl/LinkedIn replies; seekers landing on it submit a structured request (role, resume, one-line fit); the employee gets a clean accept/decline inbox; referrer identity anonymous by default; real counts only. Needs the designer's spec first (D-048 process: designs approved by the owner before build).
-11. **PASS_SALES_ENABLED on/off.** Currently false and held: passes and Keep warm stay listed but unsold until a paid pass can always be activated (D-084; fix in draft PR #359, GO-LIVE-1b). Flip only on the owner's word after #359 is verified on the preview.
+11. **PASS_SALES_ENABLED on/off.** Currently false and held: passes and Keep warm stay listed but unsold until a paid pass can always be activated (D-084; the fix landed in PR #359, `c3de717a`, GO-LIVE-1b; passes stay off). Flip only on the owner's word after #359 is verified on the preview.
 12. **Claim-your-company (draft PR #384, flag off).** Aggregate-only and free; build approved (phonemsg-01M5DRBEBDB0P0HV7KW39075EM + phonemsg-01M5DRBHX150843DKETYP9FS7K, Oct 21 4:24 IST). Remaining: flag-on verification on the QA preview (#383), then the owner's yes to enable.
 
 Level/plan system (owner direction Oct 21 13:16-13:57, current best and changeable per D-116): levels everywhere (D-117: scale display, leveled profiles, same-level matching default, premium = senior referrer); plan shape (D-118: perks plan + Standard/choose-credits vs Pro+/senior matching + live credit planner); referrer opt-in paid extras (D-119: referring stays free, win-win). All draft-scope: the level-scale and planner screens await his yes (asked 1:20 and 1:50 PM IST); perks-plan contents/price come as one decision; nothing go-live without his "A" + QA + payment checks.
@@ -49,6 +49,16 @@ Related: level pricing (D-110) is direction + draft-scope tapback only - flag-of
 
 | Item | Where | Note |
 | --- | --- | --- |
+| D-048 phase 3 rollout map | PR #358, `e74634dc` | docs |
+| GO-LIVE-1b: a paid pass always activates | PR #359, `c3de717a` | Tier 1; passes stay off |
+| W0: the app shell onto the goal system | PR #361, `a89a0e60` (fixes #412) | live, no flag |
+| D-048 phase 3: /requests to the goal list | PR #360, `097cf144` | live in place, no flag; D-048-p3-live-review checks it |
+| D-048 phase 3: /explore to the goal directory | PR #362, `375174aa` | live in place, no flag; D-048-p3-live-review checks it |
+| Company responsiveness signal (min-3 aggregate) | PR #373, `92ff4012` | flag OFF |
+| Seeker win card | PR #375, `2e2a5b77` | flag OFF |
+| Job level classifier L1-L10 | PR #381, `0e1ccba4` | flag OFF; D-132-audit reviews it |
+| D-132 bundled pricing: plans page and plan family config | PR #410, `f2b8fd05` | flags OFF; D-132-audit reviews it |
+| Level-scaled ask cost, pre-send quote, refund fix | PR #415, `76af9c61` | flag OFF except the refund change and quote route, reviewed by the CEO (D-135 (5)); D-132-audit reviews the rest |
 | CEO sync: Oct 21 decisions D-095..D-100 + new priority order | PR #385, #366, #364 | docs only |
 | D-109: open models execute, Claude Code decides (picker unblocks) | PR #386 | process |
 | Credit copy truth: every credit costs at least ₹99 in India | PR #377 (reverts #376) | copy |
@@ -63,19 +73,11 @@ Related: level pricing (D-110) is direction + draft-scope tapback only - flag-of
 
 | Item | PR | Status | Blocker |
 | --- | --- | --- | --- |
-| W0: app shell onto the goal system (rail, bottom bar, More menu) | #361 | CI 4/4 green on head `cced876c`; NOT flag-gated - merging changes the live UI frame | QA must verify on the QA preview (#383) before merge |
-| D-048 phase 3: /explore to goal directory | #362 | open | designer/QA flow |
-| D-048 phase 3: /requests to goal list | #360 | open | same |
-| D-048 phase 3 rollout map (8 waves) | #358 | draft | planning doc |
 | QA preview worker (share cards + company signal ON, fictional data, Basic Auth + noindex) | #383 | draft; deploy authorized and running Oct 21 12:20 IST | spend approved by the owner's word: "We have cloudflare credits of 10k$ so no worries" (Oct 21 12:20 IST, phonemsg-01M5EKJP736W2B4BA35WYT83ES; scope: lite, test sessions only, fictional data). Whether the $10k Cloudflare credit applies to this account is unverified |
 | D-107 claim your company (aggregate-only, free) | #384 | draft, flags OFF; owner build approval phonemsg-01M5DRBEBDB0P0HV7KW39075EM + phonemsg-01M5DRBHX150843DKETYP9FS7K (Oct 21 4:24 IST) | QA preview for flag-on verification |
-| Credit pack ladder 1/5/10/25/50 (₹99/$1 per credit) + D-110 level-denominated free credits | #380 | draft, flags OFF; D-110 evidence phonemsg-01M5E5BK5611HF5YHCDXKC3JZF | owner reviewing the pack table view |
-| Job level classifier L1-L10 (level-scaled ask cost groundwork) | #381 | draft, flag OFF | feeds level pricing research below |
+| Credit pack ladder 1/5/10/25/50 (₹99/$1 per credit) + D-110 level-denominated free credits | #380 | draft, flags OFF; D-110 evidence phonemsg-01M5E5BK5611HF5YHCDXKC3JZF | left the queue (D-135 (5)): D-132's credit rungs replace it; the owner closes #380 |
 | Referrer impact card (slice C, aggregates only) | #382 | draft, flags OFF | QA preview |
-| Seeker win card (opt-in copy card on accepted asks) | #375 | draft, flag OFF | QA preview |
-| Company responsiveness signal (min-3 aggregate) | #373 | draft, flag OFF | QA preview |
 | Goal kit type scale fix (shared) | #379 | draft | review |
-| GO-LIVE-1b: a paid pass always activates | #359 | draft | payments verification bar |
 | D-035 pass reason decides the credit | #357 | draft, Tier 1 stacked on #353 | Tier 1 review |
 | D-038-A/B lapse rules + timers job | #353 | draft, Tier 1 | #372 landed its reconcile; remainder in review |
 | Seeker passwords (task 2, D-049/D-078) | #324 | draft, Tier 1, review passed | landing blocked by D-080 + WorkOS dashboard steps |
@@ -110,7 +112,7 @@ Related: level pricing (D-110) is direction + draft-scope tapback only - flag-of
 - Referrer tips (seeker → referrer money) - NB: Swap's tip design (below) was approved for Swap only; SkipWait referrers stay never-paid (D-055) until he answers for SkipWait.
 - Machine translation of 6 languages vs preferences-only (D-093 builds the picker either way).
 - Human expert-review staffing; employer referral campaigns; PayPal reference transactions for USD auto-extend; CA advice on SAC/export once GST-registered; NY/CA counsel for Concierge.
-- Pack ladder table view (#380) and the D-056 pricing-freeze lift (two-week baseline gate).
+- The D-056 pricing-freeze lift (two-week baseline gate); #380's pack ladder is superseded by D-132 (D-135 (5)), for the owner to close.
 
 ## Swap (priority 2)
 

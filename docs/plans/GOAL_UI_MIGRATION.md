@@ -35,15 +35,15 @@ The next-step block is contextual: it shows the single most important pending ac
 - Agent/build instructions: point every UI task at the doctrine + these captures; delete references to the yellow/blue kit and its screens.
 - Old comp images and kit storybook entries: remove or mark retired.
 
-## Surface claims (build coordination - owner: "help yourself by dividing the pages or parts", phonemsg-01M5DCE8P61ZGMTD8YBSBGC46Q)
+## Surface claims (through the picker, D-083, D-134)
+Nobody claims a surface by editing this file: two agents could each claim the same page and collide. Claims go through `node scripts/next-task.mjs --claim "<model>"`, which hands out each surface as its own row from `docs/plans/D-048-phase-3-split.md` (lanes, dependencies, owned paths), first push wins. The rows for the owner's sequence:
 
-Claim a surface row before starting it; update the PR and status as you go. Order follows the owner's sequence: landing, home, company, requests, plans, then the remaining seeker/referrer surfaces.
-
-| Surface | Claimed by | PR | Status |
-| --- | --- | --- | --- |
-| Landing (signed out) | Instinct (build+screener agent) | - | starting |
-| Home (seeker) | - | - | open |
-| Company | - | - | open |
-| Requests / My asks | - | - | open |
-| Plans | - | - | open (designer updating screens for D-115/D-122/D-124) |
-| Remaining seeker + referrer surfaces (inbox, conversation, settings, impact, admin) | - | - | open |
+| Surface | Row | Note |
+| --- | --- | --- |
+| Landing (signed out) | `D-048-p3-home` | done and live (#396, #407, #409; D-131); D-048-F-flags moves its env flags into `goalSurfaces.ts` |
+| Home (signed in) | `D-048-p3-home-signed-in` | from the `D-048-P-marketing` packet: a signed-in seeker goes to /explore, a verified referrer to /referrer-home |
+| Home (seeker) | `D-048-p3-explore` | done, live in place (#362); D-048-p3-live-review checks it |
+| Company | `D-048-p3-company` | from the `D-048-P-seeker` packet |
+| Requests / My asks | `D-048-p3-requests` | done, live in place (#360); D-048-p3-live-review checks it |
+| Plans | `D-132-plans-v2` (done, flag off), then `D-048-p3-plans` (/billing) | the frozen pricing page (#410, D-132, D-135); D-132-audit checks it before the owner's enable word (D-123), `docs/plans/D-132-pricing-v2.md` |
+| Everything else | the rest of the split | one lane packet per cluster |
