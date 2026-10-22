@@ -93,10 +93,15 @@ function compareValues(a: unknown, b: unknown): number {
   return as === bs ? 0 : as < bs ? -1 : 1;
 }
 
-/** The WHERE slice this suite exercises: =, <, <=, >, >=, <>, is (not) null, in, and/or. */
+/**
+ * The WHERE slice this suite exercises: =, <, <=, >, >=, <>, is (not) null, in, and/or,
+ * and the open-ask count's correlated `exists (select 1 from <table> where ...)`
+ * (a match against any of that table's rows, with the outer row in scope).
+ */
 function matches(condition: unknown, flat: Record<string, unknown>): boolean {
   const query = dialect.sqlToQuery(condition as SQLQuery);
   const cursor = { index: 0 };
+  let scope = flat;
   const unwrap = (sql: string): string => {
     let text = sql.trim();
     while (text.startsWith("(")) {
@@ -122,14 +127,31 @@ function matches(condition: unknown, flat: Record<string, unknown>): boolean {
       const size = (inMatch[3].match(/\?/g) ?? []).length;
       const values = query.params.slice(cursor.index, cursor.index + size);
       cursor.index += size;
-      return values.includes(flat[`${inMatch[1]}.${inMatch[2]}`]);
+      return values.includes(scope[`${inMatch[1]}.${inMatch[2]}`]);
+    }
+    // The open-ask count asks whether a claim ever happened for this request:
+    // evaluate the inner condition once per row of the subquery's table, with
+    // the outer row still in scope for the correlation.
+    const existsMatch = /^exists \(select 1 from `([^`]+)` where (.+)\)$/.exec(trimmed);
+    if (existsMatch) {
+      const [, table, inner] = existsMatch;
+      const start = cursor.index; const outer = scope;
+      let found = false;
+      for (const row of rows[table] ?? []) {
+        cursor.index = start;
+        scope = { ...outer, ...flatten([{ table, row }]) };
+        if (evaluate(inner)) found = true;
+      }
+      scope = outer;
+      cursor.index = start + (inner.match(/\?/g) ?? []).length;
+      return found;
     }
     const match = ATOM.exec(trimmed);
     if (!match) throw new Error(`fixture cannot evaluate: ${trimmed}`);
-    const value = flat[`${match[1]}.${match[2]}`];
+    const value = scope[`${match[1]}.${match[2]}`];
     const [, , , nullOp, compareOp, rightColumn, rightTable, rightName] = match;
     if (nullOp) return /is not null/i.test(nullOp) ? value !== null && value !== undefined : value === null || value === undefined;
-    const right = rightColumn ? flat[`${rightTable}.${rightName}`] : query.params[cursor.index++];
+    const right = rightColumn ? scope[`${rightTable}.${rightName}`] : query.params[cursor.index++];
     if (compareOp === "=") return asMs(value) === asMs(right);
     if (compareOp === "<>") return asMs(value) !== asMs(right);
     const left = asMs(value); const bound = asMs(right);

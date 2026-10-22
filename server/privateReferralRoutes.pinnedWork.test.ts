@@ -64,6 +64,17 @@ describe("POST /api/company-referrals pinned work", () => {
     expect(created?.metadata?.pinnedWorkCount).toBe(2);
   });
 
+  it("folds a repeated id before forwarding and counting, so the analytics match what rides along", async () => {
+    // [12,12] is one piece of work, not two. The route is the only place that
+    // knows both the forwarded list and the recorded count, so it folds there:
+    // a duplicate can never make the ask look richer than it is (D-088).
+    const { app, activity, createCompanyReferralRequest } = setup();
+    const response = await sendAsk(app, { workItemIds: [12, 12] });
+    expect(response.status).toBe(201);
+    expect(createCompanyReferralRequest.mock.calls[0][1]).toMatchObject({ workItemIds: [12] });
+    expect(activity.find(item => item.action === "company_referral.created")?.metadata?.pinnedWorkCount).toBe(1);
+  });
+
   it.each([[undefined], [[]]])("sends no pinned-work field at all when nothing is picked", async (workItemIds) => {
     const { app, activity, createCompanyReferralRequest } = setup();
     const response = await sendAsk(app, workItemIds === undefined ? {} : { workItemIds });
