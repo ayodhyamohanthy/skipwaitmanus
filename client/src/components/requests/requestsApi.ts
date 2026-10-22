@@ -47,10 +47,13 @@ export type ReferralRequest = z.infer<typeof referralRequestSchema>;
 // A slots payload that is missing or malformed reads as "not loaded", never as a count.
 const requestListSchema = z.object({
   requests: z.array(referralRequestSchema).optional().transform(value => value ?? []),
+  // Sample empty states: only a literal false from the server marks a first-timer; an old or
+  // malformed payload (undefined) never shows sample rows.
+  hasEverAsked: z.boolean().optional().catch(undefined),
   slots: openAskSlotsSchema.nullish().catch(null).transform(value => value ?? null),
 });
 
-export type MyRequestsPayload = { requests: ReferralRequest[]; slots: OpenAskSlots | null };
+export type MyRequestsPayload = { requests: ReferralRequest[]; hasEverAsked?: boolean; slots: OpenAskSlots | null };
 
 type TokenSource = () => Promise<string | null | undefined>;
 

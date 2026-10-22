@@ -91,6 +91,7 @@ export type PrivateReferralRouteDeps = {
   getBlockedReferralRequestIds?: (userId: number, requestIds: number[]) => Promise<Set<number>>;
   getUnclaimedCompanyReferralPreview?: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
+  hasEverCreatedReferralRequest?: (userId: number) => Promise<boolean>;
   listMyPaymentReceipts?: (userId: number, role?: "job_seeker" | "referrer") => Promise<unknown[]>;
   listSeekerAlerts?: (userId: number) => Promise<unknown[]>;
   createSeekerAlert?: (userId: number, input: { companyDomain?: unknown }) => Promise<unknown>;
@@ -1094,7 +1095,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       // Counted after the expiry reconcile above, so expired asks have already freed their slots.
       let slots: OpenAskSlots | undefined;
       try { slots = await deps.getOpenAskSlots?.(identity.account.id, Date.now()); } catch { slots = undefined; }
-      res.json({ requests, expiredRequestIds, ...(slots ? { slots } : {}) });
+      let hasEverAsked = true; // fail closed: a payload doubt must never show first-timer sample rows
+      try { hasEverAsked = deps.hasEverCreatedReferralRequest ? await deps.hasEverCreatedReferralRequest(identity.account.id) : true; } catch { hasEverAsked = true; }
+      res.json({ requests, expiredRequestIds, hasEverAsked, ...(slots ? { slots } : {}) });
     } catch { res.status(500).json({ error: "We could not load your referral requests" }); }
   });
   const loadInbox = async (userId: number, requestedScope: string) => {
