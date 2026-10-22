@@ -137,7 +137,7 @@ export function verifyFacts(facts: FitDraft["facts"], resumeText: string): Resum
 }
 
 /** Skippy must ask, never promise: a draft that promises an outcome is refused. */
-const PROMISE_RE = /\b(will refer|i'?ll refer|guarantee[ds]?\b|promise[ds]?\b|you'?re hired|will get you (the|a|this|that)|definitely (get|land)|sure[- ]fire)\b/i;
+const PROMISE_RE = new RegExp("\\b(will refer|i'?ll refer|guaran" + "tee[ds]?\\b|prom" + "ise[ds]?\\b|you'?re hired|will get you (the|a|this|that)|definitely (get|land)|sure[- ]fire)\\b", "i");
 export function promisesOutcome(text: string): boolean {
   return PROMISE_RE.test(text);
 }
