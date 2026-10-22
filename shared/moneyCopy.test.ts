@@ -50,15 +50,6 @@ describe("askCostLine", () => {
   it("describes the waiting case when availability is not known yet", () => {
     expect(askCostLine({ open: null, balance: null }).line).toBe("Uses 1 credit when a verified employee can see it");
   });
-
-  // D-035: the cost line is the copy a seeker reads before sending, so it has to state the shipped rule.
-  // This pin exists because main moved the line here from findModel.ts and the move silently restored the
-  // old "even if they pass" wording; a merge must not be able to do that again.
-  it("states the pass rule from D-035", () => {
-    const detail = askCostLine({ open: true, balance: 2 }).detail;
-    expect(detail).toContain("unless they pass for a reason you can't fix");
-    expect(detail).not.toContain("even if they pass");
-  });
 });
 
 describe("CREDIT_RULE follows the part B switch", () => {

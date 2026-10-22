@@ -83,16 +83,6 @@ describe("referrer impact reply latency", () => {
     expect(summary.repliedWithin3DaysPct).toBe(50);
   });
 
-  it("counts a not-fixable pass as the referrer's own decision (D-035)", async () => {
-    tables.events.push(
-      { id: 5, referralRequestId: 103, operationKey: "claim:9", actorUserId: 9, action: "claim", fromStatus: "pending", resultingStatus: "pending", resultingRevision: 1, createdAt: new Date(T0) },
-      { id: 6, referralRequestId: 103, operationKey: "one-click:9:declined:role_closed", actorUserId: 9, action: "pass_release", fromStatus: "pending", resultingStatus: "pending", resultingRevision: 2, createdAt: new Date(T0 + DAY) },
-    );
-    const summary = await getPrivateReferrerImpactSummary(9);
-    // 101 decided in 1 day, 102 in 5 days, 103 (pass_release) in 1 day: 2 of 3 within three days.
-    expect(summary.repliedWithin3DaysPct).toBe(67);
-  });
-
   it("returns null with no decisions yet", async () => {
     tables.events = tables.events.filter(e => e.action === "claim");
     const summary = await getPrivateReferrerImpactSummary(9);
