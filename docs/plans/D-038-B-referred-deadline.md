@@ -112,11 +112,14 @@ An acceptance is not a referral. Today an accepted ask can sit forever without a
 - **Time:** app clock only.
 
 ## 9. Definition of done
-- [ ] Every §7 test was red first and is green now.
-- [ ] Gate, draft PR and independent review.
-- [ ] Docs: the `AGENTS.md` living map (referral row, scheduled-jobs row), `shared/moneyCopy.ts` `CREDIT_RULE` (add "or when an accepted ask wasn't referred in time"), and the `docs/DECISIONS.md` D-038 sync cell (done), D-066 and D-076.
-- [ ] One check added to `server/dailyMoneyCheck.ts`: `referred_deadline_stuck`, any `approved` ask more than 24 hours past its referred deadline. Its credit release is overdue.
-- [ ] Live check; §3b row done with evidence.
+
+> Landed `907bf2cd` (2026-10-22). Evidence: `docs/plans/D-038-reconcile.md` §13 and `docs/RELEASES.md`; `CREDIT_RULE` ships the gated `REFERRED_REOPEN_SENTENCE` (it names the reopen and the credit staying on the ask) rather than the packet draft wording, so the copy promises only what the live behaviour does.
+
+- [x] Every §7 test was red first and is green now.
+- [x] Gate, draft PR and independent review.
+- [x] Docs: the `AGENTS.md` living map (referral row, scheduled-jobs row), `shared/moneyCopy.ts` `CREDIT_RULE` (add "or when an accepted ask wasn't referred in time"), and the `docs/DECISIONS.md` D-038 sync cell (done), D-066 and D-076.
+- [x] One check added to `server/dailyMoneyCheck.ts`: `referred_deadline_stuck`, any `approved` ask more than 24 hours past its referred deadline. Its credit release is overdue.
+- [x] Live check; §3b row done with evidence.
 
 ## 10. Review checklist
 1. Does every reopen revoke the document grant and remove the seeker's name for that referrer, proven by a route-level test?
