@@ -16,7 +16,7 @@ import { sendTransactionalEmail } from "./emailDelivery";
 // row; the only writes are the job's own run record (the runner) and one
 // operational-activity row when an alert email goes out. The email carries
 // ids, amounts, currencies and reasons — never names, emails, or request content.
-import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, lt, lte, or, sql } from "drizzle-orm";
 import { operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, referredDueAtMs, referredExtensionOperationKey } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
@@ -56,6 +56,8 @@ export type RefundAfterPickupRow = { transactionId: number; requestId: number; k
 /** D-038-B: an approved ask still holding a referrer more than a day past its Referred deadline. */
 export type ReferredDeadlineStuckRow = { id: number; referrerId: number; dueAt: Date };
 
+export type ReleasedPassUnrefundedRow = { requestId: number; closedAction: string; refundRows: number };
+
 export type DailyMoneyCheckDeps = {
   auditWallets: () => Promise<WalletAuditResult>;
   listCreditedPayments: (afterId: number, limit: number) => Promise<CreditedPaymentRow[]>;
@@ -69,6 +71,7 @@ export type DailyMoneyCheckDeps = {
   listDoublyReversedSpends: (limit: number) => Promise<DoublyReversedSpendRow[]>;
   listRefundsAfterPickup: (limit: number) => Promise<RefundAfterPickupRow[]>;
   listReferredPastDeadline: (nowMs: number, limit: number) => Promise<ReferredDeadlineStuckRow[]>;
+  listReleasedPassesUnrefunded: (limit: number) => Promise<ReleasedPassUnrefundedRow[]>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
   recordActivity: typeof recordOperationalActivity;
 };
@@ -292,6 +295,34 @@ export async function listRefundsAfterPickup(limit: number): Promise<RefundAfter
 }
 
 /**
+ * D-035: a released pass (pass_release, a not-fixable or legacy pass after a claim) must return the
+ * credit exactly once when the ask later closes by expiry or withdrawal. An ask still open is not a
+ * finding: its terminal is where the credit returns. A free ask (no debit) never owed a credit and is
+ * never a finding. Read-only and bounded: the newest `limit * 4` release events are examined.
+ */
+export async function listReleasedPassesUnrefunded(limit: number): Promise<ReleasedPassUnrefundedRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  const releases = await db.select({ id: referralTransitionEvents.id, requestId: referralTransitionEvents.referralRequestId })
+    .from(referralTransitionEvents)
+    .where(eq(referralTransitionEvents.action, "pass_release"))
+    .orderBy(desc(referralTransitionEvents.id)).limit(limit * 4);
+  const found: ReleasedPassUnrefundedRow[] = [];
+  for (const release of releases) {
+    const askRows = await db.select({ debitTransactionId: referralRequests.debitTransactionId }).from(referralRequests).where(eq(referralRequests.id, release.requestId)).limit(1);
+    if (askRows[0]?.debitTransactionId == null) continue;
+    const terminal = await db.select({ id: referralTransitionEvents.id, action: referralTransitionEvents.action }).from(referralTransitionEvents)
+      .where(and(eq(referralTransitionEvents.referralRequestId, release.requestId), inArray(referralTransitionEvents.action, ["withdraw", "expire"]), gt(referralTransitionEvents.id, release.id)));
+    if (terminal.length === 0) continue;
+    const refunds = await db.select({ id: tokenTransactions.id }).from(tokenTransactions)
+      .where(and(eq(tokenTransactions.referenceType, "referral_request"), inArray(tokenTransactions.kind, ["withdrawal_refund", "expiry_refund"]), like(tokenTransactions.referenceId, `${release.requestId}#%`)));
+    if (refunds.length === 1) continue;
+    found.push({ requestId: release.requestId, closedAction: terminal[0].action, refundRows: refunds.length });
+    if (found.length >= limit) break;
+  }
+  return found;
+}
+
+/**
  * D-038-B: an approved ask more than a day past its Referred deadline. The `referral-timers` job should
  * have reopened it to colleagues with the credit released; if it is still approved, that release is
  * overdue and the referrer still holds the seeker's name and files. Read-only, bounded.
@@ -347,6 +378,7 @@ const defaultMoneyCheckDeps: DailyMoneyCheckDeps = {
   listAskDeliverySpendsWhileWaiting,
   listDoublyReversedSpends,
   listRefundsAfterPickup,
+  listReleasedPassesUnrefunded,
   listReferredPastDeadline,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
@@ -422,6 +454,10 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCh
     // D-038-A: once a referrer claimed the ask the credit stays spent, so a refund after a pickup is a leak.
     const refundsAfterPickup = await deps.listRefundsAfterPickup(FINDINGS_PREVIEW_LIMIT);
     for (const row of refundsAfterPickup) findings.push(`refund_after_pickup: ledger row #${row.transactionId} returned a credit for ask #${row.requestId} (${row.kind}) although the ask's latest pickup was a claim`);
+
+    // D-035: a released pass returns the credit exactly once when the ask later closes.
+    const releasedUnrefunded = await deps.listReleasedPassesUnrefunded(FINDINGS_PREVIEW_LIMIT);
+    for (const row of releasedUnrefunded) findings.push(`released_pass_unrefunded: ask #${row.requestId} was released by a pass and closed by ${row.closedAction}, but ${row.refundRows === 0 ? "no credit refund row exists" : `${row.refundRows} refund rows exist`} (expected exactly one)`);
 
     // D-038-B: an accepted ask nobody marked Referred should have reopened a day ago, with the credit released.
     const referredStuck = await deps.listReferredPastDeadline(nowMs, FINDINGS_PREVIEW_LIMIT);

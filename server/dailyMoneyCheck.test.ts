@@ -30,6 +30,7 @@ function makeDeps(overrides: Partial<DailyMoneyCheckDeps> = {}) {
     listDoublyReversedSpends: vi.fn(async () => []),
     listRefundsAfterPickup: vi.fn(async () => []),
     listReferredPastDeadline: vi.fn(async () => []),
+    listReleasedPassesUnrefunded: vi.fn(async () => []),
     sendEmail: vi.fn(async (input: Sent) => { sent.push(input); return true; }),
     recordActivity: vi.fn(async (row: { action: string }) => { activity.push(row as { action: string; outcome: string }); }),
     ...overrides,
@@ -509,6 +510,32 @@ describe("runMoneyCheckNow (on-demand admin run)", () => {
     const { deps, sent } = makeDeps();
     const result = await runMoneyCheckNow(NOW.getTime(), deps);
     expect(result).toEqual({ emailSent: false, findingsEmailed: false, subject: null, text: null });
+    expect(sent).toEqual([]);
+  });
+});
+
+
+describe("released_pass_unrefunded (D-035)", () => {
+  it("reaches the owner email when a released pass closed without exactly one refund", async () => {
+    const { deps, sent } = makeDeps({
+      listReleasedPassesUnrefunded: vi.fn(async () => [
+        { requestId: 701, closedAction: "expire", refundRows: 0 },
+        { requestId: 702, closedAction: "withdraw", refundRows: 2 },
+      ]),
+    });
+    const output = await runJob(deps);
+    expect(output.failed).toBe(0);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("released_pass_unrefunded: ask #701 was released by a pass and closed by expire, but no credit refund row exists (expected exactly one)");
+    expect(sent[0]!.text).toContain("released_pass_unrefunded: ask #702 was released by a pass and closed by withdraw, but 2 refund rows exist (expected exactly one)");
+  });
+
+  it("stays quiet when every released pass refunded exactly once, and never flags an ask still open or a free ask", async () => {
+    const { deps, sent } = makeDeps({
+      listReleasedPassesUnrefunded: vi.fn(async () => []),
+    });
+    const output = await runJob(deps);
+    expect(output.failed).toBe(0);
     expect(sent).toEqual([]);
   });
 });
