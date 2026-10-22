@@ -155,6 +155,9 @@ IDs are unique and never reused: immediately before committing a new entry, fetc
 | D-141 | 2026-10-22 | **Seeker agents are granted by the seeker in their own session.** Scope: look up, draft, send (default: draft). Limits: credits per ask, per day and per week, asks per day, which companies. Expiry default 7 days, maximum 30. Instant revoke and pause-all. A per-agent key is shown once and stored hashed. Default is ask-me-every-time. Agents can never buy credits or plans. Lower rate limits than people. Every action is in an audit log the seeker can read. (decided under D-123; owner said top priority and auto-approves what is best for users and us, Oct 22; changeable) |
 | D-142 | 2026-10-22 | **Referrers see when an ask came through a seeker's assistant.** The ask shows "sent via the seeker's assistant"; the note is still seeker-confirmed (D-139). Referrer privacy is unchanged: no name or resume before accept. Agent-sent asks follow the same credit, hold and refund rules as any other ask. (decided under D-123; owner said top priority and auto-approves what is best for users and us, Oct 22; changeable) |
 
+
+Status, 2026-10-22: D-141 implemented behind `SKIPPIE_AGENT_ENABLED` (off in production) - grant screen at /agents, per-agent keys (swa_, stored hashed, shown once), lookup/draft scopes, limits, expiry 7-30 days, instant revoke, pause-all, audit log. Drafts only; no send, no purchase path. Verified locally against the skipwait_qa scratch schema (PR #453); pending owner merge review.
+
 Standing constraints recorded earlier in `AGENTS.md` (identity/canonical person, no real-money QA, Kit v4 visual contract in `DESIGN.md`, Azure MySQL ownership checks, deploy gates) remain active decisions.
 
 ## Open owner questions (nothing is built until answered here)

@@ -189,6 +189,13 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
 // skipped, and mismatched uniqueness is dropped and recreated.
 // Keep in sync with drizzle/schema.ts.
 export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: string; nonUnique?: boolean }> = [
+  { table: "seekerAgentGrants", name: "seeker_agent_grants_key_hash_unique", columns: "`keyHash`" },
+  { table: "seekerAgentGrants", name: "seeker_agent_grants_user_idx", columns: "`userId`", nonUnique: true },
+  { table: "seekerAgentControls", name: "seeker_agent_controls_user_unique", columns: "`userId`" },
+  { table: "seekerAgentDrafts", name: "seeker_agent_drafts_grant_idx", columns: "`grantId`,`createdAt`", nonUnique: true },
+  { table: "seekerAgentDrafts", name: "seeker_agent_drafts_user_idx", columns: "`userId`,`createdAt`", nonUnique: true },
+  { table: "seekerAgentEvents", name: "seeker_agent_events_grant_idx", columns: "`grantId`,`createdAt`", nonUnique: true },
+  { table: "seekerAgentEvents", name: "seeker_agent_events_user_idx", columns: "`userId`,`createdAt`", nonUnique: true },
   { table: "workEmailOtpCodes", name: "work_email_otp_active_idx", columns: "`email`,`consumedAt`,`expiresAt`,`createdAt`", nonUnique: true },
   { table: "resumeUploadSessions", name: "resume_upload_sessions_owner_client_unique", columns: "`ownerId`,`clientUploadId`" },
   { table: "referralAttachments", name: "referral_attachments_upload_session_unique", columns: "`uploadSessionId`" },
@@ -266,6 +273,10 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
 // pass and would sit at /api/health/ready 503 forever. Nothing reads the column.
 // The live table it implies is undocumented source/prod drift, not a requirement.
 export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; referencedTable: string; referencedColumn: string }> = [
+  { table: "seekerAgentGrants", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "seekerAgentControls", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "seekerAgentDrafts", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "seekerAgentEvents", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "referralAttachments", column: "uploadSessionId", referencedTable: "resumeUploadSessions", referencedColumn: "id" },
   { table: "workItems", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "safetyReports", column: "reporterUserId", referencedTable: "users", referencedColumn: "id" },
