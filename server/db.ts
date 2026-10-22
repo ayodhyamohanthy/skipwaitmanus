@@ -1267,7 +1267,7 @@ export async function getPrivateReferrerImpactSummary(userId: number): Promise<P
   // Reply latency from the append-only transition log: claim instant vs the
   // referrer's first decision (approve, review, or pass) on the same ask.
   // Computed in JS from stored timestamps; null when nothing decided yet.
-  const DECISION_ACTIONS = new Set(["approve", "review", "pass"]);
+  const DECISION_ACTIONS = new Set(["approve", "review", "pass", "pass_release"]);
   const trail = await db.select({ requestId: referralTransitionEvents.referralRequestId, action: referralTransitionEvents.action, at: referralTransitionEvents.createdAt }).from(referralTransitionEvents).where(eq(referralTransitionEvents.actorUserId, userId));
   const claimedAt = new Map<number, number>();
   const decidedAt = new Map<number, number>();

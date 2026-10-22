@@ -296,7 +296,7 @@ export async function listRefundsAfterPickup(limit: number): Promise<RefundAfter
     const requestId = Number(String(refund.referenceId ?? "").split("#")[0]);
     if (!Number.isInteger(requestId) || requestId <= 0) continue;
     const events = await db.select({ id: referralTransitionEvents.id, action: referralTransitionEvents.action }).from(referralTransitionEvents)
-      .where(and(eq(referralTransitionEvents.referralRequestId, requestId), inArray(referralTransitionEvents.action, ["claim", "claim_lapse", "referred_lapse", "step_back"]), refund.createdAt ? lte(referralTransitionEvents.createdAt, refund.createdAt) : undefined));
+      .where(and(eq(referralTransitionEvents.referralRequestId, requestId), inArray(referralTransitionEvents.action, ["claim", "claim_lapse", "referred_lapse", "step_back", "pass_release"]), refund.createdAt ? lte(referralTransitionEvents.createdAt, refund.createdAt) : undefined));
     let latest: { id: number; action: string } | null = null;
     for (const event of events) if (latest === null || Number(event.id) > Number(latest.id)) latest = event;
     if (latest?.action !== "claim") continue;
