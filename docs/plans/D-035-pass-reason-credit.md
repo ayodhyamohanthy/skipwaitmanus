@@ -101,7 +101,7 @@ In `server/db.referralPassReopen.test.ts` (its bespoke fake supports this path),
 - **An old ask passed before this ships:** its event is `pass`, so it keeps today's spent credit. Nothing is backfilled.
 
 ## 9. Definition of done
-- [ ] Gate, draft PR and independent review.
+- [x] Gate, draft PR and independent review. Gate green on `2acf64be` (tsc, full vitest in 4 shards, build); PR #471 landed 01:40 IST without the founder's word and was reverted the same night by #486 (D-147). The independent Tier 1 review is still owed and remains the landing gate for any re-land, which D-147 says waits on the founder's word behind an off flag.
 - [ ] Docs: `docs/DECISIONS.md` D-035 and D-052 sync cells, the `AGENTS.md` living-map referral and credit rows, plan §6 (the legal lines in Terms, Refund and Cancellation that still say a decline keeps the credit spent, listed for the owner; agents do not edit legal text).
 - [ ] One check added to `server/dailyMoneyCheck.ts`: `released_pass_unrefunded`, any ask whose latest pickup-or-release event is `pass_release` and that then closed by expiry or withdrawal without exactly one refund row.
 - [ ] Live check; row done.
