@@ -108,8 +108,12 @@ describe("D-035: the seeker is told what was said, never who said it", () => {
 describe("D-035: the release set stays exact", () => {
   it("a fixable pass leaves the earlier claim as the latest pickup", async () => {
     await pass({ declineReason: "role_not_a_fit", passReason: "needs_experience" });
-    // The ask reopened, so a withdrawal now finds no pickup and refunds — but only because the pass
-    // reopened it, not because the fixable pass itself released anything. The event proves which.
     expect(eventActions()).toEqual(["claim", "pass"]);
+
+    // The ask reopened for colleagues, but the claim is still its latest pickup-or-release event,
+    // so the pickup was never released: a withdrawal withdraws, keeps the credit spent and moves no
+    // ledger row. (After a not-fixable pass the same withdrawal refunds — see the release describe.)
+    expect(await withdrawCompanyReferralRequest(SEEKER, REQUEST_ID)).toMatchObject({ withdrawn: true, creditRefunded: false });
+    expect(reversalsOf()).toEqual([]);
   });
 });
