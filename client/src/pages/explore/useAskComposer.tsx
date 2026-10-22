@@ -8,12 +8,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
-import { askErrorMessage, confirmedDomainFor, parseSentAsk, parseSlotCapReached } from "@/components/ask/askApi";
+import { askErrorMessage, confirmedDomainFor, parsePlanLimit, parseSentAsk, parseSlotCapReached } from "@/components/ask/askApi";
+import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
 import { useOnlineStatus } from "@/components/goal";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { clearAskPrefill, readAskPrefill, saveAskPrefill } from "@/lib/askPrefill";
+import { defaultPinnedWorkIds, useAskWorkPieces } from "@/lib/askWorkPieces";
 import { discardAskDraftRemote, saveAskDraftRemote, useAskDraft } from "@/lib/askDraftApi";
 import { fastTrackAskFields } from "@/lib/fastTrackHandoff";
 import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUpload";
@@ -23,6 +25,7 @@ import type { PublicCompany } from "@shared/companies";
 import { askCostLine, CREDIT_ENDED_CAVEAT, type AskCostLine } from "@shared/moneyCopy";
 import { COMPANY_CAP_REACHED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
+import { MAX_ASK_WORK_ITEMS } from "@shared/askWorkItems";
 import { parseOpportunityAskSearch, type OpportunityAskSearch } from "@shared/companyOpportunities";
 import { isValidTargetRoleUrl, jobLinkFitsCompany } from "@shared/referralUrl";
 import { composeWhyMe, overLimitReasons, splitWhyMe, WHY_ME_MAX, type WhyMeReasons } from "@shared/whyMe";
@@ -65,6 +68,8 @@ export type AskComposer = {
   draftState: "idle" | "saving" | "saved";
   sendError: ReactNode;
   sent: AskSentView | null;
+  /** Task 13: the showcase pieces this ask carries, and the picker's state. */
+  work: PinnedWorkState;
   /** D-022: the posted role this ask opened from, while it still applies. */
   postSelection: OpportunityAskSearch | null;
   /** Fresh form for a new company; the resume carries unless clearResume is set. */
@@ -94,6 +99,32 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   const [sent, setSent] = useState<AskSentView | null>(null);
   const [draftState, setDraftState] = useState<"idle" | "saving" | "saved">("idle");
   const [watch, setWatch] = useState<{ state: "idle" | "busy" | "done" | "error"; message: string }>({ state: "idle", message: "" });
+  // Task 13: the seeker's own showcase, the pieces they pick, and the plan cap
+  // the server quotes back if they pick more than it puts in front of a
+  // referrer. The picker owns none of this; both surfaces read it here so the
+  // drawer and /ask can never send different lists.
+  const workPieces = useAskWorkPieces(Boolean(isLoaded && isSignedIn), fetchToken);
+  const [pickedWork, setPickedWork] = useState<number[] | null>(null);
+  const [pinCap, setPinCap] = useState<number | null>(null);
+  const [pinNotice, setPinNotice] = useState("");
+  // Until the seeker touches the picker, the pieces they already pin ride
+  // along, up to the transport ceiling. A plan downgrade can leave more pinned
+  // pieces than the plan now allows; that case is not pre-empted here (the
+  // composer has no plan number) — the first send is refused, and the picker
+  // trims to the cap the server quotes. See `send` below.
+  const selectedWork = pickedWork ?? defaultPinnedWorkIds(workPieces.pieces, MAX_ASK_WORK_ITEMS);
+  const workLimit = Math.min(pinCap ?? MAX_ASK_WORK_ITEMS, MAX_ASK_WORK_ITEMS);
+  const toggleWork = (id: number) => {
+    const base = pickedWork ?? defaultPinnedWorkIds(workPieces.pieces, MAX_ASK_WORK_ITEMS);
+    if (base.includes(id)) { setPickedWork(base.filter(value => value !== id)); setPinNotice(""); return; }
+    // Refusing a pick says why: a silent no-op looks like a broken control.
+    if (base.length >= workLimit) {
+      setPinNotice(`This plan puts ${workLimit === 1 ? "1 piece" : `${workLimit} pieces`} of work in front of a referrer — unpin one to swap it.`);
+      return;
+    }
+    setPickedWork([...base, id]);
+    setPinNotice("");
+  };
   // A handoff back from sign-in (/ask keeps the link and reasons), and an ask
   // opened from a posted role ("/ask?post=<id>&job=<link>", D-022): the post
   // id travels with the send so the poster sees it first; a fresh form drops it.
@@ -148,6 +179,9 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     setWatch({ state: "idle", message: "" });
     setDraftState("idle");
     setPostSelection(null);
+    setPickedWork(null);
+    setPinCap(null);
+    setPinNotice("");
     if (options?.clearResume) { setResumeFile(null); setUploaded(null); }
   };
 
@@ -199,6 +233,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
         fastTrack: fastTrackAskFields(window.location.search),
         confirmedCompanyDomain: confirmedDomain(url.trim()),
         opportunityId: postSelection?.opportunityId,
+        workItemIds: selectedWork,
       });
       const token = await fetchToken();
       const response = await fetch("/api/company-referrals", {
@@ -217,6 +252,19 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       }
       if (response.status === 409 && payload.code === COMPANY_CAP_REACHED && typeof payload.companyDomain === "string") {
         setSendError(companyCapCopy(payload.companyDomain));
+        return;
+      }
+      // Task 13: more pinned work than the plan puts in front of a referrer. The
+      // server quoted the cap; trim the picker to it and retire the submission
+      // key, because the corrected ask is a different body and must not replay
+      // against one that was never created. Nothing was charged, no ask exists.
+      const pinLimit = parsePlanLimit(response.status, payload);
+      if (pinLimit?.limit === "showcase_pins") {
+        setPinCap(pinLimit.cap);
+        setPickedWork(selectedWork.slice(0, pinLimit.cap));
+        setPinNotice(`Kept the first ${pinLimit.cap === 1 ? "piece" : `${pinLimit.cap} pieces`}. Tap another to swap it in.`);
+        session()?.removeItem(ASK_IDEMPOTENCY_KEY);
+        setSendError(typeof payload.error === "string" ? payload.error : "Your plan puts fewer pieces of work in front of a referrer. Unpin one and send again.");
         return;
       }
       const created = response.ok ? parseSentAsk(payload) : null;
@@ -308,6 +356,15 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     draftState,
     sendError,
     sent,
+    work: {
+      pieces: workPieces.pieces,
+      state: workPieces.state,
+      selected: selectedWork,
+      limit: workLimit,
+      notice: pinNotice,
+      reload: workPieces.reload,
+      toggle: toggleWork,
+    },
     postSelection,
     resetForm,
     clearAfterClose,

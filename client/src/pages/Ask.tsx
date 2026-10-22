@@ -19,6 +19,7 @@ import {
   GoalTextInput,
   GoalVerifiedMark,
 } from "@/components/goal";
+import { PinnedWorkPicker } from "@/components/ask/PinnedWorkPicker";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readAskPrefill } from "@/lib/askPrefill";
 import { useAskDraft } from "@/lib/askDraftApi";
@@ -186,6 +187,8 @@ function AskFields({ composer, company }: { composer: Composer; company: PublicC
         ))}
         {composer.reasonsError ? <p role="alert" className="text-g-meta text-g-ink">{composer.reasonsError}</p> : null}
       </fieldset>
+
+      <PinnedWorkPicker work={composer.work} />
     </>
   );
 }
