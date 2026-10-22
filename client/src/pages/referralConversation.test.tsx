@@ -78,7 +78,7 @@ describe("ReferralConversation thread", () => {
     stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerApproved, referrerName: "priya@acme.com" }] }) : ok({ messages: [] })));
     renderPage();
     await screen.findByText(/through acme\.com’s process/);
-    expect(screen.queryByText(/Your referrer/)).toBeNull();
+    expect(screen.queryByText("Your referrer")).toBeNull();
     expect(screen.queryByText(/priya/)).toBeNull();
   });
 
