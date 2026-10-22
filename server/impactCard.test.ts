@@ -141,6 +141,15 @@ describe("loadImpactCard: the aggregates", () => {
     });
   });
 
+  it("F5: the referral count is route-agnostic; the copy claims no link attribution", async () => {
+    // referralRequests carries no link attribution, so this count never proves
+    // the referral came through the fast-track link. The published line (F5)
+    // therefore no longer claims "through my link".
+    const { asks, events } = threeAnswers();
+    seed({ asks, events: [...events, event(21, 602, "progress", "intro_made", "2026-10-20T00:00:00.000Z")] });
+    expect(await loadImpactCard(REFERRER, NOW)).toMatchObject({ state: "ready", stats: { referredThisMonth: 1 } });
+  });
+
   it("falls back to the fast link when there is no vanity alias", async () => {
     const { asks, events } = threeAnswers();
     seed({ links: [link({ vanityAlias: null })], asks, events });

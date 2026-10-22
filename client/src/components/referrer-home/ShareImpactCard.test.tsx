@@ -47,11 +47,11 @@ describe("Referrer impact card", () => {
     const card = await screen.findByTestId("share-impact-card");
     expect(within(card).getByText("QuietFalcon · Verified at Kestrel Pay")).toBeTruthy();
     expect(within(card).getByText("3 people")).toBeTruthy();
-    expect(within(card).getByText("referred into Kestrel Pay through my link this month.")).toBeTruthy();
+    expect(within(card).getByText("referred into Kestrel Pay this month.")).toBeTruthy();
     expect(within(card).getByText("3h")).toBeTruthy();
-    expect(within(card).getByText("median first reply")).toBeTruthy();
+    expect(within(card).getByText("median first reply, all time")).toBeTruthy();
     expect(within(card).getByText("64%")).toBeTruthy();
-    expect(within(card).getByText("asks accepted")).toBeTruthy();
+    expect(within(card).getByText("asks accepted, all time")).toBeTruthy();
     expect(within(card).getByText("skipwait.me/refer/kestrel-pay/quietfalcon")).toBeTruthy();
   });
   it("copied text carries no seeker data and keeps the honest copy", async () => {

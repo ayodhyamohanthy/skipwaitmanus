@@ -17,6 +17,16 @@ describe("referrer impact card", () => {
   it("copy stays in sync with content.json shareImpact", () => {
     expect(IMPACT_CARD_COPY).toEqual(copy.shareImpact);
   });
+  it("F5: no link attribution is claimed, and the lifetime stats say so", () => {
+    // F5 (D-088): the referred count is route-agnostic (the query has no link
+    // attribution), and median reply / accept rate are lifetime figures while
+    // the hero is this month. The copy must not overstate either.
+    expect(IMPACT_CARD_COPY.referredLine).not.toMatch(/link/i);
+    expect(IMPACT_CARD_COPY.medianReplyLabel).toMatch(/all time/i);
+    expect(IMPACT_CARD_COPY.acceptRateLabel).toMatch(/all time/i);
+    expect(impactCardText(input)).not.toMatch(/through my link/i);
+    expect(impactCardLinkedIn(input)).not.toMatch(/through my link/i);
+  });
   it("min-3 gate: fewer than 3 distinct answered asks shows nothing", () => {
     expect(impactCardVisible(0)).toBe(false);
     expect(impactCardVisible(IMPACT_MIN_ANSWERED - 1)).toBe(false);
@@ -47,9 +57,9 @@ describe("referrer impact card", () => {
   it("plain text card carries screen name, company, aggregates and the link", () => {
     const text = impactCardText(input);
     expect(text).toContain("QuietFalcon · Verified at Kestrel Pay");
-    expect(text).toContain("3 people referred into Kestrel Pay through my link this month.");
-    expect(text).toContain("3h median first reply");
-    expect(text).toContain("64% asks accepted");
+    expect(text).toContain("3 people referred into Kestrel Pay this month.");
+    expect(text).toContain("3h median first reply, all time");
+    expect(text).toContain("64% asks accepted, all time");
     expect(text).toContain("https://skipwait.me/refer/kestrel-pay/quietfalcon");
   });
   it("drops stat lines that have no value", () => {
