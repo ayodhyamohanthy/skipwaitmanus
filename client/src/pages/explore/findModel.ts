@@ -7,8 +7,6 @@
 // seeker has no credit then (D-047).
 import type { PublicCompany } from "@shared/companies";
 import { JOB_FUNCTIONS, parseJobFunction, type JobFunction } from "@shared/jobFunctions";
-import { CREDIT_ENDED_CAVEAT } from "@shared/moneyCopy";
-import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { HOSTED_JOB_PLATFORMS, isValidTargetRoleUrl, jobLinkFitsCompany, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
 
 export type DirectoryFilter = { query: string; openOnly: boolean; fn: JobFunction | null };
@@ -68,22 +66,4 @@ export function roleTitleFromUrl(url: string): string | null {
     .trim().split(/\s+/).filter(Boolean);
   if (words.length < 2) return null;
   return words.map(word => (word.length <= 3 && word === word.toUpperCase() ? word : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())).join(" ").slice(0, 80);
-}
-
-export type CostLine = { line: string; detail: string; blockedReason: string | null };
-
-/** The cost line beside Send ask, visible from the moment the drawer opens (no drip pricing). */
-export function costLine(input: { open: boolean | null; balance: number | null }): CostLine {
-  if (input.open === false) {
-    return {
-      line: "No credit used until a verified employee can see it",
-      detail: `It waits up to ${COVERAGE_WAIT_DAYS} days. When one can, 1 credit is used; if you have none then, we hold it until you add one.`,
-      blockedReason: null,
-    };
-  }
-  const detail = `Comes back if you withdraw before anyone picks it up, or if nobody picks it up within ${ASK_TTL_DAYS} days, ${CREDIT_ENDED_CAVEAT}. Once picked up, it stays spent, unless they pass for a reason you can't fix.`;
-  if (input.open === null) return { line: "Uses 1 credit when a verified employee can see it", detail, blockedReason: null };
-  if (input.balance === null) return { line: "Uses 1 credit", detail, blockedReason: null };
-  if (input.balance <= 0) return { line: "You have no credits left", detail: "Add a credit pack in Plans and credits to send this ask now.", blockedReason: "You have no credits left. Add a credit pack in Plans and credits." };
-  return { line: `Uses 1 of your ${input.balance} ${input.balance === 1 ? "credit" : "credits"}`, detail, blockedReason: null };
 }

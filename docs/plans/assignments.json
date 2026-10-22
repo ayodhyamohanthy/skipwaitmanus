@@ -78,7 +78,7 @@
       "tier": 1,
       "lane": "d048-find",
       "branch": "agent/queue/d048-live-review",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "D-134 (6): both pages went live in place with the merge button and no independent review; this checks them against their kit versions and the money rules, fixes what fails red-first, and passes an independent review."
     },
@@ -483,7 +483,7 @@
       "tier": 2,
       "lane": "row20",
       "branch": "agent/qoder/row20b-company-demand",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "ROW20-A"
       ]

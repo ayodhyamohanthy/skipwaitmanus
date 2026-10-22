@@ -189,6 +189,28 @@ describe("Find a referral directory", () => {
     expect(give[0].getAttribute("href")).toBe("/sign-in?intent=referrer&returnTo=%2Freferrer-setup");
   });
 
+  it("says the balance failed to load instead of drawing 0 credits", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      const path = String(input);
+      if (path === "/api/companies") return json(200, ALL_OPEN);
+      if (path.startsWith("/api/credits/summary")) return json(500, { error: "down" });
+      if (path === "/api/profile/setup") return json(200, setup());
+      return json(404, { error: "not found" });
+    }));
+    renderWithQuery(<Explore />);
+    await screen.findByTestId("goal-directory-summary");
+    await waitFor(() => expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toContain("Balance didn't load"), { timeout: 3000 });
+    expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).not.toMatch(/\b0\b/);
+  });
+
+  it("never shows the credits pill to a verified referrer", async () => {
+    accessState.status = "verified";
+    stubDirectory();
+    renderWithQuery(<Explore />);
+    await screen.findByTestId("goal-directory-summary");
+    expect(screen.queryByTestId("goal-credits-pill")).toBeNull();
+  });
+
   it("opens the drawer preselected from ?company= and closes back to /explore", async () => {
     searchState.value = "?company=wipro";
     stubDirectory();

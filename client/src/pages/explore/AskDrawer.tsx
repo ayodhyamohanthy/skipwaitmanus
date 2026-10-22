@@ -16,8 +16,9 @@ import {
   GoalTextInput,
 } from "@/components/goal";
 import type { PublicCompany } from "@shared/companies";
+import { MONEY_SENTENCE, type AskCostLine } from "@shared/moneyCopy";
 import { WHY_ME_MAX } from "@shared/whyMe";
-import type { CostLine, LinkHint } from "./findModel";
+import type { LinkHint } from "./findModel";
 
 export type AskResume = { name: string } | null;
 export type AskSentView = { company: string; detail: string; slots: string | null; trackHref: string };
@@ -45,7 +46,7 @@ export type AskDrawerProps = {
   onReasonChange(index: number, value: string): void;
   reasonsError: string;
   watch: { state: "idle" | "busy" | "done" | "error"; message: string; onWatch(): void } | null;
-  cost: CostLine;
+  cost: AskCostLine;
   sendLabel: string;
   sendBusyLabel: string;
   sending: boolean;
@@ -77,6 +78,7 @@ export function AskDrawer(props: AskDrawerProps) {
     <>
       <p data-testid="goal-ask-cost" className="text-g-label text-g-ink">{props.cost.line}</p>
       <p className="text-pretty text-g-meta text-g-ink-2">{props.cost.detail}</p>
+      <p data-testid="goal-money-sentence" className="text-pretty text-g-meta text-g-ink-3">{MONEY_SENTENCE}</p>
       {props.error ? <div role="alert" className="mt-1 text-pretty text-g-meta text-g-ink">{props.error}</div> : null}
       <div className="mt-4 flex items-center justify-end gap-2 max-gdesk:grid max-gdesk:grid-cols-[1fr_2fr]">
         {props.onSaveDraft ? (

@@ -4,7 +4,7 @@ import { enrichInboxRow } from "./inboxEnrichment";
 import { transitionNotificationKind } from "./notificationKinds";
 import { buildEvidenceRows, cleanNote as cleanModerationNote, groupEvents as groupModerationEvents, groupEvidence, reportSeverity, reviewDueAt } from "./moderationCase";
 import { checkPostingAllowance, opportunityLimits } from "./opportunityLimits";
-import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, ne, notInArray, or, sql } from "drizzle-orm";
 import { workEmailStorageKeys } from "./workEmailKey";
 import { publicDisplayName } from "../shared/publicDisplayName";
 import { PASS_REASON_OPTIONS, passReasonSeekerLabel } from "../shared/passReasons";
@@ -42,7 +42,7 @@ import { ASK_TTL_MS, COVERAGE_WAIT_DAYS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAt
 import { firstLookUntilFrom, isOpportunityExpired, ownerOpportunityPostSchema, publicOpportunityPostSchema, OPPORTUNITY_TTL_MS, type OpportunityPoster, type OwnerOpportunityPost, type PublicOpportunityPost } from "../shared/companyOpportunities";
 import { isCorporateEmailDomain } from "../shared/const";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
-import { JOB_LEVELS, REFERRER_AREAS, parseJobFunction, type JobFunction } from "../shared/jobFunctions";
+import { JOB_LEVELS, REFERRER_AREAS, jobFunctionSchema, parseJobFunction, type JobFunction } from "../shared/jobFunctions";
 import { resolveAskJobFunction } from "../shared/jobFunctionClassifier";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { isPaidPlanActive, resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
@@ -973,28 +973,44 @@ export async function listMySafetyReports(userId: number) {
   return db.select({ id: safetyReports.id, reason: safetyReports.reason, status: safetyReports.status, urgent: safetyReports.urgent, createdAt: safetyReports.createdAt }).from(safetyReports).where(eq(safetyReports.reporterUserId, userId)).orderBy(desc(safetyReports.createdAt)).limit(50);
 }
 
-export async function createCompanySuggestion(userId: number, input: { companyName?: unknown; website?: unknown; role?: unknown }) {
+export type CompanyDemandVote = { id: number; companyName: string; jobFunction: JobFunction | null; alreadyRecorded: boolean };
+
+/**
+ * One seeker's vote for one company they want on SkipWait. Votes are per person:
+ * a second seeker naming the same company adds their own row, and the distinct
+ * seekers behind a name are the demand signal. The same seeker asking twice gets
+ * their live row back, not an error, and spends none of the three-a-day
+ * allowance; only a suggestion a reviewer dismissed can be voted on again.
+ */
+export async function createCompanySuggestion(userId: number, input: { companyName?: unknown; website?: unknown; role?: unknown; jobFunction?: unknown }): Promise<CompanyDemandVote> {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   if (typeof input.companyName !== "string" || input.companyName.trim().length < 2 || input.companyName.trim().length > 160) throw new Error("Name the company you want to see");
   const name = input.companyName.trim();
   const role = input.role === "employee" ? "employee" : "seeker";
+  const parsedFunction = jobFunctionSchema.nullish().safeParse(input.jobFunction);
+  if (!parsedFunction.success) throw new Error("Choose a work function from the list");
+  const jobFunction = parsedFunction.data ?? null;
   let website: string | null = null;
   if (input.website !== undefined && input.website !== null && String(input.website).trim() !== "") {
     website = String(input.website).trim();
     if (!/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(website) || website.length > 512) throw new Error("Company websites must start with http:// or https://");
   }
+  const mine = (await db.select({ id: companySuggestions.id, companyName: companySuggestions.companyName, jobFunction: companySuggestions.jobFunction }).from(companySuggestions).where(and(eq(companySuggestions.submitterUserId, userId), ne(companySuggestions.status, "dismissed"), sql`LOWER(${companySuggestions.companyName}) = ${name.toLowerCase()}`)).limit(1))[0];
+  if (mine) {
+    // A later vote can still add the function the first one left unset.
+    if (jobFunction && !parseJobFunction(mine.jobFunction)) await db.update(companySuggestions).set({ jobFunction }).where(eq(companySuggestions.id, mine.id));
+    return { id: mine.id, companyName: mine.companyName, jobFunction: jobFunction ?? parseJobFunction(mine.jobFunction), alreadyRecorded: true };
+  }
   const dayAgo = new Date(Date.now() - 86400000);
   const today = (await db.select({ id: companySuggestions.id }).from(companySuggestions).where(and(eq(companySuggestions.submitterUserId, userId), gt(companySuggestions.createdAt, dayAgo))).limit(4)).length;
   if (today >= 3) throw new Error("You can suggest up to 3 companies a day");
-  const dupe = (await db.select({ id: companySuggestions.id }).from(companySuggestions).where(and(eq(companySuggestions.status, "open"), sql`LOWER(${companySuggestions.companyName}) = ${name.toLowerCase()}`)).limit(1))[0];
-  if (dupe) throw new Error("This company was already suggested and is under review");
-  const inserted = await db.insert(companySuggestions).values({ submitterUserId: userId, companyName: name, website, role });
-  return { id: Number(inserted[0].insertId), companyName: name };
+  const inserted = await db.insert(companySuggestions).values({ submitterUserId: userId, companyName: name, website, role, jobFunction });
+  return { id: Number(inserted[0].insertId), companyName: name, jobFunction, alreadyRecorded: false };
 }
 
 export async function listMyCompanySuggestions(userId: number) {
   const db = await getDb(); if (!db) return [];
-  return db.select({ id: companySuggestions.id, companyName: companySuggestions.companyName, status: companySuggestions.status, createdAt: companySuggestions.createdAt }).from(companySuggestions).where(eq(companySuggestions.submitterUserId, userId)).orderBy(desc(companySuggestions.createdAt)).limit(50);
+  return db.select({ id: companySuggestions.id, companyName: companySuggestions.companyName, jobFunction: companySuggestions.jobFunction, status: companySuggestions.status, createdAt: companySuggestions.createdAt }).from(companySuggestions).where(eq(companySuggestions.submitterUserId, userId)).orderBy(desc(companySuggestions.createdAt)).limit(50);
 }
 
 export async function listSafetyReportsAdmin(limit = 100) {
@@ -1023,9 +1039,32 @@ export async function reviewSafetyReport(adminId: number, reportId: number, inpu
   return { id: reportId, status: input.status, reviewerId: adminId };
 }
 
+/**
+ * Demand per company, keyed by the trimmed lower-cased name: how many distinct
+ * seekers asked. Rows are per seeker, but a seeker whose suggestion a reviewer
+ * dismissed may vote again, so rows are counted by person, not by row.
+ */
+export function countCompanyDemand(rows: ReadonlyArray<{ companyName: string; submitterUserId: number }>): Map<string, number> {
+  const counted = new Set<string>();
+  const votes = new Map<string, number>();
+  for (const row of rows) {
+    const key = row.companyName.trim().toLowerCase();
+    if (!key) continue;
+    const seeker = `${key} ${row.submitterUserId}`;
+    if (counted.has(seeker)) continue;
+    counted.add(seeker);
+    votes.set(key, (votes.get(key) ?? 0) + 1);
+  }
+  return votes;
+}
+
 export async function listCompanySuggestionsAdmin(limit = 100) {
   const db = await getDb(); if (!db) return [];
-  return db.select({ id: companySuggestions.id, submitterUserId: companySuggestions.submitterUserId, companyName: companySuggestions.companyName, website: companySuggestions.website, role: companySuggestions.role, status: companySuggestions.status, createdAt: companySuggestions.createdAt }).from(companySuggestions).orderBy(desc(companySuggestions.createdAt)).limit(Math.min(250, Math.max(1, limit)));
+  const rows = await db.select({ id: companySuggestions.id, submitterUserId: companySuggestions.submitterUserId, companyName: companySuggestions.companyName, website: companySuggestions.website, jobFunction: companySuggestions.jobFunction, role: companySuggestions.role, status: companySuggestions.status, createdAt: companySuggestions.createdAt }).from(companySuggestions).orderBy(desc(companySuggestions.createdAt)).limit(Math.min(250, Math.max(1, limit)));
+  // Demand counts every seeker, including ones older than this page, so the rows
+  // are read again unbounded; the table is reviewer-sized, not user-sized.
+  const votes = countCompanyDemand(await db.select({ companyName: companySuggestions.companyName, submitterUserId: companySuggestions.submitterUserId }).from(companySuggestions));
+  return rows.map(row => ({ ...row, jobFunction: parseJobFunction(row.jobFunction), votes: votes.get(row.companyName.trim().toLowerCase()) ?? 0 }));
 }
 
 export async function reviewCompanySuggestion(adminId: number, suggestionId: number, input: { status?: unknown; note?: unknown }, notify?: (userId: number, title: string, body: string) => Promise<unknown>) {
@@ -2862,7 +2901,9 @@ async function auditLedgerWallets(db: LedgerAuditDb, wallets: LedgerAuditWallet[
   const mismatches:Array<Record<string,unknown>>=[];const integrity:Array<Record<string,unknown>>=[];
   for(const wallet of wallets){const rows=await db.select().from(tokenTransactions).where(and(eq(tokenTransactions.userId,wallet.userId),eq(tokenTransactions.role,wallet.role))).orderBy(desc(tokenTransactions.id));
     const purchased=rows.filter(row=>row.source==="purchased_balance"||(["purchase","admin_adjustment","company_coverage_reward","personal_referral_reward","invite_reward_granted"].includes(row.kind)&&!row.source)).reduce((sum,row)=>sum+row.tokenCount,0);
-    if(purchased!==wallet.balance)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:"purchased_balance",expected:purchased,actual:wallet.balance,delta:wallet.balance-purchased,lastTransactionId:rows[0]?.id??null,referenceId:rows[0]?.referenceId??null});
+    // Rows written before the bucket ledger (a spend with no source) cannot say which bucket they drew from, so such a wallet has no purchased-bucket evidence to compare. Cycle and grant buckets still reconcile below.
+    const hasLegacySpend=rows.some(row=>!row.source&&(row.kind==="direct_request"||row.kind==="credit_spend"));
+    if(!hasLegacySpend&&purchased!==wallet.balance)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:"purchased_balance",expected:purchased,actual:wallet.balance,delta:wallet.balance-purchased,lastTransactionId:rows[0]?.id??null,referenceId:rows[0]?.referenceId??null});
     if(wallet.balance<0||wallet.monthlyCreditsRemaining<0)integrity.push({type:"negative_bucket",userId:wallet.userId,role:wallet.role,balance:wallet.balance,monthlyCreditsRemaining:wallet.monthlyCreditsRemaining});
     // Kit ledger: the cycle bucket reconciles against its own cycle's rows once that cycle was opened by a plan_grant row
     // (a cycle that began before the ledger has no opening row), and every grant against the rows that name it.
@@ -3294,6 +3335,12 @@ export async function getAccessibleReferralAttachment(userId: number, attachment
   if (attachment.ownerId === userId) return attachment;
   const active = isReferrerDocumentAccessActive({ actorUserId: userId, referrerId: attachment.referrerId, requestStatus, passedByActor: (passedByActor ?? null) !== null, grant: grantFromJoin({ grantId, grantRevokedAt, grantExpiresAt }), acceptedByActorAt, now: new Date() });
   return active ? attachment : undefined;
+}
+
+/** The seeker's own uploaded resume documents, newest first (Skippy's "use a saved resume" list). */
+export async function listOwnedResumeAttachments(userId: number, limit = 10) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.ownerId, userId)).orderBy(desc(referralAttachments.createdAt)).limit(limit);
 }
 
 export async function getOwnedResumeAttachmentForPitch(userId: number, attachmentId: number) {
