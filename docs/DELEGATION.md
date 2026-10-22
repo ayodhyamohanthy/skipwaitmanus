@@ -63,8 +63,9 @@ handles real money: a mistake reaches real users.
    - Tier 2 or 3: push the branch, open a pull request and wait until
      every check on that exact commit is green. Then confirm main's latest
      CI is green and fast-forward main to that exact commit
-     (`git push origin <sha>:main`; never the merge button or squash,
-     D-134 (6)). If that push is refused because main moved, merge the
+     (`git push origin <sha>:main`; GitHub's merge-commit button is also
+     safe, since only an up-to-date branch can merge; never squash or
+     rebase-merge, D-134 (6)). If that push is refused because main moved, merge the
      latest origin/main, re-run the gate, wait for every check on the new
      commit and fast-forward again; never force-push. Watch main's CI and
      both deploys to the end, run the live check, set your status line to

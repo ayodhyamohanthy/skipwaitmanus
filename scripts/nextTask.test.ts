@@ -603,9 +603,10 @@ describe("markers and printed steps", () => {
     const land1 = renderPick({ kind: "land", task: task("M", { tier: 1 }), work: "agent/queue/m", pr: "https://github.com/o/r/pull/9", lock: "agent/review/m", tier1: true, from: "Mistral · r1" }, ctx);
     expect(land1).toContain("LAND M");
     expect(land1).toContain("re-run the full gate");
-    // D-134: landing is a fast-forward to the exact green commit, never the merge button, with a step for a refused push.
+    // D-134 (6): landing is a fast-forward to the exact green commit (the merge button only for an up-to-date branch), never squash, with a step for a refused push.
     expect(land1).toContain("git push origin <sha>:main");
     expect(land1).toContain("If that push is refused because main moved");
+    expect(land1).toContain("never squash or rebase-merge");
     const fixMain = renderPick({ kind: "fix-main", sha: "c".repeat(40), url: "https://ci/run/2", lock: "agent/queue/fix-main-cccccccc", parent: null, from: null }, ctx);
     expect(fixMain).toContain("git push origin <sha>:main");
     expect(fixMain).not.toContain("Then merge it");
