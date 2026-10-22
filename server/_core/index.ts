@@ -1,3 +1,4 @@
+import { registerCompanyClaimRoutes } from "../companyClaimRoutes";
 import { initServerSentry, captureServerError, flushServerSentry, isServerSentryActive, scrubSentryPath, sentryErrorMiddleware } from "../sentry";
 import { registerJobLinkPreviewRoutes } from "../jobLinkPreviewRoutes";
 
@@ -47,6 +48,7 @@ import { registerCompanyDirectoryRoutes } from "../companyDirectoryRoutes";
 import { registerSitemapRoutes } from "../sitemapRoutes";
 import { listCompanyDirectory } from "../companyDirectory";
 import { registerScheduledJobsRoutes } from "../scheduledJobsRoutes";
+import { createSkippieAdminDeps } from "../skippieAdminDeps";
 import { registerEmployerRoutes } from "../employerRoutes";
 import { employerSponsorshipEnabled } from "../billingSettings";
 import { registerDmRoutes } from "../dmRoutes";
@@ -212,10 +214,11 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Server-owned company directory: public /api/companies reads and the
   // admin-gated /api/admin/companies writes (server/companyDirectoryRoutes.ts).
   registerCompanyDirectoryRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  registerCompanyClaimRoutes(app, { resolveIdentity });
   // skipwait.me/sitemap.xml routes to the Worker (wrangler routes), which
   // forwards it here: the sitemap's live reads come straight from the DB.
   registerSitemapRoutes(app, { listJobs: input => db.listJobs(input), listCompanySlugs: async () => (await listCompanyDirectory()).companies });
-  registerScheduledJobsRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity }); // Worker cron tick + admin job status
+  registerScheduledJobsRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, skippie: { enabled: () => process.env.SKIPPIE_ADMIN_ENABLED === "true", deps: () => createSkippieAdminDeps() } }); // Worker cron tick + admin job status
   // B2B monetization surface: employer accounts, unlock credits, anonymized
   // talent discovery, sponsored roles, and contextual partner modules.
   registerEmployerRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, isEmployer: db.isEmployer, ensureEmployerAccount: db.ensureEmployerAccount, getEmployerAccount: db.getEmployerAccount, listAnonymizedSeekerProfiles: db.listAnonymizedSeekerProfiles, resolveEmployerTalentRef: db.resolveEmployerTalentRef, spendEmployerUnlockCredit: db.spendEmployerUnlockCredit, getUnlockedProfile: db.getUnlockedProfile, requestEmployerTalentIntro: db.requestEmployerTalentIntro, createNotification: db.createNotification, sponsorCompanyOpportunity: db.sponsorCompanyOpportunity, employerSponsorshipEnabled: () => employerSponsorshipEnabled(), endCompanyOpportunitySponsorship: db.endCompanyOpportunitySponsorship, listSponsoredCompanyOpportunities: db.listSponsoredCompanyOpportunities, listEmployerOpportunities: db.listEmployerOpportunities, listPartnerModules: db.listPartnerModules, recordPartnerImpression: db.recordPartnerImpression, recordPartnerClick: db.recordPartnerClick, createPartnerModule: db.createPartnerModule, updatePartnerModule: db.updatePartnerModule, listAllPartnerModules: db.listAllPartnerModules, listEmployerSpendHistory: db.listEmployerSpendHistory, prepareUnlockCreditCheckout: db.prepareUnlockCreditCheckout, bindUnlockCreditProviderOrder: db.bindUnlockCreditProviderOrder, markUnlockCheckoutRequiresReview: db.markUnlockCheckoutRequiresReview, findRazorpayOrdersByReceipt, createRazorpayUnlockOrder: razorpayConfigured() ? razorpayOrderInPaise : undefined });

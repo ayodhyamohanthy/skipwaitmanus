@@ -10,6 +10,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { GoalAppShell, GoalButton, GoalErrorState, GoalMiniStepper, GoalNum, GoalStatus } from "@/components/goal";
+import { REFERRED_DEADLINE_ENABLED } from "@shared/referral";
 import { askView } from "@/components/requests/askView";
 import { SEEKER_MILESTONES } from "@/components/thread/ThreadDecisionPanels";
 import { isUnknownCompany } from "@shared/companies";
@@ -129,7 +130,7 @@ export function SeekerConversation(props: Props) {
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {canWithdraw && confirm !== "withdraw" ? <GoalButton variant="ghost" flush size="sm" onClick={() => { setActionError(""); setConfirm("withdraw"); }}>Withdraw ask</GoalButton> : null}
-          {request.status === "approved" && confirm !== "email" ? <GoalButton variant="outline" size="sm" onClick={() => { setActionError(""); setConfirm("email"); }}>I got the referral email</GoalButton> : null}
+          {request.status === "approved" && REFERRED_DEADLINE_ENABLED && confirm !== "email" ? <GoalButton variant="outline" size="sm" onClick={() => { setActionError(""); setConfirm("email"); }}>I got the referral email</GoalButton> : null}
           {closedFor ? <GoalButton variant="outline" size="sm" asChild><Link href="/explore">Find another referrer</Link></GoalButton> : null}
           {stage === "Hired" ? <Link href="/landed" className="text-g-meta text-g-ink-2 underline underline-offset-2">Open the landed journey</Link> : null}
           {nextMilestones.map(m => (
