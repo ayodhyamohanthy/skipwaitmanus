@@ -78,7 +78,7 @@ Related: level pricing (D-110) is direction + draft-scope tapback only - flag-of
 | Credit pack ladder 1/5/10/25/50 (₹99/$1 per credit) + D-110 level-denominated free credits | #380 | draft, flags OFF; D-110 evidence phonemsg-01M5E5BK5611HF5YHCDXKC3JZF | left the queue (D-135 (5)): D-132's credit rungs replace it; the owner closes #380 |
 | Referrer impact card (slice C, aggregates only) | #382 | draft, flags OFF | QA preview |
 | Goal kit type scale fix (shared) | #379 | draft | review |
-| D-035 pass reason decides the credit | #357 | draft, Tier 1 stacked on #353 | Tier 1 review |
+| D-035 pass reason decides the credit | #471 | built and gated, landed 01:40 IST and reverted the same night (#486, D-147); branch `agent/fo/d035-pass-credit` holds the work | Tier 1 review still owed; re-land waits on the founder's word, behind an off flag |
 | D-038-A/B lapse rules + timers job | #353 | draft, Tier 1 | #372 landed its reconcile; remainder in review |
 | Seeker passwords (task 2, D-049/D-078) | #324 | draft, Tier 1, review passed | landing blocked by D-080 + WorkOS dashboard steps |
 

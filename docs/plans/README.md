@@ -50,7 +50,7 @@ The goal-UI rollout runs as one foundation chain (lane `design-core`) and then u
 | 3.0 | D-079-card-validation-free-credits | [D-079-card-validation-free-credits.md](D-079-card-validation-free-credits.md) | 1 | M | ready; claimed by Instinct (Oct 19) | — | nothing that touches the credit-cycle functions (3.1-3.3 included) |
 | 3.1 | D-038 slice A: claim and allocation lapse, 5-claim cap | [D-038-A-lapses.md](D-038-A-lapses.md) | 1 | M | done — `907bf2cd` (2026-10-22): reconciled by [D-038-reconcile.md](D-038-reconcile.md) (D-103); PR #353 passed review; `agent/opencode/d038-a-lapses` never merged | 0.1 live |
 | 3.2 | D-038 slice B: referred deadline, step back, seeker confirmation | [D-038-B-referred-deadline.md](D-038-B-referred-deadline.md) | 1 | M | done — `907bf2cd` (2026-10-22): reviewed inside [D-038-reconcile.md](D-038-reconcile.md); part B on at landing (D-103) | 3.1 live |
-| 3.3 | D-035 + D-052: the pass reason decides the credit | [D-035-pass-reason-credit.md](D-035-pass-reason-credit.md) | 1 | M | ready | 3.2 live |
+| 3.3 | D-035 + D-052: the pass reason decides the credit | [D-035-pass-reason-credit.md](D-035-pass-reason-credit.md) | 1 | M | built — landed #471 and reverted the same night (#486, D-147); re-land behind an off flag waits on the founder's word; review still owed | 3.2 live |
 | 3.4 | D-035 + D-066(1): Send again | D-035-send-again.md | 1 | M | architect (after 3.3) | 3.3 live |
 
 ## Foundation, truth and hygiene (any time, beside any lane)
