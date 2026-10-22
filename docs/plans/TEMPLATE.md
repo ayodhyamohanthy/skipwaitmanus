@@ -44,15 +44,18 @@ Each case with the required handling (lock order, idempotency key, fail-open or 
 - [ ] Every §7 test was red first and is green now; every control is green.
 - [ ] Gate on your commit merged with the latest `origin/main` (commands in `docs/BRIEF.md`, "How to ship").
 - [ ] Tier 1: independent review passed (`docs/DELEGATION.md` §6); findings fixed red-first.
-- [ ] Docs updated in the same push (D-068): the §3b row, the `AGENTS.md` living-map row if routes or modules changed, `docs/DECISIONS.md` sync cell if a decision is now implemented.
+- [ ] Docs updated in the same push (D-068): your status line (the §3b row, or your line in this packet's Status section when several tasks share the row, D-134), the `AGENTS.md` living-map row if routes or modules changed, `docs/DECISIONS.md` sync cell if a decision is now implemented.
 - [ ] Pushed, live check done (API: `verify-live-release.sh` prints CONVERGED; web: `git-commit` meta), screens checked at 1280 and 390 if UI changed.
-- [ ] §3b row set to `done — <sha>` with the evidence block (`docs/DELEGATION.md` §5).
+- [ ] Your status line set to `done — <sha>` with the evidence block (`docs/DELEGATION.md` §5).
 
 ## 10. Review checklist (for the independent reviewer)
 Packet-specific questions the reviewer must answer with evidence, on top of the generic list in `docs/DELEGATION.md` §6.
 
 ## 11. Stop and ask if
-Concrete triggers: a cited function no longer matches; a test you were given fails for a reason other than the bug; you need a file outside §5; a rule in §4 seems to contradict the register; you would need a migration, dependency or env key the packet does not name. Write the question in the §3b row, push your branch, end the session.
+Concrete triggers: a cited function no longer matches; a test you were given fails for a reason other than the bug; you need a file outside §5; a rule in §4 seems to contradict the register; you would need a migration, dependency or env key the packet does not name. Write the question in your status line, push your branch, end the session.
 
 ## 12. Owner questions
 Only real ambiguities, each with a recommended default and a 1–10 rating. Until answered, implement the default only if this section says so.
+
+## Status
+When several tasks share one §3b row, each writes one line here, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live, and never edits the shared row (D-134).

@@ -2461,6 +2461,33 @@ export async function listJobSeekerCompanyReferrals(userId: number) {
 }
 
 /**
+ * Sample-filled empty states (owner override, Oct 21 11:35 PM): durable "has
+ * this seeker EVER sent an ask" - true even when every ask expired or was
+ * withdrawn, so a returning user never sees first-timer sample rows. Fails
+ * CLOSED (true) when the DB is unreachable: never show fake content on doubt.
+ */
+export async function hasEverCreatedReferralRequest(userId: number): Promise<boolean> {
+  const db = await getDb(); if (!db) return true;
+  const row = await db.select({ id: referralRequests.id }).from(referralRequests).where(eq(referralRequests.jobSeekerId, userId)).limit(1);
+  return row.length > 0;
+}
+
+/**
+ * Sample-filled empty states (owner override, Oct 21 11:35 PM): durable "has
+ * this referrer EVER acted on an ask" - claimed (referralRequests.referrerId)
+ * or passed (referralRequestPasses), so a returning referrer whose queue is
+ * simply empty never sees first-timer sample rows. Fails CLOSED (true) when
+ * the DB is unreachable: never show fake content on doubt.
+ */
+export async function hasEverReviewedReferral(userId: number): Promise<boolean> {
+  const db = await getDb(); if (!db) return true;
+  const claimed = await db.select({ id: referralRequests.id }).from(referralRequests).where(eq(referralRequests.referrerId, userId)).limit(1);
+  if (claimed.length > 0) return true;
+  const passed = await db.select({ id: referralRequestPasses.id }).from(referralRequestPasses).where(eq(referralRequestPasses.referrerId, userId)).limit(1);
+  return passed.length > 0;
+}
+
+/**
  * D-034/D-047/D-061/D-062 coverage delivery. A waiting ask (created while no
  * available referrer existed) gets its first visibility here: the credit is
  * spent under one idempotent key per ask (ask-delivery:<id>), the ask is

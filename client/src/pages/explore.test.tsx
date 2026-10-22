@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import type { PublicOpportunityPost } from "@shared/companyOpportunities";
-import { TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
-import { ASK_PREFILL_KEY } from "@/lib/askPrefill";
+
+
 import Explore from "./Explore";
 import ExploreCompany from "./ExploreCompany";
 
@@ -100,7 +100,7 @@ describe("Find a referral directory", () => {
     renderWithQuery(<Explore />);
     expect(await screen.findByText("Where do you want a referral?")).toBeTruthy();
     expect(screen.getByTestId("goal-directory-summary").textContent).toMatch(/^5 companies\s*·\s*5 open to requests$/);
-    expect(screen.getAllByRole("button", { name: /(open to requests|not open yet)$/ }).map(row => row.getAttribute("aria-label"))).toEqual(rowNames);
+    expect(screen.getAllByRole("link", { name: /(open to requests|not open yet)$/ }).map(row => row.getAttribute("aria-label"))).toEqual(rowNames);
     expect(screen.getAllByTestId("goal-availability").map(dot => dot.textContent)).toEqual(Array(5).fill("Open to requests"));
     // Never the comp's sample company, and no preview state.
     expect(screen.queryByText("Kestrel Pay")).toBeNull();
@@ -114,7 +114,7 @@ describe("Find a referral directory", () => {
     renderWithQuery(<Explore />);
     expect((await screen.findByTestId("goal-directory-summary")).textContent).toMatch(/^5 companies\s*·\s*2 open to requests$/);
     expect(screen.getAllByTestId("goal-availability").map(dot => dot.textContent).filter(text => text === "Not open yet")).toHaveLength(3);
-    fireEvent.click(screen.getByRole("button", { name: "Merkle, not open yet" }));
+    fireEvent.click(screen.getByRole("link", { name: "Merkle, not open yet" }));
     const drawer = await screen.findByTestId("goal-drawer");
     expect(within(drawer).getByText("No verified employee at Merkle can take a new ask right now.")).toBeTruthy();
     expect(within(drawer).getByText("An alert is not a referral.")).toBeTruthy();
@@ -129,7 +129,7 @@ describe("Find a referral directory", () => {
     const search = screen.getByRole("searchbox", { name: "Search companies" });
     fireEvent.change(search, { target: { value: "tcs" } });
     expect(screen.getByTestId("goal-directory-summary").textContent).toMatch(/^1 company\s*·\s*1 open to requests$/);
-    expect(screen.queryByRole("button", { name: "Wipro, open to requests" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Wipro, open to requests" })).toBeNull();
     fireEvent.change(search, { target: { value: "" } });
     expect(screen.getAllByTestId("goal-filter-chip")).toHaveLength(12);
     const product = screen.getByRole("button", { name: "Product", pressed: false });
@@ -165,7 +165,7 @@ describe("Find a referral directory", () => {
     fireEvent.change(screen.getByRole("searchbox", { name: "Search companies" }), { target: { value: "zzz-no-such-company" } });
     expect(screen.getByText("No matching companies yet")).toBeTruthy();
     expect(screen.getByText("Try a wider search. If your company is missing, request it and we’ll open the door.")).toBeTruthy();
-    expect(screen.queryAllByRole("button", { name: /open to requests$/ })).toHaveLength(0);
+    expect(screen.queryAllByRole("link", { name: /open to requests$/ })).toHaveLength(0);
     expect(screen.getByRole("link", { name: "Request a company" }).getAttribute("href")).toBe("/invite");
     fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(screen.getByTestId("goal-directory-summary").textContent).toMatch(/^5 companies\s*·\s*5 open to requests$/);
@@ -194,7 +194,7 @@ describe("Find a referral directory", () => {
     stubDirectory();
     renderWithQuery(<Explore />);
     await screen.findByTestId("goal-directory-summary");
-    expect(screen.getByRole("button", { name: "Wipro, open to requests" }).getAttribute("aria-current")).toBe("true");
+    expect(screen.getByRole("link", { name: "Wipro, open to requests" }).getAttribute("aria-current")).toBe("true");
     const drawer = await screen.findByTestId("goal-drawer");
     expect(within(drawer).getByRole("heading", { name: "Ask for a referral" })).toBeTruthy();
     expect(within(drawer).getByText("Wipro")).toBeTruthy();
@@ -203,8 +203,12 @@ describe("Find a referral directory", () => {
     expect(go).toHaveBeenCalledWith("/explore", { replace: true });
   });
 });
+const heroName = async () => {
+  await waitFor(() => expect(document.querySelector('[data-skipwait-screen="explore-company"]')).toBeTruthy());
+  return within(document.querySelector('[data-skipwait-screen="explore-company"]') as HTMLElement).getByRole("heading", { name: "Wipro" });
+};
 
-describe("Explore company detail", () => {
+describe("Explore company door (goal, W2)", () => {
   it("renders the app 404 for a company that is not on skipwait.me", async () => {
     routeState.slug = "no-such-company";
     stubDirectory();
@@ -214,26 +218,43 @@ describe("Explore company detail", () => {
     expect(screen.queryByRole("button", { name: /Ask for a referral/ })).toBeNull();
   });
 
-  it("renders the kit door from GET /api/companies/:slug with an honest empty open-roles state", async () => {
+  it("renders the goal door from GET /api/companies/:slug: availability, goal line, one black commit, cost sentence", async () => {
     const fetchMock = stubDirectory();
     renderWithQuery(<ExploreCompany />);
-    expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe("Wipro.");
-    expect(screen.getByText("PEOPLE OPEN TO REFERRAL REQUESTS", { exact: false }).textContent?.trim()).toBe("PEOPLE OPEN TO REFERRAL REQUESTS");
+    expect(await heroName()).toBeTruthy();
+    expect(screen.getByText("People open to referral requests")).toBeTruthy();
+    expect(screen.getByText("Ask a verified employee. Your name and resume stay private until they accept.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ask for a referral" }).getAttribute("data-g-primary")).toBe("true");
+    expect(screen.getByText("3 free credits every month; extra asks use credits.")).toBeTruthy();
+    // Company mark is initials, never a logo; functions join the hero, not the old kit meta.
+    expect(screen.getByText("W", { exact: true })).toBeTruthy();
     expect(screen.getByText(/Find a role on the company’s own careers site/)).toBeTruthy();
-    expect(screen.getByText("OPEN ROLES FROM VERIFIED EMPLOYEES")).toBeTruthy();
-    expect(await screen.findByText("No open roles from employees yet.")).toBeTruthy();
-    expect(screen.queryByText("Product Designer")).toBeNull();
-    expect(screen.queryByText(/DESIGN PREVIEW|Preview state/i)).toBeNull();
+    expect(screen.getByRole("heading", { name: "Open roles from verified employees" })).toBeTruthy();
+    expect(await screen.findByText(/No open roles from employees yet/)).toBeTruthy();
+    expect(screen.getByText("What is shared, and when?")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Read safety guide/ }).getAttribute("href")).toBe("/safety");
     expect(screen.getByRole("link", { name: /All companies/ }).getAttribute("href")).toBe("/explore");
-    expect(paths(fetchMock)).toEqual(["/api/companies/wipro", "/api/companies/wipro/opportunities"]);
+    // Numbered ask-quality points, mono, verbatim copy.
+    expect(screen.getByText("01")).toBeTruthy();
+    expect(screen.getByText("Use the exact job link")).toBeTruthy();
+    expect(screen.getByText("Make your fit easy to see")).toBeTruthy();
+    expect(screen.getByText("Respect the decision")).toBeTruthy();
+    // No kit chrome survives.
+    expect(document.querySelector(".company-page, .company-hero, .privacy-preview")).toBeNull();
+    expect(companyPaths(fetchMock)).toEqual(["/api/companies/wipro", "/api/companies/wipro/opportunities"]);
   });
 
-  it("drops the availability pill when nobody at the company is open", async () => {
+  it("not open: ring dot with Not open yet, a quiet Alert me link, and a ghost Ask anyway that states the wait honestly", async () => {
     stubDirectory(directoryOf([company("wipro", false)]));
     renderWithQuery(<ExploreCompany />);
-    expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe("Wipro.");
-    expect(screen.queryByText("PEOPLE OPEN TO REFERRAL REQUESTS", { exact: false })).toBeNull();
-    expect(screen.getByRole("link", { name: /Get told when a door opens/ }).getAttribute("href")).toBe("/alerts");
+    expect(await heroName()).toBeTruthy();
+    expect(screen.queryByText("People open to referral requests")).toBeNull();
+    expect(screen.getByText("Not open yet")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Alert me" }).getAttribute("href")).toBe("/alerts");
+    const commit = screen.getByRole("button", { name: "Ask anyway" });
+    expect(commit.getAttribute("data-g-primary")).toBeNull();
+    expect(screen.getByText(/waits free until one can/)).toBeTruthy();
+    expect(screen.queryByText(/3 free credits every month/)).toBeNull();
   });
 
   it("explains a failed load with Try again instead of a 404", async () => {
@@ -245,10 +266,10 @@ describe("Explore company detail", () => {
     expect(screen.queryByRole("heading", { name: "This door doesn't lead anywhere." })).toBeNull();
     fail = false;
     fireEvent.click(within(alert).getByRole("button", { name: /Try again/ }));
-    expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe("Wipro.");
+    expect(await heroName()).toBeTruthy();
   });
 
-  it("titles the door with the kit head for that company", async () => {
+  it("titles the door with the company name for SEO", async () => {
     stubDirectory();
     renderWithQuery(<ExploreCompany />);
     await screen.findByRole("heading", { level: 1 });
@@ -256,27 +277,24 @@ describe("Explore company detail", () => {
     expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Request a private introduction to someone at Wipro. 3 free credits every month; extra asks use credits.");
     expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore/wipro");
   });
-});
 
-describe("Explore company open roles", () => {
-  it("renders the posted roles from the company openings route with honest posters and ask links", async () => {
-    const fetchMock = stubDirectory(ALL_OPEN, [
+  it("renders open roles as rows with mono posted dates, honest posters and /ask links", async () => {
+    stubDirectory(ALL_OPEN, [
       post({ id: 91, poster: { kind: "firstName", firstName: "Asha" } }),
       post({ id: 92, kind: "walk_in", roleTitle: "Store Associate", targetRoleUrl: null, location: "Pune", walkInAt: "2026-10-22T05:30:00.000Z", walkInEndsAt: "2026-10-22T09:30:00.000Z", postedAt: "2026-10-12T09:00:00.000Z" }),
     ]);
     renderWithQuery(<ExploreCompany />);
-    expect(await screen.findByRole("heading", { name: "Product Designer" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Store Associate" })).toBeTruthy();
-    expect(screen.getByText("Posted by Asha")).toBeTruthy();
-    expect(screen.getByText("Posted by a verified employee")).toBeTruthy();
-    expect(screen.getByText(/^Walk-in · /)).toBeTruthy();
-    expect(screen.getByText("Posted Oct 10")).toBeTruthy();
+    expect(await screen.findByText("Product Designer")).toBeTruthy();
+    expect(screen.getByText("Store Associate")).toBeTruthy();
+    expect(screen.getByText(/Posted by Asha/)).toBeTruthy();
+    expect(screen.getByText(/Posted by a verified employee/)).toBeTruthy();
+    expect(screen.getByText(/Walk-in · /)).toBeTruthy();
+    expect(screen.getByText(/Posted Oct 10/)).toBeTruthy();
     const links = screen.getAllByRole("link", { name: /Ask for a referral/ });
     expect(links.map(link => link.getAttribute("href"))).toEqual([
       "/ask?post=91&job=https%3A%2F%2Fcareers.wipro.com%2Fjobs%2F1",
       "/ask?post=92",
     ]);
-    expect(paths(fetchMock)).toEqual(["/api/companies/wipro", "/api/companies/wipro/opportunities"]);
   });
 
   it("shows a failed openings read as retryable and never blocks the rest of the door", async () => {
@@ -288,99 +306,23 @@ describe("Explore company open roles", () => {
       return json(404, { error: "not found" });
     }));
     renderWithQuery(<ExploreCompany />);
-    expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe("Wipro.");
+    expect(await heroName()).toBeTruthy();
     const alert = await screen.findByRole("alert", undefined, { timeout: 5000 });
     expect(alert.textContent).toContain("We couldn’t load open roles.");
     expect(screen.getByText(/Find a role on the company’s own careers site/)).toBeTruthy();
     fail = false;
     fireEvent.click(within(alert).getByRole("button", { name: /Try again/ }));
-    expect(await screen.findByRole("heading", { name: "Product Designer" })).toBeTruthy();
+    expect(await screen.findByText("Product Designer")).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
   });
-});
 
-describe("Explore company request dialog", () => {
-  let fetchMock: ReturnType<typeof stubDirectory>;
-  beforeEach(() => { fetchMock = stubDirectory(); });
-  const openDoor = async () => { renderWithQuery(<ExploreCompany />); fireEvent.click(await screen.findByRole("button", { name: /Ask for a referral/ })); };
-
-  it("walks the kit steps and hands the draft to the real ask composer without sending", async () => {
-    await openDoor();
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("REQUEST TO WIPRO")).toBeTruthy();
-    expect(within(dialog).getByRole("heading", { name: "Role" })).toBeTruthy();
-    expect(within(dialog).getByLabelText("Step 1 of 4")).toBeTruthy();
-    expect(within(dialog).queryByText(/DESIGN PREVIEW/)).toBeNull();
-
-    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
-    expect(within(dialog).getByRole("alert").textContent).toBe(TARGET_ROLE_URL_ERROR);
-    expect(within(dialog).getByRole("heading", { name: "Role" })).toBeTruthy();
-
-    fireEvent.change(within(dialog).getByLabelText("Job posting link"), { target: { value: " https://careers.wipro.com/jobs/1 " } });
-    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
-    expect(within(dialog).getByRole("heading", { name: "Your fit" })).toBeTruthy();
-    fireEvent.change(within(dialog).getByLabelText("Why are you a strong fit?"), { target: { value: "Shipped a design system used by 40 teams." } });
-    expect(within(dialog).getByText(`${"Shipped a design system used by 40 teams.".length} / 600`)).toBeTruthy();
-    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
-    expect(within(dialog).getByRole("heading", { name: "Privacy" })).toBeTruthy();
-    expect(within(dialog).getByText("You stay in control.")).toBeTruthy();
-    fireEvent.click(within(dialog).getByRole("button", { name: /Back/ }));
-    expect(within(dialog).getByRole("heading", { name: "Your fit" })).toBeTruthy();
-    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
-    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
-    expect(within(dialog).getByRole("heading", { name: "Review" })).toBeTruthy();
-    expect(within(dialog).getByText("Job link + fit note + privacy choices")).toBeTruthy();
-    expect(within(dialog).getByText("Ready")).toBeTruthy();
-
-    fireEvent.click(within(dialog).getByRole("button", { name: /Preview request/ }));
-    expect(await within(dialog).findByRole("heading", { name: "Your request is ready." })).toBeTruthy();
-    expect(go).not.toHaveBeenCalled();
-    const saved = JSON.parse(sessionStorage.getItem(ASK_PREFILL_KEY) ?? "null");
-    expect(saved).toMatchObject({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1", note: "Shipped a design system used by 40 teams." });
-    // Nothing is sent as an ask: the door read, the openings read and the draft save, nothing else.
-    expect(paths(fetchMock)).toEqual(["/api/companies/wipro", "/api/companies/wipro/opportunities", "/api/ask-drafts"]);
-    fireEvent.click(within(dialog).getByRole("link", { name: /Write a full ask/ }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  });
-
-  it("holds Your fit until there is a note, so Review is always complete", async () => {
-    await openDoor();
-    const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("Job posting link"), { target: { value: "https://careers.wipro.com/jobs/1" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
-    const fit = within(dialog).getByLabelText("Why are you a strong fit?");
-    expect(within(dialog).queryByRole("alert")).toBeNull();
-    fireEvent.change(fit, { target: { value: "   " } });
-    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
-    expect(within(dialog).getByRole("heading", { name: "Your fit" })).toBeTruthy();
-    expect(within(dialog).getByRole("alert").textContent).toBe("Add a short note on why you’re a strong fit.");
-    expect(fit.getAttribute("aria-invalid")).toBe("true");
-    fireEvent.change(fit, { target: { value: "Led checkout redesign." } });
-    expect(within(dialog).queryByRole("alert")).toBeNull();
-    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
-    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
-    expect(within(dialog).getByRole("heading", { name: "Review" })).toBeTruthy();
-    expect(within(dialog).getByText("Job link + fit note + privacy choices")).toBeTruthy();
-    expect(within(dialog).queryByText("Draft")).toBeNull();
-    expect(go).not.toHaveBeenCalled();
-    expect(sessionStorage.getItem(ASK_PREFILL_KEY)).toBeNull();
-  });
-
-  it("starts every new ask empty at Role", async () => {
-    await openDoor();
-    let dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("Job posting link"), { target: { value: "https://careers.wipro.com/jobs/1" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
-    fireEvent.change(within(dialog).getByLabelText("Why are you a strong fit?"), { target: { value: "Led checkout redesign." } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Close request" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-
-    fireEvent.click(screen.getByRole("button", { name: /Ask for a referral/ }));
-    dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("heading", { name: "Role" })).toBeTruthy();
-    expect((within(dialog).getByLabelText("Job posting link") as HTMLInputElement).value).toBe("");
-    fireEvent.change(within(dialog).getByLabelText("Job posting link"), { target: { value: "https://careers.wipro.com/jobs/2" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
-    expect((within(dialog).getByLabelText("Why are you a strong fit?") as HTMLTextAreaElement).value).toBe("");
+  it("the black commit opens the W1 ask drawer in place with the saved draft prefilled", async () => {
+    stubDirectory();
+    renderWithQuery(<ExploreCompany />);
+    fireEvent.click(await screen.findByRole("button", { name: "Ask for a referral" }));
+    const drawer = await screen.findByTestId("goal-drawer");
+    expect(within(drawer).getByText("Wipro")).toBeTruthy();
+    // The remote draft for wipro fills the job link; nothing is sent.
+    await waitFor(() => expect((within(drawer).getByLabelText(/Job link/) as HTMLInputElement).value).toBe("https://careers.wipro.com/jobs/1"));
   });
 });

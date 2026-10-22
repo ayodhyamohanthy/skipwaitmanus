@@ -71,7 +71,7 @@ export default {
     // forwarded host headers: callers can supply them, while request.url is set
     // by Cloudflare from the matched route.
     const url = new URL(request.url);
-    if (url.protocol !== "https:" || url.hostname !== "skipwait.me" || !url.pathname.startsWith("/api/")) {
+    if (url.protocol !== "https:" || url.hostname !== "skipwait.me" || !(url.pathname.startsWith("/api/") || url.pathname === "/sitemap.xml")) {
       return new Response("Not Found", { status: 404, headers: { "cache-control": "no-store" } });
     }
     // Internal routes (the scheduled-jobs tick) are reachable only from
