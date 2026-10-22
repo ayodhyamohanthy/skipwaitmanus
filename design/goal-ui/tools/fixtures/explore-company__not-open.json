@@ -69,6 +69,17 @@
       "body": {
         "opportunities": []
       }
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/wipro/response-signal",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "signal": {
+          "state": "insufficient"
+        }
+      }
     }
   ]
 }

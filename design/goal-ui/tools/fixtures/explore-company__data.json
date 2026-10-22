@@ -103,6 +103,20 @@
           }
         ]
       }
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/wipro/response-signal",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "signal": {
+          "state": "shown",
+          "usualFirstReplyDays": 3,
+          "answeredThisMonth": 9,
+          "referrersInside": 12
+        }
+      }
     }
   ]
 }

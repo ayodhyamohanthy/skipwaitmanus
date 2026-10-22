@@ -7,12 +7,11 @@
 // ghost "Ask anyway" and says the wait honestly. Every number from
 // /api/companies/:slug, /api/companies/:slug/opportunities and the live send.
 import { ArrowLeft, ArrowRight, CalendarDays, LockKeyhole } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { Link, useRoute } from "wouter";
 import {
   GoalAppShell,
   GoalButton,
-  GoalErrorState,
   GoalNum,
   GoalSkeletonRows,
 } from "@/components/goal";
@@ -50,7 +49,11 @@ export default function ExploreCompany() {
       <GoalAppShell active="find" pageTitle="Find a referral">
         <div data-skipwait-screen="explore-company-error" className="max-w-[696px] px-8 pt-10 pb-8 max-gdesk:px-4 max-gdesk:pt-6">
           <BackLink />
-          <GoalErrorState className="mt-6 px-0" title="We couldn’t load this company." body={company.error.message} retry={{ label: "Try again", onClick: () => { void company.refetch(); } }} />
+          <div data-testid="goal-error-state" role="alert" className="mt-6">
+            <p className="text-g-label text-g-ink">We couldn’t load this company.</p>
+            <p className="mt-1 text-g-meta text-g-ink-2">Check your connection and try again.</p>
+            <GoalButton className="mt-3 -ml-3" size="sm" variant="ghost" onClick={() => { void company.refetch(); }}>Try again</GoalButton>
+          </div>
         </div>
       </GoalAppShell>
     );
@@ -262,6 +265,16 @@ function CompanyOpenings({ slug, companyName }: { slug: string; companyName: str
   );
 }
 
+// Each segment stays on one line; the wrap happens between segments, so a
+// line never ends on a separator. A walk-in's date-time is its own line.
+function metaSegments(post: PublicOpportunityPost, posted: string): ReactNode[] {
+  const segments: ReactNode[] = [];
+  if (post.location) segments.push(<span className="whitespace-nowrap">{post.location}</span>);
+  segments.push(<span className="whitespace-nowrap font-g-mono uppercase tracking-wide">Posted {posted}</span>);
+  segments.push(<span className="whitespace-nowrap">{post.poster.kind === "firstName" ? `Posted by ${post.poster.firstName}` : "Posted by a verified employee"}</span>);
+  return segments;
+}
+
 function OpenRoleRow({ post }: { post: PublicOpportunityPost }) {
   const posted = formatDay(post.postedAt);
   const walkIn = post.kind === "walk_in" && post.walkInAt ? formatDayTime(post.walkInAt) : null;
@@ -272,16 +285,14 @@ function OpenRoleRow({ post }: { post: PublicOpportunityPost }) {
     <li className="flex items-center gap-3 py-4 max-gdesk:flex-col max-gdesk:items-stretch">
       <div className="min-w-0 flex-1">
         <p className="text-g-label text-g-ink">{post.roleTitle}</p>
-        <p className="mt-0.5 text-g-meta text-g-ink-3">
-          {post.location ? <>{post.location} · </> : null}
-          {walkIn ? (
-            <span className="font-g-mono uppercase tracking-wide"><CalendarDays aria-hidden="true" className="mb-0.5 inline size-3.5" /> Walk-in · {walkIn}</span>
-          ) : null}
-          {walkIn ? " · " : null}
-          <span className="font-g-mono uppercase tracking-wide">Posted {posted}</span>
-          {" · "}
-          {post.poster.kind === "firstName" ? `Posted by ${post.poster.firstName}` : "Posted by a verified employee"}
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-g-meta text-g-ink-3">
+          {metaSegments(post, posted).map((segment, index) => (
+            <Fragment key={index}>{index > 0 ? <span aria-hidden="true">·</span> : null}{segment}</Fragment>
+          ))}
         </p>
+        {walkIn ? (
+          <p className="mt-0.5 flex items-center gap-1 font-g-mono uppercase tracking-wide text-g-meta text-g-ink-3"><CalendarDays aria-hidden="true" className="size-3.5" /> Walk-in · {walkIn}</p>
+        ) : null}
       </div>
       <GoalButton asChild variant="outline" className="shrink-0 max-gdesk:w-full">
         <Link href={askHref}>Ask for a referral <ArrowRight aria-hidden="true" className="size-4" /></Link>
