@@ -618,11 +618,11 @@
       "id": "D-095-one-tap",
       "title": "One-tap queue items 1-5 (D-095): sign-in keeps the cart, email up front, /jobs prefills /start, /pricing CTA, /plans collapses unsold passes",
       "row": "D-095",
-      "packet": null,
+      "packet": "docs/plans/D-095-one-tap.md",
       "tier": 2,
       "lane": "one-tap",
       "branch": "agent/claude/d095-one-tap",
-      "status": "architect",
+      "status": "todo",
       "dependsOn": []
     },
     {
