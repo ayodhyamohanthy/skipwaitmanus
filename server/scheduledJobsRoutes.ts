@@ -21,7 +21,6 @@ import { runMoneyCheckNow, type MoneyCheckRunResult } from "./dailyMoneyCheck";
 import { SKIPPIE_DAILY_CAP, SKIPPIE_QUESTION_MAX, askSkippieAdmin, type SkippieDeps } from "./skippieAdmin";
 
 type Identity = { account: { id: number; role?: "user" | "admin" } };
-type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; metadata?: Record<string, string | number | boolean | null> };
 type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; metadata?: Record<string, string | number | boolean | null | undefined> };
 
 export type ScheduledJobsRouteDeps = {
@@ -35,6 +34,7 @@ export type ScheduledJobsRouteDeps = {
   capture?: JobCapture;
   /** On-demand read-only money check; defaults to the real audit. */
   runMoneyCheck?: (nowMs: number) => Promise<MoneyCheckRunResult>;
+  closeAbandonedCheckouts?: (nowMs: number, options: { apply: boolean }) => Promise<AbandonedCheckoutResult>;
   /** Recent owner-alert attempts of the money check, newest first. */
   listMoneyCheckAlerts?: () => Promise<Array<{ outcome: string; createdAt: Date | string }>>;
   /** Admin Skippie (read-only). Off unless enabled. */
