@@ -28,6 +28,7 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/approve",
   "/ask",
   "/assistants",
+  "/agents",
   "/cancellations",
   "/choosing-a-job-referral-platform",
   "/components",

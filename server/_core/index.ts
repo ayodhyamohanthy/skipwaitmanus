@@ -52,6 +52,8 @@ import { employerSponsorshipEnabled } from "../billingSettings";
 import { registerDmRoutes } from "../dmRoutes";
 import { registerFollowRoutes } from "../followRoutes";
 import { registerAssistantRoutes } from "../assistantRoutes";
+import { registerSeekerAgentRoutes } from "../seekerAgentRoutes";
+import { createSeekerAgentSourceDeps, createSeekerAgentStore } from "../seekerAgentDeps";
 import { registerOAuthRoutes } from "../oauthRoutes";
 import { consumeAuthCode, getOAuthClient, issueAuthCode, registerOAuthClient } from "../oauthStore";
 import { registerMcpRoutes } from "../mcpRoutes";
@@ -226,6 +228,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Assistant access (kit screens 22/23/24/26): connections, API
   // tokens, assistant approvals and the developer app console.
   registerAssistantRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  // Skippy step 5 (D-141): seeker agents, draft-only. Off unless SKIPPIE_AGENT_ENABLED.
+  registerSeekerAgentRoutes(app, { enabled: () => process.env.SKIPPIE_AGENT_ENABLED === "true", resolveIdentity, store: createSeekerAgentStore(), ...createSeekerAgentSourceDeps() });
   // MCP endpoint for connected assistants (read tools plus propose_ask, which only creates a pending approval) (bearer-token auth, skipwait.me/api/mcp).
   registerMcpRoutes(app, {
     verifyBearer: db.verifyAssistantBearer,
