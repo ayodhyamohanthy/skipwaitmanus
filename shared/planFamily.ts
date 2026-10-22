@@ -237,21 +237,29 @@ export function thisMonthMinor(id: PlanFamilyId, rung: PlanCreditRung | null, bo
   return planFeeMinor(id, book) + (rung === null ? 0 : rungPriceMinor(rung, book));
 }
 
-/** Reach display (D-148): bands from the seeker's own level. Display only, never a gate. */
-export type ReachBand = "Junior" | "Mid" | "Senior+";
-export const reachBandOf = (level: number): ReachBand => (level <= 3 ? "Junior" : level === 4 ? "Mid" : "Senior+");
+/**
+ * Plan display names (D-148, relayed founder decision Oct 23 02:28 IST): Junior = Open Door
+ * terms, Mid = Fast Track terms, Senior+ = Insider terms (by application). Ids, fees,
+ * credits and benefits are unchanged from D-132. Changeable.
+ */
+export const PLAN_DISPLAY_NAME: Record<PlanFamilyId, string> = { open_door: "Junior", fast_track: "Mid", insider: "Senior+" } as const;
 
-export type PlanReach = { top: number; bandText: string; levelText: string };
+/** Level names for the "Who you can ask" row (D-148 designer copy). Job-level names only, never the plan names. */
+export const REACH_LEVEL_NAMES: Record<number, string> = {
+  1: "Intern", 2: "Entry-level", 3: "Early mid-level", 4: "Mid-level", 5: "Senior",
+  6: "Senior II", 7: "Staff or lead", 8: "Principal", 9: "Director or head", 10: "VP or C-level",
+};
 
-/** Who a plan lets the seeker ask, from the seeker's own level L (1-10). */
+export type PlanReach = { level: number; top: number; levelNames: string; levelText: string };
+
+/** Who a plan lets the seeker ask, from the seeker's own level L (1-10). Display only, never a gate. */
 export function planReachFor(planId: PlanFamilyId, seekerLevel: number): PlanReach {
   const l = Math.min(10, Math.max(1, Math.round(seekerLevel)));
   const top = Math.min(10, l + PLAN_REACH_LEVELS_ABOVE[planId]);
-  const from = reachBandOf(l);
-  const to = reachBandOf(top);
   return {
+    level: l,
     top,
-    bandText: from === to ? from : `${from} to ${to}`,
+    levelNames: top === l ? REACH_LEVEL_NAMES[l] : `${REACH_LEVEL_NAMES[l]} up to ${REACH_LEVEL_NAMES[top]}`,
     levelText: top === l ? `L${l}` : `L${l} to L${top}`,
   };
 }

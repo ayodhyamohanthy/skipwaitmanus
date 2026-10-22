@@ -17,7 +17,7 @@ describe("PlansV2 (D-132, flag OFF)", () => {
 
   it("Open Door defaults to the 3 free credits: This month is Rs0, no paid default", () => {
     render(<PlansV2 book="INR" />);
-    const card = screen.getByRole("region", { name: "Open Door" }) ?? screen.getByLabelText("Open Door");
+    const card = screen.getByRole("region", { name: "Junior" });
     expect(within(card as HTMLElement).getByTestId("this-month-open_door").textContent).toBe("₹0");
     expect(within(card as HTMLElement).getByText(/3 free credits every month/)).toBeTruthy();
   });
@@ -60,28 +60,34 @@ describe("PlansV2 (D-132, flag OFF)", () => {
   it("exactly one black commit (Fast Track); Insider applies, Open Door starts free", () => {
     render(<PlansV2 book="INR" />);
     expect(document.querySelectorAll('[data-g-primary="true"]').length).toBe(1);
-    expect(screen.getByRole("button", { name: "Apply for Insider" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Apply for Senior+" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Start free" })).toBeTruthy();
   });
 
-  it("reach row (D-148): signed out shows no band guess and the profile line", () => {
+  it("plan names are Junior / Mid / Senior+ with the D-132 numbers unchanged", () => {
+    render(<PlansV2 book="INR" />);
+    for (const n of ["Junior", "Mid", "Senior+"]) expect(screen.getByRole("region", { name: n })).toBeTruthy();
+    expect(screen.queryByText(/Open Door|Fast Track|Insider/)).toBeNull();
+    expect(screen.getByText("Plan names say how far you can reach, not how senior you are.")).toBeTruthy();
+  });
+
+  it("reach row (D-148): signed out shows no level guess and the profile line", () => {
     render(<PlansV2 book="INR" />);
     expect(screen.getByTestId("reach-open_door").textContent).toContain("Your own level");
     expect(screen.getByTestId("reach-fast_track").textContent).toContain("Up to 2 levels above yours");
     expect(screen.getByTestId("reach-insider").textContent).toContain("Up to 4 levels above yours");
-    expect(screen.getByText(/Add your level in your/)).toBeTruthy();
+    expect(screen.getByText(/Add your level in your/).textContent).toContain("who each plan reaches");
     expect(screen.getByText("Reach sets who you can ask. It never changes your place in a queue.")).toBeTruthy();
     expect(screen.queryByText(/1-2 levels up/)).toBeNull();
     expect(screen.getByText("Reach up to 2 levels above your own")).toBeTruthy();
     expect(screen.getByText("Reach up to 4 levels above your own")).toBeTruthy();
   });
 
-  it("reach row: L2 seeker sees Junior / Junior to Mid / Junior to Senior+ with mono levels", () => {
+  it("reach row: L2 seeker sees the designer examples", () => {
     render(<PlansV2 book="USD" seekerLevel={2} />);
-    expect(screen.getByTestId("reach-open_door").textContent).toContain("Your own level: Junior · L2");
-    expect(screen.getByTestId("reach-fast_track").textContent).toContain("Junior to Mid · L2 to L4");
-    expect(screen.getByTestId("reach-insider").textContent).toContain("Junior to Senior+ · L2 to L6");
-    expect(screen.queryByText(/Add your level/)).toBeNull();
+    expect(screen.getByTestId("reach-open_door").textContent).toContain("Your own level: Entry-level · L2");
+    expect(screen.getByTestId("reach-fast_track").textContent).toContain("Entry-level up to Mid-level · L2 to L4");
+    expect(screen.getByTestId("reach-insider").textContent).toContain("Entry-level up to Senior II · L2 to L6");
   });
 
   it("signed-in level picker lists L1-L10, shows the chosen band, and reports the pick", () => {
