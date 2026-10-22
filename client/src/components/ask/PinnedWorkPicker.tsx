@@ -7,7 +7,7 @@
 // kind, source and public link. No seeker id, no showcase row ids. The server
 // snapshots the list at send time, so editing or deleting the piece afterwards
 // never rewrites what a referrer was shown.
-import { LoaderCircle, Pin } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { Link } from "wouter";
 import { GoalFilterChip, GoalNum } from "@/components/goal";
 import { workKindLabel, type WorkItem } from "@/components/profile/workItems";
@@ -30,17 +30,17 @@ export function PinnedWorkPicker({ work }: { work: PinnedWorkState }) {
   const { pieces, state, selected, limit, notice } = work;
   return (
     <fieldset className="grid gap-2" aria-label={ASK_WORK_SECTION_TITLE}>
-      <div className="flex items-baseline justify-between gap-3">
-        <legend className="text-g-label text-g-ink">{ASK_WORK_SECTION_TITLE}</legend>
+      <legend className="text-g-label text-g-ink">{ASK_WORK_SECTION_TITLE}</legend>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="text-pretty text-g-meta text-g-ink-3">
+          Work from your own showcase. A referrer sees it with this ask before deciding — never your name.
+        </p>
         {state === "ready" && pieces.length > 0 ? (
           <span className="text-g-meta text-g-ink-3">
             {selected.length > 0 ? <><GoalNum>{selected.length}</GoalNum> of <GoalNum>{pieces.length}</GoalNum> travel with this ask</> : "Nothing picked — the referrer sees only your note"}
           </span>
         ) : null}
       </div>
-      <p className="-mt-1 text-pretty text-g-meta text-g-ink-3">
-        Work from your own showcase. A referrer sees it with this ask before deciding — never your name.
-      </p>
 
       {state === "loading" ? (
         <p aria-busy="true" className="flex items-center gap-2 text-g-meta text-g-ink-2">
@@ -77,7 +77,6 @@ export function PinnedWorkPicker({ work }: { work: PinnedWorkState }) {
           ) : null}
         </>
       )}
-      <span className="sr-only"><Pin aria-hidden="true" /></span>
     </fieldset>
   );
 }
