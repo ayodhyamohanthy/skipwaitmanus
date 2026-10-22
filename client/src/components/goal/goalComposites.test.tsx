@@ -223,6 +223,15 @@ describe("GoalCompanyRow", () => {
     expect(onSelect).toHaveBeenCalled();
   });
 
+  it("with href is a real anchor to the company page; a plain click is enhanced into the drawer", async () => {
+    const onSelect = vi.fn();
+    render(<GoalCompanyRow name="Wipro" initials="W" functions={["Engineering"]} open href="/explore/wipro" onSelect={onSelect} />);
+    const row = screen.getByRole("link", { name: "Wipro, open to requests" });
+    expect(row.getAttribute("href")).toBe("/explore/wipro");
+    await userEvent.click(row);
+    expect(onSelect).toHaveBeenCalled();
+  });
+
   it("marks the selected row with the ink bar and aria-current", () => {
     render(<GoalCompanyRow name="Merkle" initials="M" functions={["Design"]} open={false} selected />);
     const row = screen.getByRole("button", { name: "Merkle, not open yet" });
