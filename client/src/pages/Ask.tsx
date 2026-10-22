@@ -90,9 +90,9 @@ export default function Ask() {
             </header>
 
             <div className="mt-5 grid gap-2">
-              {company?.openToReferrals ? <GoalVerifiedMark>{`Goes to verified ${company.name} employees`}</GoalVerifiedMark> : null}
+              {company?.openToReferrals ? <GoalVerifiedMark mutedText className="font-semibold text-g-ink">{`Goes to verified ${company.name} employees`}</GoalVerifiedMark> : null}
               <p className="text-pretty text-g-body text-g-ink-2">Referrers see your job link and reasons. Your name and resume are shared only if one accepts.</p>
-              {!composer.signedIn ? <p className="text-pretty text-g-meta text-g-ink">You’ll sign in before it’s sent. We keep your link and reasons.</p> : null}
+              {!composer.signedIn ? <p className="text-pretty text-g-meta text-g-ink-2">You’ll sign in before it’s sent. We keep your link and reasons.</p> : null}
             </div>
 
             <div className="mt-8 grid gap-6">
@@ -149,7 +149,7 @@ function AskFields({ composer, company }: { composer: Composer; company: PublicC
         />
       </GoalField>
       {composer.postSelection ? (
-        <p className="-mt-4 text-pretty text-g-meta text-g-ink-3">The employee who posted this role sees your ask first, for 48 hours.</p>
+        <p className="-mt-4 text-pretty text-g-meta text-g-ink-3">The employee who posted this role sees your ask first, for 48 hours. After that, other verified referrers at the company can pick it up.</p>
       ) : null}
 
       <GoalField
