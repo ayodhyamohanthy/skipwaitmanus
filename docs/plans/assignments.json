@@ -248,7 +248,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-landing-slot",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {
