@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SQL, getTableColumns, getTableName } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { jobs, landedJourney, messages, notifications, referralRequests, users } from "../drizzle/schema";
+import { jobs, landedJourney, messages, notifications, referralRequests, userBlocks, users } from "../drizzle/schema";
 import { listReferrerThankYous, recordLandedJourney } from "./db";
 
 /*
@@ -23,7 +23,7 @@ const EARLIER = new Date("2026-10-14T12:00:00.000Z");
 const SENT_AT = new Date("2026-10-17T09:00:00.000Z");
 
 type Row = Record<string, unknown>;
-const TABLES = [users, jobs, referralRequests, landedJourney, messages, notifications];
+const TABLES = [users, jobs, referralRequests, landedJourney, messages, notifications, userBlocks];
 const COLUMNS_BY_NAME = new Map(TABLES.map(table => [getTableName(table), Object.keys(getTableColumns(table))]));
 /** Only landedJourney has a unique index this path can collide with. */
 const UNIQUE_BY_NAME: Record<string, string[]> = { landedJourney: ["referralRequestId"] };
@@ -371,9 +371,39 @@ describe("the landed thank-you reaches one referrer once", () => {
     expect((await recordLandedJourney(7, note({ shareOnWall: false }))).shareOnWall).toBe(false);
     expect(saved().shareOnWall).toBe(false);
   });
+
+  it("stores the note that was sent when a racing submit updates the row before the claim", async () => {
+    rows.landedJourney = [wallRow(501, { thankYouMessage: null, shareOnWall: true, deliveredAt: null, conversationMessageId: null })];
+    // Simulates another tab racing and writing line 3592 before this tab's claim update
+    onClaimAttempt = () => { saved().thankYouMessage = "From the other tab."; };
+    const state = await recordLandedJourney(7, note({ message: "Sent by this tab." }));
+    expect(state.delivered).toBe(true);
+    expect(saved().thankYouMessage).toBe(rows.messages[0]?.body);
+    expect(state.thankYouMessage).toBe(rows.messages[0]?.body);
+    expect(saved().thankYouMessage).toBe("Sent by this tab.");
+  });
 });
 
 describe("a referrer's private thank-you wall", () => {
+  it("hides thank-yous between blocked users and excludes them from total", async () => {
+    rows.landedJourney = [
+      wallRow(501, { seekerUserId: 7 }),
+      wallRow(502, { seekerUserId: 8 }),
+    ];
+    // Seeker 7 and Referrer 9 are blocked (blocker: 9, blocked: 7)
+    rows.userBlocks = [
+      { id: 1, blockerUserId: 9, blockedUserId: 7, reason: "spam", createdAt: new Date() },
+    ];
+    const wall = await listReferrerThankYous(9);
+    expect(wall.total).toBe(1);
+    expect(wall.thankYous).toHaveLength(1);
+    expect(wall.thankYous[0]?.id).toBe(502);
+
+    // Now test the other direction: seeker 8 blocked referrer 9
+    rows.userBlocks.push({ id: 2, blockerUserId: 8, blockedUserId: 9, reason: "privacy", createdAt: new Date() });
+    const wallBlockedBoth = await listReferrerThankYous(9);
+    expect(wallBlockedBoth).toEqual({ thankYous: [], total: 0 });
+  });
   it("counts every note that reached them and shows only those they were allowed to keep", async () => {
     rows.landedJourney = [
       wallRow(501, { createdAt: new Date("2026-10-10T09:00:00.000Z") }),

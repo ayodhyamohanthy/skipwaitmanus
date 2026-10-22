@@ -4,6 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 import { THANK_YOU_MAX_LENGTH } from "@shared/landedJourney";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
 
+const sentryMocks = vi.hoisted(() => ({ captureServerError: vi.fn() }));
+vi.mock("./sentry", async importOriginal => ({
+  ...(await importOriginal<typeof import("./sentry")>()),
+  captureServerError: sentryMocks.captureServerError,
+}));
+
 /*
  * Kit landed journey routes (queue row 20 slices C+D). The HTTP contract is what the
  * /landed page and the referrer home page render from, so it is pinned here: a note
@@ -109,6 +115,21 @@ describe("POST /api/landed/journey", () => {
     expect(activity).toContainEqual(expect.objectContaining({ action: "landed.thanks_recorded", outcome: "denied" }));
   });
 
+  it("captures unexpected internal errors in sentry and returns generic 500 without leaking details", async () => {
+    const { app, activity } = setup({
+      recordLandedJourney: async () => { throw new Error("ER_DUP_ENTRY: internal database error"); },
+    });
+    const res = await post(app, { referralRequestId: 501, message: "Thank you." });
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("We could not send your thank-you");
+    expect(res.body.error).not.toMatch(/ER_DUP_ENTRY/);
+    expect(sentryMocks.captureServerError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("ER_DUP_ENTRY") }),
+      expect.objectContaining({ route: "POST /api/landed/journey" })
+    );
+    expect(activity).toContainEqual(expect.objectContaining({ action: "landed.thanks_recorded", outcome: "failed" }));
+  });
+
   it("says the thank-you is unavailable rather than inventing a state", async () => {
     const { app } = setup({ recordLandedJourney: undefined });
     const res = await post(app, { referralRequestId: 501, message: "Thank you." });
@@ -142,10 +163,15 @@ describe("GET /api/referrer/thank-yous", () => {
     expect(activity).toContainEqual(expect.objectContaining({ action: "landed.wall_viewed", outcome: "success", metadata: { noteCount: 1, total: 2 } }));
   });
 
-  it("fails visibly instead of answering with an empty wall", async () => {
-    const { app } = setup({ listReferrerThankYous: async () => { throw new Error("boom"); } });
+  it("fails visibly instead of answering with an empty wall, captures in sentry, and records failed activity", async () => {
+    const { app, activity } = setup({ listReferrerThankYous: async () => { throw new Error("boom"); } });
     const res = await wall(app);
     expect(res.status).toBe(500);
     expect(res.body.error).toMatch(/could not load your thank-yous/i);
+    expect(sentryMocks.captureServerError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "boom" }),
+      expect.objectContaining({ route: "GET /api/referrer/thank-yous" })
+    );
+    expect(activity).toContainEqual(expect.objectContaining({ action: "landed.wall_viewed", outcome: "failed", resourceType: "thank_you_wall" }));
   });
 });

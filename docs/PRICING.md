@@ -19,6 +19,8 @@ Frozen decisions bind: once the founder freezes a decision it is the single sour
 - Referrers are never paid and never pay (D-055, D-006, D-135). Mentor and Organisation stay drafts.
 - Price source in code: `shared/planFamily.ts` only. "Save X%" is computed, not typed.
 
+- Plan names (D-148, frozen): Junior (Open Door terms), Mid (Fast Track terms), Senior+ (Insider terms, by application). Same fees, credits and benefits as D-132; plan ids and Chargebee items keep open_door / fast_track / insider. Reach is display only ("Who you can ask", job-level names L1-L10, never the plan names): Junior own level, Mid up to 2 levels above, Senior+ up to 4. No gate.
+
 ## What is live today
 - Credit packs: LIVE in INR and USD (13 Chargebee items, Oct 22 21:01 IST). Packs stay on sale. About Rs39.99 to Rs49.50 or $0.70 to $1.00 a credit, derived from the catalog. The single credit is not sold while packs are on.
 - Fixed passes (Keep warm, Start, Momentum, Land Focus, Land Sprint, Land Concierge): NOT sold, and stay off (`PASS_SALES_ENABLED = false`, D-084). PR #473 (switch them on) is parked, not merged. The Chargebee pass item prices created Oct 22 stay in place but unsold.

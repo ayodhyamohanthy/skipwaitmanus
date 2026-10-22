@@ -14,13 +14,11 @@ for file in "$dir"/*.sql; do
 done
 # numeric prefixes must be unique: the runner keys on full filename + sha256,
 # but duplicate numbers collide in human review and ordering. Fail loudly.
-seen_prefixes=""
+declare -A seen
 for file in "$dir"/*.sql; do
   name=$(basename "$file")
   prefix=${name%%_*}
-  case " $seen_prefixes " in
-    *" $prefix "*) echo "::error::duplicate migration number $prefix: $name conflicts with an earlier migration"; status=1 ;;
-    *) seen_prefixes="$seen_prefixes $prefix" ;;
-  esac
+  if [[ -n "${seen[$prefix]:-}" ]]; then echo "::error::duplicate migration number $prefix: $name conflicts with ${seen[$prefix]}"; status=1; fi
+  seen[$prefix]=$name
 done
 exit $status

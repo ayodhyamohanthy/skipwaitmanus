@@ -18,7 +18,7 @@ const disabledMessageSend = async (): Promise<Awaited<ReturnType<typeof db.sendM
 export const appRouter = router({
   system: systemRouter,
   auth: router({ me: publicProcedure.query(opts => opts.ctx.user), logout: publicProcedure.mutation(({ ctx }) => { const cookieOptions = getSessionCookieOptions(ctx.req); ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 }); return { success: true } as const; }) }),
-  profile: router({ mine: protectedProcedure.query(({ ctx }) => db.getProfileByUserId(ctx.user.id)), save: protectedProcedure.input(profileInput).mutation(({ ctx, input }) => db.saveProfile(ctx.user.id, input)) }),
+  profile: router({ level: protectedProcedure.query(({ ctx }) => db.getSeekerLevel(ctx.user.id)), setLevel: protectedProcedure.input(z.object({ level: z.number().int().min(1).max(10).nullable() })).mutation(({ ctx, input }) => db.setSeekerLevel(ctx.user.id, input.level)), mine: protectedProcedure.query(({ ctx }) => db.getProfileByUserId(ctx.user.id)), save: protectedProcedure.input(profileInput).mutation(({ ctx, input }) => db.saveProfile(ctx.user.id, input)) }),
   talentConsent: router({
     preview: protectedProcedure.query(() => db.getTalentConsentPreview()),
     state: protectedProcedure.query(({ ctx }) => db.getTalentConsentState(ctx.user.id)),

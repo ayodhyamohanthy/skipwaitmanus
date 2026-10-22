@@ -12,7 +12,7 @@ import { CREDIT_ENDED_CAVEAT } from "../shared/moneyCopy";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { accountPreferences, askCosts, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { accountPreferences, askCosts, seekerLevels, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, userBlocks, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
@@ -275,6 +275,15 @@ export async function getUserByOpenId(openId: string) {
   return { ...account, suspended: account.suspended || person.suspended, sessionsValidAfter: person.sessionsValidAfter > account.sessionsValidAfter ? person.sessionsValidAfter : account.sessionsValidAfter };
 }
 export async function revokeUserSessions(openId: string): Promise<void> { const db = await getDb(); if (!db) return; const account=await getUserByOpenId(openId);if(!account)return;const now=new Date();await db.update(users).set({sessionsValidAfter:now}).where(eq(users.id,account.id));if(account.canonicalPersonId)await db.update(canonicalPeople).set({sessionsValidAfter:now}).where(eq(canonicalPeople.id,account.canonicalPersonId)); }
+export async function getSeekerLevel(userId: number): Promise<number | null> { const db = await getDb(); if (!db) return null; const r = await db.select({ level: seekerLevels.level }).from(seekerLevels).where(eq(seekerLevels.userId, userId)).limit(1); return r[0]?.level ?? null; }
+/** D-148: the seeker's own pick (1-10). Display only. */
+export async function setSeekerLevel(userId: number, level: number | null): Promise<number | null> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  if (level === null) { await db.delete(seekerLevels).where(eq(seekerLevels.userId, userId)); return null; }
+  if (!Number.isInteger(level) || level < 1 || level > 10) throw new Error("Level must be 1 to 10");
+  await db.insert(seekerLevels).values({ userId, level }).onDuplicateKeyUpdate({ set: { level } });
+  return level;
+}
 export async function getProfileByUserId(userId: number) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1); return result[0]; }
 
 const RESERVED_HANDLES = new Set(["admin", "api", "app", "ask", "alerts", "billing", "explore", "help", "inbox", "invite", "jobs", "landed", "messages", "notifications", "onboarding", "plans", "premium", "pricing", "privacy", "profile", "queue", "referrer", "report", "requests", "settings", "share", "sign-in", "start", "support", "terms", "thread", "verify", "wall", "work", "p", "developers", "employer", "request"]);
@@ -3587,7 +3596,7 @@ export async function recordLandedJourney(userId: number, input: LandedJourneyRe
       // The claim, the message and the link back to it commit together; a send that
       // dies anywhere leaves no claim and no half-delivered note for a retry to duplicate.
       const settled: { delivered: boolean; thankYouMessage?: string | null } = await db.transaction(async tx => {
-        const claimed = await tx.update(landedJourney).set({ deliveredAt: now }).where(and(eq(landedJourney.referralRequestId, ask.id), isNull(landedJourney.deliveredAt)));
+        const claimed = await tx.update(landedJourney).set({ deliveredAt: now, thankYouMessage: message, updatedAt: now }).where(and(eq(landedJourney.referralRequestId, ask.id), isNull(landedJourney.deliveredAt)));
         if (Number(claimed[0]?.affectedRows ?? 0) !== 1) {
           // Another of this seeker's own submits holds the claim; report the note it settled on.
           const after = (await tx.select({ deliveredAt: landedJourney.deliveredAt, thankYouMessage: landedJourney.thankYouMessage }).from(landedJourney).where(eq(landedJourney.referralRequestId, ask.id)).limit(1))[0];
@@ -3595,7 +3604,7 @@ export async function recordLandedJourney(userId: number, input: LandedJourneyRe
         }
         const sent = await sendReferralConversationMessageTx(tx, userId, ask.id, message);
         await tx.update(landedJourney).set({ conversationMessageId: sent.id }).where(eq(landedJourney.referralRequestId, ask.id));
-        return { delivered: true };
+        return { delivered: true, thankYouMessage: message };
       });
       delivered = settled.delivered;
       if (settled.thankYouMessage !== undefined) thankYouMessage = settled.thankYouMessage;
@@ -3611,19 +3620,32 @@ export async function recordLandedJourney(userId: number, input: LandedJourneyRe
  * The referrer's private thank-you wall (queue row 20 slice D): the notes they
  * received, and the newest few the seekers let them keep. Only a delivered note
  * counts or shows, and the name and role are the ones this referrer already saw on
- * the ask they worked. Nothing here is public to another user.
+ * the ask they worked. Nothing here is public to another user. Blocked pairs
+ * (userBlocks, either direction) are hidden from the wall and the count.
  */
 export async function listReferrerThankYous(userId: number, limit = 3): Promise<ReferrerThankYouWall> {
   const db = await getDb(); if (!db) return { thankYous: [], total: 0 };
-  const received = and(eq(landedJourney.referrerUserId, userId), isNotNull(landedJourney.deliveredAt));
   const safeLimit = Math.max(1, Math.min(limit, 10));
-  const [rows, totals] = await Promise.all([
-    db.select({ id: landedJourney.id, message: landedJourney.thankYouMessage, seekerName: users.name, roleTitle: jobs.title, createdAt: landedJourney.createdAt }).from(landedJourney).innerJoin(referralRequests, eq(landedJourney.referralRequestId, referralRequests.id)).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(landedJourney.seekerUserId, users.id)).where(and(received, eq(landedJourney.shareOnWall, true), isNotNull(landedJourney.thankYouMessage))).orderBy(desc(landedJourney.createdAt), desc(landedJourney.id)).limit(safeLimit),
-    db.select({ total: count() }).from(landedJourney).where(received),
+  let blockedUserIds = new Set<number>();
+  try {
+    const blockRows = await db.select({ blockerUserId: userBlocks.blockerUserId, blockedUserId: userBlocks.blockedUserId }).from(userBlocks).where(or(eq(userBlocks.blockerUserId, userId), eq(userBlocks.blockedUserId, userId)));
+    for (const b of blockRows) blockedUserIds.add(b.blockerUserId === userId ? b.blockedUserId : b.blockerUserId);
+  } catch (error) {
+    captureServerError(error, { area: "listReferrerThankYous", userId });
+  }
+
+  const received = and(eq(landedJourney.referrerUserId, userId), isNotNull(landedJourney.deliveredAt));
+  const [wallRows, allReceived] = await Promise.all([
+    db.select({ id: landedJourney.id, seekerUserId: landedJourney.seekerUserId, message: landedJourney.thankYouMessage, seekerName: users.name, roleTitle: jobs.title, createdAt: landedJourney.createdAt }).from(landedJourney).innerJoin(referralRequests, eq(landedJourney.referralRequestId, referralRequests.id)).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(landedJourney.seekerUserId, users.id)).where(and(received, eq(landedJourney.shareOnWall, true), isNotNull(landedJourney.thankYouMessage))).orderBy(desc(landedJourney.createdAt), desc(landedJourney.id)),
+    db.select({ id: landedJourney.id, seekerUserId: landedJourney.seekerUserId }).from(landedJourney).where(received),
   ]);
+
+  const visibleWall = wallRows.filter(row => !blockedUserIds.has(row.seekerUserId) && Boolean(row.message));
+  const visibleTotal = allReceived.filter(row => !blockedUserIds.has(row.seekerUserId)).length;
+
   return {
-    thankYous: rows.filter(row => Boolean(row.message)).map(row => ({ id: row.id, message: row.message ?? "", seekerName: row.seekerName ?? null, roleTitle: row.roleTitle ?? null, createdAt: new Date(row.createdAt).toISOString() })),
-    total: Number(totals[0]?.total ?? 0),
+    thankYous: visibleWall.slice(0, safeLimit).map(row => ({ id: row.id, message: row.message ?? "", seekerName: row.seekerName ?? null, roleTitle: row.roleTitle ?? null, createdAt: new Date(row.createdAt).toISOString() })),
+    total: visibleTotal,
   };
 }
 

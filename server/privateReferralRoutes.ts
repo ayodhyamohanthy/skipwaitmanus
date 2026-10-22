@@ -1362,16 +1362,25 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json({ state });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not send your thank-you";
-      record({ actorUserId, action: "landed.thanks_recorded", outcome: "denied", resourceType: "landed_journey" });
-      res.status(/not available to you/i.test(message) ? 404 : /database unavailable/i.test(message) ? 503 : 409).json({ error: message });
+      const isKnownClientError = /not available to you/i.test(message) || /marks the ask as hired/i.test(message) || /database unavailable/i.test(message);
+      if (isKnownClientError) {
+        record({ actorUserId, action: "landed.thanks_recorded", outcome: "denied", resourceType: "landed_journey" });
+        res.status(/not available to you/i.test(message) ? 404 : /database unavailable/i.test(message) ? 503 : 409).json({ error: message });
+      } else {
+        record({ actorUserId, action: "landed.thanks_recorded", outcome: "failed", resourceType: "landed_journey" });
+        captureServerError(error, { route: "POST /api/landed/journey", actorUserId });
+        res.status(500).json({ error: "We could not send your thank-you" });
+      }
     }
   });
   // The referrer's private thank-you wall (queue row 20 slice D). Only the notes a seeker
   // let this referrer keep show on the wall; the total counts every one they received.
   app.get("/api/referrer/thank-yous", async (req, res) => {
+    let actorUserId: number | undefined;
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in with your company email to continue" });
+      actorUserId = identity.account.id;
       res.set("Cache-Control", "private, no-store");
       if (!deps.getVerifiedWorkEmailAccess) return res.status(503).json({ error: "Referrer access is not available yet" });
       const access = await loadAccess(identity.account.id);
@@ -1379,7 +1388,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const wall = await (deps.listReferrerThankYous ?? listReferrerThankYous)(identity.account.id);
       record({ actorUserId: identity.account.id, action: "landed.wall_viewed", outcome: "success", resourceType: "thank_you_wall", metadata: { noteCount: wall.thankYous.length, total: wall.total } });
       res.json(wall);
-    } catch { res.status(500).json({ error: "We could not load your thank-yous" }); }
+    } catch (error) {
+      if (actorUserId) record({ actorUserId, action: "landed.wall_viewed", outcome: "failed", resourceType: "thank_you_wall" });
+      captureServerError(error, { route: "GET /api/referrer/thank-yous", actorUserId });
+      res.status(500).json({ error: "We could not load your thank-yous" });
+    }
   });
   app.get("/api/company-referrals/:requestId/preview", async (req, res) => {
     try {

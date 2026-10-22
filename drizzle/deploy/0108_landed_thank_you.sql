@@ -1,4 +1,4 @@
--- 0107: queue row 20 slices C+D, the kit landed journey and the private
+-- 0108: queue row 20 slices C+D, the kit landed journey and the private
 -- thank-you wall (docs/KIT_V4_BUILD_PLAN.md section 3b row 20,
 -- docs/KIT_V4_AUDIT.md 10_landed__* and 12_referrer-home__*). Additive only:
 -- one new table, no column changes to any existing table.
