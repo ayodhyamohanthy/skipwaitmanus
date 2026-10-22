@@ -18,6 +18,9 @@ import { captureServerError } from "./sentry";
 import { closeAbandonedCheckouts, type AbandonedCheckoutResult } from "./abandonedCheckouts";
 import { listOperationalActivity } from "./db";
 import { runMoneyCheckNow, type MoneyCheckRunResult } from "./dailyMoneyCheck";
+import { createCardStore, type CardStore } from "./skippieCards";
+import { jobWindowKey } from "../shared/scheduledJobs";
+import { runScheduledJob, JOB_WINDOW_OPEN_EARLY_MS } from "./scheduledJobRunner";
 import { SKIPPIE_DAILY_CAP, SKIPPIE_QUESTION_MAX, askSkippieAdmin, type SkippieDeps } from "./skippieAdmin";
 
 type Identity = { account: { id: number; role?: "user" | "admin" } };
@@ -38,7 +41,7 @@ export type ScheduledJobsRouteDeps = {
   /** Recent owner-alert attempts of the money check, newest first. */
   listMoneyCheckAlerts?: () => Promise<Array<{ outcome: string; createdAt: Date | string }>>;
   /** Admin Skippie (read-only). Off unless enabled. */
-  skippie?: { enabled: () => boolean; deps: () => SkippieDeps };
+  skippie?: { enabled: () => boolean; deps: () => SkippieDeps; /** Absent = Linear cards save a draft only. */ createLinearIssue?: (title: string, body: string) => Promise<{ url: string }> };
 };
 
 export function summarizeMoneyCheckAlerts(rows: Array<{ outcome: string; createdAt: Date | string }>, nowMs: number) {
@@ -184,6 +187,16 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
   });
 
   // Admin Skippie, read-only. 404 while the flag is off. Same admin guard as /api/admin/jobs.
+  // Step 4: approval cards. One store per process; cards live 5 minutes.
+  const cardStore: CardStore = createCardStore({
+    now,
+    jobs,
+    latestRun: async name => { const r = await store.latest(name); return r ? { status: r.status, windowKey: r.windowKey } : undefined; },
+    currentWindowKey: (job, nowMs) => jobWindowKey(nowMs + JOB_WINDOW_OPEN_EARLY_MS, job.windowMs),
+    rerun: async job => { const r = await runScheduledJob(job, { store, now, capture }); return { outcome: r.outcome, processed: r.processed, failed: r.failed }; },
+    createLinearIssue: deps.skippie?.createLinearIssue,
+    audit: e => record({ actorUserId: e.adminId, action: e.action, outcome: e.outcome, resourceType: "skippie_card", resourceId: e.cardId?.slice(0, 12), metadata: e.metadata }),
+  });
   const skippieAsks = new Map<number, { day: string; count: number }>();
   app.post("/api/admin/skippie/ask", async (req: Request, res: Response) => {
     res.set("Cache-Control", "private, no-store");
@@ -202,13 +215,32 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
     if (count >= SKIPPIE_DAILY_CAP) return res.status(429).json({ error: "Daily Skippy limit reached" });
     skippieAsks.set(identity.account.id, { day, count: count + 1 });
     try {
-      const out = await askSkippieAdmin(question, deps.skippie.deps());
+      const out = await askSkippieAdmin(question, { ...deps.skippie.deps(), propose: input => cardStore.propose(identity.account.id, input) });
       record({ actorUserId: identity.account.id, action: "admin.skippie_ask", outcome: "success", resourceType: "skippie", metadata: { question, answer: out.answer.slice(0, 1500), tools: out.toolsUsed.join(","), mode: out.mode } });
-      res.json({ answer: out.answer, toolsUsed: out.toolsUsed, mode: out.mode });
+      res.json({ answer: out.answer, toolsUsed: out.toolsUsed, mode: out.mode, cards: out.cards ?? [] });
     } catch (error) {
       record({ actorUserId: identity.account.id, action: "admin.skippie_ask", outcome: "failure", resourceType: "skippie", metadata: { question } });
       capture(error, { path: "/api/admin/skippie/ask" });
       res.status(500).json({ error: "Skippy could not answer" });
     }
+  });
+
+  // Approve or deny one card. Only the admin who owns the card, with the card id
+  // in the path and a JSON body {"decision": "approve"|"deny"}. Model output and
+  // user data have no route to this endpoint.
+  app.post("/api/admin/skippie/cards/:id/decision", async (req: Request, res: Response) => {
+    res.set("Cache-Control", "private, no-store");
+    if (!deps.skippie?.enabled()) return res.status(404).json({ error: "Not found" });
+    const identity = await deps.resolveIdentity(req);
+    if (!identity) return res.status(401).json({ error: "Sign in to continue" });
+    if (identity.account.role !== "admin") {
+      record({ actorUserId: identity.account.id, action: "admin.skippie_card_denied_access", outcome: "denied", resourceType: "skippie_card" });
+      return res.status(403).json({ error: "Administrator access is required" });
+    }
+    if (!req.is("application/json")) return res.status(415).json({ error: "JSON only" });
+    const decision = req.body?.decision;
+    if (decision !== "approve" && decision !== "deny") return res.status(400).json({ error: "decision must be approve or deny" });
+    const result = await cardStore.decide(identity.account.id, String(req.params.id).slice(0, 100), decision);
+    res.status(result.state === "unknown" ? 404 : result.ok ? 200 : 409).json(result);
   });
 }
