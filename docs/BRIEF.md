@@ -22,7 +22,7 @@ Sources of truth: `docs/DECISIONS.md` (the register: it wins over every other do
 - **Privacy and trust.** A referrer sees no seeker name or resume, and no seeker can message a verified referrer, until that referrer accepts (D-019(e), D-012(3)). A block hides two people from each other everywhere, including delivery. No public per-referrer metrics, invented numbers, sample data, dark patterns, false urgency or pressure on referrers. Agents never reword Terms, Privacy, Refund or Cancellation (live legal text); they list the lines for the owner in plan §6.
 - **Basics always work (D-019).** Payments, logins and the seeker, referrer and admin flows. A broken basic is a P0: restore it, verify it live, report. Changing how a basic works needs the owner.
 - **No half-baked flows.** Ship a flow end to end or not at all: every failure is logged, alerted and shown in plain words; every screen handles loading, empty, error and offline; every money change is idempotent, reconciled and recoverable. A user with a pending action gets one idempotent email with a direct link, at most one a day (D-060).
-- **Design (D-120).** The goal UI is the one design (`DESIGN.md`; primitives in `client/src/components/goal/`); Kit v4 is retired. Screens move dark through `docs/plans/D-048-phase-3-split.md`; until one moves, keep its tokens and components.
+- **Design (D-120, D-150).** Every screen, landing to admin, is redesigned to the goal doctrine, UI and UX (goal line, one next step, one black commit), never the old layout in black (`design/goal-ui/DOCTRINE.md`); until one moves, keep its tokens.
 - **The repo is public (D-059).** Never commit a secret or put one in a `VITE_*` key; no business numbers or personal data in docs, fixtures or commits.
 
 ## Working with the owner
