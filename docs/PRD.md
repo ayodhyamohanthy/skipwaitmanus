@@ -29,7 +29,7 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 | W0 goal shell (PR #361) | L6 | build | designer fixes pushed; re-review pending |
 | W1 comps: /explore + ask drawer (w1-comps) | L1 | build | pushed; designer review pending; /queue held for #353 |
 | Demand list (D-086) | L1 | build | approved; after #361 + drawer review; mocks in hand |
-| BYOR one-time link (idea 2) | L2 | design | mocks with owner 3:06 AM; approval pending; takes next free D-number |
+| BYOR one-time link (idea 2) | L2 | build | approved (D-090); packet `docs/plans/D-090-BYOR.md`; gated on the demand list (D-086) |
 | Employee request-inbox link (idea 1) | L4 | design | after idea 2 |
 | Sourced bonus pages (idea 3) | L5 | design | after idea 1 |
 | Bedrock AI provider plan | - | build | plan with owner; AWS access needed |
