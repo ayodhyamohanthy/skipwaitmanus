@@ -3196,6 +3196,12 @@ export async function getAccessibleReferralAttachment(userId: number, attachment
   return active ? attachment : undefined;
 }
 
+/** The seeker's own uploaded resume documents, newest first (Skippy's "use a saved resume" list). */
+export async function listOwnedResumeAttachments(userId: number, limit = 10) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.ownerId, userId)).orderBy(desc(referralAttachments.createdAt)).limit(limit);
+}
+
 export async function getOwnedResumeAttachmentForPitch(userId: number, attachmentId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const result = await db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId))).limit(1);
