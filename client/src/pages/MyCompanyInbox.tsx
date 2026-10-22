@@ -6,7 +6,7 @@
 // GET /api/company-referrals/inbox (new + saved); the unclaimed preview
 // supplies the pitch and document count. Public refs are the server's HMAC
 // R-XXXXX, never the sequential id.
-import { ChevronDown, ChevronUp, HandHelping } from "lucide-react";
+import { ChevronDown, ChevronUp, HandHelping, Settings } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/_core/auth";
@@ -55,6 +55,9 @@ type QueueItem = {
 };
 type Preview = { id: number; candidateMessage: string; targetRoleUrl: string | null; attachments: unknown[]; publicRef?: string };
 type InboxPayload = { requests?: QueueItem[] };
+/** Read model for the honest empty state: paused / active (capacity left) / at_capacity. */
+type RoutingState = "paused" | "active" | "at_capacity";
+type ReferrerHomePayload = { home?: { routing?: { state?: string } } };
 
 const DAY_MS = 86_400_000;
 
@@ -89,6 +92,7 @@ export default function MyCompanyInbox() {
   const [working, setWorking] = useState(false);
   const [passOpen, setPassOpen] = useState(false);
   const [openingCapacity, setOpeningCapacity] = useState(false);
+  const [routingState, setRoutingState] = useState<RoutingState | null>(null);
   const { showSkeleton, isSlow } = useSlowLoad(loading);
 
   const companyFetch = async <T extends object>(path: string, init?: RequestInit): Promise<T & { error?: string }> => {
@@ -103,10 +107,13 @@ export default function MyCompanyInbox() {
     if (!isSignedIn) return;
     setLoading(true); setError(""); setLoadFailed(false);
     try {
-      const [fresh, saved] = await Promise.all([
+      const [fresh, saved, home] = await Promise.all([
         companyFetch<InboxPayload>("/api/company-referrals/inbox?scope=new"),
         companyFetch<InboxPayload>("/api/company-referrals/inbox?scope=saved"),
+        companyFetch<ReferrerHomePayload>("/api/referrer/home").catch(() => null),
       ]);
+      const state = home?.home?.routing?.state;
+      setRoutingState(state === "paused" || state === "active" || state === "at_capacity" ? state : null);
       const withFunction = (row: QueueItem): QueueItem => ({ ...row, jobFunction: parseJobFunction(row.jobFunction) });
       const freshRows = (fresh.requests || []).map(withFunction);
       const seen = new Set(freshRows.map(row => row.id));
@@ -206,6 +213,7 @@ export default function MyCompanyInbox() {
       <div className="mt-1.5 flex flex-wrap items-center gap-3">
         <GoalVerifiedMark as="span">{`Verified${company ? ` · ${company}` : ""}`}</GoalVerifiedMark>
         <Link href="/referrer/impact" className="flex min-h-11 items-center gap-1 text-g-meta text-g-ink-2"><HandHelping aria-hidden="true" className="size-4" />Impact</Link>
+        <Link href="/referrer?view=setup" className="flex min-h-11 items-center gap-1 text-g-meta text-g-ink-2"><Settings aria-hidden="true" className="size-4" />Settings</Link>
       </div>
       <p className="mt-1 text-g-meta text-g-ink-3">Asks for {company ?? "your company"} roles. Names and resumes stay hidden until you accept.</p>
     </header>
@@ -219,7 +227,15 @@ export default function MyCompanyInbox() {
     </section>
   );
   else if (loadFailed || (error && !requests.length)) body = <GoalErrorState title="We could not load your queue" body={error} retry={{ label: "Try again", onClick: () => { setError(""); void loadInbox(); } }} />;
-  else if (!requests.length) body = (
+  else if (!requests.length) body = routingState === "paused" ? (
+    <GoalEmptyState
+      title="New asks are paused"
+      body="You paused new private asks. Resume anytime from Setup & capacity."
+      action={{ label: "Open settings", onClick: () => go("/referrer?view=setup") }}
+    />
+  ) : routingState === "active" ? (
+    <GoalEmptyState title="No asks right now." body="Enjoy the quiet. We'll email you when a private ask for your company arrives." />
+  ) : (
     <GoalEmptyState
       title="Ready to help?"
       body="Open one real referral slot. Only the next private request for your company is notified."
