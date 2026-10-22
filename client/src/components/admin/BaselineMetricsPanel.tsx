@@ -1,4 +1,5 @@
 import type { FlowBaseline } from "@shared/flowBaseline";
+import { REVERSE_TRIAL, REVERSE_TRIAL_ON_OFFER } from "@shared/planCatalog";
 import { Activity, AlertTriangle, BarChart3, Clock, CreditCard, ShieldCheck, UsersRound } from "lucide-react";
 
 // D-018 baseline panel. Aggregate only: every value here is a count, a rate or a
@@ -39,11 +40,13 @@ export function BaselineMetricsPanel({ baseline }: { baseline: FlowBaseline | nu
   const asks = baseline.weeks.reduce((total, week) => total + week.asks, 0);
   const coverage = baseline.coverage;
   const corridorReady = coverage.filter(row => row.availableReferrers >= 3).length;
+  // D-051: the reverse trial is not on offer, so its metric shows only once it is, or when a wallet is inside one anyway.
+  const showTrial = REVERSE_TRIAL_ON_OFFER || baseline.subscribers.trialing > 0;
 
   return <div className="mt-8 grid gap-5">
     <Panel icon={BarChart3} title="Baseline" subtitle={`The last ${baseline.windowDays} days by UTC week, generated ${baseline.generatedAt.slice(0, 16).replace("T", " ")} UTC. Counts only: this view has no person, address or request text in it.`}>        {asks === 0 ? <p className="mt-6 rounded-xl border border-dashed border-[#cfcfcf] bg-white p-6 text-sm leading-6 text-[#505050]">No asks were recorded in this window yet. A baseline starts on the first real ask — nothing here is backfilled or assumed.</p> : <><Table
-        head={["Week of", "Asks", "Accepted", "Passed", "Expired", "Declined", "Withdrawn", "Waiting", "No coverage"]}
-        rows={[...baseline.weeks].reverse().map(week => [week.weekStart, number(week.asks), number(week.accepted), number(week.passed), number(week.expired), number(week.declined), number(week.withdrawn), number(week.waiting), number(week.uncovered)])}
+        head={["Week of", "Asks", "Accepted", "Passed", "Expired", "Declined", "Withdrawn", "Waiting", "No coverage", "Referred ≤7d"]}
+        rows={[...baseline.weeks].reverse().map(week => [week.weekStart, number(week.asks), number(week.accepted), number(week.passed), number(week.expired), number(week.declined), number(week.withdrawn), number(week.waiting), number(week.uncovered), number(week.referredWithin7Days ?? 0)])}
       /><p className="mt-3 text-xs leading-5 text-[#505050]">Outcome is the ask's state now, grouped by the week it was created. “Waiting” means no referrer has decided it yet; a passed ask still counts in waiting demand below, because it is open to that company again. “No coverage” counts asks at a company with no verified referrer today.</p></>}
     </Panel>
 
@@ -52,6 +55,7 @@ export function BaselineMetricsPanel({ baseline }: { baseline: FlowBaseline | nu
       <Metric label="Median time to first decision" value={hours(baseline.decisionLatency.medianHours)} detail={baseline.decisionLatency.sampleSize === 0 ? "No referrer decision in the window yet." : `${number(baseline.decisionLatency.sampleSize)} asks with an accept or pass.`} />
       <Metric label="90th percentile decision" value={hours(baseline.decisionLatency.p90Hours)} detail="The slow tail a seeker actually feels." />
       <Metric label="External referrers active, 7 days" value={number(baseline.externalReferrers.activeLast7Days)} detail={`${number(baseline.externalReferrers.activeInWindow)} in the whole window. Operator domains excluded.`} />
+      <Metric label="Referred within 7 days" value={baseline.referredWithin7DaysPct === undefined ? "—" : `${number(baseline.referredWithin7DaysPct)}%`} detail="Share of asks first marked Referred within 7 days of first visibility (D-038-B north star)." />
     </section>
 
     <section className="grid gap-5 lg:grid-cols-[1.25fr_.75fr]">
@@ -62,10 +66,10 @@ export function BaselineMetricsPanel({ baseline }: { baseline: FlowBaseline | nu
         /><p className="mt-3 text-xs leading-5 text-[#505050]">Companies at or above 3 available referrers: {number(corridorReady)}. The D-037 supply bar for turning passes on is 3 such companies. This panel measures it; whether checkout is open is decided in the pricing path.</p></>}
       </Panel>
       <div className="grid gap-5">
-        <Panel icon={CreditCard} title="Paying subscribers" subtitle="Wallets on a paid plan, and Free wallets inside the one-time reverse trial.">
+        <Panel icon={CreditCard} title="Paying subscribers" subtitle={showTrial ? "Wallets on a paid plan, and Free wallets inside the one-time reverse trial." : "Wallets on a paid plan."}>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <Metric label="Paid plans" value={number(baseline.subscribers.paid)} detail="Any plan other than Free." />
-            <Metric label="In reverse trial" value={number(baseline.subscribers.trialing)} detail="Free wallet inside its 14-day window." />
+            {showTrial ? <Metric label="In reverse trial" value={number(baseline.subscribers.trialing)} detail={REVERSE_TRIAL_ON_OFFER ? `Free wallet inside its ${REVERSE_TRIAL.days}-day window.` : "Free wallet inside a trial window while the trial is not on offer (D-051): check how it started."} /> : null}
           </div>
           {baseline.subscribers.byPlan.length ? <div className="mt-4 flex flex-wrap gap-2">{baseline.subscribers.byPlan.map(row => <span key={row.plan} className="rounded-full border border-[#e5e5e5] bg-[#f5f5f5] px-3 py-1.5 text-xs font-bold text-black">{row.plan.replace(/_/g, " ")} · {number(row.count)}</span>)}</div> : <p className="mt-4 text-xs leading-5 text-[#505050]">No paid plan is active yet.</p>}
         </Panel>

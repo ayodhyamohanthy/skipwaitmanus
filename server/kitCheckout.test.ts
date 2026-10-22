@@ -5,6 +5,9 @@ import { registerChargebeeRoutes } from "./chargebeeRoutes";
 import { startKitPackCheckout, startKitPlanCheckout } from "./kitCheckout";
 import { NOT_AVAILABLE_CODE } from "../shared/subscriptionManagement";
 import type { CatalogPrice } from "../shared/billingCatalog";
+// These cases test selling passes, so they run with pass sales on; the shipped
+// off state (D-084) is pinned in server/passSalesSwitch.test.ts.
+vi.mock("../shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("../shared/planCatalog")>()), PASS_SALES_ENABLED: true }));
 
 const req = { hostname: "skipwait.me", protocol: "https", get: () => "skipwait.me" } as unknown as Parameters<typeof startKitPlanCheckout>[0]["req"];
 const urls = { redirectUrl: "https://skipwait.me/plans?payment=pending", cancelUrl: "https://skipwait.me/plans?payment=cancelled" };
@@ -163,6 +166,7 @@ describe("kit checkout over the two money routes", () => {
       .post("/api/chargebee/subscription-checkout")
       .send({ planId: "momentum", interval: "30d", currency: "USD", billingCountry: "IN" });
     expect(response.status).toBe(400);
+    expect(response.body.error).not.toMatch(/\bPro\b|\bMax\b/);
     expect(createSubscriptionIntent).not.toHaveBeenCalled();
   });
 
@@ -176,13 +180,44 @@ describe("kit checkout over the two money routes", () => {
     expect(createPaymentIntent).toHaveBeenCalledWith({ hostedPageId: "hp_pack", checkoutIntentId: "intent_pack", userId: 7, role: "job_seeker", tokenCount: 60, amount: 259_900, currency: "INR" });
   });
 
-  it("keeps the pre-kit Pro/Max body on its own path", async () => {
+  // D-067: Pro and Max are removed completely. An old client that still sends the
+  // pre-kit body is refused before any availability probe, provider call or intent.
+  it.each([
+    ["pro", "INR", "IN"],
+    ["pro", "USD", "INTL"],
+    ["max", "INR", "IN"],
+    ["max", "USD", "INTL"],
+  ] as const)("refuses the retired %s body (%s) with 410 plan_retired before any provider call or intent", async (plan, currency, billingCountry) => {
     const createSubscriptionIntent = vi.fn();
-    const createSubscriptionCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/pro", hostedPageId: "hp_pro", checkoutIntentId: "intent_legacy" }));
-    const response = await request(app({ createSubscriptionIntent, createSubscriptionCheckout }))
+    const createSubscriptionCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/legacy", hostedPageId: "hp_legacy", checkoutIntentId: "intent_legacy" }));
+    const isAvailable = vi.fn(() => true);
+    const createPlanCheckout = vi.fn();
+    const recordActivity = vi.fn(async () => undefined);
+    const provider = vi.fn(); vi.stubGlobal("fetch", provider);
+    const response = await request(app({ createSubscriptionIntent, createSubscriptionCheckout, recordActivity, kitCheckout: { isAvailable, createPlanCheckout } }))
       .post("/api/chargebee/subscription-checkout")
-      .send({ plan: "pro", currency: "INR", billingCountry: "IN" });
-    expect(response.status).toBe(200);
-    expect(createSubscriptionIntent).toHaveBeenCalledWith(expect.objectContaining({ plan: "pro", amount: 59_900 }));
+      .send({ plan, currency, billingCountry });
+    expect(response.status).toBe(410);
+    expect(response.body).toEqual({ error: "That plan is no longer sold. Nothing has been charged.", code: "plan_retired" });
+    expect(createSubscriptionCheckout).not.toHaveBeenCalled();
+    expect(createSubscriptionIntent).not.toHaveBeenCalled();
+    expect(isAvailable).not.toHaveBeenCalled();
+    expect(createPlanCheckout).not.toHaveBeenCalled();
+    expect(provider).not.toHaveBeenCalled();
+    expect(recordActivity).not.toHaveBeenCalledWith(expect.objectContaining({ action: "billing.subscription_checkout_started" }));
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 7, action: "billing.subscription_checkout_refused", outcome: "denied", metadata: expect.objectContaining({ reason: "plan_retired", plan }) }));
+    vi.unstubAllGlobals();
+  });
+
+  it("refuses a body that is neither a kit plan nor a retired plan with a plain 400 and no intent", async () => {
+    const createSubscriptionIntent = vi.fn();
+    const createPlanCheckout = vi.fn();
+    const response = await request(app({ createSubscriptionIntent, kitCheckout: { isAvailable: () => true, createPlanCheckout } }))
+      .post("/api/chargebee/subscription-checkout")
+      .send({ plan: "free", currency: "USD", billingCountry: "INTL" });
+    expect(response.status).toBe(400);
+    expect(response.body.error).not.toMatch(/\bPro\b|\bMax\b/);
+    expect(createPlanCheckout).not.toHaveBeenCalled();
+    expect(createSubscriptionIntent).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,10 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MyCompanyInbox from "./MyCompanyInbox";
+
+const Queue = () => <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MyCompanyInbox /></QueryClientProvider>;
 
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: true, isLoaded: true, getToken: vi.fn(async () => null), openSignIn: vi.fn() }),
@@ -30,7 +33,7 @@ describe("inbox parallel secondary loads", () => {
 
   it("handles secondary failures when the primary load also fails", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 503, json: async () => ({ error: "everything is down" }) })));
-    render(<MyCompanyInbox />);
+    render(<Queue />);
     expect(await screen.findByRole("alert")).toBeTruthy();
   });
 });

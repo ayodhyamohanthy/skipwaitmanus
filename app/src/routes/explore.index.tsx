@@ -6,7 +6,7 @@ import { CompanyCard } from "@/components/company-card";
 import { pageMeta } from "@/lib/page-meta";
 import { launchCompanies } from "@/lib/marketplace-data";
 
-export const Route = createFileRoute("/explore/")({ head: () => pageMeta("Explore companies", "Find people open to referral requests at SkipWait, Wipro, Go Neutrinos, TCS, and Merkle."), component: Explore });
+export const Route = createFileRoute("/explore/")({ head: () => pageMeta("Explore companies", "Find people open to referral requests at skipwait.me, Wipro, Go Neutrinos, TCS, and Merkle."), component: Explore });
 
 function Explore() {
   const [search, setSearch] = useState("");

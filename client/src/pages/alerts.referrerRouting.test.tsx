@@ -30,7 +30,7 @@ const now = new Date(2026, 9, 9, 12, 0, 0).getTime();
 const ITEMS = [
   { id: 1, category: "referral", title: "Your ask was accepted", body: "A verified referrer at Wipro accepted", readAt: null, createdAt: new Date(now - 12 * 60000).toISOString() },
   { id: 2, category: "message", title: "New message", body: "Happy to help", readAt: null, createdAt: new Date(now - 60 * 60000).toISOString() },
-  { id: 3, category: "system", title: "Weekly summary", body: "Your week on SkipWait", readAt: new Date(now - 2 * 86400000).toISOString(), createdAt: new Date(now - 2 * 86400000).toISOString() },
+  { id: 3, category: "system", title: "Weekly summary", body: "Your week on skipwait.me", readAt: new Date(now - 2 * 86400000).toISOString(), createdAt: new Date(now - 2 * 86400000).toISOString() },
 ];
 
 type FetchReply = { ok: boolean; status?: number; json: () => Promise<unknown> };
@@ -38,7 +38,7 @@ const ok = (body: unknown): FetchReply => ({ ok: true, status: 200, json: async 
 const list = (notifications: unknown[] = ITEMS) => ok({ notifications });
 
 const ACCESS_PATH = "/api/company-referrals/access";
-const VERIFIED_ACCESS = ok({ verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "SkipWait", companyInitials: "SW" });
+const VERIFIED_ACCESS = ok({ verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "skipwait.me", companyInitials: "SW" });
 const UNVERIFIED_ACCESS = ok({ verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null });
 const FAILED_ACCESS: FetchReply = { ok: false, status: 500, json: async () => ({ error: "We could not check your company-email access" }) };
 

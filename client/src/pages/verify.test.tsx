@@ -98,7 +98,7 @@ describe("Verify work email", () => {
     expect((screen.getByRole("button", { name: /Continue/ }) as HTMLButtonElement).disabled).toBe(true);
     release?.();
     const radios = await screen.findAllByRole("radio");
-    expect(radios.map(radio => radio.textContent)).toEqual(["SWSkipWait@skipwait.me", "WWipro@wipro.com", "GNGo Neutrinos@goneutrinos.com", "TTCS@tcs.com", "MMerkle@merkle.com"]);
+    expect(radios.map(radio => radio.textContent)).toEqual(["SWskipwait.me@skipwait.me", "WWipro@wipro.com", "NNeutrinos@neutrinos.com", "TTCS@tcs.com", "MMerkle@merkle.com"]);
     expect(screen.getByRole("radio", { name: /Wipro/ }).getAttribute("aria-checked")).toBe("true");
     expect((screen.getByRole("button", { name: /Continue/ }) as HTMLButtonElement).disabled).toBe(false);
   });
@@ -245,7 +245,7 @@ describe("Verify work email", () => {
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: "name@wipro.com" } });
     fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
-    expect(await screen.findByText(/couldn't reach SkipWait/)).toBeTruthy();
+    expect(await screen.findByText(/couldn't reach skipwait.me/)).toBeTruthy();
   });
 
   it("offers a resend after the server's one-minute window and shows a resend failure on the code step", async () => {

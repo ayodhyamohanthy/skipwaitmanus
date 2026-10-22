@@ -1,14 +1,24 @@
 // @vitest-environment jsdom
+// /requests empty and accepted states on the goal UI (D-048 phase 3): one
+// honest zero state, a real next step, and no fabricated activity anywhere.
 import React from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MyRequests from "./MyRequests";
 
-const { go } = vi.hoisted(() => ({ go: vi.fn() }));
+const { go, getToken, auth } = vi.hoisted(() => ({ go: vi.fn(), getToken: vi.fn().mockResolvedValue("test-token"), auth: { openSignIn: vi.fn() } }));
 
-vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: true, userId: 4106, getToken: vi.fn().mockResolvedValue("test-token") }), SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
-vi.mock("wouter", () => ({ Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>, useLocation: () => ["/requests", go] }));
+vi.mock("@/_core/auth", () => ({
+  useAuth: () => ({ isLoaded: true, isSignedIn: true, userId: 4106, getToken, openSignIn: auth.openSignIn }),
+  useUser: () => ({ user: { fullName: "Ada Byron", primaryEmailAddress: { emailAddress: "ada@example.com" }, emailAddresses: [] } }),
+  SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+}));
+vi.mock("@/hooks/useReferrerAccess", () => ({ useReferrerAccess: () => ({ status: "unverified" }) }));
+vi.mock("wouter", () => ({
+  Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
+  useLocation: () => ["/requests", go],
+}));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
 
 function renderPage() {
@@ -16,43 +26,45 @@ function renderPage() {
   return render(<QueryClientProvider client={client}><MyRequests /></QueryClientProvider>);
 }
 
+function stubRequests(requests: unknown[]) {
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/api/credits/summary")
+    ? { ok: true, status: 200, json: async () => ({ summary: { totalAvailable: 4 } }) }
+    : { ok: true, status: 200, json: async () => ({ requests }) }));
+}
 
-beforeEach(() => {
-  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [] }) })));
-});
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+beforeEach(() => stubRequests([]));
+afterEach(() => { cleanup(); go.mockClear(); vi.unstubAllGlobals(); });
 
-describe("My Requests empty state", () => {
-  it("keeps a Job Seeker moving with a real-data empty state, never a fabricated preview", async () => {
+describe("My asks empty state", () => {
+  it("draws one honest zero state with a real next step, never a fabricated preview", async () => {
     renderPage();
-    await waitFor(() => expect(document.querySelector('[aria-label="No referral requests"]')).toBeTruthy());
-    // Kit v4: nothing sits under the muted empty panel (no share card), and
-    // the old illustrative preview card is gone: no fabricated activity ships.
+    await waitFor(() => expect(screen.getByTestId("goal-empty-state")).toBeTruthy());
+    // Exactly one "No asks yet." line: the section note and the empty state must not both render.
+    expect(screen.getAllByText("No asks yet.").length).toBe(1);
+    expect(screen.getByText("Pick a company, find a verified referrer, and write one great ask.")).toBeTruthy();
+    // No share card, no illustrative activity, no old kit copy.
     expect(document.querySelector('[data-skipwait-zero-action="job_seeker"]')).toBeNull();
     expect(document.querySelector('[data-skipwait-empty-preview]')).toBeNull();
     expect(screen.queryByRole("link", { name: "Share on WhatsApp" })).toBeNull();
     expect(screen.queryByText("No requests yet.")).toBeNull();
-    // Kit v4 first-time empty state: honest zero, two real next steps.
-    expect(screen.getByRole("heading", { name: "No asks yet." })).toBeTruthy();
-    expect(screen.getByText("Pick a company, find a verified referrer, and write one great ask.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Explore companies" }).getAttribute("href")).toBe("/explore");
+    // The one action is real and leads to the live company directory.
+    fireEvent.click(screen.getByRole("button", { name: "Explore companies" }));
+    expect(go).toHaveBeenCalledWith("/explore");
+    expect(screen.getByRole("link", { name: "Ask for a referral" }).getAttribute("href")).toBe("/explore");
+    // The kit's second next step survives the move (0e1ccba4): finish the profile.
     expect(screen.getByRole("link", { name: "Finish setup" }).getAttribute("href")).toBe("/onboarding");
-    // Tabs and zero counts render only from the loaded (empty) list.
-    expect(screen.getByRole("tab", { name: "Active" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByText("IN CONVERSATION").parentElement?.textContent).toContain("0");
   });
 
-  it("shows the approved request as a single conversation link row (kit v4: no update aside)", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [{ id: 12, targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", status: "approved", referrerId: 77, referrerMessage: "I can introduce you to the hiring team.", unreadMessageCount: 2, createdAt: "2026-08-10T08:00:00.000Z", updatedAt: "2026-08-11T09:00:00.000Z", attachmentCount: 1 }] }) })));
+  it("shows the approved ask as a single link row with unread messages, never the referrer id", async () => {
+    stubRequests([{ id: 12, title: "Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", companyName: null, companyInitials: null, status: "approved", referrerId: 77, referrerMessage: "I can introduce you to the hiring team.", unreadMessageCount: 2, queueStatus: null, createdAt: "2026-08-10T08:00:00.000Z", updatedAt: "2026-08-11T09:00:00.000Z", attachmentCount: 1 }]);
     renderPage();
-    const row = await waitFor(() => screen.getByLabelText("acme.com request, Accepted"));
-    expect(row.getAttribute("href")).toBe("/conversation/12");
-    expect(row.closest("li")?.textContent).toContain("2 new");
-    expect(screen.getByText("IN CONVERSATION").parentElement?.textContent).toContain("1");
-    // Referrer identity stays private: id 77 appears nowhere.
+    const row = (await screen.findByText("Designer")).closest("a");
+    expect(row?.getAttribute("href")).toBe("/conversation/12");
+    expect(within(row as HTMLElement).getByTestId("goal-status").textContent).toBe("Accepted");
+    expect(row?.textContent).toContain("2 new");
     expect(document.querySelector("main")?.textContent).not.toContain("77");
-    // The referrer's note reaches the inbox and the thread, not an extra aside here.
+    // The referrer's note reaches the thread, not an extra aside here.
     expect(screen.queryByLabelText("Referrer update")).toBeNull();
-    expect(row.closest("li")?.textContent).not.toContain("I can introduce you to the hiring team.");
+    expect(row?.textContent).not.toContain("I can introduce you to the hiring team.");
   });
 });

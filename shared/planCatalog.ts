@@ -1,5 +1,5 @@
 /**
- * SkipWait plan catalog: the pricing model the owner decided on Oct 14 2026
+ * skipwait.me plan catalog: the pricing model the owner decided on Oct 14 2026
  * (docs/PRICING_RECOMMENDATION.md, "Owner decisions" and sections 3 to 5),
  * amended Oct 16–17 2026 (D-036–D-046 in docs/DECISIONS.md). It
  * overrides PRICING.md, UPGRADE_NUDGES.md and the kit PNG numbers wherever
@@ -15,7 +15,8 @@
  *    (D-007: Indian sole proprietorship, not GST-registered).
  *  - Free: 3 open asks, 3 credits every UTC calendar month (no carryover).
  *    No welcome credits (D-039). The one-time 14-day Momentum reverse trial
- *    stays in code; its start timing is an open owner question.
+ *    stays in code, switched off and off the public catalog until its
+ *    trigger ships (D-051, REVERSE_TRIAL_ON_OFFER).
  *  - Keep warm carries 4 credits a month, Momentum 36 per 30 days (D-041).
  *  - Land Focus/Sprint human review and live sessions read as "coming later"
  *    until reviewers are staffed (D-041); Concierge is by application.
@@ -85,15 +86,38 @@ export type PaidCatalogPlan = CatalogPlan & { id: CatalogPlanId };
  * Credit PACKS (the D-005/D-036 ladder: first pack ₹99 for 2 / $5 for 5, then
  * 25 / 60 / 150) stay on sale alongside the passes (D-036/D-046). The flag
  * below only hides client entry points: the server checkout route, pricing and
- * the payment-recovery screen are untouched. Pro/Max are unaffected (they sell
- * open-ask slots and assistant access, and stay off sale per D-027).
+ * the payment-recovery screen are untouched.
  */
 export const CREDIT_PACKS_ON_SALE = true;
+
+/**
+ * D-084 (P0, Oct 20): passes and Keep warm are sold only once a paid pass can
+ * always be activated. Today one activates only when the subscription webhook
+ * names its checkout page, and nothing recovers it otherwise (GO-LIVE-1b adds
+ * the recovery). While false, the catalog reports every plan term unavailable
+ * and the subscription checkout refuses with 409 not_available_yet before any
+ * provider call. Kept in code and switched on when it can deliver (D-042).
+ */
+export const PASS_SALES_ENABLED: boolean = false;
 
 export const FREE_PLAN: CatalogPlan & { id: "free" } = {
   id: "free", tier: "free", level: 1, label: "Free", levelLabel: null,
   creditsPerMonth: 3, openRequests: 3, carryover: 0, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: {},
 };
+
+
+/** GO-LIVE-1 (D-036): the legacy per-credit checkout answers this when retired. */
+export const SINGLE_CREDIT_RETIRED_CODE = "single_credit_retired";
+export const SINGLE_CREDIT_RETIRED_ERROR = "Single credits are replaced by credit packs. Nothing has been charged.";
+
+/**
+ * The ₹99/$1 single credit retires in a currency once any credit pack is on sale
+ * in it (D-036). A computed switch (D-042): the server answers from the live
+ * availability probe, so a pack that goes off sale re-opens the single credit.
+ */
+export function singleCreditRetired(args: { currency: CatalogCurrency; anyPackAvailable: boolean }): boolean {
+  return args.anyPackAvailable;
+}
 
 export const CATALOG_PLANS: readonly PaidCatalogPlan[] = [
   { id: "keep_warm", tier: "keep_warm", level: 1, label: "Keep warm", levelLabel: null, creditsPerMonth: 4, openRequests: 5, carryover: 1, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: { yearly: { USD: usd(29), INR: inr(999) } } },
@@ -146,7 +170,7 @@ export const HUMAN_SESSION_IDS = ["written_review", "live_session"] as const;
 export type HumanSessionId = (typeof HUMAN_SESSION_IDS)[number];
 export type HumanSession = { id: HumanSessionId; label: string; detail: string; prices: Record<CatalogCurrency, number> };
 
-/** Reviewers are never employees of, or SkipWait referrers for, the seeker's target company. */
+/** Reviewers are never employees of, or skipwait.me referrers for, the seeker's target company. */
 export const HUMAN_SESSIONS: readonly HumanSession[] = [
   { id: "written_review", label: "Written expert review", detail: "Returned within 48 hours", prices: { USD: usd(49), INR: inr(799) } },
   { id: "live_session", label: "Live 45-minute session", detail: "Mock interview or search strategy", prices: { USD: usd(99), INR: inr(1_499) } },
@@ -190,15 +214,16 @@ export const MAX_OPEN_ASKS_PER_COMPANY = 2;
 /** One-time reverse trial after the first ask: Momentum's open asks and 5 trial credits for 14 days, no card, once per person. */
 export const REVERSE_TRIAL = { plan: "momentum", days: 14, credits: 5 } as const satisfies { plan: CatalogPlanId; days: number; credits: number };
 
-// ---- Lookups ----
-
 /**
- * Grandfathered legacy subscribers. Pro and Max keep their billing and receive
- * at least the entitlements of the tier they map to (Pro: Start, Max: Momentum),
- * never fewer open requests than the monthly requests they pay for, and Max
- * keeps assistant access. The full rule lives in planEntitlements.ts.
+ * D-051: nothing grants the reverse trial yet (grantTrialCreditsTx has no runtime caller), so
+ * it is not offered: the public catalog (GET /api/plans/catalog) and every screen leave it
+ * out (D-044: nothing advertised that code does not grant). It stays in code, switched off,
+ * not removed (D-042). Turn this on in the same change that ships its trigger (recommended:
+ * the seeker's first ask that reaches an available verified referrer).
  */
-export const LEGACY_PLAN_MAP = { pro: "start", max: "momentum" } as const satisfies Record<string, CatalogPlanId>;
+export const REVERSE_TRIAL_ON_OFFER: boolean = false;
+
+// ---- Lookups ----
 
 /** "Land Focus", "Momentum": the tier label plus the Land level when there is one. */
 export function planDisplayName(plan: CatalogPlan): string {
@@ -232,9 +257,4 @@ export function catalogPackItemPriceId(packId: CatalogPackId, currency: CatalogC
 /** One-time Chargebee item price for a human session, e.g. skipwait_written_review-INR. */
 export function catalogSessionItemPriceId(sessionId: HumanSessionId, currency: CatalogCurrency): string {
   return `skipwait_${sessionId}-${currency}`;
-}
-
-export function legacyPlanTarget(plan: unknown): CatalogPlan | undefined {
-  if (plan === "pro" || plan === "max") return catalogPlanById(LEGACY_PLAN_MAP[plan]);
-  return undefined;
 }

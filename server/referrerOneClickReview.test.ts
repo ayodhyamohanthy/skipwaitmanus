@@ -33,11 +33,24 @@ describe("Referrer one-click review actions", () => {
     return { app, reviews, consumed, sent };
   }
 
+  it("refuses an accept without the explicit confirmation, before any state change (kit ethics gate)", async () => {
+    const { app, reviews } = appFor();
+    const bare = await request(app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send({ decision: "approved" });
+    expect(bare.status).toBe(400);
+    expect(bare.body.error).toMatch(/official process/);
+    const emailBare = await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "employee").send({ decision: "approved" });
+    expect(emailBare.status).toBe(400);
+    expect(emailBare.body.error).toMatch(/official process/);
+    expect(reviews).toEqual([]);
+    const confirmed = await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "employee").send({ decision: "approved", ethicsConfirmed: true });
+    expect(confirmed.status).toBe(200);
+  });
+
   it("records dashboard acceptance or a bounded one-click decline reason only for an authenticated company employee", async () => {
     const { app, reviews } = appFor();
     expect((await request(app).post("/api/company-referrals/81/one-click-review").send({ decision: "approved" })).status).toBe(401);
     expect((await request(app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send({ decision: "declined", declineReason: "free text" })).status).toBe(400);
-    const accepted = await request(app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send({ decision: "approved" });
+    const accepted = await request(app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send({ decision: "approved", ethicsConfirmed: true });
     expect(accepted.status).toBe(200); expect(accepted.body).toEqual({ status: "approved" });
     const declined = await request(app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send({ decision: "declined", declineReason: "timing" });
     expect(declined.status).toBe(200); expect(declined.body).toEqual({ status: "passed", declineReason: "timing" });
@@ -52,12 +65,23 @@ describe("Referrer one-click review actions", () => {
     expect(reviews).toEqual([{ userId: 2, requestId: 81, decision: "declined", declineReason: "timing", passReason: "at_capacity" }]);
   });
 
+  it("accepts D-052's two added reasons with their legacy decline reasons", async () => {
+    const { app, reviews } = appFor();
+    const post = (body: object) => request(app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send(body);
+    expect((await post({ decision: "declined", declineReason: "role_not_a_fit", passReason: "role_closed" })).status).toBe(200);
+    expect((await post({ decision: "declined", declineReason: "cannot_support", passReason: "only_refer_known" })).status).toBe(200);
+    expect(reviews).toEqual([
+      { userId: 2, requestId: 81, decision: "declined", declineReason: "role_not_a_fit", passReason: "role_closed" },
+      { userId: 2, requestId: 81, decision: "declined", declineReason: "cannot_support", passReason: "only_refer_known" },
+    ]);
+  });
+
   it("sends a company-only email handoff and completes its action once for the authenticated intended Referrer", async () => {
     const { app, reviews, consumed, sent } = appFor();
     const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [1] });
     expect(created.status).toBe(201); expect(sent).toEqual([{ to: "employee@acme.com", companyDomain: "acme.com", reviewUrl: expect.stringMatching(new RegExp(`/email-review/${token}$`)) }]); expect(JSON.stringify(sent)).not.toMatch(/resume|candidate|requestId|queue/i);
     expect((await request(app).post(`/api/referrer-review-links/${token}/decision`).send({ decision: "approved" })).status).toBe(401);
-    expect((await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "outsider").send({ decision: "approved" })).status).toBe(409);
+    expect((await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "outsider").send({ decision: "approved", ethicsConfirmed: true })).status).toBe(409);
     const acted = await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "employee").send({ decision: "declined", declineReason: "role_not_a_fit" });
     expect(acted.status).toBe(200); expect(acted.body).toEqual({ status: "passed", declineReason: "role_not_a_fit" }); expect(JSON.stringify(acted.body)).not.toMatch(/request|email|token|company/i); expect(consumed).toEqual([token]);
     expect((await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "employee").send({ decision: "declined", declineReason: "role_not_a_fit" })).status).toBe(409);

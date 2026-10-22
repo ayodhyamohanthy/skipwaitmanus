@@ -1,4 +1,11 @@
 import { setRetryAfter } from "./retryAfter";
+import { publicOutboundOrigin } from "./_core/authPostGuard";
+import { dispatchReferralReviewDeliveries } from "./referralReviewDispatch";
+import { buildClaimedAskDetailView, claimResponseView } from "./referrerAskView";
+import { isOpenAskAttachment, toLockedAskAttachment } from "../shared/referrerAskView";
+import { captureServerError } from "./sentry";
+import { isPaymentReviewRefusal } from "./paymentRefundReview";
+import { paymentReviewRequestSchema, type PaymentReviewDecision, type PaymentReviewOutcome } from "../shared/paymentReview";
 import { normalizeReferenceId, REFERENCE_ID_ERROR } from "../shared/referenceId";
 import { OTP_RESEND_COOLDOWN_SECONDS, OtpLockedError } from "./otpPolicy";
 import { isPassReasonCode, passReasonSeekerLabel } from "../shared/passReasons";
@@ -8,18 +15,21 @@ import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request, type Response as ExpressResponse } from "express";
 import { validatePrivateDocument } from "./documentValidation";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "./schemaReconcile";
+import { publicAskRef } from "./askRef";
 import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, listMyPaymentReceipts, listSeekerAlerts, createSeekerAlert, setSeekerAlertPaused, deleteSeekerAlert, revokeReferralShareCard, listCreditLedger, getMyProfile, getReferrerPreferences, listReferrerThankYous } from "./db";
+import type { ReferrerImpactSummary } from "./db";
 import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
 import { createReferrerSlackDeliverySender, isValidSlackIncomingWebhookUrl, sendReferrerSlackDelivery } from "./referrerSlackDelivery";
 import { sendSlotOpenedAlertEmail } from "./slotOpenedAlertEmail";
 import sharp from "sharp";
-import { getAskExpiresAtMs, isReferralProgressUpdateStatus, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
+import { getAskShelfLifeEndsAtMs, isReferralProgressUpdateStatus, REFERRED_DEADLINE_ENABLED, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { getBlockedRequestIds as defaultBlockedRequestIds } from "./blocksRoutes";
 import { attachCompanyIdentities, getCompanyDirectoryEntry as defaultCompanyDirectoryEntry, notifySeekerAlertsForCompanyDomain, resolveCompanyIdentities, type CompanyIdentityLookup } from "./companyDirectory";
 import { askJobFunctionInputSchema, withParsedJobFunction, type JobFunction } from "../shared/jobFunctions";
-import type { OpenAskSlots } from "../shared/openAskSlots";
-import { OpenAskSlotCapError } from "./planGates";
+import { companyCapReachedSchema, type OpenAskSlots } from "../shared/openAskSlots";
+import { CompanyCapReachedError, OpenAskSlotCapError } from "./planGates";
+import { BlockedPersonalLinkError } from "./blockedPairs";
 import { creditLedgerQuerySchema, creditLedgerResponseSchema, type CreditLedgerEntry } from "../shared/creditLedger";
 import type { ReferrerAccessResponse } from "../shared/referrerAccess";
 import { resolveAskNote } from "../shared/askNote";
@@ -45,7 +55,7 @@ export type PrivateReferralRouteDeps = {
   // existing injected-dependency callers keep working via the fetch fallback.
   storageGetBytes?: (key: string) => Promise<Buffer | Uint8Array | undefined>;
   createReferralAttachment: (ownerId: number, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) => Promise<Attachment>;
-  getAccessibleReferralAttachment: (userId: number, attachmentId: number) => Promise<(Attachment & { ownerId: number; referrerId?: number | null }) | undefined>;
+  getAccessibleReferralAttachment: (userId: number, attachmentId: number) => Promise<(Attachment & { ownerId: number; referrerId?: number | null; referralRequestId?: number | null }) | undefined>;
   createResumeUploadSession?: (ownerId: number, input: { sessionId?: string; fileName: string; mimeType: string; expectedSize: number }) => Promise<{ id: string }>;
   getResumeUploadSession?: (ownerId: number, sessionId: string) => Promise<{ id: string; fileName: string; mimeType: string; expectedSize: number; receivedSize: number; nextChunkIndex: number; status: "active" | "finalizing" | "completed" | "failed"; attachmentId: number | null; chunks: Array<{ chunkIndex: number; storageKey: string; byteSize: number }> } | undefined>;
   appendResumeUploadChunk?: (ownerId: number, input: { sessionId: string; chunkIndex: number; storageKey: string; byteSize: number }) => Promise<{ nextChunkIndex: number; receivedSize: number; alreadyStored: boolean }>;
@@ -57,7 +67,7 @@ export type PrivateReferralRouteDeps = {
   getMyProfile?: typeof getMyProfile;
   getReferrerPreferences?: typeof getReferrerPreferences;
   getPrivateReferrerImpactSummary?: (userId: number) => Promise<{ reviewed: number; approved: number; introductions: number; interviews: number; offers: number }>;
-  getReferrerImpactSummary?: (userId: number) => Promise<{ acceptedReferrals: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; creditsRemaining: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> }>;
+  getReferrerImpactSummary?: (userId: number) => Promise<ReferrerImpactSummary>;
   getOwnedResumeAttachmentForPitch?: (userId: number, attachmentId: number) => Promise<{ id: number; fileKey: string; mimeType: string }>;
   draftSmartReferralPitch?: (input: { companyDomain: string; targetRoleUrl: string; resumeUrl?: string; resumeMimeType?: string }) => Promise<string>;
   getOrCreateReferralShareCard?: (userId: number, requestId: number) => Promise<{ shareToken: string; companyDomain: string; status: ReferralStatus; isActive: boolean }>;
@@ -85,6 +95,8 @@ export type PrivateReferralRouteDeps = {
   getBlockedReferralRequestIds?: (userId: number, requestIds: number[]) => Promise<Set<number>>;
   getUnclaimedCompanyReferralPreview?: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
+  hasEverCreatedReferralRequest?: (userId: number) => Promise<boolean>;
+  hasEverReviewedReferral?: (userId: number) => Promise<boolean>;
   listMyPaymentReceipts?: (userId: number, role?: "job_seeker" | "referrer") => Promise<unknown[]>;
   listSeekerAlerts?: (userId: number) => Promise<unknown[]>;
   createSeekerAlert?: (userId: number, input: { companyDomain?: unknown }) => Promise<unknown>;
@@ -99,6 +111,12 @@ export type PrivateReferralRouteDeps = {
   saveCompanyReferralRequest?: (userId: number, requestId: number, saved: boolean) => Promise<{ requestId: number; saved: boolean }>;
   withdrawCompanyReferralRequest?: (userId: number, requestId: number) => Promise<{ withdrawn: boolean; requestId: number; status: string; creditSummary: unknown; creditRefunded?: boolean }>;
   claimCompanyReferralRequest: (userId: number, requestId: number) => Promise<{ requestId: number; claimed: boolean; jobSeekerId?: number; companyDomain?: string; revision?: number; replayed?: boolean }>;
+  extendReferredDeadlineTx: (userId: number, requestId: number, nowMs: number) => Promise<{ extended: boolean; replayed?: boolean }>;
+  stepBackFromReferral: (userId: number, requestId: number, nowMs: number) => Promise<{ lapsed: boolean; reason?: string }>;
+  confirmReferredBySeeker: (userId: number, requestId: number, nowMs: number) => Promise<{ confirmed: boolean; replayed?: boolean }>;
+  /** D-038-reconcile R-2: part B's three actions answer 409 until an independent review passes it. */
+  referredDeadlineEnabled?: boolean;
+  lapseReferredTx: (tx: any, requestId: number, nowMs: number) => Promise<{ lapsed: boolean; reason?: string }>;
   getClaimedCompanyReferralDetail: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   reviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) => Promise<{ status: string }>;
   oneClickReviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; declineReason?: "role_not_a_fit" | "cannot_support" | "timing"; passReason?: string | null; reviewLinkToken?: string }) => Promise<{ status: string; companyDomain: string; jobSeekerId?: number; declineReason?: string; revision?: number; replayed?: boolean; reopened?: boolean }>;
@@ -149,6 +167,8 @@ export type PrivateReferralRouteDeps = {
   listAdminTokenAdjustments?: (limit?: number) => Promise<unknown[]>;
   grantAdminTokenAdjustment?: (adminUserId: number, input: { recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; caseReference: string; reason: string }) => Promise<{ adjustmentId: number; recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; newBalance: number }>;
   getCreditSummary?: (userId: number, role: "job_seeker" | "referrer") => Promise<unknown>;
+  /** D-079: provider-truth card-validation re-read on the return path (webhook lag); fail-open, alerts inside. */
+  reconcileCardValidation?: (userId: number) => Promise<unknown>;
   listCreditLedger?: (userId: number, role: "job_seeker" | "referrer", limit: number) => Promise<CreditLedgerEntry[]>;
   getOrCreatePersonalReferralInvite?: (userId: number) => Promise<{ inviteCode: string }>;
   claimPersonalReferralInvite?: (joinerUserId: number, input: { inviteCode: string; verifiedEmail: string }) => Promise<{ rewarded: boolean; tokenCount?: number; reason?: string }>;
@@ -163,7 +183,7 @@ export type PrivateReferralRouteDeps = {
   listNotifications?: (userId: number) => Promise<PrivateNotification[]>;
   markNotificationRead?: (userId: number, notificationId: number) => Promise<{ success: boolean }>;
   listRequiresReviewPayments?: (limit?: number) => Promise<unknown[]>;
-  resolveRequiresReviewPayment?: (adminUserId: number, paymentId: number, decision: "credited" | "rejected", note?: string) => Promise<{ paymentId: number; decision: string; tokenCount: number; userId: number; role: string }>;
+  resolveRequiresReviewPayment?: (adminUserId: number, paymentId: number, decision: PaymentReviewDecision, note?: string, credits?: number) => Promise<PaymentReviewOutcome>;
   listRecentPayments?: (limit?: number) => Promise<unknown[]>;
   revokeCreditedPaymentCredits?: (adminUserId: number, paymentId: number, note?: string) => Promise<{ paymentId: number; creditsRevoked: boolean; tokenCount: number; userId: number; role: string; provider: string; amount: number; currency: string }>;
   getRevenueSummary?: () => Promise<{ byProvider: Array<{ provider: string; currency: string; totalAmount: number; count: number }>; totalsByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; refundedTotalByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; recordedAt: Date }>;
@@ -196,6 +216,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     next();
   });
   app.use("/api/admin", (req, res, next) => { if (req.method === "GET") res.set("Cache-Control", "private, no-store"); next(); });
+  // D-038-reconcile R-2: part B's actions touched money and privacy before their own review. While
+  // switched off they refuse first — before identity, the block check, or any read or write.
+  const referredActionsEnabled = deps.referredDeadlineEnabled ?? REFERRED_DEADLINE_ENABLED;
+  const refuseReferredAction = (res: ExpressResponse) => res.status(409).json({ code: "not_available_yet", error: "This option is not available yet. Nothing has changed." });
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
   // Additive companyName/companyInitials from the company directory on every
   // row that carries a companyDomain; non-object rows pass through untouched.
@@ -540,6 +564,13 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req); const attachmentId = Number(req.params.attachmentId);
       if (!identity) return res.status(401).send("Sign in to view this document"); if (!Number.isInteger(attachmentId) || attachmentId <= 0) return res.status(400).send("Invalid document reference");
       const attachment = await deps.getAccessibleReferralAttachment(identity.account.id, attachmentId); if (!attachment) return res.status(404).send("Document not found");
+      // A referrer blocked with the seeker, either way, gets the same 404 as no access (blocks stay unenumerable); the seeker
+      // always keeps their own file. Fail-open like every referral surface: a failed check never hides a file.
+      const askId = attachment.ownerId === identity.account.id ? null : attachment.referralRequestId ?? null;
+      if (askId !== null && await isRequestBlocked(identity.account.id, askId)) {
+        record({ actorUserId: identity.account.id, action: "company_referral.blocked_denied", outcome: "denied", resourceType: "referral_request", resourceId: askId, metadata: { surface: "document" } });
+        return res.status(404).send("Document not found");
+      }
       record({ actorUserId: identity.account.id, action: "document.accessed", outcome: "success", resourceType: "attachment", resourceId: attachmentId, metadata: { access: "authorized" } });
       res.set("Cache-Control", "private, no-store");
       res.set("X-Content-Type-Options", "nosniff");
@@ -670,6 +701,24 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.status(isValidationError ? 400 : 500).json({ error: message });
     }
   });
+  // D-132/D-110 (flag ASK_LEVEL_COST): the pre-send cost quote for the compose
+  // screen - "This ask costs N credits. You have M. Add K more." The link is
+  // normalized exactly as at creation, so the quote always matches the charge.
+  app.get("/api/company-referrals/quote", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to see what this ask costs" });
+      const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
+      if (!url || !isValidTargetRoleUrl(url)) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
+      const level = assignJobLevel({ url: normalizeTargetRoleUrl(url) }).level;
+      const cost = askLevelCostEnabled() ? creditsForLevel(level) : 1;
+      const summary = (await deps.getCreditSummary?.(identity.account.id, "job_seeker")) as { totalAvailable?: unknown } | undefined;
+      const totalAvailable = typeof summary?.totalAvailable === "number" ? summary.totalAvailable : null;
+      if (totalAvailable === null) return res.status(500).json({ error: "We could not load your referral credits" });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ level, cost, totalAvailable, shortfall: Math.max(0, cost - totalAvailable) });
+    } catch { res.status(500).json({ error: "We could not price this ask" }); }
+  });
   app.post("/api/company-referrals", async (req, res) => {
     let actorUserId: number | undefined;
     try {
@@ -710,42 +759,16 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         : opportunityAskSelectionSchema.safeParse({ opportunityId: req.body.opportunityId });
       if (opportunitySelection && !opportunitySelection.success) return res.status(400).json({ error: "That opening is no longer available. Refresh the company page and choose again." });
       const result = await deps.createCompanyReferralRequest(identity.account.id, { ...(selectedCompany ? { selectedCompany: { name: selectedCompany.name, domains: selectedCompany.domains } } : {}), ...(opportunitySelection?.success ? { opportunityId: opportunitySelection.data.opportunityId } : {}), targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias, submittedTargetRoleUrl: targetRoleUrl.trim(), ...(chosenFunction.data ? { jobFunction: chosenFunction.data } : {}) });
-      // Referrer email + Slack delivery runs after the response: the ask is already committed, each send has a durable claim/lease row, and every outcome (with elapsedMs) goes to the audit log, so a slow or dead send never holds the seeker on "Sending your ask...".
-      const dispatchReviewDeliveries = async () => {
-      const t0 = Date.now();
-      let reviewLinks: Array<{ referrerId: number; email: string; linkToken: string; companyDomain: string }> = [];
-      if (!result.replayed && deps.prepareReferrerReviewEmailNotifications) {
-        try {
-          reviewLinks = await deps.prepareReferrerReviewEmailNotifications(result.requestId);
-          const reviewEmailSender = deps.sendReferrerReviewEmail ?? sendReferrerReviewEmail;
-          const origin = `${req.protocol}://${req.get("host")}`;
-          const delivery = await Promise.all(reviewLinks.map(async link => { const leaseOwner=randomUUID();const claim=deps.claimReferralReviewDelivery?await deps.claimReferralReviewDelivery(result.requestId,link.referrerId,"email",leaseOwner):{id:0};if(!claim)return{sent:false,reason:"already_claimed"};try{const sent=await reviewEmailSender({to:link.email,companyDomain:link.companyDomain,reviewUrl:`${origin}/email-review/${encodeURIComponent(link.linkToken)}`});await deps.completeReferralReviewDelivery?.(claim.id,leaseOwner,{status:sent.sent?"sent":"failed",error:sent.sent?undefined:sent.reason});return sent;}catch(error){await deps.completeReferralReviewDelivery?.(claim.id,leaseOwner,{status:"unknown",error:error instanceof Error?error.message:"delivery interrupted"});throw error;}}));
-          const sentCount = delivery.filter(item => item.sent).length;
-          record({ actorUserId: identity.account.id, action: "company_referral.review_email_dispatched", outcome: sentCount === reviewLinks.length ? "success" : "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { intendedRecipientCount: reviewLinks.length, sentCount, elapsedMs: Date.now() - t0 } });
-        } catch (error) { record({ actorUserId: identity.account.id, action: "company_referral.review_email_dispatched", outcome: "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain , metadata: { error: error instanceof Error ? error.message : "dispatch failed", elapsedMs: Date.now() - t0 } }); }
-      }
-      if (deps.getActiveReferrerSlackWebhooks && reviewLinks.length > 0) {
-        try {
-          const slackTargets = await deps.getActiveReferrerSlackWebhooks(reviewLinks.map(link => link.referrerId));
-          const slackSender = deps.sendReferrerSlackDelivery ?? sendReferrerSlackDelivery;
-          const origin = `${req.protocol}://${req.get("host")}`;
-          const slackDelivery = await Promise.all(slackTargets.map(async target => {
-            const link = reviewLinks.find(item => item.referrerId === target.referrerId);
-            if (!link) return { sent: false as const, reason: "not_configured" as const };
-            const leaseOwner=randomUUID();const claim=deps.claimReferralReviewDelivery?await deps.claimReferralReviewDelivery(result.requestId,target.referrerId,"slack",leaseOwner):{id:0};if(!claim)return{sent:false as const,reason:"already_claimed" as const};
-            try{const sent=await slackSender({to:target.webhookUrl,companyDomain:link.companyDomain,reviewUrl:`${origin}/email-review/${encodeURIComponent(link.linkToken)}`});await deps.completeReferralReviewDelivery?.(claim.id,leaseOwner,{status:sent.sent?"sent":"failed",error:sent.sent?undefined:sent.reason});return sent;}catch(error){await deps.completeReferralReviewDelivery?.(claim.id,leaseOwner,{status:"unknown",error:error instanceof Error?error.message:"delivery interrupted"});return{sent:false as const,reason:"delivery_failed" as const};}
-          }));
-          const slackSentCount = slackDelivery.filter((item: { sent: boolean }) => item.sent).length;
-          record({ actorUserId: identity.account.id, action: "company_referral.review_slack_dispatched", outcome: slackSentCount === slackTargets.length ? "success" : "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { intendedRecipientCount: slackTargets.length, sentCount: slackSentCount, elapsedMs: Date.now() - t0 } });
-        } catch (error) { record({ actorUserId: identity.account.id, action: "company_referral.review_slack_dispatched", outcome: "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain , metadata: { error: error instanceof Error ? error.message : "dispatch failed", elapsedMs: Date.now() - t0 } }); }
-      }
-      };
-      void dispatchReviewDeliveries().catch(error => record({ actorUserId: identity.account.id, action: "company_referral.review_dispatch_crashed", outcome: "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { error: error instanceof Error ? error.message : "dispatch crashed" } }));
+      // Referrer email + Slack delivery runs after the response (shared dispatcher, D-137):
+      // the ask is already committed, each send has a durable claim/lease row, and every
+      // outcome (with elapsedMs) goes to the audit log, so a slow or dead send never holds
+      // the seeker on "Sending your ask...".
+      dispatchReferralReviewDeliveries({ deps, record, origin: publicOutboundOrigin(req), result, actorUserId: identity.account.id });
       const requests = await deps.listJobSeekerCompanyReferrals?.(identity.account.id);
       const lifetimeRequestCount = Array.isArray(requests) ? requests.length : undefined;
-      record({ actorUserId: identity.account.id, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { attachmentCount: attachmentIds.length, notifiedEmployees: result.notifiedEmployees, creditReserved: true, coverageStatus: result.coverageStatus ?? "covered", fastTrack: Boolean(result.fastTrack), fromPost: Boolean(result.fromPost), firstLook: Boolean(result.firstLook), jobFunctionChosen: Boolean(chosenFunction.data) } });
+      record({ actorUserId: identity.account.id, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { attachmentCount: attachmentIds.length, notifiedEmployees: result.notifiedEmployees, creditReserved: result.coverageStatus !== "waiting_for_company_coverage", coverageStatus: result.coverageStatus ?? "covered", fastTrack: Boolean(result.fastTrack), fromPost: Boolean(result.fromPost), firstLook: Boolean(result.firstLook), jobFunctionChosen: Boolean(chosenFunction.data) } });
       if (result.coverageStatus === "waiting_for_company_coverage") {
-        record({ actorUserId: identity.account.id, action: "company_referral.manual_follow_up_queued", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { notifiedEmployees: 0, creditReserved: true } });
+        record({ actorUserId: identity.account.id, action: "company_referral.manual_follow_up_queued", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { notifiedEmployees: 0, creditReserved: false } });
       }
       res.status(result.replayed ? 200 : 201).json({ ...withParsedJobFunction(result), ...(lifetimeRequestCount ? { lifetimeRequestCount } : {}) });
     } catch (error) {
@@ -754,6 +777,17 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         record({ actorUserId, action: "company_referral.slot_cap_reached", outcome: "denied", resourceType: "referral_request", metadata: { open: error.slots.open, cap: error.slots.cap, plan: error.slots.plan } });
         return res.status(409).json({ error: error.message, code: error.code, slots: error.slots });
       }
+      // D-006 per-company fairness cap: refused before any side effect, same body shape on every plan.
+      if (error instanceof CompanyCapReachedError) {
+        record({ actorUserId, action: "company_referral.company_cap_reached", outcome: "denied", resourceType: "referral_request", companyDomain: error.companyDomain, metadata: { open: error.open, cap: error.cap } });
+        return res.status(409).json(companyCapReachedSchema.parse({ error: error.message, code: error.code, companyDomain: error.companyDomain, open: error.open, cap: error.cap }));
+      }
+      // P0-block-delivery: a personal link whose owner is blocked with the seeker answers exactly like an inactive link
+      // (same 400 and words, so the block is not revealed); the denial is recorded like every other blocked request.
+      if (error instanceof BlockedPersonalLinkError) {
+        record({ actorUserId, action: "company_referral.blocked_denied", outcome: "denied", resourceType: "referral_request", metadata: { path: "personal_link_create" } });
+        return res.status(400).json({ error: error.message });
+      }
       res.status(error instanceof Error && error.name === "ReferralIdempotencyConflictError" ? 409 : /credit|document|link|company domain|employer behind|submission key|opening/i.test(error instanceof Error ? error.message : "") ? 400 : 500).json({ error: error instanceof Error ? error.message : "We could not send this private referral request" }); }
   });
   app.get("/api/credits/summary", async (req, res) => {
@@ -761,6 +795,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to view your referral credits" });
       const role = req.query.role === "referrer" ? "referrer" : "job_seeker";
+      // D-079: after the hosted page redirects back, the webhook may lag; re-read provider truth first (fail-open).
+      if (role === "job_seeker" && deps.reconcileCardValidation) { try { await deps.reconcileCardValidation(identity.account.id); } catch { /* the summary still loads; the alert fired inside */ } }
       const summary = await deps.getCreditSummary?.(identity.account.id, role);
       if (!summary) return res.status(500).json({ error: "We could not load your referral credits" });
       // Seeker open-ask slots ride on the summary; fail-open: a count failure omits them, never the credits.
@@ -878,7 +914,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in with your work email to see your referral impact" });
       if (!deps.getReferrerImpactSummary) return res.status(503).json({ error: "Your referral impact is unavailable right now" });
       const summary = await deps.getReferrerImpactSummary(identity.account.id);
-      record({ actorUserId: identity.account.id, action: "referrer_impact.viewed", outcome: "success", resourceType: "referrer_impact", metadata: { acceptedReferrals: summary.acceptedReferrals, pendingRequests: summary.pendingRequests } });
+      record({ actorUserId: identity.account.id, action: "referrer_impact.viewed", outcome: "success", resourceType: "referrer_impact", metadata: { acceptedReferrals: summary.acceptedReferrals, introductions: summary.introductions, activeConversations: summary.activeConversations, outcomesShared: summary.outcomesShared, pendingRequests: summary.pendingRequests } });
       res.set("Cache-Control", "private, no-store");
       res.json(summary);
     } catch (error) { res.status(500).json({ error: error instanceof Error ? error.message : "We could not load your referral impact" }); }
@@ -886,31 +922,31 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.get("/api/referrer-fast-track/me", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to create a Fast-Track Link" });
-      if (!deps.getOrCreateReferrerFastTrackLink) return res.status(503).json({ error: "Fast-Track Links are unavailable right now" });
+      if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to create your link" });
+      if (!deps.getOrCreateReferrerFastTrackLink) return res.status(503).json({ error: "Your link is unavailable right now" });
       const link = await deps.getOrCreateReferrerFastTrackLink(identity.account.id);
-      const origin = `${req.protocol}://${req.get("host")}`;
+      const origin = publicOutboundOrigin(req);
       const url = `${origin}/fast/${encodeURIComponent(link.linkCode)}`;
       const vanityUrl = `${origin}/refer/${encodeURIComponent(link.companyDomain.split(".")[0] || link.companyDomain)}/${encodeURIComponent(link.vanityAlias)}`;
       record({ actorUserId: identity.account.id, action: "referrer_fast_track.link_accessed", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { active: link.isActive } });
       res.set("Cache-Control", "private, no-store");
-      res.json({ link: { ...link, url, vanityUrl, suggestedBioCopy: `Private referral requests at ${link.companyDomain} via Skipwait.me.` } });
-    } catch (error) { res.status(/verify your company email/i.test(error instanceof Error ? error.message : "") ? 403 : 500).json({ error: error instanceof Error ? error.message : "We could not create your Fast-Track Link" }); }
+      res.json({ link: { ...link, url, vanityUrl, suggestedBioCopy: `Private referral requests at ${link.companyDomain} via skipwait.me.` } });
+    } catch (error) { res.status(/verify your company email/i.test(error instanceof Error ? error.message : "") ? 403 : 500).json({ error: error instanceof Error ? error.message : "We could not create your link" }); }
   });
   app.post("/api/referrer-fast-track/me/deactivate", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to pause your Fast-Track Link" });
-      if (!deps.deactivateReferrerFastTrackLink) return res.status(503).json({ error: "Fast-Track Links are unavailable right now" });
+      if (!identity) return res.status(401).json({ error: "Sign in to pause your link" });
+      if (!deps.deactivateReferrerFastTrackLink) return res.status(503).json({ error: "Your link is unavailable right now" });
       const result = await deps.deactivateReferrerFastTrackLink(identity.account.id);
       record({ actorUserId: identity.account.id, action: "referrer_fast_track.link_paused", outcome: "success", resourceType: "referrer_fast_track", metadata: { deactivated: result.deactivated } });
       res.set("Cache-Control", "private, no-store");
       res.json(result);
-    } catch { res.status(500).json({ error: "We could not pause your Fast-Track Link" }); }
+    } catch { res.status(500).json({ error: "We could not pause your link" }); }
   });
   app.get("/api/referrer-fast-track/:linkCode", async (req, res) => {
     try {
-      if (!deps.getPublicReferrerFastTrackLink) return res.status(503).json({ error: "Fast-Track Links are unavailable right now" });
+      if (!deps.getPublicReferrerFastTrackLink) return res.status(503).json({ error: "Your link is unavailable right now" });
       const link = await deps.getPublicReferrerFastTrackLink(req.params.linkCode);
       if (!link) return res.status(404).json({ error: "This private referral link is no longer active" });
       record({ action: "referrer_fast_track.link_resolved", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { public: true } });
@@ -920,7 +956,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/referrer-fast-track/vanity/:companySlug/:vanityAlias", async (req, res) => {
     try {
-      if (!deps.getPublicReferrerFastTrackVanityLink) return res.status(503).json({ error: "Fast-Track Links are unavailable right now" });
+      if (!deps.getPublicReferrerFastTrackVanityLink) return res.status(503).json({ error: "Your link is unavailable right now" });
       const link = await deps.getPublicReferrerFastTrackVanityLink(req.params.companySlug, req.params.vanityAlias);
       if (!link) return res.status(404).json({ error: "This private referral link is no longer active" });
       record({ action: "referrer_fast_track.vanity_resolved", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { public: true } });
@@ -950,7 +986,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in to create a share card" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral reference" });
       const card = await (deps.getOrCreateReferralShareCard ?? getOrCreateReferralShareCard)(identity.account.id, requestId);
-      const shareUrl = `${req.protocol}://${req.get("host")}/share-card/${encodeURIComponent(card.shareToken)}`;
+      const shareUrl = `${publicOutboundOrigin(req)}/share-card/${encodeURIComponent(card.shareToken)}`;
       record({ actorUserId: identity.account.id, action: "referral_share_card.created", outcome: "success", resourceType: "referral_share_card", resourceId: requestId, companyDomain: card.companyDomain, metadata: { status: card.status } });
       res.set("Cache-Control", "private, no-store"); res.status(201).json({ shareToken: card.shareToken, shareUrl, companyDomain: card.companyDomain, status: "accepted" });
     } catch (error) { const message = error instanceof Error ? error.message : "We could not create a share card"; res.status(/only available after approval|not part of this private referral/i.test(message) ? 403 : 500).json({ error: message }); }
@@ -990,7 +1026,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!isOpaqueShareToken(req.params.shareToken)) return res.status(404).type("html").send("<!doctype html><title>Share card unavailable</title><meta name=\"robots\" content=\"noindex\"><body style=\"margin:0;background:#f4f4f1;color:#131311;font-family:Barlow,'Helvetica Neue',Arial,sans-serif\"><main style=\"min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box\"><section style=\"max-width:420px;border:1px solid #dcdcd4;border-radius:3px;background:#fbfbf8;padding:28px;text-align:center\"><h1 style=\"margin:0;font-size:26px\">Share card unavailable</h1><p style=\"margin:12px 0 0;color:#5f5f58;line-height:1.5\">This voluntary milestone card may have been removed.</p></section></main></body>");
       const card = await (deps.getPublicReferralShareCard ?? getPublicReferralShareCard)(req.params.shareToken);
       if (!card) return res.status(404).type("html").send("<!doctype html><title>Share card unavailable</title><meta name=\"robots\" content=\"noindex\"><body style=\"margin:0;background:#f4f4f1;color:#131311;font-family:Barlow,'Helvetica Neue',Arial,sans-serif\"><main style=\"min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box\"><section style=\"max-width:420px;border:1px solid #dcdcd4;border-radius:3px;background:#fbfbf8;padding:28px;text-align:center\"><h1 style=\"margin:0;font-size:26px\">Share card unavailable</h1><p style=\"margin:12px 0 0;color:#5f5f58;line-height:1.5\">This voluntary milestone card may have been removed.</p></section></main></body>");
-      const origin = `${req.protocol}://${req.get("host")}`; const canonicalUrl = `${origin}/share-card/${encodeURIComponent(req.params.shareToken)}`; const imageUrl = `${origin}/api/referral-share-cards/public/${encodeURIComponent(req.params.shareToken)}/image.png`; const companyDomain = escapeHtml(card.companyDomain);
+      const origin = publicOutboundOrigin(req); const canonicalUrl = `${origin}/share-card/${encodeURIComponent(req.params.shareToken)}`; const imageUrl = `${origin}/api/referral-share-cards/public/${encodeURIComponent(req.params.shareToken)}/image.png`; const companyDomain = escapeHtml(card.companyDomain);
       record({ action: "referral_share_card.viewed", outcome: "success", resourceType: "referral_share_card", companyDomain: card.companyDomain, metadata: { public: true } });
       const joinHref = card.inviteCode ? `${origin}/start?invite=${encodeURIComponent(card.inviteCode)}` : `${origin}/start`;
       res.set("Cache-Control", "no-store"); res.type("html").send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Accepted referral at ${companyDomain} | skipwait.me</title><meta name="description" content="A voluntarily shared referral acceptance milestone at ${companyDomain}. No hiring outcome is implied."><link rel="canonical" href="${canonicalUrl}"><meta property="og:type" content="website"><meta property="og:site_name" content="skipwait.me"><meta property="og:title" content="Accepted at ${companyDomain}"><meta property="og:description" content="Shared voluntarily. No hiring outcome is implied."><meta property="og:url" content="${canonicalUrl}"><meta property="og:image" content="${imageUrl}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Accepted at ${companyDomain}"><meta name="twitter:description" content="Shared voluntarily. No hiring outcome is implied."><meta name="twitter:image" content="${imageUrl}"><style>body{margin:0;background:#f4f4f1;color:#131311;font-family:Barlow,'Helvetica Neue',Arial,sans-serif}.card{box-sizing:border-box;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}.panel{width:min(100%,520px);border:1px solid #dcdcd4;border-radius:3px;background:#fbfbf8;padding:32px}.mark{display:grid;place-items:center;width:48px;height:48px;border-radius:2px;background:#e8442e;color:#131311;font-weight:800;font-size:24px}.eyebrow{margin:24px 0 0;color:#131311;font-size:12px;font-weight:800;letter-spacing:.14em}.title{margin:12px 0 0;font-size:38px;font-weight:700;line-height:.95;text-transform:uppercase;letter-spacing:.005em}.copy{margin:20px 0 0;color:#505050;font-size:16px;line-height:1.55}.note{margin:20px 0 0;border-radius:2px;background:#fbe0da;padding:14px;color:#131311;font-size:14px;line-height:1.45}.cta{display:block;margin:24px 0 0;border-radius:2px;background:#131311;color:#f4f4f1;text-align:center;text-decoration:none;font-weight:800;font-size:16px;padding:16px}</style></head><body><main class="card"><section class="panel" aria-label="Referral acceptance milestone"><div class="mark">✓</div><p class="eyebrow">SKIPWAIT.ME · PRIVATE REFERRAL</p><h1 class="title">Accepted at ${companyDomain}</h1><p class="copy">A private referral request was accepted at ${companyDomain}.</p><p class="note">Shared voluntarily. No hiring outcome is implied.</p><a class="cta" href="${joinHref}">Get your own referral</a></section></main></body></html>`);
@@ -1030,18 +1066,27 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         if (deps.reconcileExpiredPendingReferrals) expiredRequestIds = (await deps.reconcileExpiredPendingReferrals(identity.account.id, Date.now())).expiredRequestIds ?? [];
       } catch { expiredRequestIds = []; }
       const listed = await deps.listJobSeekerCompanyReferrals?.(identity.account.id) ?? [];
-      const toExpiresAt = (createdAt: unknown): string | null => {
+      const toExpiresAt = (row: Record<string, unknown>): string | null => {
+        const createdAt = row.createdAt;
         if (typeof createdAt !== "string" && !(createdAt instanceof Date)) return null;
-        const expiresAt = getAskExpiresAtMs(createdAt);
+        const coverageVisibleAt = row.coverageVisibleAt;
+        // D-061: waiting asks count down 90 days from creation; everything else 7 days from first visibility (creation for pre-0095 rows).
+        const expiresAt = getAskShelfLifeEndsAtMs({
+          createdAt,
+          waitingForCoverage: row.waitingForCoverage === true || row.waitingForCoverage === 1,
+          coverageVisibleAt: coverageVisibleAt instanceof Date || typeof coverageVisibleAt === "string" || typeof coverageVisibleAt === "number" ? coverageVisibleAt : null,
+        });
         return expiresAt === null ? null : new Date(expiresAt).toISOString();
       };
       const blockedMine = await blockedRequestIds(identity.account.id, listed);
-      const requests = await attachCompanyIdentities((listed as Array<Record<string, unknown>>).filter(row => !blockedMine.has(Number(row.id))).map((row): Record<string, unknown> => ({ ...withParsedJobFunction(row), expiresAt: toExpiresAt(row.createdAt) })), row => row.companyDomain, lookupCompanies);
+      const requests = await attachCompanyIdentities((listed as Array<Record<string, unknown>>).filter(row => !blockedMine.has(Number(row.id))).map((row): Record<string, unknown> => ({ ...withParsedJobFunction(row), expiresAt: toExpiresAt(row) })), row => row.companyDomain, lookupCompanies);
       record({ actorUserId: identity.account.id, action: "company_referral.seeker_home_viewed", outcome: "success", resourceType: "request_home", metadata: { requestCount: requests.length, expiredCount: expiredRequestIds.length } });
       // Counted after the expiry reconcile above, so expired asks have already freed their slots.
       let slots: OpenAskSlots | undefined;
       try { slots = await deps.getOpenAskSlots?.(identity.account.id, Date.now()); } catch { slots = undefined; }
-      res.json({ requests, expiredRequestIds, ...(slots ? { slots } : {}) });
+      let hasEverAsked = true; // fail closed: a payload doubt must never show first-timer sample rows
+      try { hasEverAsked = deps.hasEverCreatedReferralRequest ? await deps.hasEverCreatedReferralRequest(identity.account.id) : true; } catch { hasEverAsked = true; }
+      res.json({ requests, expiredRequestIds, hasEverAsked, ...(slots ? { slots } : {}) });
     } catch { res.status(500).json({ error: "We could not load your referral requests" }); }
   });
   const loadInbox = async (userId: number, requestedScope: string) => {
@@ -1050,7 +1095,17 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     const blockedInbox = await blockedRequestIds(userId, requests);
     const visible = requests.filter(row => typeof row !== "object" || row === null || !blockedInbox.has(Number((row as Record<string, unknown>).id)));
     record({ actorUserId: userId, action: "company_referral.inbox_viewed", outcome: "success", resourceType: "inbox", metadata: { requestCount: visible.length, scope } });
-    return { requests: await withCompanyIdentities(visible.map(row => (isRecordRow(row) ? withParsedJobFunction(row) : row))), scope };
+    // Sample-filled empty states: durable first-timer flag (claimed OR passed ever).
+    // Fails CLOSED (true) so sample rows never show on doubt.
+    let hasEverReviewed = true;
+    try { hasEverReviewed = deps.hasEverReviewedReferral ? await deps.hasEverReviewedReferral(userId) : true; } catch { hasEverReviewed = true; }
+    const withRefs = visible.map(row => {
+      const parsed = isRecordRow(row) ? withParsedJobFunction(row) : row;
+      const id = Number((parsed as Record<string, unknown>).id);
+      // W1: referrers quote the HMAC public ref, never the sequential id.
+      return Number.isInteger(id) && id > 0 ? { ...(parsed as Record<string, unknown>), publicRef: publicAskRef(id) } : parsed;
+    });
+    return { requests: await withCompanyIdentities(withRefs), scope, hasEverReviewed };
   };
   app.get("/api/company-referrals/inbox", async (req, res) => {
     try {
@@ -1097,7 +1152,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         try {
           const recipients = await deps.getSlotOpenedAlertRecipients(identity.account.id, result.allocatedRequestIds);
           const sender = deps.sendSlotOpenedAlertEmail ?? sendSlotOpenedAlertEmail;
-          const origin = `${req.protocol}://${req.get("host")}`;
+          const origin = publicOutboundOrigin(req);
           const deliveries = await Promise.all(recipients.map(recipient => sender({ to: recipient.email ?? "", companyDomain: recipient.companyDomain, requestsUrl: `${origin}/requests` })));
           record({ actorUserId: identity.account.id, action: "company_referral.slot_open_alert_dispatched", outcome: deliveries.some(delivery => delivery.sent) ? "success" : "failure", resourceType: "referral_availability", companyDomain: result.companyDomain, metadata: { allocatedCount: result.allocatedCount, alertRecipientCount: recipients.length, deliveredCount: deliveries.filter(delivery => delivery.sent).length } });
         } catch {
@@ -1160,6 +1215,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId); const decision = req.body?.decision; const declineReason = req.body?.declineReason;
       if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to review this private request" });
       if (!Number.isInteger(requestId) || requestId <= 0 || (decision !== "approved" && decision !== "declined") || (decision === "declined" && !isOneClickDeclineReason(declineReason)) || passReasonOf(req.body) === undefined) return res.status(400).json({ error: "Choose accept or a concise decline reason" });
+      // An accept reveals names both ways and the resume, so it must be an explicit confirmed act (the kit
+      // checkbox the thread and queue both show); a bare approve call is refused before any state change.
+      if (decision === "approved" && req.body?.ethicsConfirmed !== true) return res.status(400).json({ error: "Confirm you will refer only through the company's official process before accepting" });
       if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
       if (!deps.oneClickReviewReferralRequest) return res.status(503).json({ error: "One-click review is unavailable right now" });
       const result = await deps.oneClickReviewReferralRequest(identity.account.id, { requestId, decision, declineReason: decision === "declined" ? declineReason : undefined, passReason: decision === "declined" ? passReasonOf(req.body) : null });
@@ -1169,7 +1227,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.set("Cache-Control", "private, no-store"); res.json({ status: result.status, declineReason: result.declineReason });
     } catch (error) { const message = error instanceof Error ? error.message : "This referral request can no longer be reviewed"; const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined; res.status(/verify your work email|no longer available|another verified employee|conflicts with the current state/i.test(message) ? 409 : 500).json({ error: message, currentState }); }
   });
-  app.get("/api/referrer-review-links/:linkToken", async (req,res)=>{try{const identity=await deps.resolveIdentity(req);const linkToken=req.params.linkToken;if(!identity)return res.status(401).json({error:"Sign in with your verified company email to use this private review link"});if(!isOpaqueReviewLinkToken(linkToken))return res.status(400).json({error:"This private review link is invalid"});if(!deps.resolveReferrerReviewEmailLink)return res.status(503).json({error:"Email review is unavailable right now"});await deps.resolveReferrerReviewEmailLink(identity.account.id,linkToken);res.set("Cache-Control","private, no-store");res.json({review:{ready:true,decisions:["approved","role_not_a_fit","cannot_support","timing"]}});}catch(error){const message=error instanceof Error?error.message:"This private review link is unavailable";res.status(409).json({error:message});}});
+  app.get("/api/referrer-review-links/:linkToken", async (req,res)=>{try{const identity=await deps.resolveIdentity(req);const linkToken=req.params.linkToken;if(!identity)return res.status(401).json({error:"Sign in with your verified company email to use this private review link"});if(!isOpaqueReviewLinkToken(linkToken))return res.status(400).json({error:"This private review link is invalid"});if(!deps.resolveReferrerReviewEmailLink)return res.status(503).json({error:"Email review is unavailable right now"});const link=await deps.resolveReferrerReviewEmailLink(identity.account.id,linkToken);if(await isRequestBlocked(identity.account.id,link.requestId))return blockedThreadDeny(identity.account.id,link.requestId,res);res.set("Cache-Control","private, no-store");res.json({review:{ready:true,decisions:["approved","role_not_a_fit","cannot_support","timing"]}});}catch(error){const message=error instanceof Error?error.message:"This private review link is unavailable";res.status(409).json({error:message});}});
   app.post("/api/referrer-review-links/:linkToken/decision", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const linkToken = req.params.linkToken; const decision = req.body?.decision; const declineReason = req.body?.declineReason;
@@ -1177,6 +1235,12 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!isOpaqueReviewLinkToken(linkToken) || (decision !== "approved" && decision !== "declined") || (decision === "declined" && !isOneClickDeclineReason(declineReason)) || passReasonOf(req.body) === undefined) return res.status(400).json({ error: "This private review action is invalid" });
       if (!deps.resolveReferrerReviewEmailLink || !deps.oneClickReviewReferralRequest) return res.status(503).json({ error: "Email review is unavailable right now" });
       const link = await deps.resolveReferrerReviewEmailLink(identity.account.id, linkToken);
+      // The same two-way block check as dashboard review, once the link is proven to be this
+      // referrer's and before any decision, link use or notice.
+      if (await isRequestBlocked(identity.account.id, link.requestId)) return blockedThreadDeny(identity.account.id, link.requestId, res);
+      // Same confirmed-accept rule as the dashboard route: names and the resume are revealed on accept.
+      // Checked after the link is proven to be this referrer's, so a foreign link keeps its neutral answer.
+      if (decision === "approved" && req.body?.ethicsConfirmed !== true) return res.status(400).json({ error: "Confirm you will refer only through the company's official process before accepting" });
       const result = await deps.oneClickReviewReferralRequest(identity.account.id, { requestId: link.requestId, decision, declineReason: decision === "declined" ? declineReason : undefined, passReason: decision === "declined" ? passReasonOf(req.body) : null, reviewLinkToken: linkToken });
       if (result.revision === undefined && deps.consumeReferrerReviewEmailLink) await deps.consumeReferrerReviewEmailLink(identity.account.id, linkToken);
       record({ actorUserId: identity.account.id, action: `company_referral.email_one_click_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: link.requestId, companyDomain: result.companyDomain, metadata: { declineReason: result.declineReason ?? null } });
@@ -1309,13 +1373,13 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
       const request = await deps.getUnclaimedCompanyReferralPreview(identity.account.id, requestId);
       if (!request) return res.status(404).json({ error: "This private request is not available to your verified company account" });
-      const attachments = request.attachments.map(attachment => ({ id: attachment.id, fileName: attachment.fileName, mimeType: attachment.mimeType, fileSize: attachment.fileSize, availability: "after_claim" as const }));
+      const attachments = request.attachments.map(toLockedAskAttachment);
       // Privacy: the seeker's name is never part of the unclaimed preview (revealed only after accept).
       const { candidateName: _withheld, ...anonymousRequest } = request as typeof request & { candidateName?: unknown }; void _withheld;
       const [named] = await attachCompanyIdentities([anonymousRequest], row => row.companyDomain, lookupCompanies);
       record({ actorUserId: identity.account.id, action: "company_referral.preview_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: typeof request.companyDomain === "string" ? request.companyDomain : undefined, metadata: { attachmentCount: attachments.length, resumeAccess: "metadata_only" } });
       res.set("Cache-Control", "private, no-store");
-      res.json({ request: { ...withParsedJobFunction(anonymousRequest), companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null, attachments } });
+      res.json({ request: { ...withParsedJobFunction(anonymousRequest), publicRef: publicAskRef(requestId), companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null, attachments } });
     } catch { res.status(500).json({ error: "We could not load this private candidate preview" }); }
   });
   app.get("/api/company-referrals/:requestId", async (req, res) => {
@@ -1327,10 +1391,15 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
       const request = await deps.getClaimedCompanyReferralDetail(identity.account.id, requestId);
       if (!request) return res.status(404).json({ error: "This private request is not assigned to your verified employee account" });
-      const attachments = request.attachments.map(attachment => ({ id: attachment.id, fileName: attachment.fileName, mimeType: attachment.mimeType, fileSize: attachment.fileSize, url: `/api/documents/${attachment.id}` }));
-      const [named] = await attachCompanyIdentities([request], row => row.companyDomain, lookupCompanies);
-      record({ actorUserId: identity.account.id, action: "company_referral.claimed_detail_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: typeof request.companyDomain === "string" ? request.companyDomain : undefined, metadata: { attachmentCount: attachments.length } });
-      res.json({ request: { ...withParsedJobFunction(request), companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null, attachments } });
+      // D-019(e): an explicit allow-list; before acceptance no seeker name and no file names, ids or links.
+      const built = buildClaimedAskDetailView(request);
+      if (!built.ok) { captureServerError(built.error, { route: "GET /api/company-referrals/:requestId", requestId }); return res.status(500).json({ error: "We could not load this private referral request" }); }
+      const view = built.view;
+      const [named] = await attachCompanyIdentities([view], row => row.companyDomain, lookupCompanies);
+      const documentLinks = view.attachments.filter(file => isOpenAskAttachment(file) && Boolean(file.url)).length;
+      record({ actorUserId: identity.account.id, action: "company_referral.claimed_detail_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: view.companyDomain ?? undefined, metadata: { attachmentCount: view.attachments.length, accepted: view.candidateName !== undefined, documentLinks } });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ request: { ...view, companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null } });
     } catch {
       res.status(500).json({ error: "We could not load this private referral request" });
     }
@@ -1343,13 +1412,63 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
       const result = await deps.claimCompanyReferralRequest(identity.account.id, requestId);
       record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: result.companyDomain });
-      if (result.revision === undefined && result.jobSeekerId) notifyInApp(result.jobSeekerId, "Your referral request was claimed", `A verified employee at ${result.companyDomain ?? "the company"} accepted your private request.`);
+      if (result.revision === undefined && result.jobSeekerId) notifyInApp(result.jobSeekerId, "Your referral request was claimed", `A verified employee at ${result.companyDomain ?? "the company"} claimed your private request.`);
       if (!result.replayed && result.jobSeekerId) notifyEmail(result.jobSeekerId, `Your referral request was claimed — ${result.companyDomain ?? "your target company"}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain ?? "the company")}</strong> claimed your private referral request.</p>`);
-      res.json(result);
+      res.json(claimResponseView(result));
     } catch (error) {
       const message = error instanceof Error ? error.message : "This referral request is no longer available";
       const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
-      res.status(/verify your (work|company) email/i.test(message) ? 403 : /no longer available|already claimed|conflicts with the current state|expired/i.test(message) ? 409 : /not in your account|not found|no longer exists/i.test(message) ? 404 : 500).json({ error: message, currentState });
+      // D-038-A: the 5-claim cap is a state conflict (the referrer must accept or pass one first), never a server fault.
+      const capReached = error instanceof Error && error.name === "ReferralTransitionConflict" && /asks at once/i.test(message);
+      res.status(/verify your (work|company) email/i.test(message) ? 403 : capReached || /no longer available|already claimed|already passed|conflicts with the current state|expired/i.test(message) ? 409 : /not in your account|not found|no longer exists/i.test(message) ? 404 : 500).json({ error: message, currentState });
+    }
+  });
+  app.post("/api/company-referrals/:requestId/extend-referred-deadline", async (req, res) => {
+    if (!referredActionsEnabled) return refuseReferredAction(res);
+    try {
+      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (!identity) return res.status(401).json({ error: "Sign in to extend this referral deadline" });
+      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
+      const result = await deps.extendReferredDeadlineTx(identity.account.id, requestId, Date.now());
+      record({ actorUserId: identity.account.id, action: "company_referral.extend_referred_deadline", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { extended: result.extended, replayed: result.replayed } });
+      res.json({ extended: result.extended, replayed: result.replayed ?? false });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "This referral request is no longer available";
+      const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
+      res.status(/not in your account|not found|no longer exists/i.test(message) ? 404 : 409).json({ error: message, currentState });
+    }
+  });
+  app.post("/api/company-referrals/:requestId/step-back", async (req, res) => {
+    if (!referredActionsEnabled) return refuseReferredAction(res);
+    try {
+      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (!identity) return res.status(401).json({ error: "Sign in to step back from this referral" });
+      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
+      const result = await deps.stepBackFromReferral(identity.account.id, requestId, Date.now());
+      record({ actorUserId: identity.account.id, action: "company_referral.step_back", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { steppedBack: result.lapsed, reason: result.reason } });
+      res.json({ steppedBack: result.lapsed, reason: result.reason ?? null });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "This referral request is no longer available";
+      const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
+      res.status(/not in your account|not found|no longer exists/i.test(message) ? 404 : 409).json({ error: message, currentState });
+    }
+  });
+  app.post("/api/company-referrals/:requestId/confirm-referred", async (req, res) => {
+    if (!referredActionsEnabled) return refuseReferredAction(res);
+    try {
+      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (!identity) return res.status(401).json({ error: "Sign in to confirm this referral" });
+      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
+      const result = await deps.confirmReferredBySeeker(identity.account.id, requestId, Date.now());
+      record({ actorUserId: identity.account.id, action: "company_referral.seeker_confirmed_referred", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { confirmed: result.confirmed, replayed: result.replayed } });
+      res.json({ confirmed: result.confirmed, replayed: result.replayed ?? false });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "This referral request is no longer available";
+      const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
+      res.status(/not in your account|not found|no longer exists/i.test(message) ? 404 : 409).json({ error: message, currentState });
     }
   });
   app.get("/api/admin/referrals/export.csv", async (req, res) => {
@@ -1397,7 +1516,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not record this approval decision";
       const claimedByEmployee = error instanceof Error && error.name === "AdminCannotAcceptClaimedReferralError";
-      res.status(claimedByEmployee || /already resolved|already reviewed|already been reviewed/i.test(message) ? 409 : /could not be found|does not exist/i.test(message) ? 404 : 500).json({ error: message });
+      // A payment the webhook already credited and the provider refunded is never credited again (P0-refund-review).
+      res.status(claimedByEmployee || isPaymentReviewRefusal(error) || /already resolved|already reviewed|already been reviewed/i.test(message) ? 409 : /could not be found|does not exist/i.test(message) ? 404 : 500).json({ error: message });
     }
   });
   app.get("/api/admin/users", async (req, res) => {
@@ -1455,16 +1575,35 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req); const paymentId = Number(req.params.paymentId);
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
       if (!Number.isInteger(paymentId) || paymentId <= 0) return res.status(400).json({ error: "Invalid payment reference" });
-      const decision = req.body?.decision;
-      if (decision !== "credited" && decision !== "rejected") return res.status(400).json({ error: "Choose credited or rejected for this payment" });
+      // The shared contract (shared/paymentReview.ts) is checked before anything runs; only a take-back may carry a credit cap.
+      const body = paymentReviewRequestSchema.safeParse(req.body ?? {});
+      if (!body.success) return res.status(400).json({ error: body.error.issues.some(issue => issue.path[0] === "credits") ? "Enter the credits to take back as a whole number of at least 1" : "Choose a valid decision for this payment" });
       if (!deps.resolveRequiresReviewPayment) return res.status(501).json({ error: "Payment review is not available yet" });
-      const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : undefined;
-      const payment = await deps.resolveRequiresReviewPayment(identity.account.id, paymentId, decision, note);
-      record({ actorUserId: identity.account.id, action: `payment.review_${decision}`, outcome: "success", resourceType: "payment_fulfillment", resourceId: paymentId, metadata: { decision, note: typeof note === "string" ? note : null } });
+      const { decision, note } = body.data;
+      const credits = body.data.decision === "revoke_unused" ? body.data.credits : undefined;
+      let payment: PaymentReviewOutcome;
+      try {
+        payment = await deps.resolveRequiresReviewPayment(identity.account.id, paymentId, decision, note, credits);
+      } catch (error) {
+        // Why the payment is parked forbids this decision (a refunded pack cannot be credited again): nothing was written.
+        if (!isPaymentReviewRefusal(error)) throw error;
+        record({ actorUserId: identity.account.id, action: "payment.review_refused", outcome: "denied", resourceType: "payment_fulfillment", resourceId: paymentId, metadata: { decision, reason: error.message } });
+        return res.status(409).json({ error: error.message });
+      }
+      const takeBack = payment.decision === "revoke_unused" ? { requested: payment.requested, revoked: payment.revoked, unrecovered: payment.unrecovered } : {};
+      record({ actorUserId: identity.account.id, action: `payment.review_${decision}`, outcome: "success", resourceType: "payment_fulfillment", resourceId: paymentId, metadata: { decision, note: note ?? null, ...takeBack } });
       res.json({ payment });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "We could not record this payment decision";
-      res.status(/already resolved/i.test(message) ? 409 : /does not exist/i.test(message) ? 404 : 500).json({ error: message });
+      // The resolver's own plain messages; a driver error (its text can quote a note) is never one of them.
+      const message = error instanceof Error && !isDriverErrorMessage(error.message) ? error.message : "";
+      if (/already resolved/i.test(message)) return res.status(409).json({ error: message });
+      if (/does not exist/i.test(message)) return res.status(404).json({ error: message });
+      // Anything else is unexpected on a money path: report it, and give the page plain words, never the database's.
+      const paymentId = Number(req.params.paymentId);
+      const decision = typeof req.body?.decision === "string" ? req.body.decision.slice(0, 40) : null;
+      console.error("[AdminPaymentReview] decision failed", { paymentId, decision, error });
+      captureServerError(error, { route: "POST /api/admin/payments/review/:paymentId", paymentId, decision });
+      res.status(500).json({ error: "We could not record this payment decision. Reload this page to check the payment before you try again." });
     }
   });
   app.get("/api/admin/privacy-requests", async (req, res) => {
@@ -1583,3 +1722,5 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
 }
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
+import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
+import { askLevelCostEnabled } from "./db";

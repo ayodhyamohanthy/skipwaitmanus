@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-055, D-067).
+
 # Backend robustness audit (Sep 24, 2026)
 
 External audit of origin/main at 0327f3b, pasted by the founder. Stored verbatim so items can be referenced by ID (A1-A6 money, B1-B5 races, C1-C8 identity, D1-D7 runtime, E1-E9 schema/migrations, F test oracle). Claims are unverified until the matching issue says otherwise; line numbers refer to 0327f3b.

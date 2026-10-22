@@ -4,10 +4,10 @@
 // (real counts only, expiry from the same instant the seeker sees) stay testable.
 import { reverifyDaysLeft } from "@shared/reverify";
 import { z } from "zod";
-import { getAskExpiresAtMs, referralStatuses } from "@shared/referral";
+import { getAskShelfLifeEndsAtMs, referralStatuses } from "@shared/referral";
 import { companyIdentityOf, type CompanyIdentity } from "@shared/companies";
 import { REFERRER_ACCESS_PATH, isVerifiedReferrer, referrerAccessResponseSchema } from "@shared/referrerAccess";
-import { JOB_LEVELS, REFERRER_AREAS, jobFunctionFieldSchema } from "@shared/jobFunctions";
+import { JOB_LEVELS, REFERRER_AREAS, jobFunctionFieldSchema, type JobFunction } from "@shared/jobFunctions";
 import { referrerThankYouWallSchema, type ReferrerThankYouWall } from "@shared/landedJourney";
 import { readApiJson } from "@/lib/apiResponse";
 
@@ -33,10 +33,13 @@ const inboxRowSchema = z.object({
   unreadMessageCount: count.optional().transform(value => value ?? 0),
   attachmentCount: count.nullish(),
   expiresAt: timestamp.nullish(),
+  // D-061 window fields: fallback clock when a payload carries no expiresAt.
+  waitingForCoverage: z.boolean().nullish(),
+  coverageVisibleAt: timestamp.nullish(),
   jobTitle: z.string().nullish(),
   askStrength: z.enum(["strong", "good", "basic"]).nullish().catch(null),
 });
-const inboxSchema = z.object({ requests: z.array(inboxRowSchema) });
+const inboxSchema = z.object({ requests: z.array(inboxRowSchema), hasEverReviewed: z.boolean().optional() });
 
 const optionList = <T extends string>(options: readonly T[]) => z.array(z.string()).optional().transform(values => (values ?? []).filter((value): value is T => (options as readonly string[]).includes(value)));
 export const referrerPreferencesSchema = z.object({
@@ -63,6 +66,8 @@ export type ReferrerHomeData = {
   impact: ReferrerImpact | null;
   fresh: InboxRow[];
   completed: InboxRow[];
+  /** Durable server flag: claimed or passed at least one ask ever. Null when the server predates the field (fail-closed: no samples). */
+  hasEverReviewed: boolean | null;
   /** The seeker-writable private thank-you wall (queue row 20 slice D); null until it loads. */
   thankYous: ReferrerThankYouWall | null;
 };
@@ -151,7 +156,7 @@ async function fetchHomeBundle(getToken: TokenSource): Promise<ReferrerHomeData 
     const bundle = (await takePrefetchedBundle()) ?? await getJson("/api/referrer/home-bundle", getToken, bundleSchema, "bundle unavailable");
     setPrefetchHint(true);
     const access: CompanyAccess = (() => { const a = bundle.access; return { verified: isVerifiedReferrer(a), domain: a.workEmailDomain ?? "", companyName: a.companyName, companyInitials: a.companyInitials }; })();
-    if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [], thankYous: null };
+    if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [], hasEverReviewed: null, thankYous: null };
     // The page needs preferences and both lists; profile, impact and the wall are optional extras.
     if (!bundle.preferences || !bundle.inboxNew || !bundle.inboxCompleted) return null;
     return {
@@ -162,6 +167,7 @@ async function fetchHomeBundle(getToken: TokenSource): Promise<ReferrerHomeData 
       impact: bundle.impact ?? null,
       fresh: bundle.inboxNew.requests,
       completed: bundle.inboxCompleted.requests,
+      hasEverReviewed: bundle.inboxNew.hasEverReviewed ?? null,
       thankYous: bundle.thankYous ?? null,
     };
   } catch { return null; }
@@ -173,7 +179,7 @@ export async function fetchReferrerHome(getToken: TokenSource): Promise<Referrer
 
 async function fetchReferrerHomeSeparately(getToken: TokenSource): Promise<ReferrerHomeData> {
   const access = await fetchCompanyAccess(getToken);
-  if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [], thankYous: null };
+  if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [], hasEverReviewed: null, thankYous: null };
   const [preferences, fresh, completed, profile, impact, thankYous] = await Promise.all([
     fetchReferrerPreferences(getToken),
     getJson("/api/company-referrals/inbox?scope=new", getToken, inboxSchema, "We could not load new asks."),
@@ -190,6 +196,7 @@ async function fetchReferrerHomeSeparately(getToken: TokenSource): Promise<Refer
     impact: impact?.summary ?? null,
     fresh: fresh.requests,
     completed: completed.requests,
+    hasEverReviewed: fresh.hasEverReviewed ?? null,
     thankYous,
   };
 }
@@ -214,8 +221,8 @@ export function greetingFor(hour: number): string {
   return "Good evening";
 }
 
-function expiryMs(row: Pick<InboxRow, "expiresAt" | "createdAt">): number | null {
-  const ms = row.expiresAt ? Date.parse(row.expiresAt) : getAskExpiresAtMs(row.createdAt);
+function expiryMs(row: Pick<InboxRow, "expiresAt" | "createdAt" | "waitingForCoverage" | "coverageVisibleAt">): number | null {
+  const ms = row.expiresAt ? Date.parse(row.expiresAt) : getAskShelfLifeEndsAtMs(row);
   return ms === null || Number.isNaN(ms) ? null : ms;
 }
 
@@ -238,6 +245,8 @@ export type ReferrerHomeView = {
   left: number;
   atCapacity: boolean;
   isNew: boolean;
+  /** True only on a durable server "never claimed or passed" - gates the first-timer sample rows. False on doubt. */
+  showSamples: boolean;
   paused: boolean;
   reverifyDue: boolean;
   /** Whole days left before the badge needs re-verifying (grandfathered by the shared policy); null when not verified. */
@@ -266,6 +275,7 @@ export function deriveReferrerHome(data: ReferrerHomeData, nowMs: number): Refer
     left: Math.max(0, capacity - used),
     atCapacity: verified && used >= capacity,
     isNew: verified && waiting.length === 0 && (data.impact?.reviewed ?? 0) === 0,
+    showSamples: verified && waiting.length === 0 && data.hasEverReviewed === false,
     paused: verified && Boolean(data.preferences?.paused),
     reverifyDue: verified && daysLeft !== null && daysLeft <= REVERIFY_WARNING_DAYS,
     reverifyDaysLeft: verified ? daysLeft : null,
@@ -278,9 +288,24 @@ export async function fetchPersonalInviteCode(getToken: TokenSource): Promise<st
   return (await getJson("/api/personal-invites/me", getToken, inviteSchema, "Your personal invite link is temporarily unavailable. Please try again.")).invite.inviteCode;
 }
 
-const suggestionSchema = z.object({ suggestion: z.object({ id: z.number().int().positive(), companyName: z.string() }) });
+const suggestionSchema = z.object({
+  suggestion: z.object({
+    id: z.number().int().positive(),
+    companyName: z.string(),
+    jobFunction: jobFunctionFieldSchema,
+    alreadyRecorded: z.boolean().optional(),
+  }),
+});
 
-/** Seeker demand signal: files a company suggestion (role "seeker"). It never creates a referral request. */
-export async function requestCompany(getToken: TokenSource, companyName: string): Promise<{ id: number; companyName: string }> {
-  return (await sendJson("/api/company-suggestions", "POST", { companyName, role: "seeker" }, getToken, suggestionSchema, "We could not save this request. Try again.")).suggestion;
+export type CompanyDemandVote = { id: number; companyName: string; jobFunction: JobFunction | null; alreadyRecorded: boolean };
+
+/**
+ * Seeker demand signal: files a company suggestion (role "seeker"). It never
+ * creates a referral request. The function is the kit's optional "Work function"
+ * choice, and `alreadyRecorded` tells the panel whether this added a new vote or
+ * returned the one this seeker already filed, so the thank-you copy stays true.
+ */
+export async function requestCompany(getToken: TokenSource, companyName: string, jobFunction: JobFunction | null): Promise<CompanyDemandVote> {
+  const { suggestion } = await sendJson("/api/company-suggestions", "POST", { companyName, role: "seeker", jobFunction: jobFunction ?? undefined }, getToken, suggestionSchema, "We could not save this request. Try again.");
+  return { ...suggestion, alreadyRecorded: suggestion.alreadyRecorded ?? false };
 }

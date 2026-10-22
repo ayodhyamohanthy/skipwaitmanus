@@ -50,6 +50,6 @@ describe("PWA status", () => {
     act(() => { window.dispatchEvent(new CustomEvent(SW_UPDATE_EVENT, { detail: { postMessage } })); });
     expect(postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
     expect(screen.queryByRole("status")).toBeNull();
-    expect(screen.queryByText("A new version of SkipWait is ready.")).toBeNull();
+    expect(screen.queryByText("A new version of skipwait.me is ready.")).toBeNull();
   });
 });

@@ -12,7 +12,7 @@ import { referralStatuses } from "@shared/referral";
 import { readApiJson } from "@/lib/apiResponse";
 
 export const LOAD_ERROR = "We could not load your referral requests";
-export const NETWORK_ERROR = "We couldn’t reach SkipWait. Check your connection and try again.";
+export const NETWORK_ERROR = "We couldn’t reach skipwait.me. Check your connection and try again.";
 
 const referralRequestSchema = z.object({
   id: z.number().int().positive(),
@@ -27,7 +27,17 @@ const referralRequestSchema = z.object({
   // landed journey uses the given name and nothing here invents one.
   referrerName: z.string().nullish().transform(value => value ?? null),
   referrerTitle: z.string().nullish().transform(value => value ?? null),
-  queueStatus: z.enum(["available_for_review", "waiting_for_coverage"]).nullish(),
+  queueStatus: z.enum(["available_for_review", "waiting_for_coverage", "held_for_credit"]).nullish(),
+  // D-061 window fields: a waiting ask counts 90 days from creation (and shows no countdown),
+  // everything else 7 days from first visibility (pre-0095 rows: creation).
+  waitingForCoverage: z.boolean().optional().catch(undefined),
+  coverageVisibleAt: z.string().nullish().transform(value => value ?? null),
+  // D-050: a personal-link ask its employee has not acted on still counts as unclaimed. Optional so a
+  // payload from before the flag still parses; a malformed flag reads as not held (the server decides a withdraw).
+  heldForReferrer: z.boolean().optional().catch(undefined),
+  // P0-allocated-ask-stuck: an ask assigned to one referrer who has not claimed it, through a personal link or a
+  // queue allocation (a D-034 delivery), still counts as unclaimed. Optional so a payload from before the flag parses.
+  unclaimedAssignment: z.boolean().optional().catch(undefined),
   referrerMessage: z.string().nullish().transform(value => value ?? null),
   unreadMessageCount: z.coerce.number().int().min(0).catch(0),
   createdAt: z.string(),
@@ -41,10 +51,13 @@ export type ReferralRequest = z.infer<typeof referralRequestSchema>;
 // A slots payload that is missing or malformed reads as "not loaded", never as a count.
 const requestListSchema = z.object({
   requests: z.array(referralRequestSchema).optional().transform(value => value ?? []),
+  // Sample empty states: only a literal false from the server marks a first-timer; an old or
+  // malformed payload (undefined) never shows sample rows.
+  hasEverAsked: z.boolean().optional().catch(undefined),
   slots: openAskSlotsSchema.nullish().catch(null).transform(value => value ?? null),
 });
 
-export type MyRequestsPayload = { requests: ReferralRequest[]; slots: OpenAskSlots | null };
+export type MyRequestsPayload = { requests: ReferralRequest[]; hasEverAsked?: boolean; slots: OpenAskSlots | null };
 
 type TokenSource = () => Promise<string | null | undefined>;
 

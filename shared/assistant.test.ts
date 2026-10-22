@@ -19,14 +19,13 @@ import {
 } from "./assistant";
 
 describe("assistant access contract", () => {
-  it("follows the entitlement: Land, or grandfathered legacy Max", () => {
+  // D-067 removed the grandfathered Max: a retired or reserved id reads as Free, so only Land opens assistants.
+  it("follows the entitlement: Land only", () => {
     const termEnd = new Date("2026-11-01T00:00:00.000Z");
     const now = new Date("2026-10-14T00:00:00.000Z");
     const access = (plan: string) => assistantAccessFrom(resolvePlanEntitlements({ plan, subscriptionStatus: "active", subscriptionCurrentTermEnd: termEnd }, now)).hasAccess;
-    expect(access("max")).toBe(true);
-    expect(access("land_100")).toBe(true);
-    expect(access("momentum")).toBe(false);
-    expect(access("pro")).toBe(false);
+    for (const plan of ["land_focus", "land_sprint", "land_concierge"]) expect(access(plan)).toBe(true);
+    for (const plan of ["free", "keep_warm", "start", "momentum", "max", "pro", "land_100"]) expect(access(plan)).toBe(false);
     expect(ASSISTANT_PLAN_REQUIRED_MESSAGE).toMatch(/Land and Concierge/);
   });
 

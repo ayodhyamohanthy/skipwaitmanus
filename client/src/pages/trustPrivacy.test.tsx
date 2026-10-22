@@ -23,7 +23,7 @@ describe("TrustPrivacy", () => {
       /visible only to verified employees at the company behind the role link/,
       /available only to you and the Referrer assigned to your request/,
       /message only after the Referrer accepts that specific request/,
-      /Referral decisions are always free for Referrers/,
+      /Referral decisions never cost Referrers anything/,
       /referral content you submit \(job links, notes, resumes\)/,
       /never sees, touches, or stores card numbers/,
       /No advertising cookies and no cross-site tracking/,

@@ -141,7 +141,7 @@
       "status": 200,
       "body": {
         "summary": {
-          "plan": "max",
+          "plan": "land_focus",
           "totalAvailable": 112
         }
       }

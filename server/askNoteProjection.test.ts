@@ -119,7 +119,7 @@ describe("referrer-facing reads", () => {
     const rows = await listCompanyReferralInboxByState(REFERRER, "new");
     const [inbox, enrichment] = selectsFrom(referralRequests);
     expect(exposesNote(inbox)).toBe(false);
-    expect(columnsOf(inbox)).toEqual(["attachmentCount", "companyDomain", "compensation", "createdAt", "firstLookReferrerId", "firstLookUntil", "id", "jobFunction", "queueAllocationId", "referrerId", "savedAt", "savedByYouAt", "status", "targetRoleUrl", "updatedAt"]);
+    expect(columnsOf(inbox)).toEqual(["attachmentCount", "companyDomain", "compensation", "coverageHeldAt", "coverageVisibleAt", "createdAt", "firstLookReferrerId", "firstLookUntil", "id", "jobFunction", "queueAllocationId", "referrerId", "savedAt", "savedByYouAt", "status", "targetRoleUrl", "updatedAt", "waitingForCoverage"]);
     expect(enrichment).toBeDefined();
     expect(rows).toHaveLength(1);
     // The note reached the scorer (a full fit note, strong ask) ...
@@ -140,9 +140,12 @@ describe("referrer-facing reads", () => {
     expect(preview?.projection?.candidateMessage).toBe(referralRequests.personalPitch);
   });
 
-  it("serves the accepted referrer the ask they took on: role title and the seeker's note", async () => {
-    rowsByTable.set(referralRequests, [{ id: 501, title: "Product Designer", targetRoleUrl: ROLE_URL, companyDomain: "acme.com", jobFunction: null, candidateName: "Avery", candidateMessage: NOTE, referrerId: REFERRER, status: "approved", revision: 2, grantVersion: 1, grantRevision: 2, grantExpiresAt: new Date("2026-11-01T00:00:00Z") }]);
+  it("the assigned referrer's detail reads the note and what access needs, and reveals identity only to the accepting referrer", async () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    const ask = { id: 501, title: "Product Designer", targetRoleUrl: ROLE_URL, companyDomain: "acme.com", jobFunction: null, candidateName: "Avery", candidateMessage: NOTE, referrerId: REFERRER, revision: 2, passId: null };
     rowsByTable.set(referralAttachments, []);
+    // Accepted directly before acceptance wrote grants: no grant row, the referrer's own acceptance a day ago (rule (e)).
+    rowsByTable.set(referralRequests, [{ ...ask, status: "approved", grantId: null, grantRevokedAt: null, grantExpiresAt: null, acceptedByActorAt: new Date(Date.now() - DAY) }]);
     const detail = await getClaimedCompanyReferralDetail(REFERRER, 501);
     const select = selectFrom(referralRequests);
     // D-019(d) was an omission, not a privacy rule: every verified employee at the
@@ -152,7 +155,26 @@ describe("referrer-facing reads", () => {
     expect(select?.projection?.candidateMessage).toBe(referralRequests.personalPitch);
     expect(select?.projection?.title).toBe(jobs.title);
     expect(exposesNote(select)).toBe(true);
-    expect(columnsOf(select)).toEqual(["candidateMessage", "candidateName", "companyDomain", "grantExpiresAt", "grantRevision", "grantVersion", "id", "jobFunction", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
-    expect(detail).toMatchObject({ id: 501, title: "Product Designer", candidateMessage: NOTE, candidateName: "Avery" });
+    // `coverageVisibleAt` joined the projection with D-038-A: the decision deadline for an allocated ask is
+    // computed from first visibility. It stays internal — the returned object names its fields one by one.
+    expect(columnsOf(select)).toEqual(["acceptedByActorAt", "acceptedByActorEventId", "candidateMessage", "candidateName", "companyDomain", "coverageVisibleAt", "grantExpiresAt", "grantId", "grantRevokedAt", "id", "jobFunction", "passId", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
+    // D-019(e): the ask loads on its assignment alone (a claim writes no grant); no grant condition gates the row.
+    const where = select?.where ? dialect.sqlToQuery(select.where) : undefined;
+    expect(where?.params).toEqual([501, REFERRER, "pending", "approved", "intro_made", "interview", "offer"]);
+    expect(where?.sql).not.toContain("referralDocumentAccessGrants");
+    expect(detail).toMatchObject({ id: 501, title: "Product Designer", candidateMessage: NOTE, candidateName: "Avery", documentAccessActive: true });
+    for (const internal of ["grantId", "grantRevokedAt", "grantExpiresAt", "passId", "acceptedByActorAt", "acceptedByActorEventId", "grantVersion", "grantRevision"]) expect(detail).not.toHaveProperty(internal);
+
+    // Claimed but pending, holding a claim-era grant: no name and no document access before acceptance.
+    rowsByTable.set(referralRequests, [{ ...ask, status: "pending", grantId: 9, grantRevokedAt: null, grantExpiresAt: new Date(Date.now() + DAY), acceptedByActorAt: null }]);
+    expect(await getClaimedCompanyReferralDetail(REFERRER, 501)).toMatchObject({ status: "pending", candidateName: null, documentAccessActive: false });
+
+    // Assigned to an accepted ask with no evidence this referrer accepted it: nothing.
+    rowsByTable.set(referralRequests, [{ ...ask, status: "approved", grantId: null, grantRevokedAt: null, grantExpiresAt: null, acceptedByActorAt: null }]);
+    expect(await getClaimedCompanyReferralDetail(REFERRER, 501)).toBeUndefined();
+
+    // An unexpired claim-era grant is not an acceptance (an administrator approved the claimed ask before ee226f3): nothing.
+    rowsByTable.set(referralRequests, [{ ...ask, status: "approved", grantId: 9, grantRevokedAt: null, grantExpiresAt: new Date(Date.now() + DAY), acceptedByActorAt: null }]);
+    expect(await getClaimedCompanyReferralDetail(REFERRER, 501)).toBeUndefined();
   });
 });

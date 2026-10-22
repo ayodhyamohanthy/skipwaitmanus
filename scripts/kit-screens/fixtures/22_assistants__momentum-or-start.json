@@ -141,7 +141,7 @@
       "status": 200,
       "body": {
         "summary": {
-          "plan": "pro",
+          "plan": "start",
           "totalAvailable": 112
         }
       }

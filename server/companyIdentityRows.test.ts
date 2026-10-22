@@ -41,7 +41,9 @@ describe("company identity on referral rows", () => {
     expect(inbox.body.requests[0]).toMatchObject({ id: 21, companyName: "Go Neutrinos", companyInitials: "GN" });
     const preview = await request(app).get("/api/company-referrals/31/preview").set("x-test-user", "3");
     expect(preview.body.request).toMatchObject({ id: 31, companyName: "Go Neutrinos", companyInitials: "GN" });
-    expect(preview.body.request.attachments[0]).toEqual({ id: 5, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3, availability: "after_claim" });
+    // D-019(e): before acceptance a file is a locked count: no id and no file name (resume names carry the seeker's name).
+    expect(preview.body.request.attachments[0]).toEqual({ mimeType: "application/pdf", fileSize: 3, availability: "after_claim" });
+    expect(JSON.stringify(preview.body)).not.toContain("resume.pdf");
     const detail = await request(app).get("/api/company-referrals/41").set("x-test-user", "3");
     expect(detail.body.request).toMatchObject({ id: 41, companyName: "Go Neutrinos", companyInitials: "GN" });
     expect(JSON.stringify(detail.body)).not.toContain("private/resume.pdf");

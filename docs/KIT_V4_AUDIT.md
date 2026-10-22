@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-005, D-039, D-048, D-049, D-053, D-059, D-067; D-120 (Oct 21) retires Kit v4 outright - the PNGs below are history, not a spec).
+
 # Kit v4 screen audit — every PNG, fullstack
 
 Audited Oct 9 2026 on production `main` (1fc4214) at 1280 (web) and 390 @2x (mobile) with `scripts/kit-screens/capture.mjs`, against `screens/web` (105 PNGs) and `screens/mobile` (106 PNGs; `03_sign-in__step1-continue-with-email` is mobile-only).
@@ -577,7 +579,7 @@ Kinds: **data** = needs server data, tables, endpoints or jobs; **ui** = markup,
 - preview scaffolding not shipped: 1 item(s)
 
 ### `22_assistants__momentum-or-start`
-- **reversal** (both) — feature `assistant-land-entitlement`: kit: 'Assistants and API tokens come with Land' / 'Land and Concierge members can sign in, connect and apply from ChatGPT, Claude, bots and their own tools.' / 'Upgrade to Land' · live: '…come with Max' / 'Max members can…' / 'Upgrade to Max' · fix: Kit copy verbatim in PlanGate.
+- **reversal** (both) — feature `assistant-land-entitlement`: kit: 'Assistants and API tokens come with Land' / 'Land and Concierge members can sign in, connect and apply from ChatGPT, Claude, bots and their own tools.' / 'Upgrade to Land' · live: '…come with Max' / 'Max members can…' / 'Upgrade to Max' · fix: Kit copy verbatim in PlanGate. (D-067 review round 2: the 'Upgrade to Land' button is held back, replaced by the line 'Land is not on sale yet. It arrives with the 30 and 90-day passes.', until /plans sells Land.)
 - preview scaffolding not shipped: 1 item(s)
 
 ### `23_approve__declined`
@@ -641,7 +643,7 @@ Kinds: **data** = needs server data, tables, endpoints or jobs; **ui** = markup,
 - preview scaffolding not shipped: 1 item(s)
 
 ### `24_connect-assistant__not-on-land`
-- **reversal** (both) — feature `assistant-land-entitlement`: kit: 'Assistants need Land' / '…is part of Land and Concierge.' / 'Upgrade to Land' · live: 'Assistants need Max' / '…is part of Max.' / 'Upgrade to Max' · fix: Kit copy verbatim.
+- **reversal** (both) — feature `assistant-land-entitlement`: kit: 'Assistants need Land' / '…is part of Land and Concierge.' / 'Upgrade to Land' · live: 'Assistants need Max' / '…is part of Max.' / 'Upgrade to Max' · fix: Kit copy verbatim. (D-067 review round 2: 'Upgrade to Land' is held back the same way until /plans sells Land; 'Keep using SkipWait yourself' stays.)
 - **data** (both) — feature `assistant-land-entitlement`: kit: A non-Land member arriving from ChatGPT sees this screen · live: In OAuth mode the unverified stage wins the race (the plan check only replaces 'consent'). · fix: Resolve access before choosing the stage (the plan gate takes precedence).
 - preview scaffolding not shipped: 1 item(s)
 
@@ -995,7 +997,7 @@ Kinds: **data** = needs server data, tables, endpoints or jobs; **ui** = markup,
 | `app-display-preferences` | S | 1 | Settings → App Dark mode (sw-theme, defaulting to the system setting) and a Reduce motion override, using the existing .dark tokens. | Choose whether the Dark mode hint keeps the kit wording 'Preview — some older screens are still being tuned'. |
 | `ask-company-context` | S | 1 | Resolves the company and team (function) the seeker is asking about before sending, for the kit eyebrow 'NEW ASK · WIPRO · DESIGN', the careers-domain placeholder, function-scoped routing and the sent… | — |
 | `assistant-land-entitlement` | S | 4 | Gate assistants, tokens, OAuth and the developer console on the kit Land tier (Land / Land Sprint / Land Concierge) instead of the live 'max' plan, and switch all Max copy to Land. | Decide whether existing Max subscribers keep assistant access. |
-| `company-demand` | S | 1 | Seeker 'Request a company' becomes a counted demand signal with an optional work function. | — |
+| `company-demand` | S | 1 | Seeker 'Request a company' becomes a counted demand signal with an optional work function. | **Done (Qoder, Oct 17, §3b row 20 slice B, PR #311):** `createCompanySuggestion` records one vote per seeker (a repeat returns the seeker's own row unless a reviewer dismissed it, a second seeker is counted instead of rejected with 400 'This company was already suggested and is under review'), carries the optional `jobFunction` (0104), and `/admin-review` shows the distinct-seeker count and function per company. Owner action: apply `drizzle/deploy/0104_company_suggestion_demand.sql` needs no manual apply step: the deploy pipeline runs `migrate-db` before the container, and `server/schemaReconcile.ts` also carries the column. |
 | `developer-app-usage-stats` | S | 1 | Real per-app counts on App details: connected users, asks sent via the app, approval rate. | — |
 | `error-reference` | S | 1 | Real error references on error screens, from the Sentry event id or a server-logged client ref, plus the kit error design in the real boundaries. | — |
 | `explore-kit-polish` | S | 4 | Markup and copy fixes so the explore screens match the kit: 'Request a company' links to /invite; | — |

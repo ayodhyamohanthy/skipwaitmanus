@@ -1,0 +1,1131 @@
+{
+  "_meta": {
+    "deck": "SkipWait goal UI: shared copy deck and preview fixtures",
+    "version": "2026-10-18.1",
+    "decision": "D-048: key-screen designs go to the owner before any rollout.",
+    "use": "Every direction renders exactly this copy and data, so the comparison is purely visual. Do not add, reword or drop visible strings. aria-labels may be added where an element needs one. Items marked rendered:false define behaviour and are not drawn in the three comps.",
+    "status": "Design-review preview only. Sample data, never product data (the D-001 rule that D-048 keeps).",
+    "previewToday": "2026-10-18 (Sunday). Every relative day count below is computed from this date.",
+    "dates": "Day-level only, written D MMM (17 Oct), set in mono with tabular numerals. No hours, minutes or seconds anywhere.",
+    "companies": "Fictional names, so no preview implies that a real company has verified referrers on SkipWait. Live on 17 Oct: 39 companies listed, 1 open.",
+    "money": "Money lines follow what the code does today (client/src/pages/Help.tsx line 13). D-034, D-035, D-038 and D-047 are approved but not built, so no comp shows their outcomes.",
+    "privacy": "Before acceptance a referrer sees the role, job function, job link, the three reasons, ask-quality checks, a day-level clock and a document count. Never the seeker's name, file names, links, photo or plan.",
+    "noMetrics": "No per-referrer numbers anywhere: no response rates, speeds, rankings, streaks or counts of referrers. No read receipts. Exception (D-104): the company responsiveness signal shows company-level aggregates only, min 3, never per person or ranked.",
+    "typography": "Copy uses typographic apostrophes (’), the true minus sign (−), the en dash (–), the middle dot (·) and the ellipsis character (…). Keep them."
+  },
+  "shell": {
+    "brand": "SkipWait",
+    "unverifiedEntry": {
+      "label": "Give a referral",
+      "hint": "Work email only",
+      "icon": "building-2",
+      "href": "/sign-in?intent=referrer&returnTo=/referrer-setup",
+      "visibleTo": "Everyone who is not a verified referrer. It takes the mode switch's place. Never paired with social sign-in."
+    },
+    "nav": {
+      "seeking": [
+        {
+          "id": "find",
+          "label": "Find a referral",
+          "railLabel": "Find",
+          "icon": "search",
+          "href": "/explore"
+        },
+        {
+          "id": "asks",
+          "label": "My asks",
+          "railLabel": "My asks",
+          "icon": "send",
+          "href": "/requests"
+        },
+        {
+          "id": "inbox",
+          "label": "Inbox",
+          "railLabel": "Inbox",
+          "icon": "messages-square",
+          "href": "/inbox"
+        }
+      ],
+      "giving": [
+        {
+          "id": "queue",
+          "label": "Referral queue",
+          "railLabel": "Queue",
+          "icon": "inbox",
+          "href": "/queue"
+        },
+        {
+          "id": "inbox",
+          "label": "Inbox",
+          "railLabel": "Inbox",
+          "icon": "messages-square",
+          "href": "/inbox"
+        },
+        {
+          "id": "impact",
+          "label": "Impact",
+          "railLabel": "Impact",
+          "icon": "hand-helping",
+          "href": "/referrer/impact"
+        }
+      ]
+    },
+    "creditsPill": {
+      "value": 2,
+      "label": "2 credits",
+      "shortLabel": "2",
+      "ariaLabel": "2 credits available. Open credit details",
+      "icon": "coins",
+      "visibleIn": "Seeking mode only. Referrers are never charged, so giving mode has no credits pill.",
+      "fixtureMath": "October’s 3 free monthly credits are used (5 asks sent, 2 credits returned). The 2 credits shown were purchased and never expire. Free credits reset 1 Nov."
+    },
+    "alerts": {
+      "ariaLabel": "Alerts",
+      "icon": "bell"
+    },
+    "account": {
+      "ariaLabel": "Account menu",
+      "seekerInitials": "AR",
+      "referrerInitials": "MK"
+    }
+  },
+  "screenA": {
+    "id": "find",
+    "mode": "seeking",
+    "persona": "Job seeker on the Free plan with 2 credits and 2 of 3 open asks in use. Not a verified referrer, so the top bar shows the Give a referral entry and no mode switch.",
+    "route": "/explore",
+    "navActive": "find",
+    "pageTitle": "Find a referral",
+    "heading": "Where do you want a referral?",
+    "subheading": "Ask a verified employee. Your name and resume stay private until they accept.",
+    "search": {
+      "label": "Search companies",
+      "placeholder": "Company, function or industry…",
+      "value": ""
+    },
+    "filters": {
+      "ariaLabel": "Filter companies",
+      "chips": [
+        {
+          "id": "all",
+          "label": "All companies",
+          "selected": true,
+          "kind": "reset"
+        },
+        {
+          "id": "open",
+          "label": "Open to requests",
+          "selected": false,
+          "kind": "toggle",
+          "matches": "openToReferrals is true"
+        },
+        {
+          "id": "engineering",
+          "label": "Engineering",
+          "selected": false,
+          "kind": "function",
+          "matches": [
+            "Engineering"
+          ]
+        },
+        {
+          "id": "product-design",
+          "label": "Product & design",
+          "selected": false,
+          "kind": "function",
+          "matches": [
+            "Product",
+            "Design"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "summary": "7 companies · 2 open to requests",
+      "total": 7,
+      "open": 2,
+      "notOpen": 5
+    },
+    "readout": {
+      "value": "2",
+      "label": "open to requests now",
+      "context": "of 7 companies shown",
+      "usedBy": "Signal only. Triage Desk and Ledger show the same fact as results.summary."
+    },
+    "availability": {
+      "open": {
+        "label": "Open to requests",
+        "marker": "solid dot",
+        "meaning": "At least one verified, unpaused employee there has room for a new ask."
+      },
+      "notOpen": {
+        "label": "Not open yet",
+        "marker": "ring",
+        "meaning": "No verified employee there can take a new ask right now."
+      },
+      "colourRule": "Availability is ink (open) versus muted ink (not open yet). Never green, never blue."
+    },
+    "rowDisplays": [
+      "initials",
+      "name",
+      "functions",
+      "availability"
+    ],
+    "functionsSeparator": " · ",
+    "sort": "Alphabetical, so open companies are not pushed to the top.",
+    "companies": [
+      {
+        "slug": "fernhill-bank",
+        "initials": "FB",
+        "name": "Fernhill Bank",
+        "industry": "Banking",
+        "location": "Global",
+        "functions": [
+          "Finance",
+          "Operations",
+          "HR"
+        ],
+        "open": false
+      },
+      {
+        "slug": "kestrel-pay",
+        "initials": "KP",
+        "name": "Kestrel Pay",
+        "industry": "Fintech",
+        "location": "Bengaluru",
+        "functions": [
+          "Engineering",
+          "Product",
+          "Data"
+        ],
+        "open": true,
+        "selected": true,
+        "domain": "kestrelpay.com"
+      },
+      {
+        "slug": "larkspur-retail",
+        "initials": "LR",
+        "name": "Larkspur Retail",
+        "industry": "Retail",
+        "location": "Mumbai",
+        "functions": [
+          "Marketing",
+          "Design",
+          "Operations"
+        ],
+        "open": false
+      },
+      {
+        "slug": "monsoon-analytics",
+        "initials": "MA",
+        "name": "Monsoon Analytics",
+        "industry": "Data platform",
+        "location": "Hyderabad",
+        "functions": [
+          "Data",
+          "Engineering",
+          "Sales"
+        ],
+        "open": false
+      },
+      {
+        "slug": "orbit-freight",
+        "initials": "OF",
+        "name": "Orbit Freight",
+        "industry": "Logistics",
+        "location": "Pune",
+        "functions": [
+          "Operations",
+          "Data",
+          "Engineering"
+        ],
+        "open": false
+      },
+      {
+        "slug": "quillmint",
+        "initials": "Q",
+        "name": "Quillmint",
+        "industry": "Developer tools",
+        "location": "Global · Remote",
+        "functions": [
+          "Engineering",
+          "Product",
+          "Design"
+        ],
+        "open": true
+      },
+      {
+        "slug": "tidewell-health",
+        "initials": "TH",
+        "name": "Tidewell Health",
+        "industry": "Health tech",
+        "location": "India · Remote",
+        "functions": [
+          "Engineering",
+          "Design",
+          "Operations"
+        ],
+        "open": false
+      }
+    ],
+    "notOpenAction": {
+      "rendered": false,
+      "label": "Get told when a referrer joins",
+      "icon": "bell",
+      "note": "An alert is not a referral.",
+      "where": "A not-open company’s detail. Not in list rows."
+    },
+    "footnote": "Availability can change. No referral is guaranteed.",
+    "askDrawer": {
+      "title": "Ask for a referral",
+      "context": "Kestrel Pay · Senior Backend Engineer, Payments",
+      "verifiedLine": {
+        "icon": "badge-check",
+        "text": "Goes to verified Kestrel Pay employees",
+        "tone": "trust"
+      },
+      "privacyNote": "Referrers see your job link and reasons. Your name and resume are shared only if one accepts.",
+      "jobLink": {
+        "label": "Job link",
+        "value": "https://kestrelpay.com/careers/senior-backend-engineer-payments",
+        "display": "kestrelpay.com/careers/senior-backend-engineer-payments",
+        "placeholder": "Paste the job posting link…",
+        "matchHint": {
+          "icon": "check",
+          "text": "Matches Kestrel Pay’s careers site",
+          "tone": "ink"
+        },
+        "inputAttributes": "type=url inputmode=url autocapitalize=none spellcheck=false"
+      },
+      "resume": {
+        "label": "Resume",
+        "fileName": "Resume_Backend_2026.pdf",
+        "updated": "Updated 12 Oct",
+        "action": "Change",
+        "hint": "Shared after a referrer accepts",
+        "icons": {
+          "file": "file-text",
+          "hint": "lock"
+        }
+      },
+      "whyMe": {
+        "label": "Why me",
+        "helper": "Three reasons, up to 140 characters each. One specific result beats a list of skills.",
+        "maxChars": 140,
+        "counterFormat": "{count}/140",
+        "bullets": [
+          {
+            "n": 1,
+            "state": "filled",
+            "text": "Built the payouts reconciliation service at a Series B lender; settlement mismatches fell from 1.2% to 0.3% in 6 months.",
+            "count": 120,
+            "counter": "120/140"
+          },
+          {
+            "n": 2,
+            "state": "partial",
+            "text": "Run on-call for 14 Go services that move ₹40 crore a day; cut p99 latency by 41% using",
+            "count": 86,
+            "counter": "86/140",
+            "focused": true,
+            "caret": "Text caret after the last character. Show the focus ring on this field."
+          },
+          {
+            "n": 3,
+            "state": "empty",
+            "text": "",
+            "placeholder": "A third reason: a skill the posting asks for, or why this team…",
+            "count": 0,
+            "counter": "0/140"
+          }
+        ]
+      },
+      "cost": {
+        "line": "Uses 1 of your 2 credits",
+        "detail": "Comes back if you withdraw before anyone picks it up, or if nobody picks it up within 7 days. Once picked up, it stays spent, even if they pass.",
+        "receipt": [
+          {
+            "label": "Your balance",
+            "value": "2 credits"
+          },
+          {
+            "label": "This ask",
+            "value": "−1 credit"
+          },
+          {
+            "label": "After sending",
+            "value": "1 credit"
+          }
+        ],
+        "usedBy": "Ledger shows receipt plus detail. Triage Desk and Signal show line plus detail. Same facts either way.",
+        "placement": "Drawer footer, visible from the moment the drawer opens, directly beside or above Send ask.",
+        "source": "Help.tsx line 13 (live rule). Free plan: 3 credits per calendar month, 3 open asks at a time (shared/planCatalog.ts)."
+      },
+      "primaryAction": {
+        "label": "Send ask",
+        "busyLabel": "Sending your ask…"
+      },
+      "secondaryAction": {
+        "label": "Save draft",
+        "doneLabel": "Draft saved"
+      },
+      "closeLabel": "Close",
+      "shortcut": {
+        "action": "Send ask",
+        "keys": [
+          "command",
+          "corner-down-left"
+        ],
+        "windowsKeys": [
+          "Ctrl",
+          "corner-down-left"
+        ],
+        "note": "Desktop only, and only once the link and reasons pass their checks. Shown as keycaps in Triage Desk only."
+      }
+    }
+  },
+  "screenB": {
+    "id": "queue",
+    "mode": "giving",
+    "persona": "Verified referrer at Kestrel Pay (work email confirmed for kestrelpay.com). The top bar shows the mode switch with Giving referrals selected. No credits pill: referrers are never charged.",
+    "route": "/queue",
+    "navActive": "queue",
+    "pageTitle": "Referral queue",
+    "heading": "Referral queue",
+    "subheading": "Asks for Kestrel Pay roles. Names and resumes stay hidden until you accept.",
+    "verifiedMark": {
+      "icon": "badge-check",
+      "label": "Verified · Kestrel Pay",
+      "tone": "trust"
+    },
+    "summary": "5 waiting",
+    "neverCharged": "Referrers are never charged.",
+    "position": {
+      "text": "1 / 5",
+      "ariaLabel": "Ask 1 of 5",
+      "previous": {
+        "label": "Previous ask",
+        "icon": "chevron-up"
+      },
+      "next": {
+        "label": "Next ask",
+        "icon": "chevron-down"
+      },
+      "usedBy": "Triage Desk signature. Optional in the other two."
+    },
+    "states": {
+      "New": {
+        "tone": "neutral-strong",
+        "meaning": "You haven’t opened it yet."
+      },
+      "Under review": {
+        "tone": "neutral",
+        "meaning": "You opened it and are deciding. Private to you."
+      }
+    },
+    "sort": "Soonest to close first, so the oldest asks are seen first.",
+    "closingSoonRule": "2 days left or fewer: amber text. Nothing in the referrer queue is ever crimson.",
+    "rows": [
+      {
+        "id": "r1",
+        "ref": "R-8F3K2",
+        "role": "Product Designer, Merchant onboarding",
+        "function": "Design",
+        "daysLeft": 2,
+        "timeLeft": "2 days left",
+        "closes": "20 Oct",
+        "received": "13 Oct",
+        "state": "New",
+        "closingSoon": true,
+        "selected": true
+      },
+      {
+        "id": "r2",
+        "ref": "R-2M7QD",
+        "role": "Android Engineer, Merchant app",
+        "function": "Engineering",
+        "daysLeft": 3,
+        "timeLeft": "3 days left",
+        "closes": "21 Oct",
+        "received": "14 Oct",
+        "state": "Under review",
+        "closingSoon": false
+      },
+      {
+        "id": "r3",
+        "ref": "R-K4T9X",
+        "role": "Data Analyst, Risk",
+        "function": "Data",
+        "daysLeft": 4,
+        "timeLeft": "4 days left",
+        "closes": "22 Oct",
+        "received": "15 Oct",
+        "state": "New",
+        "closingSoon": false
+      },
+      {
+        "id": "r4",
+        "ref": "R-5HW2C",
+        "role": "Product Manager, Payouts",
+        "function": "Product",
+        "daysLeft": 6,
+        "timeLeft": "6 days left",
+        "closes": "24 Oct",
+        "received": "17 Oct",
+        "state": "New",
+        "closingSoon": false
+      },
+      {
+        "id": "r5",
+        "ref": "R-Q8N3V",
+        "role": "Site Reliability Engineer",
+        "function": "Engineering",
+        "daysLeft": 6,
+        "timeLeft": "6 days left",
+        "closes": "24 Oct",
+        "received": "17 Oct",
+        "state": "Under review",
+        "closingSoon": false
+      }
+    ],
+    "detail": {
+      "rowId": "r1",
+      "eyebrow": "Design · Kestrel Pay",
+      "role": "Product Designer, Merchant onboarding",
+      "ref": "R-8F3K2",
+      "timeLeft": {
+        "text": "2 days left",
+        "icon": "clock",
+        "tone": "amber"
+      },
+      "closes": "Closes 20 Oct",
+      "received": "Received 13 Oct",
+      "jobLink": {
+        "label": "Job posting",
+        "display": "kestrelpay.com/careers/product-designer-merchant-onboarding",
+        "value": "https://kestrelpay.com/careers/product-designer-merchant-onboarding",
+        "icon": "external-link"
+      },
+      "compensation": {
+        "label": "Compensation",
+        "value": "₹28–34 LPA",
+        "note": "Shared by the seeker"
+      },
+      "whyMe": {
+        "label": "Why me",
+        "bullets": [
+          "Redesigned KYC onboarding for 2 million small merchants at a payments startup; completion rose from 61% to 78%.",
+          "Ran 40 merchant interviews in Hindi and Tamil and turned them into a service blueprint the ops team still uses.",
+          "Your posting asks for systems work: I maintain a 300-component Figma library used by 5 product squads."
+        ]
+      },
+      "quality": {
+        "label": "Ask quality",
+        "icon": "check",
+        "chips": [
+          "Official job link",
+          "Specific proof of fit",
+          "Resume attached",
+          "Ask strength: Strong"
+        ],
+        "note": "Checks on the ask, never a score of the person.",
+        "source": "shared/askQuality.ts checks and the inbox askStrength field"
+      },
+      "locked": {
+        "icon": "lock",
+        "title": "Identity and resume are shared after you accept",
+        "documents": "2 documents",
+        "documentsIcon": "file-text",
+        "rule": "A count only. No file names, no previews, no links."
+      },
+      "acceptNote": "Accepting shares names both ways and their resume. Referring comes later, through Kestrel Pay’s own process.",
+      "primaryAction": {
+        "label": "Accept & connect",
+        "key": "A",
+        "busyLabel": "Accepting…"
+      },
+      "secondaryAction": {
+        "label": "Pass privately",
+        "key": "P"
+      },
+      "acceptConfirm": {
+        "rendered": false,
+        "title": "Accept this request?",
+        "body": "You’ll both see names, and you’ll get the resume.",
+        "checkbox": "I’ll refer only through Kestrel Pay’s official process and won’t accept anything in return.",
+        "cancel": "Cancel",
+        "confirm": "Accept"
+      },
+      "pass": {
+        "title": "Pass privately",
+        "description": "The seeker sees a kind note with your reason. Never your name.",
+        "reasons": [
+          {
+            "code": "not_my_team",
+            "label": "Not my team or function",
+            "key": "1"
+          },
+          {
+            "code": "needs_experience",
+            "label": "Role needs more experience",
+            "key": "2"
+          },
+          {
+            "code": "not_enough_context",
+            "label": "Not enough context",
+            "key": "3"
+          },
+          {
+            "code": "at_capacity",
+            "label": "At capacity right now",
+            "key": "4"
+          },
+          {
+            "code": "role_closed",
+            "label": "Role is closed",
+            "key": "5"
+          },
+          {
+            "code": "only_refer_known",
+            "label": "I only refer people I know",
+            "key": "6"
+          },
+          {
+            "code": "prefer_not_to_say",
+            "label": "Prefer not to say",
+            "key": "7"
+          }
+        ],
+        "defaultSelected": null,
+        "preferNotToSayNote": "With Prefer not to say, the seeker sees no reason.",
+        "cancel": "Cancel",
+        "confirm": "Pass",
+        "confirmStyle": "Ink outline, never solid black: Accept & connect stays the one black action. Enabled only after a reason is chosen.",
+        "source": "shared/passReasons.ts (exact labels, exact order)",
+        "after": {
+          "rendered": false,
+          "title": "You passed privately.",
+          "body": "The request stays active for other verified employees. Your identity was never revealed."
+        }
+      }
+    },
+    "keyboard": {
+      "desktopOnly": true,
+      "shownAsKeycapsIn": "Triage Desk only. The keys work in every direction.",
+      "keys": [
+        {
+          "keys": [
+            "J",
+            "K"
+          ],
+          "icons": [
+            "arrow-down",
+            "arrow-up"
+          ],
+          "does": "Next or previous ask"
+        },
+        {
+          "keys": [
+            "A"
+          ],
+          "does": "Opens the accept confirmation. Never accepts on its own."
+        },
+        {
+          "keys": [
+            "P"
+          ],
+          "does": "Opens the pass reasons. Never passes on its own."
+        },
+        {
+          "keys": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "does": "Picks a pass reason while the reasons are open"
+        },
+        {
+          "keys": [
+            "Esc"
+          ],
+          "does": "Closes the open menu or sheet"
+        }
+      ]
+    }
+  },
+  "screenC": {
+    "id": "asks",
+    "mode": "seeking",
+    "persona": "The same job seeker as screen A: Free plan, 2 credits, not a verified referrer.",
+    "route": "/requests",
+    "navActive": "asks",
+    "pageTitle": "My asks",
+    "heading": "My asks",
+    "subheading": "Where each ask stands and what happens next.",
+    "slots": {
+      "text": "Open asks 2 of 3 · Free plan",
+      "open": 2,
+      "cap": 3,
+      "plan": "Free"
+    },
+    "primaryAction": {
+      "label": "Ask for a referral",
+      "icon": "plus",
+      "href": "/explore"
+    },
+    "sections": [
+      {
+        "id": "active",
+        "label": "Active",
+        "count": 4
+      },
+      {
+        "id": "closed",
+        "label": "Closed",
+        "count": 2
+      }
+    ],
+    "stepper": {
+      "steps": [
+        "Sent",
+        "Under review",
+        "Accepted",
+        "Referred"
+      ],
+      "ariaLabel": "Progress",
+      "nodeIcons": {
+        "done": "circle-check",
+        "current": "circle-dot",
+        "upcoming": "circle-dashed",
+        "expired": "circle-x",
+        "withdrawn": "circle-minus"
+      },
+      "rules": "Steps before stage are done, the step at stage is current, later steps are upcoming. A Referred ask shows all four done and the Referred node is the only emerald one. An ended ask keeps its reached steps, then shows its terminal mark (Expired in crimson, Withdrawn in muted ink) in place of the next step; later steps stay upcoming and muted."
+    },
+    "statuses": [
+      {
+        "label": "Waiting",
+        "tone": "amber",
+        "glyph": "circle-dashed",
+        "meaning": "Sent; waiting for a verified employee to pick it up."
+      },
+      {
+        "label": "Under review",
+        "tone": "amber",
+        "glyph": "circle-ellipsis",
+        "meaning": "A verified employee picked it up and is deciding."
+      },
+      {
+        "label": "Accepted",
+        "tone": "neutral",
+        "glyph": "circle-dot",
+        "meaning": "Accepted, not referred yet. Names are shared both ways."
+      },
+      {
+        "label": "Referred",
+        "tone": "emerald",
+        "glyph": "circle-check",
+        "meaning": "Submitted through the company’s own process."
+      },
+      {
+        "label": "Expired",
+        "tone": "crimson",
+        "glyph": "circle-x",
+        "meaning": "Nobody picked it up within 7 days."
+      },
+      {
+        "label": "Withdrawn",
+        "tone": "neutral-muted",
+        "glyph": "circle-minus",
+        "meaning": "The seeker withdrew it."
+      }
+    ],
+    "readout": {
+      "askId": "ask-quillmint",
+      "value": "6 days",
+      "label": "left for a verified Quillmint employee to pick up your ask",
+      "context": "If nobody does, it closes on 24 Oct and your credit comes back.",
+      "usedBy": "Signal only. The other two show the same facts in the Quillmint row and detail."
+    },
+    "focusedAskId": "ask-quillmint",
+    "asks": [
+      {
+        "id": "ask-quillmint",
+        "ref": "R-7KD2M",
+        "section": "active",
+        "focused": true,
+        "company": "Quillmint",
+        "initials": "Q",
+        "role": "Backend Engineer, Sync",
+        "status": "Waiting",
+        "statusLine": "Waiting for a verified employee",
+        "stage": 0,
+        "terminal": null,
+        "date": {
+          "label": "Sent",
+          "value": "17 Oct"
+        },
+        "closes": "24 Oct",
+        "daysLeft": 6,
+        "nextStep": "Nothing to do yet. If nobody picks it up by 24 Oct, it closes and your credit comes back.",
+        "credit": {
+          "state": "spent-returnable",
+          "label": "1 credit spent",
+          "detail": "Comes back if nobody picks it up by 24 Oct"
+        },
+        "action": {
+          "label": "Withdraw",
+          "style": "secondary",
+          "confirm": {
+            "rendered": false,
+            "title": "Withdraw this ask?",
+            "body": "It leaves the referrers’ queue, frees your slot and returns your credit.",
+            "keep": "Keep it",
+            "withdraw": "Withdraw"
+          }
+        },
+        "events": [
+          {
+            "date": "17 Oct",
+            "text": "Sent to verified Quillmint employees",
+            "credit": "1 credit spent",
+            "state": "past"
+          },
+          {
+            "date": "18 Oct",
+            "text": "Waiting for a verified employee to pick it up",
+            "state": "current"
+          },
+          {
+            "date": "24 Oct",
+            "text": "Closes if nobody picks it up, and your credit comes back",
+            "state": "future"
+          }
+        ]
+      },
+      {
+        "id": "ask-monsoon",
+        "ref": "R-3PX8T",
+        "section": "active",
+        "company": "Monsoon Analytics",
+        "initials": "MA",
+        "role": "Platform Engineer, Pipelines",
+        "status": "Under review",
+        "statusLine": "A verified employee is reviewing it",
+        "stage": 1,
+        "terminal": null,
+        "date": {
+          "label": "Picked up",
+          "value": "15 Oct"
+        },
+        "nextStep": "Nothing to do yet. You’ll hear from us when they decide.",
+        "credit": {
+          "state": "spent",
+          "label": "1 credit spent",
+          "detail": "Stays spent now it’s picked up, even if they pass"
+        },
+        "action": null,
+        "events": [
+          {
+            "date": "14 Oct",
+            "text": "Sent to verified Monsoon Analytics employees",
+            "credit": "1 credit spent",
+            "state": "past"
+          },
+          {
+            "date": "15 Oct",
+            "text": "Picked up by a verified employee",
+            "credit": "Stays spent from here, even if they pass",
+            "state": "past"
+          }
+        ]
+      },
+      {
+        "id": "ask-tidewell",
+        "ref": "R-9WQ4F",
+        "section": "active",
+        "company": "Tidewell Health",
+        "initials": "TH",
+        "role": "Backend Engineer, Claims",
+        "status": "Accepted",
+        "statusLine": "Accepted, not referred yet",
+        "stage": 2,
+        "terminal": null,
+        "date": {
+          "label": "Accepted",
+          "value": "16 Oct"
+        },
+        "nextStep": "Your referrer submits it through Tidewell Health’s process, then marks it Referred.",
+        "credit": {
+          "state": "spent",
+          "label": "1 credit spent"
+        },
+        "action": {
+          "label": "Message your referrer",
+          "icon": "messages-square",
+          "style": "secondary"
+        },
+        "events": [
+          {
+            "date": "12 Oct",
+            "text": "Sent to verified Tidewell Health employees",
+            "credit": "1 credit spent",
+            "state": "past"
+          },
+          {
+            "date": "14 Oct",
+            "text": "Picked up by a verified employee",
+            "state": "past"
+          },
+          {
+            "date": "16 Oct",
+            "text": "Accepted · names shared both ways",
+            "state": "past"
+          }
+        ]
+      },
+      {
+        "id": "ask-orbit",
+        "ref": "R-6TN5B",
+        "section": "active",
+        "company": "Orbit Freight",
+        "initials": "OF",
+        "role": "Senior Software Engineer, Routing",
+        "status": "Referred",
+        "statusLine": "Referred through Orbit Freight’s process",
+        "stage": 3,
+        "terminal": null,
+        "date": {
+          "label": "Referred",
+          "value": "27 Sep"
+        },
+        "portalReference": {
+          "label": "Reference",
+          "value": "JR-48213",
+          "note": "Added by your referrer"
+        },
+        "nextStep": "Watch your email for Orbit Freight’s recruiters. Companies decide hiring; add an update when you hear.",
+        "credit": {
+          "state": "spent",
+          "label": "1 credit spent"
+        },
+        "action": {
+          "label": "Add an update",
+          "style": "secondary"
+        },
+        "events": [
+          {
+            "date": "22 Sep",
+            "text": "Sent to verified Orbit Freight employees",
+            "credit": "1 credit spent",
+            "state": "past"
+          },
+          {
+            "date": "23 Sep",
+            "text": "Picked up by a verified employee",
+            "state": "past"
+          },
+          {
+            "date": "24 Sep",
+            "text": "Accepted · names shared both ways",
+            "state": "past"
+          },
+          {
+            "date": "27 Sep",
+            "text": "Marked referred · reference JR-48213",
+            "state": "past"
+          }
+        ]
+      },
+      {
+        "id": "ask-larkspur",
+        "ref": "R-4CJ7R",
+        "section": "closed",
+        "company": "Larkspur Retail",
+        "initials": "LR",
+        "role": "Backend Engineer, Checkout",
+        "status": "Expired",
+        "statusLine": "Nobody picked it up in 7 days",
+        "stage": 0,
+        "terminal": "expired",
+        "date": {
+          "label": "Expired",
+          "value": "10 Oct"
+        },
+        "nextStep": "Refresh your reasons and ask again, or try a company that’s open to requests.",
+        "credit": {
+          "state": "returned",
+          "label": "1 credit returned",
+          "detail": "Returned 10 Oct"
+        },
+        "action": {
+          "label": "Ask again",
+          "style": "secondary"
+        },
+        "events": [
+          {
+            "date": "3 Oct",
+            "text": "Sent to Larkspur Retail · no verified employee available",
+            "credit": "1 credit spent",
+            "state": "past"
+          },
+          {
+            "date": "10 Oct",
+            "text": "Closed after 7 days with no pickup",
+            "credit": "1 credit returned",
+            "state": "past"
+          }
+        ]
+      },
+      {
+        "id": "ask-fernhill",
+        "ref": "R-2VH9K",
+        "section": "closed",
+        "company": "Fernhill Bank",
+        "initials": "FB",
+        "role": "Software Engineer, Core banking",
+        "status": "Withdrawn",
+        "statusLine": "You withdrew it before anyone picked it up",
+        "stage": 0,
+        "terminal": "withdrawn",
+        "date": {
+          "label": "Withdrawn",
+          "value": "7 Oct"
+        },
+        "nextStep": "Nothing else to do. Your slot and credit came back the same day.",
+        "credit": {
+          "state": "returned",
+          "label": "1 credit returned",
+          "detail": "Returned 7 Oct"
+        },
+        "action": null,
+        "events": [
+          {
+            "date": "6 Oct",
+            "text": "Sent to Fernhill Bank",
+            "credit": "1 credit spent",
+            "state": "past"
+          },
+          {
+            "date": "7 Oct",
+            "text": "Withdrawn before pickup",
+            "credit": "1 credit returned",
+            "state": "past"
+          }
+        ]
+      }
+    ],
+    "rowDisplays": [
+      "company",
+      "role",
+      "status",
+      "date (label + mono value)",
+      "stepper",
+      "nextStep",
+      "credit when returned (Ledger shows every credit state)"
+    ]
+  },
+  "otherStates": {
+    "rendered": false,
+    "note": "Live copy kept for the build phase. Not drawn in the three comps.",
+    "queueEmpty": {
+      "title": "No asks right now.",
+      "body": "Enjoy the quiet."
+    },
+    "asksEmpty": {
+      "title": "No asks yet.",
+      "body": "Pick a company, find a verified referrer, and write one great ask."
+    },
+    "directoryNoResults": {
+      "title": "No matching companies yet",
+      "body": "Try a wider search.",
+      "action": "Clear filters"
+    },
+    "directoryError": {
+      "title": "We couldn’t load companies.",
+      "action": "Try again"
+    },
+    "asksError": {
+      "title": "We couldn’t load your asks",
+      "body": "Your asks are still active and nothing was lost.",
+      "action": "Try again"
+    },
+    "balanceError": {
+      "text": "Balance didn’t load",
+      "action": "Retry",
+      "rule": "Never show 0 when the balance failed to load."
+    }
+  },
+  "shareWin": {
+    "heading": "Share the win?",
+    "intro": "Your ask was accepted at {company}. Tell people if you want to – it is always your choice.",
+    "badgeAccepted": "Accepted",
+    "badgeReferred": "Referred",
+    "quote": "Someone who works there is vouching for me. Asked through skipwait.me – my name stayed private until they said yes.",
+    "footer": "skipwait.me · A warmer way in",
+    "copyText": "Copy card as text",
+    "copyLinkedIn": "Copy for LinkedIn",
+    "copied": "Copied.",
+    "note": "Nothing posts itself. The card never names your referrer – their help stays between you two unless they say otherwise."
+  },
+  "companySignal": {
+    "intro": "What askers can expect here – from real activity, updated monthly.",
+    "usualFirstReply": "usual first reply",
+    "answeredThisMonth": "asks answered this month",
+    "referrersInside": "referrers inside",
+    "source": "skipwait.me · Averages from real activity",
+    "disclaimer": "Averages only, never a ranking, never for sale. Numbers come from what referrers actually do – a company cannot buy a better one. If there is too little activity to be honest, we show “Not enough data yet” instead.",
+    "insufficient": "Not enough data yet",
+    "day": "day",
+    "days": "days"
+  },
+  "claimCompany": {
+    "label": "For companies",
+    "title": "Claim your company",
+    "intro": "See how referral asks for your company actually move - and give your employees a warmer way to help people in.",
+    "benefitsTitle": "What you get",
+    "benefits": [
+      {
+        "title": "Aggregate activity",
+        "body": "Asks answered, usual first-reply time, referrers inside - company totals only, this month."
+      },
+      {
+        "title": "Your people, verified",
+        "body": "Employees join with their work email. You see a count, never their chats."
+      },
+      {
+        "title": "A public signal you earn",
+        "body": "Your responsiveness shows on your company page once 3+ employees and 3+ answered asks qualify. Never for sale, never a ranking."
+      }
+    ],
+    "privacyTitle": "What we never show you",
+    "privacy": "No seeker names. No resumes. No individual referrer stats. Companies see aggregates - people stay people, not leads.",
+    "verify": "Verify your domain",
+    "fine": "We email a verification link to your work email. Claiming is free. There is nothing to buy here.",
+    "emailLabel": "Work email",
+    "send": "Email me a verification link",
+    "sent": "Check your work email. The link expires in 10 minutes. Open it while signed in to this account.",
+    "confirm": "Confirm company access",
+    "confirmNote": "This confirms access to a work mailbox, not ownership of the company. It only opens company-level aggregates.",
+    "dashboard": "Company dashboard",
+    "period": "This month · aggregates only",
+    "answered": "Asks answered",
+    "reply": "Usual first reply",
+    "employees": "Employees verified",
+    "publicTitle": "Your public signal - what seekers see",
+    "insufficient": "Not enough data yet",
+    "thin": "Below 3 verified referrers or 3 answered asks this month, every number stays hidden. The signal is earned through real replies - it cannot be bought, and it is never a ranking.",
+    "peopleTitle": "Your people",
+    "people": "Their names, asks and chats stay private to them - companies see the count, not the people.",
+    "footer": "Seekers are never shown to companies: no names, no resumes, no contact details. Claiming is free.",
+    "signin": "Sign in for company access. This does not enroll you as a referrer. If you arrived from an email, reopen that link after signing in.",
+    "view": "View company dashboard",
+    "back": "Back to company page",
+    "error": "We could not complete company verification. Try again.",
+    "loading": "Loading company aggregates…",
+    "open": "Open to requests",
+    "closed": "Not open to requests right now"
+  }
+}

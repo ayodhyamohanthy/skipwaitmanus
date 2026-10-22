@@ -9,10 +9,11 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 
 // Kit v4 /suggest-company (app/src/routes/suggest-company.tsx) on the live
-// POST /api/company-suggestions intake (auth required, 3 a day, open-duplicate
-// check server side). The duplicate hint is the kit's prefix match against the
-// live company directory (the same list /explore shows), and a website is
-// required before Submit, as in the kit.
+// POST /api/company-suggestions intake (auth required, 3 a day, and one vote
+// per seeker per company: asking again returns the existing request instead of
+// an error). The duplicate hint is the kit's prefix match against the live
+// company directory (the same list /explore shows), and a website is required
+// before Submit, as in the kit.
 type SuggestRole = "seeker" | "employee";
 const ROLES: ReadonlyArray<readonly [SuggestRole, string]> = [["seeker", "Looking to join"], ["employee", "Working there now"]];
 const SITE_PATTERN = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+/i;
@@ -86,7 +87,7 @@ export default function SuggestCompany() {
       <Heading eyebrow="GROW THE MAP" title="Suggest a company" text="Real employers only. We review every suggestion before it appears." />
       <Panel>
         <label className="block text-sm font-medium">Company name<input className={field} value={name} maxLength={160} onChange={event => { setName(event.target.value); setError(""); }} placeholder="e.g. Freshworks" /></label>
-        {listed ? <p className="mt-2 flex items-center gap-2 text-sm"><AlertTriangle className="size-4" />{listed.name} is already on SkipWait. <Link href={`/explore/${listed.slug}`} className="text-link">Open it</Link></p> : null}
+        {listed ? <p className="mt-2 flex items-center gap-2 text-sm"><AlertTriangle className="size-4" />{listed.name} is already on skipwait.me. <Link href={`/explore/${listed.slug}`} className="text-link">Open it</Link></p> : null}
         {directory.isError && name.trim().length > 1 ? <p className="mt-2 text-sm text-muted-foreground">We couldn’t check the current company list. Reviewers still catch duplicates.</p> : null}
         <label className="mt-4 block text-sm font-medium">Website<input className={field} value={website} inputMode="url" maxLength={500} onChange={event => { setWebsite(event.target.value); setError(""); }} placeholder="freshworks.com" /></label>
         <fieldset className="mt-4">

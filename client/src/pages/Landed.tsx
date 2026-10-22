@@ -126,7 +126,7 @@ export default function Landed() {
             <input type="checkbox" checked={shareOnWall} onChange={event => setShareOnWall(event.target.checked)} className="mt-1 size-4" />
             <span><strong className="block">Let {greeting} keep this on their private thank-you wall</strong><small className="text-muted-foreground">That wall is visible only to them, and shows your name with the role title. Untick to keep this note between you two.</small></span>
           </label>
-          <Panel tone="muted" className="mt-6 text-sm"><Gift className="mb-2 size-5" />Gifts or payments for referrals aren&apos;t allowed on SkipWait. A real thank-you is enough.</Panel>
+          <Panel tone="muted" className="mt-6 text-sm"><Gift className="mb-2 size-5" />Gifts or payments for referrals aren&apos;t allowed on skipwait.me. A real thank-you is enough.</Panel>
           <div className="mt-8 flex justify-between">
             <Button variant="ghost" onClick={() => setStep(2)}>Skip</Button>
             <Button disabled={send.isPending || !message.trim()} onClick={thanks}><Send />{send.isPending ? "Sending…" : "Send thanks"}</Button>
@@ -146,7 +146,7 @@ export default function Landed() {
           </div>
           <p className="mt-4 text-sm text-muted-foreground">Choose “Maybe later” and we won&apos;t message you about it.</p>
           <div className="mt-6 flex flex-wrap justify-between gap-3">
-            <Button variant="outline" asChild><Link href="/explore">Back to SkipWait</Link></Button>
+            <Button variant="outline" asChild><Link href="/explore">Back to skipwait.me</Link></Button>
             <span className="flex gap-2">
               <Button variant="ghost" disabled={send.isPending} onClick={() => choose("later")}>Maybe later</Button>
               <Button disabled={send.isPending} onClick={() => choose("yes")}>Yes, I&apos;ll pay it forward</Button>

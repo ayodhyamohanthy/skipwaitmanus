@@ -4,35 +4,37 @@
 // server did not send is left out, never filled with a guess.
 import { ArrowRight, Check, Coins, Gauge } from "lucide-react";
 import { Link } from "wouter";
-import type { SubscriptionCurrency } from "@shared/subscriptionPlans";
+import type { CatalogCurrency } from "@shared/planCatalog";
 import { Button } from "@/components/kit/button";
 import { kitDate } from "./format";
 import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
-import { CREDIT_PRICE, hasActivePaidPlan, type CreditSummary } from "./planCatalog";
+import { CREDIT_RULE_SHORT } from "@shared/moneyCopy";
+import { hasActivePaidPlan, type CreditSummary } from "./planCatalog";
 
 function creditCount(count: number): string {
   return `${count} credit${count === 1 ? "" : "s"}`;
 }
 
 /** Heading aside: the kit "credits · ADD CREDITS" pill with the real balance once signed in, the price of a credit before. */
-export function CreditCta({ summary, currency, href }: { summary: CreditSummary | null; currency: SubscriptionCurrency; href: string }) {
+export function CreditCta({ summary, creditPrice, href }: { summary: CreditSummary | null; creditPrice: string | null; href: string }) {
   // Packs are off sale: show the real balance, no purchase link.
   if (!CREDIT_PACKS_ON_SALE) return summary ? <div className="heading-aside"><span className="credit-cta"><Coins /><b>{creditCount(summary.totalAvailable)}</b></span></div> : null;
-  return <div className="heading-aside"><Link href={href} className="credit-cta"><Coins /><b>{summary ? creditCount(summary.totalAvailable) : `${CREDIT_PRICE[currency]} a credit`}</b><span>Add credits</span></Link></div>;
+  return <div className="heading-aside"><Link href={href} className="credit-cta"><Coins /><b>{summary ? creditCount(summary.totalAvailable) : creditPrice ? `${creditPrice} a credit` : "Credits"}</b><span>Add credits</span></Link></div>;
 }
 
-export function CreditsSection({ summary, currency, creditsHref }: { summary: CreditSummary | null; currency: SubscriptionCurrency; creditsHref: string }) {
+export function CreditsSection({ summary, creditPrice, creditsHref }: { summary: CreditSummary | null; creditPrice: string | null; creditsHref: string }) {
   if (!CREDIT_PACKS_ON_SALE) return null;
-  const costs = [["Free", "Every referral request"], [CREDIT_PRICE[currency], "Each credit you buy"], ["Never", "Bought credits expire"]] as const;
+  // D-063: no badge calls a referral request free; each ask a verified employee can see uses a credit (CREDIT_RULE).
+  const costs = [["1 credit", "Each ask a verified employee can see"], [creditPrice ?? "Packs", "Each credit you buy"], ["Never", "Bought credits expire"]] as const;
   return <section className="plans-section credits-section" id="credits">
     <span className="eyebrow">NO SUBSCRIPTION NEEDED</span>
     <div className="credits-bar-wrap">
       <div className="credits-bar">
-        <div className="balance"><Coins /><div>{summary ? <><span className="eyebrow">YOUR BALANCE</span><strong>{summary.totalAvailable} <small>credit{summary.totalAvailable === 1 ? "" : "s"}</small></strong></> : <><span className="eyebrow">PAY AS YOU GO</span><strong>{CREDIT_PRICE[currency]} <small>a credit</small></strong></>}</div></div>
+        <div className="balance"><Coins /><div>{summary ? <><span className="eyebrow">YOUR BALANCE</span><strong>{summary.totalAvailable} <small>credit{summary.totalAvailable === 1 ? "" : "s"}</small></strong></> : <><span className="eyebrow">PAY AS YOU GO</span><strong>{creditPrice ?? "Packs"} <small>{creditPrice ? "a credit" : "of credits"}</small></strong></>}</div></div>
         <ul className="cost-strip" aria-label="Credit costs">{costs.map(([badge, label]) => <li key={label}><span className="cost-badge">{badge}</span>{label}</li>)}</ul>
         <Button asChild className="brand-button"><Link href={creditsHref}>Add credits<ArrowRight /></Link></Button>
       </div>
-      <p className="credits-fine"><Check />Each referral request uses 1 credit, returned if you withdraw before pickup or it expires. Credits you buy <b>never expire</b> and never affect referral access or queue position.</p>
+      <p className="credits-fine"><Check /><span>Each referral request uses 1 credit; {CREDIT_RULE_SHORT}. Credits you buy <b>never expire</b> and never affect referral access or queue position.</span></p>
     </div>
   </section>;
 }

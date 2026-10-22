@@ -185,7 +185,7 @@ describe("D-018 baseline aggregation", () => {
     expect(Object.keys(baseline.coverage[0])).not.toContain("userId");
   });
 
-  it("derives operator domains from SkipWait's own page plus the admin mailbox", () => {
+  it("derives operator domains from skipwait.me's own page plus the admin mailbox", () => {
     expect(operatorDomains(undefined)).toContain("skipwait.me");
     expect(operatorDomains("ops@example-team.com")).toEqual(expect.arrayContaining(["skipwait.me", "example-team.com"]));
     expect(operatorDomains("ops@skipwait.me")).toEqual(["skipwait.me"]);

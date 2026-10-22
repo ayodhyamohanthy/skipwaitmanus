@@ -57,11 +57,11 @@ describe("App states gallery", () => {
   it("dismisses the iPhone install sheet and brings it back from its chip", () => {
     render(<AppStatesGallery />);
     chip("Install (iPhone)");
-    expect(screen.getByText("Add SkipWait to your Home Screen")).toBeTruthy();
+    expect(screen.getByText("Add skipwait.me to your Home Screen")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Got it" }));
-    expect(screen.queryByText("Add SkipWait to your Home Screen")).toBeNull();
+    expect(screen.queryByText("Add skipwait.me to your Home Screen")).toBeNull();
     chip("Install (iPhone)");
-    expect(screen.getByText("Add SkipWait to your Home Screen")).toBeTruthy();
+    expect(screen.getByText("Add skipwait.me to your Home Screen")).toBeTruthy();
   });
 
   it("opens the browser's own install prompt only when the browser offered one", async () => {
@@ -75,7 +75,7 @@ describe("App states gallery", () => {
     act(() => { window.dispatchEvent(offered); });
     expect(offered.defaultPrevented).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Install app" }));
-    expect((await screen.findByRole("status")).textContent).toBe("Installing SkipWait on this device.");
+    expect((await screen.findByRole("status")).textContent).toBe("Installing skipwait.me on this device.");
     expect(prompt).toHaveBeenCalledTimes(1);
   });
 

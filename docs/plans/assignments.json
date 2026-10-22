@@ -1,0 +1,711 @@
+{
+  "version": 1,
+  "repo": "ayodhyamohanthy/skipwaitmanus",
+  "decidedBy": "Claude Code (architect, D-074, D-083)",
+  "updated": "2026-10-21",
+  "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks, except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
+  "tasks": [
+    {
+      "id": "D-069-chargebee-catalog-sync",
+      "title": "Admin-only Chargebee catalog sync: dry run, then one owner-triggered apply",
+      "row": "D-069-chargebee-catalog-sync",
+      "packet": "docs/plans/D-069-chargebee-catalog-sync.md",
+      "tier": 1,
+      "lane": "payments",
+      "branch": "agent/claude/chargebee-catalog-sync",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan §6)."
+    },
+    {
+      "id": "GO-LIVE-1",
+      "title": "/plans sells packs and passes; coverage shown before payment; a pass never renews by accident",
+      "row": "1",
+      "packet": "docs/plans/GO-LIVE-1-plans-purchase.md",
+      "tier": 1,
+      "lane": "payments",
+      "branch": "agent/queue/go-live-plans",
+      "status": "done",
+      "dependsOn": [
+        "D-069-chargebee-catalog-sync"
+      ],
+      "note": "Done via PR #351 (squash 43370293): server + client slices. Money path opens only when the owner creates the catalog item prices (409 before any provider call until then)."
+    },
+    {
+      "id": "GO-LIVE-1b",
+      "title": "A paid pass always activates (checkout-page recovery on return and hourly, alert on unlinked kit subscriptions), then passes go back on sale",
+      "row": "1",
+      "packet": "docs/plans/GO-LIVE-1b-pass-activation.md",
+      "tier": 1,
+      "lane": "payments",
+      "branch": "agent/queue/go-live-passes",
+      "status": "done",
+      "dependsOn": [
+        "GO-LIVE-1"
+      ],
+      "note": "D-084. Landed through PR #359 (merge of agent/queue/go-live-passes into main, Oct 21): return-page and hourly recovery of pending pass checkouts through the provider checkout page, an alert on any unlinked kit subscription, and \"Ends <date>\" with a renewed cancel control while billing_cycles=1 is unproven. Passes STAY OFF (PASS_SALES_ENABLED=false): the switch commit needs the packet §4.5 test-site evidence (owner on skipwait-test), then one flag change. Review: passed by Assistant · 4b07; landed by DeepSeek V4.1 Flash Free · 89c2."
+    },
+    {
+      "id": "D-038-reconcile",
+      "title": "Land PR #353 (D-038-A complete, timers job registered) with part B's money steps switched off until their own review",
+      "row": "D-038-B",
+      "packet": "docs/plans/D-038-reconcile.md",
+      "tier": 1,
+      "lane": "money-core",
+      "branch": "agent/workbuddy/d038-a-lapses",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed after an independent Tier 1 review passed part A and part B: REFERRED_DEADLINE_ENABLED=true and REFERRAL_TIMERS_SINCE=2026-10-23T00:00:00Z in the landing commit (D-103, R-2/R-3). Builds on workbuddy's PR #353 and qoder's audit #354 (docs/reviews/D-038-reconcile-evidence.md). Never merge agent/opencode/d038-a-lapses."
+    },
+    {
+      "id": "D-035",
+      "title": "The pass reason decides the credit (D-035 with D-052, D-066 (4), D-076 (1), (7))",
+      "row": "D-035",
+      "packet": "docs/plans/D-035-pass-reason-credit.md",
+      "tier": 1,
+      "lane": "money-core",
+      "branch": "agent/queue/d035-pass-credit",
+      "status": "todo",
+      "dependsOn": [
+        "D-038-reconcile"
+      ]
+    },
+    {
+      "id": "D-048-p3-live-review",
+      "title": "Post-landing review of the live goal /explore and /requests (#362, #360): send path, credits, money copy, states",
+      "row": "D-048",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "d048-find",
+      "branch": "agent/queue/d048-live-review",
+      "status": "done",
+      "dependsOn": [],
+      "note": "D-134 (6): both pages went live in place with the merge button and no independent review; this checks them against their kit versions and the money rules, fixes what fails red-first, and passes an independent review."
+    },
+    {
+      "id": "D-065-C",
+      "title": "The daily money check finds delivery spends by their real key (<id>#1), so ask_spent_while_waiting can fire",
+      "row": "D-065-B",
+      "packet": "docs/plans/D-065-C-delivery-spend-key.md",
+      "tier": 2,
+      "lane": "money-check",
+      "branch": "agent/queue/d065c-delivery-key",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "A silent money-check failure found by the PR #395 review: the lookup matches the bare request id, which no spend row has; red-first with the real key shape."
+    },
+    {
+      "id": "JOB-LEVELS",
+      "title": "Job level classifier L1-L10 (#381): the rules D-110 and D-132 price asks by",
+      "row": "D-132",
+      "packet": "docs/plans/D-132-pricing-v2.md",
+      "tier": 1,
+      "lane": "levels",
+      "branch": "agent/instinct/job-levels",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed as `0e1ccba4` (#381, flag off) with the merge button and no independent review; D-132-audit reviews it before any pricing flag goes on (D-135 (5))."
+    },
+    {
+      "id": "D-132-plans-v2",
+      "title": "Frozen pricing (#410): plans page and plan family config behind VITE_PLAN_FAMILY_V2, off",
+      "row": "D-132",
+      "packet": "docs/plans/D-132-pricing-v2.md",
+      "tier": 1,
+      "lane": "pricing",
+      "branch": "agent/instinct/pricing-plans-v2",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed as `f2b8fd05` (#410, flags off) with the merge button and no independent review; D-132-audit reviews it before enable (D-135 (5)). Its client flag sits in goalFlags.ts until D-048-F-flags moves it."
+    },
+    {
+      "id": "D-132-audit",
+      "title": "Frozen pricing audit (#381, #410, #415 on main, flags off): stored level cost, refunds by bucket, one cost line, before any enable",
+      "row": "D-132",
+      "packet": "docs/plans/D-132-pricing-v2.md",
+      "tier": 1,
+      "lane": "money-core",
+      "branch": "agent/queue/d132-audit",
+      "status": "todo",
+      "dependsOn": [
+        "D-035",
+        "D-048-p3-live-review",
+        "TASK13-pinned-work",
+        "D-065-C"
+      ],
+      "note": "D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. After D-035 (same spend and refund code), the live review (which moves the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends)."
+    },
+    {
+      "id": "PICKER-landing-slot",
+      "title": "One landing at a time, enforced: the agent/queue/landing slot",
+      "row": "D-134",
+      "packet": "docs/plans/PICKER-PARALLEL.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-landing-slot",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "PICKER-owns-scope",
+      "title": "File ownership (owns) on tasks, filesBusy, and scripts/scope-check.mjs",
+      "row": "D-134",
+      "packet": "docs/plans/PICKER-PARALLEL.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-owns-scope",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "PICKER-status-rows",
+      "title": "Tasks that share a plan row write status in their packet section",
+      "row": "D-134",
+      "packet": "docs/plans/PICKER-PARALLEL.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-status-rows",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Done in D-134 (PR #395): the picker marks shared rows and the printed steps send their status to the packet's Status section."
+    },
+    {
+      "id": "PICKER-lane-busy",
+      "title": "A green pull request waiting for review stops blocking its lane when owns are disjoint",
+      "row": "D-134",
+      "packet": "docs/plans/PICKER-PARALLEL.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-lane-busy",
+      "status": "todo",
+      "dependsOn": [
+        "PICKER-owns-scope"
+      ]
+    },
+    {
+      "id": "PICKER-board-epic",
+      "title": "Board: role by lane prefix, one roll-up line per epic, behind-main counts",
+      "row": "D-134",
+      "packet": "docs/plans/PICKER-PARALLEL.md",
+      "tier": 3,
+      "lane": "picker",
+      "branch": "agent/queue/picker-board-epic",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "D-067-review-outbox",
+      "title": "Billing review recovery outbox (#322): renumber its migration, then review and land",
+      "row": "D-067-pro-max-removal",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "billing",
+      "branch": "agent/kat/d067-allocated-0098-oct19",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Migration renumbered 0098 to 0099 (the Neutrinos rebrand took 0098 on main); SQL bytes unchanged (SHA256 d14c261e). Merged with origin/main, independent review passed, landed; live check in the landing report."
+    },
+    {
+      "id": "D-104-company-signal",
+      "title": "Company responsiveness signal (#373): company-level aggregates, min 3, flag off",
+      "row": "D-104",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "company",
+      "branch": "agent/instinct/company-response-signal",
+      "status": "done",
+      "dependsOn": []
+    },
+    {
+      "id": "D-107-claim-company",
+      "title": "Free claim-your-company (#384): mailbox link, aggregate-only dashboard, flags off",
+      "row": "D-107",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "company",
+      "branch": "agent/instinct/claim-company",
+      "status": "done",
+      "dependsOn": [
+        "D-104-company-signal"
+      ]
+    },
+    {
+      "id": "D-105-win-card",
+      "title": "Seeker win card (#375): opt-in copy card on an accepted ask, flag off; CI red first",
+      "row": "D-105",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 2,
+      "lane": "share",
+      "branch": "agent/instinct/share-win-card",
+      "status": "done",
+      "dependsOn": [],
+      "note": "CI was red on the design-token audit (a raw #059669 in the share-win dot; fixed to var(--g-emerald) before this takeover). Taken over by workbuddy · 8dc3 (2026-10-21), merged with origin/main (kit.css/content.json/DECISIONS.md/.env.example conflicts resolved additively), gate green on the merge commit, landed with the flag off."
+    },
+    {
+      "id": "D-106-impact-card",
+      "title": "Referrer impact card (#382): screen name and aggregates only, flag off",
+      "row": "D-106",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "share",
+      "branch": "agent/instinct/share-impact-card",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "D-048-F-typescale",
+      "title": "Goal kit type scale (#379): the merge helper ate the goal type tokens",
+      "row": "D-048",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 2,
+      "lane": "design-core",
+      "branch": "agent/opencode/goal-kit-type-scale",
+      "status": "done",
+      "dependsOn": []
+    },
+    {
+      "id": "D-048-p3-map",
+      "title": "D-048 phase 3 rollout map (#358): eight waves, one pull request each",
+      "row": "D-048",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/workbuddy/d048-phase3-plan",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed as `f9d7e8d5` (PR #358) by DeepSeek V4.1 Flash Free · 91af: merged with `main`, the map corrected against D-120, D-123 and D-130, full gate green. W0 (the shell) is next."
+    },
+    {
+      "id": "D-048-phase-3",
+      "title": "D-048 phase 3 foundation packet: flag module, primitives, harness, shell meta and credits hook, static frame, route table",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-foundation-packet",
+      "status": "architect",
+      "dependsOn": [],
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds the six D-048-F-* rows the split's list gives it exactly as the split's table lists them, and sets this row to done."
+    },
+    {
+      "id": "D-048-p3-w0-shell",
+      "title": "D-048 phase 3 wave 0 (#361): the app shell onto the goal system",
+      "row": "D-048",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 2,
+      "lane": "design-core",
+      "branch": "agent/instinct/goal-ui-w0-shell",
+      "status": "done",
+      "dependsOn": [
+        "D-048-p3-map"
+      ],
+      "note": "Landed as `a89a0e60` (PR #361, Tier 2): the app shell renders inside GoalShell with one navigation, the credits pill (D-055), the carried-over account menu and the beta badge in the top bar (#402); no surface outside the shell re-skinned. Live follow-ups (PR #412) fix the phone shell (main claims row 2, no blank screen under the sticky bottom bar), the clipped rail wordmark (badge now in the top bar) and the desktop rail (sticky viewport height, so account/More stay reachable); corrected 1280/390 captures in design/goal-ui/captures/w0-shell/fix-explore-*.png."
+    },
+    {
+      "id": "D-048-p3-home",
+      "title": "D-048 phase 3 landing (#396, #407, #409): the signed-out goal landing (D-131), live",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 2,
+      "lane": "d048-home",
+      "branch": "agent/instinct/goal-landing",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed through env flags (VITE_GOAL_UI_LANDING, VITE_GOAL_UI_LANDING_V9); D-048-F-flags folds them into goalSurfaces.ts. Signed-in visitors to / still get the old page until D-048-p3-home-signed-in."
+    },
+    {
+      "id": "D-048-p3-explore",
+      "title": "D-048 phase 3 (#362): Find a referral (/explore) moves to the goal directory",
+      "row": "D-048",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "d048-find",
+      "branch": "agent/qoder/d048-phase-3-explore",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging main: /explore is owned by the page in App.tsx, the wave keeps its rewrite and carries main's #407 ?q= pre-filter into its query state, Explore.tsx joins MOVED_SURFACES, and three stale expectations are realigned (Neutrinos rebrand changes the row order and SEO line; the meta description carries main's current money copy). Captures at 1280/390 in five states (directory, drawer, not-open, empty, error). Gate: tsc, token audit, deploy triggers, 50 focused tests, build green; migration lint runs in CI."
+    },
+    {
+      "id": "D-048-p3-requests",
+      "title": "D-048 phase 3 (#360): My asks (/requests) moves to the goal list",
+      "row": "D-048",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "d048-asks",
+      "branch": "agent/qoder/d048-phase-3-requests",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging origin/main: the shared goal/ shell takes main's newer W0 version (designer review 01:52: pill mono numeral + g-hit + /plans, account-menu slot, BetaBadge), MyRequests joins MOVED_SURFACES, and the pilot's superseded avatar assertion is re-pinned to the shell's real contract. Captures at 1280/390 in four states added with a reusable live-route capture tool (design/goal-ui/tools/capture-live.mjs). Gate: tsc, token audit, deploy triggers, 54 focused tests, build green; migration lint runs in CI (macOS bash 3.2 lacks declare -A)."
+    },
+    {
+      "id": "D-048-P-seeker",
+      "title": "D-048 phase 3 seeker lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-seeker",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+    },
+    {
+      "id": "D-048-P-referrer",
+      "title": "D-048 phase 3 referrer lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-referrer",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+    },
+    {
+      "id": "D-048-P-money",
+      "title": "D-048 phase 3 money lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-money",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+    },
+    {
+      "id": "D-048-P-auth",
+      "title": "D-048 phase 3 auth lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-auth",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+    },
+    {
+      "id": "D-048-P-account",
+      "title": "D-048 phase 3 account lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-account",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+    },
+    {
+      "id": "D-048-P-admin",
+      "title": "D-048 phase 3 admin lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-admin",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+    },
+    {
+      "id": "D-048-P-employer",
+      "title": "D-048 phase 3 employer lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-employer",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+    },
+    {
+      "id": "D-048-P-public",
+      "title": "D-048 phase 3 public lane packet: its cluster rows from the split, with owned paths",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-public",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+    },
+    {
+      "id": "D-048-P-marketing",
+      "title": "D-048 phase 3 marketing packet (landing, wall, jobs, public profile)",
+      "row": "D-048",
+      "packet": null,
+      "tier": 3,
+      "lane": "d048-packets",
+      "branch": "agent/queue/d048-p-marketing",
+      "status": "architect",
+      "dependsOn": [
+        "D-048-phase-3",
+        "D-048-P-account"
+      ],
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md and the landing contract in docs/plans/GOAL_UI_MIGRATION.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+    },
+    {
+      "id": "ROW20-A",
+      "title": "Queue row 20 slice A (#310): kit Impact metrics counted from real history",
+      "row": "20",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 2,
+      "lane": "row20",
+      "branch": "agent/qoder/row20-referral-lifecycle",
+      "status": "done",
+      "dependsOn": []
+    },
+    {
+      "id": "ROW20-B",
+      "title": "Queue row 20 slice B (#311): seeker company demand counted as one vote per person",
+      "row": "20",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 2,
+      "lane": "row20",
+      "branch": "agent/qoder/row20b-company-demand",
+      "status": "done",
+      "dependsOn": [
+        "ROW20-A"
+      ]
+    },
+    {
+      "id": "ROW20-CD",
+      "title": "Queue row 20 C+D (#314): the landed thank-you reaches its referrer exactly once; renumber its migration",
+      "row": "20",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "row20",
+      "branch": "agent/qoder/row20cd-thank-you-wall",
+      "status": "todo",
+      "dependsOn": [
+        "ROW20-B"
+      ]
+    },
+    {
+      "id": "TASK13-pinned-work",
+      "title": "Queue task 13 slice A (#308): pinned work rides with the ask; renumber its migration",
+      "row": "13",
+      "packet": "docs/plans/OCT21-BUILT-PRS.md",
+      "tier": 1,
+      "lane": "ask-flow",
+      "branch": "agent/qoder/ask-pinned-work",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "D-090-BYOR",
+      "title": "Bring-your-own-referrer one-time link (D-090, loop L2)",
+      "row": "D-090",
+      "packet": null,
+      "tier": 1,
+      "lane": "supply",
+      "branch": "agent/claude/d090-byor",
+      "status": "architect",
+      "dependsOn": [],
+      "note": "Any agent writes the packet (D-109): standard credit rules, the four approved surfaces."
+    },
+    {
+      "id": "D-095-one-tap",
+      "title": "One-tap queue items 1-5 (D-095): sign-in keeps the cart, email up front, /jobs prefills /start, /pricing CTA, /plans collapses unsold passes",
+      "row": "D-095",
+      "packet": null,
+      "tier": 2,
+      "lane": "one-tap",
+      "branch": "agent/claude/d095-one-tap",
+      "status": "architect",
+      "dependsOn": []
+    },
+    {
+      "id": "D-100-security-audit",
+      "title": "Security, availability and payments hardening: read-only audit first, then flagged fixes (D-100)",
+      "row": "D-100",
+      "packet": null,
+      "tier": 3,
+      "lane": "security",
+      "branch": "agent/claude/d100-security-audit",
+      "status": "architect",
+      "dependsOn": []
+    },
+    {
+      "id": "D-099-bonus-pages",
+      "title": "Public referral-bonus pages, one per company, every figure sourced (D-099, loop L5)",
+      "row": "D-099",
+      "packet": null,
+      "tier": 2,
+      "lane": "seo",
+      "branch": "agent/claude/d099-bonus-pages",
+      "status": "architect",
+      "dependsOn": []
+    },
+    {
+      "id": "D-093-language",
+      "title": "Language experience: endonym picker, no flags (D-093)",
+      "row": "D-093",
+      "packet": null,
+      "tier": 2,
+      "lane": "i18n",
+      "branch": "agent/claude/d093-language",
+      "status": "architect",
+      "dependsOn": []
+    },
+    {
+      "id": "D-094-ai-in-ui",
+      "title": "AI-in-UI wave 1: the reasons coach in the ask drawer and the rest of D-094",
+      "row": "D-094",
+      "packet": null,
+      "tier": 2,
+      "lane": "ai",
+      "branch": "agent/claude/d094-ai-in-ui",
+      "status": "architect",
+      "dependsOn": []
+    },
+    {
+      "id": "D-065-B",
+      "title": "Daily money check slice checks: no ask-delivery spend on a waiting ask; no spend reversed twice",
+      "row": "D-065-B",
+      "packet": "docs/plans/D-065-B-slice-checks.md",
+      "tier": 2,
+      "lane": "money-check",
+      "branch": "agent/queue/d065b-slice-checks",
+      "status": "done",
+      "dependsOn": []
+    },
+    {
+      "id": "FND-5",
+      "title": "Every key the server reads is forwarded to the container or allowlisted, with a contract test",
+      "row": "FND-5",
+      "packet": "docs/plans/FND-5-env-forwarding.md",
+      "tier": 2,
+      "lane": "config",
+      "branch": "agent/queue/fnd5-env",
+      "status": "done",
+      "dependsOn": []
+    },
+    {
+      "id": "FND-3",
+      "title": "The test kit throws production-shaped duplicate-key errors; two duplicate checks stop reading only code",
+      "row": "FND-3",
+      "packet": "docs/plans/FND-3-duplicate-key-fidelity.md",
+      "tier": 2,
+      "lane": "test-kit",
+      "branch": "agent/queue/fnd3-dup-keys",
+      "status": "done",
+      "dependsOn": []
+    },
+    {
+      "id": "FND-1",
+      "title": "Toolchain says Node 22.12+; the never-run shared/ tests run; the always-true copy-guard assertion is fixed",
+      "row": "FND-1",
+      "packet": "docs/plans/FND-1-toolchain-and-test-collection.md",
+      "tier": 3,
+      "lane": "toolchain",
+      "branch": "agent/queue/fnd1-toolchain",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed as `1f234293` (branch `agent/queue/fnd1-toolchain`, Tier 3, no review needed). engines.node >=22.12 + new .nvmrc; vitest include collects shared/**/*.test.ts (+3 files, +17 tests); copy-guard assertion now bites. Gate: pnpm check 0, frozen-lockfile install leaves the lockfile unchanged, full vitest 422 files / 3515 passed / 16 skipped."
+    },
+    {
+      "id": "FND-2",
+      "title": "Remove verified-dead code that misleads readers",
+      "row": "FND-2",
+      "packet": "docs/plans/FND-2-dead-code.md",
+      "tier": 3,
+      "lane": "cleanup",
+      "branch": "agent/queue/fnd2-dead-code",
+      "status": "done",
+      "dependsOn": []
+    },
+    {
+      "id": "FND-6",
+      "title": "Correct the stale status cells of the Oct 15-17 rows from evidence on main",
+      "row": "FND-6",
+      "packet": "docs/plans/FND-6-row-status-audit.md",
+      "tier": 3,
+      "lane": "docs-status",
+      "branch": "agent/queue/fnd6-row-audit",
+      "status": "done",
+      "dependsOn": []
+    },
+    {
+      "id": "FND-7",
+      "title": "Triage the open PRs and remote branches for the owner (read-only report)",
+      "row": "FND-7",
+      "packet": "docs/plans/FND-7-pr-branch-triage.md",
+      "tier": 3,
+      "lane": "triage",
+      "branch": "agent/queue/fnd7-triage",
+      "status": "done",
+      "dependsOn": []
+    },
+    {
+      "id": "seeker-passwords",
+      "title": "Seeker email + password sign-in (task 2 + Drift-D030)",
+      "row": "2",
+      "packet": "docs/plans/seeker-passwords.md",
+      "tier": 1,
+      "lane": "sign-in",
+      "branch": "agent/claude/seeker-signin-finish",
+      "status": "owner",
+      "dependsOn": [],
+      "note": "Review passed on PR #324; lands only after the owner's WorkOS takeover test (D-080), the dashboard steps and SEEKER_CODE_VERIFY_UNTIL."
+    },
+    {
+      "id": "D-057-session-gate",
+      "title": "Reviewing or accepting asks needs a work-email code in that session (D-057, finding S-4)",
+      "row": "D-057-session-gate",
+      "packet": "docs/plans/D-057-session-gate.md",
+      "tier": 1,
+      "lane": "sign-in",
+      "branch": "agent/queue/d057-session-gate",
+      "status": "todo",
+      "dependsOn": [
+        "seeker-passwords"
+      ]
+    },
+    {
+      "id": "FND-4",
+      "title": "Single-use tokens in API paths never reach Sentry or admin alert emails",
+      "row": "FND-4",
+      "packet": "docs/plans/FND-4-token-path-scrubbing.md",
+      "tier": 2,
+      "lane": "observability",
+      "branch": "agent/queue/fnd4-token-paths",
+      "status": "todo",
+      "dependsOn": [
+        "seeker-passwords"
+      ]
+    },
+    {
+      "id": "SYNC-LOG-off-main",
+      "title": "Keep the deploy log without pushing to main (the D-082 ruleset refuses the bot's push)",
+      "row": "D-082",
+      "packet": null,
+      "tier": 3,
+      "lane": "deploy-workflows",
+      "branch": "agent/claude/sync-log-off-main",
+      "status": "architect",
+      "dependsOn": [],
+      "note": "Any agent writes the packet (D-109): write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected."
+    }
+  ]
+}

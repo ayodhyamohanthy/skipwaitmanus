@@ -16,8 +16,9 @@ export class CompanyDirectoryUnavailableError extends Error {
 
 export type CompanyRecord = { id: number; slug: string; name: string; initials: string; industry: string; location: string; functions: string; blurb: string; status: CompanyStatus; sortOrder: number; updatedAt: Date };
 export type CompanyDomainRecord = { companyId: number; domain: string; isPrimary: boolean };
-/** Read only to derive a yes/no availability flag; never serialized. */
-export type ReferrerCandidate = { userId: number; accountType: string | null; workEmailDomain: string | null; workEmailVerifiedAt: Date | null; paused: boolean; referralCapacity: number | null; userSuspended: boolean; personSuspended: boolean | null };
+/** Read only to derive a yes/no availability flag; never serialized. The shape lives in referrerAvailability.ts (D-062). */
+import type { ReferrerCandidate } from "./referrerAvailability";
+export type { ReferrerCandidate } from "./referrerAvailability";
 
 export type CompanyDirectorySource = {
   loadCompanies(): Promise<CompanyRecord[]>;

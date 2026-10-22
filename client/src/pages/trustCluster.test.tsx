@@ -83,7 +83,7 @@ describe("Trust cluster", () => {
 
   it("offers intent choice on the split design, never a password form", () => {
     render(<SignIn />);
-    expect(screen.getByText(/Welcome to SkipWait/)).toBeTruthy();
+    expect(screen.getByText(/Welcome to skipwait.me/)).toBeTruthy();
     expect(screen.queryByLabelText(/Password/)).toBeNull();
     expect(screen.queryByText(/Forgot password/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Give a referral/ }));

@@ -1,5 +1,9 @@
 /**
  * Employer plan catalog for /for-companies (kit screen 34, #pricing).
+ * D-133 (owner, Oct 21): the advertised $199/mo Referral programme was REMOVED
+ * - nothing was built behind it (D-040). Employers may buy only labeled job
+ * ads (Featured listing) and tooling; the programme returns only if its
+ * product exists.
  *
  * Source of truth today is the owner price book in PRICING.md, section
  * "Employers (/for-companies)"; employerPlans.test.ts fails if the two drift.
@@ -7,7 +11,7 @@
  * checkout or employer entitlement exists yet. The employer-plans wave moves
  * this to shared/employerPlans.ts and backs it with provider item prices.
  */
-export type EmployerPlanId = "company_page" | "referral_programme" | "enterprise";
+export type EmployerPlanId = "company_page" | "enterprise";
 
 export type EmployerPlanPrice =
   | { readonly kind: "free" }
@@ -24,7 +28,6 @@ export type EmployerPlan = {
 
 export const EMPLOYER_PLANS: readonly EmployerPlan[] = [
   { id: "company_page", name: "Company page", price: { kind: "free" }, detail: "Claim your page, add a verified team badge and culture showcase.", featured: false },
-  { id: "referral_programme", name: "Referral programme", price: { kind: "from", monthlyUsd: 199 }, detail: "See which roles people ask about, route employee referrals to your hiring team, run campaigns.", featured: true },
   { id: "enterprise", name: "Enterprise", price: { kind: "contact" }, detail: "SSO, ATS integrations, multi-region teams, compliance reviews and a dedicated partner.", featured: false },
 ];
 

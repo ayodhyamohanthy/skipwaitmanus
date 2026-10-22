@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-035).
+
 # Production Build Handoff — 2026-09-05
 
 ## New production features (this build)

@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-004, D-036, D-039, D-046).
+
 # skipwait.me Growth and Monetization Audit
 
 ## Product constraints
