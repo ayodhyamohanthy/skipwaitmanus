@@ -8,11 +8,23 @@ import content from "../../../design/goal-ui/content.json";
 const copy = content.claimCompany;
 export const companyClaimVisible = () => import.meta.env.VITE_COMPANY_CLAIM === "true";
 type Dashboard = { company: { name: string; slug: string; domain: string; openToReferrals: boolean }; signal: { state: "insufficient" } | { state: "shown"; answeredThisMonth: number; usualFirstReplyDays: number; referrersInside: number } };
-async function call(path: string, body?: object) {
-  const res = await fetch(`/api/company-claim/${path}`, { credentials: "include", ...(body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}) });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? copy.error);
-  return data;
+/** The server's plain sentence when it sent one; never a parser or network message. */
+function serverError(data: unknown) {
+  if (data && typeof data === "object" && "error" in data) {
+    const message = (data as { error?: unknown }).error;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return undefined;
+}
+async function call<T>(path: string, body?: object): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/company-claim/${path}`, { credentials: "include", ...(body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}) });
+  } catch { throw new Error(copy.error); }
+  // An error page or a dropped connection can answer with anything but JSON: the user still gets plain words.
+  const data: unknown = await res.json().catch(() => undefined);
+  if (!res.ok) throw new Error(serverError(data) ?? copy.error);
+  return data as T;
 }
 export default function CompanyClaim() {
   const { isSignedIn } = useAuth();
@@ -35,7 +47,7 @@ export default function CompanyClaim() {
     if (!companyClaimVisible() || !isDashboard || !isSignedIn || !params?.slug) return;
     let active = true;
     setDashboard(null); setError("");
-    void call(`dashboard/${encodeURIComponent(params.slug)}`).then(value => { if (active) setDashboard(value); }).catch(reason => { if (active) setError(reason.message); });
+    void call<Dashboard>(`dashboard/${encodeURIComponent(params.slug)}`).then(value => { if (active) setDashboard(value); }).catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : copy.error); });
     return () => { active = false; };
   }, [isDashboard, isSignedIn, params?.slug]);
   if (!companyClaimVisible()) return <main className="page-content"><h1>Page not available</h1><Link href="/for-companies">For companies</Link></main>;
@@ -43,7 +55,7 @@ export default function CompanyClaim() {
     event.preventDefault(); setBusy(true); setError("");
     try {
       if (token) {
-        const result = await call("confirm", { token });
+        const result = await call<{ slug: string }>("confirm", { token });
         // Remove the secret token from history before leaving confirmation.
         window.history.replaceState(null, "", "/company/claim");
         go(`/company/dashboard/${encodeURIComponent(result.slug)}`);

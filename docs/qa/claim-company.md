@@ -13,7 +13,8 @@ Remaining before ready:
 - Migration on isolated DB, transaction concurrency and replay under real MySQL.
 - Generic sign-in returns to the company page without role mutation; signed-out recipients reopen email after signing in.
 - Actual email link delivery and explicit same-user confirmation; never send live test mail without approved recipient/content.
-- Global/group rate limits, account suspension, renamed/removed company domain behavior.
+- Global/group rate limits pinned in unit tests (per user, per domain, global); real-MySQL limiter concurrency, account suspension and renamed/removed company domain behavior stay unverified.
+- The confirm transaction is pinned to leave `profiles` and `users` untouched (no role change); re-verify against a real database.
 - Deployed public signal shares the same feature rollout; never claim a public signal is visible while its separate flag is off.
 - Lifecycle cleanup of expired challenges and access revocation policy before launch.
 

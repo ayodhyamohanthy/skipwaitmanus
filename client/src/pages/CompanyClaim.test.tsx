@@ -33,6 +33,22 @@ describe("company access UI", () => {
     expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body))).toEqual({ email: "person@quillmint.com" });
     expect(screen.getByText(/No seeker names/)).toBeTruthy();
   });
+  it("shows plain words when the API answers with a non-JSON error body", async () => {
+    const fetcher = vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: false, status: 502, json: async () => { throw new SyntaxError("Unexpected token '<'"); } })); vi.stubGlobal("fetch", fetcher);
+    render(<CompanyClaim />);
+    fireEvent.change(screen.getByLabelText("Work email"), { target: { value: "person@quillmint.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Email me a verification link" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("We could not complete company verification. Try again.");
+    expect(alert.textContent).not.toContain("Unexpected token");
+  });
+  it("shows plain words when the network drops", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
+    render(<CompanyClaim />);
+    fireEvent.change(screen.getByLabelText("Work email"), { target: { value: "person@quillmint.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Email me a verification link" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("We could not complete company verification. Try again.");
+  });
   it("never consumes a link on mount; explicit confirmation only", async () => {
     window.history.replaceState(null, "", "/company/claim#token=" + "a".repeat(64));
     const fetcher = vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: true, json: async () => ({ slug: "quillmint" }) })); vi.stubGlobal("fetch", fetcher);
