@@ -136,6 +136,7 @@ Left out / follow-ups: <list or none>
 
 ## 6. Review (required for Tier 1)
 The reviewer is a different session from the implementer, ideally a different model. Never trust pasted output: reproduce it.
+0. **The head you review:** before reading any code, record `git fetch origin && git rev-parse origin/<branch>` and review exactly that commit; before posting, list anything pushed since (`git log --no-merges --format="%h %s" <reviewed>..origin/<branch> ^origin/main`) and review it too or return findings. Post the verdict naming that commit: a lander refuses any later commit, and any merge whose `git log --merges --cc` shows a diff hunk, as unreviewed (D-074, D-134).
 1. **Scope:** `git diff --stat origin/main...<branch>` touches only the packet's in-scope files and the docs it names.
 2. **Tests are honest:** every packet §7 test exists with its assertions; `git diff origin/main...<branch> -- '*.test.ts' '*.test.tsx'` shows no removed `expect`, no `.skip` or `.only`, no loosened literal. Check out the test commit without the fix and confirm the new tests fail.
 3. **Money:** every credit move goes through an existing keyed ledger path; one idempotency key per effect; no raw balance `UPDATE`; replaying any request or job writes nothing twice; a failure mid-way leaves no partial state; an ended month or plan returns 0 and says so.

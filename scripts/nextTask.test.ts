@@ -613,8 +613,10 @@ describe("markers and printed steps", () => {
     // D-074: a Tier 1 landing checks that nothing was pushed after the pass verdict.
     expect(land1).toContain("was never reviewed (D-074)");
     expect(land1).toContain("<reviewed>..origin/agent/queue/m ^origin/main");
+    expect(land1).toContain("git log --merges --cc");
     const review = renderPick({ kind: "review", task: task("M", { tier: 1 }), work: "agent/queue/m", pr: "https://github.com/o/r/pull/9", lock: "agent/review/m", lockExists: true, builder: "Qwen · s1" }, ctx);
-    expect(review).toContain("naming the exact head commit you reviewed");
+    expect(review).toContain("Before reading any code, record the head you review");
+    expect(review).toContain("naming <reviewed>, never a fresh rev-parse");
     expect(review).not.toContain("goes back to review");
     const arch = renderPick({ kind: "architect", task: task("P", { status: "architect", packet: null }), lock: "agent/architect/p", lockExists: false }, { ...ctx, who: "Claude Code · s9" });
     expect(arch).toContain("WRITE THE PACKET FOR P");
