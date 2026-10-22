@@ -166,18 +166,24 @@ export default function MyRequests() {
   if (showSkeleton) {
     body = (
       <div role="status" aria-busy="true" aria-live="polite" data-skipwait-loading="true" className="mt-4">
+        <p className="sr-only">Loading your requests… Routing checks usually take a second.</p>
         <GoalSkeletonRows density="ask" count={3} />
         {isSlow ? <p data-skipwait-loading-slow="true" className="px-3 pt-3 text-g-meta text-g-ink-2">This is taking longer than expected. Nothing was lost — you can keep waiting or come back in a moment.</p> : null}
       </div>
     );
   } else if (loadError) {
     body = (
-      <GoalErrorState
-        className="mt-2"
-        title="We couldn’t load your requests"
-        body={`${loadError}. Your requests are still active and nothing was lost.`}
-        retry={{ label: "Try again", onClick: () => { void requestsQuery.refetch(); } }}
-      />
+      <>
+        <GoalErrorState
+          className="mt-2"
+          title="We couldn’t load your requests"
+          body={`${loadError}. Your requests are still active and nothing was lost.`}
+          retry={{ label: "Try again", onClick: () => { void requestsQuery.refetch(); } }}
+        />
+        <div className="mt-1 px-5 max-gdesk:px-4">
+          <GoalButton flush size="sm" variant="ghost" onClick={() => go("/")}>Back to home</GoalButton>
+        </div>
+      </>
     );
   } else if (ready) {
     body = (
@@ -214,12 +220,18 @@ export default function MyRequests() {
           requestsQuery.data?.hasEverAsked === false ? (
             <>
               <GoalSampleRows rows={sampleAskRows(nowMs)} caption="Samples show what a real ask looks like. They are not counted in your open asks and disappear after your first real ask." />
-              <div className="mt-3 px-3 gdesk:px-4">
+              <div className="mt-3 flex flex-wrap items-center gap-4 px-3 gdesk:px-4">
                 <GoalButton variant="ghost" onClick={() => go("/explore")}>Explore companies</GoalButton>
+                <Link href="/onboarding" className="text-g-meta text-g-ink-2 underline underline-offset-[3px] hover:text-g-ink">Finish setup</Link>
               </div>
             </>
           ) : (
-            <GoalEmptyState title="No asks yet." body="Pick a company, find a verified referrer, and write one great ask." action={{ label: "Explore companies", onClick: () => go("/explore") }} />
+            <>
+              <GoalEmptyState className="pb-3" title="No asks yet." body="Pick a company, find a verified referrer, and write one great ask." action={{ label: "Explore companies", onClick: () => go("/explore") }} />
+              <p className="px-5 pb-6 max-gdesk:px-4">
+                <Link href="/onboarding" className="text-g-meta text-g-ink-2 underline underline-offset-[3px] hover:text-g-ink">Finish setup</Link>
+              </p>
+            </>
           )
         ) : null}
       </>
