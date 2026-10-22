@@ -92,6 +92,7 @@ export type PrivateReferralRouteDeps = {
   getUnclaimedCompanyReferralPreview?: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
   hasEverCreatedReferralRequest?: (userId: number) => Promise<boolean>;
+  hasEverReviewedReferral?: (userId: number) => Promise<boolean>;
   listMyPaymentReceipts?: (userId: number, role?: "job_seeker" | "referrer") => Promise<unknown[]>;
   listSeekerAlerts?: (userId: number) => Promise<unknown[]>;
   createSeekerAlert?: (userId: number, input: { companyDomain?: unknown }) => Promise<unknown>;
@@ -1106,7 +1107,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     const blockedInbox = await blockedRequestIds(userId, requests);
     const visible = requests.filter(row => typeof row !== "object" || row === null || !blockedInbox.has(Number((row as Record<string, unknown>).id)));
     record({ actorUserId: userId, action: "company_referral.inbox_viewed", outcome: "success", resourceType: "inbox", metadata: { requestCount: visible.length, scope } });
-    return { requests: await withCompanyIdentities(visible.map(row => (isRecordRow(row) ? withParsedJobFunction(row) : row))), scope };
+    // Sample-filled empty states: durable first-timer flag (claimed OR passed ever).
+    // Fails CLOSED (true) so sample rows never show on doubt.
+    let hasEverReviewed = true;
+    try { hasEverReviewed = deps.hasEverReviewedReferral ? await deps.hasEverReviewedReferral(userId) : true; } catch { hasEverReviewed = true; }
+    return { requests: await withCompanyIdentities(visible.map(row => (isRecordRow(row) ? withParsedJobFunction(row) : row))), scope, hasEverReviewed };
   };
   app.get("/api/company-referrals/inbox", async (req, res) => {
     try {

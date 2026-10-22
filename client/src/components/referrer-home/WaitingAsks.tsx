@@ -11,6 +11,7 @@ import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
 import { displayJobFunction } from "@shared/jobFunctions";
 import { askCountdown, type ReferrerHomeView } from "./referrerData";
+import { ReferrerSampleRows } from "./ReferrerSampleRows";
 
 export function WaitingAsks({ view, nowMs }: { view: ReferrerHomeView; nowMs: number }) {
   const company = view.company;
@@ -19,6 +20,17 @@ export function WaitingAsks({ view, nowMs }: { view: ReferrerHomeView; nowMs: nu
       <div className="mb-3 flex items-end justify-between"><h2 className="text-xl font-semibold">Waiting for you</h2><Link href="/queue" className="text-link text-sm">Full queue →</Link></div>
       {view.atCapacity ? (
         <Panel tone="muted"><h3 className="font-semibold">You&apos;ve hit your capacity.</h3><p className="mt-1 text-sm text-muted-foreground">Finish what&apos;s open first. Raise your limit only if you really have time.</p><Button variant="outline" className="mt-3" asChild><Link href="/referrer?view=setup">Adjust capacity</Link></Button></Panel>
+      ) : view.waiting.length === 0 && view.showSamples ? (
+        // Sample-filled first-run state (owner override, Oct 21 11:35 PM): two inert
+        // SAMPLE rows teach the accept/pass anatomy. Server-durable flag only -
+        // hasEverReviewed===false strictly; real counts/capacity untouched.
+        <ReferrerSampleRows
+          rows={[
+            { name: "A. Sample · Product Analyst", time: "2H AGO", reason: "Asked for you by name. Three lines of why, no pile.", next: "Waiting on you · releases the credit if you pass" },
+            { name: "B. Example · Data Engineer", time: "1D AGO", reason: "Sent to the company queue · fits what you said you can judge.", next: "Waiting on you" },
+          ]}
+          caption="Samples show what a real ask looks like. They are never counted and disappear after your first real ask."
+        />
       ) : view.waiting.length === 0 ? (
         <Panel tone="muted" className="text-center">
           <Inbox className="mx-auto mb-2 size-8" />

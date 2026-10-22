@@ -444,3 +444,37 @@ describe("/api/company-referrals/mine hasEverAsked (sample empty states)", () =>
     expect(response.body.hasEverAsked).toBe(true);
   });
 });
+
+describe("/api/company-referrals/inbox hasEverReviewed (sample empty states)", () => {
+  function setup(hasEver: ((userId: number) => Promise<boolean>) | undefined) {
+    const app = express();
+    app.use(express.json());
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") ? { account: { id: 1, openId: "workos-test" } } : undefined,
+      listCompanyReferralInboxByState: async () => [],
+      hasEverReviewedReferral: hasEver,
+    } as unknown as PrivateReferralRouteDeps);
+    return app;
+  }
+
+  it("passes a first-timer's false through to the payload", async () => {
+    const app = setup(async () => false);
+    const response = await request(app).get("/api/company-referrals/inbox?scope=new").set("x-test-user", "referrer");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverReviewed).toBe(false);
+  });
+
+  it("fails closed to true when the durable check throws", async () => {
+    const app = setup(async () => { throw new Error("db down"); });
+    const response = await request(app).get("/api/company-referrals/inbox?scope=new").set("x-test-user", "referrer");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverReviewed).toBe(true);
+  });
+
+  it("fails closed to true when the dep is absent (old wiring)", async () => {
+    const app = setup(undefined);
+    const response = await request(app).get("/api/company-referrals/inbox?scope=new").set("x-test-user", "referrer");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverReviewed).toBe(true);
+  });
+});
