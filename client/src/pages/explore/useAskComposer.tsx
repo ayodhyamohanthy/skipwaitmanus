@@ -13,7 +13,7 @@ import { useOnlineStatus } from "@/components/goal";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
-import { saveAskPrefill } from "@/lib/askPrefill";
+import { clearAskPrefill, readAskPrefill, saveAskPrefill } from "@/lib/askPrefill";
 import { discardAskDraftRemote, saveAskDraftRemote, useAskDraft } from "@/lib/askDraftApi";
 import { fastTrackAskFields } from "@/lib/fastTrackHandoff";
 import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUpload";
@@ -23,6 +23,7 @@ import type { PublicCompany } from "@shared/companies";
 import { CREDIT_ENDED_CAVEAT } from "@shared/moneyCopy";
 import { COMPANY_CAP_REACHED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
+import { parseOpportunityAskSearch, type OpportunityAskSearch } from "@shared/companyOpportunities";
 import { isValidTargetRoleUrl, jobLinkFitsCompany } from "@shared/referralUrl";
 import { composeWhyMe, overLimitReasons, splitWhyMe, WHY_ME_MAX, type WhyMeReasons } from "@shared/whyMe";
 import type { AskResume, AskSentView } from "./AskDrawer";
@@ -64,6 +65,8 @@ export type AskComposer = {
   draftState: "idle" | "saving" | "saved";
   sendError: ReactNode;
   sent: AskSentView | null;
+  /** D-022: the posted role this ask opened from, while it still applies. */
+  postSelection: OpportunityAskSearch | null;
   /** Fresh form for a new company; the resume carries unless clearResume is set. */
   resetForm(options?: { clearResume?: boolean }): void;
   /** Clear the terminal send view and error after the drawer has closed. */
@@ -91,6 +94,17 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   const [sent, setSent] = useState<AskSentView | null>(null);
   const [draftState, setDraftState] = useState<"idle" | "saving" | "saved">("idle");
   const [watch, setWatch] = useState<{ state: "idle" | "busy" | "done" | "error"; message: string }>({ state: "idle", message: "" });
+  // A handoff back from sign-in (/ask keeps the link and reasons), and an ask
+  // opened from a posted role ("/ask?post=<id>&job=<link>", D-022): the post
+  // id travels with the send so the poster sees it first; a fresh form drops it.
+  const [prefill] = useState(() => readAskPrefill(session()));
+  const [postSelection, setPostSelection] = useState<OpportunityAskSearch | null>(() => parseOpportunityAskSearch(typeof window === "undefined" ? "" : window.location.search));
+
+  // The posted role's link fills an untouched composer, wherever the composer lives.
+  useEffect(() => {
+    if (postSelection?.jobUrl) setUrl(current => current || postSelection.jobUrl!);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // A saved draft fills only what is still empty for the company it was written for.
   useEffect(() => {
@@ -98,6 +112,13 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     setUrl(current => current || remoteDraft.targetRoleUrl);
     setReasons(current => (current.some(reason => reason.trim()) ? current : splitWhyMe(remoteDraft.note)));
   }, [remoteDraft, company]);
+
+  // The sign-in handoff prefill does the same on /ask, for its own company.
+  useEffect(() => {
+    if (!prefill || !company || prefill.companySlug !== company.slug) return;
+    setUrl(current => current || prefill.targetRoleUrl);
+    setReasons(current => (current.some(reason => reason.trim()) ? current : splitWhyMe(prefill.note)));
+  }, [prefill, company]);
 
   const resumeView: AskResume = resumeFile ? { name: resumeFile.name } : uploaded ? { name: uploaded.fileName } : setup?.resume ? { name: setup.resume.fileName } : null;
   const resumeDoc = uploaded ?? (resumeFile ? null : setup?.resume ?? null);
@@ -126,6 +147,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     setSent(null);
     setWatch({ state: "idle", message: "" });
     setDraftState("idle");
+    setPostSelection(null);
     if (options?.clearResume) { setResumeFile(null); setUploaded(null); }
   };
 
@@ -176,6 +198,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
         companySlug: company?.slug ?? null,
         fastTrack: fastTrackAskFields(window.location.search),
         confirmedCompanyDomain: confirmedDomain(url.trim()),
+        opportunityId: postSelection?.opportunityId,
       });
       const token = await fetchToken();
       const response = await fetch("/api/company-referrals", {
@@ -199,6 +222,8 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       const created = response.ok ? parseSentAsk(payload) : null;
       if (!created) throw new Error(typeof payload.error === "string" ? payload.error : "We could not send this ask");
       session()?.removeItem(ASK_IDEMPOTENCY_KEY);
+      clearAskPrefill(session());
+      setPostSelection(null);
       void discardAskDraftRemote(fetchToken);
       const name = company?.name ?? created.companyDomain ?? "the company";
       const where = created.companyDomain ? `${created.companyDomain} ` : "";
@@ -283,6 +308,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     draftState,
     sendError,
     sent,
+    postSelection,
     resetForm,
     clearAfterClose,
   };
