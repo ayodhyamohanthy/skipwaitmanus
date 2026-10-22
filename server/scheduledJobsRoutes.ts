@@ -144,7 +144,7 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
     const day = new Date(now()).toISOString().slice(0, 10);
     const seen = skippieAsks.get(identity.account.id);
     const count = seen && seen.day === day ? seen.count : 0;
-    if (count >= SKIPPIE_DAILY_CAP) return res.status(429).json({ error: "Daily Doorway limit reached" });
+    if (count >= SKIPPIE_DAILY_CAP) return res.status(429).json({ error: "Daily Skipper limit reached" });
     skippieAsks.set(identity.account.id, { day, count: count + 1 });
     try {
       const out = await askSkippieAdmin(question, deps.skippie.deps());
@@ -153,7 +153,7 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
     } catch (error) {
       record({ actorUserId: identity.account.id, action: "admin.skippie_ask", outcome: "failure", resourceType: "skippie", metadata: { question } });
       capture(error, { path: "/api/admin/skippie/ask" });
-      res.status(500).json({ error: "Doorway could not answer" });
+      res.status(500).json({ error: "Skipper could not answer" });
     }
   });
 }
