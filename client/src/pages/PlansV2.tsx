@@ -12,6 +12,8 @@ import {
   PLAN_CREDIT_RUNGS,
   PLAN_FAMILY,
   perCreditMinor,
+  PLAN_DISPLAY_NAME,
+  REACH_LEVEL_NAMES,
   planReachFor,
   planFeeMinor,
   rungSavingsMinor,
@@ -26,14 +28,14 @@ type Pick = PlanCreditRung | null; // null = the free pick (Open Door default)
 
 const CARD_COPY: Record<PlanFamilyId, { name: string; feeNote: string; bullets: string[]; cta: string; primary: boolean }> = {
   open_door: {
-    name: "Free to join",
+    name: "Free to join. Start with no card.",
     feeNote: "no commitment",
     bullets: ["3 free credits every month", "Referrers matched at your own level", "Cost shown before every ask"],
     cta: "Start free",
     primary: false,
   },
   fast_track: {
-    name: "Move faster, reach higher",
+    name: "Move faster, reach higher.",
     feeNote: "/ month",
     bullets: [
       "4 open asks at once",
@@ -42,21 +44,21 @@ const CARD_COPY: Record<PlanFamilyId, { name: string; feeNote: string; bullets: 
       "Reach up to 2 levels above your own",
       "Credits never expire, top up any time",
     ],
-    cta: "Start Fast Track",
+    cta: "Start Mid",
     primary: true,
   },
   insider: {
-    name: "Your whole search, automated",
+    name: "Your whole search, automated. By application.",
     feeNote: "/ month - by application",
     bullets: [
-      "Everything in Fast Track",
+      "Everything in Mid",
       "Reach up to 4 levels above your own",
       "6 open asks at once",
       "Research briefs 10/mo - dossiers + mock interviews 4/mo each",
       "Offer + salary coach 2/mo each - smart timing",
       "Stealth included - your employer never sees you",
     ],
-    cta: "Apply for Insider",
+    cta: "Apply for Senior+",
     primary: false,
   },
 };
@@ -130,14 +132,13 @@ function RungList({ planId, book, value, onPick }: { planId: PlanFamilyId; book:
 const REACH_SUB: Record<PlanFamilyId, string> = { open_door: "Your own level", fast_track: "Up to 2 levels above yours", insider: "Up to 4 levels above yours" };
 
 function ReachRow({ planId, seekerLevel }: { planId: PlanFamilyId; seekerLevel: number | null }) {
-  const known = seekerLevel !== null && Number.isFinite(seekerLevel);
-  const r = known ? planReachFor(planId, seekerLevel) : null;
+  const r = seekerLevel !== null && Number.isFinite(seekerLevel) ? planReachFor(planId, seekerLevel) : null;
   return (
     <div className="mt-4 border-t border-g-hairline pt-4" data-testid={`reach-${planId}`}>
       <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Who you can ask</p>
       {r ? (
         <p className="mt-1 text-g-small">
-          {planId === "open_door" ? `Your own level: ${r.bandText}` : r.bandText} <span aria-hidden="true">·</span> <span className="font-g-mono text-[13px]">{r.levelText}</span>
+          {planId === "open_door" ? `Your own level: ${r.levelNames}` : r.levelNames} <span aria-hidden="true">·</span> <span className="font-g-mono text-[13px]">{r.levelText}</span>
         </p>
       ) : (
         <p className="mt-1 text-g-small">{REACH_SUB[planId]}</p>
@@ -155,8 +156,8 @@ function PlanCard({ planId, book, seekerLevel }: { planId: PlanFamilyId; book: P
   const fee = planFeeMinor(planId, book);
   const total = thisMonthMinor(planId, pick, book);
   return (
-    <section aria-label={entry.label} className="flex flex-col rounded-2xl border border-g-hairline bg-g-surface p-5 gdesk:p-6">
-      <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">{entry.label}</p>
+    <section aria-label={PLAN_DISPLAY_NAME[planId]} className="flex flex-col rounded-2xl border border-g-hairline bg-g-surface p-5 gdesk:p-6">
+      <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">{PLAN_DISPLAY_NAME[planId]}</p>
       <h2 className="mt-2 text-[22px] font-semibold leading-tight tracking-[-0.01em]">{copy.name}</h2>
       <p className="mt-1 text-g-small text-g-ink-2">Plan fee {money(fee, book)} {copy.feeNote}</p>
       <div className="mt-4">
@@ -225,8 +226,9 @@ export default function PlansV2({ book = "INR", seekerLevel = null }: { book?: P
           ? "Prices for India - set by your profile location, confirmed against your card's billing country at checkout."
           : "Global prices - set by your profile location, confirmed against your card's billing country at checkout."}
       </p>
-      <p className="mt-2 max-w-[640px] text-g-small text-g-ink-3">Reach sets who you can ask. It never changes your place in a queue.</p>
-      {seekerLevel === null ? <p className="mt-1 text-g-small text-g-ink-3">Add your level in your <a href="/profile" className="underline">profile</a> to see exactly who this reaches.</p> : null}
+      <p className="mt-2 max-w-[640px] text-g-small text-g-ink-3">Plan names say how far you can reach, not how senior you are.</p>
+      <p className="mt-1 max-w-[640px] text-g-small text-g-ink-3">Reach sets who you can ask. It never changes your place in a queue.</p>
+      {seekerLevel === null ? <p className="mt-1 text-g-small text-g-ink-3">Add your level in your <a href="/profile" className="underline">profile</a> to see exactly who each plan reaches.</p> : null}
       <div className="mt-8 grid gap-4 gdesk:grid-cols-3">
         <PlanCard planId="open_door" book={book} seekerLevel={seekerLevel} />
         <PlanCard planId="fast_track" book={book} seekerLevel={seekerLevel} />
@@ -240,7 +242,7 @@ export default function PlansV2({ book = "INR", seekerLevel = null }: { book?: P
             <thead>
               <tr className="border-b border-g-hairline">
                 <th className="py-2 pr-4 text-left font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3"><span className="sr-only">Feature</span></th>
-                {PLAN_FAMILY.map(p => <th key={p.id} className="py-2 pr-4 text-right font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">{p.label}</th>)}
+                {PLAN_FAMILY.map(p => <th key={p.id} className="py-2 pr-4 text-right font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">{PLAN_DISPLAY_NAME[p.id]}</th>)}
               </tr>
             </thead>
             <tbody>
