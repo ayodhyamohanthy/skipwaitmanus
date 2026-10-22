@@ -151,7 +151,7 @@ export function SeekerConversation(props: Props) {
             </div>
           </div>
         ) : null}
-        {actionError ? <p role="alert" className="mt-2 text-g-meta text-g-crimson">{actionError}</p> : null}
+        {actionError ? <p role="alert" className="mt-2 text-g-meta text-g-ink font-semibold">{actionError}</p> : null}
 
         <div className="mt-6 border-t border-g-hairline pt-4">
           <h2 className="g-num text-g-ink-3 uppercase">Conversation</h2>
@@ -185,7 +185,7 @@ export function SeekerConversation(props: Props) {
                 />
                 <GoalButton variant="primary" size="sm" type="submit" busy={props.sending} busyLabel="Sending…">Send</GoalButton>
               </div>
-              {props.messageError ? <p role="alert" className="mt-2 text-g-meta text-g-crimson">{props.messageError}</p> : null}
+              {props.messageError ? <p role="alert" className="mt-2 text-g-meta text-g-ink font-semibold">{props.messageError}</p> : null}
             </form>
           ) : null}
         </div>
