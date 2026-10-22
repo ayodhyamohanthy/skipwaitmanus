@@ -38,11 +38,12 @@ export default function Plans() {
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [cancelError, setCancelError] = useState("");
 
-  const currency = route as CatalogCurrency;
-  const routeDetails = paymentRouteDetails(route);
   // Live prices, packs and passes; referrers never see a purchase (D-055).
   const catalogQuery = usePlansCatalog(!isReferrer);
   const catalog = catalogQuery.data ?? null;
+  // One currency per view: the server's region answer (catalog) wins over the browser guess once loaded.
+  const currency: CatalogCurrency = catalog?.currency ?? (route as CatalogCurrency);
+  const routeDetails = paymentRouteDetails(currency);
   const packsOnSale = catalog !== null && catalog.packs.some(pack => pack.available);
   const creditsHref = packsOnSale ? "/plans#packs" : `/premium?role=${isReferrer ? "referrer" : "job_seeker"}`;
   const activePlan = activePaidPlan(summary);
@@ -116,7 +117,7 @@ export default function Plans() {
         {catalog ? <PassesSection catalog={catalog} activePlan={activePlan} checkout={checkout} /> : null}
         {catalogQuery.isError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{catalogQuery.error instanceof PlansCatalogOfflineError ? catalogQuery.error.message : "We could not load live prices. Check your connection and try again."} <button type="button" className="underline underline-offset-4" onClick={() => void catalogQuery.refetch()}>Try again</button></p> : null}
         <p className="plan-grid-note">Every account starts on the free tier, and tracking every request is free. {CREDIT_RULE}</p>
-        <p className="plan-grid-note">{routeDetails.gateway} · {routeDetails.gatewayDescriptor}. <button type="button" onClick={() => setRoute(current => alternatePaymentRoute(current))} className="font-semibold text-foreground underline underline-offset-4">Different billing country? {routeDetails.alternateLabel}</button></p>
+        <p className="plan-grid-note">{routeDetails.gateway} · {routeDetails.gatewayDescriptor}. {catalog ? null : <button type="button" onClick={() => setRoute(current => alternatePaymentRoute(current))} className="font-semibold text-foreground underline underline-offset-4">Different billing country? {routeDetails.alternateLabel}</button>}</p>
         {cancelError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{cancelError}</p> : null}
 
         <CreditsSection summary={summary} currency={currency} creditsHref={creditsHref} />
