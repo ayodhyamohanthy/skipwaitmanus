@@ -6,7 +6,7 @@
 // GET /api/company-referrals/inbox (new + saved); the unclaimed preview
 // supplies the pitch and document count. Public refs are the server's HMAC
 // R-XXXXX, never the sequential id.
-import { BadgeCheck, ChevronDown, ChevronUp, HandHelping } from "lucide-react";
+import { ChevronDown, ChevronUp, HandHelping } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/_core/auth";
@@ -23,6 +23,7 @@ import {
   GoalSheet,
   GoalSkeletonRows,
   GoalStatus,
+  GoalVerifiedMark,
 } from "@/components/goal";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
@@ -203,7 +204,7 @@ export default function MyCompanyInbox() {
         <span className="text-g-meta text-g-ink-3"><GoalNum>{requests.length}</GoalNum> waiting</span>
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-3">
-        <span className="flex items-center gap-1 text-g-meta text-g-ink"><BadgeCheck aria-hidden="true" className="size-4 text-g-accent" />Verified{company ? ` · ${company}` : ""}</span>
+        <GoalVerifiedMark as="span">{`Verified${company ? ` · ${company}` : ""}`}</GoalVerifiedMark>
         <Link href="/referrer/impact" className="flex min-h-11 items-center gap-1 text-g-meta text-g-ink-2"><HandHelping aria-hidden="true" className="size-4" />Impact</Link>
       </div>
       <p className="mt-1 text-g-meta text-g-ink-3">Asks for {company ?? "your company"} roles. Names and resumes stay hidden until you accept.</p>
