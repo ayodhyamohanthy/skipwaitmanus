@@ -267,10 +267,10 @@ function CompanyOpenings({ slug, companyName }: { slug: string; companyName: str
 
 // Each segment stays on one line; the wrap happens between segments, so a
 // line never ends on a separator. A walk-in's date-time is its own line.
-function metaSegments(post: PublicOpportunityPost, posted: string): ReactNode[] {
+function metaSegments(post: PublicOpportunityPost, posted: string | null): ReactNode[] {
   const segments: ReactNode[] = [];
   if (post.location) segments.push(<span className="whitespace-nowrap">{post.location}</span>);
-  segments.push(<span className="whitespace-nowrap font-g-mono uppercase tracking-wide">Posted {posted}</span>);
+  if (posted) segments.push(<span className="whitespace-nowrap font-g-mono uppercase tracking-wide">Posted {posted}</span>);
   segments.push(<span className="whitespace-nowrap">{post.poster.kind === "firstName" ? `Posted by ${post.poster.firstName}` : "Posted by a verified employee"}</span>);
   return segments;
 }
