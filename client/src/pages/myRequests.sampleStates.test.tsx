@@ -64,6 +64,8 @@ describe("My asks sample empty state", () => {
     // Counts stay real: the slots meter reads the true zero, samples never inflate it.
     expect(screen.getByTestId("asks-slots").textContent).toContain("Open asks 0 of 3");
     expect(document.querySelectorAll('[data-testid="goal-list-row"]')).toHaveLength(0);
+    // A first-timer still gets the kit's setup hand-off beside the samples.
+    expect(screen.getByRole("link", { name: "Finish setup" }).getAttribute("href")).toBe("/onboarding");
   });
 
   it("keeps the honest empty state for a returning user (hasEverAsked true)", async () => {

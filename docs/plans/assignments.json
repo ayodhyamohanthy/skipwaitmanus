@@ -96,17 +96,15 @@
     },
     {
       "id": "D-048-p3-live-review",
-      "title": "Redesign the live /explore, /explore/:slug and /ask to the goal doctrine (D-145), then review them (D-144)",
+      "title": "Post-landing review of the live goal /explore and /requests (#362, #360): send path, credits, money copy, states",
       "row": "D-048",
       "packet": "docs/plans/OCT21-BUILT-PRS.md",
       "tier": 1,
       "lane": "d048-find",
       "branch": "agent/queue/d048-live-review",
-      "status": "todo",
-      "dependsOn": [
-        "P0-ask-link-signin"
-      ],
-      "note": "D-145: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-144: these pages went live in place with no independent review; checks them against their kit versions, moves their cost lines into shared/moneyCopy.ts, restores lost test pins, fixes red-first, independent review before landing. After P0-ask-link-signin, which edits the same composer."
+      "status": "done",
+      "dependsOn": [],
+      "note": "D-134 (6): both pages went live in place with the merge button and no independent review; this checks them against their kit versions and the money rules, fixes what fails red-first, and passes an independent review."
     },
     {
       "id": "D-048-p3-live-review-asks",
@@ -601,7 +599,7 @@
       "tier": 1,
       "lane": "ask-flow",
       "branch": "agent/qoder/ask-pinned-work",
-      "status": "todo",
+      "status": "done",
       "dependsOn": []
     },
     {

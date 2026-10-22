@@ -26,7 +26,24 @@ export type PlanId = "free" | PaidCatalogPlan["id"];
 export type { CreditSummary } from "./billingApi";
 
 /** One extra credit, as sold on /premium. */
-export const CREDIT_PRICE: Record<CatalogCurrency, string> = { USD: "$1", INR: "₹99" };
+/**
+ * The per-credit price range across the packs on sale ("₹39.99 to ₹49.50", or one figure when they
+ * match), from the live catalog only (no price is written here). null until the catalog loads or
+ * when no pack is on sale.
+ */
+export function creditFrom(catalog: { currency: CatalogCurrency; packs: ReadonlyArray<{ credits: number; amount: number; available: boolean }> } | null | undefined): string | null {
+  const per = (catalog?.packs ?? []).filter(pack => pack.available && pack.credits > 0).map(pack => pack.amount / pack.credits);
+  if (!catalog || per.length === 0) return null;
+  const lowMinor = Math.round(Math.min(...per));
+  const highMinor = Math.round(Math.max(...per));
+  const whole = lowMinor % 100 === 0 && highMinor % 100 === 0;
+  const fmt = (minor: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: catalog.currency, minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 }).format(minor / 100);
+  try {
+    const low = fmt(lowMinor);
+    const high = fmt(highMinor);
+    return low === high ? low : `${low} to ${high}`;
+  } catch { return null; }
+}
 
 function paidPlan(plan: string): PaidCatalogPlan | undefined {
   return CATALOG_PLANS.find(candidate => candidate.id === plan);
@@ -112,7 +129,7 @@ export type PlanCardCopy = { id: PlanId; name: string; tagline: string; price: s
  * The plan grid: Free always, plus the account's own catalog plan when it holds
  * one. No other plan is sold from this screen until the D-046 pass cards land.
  */
-export function planCards(currency: CatalogCurrency, active: PaidCatalogPlan | null = null): PlanCardCopy[] {
+export function planCards(currency: CatalogCurrency, active: PaidCatalogPlan | null = null, creditPrice: string | null = null): PlanCardCopy[] {
   const free = planLimits("free");
   const cards: PlanCardCopy[] = [{
     id: "free",
@@ -123,7 +140,7 @@ export function planCards(currency: CatalogCurrency, active: PaidCatalogPlan | n
     features: [
       `${openRequestsLabel(free.openRequests)} referral requests open at once`,
       "Track every request in one place",
-      ...(CREDIT_PACKS_ON_SALE ? [`Add credits anytime, ${CREDIT_PRICE[currency]} each`] : []),
+      ...(CREDIT_PACKS_ON_SALE ? [creditPrice ? `Add credits anytime in packs, ${creditPrice} a credit` : "Add credits anytime in packs"] : []),
       "Same referrer queue as every plan",
     ],
     cta: "Ask for a referral",
@@ -164,10 +181,10 @@ export function planFaqs(): Array<readonly [string, string]> {
   return [
     ["Does paying help me get referred?", "No. Referrers see the same queue whatever you have paid for. Credits you buy pay for asks and tools; they never change how many requests you can have open or your place in the queue. The decision to refer stays human."],
     ["How many referral requests can I have open?", `Free includes ${openRequestsLabel(free.openRequests)} open requests at a time. A request that's answered, passed, withdrawn or expired frees its slot. Every account shares the same queue.`],
-    ["What are credits for?", `1 credit = ${CREDIT_PRICE.USD} = one finished piece of work from skipwait.me's tools. Each referral request uses 1 credit; ${CREDIT_RULE_SHORT}. Extra credits are ${CREDIT_PRICE.USD} each (${CREDIT_PRICE.INR} in India).`],
+    ["What are credits for?", `1 credit = one finished piece of work from skipwait.me's tools. Each referral request uses 1 credit; ${CREDIT_RULE_SHORT}. Extra credits are sold in packs; the price per credit is shown with the packs.`],
     ["Do unused credits expire?", "Credits you buy never expire, and they are spent only when a verified employee can first see your ask."],
     ["Do referrers pay?", "No. Referrers never pay to review requests, skipwait.me never pays them, and they never ask you for money."],
-    ["Is pricing local?", `Yes. In India a credit costs ${CREDIT_PRICE.INR}; everywhere else ${CREDIT_PRICE.USD}.`],
+    ["Is pricing local?", "Yes. Prices show in rupees in India and in dollars everywhere else, from the live price list."],
   ];
 }
 
@@ -222,7 +239,6 @@ export function catalogPassCards(catalog: PlanCatalogResponse, term: PassTerm, a
       carryoverFeature(plan.carryover),
       ...(plan.humanTimeOffered && (plan.humanTime.writtenReviews > 0 || plan.humanTime.liveSessions > 0 || plan.humanTime.hours > 0) ? ["Human review time included"] : []),
       "Paid once — never renews by itself",
-      ...(chosen.autoExtend.length > 0 ? ["Optional auto-extend offered at checkout"] : []),
       "Same referrer queue as every plan",
     ];
     return [{

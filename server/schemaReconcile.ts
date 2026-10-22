@@ -33,6 +33,8 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
  INDEX \`billing_review_due_idx\` (\`status\`, \`nextAttemptAt\`, \`id\`)
 ) ENGINE=InnoDB` },
   { table: "aiToolCallLogs", createSql: `CREATE TABLE IF NOT EXISTS \`aiToolCallLogs\` (\`id\` int AUTO_INCREMENT NOT NULL, \`tool\` varchar(64) NOT NULL, \`model\` varchar(128) NOT NULL, \`tokensIn\` int NOT NULL, \`tokensOut\` int NOT NULL, \`costUsdMicros\` bigint NULL, \`planFamilyId\` varchar(32) NULL, \`userId\` int NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`aiToolCallLogs_id\` PRIMARY KEY(\`id\`), INDEX \`ai_tool_call_log_tool_idx\`(\`tool\`,\`createdAt\`))` },
+  { table: "askCosts", createSql: `CREATE TABLE IF NOT EXISTS \`askCosts\` (\`id\` int AUTO_INCREMENT NOT NULL, \`referralRequestId\` int NOT NULL, \`jobLevel\` int NOT NULL, \`creditCost\` int NOT NULL, \`source\` varchar(40) NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`askCosts_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`ask_costs_request_fk\` FOREIGN KEY (\`referralRequestId\`) REFERENCES \`referralRequests\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`ask_costs_request_unique\`(\`referralRequestId\`))` },
+  { table: "askWorkItems", createSql: `CREATE TABLE IF NOT EXISTS \`askWorkItems\` (\`id\` int AUTO_INCREMENT NOT NULL, \`referralRequestId\` int NOT NULL, \`workItemId\` int NULL, \`title\` varchar(160) NOT NULL, \`kind\` ENUM('case_study','project','article','code','other') NOT NULL DEFAULT 'other', \`source\` varchar(80) NULL, \`url\` varchar(2048) NULL, \`position\` int NOT NULL DEFAULT 0, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`askWorkItems_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`ask_work_items_request_fk\` FOREIGN KEY (\`referralRequestId\`) REFERENCES \`referralRequests\` (\`id\`) ON DELETE CASCADE, CONSTRAINT \`ask_work_items_piece_fk\` FOREIGN KEY (\`workItemId\`) REFERENCES \`workItems\` (\`id\`) ON DELETE SET NULL, UNIQUE INDEX \`ask_work_items_request_piece_unique\`(\`referralRequestId\`,\`workItemId\`), INDEX \`ask_work_items_request_idx\`(\`referralRequestId\`,\`position\`))` },
   { table: "referralRequestSaves", createSql: `CREATE TABLE IF NOT EXISTS \`referralRequestSaves\` (\`id\` int AUTO_INCREMENT NOT NULL, \`referralRequestId\` int NOT NULL, \`referrerId\` int NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`referralRequestSaves_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`referral_request_save_request_referrer_unique\`(\`referralRequestId\`,\`referrerId\`), INDEX \`referral_request_save_referrer_idx\`(\`referrerId\`,\`createdAt\`), INDEX \`referral_request_save_request_idx\`(\`referralRequestId\`))` },
   { table: "referralRequestPasses", createSql: `CREATE TABLE IF NOT EXISTS \`referralRequestPasses\` (\`id\` int AUTO_INCREMENT NOT NULL, \`referralRequestId\` int NOT NULL, \`referrerId\` int NOT NULL, \`reason\` ENUM('role_not_a_fit','cannot_support','timing') NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`referralRequestPasses_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`referral_request_pass_request_referrer_unique\`(\`referralRequestId\`,\`referrerId\`), INDEX \`referral_request_pass_referrer_idx\`(\`referrerId\`,\`createdAt\`))` },
   { table: "workEmailOtpRateLimits", createSql: `CREATE TABLE IF NOT EXISTS \`workEmailOtpRateLimits\` (\`id\` int AUTO_INCREMENT NOT NULL, \`limiterKey\` varchar(96) NOT NULL, \`windowStart\` timestamp NOT NULL, \`hitCount\` int NOT NULL DEFAULT 1, \`expiresAt\` timestamp NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`workEmailOtpRateLimits_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`work_email_otp_rate_window_unique\`(\`limiterKey\`,\`windowStart\`), INDEX \`work_email_otp_rate_expiry_idx\`(\`expiresAt\`))` },
@@ -261,6 +263,10 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "referralRequests", name: "referral_requests_first_look_idx", columns: "`firstLookUntil`", nonUnique: true },
   // D-047 (0095): the coverage-delivery sweep scans held asks by this clock.
   { table: "referralRequests", name: "referral_requests_coverage_held_idx", columns: "`coverageHeldAt`", nonUnique: true },
+  // Task 13 (0105): the pieces pinned to one ask, read in the order the seeker chose.
+  { table: "askCosts", name: "ask_costs_request_unique", columns: "`referralRequestId`" },
+  { table: "askWorkItems", name: "ask_work_items_request_piece_unique", columns: "`referralRequestId`,`workItemId`" },
+  { table: "askWorkItems", name: "ask_work_items_request_idx", columns: "`referralRequestId`,`position`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is
@@ -287,6 +293,11 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "companySuggestions", column: "submitterUserId", referencedTable: "users", referencedColumn: "id" },
   { table: "seekerAlerts", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "askDrafts", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  // Task 13 (0105): the ask owns its pinned-work history; a deleted showcase
+  // piece nulls the link and the snapshot row stays.
+  { table: "askCosts", column: "referralRequestId", referencedTable: "referralRequests", referencedColumn: "id" },
+  { table: "askWorkItems", column: "referralRequestId", referencedTable: "referralRequests", referencedColumn: "id" },
+  { table: "askWorkItems", column: "workItemId", referencedTable: "workItems", referencedColumn: "id" },
   { table: "dataExports", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "accountPreferences", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "moderationEvents", column: "reportId", referencedTable: "safetyReports", referencedColumn: "id" },

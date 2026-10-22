@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PublicCompany } from "@shared/companies";
-import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
-import { companyMatches, costLine, directorySummary, filterCompanies, linkHint, roleTitleFromUrl } from "./findModel";
+import { companyMatches, directorySummary, filterCompanies, linkHint, roleTitleFromUrl } from "./findModel";
 
 const company = (name: string, over: Partial<Pick<PublicCompany, "openToReferrals" | "functions" | "domains" | "industry">> = {}): PublicCompany => ({
   slug: name.toLowerCase().replace(/\s+/g, "-"),
@@ -82,31 +81,5 @@ describe("role title from the job link", () => {
     expect(roleTitleFromUrl("https://www.linkedin.com/jobs/view/4446365088")).toBeNull();
     expect(roleTitleFromUrl("not a url")).toBeNull();
     expect(roleTitleFromUrl("")).toBeNull();
-  });
-});
-
-describe("ask cost line", () => {
-  it("says nothing is used while a company has no available employee", () => {
-    const cost = costLine({ open: false, balance: 7 });
-    expect(cost.line).toBe("No credit used until a verified employee can see it");
-    expect(cost.detail).toContain(`${COVERAGE_WAIT_DAYS} days`);
-    expect(cost.blockedReason).toBeNull();
-  });
-
-  it("states the balance when it is known", () => {
-    expect(costLine({ open: true, balance: 2 }).line).toBe("Uses 1 of your 2 credits");
-    expect(costLine({ open: true, balance: 1 }).line).toBe("Uses 1 of your 1 credit");
-    expect(costLine({ open: true, balance: 2 }).detail).toContain(`${ASK_TTL_DAYS} days`);
-  });
-
-  it("never invents a balance while it loads, and blocks a wallet with none", () => {
-    expect(costLine({ open: true, balance: null }).line).toBe("Uses 1 credit");
-    const none = costLine({ open: true, balance: 0 });
-    expect(none.line).toBe("You have no credits left");
-    expect(none.blockedReason).toContain("Add a credit pack");
-  });
-
-  it("describes the waiting case when availability is not known yet", () => {
-    expect(costLine({ open: null, balance: null }).line).toBe("Uses 1 credit when a verified employee can see it");
   });
 });
