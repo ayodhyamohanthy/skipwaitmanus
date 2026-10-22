@@ -617,7 +617,7 @@
       "dependsOn": [
         "ROW20-B"
       ],
-      "note": "Its review renumbered the migration 0097 -> 0103, but main took 0103 for the Skippy seeker agents (#453) on Oct 22: renumber again to the next free number at landing (0107 on main d54c0ca8; SQL bytes unchanged) and record it in plan §5. Since #432 the live seeker conversation is client/src/pages/conversation/SeekerConversation.tsx: the Hired link and thank-you go into that page, not only the kit ThreadDecisionPanels.tsx (D-149)."
+      "note": "Its review renumbered the migration 0097 -> 0103, but main took 0103 for the Skippy seeker agents (#453) on Oct 22: renumber again to the next free number at landing (0108 on main 9506c107, after D-148's 0107 seeker levels; SQL bytes unchanged) and record it in plan §5. Since #432 the live seeker conversation is client/src/pages/conversation/SeekerConversation.tsx: the Hired link and thank-you go into that page, not only the kit ThreadDecisionPanels.tsx (D-149)."
     },
     {
       "id": "TASK13-pinned-work",

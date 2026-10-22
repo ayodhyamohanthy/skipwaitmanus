@@ -1269,3 +1269,11 @@ export const seekerAgentEvents = mysqlTable("seekerAgentEvents", {
   detail: varchar("detail", { length: 600 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("seeker_agent_events_grant_idx").on(table.grantId, table.createdAt), index("seeker_agent_events_user_idx").on(table.userId, table.createdAt)]);
+
+/** D-148 (0107): the level a seeker picks for themselves (1-10). Display only (plans "Who you can ask"); never inferred. */
+export const seekerLevels = mysqlTable("seekerLevels", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  level: int("level").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("seeker_levels_user_unique").on(table.userId)]);
