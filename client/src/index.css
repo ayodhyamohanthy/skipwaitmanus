@@ -319,8 +319,9 @@ input, textarea { caret-color: var(--primary); }
 .g-hit { position: relative; }
 .g-hit::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, var(--g-touch)); height: max(100%, var(--g-touch)); transform: translate(-50%, -50%); }
 
-/* Referrer impact card (slice C, flag off). Structure follows the designer mock
-   /tmp/mocks/share-impact.html; tokens mapped to the kit. */
+/* Referrer impact card (slice C, flag off). Structure follows the approved
+   captures design/goal-ui/captures/share-impact/impact-1280.png and
+   impact-390.png (the source mock is not in the repo); tokens mapped to the kit. */
 .sharecard { border: 1px solid var(--border); border-radius: 16px; padding: 22px 22px 16px; margin: 18px 0 14px; background: var(--background); }
 .sharecard__status { font: 11px var(--font-label); color: var(--foreground); display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
 .sharecard__big { font-family: var(--font-label); font-size: 44px; font-weight: 600; letter-spacing: -0.03em; color: var(--foreground); line-height: 1.05; }

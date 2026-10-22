@@ -3,8 +3,9 @@
 // GET /api/referrer/impact-card. Copy verbatim from content.json shareImpact;
 // every string the referrer can copy comes from shared/shareImpactCard.ts, so no
 // seeker can ever appear on the card. Min-3 gate enforced server-side: on
-// "insufficient" the card renders nothing. Structure follows the designer mock
-// (share-impact.html): blue verified mark, hero numeral, mono stat numerals,
+// "insufficient" the card renders nothing. Structure follows the approved
+// captures under design/goal-ui/captures/share-impact/ (impact-1280.png,
+// impact-390.png): blue verified mark, hero numeral, mono stat numerals,
 // one black commit button + ghost LinkedIn.
 import { useEffect, useState } from "react";
 import { BadgeCheck, Check, Copy, Linkedin } from "lucide-react";
