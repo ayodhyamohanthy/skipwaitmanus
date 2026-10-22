@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { SignInButton, useAuth, useUser } from "@/_core/auth";
 import { Button, buttonVariants } from "@/components/kit/button";
-import { ReferrerPanel, SeekerPanel } from "@/components/thread/ThreadDecisionPanels";
+import { ReferrerPanel } from "@/components/thread/ThreadDecisionPanels";
 import { ThreadMain } from "@/components/thread/ThreadMain";
 import { AppShell } from "@/components/AppShell";
 import { SeekerConversation } from "./conversation/SeekerConversation";
@@ -91,7 +91,7 @@ export default function ReferralConversation({ framed = false }: { framed?: bool
   const headline = profile.data?.headline ?? profile.data?.currentTitle ?? null;
   // Names are revealed only after the referrer accepts: the referrer sees their own name, the seeker the name the server returns (never before accept).
   const seekerSeesReferrer = request && role === "seeker" && isAccepted(request) && request.referrerName ? (request.referrerTitle ? `${request.referrerName} · ${request.referrerTitle}` : request.referrerName) : null;
-  const referrerLabel = seekerSeesReferrer ?? (request && role !== "seeker" && isAccepted(request) && user?.fullName ? user.fullName : request ? `Someone at ${companyName(request)}` : "");
+  const referrerLabel = seekerSeesReferrer ?? (request && isAccepted(request) && user?.fullName ? user.fullName : request ? `Someone at ${companyName(request)}` : "");
 
   // The seeker's side is a goal page (W2). While the role is still loading the
   // seeker frame shows, since the seeker is by far the common viewer; referrers
@@ -158,15 +158,8 @@ export default function ReferralConversation({ framed = false }: { framed?: bool
           />
           <aside className="space-y-4">
             <div className="rounded-3xl border border-border p-5">
-              <span className="eyebrow">{role === "seeker" ? "YOUR NEXT STEP" : "YOUR DECISION"}</span>
-              {role === "seeker" ? (
-                <SeekerPanel
-                  request={request}
-                  onWithdraw={async () => { await withdrawThreadRequest(request.id, fetchToken); await reload(); }}
-                  onProgress={async status => { await recordProgress(request.id, status, fetchToken); await reload(); }}
-                  onConfirmReferredEmail={async () => { await confirmReferredBySeeker(request.id, fetchToken); await reload(); }}
-                />
-              ) : (
+              <span className="eyebrow">YOUR DECISION</span>
+              {(
                 <ReferrerPanel
                   request={request}
                   role={role}
@@ -192,7 +185,6 @@ export default function ReferralConversation({ framed = false }: { framed?: bool
             <div className="rounded-3xl border border-border p-5 text-sm text-muted-foreground">
               <ShieldCheck className="mb-2 size-5 text-primary" />Referrers are never paid and never ask for money. Never pay or accept money for a referral. <Link href="/report" className="text-link">Report or block</Link>
             </div>
-            {role === "seeker" && isAccepted(request) ? <ShareWinCard roleTitle={request.title} companyName={companyName(request)} status={request.status} /> : null}
           </aside>
         </div>
       ) : null}
