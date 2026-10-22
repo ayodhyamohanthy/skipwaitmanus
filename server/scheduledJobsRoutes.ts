@@ -6,6 +6,7 @@
 //        The public Worker route 404s /api/internal/ and strips the header.
 //   GET  /api/admin/jobs          admin: last run, last success and overdue flag per job.
 // Contracts live in shared/scheduledJobs.ts; services are injectable for tests.
+import { sendAdminAlertEmail } from "./errorAlerting";
 import type { Express, Request, Response } from "express";
 import { JOBS_CRON, JOBS_TICK_HEADER, JOBS_TICK_PATH } from "../shared/jobsTick";
 import { adminScheduledJobsResponseSchema, jobsTickResponseSchema, type AdminScheduledJob, type JobRunSummary } from "../shared/scheduledJobs";
@@ -37,6 +38,8 @@ export type ScheduledJobsRouteDeps = {
   capture?: JobCapture;
   /** On-demand read-only money check; defaults to the real audit. */
   runMoneyCheck?: (nowMs: number) => Promise<MoneyCheckRunResult>;
+  /** Sends one fixed test alert through the real alert sender; defaults to sendAdminAlertEmail. */
+  sendTestAlert?: (input: { subject: string; text: string }) => Promise<{ sent: boolean }>;
   closeAbandonedCheckouts?: (nowMs: number, options: { apply: boolean }) => Promise<AbandonedCheckoutResult>;
   /** Recent owner-alert attempts of the money check, newest first. */
   listMoneyCheckAlerts?: () => Promise<Array<{ outcome: string; createdAt: Date | string }>>;
@@ -158,6 +161,31 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
     } catch (error) {
       capture(error, { path: "/api/admin/money-check/status" });
       res.status(500).json({ error: "We could not load the alert status" });
+    }
+  });
+
+  // Admin-only: one fixed-body test alert through the same sender as real alerts. No user data.
+  let lastTestAlertAt = 0;
+  app.post("/api/admin/alerts/test", async (req: Request, res: Response) => {
+    res.set("Cache-Control", "private, no-store");
+    const identity = await deps.resolveIdentity(req);
+    if (!identity) return res.status(401).json({ error: "Sign in to continue" });
+    if (identity.account.role !== "admin") {
+      record({ actorUserId: identity.account.id, action: "admin.test_alert_denied", outcome: "denied", resourceType: "alert", resourceId: "test-alert" });
+      return res.status(403).json({ error: "Administrator access is required" });
+    }
+    const nowMs = now();
+    if (nowMs - lastTestAlertAt < 5 * 60_000) return res.status(429).json({ error: "A test alert was sent a moment ago. Wait 5 minutes." });
+    lastTestAlertAt = nowMs;
+    try {
+      const send = deps.sendTestAlert ?? (input => sendAdminAlertEmail(undefined, input));
+      const result = await send({ subject: "skipwait.me test alert", text: "This is a test alert from the skipwait.me admin page. No action is needed. It contains no customer data." });
+      record({ actorUserId: identity.account.id, action: "admin.test_alert", outcome: result.sent ? "success" : "failure", resourceType: "alert", resourceId: "test-alert" });
+      res.json({ sentAt: new Date(nowMs).toISOString(), sent: result.sent });
+    } catch (error) {
+      lastTestAlertAt = 0;
+      capture(error, { path: "/api/admin/alerts/test" });
+      res.status(500).json({ error: "The test alert could not be sent" });
     }
   });
 
