@@ -1,3 +1,4 @@
+import { registerCompanyClaimRoutes } from "../companyClaimRoutes";
 import { initServerSentry, captureServerError, flushServerSentry, isServerSentryActive, scrubSentryPath, sentryErrorMiddleware } from "../sentry";
 import { registerJobLinkPreviewRoutes } from "../jobLinkPreviewRoutes";
 
@@ -211,6 +212,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Server-owned company directory: public /api/companies reads and the
   // admin-gated /api/admin/companies writes (server/companyDirectoryRoutes.ts).
   registerCompanyDirectoryRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  registerCompanyClaimRoutes(app, { resolveIdentity });
   // skipwait.me/sitemap.xml routes to the Worker (wrangler routes), which
   // forwards it here: the sitemap's live reads come straight from the DB.
   registerSitemapRoutes(app, { listJobs: input => db.listJobs(input), listCompanySlugs: async () => (await listCompanyDirectory()).companies });
