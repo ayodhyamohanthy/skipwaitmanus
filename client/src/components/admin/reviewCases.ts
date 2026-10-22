@@ -97,10 +97,11 @@ export function enrollmentCase(item: Enrollment): ReviewCase {
 export function companyCase(item: CompanySuggestion): ReviewCase {
   const age = caseAge(item.createdAt);
   const host = websiteHost(item.website);
+  const votes = `${item.votes} seeker vote${item.votes === 1 ? "" : "s"}`;
   return {
-    key: `company:${item.id}`, kind: "company", id: item.id, ref: caseRef("C", item.id), title: `New company: ${item.companyName}`, sub: [`Submitted by a ${item.role}`, host].filter((part): part is string => Boolean(part)).join(" · "),
+    key: `company:${item.id}`, kind: "company", id: item.id, ref: caseRef("C", item.id), title: `New company: ${item.companyName}`, sub: [votes, `Submitted by a ${item.role}`, host].filter((part): part is string => Boolean(part)).join(" · "),
     urgent: false, status: item.status, terminal: TERMINAL_CASE_STATUSES.has(item.status), createdAt: item.createdAt, updatedAt: null,
-    evidence: [host ? `Website: ${host}` : "No website given", `Suggested name: ${item.companyName}`],
+    evidence: [`Votes recorded: ${votes}`, `Work function: ${item.jobFunction ?? "Not chosen"}`, host ? `Website: ${host}` : "No website given", `Suggested name: ${item.companyName}`],
     decisions: openDecisions(COMPANY_DECISIONS, item.status),
     outcome: "Submitter notified.",
     audit: [`${age} ago · submitted by a ${item.role}`, item.status !== "open" ? `Status: ${statusLabel(item.status).toLowerCase()}` : null].filter((line): line is string => Boolean(line)),
