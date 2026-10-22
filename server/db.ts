@@ -3065,7 +3065,7 @@ export async function confirmReferredBySeeker(tx: LedgerTx, requestId: number, n
   const latest = latestByEventId(latestEvents);
   if (!latest || latest.resultingStatus !== "approved") throw new ReferralTransitionConflict("This referral request has not been accepted", { status: current.status, revision: current.revision });
   const acceptEventId = Number(latest.id);
-  const already = await tx.select({ id: referralTransitionEvents.id }).from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId, requestId), eq(referralTransitionEvents.action, "seeker_confirmed_referred"))).limit(1);
+  const already = await tx.select({ id: referralTransitionEvents.id }).from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId, requestId), eq(referralTransitionEvents.action, "seeker_confirmed_referred"), eq(referralTransitionEvents.operationKey, `seeker-confirmed:${acceptEventId}`))).limit(1);
   if (already.length > 0) return { confirmed: false, replayed: true };
   await transitionReferralRequestTx(tx, { requestId, actorUserId, action: "seeker_confirmed_referred", operationKey: `seeker-confirmed:${acceptEventId}`, toStatus: "intro_made", allowedFrom: ["approved"], authorize: row => { if (row.jobSeekerId !== actorUserId) throw new Error("Referral Request not found"); }, patch: {}, notification: { userId: current.referrerId!, title: "The seeker confirmed the referral email", body: "They got your referral email. Nothing more is needed from you." } });
   return { confirmed: true };
