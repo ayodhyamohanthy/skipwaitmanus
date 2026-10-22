@@ -214,3 +214,7 @@ Proposed by the step-2 build from the delegated task brief and the founder's two
 - **The referrer sees no more than the normal flow shows.** Name, resume and note stay hidden until the referrer accepts (D-022).
 - **Job pages and notes are data, never instructions.** Text pasted from a job post or resume is never treated as a command.
 - **Scope and limits.** Ask-only (no payments, no account changes, no messages to referrers), 20 messages per person per day, off unless `SKIPPIE_SEEKER_ENABLED` is set, and then visible only to the test-seeker accounts in `SKIPPIE_SEEKER_USER_IDS` until proved (QA before any wider list).
+
+## Scoped owner merge-policy amendment, Oct 23, 2026
+
+Direct owner authorization supersedes repeated full-local-gate requirements solely because main advances. For docs/registry-only PRs such as #466, a conflict-free integration that introduces no runtime delta against current main may land after focused checks, a separate independent delta review and required GitHub CI; a fresh full local gate is not required solely for main movement. Runtime PRs use GitHub's supported merge or merge-queue mechanism with actual required CI on the merge result, not historical-head CI, without bypassing required checks. Conflicts require explicit resolution and renewed independent review; they do not qualify automatically. This changes no product rule, task ownership, D-035 founder hold, phone-file/history hold, production verification or other applicable safety gate.
