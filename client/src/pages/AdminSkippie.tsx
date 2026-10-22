@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AdminNav } from "@/components/AdminNav";
 
 type Turn = { question: string; answer: string; toolsUsed: string[] };
 
@@ -27,6 +28,7 @@ export default function AdminSkippie() {
   };
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
+      <AdminNav current="skippy" badge="Administrator diagnostics" />
       <h1 className="text-2xl font-semibold">Skippy</h1>
       <p className="mt-1 text-sm text-muted-foreground">Read-only. Skippy can look at the money check, parked payments, scheduled jobs, deploy health and Sentry. It cannot change anything. Every question is logged in Activity.</p>
       <ol className="mt-6 space-y-5">
