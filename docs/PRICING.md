@@ -7,6 +7,8 @@ Decisions come from the founder's messages relayed by Main and are recorded in `
 ## Rule (Oct 23, 00:58 IST)
 Record each new decision in `docs/DECISIONS.md` BEFORE building on it, and sync `docs/PRD.md`, `docs/BRIEF.md`, `AGENTS.md` and `docs/plans/` in the same PR.
 
+Frozen decisions bind: once the founder freezes a decision it is the single source every agent follows; nobody builds against anything older unless he reopens it (Oct 23, 01:00 IST).
+
 ## The model: D-132 only (D-146)
 - Plans, each with an in-plan monthly credits dropdown (5/10/25/50/100/200, "Save X%" beside each, 2/4/8/12/16/20%). The page shows one "This month" total = plan fee + picked rung.
   - Open Door: free, 3 free credits a month, no paid default.

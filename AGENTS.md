@@ -32,6 +32,7 @@ Money rules refined by the owner on Oct 16 2026 (details in `docs/DECISIONS.md`)
 - Pinned by `client/src/pages/loginRule.test.tsx` and `client/src/pages/signIn.test.tsx`; a failing pin means the rule drifted. Decision register: D-030.
 
 ## Team rules (owner standing instructions, Oct 16 2026, relayed by the parent - numbered, binding for every agent and model)
+0. **Frozen decisions bind.** once the founder freezes a decision it is the single source every agent follows from then on. No agent builds against anything older unless the founder reopens it. Record it in DECISIONS.md first. (D-146)
 1. **Read before acting.** At the START of every session, read this file, `docs/DECISIONS.md` (the current decisions list, newest first, including D-030 login rule, D-031 money rule and the product compass above) before any work. The whole team stays in sync on decisions.
 2. **Money rule (D-031).** Never choose money-spending options. Choose free or money-earning options only. Paid plans and add-ons are dropped, not proposed as defaults.
 3. **Meritocracy (D-032).** If you see a better approach than a recorded decision, always recommend it with evidence. The founder takes the call: ask him, never override a decision on your own.
