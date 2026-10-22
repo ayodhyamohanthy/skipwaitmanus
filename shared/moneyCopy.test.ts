@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "./referral";
+import { askCostLine } from "./moneyCopy";
 
 /*
  * D-038-reconcile F3 (R-2, D-042): the credit rule may promise the reopen path
@@ -20,6 +22,35 @@ async function ruleWithSwitch(enabled: boolean): Promise<string> {
 }
 
 afterEach(() => { vi.resetModules(); vi.doUnmock("./referral"); });
+
+// Item 3 of D-048-p3-live-review: the drawer's cost line lives here, one
+// function for every surface that quotes a price (flat 1 credit today, so
+// D-132-audit can make it level-aware without touching the drawer).
+describe("askCostLine", () => {
+  it("says nothing is used while a company has no available employee", () => {
+    const cost = askCostLine({ open: false, balance: 7 });
+    expect(cost.line).toBe("No credit used until a verified employee can see it");
+    expect(cost.detail).toContain(`${COVERAGE_WAIT_DAYS} days`);
+    expect(cost.blockedReason).toBeNull();
+  });
+
+  it("states the balance when it is known", () => {
+    expect(askCostLine({ open: true, balance: 2 }).line).toBe("Uses 1 of your 2 credits");
+    expect(askCostLine({ open: true, balance: 1 }).line).toBe("Uses 1 of your 1 credit");
+    expect(askCostLine({ open: true, balance: 2 }).detail).toContain(`${ASK_TTL_DAYS} days`);
+  });
+
+  it("never invents a balance while it loads, and blocks a wallet with none", () => {
+    expect(askCostLine({ open: true, balance: null }).line).toBe("Uses 1 credit");
+    const none = askCostLine({ open: true, balance: 0 });
+    expect(none.line).toBe("You have no credits left");
+    expect(none.blockedReason).toContain("Add a credit pack");
+  });
+
+  it("describes the waiting case when availability is not known yet", () => {
+    expect(askCostLine({ open: null, balance: null }).line).toBe("Uses 1 credit when a verified employee can see it");
+  });
+});
 
 describe("CREDIT_RULE follows the part B switch", () => {
   it("promises nothing about reopening while the switch is off", async () => {

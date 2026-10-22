@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { ASK_TTL_DAYS } from "@shared/referral";
-import { CREDIT_ENDED_CAVEAT } from "@shared/moneyCopy";
+import { CREDIT_ENDED_CAVEAT, MONEY_SENTENCE } from "@shared/moneyCopy";
 import { COMPANY_CAP_REACHED, companyCapCopy, SLOT_CAP_REACHED } from "@shared/openAskSlots";
 import { ASK_PREFILL_KEY } from "@/lib/askPrefill";
 import { ASK_NETWORK_ERROR } from "@/components/ask/askApi";
@@ -108,6 +108,8 @@ describe("ask drawer", () => {
     expect(within(drawer).getByTestId("goal-verified-mark").textContent).toContain("Goes to verified Wipro employees");
     expect(within(drawer).getByText("Referrers see your job link and reasons. Your name and resume are shared only if one accepts.")).toBeTruthy();
     await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Uses 1 of your 4 credits"));
+    // The cost is stated in one shared sentence pair (D-063): no retyped price.
+    expect(within(drawer).getByTestId("goal-money-sentence").textContent).toBe(MONEY_SENTENCE);
     expect(within(drawer).getByText("ada-resume.pdf")).toBeTruthy();
     expect(within(drawer).getByText("Shared after a referrer accepts")).toBeTruthy();
     expect(within(drawer).getByRole("group", { name: "Why me" })).toBeTruthy();

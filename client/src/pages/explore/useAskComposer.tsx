@@ -20,7 +20,7 @@ import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUp
 import { useSeekerSetup } from "@/lib/useSeekerSetup";
 import { countWords } from "@shared/askQuality";
 import type { PublicCompany } from "@shared/companies";
-import { CREDIT_ENDED_CAVEAT } from "@shared/moneyCopy";
+import { askCostLine, CREDIT_ENDED_CAVEAT, type AskCostLine } from "@shared/moneyCopy";
 import { COMPANY_CAP_REACHED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { parseOpportunityAskSearch, type OpportunityAskSearch } from "@shared/companyOpportunities";
@@ -28,7 +28,7 @@ import { isValidTargetRoleUrl, jobLinkFitsCompany } from "@shared/referralUrl";
 import { composeWhyMe, overLimitReasons, splitWhyMe, WHY_ME_MAX, type WhyMeReasons } from "@shared/whyMe";
 import type { AskResume, AskSentView } from "./AskDrawer";
 import { askIdempotencyKey, ASK_IDEMPOTENCY_KEY, buildAskBody } from "./askSend";
-import { costLine, linkHint, roleTitleFromUrl, type CostLine, type LinkHint } from "./findModel";
+import { linkHint, roleTitleFromUrl, type LinkHint } from "./findModel";
 import { goToSeekerSignIn } from "./signInHandoff";
 
 const MIN_WORDS = 10;
@@ -54,7 +54,7 @@ export type AskComposer = {
   onReasonChange(index: number, value: string): void;
   reasonsError: string;
   watch: { state: "idle" | "busy" | "done" | "error"; message: string; onWatch(): void } | null;
-  cost: CostLine;
+  cost: AskCostLine;
   context: string | null;
   sendLabel: string;
   sendBusyLabel: string;
@@ -126,7 +126,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   const linkOk = isValidTargetRoleUrl(url.trim()) && (!company || jobLinkFitsCompany(url, company.domains));
   const words = countWords(composeWhyMe(reasons));
   const tooLong = overLimitReasons(reasons).length > 0;
-  const cost = costLine({ open: company ? company.openToReferrals : null, balance: isSignedIn && balance?.state === "ready" ? balance.count : null });
+  const cost = askCostLine({ open: company ? company.openToReferrals : null, balance: isSignedIn && balance?.state === "ready" ? balance.count : null });
   const context = company ? [company.name, roleTitleFromUrl(url)].filter(Boolean).join(" · ") : roleTitleFromUrl(url);
 
   const missing = !linkOk
