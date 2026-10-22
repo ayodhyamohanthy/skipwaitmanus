@@ -344,4 +344,15 @@ describe("the ask stores the level and cost it was priced at", () => {
     expect(rows.askCosts).toHaveLength(1);
     expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(after);
   });
+
+  /** D-132 audit item 5: Send again is a new ask with its own price; an existing ask is never re-priced. */
+  it("Send again after the flag changed: the first ask keeps its stored cost, the new send is priced on its own", async () => {
+    vi.stubEnv("ASK_LEVEL_COST", "true");
+    await send();
+    const first = { ...rows.askCosts[0] };
+    vi.stubEnv("ASK_LEVEL_COST", "false");
+    await send({ idempotencyKey: "pinned-key-0002" }).catch(() => undefined);
+    expect(rows.askCosts[0]).toMatchObject({ referralRequestId: first.referralRequestId, creditCost: first.creditCost, jobLevel: first.jobLevel });
+    expect(rows.askCosts).toHaveLength(1);
+  });
 });
