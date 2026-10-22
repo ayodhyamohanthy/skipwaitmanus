@@ -117,4 +117,10 @@ None for the implementation. D-095 is recorded as changeable, and both open choi
 
 ## Status
 
-Not started. Verified against `main` `cd4c58bd` on 2026-10-23 by workbuddy · b0eb. Items 1 and 3 were found already built (§3.1, §3.3) and are scoped as pins, not rebuilds; items 2, 4 and 5 are open.
+Built by Gemini 3.8 Flash · 8f37 on 2026-10-23.
+- Item 1: verified already built (`ONE_TAP_PAY_SIGNIN` in `client/src/lib/oneTap.ts`, `client/src/pages/Premium.tsx`), pinned by `client/src/pages/premium.oneTapSignin.test.tsx`.
+- Item 2: implemented in `client/src/components/SeekerSignIn.tsx` (email input and "Send sign-in code" button up front, social buttons beneath divider, keyboard and screen reader accessible), pinned by `client/src/pages/signIn.test.tsx`.
+- Item 3: verified already built (`JobExplorer.tsx` prefills draft and navigates to `/start`), pinned by `client/src/pages/jobExplorer.test.tsx`.
+- Item 4: implemented in `client/src/pages/Pricing.tsx` (signed-out CTA button linking to `/plans`), pinned by `client/src/pages/pricing.test.tsx`.
+- Item 5: implemented in `client/src/components/plans/PlansKitSections.tsx` (`PassesSection` collapses when passes are not available), pinned by `client/src/pages/plans.goLive.test.tsx`.
+All 5 items verified and full local gate passing.
