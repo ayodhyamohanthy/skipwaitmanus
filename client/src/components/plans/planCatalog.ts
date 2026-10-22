@@ -222,7 +222,6 @@ export function catalogPassCards(catalog: PlanCatalogResponse, term: PassTerm, a
       carryoverFeature(plan.carryover),
       ...(plan.humanTimeOffered && (plan.humanTime.writtenReviews > 0 || plan.humanTime.liveSessions > 0 || plan.humanTime.hours > 0) ? ["Human review time included"] : []),
       "Paid once — never renews by itself",
-      ...(chosen.autoExtend.length > 0 ? ["Optional auto-extend offered at checkout"] : []),
       "Same referrer queue as every plan",
     ];
     return [{
