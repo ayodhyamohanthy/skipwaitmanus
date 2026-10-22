@@ -12,7 +12,7 @@
 | Branch | `agent/<model>/<slug>` from the latest `origin/main`, one per row (§4 table) |
 | Depends on | per row (§4); the chain starts once this packet is on `main` |
 | Do not run at the same time as | any surface row that edits `client/src/App.tsx`, `AppShell.tsx`, `components/goal/**` or `index.css`; the split's §"The method" gives those files to this chain |
-| Verified against | `main` `52d5e94e` on 2026-10-22 |
+| Verified against | `main` `cd4c58bd` on 2026-10-22 (facts re-checked after merging it into the packet branch) |
 
 ## 1. Goal
 
@@ -39,12 +39,12 @@ None of the six changes what a user sees, except `F-credits` fixing the pill on 
 - D-055: "Referrers never pay and are never paid" — the shell shows no credits pill on any referrer surface, decided by the server's verified-referrer verdict, never by the session's emails.
 - D-082: "Push to `main` only when `main`'s latest CI is green ... open a pull request first, a draft for Tier 1, and wait for every check."
 
-## 3. Current behaviour (verified on `main` `52d5e94e`)
+## 3. Current behaviour (verified on `main` `cd4c58bd`)
 
 1. `client/src/lib/goalFlags.ts` holds four build-time flags: `GOAL_UI_LANDING`, `GOAL_UI_SIGNIN`, `GOAL_UI_LANDING_V9` and `PLAN_FAMILY_V2_CLIENT` (lines 6–9). `client/src/lib/goalSurfaces.ts` and `client/src/lib/planFamilyFlag.ts` do not exist.
 2. `.github/workflows/deploy-pages.yml:56–57` sets `VITE_GOAL_UI_LANDING: "true"` and `VITE_GOAL_UI_LANDING_V9: "true"`. `.github/workflows/ci.yml:61–73` has the required `production build` job, which runs `pnpm build` with no `VITE_GOAL_SURFACES`.
 3. `.env.example` declares `VITE_GOAL_UI_LANDING` (252), `VITE_GOAL_UI_LANDING_V9` (253), `VITE_PLAN_FAMILY_V2` (256) and `VITE_GOAL_UI_SIGNIN` (262). `VITE_GOAL_SURFACES` is absent.
-4. `client/src/components/AppShell.tsx`: `REFERRER_SURFACE = /^\/(queue|referrer(\/|$))/` (22) misses `/referrer-home`, `/referrer-setup`, `/verify` and `/post-opportunity`, so the live pill renders on those four; `activeNav` (28) and `PAGE_TITLES` (35) own the nav id and page title; the credit-balance query is inline (74–94) and passed to `GoalShell` (118–129), while `client/src/hooks/useCreditBalance.ts` (landed with `#360`) is a second copy of the same query and neither is the only one. `useCreditBalance.test.ts` does not exist.
+4. `client/src/components/AppShell.tsx`: `REFERRER_SURFACE = /^\/(queue|referrer(\/|$))/` (23) misses `/referrer-home`, `/referrer-setup`, `/verify` and `/post-opportunity`, so the live pill renders on those four; `activeNav` (28) and `PAGE_TITLES` (35) own the nav id and page title; the credit-balance query is inline (75–94) and passed to `GoalShell` (118–129), while `client/src/hooks/useCreditBalance.ts` (landed with `#360`) is a second copy of the same query and neither is the only one. `useCreditBalance.test.ts` does not exist.
 5. `client/src/components/goal/index.ts` exports 20+ primitives, including `GoalListRow`, `GoalStates`, `GoalReasonInput`, `GoalAppShell`, `GoalShell`, `GoalDrawer`, `GoalSheet`, `GoalDecisionBar`, `GoalPassReasons`, `GoalDetailPane`, `GoalLockedPanel`, `GoalFilterChip`, `GoalSearchInput`, `GoalField`, `GoalNum`, `GoalKeycap`, `GoalStatus` and `useOnlineStatus`.
 6. `GoalShellProps` (`client/src/components/goal/GoalShell.tsx:20–33`) is `{ active, verifiedReferrer, pageTitle, credits, account, alertsHref, showAlerts?, giveReferralHref?, hideBottomBar?, drawer?, children }`, and `GoalShellCredits` is `{state:"ready",count} | {state:"loading"} | {state:"error",onRetry} | null`. This is the frozen contract: it does not change in these six rows.
 7. `client/src/components/goal/goalBoundary.test.ts:11` `ALLOWLIST` is one regex covering `components/goal/`, three landing/sign-in pages, `ComponentShowcase` and all test files; `MOVED_SURFACES` (14) is an explicit set. There is no reverse check: a goal file importing `components/kit` or `styles/kit.css` is not refused.
