@@ -4561,7 +4561,7 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       const v2UserId = wallet?.userId ?? intent!.userId;
       const v2Role = wallet?.role ?? intent!.role;
       const retainsAccess = input.status === "active" || input.status === "non_renewing";
-      // D-132 fairness (owner call, Oct 22): upgrading from Free never takes
+      // D-132 fairness (main-delegated product call, Oct 22; reported + accepted): upgrading from Free never takes
       // the open month's credits - they convert to a carryover grant outliving
       // the free cycle by one month (the kit carryover shape), and the
       // bundle's invoice credits (always >= Free's 3) land on top. Free cycles
