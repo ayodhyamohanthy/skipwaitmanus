@@ -64,7 +64,8 @@ Hand this to your LLM together with `LLM_HANDOFF.md`, `SCREENS.md`, the `app/` s
 - [ ] Public profile: visibility public / link-only (noindex) / private; only work marked visible is rendered.
 
 ## Completion flows (backend notes)
-- [ ] Ask quality checks run client-side and again server-side; location-fit uses seeker work authorization vs role location.
+- [x] Ask quality checks run client-side and again server-side from one shared implementation (`shared/pitchQuality.ts`, D-080, Oct 23 2026): the composer shows every finding, the send route refuses only a note carrying contact details (before any credit or slot), everything else advises.
+- [ ] Location fit uses seeker work authorization vs role location (client-side today in `shared/roleLocationFit.ts`; no server field yet).
 - [ ] Notifications: in-app + email + Web Push (only after install/permission), quiet hours in user time zone, no marketing push.
 - [ ] Saved alerts fire when a verified, discoverable referrer at the company/function becomes available. Free 3 alerts.
 - [ ] Reports: urgent SLA 4h, normal 48h; block hides both directions; reviewer note required; full audit log; 14-day appeal.

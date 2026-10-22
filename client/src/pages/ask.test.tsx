@@ -96,6 +96,35 @@ describe("Ask composer", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("blocks a note that carries contact details, then sends once they are removed", () => {
+    vi.stubGlobal("fetch", vi.fn());
+    render(<Ask />);
+    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
+    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
+    const noteField = () => screen.getByPlaceholderText(/Name the role/);
+    // The thread hides contact details until both sides agree; the note cannot bypass that.
+    fireEvent.change(noteField(), { target: { value: `${STRONG_NOTE} Email me at asha.developer@gmail.com.` } });
+    expect(screen.getByRole("alert").textContent).toContain("Take out your email or phone number");
+    expect(screen.getByRole("button", { name: /Send ask/ }).hasAttribute("disabled")).toBe(true);
+    fireEvent.change(noteField(), { target: { value: STRONG_NOTE } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("button", { name: /Send ask/ }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("advises on a vague note without ever blocking the send", () => {
+    // A quality gate would gate the only demand the product has (docs/GROWTH_STRATEGY.md).
+    vi.stubGlobal("fetch", vi.fn());
+    render(<Ask />);
+    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
+    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
+    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: "I am applying and I hope you will consider my application and find it a good match for this opening at your company." } });
+    expect(screen.getByText(/Add one concrete thing/)).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("button", { name: /Send ask/ }).hasAttribute("disabled")).toBe(false);
+  });
+
   it("scores a weak ask honestly and keeps send disabled", () => {
     vi.stubGlobal("fetch", vi.fn());
     render(<Ask />);

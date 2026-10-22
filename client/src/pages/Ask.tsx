@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Clock3, FileText, Globe2, Lightbulb, LoaderCircle, Sparkles, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Circle, Clock3, FileText, Globe2, Lightbulb, LoaderCircle, Sparkles, X } from "lucide-react";
 import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useEffect, useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
@@ -25,6 +25,7 @@ import { AskSent, type SentAsk } from "@/components/ask/AskSent";
 import { AskFunctionEyebrow } from "@/components/ask/AskFunctionEyebrow";
 import { SlotCapNudge } from "@/components/ask/SlotCapNudge";
 import { askErrorMessage, confirmedDomainFor, parseSentAsk, parseSlotCapReached } from "@/components/ask/askApi";
+import { BLOCKING_CODES, checkPitchQuality } from "@shared/pitchQuality";
 import { canShowNudge, dismissNudge, markNudgeShown } from "@/lib/upgradeNudges";
 import type { OpenAskSlots } from "@shared/openAskSlots";
 
@@ -87,6 +88,11 @@ export default function Ask() {
   const words = countWords(note);
   const officialUrl = isValidTargetRoleUrl(url || undefined);
   const checks = askChecks({ officialUrl, note, hasResume: Boolean(resume || resumeFile) });
+  // The same shared check the server runs before it stores the ask (shared/pitchQuality.ts).
+  // Advice appears once the seeker has written something; only BLOCKING_CODES stops the send,
+  // and the server refuses exactly those findings too, so the two can never disagree.
+  const pitchFindings = note.trim() ? checkPitchQuality(note) : [];
+  const pitchBlocked = pitchFindings.some(finding => BLOCKING_CODES.includes(finding.code));
   const attachedName = resume?.fileName ?? resumeFile?.name ?? null;
   const setup = useSeekerSetup(isLoaded && isSignedIn, fetchToken);
   const [roleLocation, setRoleLocation] = useState("");
@@ -151,7 +157,7 @@ export default function Ask() {
   };
 
   const send = async () => {
-    if (!officialUrl || words < 10 || sending) return;
+    if (!officialUrl || words < 10 || sending || pitchBlocked) return;
     setSendError(""); setSlotCap(null); setSendStage("resume"); setSending(true);
     try {
       const doc = await ensureResume();
@@ -226,6 +232,20 @@ export default function Ask() {
           <label className="mt-5 block text-sm font-medium">Compensation (optional)<input className={field} value={compensation} onChange={event => setCompensation(event.target.value)} placeholder="e.g. ₹18–22 LPA" maxLength={80} /></label>
           <label className="mt-5 block text-sm font-medium">Your note<textarea value={note} maxLength={NOTE_LIMIT} onChange={event => setNote(event.target.value)} placeholder="Name the role, one result that proves fit, and what you'd like from the referrer." className="mt-2 min-h-44 w-full rounded-xl border border-input bg-background p-4 text-base" /></label>
           <div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>Tip: one specific result beats a list of skills.</span><span>{note.length}/{NOTE_LIMIT}</span></div>
+          {pitchFindings.length > 0 ? (
+            <ul className="mt-3 space-y-2 text-sm">
+              {pitchFindings.map(finding => {
+                // Only the blocking finding is an alert; the rest are advice and stay quiet.
+                const blocking = BLOCKING_CODES.includes(finding.code);
+                return (
+                  <li key={finding.code} role={blocking ? "alert" : undefined} className={`flex gap-2 ${blocking ? "text-destructive" : "text-muted-foreground"}`}>
+                    {blocking ? <AlertTriangle className="mt-0.5 size-4 shrink-0" /> : <Circle className="mt-0.5 size-4 shrink-0" />}
+                    <span>{finding.message}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
           <Button variant="outline" className="mt-3" disabled={busy} onClick={() => { void draftFromResume(); }}>{busy ? <LoaderCircle className="animate-spin" /> : <Sparkles />}Draft from my resume</Button>
           <div className="mt-6">
             <span className="text-sm font-medium">Attached</span>
@@ -248,7 +268,7 @@ export default function Ask() {
           <Panel tone="muted"><Lightbulb className="mb-2 size-5" /><p className="text-sm">The referrer sees your role and note — not your name or resume — until they accept.</p></Panel>
           {slotCap ? <SlotCapNudge slots={slotCap} onWait={() => { dismissNudge("slot_cap", nudgeAccount); setSlotCap(null); }} /> : null}
           {sendError ? <p role="alert" className="flex gap-2 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" />{sendError}</p> : null}
-          <Button className="w-full" disabled={!officialUrl || words < 10 || sending || uploading} onClick={() => { void send(); }}>{sending || uploading ? (sending && sendStage === "ask" ? "Sending your ask…" : "Uploading your resume…") : <>Send ask <ArrowRight /></>}</Button>
+          <Button className="w-full" disabled={!officialUrl || words < 10 || sending || uploading || pitchBlocked} onClick={() => { void send(); }}>{sending || uploading ? (sending && sendStage === "ask" ? "Sending your ask…" : "Uploading your resume…") : <>Send ask <ArrowRight /></>}</Button>
           <p role="status" aria-live="polite" className="sr-only">{sending ? (sendStage === "ask" ? "Sending your ask" : "Uploading your resume") : ""}</p>
           <p className="text-center text-xs text-muted-foreground">Uses 1 credit and 1 open slot when a verified employee can see it · {CREDIT_RULE_SHORT}</p>
         </aside>

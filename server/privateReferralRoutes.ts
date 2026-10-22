@@ -28,7 +28,8 @@ import { CompanyCapReachedError, OpenAskSlotCapError } from "./planGates";
 import { BlockedPersonalLinkError } from "./blockedPairs";
 import { creditLedgerQuerySchema, creditLedgerResponseSchema, type CreditLedgerEntry } from "../shared/creditLedger";
 import type { ReferrerAccessResponse } from "../shared/referrerAccess";
-import { resolveAskNote } from "../shared/askNote";
+import { resolveAskNote, NO_PERSONAL_NOTE_TEXT } from "../shared/askNote";
+import { BLOCKING_CODES, PITCH_REFUSAL_CODE, checkPitchQuality } from "../shared/pitchQuality";
 import { isOpportunityExpired, myOpportunitiesResponseSchema, opportunityAskSelectionSchema, OPPORTUNITY_TTL_MS } from "../shared/companyOpportunities";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
@@ -696,6 +697,22 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const note = resolveAskNote(req.body);
       if (!note.ok) return res.status(400).json({ error: note.error });
       const personalPitch = note.personalPitch;
+      // Ask quality, server half (shared/pitchQuality.ts): the same check the composer runs, on
+      // the same note. Only BLOCKING_CODES stops the ask, and it stops it here — before the
+      // request, its credit or its open slot exist — because a note carrying an email or phone
+      // number bypasses the thread's promise that contact details appear only once both sides
+      // agree. Every other finding is advice: refusing on quality would refuse the only demand
+      // this product has (docs/GROWTH_STRATEGY.md). A note-less ask stays allowed (the stored
+      // placeholder is pinned by server/askNoteRoundTrip.test.ts).
+      // A note-less ask stores the placeholder; snapshot it as "empty" instead of scoring the
+      // placeholder text as though the seeker had written it.
+      const noteWasEmpty = personalPitch === NO_PERSONAL_NOTE_TEXT;
+      const pitchFindings = noteWasEmpty ? [] : checkPitchQuality(personalPitch);
+      const blockingPitch = pitchFindings.find(finding => BLOCKING_CODES.includes(finding.code));
+      if (blockingPitch) {
+        record({ actorUserId: identity.account.id, action: "company_referral.created", outcome: "denied", resourceType: "referral_request", metadata: { refusedBy: "pitch_quality", pitchFindings: blockingPitch.code, noteLength: personalPitch.length } });
+        return res.status(400).json({ error: blockingPitch.message, code: PITCH_REFUSAL_CODE });
+      }
       const safeCompensation = typeof compensation === "string" && compensation.trim() ? compensation.trim().slice(0, 80) : undefined;
       const safeFastTrackCode = typeof fastTrackCode === "string" && /^[a-zA-Z0-9-]{16,64}$/.test(fastTrackCode) ? fastTrackCode : undefined;
       const safeFastTrackCompanySlug = typeof fastTrackCompanySlug === "string" && /^[a-z0-9-]{1,48}$/.test(fastTrackCompanySlug) ? fastTrackCompanySlug : undefined;
@@ -751,7 +768,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       void dispatchReviewDeliveries().catch(error => record({ actorUserId: identity.account.id, action: "company_referral.review_dispatch_crashed", outcome: "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { error: error instanceof Error ? error.message : "dispatch crashed" } }));
       const requests = await deps.listJobSeekerCompanyReferrals?.(identity.account.id);
       const lifetimeRequestCount = Array.isArray(requests) ? requests.length : undefined;
-      record({ actorUserId: identity.account.id, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { attachmentCount: attachmentIds.length, notifiedEmployees: result.notifiedEmployees, creditReserved: result.coverageStatus !== "waiting_for_company_coverage", coverageStatus: result.coverageStatus ?? "covered", fastTrack: Boolean(result.fastTrack), fromPost: Boolean(result.fromPost), firstLook: Boolean(result.firstLook), jobFunctionChosen: Boolean(chosenFunction.data) } });
+      record({ actorUserId: identity.account.id, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { attachmentCount: attachmentIds.length, notifiedEmployees: result.notifiedEmployees, creditReserved: result.coverageStatus !== "waiting_for_company_coverage", coverageStatus: result.coverageStatus ?? "covered", fastTrack: Boolean(result.fastTrack), fromPost: Boolean(result.fromPost), firstLook: Boolean(result.firstLook), jobFunctionChosen: Boolean(chosenFunction.data), pitchFindings: noteWasEmpty ? "empty" : pitchFindings.map(finding => finding.code).join(",") || "none", noteLength: personalPitch.length } });
       if (result.coverageStatus === "waiting_for_company_coverage") {
         record({ actorUserId: identity.account.id, action: "company_referral.manual_follow_up_queued", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { notifiedEmployees: 0, creditReserved: false } });
       }

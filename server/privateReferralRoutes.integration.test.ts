@@ -2,6 +2,8 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
+import { PITCH_REFUSAL_CODE } from "../shared/pitchQuality";
+import { NO_PERSONAL_NOTE_TEXT } from "../shared/askNote";
 
 describe("authenticated work email OTP routes", () => {
   function setup(result: { sent: boolean; reason: string }) {
@@ -408,5 +410,84 @@ describe("withdrawal activity reports only authoritative credit movement", () =>
     const { app, withdrawalEvents } = setup(false, failure);
     expect((await request(app).post("/api/company-referrals/501/withdraw").set("x-test-user", "seeker")).status).toBe(status);
     expect(withdrawalEvents()).toEqual([]);
+  });
+});
+describe("ask quality on the send path", () => {
+  const IDEMPOTENCY = "ask-quality-idempotency-0001";
+  const GOOD_NOTE = "I have shipped three design systems over four years and this Product Designer role matches that work.";
+  const VAGUE_NOTE = "I am applying and I hope you will consider my application and find it a good match for this opening at your company.";
+  const NOTE_WITH_EMAIL = `${GOOD_NOTE} You can reach me at asha.developer@gmail.com.`;
+
+  function setup() {
+    const app = express();
+    app.use(express.json());
+    const activity: Array<{ action: string; outcome?: string; metadata?: Record<string, unknown> }> = [];
+    let submittedNote = "";
+    const createCompanyReferralRequest = vi.fn(async (_userId: number, input: { personalPitch: string }) => {
+      submittedNote = input.personalPitch;
+      return { requestId: 901, companyDomain: "acme.com", notifiedEmployees: 1 };
+    });
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") ? { account: { id: 1, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } } : undefined,
+      createCompanyReferralRequest,
+      recordActivity: async input => { activity.push(input); },
+    } as unknown as PrivateReferralRouteDeps);
+    const send = (note: string) => request(app).post("/api/company-referrals").set("x-test-user", "seeker").set("Idempotency-Key", IDEMPOTENCY).send({ targetRoleUrl: "https://careers.acme.com/jobs/product-designer", attachmentIds: [77], candidateMessage: note });
+    return { send, createCompanyReferralRequest, activity, note: () => submittedNote };
+  }
+
+  it("refuses a note that carries an email, before any request or credit exists", async () => {
+    const { send, createCompanyReferralRequest, activity } = setup();
+    const response = await send(NOTE_WITH_EMAIL);
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe(PITCH_REFUSAL_CODE);
+    expect(response.body.error).toMatch(/Take out your email or phone number/);
+    // The refusal happens before the write: no ask, so no credit, slot, email or Slack delivery.
+    expect(createCompanyReferralRequest).not.toHaveBeenCalled();
+    // The audit row names the finding and never the note text itself.
+    expect(activity.find(item => item.outcome === "denied")?.metadata).toEqual({ refusedBy: "pitch_quality", pitchFindings: "contact_details", noteLength: NOTE_WITH_EMAIL.length });
+    expect(JSON.stringify(activity)).not.toContain("asha.developer@gmail.com");
+  });
+
+  it("refuses a note that asks the referrer to move to another channel", async () => {
+    const { send, createCompanyReferralRequest } = setup();
+    const response = await send(`${GOOD_NOTE} WhatsApp me and I will share the rest.`);
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe(PITCH_REFUSAL_CODE);
+    expect(createCompanyReferralRequest).not.toHaveBeenCalled();
+  });
+
+  it("sends a referable note and stores the findings snapshot without the note text", async () => {
+    const { send, createCompanyReferralRequest, activity, note } = setup();
+    const response = await send(GOOD_NOTE);
+    expect(response.status).toBe(201);
+    expect(response.body.requestId).toBe(901);
+    expect(createCompanyReferralRequest).toHaveBeenCalledTimes(1);
+    expect(note()).toBe(GOOD_NOTE);
+    const created = activity.find(item => item.action === "company_referral.created" && item.outcome === "success");
+    expect(created?.metadata).toMatchObject({ pitchFindings: "none", noteLength: GOOD_NOTE.length });
+  });
+
+  it("advises but never refuses on quality: a vague note still sends", async () => {
+    // GROWTH_STRATEGY.md: a server-side gate on note quality would gate the only demand there is.
+    const { send, createCompanyReferralRequest, activity } = setup();
+    expect((await send(VAGUE_NOTE)).status).toBe(201);
+    expect(createCompanyReferralRequest).toHaveBeenCalledTimes(1);
+    expect(activity.find(item => item.action === "company_referral.created" && item.outcome === "success")?.metadata).toMatchObject({ pitchFindings: "no_specifics" });
+  });
+
+  it("keeps the note-less ask allowed, storing the placeholder the round trip pins", async () => {
+    // server/askNoteRoundTrip.test.ts pins the stored placeholder; a missing note is not a refusal.
+    const { send, activity, note } = setup();
+    expect((await send("")).status).toBe(201);
+    expect(note()).toBe(NO_PERSONAL_NOTE_TEXT);
+    expect(activity.some(item => item.outcome === "denied")).toBe(false);
+    // The snapshot says "empty" rather than scoring the placeholder as a vague note.
+    expect(activity.find(item => item.action === "company_referral.created")?.metadata).toMatchObject({ pitchFindings: "empty" });
+  });
+
+  it("does not block a note whose numbers are results, not phone numbers", async () => {
+    const { send } = setup();
+    expect((await send("I cut our p95 latency by 320ms across 12 services in 2024 and led the migration for 3 teams.")).status).toBe(201);
   });
 });
