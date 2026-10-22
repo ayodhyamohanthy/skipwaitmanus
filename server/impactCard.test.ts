@@ -66,6 +66,12 @@ describe("loadImpactCard: the gates", () => {
     expect(await loadImpactCard(REFERRER, NOW)).toEqual({ state: "insufficient" });
   });
 
+  it("F2: the inactive-link gate holds on its own, with three answered asks already seeded", async () => {
+    const { asks, events } = threeAnswers();
+    seed({ links: [link({ isActive: false })], asks, events });
+    expect(await loadImpactCard(REFERRER, NOW)).toEqual({ state: "insufficient" });
+  });
+
   it("insufficient when the company is not listed", async () => {
     const { asks, events } = threeAnswers();
     seed({ companies: [company("hidden")], asks, events });
