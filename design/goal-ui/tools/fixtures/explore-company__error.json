@@ -1,0 +1,49 @@
+{
+  "signedIn": {
+    "id": "7",
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "route": "/explore/wipro",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 4
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/ask-drafts",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "draft": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/wipro",
+      "match": "exact",
+      "status": 500,
+      "body": {
+        "error": "We could not load this company. Check your connection and try again."
+      }
+    }
+  ]
+}
