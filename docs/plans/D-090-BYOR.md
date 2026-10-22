@@ -273,3 +273,11 @@ Until answered, implement the recommended defaults above; they are changeable wi
 ## Status
 
 D-090-BYOR: packet written — Qoder · db0e — 2026-10-23 — branch `agent/architect/d090-byor` — **not started**: D-086 demand list is the build gate and is not live; the four approved mocks are not in the repo (§12 Q5). Verified against `main` `d54c0ca8`.
+
+D-090-BYOR: **stopped at the §0 build gate — workbuddy · b0eb — 2026-10-23 — branch `agent/claude/d090-byor` — nothing built.** The picker handed this row to a builder, so the gate was re-checked on `main` `e0a43ff9` and is still closed:
+
+- **No D-086 queue task exists.** `docs/plans/assignments.json` has no row whose id mentions 086; the only occurrence is this row's own note.
+- **The public demand surface is not built.** `demandCount`, `seekerCount` and `distinctSeekers` appear nowhere in `server/`, `shared/` or `client/src/`; the decision's copy ("A few people asking") exists only in `docs/DECISIONS.md`; `/explore` has no demand UI. The only demand data today is `companySuggestions` votes, surfaced admin-only (`client/src/components/admin/reviewCases.ts:100-104`, "N seeker votes").
+- **D-086's own sync cell still reads "approved for build, after W0 #361 and W1 drawer"** — approved, not done.
+
+Per §0 and §11 nothing was written and no test was added. **Question for the CEO/owner:** build D-086 first and give it a queue task so this row can depend on it, or rule that BYOR may start ahead of it and amend §0. This row's `dependsOn` is `[]`, which is why the picker keeps offering a task that cannot start; changing queue gating is the CEO's call (D-085), so it was left alone and reported as blocked instead.
