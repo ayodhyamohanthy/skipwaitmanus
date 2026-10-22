@@ -101,10 +101,10 @@ export const CREDIT_PACKS_ON_SALE = true;
 export const PASS_SALES_ENABLED: boolean = true;
 
 /**
- * Plans held off self-serve sale even while passes are on (owner decision pending
- * on the Land plans that say "once reviewers are staffed"). Empty list = nothing held.
+ * Plans held off self-serve sale even while passes are on. Empty = nothing held
+ * (Land Focus and Sprint released with the other passes).
  */
-export const PASS_SALES_HELD_PLAN_IDS: readonly string[] = ["land_focus", "land_sprint"];
+export const PASS_SALES_HELD_PLAN_IDS: readonly string[] = [];
 
 export const FREE_PLAN: CatalogPlan & { id: "free" } = {
   id: "free", tier: "free", level: 1, label: "Free", levelLabel: null,
