@@ -101,9 +101,9 @@ In `server/db.referralPassReopen.test.ts` (its bespoke fake supports this path),
 - **An old ask passed before this ships:** its event is `pass`, so it keeps today's spent credit. Nothing is backfilled.
 
 ## 9. Definition of done
-- [ ] Gate, draft PR and independent review.
-- [ ] Docs: `docs/DECISIONS.md` D-035 and D-052 sync cells, the `AGENTS.md` living-map referral and credit rows, plan §6 (the legal lines in Terms, Refund and Cancellation that still say a decline keeps the credit spent, listed for the owner; agents do not edit legal text).
-- [ ] One check added to `server/dailyMoneyCheck.ts`: `released_pass_unrefunded`, any ask whose latest pickup-or-release event is `pass_release` and that then closed by expiry or withdrawal without exactly one refund row.
+- [x] Gate, draft PR and independent review. Gate green on `2acf64be` (tsc, full vitest in 4 shards, build); draft PR #471. The independent Tier 1 review is the landing gate (D-082), not part of this build.
+- [x] Docs: `docs/DECISIONS.md` D-035 and D-052 sync cells, the `AGENTS.md` living-map referral and credit rows, plan §6 (the legal lines in Terms, Refund and Cancellation that still say a decline keeps the credit spent, listed for the owner; agents do not edit legal text). Owner note: no legal line needed a hand edit — the Terms and Refund pages render `moneyCopy`'s CREDIT_RULE, so the new wording flows through; policyPages.test.tsx was aligned to assert it. The living-map row already reads "a referrer's decline reason decides what happens to the credit (D-035)".
+- [x] One check added to `server/dailyMoneyCheck.ts`: `released_pass_unrefunded`, any ask whose latest pickup-or-release event is `pass_release` and that then closed by expiry or withdrawal without exactly one refund row.
 - [ ] Live check; row done.
 
 ## 10. Review checklist
