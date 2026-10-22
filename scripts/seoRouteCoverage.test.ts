@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { isKnownRoute, KNOWN_ROUTE_PATTERNS } from "../functions/_middleware";
-import { SITEMAP_STATIC_ROUTES as STATIC_ROUTES } from "../shared/sitemap";
+import { STATIC_ROUTES } from "../functions/sitemap.xml";
 import { PUBLIC_ROUTES } from "../shared/publicRoutes";
 import { PUBLIC_PAGES, publicSnapshots } from "./prerender-public-pages";
 
@@ -13,7 +13,7 @@ import { PUBLIC_PAGES, publicSnapshots } from "./prerender-public-pages";
  *
  * - `client/src/App.tsx` — the screens the single-page app can actually render.
  * - `functions/_middleware.ts` — which of those paths report 200 instead of 404.
- * - `shared/publicRoutes.ts` / `shared/sitemap.ts` — which of them we ask
+ * - `shared/publicRoutes.ts` / `functions/sitemap.xml.ts` — which of them we ask
  *   a crawler to index.
  *
  * A route added to one list and not the others is a bug in whichever direction
