@@ -6,7 +6,7 @@
 // GET /api/company-referrals/inbox (new + saved); the unclaimed preview
 // supplies the pitch and document count. Public refs are the server's HMAC
 // R-XXXXX, never the sequential id.
-import { BadgeCheck, HandHelping } from "lucide-react";
+import { BadgeCheck, ChevronDown, ChevronUp, HandHelping } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/_core/auth";
@@ -16,6 +16,7 @@ import {
   GoalDetailPane,
   GoalEmptyState,
   GoalErrorState,
+  GoalIconButton,
   GoalListRow,
   GoalLockedPanel,
   GoalNum,
@@ -261,6 +262,10 @@ export default function MyCompanyInbox() {
             nowMs={nowMs}
             working={working}
             passOpen={passOpen}
+            onMove={step => {
+              const next = Math.max(0, Math.min(requests.length - 1, openIndex + step));
+              if (requests[next] && requests[next].id !== selected.id) setSelectedId(requests[next].id);
+            }}
             onPassOpen={setPassOpen}
             onAccept={() => { void review(selected.id, "approved"); }}
             onPass={reason => { void review(selected.id, "declined", reason); }}
@@ -275,9 +280,9 @@ export default function MyCompanyInbox() {
   return shell(body);
 }
 
-function QueueDetail({ item, index, count, preview, previewLoading, nowMs, working, passOpen, onPassOpen, onAccept, onPass, onBack }: {
+function QueueDetail({ item, index, count, preview, previewLoading, nowMs, working, passOpen, onMove, onPassOpen, onAccept, onPass, onBack }: {
   item: QueueItem; index: number; count: number; preview: Preview | null; previewLoading: boolean; nowMs: number;
-  working: boolean; passOpen: boolean; onPassOpen(open: boolean): void; onAccept(): void; onPass(reason: PassReasonCode): void; onBack(): void;
+  working: boolean; passOpen: boolean; onMove(step: -1 | 1): void; onPassOpen(open: boolean): void; onAccept(): void; onPass(reason: PassReasonCode): void; onBack(): void;
 }) {
   const left = daysLeft(item, nowMs);
   const reasons = splitWhyMe(preview?.candidateMessage ?? "");
@@ -292,21 +297,23 @@ function QueueDetail({ item, index, count, preview, previewLoading, nowMs, worki
       eyebrow={<>{fn ? `${fn} · ` : ""}{company}</>}
       refId={preview?.publicRef ?? item.publicRef}
       title={<span id="ask-role">{roleTitle(item)}</span>}
-      meta={[
+      meta={([
         left ? <span key="left"><GoalNum tone={left.soon ? "warn" : undefined}>{left.label}</GoalNum></span> : null,
         closes ? <span key="closes">Closes <GoalNum>{formatDay(closes) ?? ""}</GoalNum></span> : null,
         <span key="received">Received <GoalNum>{formatDay(item.createdAt) ?? ""}</GoalNum></span>,
-      ].filter((entry): entry is ReactNode => entry !== null)}
+      ] as (ReactNode | null)[]).filter(entry => entry !== null) as ReactNode[]}
       phoneBack={{ href: "/queue", label: "Referral queue" }}
       phonePosition={<GoalNum>{index + 1} / {count}</GoalNum>}
       dock={item.status === "pending" ? (
         <div className="border-t border-g-hairline px-3 py-3 gdesk:px-4">
           <GoalLockedPanel title="Identity and resume are shared after you accept" documentCount={preview?.attachments.length ?? 0} />
           <p className="mt-2 text-g-meta text-g-ink-3">Accepting shares names both ways and their resume. Referring comes later, through {company}&rsquo;s own process.</p>
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex items-center gap-1.5">
+            <GoalIconButton icon={ChevronUp} iconSize={18} aria-label="Previous ask" disabledReason={index <= 0 ? "First ask" : undefined} onClick={() => onMove(-1)} />
+            <GoalIconButton icon={ChevronDown} iconSize={18} aria-label="Next ask" disabledReason={index >= count - 1 ? "Last ask" : undefined} onClick={() => onMove(1)} />
             <span className="text-g-meta text-g-ink-3"><GoalNum>{index + 1} / {count}</GoalNum></span>
             <span className="ml-auto" />
-            <GoalButton variant="ghost" keys={["P"]} disabled={working} onClick={() => onPassOpen(true)}>Pass privately</GoalButton>
+            <GoalButton variant="ghost" keys={["P"]} disabledReason={working ? "Working…" : undefined} onClick={() => onPassOpen(true)}>Pass privately</GoalButton>
             <GoalButton variant="primary" keys={["A"]} busy={working} busyLabel="Working…" onClick={onAccept}>Accept &amp; connect</GoalButton>
           </div>
         </div>

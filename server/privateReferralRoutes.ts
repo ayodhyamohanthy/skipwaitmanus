@@ -1116,7 +1116,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const parsed = isRecordRow(row) ? withParsedJobFunction(row) : row;
       const id = Number((parsed as Record<string, unknown>).id);
       // W1: referrers quote the HMAC public ref, never the sequential id.
-      return Number.isInteger(id) && id > 0 ? { ...parsed, publicRef: publicAskRef(id) } : parsed;
+      return Number.isInteger(id) && id > 0 ? { ...(parsed as Record<string, unknown>), publicRef: publicAskRef(id) } : parsed;
     });
     return { requests: await withCompanyIdentities(withRefs), scope, hasEverReviewed };
   };
