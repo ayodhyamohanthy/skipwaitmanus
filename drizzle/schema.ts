@@ -1182,3 +1182,62 @@ export const aiToolCallLogs = mysqlTable("aiToolCallLogs", {
   userId: int("userId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("ai_tool_call_log_tool_idx").on(table.tool, table.createdAt)]);
+
+// Skippy step 5 (D-141): a seeker's own AI agents. Draft-only: scope lookups
+// and ask drafts, never send, never buy. The key itself is never stored -
+// only its sha256 hex and a short display prefix.
+export const seekerAgentGrants = mysqlTable("seekerAgentGrants", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 120 }).notNull(),
+  keyPrefix: varchar("keyPrefix", { length: 16 }).notNull(),
+  keyHash: varchar("keyHash", { length: 64 }).notNull(),
+  canLookup: boolean("canLookup").default(true).notNull(),
+  canDraft: boolean("canDraft").default(true).notNull(),
+  maxCreditsPerAsk: int("maxCreditsPerAsk").notNull(),
+  maxCreditsPerDay: int("maxCreditsPerDay").notNull(),
+  maxCreditsPerWeek: int("maxCreditsPerWeek").notNull(),
+  maxAsksPerDay: int("maxAsksPerDay").notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  revokedAt: timestamp("revokedAt"),
+  lastUsedAt: timestamp("lastUsedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("seeker_agent_grants_key_hash_unique").on(table.keyHash), index("seeker_agent_grants_user_idx").on(table.userId)]);
+
+// Pause-all (D-141): one row per seeker; pausedAt set means every agent of
+// theirs is refused until resumed.
+export const seekerAgentControls = mysqlTable("seekerAgentControls", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  pausedAt: timestamp("pausedAt"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("seeker_agent_controls_user_unique").on(table.userId)]);
+
+export const seekerAgentDrafts = mysqlTable("seekerAgentDrafts", {
+  id: int("id").autoincrement().primaryKey(),
+  grantId: int("grantId").notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companySlug: varchar("companySlug", { length: 48 }).notNull(),
+  targetRoleUrl: varchar("targetRoleUrl", { length: 2048 }).notNull(),
+  note: varchar("note", { length: 2000 }).default("").notNull(),
+  jobLevel: int("jobLevel").notNull(),
+  creditCost: int("creditCost").notNull(),
+  status: mysqlEnum("status", ["draft", "discarded"]).default("draft").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("seeker_agent_drafts_grant_idx").on(table.grantId, table.createdAt), index("seeker_agent_drafts_user_idx").on(table.userId, table.createdAt)]);
+
+// Audit log (D-141): every agent call and every grant lifecycle action, with
+// the agent's name snapshotted so the log still reads after a revoke. The key
+// and its hash are never written here.
+export const seekerAgentEvents = mysqlTable("seekerAgentEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  grantId: int("grantId"),
+  agentName: varchar("agentName", { length: 120 }).notNull(),
+  action: varchar("action", { length: 48 }).notNull(),
+  outcome: mysqlEnum("outcome", ["success", "denied", "failure"]).notNull(),
+  detail: varchar("detail", { length: 600 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("seeker_agent_events_grant_idx").on(table.grantId, table.createdAt), index("seeker_agent_events_user_idx").on(table.userId, table.createdAt)]);
