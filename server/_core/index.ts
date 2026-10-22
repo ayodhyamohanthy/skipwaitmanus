@@ -44,6 +44,8 @@ import { registerDevAuthRoutes, resolveDevIdentity } from "./devAuth";
 import { serveStatic, setupVite } from "./vite";
 import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
 import { registerCompanyDirectoryRoutes } from "../companyDirectoryRoutes";
+import { registerSitemapRoutes } from "../sitemapRoutes";
+import { listCompanyDirectory } from "../companyDirectory";
 import { registerScheduledJobsRoutes } from "../scheduledJobsRoutes";
 import { registerEmployerRoutes } from "../employerRoutes";
 import { employerSponsorshipEnabled } from "../billingSettings";
@@ -206,6 +208,9 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Server-owned company directory: public /api/companies reads and the
   // admin-gated /api/admin/companies writes (server/companyDirectoryRoutes.ts).
   registerCompanyDirectoryRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  // skipwait.me/sitemap.xml routes to the Worker (wrangler routes), which
+  // forwards it here: the sitemap's live reads come straight from the DB.
+  registerSitemapRoutes(app, { listJobs: input => db.listJobs(input), listCompanySlugs: async () => (await listCompanyDirectory()).companies });
   registerScheduledJobsRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity }); // Worker cron tick + admin job status
   // B2B monetization surface: employer accounts, unlock credits, anonymized
   // talent discovery, sponsored roles, and contextual partner modules.
