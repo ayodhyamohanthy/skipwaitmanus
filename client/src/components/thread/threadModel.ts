@@ -63,9 +63,9 @@ export function seekerWaitingCopy(request: Pick<ThreadRequest, "companyDomain" |
   if (request.queueStatus === "waiting_for_coverage") return `No verified ${company} employee is available yet. Your ask waits at no cost, and when one can see it, 1 credit is used — we'll notify you.`;
   const days = askDaysShown({ createdAt: request.createdAt }, nowMs);
   const when = days === null || days < 0 ? null : days === 0 ? "Expires today" : days === 1 ? "Expires tomorrow" : `Expires in ${days} days`;
-  if (held) return when ? `Sent privately to the ${company} employee whose link you used. ${when} if they don't respond — your slot returns automatically.` : `Sent privately to the ${company} employee whose link you used.`;
+  if (held) return when ? `Sent privately to the ${company} employee whose link you used. ${when} if they don't respond. Your credit comes back, unless its month or plan has ended by then.` : `Sent privately to the ${company} employee whose link you used.`;
   if (!when) return `Waiting for a verified ${company} referrer.`;
-  return `Waiting for a verified ${company} referrer. ${when} if nobody accepts — your slot returns automatically.`;
+  return `Waiting for a verified ${company} referrer. ${when} if nobody accepts. Your credit comes back, unless its month or plan has ended by then.`;
 }
 
 /** Referrer-side pending line: the real expiry first, then the existing "no reply needed" reassurance. */

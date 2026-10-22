@@ -113,7 +113,7 @@ export function SeekerConversation(props: Props) {
 
         <div className="mt-6 flex items-center justify-between gap-3">
           <GoalStatus status={view.status} label={view.label} className="text-g-label" />
-          {view.stepper ? <GoalMiniStepper stage={view.stepper.stage} terminal={view.stepper.terminal} status={view.status} /> : null}
+          {view.stepper ? <GoalMiniStepper stage={view.stepper.stage} terminal={view.stepper.terminal} label={`Stage ${view.stepper.stage + 1} of 4: ${view.label}`} /> : null}
         </div>
         {line ? <p className="mt-2 text-pretty text-g-meta text-g-ink-2">{line}</p> : null}
         {props.referrerName ? <p className="mt-1 text-g-meta text-g-ink-2">Your referrer <span className="text-g-ink">{props.referrerName}</span></p> : null}
@@ -123,7 +123,7 @@ export function SeekerConversation(props: Props) {
         {props.referenceId ? <p className="mt-2 text-g-meta text-g-ink">Referred. Reference ID <GoalNum>{props.referenceId}</GoalNum></p> : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {canWithdraw && confirm !== "withdraw" ? <GoalButton variant="ghost" size="sm" onClick={() => { setActionError(""); setConfirm("withdraw"); }}>Withdraw ask</GoalButton> : null}
+          {canWithdraw && confirm !== "withdraw" ? <GoalButton variant="ghost" flush size="sm" onClick={() => { setActionError(""); setConfirm("withdraw"); }}>Withdraw ask</GoalButton> : null}
           {request.status === "approved" && confirm !== "email" ? <GoalButton variant="outline" size="sm" onClick={() => { setActionError(""); setConfirm("email"); }}>I got the referral email</GoalButton> : null}
           {closedFor ? <GoalButton variant="outline" size="sm" asChild><Link href="/explore">Find another referrer</Link></GoalButton> : null}
           {stage === "Hired" ? <Link href="/landed" className="text-g-meta text-g-ink-2 underline underline-offset-2">Open the landed journey</Link> : null}
@@ -136,7 +136,7 @@ export function SeekerConversation(props: Props) {
             <p className="text-g-label text-g-ink">Withdraw this ask?</p>
             <p className="mt-1 text-pretty text-g-meta text-g-ink-2">{awaitingCoverage ? "It never reached a verified employee, so no credit was used." : "It leaves the referrer’s queue and frees your slot."}</p>
             <div className="mt-3 flex items-center gap-2">
-              <GoalButton variant="ghost" size="sm" onClick={() => setConfirm(null)}>Keep it</GoalButton>
+              <GoalButton variant="ghost" flush size="sm" onClick={() => setConfirm(null)}>Keep it</GoalButton>
               <GoalButton variant="outline" size="sm" busy={busy} busyLabel="Withdrawing…" onClick={() => { void run(props.onWithdraw, "We could not withdraw this request"); }}>Withdraw</GoalButton>
             </div>
           </div>
@@ -146,7 +146,7 @@ export function SeekerConversation(props: Props) {
             <p className="text-g-label text-g-ink">Confirm you received the referral email?</p>
             <p className="mt-1 text-pretty text-g-meta text-g-ink-2">This tells your referrer you got it and counts the ask as referred.</p>
             <div className="mt-3 flex items-center gap-2">
-              <GoalButton variant="ghost" size="sm" onClick={() => setConfirm(null)}>Cancel</GoalButton>
+              <GoalButton variant="ghost" flush size="sm" onClick={() => setConfirm(null)}>Cancel</GoalButton>
               <GoalButton variant="outline" size="sm" busy={busy} busyLabel="Confirming…" onClick={() => { void run(props.onConfirmReferredEmail, "We could not record your confirmation"); }}>Confirm</GoalButton>
             </div>
           </div>
@@ -157,8 +157,8 @@ export function SeekerConversation(props: Props) {
           <h2 className="g-num text-g-ink-3 uppercase">Conversation</h2>
           {request.pitch ? (
             <div data-testid="conversation-ask" className={`py-3 ${props.messages.length > 0 ? "border-b border-g-hairline" : ""}`}>
-              <p className="text-g-meta text-g-ink-2"><span className="font-semibold">You</span>{sent ? <> <GoalNum className="text-g-ink-3">{`Ask · ${sent}`}</GoalNum></> : null}</p>
-              <p className="mt-1 break-words text-g-body text-g-ink">“{request.pitch}”</p>
+              <p className="flex items-baseline gap-2 text-g-meta text-g-ink-2"><span className="font-semibold">You</span>{sent ? <GoalNum className="text-g-ink-3">{`Ask · ${sent}`}</GoalNum> : null}</p>
+              <p className="mt-1 break-words whitespace-pre-line text-g-body text-g-ink">{request.pitch}</p>
             </div>
           ) : null}
           <ul>
@@ -166,7 +166,7 @@ export function SeekerConversation(props: Props) {
               const when = stamp(message.createdAt);
               return (
                 <li key={message.id} className="border-b border-g-hairline py-3">
-                  <p className="text-g-meta text-g-ink-2"><span className="font-semibold">{message.isMine ? "You" : props.referrerLabel}</span>{when ? <> <GoalNum className="text-g-ink-3">{when}</GoalNum></> : null}</p>
+                  <p className="flex items-baseline gap-2 text-g-meta text-g-ink-2"><span className="font-semibold">{message.isMine ? "You" : props.referrerLabel}</span>{when ? <GoalNum className="text-g-ink-3">{when}</GoalNum> : null}</p>
                   <p className="mt-1 break-words text-g-body text-g-ink">{message.body}</p>
                 </li>
               );
