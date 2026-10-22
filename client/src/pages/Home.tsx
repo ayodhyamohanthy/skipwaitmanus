@@ -7,27 +7,37 @@ import { applySeo, faqJsonLd } from "@/lib/seo";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { VisualJourney } from "@/components/VisualJourney";
 import { LANDING_H1_LINES, LANDING_HERO_LEAD_PARTS } from "@shared/landingContent";
+import { FREE_ASKS_CHIP, MONEY_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
+import GoalLanding from "./GoalLanding";
+import GoalLandingV9 from "./GoalLandingV9";
+import { GOAL_UI_LANDING, GOAL_UI_LANDING_V9 } from "@/lib/goalFlags";
 import CookieConsent from "@/components/CookieConsent";
 
 const QUESTIONS = [
-  ["Are job referrals really free?", "Yes. No payments between seekers and referrers, no referral commission, and no paid priority. A referral is a voluntary introduction, not a purchase."],
+  ["What does asking for a referral cost?", `${MONEY_SENTENCE} There is no referral commission and no paid priority: a referral is a voluntary introduction, not a purchase.`],
   ["Do I need to know someone at the company?", "No existing connection is required. Explore companies with available referrers, find a relevant role, and send a thoughtful request. Each referrer chooses which requests to accept."],
   ["What does verification mean?", "Work-email verification confirms ownership of an address on an approved company domain. It does not prove current employment or imply an employer’s endorsement."],
   ["Does a referral guarantee an interview?", "No. A referral is an introduction, not a promise. Employers independently decide who to interview and hire."],
 ];
 
 export default function Home() {
-  const { isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
   const [menu, setMenu] = useState(false);
   const [faq, setFaq] = useState<number | null>(0);
+  // D-120 migration: signed-out visitors get the goal-first landing behind the
+  // flag (off in production until QA verifies). Signed-in visitors keep the
+  // existing page until the Home surface migrates.
+  const goalLanding = GOAL_UI_LANDING && isLoaded && !isSignedIn;
   useEffect(() => {
-    applySeo({ title: "Free job referrals. A warmer way in", description: "SkipWait connects job seekers with people inside the companies they want to join. Free referrals, private connections, and honest expectations.", path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
-  }, []);
+    if (goalLanding) return;
+    applySeo({ title: `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}`, description: `skipwait.me connects job seekers with people inside the companies they want to join. ${MONEY_SENTENCE}`, path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
+  }, [goalLanding]);
+  if (goalLanding) return GOAL_UI_LANDING_V9 ? <GoalLandingV9 /> : <GoalLanding />;
 
   return (
     <div className="launch-page">
       <header className="launch-header">
-        <Link className="wordmark" href="/" aria-label="SkipWait home">SkipWait<span className="brand-dot">.</span></Link>
+        <Link className="wordmark" href="/" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         <nav aria-label="Website navigation" className={menu ? "launch-nav open" : "launch-nav"}>
           <Link href="/explore" onClick={() => setMenu(false)}>Explore companies</Link>
           <Link href="/referrer" onClick={() => setMenu(false)}>For referrers</Link>
@@ -44,18 +54,18 @@ export default function Home() {
         <section className="launch-hero">
           <img className="launch-hero-image" src="/launch-door.jpg" alt="An open blue door with a yellow path leading through it" width={1600} height={1008} fetchPriority="high" />
           <div className="launch-hero-copy">
-            <span className="launch-kicker"><span />INTRODUCING SKIPWAIT</span>
+            <span className="launch-kicker"><span />INTRODUCING SKIPWAIT.ME</span>
             <h1>{LANDING_H1_LINES[0]}<br />{LANDING_H1_LINES[1]}<span className="brand-dot">.</span></h1>
             <p>{LANDING_HERO_LEAD_PARTS[0]}<br className="desktop-break" /> {LANDING_HERO_LEAD_PARTS[1]}</p>
             <Button asChild><Link href="/explore">Explore companies <ArrowUpRight /></Link></Button>
             <Link className="hero-secondary" href="/referrer">Already on the inside? Become a referrer <ArrowRight size={14} /></Link>
-            <div className="hero-assurances"><span><Check size={13} />Referrals are free</span><span><Check size={13} />Explore before signing in</span></div>
+            <div className="hero-assurances"><span><Check size={13} />{FREE_ASKS_CHIP}</span><span><Check size={13} />Explore before signing in</span></div>
           </div>
           <span className="hero-side-note">YOUR NEXT CHAPTER STARTS WITH A CONNECTION.</span>
         </section>
-        <section className="launch-trust-strip" aria-label="Our commitments"><span><HeartHandshake />No referral fees.</span><span><LockKeyhole />Private by default.</span><span><ShieldCheck />No job guarantees.</span></section>
+        <section className="launch-trust-strip" aria-label="Our commitments"><span><HeartHandshake />{REFERRERS_NEVER_PAID}</span><span><LockKeyhole />Private by default.</span><span><ShieldCheck />No job guarantees.</span></section>
         <section className="launch-section launch-companies">
-          <div className="section-intro"><span className="eyebrow">OPEN DOORS AT LAUNCH</span><h2>Start somewhere real.</h2><p>People at these companies have told SkipWait they are open to referral requests. Availability can change, and every person chooses each ask.</p></div>
+          <div className="section-intro"><span className="eyebrow">OPEN DOORS AT LAUNCH</span><h2>Start somewhere real.</h2><p>People at these companies have told skipwait.me they are open to referral requests. Availability can change, and every person chooses each ask.</p></div>
           <div className="launch-company-row">
             {LAUNCH_COMPANY_SEED.map(company => <Link key={company.slug} href={`/explore/${company.slug}`}><span className="company-mark">{company.initials}</span><strong>{company.name}</strong><ArrowUpRight /></Link>)}
           </div>
@@ -104,11 +114,11 @@ export default function Home() {
           <span className="eyebrow">SMALL CONNECTION. BIG NEXT STEP.</span>
           <h2>What’s on the other side?</h2>
           <Button asChild><Link href="/explore">Explore companies <ArrowUpRight /></Link></Button>
-          <p>Referrals are free. Always.</p>
+          <p>{MONEY_SENTENCE}</p>
         </section>
       </main>
       <footer className="launch-footer">
-        <Link className="wordmark" href="/" aria-label="SkipWait home">SkipWait<span className="brand-dot">.</span></Link>
+        <Link className="wordmark" href="/" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         <span>A warmer way in. · skipwait.me</span>
         {/* Kit phone CSS puts every footer span on row 2; the links take row 3 so they never overlap the tagline. */}
         <span className="flex flex-wrap gap-4 max-[769px]:row-start-3!">

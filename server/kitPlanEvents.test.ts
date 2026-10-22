@@ -42,9 +42,11 @@ describe("parseSubscriptionEvent over the kit price book", () => {
     expect(prices.INR).toBeGreaterThan(0);
   });
 
-  it("keeps reading grandfathered Pro and Max subscriptions as monthly", () => {
-    expect(parseSubscriptionEvent(subscriptionEvent("skipwait_pro_monthly-INR"))).toMatchObject({ plan: "pro", interval: "monthly", currency: "INR" });
-    expect(parseSubscriptionEvent(subscriptionEvent("skipwait_max_monthly-USD", { currency_code: "USD" }))).toMatchObject({ plan: "max", interval: "monthly", currency: "USD" });
+  // D-067: Pro and Max are removed completely. A late event for one still parses
+  // (so it is recorded and alerted) but names no plan and no term, so nothing is granted.
+  it("reads a retired Pro or Max item price as no plan and no term, keeping the ids it carries", () => {
+    expect(parseSubscriptionEvent(subscriptionEvent("skipwait_pro_monthly-INR"))).toMatchObject({ plan: undefined, interval: undefined, subscriptionId: "subscription_kit", itemPriceId: "skipwait_pro_monthly-INR", currency: "INR", hostedPageId: "page_kit", passThruContent: "intent_kit" });
+    expect(parseSubscriptionEvent(subscriptionEvent("skipwait_max_monthly-USD", { currency_code: "USD" }))).toMatchObject({ plan: undefined, interval: undefined, subscriptionId: "subscription_kit", itemPriceId: "skipwait_max_monthly-USD", currency: "USD" });
   });
 
   it("ignores an item price outside the price book, which the wallet then refuses", () => {

@@ -16,8 +16,9 @@ const db = fixture.tables;
 const at = (iso: string) => new Date(iso);
 const SEEKER = 7;
 const OTHER = 8;
-const wallet = (patch: Row = {}): Row => ({ id: 1, userId: SEEKER, role: "job_seeker", balance: 2, monthlyCreditsRemaining: 4, monthlyAllowance: 10, monthlyCycleKey: "2026-09", plan: "pro", subscriptionId: "sub_pro", subscriptionStatus: "active", subscriptionCurrency: "USD", subscriptionCurrentTermStart: at("2026-09-06T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-10-06T00:00:00Z"), subscriptionResourceVersion: 10, updatedAt: at("2026-09-06T00:00:00Z"), ...patch });
-const renewal = (patch: Row = {}) => ({ eventId: "ev_renew_oct", eventType: "subscription_renewed", subscriptionId: "sub_pro", plan: "pro" as const, status: "active", currency: "USD" as const, currentTermStart: at("2026-10-06T00:00:00Z"), currentTermEnd: at("2026-11-06T00:00:00Z"), resourceVersion: 20, ...patch });
+// A Start 30-day pass (10 credits a cycle, one month of carryover) from 6 Sep to 6 Oct.
+const wallet = (patch: Row = {}): Row => ({ id: 1, userId: SEEKER, role: "job_seeker", balance: 2, monthlyCreditsRemaining: 4, monthlyAllowance: 10, monthlyCycleKey: "2026-09", plan: "start", subscriptionId: "sub_start", subscriptionStatus: "active", subscriptionCurrency: "USD", subscriptionCurrentTermStart: at("2026-09-06T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-10-06T00:00:00Z"), subscriptionResourceVersion: 10, updatedAt: at("2026-09-06T00:00:00Z"), ...patch });
+const renewal = (patch: Row = {}) => ({ eventId: "ev_renew_oct", eventType: "subscription_renewed", subscriptionId: "sub_start", plan: "start" as const, status: "active", currency: "USD" as const, currentTermStart: at("2026-10-06T00:00:00Z"), currentTermEnd: at("2026-11-05T00:00:00Z"), resourceVersion: 20, ...patch });
 const purchaseRow = (): Row => ({ id: 1, userId: SEEKER, role: "job_seeker", tokenCount: 2, kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: "41", idempotencyKey: "payment-credit-41", createdAt: at("2026-08-01T00:00:00Z") });
 const txns = (filter: Row = {}) => db.txns.filter(row => Object.entries(filter).every(([key, value]) => row[key] === value));
 const iso = (value: unknown) => (value instanceof Date ? value.toISOString() : value);
@@ -35,12 +36,12 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
 
 describe("plan cycles from webhook-confirmed renewals", () => {
-  it("a legacy Pro renewal carries the cycle's leftover for one month and grants the new cycle, once", async () => {
-    expect(await applyChargebeeSubscriptionEvent(renewal())).toMatchObject({ status: "applied", plan: "pro" });
-    expect(db.wallets[0]).toMatchObject({ plan: "pro", balance: 2, monthlyAllowance: 10, monthlyCreditsRemaining: 10, monthlyCycleKey: "2026-10" });
+  it("a Start renewal carries the cycle's leftover for one month and grants the new cycle, once", async () => {
+    expect(await applyChargebeeSubscriptionEvent(renewal())).toMatchObject({ status: "applied", plan: "start" });
+    expect(db.wallets[0]).toMatchObject({ plan: "start", balance: 2, monthlyAllowance: 10, monthlyCreditsRemaining: 10, monthlyCycleKey: "2026-10" });
     expect(db.grants).toHaveLength(1);
-    expect(db.grants[0]).toMatchObject({ userId: SEEKER, source: "carryover", subscriptionId: "sub_pro", planId: "pro", cycleKey: "2026-09", tokenCount: 4, creditsRemaining: 4, status: "active" });
-    // Pro is grandfathered at Start: one month of carryover (Sep cycle + 1 month).
+    expect(db.grants[0]).toMatchObject({ userId: SEEKER, source: "carryover", subscriptionId: "sub_start", planId: "start", cycleKey: "2026-09", tokenCount: 4, creditsRemaining: 4, status: "active" });
+    // Start carries one month: the Sep cycle plus 1 month.
     expect(iso(db.grants[0].expiresAt)).toBe("2026-11-06T00:00:00.000Z");
     expect(txns({ kind: "plan_credit_carryover" }).map(row => [row.tokenCount, row.source, row.creditGrantId ?? null])).toEqual([[-4, "monthly_allowance", null], [4, "carryover_grant", db.grants[0].id]]);
     expect(txns({ kind: "plan_grant" })).toEqual([expect.objectContaining({ tokenCount: 10, source: "monthly_allowance", sourceCycleKey: "2026-10" })]);
@@ -63,7 +64,7 @@ describe("plan cycles from webhook-confirmed renewals", () => {
   });
 
   it("a seeker's own subscription ending by webhook ends its plan credits; purchased credits stay; Free's month opens", async () => {
-    db.grants.push({ id: 1, userId: SEEKER, role: "job_seeker", source: "carryover", grantKey: "carry:x", planId: "pro", subscriptionId: "sub_pro", cycleKey: "2026-08", tokenCount: 3, creditsRemaining: 3, status: "active", grantedAt: at("2026-09-06T00:00:00Z"), expiresAt: at("2026-10-06T00:00:00Z"), closedAt: null });
+    db.grants.push({ id: 1, userId: SEEKER, role: "job_seeker", source: "carryover", grantKey: "carry:x", planId: "start", subscriptionId: "sub_start", cycleKey: "2026-08", tokenCount: 3, creditsRemaining: 3, status: "active", grantedAt: at("2026-09-06T00:00:00Z"), expiresAt: at("2026-10-06T00:00:00Z"), closedAt: null });
     await applyChargebeeSubscriptionEvent(renewal({ eventId: "ev_cancel", eventType: "subscription_cancelled", status: "cancelled", currentTermStart: at("2026-09-06T00:00:00Z"), currentTermEnd: at("2026-10-06T00:00:00Z") }));
     // Back on Free: the paid cycle's leftover expires and Free's 3 credits for October are granted, once.
     expect(db.wallets[0]).toMatchObject({ plan: "free", balance: 2, monthlyAllowance: 3, monthlyCreditsRemaining: 3, monthlyCycleKey: "2026-10" });
@@ -113,9 +114,10 @@ describe("spending", () => {
 });
 
 describe("reconcile and the scheduled safety net", () => {
-  it("a yearly Max term opens a cycle every month, catching up missed months, and carries up to 3 months", async () => {
+  it("a 90-day Momentum pass opens a cycle every month, catching up missed months, and carries up to 3 months", async () => {
     db.txns = [];
-    db.wallets[0] = wallet({ plan: "max", subscriptionId: "sub_max", monthlyAllowance: 36, monthlyCreditsRemaining: 25, balance: 0, monthlyCycleKey: "2026-09", subscriptionCurrentTermStart: at("2026-09-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2027-09-01T00:00:00Z") });
+    // 1 Sep + 90 days = 30 Nov: three monthly cycles (Sep, Oct, Nov).
+    db.wallets[0] = wallet({ plan: "momentum", subscriptionId: "sub_mom", monthlyAllowance: 36, monthlyCreditsRemaining: 25, balance: 0, monthlyCycleKey: "2026-09", subscriptionCurrentTermStart: at("2026-09-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-11-30T00:00:00Z") });
     expect(await listWalletsDueForCreditCycle(at("2026-11-15T00:00:00Z"), 50)).toEqual([SEEKER]);
     expect(await reconcileSeekerCredits(SEEKER, at("2026-11-15T00:00:00Z"))).toEqual({ changed: true });
     expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2026-11", monthlyCreditsRemaining: 36 });
@@ -125,16 +127,39 @@ describe("reconcile and the scheduled safety net", () => {
     expect(await reconcileSeekerCredits(SEEKER, at("2026-11-15T01:00:00Z"))).toEqual({ changed: false });
     expect(await listWalletsDueForCreditCycle(at("2026-11-15T01:00:00Z"), 50)).toEqual([]);
     expect(db.txns).toHaveLength(6);
-    // January: the September carry has rolled off (one ledger row), two more cycles open.
+    // A reader whose clock is behind (another instance, before the boundary) never rolls the wallet back.
+    expect(await reconcileSeekerCredits(SEEKER, at("2026-10-31T23:59:00Z"))).toEqual({ changed: false });
+    expect(db.txns).toHaveLength(6);
+    vi.setSystemTime(at("2026-11-15T02:00:00Z"));
+    const summary = await getTokenWallet(SEEKER, "job_seeker");
+    expect(summary.ledger).toMatchObject({ creditsPerMonth: 36, carryover: 3, buckets: { cycle: 36, carriedOver: 61 }, planCreditsExpiringSoon: null, nextExpiry: { credits: 25, expiresAt: "2027-01-01T00:00:00.000Z" } });
+    expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
+  });
+
+  it("a yearly Keep warm term opens a cycle every month across the year boundary, and dated carries roll off with one row each", async () => {
+    db.txns = [];
+    db.wallets[0] = wallet({ plan: "keep_warm", subscriptionId: "sub_warm", monthlyAllowance: 4, monthlyCreditsRemaining: 3, balance: 0, monthlyCycleKey: "2026-09", subscriptionCurrentTermStart: at("2026-09-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2027-09-01T00:00:00Z") });
+    expect(await listWalletsDueForCreditCycle(at("2026-11-15T00:00:00Z"), 50)).toEqual([SEEKER]);
+    expect(await reconcileSeekerCredits(SEEKER, at("2026-11-15T00:00:00Z"))).toEqual({ changed: true });
+    expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2026-11", monthlyCreditsRemaining: 4 });
+    expect(txns({ kind: "plan_grant" }).map(row => [row.sourceCycleKey, row.tokenCount])).toEqual([["2026-10", 4], ["2026-11", 4]]);
+    // September's window (Sep + 1 month) had already closed when it was caught up: it expires; October's carries to 1 Dec.
+    expect(txns({ kind: "plan_credit_expiry" })).toEqual([expect.objectContaining({ tokenCount: -3, sourceCycleKey: "2026-09" })]);
+    expect(db.grants.map(grant => [grant.cycleKey, grant.tokenCount, iso(grant.expiresAt)])).toEqual([["2026-10", 4, "2026-12-01T00:00:00.000Z"]]);
+    expect(await reconcileSeekerCredits(SEEKER, at("2026-11-15T01:00:00Z"))).toEqual({ changed: false });
+    // January: October's carry has rolled off (one ledger row), December and January open.
     await reconcileSeekerCredits(SEEKER, at("2027-01-02T00:00:00Z"));
     expect(db.grants[0]).toMatchObject({ status: "expired", creditsRemaining: 0 });
-    expect(txns({ kind: "plan_credit_expiry", creditGrantId: db.grants[0].id })).toEqual([expect.objectContaining({ tokenCount: -25 })]);
-    expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2027-01", monthlyCreditsRemaining: 36 });
+    expect(txns({ kind: "plan_credit_expiry", creditGrantId: db.grants[0].id })).toEqual([expect.objectContaining({ tokenCount: -4 })]);
+    expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2027-01", monthlyCreditsRemaining: 4 });
+    expect(txns({ kind: "plan_grant" }).map(row => row.sourceCycleKey)).toEqual(["2026-10", "2026-11", "2026-12", "2027-01"]);
     // A reader whose clock is behind (another instance, before the boundary) never rolls the wallet back.
+    const written = db.txns.length;
     expect(await reconcileSeekerCredits(SEEKER, at("2026-12-31T23:59:00Z"))).toEqual({ changed: false });
+    expect(db.txns).toHaveLength(written);
     vi.setSystemTime(at("2027-01-02T00:00:00Z"));
     const summary = await getTokenWallet(SEEKER, "job_seeker");
-    expect(summary.ledger).toMatchObject({ creditsPerMonth: 36, carryover: 3, buckets: { cycle: 36, carriedOver: 108 }, planCreditsExpiringSoon: null, nextExpiry: { credits: 36, expiresAt: "2027-02-01T00:00:00.000Z" } });
+    expect(summary.ledger).toMatchObject({ creditsPerMonth: 4, carryover: 1, buckets: { cycle: 4, carriedOver: 4 }, nextExpiry: { credits: 4, expiresAt: "2027-02-01T00:00:00.000Z" } });
     expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
   });
 
@@ -142,7 +167,7 @@ describe("reconcile and the scheduled safety net", () => {
     vi.setSystemTime(at("2026-10-07T00:00:00Z"));
     const waiting = await getTokenWallet(SEEKER, "job_seeker");
     expect(db.txns).toEqual([purchaseRow()]);
-    expect(db.wallets[0]).toMatchObject({ plan: "pro", monthlyCreditsRemaining: 4 });
+    expect(db.wallets[0]).toMatchObject({ plan: "start", monthlyCreditsRemaining: 4 });
     // Not spendable while the plan reads as lapsed, but not destroyed either.
     expect(waiting.ledger).toMatchObject({ buckets: { cycle: 0 }, balance: 2 });
     await applyChargebeeSubscriptionEvent(renewal());
@@ -164,7 +189,7 @@ describe("reconcile and the scheduled safety net", () => {
     await getTokenWallet(SEEKER, "job_seeker");
     expect(txns({ kind: "plan_grant", sourceCycleKey: "2026-10" })).toHaveLength(1);
     // Same month: a webhook moves the wallet to a new paid term, which then lapses again.
-    Object.assign(db.wallets[0], { plan: "pro", subscriptionId: "sub_two", subscriptionStatus: "non_renewing", subscriptionCurrentTermStart: at("2026-10-06T02:00:00Z"), subscriptionCurrentTermEnd: at("2026-10-07T00:00:00Z"), monthlyCreditsRemaining: 0, monthlyAllowance: 0, monthlyCycleKey: "2026-10" });
+    Object.assign(db.wallets[0], { plan: "start", subscriptionId: "sub_two", subscriptionStatus: "non_renewing", subscriptionCurrentTermStart: at("2026-10-06T02:00:00Z"), subscriptionCurrentTermEnd: at("2026-10-07T00:00:00Z"), monthlyCreditsRemaining: 0, monthlyAllowance: 0, monthlyCycleKey: "2026-10" });
     vi.setSystemTime(at("2026-10-08T00:00:00Z"));
     await getTokenWallet(SEEKER, "job_seeker");
     expect(db.wallets[0]).toMatchObject({ plan: "free", monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: "2026-10" });
@@ -199,6 +224,50 @@ describe("reconcile and the scheduled safety net", () => {
     expect(txns({ userId: 9 })).toHaveLength(1);
     expect(await ensureTokenWallet(9, "referrer")).toMatchObject({ monthlyAllowance: 3, monthlyCreditsRemaining: 3 });
     expect(txns({ userId: 9 })).toHaveLength(1);
+  });
+});
+
+// D-067: Pro and Max are removed completely (owner attests no subscribers; no dry run).
+// A wallet still marked pro or max is lapsed now: the existing ledger roll moves it to
+// Free with one row per credit that ends, keeps its purchased credits and its
+// subscription id, and the ledger audit keeps reconciling. Nothing is deleted.
+describe("a wallet still marked with a retired plan", () => {
+  const legacyWallet = (plan: "pro" | "max"): Row => wallet({ plan, subscriptionId: `sub_${plan}`, monthlyAllowance: 10, monthlyCreditsRemaining: 4, monthlyCycleKey: "2026-10", subscriptionCurrentTermStart: at("2026-10-06T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-11-06T00:00:00Z") });
+  const legacyHistory = (plan: "pro" | "max"): Row[] => [
+    purchaseRow(),
+    { id: 2, userId: SEEKER, role: "job_seeker", tokenCount: -3, kind: "plan_credit_carryover", source: "monthly_allowance", sourceCycleKey: "2026-09", referenceType: "plan_cycle", referenceId: "2026-09:legacy", idempotencyKey: `carry-out:${plan}-sep`, createdAt: at("2026-10-06T00:00:00Z") },
+    { id: 3, userId: SEEKER, role: "job_seeker", tokenCount: 3, kind: "plan_credit_carryover", source: "carryover_grant", sourceCycleKey: "2026-09", referenceType: "credit_grant", referenceId: "1", idempotencyKey: "carry-in:1", creditGrantId: 1, createdAt: at("2026-10-06T00:00:00Z") },
+    { id: 4, userId: SEEKER, role: "job_seeker", tokenCount: 10, kind: "plan_grant", source: "monthly_allowance", sourceCycleKey: "2026-10", referenceType: "plan_cycle", referenceId: "2026-10:legacy", idempotencyKey: `plan-cycle:${plan}-oct`, createdAt: at("2026-10-06T00:00:00Z") },
+    { id: 5, userId: SEEKER, role: "job_seeker", tokenCount: -6, kind: "credit_spend", source: "monthly_allowance", sourceCycleKey: "2026-10", referenceType: "tool_run", referenceId: "run-legacy#1", idempotencyKey: "tool-run-legacy#1", createdAt: at("2026-10-07T00:00:00Z") },
+  ];
+  const legacyCarry = (plan: "pro" | "max"): Row => ({ id: 1, userId: SEEKER, role: "job_seeker", source: "carryover", grantKey: `carry:${plan}-sep`, planId: plan, subscriptionId: `sub_${plan}`, cycleKey: "2026-09", tokenCount: 3, creditsRemaining: 3, status: "active", grantedAt: at("2026-10-06T00:00:00Z"), expiresAt: at("2026-11-06T00:00:00Z"), closedAt: null });
+
+  it.each(["pro", "max"] as const)("an active %s wallet is read as Free through the ledger roll, and the audit still reconciles", async plan => {
+    fixture.reset({ wallets: [legacyWallet(plan)], txns: legacyHistory(plan), grants: [legacyCarry(plan)], users: [{ id: SEEKER, canonicalPersonId: 1 }] });
+    vi.setSystemTime(at("2026-10-15T00:00:00Z"));
+    expect(await getCreditLedgerAudit()).toMatchObject({ mismatches: [], integrity: [] });
+    // The hourly plan-credit-cycles job finds it too, so a wallet nobody reads still moves.
+    expect(await listWalletsDueForCreditCycle(at("2026-10-15T00:00:00Z"), 50)).toEqual([SEEKER]);
+
+    const summary = await getTokenWallet(SEEKER, "job_seeker");
+    expect(summary).toMatchObject({ plan: "free", totalAvailable: 5, ledger: { creditsPerMonth: 3, carryover: 0, buckets: { cycle: 3, carriedOver: 0, purchased: 2 } } });
+    expect(db.wallets[0]).toMatchObject({ plan: "free", subscriptionStatus: "cancelled", subscriptionId: `sub_${plan}`, balance: 2, monthlyAllowance: 3, monthlyCreditsRemaining: 3, monthlyCycleKey: "2026-10" });
+    // The retired cycle's leftover and the carried grant each expire with exactly one row; Free's month is granted once.
+    expect(txns({ kind: "plan_credit_expiry", source: "monthly_allowance" })).toEqual([expect.objectContaining({ tokenCount: -4, sourceCycleKey: "2026-10" })]);
+    expect(txns({ kind: "plan_credit_expiry", creditGrantId: 1 })).toEqual([expect.objectContaining({ tokenCount: -3, source: "carryover_grant" })]);
+    expect(db.grants[0]).toMatchObject({ planId: plan, status: "expired", creditsRemaining: 0 });
+    expect(txns({ kind: "plan_grant", tokenCount: 3, sourceCycleKey: "2026-10" })).toHaveLength(1);
+    // History stays: every retired-plan row is still there.
+    for (const row of legacyHistory(plan)) expect(db.txns).toContainEqual(expect.objectContaining({ id: row.id, kind: row.kind, tokenCount: row.tokenCount }));
+    expect(await getCreditLedgerAudit()).toMatchObject({ mismatches: [], integrity: [] });
+
+    // A second read, and the hourly job, write nothing.
+    const written = db.txns.length;
+    await getTokenWallet(SEEKER, "job_seeker");
+    expect(await reconcileSeekerCredits(SEEKER, at("2026-10-15T01:00:00Z"))).toEqual({ changed: false });
+    expect(await listWalletsDueForCreditCycle(at("2026-10-15T01:00:00Z"), 50)).toEqual([]);
+    expect(db.txns).toHaveLength(written);
+    expect((await listCreditLedger(SEEKER, "job_seeker", 100)).length).toBeGreaterThan(0);
   });
 });
 

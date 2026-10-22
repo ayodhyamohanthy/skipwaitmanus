@@ -6,6 +6,7 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
+import { LAND_NOT_ON_SALE_LINE } from "@shared/assistant";
 
 const PROVIDERS = ["chatgpt", "claude", "custom"] as const;
 type Provider = (typeof PROVIDERS)[number];
@@ -91,7 +92,7 @@ export default function ConnectAssistant() {
         if (response.ok && typeof payload.clientName === "string") {
           setClientName(payload.clientName);
           // OAuth clients register themselves (dynamic registration), so the name is self-declared and
-          // SkipWait has verified none of them: always show the unverified-app screen, never a trusted consent.
+          // skipwait.me has verified none of them: always show the unverified-app screen, never a trusted consent.
           setStage(current => (current === "consent" ? "unverified" : current));
         } else setStage("expired");
       } catch { setStage("expired"); }
@@ -158,17 +159,17 @@ export default function ConnectAssistant() {
 
   return (
     <main data-skipwait-screen="connect-assistant" className="mx-auto min-h-screen max-w-lg px-4 py-8 sm:py-14">
-      <Link href="/" className="wordmark mb-6 inline-block text-xl">SkipWait<span className="brand-dot">.</span></Link>
+      <Link href="/" className="wordmark mb-6 inline-block text-xl"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
 
       {stage === "consent" ? (
         <>
           <div className="flex items-center gap-3"><span className="grid size-14 place-items-center rounded-2xl bg-muted"><Bot className="size-7" /></span><ArrowRight aria-hidden className="size-6 translate-y-1 text-muted-foreground" /><span className="grid size-14 place-items-center rounded-2xl bg-primary text-xl font-bold text-primary-foreground">S</span></div>
-          <h1 className="mt-5 text-3xl font-semibold">Connect {label} to SkipWait</h1>
-          <p className="mt-2 text-muted-foreground">{label} will be able to use SkipWait as <strong className="text-foreground">{email ?? "you"}</strong>. <button type="button" className="text-link" onClick={() => { void signOut({ returnTo: `${window.location.pathname}${window.location.search}` }).catch(() => setError("Sign out could not be completed. Please try again.")); }}>Switch account</button></p>
+          <h1 className="mt-5 text-3xl font-semibold">Connect {label} to skipwait.me</h1>
+          <p className="mt-2 text-muted-foreground">{label} will be able to use skipwait.me as <strong className="text-foreground">{email ?? "you"}</strong>. <button type="button" className="text-link" onClick={() => { void signOut({ returnTo: `${window.location.pathname}${window.location.search}` }).catch(() => setError("Sign out could not be completed. Please try again.")); }}>Switch account</button></p>
           {errorLine}
           <Panel className="mt-6"><h2 className="font-semibold">It can</h2><ul className="mt-2">{CAN.map(item => <li key={`${item.label}-${item.key}`}><label className="flex min-h-12 cursor-pointer items-center gap-3 border-b border-border py-2 last:border-0"><input type="checkbox" className="size-5 accent-[var(--primary)]" checked={checked.includes(item.key)} onChange={() => toggle(item.key, item.locked)} disabled={item.locked} /><span className="text-sm">{item.label}</span></label></li>)}</ul></Panel>
           <Panel tone="muted" className="mt-3"><h2 className="font-semibold">It can never</h2><ul className="mt-2 space-y-2 text-sm">{NEVER.map(item => <li key={item} className="flex gap-2"><X className="size-4 shrink-0 text-destructive" />{item}</li>)}</ul></Panel>
-          <p className="mt-4 flex gap-2 text-xs text-muted-foreground"><Lock className="size-4 shrink-0" /><span>Nothing it drafts is sent until you approve it in SkipWait. You can disconnect anytime in Settings → Connected assistants.{callback ? ` Callback: ${callback}` : ""}</span></p>
+          <p className="mt-4 flex gap-2 text-xs text-muted-foreground"><Lock className="size-4 shrink-0" /><span>Nothing it drafts is sent until you approve it in skipwait.me. You can disconnect anytime in Settings → Connected assistants.{callback ? ` Callback: ${callback}` : ""}</span></p>
           <div className="mt-6 grid gap-2 sm:grid-cols-2"><Button variant="outline" size="lg" onClick={cancel}>Cancel connection</Button><Button size="lg" disabled={working} onClick={() => { void approve(checked); }}>{working ? "Connecting…" : "Approve"}</Button></div>
         </>
       ) : null}
@@ -177,7 +178,7 @@ export default function ConnectAssistant() {
         <>
           <Panel className="border-destructive">
             <ShieldAlert className="size-8 text-destructive" />
-            <h1 className="mt-3 text-2xl font-semibold">{oauth && clientName ? `“${clientName}” isn't verified by SkipWait` : "This app isn't verified by SkipWait"}</h1>
+            <h1 className="mt-3 text-2xl font-semibold">{oauth && clientName ? `“${clientName}” isn't verified by skipwait.me` : "This app isn't verified by skipwait.me"}</h1>
             <p className="mt-2 text-sm text-muted-foreground">It connected through the open MCP link. It can only read and draft until it&apos;s verified. Only continue if you trust it.</p>
             {errorLine}
             <div className="mt-5 grid gap-2 sm:grid-cols-2"><Button variant="outline" onClick={cancel}>Cancel</Button><Button disabled={working} onClick={() => { setChecked(["read", "draft"]); void approve(["read", "draft"]); }}>{working ? "Connecting…" : "Continue, read & draft only"}</Button></div>
@@ -192,7 +193,7 @@ export default function ConnectAssistant() {
           <Bot className="mx-auto size-8" />
           <h1 className="mt-3 text-2xl font-semibold">Sign in to connect {label}</h1>
           <p className="mt-2 text-sm text-muted-foreground">You'll come straight back here after signing in.</p>
-          <SignInButton><button type="button" className={buttonVariants({ size: "lg", className: "mt-5 w-full" })}>Sign in to SkipWait</button></SignInButton>
+          <SignInButton><button type="button" className={buttonVariants({ size: "lg", className: "mt-5 w-full" })}>Sign in to skipwait.me</button></SignInButton>
         </Panel>
       ) : null}
 
@@ -201,7 +202,8 @@ export default function ConnectAssistant() {
           <ShieldCheck className="mx-auto size-8 text-primary" />
           <h1 className="mt-3 text-2xl font-semibold">Assistants need Land</h1>
           <p className="mt-2 text-sm text-muted-foreground">Signing in, connecting and applying through ChatGPT, Claude, bots or your own tools is part of Land and Concierge.</p>
-          <div className="mt-5 grid gap-2"><Button asChild size="lg"><Link href="/plans">Upgrade to Land</Link></Button><Button variant="ghost" asChild><Link href="/explore">Keep using SkipWait yourself</Link></Button></div>
+          <p className="mt-3 text-sm">{LAND_NOT_ON_SALE_LINE}</p>
+          <div className="mt-5 grid gap-2"><Button variant="outline" asChild size="lg"><Link href="/explore">Keep using skipwait.me yourself</Link></Button></div>
         </Panel>
       ) : null}
 
@@ -226,7 +228,7 @@ export default function ConnectAssistant() {
         <Panel className="text-center">
           <ShieldAlert className="mx-auto size-8" />
           <h1 className="mt-3 text-2xl font-semibold">Connection cancelled</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{label} has no access to your SkipWait account.</p>
+          <p className="mt-2 text-sm text-muted-foreground">{label} has no access to your skipwait.me account.</p>
         </Panel>
       ) : null}
     </main>

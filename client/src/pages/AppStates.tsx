@@ -26,7 +26,7 @@ export function AppStatesGallery() {
   const [view, setView] = useState<{ state: AppState; run: number }>({ state: "Install (Android)", run: 0 });
   const show = (state: AppState) => setView(current => ({ state, run: current.run + 1 }));
   return <main data-skipwait-screen="app-states" className="page-content">
-    <Heading eyebrow="APP & SYSTEM SCREENS" title="Every edge, designed" text="How SkipWait behaves when installing, asking permission, or when something goes wrong." />
+    <Heading eyebrow="APP & SYSTEM SCREENS" title="Every edge, designed" text="How skipwait.me behaves when installing, asking permission, or when something goes wrong." />
     <div className="mb-5 flex flex-wrap items-center gap-2 text-xs" role="group" aria-label="Screen">
       <span className="text-muted-foreground">Screen:</span>
       {APP_STATES.map(state => <button key={state} type="button" onClick={() => show(state)} aria-pressed={view.state === state} className={`min-h-8 rounded-full border px-3 ${view.state === state ? "border-primary bg-primary/5 font-semibold" : "border-border hover:bg-muted"}`}>{state}</button>)}

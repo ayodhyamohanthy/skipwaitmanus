@@ -2,6 +2,7 @@ import { z } from "zod";
 import { companyIdentityFieldsSchema } from "@shared/companies";
 import { jobFunctionFieldSchema, type JobFunction } from "@shared/jobFunctions";
 import { isPostApprovalReferralStatus, referralStatuses, type ReferralStatus } from "@shared/referral";
+import { isOpenAskAttachment, referrerAskAttachmentSchema, type ReferrerAskAttachment } from "@shared/referrerAskView";
 import { readApiJson } from "@/lib/apiResponse";
 
 /*
@@ -11,19 +12,14 @@ import { readApiJson } from "@/lib/apiResponse";
  */
 
 const FALLBACK_ERROR = "We could not complete this private thread action";
-const NETWORK_ERROR = "We couldn't reach SkipWait. Check your connection and try again.";
+const NETWORK_ERROR = "We couldn't reach skipwait.me. Check your connection and try again.";
 const MALFORMED_ERROR = "We could not read this private thread. Try again in a moment.";
 
 const statusSchema = z.enum(referralStatuses);
 const timestampSchema = z.union([z.string(), z.number()]).nullish();
 
-const attachmentSchema = z.object({
-  id: z.number().int(),
-  fileName: z.string(),
-  mimeType: z.string().nullish(),
-  fileSize: z.number().nullish(),
-  url: z.string().nullish(),
-});
+// Before acceptance a file arrives locked (counted, never named or linked); after it, named (shared/referrerAskView.ts).
+const attachmentSchema = referrerAskAttachmentSchema;
 
 /** Seeker's own row from GET /api/company-referrals/mine. */
 const seekerRowSchema = z.object({
@@ -41,6 +37,10 @@ const seekerRowSchema = z.object({
   referrerMessage: z.string().nullish(),
   createdAt: timestampSchema,
   attachmentCount: z.number().nullish(),
+  heldForReferrer: z.boolean().nullish().catch(null),
+  unclaimedAssignment: z.boolean().optional().catch(undefined),
+  // D-034/D-047: which coverage state the ask is in (server-computed); drives the waiting/held seeker copy.
+  queueStatus: z.enum(["available_for_review", "waiting_for_coverage", "held_for_credit"]).nullish(),
 });
 const mineSchema = z.object({ requests: z.array(z.looseObject({ id: z.number() })) });
 
@@ -72,6 +72,9 @@ const detailSchema = z.object({
     referrerId: z.number().int().nullish(),
     status: statusSchema,
     attachments: z.array(attachmentSchema).nullish(),
+    decisionDueAt: z.string().nullish(),
+    referredDueAt: z.string().nullish(),
+    extensionUsed: z.boolean().nullish(),
   }),
 });
 
@@ -103,8 +106,20 @@ export type ThreadRequest = {
   createdAt: string | number | null;
   attachments: readonly ThreadAttachment[];
   attachmentCount: number;
+  /** Seeker side only: a personal-link ask its employee has not acted on still counts as unclaimed (D-050). */
+  heldForReferrer?: boolean;
+  /** Seeker side only: assigned to one referrer who has not claimed it, by personal link or queue allocation (P0-allocated-ask-stuck). */
+  unclaimedAssignment?: boolean;
+  /** Seeker side only: coverage state of a pending ask (D-034/D-047/D-061). */
+  queueStatus?: "available_for_review" | "waiting_for_coverage" | "held_for_credit" | null;
+  /** Referrer side only: when the viewer's own claim/allocation decision is due (D-038-A). */
+  decisionDueAt?: string | null;
+  /** Referrer side only: when the Referred decision is due for an accepted ask (D-038-B). */
+  referredDueAt?: string | null;
+  /** Referrer side only: whether the one 3-day extension was already used (D-038-B). */
+  extensionUsed?: boolean;
 };
-export type ThreadMessage = { id: number; body: string; isMine: boolean };
+export type ThreadMessage = { id: number; body: string; isMine: boolean; createdAt?: string | number | null };
 export type ThreadRole = "seeker" | "referrer-pending" | "referrer-claimed";
 type TokenGetter = () => Promise<string | null>;
 
@@ -127,8 +142,9 @@ function parse<T>(schema: z.ZodType<T>, payload: unknown): T {
   return result.data;
 }
 
-function attachmentsOf(list: readonly z.infer<typeof attachmentSchema>[] | null | undefined): ThreadAttachment[] {
-  return (list ?? []).map(file => ({ id: file.id, fileName: file.fileName, url: file.url ?? null }));
+/** Named files only; a locked file counts toward attachmentCount but is never listed. */
+function attachmentsOf(list: readonly ReferrerAskAttachment[] | null | undefined): ThreadAttachment[] {
+  return (list ?? []).filter(isOpenAskAttachment).map(file => ({ id: file.id, fileName: file.fileName, url: file.url ?? null }));
 }
 
 /** Resolve which side of the thread the viewer stands on, then load it. */
@@ -142,7 +158,7 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
       request: {
         id: own.id, title: own.title ?? null, pitch: own.pitch ?? null, candidateName: null, targetRoleUrl: own.targetRoleUrl ?? null,
         companyDomain: own.companyDomain, companyName: own.companyName ?? null, companyInitials: own.companyInitials ?? null, jobFunction: own.jobFunction ?? null, status: own.status, referrerId: own.referrerId ?? null, referrerName: own.referrerName ?? null, referrerTitle: own.referrerTitle ?? null, referrerMessage: own.referrerMessage ?? null,
-        createdAt: own.createdAt ?? null, attachments: [], attachmentCount: own.attachmentCount ?? 0,
+        createdAt: own.createdAt ?? null, attachments: [], attachmentCount: own.attachmentCount ?? 0, heldForReferrer: own.heldForReferrer === true, unclaimedAssignment: own.unclaimedAssignment === true, queueStatus: own.queueStatus ?? null,
       },
     };
   }
@@ -151,7 +167,6 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
   catch { /* not an available preview for this account; try the claimed detail */ }
   if (previewPayload) {
     const { request } = parse(previewSchema, previewPayload);
-    const attachments = attachmentsOf(request.attachments);
     return {
       role: "referrer-pending",
       // The preview endpoint only ever serves pending, unclaimed asks. The
@@ -160,7 +175,7 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
       request: {
         id: request.id, title: request.title ?? null, pitch: request.candidateMessage ?? null, candidateName: null, targetRoleUrl: request.targetRoleUrl ?? null,
         companyDomain: request.companyDomain, companyName: request.companyName ?? null, companyInitials: request.companyInitials ?? null, jobFunction: request.jobFunction ?? null, status: "pending", referrerId: null, referrerMessage: null, createdAt: null,
-        attachments: [], attachmentCount: attachments.length,
+        attachments: [], attachmentCount: request.attachments?.length ?? 0,
       },
     };
   }
@@ -173,14 +188,14 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
     request: {
       id: request.id, title: request.title ?? null, pitch: request.candidateMessage ?? null, candidateName: accepted ? request.candidateName ?? null : null,
       targetRoleUrl: request.targetRoleUrl ?? null, companyDomain: request.companyDomain, companyName: request.companyName ?? null, companyInitials: request.companyInitials ?? null, jobFunction: request.jobFunction ?? null, status: request.status, referrerId: request.referrerId ?? null,
-      referrerMessage: null, createdAt: null, attachments: accepted ? attachments : [], attachmentCount: attachments.length,
+      referrerMessage: null, createdAt: null, attachments: accepted ? attachments : [], attachmentCount: request.attachments?.length ?? 0, decisionDueAt: request.decisionDueAt ?? null, referredDueAt: request.referredDueAt ?? null, extensionUsed: request.extensionUsed ?? false,
     },
   };
 }
 
 export async function loadConversation(requestId: number, getToken: TokenGetter): Promise<{ messages: ThreadMessage[]; referenceId: string | null }> {
   const payload = parse(conversationSchema, await authedFetch(`/api/company-referrals/${requestId}/conversation`, getToken));
-  return { messages: (payload.messages ?? []).map(message => ({ id: message.id, body: message.body, isMine: message.isMine })), referenceId: payload.referenceId ?? null };
+  return { messages: (payload.messages ?? []).map(message => ({ id: message.id, body: message.body, isMine: message.isMine, createdAt: message.createdAt })), referenceId: payload.referenceId ?? null };
 }
 
 export async function sendConversationMessage(requestId: number, body: string, getToken: TokenGetter) {
@@ -201,4 +216,16 @@ export async function recordProgress(requestId: number, status: string, getToken
 
 export async function withdrawThreadRequest(requestId: number, getToken: TokenGetter) {
   return authedFetch(`/api/company-referrals/${requestId}/withdraw`, getToken, { method: "POST" });
+}
+
+export async function extendReferredDeadline(requestId: number, getToken: TokenGetter) {
+  return authedFetch(`/api/company-referrals/${requestId}/extend-referred-deadline`, getToken, { method: "POST" });
+}
+
+export async function stepBackFromReferral(requestId: number, getToken: TokenGetter) {
+  return authedFetch(`/api/company-referrals/${requestId}/step-back`, getToken, { method: "POST" });
+}
+
+export async function confirmReferredBySeeker(requestId: number, getToken: TokenGetter) {
+  return authedFetch(`/api/company-referrals/${requestId}/confirm-referred`, getToken, { method: "POST" });
 }

@@ -76,14 +76,17 @@ describe("ReferrerImpact dashboard", () => {
     renderImpact();
     expect(await screen.findByText("Recent referrals")).toBeTruthy();
     // Kit v4 impact: the three metrics the referrer controls come from history, then the operational counts.
-    // outcomes shared and credits remaining are both 3 here on purpose — a loose getByText("3") would match twice.
+    // Read per label: a loose getByText("3") would pass on whichever stat rendered first, and D-055's
+    // "no 3 on screen" guard can no longer express anything now that a real metric can be 3.
     expect(statValue("introductions")).toBe("2");
     expect(statValue("active conversations")).toBe("1");
     expect(statValue("outcomes shared")).toBe("3");
     expect(statValue("referrals accepted")).toBe("4");
     expect(statValue("pending decisions")).toBe("5");
     expect(statValue("unread messages")).toBe("6");
-    expect(statValue("credits remaining")).toBe("3");
+    // D-055: recognition only. The server still sends creditsRemaining; a referrer is never shown a credit balance.
+    expect(screen.queryByText(/credits remaining/i)).toBeNull();
+    expect(screen.getByText(/skipwait.me never pays referrers\./)).toBeTruthy();
     expect(screen.getByText("acme.com")).toBeTruthy();
     expect(screen.getByText("Accepted 2 days ago")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open my inbox" }).getAttribute("href")).toBe("/inbox");
@@ -93,7 +96,7 @@ describe("ReferrerImpact dashboard", () => {
   it("shows a verified referrer's impact when the server verified a work email the SSO sign-in does not carry (D-019)", async () => {
     authState.isSignedIn = true;
     stubFetch(url => {
-      if (url.endsWith("/api/company-referrals/access")) return { ok: true, json: async () => ({ verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "SkipWait", companyInitials: "SW" }) };
+      if (url.endsWith("/api/company-referrals/access")) return { ok: true, json: async () => ({ verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "skipwait.me", companyInitials: "SW" }) };
       if (url.endsWith("/api/referrer/impact-summary")) return { ok: true, json: async () => ({ acceptedReferrals: 0, pendingRequests: 1, declinedRequests: 0, unreadMessages: 0, creditsRemaining: 3, recentAccepted: [] }) };
       return { ok: true, json: async () => ({}) };
     });

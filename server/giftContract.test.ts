@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import * as giftContract from "@shared/giftSubscriptions";
 import {
   buyerUserIdFromGifter,
-  giftCheckoutRequestSchema,
   giftClaimRequestSchema,
   gifterCustomerId,
   isGiftStatus,
@@ -9,19 +9,9 @@ import {
 } from "@shared/giftSubscriptions";
 
 describe("gift subscription contract", () => {
-  it("accepts Pro/Max on the matching billing route", () => {
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "pro", currency: "USD", billingCountry: "INTL" }).success).toBe(true);
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "max", currency: "INR", billingCountry: "IN" }).success).toBe(true);
-  });
-
-  it("rejects every invalid edge and tolerates unknown fields", () => {
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "free", currency: "USD", billingCountry: "INTL" }).success).toBe(false);
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "pro", currency: "USD", billingCountry: "IN" }).success).toBe(false);
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "pro", currency: "INR", billingCountry: "INTL" }).success).toBe(false);
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "pro", currency: "EUR", billingCountry: "INTL" }).success).toBe(false);
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "pro", currency: "USD" }).success).toBe(false);
-    expect(giftCheckoutRequestSchema.safeParse({}).success).toBe(false);
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "pro", currency: "USD", billingCountry: "INTL", receiverEmail: "a@b.com" }).success).toBe(true);
+  // D-067: gifts only ever sold Pro or Max, so no gift can be bought any more.
+  it("has no gift checkout request: nothing can be gifted", () => {
+    expect(giftContract).not.toHaveProperty("giftCheckoutRequestSchema");
   });
 
   it("round-trips the gifter customer reference", () => {

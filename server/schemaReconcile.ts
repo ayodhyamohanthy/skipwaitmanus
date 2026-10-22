@@ -7,6 +7,28 @@ import { getDb } from "./db";
 // New tables are created idempotently (IF NOT EXISTS) so a drifted live DB
 // self-heals without manual migration runs. Keep in sync with drizzle/schema.ts.
 export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
+  { table: "billingReviewOutbox", createSql: `CREATE TABLE IF NOT EXISTS \`billingReviewOutbox\` (
+ \`id\` int AUTO_INCREMENT NOT NULL PRIMARY KEY,
+ \`obligationKey\` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ \`payload\` text NULL,
+ \`conflictDigest\` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ \`envelope\` text NULL,
+ \`submissionState\` varchar(20) NOT NULL DEFAULT 'never_submitted',
+ \`updatedAt\` timestamp(3) NOT NULL,
+ \`status\` varchar(16) NOT NULL DEFAULT 'pending',
+ \`attempts\` int NOT NULL DEFAULT 0,
+ \`nextAttemptAt\` timestamp(3) NOT NULL,
+ \`leaseOwner\` varchar(64) NULL,
+ \`leaseUntil\` timestamp(3) NULL,
+ \`firstAttemptAt\` timestamp(3) NULL,
+ \`acceptedAt\` timestamp(3) NULL,
+ \`providerMessageId\` varchar(255) NULL,
+ \`lastError\` varchar(80) NULL,
+ \`createdAt\` timestamp(3) NOT NULL,
+ UNIQUE INDEX \`billing_review_obligation_unique\` (\`obligationKey\`),
+ INDEX \`billing_review_due_idx\` (\`status\`, \`nextAttemptAt\`, \`id\`)
+) ENGINE=InnoDB` },
+  { table: "aiToolCallLogs", createSql: `CREATE TABLE IF NOT EXISTS \`aiToolCallLogs\` (\`id\` int AUTO_INCREMENT NOT NULL, \`tool\` varchar(64) NOT NULL, \`model\` varchar(128) NOT NULL, \`tokensIn\` int NOT NULL, \`tokensOut\` int NOT NULL, \`costUsdMicros\` bigint NULL, \`planFamilyId\` varchar(32) NULL, \`userId\` int NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`aiToolCallLogs_id\` PRIMARY KEY(\`id\`), INDEX \`ai_tool_call_log_tool_idx\`(\`tool\`,\`createdAt\`))` },
   { table: "referralRequestSaves", createSql: `CREATE TABLE IF NOT EXISTS \`referralRequestSaves\` (\`id\` int AUTO_INCREMENT NOT NULL, \`referralRequestId\` int NOT NULL, \`referrerId\` int NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`referralRequestSaves_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`referral_request_save_request_referrer_unique\`(\`referralRequestId\`,\`referrerId\`), INDEX \`referral_request_save_referrer_idx\`(\`referrerId\`,\`createdAt\`), INDEX \`referral_request_save_request_idx\`(\`referralRequestId\`))` },
   { table: "referralRequestPasses", createSql: `CREATE TABLE IF NOT EXISTS \`referralRequestPasses\` (\`id\` int AUTO_INCREMENT NOT NULL, \`referralRequestId\` int NOT NULL, \`referrerId\` int NOT NULL, \`reason\` ENUM('role_not_a_fit','cannot_support','timing') NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`referralRequestPasses_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`referral_request_pass_request_referrer_unique\`(\`referralRequestId\`,\`referrerId\`), INDEX \`referral_request_pass_referrer_idx\`(\`referrerId\`,\`createdAt\`))` },
   { table: "workEmailOtpRateLimits", createSql: `CREATE TABLE IF NOT EXISTS \`workEmailOtpRateLimits\` (\`id\` int AUTO_INCREMENT NOT NULL, \`limiterKey\` varchar(96) NOT NULL, \`windowStart\` timestamp NOT NULL, \`hitCount\` int NOT NULL DEFAULT 1, \`expiresAt\` timestamp NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`workEmailOtpRateLimits_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`work_email_otp_rate_window_unique\`(\`limiterKey\`,\`windowStart\`), INDEX \`work_email_otp_rate_expiry_idx\`(\`expiresAt\`))` },
@@ -146,6 +168,16 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "referralRequests", column: "opportunityId", definition: "INT NULL" },
   { table: "referralRequests", column: "firstLookReferrerId", definition: "INT NULL" },
   { table: "referralRequests", column: "firstLookUntil", definition: "TIMESTAMP NULL" },
+  // D-034/D-047/D-061 (0095): first visibility starts the 7-day clock; an ask
+  // held for credit keeps coverageHeldAt until the sweep delivers it. Both are
+  // nullable and older rows read through coalesce(coverageVisibleAt, createdAt).
+  { table: "referralRequests", column: "coverageVisibleAt", definition: "TIMESTAMP NULL" },
+  { table: "referralRequests", column: "coverageHeldAt", definition: "TIMESTAMP NULL" },
+  // D-079 (0096): card validation for free credits. Both nullable; a null
+  // cardValidatedAt means "no validated card" and a null chargebeeCustomerId
+  // means the provider customer is created on first use.
+  { table: "tokenBalances", column: "cardValidatedAt", definition: "TIMESTAMP NULL" },
+  { table: "users", column: "chargebeeCustomerId", definition: "VARCHAR(80) NULL" },
 ];
 
 // Indexes for OTP lookup and idempotency/atomic-spend contracts. Applied
@@ -214,6 +246,8 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "subscriptionCancellationFeedback", name: "subscription_cancellation_feedback_user_idx", columns: "`userId`,`createdAt`", nonUnique: true },
   // D-022 referrer-posted roles (0094): the first-look-release sweep scans by this clock.
   { table: "referralRequests", name: "referral_requests_first_look_idx", columns: "`firstLookUntil`", nonUnique: true },
+  // D-047 (0095): the coverage-delivery sweep scans held asks by this clock.
+  { table: "referralRequests", name: "referral_requests_coverage_held_idx", columns: "`coverageHeldAt`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is

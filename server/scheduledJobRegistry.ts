@@ -1,11 +1,14 @@
+import { runBillingReviewOutbox } from "./billingReviewOutbox";
 // The scheduled jobs the Worker cron runs (contract: shared/scheduledJobs.ts).
 // Each window runs at most once (server/scheduledJobRunner.ts); a job's window
 // is a whole number of cron periods so every period lands in exactly one.
 import { ASK_TTL_DAYS } from "../shared/referral";
 import { createAskExpirySweep } from "./askExpirySweep";
+import { createCoverageDeliverySweep } from "./coverageDeliverySweep";
+import { createDailyMoneyCheck } from "./dailyMoneyCheck";
 import { createFirstLookRelease } from "./firstLookRelease";
 import { createPlanCreditCycleJob } from "./planCreditCycleJob";
-import { createChargebeePendingReconcile } from "./chargebeePendingReconcile";
+import { createChargebeePendingReconcile, createSubscriptionPendingReconcile } from "./chargebeePendingReconcile";
 import { createDataExportSweep } from "./dataExport";
 import { createWorkEmailReverifySweep } from "./workEmailReverifySweep";
 import { createWorkEmailOtpPurgeJob } from "./workEmailOtpPurge";
@@ -43,6 +46,16 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     run: createChargebeePendingReconcile(),
   },
   {
+    // GO-LIVE-1b ruling 3: a paid pass always activates - the hourly safety net
+    // under a missed webhook. Paid pending pass checkouts activate from their
+    // provider checkout page; expired unpaid ones are marked cancelled.
+    name: "chargebee-subscription-reconcile",
+    description: "Re-checks pending pass checkouts older than 10 minutes (up to 3 days) and activates the paid ones the webhook missed; expired unpaid checkouts are marked cancelled",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createSubscriptionPendingReconcile(),
+  },
+  {
     name: "work-email-reverify-sweep",
     description: "DRY RUN: counts verified referrers past the 90-day work-email re-check (grandfathered to 16 Oct 2026 + 90 days); changes nothing",
     windowMs: 60 * MINUTE,
@@ -63,4 +76,19 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     leaseMs: 5 * MINUTE,
     run: createWorkEmailOtpPurgeJob(),
   },
+  {
+    name: "coverage-delivery-retry",
+    description: "Offers waiting and held asks to their company's available referrers, oldest first: spends the credit at first visibility (D-034) and holds a creditless ask once (D-047)",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createCoverageDeliverySweep(),
+  },
+  {
+    name: "daily-money-check",
+    description: "Read-only daily audit: every wallet against the ledger, one purchase credit per credited payment, parked payments and refunds, stale checkouts; emails the owner any mismatch, never writes",
+    windowMs: 24 * 60 * MINUTE,
+    leaseMs: 15 * MINUTE,
+    run: createDailyMoneyCheck(),
+  },
+  { name: "billing-review-retry", description: "Retries durable billing review notifications; expired ambiguous submissions need operator reconciliation", windowMs: 60 * MINUTE, leaseMs: 5 * MINUTE, run: () => runBillingReviewOutbox() },
 ];

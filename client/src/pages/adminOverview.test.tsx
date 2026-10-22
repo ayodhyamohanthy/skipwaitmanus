@@ -81,7 +81,7 @@ describe("AdminOverview", () => {
     expect(within(snapshot).getByText("Company coverage").parentElement?.querySelector("strong")?.textContent).toBe("5");
     expect(screen.getByText("Employer subscriptions")).toBeTruthy();
     expect(screen.getByText("Promoted employer profiles")).toBeTruthy();
-    expect(screen.getByText("Referrals remain free")).toBeTruthy();
+    expect(screen.getByText("Referrers are never paid")).toBeTruthy();
     // The kit overview ends after the chart: no coverage-gap or tools panels.
     expect(screen.queryByLabelText("Coverage gaps")).toBeNull();
     expect(screen.queryByLabelText("Operations tools")).toBeNull();

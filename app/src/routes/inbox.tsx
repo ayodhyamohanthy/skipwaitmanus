@@ -7,7 +7,7 @@ import { pageMeta } from "@/lib/page-meta";
 import { Heading, StateChips } from "@/components/preview-kit";
 
 export const Route = createFileRoute("/inbox")({
-  head: () => pageMeta("Your inbox", "Private conversations that begin when a SkipWait referrer accepts your request — and asks waiting for your decision."),
+  head: () => pageMeta("Your inbox", "Private conversations that begin when a skipwait.me referrer accepts your request — and asks waiting for your decision."),
   component: Inbox,
 });
 

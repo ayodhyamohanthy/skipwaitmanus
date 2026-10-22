@@ -1,7 +1,12 @@
+import { DrizzleQueryError } from "drizzle-orm";
 import express from "express";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { users } from "../drizzle/schema";
 import { registerBlocksRoutes, type BlocksRouteDeps } from "./blocksRoutes";
+import { getDb } from "./db";
+
+vi.mock("./db", () => ({ getDb: vi.fn() }));
 
 function buildApp() {
   const app = express();
@@ -110,5 +115,40 @@ describe("user blocks", () => {
     expect((await request(app).post("/api/blocks").set("x-test-user", "33").send({ referralRequestId: 601 })).status).toBe(404);
     expect((await request(app).post("/api/blocks").set("x-test-user", "11").send({ referralRequestId: 999 })).status).toBe(404);
     expect((await request(app).post("/api/blocks").set("x-test-user", "11").send({ referralRequestId: 602 })).status).toBe(400);
+  });
+});
+
+describe("blocks duplicate fidelity (FND-3)", () => {
+  it("answers a duplicate block as its intended idempotent re-block when the driver error is wrapped", async () => {
+    // Production shape: drizzle 0.45 rethrows the mysql2 ER_DUP_ENTRY inside
+    // DrizzleQueryError, so a top-level-only check misses it and the route 500s.
+    const wrapped = new DrizzleQueryError(
+      "insert into `userBlocks`",
+      [],
+      Object.assign(new Error("Duplicate entry '11-22' for key 'userBlocks.unique_pair'"), { code: "ER_DUP_ENTRY", errno: 1062 })
+    );
+    let blockReads = 0;
+    const db = {
+      select: () => ({
+        from: (table: unknown) => ({
+          where: () => ({
+            limit: async () => {
+              if (table === users) return [{ id: 22 }];
+              blockReads += 1;
+              return blockReads === 1 ? [] : [{ id: 77 }];
+            },
+          }),
+        }),
+      }),
+      insert: () => ({ values: async () => { throw wrapped; } }),
+    };
+    vi.mocked(getDb).mockResolvedValue(db as never);
+    const app = express();
+    registerBlocksRoutes(app, { resolveIdentity: async () => ({ account: { id: 11, openId: "workos-11" } }) });
+    const response = await request(app).post("/api/blocks").send({ blockedUserId: 22 });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ blocked: true, created: false, id: 77, blockedUserId: 22 });
+    expect(blockReads).toBe(2);
+    vi.clearAllMocks();
   });
 });

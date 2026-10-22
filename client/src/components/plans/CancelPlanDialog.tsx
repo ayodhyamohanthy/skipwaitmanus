@@ -5,7 +5,7 @@
 import { Button } from "@/components/kit/button";
 import { KitDialog } from "./KitDialog";
 import { kitDate } from "./format";
-import { planLabel } from "./planCatalog";
+import { billingPlanLabel } from "@shared/billingCatalog";
 
 type CancelPlanDialogProps = {
   plan: string;
@@ -18,7 +18,7 @@ type CancelPlanDialogProps = {
 };
 
 export function CancelPlanDialog({ plan, termEnd, step, cancelling, error, onConfirm, onClose }: CancelPlanDialogProps) {
-  const name = planLabel(plan);
+  const name = billingPlanLabel(plan);
   const until = termEnd ? kitDate(termEnd, false) : null;
   return <KitDialog as="section" labelledBy="cancel-plan-title" onClose={onClose}>
     {step === "confirm" ? <>

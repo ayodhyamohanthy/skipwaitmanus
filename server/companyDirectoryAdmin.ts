@@ -4,19 +4,19 @@
 // transaction; slug and domain uniqueness are re-checked inside it and backed
 // by the unique indexes, so a lost race surfaces as a conflict, never a
 // half-written company. Timestamps come from the JS clock (invariant 5).
-import { and, eq, inArray } from "drizzle-orm";
-import { companies, companyDomains } from "../drizzle/schema";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
+import { companies, companyDomains, profiles } from "../drizzle/schema";
 import { COMPANY_SLUG_PATTERN, deriveCompanyInitials, deriveCompanySlug, type AdminCompany, type AdminCompanyCreate, type AdminCompanyUpdate } from "../shared/companies";
 import { getAdminCompany } from "./companyDirectory";
 import { CompanyDirectoryUnavailableError } from "./companyDirectorySource";
 import { getDb } from "./db";
+import { isDuplicateKeyError } from "./dbErrors";
 
 export class CompanyConflictError extends Error { constructor(message: string) { super(message); this.name = "CompanyConflictError"; } }
 export class CompanyNotFoundError extends Error { constructor() { super("This company could not be found"); this.name = "CompanyNotFoundError"; } }
 export class CompanyInputError extends Error { constructor(message: string) { super(message); this.name = "CompanyInputError"; } }
 
 const DEFAULT_SORT_ORDER = 1000;
-const isDuplicateKey = (error: unknown) => typeof error === "object" && error !== null && (error as { code?: unknown }).code === "ER_DUP_ENTRY";
 
 /** Which domain rows a PATCH adds and removes. The primary domain is never removable. */
 export function planDomainChanges(owned: ReadonlyArray<{ domain: string; isPrimary: boolean }>, add: readonly string[], remove: readonly string[]): { insert: string[]; delete: string[] } {
@@ -61,7 +61,7 @@ export async function createCompany(input: AdminCompanyCreate, now: Date = new D
       return companyId;
     });
   } catch (error) {
-    if (isDuplicateKey(error)) throw new CompanyConflictError("This slug or domain was just taken by another company");
+    if (isDuplicateKeyError(error)) throw new CompanyConflictError("This slug or domain was just taken by another company");
     throw error;
   }
   return reread(id);
@@ -84,8 +84,38 @@ export async function updateCompany(id: number, patch: AdminCompanyUpdate, now: 
       await tx.update(companies).set({ ...fields, ...(functions ? { functions: JSON.stringify(functions) } : {}), updatedAt: now }).where(eq(companies.id, id));
     });
   } catch (error) {
-    if (isDuplicateKey(error)) throw new CompanyConflictError("This domain was just taken by another company");
+    if (isDuplicateKeyError(error)) throw new CompanyConflictError("This domain was just taken by another company");
     throw error;
   }
   return reread(id);
+}
+
+export type UnmatchedWorkDomain = { domain: string; verifiedReferrers: number; firstVerifiedAt: string };
+
+/**
+ * Pure: verified work-email domains that no company owns (D-100 follow-up). Counts only; never ids, names or
+ * emails. Sorted by most referrers, then domain, so the admin sees what to map first.
+ */
+export function planUnmatchedWorkDomains(verified: ReadonlyArray<{ domain: string | null; verifiedAt: Date | null }>, owned: readonly string[]): UnmatchedWorkDomain[] {
+  const ownedSet = new Set(owned.map(domain => domain.trim().toLowerCase()));
+  const byDomain = new Map<string, { n: number; first: Date }>();
+  for (const row of verified) {
+    const domain = row.domain?.trim().toLowerCase();
+    if (!domain || !row.verifiedAt || ownedSet.has(domain)) continue;
+    const entry = byDomain.get(domain);
+    if (!entry) byDomain.set(domain, { n: 1, first: row.verifiedAt });
+    else { entry.n += 1; if (row.verifiedAt < entry.first) entry.first = row.verifiedAt; }
+  }
+  return Array.from(byDomain.entries()).map(([domain, v]) => ({ domain, verifiedReferrers: v.n, firstVerifiedAt: v.first.toISOString() }))
+    .sort((a, b) => b.verifiedReferrers - a.verifiedReferrers || a.domain.localeCompare(b.domain));
+}
+
+export async function listUnmatchedWorkDomains(): Promise<UnmatchedWorkDomain[]> {
+  const db = await getDb();
+  if (!db) throw new CompanyDirectoryUnavailableError();
+  const [verified, owned] = await Promise.all([
+    db.select({ domain: profiles.workEmailDomain, verifiedAt: profiles.workEmailVerifiedAt }).from(profiles).where(and(eq(profiles.accountType, "referrer"), isNotNull(profiles.workEmailVerifiedAt))),
+    db.select({ domain: companyDomains.domain }).from(companyDomains),
+  ]);
+  return planUnmatchedWorkDomains(verified, owned.map(row => row.domain));
 }

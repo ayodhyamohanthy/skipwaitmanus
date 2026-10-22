@@ -1,6 +1,7 @@
 import { ArrowRight, Check, DoorOpen, HeartHandshake, MailCheck, MessagesSquare, Search, Send, UserRound, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/kit/button";
+import { ASK_COST_SENTENCE } from "@shared/moneyCopy";
 
 type Step = { title: string; text: string; icon: LucideIcon; detail: string };
 
@@ -12,7 +13,7 @@ export const referrerSteps: Step[] = [
 
 const seekerSteps: Step[] = [
   { title: "Find a company", text: "Start with where you want to work.", icon: Search, detail: "Look for a company with someone available to refer. You can explore before signing in." },
-  { title: "Ask for a referral", text: "Share the role and why you fit.", icon: Send, detail: "Make a thoughtful request. The referrer chooses whether to accept. No payments, no paid priority." },
+  { title: "Ask for a referral", text: "Share the role and why you fit.", icon: Send, detail: `Make a thoughtful request. The referrer chooses whether to accept. ${ASK_COST_SENTENCE} No paid priority.` },
   { title: "Connect privately", text: "Talk, then follow your next steps.", icon: MessagesSquare, detail: "Once accepted, your private conversation opens. Track the introduction in My requests. A referral does not guarantee an interview." },
 ];
 

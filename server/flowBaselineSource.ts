@@ -10,9 +10,9 @@ import type { getDb } from "./db";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
-export type BaselineRequestRow = { id: number; companyDomain: string; status: string; referrerId: number | null; createdAt: Date | string };
+export type BaselineRequestRow = { id: number; companyDomain: string; status: string; referrerId: number | null; createdAt: Date | string; coverageVisibleAt?: Date | string | null };
 export type BaselineReferrerRow = { userId: number; accountType: string | null; workEmailDomain: string | null; workEmailVerifiedAt: Date | null; paused: boolean; referralCapacity: number | null; userSuspended: boolean; personSuspended: boolean | null };
-export type BaselineTransitionRow = { requestId: number; actorUserId: number; action: string; createdAt: Date | string };
+export type BaselineTransitionRow = { requestId: number; actorUserId: number; action: string; createdAt: Date | string; resultingStatus?: string | null };
 export type BaselineWalletRow = { plan: string; trialEndsAt: Date | null; subscriptionCurrentTermEnd: Date | null };
 
 export type FlowBaselineSource = {
@@ -29,11 +29,11 @@ export type FlowBaselineSource = {
 export function drizzleFlowBaselineSource(db: Db): FlowBaselineSource {
   return {
     // Statuses, timestamps and company domains only; a seeker's note never enters this query.
-    loadRequests: () => db.select({ id: referralRequests.id, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, createdAt: referralRequests.createdAt })
+    loadRequests: () => db.select({ id: referralRequests.id, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, createdAt: referralRequests.createdAt, coverageVisibleAt: referralRequests.coverageVisibleAt })
       .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)),
     loadPassedRequestIds: async () => (await db.select({ id: referralRequestPasses.referralRequestId }).from(referralRequestPasses)).map(row => row.id),
     // Accept and pass are the referrer's decisions; claim and review only mark activity.
-    loadTransitionsSince: sinceMs => db.select({ requestId: referralTransitionEvents.referralRequestId, actorUserId: referralTransitionEvents.actorUserId, action: referralTransitionEvents.action, createdAt: referralTransitionEvents.createdAt })
+    loadTransitionsSince: sinceMs => db.select({ requestId: referralTransitionEvents.referralRequestId, actorUserId: referralTransitionEvents.actorUserId, action: referralTransitionEvents.action, createdAt: referralTransitionEvents.createdAt, resultingStatus: referralTransitionEvents.resultingStatus })
       .from(referralTransitionEvents).where(gte(referralTransitionEvents.createdAt, new Date(sinceMs))),
     loadReferrerProfiles: () => db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended })
       .from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId)).where(eq(profiles.accountType, "referrer")),

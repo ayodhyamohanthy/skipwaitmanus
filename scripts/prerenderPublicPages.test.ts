@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { landingSnapshot, PUBLIC_PAGES, publicSnapshots } from "./prerender-public-pages";
 import { breadcrumbsHtml, faqJsonLd, homeLinks, renderPublicPage } from "./prerenderSeo";
-import { LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_H1, LANDING_HERO_LEAD, LANDING_SUMMARY } from "../shared/landingContent";
+import { LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_H1, LANDING_HERO_LEAD, LANDING_SUMMARY } from "../shared/landingContent";
 import { breadcrumbsFor, canonicalUrl, PUBLIC_ROUTES, publicRoute } from "../shared/publicRoutes";
 import { LAUNCH_COMPANY_SEED } from "../shared/companyDirectorySeed";
 
@@ -172,5 +172,31 @@ describe("crawlable landing and public snapshots", () => {
     expect(serialized).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
     expect(serialized).not.toMatch(/\bRef-\d+/i);
     expect(serialized).not.toMatch(/Sarah was just|fast-tracked|hiring guarantee|just got hired/i);
+  });
+});
+
+// D-067: the monthly Pro and Max plans are removed completely, and /plans now
+// shows Free and credits (the D-046 passes are 30/90-day, not monthly plans).
+describe("D-067: no crawlable copy names a removed plan", () => {
+  const RETIRED_NAME = /\bPro\b|\bMax\b|₹599|₹1,299|\$7\b|\$15\b/;
+  const MONTHLY_PLANS = /\bmonthly (?:referral )?plans?\b/i;
+
+  it("the landing snapshot, every public snapshot, route title and description, and the landing links", () => {
+    const copy = [
+      landingSnapshot(policyLinks),
+      ...publicSnapshots().flatMap(snapshot => [snapshot.markup, snapshot.title, snapshot.description]),
+      ...PUBLIC_ROUTES.flatMap(entry => [entry.title, entry.description]),
+      ...LANDING_EXPLORE.flatMap(link => [link.label, link.summary]),
+    ];
+    for (const line of copy) {
+      expect(line).not.toMatch(RETIRED_NAME);
+      expect(line).not.toMatch(MONTHLY_PLANS);
+    }
+  });
+
+  it("titles /plans as the page does, and the /cancellations description keeps the page's paid-plan section", () => {
+    expect(route("/plans").title).toBe("Plans and credits");
+    expect(LANDING_EXPLORE.find(link => link.href === "/plans")?.label).toBe("Plans and credits");
+    expect(route("/cancellations").description).toBe("How to cancel a referral request, a paid plan, or a credit purchase, and when any money comes back.");
   });
 });

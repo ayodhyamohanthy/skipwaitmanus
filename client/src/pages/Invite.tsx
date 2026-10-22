@@ -31,7 +31,7 @@ export default function Invite() {
   return (
     <main data-skipwait-screen={isSignedIn ? "invite" : "invite-sign-in"} className="page-content invite-page">
       <Link className="back-link" href={fromReferrer ? "/referrer-home" : "/explore"}><ArrowLeft />{fromReferrer ? "Back to referrer home" : "Back to explore"}</Link>
-      <div className="page-heading"><div><span className="eyebrow">GROW ONE USEFUL DOOR AT A TIME</span><h1>Who should join<br />SkipWait next<span className="brand-dot">?</span></h1><p>Signal seeker demand or invite someone who can genuinely help.</p></div></div>
+      <div className="page-heading"><div><span className="eyebrow">GROW ONE USEFUL DOOR AT A TIME</span><h1>Who should join<br />skipwait.me next<span className="brand-dot">?</span></h1><p>Signal seeker demand or invite someone who can genuinely help.</p></div></div>
       <div className="intent-switch invite-switch">
         <Button variant="ghost" aria-pressed={mode === "request"} className={mode === "request" ? "selected" : ""} onClick={() => choose("request")}><UsersRound />Request a company</Button>
         <Button variant="ghost" aria-pressed={mode === "invite"} className={mode === "invite" ? "selected" : ""} onClick={() => choose("invite")}><Share2 />Invite someone inside</Button>

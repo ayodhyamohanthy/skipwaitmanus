@@ -6,7 +6,8 @@
 // new or an existing thread, only after a referral request links the two people
 // and that request's referrer accepted it. No plan, follow or earlier thread
 // opens it sooner. Two members who are not verified referrers keep the member
-// rules in server/dmRoutes.ts and sendDirectMessage (thread, mutual follow, plan).
+// rules in server/dmRoutes.ts and sendDirectMessage: an existing thread or a
+// mutual follow (no plan opens a thread, D-067).
 //
 // Who counts as a verified referrer: a profile with a verified work email.
 // Work-email verification enrolls the profile as accountType "referrer"; a

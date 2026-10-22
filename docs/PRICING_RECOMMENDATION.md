@@ -1,14 +1,16 @@
+> Status (Oct 18 2026): the owner decisions directly below govern as amended by later entries in docs/DECISIONS.md; the recommendation after them is the Oct 14 historical record. Where either conflicts with the register, the register wins (notably D-007, D-036, D-039, D-041, D-046, D-051, D-053, D-056, D-063, D-067).
+
 # Pricing recommendation and owner decisions (Oct 14 2026)
 
 ## Owner decisions (Oct 14 2026) — these govern the build
 1. **Billing shape:** 30-day and 90-day passes paid once; auto-extend is opt-in at checkout (same price, reminder before each renewal) and offered only where the payment method can renew without extra authentication (INR UPI AutoPay up to ₹5,000; INR card/netbanking mandates up to ₹15,000; USD only after PayPal reference transactions or a card route are confirmed). Yearly exists only for **Keep warm**. The Plans screen's Monthly/Yearly toggle becomes **30 days / 90 days** (owner-approved deviation from the kit PNG).
-2. **Prices:** the recommended prices in section 3 below (India INR incl. GST and global USD), Concierge by application.
+2. **Prices:** the recommended prices in section 3 below (India INR shown as the "India price" with no GST — item 5, D-007 — and global USD), Concierge by application.
 3. **Regions:** **India (INR) + one global USD price first.** Regional tiers T2–T4 and EUR/GBP come later, after the first prices are proven (and EU/UK VAT registration or a merchant of record).
-4. **Free plan:** 3 open asks, 3 credits every UTC calendar month (no carryover), no welcome credits (D-039), a free ask quality check, and a one-time 14-day Momentum reverse trial (15 open asks, 5 trial credits; start timing is an open owner question), never asking for a card.
+4. **Free plan:** 3 open asks, 3 credits every UTC calendar month (no carryover), no welcome credits (D-039), a free ask quality check, and a one-time 14-day Momentum reverse trial (15 open asks, 5 trial credits) kept in code but off the public catalog until its trigger ships (D-051; recommended trigger: the seeker's first ask that reaches an available verified referrer), never asking for a card.
 
 5. **Tax status (owner, Oct 14 2026):** SkipWait is an Indian **sole proprietorship with Udyam (MSME) registration, NOT GST-registered yet.** So: charge **no GST** on any sale (INR or USD); show INR prices as **"India price"** with no "incl. GST" wording; invoices carry no tax lines or GSTIN. Build this behind ONE server-side setting (e.g. `indiaGstRegistered: false` in the catalog contract) that switches labels, Chargebee tax handling and invoice details to GST mode the day a GSTIN exists. GST registration becomes mandatory once aggregate service turnover (including USD/export sales) nears ₹20 lakh a year — add an admin-visible trailing-12-month turnover figure vs that threshold. Sole proprietorship => no DPIIT Startup India benefits.
 
-Still open (section 8): CA confirmation of SAC code and the 'intermediary' question for foreign sales once GST-registered, per-tool AI cost, human reviewer staffing (human sessions and Concierge stay unpurchasable until staffed), PayPal recurring confirmation, NY/CA counsel review before selling Concierge there, students/campus pricing.
+Still open (section 8): per-tool AI cost, students/campus pricing. Answered by D-059 (Oct 18): CA/SAC advice once a GSTIN exists; human expert review stays off until someone can deliver it (human sessions unpurchasable until staffed; Concierge by application); USD auto-renewal stays off until PayPal confirms reference transactions; no counsel spend for Concierge (by application).
 
 ---
 
@@ -61,7 +63,7 @@ People pay this much because referrals work. Referred applicants reach interview
 
 | Plan | Open asks | Credits per 30 days | Carryover | Human time included |
 |---|---|---|---|---|
-| Free | 3 (15 during the 14-day trial) | **3 each UTC month** (no carryover), no welcome credits (D-039) | — | — |
+| Free | 3 (15 during the 14-day trial, which comes off the public catalog until its trigger is built, D-051) | **3 each UTC month** (no carryover), no welcome credits (D-039) | — | — |
 | Keep warm (yearly) | 5 | 4 | 1 month | — |
 | Start | 8 | 10 | 1 month | — |
 | Momentum | 15 | 36 | 3 months | — |
@@ -267,7 +269,7 @@ The 90-day passes cost 2.3–2.65× the 30-day price, a saving of 12–22%. Comp
 2. What does each credit cost us, tool by tool? This sets the INR credit floor and decides whether Free can afford 2 credits a month.
 3. Who delivers human sessions and Concierge, at what hourly cost? Can contracts stop reviewers from reviewing asks to their own employer?
 4. Do the limits of 2 open asks per company and 1 per referrer exist today? If not, they must ship before any plan adds more asks.
-5. Are any yearly or Land item prices already live with buyers? How do legacy Pro and Max subscribers move to passes?
+5. Are any yearly or Land item prices already live with buyers? (The second half, how legacy subscribers move to passes, is answered by D-067: there were none, and the legacy plans are removed completely with no migration.)
 6. How long does an open ask stay live after a pass ends (the expiry sweep window)?
 7. For the EU and UK: register for VAT (EU non-Union OSS and HMRC), use a merchant of record, or block checkout until then?
 8. Are you comfortable with Concierge at $750 by application, and holding it back from New York and California residents?

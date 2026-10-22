@@ -1,14 +1,14 @@
 # Live Payment Provider Readiness
 
-The current token checkout remains intentionally **simulated**. The screen distinguishes the intended roles—**Razorpay** for India, **PayPal** for international checkout, and **Chargebee** for business billing—without attempting to collect or process a payment.
+**Chargebee** is the only plan and subscription holder; **Razorpay** (INR, India) and **PayPal** (USD, global) are gateways behind Chargebee hosted checkout (D-004, frozen; D-069). The direct Razorpay and PayPal seeker checkout routes stay disabled (503). The one direct route still on is the employer unlock-credit checkout (Razorpay orders), until Chargebee employer prices exist (D-069, D-042; D-040's move of employer payments to Chargebee follows).
 
 ## Required activation contract
 
 | Provider | Intended role | Required configuration | Token-credit trigger |
 | --- | --- | --- | --- |
-| Razorpay | Domestic India checkout | Live key ID, key secret, webhook secret, allowed return URL | Verified server-side payment or order webhook with an idempotency key |
-| PayPal | International checkout | Client ID, client secret, webhook ID, allowed return URL | Verified capture or order-completed webhook with an idempotency key |
-| Chargebee | Business billing and invoices | Site, API key, webhook secret, item price IDs, entitlement mapping | Verified invoice or subscription payment event with an idempotency key |
+| Razorpay | INR gateway behind Chargebee hosted checkout (D-004); its only direct use is the employer unlock-credit checkout (`/api/employer/unlock-credits/purchase`) until Chargebee employer prices exist (D-069) | Live key ID, key secret, webhook secret, allowed return URL | Seeker credits: none (they land only from the verified Chargebee event). Employer unlock credits: verified `payment.captured` webhook (`notes.kind=unlock_credits`) with an idempotency key |
+| PayPal | USD gateway behind Chargebee hosted checkout (D-004); direct checkout off (503) | Client ID, client secret, webhook ID, allowed return URL | None: the PayPal webhook only records and correlates deliveries; USD credits land from the verified Chargebee event |
+| Chargebee | The only plan and subscription holder: hosted checkout, invoices and a live item price for every sold catalog item (D-004, D-069) | Site, API key, webhook secret, item price IDs, entitlement mapping | Verified invoice or subscription payment event with an idempotency key |
 
 ## Non-negotiable server behavior
 
@@ -18,7 +18,7 @@ The selected provider, provider transaction ID, currency, amount, token quantity
 
 ## Current readiness
 
-No live Razorpay, PayPal, Chargebee, or Chargebee knowledge-base connector is enabled in the current session. Before activation, supply the provider credentials and confirm the public webhook URLs and the exact Chargebee one-time token product or price IDs. Until then, the current simulation remains the approved checkout experience.
+Production checkout is live-wired through the live Chargebee site: completing a payment charges real money (`docs/BUGFREE_GATE.md`). Razorpay approved skipwait.chargebee.com on Oct 16 (BUGFREE_GATE 4.14). Every payment option goes on sale under D-046 (once D-063, D-067 and D-051 land, per D-059), and a plan or pack is sold only once its Chargebee item price exists with the exact catalog id; otherwise checkout answers `409 not_available_yet` and opens no page. On Oct 18 every pack showed `available: false`; D-069 adds an admin catalog sync (a dry run, then an apply step the owner triggers; not built yet) to create the missing item prices. Agents never make real payments; the owner runs one live ₹99 UPI buy-and-refund (D-065).
 
 ## Local dummy configuration
 
@@ -28,9 +28,9 @@ The gitignored `.env` (template: `.env.example`) ships **dummy** payment credent
 - `PAYPAL_CLIENT_ID` / `PAYPAL_SECRET` + `PAYPAL_ENV=sandbox`
 - `CHARGEBEE_SITE=skipwait-test` + `CHARGEBEE_API_KEY` / `CHARGEBEE_WEBHOOK_SECRET` dummies
 
-**What works locally:** the app boots, and the checkout endpoints no longer answer `503 … is not configured` — `POST /api/payments/razorpay/order`, `POST /api/payments/paypal/order`, and `POST /api/chargebee/*` all pass their configuration gate.
+**What works locally:** the app boots, and `POST /api/chargebee/*` and the employer unlock-credit checkout pass their configuration gate. `POST /api/payments/razorpay/order` and `POST /api/payments/paypal/order` answer 503 ("Direct checkout is unavailable") for every signed-in caller (401 when signed out), by design (D-004).
 
-**What still fails:** every real charge. Dummy keys are rejected by the provider APIs (Razorpay/PayPal order creation returns a provider error surfaced as `502`), and Chargebee checkout URLs `404` because the `skipwait-test` dummy site does not exist. Webhook deliveries cannot be verified against a dummy secret. Nothing here reaches production: `.env` is gitignored and no dummy secret is written to `wrangler.jsonc`, CI files, or any tracked file.
+**What still fails:** every real charge. Dummy keys are rejected by the provider APIs (a direct Razorpay order for employer unlock credits fails at the provider), and Chargebee checkout URLs `404` because the `skipwait-test` dummy site does not exist. Webhook deliveries cannot be verified against a dummy secret. Nothing here reaches production: `.env` is gitignored and no dummy secret is written to `wrangler.jsonc`, CI files, or any tracked file.
 
 **Going live — exact env-var swap list** (set in the deploy secret store, never in tracked files):
 

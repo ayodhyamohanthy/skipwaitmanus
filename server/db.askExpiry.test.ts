@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SQL, type SQL as SQLQuery } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { notifications, planCreditGrants, promoCreditGrants, referralDocumentAccessGrants, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
-import { expireStalePendingReferralRequest, reconcileExpiredPendingReferrals, withdrawCompanyReferralRequest } from "./db";
+import { jobs, notifications, planCreditGrants, promoCreditGrants, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
+import { expireStalePendingReferralRequest, withdrawCompanyReferralRequest } from "./db";
 import { createAskExpirySweep } from "./askExpirySweep";
+import { coverageWaitExpiredNotice } from "./coverageDelivery";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
@@ -13,7 +14,7 @@ const dialect = new MySqlDialect();
 const NOW = new Date("2026-10-08T12:00:00.000Z");
 const DAY = 24 * 60 * 60 * 1000;
 
-type Table = typeof referralRequests | typeof tokenBalances | typeof tokenTransactions | typeof referralTransitionEvents | typeof notifications | typeof referralDocumentAccessGrants | typeof planCreditGrants | typeof promoCreditGrants;
+type Table = typeof referralRequests | typeof tokenBalances | typeof tokenTransactions | typeof referralTransitionEvents | typeof notifications | typeof referralDocumentAccessGrants | typeof planCreditGrants | typeof promoCreditGrants | typeof jobs | typeof referralAvailabilitySlots;
 let tables: Record<string, Array<Record<string, unknown>>>;
 
 function rowsFor(table: Table): Array<Record<string, unknown>> {
@@ -23,6 +24,8 @@ function rowsFor(table: Table): Array<Record<string, unknown>> {
   if (table === referralTransitionEvents) return tables.events;
   if (table === notifications) return tables.notes;
   if (table === referralDocumentAccessGrants) return tables.docGrants;
+  if (table === jobs) return tables.jobs;
+  if (table === referralAvailabilitySlots) return tables.slots;
   if (table === planCreditGrants || table === promoCreditGrants) return [];
   throw new Error("Unexpected table");
 }
@@ -85,17 +88,23 @@ function chainable(selected: () => Array<Record<string, unknown>>) {
 }
 
 function fixtureDatabase() {
+  // A projection column from the joined jobs table (companyDomain: jobs.company) resolves through the row's jobId.
+  const cell = (row: Record<string, unknown>, column: unknown) => {
+    if (column === jobs.company) return tables.jobs.find(job => job.id === row.jobId)?.company ?? null;
+    return row[(column as { name: string }).name];
+  };
   const select = (projection?: Record<string, unknown>) => ({
-    from: (table: Table) => ({
-      where: (condition: SQLQuery) => {
+    from: (table: Table) => {
+      const where = (condition: SQLQuery) => {
         const run = () => {
           const selected = rowsFor(table).filter(row => matches(condition, row));
-          if (projection) return selected.map(row => Object.fromEntries(Object.entries(projection).map(([k, c]) => [k, row[(c as { name: string }).name]])));
+          if (projection) return selected.map(row => Object.fromEntries(Object.entries(projection).map(([k, c]) => [k, cell(row, c)])));
           return selected;
         };
         return chainable(run);
-      },
-    }),
+      };
+      return { where, innerJoin: (_joined: Table, _on: SQLQuery) => ({ where }) };
+    },
   });
   const update = (table: Table) => ({
     set: (patch: Record<string, unknown>) => ({
@@ -120,11 +129,11 @@ function fixtureDatabase() {
 
 const walletRow = () => ({ id: 1, userId: 7, role: "job_seeker" as const, balance: 2, monthlyCreditsRemaining: 2, monthlyAllowance: 3, monthlyCycleKey: "2026-10", plan: "free" as const, subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, updatedAt: NOW });
 const debitRow = (source: string, cycle: string) => ({ id: 11, userId: 7, role: "job_seeker" as const, tokenCount: -1, kind: "direct_request" as const, source, sourceCycleKey: cycle, referenceType: "referral_request", referenceId: "501", reversesTransactionId: null, balanceAfter: 2, monthlyCreditsAfter: 2 });
-const requestRow = (createdAt: Date, over: Partial<Record<string, unknown>> = {}) => ({ id: 501, jobSeekerId: 7, jobId: 3, referrerId: null, personalPitch: "x", status: "pending", revision: 0, waitingForCoverage: false, coverageQueuedAt: null, referrerMessage: null, savedAt: null, idempotencyKey: null, requestFingerprint: null, debitTransactionId: 11, createdAt, updatedAt: createdAt, ...over });
+const requestRow = (createdAt: Date, over: Partial<Record<string, unknown>> = {}) => ({ id: 501, jobSeekerId: 7, jobId: 3, referrerId: null, personalPitch: "x", status: "pending", revision: 0, waitingForCoverage: false, coverageQueuedAt: null, coverageVisibleAt: null, coverageHeldAt: null, referrerMessage: null, savedAt: null, idempotencyKey: null, requestFingerprint: null, debitTransactionId: 11, createdAt, updatedAt: createdAt, ...over });
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
-  tables = { requests: [], wallets: [walletRow()], txns: [], events: [], notes: [], docGrants: [] };
+  tables = { requests: [], wallets: [walletRow()], txns: [], events: [], notes: [], docGrants: [], slots: [], jobs: [{ id: 3, company: "acme.com" }] };
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(fixtureDatabase());
 });
@@ -167,10 +176,13 @@ describe("ask expiry", () => {
   it("leaves fresh and claimed asks untouched", async () => {
     tables.txns = [debitRow("monthly_allowance", "2026-10")];
     tables.requests = [requestRow(new Date(NOW.getTime() - 2 * DAY), { id: 501 }), requestRow(new Date(NOW.getTime() - 9 * DAY), { id: 502, referrerId: 9 })];
+    // Every claim has written this event since migration 0058; an assigned ask without one is a personal-link ask (D-050).
+    tables.events = [{ id: 1, referralRequestId: 502, operationKey: "claim:9", actorUserId: 9, action: "claim", fromStatus: "pending", resultingStatus: "pending", resultingRevision: 1 }];
     expect((await expireStalePendingReferralRequest(7, 501, NOW.getTime())).expired).toBe(false);
     expect((await expireStalePendingReferralRequest(7, 502, NOW.getTime())).expired).toBe(false);
     expect(tables.txns.some(t => t.kind === "expiry_refund")).toBe(false);
-    expect(tables.events.length).toBe(0);
+    expect(tables.events.filter(e => e.action !== "claim")).toEqual([]);
+    expect(tables.requests.map(r => r.status)).toEqual(["pending", "pending"]);
   });
 
   it("is idempotent: a second expiry changes nothing and refunds once", async () => {
@@ -182,23 +194,33 @@ describe("ask expiry", () => {
     expect(tables.wallets[0].monthlyCreditsRemaining).toBe(3);
   });
 
-  it("reconciles only stale asks and reports their ids", async () => {
-    tables.txns = [debitRow("monthly_allowance", "2026-10")];
-    tables.requests = [requestRow(new Date(NOW.getTime() - 2 * DAY), { id: 501 }), requestRow(new Date(NOW.getTime() - 10 * DAY), { id: 502 })];
-    const result = await reconcileExpiredPendingReferrals(7, NOW.getTime());
-    expect(result.expiredRequestIds).toEqual([502]);
-    expect(tables.requests.find(r => r.id === 501)?.status).toBe("pending");
-    expect(tables.requests.find(r => r.id === 502)?.status).toBe("closed");
+  it("keeps a young waiting ask open; at the 90-day mark it closes free, clears the waiting flags and says no credit was used (D-061)", async () => {
+    tables.requests = [requestRow(new Date(NOW.getTime() - 8 * DAY), { waitingForCoverage: true, coverageQueuedAt: new Date(NOW.getTime() - 8 * DAY), debitTransactionId: null })];
+    expect((await expireStalePendingReferralRequest(7, 501, NOW.getTime())).expired).toBe(false);
+    expect(tables.requests[0].status).toBe("pending");
+    tables.requests = [requestRow(new Date(NOW.getTime() - 91 * DAY), { waitingForCoverage: true, coverageQueuedAt: new Date(NOW.getTime() - 91 * DAY), debitTransactionId: null })];
+    const result = await expireStalePendingReferralRequest(7, 501, NOW.getTime());
+    expect(result).toMatchObject({ expired: true, status: "closed" });
+    expect(tables.requests[0]).toMatchObject({ status: "closed", waitingForCoverage: false, coverageQueuedAt: null, coverageHeldAt: null });
+    expect(tables.wallets[0].monthlyCreditsRemaining).toBe(2);
+    expect(tables.txns).toEqual([]);
+    expect(tables.notes).toEqual([expect.objectContaining({ userId: 7, refId: 501, ...coverageWaitExpiredNotice("acme.com") })]);
   });
 
-  it("fails open per request: one bad row never blocks the rest", async () => {
-    tables.txns = [];
-    tables.requests = [requestRow(new Date(NOW.getTime() - 10 * DAY), { id: 503, debitTransactionId: 99 })];
-    const result = await reconcileExpiredPendingReferrals(7, NOW.getTime());
-    // No debit row and no wallet change possible is fine (nothing reserved),
-    // but a missing wallet with a real debit must throw like a withdraw.
-    expect(result.expiredRequestIds).toEqual([503]);
+  it("runs the 7-day clock from first visibility, not creation, on a delivered ask (D-061)", async () => {
+    tables.txns = [debitRow("monthly_allowance", "2026-10")];
+    // Waiting 30 days before coverage, visible only 2: the clock has barely started.
+    tables.requests = [requestRow(new Date(NOW.getTime() - 30 * DAY), { coverageVisibleAt: new Date(NOW.getTime() - 2 * DAY) })];
+    expect((await expireStalePendingReferralRequest(7, 501, NOW.getTime())).expired).toBe(false);
+    expect(tables.requests[0].status).toBe("pending");
+    // Visible for 8 days: past its window although it was created long before.
+    tables.requests = [requestRow(new Date(NOW.getTime() - 30 * DAY), { coverageVisibleAt: new Date(NOW.getTime() - 8 * DAY) })];
+    expect((await expireStalePendingReferralRequest(7, 501, NOW.getTime())).expired).toBe(true);
+    expect(tables.requests[0].status).toBe("closed");
   });
+
+  // The reconcile-on-read tests moved to askExpirySweep.personalLink.test.ts (same assertions): reconcile now also reads
+  // personal-link asks through a join, which this fixture cannot evaluate.
 
   it("refuses to expire or refund another seeker's ask (cross-user)", async () => {
     tables.txns = [debitRow("monthly_allowance", "2026-10")];

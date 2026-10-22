@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { ArrowRight, CreditCard } from "lucide-react";
 import { Link } from "wouter";
 import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
+import { planEntitlementsFor } from "@shared/planEntitlements";
 
 export type SeekerCredits = {
   plan: string;
@@ -11,21 +13,29 @@ export type SeekerCredits = {
   cycleKey: string;
   subscriptionStatus: string | null;
   subscriptionCurrentTermEnd: string | null;
+  /** D-079: set by the server; absent on older payloads reads as unlocked. */
+  cardValidated?: boolean;
+  freeCreditsLocked?: boolean;
 };
 
 /**
  * Unified credit meter for the job-seeker surfaces.
  *
- * Shows the monthly free allowance progress (3/month on the free plan), the
- * separate never-expiring purchased balance, and the primary action: ask
- * another referral while any credit remains, otherwise buy credits / upgrade.
- * Used by the requests dashboard and the request-success confirmation so the
+ * Shows the monthly allowance progress (3/month on the free plan, the plan's
+ * credits on a catalog pass), the separate never-expiring purchased balance,
+ * and the primary action: ask another referral while any credit remains,
+ * otherwise buy a credit. Used by the request-success confirmation so the
  * "1 of 3 free credits used" context is always visible after a resume is
  * submitted.
+ *
+ * D-067: the plan name comes from the shared catalog (a retired Pro/Max or
+ * unknown id reads as Free), and nothing here offers an upgrade: /plans sells
+ * no plan until the D-046 passes go on sale.
  */
 export function SeekerCreditsCard({ credits, compact = false }: { credits: SeekerCredits; compact?: boolean }) {
   const used = Math.max(0, credits.monthlyAllowance - credits.monthlyCreditsRemaining);
-  const isFreePlan = credits.plan === "free";
+  const entitlements = planEntitlementsFor(credits.plan);
+  const isFreePlan = entitlements.plan === "free";
   const hasPurchased = credits.purchasedCreditsRemaining > 0;
   const outOfCredits = credits.totalAvailable <= 0;
   const renewText = credits.subscriptionCurrentTermEnd
@@ -39,7 +49,7 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-bold uppercase tracking-[.12em] text-black">
-          {isFreePlan ? "Free plan" : `${credits.plan} plan`}
+          {entitlements.planLabel} plan
           {hasPurchased ? <span className="ml-1 font-semibold text-[#505050]">+ pack credits</span> : null}
         </p>
         <p className="text-sm font-bold text-black" aria-live="polite">
@@ -49,7 +59,7 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
 
       <div
         role="progressbar"
-        aria-label="Monthly free referral credits used"
+        aria-label={isFreePlan ? "Monthly free referral credits used" : "Monthly plan credits used"}
         aria-valuemin={0}
         aria-valuemax={credits.monthlyAllowance}
         aria-valuenow={used}
@@ -62,7 +72,7 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
       </div>
 
       <p className="mt-3 text-sm leading-5 text-[#505050]">
-        {used} of {credits.monthlyAllowance} free credits used this month.
+        {used} of {credits.monthlyAllowance} {isFreePlan ? "free" : "plan"} credits used this month.
         {hasPurchased ? (
           <span className="block pt-1 text-[#505050]">
             {credits.purchasedCreditsRemaining} purchased credit{credits.purchasedCreditsRemaining === 1 ? "" : "s"} — these never expire.
@@ -75,19 +85,11 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
 
       <div className="mt-4 grid gap-2">
         {outOfCredits ? (
-          <>
-            {CREDIT_PACKS_ON_SALE ? <Link href="/premium?role=job_seeker"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-4 py-3 text-sm font-semibold text-white"
-            >
-              <CreditCard className="h-4 w-4" /> Add a credit for $1 <ArrowRight className="h-4 w-4" />
-            </Link> : null}
-            <Link
-              href="/plans?role=job_seeker"
-              className="text-center text-sm font-semibold text-black"
-            >
-              Or upgrade for more monthly referrals
-            </Link>
-          </>
+          CREDIT_PACKS_ON_SALE ? <Link href="/premium?role=job_seeker"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-4 py-3 text-sm font-semibold text-white"
+          >
+            <CreditCard className="h-4 w-4" /> Add a credit for $1 <ArrowRight className="h-4 w-4" />
+          </Link> : null
         ) : (
           <Link
             href="/start"

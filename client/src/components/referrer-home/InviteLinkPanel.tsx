@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/kit/button";
 import { fetchPersonalInviteCode, type TokenSource } from "./referrerData";
 
-const SHARE_TEXT = "Help job seekers at your company get private referrals on SkipWait. Verify a work email to choose which requests you take.";
+const SHARE_TEXT = "Help job seekers at your company get private referrals on skipwait.me. Verify a work email to choose which requests you take.";
 
 export function InviteLinkPanel({ fetchToken, userId }: { fetchToken: TokenSource; userId: string | null }) {
   const invite = useQuery({ queryKey: ["personal-invite", userId], queryFn: () => fetchPersonalInviteCode(fetchToken), retry: 1, refetchOnWindowFocus: false });
@@ -22,7 +22,7 @@ export function InviteLinkPanel({ fetchToken, userId }: { fetchToken: TokenSourc
   const shareOrCopy = async () => {
     if (!link) return;
     if (canShare) {
-      try { await navigator.share({ title: "Join me on SkipWait", text: SHARE_TEXT, url: link }); } catch { /* share sheet dismissed */ }
+      try { await navigator.share({ title: "Join me on skipwait.me", text: SHARE_TEXT, url: link }); } catch { /* share sheet dismissed */ }
       return;
     }
     try { await navigator.clipboard.writeText(link); } catch { /* clipboard unavailable: the link stays visible to copy by hand */ }

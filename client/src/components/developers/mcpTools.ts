@@ -8,5 +8,5 @@ export const DOCUMENTED_MCP_TOOLS: ReadonlyArray<readonly [name: string, descrip
   ["list_my_requests", "Your open and closed requests"],
   ["list_my_alerts", "Your company alerts"],
   ["list_my_resumes", "Your uploaded resumes, to attach to an ask"],
-  ["propose_ask", "Create a draft ask — never sends. You approve it in SkipWait, where the credit cost is shown"],
+  ["propose_ask", "Create a draft ask — never sends. You approve it in skipwait.me, where the credit cost is shown"],
 ];

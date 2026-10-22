@@ -17,6 +17,9 @@ vi.mock("wouter", () => ({
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); authState.isSignedIn = true; window.sessionStorage.clear(); });
 
+/** The member-rule 403 body (shared/directMessages.ts DM_FOLLOW_REQUIRED). */
+const followRule = { reason: "mutual_follow_required", error: "You can message this member once you follow each other." };
+
 describe("Direct messages inbox", () => {
   it("renders the empty state when there are no threads", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ threads: [] }) })));
@@ -36,19 +39,26 @@ describe("Direct messages inbox", () => {
     expect(screen.getByPlaceholderText("Write a message")).toBeTruthy();
   });
 
-  it("shows the paywall card when sending is rejected with 402", async () => {
-    const threadPayload = { thread: { counterpartUserId: 22, counterpartLabel: "Referrer · acme.com", messages: [{ id: 1, body: "Hello", createdAt: new Date().toISOString(), isMine: false }] } };
+  it("explains the follow rule, never an upgrade, when a member send is refused (D-067)", async () => {
+    const threadPayload = { thread: { counterpartUserId: 33, counterpartLabel: "Member", messages: [{ id: 1, body: "Hello", createdAt: new Date().toISOString(), isMine: false }] } };
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      if (url === "/api/dms/threads") return { ok: true, json: async () => ({ threads: [{ counterpartUserId: 22, counterpartLabel: "Referrer · acme.com", lastMessageBody: "Hello", lastMessageIsMine: false, lastMessageAt: new Date().toISOString(), unreadCount: 0 }] }) };
-      if (typeof init?.method === "string" && init.method === "POST") return { ok: false, status: 402, json: async () => ({ error: "Direct messaging is a premium feature. Upgrade to Pro to message referrers directly.", upgrade: true }) };
+      if (url === "/api/dms/threads") return { ok: true, json: async () => ({ threads: [{ counterpartUserId: 33, counterpartLabel: "Member", lastMessageBody: "Hello", lastMessageIsMine: false, lastMessageAt: new Date().toISOString(), unreadCount: 0 }] }) };
+      if (typeof init?.method === "string" && init.method === "POST") return { ok: false, status: 403, json: async () => followRule };
       return { ok: true, json: async () => threadPayload };
     }));
     render(<Messages />);
-    fireEvent.click(await screen.findByRole("button", { name: /Referrer · acme\.com/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Member/ }));
     fireEvent.change(await screen.findByLabelText("Message"), { target: { value: "Hi there" } });
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
-    await waitFor(() => expect(screen.getAllByText(/Direct messaging is for members/).length).toBeGreaterThan(0));
-    expect(screen.getAllByRole("link", { name: "Upgrade to Pro" })[0].getAttribute("href")).toBe("/premium?role=job_seeker");
+    const card = await waitFor(() => { const found = document.querySelector("[data-skipwait-screen='dm-follow-rule']"); expect(found).not.toBeNull(); return found; });
+    expect(card?.getAttribute("role")).toBe("status");
+    expect(card?.textContent).toContain("Follow each other to message");
+    expect(card?.textContent).toContain("You can message this member once you follow each other.");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.querySelector("a[href^='/premium'], a[href^='/plans']")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/upgrade|premium|\bPro\b|\bMax\b/i);
+    // The draft stays in the composer for when they follow each other.
+    expect((screen.getByLabelText("Message") as HTMLInputElement).value).toBe("Hi there");
   });
 });
 
@@ -164,14 +174,14 @@ describe("Direct messages with a referrer before acceptance (D-012 item 3)", () 
   it("never promises messaging referrers directly or faster answers", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url === "/api/dms/threads") return { ok: true, json: async () => ({ threads: [{ ...threadList.threads[0], counterpartLabel: "Member" }] }) };
-      if (init?.method === "POST") return { ok: false, status: 402, json: async () => ({ error: "Direct messaging is a premium feature.", upgrade: true }) };
+      if (init?.method === "POST") return { ok: false, status: 403, json: async () => followRule };
       return { ok: true, json: async () => ({ thread: { ...referrerThread, counterpartLabel: "Member" }, sendBlock: null }) };
     }));
     render(<Messages />);
     fireEvent.click(await screen.findByRole("button", { name: /Member/ }));
     fireEvent.change(await screen.findByLabelText("Message"), { target: { value: "Hi" } });
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
-    await waitFor(() => expect(screen.getAllByText(/Direct messaging is for members/).length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText(/Follow each other to message/).length).toBeGreaterThan(0));
     expect(document.body.textContent).not.toMatch(/message (verified )?referrers directly|answers faster/i);
   });
 

@@ -80,7 +80,7 @@ describe("SuggestCompany flow", () => {
     expect(submit().hasAttribute("disabled")).toBe(true);
     // Kit prefix match: a partial name already flags the listed company.
     fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Wip" } });
-    expect(await screen.findByText(/Wipro is already on SkipWait/)).toBeTruthy();
+    expect(await screen.findByText(/Wipro is already on skipwait.me/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open it" }).getAttribute("href")).toBe("/explore/wipro");
     expect(submit().hasAttribute("disabled")).toBe(true);
     fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Delta" } });

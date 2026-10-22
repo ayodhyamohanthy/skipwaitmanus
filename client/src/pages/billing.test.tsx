@@ -15,10 +15,11 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); authState.isSignedIn = true;
 
 const ok = (json: unknown) => ({ ok: true, json: async () => json });
 // As GET /api/credits/summary sends them: the caller's open-ask slots and the ledger block ride on the summary.
-const slots = (plan: string, cap: number) => ({ plan, planLabel: plan === "free" ? "Free" : "Pro", open: 1, cap, full: false, nextPlan: null });
+const slots = (plan: string, planLabel: string, cap: number) => ({ plan, planLabel, open: 1, cap, full: false, nextPlan: null });
 const ledger = (creditsPerMonth: number, balance: number) => ({ balance, buckets: { cycle: balance, carriedOver: 0, trial: 0, welcome: 0, purchased: 0, promo: 0 }, creditsPerMonth, carryover: creditsPerMonth > 0 ? 1 : 0, cycle: { key: "2026-10", startsAt: null, endsAt: null, granted: creditsPerMonth, used: 0 }, planCreditsRemaining: balance, nextExpiry: null, planCreditsExpiringSoon: null, welcome: { granted: false, credits: 0, remaining: 0 } });
-const freeSummary = { plan: "free", monthlyAllowance: 0, monthlyCreditsRemaining: 0, totalAvailable: 3, subscriptionStatus: null, subscriptionCurrentTermEnd: null, slots: slots("free", 3), ledger: ledger(0, 3) };
-const proSummary = { plan: "pro", monthlyAllowance: 10, monthlyCreditsRemaining: 7, totalAvailable: 9, subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z", slots: slots("pro", 10), ledger: ledger(10, 9) };
+const freeSummary = { plan: "free", monthlyAllowance: 0, monthlyCreditsRemaining: 0, totalAvailable: 3, subscriptionStatus: null, subscriptionCurrentTermEnd: null, slots: slots("free", "Free", 3), ledger: ledger(0, 3) };
+// A 30-day Start pass (shared/planCatalog.ts: 8 open asks, 10 credits a cycle, 1 month of carryover).
+const startSummary = { plan: "start", monthlyAllowance: 10, monthlyCreditsRemaining: 7, totalAvailable: 9, subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z", slots: slots("start", "Start", 8), ledger: ledger(10, 9) };
 
 describe("Billing page", () => {
   it("shows the free plan with an empty receipt ledger, never invented methods", async () => {
@@ -30,11 +31,13 @@ describe("Billing page", () => {
     expect(screen.getByText("No payments yet.")).toBeTruthy();
     expect(screen.getByText(/never sees or stores them/)).toBeTruthy();
     expect(screen.queryByText(/Visa|UPI|PayPal|4242|Make default|Add payment method/)).toBeNull();
-    expect(screen.getByRole("link", { name: /Upgrade/ }).getAttribute("href")).toBe("/plans");
-    expect(document.body.textContent).not.toMatch(/DESIGN PREVIEW|Preview state|EXAMPLE RECEIPTS|Momentum|PLACEHOLDERS/);
+    // D-067: no plan is sold from /plans until the D-046 passes go on sale, so Free offers the credits it can really buy.
+    expect(screen.getByRole("link", { name: "Add credits" }).getAttribute("href")).toBe("/premium?role=job_seeker");
+    expect(screen.queryByRole("link", { name: /Upgrade/ })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/DESIGN PREVIEW|Preview state|EXAMPLE RECEIPTS|Momentum|PLACEHOLDERS|\bPro\b|\bMax\b/);
   });
 
-  it("shows an active plan, real receipts, and walks cancellation to kept access", async () => {
+  it("shows an active pass with its term date and keeps the renewal control until fixed-term is proven (QA #359), plus real receipts", async () => {
     const receipts = [
       { id: 2, provider: "chargebee", amount: 500, currency: "USD", tokenCount: 5, status: "credited", providerInvoiceId: "inv-2", createdAt: "2026-10-06T06:00:00.000Z" },
       { id: 1, provider: "chargebee", amount: 9900, currency: "INR", tokenCount: 1, status: "refunded", providerInvoiceId: "inv-1", createdAt: "2026-09-06T06:00:00.000Z" },
@@ -42,56 +45,66 @@ describe("Billing page", () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (String(url).includes("/subscription-cancel")) return ok({ currentTermEnd: "2026-11-06T00:00:00.000Z" });
       if (String(url).includes("/billing/receipts")) return ok({ receipts });
-      return ok({ summary: proSummary });
+      return ok({ summary: startSummary });
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<Billing />);
-    expect(await screen.findByRole("heading", { name: "Pro" })).toBeTruthy();
-    expect(screen.getByText("Renews 6 Nov 2026 · 10 open asks · 10 credits/month")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Start" })).toBeTruthy();
+    // QA review (#359 finding 1): while billing_cycles=1 is unproven, an active
+    // subscription keeps its cancel control; the Ends line returns when the
+    // provider confirms the fixed term (non_renewing, pinned in the next test).
+    expect(screen.getByText("Renews 6 Nov 2026 · 8 open asks · 10 credits/month")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Cancel renewal" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Plans & credits/ }).getAttribute("href")).toBe("/plans");
     expect(document.body.textContent).not.toMatch(/requests left|requests\/month|requests a month/);
     expect(screen.getByText("5 credits")).toBeTruthy();
     expect(screen.getByText("$5")).toBeTruthy();
     expect(screen.getByText("₹99")).toBeTruthy();
     expect(screen.getByText("Refunded")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel plan" }));
+    // QA review (#359 finding 1): the cancel walk-through is restored under the
+    // control's live name ("Cancel renewal"), so a broken dialog fails here.
+    fireEvent.click(screen.getByRole("button", { name: "Cancel renewal" }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByRole("heading", { name: "Before you go" })).toBeTruthy();
+    expect(within(dialog).getByText(/You keep Start until 6 Nov\./)).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancel anyway" }));
     expect(await within(screen.getByRole("dialog")).findByRole("heading", { name: "Plan cancelled." })).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith("/api/chargebee/subscription-cancel", expect.objectContaining({ method: "POST" }));
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByText("Ends 6 Nov 2026 — you keep everything until then.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Cancel plan" })).toBeNull();
+    expect(screen.getByText("Ends 6 Nov 2026 · 8 open asks · 10 credits/month — you keep everything until then.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Cancel renewal" })).toBeNull();
   });
 
-  it("keeps the plan when the user backs out, and announces a failed cancellation in the dialog", async () => {
+  it("keeps the renewal when the user backs out, and announces a failed cancellation in the dialog", async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (String(url).includes("/subscription-cancel")) return { ok: false, status: 502, json: async () => ({ error: "We could not schedule your cancellation" }) };
       if (String(url).includes("/billing/receipts")) return ok({ receipts: [] });
-      return ok({ summary: proSummary });
+      return ok({ summary: startSummary });
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<Billing />);
-    fireEvent.click(await screen.findByRole("button", { name: "Cancel plan" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel renewal" }));
     fireEvent.click(screen.getByRole("button", { name: "Keep my plan" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalledWith("/api/chargebee/subscription-cancel", expect.anything());
-    fireEvent.click(screen.getByRole("button", { name: "Cancel plan" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel renewal" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel anyway" }));
     expect((await within(screen.getByRole("dialog")).findByRole("alert")).textContent).toContain("We could not schedule your cancellation");
     expect(screen.getByText(/^Renews 6 Nov 2026/)).toBeTruthy();
   });
 
   it("shows a non-renewing plan as ending, with no cancel action", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: { ...proSummary, subscriptionStatus: "non_renewing" } })));
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: { ...startSummary, subscriptionStatus: "non_renewing" } })));
     render(<Billing />);
-    expect(await screen.findByText("Ends 6 Nov 2026 — you keep everything until then.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Cancel plan" })).toBeNull();
+    expect(await screen.findByText("Ends 6 Nov 2026 · 8 open asks · 10 credits/month — you keep everything until then.")).toBeTruthy();
+    // QA review (#359 finding 1): asserted under the live name, so this fails if a
+    // cancel control ever appears on a non-renewing plan.
+    expect(screen.queryByRole("button", { name: "Cancel renewal" })).toBeNull();
   });
 
   it("leaves out open asks and monthly credits the server did not send, never guessing them", async () => {
-    const { slots: _slots, ledger: _ledger, ...bare } = proSummary;
+    const { slots: _slots, ledger: _ledger, ...bare } = startSummary;
     vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: bare })));
     render(<Billing />);
     expect(await screen.findByText("Renews 6 Nov 2026")).toBeTruthy();
@@ -117,7 +130,7 @@ describe("Billing page", () => {
   });
 
   it("treats a malformed summary as a failed load, never as an empty account", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: { plan: "pro" } })));
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: { plan: "start" } })));
     render(<Billing />);
     expect((await screen.findByRole("alert")).textContent).toContain("We could not load your plan");
     expect(screen.queryByRole("heading", { name: "Free" })).toBeNull();
@@ -128,6 +141,18 @@ describe("Billing page", () => {
     render(<Billing />);
     expect(screen.getByRole("heading", { name: "Manage plan." })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Compare plans/ }).getAttribute("href")).toBe("/plans");
+    expect(screen.getByRole("link", { name: /Plans & credits/ }).getAttribute("href")).toBe("/plans");
+    expect(screen.queryByRole("link", { name: /Compare plans/ })).toBeNull();
+  });
+
+  it("reads a stale Pro or Max summary as Free: the Free panel, no cancel action, no retired name", async () => {
+    for (const plan of ["pro", "max"]) {
+      vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: { ...startSummary, plan, slots: null } })));
+      render(<Billing />);
+      expect(await screen.findByRole("heading", { name: "Free" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Cancel renewal" })).toBeNull();
+      expect(document.body.textContent).not.toMatch(/\bPro\b|\bMax\b/);
+      cleanup();
+    }
   });
 });

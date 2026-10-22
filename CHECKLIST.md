@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-030, D-048, D-061, D-063).
+
 # SkipWait — Step-by-Step Build Checklist
 
 Hand this to your LLM together with `LLM_HANDOFF.md`, `SCREENS.md`, the `app/` source folder, and the screens PDF. Work through the steps in order. Do not skip ahead — each step depends on the one before it.
@@ -15,7 +17,7 @@ Hand this to your LLM together with `LLM_HANDOFF.md`, `SCREENS.md`, the `app/` s
 - [ ] Sign-in at `/sign-in` (seeker/referrer intent, Google + email choices).
 - [ ] App shell: desktop sidebar + mobile bottom tabs.
 - [ ] Explore at `/explore` with search and filters.
-- [ ] Company detail + referral request flow at `/explore/:slug` for all five companies: SkipWait, Wipro, Go Neutrinos, TCS, Merkle.
+- [ ] Company detail + referral request flow at `/explore/:slug` for all five companies: SkipWait, Wipro, Neutrinos, TCS, Merkle.
 - [ ] My requests at `/requests`, inbox at `/inbox`, profile at `/profile`.
 - [ ] Referrer workspace at `/referrer`, invite at `/invite`, safety at `/safety`.
 - [ ] My work `/work`, Plans & credits `/plans` (per PRICING.md + UPGRADE_NUDGES.md), employer page `/for-companies`.
@@ -51,9 +53,9 @@ Hand this to your LLM together with `LLM_HANDOFF.md`, `SCREENS.md`, the `app/` s
 ---
 
 ## Rules that must never change
-- Referrals are free. Always. No pay-to-win, no paid priority.
+- 3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money (D-063 as worded by D-135). No pay-to-win, no paid priority.
 - Never invent users, counts, testimonials, response times, or outcomes.
-- The five launch companies are SkipWait, Wipro, Go Neutrinos, TCS, and Merkle — shown as having people open to referrals, with no fabricated numbers.
+- The five launch companies are SkipWait, Wipro, Neutrinos, TCS, and Merkle — shown as having people open to referrals, with no fabricated numbers.
 - Private by default: seekers control what referrers see.
 
 ## Trust flows (backend notes)
