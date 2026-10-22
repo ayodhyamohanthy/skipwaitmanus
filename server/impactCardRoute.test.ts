@@ -42,6 +42,17 @@ describe("GET /api/referrer/impact-card", () => {
     const res = await request(buildApp({ state: "insufficient" })).get("/api/referrer/impact-card").expect(200);
     expect(res.body).toEqual({ state: "insufficient" });
   });
+  it("F4: every per-user answer is private, no-store", async () => {
+    const ok = await request(buildApp()).get("/api/referrer/impact-card").expect(200);
+    expect(ok.headers["cache-control"]).toBe("private, no-store");
+    const denied = await request(buildApp(ready, false)).get("/api/referrer/impact-card").expect(401);
+    expect(denied.headers["cache-control"]).toBe("private, no-store");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const failing = express();
+    registerImpactCardRoutes(failing, { resolveIdentity: async () => ({ account: { id: 42 } }), loadImpactCard: async () => { throw new Error("down"); } });
+    const failed = await request(failing).get("/api/referrer/impact-card").expect(503);
+    expect(failed.headers["cache-control"]).toBe("private, no-store");
+  });
   it("503 when the load throws, and the failure is logged", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     const app = express();

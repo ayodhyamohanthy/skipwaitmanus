@@ -8,6 +8,9 @@ type ResolveIdentity = (req: Request) => Promise<{ account: { id: number } } | n
 export function registerImpactCardRoutes(app: Express, deps: { resolveIdentity: ResolveIdentity; loadImpactCard?: (referrerId: number) => Promise<ImpactCardPayload> }) {
   const load = deps.loadImpactCard ?? loadImpactCard;
   app.get("/api/referrer/impact-card", async (req, res: Response) => {
+    // This payload is one referrer's published data: never let a shared cache
+    // store it for another user (F4; same header as every per-user endpoint).
+    res.set("Cache-Control", "private, no-store");
     if (!impactCardEnabled()) return res.status(404).json({ error: "Not found" });
     try {
       const identity = await deps.resolveIdentity(req);
