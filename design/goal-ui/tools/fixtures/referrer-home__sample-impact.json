@@ -1,0 +1,23 @@
+{
+  "signedIn": { "id": "9", "name": "Rao Verma", "email": "rao.verma@example.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/referrer/home-bundle", "match": "exact", "status": 200, "body": {
+      "access": { "verifiedCompanyAccess": true, "workEmailDomain": "wipro.com", "companyName": "Wipro", "companyInitials": "W" },
+      "preferences": { "referralCapacity": 3, "preferAreas": [], "preferLevels": [], "referrerVisibility": "anon", "notifyNewAsk": true, "paused": false },
+      "inboxNew": { "requests": [], "scope": "new", "hasEverReviewed": false },
+      "inboxCompleted": { "requests": [], "scope": "completed", "hasEverReviewed": false },
+      "profile": { "profile": { "workEmailVerifiedAt": "2026-10-01T00:00:00.000Z", "referralCapacity": 3 } },
+      "impact": { "reviewed": 0, "approved": 0, "introductions": 0, "interviews": 0, "offers": 0, "repliedWithin3DaysPct": null },
+      "failed": []
+    } },
+    { "method": "GET", "path": "/api/referrer/impact-card", "match": "exact", "status": 200, "body": {
+      "state": "ready",
+      "screenName": "QuietFalcon",
+      "companyName": "Quillmint",
+      "companySlug": "quillmint",
+      "linkPath": "/refer/quillmint/quietfalcon",
+      "stats": { "referredThisMonth": 3, "medianFirstReplyHours": 3, "acceptRatePct": 64 }
+    } },
+    { "method": "GET", "path": "/api/credits/summary", "match": "prefix", "status": 200, "body": { "summary": { "totalAvailable": 0 } } }
+  ]
+}
