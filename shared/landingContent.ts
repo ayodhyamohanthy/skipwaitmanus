@@ -26,7 +26,7 @@ export const LANDING_H1 = `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}.`;
 export const LANDING_HERO_LEAD_PARTS = ["Connect with people inside the companies you want to join.", "A real introduction. Not another application into the unknown."] as const;
 export const LANDING_HERO_LEAD = LANDING_HERO_LEAD_PARTS.join(" ");
 /** The search snippet (160 characters at most): how it works, then both money facts (D-063). */
-export const LANDING_SUMMARY = `Paste a role link; verified employees at the company decide privately whether to refer you. ${MONEY_SENTENCE_SHORT}`;
+export const LANDING_SUMMARY = `Paste a role link; verified employees decide privately whether to refer you. ${MONEY_SENTENCE_SHORT}`;
 
 export const LANDING_SEEKER_STEPS: readonly LandingStep[] = [
   { title: "Start with the role", body: "Paste the job link for the company you want to join." },
@@ -50,7 +50,7 @@ export const LANDING_EXPLORE: readonly LandingLink[] = [
   { href: "/jobs", label: "Browse roles", summary: "Published roles worth a referral." },
   { href: "/wall", label: "Internal openings", summary: "Hiring signals shared privately by verified employees." },
   { href: "/referrer", label: "For employees", summary: "Verify your work email to review private requests at your company." },
-  { href: "/premium", label: "Buy credits", summary: "Referral credits start at $1 each and never expire." },
+  { href: "/premium", label: "Buy credits", summary: "Extra referral credits cost $1 each and never expire." },
   { href: "/pricing", label: "Pricing", summary: "The free monthly allowance, extra credits, and what a credit buys." },
   { href: "/plans", label: "Plans and credits", summary: PAID_PLANS_SENTENCE },
   { href: "/about", label: "About us", summary: "Who runs skipwait.me and what it sells." },
@@ -91,6 +91,6 @@ export const LANDING_FAQ_HEADING = "Common questions, answered plainly.";
 export const LANDING_FAQ: readonly { question: string; answer: string }[] = [
   { question: "Is skipwait.me a public job board?", answer: "No. A referral request is visible only to verified employees at the company behind the role link you paste, and your resume stays private." },
   { question: "Who can review my request?", answer: "Only employees who verified a company email at that employer. They see the role, your resume, and your short note — never your contact details." },
-  { question: "What does it cost?", answer: `${MONEY_SENTENCE} Credits start at $1 each (in India, ₹99 for 2) and never expire. ${CREDIT_RULE}` },
+  { question: "What does it cost?", answer: `${MONEY_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire. ${CREDIT_RULE}` },
   { question: "Does a referral guarantee an interview?", answer: "No. Employees choose whether to help, and a referral never guarantees an interview, an offer, or a job. You can withdraw an unclaimed request at any time." },
 ];

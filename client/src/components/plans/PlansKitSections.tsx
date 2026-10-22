@@ -19,7 +19,7 @@ import { plansCatalogKeys } from "./plansCatalogApi";
 import { catalogPackCards, catalogPassCards, type PackCardCopy, type PassCardCopy, type PassTerm } from "./planCatalog";
 import type { PaidCatalogPlan } from "@shared/planCatalog";
 
-type Role = "job_seeker" | "referrer";
+export type Role = "job_seeker" | "referrer";
 
 export type KitCheckout = {
   buying: string | null;
@@ -31,6 +31,24 @@ export type KitCheckout = {
 
 const PENDING_CHECKOUT_KEY = "skipwait.pending-chargebee-checkout";
 
+export type PendingCheckout = { hostedPageId: string; role: Role; kind: "pack" | "plan" };
+
+/** The checkout the pending-return screen reconciles if the webhook is late. */
+export function readPendingCheckout(): PendingCheckout | null {
+  try {
+    const saved = JSON.parse(window.sessionStorage.getItem(PENDING_CHECKOUT_KEY) ?? "null");
+    if (typeof saved?.hostedPageId !== "string" || saved.hostedPageId.length === 0) return null;
+    if (saved.role !== "job_seeker" && saved.role !== "referrer") return null;
+    return { hostedPageId: saved.hostedPageId, role: saved.role, kind: saved.kind === "plan" ? "plan" : "pack" };
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingCheckout() {
+  try { window.sessionStorage.removeItem(PENDING_CHECKOUT_KEY); } catch { /* storage optional */ }
+}
+
 /** Buy flow for one pack or pass: sign-in first, then the server decides before any provider call. */
 export function useKitCheckout(input: { role: Role; currency: CatalogCurrency; isSignedIn: boolean; getToken: () => Promise<string | null>; openSignIn: () => void }): KitCheckout {
   const queryClient = useQueryClient();
@@ -40,7 +58,7 @@ export function useKitCheckout(input: { role: Role; currency: CatalogCurrency; i
 
   const billingCountry = input.currency === "INR" ? "IN" : "INTL";
 
-  const start = async (key: string, url: string, body: Record<string, unknown>): Promise<void> => {
+  const start = async (key: string, url: string, body: Record<string, unknown>, kind: "pack" | "plan"): Promise<void> => {
     if (!input.isSignedIn) { input.openSignIn(); return; }
     setBuying(key);
     setFailure(null);
@@ -50,7 +68,7 @@ export function useKitCheckout(input: { role: Role; currency: CatalogCurrency; i
       const payload = await response.json().catch(() => ({})) as { error?: string; code?: string; checkoutUrl?: string; hostedPageId?: string };
       if (response.ok && typeof payload.checkoutUrl === "string") {
         // The pending-return screen reconciles this checkout if the webhook is late.
-        try { window.sessionStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify({ hostedPageId: payload.hostedPageId ?? "", role: input.role })); } catch { /* storage optional */ }
+        try { window.sessionStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify({ hostedPageId: payload.hostedPageId ?? "", role: input.role, kind })); } catch { /* storage optional */ }
         openChargebeeCheckout(payload.checkoutUrl);
         return;
       }
@@ -77,8 +95,8 @@ export function useKitCheckout(input: { role: Role; currency: CatalogCurrency; i
     buying,
     failure,
     unavailable,
-    buyPack: pack => start(`pack:${pack.id}`, "/api/chargebee/checkout", { packId: pack.id, billingCountry, role: input.role }),
-    buyPass: card => start(`plan:${card.id}:${card.interval}`, "/api/chargebee/subscription-checkout", { planId: card.id, interval: card.interval, currency: input.currency, billingCountry, role: input.role }),
+    buyPack: pack => start(`pack:${pack.id}`, "/api/chargebee/checkout", { packId: pack.id, billingCountry, role: input.role }, "pack"),
+    buyPass: card => start(`plan:${card.id}:${card.interval}`, "/api/chargebee/subscription-checkout", { planId: card.id, interval: card.interval, currency: input.currency, billingCountry, role: input.role }, "plan"),
   };
 }
 

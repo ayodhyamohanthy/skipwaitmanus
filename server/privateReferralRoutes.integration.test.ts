@@ -2,6 +2,7 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
+import { publicAskRef } from "./askRef";
 
 describe("authenticated work email OTP routes", () => {
   function setup(result: { sent: boolean; reason: string }) {
@@ -131,7 +132,7 @@ describe("private referral HTTP routes", () => {
     expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-a")).body).toMatchObject({ scope: "new", requests: [unclaimedRequest] });
     // Rows gain the directory's display identity (null outside the directory)
     // and a normalized job function (null when the ask has none).
-    expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-b")).body.requests).toEqual([{ ...unclaimedRequest, companyName: null, companyInitials: null, jobFunction: null }]);
+    expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-b")).body.requests).toEqual([{ ...unclaimedRequest, companyName: null, companyInitials: null, jobFunction: null, publicRef: publicAskRef(701) }]);
     expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "outsider")).body.requests).toEqual([]);
     expect((await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-a")).status).toBe(200);
     expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-b")).body.requests).toEqual([]);
@@ -273,7 +274,7 @@ describe("private referral HTTP routes", () => {
     expect(claimed).toEqual({ userId: 10, inviteCode: "r9-abcdef12", verifiedEmail: "joiner@example.com" });
   });
 
-  it("creates a private Fast-Track Link only for the verified Referrer and resolves no employee identity publicly", async () => {
+  it("creates a private referral link (D-128 \"Your link\") only for the verified Referrer and resolves no employee identity publicly", async () => {
     const app = express(); app.use(express.json());
     const activity: Array<{ action: string; companyDomain?: string; metadata?: Record<string, unknown> }> = [];
     const identities = new Map([
@@ -287,7 +288,7 @@ describe("private referral HTTP routes", () => {
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme-corp.com" }), createCompanyReferralRequest: async (_userId, input) => { receivedFastTrackCode = input.fastTrackCode; receivedVanity = { companySlug: input.fastTrackCompanySlug, alias: input.fastTrackAlias }; return { requestId: 802, companyDomain: "acme-corp.com", notifiedEmployees: 1, fastTrack: true }; }, listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 802, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
       listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
-      getOrCreateReferrerFastTrackLink: async userId => { if (userId !== 31) throw new Error("Verify your company email before creating a Fast-Track Link"); return { linkCode: "a".repeat(32), vanityAlias: "ref-a1b2c3d4e5", companyDomain: "acme-corp.com", isActive: true }; },
+      getOrCreateReferrerFastTrackLink: async userId => { if (userId !== 31) throw new Error("Verify your company email before creating your link"); return { linkCode: "a".repeat(32), vanityAlias: "ref-a1b2c3d4e5", companyDomain: "acme-corp.com", isActive: true }; },
       getPublicReferrerFastTrackLink: async code => code === "a".repeat(32) ? { companyDomain: "acme-corp.com", isActive: true } : undefined,
       getPublicReferrerFastTrackVanityLink: async (companySlug, alias) => companySlug === "acme-corp" && alias === "ref-a1b2c3d4e5" ? { companyDomain: "acme-corp.com", isActive: true } : undefined,
       deactivateReferrerFastTrackLink: async userId => ({ deactivated: userId === 31 }), recordActivity: async entry => { activity.push(entry); },
@@ -408,5 +409,73 @@ describe("withdrawal activity reports only authoritative credit movement", () =>
     const { app, withdrawalEvents } = setup(false, failure);
     expect((await request(app).post("/api/company-referrals/501/withdraw").set("x-test-user", "seeker")).status).toBe(status);
     expect(withdrawalEvents()).toEqual([]);
+  });
+});
+
+describe("/api/company-referrals/mine hasEverAsked (sample empty states)", () => {
+  function setup(hasEver: ((userId: number) => Promise<boolean>) | undefined) {
+    const app = express();
+    app.use(express.json());
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") ? { account: { id: 1, openId: "workos-test" } } : undefined,
+      listJobSeekerCompanyReferrals: async () => [],
+      hasEverCreatedReferralRequest: hasEver,
+    } as unknown as PrivateReferralRouteDeps);
+    return app;
+  }
+
+  it("passes a first-timer's false through to the payload", async () => {
+    const app = setup(async () => false);
+    const response = await request(app).get("/api/company-referrals/mine").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverAsked).toBe(false);
+  });
+
+  it("fails closed to true when the durable check throws", async () => {
+    const app = setup(async () => { throw new Error("db down"); });
+    const response = await request(app).get("/api/company-referrals/mine").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverAsked).toBe(true);
+  });
+
+  it("fails closed to true when the dep is absent (old wiring)", async () => {
+    const app = setup(undefined);
+    const response = await request(app).get("/api/company-referrals/mine").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverAsked).toBe(true);
+  });
+});
+
+describe("/api/company-referrals/inbox hasEverReviewed (sample empty states)", () => {
+  function setup(hasEver: ((userId: number) => Promise<boolean>) | undefined) {
+    const app = express();
+    app.use(express.json());
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") ? { account: { id: 1, openId: "workos-test" } } : undefined,
+      listCompanyReferralInboxByState: async () => [],
+      hasEverReviewedReferral: hasEver,
+    } as unknown as PrivateReferralRouteDeps);
+    return app;
+  }
+
+  it("passes a first-timer's false through to the payload", async () => {
+    const app = setup(async () => false);
+    const response = await request(app).get("/api/company-referrals/inbox?scope=new").set("x-test-user", "referrer");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverReviewed).toBe(false);
+  });
+
+  it("fails closed to true when the durable check throws", async () => {
+    const app = setup(async () => { throw new Error("db down"); });
+    const response = await request(app).get("/api/company-referrals/inbox?scope=new").set("x-test-user", "referrer");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverReviewed).toBe(true);
+  });
+
+  it("fails closed to true when the dep is absent (old wiring)", async () => {
+    const app = setup(undefined);
+    const response = await request(app).get("/api/company-referrals/inbox?scope=new").set("x-test-user", "referrer");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverReviewed).toBe(true);
   });
 });

@@ -1,0 +1,39 @@
+{
+  "signedIn": false,
+  "route": "/conversation/601",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 4
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/601/conversation",
+      "body": {
+        "messages": [
+          {
+            "id": 1,
+            "body": "Thanks for the clear reasons. Happy to refer you. Can you confirm you can start within a month?",
+            "createdAt": "2026-10-20T10:42:00.000Z",
+            "isMine": false
+          },
+          {
+            "id": 2,
+            "body": "Yes, I can start within three weeks of an offer.",
+            "createdAt": "2026-10-20T13:10:00.000Z",
+            "isMine": true
+          }
+        ],
+        "referenceId": null
+      },
+      "status": 200
+    }
+  ]
+}

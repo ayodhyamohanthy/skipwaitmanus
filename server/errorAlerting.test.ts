@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createMaterialErrorEscalator, createRetiredPlanAlerter } from "./errorAlerting";
+import { createMaterialErrorEscalator, createPaymentReviewAlerter, createRetiredPlanAlerter } from "./errorAlerting";
 
 const originalApiKey = process.env.RESEND_API_KEY;
 const originalSender = process.env.ERROR_ALERT_FROM_EMAIL;
@@ -29,6 +29,26 @@ describe("material API error escalation", () => {
     expect(payload.text).not.toContain("private.pdf");
     expect(payload.text).not.toContain("123456");
     expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "system.error_alert_sent", outcome: "success", resourceId: "/api/company-referrals" }));
+  });
+
+  it("sends payment alerts through ZeptoMail when it is configured and Resend is not", async () => {
+    const saved = { z: process.env.ZEPTOMAIL_API_KEY, r: process.env.RESEND_API_KEY };
+    process.env.ZEPTOMAIL_API_KEY = "zepto_test";
+    delete process.env.RESEND_API_KEY;
+    process.env.ERROR_ALERT_FROM_EMAIL = "noreply@skipwait.me";
+    try {
+      const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+      const recordActivity = vi.fn(async () => undefined);
+      const alert = createPaymentReviewAlerter({ fetchImpl, recordActivity });
+      await expect(alert({ paymentId: 7, reason: "amount_mismatch", expectedAmount: 100, expectedCurrency: "INR", paidAmount: 90, paidCurrency: "INR" } as never)).resolves.toEqual({ alerted: true });
+      const [url, request] = fetchImpl.mock.calls[0] ?? [];
+      expect(url).toBe("https://api.zeptomail.com/v1.1/email");
+      expect(request?.headers).toMatchObject({ Authorization: "Zoho-enczapikey zepto_test" });
+      expect(JSON.parse(String(request?.body)).to[0].email_address.address).toBe("ayodhya@skipwait.me");
+    } finally {
+      if (saved.z === undefined) delete process.env.ZEPTOMAIL_API_KEY; else process.env.ZEPTOMAIL_API_KEY = saved.z;
+      if (saved.r === undefined) delete process.env.RESEND_API_KEY; else process.env.RESEND_API_KEY = saved.r;
+    }
   });
 
   it("deduplicates repeated material failures and ignores non-API or non-server errors", async () => {

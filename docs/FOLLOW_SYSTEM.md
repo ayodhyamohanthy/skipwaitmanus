@@ -12,7 +12,7 @@ Otherwise the send is rejected with `403 { reason: "mutual_follow_required" }` a
 
 > **D-067 (owner, Oct 18 2026):** the retired paid plans are removed completely, including their member-message perk and its paywall; a wallet still marked with one counts as Free. Live since `08d193a0`: `hasActivePremiumSubscription` is gone and `sendDirectMessage` reads no plan (the refusal inside the send transaction is `DirectMessageFollowRequiredError`).
 
-Referral *requests* through fast-track links and the wall follow the ask credit rules (D-063: 3 asks free every month; more use credits), never this messaging gate.
+Referral *requests* through fast-track links and the wall follow the ask credit rules (D-063 as worded by D-135: 3 free credits every month; extra asks use credits), never this messaging gate.
 
 ## API
 - `POST /api/users/:userId/follow` — follow (idempotent). 400 self, 404 unknown, 401 anon.

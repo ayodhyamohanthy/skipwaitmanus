@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { GoalButton } from "./GoalButton";
 import { GoalSearchInput } from "./GoalSearchInput";
 import { GoalFilterChip } from "./GoalFilterChip";
+import { GoalReasonInput } from "./GoalReasonInput";
 import { GoalStatus } from "./GoalStatus";
 import { GoalVerifiedMark } from "./GoalVerifiedMark";
 
@@ -74,6 +75,25 @@ describe("GoalFilterChip", () => {
   });
 });
 
+describe("GoalReasonInput", () => {
+  it("labels itself as one of the three reasons and counts characters live", async () => {
+    const onChange = vi.fn();
+    render(<GoalReasonInput index={1} value="" onChange={onChange} max={140} placeholder="Another result…" />);
+    expect(screen.getByRole("textbox", { name: "Reason 2" })).toBeTruthy();
+    expect(screen.getByText("0/140")).toBeTruthy();
+    await userEvent.type(screen.getByPlaceholderText("Another result…"), "Led checkout");
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it("flags an over-limit reason without disabling the field", () => {
+    render(<GoalReasonInput index={0} value={"x".repeat(141)} onChange={() => {}} max={140} placeholder="One result…" />);
+    const field = screen.getByPlaceholderText("One result…");
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(field.getAttribute("disabled")).toBeNull();
+    expect(screen.getByText(/141\/140/)).toBeTruthy();
+  });
+});
+
 describe("GoalStatus tone map", () => {
   it.each([
     ["referred", "text-g-emerald"],
@@ -105,5 +125,13 @@ describe("GoalVerifiedMark", () => {
     const mark = screen.getByTestId("goal-verified-mark");
     expect(mark.className).toContain("text-g-trust");
     expect(mark.textContent).toBe("Verified · Acme");
+  });
+
+  it("mutedText keeps the check blue and quiets the label to ink-2 (queue header rule)", () => {
+    render(<GoalVerifiedMark mutedText>Verified · Acme</GoalVerifiedMark>);
+    const mark = screen.getByTestId("goal-verified-mark");
+    expect(mark.className).toContain("text-g-ink-2");
+    expect(mark.className).not.toContain("text-g-trust");
+    expect(mark.querySelector("svg")?.getAttribute("class")).toContain("text-g-trust");
   });
 });

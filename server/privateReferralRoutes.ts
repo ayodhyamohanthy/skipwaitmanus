@@ -14,6 +14,7 @@ import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request, type Response as ExpressResponse } from "express";
 import { validatePrivateDocument } from "./documentValidation";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "./schemaReconcile";
+import { publicAskRef } from "./askRef";
 import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, listMyPaymentReceipts, listSeekerAlerts, createSeekerAlert, setSeekerAlertPaused, deleteSeekerAlert, revokeReferralShareCard, listCreditLedger, getMyProfile, getReferrerPreferences } from "./db";
 import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
@@ -91,6 +92,8 @@ export type PrivateReferralRouteDeps = {
   getBlockedReferralRequestIds?: (userId: number, requestIds: number[]) => Promise<Set<number>>;
   getUnclaimedCompanyReferralPreview?: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
+  hasEverCreatedReferralRequest?: (userId: number) => Promise<boolean>;
+  hasEverReviewedReferral?: (userId: number) => Promise<boolean>;
   listMyPaymentReceipts?: (userId: number, role?: "job_seeker" | "referrer") => Promise<unknown[]>;
   listSeekerAlerts?: (userId: number) => Promise<unknown[]>;
   createSeekerAlert?: (userId: number, input: { companyDomain?: unknown }) => Promise<unknown>;
@@ -685,6 +688,24 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.status(isValidationError ? 400 : 500).json({ error: message });
     }
   });
+  // D-132/D-110 (flag ASK_LEVEL_COST): the pre-send cost quote for the compose
+  // screen - "This ask costs N credits. You have M. Add K more." The link is
+  // normalized exactly as at creation, so the quote always matches the charge.
+  app.get("/api/company-referrals/quote", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to see what this ask costs" });
+      const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
+      if (!url || !isValidTargetRoleUrl(url)) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
+      const level = assignJobLevel({ url: normalizeTargetRoleUrl(url) }).level;
+      const cost = askLevelCostEnabled() ? creditsForLevel(level) : 1;
+      const summary = (await deps.getCreditSummary?.(identity.account.id, "job_seeker")) as { totalAvailable?: unknown } | undefined;
+      const totalAvailable = typeof summary?.totalAvailable === "number" ? summary.totalAvailable : null;
+      if (totalAvailable === null) return res.status(500).json({ error: "We could not load your referral credits" });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ level, cost, totalAvailable, shortfall: Math.max(0, cost - totalAvailable) });
+    } catch { res.status(500).json({ error: "We could not price this ask" }); }
+  });
   app.post("/api/company-referrals", async (req, res) => {
     let actorUserId: number | undefined;
     try {
@@ -914,8 +935,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.get("/api/referrer-fast-track/me", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to create a Fast-Track Link" });
-      if (!deps.getOrCreateReferrerFastTrackLink) return res.status(503).json({ error: "Fast-Track Links are unavailable right now" });
+      if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to create your link" });
+      if (!deps.getOrCreateReferrerFastTrackLink) return res.status(503).json({ error: "Your link is unavailable right now" });
       const link = await deps.getOrCreateReferrerFastTrackLink(identity.account.id);
       const origin = publicOutboundOrigin(req);
       const url = `${origin}/fast/${encodeURIComponent(link.linkCode)}`;
@@ -923,22 +944,22 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "referrer_fast_track.link_accessed", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { active: link.isActive } });
       res.set("Cache-Control", "private, no-store");
       res.json({ link: { ...link, url, vanityUrl, suggestedBioCopy: `Private referral requests at ${link.companyDomain} via skipwait.me.` } });
-    } catch (error) { res.status(/verify your company email/i.test(error instanceof Error ? error.message : "") ? 403 : 500).json({ error: error instanceof Error ? error.message : "We could not create your Fast-Track Link" }); }
+    } catch (error) { res.status(/verify your company email/i.test(error instanceof Error ? error.message : "") ? 403 : 500).json({ error: error instanceof Error ? error.message : "We could not create your link" }); }
   });
   app.post("/api/referrer-fast-track/me/deactivate", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to pause your Fast-Track Link" });
-      if (!deps.deactivateReferrerFastTrackLink) return res.status(503).json({ error: "Fast-Track Links are unavailable right now" });
+      if (!identity) return res.status(401).json({ error: "Sign in to pause your link" });
+      if (!deps.deactivateReferrerFastTrackLink) return res.status(503).json({ error: "Your link is unavailable right now" });
       const result = await deps.deactivateReferrerFastTrackLink(identity.account.id);
       record({ actorUserId: identity.account.id, action: "referrer_fast_track.link_paused", outcome: "success", resourceType: "referrer_fast_track", metadata: { deactivated: result.deactivated } });
       res.set("Cache-Control", "private, no-store");
       res.json(result);
-    } catch { res.status(500).json({ error: "We could not pause your Fast-Track Link" }); }
+    } catch { res.status(500).json({ error: "We could not pause your link" }); }
   });
   app.get("/api/referrer-fast-track/:linkCode", async (req, res) => {
     try {
-      if (!deps.getPublicReferrerFastTrackLink) return res.status(503).json({ error: "Fast-Track Links are unavailable right now" });
+      if (!deps.getPublicReferrerFastTrackLink) return res.status(503).json({ error: "Your link is unavailable right now" });
       const link = await deps.getPublicReferrerFastTrackLink(req.params.linkCode);
       if (!link) return res.status(404).json({ error: "This private referral link is no longer active" });
       record({ action: "referrer_fast_track.link_resolved", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { public: true } });
@@ -948,7 +969,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/referrer-fast-track/vanity/:companySlug/:vanityAlias", async (req, res) => {
     try {
-      if (!deps.getPublicReferrerFastTrackVanityLink) return res.status(503).json({ error: "Fast-Track Links are unavailable right now" });
+      if (!deps.getPublicReferrerFastTrackVanityLink) return res.status(503).json({ error: "Your link is unavailable right now" });
       const link = await deps.getPublicReferrerFastTrackVanityLink(req.params.companySlug, req.params.vanityAlias);
       if (!link) return res.status(404).json({ error: "This private referral link is no longer active" });
       record({ action: "referrer_fast_track.vanity_resolved", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { public: true } });
@@ -1076,7 +1097,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       // Counted after the expiry reconcile above, so expired asks have already freed their slots.
       let slots: OpenAskSlots | undefined;
       try { slots = await deps.getOpenAskSlots?.(identity.account.id, Date.now()); } catch { slots = undefined; }
-      res.json({ requests, expiredRequestIds, ...(slots ? { slots } : {}) });
+      let hasEverAsked = true; // fail closed: a payload doubt must never show first-timer sample rows
+      try { hasEverAsked = deps.hasEverCreatedReferralRequest ? await deps.hasEverCreatedReferralRequest(identity.account.id) : true; } catch { hasEverAsked = true; }
+      res.json({ requests, expiredRequestIds, hasEverAsked, ...(slots ? { slots } : {}) });
     } catch { res.status(500).json({ error: "We could not load your referral requests" }); }
   });
   const loadInbox = async (userId: number, requestedScope: string) => {
@@ -1085,7 +1108,17 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     const blockedInbox = await blockedRequestIds(userId, requests);
     const visible = requests.filter(row => typeof row !== "object" || row === null || !blockedInbox.has(Number((row as Record<string, unknown>).id)));
     record({ actorUserId: userId, action: "company_referral.inbox_viewed", outcome: "success", resourceType: "inbox", metadata: { requestCount: visible.length, scope } });
-    return { requests: await withCompanyIdentities(visible.map(row => (isRecordRow(row) ? withParsedJobFunction(row) : row))), scope };
+    // Sample-filled empty states: durable first-timer flag (claimed OR passed ever).
+    // Fails CLOSED (true) so sample rows never show on doubt.
+    let hasEverReviewed = true;
+    try { hasEverReviewed = deps.hasEverReviewedReferral ? await deps.hasEverReviewedReferral(userId) : true; } catch { hasEverReviewed = true; }
+    const withRefs = visible.map(row => {
+      const parsed = isRecordRow(row) ? withParsedJobFunction(row) : row;
+      const id = Number((parsed as Record<string, unknown>).id);
+      // W1: referrers quote the HMAC public ref, never the sequential id.
+      return Number.isInteger(id) && id > 0 ? { ...(parsed as Record<string, unknown>), publicRef: publicAskRef(id) } : parsed;
+    });
+    return { requests: await withCompanyIdentities(withRefs), scope, hasEverReviewed };
   };
   app.get("/api/company-referrals/inbox", async (req, res) => {
     try {
@@ -1317,7 +1350,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const [named] = await attachCompanyIdentities([anonymousRequest], row => row.companyDomain, lookupCompanies);
       record({ actorUserId: identity.account.id, action: "company_referral.preview_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: typeof request.companyDomain === "string" ? request.companyDomain : undefined, metadata: { attachmentCount: attachments.length, resumeAccess: "metadata_only" } });
       res.set("Cache-Control", "private, no-store");
-      res.json({ request: { ...withParsedJobFunction(anonymousRequest), companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null, attachments } });
+      res.json({ request: { ...withParsedJobFunction(anonymousRequest), publicRef: publicAskRef(requestId), companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null, attachments } });
     } catch { res.status(500).json({ error: "We could not load this private candidate preview" }); }
   });
   app.get("/api/company-referrals/:requestId", async (req, res) => {
@@ -1655,3 +1688,5 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
 }
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
+import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
+import { askLevelCostEnabled } from "./db";

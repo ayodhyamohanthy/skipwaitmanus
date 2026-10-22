@@ -1,4 +1,5 @@
-import { bigint, boolean, customType, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, customType, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar, foreignKey, ForeignKeyBuilder } from "drizzle-orm/mysql-core";
+import type { AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const canonicalPeople = mysqlTable("canonicalPeople", {
   id: int("id").autoincrement().primaryKey(),
@@ -390,7 +391,7 @@ export const talentDiscoveryConsents = mysqlTable("talentDiscoveryConsents", {
 export const opportunitySponsorshipPurchases = mysqlTable("opportunitySponsorshipPurchases", {
   id: int("id").autoincrement().primaryKey(),
   idempotencyKey: varchar("idempotencyKey", { length: 64 }).notNull(),
-  opportunityId: int("opportunityId").notNull().references(() => companyOpportunities.id, { onDelete: "restrict" }),
+  opportunityId: int("opportunityId").notNull(),
   opportunityOwnerId: int("opportunityOwnerId").notNull().references(() => users.id, { onDelete: "restrict" }),
   chargedUserId: int("chargedUserId").notNull().references(() => users.id, { onDelete: "restrict" }),
   actorUserId: int("actorUserId").notNull().references(() => users.id, { onDelete: "restrict" }),
@@ -400,7 +401,7 @@ export const opportunitySponsorshipPurchases = mysqlTable("opportunitySponsorshi
   endsAt: timestamp("endsAt").notNull(),
   opportunityUpdatedAt: timestamp("opportunityUpdatedAt").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [uniqueIndex("opportunity_sponsorship_purchase_idempotency_unique").on(table.chargedUserId, table.idempotencyKey), index("opportunity_sponsorship_delivery_idx").on(table.opportunityId, table.endsAt)]);
+}, table => [ foreignKey({ name: "opportunitySponsorshipPurchases_opportunityId_fk", columns: [table.opportunityId], foreignColumns: [companyOpportunities.id] }).onDelete("restrict"),uniqueIndex("opportunity_sponsorship_purchase_idempotency_unique").on(table.chargedUserId, table.idempotencyKey), index("opportunity_sponsorship_delivery_idx").on(table.opportunityId, table.endsAt)]);
 
 export const employerTalentRefs = mysqlTable("employerTalentRefs", {
   id: int("id").autoincrement().primaryKey(),
@@ -495,7 +496,7 @@ export const referralRequests = mysqlTable("referralRequests", {
 
 export const referralTransitionEvents = mysqlTable("referralTransitionEvents", {
   id: int("id").autoincrement().primaryKey(),
-  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  referralRequestId: int("referralRequestId").notNull(),
   operationKey: varchar("operationKey", { length: 120 }).notNull(),
   actorUserId: int("actorUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   action: varchar("action", { length: 40 }).notNull(),
@@ -505,7 +506,7 @@ export const referralTransitionEvents = mysqlTable("referralTransitionEvents", {
   // Optional portal reference recorded on mark-as-referred (queue task 16).
   referenceId: varchar("referenceId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [uniqueIndex("referral_transition_operation_unique").on(table.referralRequestId, table.operationKey), uniqueIndex("referral_transition_revision_unique").on(table.referralRequestId, table.resultingRevision)]);
+}, table => [ foreignKey({ name: "referralTransitionEvents_referralRequestId_fk", columns: [table.referralRequestId], foreignColumns: [referralRequests.id] }).onDelete("cascade"),uniqueIndex("referral_transition_operation_unique").on(table.referralRequestId, table.operationKey), uniqueIndex("referral_transition_revision_unique").on(table.referralRequestId, table.resultingRevision)]);
 
 export const referralRequestSaves = mysqlTable("referralRequestSaves", {
   id: int("id").autoincrement().primaryKey(),
@@ -525,7 +526,7 @@ export const referralRequestPasses = mysqlTable("referralRequestPasses", {
 
 export const referralDocumentAccessGrants = mysqlTable("referralDocumentAccessGrants", {
   id: int("id").autoincrement().primaryKey(),
-  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, {onDelete:"cascade"}),
+  referralRequestId: int("referralRequestId").notNull(),
   referrerId: int("referrerId").notNull().references(() => users.id, {onDelete:"cascade"}),
   requestRevision: int("requestRevision").notNull(),
   grantVersion: int("grantVersion").default(1).notNull(),
@@ -534,7 +535,7 @@ export const referralDocumentAccessGrants = mysqlTable("referralDocumentAccessGr
   revokedAt: timestamp("revokedAt"),
   revokeReason: varchar("revokeReason", {length:255}),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [uniqueIndex("referral_document_grant_request_referrer_unique").on(table.referralRequestId,table.referrerId), index("referral_document_grant_active_idx").on(table.referrerId,table.revokedAt,table.expiresAt)]);
+}, table => [ foreignKey({ name: "referralDocumentAccessGrants_referralRequestId_fk", columns: [table.referralRequestId], foreignColumns: [referralRequests.id] }).onDelete("cascade"),uniqueIndex("referral_document_grant_request_referrer_unique").on(table.referralRequestId,table.referrerId), index("referral_document_grant_active_idx").on(table.referrerId,table.revokedAt,table.expiresAt)]);
 
 export const referralShareCards = mysqlTable("referralShareCards", {
   id: int("id").autoincrement().primaryKey(),
@@ -548,7 +549,7 @@ export const referralShareCards = mysqlTable("referralShareCards", {
 
 export const referrerReviewEmailLinks = mysqlTable("referrerReviewEmailLinks", {
   id: int("id").autoincrement().primaryKey(),
-  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  referralRequestId: int("referralRequestId").notNull(),
   referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
   linkToken: varchar("linkToken", { length: 64 }).notNull(),
   expiresAt: timestamp("expiresAt").notNull(),
@@ -556,15 +557,15 @@ export const referrerReviewEmailLinks = mysqlTable("referrerReviewEmailLinks", {
   grantVersion: int("grantVersion").default(1).notNull(),
   rotatedAt: timestamp("rotatedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [uniqueIndex("referrer_review_email_token_unique").on(table.linkToken), uniqueIndex("referrer_review_email_request_referrer_unique").on(table.referralRequestId, table.referrerId), index("referrer_review_email_lookup_idx").on(table.linkToken, table.referrerId, table.expiresAt), index("referrer_review_email_request_idx").on(table.referralRequestId)]);
+}, table => [ foreignKey({ name: "referrerReviewEmailLinks_referralRequestId_fk", columns: [table.referralRequestId], foreignColumns: [referralRequests.id] }).onDelete("cascade"),uniqueIndex("referrer_review_email_token_unique").on(table.linkToken), uniqueIndex("referrer_review_email_request_referrer_unique").on(table.referralRequestId, table.referrerId), index("referrer_review_email_lookup_idx").on(table.linkToken, table.referrerId, table.expiresAt), index("referrer_review_email_request_idx").on(table.referralRequestId)]);
 
 export const referralReviewGrantRotations = mysqlTable("referralReviewGrantRotations", {
-  id: int("id").autoincrement().primaryKey(), referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, {onDelete:"cascade"}), referrerId: int("referrerId").notNull().references(() => users.id, {onDelete:"cascade"}), actorUserId: int("actorUserId").notNull().references(() => users.id, {onDelete:"cascade"}), fromVersion: int("fromVersion").notNull(), toVersion: int("toVersion").notNull(), reason: varchar("reason", {length:255}).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull()
-}, table => [uniqueIndex("referral_review_grant_rotation_unique").on(table.referralRequestId,table.referrerId,table.toVersion)]);
+  id: int("id").autoincrement().primaryKey(), referralRequestId: int("referralRequestId").notNull(), referrerId: int("referrerId").notNull().references(() => users.id, {onDelete:"cascade"}), actorUserId: int("actorUserId").notNull().references(() => users.id, {onDelete:"cascade"}), fromVersion: int("fromVersion").notNull(), toVersion: int("toVersion").notNull(), reason: varchar("reason", {length:255}).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull()
+}, table => [ foreignKey({ name: "referralReviewGrantRotations_referralRequestId_fk", columns: [table.referralRequestId], foreignColumns: [referralRequests.id] }).onDelete("cascade"),uniqueIndex("referral_review_grant_rotation_unique").on(table.referralRequestId,table.referrerId,table.toVersion)]);
 
 export const referralReviewDeliveries = mysqlTable("referralReviewDeliveries", {
   id: int("id").autoincrement().primaryKey(),
-  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  referralRequestId: int("referralRequestId").notNull(),
   referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
   channel: mysqlEnum("channel", ["email", "slack"]).notNull(),
   grantVersion: int("grantVersion").default(1).notNull(),
@@ -578,7 +579,7 @@ export const referralReviewDeliveries = mysqlTable("referralReviewDeliveries", {
   sentAt: timestamp("sentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [uniqueIndex("referral_review_delivery_recipient_unique").on(table.referralRequestId, table.referrerId, table.channel, table.grantVersion), index("referral_review_delivery_claim_idx").on(table.status, table.nextAttemptAt, table.leaseExpiresAt)]);
+}, table => [ foreignKey({ name: "referralReviewDeliveries_referralRequestId_fk", columns: [table.referralRequestId], foreignColumns: [referralRequests.id] }).onDelete("cascade"),uniqueIndex("referral_review_delivery_recipient_unique").on(table.referralRequestId, table.referrerId, table.channel, table.grantVersion), index("referral_review_delivery_claim_idx").on(table.status, table.nextAttemptAt, table.leaseExpiresAt)]);
 
 export const workEmailOtpCodes = mysqlTable("workEmailOtpCodes", {
   id: int("id").autoincrement().primaryKey(),
@@ -624,12 +625,12 @@ export const referralAvailabilitySlots = mysqlTable("referralAvailabilitySlots",
   id: int("id").autoincrement().primaryKey(),
   referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
   companyDomain: varchar("companyDomain", { length: 255 }).notNull(),
-  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  referralRequestId: int("referralRequestId").notNull(),
   status: mysqlEnum("status", ["allocated", "released"]).default("allocated").notNull(),
   activeRequestKey: varchar("activeRequestKey", { length: 80 }),
   openedAt: timestamp("openedAt").defaultNow().notNull(),
   releasedAt: timestamp("releasedAt"),
-}, table => [uniqueIndex("referral_availability_active_request_unique").on(table.activeRequestKey), index("referral_availability_referrer_idx").on(table.referrerId, table.status), index("referral_availability_company_idx").on(table.companyDomain, table.status), index("referral_availability_request_idx").on(table.referralRequestId)]);
+}, table => [ foreignKey({ name: "referralAvailabilitySlots_referralRequestId_fk", columns: [table.referralRequestId], foreignColumns: [referralRequests.id] }).onDelete("cascade"),uniqueIndex("referral_availability_active_request_unique").on(table.activeRequestKey), index("referral_availability_referrer_idx").on(table.referrerId, table.status), index("referral_availability_company_idx").on(table.companyDomain, table.status), index("referral_availability_request_idx").on(table.referralRequestId)]);
 
 export const referrerFastTrackLinks = mysqlTable("referrerFastTrackLinks", {
   id: int("id").autoincrement().primaryKey(),
@@ -765,21 +766,21 @@ export const companyCoverageInvitations = mysqlTable("companyCoverageInvitations
   inviteCode: varchar("inviteCode", { length: 64 }).notNull(),
   inviterUserId: int("inviterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   companyDomain: varchar("companyDomain", { length: 255 }).notNull(),
-  referralRequestId: int("referralRequestId").references(() => referralRequests.id, { onDelete: "cascade" }),
+  referralRequestId: int("referralRequestId"),
   status: mysqlEnum("status", ["active", "completed", "ineligible"]).default("active").notNull(),
   joinerUserId: int("joinerUserId").references(() => users.id, { onDelete: "set null" }),
   completedAt: timestamp("completedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [uniqueIndex("coverage_invite_code_unique").on(table.inviteCode), index("coverage_invite_inviter_idx").on(table.inviterUserId), index("coverage_invite_company_status_idx").on(table.companyDomain, table.status), uniqueIndex("coverage_invite_request_unique").on(table.referralRequestId)]);
+}, table => [ foreignKey({ name: "companyCoverageInvitations_referralRequestId_fk", columns: [table.referralRequestId], foreignColumns: [referralRequests.id] }).onDelete("cascade"),uniqueIndex("coverage_invite_code_unique").on(table.inviteCode), index("coverage_invite_inviter_idx").on(table.inviterUserId), index("coverage_invite_company_status_idx").on(table.companyDomain, table.status), uniqueIndex("coverage_invite_request_unique").on(table.referralRequestId)]);
 
 export const companyCoverageRewards = mysqlTable("companyCoverageRewards", {
   id: int("id").autoincrement().primaryKey(),
-  invitationId: int("invitationId").notNull().references(() => companyCoverageInvitations.id, { onDelete: "cascade" }),
+  invitationId: int("invitationId").notNull(),
   inviterUserId: int("inviterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   joinerUserId: int("joinerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   tokenCount: int("tokenCount").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [uniqueIndex("coverage_reward_invitation_unique").on(table.invitationId), uniqueIndex("coverage_reward_joiner_unique").on(table.joinerUserId), index("coverage_reward_inviter_idx").on(table.inviterUserId)]);
+}, table => [ foreignKey({ name: "companyCoverageRewards_invitationId_fk", columns: [table.invitationId], foreignColumns: [companyCoverageInvitations.id] }).onDelete("cascade"),uniqueIndex("coverage_reward_invitation_unique").on(table.invitationId), uniqueIndex("coverage_reward_joiner_unique").on(table.joinerUserId), index("coverage_reward_inviter_idx").on(table.inviterUserId)]);
 
 export const personalReferralInvites = mysqlTable("personalReferralInvites", {
   id: int("id").autoincrement().primaryKey(),
@@ -790,13 +791,13 @@ export const personalReferralInvites = mysqlTable("personalReferralInvites", {
 
 export const personalReferralRewards = mysqlTable("personalReferralRewards", {
   id: int("id").autoincrement().primaryKey(),
-  invitationId: int("invitationId").notNull().references(() => personalReferralInvites.id, { onDelete: "cascade" }),
+  invitationId: int("invitationId").notNull(),
   inviterUserId: int("inviterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   joinerUserId: int("joinerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   joinerEmailHash: varchar("joinerEmailHash", { length: 64 }).notNull(),
   tokenCount: int("tokenCount").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [uniqueIndex("personal_referral_reward_invitation_joiner_unique").on(table.invitationId, table.joinerUserId), uniqueIndex("personal_referral_reward_joiner_unique").on(table.joinerUserId), uniqueIndex("personal_referral_reward_email_unique").on(table.joinerEmailHash), index("personal_referral_reward_inviter_idx").on(table.inviterUserId)]);
+}, table => [ foreignKey({ name: "personalReferralRewards_invitationId_fk", columns: [table.invitationId], foreignColumns: [personalReferralInvites.id] }).onDelete("cascade"),uniqueIndex("personal_referral_reward_invitation_joiner_unique").on(table.invitationId, table.joinerUserId), uniqueIndex("personal_referral_reward_joiner_unique").on(table.joinerUserId), uniqueIndex("personal_referral_reward_email_unique").on(table.joinerEmailHash), index("personal_referral_reward_inviter_idx").on(table.inviterUserId)]);
 
 export const adminTokenAdjustments = mysqlTable("adminTokenAdjustments", {
   id: int("id").autoincrement().primaryKey(),
@@ -920,14 +921,14 @@ export const employerPaymentRefunds = mysqlTable("employerPaymentRefunds", {
   providerRefundId: varchar("providerRefundId", { length: 255 }).notNull(),
   providerPaymentId: varchar("providerPaymentId", { length: 255 }).notNull(),
   providerOrderId: varchar("providerOrderId", { length: 255 }),
-  fulfillmentId: int("fulfillmentId").references(() => employerPaymentFulfillments.id, { onDelete: "set null" }),
+  fulfillmentId: int("fulfillmentId"),
   amount: int("amount").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
   creditsReversed: int("creditsReversed").default(0).notNull(),
   status: mysqlEnum("status", ["applied", "requires_review"]).notNull(),
   reason: varchar("reason", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [uniqueIndex("employer_payment_refund_event_unique").on(table.provider, table.providerRefundId), index("employer_payment_refund_payment_idx").on(table.provider, table.providerPaymentId)]);
+}, table => [ foreignKey({ name: "employerPaymentRefunds_fulfillmentId_fk", columns: [table.fulfillmentId], foreignColumns: [employerPaymentFulfillments.id] }).onDelete("set null"),uniqueIndex("employer_payment_refund_event_unique").on(table.provider, table.providerRefundId), index("employer_payment_refund_payment_idx").on(table.provider, table.providerPaymentId)]);
 
 export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutIntents", {
   id: int("id").autoincrement().primaryKey(),
@@ -1021,7 +1022,7 @@ export const referralAttachments = mysqlTable("referralAttachments", {
   fileSize: int("fileSize").notNull(),
   uploadSessionId: varchar("uploadSessionId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("referral_attachments_request_idx").on(table.referralRequestId), index("referral_attachments_owner_idx").on(table.ownerId), uniqueIndex("referral_attachments_upload_session_unique").on(table.uploadSessionId)]);
+}, table => [new ForeignKeyBuilder(() => ({ name: "referralAttachments_uploadSessionId_fk", columns: [table.uploadSessionId], foreignColumns: [resumeUploadSessions.id] })).onDelete("set null"), index("referral_attachments_request_idx").on(table.referralRequestId), index("referral_attachments_owner_idx").on(table.ownerId), uniqueIndex("referral_attachments_upload_session_unique").on(table.uploadSessionId)]);
 
 export const resumeUploadSessions = mysqlTable("resumeUploadSessions", {
   id: varchar("id", { length: 64 }).primaryKey(),
@@ -1036,7 +1037,7 @@ export const resumeUploadSessions = mysqlTable("resumeUploadSessions", {
   finalizationOwner: varchar("finalizationOwner", { length: 64 }),
   finalizationLeaseUntil: timestamp("finalizationLeaseUntil"),
   permanentStorageKey: varchar("permanentStorageKey", { length: 1024 }),
-  attachmentId: int("attachmentId").references(() => referralAttachments.id, { onDelete: "set null" }),
+  attachmentId: int("attachmentId").references((): AnyMySqlColumn => referralAttachments.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("resume_upload_sessions_owner_status_idx").on(table.ownerId, table.status, table.createdAt), uniqueIndex("resume_upload_sessions_owner_client_unique").on(table.ownerId, table.clientUploadId)]);
@@ -1123,3 +1124,41 @@ export const oauthAuthCodes = mysqlTable("oauthAuthCodes", {
   usedAt: timestamp("usedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("oauth_auth_codes_user_idx").on(table.userId), index("oauth_auth_codes_expiry_idx").on(table.expiresAt)]);
+
+const billingReviewDigest = customType<{ data: string; driverData: string }>({ dataType() { return "varchar(64) CHARACTER SET ascii COLLATE ascii_bin"; } });
+
+/** D-067 review notifications, no user cascade may erase unresolved evidence. */
+export const billingReviewOutbox = mysqlTable("billingReviewOutbox", {
+  id: int("id").autoincrement().primaryKey(),
+  obligationKey: billingReviewDigest("obligationKey").notNull(),
+  payload: text("payload"),
+  conflictDigest: billingReviewDigest("conflictDigest").notNull(),
+  envelope: text("envelope"),
+  submissionState: varchar("submissionState", { length: 20 }).default("never_submitted").notNull(),
+  updatedAt: timestamp("updatedAt", { fsp: 3 }).notNull(),
+  status: varchar("status", { length: 16 }).default("pending").notNull(),
+  attempts: int("attempts").default(0).notNull(),
+  nextAttemptAt: timestamp("nextAttemptAt", { fsp: 3 }).notNull(),
+  leaseOwner: varchar("leaseOwner", { length: 64 }),
+  leaseUntil: timestamp("leaseUntil", { fsp: 3 }),
+  firstAttemptAt: timestamp("firstAttemptAt", { fsp: 3 }),
+  acceptedAt: timestamp("acceptedAt", { fsp: 3 }),
+  providerMessageId: varchar("providerMessageId", { length: 255 }),
+  lastError: varchar("lastError", { length: 80 }),
+  createdAt: timestamp("createdAt", { fsp: 3 }).notNull(),
+}, table => [uniqueIndex("billing_review_obligation_unique").on(table.obligationKey), index("billing_review_due_idx").on(table.status, table.nextAttemptAt, table.id)]);
+
+// D-115 plan family (main, Oct 21): one row per AI tool call so benefit caps
+// can be set from real cost before pricing go-live. costUsdMicros is null
+// until the model is priced in shared/aiCost.ts; tokens are always captured.
+export const aiToolCallLogs = mysqlTable("aiToolCallLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  tool: varchar("tool", { length: 64 }).notNull(),
+  model: varchar("model", { length: 128 }).notNull(),
+  tokensIn: int("tokensIn").notNull(),
+  tokensOut: int("tokensOut").notNull(),
+  costUsdMicros: bigint("costUsdMicros", { mode: "number" }),
+  planFamilyId: varchar("planFamilyId", { length: 32 }),
+  userId: int("userId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("ai_tool_call_log_tool_idx").on(table.tool, table.createdAt)]);

@@ -2,7 +2,7 @@
 
 > Start with [`docs/BRIEF.md`](docs/BRIEF.md) (D-073).
 
-3 asks free every month; more use credits. Referrers are never paid and never ask you for money (D-063).
+3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money (D-063 as worded by D-135).
 Money never buys queue position, referral access or acceptance odds.
 If this file and `shared/planCatalog.ts` disagree, the code wins — change both together.
 No price, plan-content or new credit-rule change until two full weeks of baseline data exist (D-056).
@@ -64,12 +64,12 @@ priority, visibility or queue position (D-006). Plan credits end with the pass t
 
 ## Employers (/for-companies)
 
-Company page free · Referral programme from $199/mo · Enterprise talk to us.
+Company page free · Enterprise talk to us.
 
 The line above is what `/for-companies` shows today (pinned by `client/src/components/employer/employerPlans.test.ts`).
 Every plan there is sales-led: "Get started" opens the demo request and nothing is charged. D-040 requires every
-`/for-companies` claim to match the product, and the referral programme has nothing built behind it while employer
-referral campaigns are parked (D-059), so the line changes together with that code. Employers may buy only labeled
+`/for-companies` claim to match the product; the advertised $199/mo Referral programme had nothing built behind it,
+so the owner removed it (D-133, Oct 21). It returns only when its product exists. Employers may buy only labeled
 job ads ("Featured listing") and tooling (D-040).
 
 ## Pricing ethics

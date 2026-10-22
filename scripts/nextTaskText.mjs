@@ -5,7 +5,8 @@ import { slugOf } from "./nextTaskCore.mjs";
 const CMD = "node scripts/next-task.mjs";
 const land = [
   "Land under D-082: push the branch, open a pull request, and wait until every check on that exact commit is green and main's own CI is green.",
-  "Then merge the pull request (or fast-forward main to that commit). Watch main's CI and both deploys to the end and run the live check from docs/BRIEF.md \"How to ship\".",
+  "Then fast-forward main to that exact commit (`git push origin <sha>:main`; GitHub's \"Create a merge commit\" button is also safe, because the ruleset only lets an up-to-date branch merge, but never squash or rebase-merge: they replace the tested commits, D-134 (6)). If that push is refused because main moved, merge the latest origin/main into your branch, re-run the full gate, push, wait until every check on the new commit is green and fast-forward again; never force-push.",
+  "Watch main's CI and both deploys to the end and run the live check from docs/BRIEF.md \"How to ship\".",
   "If anything goes red, revert or fix your commit before anything else.",
 ];
 
@@ -14,11 +15,13 @@ const steps = list => list.map((s, i) => `${i + 1}. ${s}`).join("\n");
 const worktree = branch => `Work in your own worktree, never by switching branches in a shared checkout: git fetch origin && git worktree add ../skipwaitmanus-wt/${slugOf(branch)} ${branch} (if it already exists, use it).`;
 /** D-085: origin is the only place other agents can see; a claim nobody pushes to for 2 hours is free again. */
 const keepAlive = who => `Push your branch after every commit. Before any step that may take over an hour without a commit (the full gate, a long test run), run \`${CMD} --heartbeat --as "${who}"\`: a claim nobody has pushed to for 2 hours is handed to the next agent (D-085). Before you stop for any reason, commit (a WIP commit is fine) and push.`;
-const unclear = "If anything is unclear, a test fails for a reason the packet does not give, or the call is the owner's: stop, write the question in the row, push the branch and ask the owner. Never guess about money, sign-in, identity or privacy.";
+const unclear = "If anything is unclear, a test fails for a reason the packet does not give, or the call is the owner's: stop, write the question in your status line (your §3b row, or your line in the packet's Status section when the row is shared), push the branch and ask the owner. Never guess about money, sign-in, identity or privacy.";
 /** D-085: the team reports every priority's status to the CEO (Claude Code), green or not. */
 const report = (task, who) => `When you stop, land, open a pull request or get blocked, report to the CEO: \`${CMD} --report <green|red|blocked|review|landed> --task ${task.id} --as "${who}" --note "<one line: what is green, what is not, what you need; no secrets or personal data>"\` (D-085). A red or blocked report holds every lower priority until a newer report on the task (or a newer green CI run on its pull request) clears it.`;
 const yours = who => `This is already yours (${who}): nothing new was claimed, and no other agent will be given it. Finish it before anything else (queue rule 2).`;
 /** D-085: pending work ranked above your own comes first; your own claim stays yours, pushed. */
+/** D-134: where a task's status goes: its own §3b row, or, when several tasks share that row, its line in its packet's Status section. */
+const statusAt = task => task.sharedRow ? `its line in the Status section of ${task.packet ?? "its packet"} (\"${task.id}: ...\"; the §3b row \"${task.row}\" is shared by several tasks, so never edit it)` : `the §3b row \"${task.row}\"`;
 const holding = pick => (pick.holds ? [`You also hold ${pick.holds.id} (${pick.holds.branch}). This higher priority needs hands first (D-085): your own work is pushed (the picker checked), and it stays yours for 2 hours; come back to it with \`${CMD} --claim\` as soon as this is done.`] : []);
 
 function workSteps(task, who, branch) {
@@ -26,8 +29,8 @@ function workSteps(task, who, branch) {
     "Follow docs/DELEGATION.md §4 steps 4-8 exactly: the packet's tests first (they must fail for its reason), one step per commit, only the packet's files, then the full gate on your branch merged with the latest origin/main.",
     keepAlive(who),
     task.tier === 1
-      ? `Tier 1: push the branch, open a DRAFT pull request, set the row to "review — ${branch} — <sha>", report, and end the session (one packet per session, D-074). Never land it yourself: \`${CMD}\` hands the review to a different session.`
-      : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and the §3b row to "done — <sha>".`,
+      ? `Tier 1: push the branch, open a DRAFT pull request, set ${statusAt(task)} to "review — ${branch} — <sha>", report, and end the session (one packet per session, D-074). Never land it yourself: \`${CMD}\` hands the review to a different session.`
+      : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(task)} to "done — <sha>".`,
     unclear,
     report(task, who),
   ];
@@ -37,7 +40,7 @@ function buildSteps(task, who, date, branch) {
   return steps([
     worktree(branch),
     `Read docs/BRIEF.md, then ${task.packet}. Read nothing else unless the packet names it. The branch above replaces the packet's agent/<model>/... name.`,
-    `First commit: set the docs/KIT_V4_BUILD_PLAN.md §3b row "${task.row}" to "in progress — ${who} — ${date} — branch ${branch}".`,
+    `First commit: set ${task.sharedRow ? statusAt(task) : `the docs/KIT_V4_BUILD_PLAN.md §3b row "${task.row}"`} to "in progress — ${who} — ${date} — branch ${branch}".`,
     ...workSteps(task, who, branch),
   ]);
 }
@@ -46,15 +49,19 @@ function buildSteps(task, who, date, branch) {
 function resumeSteps(task, who, branch) {
   return steps([
     worktree(branch),
-    `See where it stopped before touching anything: the §3b row "${task.row}", \`git log --oneline origin/main..origin/${branch}\`, and any uncommitted changes in your worktree. Read docs/BRIEF.md and ${task.packet ?? "the row"}.`,
+    `See where it stopped before touching anything: ${statusAt(task)}, \`git log --oneline origin/main..origin/${branch}\`, and any uncommitted changes in your worktree. Read docs/BRIEF.md and ${task.packet ?? "the row"}.`,
     ...workSteps(task, who, branch),
   ]);
 }
 
+/** D-074: a Tier 1 change lands only as reviewed; a commit pushed after the pass verdict was never reviewed. */
+const unreviewed = pick => `Before you land, take the head commit the pass verdict names on the pull request (the newest pass, if there were several) as <reviewed> and run \`git fetch origin && git log --no-merges --name-only --format="%h %s" <reviewed>..origin/${pick.work} ^origin/main\` and \`git log --merges --cc --format="%h %s" <reviewed>..origin/${pick.work} ^origin/main\`. Every commit the first lists, except one that only changes docs/plans/assignments.json (the status commit a landing makes), and every merge the second shows with a diff hunk (a conflict resolution or an extra change, your own merge included) was never reviewed (D-074): do not land, and report it blocked to the CEO with --report blocked.`;
+
 const reviewSteps = (pick, who) => steps([
+  `Before reading any code, record the head you review: \`git fetch origin && git rev-parse origin/${pick.work}\` gives <reviewed>; review exactly that commit (a worktree at that SHA), whatever arrives later.`,
   `Read docs/BRIEF.md and ${pick.task.packet}, then review exactly as docs/DELEGATION.md §6 says, reproducing every claim yourself.`,
-  "Post the verdict on the pull request.",
-  `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\`. Merge the latest origin/main into ${pick.work}, set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set the §3b row to "done — <sha>".`,
+  `Before posting, run \`git fetch origin && git log --no-merges --format="%h %s" <reviewed>..origin/${pick.work} ^origin/main\`: if it lists anything, review those commits too and record the new head as <reviewed>, or return findings. Post the verdict on the pull request naming <reviewed>, never a fresh rev-parse: a lander checks that nothing but clean merges of main came after it.`,
+  `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\`. If you land it, first run the check in the landing steps: a commit after the one you reviewed, other than merges of main and the status commit, means do not land; report it blocked (D-074). Merge the latest origin/main into ${pick.work}, set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`,
   `Findings: list each with file:line, severity and the failing test to add first, then run \`${CMD} --verdict findings --task ${pick.task.id} --as "${who}"\` and stop. The verdict moves the task to its fix stage; you never fix code you reviewed.`,
   `Run \`${CMD} --heartbeat --as "${who}"\` before any long step: a review lock nobody has pushed to for 2 hours goes to the next agent (D-085).`,
   report(pick.task, who),
@@ -74,17 +81,18 @@ const greenSteps = (pick, who) => steps([
   "Fix the failure red-first on the same branch (never skip, weaken or delete a test), merge the latest origin/main, re-run the full gate, push, and wait until every check on that exact commit is green.",
   keepAlive(who),
   pick.task.tier === 1
-    ? `Tier 1: once green, set the row to "review — ${pick.work} — <sha>" and stop; \`${CMD}\` hands the review to a different session.`
-    : `Then land it: ${land.slice(1).join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and the §3b row to "done — <sha>".`,
+    ? `Tier 1: once green, set ${statusAt(pick.task)} to "review — ${pick.work} — <sha>" and stop; \`${CMD}\` hands the review to a different session.`
+    : `Then land it: ${land.slice(1).join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(pick.task)} to "done — <sha>".`,
   report(pick.task, who),
 ]);
 
 const landSteps = (pick, who) => steps([
   worktree(pick.work),
   `Read docs/BRIEF.md and the §3b row "${pick.task.row}". Merge the latest origin/main into ${pick.work} and re-run the full gate yourself; never land on someone else's word.`,
+  ...(pick.tier1 ? [unreviewed(pick)] : []),
   pick.tier1
-    ? `Set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set the §3b row to "done — <sha>".`
-    : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and the §3b row to "done — <sha>".`,
+    ? `Set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`
+    : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(pick.task)} to "done — <sha>".`,
   keepAlive(who),
   report(pick.task, who),
 ]);
@@ -93,8 +101,8 @@ const landSteps = (pick, who) => steps([
 const architectSteps = (pick, who, claimed) => steps([
   `git fetch origin && git worktree add ../skipwaitmanus-wt/architect-${slugOf(pick.lock)} ${pick.lockExists || claimed ? pick.lock : `-b ${pick.lock} origin/main`} (if it already exists, use it). Never force-push this branch: its first commit is your claim.`,
   `Read the §3b row "${pick.task.row}", the task's note in docs/plans/assignments.json and every decision it names in docs/DECISIONS.md.`,
-  "Write the packet in docs/plans/ exactly as docs/DELEGATION.md describes (goal, binding rules quoted, current behaviour verified in code with file:line, rulings, files in and out of scope, red-first tests, definition of done, review checklist, stop-and-ask). Record any ruling you make as a register entry marked \"decided under D-074\".",
-  `In the same pull request set the task's "packet" and "status": "todo" in docs/plans/assignments.json, so the next \`${CMD}\` hands it to a builder.`,
+  "Write the packet in docs/plans/ exactly as docs/DELEGATION.md describes (goal, binding rules quoted, current behaviour verified in code with file:line, rulings, files in and out of scope, red-first tests, definition of done, review checklist, stop-and-ask). Claude Code records its rulings as register entries marked \"decided under D-074\"; any other agent makes no ruling the decisions do not already make: a real choice they leave open on money, sign-in, identity, privacy or prices goes to the CEO as `--report blocked` with the question, and any other gap gets a stated, changeable assumption in the packet (D-109).",
+  `In the same pull request update docs/plans/assignments.json: a packet-only task (its note says so: its work is the rows it adds) gets "status": "done" and its rows are added exactly as its packet's list gives them (the D-048 split, or the packet the CEO wrote); any other task gets its "packet" and "status": "todo", so the next \`${CMD}\` hands it to a builder (D-134).`,
   `Land it like any docs change (D-082: pull request, every check green on that exact commit). ${keepAlive(who)}`,
   report(pick.task, who),
 ]);
@@ -105,7 +113,7 @@ const fixMainSteps = (pick, who) => steps([
   "Find the commit that turned main red (the run above and `gh run list --branch main --workflow CI`).",
   `Fix it red-first on ${pick.lock}, or revert that commit if the fix is not obvious. Nothing else: no other change rides along.`,
   keepAlive(who),
-  `Open a pull request from ${pick.lock} and wait until every check on that exact commit is green: main is red, so this fix is the one push D-082 allows. Then merge it, watch main's CI and both deploys to the end, and run the live check from docs/BRIEF.md "How to ship".`,
+  `Open a pull request from ${pick.lock} and wait until every check on that exact commit is green: main is red, so this fix is the one push D-082 allows. Then fast-forward main to that exact commit (\`git push origin <sha>:main\`; never squash or rebase-merge, D-134 (6)); if that push is refused because main moved, merge the latest origin/main into the lock branch, re-run the full gate, push, wait until every check on the new commit is green and fast-forward again, never force-push. Watch main's CI and both deploys to the end, and run the live check from docs/BRIEF.md "How to ship".`,
   "Tell the owner what broke, which commit, and how you fixed it.",
 ]);
 
@@ -145,7 +153,7 @@ export function renderBoard(rows) {
     if (r.report) bits.push(`report: ${r.report.status} — ${r.report.who}${r.report.note ? `: ${r.report.note}` : ""}`);
     return bits.join(" · ");
   });
-  return ["STATUS BOARD (priorities top down; a red or blocked one holds everything below it)", ...lines, ""].join("\n");
+  return ["STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)", ...lines, ""].join("\n");
 }
 
 /** The steps for one pick. ctx: { who, date, claimed } (claimed = this run took the lock or holds it). */
@@ -189,7 +197,7 @@ export function renderPick(pick, { who, date, claimed }) {
     ]) + take;
     case "green": return head(`MAKE GREEN ${pick.task.id} — ${pick.task.title}`, [
       `${pick.why ?? `Pull request ${pick.pr} has red CI`}, and nobody has pushed to ${pick.work} since ${new Date(pick.since).toISOString()} (started by ${pick.from ?? "unknown"}; D-085).`,
-      `Continue on the same branch and keep every commit on it. Note the takeover in the §3b row "${pick.task.row}".`,
+      `Continue on the same branch and keep every commit on it. Note the takeover in ${statusAt(pick.task)}.`,
       ...holding(pick),
       greenSteps(pick, who),
     ]) + take;
@@ -199,12 +207,12 @@ export function renderPick(pick, { who, date, claimed }) {
       landSteps(pick, who),
     ]) + take;
     case "architect": return head(`WRITE THE PACKET FOR ${pick.task.id} — ${pick.task.title}`, [
-      `Claude Code only (D-074, D-085) · lock ${pick.lock}${pick.from ? ` · taken over from ${pick.from}, quiet for 2 hours` : ""}`,
+      `Any agent (D-109); Claude Code may revise it · lock ${pick.lock}${pick.from ? ` · taken over from ${pick.from}, quiet for 2 hours` : ""}`,
       architectSteps(pick, who, claimed),
     ]) + take;
     case "takeover": return head(`TAKE OVER ${pick.task.id} — ${pick.task.title}`, [
       `Half-built and quiet: nobody has pushed to ${pick.work} since ${new Date(pick.since).toISOString()} (queue rule 2, D-085; started by ${pick.from ?? "unknown"}).${pick.why ? ` ${pick.why}.` : ""}`,
-      `Continue on the same branch and keep every commit on it. Note the takeover in the §3b row "${pick.task.row}".`,
+      `Continue on the same branch and keep every commit on it. Note the takeover in ${statusAt(pick.task)}.`,
       ...holding(pick),
       resumeSteps(pick.task, who, pick.work),
     ]) + take;

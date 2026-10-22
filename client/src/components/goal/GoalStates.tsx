@@ -10,7 +10,7 @@ export function GoalEmptyState({ title, body, action, className }: { title: stri
       <p className="text-g-label text-g-ink">{title}</p>
       {body ? <p className="mt-1 text-g-meta text-g-ink-2">{body}</p> : null}
       {action ? (
-        <GoalButton className="mt-3" size="sm" variant="ghost" onClick={action.onClick} {...(action.href ? { asChild: true } : {})}>
+        <GoalButton className="mt-3" size="sm" variant="outline" onClick={action.onClick} {...(action.href ? { asChild: true } : {})}>
           {action.href ? <a href={action.href}>{action.label}</a> : action.label}
         </GoalButton>
       ) : null}
@@ -23,7 +23,7 @@ export function GoalErrorState({ title, body, retry, className }: { title: strin
     <div data-testid="goal-error-state" role="alert" className={cn("px-5 py-6 max-gdesk:px-4", className)}>
       <p className="text-g-label text-g-ink">{title}</p>
       {body ? <p className="mt-1 text-g-meta text-g-ink-2">{body}</p> : null}
-      <GoalButton className="mt-3" size="sm" variant="ghost" onClick={retry.onClick}>{retry.label}</GoalButton>
+      <GoalButton className="mt-3" flush size="sm" variant="ghost" onClick={retry.onClick}>{retry.label}</GoalButton>
     </div>
   );
 }

@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { ArrowRight, CreditCard, ShieldCheck } from "lucide-react";
+import { ArrowRight, CreditCard } from "lucide-react";
 import { Link } from "wouter";
 import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
 import { planEntitlementsFor } from "@shared/planEntitlements";
-import { FREE_ASKS_LOCKED_LINE } from "@shared/moneyCopy";
 
 export type SeekerCredits = {
   plan: string;
@@ -39,24 +38,6 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
   const isFreePlan = entitlements.plan === "free";
   const hasPurchased = credits.purchasedCreditsRemaining > 0;
   const outOfCredits = credits.totalAvailable <= 0;
-  const locked = credits.freeCreditsLocked === true;
-  const [validating, setValidating] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
-  // D-079: open the provider's hosted page; the card check is Chargebee's own
-  // verification (auto-voided), so this never charges the seeker.
-  const startValidation = async () => {
-    setValidating(true);
-    setValidationError(null);
-    try {
-      const response = await fetch("/api/chargebee/card-validation", { method: "POST", credentials: "include" });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok || typeof body?.url !== "string") throw new Error(body?.error || "unavailable");
-      window.location.assign(body.url);
-    } catch {
-      setValidationError("Card validation is unavailable right now. Nothing has been charged.");
-      setValidating(false);
-    }
-  };
   const renewText = credits.subscriptionCurrentTermEnd
     ? new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(credits.subscriptionCurrentTermEnd))
     : null;
@@ -76,10 +57,6 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
         </p>
       </div>
 
-      {locked ? (
-        <p className="mt-3 text-sm leading-5 text-[#505050]">{FREE_ASKS_LOCKED_LINE}</p>
-      ) : (
-      <>
       <div
         role="progressbar"
         aria-label={isFreePlan ? "Monthly free referral credits used" : "Monthly plan credits used"}
@@ -105,23 +82,9 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
           <span className="block pt-1 text-[#505050]">Plan renews {renewText}.</span>
         ) : null}
       </p>
-      </>
-      )}
 
       <div className="mt-4 grid gap-2">
-        {locked ? (
-          <>
-            <button
-              type="button"
-              disabled={validating}
-              onClick={startValidation}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              <ShieldCheck className="h-4 w-4" /> {validating ? "Opening card validation…" : "Validate your card"}
-            </button>
-            {validationError ? <p className="text-sm leading-5 text-[#b45309]">{validationError}</p> : null}
-          </>
-        ) : outOfCredits ? (
+        {outOfCredits ? (
           CREDIT_PACKS_ON_SALE ? <Link href="/premium?role=job_seeker"
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-4 py-3 text-sm font-semibold text-white"
           >

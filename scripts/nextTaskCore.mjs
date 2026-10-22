@@ -13,7 +13,7 @@
 // pending work ranked above it has nobody on it; then pending work (a review,
 // findings to fix, a red pull request, a landing, a half-built claim nobody has
 // pushed to for 2 hours, a blocked priority for the CEO), top down; then new
-// work, top down. A red or blocked priority holds everything below it.
+// work, top down. A red or blocked priority holds its own lane and the tasks that depend on it; red `main` holds everything (D-109).
 
 export const IDLE_MS = 2 * 60 * 60 * 1000;
 /** A holder whose claim has been quiet this long re-takes it on the takeover ref instead of a side heartbeat. */
@@ -277,16 +277,20 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   if (mergedHeads === null) return { kind: "stop", reason: "cannot read the merged pull requests from GitHub; a landed task would look half-built, so nothing may be picked until they are known (D-085)" };
 
   const view = buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports });
-  const broken = view.find(v => v.open && v.pr && v.ci === "error");
-  if (broken) return { kind: "stop", reason: `cannot read CI for ${broken.pr} (${broken.task.id}); whether it is red decides what may run below it, so nothing may be picked until it is known (D-085)` };
   const byId = new Map(view.map(v => [v.task.id, v]));
-  const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open));
+  // D-134: dependsOn holds every kind of work on a task, not only a new build.
+  const unmetOf = v => v.task.dependsOn.filter(d => !byId.get(d)?.done);
+  // D-134: a lane-mate that depends on v (directly or through others) cannot land before v, so it never makes v's lane busy;
+  // neither does a lane-mate that waits for a dependency: nobody can work on it, so holding its lane could deadlock two lanes.
+  const dependsOnTask = (o, id, seen = new Set()) => o.task.dependsOn.some(d => d === id || (!seen.has(d) && seen.add(d) && byId.has(d) && dependsOnTask(byId.get(d), id, seen)));
+  const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length);
   const { workAt, lockAt, archAt, quiet } = clock(branches, now);
   const ceo = isArchitect(claimant);
 
   const skipped = [];
   const skip = (v, reason) => { skipped.push({ id: v.task.id, reason }); return null; };
-  // D-085: a priority that is red (CI, or its team reported red or blocked) holds everything below it.
+  // D-085, narrowed by D-109: a priority that is red (CI, or its team reported red or blocked) holds its own lane
+  // and every task that depends on it, never unrelated lanes; red main (above) still holds everything.
   const gate = (reason, extra = {}) => ({ kind: "gate", reason, ...extra });
   const did = (v, roles) => Boolean(claimant) && roles.some(r => v[r].includes(claimant));
   const green = (v, why) => ({ kind: "green", task: v.task, work: v.work, pr: v.pr, from: v.owner, since: workAt(v), why });
@@ -311,6 +315,10 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     if (v.ci === "running" || v.ci === "running-after-red") return skip(v, `CI is running on ${v.pr}`);
     if (state === "needs-review" || (state === "in-review" && lockQuiet)) {
       if (did(v, ["builders", "fixers"])) return skip(v, "needs a review, and you built or fixed it");
+      // A branch built outside the picker has no claim naming its builder: its review waits until nobody has pushed for 2 hours.
+      // After a picker fix round whose Fixed marker came after the last push, those pushes were the fixer's: the review is not held back.
+      const fixerPushedLast = v.fixers.length > 0 && lockAt(v) >= workAt(v);
+      if (!v.builders.length && !fixerPushedLast && !quiet(workAt(v))) return skip(v, `built outside the picker and still being pushed; its review waits until ${v.work} is quiet for 2 hours`);
       return { kind: "review", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner };
     }
     if (state === "needs-fix" || (state === "fixing" && lockQuiet)) {
@@ -326,6 +334,9 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
 
   const actionFor = v => {
     if (v.done) return skip(v, "done");
+    // D-134: while a dependency is not done, nobody is handed any work on the task: no build, takeover, make-green,
+    // review, fix, packet or landing. It is reworked or continued once the dependency is live.
+    if (unmetOf(v).length) return skip(v, `waits for ${unmetOf(v).join(", ")}`);
     if (v.open) {
       const said = v.said;
       if (said?.status === "blocked") {
@@ -333,6 +344,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
         if (v.unblocker && v.unblocker !== claimant && !quiet(archAt(v))) return gate(`${v.unblocker} is unblocking ${v.task.id}`);
         return { kind: "unblock", task: v.task, report: said, lock: v.archName, lockExists: Boolean(v.arch), from: v.unblocker };
       }
+      // D-109: one pull request whose CI cannot be read is skipped, never a stop for everyone (GitHub refuses a red landing anyway, D-082).
+      if (v.pr && v.ci === "error") return skip(v, `cannot read CI for ${v.pr}; skipped until it can be read`);
       if (v.pr && v.task.tier === 1) return tier1(v);
       const idle = quiet(workAt(v));
       if (v.pr && v.ci === "red") {
@@ -352,85 +365,104 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v) };
     }
     if (v.task.status === "architect") {
-      if (!ceo) return skip(v, "waits for Claude Code's packet");
       const writer = holderOf(v.arch, v.task.id);
       if (writer && !quiet(archAt(v))) return skip(v, `${writer} is writing its packet`);
       return { kind: "architect", task: v.task, lock: v.archName, lockExists: Boolean(v.arch), from: writer };
     }
     if (v.task.status !== "todo") return skip(v, { "in-review": "being landed by its reviewer", owner: "waits for the owner" }[v.task.status]);
-    const unmet = v.task.dependsOn.filter(d => !byId.get(d)?.done);
+    const unmet = unmetOf(v);
     if (unmet.length) return skip(v, `waits for ${unmet.join(", ")}`);
     if (laneBusy(v)) return skip(v, `lane ${v.task.lane} is busy`);
     return { kind: "build", task: v.task, ciRunning: mainCi.state === "running" };
   };
 
   const mine = claimant ? ownWork(view, claimant) : null;
+  // D-134: whether a pick's plan row is shared by several tasks (their status then goes in their packet's Status section).
+  const sharedRows = new Set(view.map(v => v.task.row).filter((r, k, all) => all.indexOf(r) !== k));
+  const withHold = pick => (pick?.task && sharedRows.has(pick.task.row) ? { ...pick, task: { ...pick.task, sharedRow: true } } : pick);
 
-  // Claude Code is the CEO: never development work, and below a red priority
-  // only packets and unblocking. Pass 1: pending work top down, stopping at your
-  // own work; pass 2: new work.
+  // Claude Code is the CEO: never development work. Pass 1: pending work top down,
+  // stopping at your own work; pass 2: new work. A red or blocked priority holds
+  // only its lane and its dependents (D-109).
   const actions = [];
   let gateAt = -1, gateAction = null;
+  const heldLanes = new Map(), heldIds = new Map();
+  // A red or blocked holder never holds a task it depends on itself: that task is what it waits for (D-134).
+  const heldBy = v => { const lh = heldLanes.get(v.task.lane); return (lh && !dependsOnTask(byId.get(lh), v.task.id) ? lh : undefined) ?? v.task.dependsOn.map(d => heldIds.get(d)).find(Boolean); };
   for (let i = 0; i < view.length; i++) {
     if (mine && i >= mine.at) break;
+    const holder = heldBy(view[i]);
+    if (holder && !view[i].done) { heldIds.set(view[i].task.id, holder); skip(view[i], `waits for red or blocked ${holder} (same lane or depends on it)`); continue; }
     const action = actions[i] = actionFor(view[i]);
     if (!action) continue;
     if (action.kind === "gate") {
       if (gateAt < 0) { gateAt = i; gateAction = action; }
-      if (!ceo) break;
+      heldLanes.set(view[i].task.lane, view[i].task.id); heldIds.set(view[i].task.id, view[i].task.id);
       skip(view[i], action.reason);
       continue;
     }
     if (!PENDING_KINDS.has(action.kind)) continue;
     if (ceo && (DEV_KINDS.has(action.kind) || (action.kind === "land" && !action.tier1))) { skip(view[i], "development work: the open models build it (D-085)"); continue; }
-    if (ceo && gateAt >= 0 && action.kind !== "unblock") { skip(view[i], `waits below red priority ${view[gateAt].task.id}`); continue; }
     // D-085: pending work ranked above your own comes first; your own claim waits, pushed.
-    return mine ? { ...action, holds: { id: mine.task.id, branch: mine.work ?? mine.lock } } : action;
+    return withHold(mine ? { ...action, holds: { id: mine.task.id, branch: mine.work ?? mine.lock } } : action);
   }
   // Your own work: a red priority above it whose owner is on it does not stop you (your hands cannot help it).
-  if (mine) { const { at, ...pick } = mine; return pick; }
-  for (let i = 0; i < (gateAt >= 0 && !ceo ? gateAt : view.length); i++) {
+  if (mine) { const { at, ...pick } = mine; return withHold(pick); }
+  for (let i = 0; i < view.length; i++) {
     const action = actions[i];
     if (!action || action.kind === "gate" || PENDING_KINDS.has(action.kind)) continue;
     if (ceo && action.kind !== "architect") { skip(view[i], "development work: the open models build it (D-085)"); continue; }
-    return action;
+    return withHold(action);
   }
   if (gateAt >= 0 && !ceo) return { kind: "wait", gate: view[gateAt].task.id, blocked: Boolean(gateAction.blocked), reason: gateAction.reason };
   return ceo ? { kind: "ceo", skipped } : { kind: "none", skipped };
 }
 
-/** D-085: what this agent already holds, in queue order. A Tier 1 builder waiting for review holds nothing. */
-function ownWork(view, claimant) {
-  let blockedOwn = null;
-  for (const v of view) {
-    if (v.open && v.pr && v.task.tier === 1 && v.lock) {
-      const last = stageMarkers(v.lock, v.task.id).at(-1);
-      if (last?.who === claimant) {
-        const base = { kind: "continue", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, at: v.at };
-        if (last.verb === "Review claim") return { ...base, of: "review", builder: v.owner };
-        if (last.verb === "Fix claim") return { ...base, of: "fix" };
-        // A passed review whose CI went red is not landed: it goes to a fix stage (pickNextTask), never back to its lander.
-        if ((last.verb === "Land claim" || (last.verb === "Verdict" && last.verdict === "pass")) && v.ci !== "red") return { ...base, of: "land", tier1: true };
-      }
-    }
-    if (v.open && v.owner === claimant) {
-      // A blocked task waits for the CEO or the owner; its holder keeps going on anything else it holds (D-085 (3)).
-      if (v.said?.status === "blocked") {
-        blockedOwn ??= { kind: "wait", gate: v.task.id, blocked: true, own: true, at: v.at, task: v.task, work: v.work, reason: `your task ${v.task.id} is blocked (${v.said.who} reported it blocked${v.said.note ? `: ${v.said.note}` : ""}); only the CEO (a Claude Code session) or the owner can clear it` };
-        continue;
-      }
-      // The builder side holds a Tier 1 pull request only while its CI is red before any review passed or any fix stage owns it.
-      if (v.pr && v.task.tier === 1 && !(v.ci === "red" && ["needs-review", "in-review"].includes(v.review))) continue;
-      return { kind: "continue", of: v.pr ? (v.ci === "red" ? "green" : "land") : "build", task: v.task, work: v.work, pr: v.pr, tier1: v.task.tier === 1, at: v.at };
-    }
-    if (v.task.status === "architect" && v.arch && holderOf(v.arch, v.task.id) === claimant) {
-      return { kind: "continue", of: "architect", task: v.task, lock: v.archName, at: v.at };
-    }
-    if (v.open && v.said?.status === "blocked" && v.unblocker === claimant) {
-      return { kind: "continue", of: "unblock", task: v.task, report: v.said, lock: v.archName, at: v.at };
+/** D-085: one task's stage that this agent holds, if any: a continue, a blocked wait, or null. */
+function ownStage(v, claimant) {
+  if (v.open && v.pr && v.task.tier === 1 && v.lock) {
+    const last = stageMarkers(v.lock, v.task.id).at(-1);
+    if (last?.who === claimant) {
+      const base = { kind: "continue", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, at: v.at };
+      if (last.verb === "Review claim") return { ...base, of: "review", builder: v.owner };
+      if (last.verb === "Fix claim") return { ...base, of: "fix" };
+      // A passed review whose CI went red is not landed: it goes to a fix stage (pickNextTask), never back to its lander.
+      if ((last.verb === "Land claim" || (last.verb === "Verdict" && last.verdict === "pass")) && v.ci !== "red") return { ...base, of: "land", tier1: true };
     }
   }
-  return blockedOwn;
+  if (v.open && v.owner === claimant) {
+    // A blocked task waits for the CEO or the owner; its holder keeps going on anything else it holds (D-085 (3)).
+    if (v.said?.status === "blocked") return { kind: "wait", gate: v.task.id, blocked: true, own: true, at: v.at, task: v.task, work: v.work, reason: `your task ${v.task.id} is blocked (${v.said.who} reported it blocked${v.said.note ? `: ${v.said.note}` : ""}); only the CEO (a Claude Code session) or the owner can clear it` };
+    // The builder side holds a Tier 1 pull request only while its CI is red before any review passed or any fix stage owns it.
+    if (v.pr && v.task.tier === 1 && !(v.ci === "red" && ["needs-review", "in-review"].includes(v.review))) return null;
+    return { kind: "continue", of: v.pr ? (v.ci === "red" ? "green" : "land") : "build", task: v.task, work: v.work, pr: v.pr, tier1: v.task.tier === 1, at: v.at };
+  }
+  if (v.task.status === "architect" && v.arch && holderOf(v.arch, v.task.id) === claimant) return { kind: "continue", of: "architect", task: v.task, lock: v.archName, at: v.at };
+  if (v.open && v.said?.status === "blocked" && v.unblocker === claimant) return { kind: "continue", of: "unblock", task: v.task, report: v.said, lock: v.archName, at: v.at };
+  return null;
+}
+
+/**
+ * D-085: everything this agent holds, in queue order, and its first blocked task. A Tier 1 builder waiting for
+ * review holds nothing; a task whose dependency is not done is nobody's work yet (D-134).
+ */
+function ownWorkList(view, claimant, { includeWaiting = false } = {}) {
+  const doneIds = new Set(view.filter(x => x.done).map(x => x.task.id));
+  const found = [];
+  let blockedOwn = null;
+  for (const v of view) {
+    if (!includeWaiting && v.task.dependsOn.some(d => !doneIds.has(d))) continue;
+    const hit = ownStage(v, claimant);
+    if (hit?.kind === "wait") blockedOwn ??= hit;
+    else if (hit) found.push(hit);
+  }
+  return { found, blockedOwn };
+}
+
+/** D-085: what this agent already holds, first in queue order (a blocked task only when nothing else). */
+function ownWork(view, claimant) {
+  const { found, blockedOwn } = ownWorkList(view, claimant);
+  return found[0] ?? blockedOwn;
 }
 
 /** Every fix-main lock not yet merged, newest activity first. */
@@ -459,6 +491,22 @@ export function heldBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads
   if (!own || own.kind !== "continue") return null;
   const { at, ...pick } = own;
   return pick;
+}
+
+/**
+ * D-134: every claim this agent holds (the fix-main lock first), so a heartbeat keeps all of them alive, not only
+ * the first; that includes a claim on a task that waits for a dependency, which is nobody's work yet but stays its holder's.
+ */
+export function heldAllBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
+  const out = [];
+  if (mainSha) {
+    const current = fixMainLockOf(mainSha);
+    const mine = fixMainLocks(branches, now).find(l => l.holder === claimant && (!l.quiet || l.lock === current));
+    if (mine) out.push({ kind: "continue", of: "fix-main", sha: mine.sha8, lock: mine.lock });
+  }
+  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports });
+  for (const { at, ...pick } of ownWorkList(view, claimant, { includeWaiting: true }).found) out.push(pick);
+  return out;
 }
 
 /**
@@ -573,6 +621,7 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), merged
     if (v.done) state = "done";
     else if (task.status === "owner") state = "owner";
     else if (task.status === "in-review") state = "in-review";
+    else if (task.dependsOn.some(d => !doneIds.has(d))) state = "waiting";
     else if (task.status === "architect") state = archHeld ? (quiet ? "quiet" : "packet") : "architect";
     else if (!v.open) state = task.dependsOn.some(d => !doneIds.has(d)) ? "waiting" : "todo";
     else if (pr) state = { red: "pr-red", green: "pr-green", running: "pr-running", "running-after-red": "pr-running" }[v.ci] ?? "pr-open";
@@ -580,8 +629,11 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), merged
     // Reports gate only open tasks, so only they colour the board; a Tier 1 pull request is green only once its review passed.
     // The picker lets a Tier 1 pull request's review lock decide over red reports, so the board does too.
     const said = !v.open ? null : review && v.said?.status === "red" ? null : v.said;
+    // A built task (or a held packet) that waits for a dependency keeps its colour: red when its CI or team says so, else in progress.
+    const waitingBuilt = state === "waiting" && (v.open || archHeld);
     const health = state === "done" ? "done"
       : state === "owner" ? "owner"
+      : waitingBuilt ? ((pr && v.ci === "red") || said?.status === "red" || said?.status === "blocked" ? "red" : "progress")
       : state === "pr-red" || state === "quiet" || said?.status === "red" || said?.status === "blocked" ? "red"
       : state === "pr-green" ? (!review || review === "passed" || review === "landing" ? "green" : "progress")
       : ["todo", "waiting", "architect"].includes(state) ? "open" : "progress";

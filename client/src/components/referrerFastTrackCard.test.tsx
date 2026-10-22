@@ -13,7 +13,7 @@ const link = { linkCode: "abc123", vanityAlias: "ref-priya", companyDomain: "acm
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); toast.mockReset(); });
 
-describe("Referrer Fast-Track Link card", () => {
+describe("Referrer personal link card (D-128: \"Your link\")", () => {
   it("pauses the link only after an explicit confirmation and then offers a fresh link", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (url === "/api/referrer-fast-track/me/deactivate" && init?.method === "POST") return { ok: true, json: async () => ({ deactivated: true }) };
@@ -48,7 +48,7 @@ describe("Referrer Fast-Track Link card", () => {
   it("keeps the link live and offers Try again when pausing fails", async () => {
     let attempt = 0;
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      if (url.endsWith("/deactivate") && init?.method === "POST") { attempt += 1; return attempt === 1 ? { ok: false, status: 500, json: async () => ({ error: "We could not pause your Fast-Track Link" }) } : { ok: true, json: async () => ({ deactivated: true }) }; }
+      if (url.endsWith("/deactivate") && init?.method === "POST") { attempt += 1; return attempt === 1 ? { ok: false, status: 500, json: async () => ({ error: "We could not pause your link" }) } : { ok: true, json: async () => ({ deactivated: true }) }; }
       return { ok: true, json: async () => ({ link }) };
     }));
     render(<ReferrerFastTrackCard />);
@@ -66,10 +66,10 @@ describe("Referrer Fast-Track Link card", () => {
 
   it("shows an inline error with retry instead of a toast when the link cannot be created", async () => {
     let attempt = 0;
-    vi.stubGlobal("fetch", vi.fn(async () => { attempt += 1; return attempt === 1 ? { ok: false, status: 503, json: async () => ({ error: "Fast-Track Links are unavailable right now" }) } : { ok: true, json: async () => ({ link }) }; }));
+    vi.stubGlobal("fetch", vi.fn(async () => { attempt += 1; return attempt === 1 ? { ok: false, status: 503, json: async () => ({ error: "Your link is unavailable right now" }) } : { ok: true, json: async () => ({ link }) }; }));
     render(<ReferrerFastTrackCard />);
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("Fast-Track Links are unavailable right now");
+    expect(alert.textContent).toContain("Your link is unavailable right now");
     expect(toast).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("skipwait.me/refer/acme/ref-priya")).toBeTruthy();
