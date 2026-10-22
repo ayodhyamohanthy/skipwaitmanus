@@ -13,8 +13,8 @@ const REFERRER = 2;
 const COLLEAGUE = 4;
 const REQUEST_ID = 501;
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** REFERRAL_TIMERS_SINCE is 2026-10-20T00:00:00Z. Tests use dates on/after it so the new timers run. */
-const T0 = new Date("2026-10-20T12:00:00.000Z").getTime();
+/** Half a day after the cut-off, so the new timers run. Derived: a later cut-off move cannot break this file. */
+const T0 = REFERRAL_TIMERS_SINCE + 12 * 60 * 60 * 1000;
 
 const store = createInMemoryDrizzle();
 const full = (table: any, values: Row): Row => ({ ...Object.fromEntries(Object.keys(table).map(key => [key, null])), ...values });
@@ -296,7 +296,7 @@ describe("D-038-reconcile R-2: the job's part B switch", () => {
 
     // The reopened ask returns its credit once when its own window ends.
     const { expireStalePendingReferralRequest } = await import("./db");
-    const refunds = () => store.rows(tokenTransactions).filter(row => row.kind === "expiry_refund" && row.referenceId === `${REQUEST_ID}#refund`);
+    const refunds = () => store.rows(tokenTransactions).filter(row => row.kind === "expiry_refund" && row.referenceId === `${REQUEST_ID}#refund#1`);
     expect(refunds()).toHaveLength(0);
     await expireStalePendingReferralRequest(SEEKER, REQUEST_ID, T0 + 8 * DAY_MS);
     expect(refunds()).toHaveLength(1);
