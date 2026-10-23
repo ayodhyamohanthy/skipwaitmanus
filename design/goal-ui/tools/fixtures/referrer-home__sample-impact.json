@@ -2,12 +2,12 @@
   "signedIn": { "id": "9", "name": "Rao Verma", "email": "rao.verma@example.com", "role": "user" },
   "routes": [
     { "method": "GET", "path": "/api/referrer/home-bundle", "match": "exact", "status": 200, "body": {
-      "access": { "verifiedCompanyAccess": true, "workEmailDomain": "wipro.com", "companyName": "Wipro", "companyInitials": "W" },
+      "access": { "verifiedCompanyAccess": true, "workEmailDomain": "quillmint.com", "companyName": "Quillmint", "companyInitials": "Q" },
       "preferences": { "referralCapacity": 3, "preferAreas": [], "preferLevels": [], "referrerVisibility": "anon", "notifyNewAsk": true, "paused": false },
-      "inboxNew": { "requests": [], "scope": "new", "hasEverReviewed": false },
-      "inboxCompleted": { "requests": [], "scope": "completed", "hasEverReviewed": false },
+      "inboxNew": { "requests": [], "scope": "new", "hasEverReviewed": true },
+      "inboxCompleted": { "requests": [], "scope": "completed", "hasEverReviewed": true },
       "profile": { "profile": { "workEmailVerifiedAt": "2026-10-01T00:00:00.000Z", "referralCapacity": 3 } },
-      "impact": { "reviewed": 0, "approved": 0, "introductions": 0, "interviews": 0, "offers": 0, "repliedWithin3DaysPct": null },
+      "impact": { "reviewed": 11, "approved": 7, "introductions": 3, "interviews": 2, "offers": 1, "repliedWithin3DaysPct": 64 },
       "failed": []
     } },
     { "method": "GET", "path": "/api/referrer/impact-card", "match": "exact", "status": 200, "body": {
