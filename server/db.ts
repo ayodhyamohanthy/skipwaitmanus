@@ -736,7 +736,12 @@ export async function decideAssistantApproval(userId: number, approvalId: number
       await db.update(assistantApprovals).set({ executedRequestId: created.requestId }).where(eq(assistantApprovals.id, approvalId));
       return { id: approvalId, status: "approved" as const, requestId: created.requestId };
     } catch (error) {
-      await db.update(assistantApprovals).set({ status: "pending", decidedAt: null }).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.status, "approved")));
+      // A moved price must not fail the approval forever: the pending row is
+      // repriced to the current classified cost, so re-review shows the true
+      // number and approving then binds it - same re-confirmation rule as the
+      // composer. Any other failure keeps the stored representation untouched.
+      const reprice = error instanceof AskPriceChangedError ? { creditCount: error.actual } : {};
+      await db.update(assistantApprovals).set({ status: "pending", decidedAt: null, ...reprice }).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.status, "approved")));
       throw error;
     }
   }

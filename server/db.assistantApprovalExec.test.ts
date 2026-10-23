@@ -170,6 +170,12 @@ describe("assistant approval execution binds the approved cost (D-132 item 3)", 
     expect(tables.approvals[0].status).toBe("pending");
     expect(tables.approvals[0].decidedAt).toBeNull();
     expect(sideEffects).not.toContain("insert:referralRequests");
+    // Usable recovery: the pending row is repriced to the live cost, so the next
+    // review shows the true number and approving it executes - no repropose needed.
+    expect(tables.approvals[0].creditCount).toBe(currentCommitCost());
+    const retry = await decideAssistantApproval(SEEKER, 900, "approved");
+    expect(retry.status).toBe("approved");
+    expect(sideEffects).toContain("insert:referralRequests");
   });
 
   it("flags ON, approval re-stored at the current classified cost: executes at exactly that cost", async () => {
