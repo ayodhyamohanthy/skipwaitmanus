@@ -522,7 +522,7 @@
       "tier": 2,
       "lane": "design-core",
       "branch": "agent/queue/d048-f-static-frame",
-      "status": "todo",
+      "status": "in_progress",
       "dependsOn": [
         "D-048-p3-w0-shell"
       ],
@@ -530,7 +530,8 @@
         "client/src/components/goal/GoalStaticFrame.tsx",
         "client/src/components/goal/goalStaticFrame.test.tsx",
         "scripts/prerenderPublicPages.test.ts"
-      ]
+      ],
+      "note": "implemented in PR (this branch), pending CI and merge; flips to done with its merge SHA"
     },
     {
       "id": "D-048-F-routes",
