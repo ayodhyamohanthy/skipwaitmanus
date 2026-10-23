@@ -4,7 +4,7 @@ Source of truth: goal-ui-doctrine.md (owner-decided Oct 21). Reference captures:
 
 ## Scope
 
-Migrate every user-facing screen, landing through platform, to the goal-first pattern. Retire the yellow/blue kit: remove kit imports, colour literals, pills and banners wherever they survive. Applies to seeker, referrer, and company surfaces.
+Migrate every user-facing screen, landing through platform, to the goal-first pattern. **D-150 (owner, Oct 22): "from landing page to whole platform everything should be redesigned as per goal based design ui and ux"; never "black colour over the previous design system".** That includes the employer, admin, developer and system pages, and the flows (UX), not only the visuals. A screen is moved only when it passes the acceptance checklist below; the seven pages that went live in place (D-149) do not yet and are being redesigned. A screen with no row in the contract table gets one, proposed from the doctrine in its pull request. Retire the yellow/blue kit: remove kit imports, colour literals, pills and banners wherever they survive. Applies to seeker, referrer, and company surfaces.
 
 ## Per-screen contract (from the verified captures)
 

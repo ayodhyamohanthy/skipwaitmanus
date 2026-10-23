@@ -138,7 +138,7 @@ function PackBuy({ pack, itemKey, checkout }: { pack: PackCardCopy; itemKey: str
 export function PassesSection({ catalog, activePlan, checkout }: { catalog: PlanCatalogResponse; activePlan: PaidCatalogPlan | null; checkout: KitCheckout }) {
   const [term, setTerm] = useState<PassTerm>("30d");
   const cards = catalogPassCards(catalog, term, activePlan);
-  if (cards.length === 0) return null;
+  if (cards.length === 0 || !cards.some(card => card.available)) return null;
   return <section className="plans-section" aria-label="Passes and yearly plans">
     <span className="eyebrow">PASSES &amp; YEARLY</span>
     <div className="page-heading"><div>

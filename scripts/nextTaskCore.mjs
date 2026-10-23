@@ -19,17 +19,82 @@ export const IDLE_MS = 2 * 60 * 60 * 1000;
 /** A holder whose claim has been quiet this long re-takes it on the takeover ref instead of a side heartbeat. */
 export const RECLAIM_MS = 90 * 60 * 1000;
 export const STATUSES = ["todo", "in-review", "done", "architect", "owner"];
-const TASK_KEYS = ["id", "title", "row", "packet", "tier", "lane", "branch", "status", "dependsOn", "note"];
+const TASK_KEYS = ["id", "title", "row", "packet", "tier", "lane", "branch", "status", "dependsOn", "note", "epic", "owns"];
+
+/** D-134 / PICKER-owns-scope: a task may declare the files it will touch, so two lanes cannot edit the same file unseen. */
+const SWITCH_ONLY_SUFFIX = " (switch only)";
+
+/**
+ * PICKER-owns-scope: parse one `owns` entry. An entry is a repository path, a folder
+ * prefix ending in "/", a glob using "*" or "**", and may carry " (switch only)" to say
+ * the task may only flip a switch there (the scope check bounds how many lines it edits).
+ */
+export function ownsEntry(raw) {
+  const text = String(raw ?? "").trim();
+  const switchOnly = text.endsWith(SWITCH_ONLY_SUFFIX);
+  const bare = (switchOnly ? text.slice(0, -SWITCH_ONLY_SUFFIX.length) : text).trim();
+  return { pattern: bare.replace(/^\.\//, ""), switchOnly };
+}
+
+const GLOB_SPECIALS = "\\^$.|?+()[]{}";
+
+/** Translate one pattern to a regular expression: "**" spans folders, "*" stays inside one. */
+function ownsRegExp(pattern) {
+  let out = "^";
+  for (let i = 0; i < pattern.length; i++) {
+    const char = pattern[i];
+    if (char === "*") {
+      if (pattern[i + 1] === "*") { out += ".*"; i += 1; if (pattern[i + 1] === "/") i += 1; }
+      else out += "[^/]*";
+    } else if (GLOB_SPECIALS.includes(char)) out += `\\${char}`;
+    else out += char;
+  }
+  return new RegExp(`${out}$`);
+}
+
+/** Does one `owns` entry cover this repository path? */
+export function ownsMatches(entry, path) {
+  const { pattern } = ownsEntry(entry);
+  const target = String(path ?? "").replace(/^\.\//, "");
+  if (!pattern) return false;
+  if (pattern.endsWith("/")) return target === pattern.slice(0, -1) || target.startsWith(pattern);
+  if (pattern.includes("*")) return ownsRegExp(pattern).test(target);
+  return target === pattern;
+}
+
+/** The part of a pattern before its first wildcard — what it can possibly touch. */
+export function ownsPrefix(entry) {
+  const { pattern } = ownsEntry(entry);
+  const cut = pattern.indexOf("*");
+  return (cut === -1 ? pattern : pattern.slice(0, cut)).replace(/\/$/, "");
+}
+
+const under = (child, parent) => !parent || child === parent || child.startsWith(`${parent}/`);
+
+/**
+ * Do two `owns` lists overlap? Compared by the literal part of each pattern, so exact
+ * paths, folder prefixes and globs that share a folder are caught. Two globs with
+ * unrelated prefixes are treated as disjoint: the runtime guards (filesBusy and
+ * scripts/scope-check.mjs) are the backstop, this is the cheap static check.
+ */
+export function ownsOverlap(a, b) {
+  const left = Array.isArray(a) ? a : [];
+  const right = Array.isArray(b) ? b : [];
+  return left.some(x => right.some(y => under(ownsPrefix(x), ownsPrefix(y)) || under(ownsPrefix(y), ownsPrefix(x))));
+}
+
 const DOC_KEYS = ["version", "repo", "decidedBy", "updated", "rules", "tasks"];
-const MARKER = /^(Review claim|Fix claim|Land claim|Claim|Takeover|Unblock|Verdict|Fixed|Heartbeat|Report) (\S+): (.+)$/;
+const MARKER = /^(Review claim|Fix claim|Land claim|Claim|Takeover|Unblock|Verdict|Fixed|Heartbeat|Report|Landed) (\S+): (.+)$/;
 /** What an agent reports to the CEO about its task (D-085). */
 export const REPORT_STATUSES = ["green", "red", "blocked", "review", "landed"];
 /** The executive who owns a lane; the open models play these roles (D-085). */
-const ROLE_BY_LANE = { design: "CDO" };
+const ROLE_BY_LANE = { design: "CDO", "d048-": "CDO" };
 const RED = new Set(["failure", "timed_out", "startup_failure", "action_required"]);
-const RESERVED = ["agent/review/", "agent/heartbeat/", "agent/architect/", "agent/reports/"];
+export const LAND_SLOT = "agent/queue/landing";
+export const LAND_IDLE_MS = 30 * 60 * 1000;
+const RESERVED = ["agent/review/", "agent/heartbeat/", "agent/architect/", "agent/reports/", LAND_SLOT];
 /** Marker-only refs nobody commits work to; local copies of them are never "your work". */
-const MARKER_ONLY = ["agent/review/", "agent/heartbeat/", "agent/reports/"];
+const MARKER_ONLY = ["agent/review/", "agent/heartbeat/", "agent/reports/", LAND_SLOT];
 
 export const slugOf = branch => branch.split("/").pop();
 export const reviewLockOf = task => `agent/review/${slugOf(task.branch)}`;
@@ -63,7 +128,25 @@ export function markerSubject(verb, id, who, extra) {
   return verb === "Verdict" || verb === "Report" ? `${verb} ${id}: ${extra} — ${who}` : `${verb} ${id}: ${who}`;
 }
 
-export const roleOf = task => ROLE_BY_LANE[task.lane] ?? "CTO";
+export const roleOf = task => Object.entries(ROLE_BY_LANE).find(([prefix]) => task.lane?.startsWith(prefix))?.[1] ?? "CTO";
+
+export function landingSlot(branches, now = 0) {
+  const branch = branches?.get?.(LAND_SLOT);
+  if (!branch) return { holder: null, task: null, quiet: true, at: 0 };
+  const last = branch.markers?.at?.(-1);
+  if (!last || last.verb === "Landed") return { holder: null, task: null, quiet: true, at: branch.tipMs ?? 0 };
+  const at = branch.tipMs ?? 0;
+  const quiet = now > 0 && at > 0 ? (now - at) >= LAND_IDLE_MS : false;
+  return { holder: last.who, task: last.id, quiet, at, verb: last.verb };
+}
+
+export function releaseLandingSlotError({ branches, task, claimant, now = 0 }) {
+  const slot = landingSlot(branches, now);
+  if (!slot.holder) return `landing slot ${LAND_SLOT} is not held by anyone`;
+  if (slot.holder !== claimant) return `only the lander holding ${LAND_SLOT} releases it (held by ${slot.holder})`;
+  if (task && slot.task !== task.id) return `landing slot ${LAND_SLOT} is held for ${slot.task}, not ${task.id}`;
+  return null;
+}
 
 const CONTROL = /[\p{Cc}\p{Cf}\u2028\u2029]+/gu;
 const SECRETS = [
@@ -124,7 +207,7 @@ export function validateAssignments(doc, packetExists) {
     if (!/^agent\/[a-z0-9-]+\/[a-z0-9.-]+$/.test(t.branch ?? "")) errors.push(`${at}: branch must be agent/<owner>/<slug>`);
     else {
       const prefix = RESERVED.find(p => t.branch.startsWith(p));
-      if (prefix) errors.push(`${at}: ${prefix} is reserved for review locks, heartbeats, reports and architect claims`);
+      if (prefix) errors.push(`${at}: ${prefix} is reserved for review locks, heartbeats, reports, landing slot and architect claims`);
     }
     if (branches.has(t.branch)) errors.push(`${at}: duplicate branch`);
     branches.add(t.branch);
@@ -138,6 +221,11 @@ export function validateAssignments(doc, packetExists) {
     }
     if (!Array.isArray(t.dependsOn)) errors.push(`${at}: dependsOn must be an array`);
     if (t.note !== undefined && typeof t.note !== "string") errors.push(`${at}: note must be text`);
+    if (t.epic !== undefined && (typeof t.epic !== "string" || !/^[A-Za-z0-9][A-Za-z0-9.-]*$/.test(t.epic))) errors.push(`${at}: epic must be a non-empty identifier (letters, digits, dots or dashes)`);
+    if (t.owns !== undefined) {
+      if (!Array.isArray(t.owns) || t.owns.length === 0) errors.push(`${at}: owns must be a non-empty array of paths`);
+      else if (t.owns.some(o => typeof o !== "string" || !o.trim())) errors.push(`${at}: owns must hold path strings`);
+    }
   }
   for (const t of doc.tasks) for (const d of t.dependsOn ?? []) {
     if (!ids.has(d)) errors.push(`task ${t.id}: depends on unknown task ${d}`);
@@ -153,6 +241,17 @@ export function validateAssignments(doc, packetExists) {
     visiting.delete(id); seen.add(id);
   };
   for (const t of doc.tasks) visit(t.id);
+  // PICKER-owns-scope: two tasks that are not done may not own the same files unless one
+  // waits for the other (a dependent runs after its dependency has landed, so it may edit
+  // the same file). Checked on the literal part of each pattern (ownsOverlap).
+  const waitsFor = (from, target, seenIds = new Set()) => (from.dependsOn ?? []).some(d => d === target || (!seenIds.has(d) && seenIds.add(d) && byId.has(d) && waitsFor(byId.get(d), target, seenIds)));
+  const owning = doc.tasks.filter(t => t.status !== "done" && Array.isArray(t.owns) && t.owns.length);
+  for (let i = 0; i < owning.length; i += 1) for (let j = i + 1; j < owning.length; j += 1) {
+    const a = owning[i], b = owning[j];
+    if (!ownsOverlap(a.owns, b.owns)) continue;
+    if (waitsFor(a, b.id) || waitsFor(b, a.id)) continue;
+    errors.push(`tasks ${a.id} and ${b.id} own overlapping paths and neither waits for the other`);
+  }
   return errors;
 }
 
@@ -229,7 +328,7 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports }) {
       task, at, work, info, lockName, lock, archName, arch: arch && !arch.merged ? arch : null,
       slug: slugOf(task.branch), owner: holderOf(info, id), pr, ci: ci.state, said,
       builders: everyone(stageMarkers(info, id), ["Claim", "Takeover"]),
-      reviewers: everyone(lockMarkers, ["Review claim"]), fixers: everyone(lockMarkers, ["Fix claim"]),
+      reviewers: everyone(lockMarkers, ["Review claim"]), fixers: everyone(lockMarkers, ["Fix claim", "Fixed"]),
       reviewer: lastBy(lockMarkers, ["Review claim"])?.who ?? null, fixer: lastBy(lockMarkers, ["Fix claim"])?.who ?? null,
       lander: lastBy(lockMarkers, ["Land claim"])?.who ?? null, review: reviewStateOf(lock, id), stageHolder: lockMarkers.at(-1)?.who ?? null,
       unblocker: archMarkers.at(-1)?.verb === "Unblock" ? archMarkers.at(-1).who : null,
@@ -283,8 +382,17 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   // D-134: a lane-mate that depends on v (directly or through others) cannot land before v, so it never makes v's lane busy;
   // neither does a lane-mate that waits for a dependency: nobody can work on it, so holding its lane could deadlock two lanes.
   const dependsOnTask = (o, id, seen = new Set()) => o.task.dependsOn.some(d => d === id || (!seen.has(d) && seen.add(d) && byId.has(d) && dependsOnTask(byId.get(d), id, seen)));
-  const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length);
   const { workAt, lockAt, archAt, quiet } = clock(branches, now);
+  // PICKER-lane-busy: waiting PRs release a lane only with explicit disjoint ownership.
+  // Unknown CI or missing ownership never proves that concurrent work is safe.
+  const disjoint = (a, b) => Boolean(a.task.owns?.length && b.task.owns?.length) && !ownsOverlap(a.task.owns, b.task.owns);
+  const building = o => !o.pr || !["green", "red", "running", "running-after-red"].includes(o.ci)
+    || (o.ci !== "green" && !quiet(workAt(o)));
+  const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && (building(o) || !disjoint(o, v)));
+  // PICKER-owns-scope: lanes are labels, so two lanes could edit one file unseen. A build also
+  // waits while an open task — being built or waiting for review — owns an overlapping path,
+  // unless it waits for that task (a dependent may edit the same file after its dependency lands).
+  const filesBusy = v => Boolean(v.task.owns?.length) && view.some(o => o !== v && Boolean(o.task.owns?.length) && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && ownsOverlap(v.task.owns, o.task.owns));
   const ceo = isArchitect(claimant);
 
   const skipped = [];
@@ -292,9 +400,12 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   // D-085, narrowed by D-109: a priority that is red (CI, or its team reported red or blocked) holds its own lane
   // and every task that depends on it, never unrelated lanes; red main (above) still holds everything.
   const gate = (reason, extra = {}) => ({ kind: "gate", reason, ...extra });
-  const did = (v, roles) => Boolean(claimant) && roles.some(r => v[r].includes(claimant));
+  const did = (v, roles) => Boolean(claimant) && roles.some(r => v[r].some(who => modelOf(who) === modelOf(claimant)));
   const green = (v, why) => ({ kind: "green", task: v.task, work: v.work, pr: v.pr, from: v.owner, since: workAt(v), why });
   const reportWhy = said => `${said.who} reported it ${said.status}${said.note ? `: ${said.note}` : ""}`;
+  const slot = landingSlot(branches, now);
+  const slotBusyFor = cl => Boolean(slot.holder && slot.holder !== cl && !slot.quiet);
+  const waitLanding = () => ({ kind: "wait", landing: true, holder: slot.holder, task: slot.task, reason: `landing slot ${LAND_SLOT} is held by ${slot.holder} (landing ${slot.task})` });
 
   // A Tier 1 pull request: its review lock decides; a reviewer's report never takes the fix away from the fix stage.
   const tier1 = v => {
@@ -327,6 +438,7 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     }
     if ((state === "passed" || state === "landing") && lockQuiet) {
       if (did(v, ["builders", "fixers"])) return skip(v, "its review passed, and you built or fixed it");
+      if (slotBusyFor(claimant)) return waitLanding();
       return { kind: "land", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, tier1: true, from: v.lander ?? v.reviewer };
     }
     return skip(v, { passed: `review passed; ${v.reviewer} lands it`, landing: `${v.lander} is landing it`, fixing: `findings being fixed by ${v.fixer}` }[state] ?? `under review by ${v.reviewer}`);
@@ -359,6 +471,7 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       if (v.pr && (v.ci === "running" || v.ci === "running-after-red")) return skip(v, `CI is running on ${v.pr}`);
       if (v.pr) {
         if (!idle) return skip(v, `${v.owner ?? "its builder"} is landing ${v.pr}`);
+        if (slotBusyFor(claimant)) return waitLanding();
         return { kind: "land", task: v.task, work: v.work, pr: v.pr, tier1: false, from: v.owner };
       }
       if (!idle) return skip(v, `in progress by ${v.owner ?? "another agent"} on ${v.work}`);
@@ -373,6 +486,7 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     const unmet = unmetOf(v);
     if (unmet.length) return skip(v, `waits for ${unmet.join(", ")}`);
     if (laneBusy(v)) return skip(v, `lane ${v.task.lane} is busy`);
+    if (filesBusy(v)) return skip(v, "an open task owns the same files");
     return { kind: "build", task: v.task, ciRunning: mainCi.state === "running" };
   };
 
@@ -388,7 +502,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   let gateAt = -1, gateAction = null;
   const heldLanes = new Map(), heldIds = new Map();
   // A red or blocked holder never holds a task it depends on itself: that task is what it waits for (D-134).
-  const heldBy = v => { const lh = heldLanes.get(v.task.lane); return (lh && !dependsOnTask(byId.get(lh), v.task.id) ? lh : undefined) ?? v.task.dependsOn.map(d => heldIds.get(d)).find(Boolean); };
+  // Packets do not change code: architect tasks bypass lane holds, not explicit dependencies in actionFor.
+  const heldBy = v => { if (v.task.status === "architect") return undefined; const lh = heldLanes.get(v.task.lane); return (lh && !dependsOnTask(byId.get(lh), v.task.id) ? lh : undefined) ?? v.task.dependsOn.map(d => heldIds.get(d)).find(Boolean); };
   for (let i = 0; i < view.length; i++) {
     if (mine && i >= mine.at) break;
     const holder = heldBy(view[i]);
@@ -401,13 +516,18 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       skip(view[i], action.reason);
       continue;
     }
+    if (action.kind === "wait") return action;
     if (!PENDING_KINDS.has(action.kind)) continue;
     if (ceo && (DEV_KINDS.has(action.kind) || (action.kind === "land" && !action.tier1))) { skip(view[i], "development work: the open models build it (D-085)"); continue; }
     // D-085: pending work ranked above your own comes first; your own claim waits, pushed.
     return withHold(mine ? { ...action, holds: { id: mine.task.id, branch: mine.work ?? mine.lock } } : action);
   }
   // Your own work: a red priority above it whose owner is on it does not stop you (your hands cannot help it).
-  if (mine) { const { at, ...pick } = mine; return withHold(pick); }
+  if (mine) {
+    if (mine.of === "land" && slotBusyFor(claimant)) return waitLanding();
+    const { at, ...pick } = mine;
+    return withHold(pick);
+  }
   for (let i = 0; i < view.length; i++) {
     const action = actions[i];
     if (!action || action.kind === "gate" || PENDING_KINDS.has(action.kind)) continue;
@@ -506,6 +626,10 @@ export function heldAllBy({ tasks, branches, openPrs, prCi = new Map(), mergedHe
   }
   const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports });
   for (const { at, ...pick } of ownWorkList(view, claimant, { includeWaiting: true }).found) out.push(pick);
+  const slot = landingSlot(branches, now);
+  if (slot.holder === claimant && !slot.quiet) {
+    out.push({ kind: "continue", of: "landing-slot", task: { id: slot.task }, lock: LAND_SLOT });
+  }
   return out;
 }
 
@@ -529,6 +653,7 @@ export function leaseFor(pick, branches, now) {
     case "fix-main": return workLike(pick.lock, slugOf(pick.lock), fixMainIdOf(pick.sha));
     case "build": case "green": return workLike(pick.work, slugOf(pick.task.branch), pick.task.id);
     case "land": return pick.tier1 ? onLock : workLike(pick.work, slugOf(pick.task.branch), pick.task.id);
+    case "landing-slot": return { ref: LAND_SLOT, verb: "Heartbeat", id: pick.task?.id, reclaim: false, retry: false };
     case "review": case "fix": case "architect": case "unblock": return onLock;
     default: throw new Error(`no lease for ${pick.of}`);
   }
@@ -605,7 +730,7 @@ export function mayReport({ task, branches, claimant }) {
  * state, holder, quiet time and the latest report its team sent.
  * reports: [{ id, status, who, at, note }] from agent/reports/log, newest first.
  */
-export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], now }) {
+export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehind = new Map(), mergedHeads = new Map(), reports = [], now }) {
   const HOUR = 60 * 60 * 1000;
   const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports });
   const latest = latestReports(reports);
@@ -637,8 +762,11 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), merged
       : state === "pr-red" || state === "quiet" || said?.status === "red" || said?.status === "blocked" ? "red"
       : state === "pr-green" ? (!review || review === "passed" || review === "landing" ? "green" : "progress")
       : ["todo", "waiting", "architect"].includes(state) ? "open" : "progress";
+    const behind = prBehind.get(v.work);
     return {
       id: task.id, title: task.title, tier: task.tier, lane: task.lane, role: roleOf(task), state, health,
+      ...(task.epic ? { epic: task.epic } : {}),
+      ...(pr && state !== "done" ? { behindMain: Number.isSafeInteger(behind) && behind >= 0 ? behind : null } : {}),
       holder: archHeld ? holderOf(v.arch, task.id) : v.open ? v.owner : null,
       quietHours: activeAt === null || state === "done" ? null : Math.floor((now - activeAt) / HOUR),
       pr, review, report: state === "done" ? null : latest.get(task.id) ?? null,
@@ -646,4 +774,19 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), merged
       stage: review ? v.stageHolder : v.open && v.unblocker ? v.unblocker : null,
     };
   });
+}
+
+/** Read-only goal roll-ups; completion means the board says done, never merely green CI. */
+export function epicSummaries(rows) {
+  const epics = new Map();
+  for (const row of rows) {
+    if (!row.epic) continue;
+    if (!epics.has(row.epic)) epics.set(row.epic, { epic: row.epic, total: 0, done: 0, prs: 0, red: 0, released: [] });
+    const summary = epics.get(row.epic);
+    summary.total++;
+    if (row.state === "done") { summary.done++; summary.released.push(row.id); }
+    else if (row.pr) summary.prs++;
+    if (row.health === "red") summary.red++;
+  }
+  return [...epics.values()];
 }

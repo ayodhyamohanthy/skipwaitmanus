@@ -11,6 +11,7 @@
 //   node scripts/next-task.mjs --status                                # the board: every priority, green or not
 //   node scripts/next-task.mjs --verdict pass|findings --task <id> --as "<session name>"
 //   node scripts/next-task.mjs --fixed --task <id> --as "<session name>"
+//   node scripts/next-task.mjs --landed --task <id> --as "<session name>"
 //
 // Exit codes: 0 work to do (claimed, your own work, CEO review), 1 error,
 // 2 STOP (GitHub unreadable), 3 SYNC FIRST (your work is not on origin),
@@ -23,8 +24,8 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
-  REPORT_STATUSES, architectLockOf, ciStateFromRuns, classifyPushError, fixMainIdOf, heartbeatOf, heldAllBy, heldBy, leaseFor, localSyncIssues, markerSubject,
-  mayReport, parseMarker, pickNextTask, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
+  LAND_SLOT, REPORT_STATUSES, architectLockOf, ciStateFromRuns, classifyPushError, fixMainIdOf, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
+  mayReport, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
 
@@ -53,6 +54,7 @@ function argsOf(argv) {
     if (a === "--fixed") out.fixed = true;
     else if (a === "--heartbeat") out.heartbeat = true;
     else if (a === "--status") out.status = true;
+    else if (a === "--landed") out.landed = true;
     else if (["--claim", "--verdict", "--task", "--as", "--report", "--note"].includes(a)) {
       const v = argv[++i];
       if (!v || v.startsWith("--")) fail(`${a} needs a value`);
@@ -63,6 +65,7 @@ function argsOf(argv) {
   if (out.as) out.as = sanitizeName(out.as);
   if (out.verdict && !["pass", "findings"].includes(out.verdict)) fail("--verdict is pass or findings");
   if ((out.verdict || out.fixed) && (!out.task || !out.as)) fail("--verdict and --fixed need --task <id> and --as \"<session name>\"");
+  if (out.landed && (!out.task || !out.as)) fail("--landed needs --task <id> and --as \"<session name>\"");
   if (out.heartbeat && !out.as) fail("--heartbeat needs --as \"<session name>\" (the name your claim printed)");
   if (out.report && !REPORT_STATUSES.includes(out.report)) fail(`--report is one of ${REPORT_STATUSES.join(", ")}`);
   if (out.report && (!out.task || !out.as)) fail("--report needs --task <id> and --as \"<session name>\"");
@@ -95,7 +98,7 @@ function markersOn(ref) {
 }
 
 function loadBranches(tasks) {
-  const wanted = new Set(tasks.flatMap(t => [t.branch, reviewLockOf(t), architectLockOf(t), heartbeatOf(slugOf(t.branch))]));
+  const wanted = new Set([...tasks.flatMap(t => [t.branch, reviewLockOf(t), architectLockOf(t), heartbeatOf(slugOf(t.branch))]), LAND_SLOT]);
   const slugs = tasks.map(t => `/${slugOf(t.branch)}`);
   const refs = git("for-each-ref", "--format=%(refname:strip=3)%09%(committerdate:unix)%09%(objectname)", "refs/remotes/origin/agent");
   const branches = new Map();
@@ -171,6 +174,14 @@ function pushMarker(branch, parent, subject, body) {
  * Returns false when another agent took it first.
  */
 function keepClaim(pick, who, branches) {
+  if (pick.of === "land") {
+    const slot = landingSlot(branches, Date.now());
+    if (slot.holder !== who || slot.quiet) {
+      const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
+      const took = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who));
+      if (!took) return false;
+    }
+  }
   const lease = leaseFor(pick, branches, Date.now());
   const subject = markerSubject(lease.verb, lease.id, who);
   let parent = base(lease.ref);
@@ -231,7 +242,15 @@ async function state() {
       for (const head of heads) prCi.set(head, { state: "error" });
     }
   }
-  return { doc, mainCi, openPrs, mergedHeads, prCi, branches: loadBranches(doc.tasks), reports: loadReports() };
+  // Count main-only commits, not branch-only commits. Missing refs stay unknown,
+  // never a misleading zero; use argv (not a shell) for branch names from GitHub.
+  const prBehind = new Map();
+  for (const head of openPrs?.keys() ?? []) {
+    const raw = tryGit("rev-list", "--count", `${originRef(head)}..origin/main`);
+    const count = raw !== null && /^\d+$/.test(raw) ? Number(raw) : null;
+    prBehind.set(head, Number.isSafeInteger(count) ? count : null);
+  }
+  return { doc, mainCi, openPrs, mergedHeads, prCi, prBehind, branches: loadBranches(doc.tasks), reports: loadReports() };
 }
 
 function claim(pick, who, branches) {
@@ -240,9 +259,15 @@ function claim(pick, who, branches) {
     case "build": return Boolean(pushMarker(pick.task.branch, origin(), markerSubject("Claim", pick.task.id, who)));
     case "takeover":
     case "green": return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who)));
-    case "land": return Boolean(pick.tier1
-      ? pushMarker(pick.lock, tip(pick.lock), markerSubject("Land claim", pick.task.id, who))
-      : pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who)));
+    case "land": {
+      const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
+      const tookSlot = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who));
+      if (!tookSlot) return false;
+      if (pick.tier1) {
+        return Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Land claim", pick.task.id, who)));
+      }
+      return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who)));
+    }
     case "unblock": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Unblock", pick.task.id, who)));
     case "architect": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who)));
     case "fix-main": return Boolean(pushMarker(pick.lock, pick.parent ? tip(pick.parent) : origin(), markerSubject(pick.parent ? "Takeover" : "Claim", fixMainIdOf(pick.sha), who)));
@@ -287,10 +312,21 @@ async function main() {
     console.log(`Recorded on ${lockName}: ${subject}`);
     return;
   }
+  if (args.landed) {
+    const { doc, branches } = await state();
+    const task = doc.tasks.find(t => t.id === args.task) ?? fail(`no task ${args.task}`);
+    const err = releaseLandingSlotError({ branches, task, claimant: args.as, now: Date.now() });
+    if (err) fail(err);
+    const subject = markerSubject("Landed", task.id, args.as);
+    const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
+    if (!pushMarker(LAND_SLOT, parent, subject)) fail(`could not push ${LAND_SLOT}: it moved; fetch and run again`);
+    console.log(`Released landing slot ${LAND_SLOT}: ${subject}`);
+    return;
+  }
   if (args.status) {
-    const { doc, mainCi, openPrs, mergedHeads, prCi, branches, reports } = await state();
+    const { doc, mainCi, openPrs, mergedHeads, prCi, prBehind, branches, reports } = await state();
     console.log(`main CI: ${mainCi.state}${mainCi.url ? ` (${mainCi.url})` : ""}${openPrs === null || mergedHeads === null ? " · pull requests: UNKNOWN (GitHub read failed; the board may be wrong)" : ""}\n`);
-    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, reports, now: Date.now() })));
+    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, prBehind, reports, now: Date.now() })));
     return;
   }
   if (args.report) {
@@ -331,11 +367,11 @@ async function main() {
   const who = args.claim ? sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4)) : args.as ?? null;
   if (args.claim && who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const { doc, mainCi, openPrs, mergedHeads, prCi, branches, reports } = await state();
+    const { doc, mainCi, openPrs, mergedHeads, prCi, prBehind, branches, reports } = await state();
     const now = Date.now();
     const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, prCi, reports, now, claimant: who });
     // D-085: every agent starts from the same picture — the priorities top down, green or not.
-    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, reports, now });
+    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, prBehind, reports, now });
     if (pick.kind === "ceo") pick.board = board;
     else console.log(renderBoard(board));
     const { local, mainBehind } = localState();

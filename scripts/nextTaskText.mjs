@@ -1,9 +1,11 @@
 // D-083: what the queue picker prints for each decision. Pure: the same pick
 // and context always print the same steps, which scripts/nextTask.test.ts pins.
-import { slugOf } from "./nextTaskCore.mjs";
+import { epicSummaries, slugOf } from "./nextTaskCore.mjs";
 
 const CMD = "node scripts/next-task.mjs";
 const land = [
+  "Run `node scripts/scope-check.mjs <id>` before you push: it reads the task's declared `owns` from origin/main and fails on any change outside them (PICKER-owns-scope).",
+  "Probe every other open branch of the same goal for conflicts: `git merge-tree $(git merge-base origin/main origin/<a>) origin/<a> origin/<b> | grep -c '^+<<<<<<<'` must print 0.",
   "Land under D-082: push the branch, open a pull request, and wait until every check on that exact commit is green and main's own CI is green.",
   "Then fast-forward main to that exact commit (`git push origin <sha>:main`; GitHub's \"Create a merge commit\" button is also safe, because the ruleset only lets an up-to-date branch merge, but never squash or rebase-merge: they replace the tested commits, D-134 (6)). If that push is refused because main moved, merge the latest origin/main into your branch, re-run the full gate, push, wait until every check on the new commit is green and fast-forward again; never force-push.",
   "Watch main's CI and both deploys to the end and run the live check from docs/BRIEF.md \"How to ship\".",
@@ -87,6 +89,7 @@ const greenSteps = (pick, who) => steps([
 ]);
 
 const landSteps = (pick, who) => steps([
+  `Take the landing slot first: agent/queue/landing (first push wins; a quiet slot is free after 30 minutes). Keep it alive during deploys with \`${CMD} --heartbeat --as "${who}"\`.`,
   worktree(pick.work),
   `Read docs/BRIEF.md and the §3b row "${pick.task.row}". Merge the latest origin/main into ${pick.work} and re-run the full gate yourself; never land on someone else's word.`,
   ...(pick.tier1 ? [unreviewed(pick)] : []),
@@ -94,6 +97,7 @@ const landSteps = (pick, who) => steps([
     ? `Set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`
     : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(pick.task)} to "done — <sha>".`,
   keepAlive(who),
+  `After main's CI and both deploys finish, release the landing slot: \`${CMD} --landed --task ${pick.task.id} --as "${who}"\`.`,
   report(pick.task, who),
 ]);
 
@@ -135,6 +139,7 @@ const ceoSteps = () => steps([
 /** WAIT: for red main, for a red priority above you, or for a blocked one only the CEO or the owner can clear. */
 function waitLines(pick, who) {
   if (pick.mainRed) return [pick.reason, `Do not start other work and do not push to main until main is green. If you hold a claim, keep it alive: \`${CMD} --heartbeat --as "${who}"\`.`];
+  if (pick.landing) return [pick.reason, `Only one landing at a time (D-082, PICKER-landing-slot). Run this again once ${pick.holder} finishes and releases agent/queue/landing, and keep any claim you hold alive with \`${CMD} --heartbeat --as "${who}"\`.`];
   if (pick.own) return [`${pick.reason}.`, `Push your work on ${pick.work}, tell the owner exactly what you need to go on, and stop. Run \`${CMD} --claim "${who}"\` again once it is unblocked.`];
   if (pick.blocked) return [`${pick.reason}.`, `Do not start anything ranked below ${pick.gate}. Tell the owner you are waiting on ${pick.gate} and stop; run this again after a Claude Code session or the owner unblocks it.`];
   return [`${pick.reason}. A priority must be green before anything below it is touched (D-085).`, `Do not start anything ranked below ${pick.gate}; help only if its holder asks. Run this again later, and keep any claim you hold alive with \`${CMD} --heartbeat --as "${who}"\`.`];
@@ -150,10 +155,12 @@ export function renderBoard(rows) {
     if (r.holder) bits.push(r.holder);
     if (r.quietHours !== null && r.quietHours !== undefined) bits.push(`quiet ${r.quietHours}h`);
     if (r.pr) bits.push(r.pr);
+    if (r.pr && r.state !== "done") bits.push(`behind main ${Number.isSafeInteger(r.behindMain) && r.behindMain >= 0 ? r.behindMain : "unknown"}`);
     if (r.report) bits.push(`report: ${r.report.status} — ${r.report.who}${r.report.note ? `: ${r.report.note}` : ""}`);
     return bits.join(" · ");
   });
-  return ["STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)", ...lines, ""].join("\n");
+  const summaries = epicSummaries(rows).map(s => `${s.epic}: ${s.done}/${s.total} done, ${s.prs} PR, ${s.red} red, released: ${s.released.join(", ") || "none"}`);
+  return ["STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)", ...summaries, ...lines, ""].join("\n");
 }
 
 /** The steps for one pick. ctx: { who, date, claimed } (claimed = this run took the lock or holds it). */
@@ -184,7 +191,7 @@ export function renderPick(pick, { who, date, claimed }) {
     ]) + take;
     case "review": return head(`REVIEW ${pick.task.id} — ${pick.task.title}`, [
       `Tier 1 · pull request ${pick.pr} · branch ${pick.work} · review lock ${pick.lock}`,
-      `You must not have built or fixed this (built by ${pick.builder ?? "unknown"}).`,
+      `No session of your model may have built or fixed this (D-151; built by ${pick.builder ?? "unknown"}). For work built or fixed outside the picker, check pull-request comments and the task reports on the board for your model; if found, post no verdict and report it blocked to the CEO.`,
       ...holding(pick),
       reviewSteps(pick, who),
     ]) + take;

@@ -177,6 +177,8 @@ describe("Chargebee webhook route", () => {
     expect(paymentIntent).toEqual({ tokenCount: 4, amount: 39_600, currency: "INR" });
     expect((await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", quantity: 1.5 })).status).toBe(400);
     expect((await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", quantity: 1001 })).status).toBe(400);
+    expect((await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", quantity: null })).status).toBe(400);
+    expect((await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", role: "admin", quantity: 1 })).status).toBe(400);
   });
 
   it("builds hosted-page return URLs from the configured public origin, never a spoofed request host", async () => {

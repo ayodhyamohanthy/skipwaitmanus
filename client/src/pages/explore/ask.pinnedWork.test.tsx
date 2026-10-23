@@ -38,7 +38,10 @@ vi.mock("wouter", () => ({
   useSearch: () => searchState.value,
   useRoute: () => [false, null],
 }));
-vi.mock("@/pages/explore/signInHandoff", () => ({ goToSeekerSignIn: signIn, seekerSignInUrl: (returnTo: string) => `/sign-in?returnTo=${encodeURIComponent(returnTo)}` }));
+vi.mock("@/pages/explore/signInHandoff", async importOriginal => ({
+  ...await importOriginal<typeof import("@/pages/explore/signInHandoff")>(),
+  goToSeekerSignIn: signIn,
+}));
 
 const company = (slug: string, openToReferrals = true): PublicCompany => {
   const seed = LAUNCH_COMPANY_SEED.find(item => item.slug === slug);

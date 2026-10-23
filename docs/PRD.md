@@ -25,17 +25,17 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 ## Roadmap (status board)
 | Slice | Loop | Owner lane | Status |
 | --- | --- | --- | --- |
-| GO-LIVE-1b (PR #359) | - | QA + build | awaiting QA second review + PASS_SALES_ENABLED confirmation |
-| W0 goal shell (PR #361) | L6 | build | designer fixes pushed; re-review pending |
-| W1 comps: /explore + ask drawer (w1-comps) | L1 | build | pushed; designer review pending; /queue held for #353 |
-| Demand list (D-086) | L1 | build | approved; after #361 + drawer review; mocks in hand |
-| BYOR one-time link (idea 2) | L2 | build | approved (D-090); packet `docs/plans/D-090-BYOR.md`; gated on the demand list (D-086) |
-| Employee request-inbox link (idea 1) | L4 | design | after idea 2 |
-| Sourced bonus pages (idea 3) | L5 | design | after idea 1 |
+| GO-LIVE-1b (PR #359) | - | QA + build | landed (#359); passes stay off (`PASS_SALES_ENABLED = false`, D-146) |
+| W0 goal shell (PR #361) | L6 | build | live (#361) |
+| W1 comps: /explore + ask drawer (w1-comps) | L1 | build | live (#362), reviewed in #472; the redesign to the doctrine is D-048-p3-live-review-find (D-150) |
+| Demand list (D-086) | L1 | build | approved; queued as `D-086-demand-list`, packet to write (D-154); its build follows BYOR (D-162); mocks in hand |
+| BYOR one-time link (idea 2) | L2 | build | approved (D-090); packet `docs/plans/D-090-BYOR.md`; building now, ahead of the demand list (owner word, D-162) |
+| Employee request-inbox link (idea 1) | L4 | packet to write (`D-089-request-inbox`, D-163) | build after idea 2 |
+| Sourced bonus pages (idea 3) | L5 | packet written (`docs/plans/D-099-bonus-pages.md`, D-163) | build after ideas 2 and 1 and the demand list |
 | Bedrock AI provider plan | - | build | plan with owner; AWS access needed |
 
 ## Demand-list copy (D-086, verbatim)
-- "{N} people are asking for a referral at {Company}." (singular for 1)
+- "{N} people are asking for a referral at {Company}." (N from 3 up; for 1-2 people D-086 (2) gives only "A few people asking", and the D-086 packet proposes the full sentence; never a count of 0 — D-086 (2), D-162)
 - Empty: "No one has asked for {Company} yet." / "Nobody at {Company} is waiting right now. We'll tell you if that changes."
 - Bonus honesty: "Most companies pay their own referral bonus when a referral they make is hired. That programme is your employer's and they pay it - skipwait.me never pays referrers."
 
@@ -48,7 +48,7 @@ Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COM
 - Public launch when the 10 most-asked companies each have a verified referrer (confirmed by the owner, Oct 21; no payment test in the trigger).
 - Loops L1 to L4. Measure: asks per company, companies with a verified referrer, asks answered within 5 days, reports-as-annoying.
 
-## Skippy (in-product assistant, code name Skippie; D-136 to D-142)
+## Skippy (in-product assistant, code name Skippie; D-136 to D-143)
 Skippy is a chat front door to what the product already does. It asks, shows an approve or deny card, then acts through the same server functions as the normal pages. User-facing name Skippy (founder's final word, Oct 22). Code and routes keep the name Skippie for now.
 - **Audiences:** seekers (ask for a referral by chat), admins (read first, then approved actions), and seekers' own AI agents (only with permission).
 - **Rules (binding):** same checks as the pages, never a second rulebook (D-137). Live prices, never hardcoded. Never promises a referral. Referrers never pay or get paid (D-055).
@@ -60,4 +60,4 @@ Skippy is a chat front door to what the product already does. It asks, shows an 
 - **Before any seeker-facing launch:** confirm provider data terms, set the global spend cap, pass the red-team injection test, founder sees a demo on the live URL, run a trademark and name-clearance search for "Skippy" (also a known food brand).
 
 ## Pricing
-One source of truth: [`docs/PRICING.md`](PRICING.md) (D-146: Lovable-style plans with credit dropdowns only; fixed passes off; packs on). Decisions are recorded in `docs/DECISIONS.md` before anything is built on them.
+One source of truth: [`docs/PRICING.md`](PRICING.md) (D-146: Lovable-style plans with credit dropdowns only; fixed passes off; packs on). Decisions are recorded in `docs/DECISIONS.md` before anything is built on them. Plan names (D-152): Entry level Referrers, Mid level Referrers, Senior level Referrers; plan ids, prices, credits and benefits unchanged. Writing rule (D-153, frozen): intent reaches users faster anywhere - every page says plainly what users can do, what they get and what it costs, and promises only what works today.

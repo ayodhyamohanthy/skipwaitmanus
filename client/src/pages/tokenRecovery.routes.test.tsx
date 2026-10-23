@@ -67,12 +67,12 @@ describe("secure token checkout routes", () => {
     render(<Premium />);
     expect(screen.queryByRole("link", { name: "skipwait.me home" })).toBeNull();
     expect(screen.getByRole("link", { name: "Back" }).getAttribute("href")).toBe("/request");
-    expect(screen.getByText("Pay $1")).toBeTruthy();
+    expect(screen.getByText("Pay $10 USD")).toBeTruthy();
     expect(screen.getByText(/PayPal/)).toBeTruthy();
     expect(screen.queryByText("India · INR")).toBeNull();
     expect(screen.queryByText("Outside India · USD")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /different billing country.*use india payment/i }));
-    expect(screen.getByText("Pay ₹99")).toBeTruthy();
+    expect(screen.getByText("Pay ₹990 INR")).toBeTruthy();
     expect(screen.getByText(/Razorpay \(INR\)/)).toBeTruthy();
     expect((screen.getByRole("spinbutton", { name: "Number of credits to add" }) as HTMLInputElement).value).toBe("10");
     expect(screen.getByText(/credits are added only after verified payment/i)).toBeTruthy();
@@ -95,11 +95,11 @@ describe("secure token checkout routes", () => {
     mockBrowserRoute.current = "INR";
     window.history.pushState({}, "", "/premium");
     render(<Premium />);
-    expect(screen.getByText("Pay ₹99")).toBeTruthy();
+    expect(screen.getByText("Pay ₹990 INR")).toBeTruthy();
     expect(screen.getByText(/Razorpay \(INR\)/)).toBeTruthy();
     expect(screen.queryByText(/PayPal/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /different billing country.*use international payment/i }));
-    expect(screen.getByText("Pay $1")).toBeTruthy();
+    expect(screen.getByText("Pay $10 USD")).toBeTruthy();
     expect(screen.getByText(/PayPal/)).toBeTruthy();
   });
 
