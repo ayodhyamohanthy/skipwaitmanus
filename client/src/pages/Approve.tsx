@@ -1,3 +1,5 @@
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+import GoalApprove from "./goal/assistants/GoalApprove";
 import { Bot, Check } from "lucide-react";
 import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
@@ -12,7 +14,7 @@ type CreditsSummary = { plan?: string; totalAvailable?: number; monthlyCreditsRe
 
 const FOOTNOTE = "Unanswered approvals expire after 24 hours.";
 
-export default function Approve() {
+function LegacyApprove() {
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [approvals, setApprovals] = useState<AssistantApproval[]>([]);
@@ -173,4 +175,8 @@ export default function Approve() {
       )}
     </>,
   );
+}
+
+export default function Approve() {
+  return goalSurfaceOn("assistants") ? <GoalApprove /> : <LegacyApprove />;
 }

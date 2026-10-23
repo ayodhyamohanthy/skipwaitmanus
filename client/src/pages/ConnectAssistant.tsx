@@ -1,3 +1,5 @@
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+import GoalConnectAssistant from "./goal/assistants/GoalConnectAssistant";
 import { ArrowRight, Bot, Check, CircleAlert, Clock, Lock, ShieldAlert, ShieldCheck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SignInButton, useAuth, useUser } from "@/_core/auth";
@@ -44,7 +46,7 @@ function callbackHost(redirectUri: string): string | null {
   try { return new URL(redirectUri).host || null; } catch { return null; }
 }
 
-export default function ConnectAssistant() {
+function LegacyConnectAssistant() {
   // wouter's location is the path only; the OAuth request and state flags live in the query string.
   const queryString = useSearch();
   const { isSignedIn, getToken, signOut } = useAuth();
@@ -233,4 +235,8 @@ export default function ConnectAssistant() {
       ) : null}
     </main>
   );
+}
+
+export default function ConnectAssistant() {
+  return goalSurfaceOn("assistants") ? <GoalConnectAssistant /> : <LegacyConnectAssistant />;
 }
