@@ -436,7 +436,12 @@ export async function advanceSkippieSeeker(userId: number, current: SkippieSessi
       if (session.coverageStatus === "waiting_for_company_coverage") {
         return say(`Your ask is saved for ${result.companyDomain}. No employee there is open on skipwait.me yet, so it cost you nothing: it's held (never shown) and nothing is charged while it waits. When a verified employee can see it, ${fresh.cost} credit${fresh.cost === 1 ? "" : "s"} are used and it goes live; if you don't have enough then, we hold it until you add more. We'll tell you when that happens. Track it under My asks.`);
       }
-      return say(`Asked - your request is with verified employees at ${result.companyDomain}. One credit was used, exactly the cost you confirmed. If nobody picks it up you can withdraw it for the credit back. Track it under My asks.`);
+      if (session.replayed) {
+        return say(`Asked - this is the same request you already sent to ${result.companyDomain}, so nothing was charged again. Track it under My asks.`);
+      }
+      // The number is the fresh send-time quote, which the seeker confirmed
+      // (any drift forced a re-confirmation above), so the words match the charge.
+      return say(`Asked - your request is with verified employees at ${result.companyDomain}. ${fresh.cost} credit${fresh.cost === 1 ? " was" : "s were"} used, exactly the cost you confirmed. If nobody picks it up you can withdraw it for the credit back. Track it under My asks.`);
     }
 
     case "done": {
