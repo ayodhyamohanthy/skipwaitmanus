@@ -1068,7 +1068,7 @@
         "client/src/pages/SeekerAgents.tsx",
         "client/src/pages/seekerAgents.test.tsx"
       ],
-      "note": "D-167 \u00a76.5: had no row. Behind SKIPPIE_AGENT_ENABLED (off); every limit, expiry, revoke and pause-all control stays visible (D-141)."
+      "note": "D-167 \u00a76.5: had no row. Behind SKIPPIE_AGENT_ENABLED (off); every limit, expiry, revoke and pause-all control stays visible (D-141). Assignment (Main, Oct 23): built by the assistants lane (AYO-9) together with D-048-p3-assistants; one PR (#563, agent/queue/d048-assistants) carries both rows with per-row review boundaries in the PR body."
     },
     {
       "id": "D-048-P-referrer",
