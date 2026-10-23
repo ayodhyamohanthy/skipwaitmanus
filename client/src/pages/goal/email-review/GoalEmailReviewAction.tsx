@@ -62,25 +62,25 @@ export default function GoalEmailReviewAction() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : "This private review link is unavailable"); setState("error"); }
   };
 
-  if (!params?.linkToken) return <GoalFrame><h1 className="text-[24px] font-semibold leading-[1.15] tracking-[-0.02em]">Review link unavailable</h1></GoalFrame>;
+  if (!params?.linkToken) return <GoalFrame><h1 className="text-g-display">Review link unavailable</h1></GoalFrame>;
   if (!isSignedIn) {
     return (
       <GoalFrame>
         <span className="grid h-11 w-11 place-items-center rounded-[10px] border border-g-hairline"><Lock className="h-5 w-5" aria-hidden="true" /></span>
         <p className="mt-5 font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">PRIVATE REVIEW</p>
-        <h1 className="mt-3 text-[24px] font-semibold leading-[1.15] tracking-[-0.02em]">Use your company email.</h1>
+        <h1 className="mt-3 text-g-display">Use your company email.</h1>
         <p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">Sign in with the verified work email that received this notification.</p>
         <div className="mt-5"><WorkEmailSignIn compact /></div>
       </GoalFrame>
     );
   }
-  if (state === "loading") return <GoalFrame><h1 className="text-[24px] font-semibold leading-[1.15] tracking-[-0.02em]">Opening private review…</h1><p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">No decision is recorded until you press a confirmation button.</p></GoalFrame>;
-  if (state === "error") return <GoalFrame><h1 className="text-[24px] font-semibold leading-[1.15] tracking-[-0.02em]">Review link unavailable</h1><p role="alert" className="mt-2 flex items-center gap-2 text-g-small text-g-ink"><X className="h-4 w-4 shrink-0" aria-hidden="true" />{error}</p></GoalFrame>;
+  if (state === "loading") return <GoalFrame><h1 className="text-g-display">Opening private review…</h1><p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">No decision is recorded until you press a confirmation button.</p></GoalFrame>;
+  if (state === "error") return <GoalFrame><h1 className="text-g-display">Review link unavailable</h1><p role="alert" className="mt-2 flex items-center gap-2 text-g-small text-g-ink"><X className="h-4 w-4 shrink-0" aria-hidden="true" />{error}</p></GoalFrame>;
   if (state === "review") {
     return (
       <GoalFrame>
         <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">PRIVATE REVIEW</p>
-        <h1 className="mt-3 text-[24px] font-semibold leading-[1.15] tracking-[-0.02em]">Choose your decision.</h1>
+        <h1 className="mt-3 text-g-display">Choose your decision.</h1>
         <p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">Each button records the named action immediately.</p>
         <p className="mt-4 rounded-[10px] border border-g-hairline p-4 text-g-small leading-[1.6] text-g-ink-2">Accepting shares names both ways and the job seeker’s resume. Referring comes later, through your company’s own process.</p>
         <label className="mt-4 flex items-start gap-3 text-g-small text-g-ink"><input type="checkbox" checked={ethicsConfirmed} onChange={event => setEthicsConfirmed(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-g-ink" />I’ll refer only through my company’s official process and won’t accept anything in return.</label>
@@ -98,7 +98,7 @@ export default function GoalEmailReviewAction() {
     <GoalFrame>
       <div role="status">
         <p className="flex items-center gap-2 font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink">{accepted ? <Check className="h-4 w-4" aria-hidden="true" /> : <X className="h-4 w-4" aria-hidden="true" />}{accepted ? "Recorded" : "Passed"}</p>
-        <h1 className="mt-3 text-[24px] font-semibold leading-[1.15] tracking-[-0.02em]">{accepted ? "Request accepted." : "Passed privately."}</h1>
+        <h1 className="mt-3 text-g-display">{accepted ? "Request accepted." : "Passed privately."}</h1>
         {accepted ? null : <p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">The job seeker sees your reason without your name, and their ask stays open to other verified employees.</p>}
         <div className="mt-6"><GoalButton variant="primary" onClick={() => go("/inbox")}>Open My Company Inbox</GoalButton></div>
       </div>
