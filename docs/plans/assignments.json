@@ -741,7 +741,7 @@
       "tier": 2,
       "lane": "design-check",
       "branch": "agent/queue/d048-f-goal-check",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-048-F-primitives"
       ],
@@ -753,7 +753,7 @@
         "client/src/test/goalPageContract.test.tsx",
         "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "D-167: a page counts as moved only when its test calls assertGoalPage (one h1 goal line, exactly one data-g-primary inside the GoalNextStep block, no kit.css classes) and the boundary test finds no kit or ui import. Every surface row depends on this one."
+      "note": "D-167: a page counts as moved only when its test calls assertGoalPage (one h1 goal line, exactly one data-g-primary inside the GoalNextStep block, no kit.css classes) and the boundary test finds no kit or ui import. Every surface row depends on this one. Built by the coordinator lane (Main, Oct 23 - it blocks 14 surface rows): PR #567, stacked on #560."
     },
     {
       "id": "D-048-F-shell-parts",
