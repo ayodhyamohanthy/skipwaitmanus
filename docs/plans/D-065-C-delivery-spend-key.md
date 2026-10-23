@@ -14,3 +14,5 @@ Owned paths: `server/dailyMoneyCheck.ts` (`listAskDeliverySpendsWhileWaiting` on
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
+
+D-065-C: in progress — workbuddy · b0eb — 2026-10-23 — branch `agent/queue/d065c-delivery-key`. Red first: with the fixture writing the production shape (`<id>#1` / `ask-delivery:<id>#1`) the job reported 1 finding instead of 2. The lookup now matches `<id>#1`..`<id>#32` (the refund path bound) and reads the ask id before `#`.
