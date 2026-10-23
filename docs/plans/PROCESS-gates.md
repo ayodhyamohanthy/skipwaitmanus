@@ -101,7 +101,7 @@ Red-first tests; the gate on the merged result; required CI green; the row's Sta
 - A Tier 1 PR that already passed review fails the review gate only because its verdict predates the `reviewed <sha>` body. That is expected: the reviewer re-records the verdict on the current head (`--verdict pass`), and nothing is waived.
 
 ## Status
-- PROCESS-queue-gate: in progress — GPT · 5deb — 2026-10-24 — branch `agent/queue/process-queue-gate`.
+- PROCESS-queue-gate: done — PR #603 head `f5e23174` (latest main `5747cc87` merged); full local gate and all 4 PR checks passed.
 - PROCESS-review-gate: todo; waits for PROCESS-queue-gate.
 - PROCESS-id-check: todo; waits for PROCESS-review-gate.
 - PROCESS-scorecard: todo; waits for PROCESS-id-check.
