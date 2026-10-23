@@ -40,14 +40,14 @@ Hard rule: never invent user counts, testimonials, outcomes, or fake activity. L
 | `/invite` | Self-growth / invite loop |
 | `/safety` | Trust, rules, reporting |
 | `/work` | Profile-only work showcase (no feed/likes/followers); add, import, pin, per-item privacy |
-| `/plans` | Plans & credits in one page (Free plus the account's own pass, credits, usage panel, upgrade moments; the pass cards come with the D-046 go-live; the referrer role sees no purchase, D-055) — `/wallet` redirects here |
+| `/plans` | Plans & credits in one page (Free plus the account's own pass, credits, usage panel, upgrade moments; passes are not sold (D-146); the referrer role sees no purchase, D-055) — `/wallet` redirects here |
 | `/for-companies` | Standalone employer sales page (no app nav) |
 | `/admin` | Separate internal console, direct URL only, not in any menu: overview, company approvals, verifications, safety reports, users |
 
 App shell: desktop = left sidebar (Explore, Requests, Inbox, Refer + "Your space": Profile, My work, Plans & credits; More last = Help & safety, For companies; More never highlighted); mobile = bottom tab bar with the same items with safe-area insets and ≥44px touch targets.
 
 ## 5. Build instructions for the production app
-1. Keep the live UI as it is until the owner approves the goal-focused designs (D-048); replace demo data in `src/lib/marketplace-data.ts` with real data.
+1. Redesign each surface to the goal doctrine when its queue row comes up (D-150, D-149), never ad hoc; replace demo data in `src/lib/marketplace-data.ts` with real data.
 2. Backend: the live Express + Azure MySQL (Drizzle) app, schema in `drizzle/schema.ts`; admin checked server-side only. There is no Supabase row-level security, so every query applies explicit ownership and tenant checks (AGENTS.md §3).
 3. Auth: seekers use social logins (Google, Microsoft, GitHub, LinkedIn, Slack) or personal email + password; referrers sign in with a work-email code only (D-030 as amended by D-049/D-057).
 4. Rules: open asks capped per plan (Free 3, D-039) and at 2 per company (D-006); referrer sets monthly capacity; an ask expires 7 days after a verified referrer can first see it, and an uncovered ask waits up to 90 days (D-061); chat opens only after acceptance; contact details hidden until both agree.
@@ -73,10 +73,10 @@ Create `app/.env` with your own backend keys (VITE_SUPABASE_URL, VITE_SUPABASE_P
 ## 8. Prompt to paste into your LLM
 > You are updating SkipWait, a global job-referral PWA that is already live. Read AGENTS.md and docs/DECISIONS.md first (the decision register wins), then LLM_HANDOFF.md and everything in reference/. The attached `app/` folder is the kit v4 design reference, retired (D-120): the goal-focused UI (`DESIGN.md` + `design/goal-ui/DOCTRINE.md`) is binding, landing to platform; surfaces migrate one at a time through the gate (`docs/plans/GOAL_UI_MIGRATION.md`). Pick work only from the priority queue in docs/KIT_V4_BUILD_PLAN.md §3b: run `node scripts/next-task.mjs --claim "<your model name>"` and do only what it prints. Never fabricate activity or counts. Money follows the register: 3 free credits every month; extra asks use credits; referrers are never paid (D-063). Keep mobile and desktop both excellent.
 
-## 9. Monetization (current — `docs/DECISIONS.md`; prices in `PRICING.md` and `shared/planCatalog.ts`)
-- Passes: Start, Momentum, Land Focus and Land Sprint for 30 or 90 days, Keep warm yearly, Land Concierge by application (D-005, D-046; on sale once D-063, D-067 and D-051 land, D-059); human review and sessions stay off until staffed (D-041). Free is not shown as a card.
+## 9. Monetization (current — `docs/DECISIONS.md`; prices in `docs/PRICING.md`, the one source (D-146); code in `shared/planCatalog.ts` and `shared/planFamily.ts`)
+- Passes (Start, Momentum, Land, Keep warm, Concierge) are not sold (D-146); the next model is D-132's three plans, Entry, Mid and Senior level Referrers (D-152), behind off flags until the owner's enable word; human review and sessions stay off until staffed (D-041). Free is not shown as a card.
 - Credits: Free gets 3 a month and 3 open asks, no welcome credits; the reverse trial comes off the public catalog until its trigger is built (D-039, D-051; off the catalog since `1376dfa3`). Packs ₹99/2, ₹1,199/25, ₹2,599/60, ₹5,999/150 and $5/5, $22/25, $48/60, $105/150 (D-036); purchased credits never expire. All sold through Chargebee, with Razorpay for INR and PayPal for USD (D-004, D-069). Referrers never pay: every referrer-role checkout is refused before any provider call (D-055, `REFERRER_PURCHASES_ENABLED = false`; live since `08d193a0`).
 - Usage panel + upgrade moments: `UPGRADE_NUDGES.md`.
 
 ## 10. Doc index
-`SCREENS.md` (every route), `CHECKLIST.md` (build order), `PRICING.md`, `UPGRADE_NUDGES.md`, `CHANGELOG.md` (latest design changes).
+`SCREENS.md` (every route), `CHECKLIST.md` (build order), `docs/PRICING.md`, `UPGRADE_NUDGES.md`, `CHANGELOG.md` (latest design changes).
