@@ -33,7 +33,7 @@ describe("PROCESS-queue-gate", () => {
   });
 
   it("passes a dependabot branch", () => {
-    expect(check("dependabot/npm_and_yarn/safe-update" )).toBeNull();
+    expect(check("dependabot/npm_and_yarn/safe-update")).toBeNull();
   });
 
   it("passes an owner-direct PR and names its PR in the warning", () => {
