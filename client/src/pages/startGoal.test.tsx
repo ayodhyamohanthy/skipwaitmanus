@@ -7,7 +7,7 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Onboarding from "./Onboarding";
-import { saveReferralDraft, clearReferralDraft } from "@/lib/pwaContinuity";
+import { saveReferralDraft, clearReferralDraft, readReferralDraft } from "@/lib/pwaContinuity";
 import { TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
 
 const { authState, flags, go } = vi.hoisted(() => ({
@@ -89,6 +89,8 @@ describe("goal start", () => {
     await waitFor(() => expect(commit.getAttribute("aria-disabled")).toBeNull());
     fireEvent.click(commit);
     expect(localStorage.getItem("bridge-target-url")).toBe(VALID_URL);
+    expect(readReferralDraft()?.targetUrl).toBe(VALID_URL);
+    expect(JSON.parse(localStorage.getItem("bridge-company-confirmation") || "{}")).toEqual({ canonicalUrl: VALID_URL, confirmedDomain: "quillmint.com" });
     expect(go).toHaveBeenCalledWith("/request");
   });
 
