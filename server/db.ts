@@ -4728,6 +4728,32 @@ export async function markSubscriptionCheckoutIntentCancelled(hostedPageId: stri
   await db.update(subscriptionCheckoutIntents).set({ status: "cancelled", failureReason }).where(and(eq(subscriptionCheckoutIntents.hostedPageId, hostedPageId), eq(subscriptionCheckoutIntents.status, "pending")));
 }
 
+/** Cheap wallet read for pre-commitment checkout checks: no creation, no reconciliation. */
+export async function getWalletPlanSnapshot(userId: number, role: WalletRole): Promise<{ plan: string; monthlyCreditsRemaining: number } | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const row = (await db.select({ plan: tokenBalances.plan, monthlyCreditsRemaining: tokenBalances.monthlyCreditsRemaining }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1))[0];
+  return row ?? null;
+}
+
+/**
+ * Durable receipt for a provider webhook event, keyed by provider + event id
+ * (subscriptionEvents unique index). Distinct events each record once;
+ * redelivery of the same provider event reports duplicate so callers do not
+ * re-alert. Used for events that have no natural receipt of their own (today:
+ * payment_failed - a failed payment creates no fulfillment row).
+ */
+export async function recordChargebeeWebhookEventReceipt(input: { eventId: string; eventType: string; subscriptionId?: string }): Promise<{ duplicate: boolean }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.transaction(async (tx) => {
+    const existing = await tx.select({ id: subscriptionEvents.id }).from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee"), eq(subscriptionEvents.providerEventId, input.eventId))).limit(1);
+    if (existing[0]) return { duplicate: true as const };
+    await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId ?? null });
+    return { duplicate: false as const };
+  });
+}
+
 export async function applyChargebeeSubscriptionEvent(input: { eventId: string; eventType: string; hostedPageId?: string; passThruContent?: string; subscriptionId: string; plan?: BillablePlanId; planFamily?: PlanFamilyId; planFamilyRung?: PlanCreditRung; itemPriceId?: string; interval?: BillingPeriod; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
@@ -4805,13 +4831,20 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       // Free keeps the open month's leftover credits (the ported #416 comment
       // claimed an accepted owner call, but no user-channel evidence supports
       // it; see the PR's proof state). Until original user evidence or an
-      // explicit product decision covers it, this transition must not execute
-      // a leftover rule at all: a Free wallet with unused credits upgrading to
-      // a family plan is recorded and parked for review instead of applying
-      // any carry-over. A Free wallet at zero leftover upgrades normally.
+      // explicit product decision covers it, no leftover rule may execute.
+      // Checkout is refused before commitment (chargebeeRoutes); this webhook
+      // branch is only the recoverable exception for a race (e.g. checkout
+      // opened before the refusal shipped, or credits granted mid-checkout):
+      // the event is recorded and the transition parks as "blocked", never a
+      // terminal ignored/success. RECONCILIATION: the wallet keeps plan
+      // "free" and the intent stays pending, so support resolves by replaying
+      // or completing the activation once the owner decides the leftover
+      // rule (or by refunding in Chargebee per that decision - this code
+      // invents no carry/refund policy). A Free wallet at zero leftover
+      // upgrades normally.
       if (retainsAccess && wallet && wallet.plan === "free" && wallet.monthlyCreditsRemaining > 0) {
         await recordV2Event();
-        return { status: "ignored" as const, reason: "upgrade_leftover_rule_unresolved" };
+        return { status: "blocked" as const, reason: "upgrade_leftover_rule_unresolved" };
       }
       const v2Patch = {
         plan: retainsAccess ? input.planFamily : ("free" as const),

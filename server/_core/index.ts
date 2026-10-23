@@ -332,6 +332,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     alertUnmatchedPayment: createUnmatchedPaymentAlerter(),
     alertRetiredPlanEvent: createRetiredPlanAlerter(),
     alertFailedPayment: createFailedPaymentAlerter(),
+    recordWebhookEventReceipt: db.recordChargebeeWebhookEventReceipt,
+    getWalletSnapshot: db.getWalletPlanSnapshot,
     applyCardValidationEvent: db.applyCardValidationEvent,
     alertCardValidationEvent: createCardValidationAlerter(),
     createCardValidationPage: createCardValidationPageForUser,

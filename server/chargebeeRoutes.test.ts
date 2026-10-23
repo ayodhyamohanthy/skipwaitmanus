@@ -65,6 +65,46 @@ describe("Chargebee checkout readiness", () => {
   });
 });
 
+  it("refuses a v2 plan checkout before commitment when the Free wallet still has credits", async () => {
+    // UNRESOLVED PRODUCT RULE (see db.ts / PR proof state): no hosted page, no
+    // intent, no charge while the upgrade-leftover rule is undecided.
+    vi.stubEnv("PLAN_FAMILY_V2", "true");
+    const app = express(); app.use(express.json());
+    const createSubscriptionIntent = vi.fn();
+    const createBundleCheckout = vi.fn();
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 7 } }),
+      createPaymentIntent: vi.fn(), fulfillPayment: vi.fn(),
+      createSubscriptionIntent,
+      getWalletSnapshot: async () => ({ plan: "free", monthlyCreditsRemaining: 2 }),
+      v2Checkout: { createBundleCheckout },
+    });
+    const response = await request(app).post("/api/chargebee/subscription-checkout").send({ v2Plan: "fast_track", v2Rung: 0, currency: "INR", billingCountry: "IN", role: "job_seeker" });
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe("upgrade_leftover_rule_unresolved");
+    expect(response.body.error).toContain("Nothing has been charged");
+    expect(createSubscriptionIntent).not.toHaveBeenCalled();
+    expect(createBundleCheckout).not.toHaveBeenCalled();
+  });
+
+  it("allows a v2 plan checkout when the Free wallet has no credits left", async () => {
+    vi.stubEnv("PLAN_FAMILY_V2", "true");
+    const app = express(); app.use(express.json());
+    const createSubscriptionIntent = vi.fn(async () => undefined);
+    const createBundleCheckout = vi.fn(async () => ({ hostedPageId: "hp_v2", checkoutUrl: "https://checkout.example/hp_v2" }));
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 7 } }),
+      createPaymentIntent: vi.fn(), fulfillPayment: vi.fn(),
+      createSubscriptionIntent,
+      getWalletSnapshot: async () => ({ plan: "free", monthlyCreditsRemaining: 0 }),
+      v2Checkout: { isAvailable: async () => true, createBundleCheckout, newCheckoutIntentId: () => "intent_v2_test" },
+    });
+    const response = await request(app).post("/api/chargebee/subscription-checkout").send({ v2Plan: "fast_track", v2Rung: 0, currency: "INR", billingCountry: "IN", role: "job_seeker" });
+    expect(response.status).toBe(200);
+    expect(response.body.checkoutUrl).toBe("https://checkout.example/hp_v2");
+    expect(createSubscriptionIntent).toHaveBeenCalled();
+  });
+
 describe("Chargebee webhook route", () => {
   it.each(["test", "live"])("forwards the configured %s runtime regardless of request host", async environment => {
     vi.stubEnv("BILLING_ENV", environment);
@@ -125,6 +165,32 @@ describe("Chargebee webhook route", () => {
     expect(second.body.result.status).toBe("duplicate");
     expect(wallet).toBe(4);
     expect(fulfillmentCalls).toBe(2);
+    delete process.env.CHARGEBEE_WEBHOOK_SECRET;
+  });
+
+  it("alerts each unique failed payment once; redelivery of the same provider event does not re-alert", async () => {
+    const app = express();
+    app.use(express.json());
+    const secret = "fail-secret";
+    process.env.CHARGEBEE_WEBHOOK_SECRET = secret;
+    const seen = new Set<string>();
+    const alertFailedPayment = vi.fn(async () => undefined);
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => undefined,
+      createPaymentIntent: async () => undefined,
+      fulfillPayment: async () => ({ status: "ignored" as const, reason: "unknown_checkout" }),
+      alertFailedPayment,
+      recordWebhookEventReceipt: async input => ({ duplicate: seen.has(input.eventId) ? true : (seen.add(input.eventId), false) }),
+    });
+    const failed = (id: string) => ({ id, event_type: "payment_failed", content: { payment: { amount: 162400, currency_code: "INR", invoice_id: "inv_9", subscription_id: "sub_9" }, customer: { id: "cust_9" } } });
+    const first = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send(failed("ev_fail_1"));
+    const redelivery = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send(failed("ev_fail_1"));
+    const distinct = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send(failed("ev_fail_2"));
+    expect(first.status).toBe(200);
+    expect(redelivery.status).toBe(200);
+    expect(distinct.status).toBe(200);
+    expect(alertFailedPayment).toHaveBeenCalledTimes(2);
+    expect(alertFailedPayment.mock.calls.map(call => call[0].eventId)).toEqual(["ev_fail_1", "ev_fail_2"]);
     delete process.env.CHARGEBEE_WEBHOOK_SECRET;
   });
 

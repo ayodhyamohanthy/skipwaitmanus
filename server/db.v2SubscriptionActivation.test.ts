@@ -157,14 +157,14 @@ describe("D-132 v2 plan-family subscription events", () => {
     expect(reviewRows).toEqual([]);
   });
 
-  it("a Free wallet with leftover credits upgrading is blocked and recorded, never silently converted", async () => {
+  it("a Free wallet with leftover credits upgrading parks as recoverable blocked, never silently converted", async () => {
     // UNRESOLVED PRODUCT RULE (see db.ts): no carry-over rule may execute until
     // original user evidence or an explicit product decision covers it.
     wallets[0].monthlyAllowance = 3;
     wallets[0].monthlyCreditsRemaining = 2;
     wallets[0].monthlyCycleKey = "2026-10";
     const result = await applyChargebeeSubscriptionEvent(input);
-    expect(result).toMatchObject({ status: "ignored", reason: "upgrade_leftover_rule_unresolved" });
+    expect(result).toMatchObject({ status: "blocked", reason: "upgrade_leftover_rule_unresolved" });
     const wallet = wallets[0];
     expect(wallet.plan).toBe("free");
     expect(wallet.subscriptionId).toBeNull();

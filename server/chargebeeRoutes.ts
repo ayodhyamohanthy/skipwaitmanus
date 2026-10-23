@@ -54,6 +54,10 @@ type Deps = {
   alertUnmatchedPayment?: (input: { eventId: string; invoiceId?: string; hostedPageId?: string; reason: string; paidAmount: number; paidCurrency: string }) => Promise<unknown>;
   /** Owner rule (Oct 22): every provider payment failure reaches the owner at once. */
   alertFailedPayment?: (input: { eventId: string; invoiceId?: string; subscriptionId?: string; customerId?: string; amount?: number; currency?: string }) => Promise<unknown>;
+  /** Durable provider-event receipt (subscriptionEvents): false on first delivery, true on redelivery. */
+  recordWebhookEventReceipt?: (input: { eventId: string; eventType: string; subscriptionId?: string }) => Promise<{ duplicate: boolean }>;
+  /** Wallet snapshot for the signed-in account+role, for pre-commitment upgrade checks. */
+  getWalletSnapshot?: (userId: number, role: "job_seeker" | "referrer") => Promise<{ plan: string; monthlyCreditsRemaining: number } | null>;
   /** Durable receipt for a provider gift event (D-067: receipts only; a claimed gift is parked as plan_retired). */
   recordGiftEvent?: (input: { eventId: string; eventType: string; giftId: string; status: string; receiverEmail?: string; receiverCustomerId?: string; subscriptionId?: string; buyerUserId?: number }) => Promise<{ giftId: string; fulfillmentStatus: string; parked: boolean }>;
   listBuyerGifts?: (buyerUserId: number) => Promise<Array<{ giftId: string; plan: RetiredPlanId | null; currency: string | null; amount: number | null; receiverEmail: string | null; providerStatus: string | null; fulfillmentStatus: string; subscriptionId: string | null; creditedAt: Date | null; createdAt: Date }>>;
@@ -196,6 +200,21 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const v2Plan = v2PlanCheckoutRequestSchema.safeParse(req.body);
       if (v2Plan.success) {
         if (!deps.createSubscriptionIntent) return res.status(503).json({ error: "Subscription checkout is not configured" });
+        // UNRESOLVED PRODUCT RULE (see db.ts / PR proof state): while the
+        // upgrade-leftover rule has no user-evidenced decision, a Free wallet
+        // with unused credits must not reach payment at all - refused before
+        // any hosted page, intent, or charge. The webhook-side parked
+        // "blocked" status remains only as the recoverable race exception.
+        // Support: nothing was charged; the wallet and its credits are
+        // untouched, so no reconciliation is owed - the owner decides the
+        // leftover rule, then upgrades reopen.
+        if (deps.getWalletSnapshot) {
+          const wallet = await deps.getWalletSnapshot(identity.account.id, v2Plan.data.role);
+          if (wallet && wallet.plan === "free" && wallet.monthlyCreditsRemaining > 0) {
+            record({ actorUserId: identity.account.id, action: "billing.upgrade_leftover_blocked", outcome: "failure", resourceType: "subscription_intent", resourceId: String(identity.account.id), metadata: { stage: "checkout_refused", role: v2Plan.data.role } });
+            return res.status(409).json({ error: "Your account still has unused free credits, and upgrades from Free are paused while upgrade terms are finalized. Nothing has been charged. Please contact support and we will sort it out for you.", code: "upgrade_leftover_rule_unresolved" });
+          }
+        }
         const origin = publicOutboundOrigin(req);
         const started = await startV2PlanCheckout({
           req,
@@ -486,12 +505,14 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         void deps.alertRetiredPlanEvent?.({ eventId: subscription.eventId, eventType: subscription.eventType, reason: "unlinked_subscription", subscriptionId: subscription.subscriptionId, itemPriceId: subscription.itemPriceId }).catch(() => undefined);
       }
       // Unresolved v2 upgrade-leftover rule (see db.ts): the event is recorded
-      // and parked without applying any leftover rule. It must reach a human,
-      // never pass silently.
-      const leftoverBlocked = applied?.status === "ignored" && applied.reason === "upgrade_leftover_rule_unresolved";
-      if (applied?.status !== "duplicate" && leftoverBlocked) {
+      // and the transition parked as an explicit, recoverable "blocked" - never
+      // a terminal ignored/success. The wallet keeps plan "free" with its
+      // credits; a human resolves by completing the activation or refunding
+      // once the owner decides the leftover rule. It must reach a human.
+      const leftoverBlocked = applied?.status === "blocked" && applied.reason === "upgrade_leftover_rule_unresolved";
+      if (leftoverBlocked) {
         console.error("[Chargebee] v2 upgrade with leftover Free credits blocked pending product decision", { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId });
-        record({ action: "billing.upgrade_leftover_blocked", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType } });
+        record({ action: "billing.upgrade_leftover_blocked", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType, stage: "webhook_parked" } });
       }
       if (applied?.status !== "duplicate" && (retired || unsupported)) {
         const reason = retired ? PLAN_RETIRED_CODE : "unsupported_plan";
@@ -582,9 +603,23 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     const failedPayment = parseFailedPaymentEvent(req.body);
     if (failedPayment) {
       handled = true;
+      // Distinct provider failures each alert; redelivery of the SAME provider
+      // event must not storm. The durable receipt (provider + event id, unique)
+      // is the idempotency backstop; provider-event identity is preserved on it.
+      let duplicate = false;
+      if (deps.recordWebhookEventReceipt) {
+        try {
+          duplicate = (await deps.recordWebhookEventReceipt({ eventId: failedPayment.eventId, eventType: "payment_failed", subscriptionId: failedPayment.subscriptionId })).duplicate;
+        } catch (error) {
+          console.error("[Chargebee] payment-failed receipt error", error);
+          return res.status(500).json({ error: "Event receipt retry required" });
+        }
+      }
+      if (!duplicate) {
       console.error("[Chargebee] payment failed", { eventId: failedPayment.eventId, invoiceId: failedPayment.invoiceId, subscriptionId: failedPayment.subscriptionId });
       record({ action: "billing.payment_failed", outcome: "failure", resourceType: "chargebee_invoice", resourceId: failedPayment.invoiceId ?? failedPayment.eventId, metadata: { eventId: failedPayment.eventId, invoiceId: failedPayment.invoiceId ?? null, subscriptionId: failedPayment.subscriptionId ?? null, customerId: failedPayment.customerId ?? null, amount: failedPayment.amount ?? null, currency: failedPayment.currency ?? null } });
       void deps.alertFailedPayment?.({ eventId: failedPayment.eventId, invoiceId: failedPayment.invoiceId, subscriptionId: failedPayment.subscriptionId, customerId: failedPayment.customerId, amount: failedPayment.amount, currency: failedPayment.currency }).catch(() => undefined);
+      }
     }
 
     const gift = parseGiftEvent(req.body);
