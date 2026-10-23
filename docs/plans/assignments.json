@@ -276,8 +276,17 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-owns-scope",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/scope-check.mjs",
+        "scripts/nextTask.test.ts",
+        ".github/workflows/ci.yml",
+        "docs/plans/PICKER-PARALLEL.md",
+        "AGENTS.md"
+      ]
     },
     {
       "id": "PICKER-status-rows",
@@ -312,8 +321,9 @@
       "tier": 3,
       "lane": "picker",
       "branch": "agent/queue/picker-board-epic",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Implemented in PR #549 on agent/cue/picker-board-epic-dbht: design-role prefixes, D-048 epic progress and accurate behind-main counts. Landing remains subject to required checks and branch protections."
     },
     {
       "id": "D-067-review-outbox",

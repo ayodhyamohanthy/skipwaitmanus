@@ -1,7 +1,7 @@
 // @vitest-environment node
 // D-083: the queue picker hands every agent the same next task, in Claude
 // Code's order, and never two agents the same one. Pins each decision.
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -11,6 +11,7 @@ import {
   IDLE_MS, ciStateFromRuns, epicSummaries, localSyncIssues, markerSubject, parseMarker, pickNextTask, reviewStateOf, roleOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
+import { scopeViolations } from "./scope-check.mjs";
 
 const root = path.resolve(__dirname, "..");
 const real = JSON.parse(readFileSync(path.join(root, "docs/plans/assignments.json"), "utf8"));
@@ -1283,5 +1284,101 @@ globalThis.fetch = async input => {
     } finally {
       rmSync(fixture, { recursive: true, force: true });
     }
+  });
+});
+
+/*
+ * PICKER-owns-scope (docs/plans/PICKER-PARALLEL.md): a task declares the files it will
+ * touch, so two lanes cannot edit one file unseen. `owns` holds paths, folder prefixes
+ * ending in "/", globs using "*" and "**", and " (switch only)" for a file a task may
+ * only flip a flag in.
+ */
+describe("PICKER-owns-scope: declared file ownership", () => {
+  it("matches exact paths, folder prefixes and globs, and keeps a single star inside one folder", () => {
+    expect(core.ownsMatches("client/src/pages/Landed.tsx", "client/src/pages/Landed.tsx")).toBe(true);
+    expect(core.ownsMatches("client/src/pages/", "client/src/pages/Landed.tsx")).toBe(true);
+    expect(core.ownsMatches("client/src/**", "client/src/a/b/c.ts")).toBe(true);
+    expect(core.ownsMatches("client/src/*.ts", "client/src/a/b.ts")).toBe(false);
+    expect(core.ownsMatches("server/db.ts", "server/db.tsx")).toBe(false);
+    expect(core.ownsMatches("./server/db.ts", "server/db.ts")).toBe(true);
+    expect(core.ownsEntry("shared/planCatalog.ts (switch only)")).toEqual({ pattern: "shared/planCatalog.ts", switchOnly: true });
+    expect(core.ownsEntry("shared/planCatalog.ts").switchOnly).toBe(false);
+  });
+
+  it("refuses two live tasks that own overlapping paths", () => {
+    const doc = {
+      version: 1, repo: "o/r", tasks: [
+        task("A", { owns: ["client/src/pages/"] }),
+        task("B", { owns: ["client/src/pages/Landed.tsx"] }),
+      ],
+    };
+    const errors = validateAssignments(doc, exists).join("\n");
+    expect(errors).toContain("tasks A and B own overlapping paths and neither waits for the other");
+  });
+
+  it("allows the same overlap when one task waits for the other", () => {
+    const doc = {
+      version: 1, repo: "o/r", tasks: [
+        task("A", { owns: ["client/src/pages/"] }),
+        task("B", { owns: ["client/src/pages/Landed.tsx"], dependsOn: ["A"] }),
+      ],
+    };
+    expect(validateAssignments(doc, exists).filter(e => e.includes("overlapping"))).toEqual([]);
+  });
+
+  it("lets disjoint ownership through, and refuses a malformed owns", () => {
+    const ok = { version: 1, repo: "o/r", tasks: [task("A", { owns: ["client/src/pages/"] }), task("B", { owns: ["server/db.ts"] })] };
+    expect(validateAssignments(ok, exists).filter(e => e.includes("overlapping"))).toEqual([]);
+    const bad = { version: 1, repo: "o/r", tasks: [task("A", { owns: "client/src/pages/" })] };
+    expect(validateAssignments(bad, exists).join("\n")).toContain("owns must be a non-empty array of paths");
+    const empty = { version: 1, repo: "o/r", tasks: [task("A", { owns: [] })] };
+    expect(validateAssignments(empty, exists).join("\n")).toContain("owns must be a non-empty array of paths");
+  });
+
+  it("holds a build while another lane's open task owns an overlapping path, and frees it when they differ", () => {
+    const claimant = "workbuddy · b0eb";
+    const held = pick([task("A", { status: "in-review", owns: ["client/src/pages/"] }), task("B", { owns: ["client/src/pages/Landed.tsx"] })], { claimant });
+    expect(JSON.stringify(held)).toContain("owns the same files");
+    const free = pick([task("A", { status: "in-review", owns: ["client/src/pages/"] }), task("B", { owns: ["server/db.ts"] })], { claimant });
+    expect(free.kind).toBe("build");
+  });
+});
+/*
+ * PICKER-owns-scope: the runtime guard. It judges what the branch changed against the
+ * owns its task declared on origin/main, and fails open only when it cannot run at all.
+ */
+describe("PICKER-owns-scope: the scope check", () => {
+  it("passes inside owns and fails outside it", () => {
+    const owns = ["client/src/pages/"];
+    expect(scopeViolations({ owns, changed: ["client/src/pages/Landed.tsx"] })).toEqual([]);
+    // server/ has its own message: a task that owns nothing there may not touch it at all.
+    expect(scopeViolations({ owns, changed: ["client/src/pages/Landed.tsx", "server/db.ts"] }).join("\n")).toContain("owns nothing under shared/ or server/");
+  });
+
+  it("always allows the task's own packet and its status line", () => {
+    const owns = ["client/src/pages/"];
+    expect(scopeViolations({ owns, changed: ["docs/plans/ROW20.md", "docs/plans/assignments.json"], packet: "docs/plans/ROW20.md" })).toEqual([]);
+  });
+
+  it("fails on a test file it does not own", () => {
+    const owns = ["client/src/pages/Landed.tsx"];
+    expect(scopeViolations({ owns, changed: ["client/src/pages/other.test.tsx"] }).join("\n")).toContain("a test file outside this task's owns");
+  });
+
+  it("fails on shared/ or server/ when the task owns neither", () => {
+    const owns = ["client/src/pages/"];
+    expect(scopeViolations({ owns, changed: ["shared/moneyCopy.ts"] }).join("\n")).toContain("owns nothing under shared/ or server/");
+  });
+
+  it("bounds a switch-only file at twelve changed lines", () => {
+    const owns = ["shared/planCatalog.ts (switch only)"];
+    expect(scopeViolations({ owns, changed: ["shared/planCatalog.ts"], lineCounts: new Map([["shared/planCatalog.ts", 12]]) })).toEqual([]);
+    expect(scopeViolations({ owns, changed: ["shared/planCatalog.ts"], lineCounts: new Map([["shared/planCatalog.ts", 13]]) }).join("\n")).toContain("changed 13 lines");
+  });
+
+  it("fails open when it cannot run at all, and says so", () => {
+    const run = spawnSync(process.execPath, ["scripts/scope-check.mjs", "no-such-task"], { encoding: "utf8", cwd: root });
+    expect(run.status).toBe(0);
+    expect(`${run.stdout}${run.stderr}`).toContain("could not run");
   });
 });
