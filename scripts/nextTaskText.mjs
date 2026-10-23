@@ -187,7 +187,7 @@ export function renderPick(pick, { who, date, claimed }) {
     ]) + take;
     case "review": return head(`REVIEW ${pick.task.id} — ${pick.task.title}`, [
       `Tier 1 · pull request ${pick.pr} · branch ${pick.work} · review lock ${pick.lock}`,
-      `You must not have built or fixed this (built by ${pick.builder ?? "unknown"}).`,
+      `No session of your model may have built or fixed this (D-151; built by ${pick.builder ?? "unknown"}). For work built or fixed outside the picker, check pull-request comments and the task reports on the board for your model; if found, post no verdict and report it blocked to the CEO.`,
       ...holding(pick),
       reviewSteps(pick, who),
     ]) + take;

@@ -46,6 +46,7 @@ All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker
 
 ## Status
 The PICKER rows share the plan row "D-134", so each writes its status here, one line per task, never in the shared §3b row (D-134).
+- PICKER-review-independence: in progress — Forge · fd06 — scoped owner exception recorded and published first as 911b6ca2; atomic manual claim 1ad873a4; red-first model exclusion repair, reviews and holds unchanged.
 - PICKER-landing-slot: done — 1e9ba07f (PR #497) — Gemini 3.8 Flash · 8f37
 
 
