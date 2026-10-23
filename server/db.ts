@@ -1540,7 +1540,10 @@ export async function previewCompanyCoverageForTargetUrl(targetRoleUrl: string):
   if (!companyDomain) return { companyDomain: null, covered: null };
   const candidates = await db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended, email: users.email }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
   const eligible = candidates.filter(profile => isVerifiedEmployeeOfCompany(profile, companyDomain));
-  const allocated = await readAllocatedSlotCountsTx(db, eligible.map(profile => profile.userId));
+  // readAllocatedSlotCountsTx takes the ledger transaction type; a short
+  // read-only transaction keeps this preview on the same typed path.
+  const eligibleIds = eligible.map(profile => profile.userId);
+  const allocated = await db.transaction(async tx => readAllocatedSlotCountsTx(tx, eligibleIds));
   const available = eligible.filter(profile => isOpenReferrer(profile, companyDomain, allocated.get(profile.userId) ?? 0));
   return { companyDomain, covered: available.length > 0 };
 }
