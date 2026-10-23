@@ -382,12 +382,17 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   // D-134: a lane-mate that depends on v (directly or through others) cannot land before v, so it never makes v's lane busy;
   // neither does a lane-mate that waits for a dependency: nobody can work on it, so holding its lane could deadlock two lanes.
   const dependsOnTask = (o, id, seen = new Set()) => o.task.dependsOn.some(d => d === id || (!seen.has(d) && seen.add(d) && byId.has(d) && dependsOnTask(byId.get(d), id, seen)));
-  const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length);
+  const { workAt, lockAt, archAt, quiet } = clock(branches, now);
+  // PICKER-lane-busy: waiting PRs release a lane only with explicit disjoint ownership.
+  // Unknown CI or missing ownership never proves that concurrent work is safe.
+  const disjoint = (a, b) => Boolean(a.task.owns?.length && b.task.owns?.length) && !ownsOverlap(a.task.owns, b.task.owns);
+  const building = o => !o.pr || !["green", "red", "running", "running-after-red"].includes(o.ci)
+    || (o.ci !== "green" && !quiet(workAt(o)));
+  const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && (building(o) || !disjoint(o, v)));
   // PICKER-owns-scope: lanes are labels, so two lanes could edit one file unseen. A build also
   // waits while an open task — being built or waiting for review — owns an overlapping path,
   // unless it waits for that task (a dependent may edit the same file after its dependency lands).
   const filesBusy = v => Boolean(v.task.owns?.length) && view.some(o => o !== v && Boolean(o.task.owns?.length) && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && ownsOverlap(v.task.owns, o.task.owns));
-  const { workAt, lockAt, archAt, quiet } = clock(branches, now);
   const ceo = isArchitect(claimant);
 
   const skipped = [];
@@ -497,7 +502,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   let gateAt = -1, gateAction = null;
   const heldLanes = new Map(), heldIds = new Map();
   // A red or blocked holder never holds a task it depends on itself: that task is what it waits for (D-134).
-  const heldBy = v => { const lh = heldLanes.get(v.task.lane); return (lh && !dependsOnTask(byId.get(lh), v.task.id) ? lh : undefined) ?? v.task.dependsOn.map(d => heldIds.get(d)).find(Boolean); };
+  // Packets do not change code: architect tasks bypass lane holds, not explicit dependencies in actionFor.
+  const heldBy = v => { if (v.task.status === "architect") return undefined; const lh = heldLanes.get(v.task.lane); return (lh && !dependsOnTask(byId.get(lh), v.task.id) ? lh : undefined) ?? v.task.dependsOn.map(d => heldIds.get(d)).find(Boolean); };
   for (let i = 0; i < view.length; i++) {
     if (mine && i >= mine.at) break;
     const holder = heldBy(view[i]);
