@@ -66,6 +66,18 @@
       "note": "D-151: did() compares exact session names, so on Oct 22 the picker handed #382's re-review to Qoder · a236 right after Qoder · 31dd fixed it. Compare models, count Fixed markers as fixes, and print the rule in the review step. Every Tier 1 review the queue hands out, P0-ask-link-signin's and P1-queue-attestation's included, goes through this check."
     },
     {
+      "id": "PICKER-board-newer-report",
+      "title": "The board and the unblock step show the reports that came after a standing blocked one (D-162)",
+      "row": "D-134",
+      "packet": "docs/plans/PICKER-PARALLEL.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-board-newer-report",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-162: on Oct 23 the board kept workbuddy · b0eb's 02:14 blocked report on D-090-BYOR and hid the three green reports after it; the first (a2fdbc3e) named the owner's waiver, the next two reported build progress. The CEO ruled from the stale report (D-154) and the owner had to restate his word. latestReports keeps the blocked report standing (unchanged) and also returns every non-CEO report after it; the board line and the printed unblock step show them."
+    },
+    {
       "id": "REGISTER-520",
       "title": "Land #520's rulings (Skippy reviews, newest-decision sync, CEO mandate, credits toolbox, branch hygiene), renumbered onto main",
       "row": "D-163",
@@ -735,7 +747,7 @@
       "branch": "agent/queue/d086-demand-list",
       "status": "architect",
       "dependsOn": [],
-      "note": "D-154: the owner's order puts the demand list before BYOR (D-087, D-089, D-090); its own gate (W0 #361, W1 drawer #362/#472) is open and ROW20-B (#311) built the one-vote-per-person count. Write the packet first (D-109): public counts from 3 up, 'a few people' for 1-2, never 0 as a count, no seeker detail; the ask-to-any-company path (no credit, no slot until a verified referrer exists, then D-034/D-047/D-062); D-102's honest availability; the verbatim copy in docs/PRD.md; owned paths and its order against D-048-p3-live-review-find (both edit /explore)."
+      "note": "D-154, D-162: queued so the packet can be written now (D-109); its build follows D-090-BYOR (owner word, D-162). The packet pull request adds D-090-BYOR to this row's dependsOn, and also D-048-p3-live-review-find (both edit /explore and /ask) unless the packet's owned paths leave that row's files alone. Scope: public counts per company from 3 up, 'A few people' for 1-2, never 0, no seeker detail (D-086 (2) overrides the PRD copy's old 'singular for 1'); the count is people asking for a referral at that company and is not built yet: ROW20-B (#311) counts suggestions filed on /invite (as a seeker) and /suggest-company (seeker or employee), one per person per company, admin-only, so the packet decides which real rows count (D-102); the ask-to-any-company path (no credit, no slot until a verified referrer exists, then D-034/D-047/D-062, closing at 90 days under D-061); D-102's honest availability lines; the copy in docs/PRD.md; owned paths."
     },
     {
       "id": "D-090-BYOR",
@@ -746,10 +758,8 @@
       "lane": "supply",
       "branch": "agent/claude/d090-byor",
       "status": "todo",
-      "dependsOn": [
-        "D-086-demand-list"
-      ],
-      "note": "D-154: waits for D-086-demand-list (the owner's order, D-087/D-089/D-090); the picker holds it until the demand list is done. Packet written (docs/plans/D-090-BYOR.md); the four approved mocks are not in the repo (packet §12 Q5)."
+      "dependsOn": [],
+      "note": "D-162: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main (docs/DECISIONS.md conflicts on the D-148 row: keep main's side and drop the branch's row, since D-162 records the waiver; the packet merges cleanly, so delete by hand its 'Gate waived by the owner (D-148 ...)' paragraph in §0 and its 'in progress — workbuddy · b0eb' Status line), and renumber 0107_ask_invites.sql to the next free number at landing (check drizzle/deploy/ on main and plan §5 at landing: on Oct 23 main has 0107_seeker_levels.sql and 0108_landed_thank_you.sql, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). Build C1-C5 in order: D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 puts the invite action into MyRequests.tsx as it is on main, as a ghost button or plain link (one black commit per page, D-150). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5)."
     },
     {
       "id": "D-057-session-gate",

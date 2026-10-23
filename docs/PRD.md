@@ -26,16 +26,16 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 | Slice | Loop | Owner lane | Status |
 | --- | --- | --- | --- |
 | GO-LIVE-1b (PR #359) | - | QA + build | awaiting QA second review + PASS_SALES_ENABLED confirmation |
-| W0 goal shell (PR #361) | L6 | build | designer fixes pushed; re-review pending |
-| W1 comps: /explore + ask drawer (w1-comps) | L1 | build | pushed; designer review pending; /queue held for #353 |
-| Demand list (D-086) | L1 | build | approved; its gate is open (#361, #362/#472); queued as `D-086-demand-list`, packet to write (D-154); mocks in hand |
-| BYOR one-time link (idea 2) | L2 | build | approved (D-090); packet `docs/plans/D-090-BYOR.md`; waits for `D-086-demand-list` in the queue (D-154) |
+| W0 goal shell (PR #361) | L6 | build | live (#361) |
+| W1 comps: /explore + ask drawer (w1-comps) | L1 | build | live (#362), reviewed in #472; the redesign to the doctrine is D-048-p3-live-review-find (D-150) |
+| Demand list (D-086) | L1 | build | approved; queued as `D-086-demand-list`, packet to write (D-154); its build follows BYOR (D-162); mocks in hand |
+| BYOR one-time link (idea 2) | L2 | build | approved (D-090); packet `docs/plans/D-090-BYOR.md`; building now, ahead of the demand list (owner word, D-162) |
 | Employee request-inbox link (idea 1) | L4 | packet to write (`D-089-request-inbox`, D-163) | build after idea 2 |
 | Sourced bonus pages (idea 3) | L5 | packet written (`docs/plans/D-099-bonus-pages.md`, D-163) | build after ideas 2 and 1 and the demand list |
 | Bedrock AI provider plan | - | build | plan with owner; AWS access needed |
 
 ## Demand-list copy (D-086, verbatim)
-- "{N} people are asking for a referral at {Company}." (singular for 1)
+- "{N} people are asking for a referral at {Company}." (N from 3 up; for 1-2 people D-086 (2) gives only "A few people asking", and the D-086 packet proposes the full sentence; never a count of 0 — D-086 (2), D-162)
 - Empty: "No one has asked for {Company} yet." / "Nobody at {Company} is waiting right now. We'll tell you if that changes."
 - Bonus honesty: "Most companies pay their own referral bonus when a referral they make is hired. That programme is your employer's and they pay it - skipwait.me never pays referrers."
 
