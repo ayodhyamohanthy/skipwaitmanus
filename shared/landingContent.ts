@@ -152,3 +152,10 @@ export function goalLandingFairRules(costCopy: { fairRule: string }): string[] {
     "Private by default: your name stays hidden until a referrer accepts.",
   ];
 }
+
+/** The goal landing's footer columns (V9 and the prerendered snapshot share them). */
+export const GOAL_FOOTER_COLS: Array<{ title: string; links: Array<[string, string]> }> = [
+  { title: "Product", links: [["/explore", "Explore companies"], ["/jobs", "Browse roles"], ["/pricing", "Pricing"], ["/plans", "Plans"]] },
+  { title: "People", links: [["/referrer", "Join as a referrer"], ["/help", "Help"], ["/contact", "Contact"]] },
+  { title: "Legal", links: [["/terms", "Terms"], ["/privacy", "Privacy"], ["/refunds", "Refunds"], ["/cancellations", "Cancellation"]] },
+];

@@ -2,7 +2,7 @@
  "version": 1,
  "repo": "ayodhyamohanthy/skipwaitmanus",
  "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
- "updated": "2026-10-23",
+ "updated": "2026-10-24",
  "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks, except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
  "tasks": [
   {
@@ -1715,6 +1715,69 @@
    "status": "in-review",
    "dependsOn": [],
    "note": "Coordinator bounded fix (Main, Oct 23; user report phonemsg-01M5MX4KWB09PKKC7E6XP3BN5V + clarification phonemsg-01M5MX5BFXQ060R444J7GKX3W2): the app revealed at font-ready before React's first commit, so the static landing snapshot inside #root painted ~1s before GoalLandingV9 mounted over it. Scope: client/index.html + client/src/main.tsx only - reveal is gated on the first React commit; the 2.5s failsafe now fires only when the bundle never parsed (__swBootAlive unset, blocked-script fallback keeps the snapshot), plus a 12s absolute failsafe. Verified by playwright timeline sampling on the production build: zero snapshot paints in slow-bundle and fast loads at 1280/390; blocked bundle still degrades to the static snapshot. Known edge: a bundle not yet executing at 2.5s can still paint the snapshot once (indistinguishable from blocked JS)."
+  },
+  {
+   "id": "D-048-fix-landing-flash-snapshot-v2",
+   "title": "Make the failsafe-painted landing snapshot the goal page's styled static frame",
+   "row": "D-048",
+   "packet": null,
+   "tier": 2,
+   "lane": "d048-foundation",
+   "branch": "agent/coordinator/landing-flash-snapshot-v2",
+   "status": "in-review",
+   "dependsOn": [
+    "D-048-fix-landing-load-flash"
+   ],
+   "owns": [
+    "scripts/prerender-public-pages.tsx",
+    "scripts/prerenderPublicPages.test.ts",
+    "shared/landingContent.ts",
+    "client/src/pages/GoalLanding.tsx",
+    "client/src/pages/home.snapshotParity.test.tsx"
+   ],
+   "note": "Coordinator bounded fix, second approach (Main, Oct 24; user report phonemsg-01M5MX4KWB09PKKC7E6XP3BN5V + phonemsg-01M5MX5BFXQ060R444J7GKX3W2). The v1 row gated the reveal timing; the designer gate (Main, Oct 23 23:59 IST) rejected the copy-only snapshot as a fix: on a slow or blocked bundle the failsafe painted raw unstyled text that jumped into the styled goal page. This row mirrors GoalLandingV9's DOM section by section in scripts/prerender-public-pages.tsx with the same goal utility classes (all verified present in the compiled stylesheet, which loads in the shell head before the bundle), so the pre-mount frame and the mounted page are visually identical. The hero search becomes a real no-JS GET form to /explore?q=. Explore/guides/employer/policy links stay crawler-readable as screen-reader-only nav (V9 does not render them visually). FOOTER_COLS moved to shared/landingContent.ts as GOAL_FOOTER_COLS (single source, re-exported by GoalLanding.tsx). Pixel proof: playwright fixture serving dist/public with the bundle delayed 25s - snapshot painted and stable at 3s/6s on 390x844 and 1280x900, visually identical to post-mount captures except the client-only cookie banner. 25/25 prerender + snapshot-parity tests."
+  },
+  {
+   "id": "D-174-expiry-clock-removal",
+   "title": "Remove the ask death clocks per D-174 (7-day unclaimed expiry, 90-day waiting cap, day-30 closure)",
+   "row": "D-174",
+   "packet": "docs/plans/D-048-seeker.md",
+   "tier": 2,
+   "lane": "ask-flow",
+   "branch": "agent/coordinator/expiry-clock-removal",
+   "status": "todo",
+   "dependsOn": [
+    "D-166-journey-decisions-sync"
+   ],
+   "note": "Builds D-174 (merged in #601): asks never expire at launch. Scope: remove the 7-day unclaimed expiry, the 90-day waiting cap and the day-30 closure (D-021/D-034/D-050/D-061/D-076(3)) from runtime and sweeps, including the ASK_TTL_DAYS copy sweep - copy changes land only with the runtime change (Main, Oct 24 00:14 IST). Untouched: referrer action timers, security/session/payment bounds, credit and refund rules; no new debit behavior. QA and any expiry-sweep workers must be informed before this merges. Intent is recorded; live expiry behavior is unchanged until this row lands."
+  },
+  {
+   "id": "D-176-availability-framing-removal",
+   "title": "Remove 'Open to requests'/'Not open yet' labels, chips and open-first grouping from the directory per D-176",
+   "row": "D-176",
+   "packet": "docs/plans/D-048-seeker.md",
+   "tier": 2,
+   "lane": "d048-find",
+   "branch": "agent/coordinator/availability-framing-removal",
+   "status": "todo",
+   "dependsOn": [
+    "D-166-journey-decisions-sync"
+   ],
+   "note": "Builds D-176 (merged in #601; user instruction phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST): availability framing does not map to the seeker's mental model. Remove the labels, chips and open-first grouping; availability becomes backend routing only, with an honest delivered-vs-waiting status after save and no false immediate-referral claim. Supersedes the shipped D-048-fix-explore-open-first grouping (#594 stands as completed history - removal is this row, not a rollback). Preserves verified company-employee access and privacy rules."
+  },
+  {
+   "id": "D-174-seeker-journey-build",
+   "title": "Build the replacement seeker journey per D-174: company search, jobs, ask, pool routing",
+   "row": "D-174",
+   "packet": "docs/plans/D-048-seeker.md",
+   "tier": 2,
+   "lane": "d048-foundation",
+   "branch": "agent/coordinator/seeker-journey-build",
+   "status": "todo",
+   "dependsOn": [
+    "D-166-journey-decisions-sync"
+   ],
+   "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately."
   }
  ]
 }

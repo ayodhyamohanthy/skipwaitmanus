@@ -117,7 +117,8 @@ describe("breadcrumbs point at real pages", () => {
 describe("crawlable landing and public snapshots", () => {
   it("writes the goal landing's headline, hero, role entry points, and every explore link", () => {
     const html = landingSnapshot(policyLinks);
-    expect(html).toContain(`<h1>${GOAL_LANDING_H1}</h1>`);
+    // The h1 carries the goal page's display classes; pin the text, not the bare tag.
+    expect(html).toContain(`>${GOAL_LANDING_H1}</h1>`);
     expect(html).toContain(GOAL_LANDING_HERO_LEAD);
     expect(html).toContain('href="/explore"');
     expect(html).toContain('href="/sign-in?intent=referrer"');
