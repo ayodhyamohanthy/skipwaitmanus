@@ -45,7 +45,7 @@ Nothing here changes who may sign in, what a code proves, what a reset does to s
 - D-059 and the repo is public; D-071: "the comps' sample names and numbers never ship." Captures use fictional fixtures only.
 - `docs/DELEGATION.md` §7 never-do 14: "never reword Terms, Privacy, Refund or Cancellation text." The Terms/Privacy links on the sign-in footer stay the links they are.
 
-## 3. Current behaviour (verified on `origin/main` `a8f3a0de`)
+## 3. Current behaviour (verified on `origin/main` `6ba057e1`)
 
 Find each function by name before trusting a line number.
 
@@ -149,7 +149,7 @@ Controls that must stay green and byte-identical: `client/src/pages/loginRule.te
 - [ ] Both rows exist in `docs/plans/assignments.json` exactly as split `:108-109` gives them (lane, tier, flag, owns including `ReviewerSignIn.tsx (switch only)`, packet `docs/plans/D-048-auth.md`, row `D-048`, epic `D-048-p3`, `status: "todo"`), **plus** what split `:190` mandates — `D-048-F-goal-check` in each `dependsOn` and the §4 single-page component `client/src/components/verify/VerifyPanels.tsx` in the verify row's `owns` — all added by **this** packet's PR, and `D-048-P-auth` set to `done` in the PR that lands it (split `:173`, `:191`).
 - [ ] The list validates: `NEXT_TASK_LIST_REF=HEAD node scripts/next-task.mjs --status` runs `validateAssignments` with no error (`scripts/next-task.mjs:212`), and `pnpm vitest run scripts/d048Split.test.ts scripts/briefContract.test.ts scripts/nextTask.test.ts` stays green (all three read `docs/plans/assignments.json`; the split test still gives every row exactly one adder). No new branch slug matches an existing remote branch (split `:31`, `:74`).
 - [ ] For each child row: only its owned paths changed, and every `(switch only)` file stayed inside the scope check's 12-line cap; the five pin files and `GoalSignIn.tsx` are byte-identical; if `VerifyPanels.tsx` changed at all, the flag-off `/verify` still renders §3 rule 5's facts and the same pixels (§4 rule 4); no `RELEASED` id was added and no `.env`, workflow or `scripts/**` file changed; `git diff --check` clean with no conflict markers.
-- [ ] Every §7 test was red first for the reason named and is green now; the controls are green; `assertGoalPage` runs against each moved page; `VITE_GOAL_SURFACES=all pnpm build` compiles the goal bodies; the token audit passes with `pages/goal/` in scope after F-flags.
+- [ ] Every §7 test was red first for the reason named and is green now; the controls are green; `assertGoalPage` runs against each moved page; `VITE_GOAL_SURFACES=all pnpm build` compiles the goal bodies; the token audit passes with `pages/goal/` in scope, which `GOAL_SCOPE` already covers (§3 rule 12).
 - [ ] Captures exist at 1280 and 390 for each moved screen from fictional fixtures, are compared with the doctrine and the comps, and the proposed goal line/next step is recorded in the PR description and this packet's Status line (§4 rule 12).
 - [ ] Tier 1: draft PR, every required check green on that exact commit, an independent review by a session whose model neither built nor fixed it (D-151), findings fixed red-first, then the reviewer lands it (D-082). Production behaviour unchanged after landing because no id is released (D-097).
 - [ ] This packet's PR changes only `docs/plans/D-048-auth.md` and `docs/plans/assignments.json`.
@@ -157,7 +157,7 @@ Controls that must stay green and byte-identical: `client/src/pages/loginRule.te
 ## 10. Review checklist (answer each with a file and line)
 
 1. Does `git diff --name-only origin/main...HEAD` stay inside the row's `owns` plus its own status lines? Is `GoalSignIn.tsx` or any pin file in the diff at all? If `VerifyPanels.tsx` is, does the flag-off page still state §3 rule 5's facts?
-2. Did the switch in each page file stay three lines, and does the kit body remain reachable with the id off?
+2. Did the switch in each page file stay at its import plus one early return (§4 rule 1's shape, inside the 12-line `(switch only)` cap), and does the kit body remain reachable with the id off?
 3. Reproduce §7: check out the test commit without the fix and confirm each new test fails for the stated reason. No `expect` removed, no `.skip`, `.only` or loosened literal anywhere in the diff.
 4. Login rule on the goal path: name the assertions and the scanned files (§4 rule 5). Is any personal-email or social control reachable for a referrer on the goal verify page?
 5. Does the goal verify page call only `verifyApi.ts`'s three functions, the reset page only the three `/api/auth/password/*` routes, and the reviewer body only `/api/auth/reviewer/sign-in`? Any second fetch, any new endpoint, any invented validation?
@@ -166,7 +166,7 @@ Controls that must stay green and byte-identical: `client/src/pages/loginRule.te
 8. Failure paths: no silent `catch`; each error path names the server's own words plus a retry; loading, empty, error, offline and mobile states all present at 1280 and 390.
 9. Doctrine: goal line as the only `h1`, one `GoalNextStep` block holding the only `data-g-primary`, everything else ghost or link, no kit class and no kit import in anything the page renders, dot-and-text stages, no colour literal, and no recoloured kit layout (D-150, coverage §1 items 1-4). If the page is the kit layout with ink colours, it is findings.
 10. `assertGoalPage(container, GOAL_PAGE)` is actually called in the row's test, and `GOAL_PAGE` is exported from the page module (§3 rule 14).
-11. Captures compared with `design/goal-ui/pick/` and the `GOAL_UI_MIGRATION.md` checklist; the goal line/next-step proposal recorded in the PR; CI green on the exact reviewed head (`docs/DELEGATION.md` §6 step 0).
+11. Captures compared with `design/goal-ui/pick/` and with **every bullet of `docs/plans/D-048-capture-checklist.md`** (landed with F-harness), one route per run, each PNG filed under a per-route folder so four sign-in routes cannot overwrite one `${state}-${width}.png` (§4 rule 13 d), each caption naming fixture, persona, the build's `VITE_GOAL_SURFACES` value and the SHA, and the harness JSON's `horizontalOverflowPx`, `unmatchedApi` and `consoleErrors` pasted in the PR; the goal line/next-step proposal recorded in the PR; CI green on the exact reviewed head (`docs/DELEGATION.md` §6 step 0).
 
 ## 11. Stop and ask if
 
