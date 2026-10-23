@@ -162,11 +162,21 @@ describe("private referral HTTP routes", () => {
     expect(garbage.status).toBe(400);
     expect(garbage.body.code).toBe("ask_price_unconfirmed");
     expect(seenExpectedCost).toBe("unset");
-    // Missing is refused the same way - supported clients always send the accepted price.
-    const missing = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000006").set("x-test-user", "seeker").send({ ...base });
-    expect(missing.status).toBe(400);
-    expect(missing.body.code).toBe("ask_price_unconfirmed");
-    expect(missing.body.error).toContain("nothing was sent and nothing was charged");
+    // Flag off: a missing field is the legacy client - allowed, the flat 1 it shows is what commits.
+    seenExpectedCost = "unset";
+    const legacy = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000006").set("x-test-user", "seeker").send({ ...base });
+    expect(legacy.status).toBe(201);
+    expect(seenExpectedCost).toBeUndefined();
+    // Flag on: missing refuses fail-closed - a stale client gets a reload path, never a mis-priced debit.
+    vi.stubEnv("ASK_LEVEL_COST", "true");
+    try {
+      const missing = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000007").set("x-test-user", "seeker").send({ ...base });
+      expect(missing.status).toBe(400);
+      expect(missing.body.code).toBe("ask_price_unconfirmed");
+      expect(missing.body.error).toContain("nothing was sent and nothing was charged");
+    } finally {
+      vi.unstubAllEnvs();
+    }
     // A moved price refuses with 409 and nothing charged.
     forcePriceChange = true;
     const moved = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000005").set("x-test-user", "seeker").send({ ...base, expectedCost: 1 });

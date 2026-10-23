@@ -699,10 +699,13 @@ export async function proposeAssistantAsk(userId: number, input: { targetRoleUrl
   const provider = typeof input.provider === "string" && input.provider.trim() ? input.provider.trim().slice(0, 80) : "assistant";
   const inserted = await db.insert(assistantApprovals).values({
     userId, connectionId: null, kind: "ask_send", provider, companyDomain, role: null, note: message,
-    creditCount: ASSISTANT_ASK_CREDIT_COST, slotCount: null, targetRoleUrl, attachmentIds: JSON.stringify(ids),
+    // The approved cost is the classified ask cost at proposal time (flag-aware;
+    // flat 1 with ASK_LEVEL_COST off, unchanged), so execution below can bind it.
+    creditCount: askCreditCost({ title: COMPANY_ASK_PRICE_TITLE, description: COMPANY_ASK_PRICE_DESCRIPTION, url: targetRoleUrl }), slotCount: null, targetRoleUrl, attachmentIds: JSON.stringify(ids),
     idempotencyKey: randomBytes(24).toString("base64url").slice(0, 40), expiresAt: new Date(getApprovalExpiresAtMs(now.getTime())),
   });
-  return { id: Number(inserted[0].insertId), status: "pending" as const, creditCost: ASSISTANT_ASK_CREDIT_COST, expiresAt: new Date(getApprovalExpiresAtMs(now.getTime())).toISOString() };
+  const creditCost = askCreditCost({ title: COMPANY_ASK_PRICE_TITLE, description: COMPANY_ASK_PRICE_DESCRIPTION, url: targetRoleUrl });
+  return { id: Number(inserted[0].insertId), status: "pending" as const, creditCost, expiresAt: new Date(getApprovalExpiresAtMs(now.getTime())).toISOString() };
 }
 
 export async function decideAssistantApproval(userId: number, approvalId: number, decision: "approved" | "declined") {
@@ -724,7 +727,12 @@ export async function decideAssistantApproval(userId: number, approvalId: number
     let attachmentIds: number[] = [];
     try { const parsed = JSON.parse(current.attachmentIds ?? "[]"); if (Array.isArray(parsed)) attachmentIds = parsed.filter((v: unknown): v is number => typeof v === "number"); } catch { /* handled below */ }
     try {
-      const created = await createCompanyReferralRequest(userId, { targetRoleUrl: current.targetRoleUrl, personalPitch: current.note?.trim() || "No personal note was included with this referral request.", attachmentIds, idempotencyKey: current.idempotencyKey });
+      // D-132 item 3: execution binds the cost the owner approved. If pricing
+      // moved since approval (flag flip, classifier change), create refuses with
+      // AskPriceChangedError, the approval returns to pending and the owner sees
+      // why - never a debit above the approved number. Coverage drift cannot
+      // create a money surprise once cost is bound: uncovered waits free.
+      const created = await createCompanyReferralRequest(userId, { targetRoleUrl: current.targetRoleUrl, personalPitch: current.note?.trim() || "No personal note was included with this referral request.", attachmentIds, idempotencyKey: current.idempotencyKey, expectedCost: current.creditCount ?? ASSISTANT_ASK_CREDIT_COST });
       await db.update(assistantApprovals).set({ executedRequestId: created.requestId }).where(eq(assistantApprovals.id, approvalId));
       return { id: approvalId, status: "approved" as const, requestId: created.requestId };
     } catch (error) {
@@ -1881,9 +1889,14 @@ export type CreateCompanyReferralInput = { selectedCompany?: { name: string; dom
  * reads the link as submitted (`roleLinkUrl`) because normalization drops the
  * role words from some links (LinkedIn keeps only the job id).
  */
+/** The fixed fields every company-ask job row classifies on: the quote, the
+ * commit precondition, the stored cost, the spend and assistant-approval
+ * pricing must all agree by construction (D-132 item 3). */
+export const COMPANY_ASK_PRICE_TITLE = "Role from shared job link";
+export const COMPANY_ASK_PRICE_DESCRIPTION = "Private referral request routed from a Target Role URL.";
 export function companyAskJobRow(input: { companyDomain: string; targetRoleUrl: string; roleLinkUrl?: string; compensation: string | null; jobFunction?: JobFunction; publishedAt: Date }) {
   const decided = resolveAskJobFunction({ explicit: input.jobFunction, targetRoleUrl: input.roleLinkUrl ?? input.targetRoleUrl });
-  return { title: "Role from shared job link", company: input.companyDomain, location: "Not specified", compensation: input.compensation, description: "Private referral request routed from a Target Role URL.", targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", jobFunction: decided.jobFunction, jobFunctionSource: decided.source, publishedAt: input.publishedAt };
+  return { title: COMPANY_ASK_PRICE_TITLE, company: input.companyDomain, location: "Not specified", compensation: input.compensation, description: COMPANY_ASK_PRICE_DESCRIPTION, targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", jobFunction: decided.jobFunction, jobFunctionSource: decided.source, publishedAt: input.publishedAt };
 }
 export class CompanyLinkMismatchError extends Error { constructor(companyName: string) { super(`This job link is not from ${companyName}. Paste a job link from ${companyName}’s own careers page.`); this.name="CompanyLinkMismatchError"; } }
 /** Task 13: an id that is not one of the caller's own showcase pieces, or vanished while the ask was being written. */

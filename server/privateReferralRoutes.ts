@@ -762,14 +762,18 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const pinnedWork = askWorkItemIdsSchema.safeParse(req.body?.workItemIds ?? []);
       if (!pinnedWork.success) return res.status(400).json({ error: "Pin work from your showcase, or send the ask without it." });
       const pinnedWorkIds = dedupeAskWorkItemIds(pinnedWork.data);
-      // D-132 item 3: the accepted price is mandatory from supported clients.
-      // Missing or malformed must refuse - silently dropping it would let a
-      // client bypass the accepted-price boundary and ride the current price.
-      if (!(typeof expectedCost === "number" && Number.isInteger(expectedCost) && expectedCost >= 1 && expectedCost <= 100)) {
+      // D-132 item 3: the accepted price is binding. Malformed is always
+      // refused - silently dropping it would bypass the accepted-price
+      // boundary. Missing is refused only when ASK_LEVEL_COST is on: flag off
+      // commits the flat 1 the legacy client shows, so a cached old client
+      // keeps working until the flag flips; after the flip a stale client gets
+      // this fail-closed 400 with a reload path instead of a mis-priced debit.
+      const costOk = typeof expectedCost === "number" && Number.isInteger(expectedCost) && expectedCost >= 1 && expectedCost <= 100;
+      if ((expectedCost !== undefined && !costOk) || (expectedCost === undefined && askLevelCostEnabled())) {
         record({ actorUserId, action: "company_referral.price_unconfirmed", outcome: "denied", resourceType: "referral_request" });
         return res.status(400).json({ error: "We could not confirm this ask's price. Reload the page and send again - nothing was sent and nothing was charged.", code: ASK_PRICE_UNCONFIRMED });
       }
-      const result = await deps.createCompanyReferralRequest(identity.account.id, { ...(selectedCompany ? { selectedCompany: { name: selectedCompany.name, domains: selectedCompany.domains } } : {}), ...(opportunitySelection?.success ? { opportunityId: opportunitySelection.data.opportunityId } : {}), targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias, submittedTargetRoleUrl: targetRoleUrl.trim(), ...(chosenFunction.data ? { jobFunction: chosenFunction.data } : {}), ...(pinnedWorkIds.length ? { workItemIds: pinnedWorkIds } : {}), ...(expectedCoverage === "waiting_for_company_coverage" ? { expectedCoverage } : {}), expectedCost });
+      const result = await deps.createCompanyReferralRequest(identity.account.id, { ...(selectedCompany ? { selectedCompany: { name: selectedCompany.name, domains: selectedCompany.domains } } : {}), ...(opportunitySelection?.success ? { opportunityId: opportunitySelection.data.opportunityId } : {}), targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias, submittedTargetRoleUrl: targetRoleUrl.trim(), ...(chosenFunction.data ? { jobFunction: chosenFunction.data } : {}), ...(pinnedWorkIds.length ? { workItemIds: pinnedWorkIds } : {}), ...(expectedCoverage === "waiting_for_company_coverage" ? { expectedCoverage } : {}), ...(costOk ? { expectedCost } : {}) });
       // Referrer email + Slack delivery runs after the response (shared dispatcher, D-137):
       // the ask is already committed, each send has a durable claim/lease row, and every
       // outcome (with elapsedMs) goes to the audit log, so a slow or dead send never holds
