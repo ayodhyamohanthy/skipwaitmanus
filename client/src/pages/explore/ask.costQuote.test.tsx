@@ -51,7 +51,8 @@ const setup = { goal: "Actively looking", roles: [], level: "", links: [], city:
 const LINK = "https://careers.wipro.com/jobs/1234567-product-designer";
 type QuoteBody = { level: number; cost: number; totalAvailable: number; shortfall: number };
 
-function stub(options: { quote?: { status: number; body: QuoteBody | { error: string } } | (() => Promise<unknown>); send?: { status: number; body: unknown }; directory?: CompanyDirectoryResponse | (() => CompanyDirectoryResponse) } = {}) {
+function stub(options: { quote?: { status: number; body: QuoteBody | { error: string } } | (() => Promise<unknown>); send?: { status: number; body: unknown }; directory?: CompanyDirectoryResponse | (() => CompanyDirectoryResponse); draftPut?: { status: number; body: unknown } } = {}) {
+  let savedDraft: unknown = null;
   const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
     const path = String(input);
     const method = init?.method ?? "GET";
@@ -59,7 +60,12 @@ function stub(options: { quote?: { status: number; body: QuoteBody | { error: st
     if (path.startsWith("/api/credits/summary")) return json(200, { summary: { totalAvailable: 3 } });
     if (path === "/api/profile/setup") return json(200, setup);
     if (path === "/api/work-items") return json(200, { items: [] });
-    if (path === "/api/ask-drafts" && method === "GET") return json(200, { draft: null });
+    if (path === "/api/ask-drafts" && method === "GET") return json(200, { draft: savedDraft });
+    if (path === "/api/ask-drafts" && method === "PUT") {
+      if (options.draftPut) return json(options.draftPut.status, options.draftPut.body);
+      savedDraft = JSON.parse(String(init?.body ?? "{}"));
+      return json(200, { draft: savedDraft });
+    }
     if (path.startsWith("/api/company-referrals/quote")) {
       if (typeof options.quote === "function") return options.quote();
       const reply = options.quote ?? { status: 200, body: { level: 1, cost: 1, totalAvailable: 3, shortfall: 0 } };
@@ -340,5 +346,62 @@ describe("shared composer quote (D-132 item 3)", () => {
     const sendButton = screen.getByRole("button", { name: /send ask/i });
     expect(sendButton.getAttribute("aria-disabled")).toBeNull();
     release(null);
+  });
+
+  it("flag on, short of credits: top-up persists draft so link, reasons and resume survive route transition on /ask", async () => {
+    vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
+    stub({ quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } } });
+    renderPage(<Ask />);
+    await typeLink();
+    fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
+    const topUp = screen.getByRole("link", { name: "Add credits" });
+    fireEvent.click(topUp);
+    cleanup();
+    // Simulate return to /ask
+    renderPage(<Ask />);
+    await waitFor(() => expect((screen.getByLabelText(/job link/i) as HTMLInputElement).value).toBe(LINK));
+    expect((screen.getByPlaceholderText(/One result/) as HTMLInputElement).value).toBe("Led a checkout redesign that cut drop-off 18%.");
+    expect(screen.getByText("ada-resume.pdf")).toBeTruthy();
+  });
+
+  it("flag on, short of credits: top-up persists draft in explore drawer", async () => {
+    vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
+    stub({ quote: { status: 200, body: { level: 4, cost: 4, totalAvailable: 3, shortfall: 1 } } });
+    window.history.replaceState(null, "", "/explore");
+    renderPage(<Explore />);
+    const card = await screen.findAllByText("Wipro");
+    fireEvent.click(card[0]);
+    const drawer = await screen.findByRole("dialog");
+    await typeLink(drawer);
+    fireEvent.change(within(drawer).getByPlaceholderText(/One result/), { target: { value: "Led checkout redesign." } });
+    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("This ask costs 4 credits. You have 3. Add 1 more."));
+    const topUp = within(drawer).getByRole("link", { name: "Add credits" });
+    fireEvent.click(topUp);
+    cleanup();
+    // Return to explore drawer
+    renderPage(<Explore />);
+    const card2 = await screen.findAllByText("Wipro");
+    fireEvent.click(card2[0]);
+    const drawer2 = await screen.findByRole("dialog");
+    await waitFor(() => expect((within(drawer2).getByLabelText(/job link/i) as HTMLInputElement).value).toBe(LINK));
+    expect((within(drawer2).getByPlaceholderText(/One result/) as HTMLInputElement).value).toBe("Led checkout redesign.");
+    expect(within(drawer2).getByText("ada-resume.pdf")).toBeTruthy();
+  });
+
+  it("flag on, short of credits: top-up displays visible error if draft save fails and does not navigate", async () => {
+    vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
+    stub({
+      quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } },
+      draftPut: { status: 500, body: { error: "Database offline" } },
+    });
+    renderPage(<Ask />);
+    await typeLink();
+    fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led checkout redesign." } });
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
+    const topUp = screen.getByRole("link", { name: "Add credits" });
+    fireEvent.click(topUp);
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("We could not save your draft"));
+    expect(go).not.toHaveBeenCalled();
   });
 });

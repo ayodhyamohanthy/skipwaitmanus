@@ -7,7 +7,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { companyDirectoryKeys } from "@/lib/companyDirectory";
 import { useEffect, useState, type ReactNode } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { askErrorMessage, confirmedDomainFor, parsePlanLimit, parseSentAsk, parseSlotCapReached } from "@/components/ask/askApi";
 import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
@@ -24,7 +24,7 @@ import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUp
 import { useSeekerSetup } from "@/lib/useSeekerSetup";
 import { countWords } from "@shared/askQuality";
 import type { PublicCompany } from "@shared/companies";
-import { askCostLine, CREDIT_ENDED_CAVEAT, creditUsedPhrase, type AskCostLine } from "@shared/moneyCopy";
+import { ADD_CREDITS_HREF, askCostLine, CREDIT_ENDED_CAVEAT, creditUsedPhrase, type AskCostLine } from "@shared/moneyCopy";
 import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
 import { COMPANY_CAP_REACHED, COMPANY_COVERAGE_CHANGED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
@@ -65,6 +65,7 @@ export type AskComposer = {
   costQuote: AskCostQuote | null;
   /** D-132 item 3: set only when the target is a COVERED company and the wallet is short - the primary action becomes the top-up. Uncovered asks wait for free and never swap. */
   topUp: { shortfall: number } | null;
+  onTopUp(event?: React.MouseEvent): void;
   context: string | null;
   sendLabel: string;
   sendBusyLabel: string;
@@ -90,6 +91,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   const fetchToken = usePersistFn(getToken);
   const online = useOnlineStatus();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const balance = useCreditBalance(Boolean(isSignedIn));
   const setup = useSeekerSetup(Boolean(isLoaded && isSignedIn), fetchToken);
   const remoteDraft = useAskDraft(Boolean(isLoaded && isSignedIn), fetchToken);
@@ -362,6 +364,21 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     }
   };
 
+  const onTopUp = async (event?: React.MouseEvent) => {
+    event?.preventDefault();
+    setSendError(null);
+    saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons) }, session());
+    if (isSignedIn && company && isValidTargetRoleUrl(url.trim())) {
+      try {
+        await saveAskDraftRemote({ companySlug: company.slug, targetRoleUrl: url.trim(), note: composeWhyMe(reasons) }, fetchToken);
+      } catch (reason) {
+        setSendError(reason instanceof Error ? reason.message : "We could not save your draft. Try again.");
+        return;
+      }
+    }
+    navigate(ADD_CREDITS_HREF);
+  };
+
   const watchCompany = async () => {
     if (!company) return;
     if (!isSignedIn) { goToSeekerSignIn(`/explore?company=${company.slug}`); return; }
@@ -401,6 +418,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     cost,
     costQuote: quote,
     topUp,
+    onTopUp: (event?: React.MouseEvent) => { void onTopUp(event); },
     context,
     sendLabel: isSignedIn ? "Send ask" : "Sign in and send",
     sendBusyLabel: sendStage === "resume" ? "Uploading your resume…" : "Sending your ask…",

@@ -113,7 +113,7 @@ export default function Ask() {
                 ) : null}
                 {composer.topUp ? (
                   <GoalButton asChild variant="primary" touch="large" className="max-gdesk:w-full">
-                    <Link href={ADD_CREDITS_HREF}>{ADD_CREDITS_LABEL}</Link>
+                    <Link href={ADD_CREDITS_HREF} onClick={composer.onTopUp}>{ADD_CREDITS_LABEL}</Link>
                   </GoalButton>
                 ) : (
                   <GoalButton variant="primary" touch="large" className="max-gdesk:w-full" busy={composer.sending} busyLabel={composer.sendBusyLabel} disabledReason={composer.sendBlocked} onClick={composer.send}>

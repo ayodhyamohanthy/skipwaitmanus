@@ -152,6 +152,7 @@ export default function Explore() {
           watch={composer.watch}
           cost={composer.cost}
           topUp={composer.topUp}
+          onTopUp={composer.onTopUp}
           sendLabel={composer.sendLabel}
           sendBusyLabel={composer.sendBusyLabel}
           sending={composer.sending}
