@@ -52,10 +52,10 @@ type Deps = {
   applyPaymentRefund?: (input: { eventId: string; invoiceId?: string; refundAmount?: number; currency?: string }) => Promise<{ status: string; paymentId?: number; reason?: string }>;
   alertPaymentRefund?: (input: { eventId: string; invoiceId?: string; paymentId?: number; reason: string; refundAmount?: number; currency?: string }) => Promise<unknown>;
   alertUnmatchedPayment?: (input: { eventId: string; invoiceId?: string; hostedPageId?: string; reason: string; paidAmount: number; paidCurrency: string }) => Promise<unknown>;
-  /** Owner rule (Oct 22): every provider payment failure reaches the owner at once. */
-  alertFailedPayment?: (input: { eventId: string; invoiceId?: string; subscriptionId?: string; customerId?: string; amount?: number; currency?: string }) => Promise<unknown>;
+  /** Immediate attempt of the durable alert outbox (same claim/state path as the sweep): best effort after a unique payment failure is recorded. */
+  runAlertOutbox?: () => Promise<unknown>;
   /** Durable provider-event receipt (subscriptionEvents): false on first delivery, true on redelivery. */
-  recordWebhookEventReceipt?: (input: { eventId: string; eventType: string; subscriptionId?: string }) => Promise<{ duplicate: boolean }>;
+  recordWebhookEventReceipt?: (input: { eventId: string; eventType: string; subscriptionId?: string; invoiceId?: string; customerId?: string; amount?: number; currency?: string }) => Promise<{ duplicate: boolean }>;
   /** Wallet snapshot for the signed-in account+role, for pre-commitment upgrade checks. */
   getWalletSnapshot?: (userId: number, role: "job_seeker" | "referrer") => Promise<{ plan: string; monthlyCreditsRemaining: number } | null>;
   /** Durable receipt for a provider gift event (D-067: receipts only; a claimed gift is parked as plan_retired). */
@@ -617,8 +617,13 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       }
       if (!duplicate) {
       console.error("[Chargebee] payment failed", { eventId: failedPayment.eventId, invoiceId: failedPayment.invoiceId, subscriptionId: failedPayment.subscriptionId });
+      // One durable delivery obligation per unique provider event, enqueued
+      // atomically with the receipt inside recordWebhookEventReceipt. The
+      // immediate attempt goes through the SAME outbox claim/state path as the
+      // scheduled sweep - acceptance evidence (accepted + providerMessageId)
+      // is what stops any later resend; ambiguity is preserved, never hidden.
       record({ action: "billing.payment_failed", outcome: "failure", resourceType: "chargebee_invoice", resourceId: failedPayment.invoiceId ?? failedPayment.eventId, metadata: { eventId: failedPayment.eventId, invoiceId: failedPayment.invoiceId ?? null, subscriptionId: failedPayment.subscriptionId ?? null, customerId: failedPayment.customerId ?? null, amount: failedPayment.amount ?? null, currency: failedPayment.currency ?? null } });
-      void deps.alertFailedPayment?.({ eventId: failedPayment.eventId, invoiceId: failedPayment.invoiceId, subscriptionId: failedPayment.subscriptionId, customerId: failedPayment.customerId, amount: failedPayment.amount, currency: failedPayment.currency }).catch(() => undefined);
+      void deps.runAlertOutbox?.().catch(() => undefined);
       }
     }
 

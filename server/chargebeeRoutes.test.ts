@@ -174,12 +174,12 @@ describe("Chargebee webhook route", () => {
     const secret = "fail-secret";
     process.env.CHARGEBEE_WEBHOOK_SECRET = secret;
     const seen = new Set<string>();
-    const alertFailedPayment = vi.fn(async () => undefined);
+    const runAlertOutbox = vi.fn(async () => undefined);
     registerChargebeeRoutes(app, {
       resolveIdentity: async () => undefined,
       createPaymentIntent: async () => undefined,
       fulfillPayment: async () => ({ status: "ignored" as const, reason: "unknown_checkout" }),
-      alertFailedPayment,
+      runAlertOutbox,
       recordWebhookEventReceipt: async input => ({ duplicate: seen.has(input.eventId) ? true : (seen.add(input.eventId), false) }),
     });
     const failed = (id: string) => ({ id, event_type: "payment_failed", content: { payment: { amount: 162400, currency_code: "INR", invoice_id: "inv_9", subscription_id: "sub_9" }, customer: { id: "cust_9" } } });
@@ -189,8 +189,9 @@ describe("Chargebee webhook route", () => {
     expect(first.status).toBe(200);
     expect(redelivery.status).toBe(200);
     expect(distinct.status).toBe(200);
-    expect(alertFailedPayment).toHaveBeenCalledTimes(2);
-    expect(alertFailedPayment.mock.calls.map(call => call[0].eventId)).toEqual(["ev_fail_1", "ev_fail_2"]);
+    // The immediate attempt runs once per unique provider event, through the
+    // same outbox claim/state path as the sweep; redelivery triggers nothing.
+    expect(runAlertOutbox).toHaveBeenCalledTimes(2);
     delete process.env.CHARGEBEE_WEBHOOK_SECRET;
   });
 
@@ -203,12 +204,12 @@ describe("Chargebee webhook route", () => {
     process.env.CHARGEBEE_WEBHOOK_SECRET = secret;
     const seen = new Set<string>();
     let crashes = 1;
-    const alertFailedPayment = vi.fn(async () => undefined);
+    const runAlertOutbox = vi.fn(async () => undefined);
     registerChargebeeRoutes(app, {
       resolveIdentity: async () => undefined,
       createPaymentIntent: async () => undefined,
       fulfillPayment: async () => ({ status: "ignored" as const, reason: "unknown_checkout" }),
-      alertFailedPayment,
+      runAlertOutbox,
       recordWebhookEventReceipt: async input => {
         if (crashes-- > 0) throw new Error("crash after receipt before send");
         return { duplicate: seen.has(input.eventId) ? true : (seen.add(input.eventId), false) };
@@ -219,8 +220,7 @@ describe("Chargebee webhook route", () => {
     const retried = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send(payload);
     expect(crashed.status).toBe(500);
     expect(retried.status).toBe(200);
-    expect(alertFailedPayment).toHaveBeenCalledTimes(1);
-    expect(alertFailedPayment.mock.calls[0][0].eventId).toBe("ev_fail_crash");
+    expect(runAlertOutbox).toHaveBeenCalledTimes(1);
     delete process.env.CHARGEBEE_WEBHOOK_SECRET;
   });
 

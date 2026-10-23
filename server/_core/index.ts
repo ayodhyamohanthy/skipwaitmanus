@@ -39,6 +39,7 @@ const storagePut = r2Configured() ? r2StoragePut : process.env.BUILT_IN_FORGE_AP
 // Forge presigned GET, or DB blobs — matching the storagePut selection above.
 const storageGetBytes = r2Configured() ? r2StorageGetBytes : process.env.BUILT_IN_FORGE_API_URL && process.env.BUILT_IN_FORGE_API_KEY ? forgeStorageGetBytes : dbStorageGetBytes;
 import * as db from "../db";
+import { runBillingReviewOutbox } from "../billingReviewOutbox";
 import { getReferralFlowBaseline } from "../flowBaseline";
 import { sql } from "drizzle-orm";
 import { createContext } from "./context";
@@ -76,7 +77,7 @@ import { registerPlansCatalogRoutes } from "../plansCatalogRoutes";
 import { registerAdminBillingLedgerRoutes } from "../adminBillingLedger";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
-import { createFailedPaymentAlerter, createPaymentRefundAlerter, createPaymentReviewAlerter, createUnmatchedPaymentAlerter, createCardValidationAlerter, createRetiredPlanAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
+import { createPaymentRefundAlerter, createPaymentReviewAlerter, createUnmatchedPaymentAlerter, createCardValidationAlerter, createRetiredPlanAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
 import { globalSecurityHeaders } from "../securityHeaders";
 import { draftSmartReferralPitch } from "../ai";
 import { sendReferrerReviewEmail } from "../referrerReviewEmail";
@@ -331,8 +332,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     alertPaymentRefund: createPaymentRefundAlerter(),
     alertUnmatchedPayment: createUnmatchedPaymentAlerter(),
     alertRetiredPlanEvent: createRetiredPlanAlerter(),
-    alertFailedPayment: createFailedPaymentAlerter(),
     recordWebhookEventReceipt: db.recordChargebeeWebhookEventReceipt,
+    runAlertOutbox: () => runBillingReviewOutbox(),
     getWalletSnapshot: db.getWalletPlanSnapshot,
     applyCardValidationEvent: db.applyCardValidationEvent,
     alertCardValidationEvent: createCardValidationAlerter(),

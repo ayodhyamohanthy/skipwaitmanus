@@ -219,44 +219,6 @@ export function createPaymentRefundAlerter(dependencies: AlertDependencies = {})
   };
 }
 
-export type FailedPaymentAlertInput = { eventId: string; invoiceId?: string; subscriptionId?: string; customerId?: string; amount?: number; currency?: string };
-
-/**
- * Emails the administrator when Chargebee reports a FAILED payment. No money
- * settled and no credits moved, but the customer may think they paid, and a
- * failed renewal needs a human before the subscription lapses. Never
- * deduplicated: every failed attempt is its own provider event. Provider ids
- * and amounts only.
- */
-export function createFailedPaymentAlerter(dependencies: AlertDependencies = {}) {
-  const fetchImpl = dependencies.fetchImpl ?? fetch;
-  const recordActivity = dependencies.recordActivity ?? recordOperationalActivity;
-  return async function alertFailedPayment(input: FailedPaymentAlertInput) {
-    const ref = input.invoiceId ?? input.eventId;
-    const subject = `skipwait.me payment failed needs review · ${ref}`;
-    const text = [
-      "Chargebee reported a FAILED payment. No money settled and no credits moved.",
-      `Invoice: ${input.invoiceId ?? "unknown"}`,
-      `Event: ${input.eventId}`,
-      `Subscription: ${input.subscriptionId ?? "none"}`,
-      `Chargebee customer: ${input.customerId ?? "unknown"}`,
-      `Amount attempted: ${input.amount ?? "unknown"} ${input.currency ?? ""}`.trim(),
-      "If this was a renewal, Chargebee dunning may retry; check the subscription and the customer in the Chargebee dashboard, and if the customer expects to have paid, tell them the payment did not go through.",
-    ].join("\n");
-    const metadata = { eventId: input.eventId, invoiceId: input.invoiceId, subscriptionId: input.subscriptionId, customerId: input.customerId };
-    try {
-      const delivery = await sendAdminAlertEmail(fetchImpl, { subject, text });
-      if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
-      await recordActivity({ action: "system.payment_failed_alert_sent", outcome: "success", resourceType: "chargebee_invoice", resourceId: ref, metadata });
-      return { alerted: true as const };
-    } catch (error) {
-      console.warn("[FailedPaymentAlert] Unable to send administrator alert", error instanceof Error ? error.message : error);
-      await recordActivity({ action: "system.payment_failed_alert_sent", outcome: "failure", resourceType: "chargebee_invoice", resourceId: ref, metadata }).catch(() => undefined);
-      return { alerted: false as const };
-    }
-  };
-}
-
 /**
  * Why a plan event reached a human: plan_retired (a Pro/Max subscription, D-067), gift_claimed /
  * gift_claim_refused (a gift of one), or unsupported_plan (an item price skipwait.me cannot place).
