@@ -78,10 +78,13 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
       : null;
 
   const openSignIn = useCallback((options?: { returnTo?: string }) => {
-    if (!isLoaded || signedIn) return;
+    // An explicit click must not disappear while either client auth plane is
+    // loading. The server still owns authentication; this only starts its flow.
+    // Known signed-in users keep their existing session without another flow.
+    if (signedIn) return;
     const returnTo = safeAuthReturnTo(options?.returnTo ?? window.location.href, window.location.origin) ?? "/";
     window.location.href = `/api/auth/workos/sign-in?${new URLSearchParams({ returnTo })}`;
-  }, [isLoaded, signedIn]);
+  }, [signedIn]);
 
   // Publish the SDK access token for non-React API clients (tRPC link).
   useEffect(() => {
