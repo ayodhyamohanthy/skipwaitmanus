@@ -90,7 +90,7 @@ function NextStep({ threads }: { threads: readonly InboxThread[] }) {
   const label = replyTarget ? "Reply" : reviewTarget ? "Review the ask" : "Find a referrer";
   const href = target ? target.href : "/explore";
   const detail = replyTarget
-    ? `${replyTarget.who} · ${replyTarget.companyName}: ${replyTarget.unread} unread message${replyTarget.unread === 1 ? "" : "s"}.`
+    ? `${replyTarget.who}: ${replyTarget.unread} unread message${replyTarget.unread === 1 ? "" : "s"}.`
     : reviewTarget
       ? `A new ask at ${reviewTarget.companyName} is waiting for your decision.`
       : "Conversations open when a referrer accepts your ask. Start with one company and one great ask.";
