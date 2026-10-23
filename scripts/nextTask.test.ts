@@ -49,7 +49,7 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
     expect(first).toMatchObject({ kind: "build", task: { id: "P0-ask-link-signin" } });
     const followUps = pickNextTask({ tasks: real.tasks.slice(2), mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    expect(followUps).toMatchObject({ kind: "build", task: { id: "PREMIUM-total-label" } });
+    expect(followUps).toMatchObject({ kind: "build", task: { id: "D-067-outbox-fixture-repair" } });
   });
 
   it("rejects unknown keys, duplicates, bad branches, missing packets, unknown dependencies and cycles", () => {

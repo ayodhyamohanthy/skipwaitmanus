@@ -16,7 +16,8 @@ import { sendTransactionalEmail } from "./emailDelivery";
 // row; the only writes are the job's own run record (the runner) and one
 // operational-activity row when an alert email goes out. The email carries
 // ids, amounts, currencies and reasons — never names, emails, or request content.
-import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
+import { PENDING_MAX_AGE_MS } from "./chargebeePendingReconcile";
 import { askCosts, operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, referredDueAtMs, referredExtensionOperationKey } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
@@ -28,6 +29,7 @@ import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
 
 /** A checkout still pending after this is stale enough to list (D-065: "checkouts older than a day"). */
 export const STALE_CHECKOUT_AGE_MS = 24 * 60 * 60_000;
+const DAY_MS = 24 * 60 * 60_000;
 /** The hourly ask-expiry sweep has had a full day to close an ask past its shelf life; later than this it is stuck. */
 export const ALLOCATED_ASK_GRACE_MS = 24 * 60 * 60_000;
 export const MONEY_CHECK_BATCH = 200;
@@ -76,7 +78,7 @@ export type DailyMoneyCheckDeps = {
   listAskDeliverySpendsWhileWaiting: (limit: number) => Promise<AskSpentWhileWaitingRow[]>;
   listDoublyReversedSpends: (limit: number) => Promise<DoublyReversedSpendRow[]>;
   listAskCostMismatches: (limit: number) => Promise<AskCostMismatchRow[]>;
-  summarizeStaleCheckouts: (olderThan: Date) => Promise<StaleCheckoutSummary>;
+  summarizeStaleCheckouts: (olderThan: Date, newerThan?: Date) => Promise<StaleCheckoutSummary>;
   listRefundsAfterPickup: (limit: number) => Promise<RefundAfterPickupRow[]>;
   listReferredPastDeadline: (nowMs: number, limit: number) => Promise<ReferredDeadlineStuckRow[]>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
@@ -129,10 +131,10 @@ async function listUnmatchedRefunds(limit: number): Promise<UnmatchedRefundRow[]
 export type StaleCheckoutSummary = { total: number; users: number; oldest: Date | null; newest: Date | null };
 
 /** One line for every abandoned pending checkout: how many, how many accounts, and the date range. */
-async function summarizeStaleCheckouts(olderThan: Date): Promise<StaleCheckoutSummary> {
+async function summarizeStaleCheckouts(olderThan: Date, newerThan?: Date): Promise<StaleCheckoutSummary> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
   const [row] = await db.select({ total: count(), users: sql<number>`COUNT(DISTINCT ${paymentFulfillments.userId})`, oldest: sql<Date | null>`MIN(${paymentFulfillments.createdAt})`, newest: sql<Date | null>`MAX(${paymentFulfillments.createdAt})` })
-    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan), or(isNull(paymentFulfillments.reconciliationReason), ne(paymentFulfillments.reconciliationReason, ABANDONED_CHECKOUT_REASON))));
+    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan), ...(newerThan ? [gte(paymentFulfillments.createdAt, newerThan)] : []), or(isNull(paymentFulfillments.reconciliationReason), ne(paymentFulfillments.reconciliationReason, ABANDONED_CHECKOUT_REASON))));
   return { total: Number(row?.total ?? 0), users: Number(row?.users ?? 0), oldest: row?.oldest ? new Date(row.oldest) : null, newest: row?.newest ? new Date(row.newest) : null };
 }
 
@@ -453,10 +455,18 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCh
     // One summary line, not one line per checkout: abandoned checkout pages are common, no money moved, and a long list
     // buried the real findings. The oldest few ids are named so someone can look them up.
     const staleCutoff = new Date(nowMs - STALE_CHECKOUT_AGE_MS);
-    const staleSummary = await deps.summarizeStaleCheckouts(staleCutoff);
+    // Rows older than the reconcile window (PENDING_MAX_AGE_MS) are no longer rechecked against Chargebee: they get their own
+    // line, worded as unverified, never as "never paid" (nobody has asked the provider).
+    const agedOutCutoff = new Date(nowMs - PENDING_MAX_AGE_MS);
+    const staleSummary = await deps.summarizeStaleCheckouts(staleCutoff, agedOutCutoff);
     if (staleSummary.total > 0) {
       const sample = await deps.listStaleCheckouts(staleCutoff, 3);
       findings.push(`stale checkouts: ${staleSummary.total} unpaid checkout page(s) from ${staleSummary.users} account(s) still pending after a day, oldest ${staleSummary.oldest?.toISOString() ?? "unknown"}, newest ${staleSummary.newest?.toISOString() ?? "unknown"}; none credited, no money moved (oldest ids: ${sample.map(row => `#${row.id}`).join(", ")})`);
+    }
+
+    const agedOut = await deps.summarizeStaleCheckouts(agedOutCutoff);
+    if (agedOut.total > 0) {
+      findings.push(`aged-out checkouts: ${agedOut.total} checkout page(s) from ${agedOut.users} account(s) are older than ${PENDING_MAX_AGE_MS / DAY_MS} days, aged out of reconciliation (no longer rechecked); payment status at the provider is unverified, oldest ${agedOut.oldest?.toISOString() ?? "unknown"}, newest ${agedOut.newest?.toISOString() ?? "unknown"}; none credited by us`);
     }
 
     // P0-allocated-ask-stuck: paged by id until a short batch, so claimed asks (which keep their slot and
