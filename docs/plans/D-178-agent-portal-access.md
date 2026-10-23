@@ -18,9 +18,22 @@ This is DIRECTION, not authority. Nothing here authorizes charging anyone, weake
 4. **Protocol unspecified.** Candidates to evaluate in design, not chosen here: a public REST contract with scoped tokens, OAuth delegated grants, an agent-specific sign-in flow. The choice is a design decision with its own review.
 5. **Existing contract work first.** Integrate with the assistant/auth/payment lanes already registered (D-048-p3-assistants, D-048-p3-agents, D-048-P-auth, seeker-passwords) instead of a parallel agent stack.
 
+## Clarification, Oct 24 12:59 AM IST (same conversation)
+
+Founder follow-up (phonemsg-01M5N3T0SZFH12MGASAEZ6MSCX, runtime channel record author=user; observation-index verification pending at write time). Verbatim:
+
+> Any  agent can connect to skipwait.me and can apply for referrals if they have paid for referrals
+
+Applied reading (with Main, Oct 24):
+
+1. **Any agent, not a named integration.** The contract is platform-agnostic: no per-provider partnership or allowlist of agent vendors is implied. Safeguards (scoped grant, consent, account isolation) apply to every agent equally.
+2. **Payment-gated eligibility.** An agent may apply for referrals when the authenticated user it acts for has paid referral entitlement available (their paid ask balance). "If they have paid" conditions the ELIGIBILITY to apply; it never promises a referral outcome - referrers still decide.
+3. **Free human allowance untouched.** The existing free monthly allowance for human seekers is NOT revoked by this directive; agent access is an additional path gated on paid entitlement. Removing or changing the free allowance would need its own explicit owner decision.
+4. **Auth/consent/isolation stand.** Every agent still acts only within its authenticated user's account and grant; no shared access, no bypass, no retry-storm double-apply/double-charge.
+
 ## Open questions
 
-1. Which agent actions are in scope first: read-only discovery (companies/jobs), ask submission, payment, or all three?
+1. Does paid entitlement for agents mean the user's existing paid ask credits, or a separate agent-scoped purchase? (Money wording stays frozen under D-132/D-152 either way.)
 2. What does the user see and approve for each agent action (per-action approval vs standing grant with limits)?
 3. Rate limits and abuse controls for agent traffic vs human traffic?
 4. How is an agent identified and attested (user-declared API token vs verified agent identity)?
