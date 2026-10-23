@@ -4,7 +4,7 @@ import { z } from "zod";
 import { billingReviewOutbox } from "../drizzle/schema";
 import { getDb } from "./db";
 import { resolveBillingEnvironment } from "./chargebeeEnvironment";
-import type { RetiredPlanAlertInput } from "./errorAlerting";
+
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
@@ -43,7 +43,7 @@ function parseReceipt(body: unknown): { id: string } {
   if (resend.success) return resend.data;
   return { id: z.object({ request_id: z.string().min(1).max(255) }).parse(body).request_id };
 }
-export function billingReviewKey(input: RetiredPlanAlertInput) {
+export function billingReviewKey(input: BillingReviewInput) {
   const environment = resolveBillingEnvironment();
   const site = environment === "live" ? process.env.CHARGEBEE_LIVE_SITE : process.env.CHARGEBEE_SITE;
   if (!site?.trim()) throw new Error("Review site missing");
