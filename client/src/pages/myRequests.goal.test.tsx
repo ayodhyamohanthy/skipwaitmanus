@@ -52,6 +52,57 @@ function stub(requests: unknown[], slotBody: unknown, credits: unknown = { summa
 afterEach(() => { cleanup(); go.mockClear(); auth.openSignIn.mockClear(); vi.unstubAllGlobals(); auth.isLoaded = true; auth.isSignedIn = true; access.status = "unverified"; });
 
 describe("My asks on the goal shell", () => {
+  it("keeps closed asks out of the next-step route and offers discovery instead", async () => {
+    stub([{ ...openAsk(42), status: "closed" }], slots(0));
+    renderPage();
+    await screen.findByText("No open asks.");
+    const next = screen.getByRole("region", { name: "Your next step" });
+    expect(within(next).getByRole("link", { name: "Find a company" }).getAttribute("href")).toBe("/explore");
+    expect(within(next).queryByRole("link", { name: "View ask" })).toBeNull();
+    expect(document.querySelectorAll("main [data-g-primary]")).toHaveLength(1);
+  });
+
+  it("opens with the goal and a single next-step commit instead of a second header primary", async () => {
+    stub([openAsk(42)], slots(1));
+    renderPage();
+    await screen.findByText("Product Designer");
+    expect(screen.getByRole("heading", { name: "Get your asks answered." })).toBeTruthy();
+    const next = screen.getByRole("region", { name: "Your next step" });
+    expect(within(next).getByRole("link", { name: "View ask" }).getAttribute("href")).toBe("/conversation/42");
+    expect(screen.getByRole("link", { name: "New ask" }).className).not.toContain("bg-g-primary");
+    expect(document.querySelectorAll("main .bg-g-primary")).toHaveLength(1);
+  });
+
+  it("prioritizes the referred thread over waiting asks without pretending to confirm it here", async () => {
+    stub([openAsk(42), { ...openAsk(43), title: "Research Lead", status: "intro_made", referrerId: 503 }], slots(2));
+    renderPage();
+    await screen.findByText("Research Lead");
+    const next = screen.getByRole("region", { name: "Your next step" });
+    expect(within(next).getByRole("link", { name: "Check referral update" }).getAttribute("href")).toBe("/conversation/43");
+    expect(next.textContent).toContain("Open the conversation");
+    expect(next.textContent).toContain("Research Lead");
+    expect(screen.queryByRole("button", { name: "I got the referral email" })).toBeNull();
+  });
+
+  it("prioritizes an unread accepted conversation without changing a request or spending credits", async () => {
+    const fetchMock = stub([openAsk(42), { ...openAsk(43), title: "Research Lead", status: "approved", referrerId: 503, unreadMessageCount: 2 }], slots(2));
+    renderPage();
+    await screen.findByText("Research Lead");
+    const next = screen.getByRole("region", { name: "Your next step" });
+    expect(within(next).getByRole("link", { name: "Read update" }).getAttribute("href")).toBe("/conversation/43");
+    expect(fetchMock.mock.calls.every(([url]) => !String(url).includes("confirm-referred"))).toBe(true);
+  });
+
+  it("an empty list has one company-discovery next step and never invents a per-ask credit cost", async () => {
+    stub([], slots(0));
+    renderPage();
+    await screen.findByText("No asks yet.");
+    const next = screen.getByRole("region", { name: "Your next step" });
+    expect(within(next).getByRole("link", { name: "Find a company" }).getAttribute("href")).toBe("/explore");
+    expect(document.querySelectorAll("main .bg-g-primary")).toHaveLength(1);
+    expect(next.textContent).not.toMatch(/0 credits|1 credit/);
+  });
+
   it("wraps the page in the goal shell with the live credit balance, not a placeholder", async () => {
     stub([openAsk(42)], slots(1));
     renderPage();
@@ -68,13 +119,34 @@ describe("My asks on the goal shell", () => {
     expect(urls).toContain("/api/credits/summary?role=job_seeker");
   });
 
+  it("says the balance failed to load instead of drawing 0 credits, and retries it", async () => {
+    let creditCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).includes("/api/credits/summary")) {
+        creditCalls += 1;
+        return creditCalls <= 2
+          ? { ok: false, status: 500, json: async () => ({ error: "down" }) }
+          : { ok: true, status: 200, json: async () => ({ summary: { totalAvailable: 4 } }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ requests: [openAsk(42)], slots: slots(1) }) };
+    }));
+    renderPage();
+    const pill = (await screen.findAllByTestId("goal-credits-pill"))[0];
+    await waitFor(() => expect(pill.textContent).toContain("Balance didn't load"), { timeout: 3000 });
+    expect(pill.textContent).not.toMatch(/\b0\b/);
+    fireEvent.click(within(pill).getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toBe("4 credits"));
+  });
+
   it("a verified referrer keeps their queue and sees no credits pill", async () => {
     access.status = "verified";
-    stub([openAsk(42)], slots(1));
+    const fetchMock = stub([openAsk(42)], slots(1));
     renderPage();
     await screen.findAllByText("Product Designer");
     expect(screen.queryByTestId("goal-credits-pill")).toBeNull();
     expect(screen.getAllByRole("link", { name: "Queue" }).length).toBeGreaterThan(0);
+    // D-055: the referrer surface never even asks for a seeker balance.
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/credits/summary"))).toBe(false);
   });
 
   it("gates signed-out visitors behind a sign-in panel and never loads asks", () => {

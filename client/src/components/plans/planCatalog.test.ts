@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CATALOG_PLANS, FREE_PLAN } from "@shared/planCatalog";
-import { activePaidPlan, fairnessRules, planCards, planFaqs, planLimits } from "./planCatalog";
+import { activePaidPlan, creditFrom, fairnessRules, planCards, planFaqs, planLimits } from "./planCatalog";
 
 // D-012 item 3: messages with a referrer open only after that referrer accepts,
 // on every plan, so no plan copy may sell messaging referrers or faster answers.
@@ -83,5 +83,22 @@ describe("plan catalog copy after D-012 item 3 and D-067", () => {
     }
     const held = { plan: "start", subscriptionStatus: "non_renewing", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z" } as never;
     expect(activePaidPlan(held)?.id).toBe("start");
+  });
+});
+
+describe("creditFrom: the per-credit line comes only from live packs", () => {
+  const packs = [
+    { credits: 2, amount: 9_900, available: true },
+    { credits: 25, amount: 119_900, available: true },
+    { credits: 150, amount: 599_900, available: true },
+  ];
+  it("is the cheapest to dearest pack price per credit, from the catalog amounts", () => {
+    expect(creditFrom({ currency: "INR", packs })).toBe("₹39.99 to ₹49.50");
+    expect(creditFrom({ currency: "USD", packs: [{ credits: 5, amount: 500, available: true }, { credits: 150, amount: 10_500, available: true }] })).toBe("$0.70 to $1.00");
+  });
+  it("ignores packs off sale and is null with no pack or no catalog", () => {
+    expect(creditFrom({ currency: "INR", packs: packs.map(p => (p.credits === 150 ? { ...p, available: false } : p)) })).toBe("₹47.96 to ₹49.50");
+    expect(creditFrom({ currency: "INR", packs: packs.map(p => ({ ...p, available: false })) })).toBeNull();
+    expect(creditFrom(null)).toBeNull();
   });
 });

@@ -15,7 +15,7 @@ try {
   const parent = `d067_worker_parent_${suffix}`, hidden = `d067_worker_hidden_${suffix}`, user = `verifier_${suffix}`;
   await admin.query(`CREATE DATABASE ${parent}`); await admin.query(`CREATE DATABASE ${hidden}`);
   await admin.query(`USE ${parent}`);
-  await admin.query(await readFile('drizzle/deploy/0099_billing_review_outbox.sql','utf8'));
+  await admin.query(await readFile('drizzle/deploy/0100_billing_review_outbox.sql','utf8'));
   await admin.query(`CREATE TABLE ${hidden}.child (parent_id int, FOREIGN KEY(parent_id) REFERENCES ${parent}.billingReviewOutbox(id))`);
   await admin.query(`CREATE USER '${user}'@'localhost'`);
   await admin.query(`GRANT SELECT ON ${parent}.* TO '${user}'@'localhost'`);

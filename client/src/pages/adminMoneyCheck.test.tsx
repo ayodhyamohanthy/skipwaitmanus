@@ -32,4 +32,9 @@ describe("AdminMoneyCheck", () => {
     fireEvent.click(screen.getByRole("button", { name: "Run money check now" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/5 minutes/));
   });
+  it("shows a loud banner when the owner alert email failed", async () => {
+    stub(200, { latestOutcome: "failure", latestAt: "2026-10-22T09:00:00.000Z", lastSuccessAt: "2026-10-22T11:32:53.000Z", failuresLast7Days: 15, ownerNotReached: true });
+    render(<AdminMoneyCheck />);
+    expect((await screen.findByRole("alert")).textContent).toMatch(/owner alert email FAILED.*15 failed in the last 7 days/);
+  });
 });

@@ -32,7 +32,8 @@ export default function SignIn() {
   // Where the work-email OTP lands the referrer (same-origin path only).
   const referrerReturnTo = typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.referrer) : INTENT_RETURN_TO.referrer;
   // D-095: a seeker arriving from a purchase returns to it (same-origin path only; flag off keeps /explore).
-  const seekerReturnTo = ONE_TAP_PAY_SIGNIN && typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.seeker) : INTENT_RETURN_TO.seeker;
+  const requestedReturnTo = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("returnTo") : null;
+  const seekerReturnTo = (ONE_TAP_PAY_SIGNIN || requestedReturnTo?.startsWith("/admin")) && typeof window !== "undefined" ? safeReturnTo(requestedReturnTo, INTENT_RETURN_TO.seeker) : INTENT_RETURN_TO.seeker;
   return <main data-skipwait-screen="sign-in" className="auth-page">
     <section className="auth-story" aria-label="skipwait.me introduction">
       <Link className="wordmark auth-wordmark" href="/"><img src="/brand/lockup.svg" alt="SkipWait.me" className="wordmark-logo" /></Link>

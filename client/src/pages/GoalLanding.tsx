@@ -19,23 +19,26 @@ import { BetaBadge, BetaNoticeLine } from "@/components/BetaNotice";
 import { GoalBrandBannerArt, GoalBrandMark } from "@/components/goal/GoalBrandMark";
 import { GoalVerifiedMark } from "@/components/goal/GoalVerifiedMark";
 import { BETA_NOTICE_LINE } from "@/lib/betaNotice";
-import { ASK_COST_SENTENCE, REFERRING_FREE_LINE } from "@shared/moneyCopy";
+import { askCostLanding, REFERRING_FREE_LINE } from "@shared/moneyCopy";
+
+// D-132 item 7: level-aware ask cost wording behind the same flag as the cost itself.
+export const COST_COPY = askCostLanding(import.meta.env.VITE_ASK_LEVEL_COST === "true");
 
 export const STEPS: Array<{ title: string; body: string }> = [
   { title: "Find your company", body: "See the companies with verified employees inside, and the roles you can ask about." },
-  { title: "Send one thoughtful ask", body: `You see the cost before you ask: ${ASK_COST_SENTENCE} Every ask costs the same.` },
+  { title: "Send one thoughtful ask", body: COST_COPY.stepBody },
   { title: "They decide", body: "An accepted ask opens a private conversation. A referral is an introduction, never a promise of an interview or a job." },
 ];
 
 export const TRUST: Array<{ title: string; body: string; blue: boolean }> = [
   { title: "Verified with a work email", body: "Every referrer proves their company email before they can see a single ask.", blue: true },
   { title: "Hidden until one accepts", body: "Your name stays private until a referrer chooses to open the conversation.", blue: false },
-  { title: "Nothing spent while it waits", body: "1 credit only when a verified employee can see your ask - back if you withdraw first.", blue: false },
+  { title: "Nothing spent while it waits", body: COST_COPY.waitBody, blue: false },
 ];
 
 export const FAIR_RULES = [
   REFERRING_FREE_LINE,
-  "Every ask costs the same: 1 credit when a verified employee can see it, nothing while it waits.",
+  COST_COPY.fairRule,
   "No outcome promises: a referral is an introduction, not an interview or a job.",
   "Private by default: your name stays hidden until a referrer accepts.",
 ];

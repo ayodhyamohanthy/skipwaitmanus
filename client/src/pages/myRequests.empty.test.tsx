@@ -50,7 +50,9 @@ describe("My asks empty state", () => {
     // The one action is real and leads to the live company directory.
     fireEvent.click(screen.getByRole("button", { name: "Explore companies" }));
     expect(go).toHaveBeenCalledWith("/explore");
-    expect(screen.getByRole("link", { name: "Ask for a referral" }).getAttribute("href")).toBe("/explore");
+    expect(screen.getByRole("link", { name: "New ask" }).getAttribute("href")).toBe("/explore");
+    // The kit's second next step survives the move (0e1ccba4): finish the profile.
+    expect(screen.getByRole("link", { name: "Finish setup" }).getAttribute("href")).toBe("/onboarding");
   });
 
   it("shows the approved ask as a single link row with unread messages, never the referrer id", async () => {

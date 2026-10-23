@@ -57,7 +57,7 @@ describe("Plans payment return recovery", () => {
     vi.stubGlobal("fetch", fetchMock);
     const view = render(<Plans />);
     expect(screen.getByText(/Razorpay \(INR\)/)).toBeTruthy();
-    expect(screen.getByText("₹99 a credit")).toBeTruthy();
+    expect(screen.getByText("Credits")).toBeTruthy();
     expect(fetchMock.mock.calls.every(([url]) => String(url).startsWith("/api/plans/catalog"))).toBe(true);
     fetchMock.mockClear();
     view.unmount();
