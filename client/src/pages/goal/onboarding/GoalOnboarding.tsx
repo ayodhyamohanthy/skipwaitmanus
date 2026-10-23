@@ -149,7 +149,7 @@ export default function GoalOnboarding() {
     </section>,
   };
 
-  return <main data-skipwait-screen="onboarding" data-testid="goal-onboarding" className="page-content mx-auto w-full max-w-2xl pb-10">
+  return <main data-skipwait-screen="onboarding" data-testid="goal-onboarding" className="g-scope page-content mx-auto w-full max-w-2xl pb-10">
     <header className="px-4 pt-6 gdesk:px-5 gdesk:pt-7">
       <h1 className="text-g-display text-g-ink">Get ready to ask for a referral.</h1>
       <p className="mt-2 flex items-center gap-2 text-g-meta text-g-ink-2">
