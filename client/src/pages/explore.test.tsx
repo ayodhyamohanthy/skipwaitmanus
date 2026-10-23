@@ -45,7 +45,7 @@ const json = (status: number, body: unknown) => ({ ok: status >= 200 && status <
 // D-022: one posted role as the public contract serves it. The company page's
 // openings section reads /api/companies/:slug/opportunities, so the stub must
 // answer that before the generic slug branch treats it as a company.
-const post = (over: Partial<PublicOpportunityPost> = {}): PublicOpportunityPost => ({ id: 91, companyDomain: "wipro.com", kind: "hiring_now", roleTitle: "Product Designer", targetRoleUrl: "https://careers.wipro.com/jobs/1", location: "Bengaluru", compensation: null, walkInAt: null, walkInEndsAt: null, postedAt: "2026-10-10T09:00:00.000Z", expiresAt: "2026-11-09T09:00:00.000Z", poster: { kind: "anonymous" }, ...over });
+const post = (over: Partial<PublicOpportunityPost> = {}): PublicOpportunityPost => ({ id: 91, companyDomain: "wipro.com", kind: "hiring_now" as const, roleTitle: "Product Designer", targetRoleUrl: "https://careers.wipro.com/jobs/1", location: "Bengaluru", compensation: null, walkInAt: null, walkInEndsAt: null, postedAt: "2026-10-10T09:00:00.000Z", expiresAt: "2026-11-09T09:00:00.000Z", poster: { kind: "anonymous" as const }, ...over });
 
 /** The goal shell reads the balance and the seeker's setup beside the directory. */
 const setup = (resume: { id: number; fileName: string } | null = null) => ({ goal: "Actively looking", roles: [], level: "", links: [], city: "", countries: "", remote: true, visa: "No sponsorship needed", resume });
@@ -240,6 +240,41 @@ describe("Explore company door (goal, W2)", () => {
     expect(screen.queryByRole("button", { name: /Ask for a referral/ })).toBeNull();
   });
 
+  it("clicking a posted role opens the ask drawer in place with its job link prefilled (D-174)", async () => {
+    const posts = [
+      { id: 11, companyDomain: "wipro.com", kind: "hiring_now" as const, roleTitle: "Product Designer", targetRoleUrl: "https://careers.wipro.com/jobs/design", location: "Bengaluru", compensation: null, walkInAt: null, walkInEndsAt: null, postedAt: "2026-10-20T00:00:00.000Z", expiresAt: "2026-11-20T00:00:00.000Z", poster: { kind: "anonymous" as const } },
+      { id: 12, companyDomain: "wipro.com", kind: "hiring_now" as const, roleTitle: "Backend Engineer", targetRoleUrl: "https://careers.wipro.com/jobs/backend", location: "Hyderabad", compensation: null, walkInAt: null, walkInEndsAt: null, postedAt: "2026-10-20T00:00:00.000Z", expiresAt: "2026-11-20T00:00:00.000Z", poster: { kind: "anonymous" as const } },
+    ];
+    stubDirectory(ALL_OPEN, posts);
+    renderWithQuery(<ExploreCompany />);
+    await heroName();
+    const row = (await screen.findByText("Backend Engineer")).closest("li") as HTMLElement;
+    fireEvent.click(within(row).getByRole("button", { name: /Ask for a referral/ }));
+    const drawer = await screen.findByTestId("goal-drawer");
+    expect((within(drawer).getByLabelText("Job link") as HTMLInputElement).value).toBe("https://careers.wipro.com/jobs/backend");
+    // In place: the door never navigates to /ask.
+    expect(go).not.toHaveBeenCalledWith(expect.stringContaining("/ask"), expect.anything());
+  });
+
+  it("filters the company's posted roles by role or location text, then clears (D-174)", async () => {
+    const posts = [
+      { id: 11, companyDomain: "wipro.com", kind: "hiring_now" as const, roleTitle: "Product Designer", targetRoleUrl: null, location: "Bengaluru", compensation: null, walkInAt: null, walkInEndsAt: null, postedAt: "2026-10-20T00:00:00.000Z", expiresAt: "2026-11-20T00:00:00.000Z", poster: { kind: "anonymous" as const } },
+      { id: 12, companyDomain: "wipro.com", kind: "hiring_now" as const, roleTitle: "Backend Engineer", targetRoleUrl: null, location: "Hyderabad", compensation: null, walkInAt: null, walkInEndsAt: null, postedAt: "2026-10-20T00:00:00.000Z", expiresAt: "2026-11-20T00:00:00.000Z", poster: { kind: "anonymous" as const } },
+    ];
+    stubDirectory(ALL_OPEN, posts);
+    renderWithQuery(<ExploreCompany />);
+    await heroName();
+    await screen.findByText("Product Designer");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Filter roles" }), { target: { value: "hyder" } });
+    expect(screen.queryByText("Product Designer")).toBeNull();
+    expect(screen.getByText("Backend Engineer")).toBeTruthy();
+    fireEvent.change(screen.getByRole("searchbox", { name: "Filter roles" }), { target: { value: "zzz" } });
+    expect(screen.getByText("No roles match that filter.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Clear filter" }));
+    expect(screen.getByText("Product Designer")).toBeTruthy();
+    expect(screen.getByText("Backend Engineer")).toBeTruthy();
+  });
+
   it("renders the goal door from GET /api/companies/:slug: availability, goal line, one black commit, cost sentence", async () => {
     const fetchMock = stubDirectory();
     renderWithQuery(<ExploreCompany />);
@@ -300,7 +335,7 @@ describe("Explore company door (goal, W2)", () => {
     expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore/wipro");
   });
 
-  it("renders open roles as rows with mono posted dates, honest posters and /ask links", async () => {
+  it("renders open roles as rows with mono posted dates, honest posters and in-place ask actions (D-174)", async () => {
     stubDirectory(ALL_OPEN, [
       post({ id: 91, poster: { kind: "firstName", firstName: "Asha" } }),
       post({ id: 92, kind: "walk_in", roleTitle: "Store Associate", targetRoleUrl: null, location: "Pune", walkInAt: "2026-10-22T05:30:00.000Z", walkInEndsAt: "2026-10-22T09:30:00.000Z", postedAt: "2026-10-12T09:00:00.000Z" }),
@@ -312,11 +347,10 @@ describe("Explore company door (goal, W2)", () => {
     expect(screen.getByText(/Posted by a verified employee/)).toBeTruthy();
     expect(screen.getByText(/Walk-in · /)).toBeTruthy();
     expect(screen.getByText(/Posted Oct 10/)).toBeTruthy();
-    const links = screen.getAllByRole("link", { name: /Ask for a referral/ });
-    expect(links.map(link => link.getAttribute("href"))).toEqual([
-      "/ask?post=91&job=https%3A%2F%2Fcareers.wipro.com%2Fjobs%2F1",
-      "/ask?post=92",
-    ]);
+    // D-174: picking a role asks in place on the door - buttons, not /ask links.
+    const asks = screen.getAllByRole("button", { name: /Ask for a referral/ });
+    expect(asks).toHaveLength(3); // one door commit + one per role row
+    expect(screen.queryByRole("link", { name: /Ask for a referral/ })).toBeNull();
   });
 
   it("shows a failed openings read as retryable and never blocks the rest of the door", async () => {
