@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
+import { OPPORTUNITY_FIRST_LOOK_HOURS } from "@shared/companyOpportunities";
 import { CREDIT_ENDED_CAVEAT, MONEY_SENTENCE } from "@shared/moneyCopy";
 import { COMPANY_CAP_REACHED, companyCapCopy, SLOT_CAP_REACHED } from "@shared/openAskSlots";
 import { ASK_PREFILL_KEY } from "@/lib/askPrefill";
@@ -173,7 +174,7 @@ describe("ask drawer", () => {
     await within(drawer).findByText("ada-resume.pdf");
     fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
     const active = await screen.findByTestId("goal-drawer");
-    expect(within(active).getByText(`The employee who posted this role sees your ask first. Verified wipro.com employees can see it after that first look. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`)).toBeTruthy();
+    expect(within(active).getByText(`The employee who posted this role sees your ask first. If they pass, or after ${OPPORTUNITY_FIRST_LOOK_HOURS} hours, verified wipro.com employees can see it. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`)).toBeTruthy();
     expect(within(active).queryByText(/^Verified wipro.com employees can see it now\./)).toBeNull();
   });
 
