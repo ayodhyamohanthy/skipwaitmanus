@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
 import GoalLandingV9 from "./GoalLandingV9";
 import { landingSnapshot } from "../../../scripts/prerender-public-pages";
@@ -88,6 +88,21 @@ describe("landing first paint matches the goal page (D-048-fix-landing-load-flas
     // The snapshot mirrors typed input + focus into globals the mounted page reads.
     expect(landingSnapshot([])).toContain("__swLandingQuery");
     expect(landingSnapshot([])).toContain("__swLandingFocus");
+  });
+
+  it("mounting keeps the scroll position the visitor reached on the snapshot", () => {
+    const w = window as { __swLandingScrollY?: number };
+    w.__swLandingScrollY = 600;
+    const spy = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    render(<GoalLandingV9 />);
+    expect(spy).toHaveBeenCalledWith(0, 600);
+    expect(w.__swLandingScrollY).toBe(0);
+    spy.mockRestore();
+    delete w.__swLandingScrollY;
+  });
+
+  it("the snapshot tracks pre-mount scroll for the mounted page", () => {
+    expect(landingSnapshot([])).toContain("__swLandingScrollY");
   });
 
   it("the snapshot prints no FAQ, no pre-goal landing copy, and exactly one H1", () => {

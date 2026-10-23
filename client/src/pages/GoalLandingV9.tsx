@@ -63,6 +63,16 @@ function SearchCTA() {
 }
 
 export default function GoalLandingV9() {
+  // A visitor can scroll the prerendered snapshot while the bundle loads;
+  // mounting must not snap them back to the top (same continuity as the
+  // search input below). The snapshot's inline script tracks the position.
+  useEffect(() => {
+    const w = (typeof window === "undefined" ? {} : window) as { __swLandingScrollY?: number };
+    if (w.__swLandingScrollY) {
+      window.scrollTo(0, w.__swLandingScrollY);
+      w.__swLandingScrollY = 0;
+    }
+  }, []);
   return (
     <div className="min-h-screen bg-white font-g-sans text-g-ink">
       <header className="border-b border-g-hairline">
