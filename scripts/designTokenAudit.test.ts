@@ -90,6 +90,11 @@ describe("R6: comp sample data and the compensation row", () => {
     expect(rules([], { sampleNames: ["R-8F3K2"], r6Files: [live('"R-8F3K2"', "client/src/pages/ComponentShowcase.tsx")] })).toEqual(["R6"]);
   });
   it("rejects the word compensation in goal scope", () => { expect(rules([goal('"compensation"')])).toEqual(["R6"]); });
+  it("excuses only the exact shared draft-handoff storage key", () => {
+    expect(rules([goal('localStorage.removeItem("bridge-target-compensation")')])).toEqual([]);
+    expect(rules([goal('"bridge-target-compensation" + "Compensation details"')])).toEqual(["R6"]);
+    expect(rules([goal('"target-compensation"')])).toEqual(["R6"]);
+  });
   it("passes neutral placeholders", () => {
     expect(run([goal('"Company A"')], { sampleNames: ["Fernhill Bank"] })).toEqual([]);
   });
