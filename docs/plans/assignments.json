@@ -684,7 +684,7 @@
       "tier": 1,
       "lane": "design-core",
       "branch": "agent/queue/d048-f-credits",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-048-F-harness"
       ],
@@ -694,7 +694,8 @@
         "client/src/hooks/useCreditBalance.ts",
         "client/src/hooks/useCreditBalance.test.ts",
         "client/src/components/appShell.test.tsx"
-      ]
+      ],
+      "note": " Built by the coordinator lane: PR #568, stacked on #560; needs the D-151 different-model Tier 1 review."
     },
     {
       "id": "D-048-F-static-frame",
