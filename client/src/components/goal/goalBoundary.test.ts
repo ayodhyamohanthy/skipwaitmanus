@@ -32,10 +32,11 @@ describe("goal boundary", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("no goal page file imports kit (reverse check)", () => {
-    const goalPagesDir = join(CLIENT_SRC, "pages", "goal");
+  it("no goal page or goal primitive file imports kit (reverse check)", () => {
     let files: string[] = [];
-    try { files = Array.from(walk(goalPagesDir)); } catch { files = []; }
+    for (const dir of ["pages/goal", "components/goal"]) {
+      try { files.push(...Array.from(walk(join(CLIENT_SRC, ...dir.split("/"))))); } catch { /* dir absent on this base */ }
+    }
     const offenders: string[] = [];
     for (const file of files) {
       const source = readFileSync(file, "utf8");
