@@ -238,11 +238,13 @@ export function thisMonthMinor(id: PlanFamilyId, rung: PlanCreditRung | null, bo
 }
 
 /**
- * Plan display names (D-148, relayed founder decision Oct 23 02:28 IST): Junior = Open Door
- * terms, Mid = Fast Track terms, Senior+ = Insider terms (by application). Ids, fees,
- * credits and benefits are unchanged from D-132. Changeable.
+ * Plan display names (D-152, relayed founder message Oct 23 05:52 IST, verbatim "plans should
+ * be Entry level Referrers, Mid level Referrers, Senior level Referrers"; supersedes the
+ * D-148 names Junior / Mid / Senior+). Names only: ids, fees, credits, benefits and the
+ * +0/+2/+4 reach numbers are unchanged from D-132/D-148, and these names do NOT settle the
+ * unresolved reach mapping (docs/PRICING.md, open launch gaps). Changeable.
  */
-export const PLAN_DISPLAY_NAME: Record<PlanFamilyId, string> = { open_door: "Junior", fast_track: "Mid", insider: "Senior+" } as const;
+export const PLAN_DISPLAY_NAME: Record<PlanFamilyId, string> = { open_door: "Entry level Referrers", fast_track: "Mid level Referrers", insider: "Senior level Referrers" } as const;
 
 /** Level names for the "Who you can ask" row (D-148 designer copy). Job-level names only, never the plan names. */
 export const REACH_LEVEL_NAMES: Record<number, string> = {

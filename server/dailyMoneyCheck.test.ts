@@ -332,7 +332,10 @@ describe("D-065-B slice checks over the in-memory database", () => {
   afterEach(() => { vi.unstubAllEnvs(); });
 
   it("finds a delivery spend on an ask still waiting and a spend reversed twice, never a legacy create charge or a single reversal, and writes nothing", async () => {
-    const deliverySpend = (id: number, requestId: number) => spendRow({ id, referenceId: String(requestId), idempotencyKey: `ask-delivery:${requestId}#1`, tokenCount: -1 });
+    // The real shape: spendCreditsTx writes `${referenceId}#${n}` and keys the row
+    // `${idempotencyKey}#${n}`, so a delivery spend is "601#1" / "ask-delivery:601#1".
+    // The old fixture wrote the bare id, a shape production never writes (D-065-C).
+    const deliverySpend = (id: number, requestId: number) => spendRow({ id, referenceId: `${requestId}#1`, idempotencyKey: `ask-delivery:${requestId}#1`, tokenCount: -1 });
     const reversal = (id: number, spendId: number, kind: string) => spendRow({ id, tokenCount: 1, kind, reversesTransactionId: spendId, idempotencyKey: `reversal-${id}` });
     seedHeldAsks({
       asks: [
@@ -365,6 +368,34 @@ describe("D-065-B slice checks over the in-memory database", () => {
     expect(sent[0]!.text).not.toContain("transaction #61 ");
     expect(sent[0]!.text).not.toContain("@");
     // Read-only: no ask or ledger row moved.
+    expect(store.rows(referralRequests)).toEqual(before.requests);
+    expect(store.rows(tokenTransactions)).toEqual(before.ledger);
+  });
+
+  it("finds a promo-bucket delivery spend too, and reports one finding per ask across bucket rows", async () => {
+    seedHeldAsks({
+      asks: [
+        // Delivery drawn from the promo bucket: kind promo_spend (spendCreditsTx).
+        askRow({ id: 604, referrerId: null, waitingForCoverage: true, debitTransactionId: null }),
+        // A level-priced ask drew from two buckets: two rows, one ask, one finding.
+        askRow({ id: 605, referrerId: null, waitingForCoverage: true, debitTransactionId: null }),
+      ],
+      spends: [
+        spendRow({ id: 71, kind: "promo_spend", source: "promo_grant", referenceId: "604#1", idempotencyKey: "ask-delivery:604#1", tokenCount: -1 }),
+        spendRow({ id: 72, referenceId: "605#1", idempotencyKey: "ask-delivery:605#1", tokenCount: -2 }),
+        spendRow({ id: 73, kind: "promo_spend", source: "promo_grant", referenceId: "605#2", idempotencyKey: "ask-delivery:605#2", tokenCount: -1 }),
+      ],
+    });
+    const before = { requests: structuredClone(store.rows(referralRequests)), ledger: structuredClone(store.rows(tokenTransactions)) };
+    const { deps, sent } = makeDeps({ listAllocatedAsks: listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting });
+    const output = await createDailyMoneyCheck(deps)({ nowMs: KIT_NOW, windowKey: "2026-10-18T12:00Z" });
+    expect(output.failed).toBe(0);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.subject).toBe("skipwait.me daily money check · 2 findings");
+    expect(sent[0]!.text).toContain("ask_spent_while_waiting: ask #604 still waits for coverage, but ledger row #71 spent a credit for it");
+    expect(sent[0]!.text).toContain("ask_spent_while_waiting: ask #605 still waits for coverage");
+    expect(sent[0]!.text.match(/ask_spent_while_waiting/g)).toHaveLength(2);
+    expect(sent[0]!.text).not.toContain("#73 ");
     expect(store.rows(referralRequests)).toEqual(before.requests);
     expect(store.rows(tokenTransactions)).toEqual(before.ledger);
   });
