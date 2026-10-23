@@ -90,6 +90,101 @@
       "note": "D-163 (4): owner words and CEO rulings on open PR #520 never reached main, so no agent follows them and its nine rows (SKIPPY-fix and the rest) are invisible. Build = cut agent/queue/register-520 from #520's head, merge main, renumber every entry to the next free IDs (main already has a different D-156). Review and landing by a model other than Claude, which wrote it (D-151). Docs only."
     },
     {
+      "id": "POSTMERGE-oct22-review",
+      "title": "Post-merge Tier 1 review of the live money and migration PRs merged without review on Oct 22-23 (D-166)",
+      "row": "D-166",
+      "packet": "docs/plans/PROCESS-gates.md",
+      "tier": 1,
+      "lane": "audit",
+      "branch": "agent/queue/postmerge-oct22-review",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-166 (2): #465, #478, #482 (migration 0106), #490 (migration 0107), #506, #517, #534, #535, #479, #510 merged with only a failed Copilot bot review. Review them as they are on main by a model other than Instinct; findings go to docs/plans/POSTMERGE-oct22-findings.md and become fix rows. No code change in this row.",
+      "owns": [
+        "docs/plans/POSTMERGE-oct22-findings.md"
+      ]
+    },
+    {
+      "id": "PROCESS-queue-gate",
+      "title": "CI queue gate: a PR whose branch matches no queue row fails (D-166)",
+      "row": "D-166",
+      "packet": "docs/plans/PROCESS-gates.md",
+      "tier": 2,
+      "lane": "process",
+      "branch": "agent/queue/process-queue-gate",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-166 (2): 23 of 38 product-code merges Oct 19-23 had no row. New scripts/queue-gate.mjs called from scripts/scope-check.mjs, already in the required typecheck job, so no workflow edit; five pass rules in the packet; fails open only on its own error.",
+      "owns": [
+        "scripts/queue-gate.mjs",
+        "scripts/queueGate.test.ts",
+        "scripts/scope-check.mjs",
+        "scripts/scopeCheck.test.ts",
+        "docs/DELEGATION.md"
+      ]
+    },
+    {
+      "id": "PROCESS-review-gate",
+      "title": "CI review gate: a Tier 1 PR needs an independent pass verdict on its exact head (D-166)",
+      "row": "D-166",
+      "packet": "docs/plans/PROCESS-gates.md",
+      "tier": 2,
+      "lane": "process",
+      "branch": "agent/queue/process-review-gate",
+      "status": "todo",
+      "dependsOn": [
+        "PROCESS-queue-gate"
+      ],
+      "note": "D-166 (2): verdicts record 'reviewed <sha>'; merges of main after the review keep it; the reviewer's model never built or fixed it (D-151).",
+      "owns": [
+        "scripts/review-gate.mjs",
+        "scripts/reviewGate.test.ts",
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs (switch only)",
+        "scripts/nextTask.test.ts",
+        "scripts/scope-check.mjs (switch only)",
+        "docs/DELEGATION.md"
+      ]
+    },
+    {
+      "id": "PROCESS-id-check",
+      "title": "CI check: no decision ID or migration number that main already uses (D-166)",
+      "row": "D-166",
+      "packet": "docs/plans/PROCESS-gates.md",
+      "tier": 3,
+      "lane": "process",
+      "branch": "agent/queue/process-id-check",
+      "status": "todo",
+      "dependsOn": [
+        "PROCESS-review-gate"
+      ],
+      "note": "D-166 (2): D-155 and D-156 collided twice and 0108 three times on Oct 23.",
+      "owns": [
+        "scripts/decision-id-check.mjs",
+        "scripts/decisionIdCheck.test.ts",
+        "scripts/scope-check.mjs (switch only)"
+      ]
+    },
+    {
+      "id": "PROCESS-scorecard",
+      "title": "Weekly scorecard script the CEO review starts from (D-166)",
+      "row": "D-166",
+      "packet": "docs/plans/PROCESS-gates.md",
+      "tier": 3,
+      "lane": "process",
+      "branch": "agent/queue/process-scorecard",
+      "status": "todo",
+      "dependsOn": [
+        "PROCESS-id-check"
+      ],
+      "note": "D-166 (2): merges by kind, untracked and unreviewed merges, lead time, reverts, blocked reports, live SHAs.",
+      "owns": [
+        "scripts/scorecard.mjs",
+        "scripts/scorecard.test.ts",
+        "docs/DELEGATION.md"
+      ]
+    },
+    {
       "id": "D-069-chargebee-catalog-sync",
       "title": "Admin-only Chargebee catalog sync: dry run, then one owner-triggered apply",
       "row": "D-069-chargebee-catalog-sync",
