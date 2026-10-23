@@ -256,6 +256,30 @@ describe("Explore company door (goal, W2)", () => {
     expect(go).not.toHaveBeenCalledWith(expect.stringContaining("/ask"), expect.anything());
   });
 
+  it("a linkless post after a linked one never keeps the stale link or pass check, and carries no post identity (D-174 sequence)", async () => {
+    const posts = [
+      { id: 21, companyDomain: "wipro.com", kind: "hiring_now" as const, roleTitle: "Product Designer", targetRoleUrl: "https://careers.wipro.com/jobs/design", location: "Bengaluru", compensation: null, walkInAt: null, walkInEndsAt: null, postedAt: "2026-10-20T00:00:00.000Z", expiresAt: "2026-11-20T00:00:00.000Z", poster: { kind: "anonymous" as const } },
+      { id: 22, companyDomain: "wipro.com", kind: "walk_in" as const, roleTitle: "Store Associate", targetRoleUrl: null, location: "Pune", compensation: null, walkInAt: "2026-10-26T05:30:00.000Z", walkInEndsAt: "2026-10-26T09:30:00.000Z", postedAt: "2026-10-20T00:00:00.000Z", expiresAt: "2026-11-20T00:00:00.000Z", poster: { kind: "anonymous" as const } },
+    ];
+    stubDirectory(ALL_OPEN, posts);
+    renderWithQuery(<ExploreCompany />);
+    await heroName();
+    // Linked post first: its verified link fills the composer and passes the check.
+    const linkedRow = (await screen.findByText("Product Designer")).closest("li") as HTMLElement;
+    fireEvent.click(within(linkedRow).getByRole("button", { name: /Ask for a referral/ }));
+    let drawer = await screen.findByTestId("goal-drawer");
+    expect((within(drawer).getByLabelText("Job link") as HTMLInputElement).value).toBe("https://careers.wipro.com/jobs/design");
+    expect(within(drawer).getByText(/Matches Wipro.{0,3}s careers site/)).toBeTruthy();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByTestId("goal-drawer")).toBeNull());
+    // Then the linkless walk-in: the stale link and its pass check must be gone.
+    const walkInRow = (await screen.findByText("Store Associate")).closest("li") as HTMLElement;
+    fireEvent.click(within(walkInRow).getByRole("button", { name: /Ask for a referral/ }));
+    drawer = await screen.findByTestId("goal-drawer");
+    expect((within(drawer).getByLabelText("Job link") as HTMLInputElement).value).toBe("");
+    expect(within(drawer).queryByText(/Matches Wipro.{0,3}s careers site/)).toBeNull();
+  });
+
   it("filters the company's posted roles by role or location text, then clears (D-174)", async () => {
     const posts = [
       { id: 11, companyDomain: "wipro.com", kind: "hiring_now" as const, roleTitle: "Product Designer", targetRoleUrl: null, location: "Bengaluru", compensation: null, walkInAt: null, walkInEndsAt: null, postedAt: "2026-10-20T00:00:00.000Z", expiresAt: "2026-11-20T00:00:00.000Z", poster: { kind: "anonymous" as const } },

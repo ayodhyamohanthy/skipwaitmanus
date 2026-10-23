@@ -164,9 +164,12 @@ function CompanyPage({ company }: { company: PublicCompany }) {
           slug={company.slug}
           companyName={company.name}
           onAsk={post => {
-            // D-174: pick a job, then ask - in place on the door. The role's
-            // verified public link prefills the composer when the post has one.
-            if (post.targetRoleUrl) composer.onUrlChange(post.targetRoleUrl);
+            // D-174: pick a job, then ask - in place on the door. The pick
+            // replaces the whole composer selection: the role's verified link
+            // prefills when the post has one, and a linkless post clears any
+            // stale link from an earlier pick. The post id travels with the
+            // send so the poster sees the ask first (D-022).
+            composer.selectPost({ opportunityId: post.id, jobUrl: post.targetRoleUrl });
             setDrawerOpen(true);
           }}
         />
