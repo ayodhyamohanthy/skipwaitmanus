@@ -98,6 +98,13 @@ describe("R6: comp sample data and the compensation row", () => {
   it("passes neutral placeholders", () => {
     expect(run([goal('"Company A"')], { sampleNames: ["Fernhill Bank"] })).toEqual([]);
   });
+  it("excuses the legitimate post-opportunity field but still bans the queue copy there", () => {
+    const postOpp = (source: string) => goal(source, "client/src/pages/goal/post-opportunity/GoalPostOpportunity.tsx");
+    expect(rules([postOpp('"compensation" "Compensation (optional)"')])).toEqual([]);
+    expect(rules([postOpp('"Compensation (Recommended)"')])).toEqual(["R6"]);
+    expect(rules([postOpp('"expected compensation"')])).toEqual(["R6"]);
+    expect(rules([postOpp('"Recommended compensation"')])).toEqual(["R6"]);
+  });
 });
 
 describe("R7: no token drift in the phase-2 block", () => {
