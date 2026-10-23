@@ -20,6 +20,9 @@ export type ParsedPaidPaymentEvent = {
   passThruContent?: string;
   amount: number;
   currency: string;
+  subscriptionId?: string;
+  customerId?: string;
+  occurredAt?: Date;
 };
 
 export type VerifiedChargebeeHostedPage = {
@@ -102,7 +105,19 @@ export function parsePaidPaymentEvent(payload: any) {
     : typeof payment.pass_thru_content === "string"
       ? payment.pass_thru_content
       : undefined;
-  return { eventId, invoiceId, hostedPageId, passThruContent, amount, currency } satisfies ParsedPaidPaymentEvent;
+  // D-155: the subscription and customer this payment belongs to, when the
+  // event carries them. This is what ties subscription payments (which never
+  // create a token-pack fulfillment row) to a wallet as paid evidence.
+  const subscriptionId = typeof payload?.content?.subscription?.id === "string"
+    ? payload.content.subscription.id
+    : typeof invoice?.subscription_id === "string"
+      ? invoice.subscription_id
+      : typeof payment.subscription_id === "string"
+        ? payment.subscription_id
+        : undefined;
+  const customerId = typeof payload?.content?.customer?.id === "string" ? payload.content.customer.id : undefined;
+  const occurredAt = dateFromChargebeeSeconds(payload?.occurred_at);
+  return { eventId, invoiceId, hostedPageId, passThruContent, amount, currency, subscriptionId, customerId, occurredAt } satisfies ParsedPaidPaymentEvent;
 }
 
 export type ParsedRefundEvent = { eventId: string; invoiceId?: string; refundAmount?: number; currency?: string };

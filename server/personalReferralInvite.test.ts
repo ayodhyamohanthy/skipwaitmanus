@@ -18,11 +18,12 @@ describe("personal referral invite eligibility", () => {
 
 describe("personal referral link unlock evidence (D-155)", () => {
   it("unlocks only on provider-verified payment evidence", () => {
-    expect(personalInviteUnlockedFromEvidence({ paidPayments: 0 })).toBe(false);
-    expect(personalInviteUnlockedFromEvidence({ paidPayments: 1 })).toBe(true);
-    expect(personalInviteUnlockedFromEvidence({ paidPayments: 2 })).toBe(true);
-    // A subscription activation alone is not paid evidence (activation can
-    // precede settlement), and a refunded first payment is an open policy
-    // question - neither unlocks the link until resolved.
+    expect(personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 0 })).toBe(false);
+    expect(personalInviteUnlockedFromEvidence({ paidPayments: 1, subscriptionPayments: 0 })).toBe(true);
+    expect(personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 1 })).toBe(true);
+    expect(personalInviteUnlockedFromEvidence({ paidPayments: 2, subscriptionPayments: 1 })).toBe(true);
+    // Subscription evidence is the payment_succeeded wallet stamp, never
+    // activation alone; refunded first payments stay an open policy question
+    // (D-155) and are counted only so existing unlocks are not revoked.
   });
 });

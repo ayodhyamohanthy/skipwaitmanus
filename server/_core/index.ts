@@ -313,6 +313,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     fulfillPayment: db.fulfillChargebeePayment,
     createSubscriptionIntent: db.createChargebeeSubscriptionIntent,
     applySubscriptionEvent: db.applyChargebeeSubscriptionEvent,
+    recordSubscriptionPaymentEvidence: db.recordSubscriptionPaymentEvidence,
     recordGiftEvent: db.recordGiftProviderEvent,
     listBuyerGifts: db.listBuyerGifts,
     listClaimableGifts: db.listClaimableGiftsForUser,

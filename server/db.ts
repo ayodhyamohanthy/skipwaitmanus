@@ -3799,41 +3799,68 @@ async function addPersonalReferralRewardCredit(tx: any, userId: number) {
 
 /**
  * Referral-link unlock (D-155): source-backed, provider-verified evidence of
- * a successful nonzero payment on the account.
+ * a successful nonzero payment on the account. Two evidence paths:
  *
- * The one evidence path implemented here: a one-time checkout whose
- * fulfillment reached "credited" - written only from a payment_succeeded
- * webhook with a nonzero INR/USD amount after the amount check (mismatches
- * park as requires_review and never count; pending / rejected fulfillments
- * and mere checkout-or-page creation never count).
- *
- * Two deliberate exclusions, held open rather than invented as policy:
- *
- * - Refunded purchases. The owner's Oct 23 wording ("unlock after your first
- *   paid invoice ... once you've made a payment") is ambiguous for a
- *   first-ever payment that was later refunded. Until he rules, a
- *   credited-then-refunded fulfillment does NOT unlock the link. D-155 keeps
- *   this as an open question, not a settled fact.
- * - Subscriptions. A wallet's subscriptionId only proves the webhook saw an
- *   activation; activation can precede settlement (or be created by hand in
- *   the Chargebee dashboard) and subscription payments never create a
- *   paymentFulfillments row, so a subscription alone does not unlock the
- *   link. The safe path is to stamp the wallet from the payment_succeeded
- *   webhook for the subscription's owner (provider-verified, nonzero) and
- *   gate on that stamp. Until that lands, subscription-only buyers stay
- *   locked - a false lock, never a false unlock.
+ * 1. A one-time checkout whose fulfillment reached "credited" - written only
+ *    from a payment_succeeded webhook with a nonzero INR/USD amount after
+ *    the amount check (mismatches park as requires_review and never count;
+ *    pending / rejected fulfillments and mere checkout-or-page creation
+ *    never count). A fulfillment later marked refunded is still counted ONLY
+ *    so a link that already unlocked while it was credited is not silently
+ *    revoked; refunded-first-payment policy is OPEN (D-155), not settled.
+ * 2. A subscription payment stamped onto the wallet by
+ *    recordSubscriptionPaymentEvidence from a payment_succeeded webhook tied
+ *    to the wallet's subscriptionId. Activation alone (wallet
+ *    subscriptionId) is NOT evidence: it can precede settlement or be
+ *    created by hand in the Chargebee dashboard, and subscription payments
+ *    never create a paymentFulfillments row.
  *
  * The promoCreditGrants first_paid_invoice row is not usable here: promo
  * grants are disabled (grantPromoCreditsTx returns early).
  */
-export function personalInviteUnlockedFromEvidence(evidence: { paidPayments: number }): boolean {
-  return evidence.paidPayments > 0;
+export function personalInviteUnlockedFromEvidence(evidence: { paidPayments: number; subscriptionPayments: number }): boolean {
+  return evidence.paidPayments > 0 || evidence.subscriptionPayments > 0;
+}
+
+/**
+ * D-155: record provider-verified paid evidence for a subscription. The
+ * caller passes an already-validated nonzero payment_succeeded event; the
+ * subscriptionEvents row makes redeliveries duplicates and lets a payment
+ * that arrived before the wallet's activation be backfilled by
+ * hasUserMadePayment. The stamp keeps the earliest payment time - a renewal
+ * or redelivery never moves it. Wallets are matched by provider
+ * subscriptionId, so the evidence is tied to the subscription's owner, not
+ * to an email guess.
+ */
+export async function recordSubscriptionPaymentEvidence(input: { eventId: string; subscriptionId: string; occurredAt?: Date }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const duplicate = await tx.select().from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee"), eq(subscriptionEvents.providerEventId, input.eventId))).limit(1);
+    if (duplicate[0]) return { status: "duplicate" as const };
+    await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, eventType: "payment_succeeded" });
+    const wallet = (await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update"))[0];
+    if (!wallet) return { status: "recorded" as const, reason: "wallet_not_linked_yet" as const };
+    const paidAt = input.occurredAt ?? new Date();
+    if (!wallet.lastPaidAt || wallet.lastPaidAt > paidAt) await tx.update(tokenBalances).set({ lastPaidAt: paidAt }).where(eq(tokenBalances.id, wallet.id));
+    return { status: "recorded" as const, reason: "stamped" as const };
+  });
 }
 
 export async function hasUserMadePayment(userId: number): Promise<boolean> {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const payments = await db.select({ id: paymentFulfillments.id }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), eq(paymentFulfillments.status, "credited"))).limit(1);
-  return personalInviteUnlockedFromEvidence({ paidPayments: payments.length });
+  const payments = await db.select({ id: paymentFulfillments.id }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), inArray(paymentFulfillments.status, ["credited", "refunded"]))).limit(1);
+  if (payments.length > 0) return true;
+  const wallet = (await db.select({ id: tokenBalances.id, subscriptionId: tokenBalances.subscriptionId, lastPaidAt: tokenBalances.lastPaidAt }).from(tokenBalances).where(eq(tokenBalances.userId, userId)).limit(1))[0];
+  if (!wallet) return personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 0 });
+  if (wallet.lastPaidAt) return personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 1 });
+  if (!wallet.subscriptionId) return false;
+  // Out-of-order delivery: the payment_succeeded event can be recorded
+  // before the activation that links the wallet. A recorded payment event
+  // for the now linked subscription backfills the stamp.
+  const paidEvent = (await db.select({ id: subscriptionEvents.id }).from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee"), eq(subscriptionEvents.subscriptionId, wallet.subscriptionId), eq(subscriptionEvents.eventType, "payment_succeeded"))).limit(1))[0];
+  if (!paidEvent) return false;
+  await db.update(tokenBalances).set({ lastPaidAt: new Date() }).where(eq(tokenBalances.id, wallet.id));
+  return true;
 }
 
 export type PersonalReferralInviteState = { status: "locked" } | { status: "unlocked"; inviteCode: string };
