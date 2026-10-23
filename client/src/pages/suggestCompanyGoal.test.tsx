@@ -47,6 +47,47 @@ describe("goal suggest company", () => {
     expect(screen.getByRole("link", { name: /Invite someone/ }).getAttribute("href")).toBe("/invite?mode=invite");
   });
 
+  it("blocks the commit while sending and posts exactly once with the exact payload", async () => {
+    let release: () => void = () => undefined;
+    const calls: { url: string; method?: string; credentials?: string; body?: string }[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), method: init?.method, credentials: init?.credentials as string | undefined, body: init?.body as string | undefined });
+      await new Promise<void>(resolve => { release = resolve; });
+      return { ok: true, status: 200, json: async () => ({}) } as Response;
+    }));
+    render(<SuggestCompany />);
+    fill();
+    const commit = await screen.findByRole("button", { name: /Submit for review/ });
+    fireEvent.click(commit);
+    const sending = await screen.findByRole("button", { name: /Sending/ });
+    expect(sending.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(sending);
+    release();
+    expect(await screen.findByText(/Quillmint is in review/)).toBeTruthy();
+    expect(calls.length).toBe(1);
+    expect(calls[0].url).toBe("/api/company-suggestions");
+    expect(calls[0].method).toBe("POST");
+    expect(calls[0].credentials).toBe("include");
+    expect(JSON.parse(calls[0].body || "{}")).toEqual({ companyName: "Quillmint", website: "https://quillmint.ai", role: "seeker" });
+  });
+
+  it("network failure shows the reason and re-arms the commit for retry", async () => {
+    let down = true;
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      if (down) throw new TypeError("Failed to fetch");
+      return { ok: true, status: 200, json: async () => ({}) } as Response;
+    }));
+    render(<SuggestCompany />);
+    fill();
+    fireEvent.click(await screen.findByRole("button", { name: /Submit for review/ }));
+    expect(await screen.findByText("We could not save this suggestion. Check your connection, then try again.")).toBeTruthy();
+    const retry = screen.getByRole("button", { name: /Submit for review/ });
+    expect(retry.getAttribute("aria-disabled")).not.toBe("true");
+    down = false;
+    fireEvent.click(retry);
+    expect(await screen.findByText(/Quillmint is in review/)).toBeTruthy();
+  });
+
   it("shows the duplicate hint and blocks the commit", async () => {
     const dir = await import("@/lib/companyDirectory");
     vi.spyOn(dir, "useCompanyDirectory").mockReturnValue({ data: { companies: [{ name: "Quillmint", slug: "quillmint" }] }, isError: false } as never);
