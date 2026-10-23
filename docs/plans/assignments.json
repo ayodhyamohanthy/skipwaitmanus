@@ -142,20 +142,6 @@
       "note": "Landed after an independent Tier 1 review passed part A and part B: REFERRED_DEADLINE_ENABLED=true and REFERRAL_TIMERS_SINCE=2026-10-23T00:00:00Z in the landing commit (D-103, R-2/R-3). Builds on workbuddy's PR #353 and qoder's audit #354 (docs/reviews/D-038-reconcile-evidence.md). Never merge agent/opencode/d038-a-lapses."
     },
     {
-      "id": "D-035",
-      "title": "The pass reason decides the credit (D-035 with D-052, D-066 (4), D-076 (1), (7))",
-      "row": "D-035",
-      "packet": "docs/plans/D-035-pass-reason-credit.md",
-      "tier": 1,
-      "lane": "money-core",
-      "branch": "agent/queue/d035-pass-credit",
-      "status": "owner",
-      "dependsOn": [
-        "D-038-reconcile"
-      ],
-      "note": "D-147 (Oct 23): PR #471 landed D-035 on main without the founder's word and #486 reverted it; it waits on the founder. If he wants it, it returns behind an off flag with his word recorded in DECISIONS.md first, rebased on whatever D-132-audit has landed in the same spend and refund code."
-    },
-    {
       "id": "D-048-p3-live-review",
       "title": "Post-landing review of the live goal /explore and /requests (#362, #360): send path, credits, money copy, states",
       "row": "D-048",
