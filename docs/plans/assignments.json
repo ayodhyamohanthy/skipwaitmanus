@@ -257,14 +257,14 @@
       "tier": 1,
       "lane": "d048-find",
       "branch": "agent/queue/d048-live-review-find",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "P0-ask-link-signin",
         "D-132-audit",
         "D-048-F-goal-check",
         "D-048-fix-start-ask-handoff"
       ],
-      "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row\u2019s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete.",
+      "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row\u2019s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete. Status Oct 23: implemented in PR #566 (draft, covers find, queue and both conversations), Tier 1 - held for the D-151 different-model review.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/Explore.tsx",
@@ -301,14 +301,14 @@
       "tier": 1,
       "lane": "d048-seeker-thread",
       "branch": "agent/queue/d048-live-review-conversation",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-038-reconcile",
         "D-132-audit",
         "ROW20-CD",
         "D-048-F-goal-check"
       ],
-      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first.",
+      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. Status Oct 23: implemented in PR #566 (draft, covers find, queue and both conversations), Tier 1 - held for the D-151 different-model review.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/conversation/SeekerConversation.tsx"
@@ -322,12 +322,12 @@
       "tier": 1,
       "lane": "d048-workspace",
       "branch": "agent/queue/d048-live-review-queue",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "P1-queue-attestation",
         "D-048-F-goal-check"
       ],
-      "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the referral queue against its kit version (pass codes, pre-acceptance privacy, verified-referrer check, lost test pins). After P1-queue-attestation, which edits the same page.",
+      "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the referral queue against its kit version (pass codes, pre-acceptance privacy, verified-referrer check, lost test pins). After P1-queue-attestation, which edits the same page. Status Oct 23: implemented in PR #565 by GPT \u00b7 5deb; repo checks green, external Cloudflare Workers check failing (unverified cause, under infra-lane investigation); independent review pending.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/MyCompanyInbox.tsx",
@@ -664,7 +664,7 @@
       "tier": 2,
       "lane": "design-core",
       "branch": "agent/queue/d048-f-harness",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-p3-w0-shell"
       ],
@@ -675,7 +675,8 @@
         "scripts/kit-screens/fixtures/00_goal-*.json",
         "scripts/kitScreenFixtures.test.ts",
         "docs/plans/D-048-capture-checklist.md"
-      ]
+      ],
+      "note": "Landed Oct 23 in #564 (merge 4680cdb1): goalShellHarness + capture.mjs + 00_goal fixtures + capture checklist, matching this row's owns."
     },
     {
       "id": "D-048-F-credits",
@@ -744,7 +745,7 @@
       "tier": 2,
       "lane": "design-check",
       "branch": "agent/queue/d048-f-goal-check",
-      "status": "in-review",
+      "status": "done",
       "dependsOn": [
         "D-048-F-primitives"
       ],
@@ -756,7 +757,7 @@
         "client/src/test/goalPageContract.test.tsx",
         "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "D-167: a page counts as moved only when its test calls assertGoalPage (one h1 goal line, exactly one data-g-primary inside the GoalNextStep block, no kit.css classes) and the boundary test finds no kit or ui import. Every surface row depends on this one. Built by the coordinator lane (Main, Oct 23 - it blocks 14 surface rows): PR #567, stacked on #560."
+      "note": "D-167: a page counts as moved only when its test calls assertGoalPage (one h1 goal line, exactly one data-g-primary inside the GoalNextStep block, no kit.css classes) and the boundary test finds no kit or ui import. Every surface row depends on this one. Built by the coordinator lane (Main, Oct 23 - it blocks 14 surface rows): PR #567, stacked on #560. Landed Oct 23 in #567 (merge f0616e18)."
     },
     {
       "id": "D-048-F-shell-parts",
@@ -916,7 +917,7 @@
       "tier": 1,
       "lane": "d048-asks",
       "branch": "agent/queue/d048-inbox",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -930,7 +931,7 @@
         "client/src/pages/inboxGoal.test.tsx",
         "design/goal-ui/captures/inbox/**"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Status Oct 23: implemented in PR #569 (draft, dark), pending CI/review/merge."
     },
     {
       "row": "D-048",
@@ -941,7 +942,7 @@
       "tier": 2,
       "lane": "d048-onboard",
       "branch": "agent/queue/d048-start",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -954,7 +955,7 @@
         "client/src/pages/startGoal.test.tsx",
         "design/goal-ui/captures/start/**"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Status Oct 23: implemented in PR #570 (draft, dark), pending CI/review/merge."
     },
     {
       "row": "D-048",
@@ -965,7 +966,7 @@
       "tier": 2,
       "lane": "d048-onboard",
       "branch": "agent/queue/d048-onboarding",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -978,7 +979,7 @@
         "client/src/pages/onboardingGoal.test.tsx",
         "design/goal-ui/captures/onboarding/**"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Status Oct 23: implemented in PR #571 (draft, dark), pending CI/review/merge."
     },
     {
       "row": "D-048",
@@ -989,7 +990,7 @@
       "tier": 1,
       "lane": "d048-assistants",
       "branch": "agent/queue/d048-assistants",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1003,7 +1004,7 @@
         "client/src/pages/goal/assistants/**",
         "design/goal-ui/captures/assistants/**"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Scope amendment (Oct 23, whole-app goal-UI program, Linear AYO-9): /agents (SeekerAgents, the seeker agent-keys surface) has no split row; it belongs to the assistants family, so this row owns its switch and goal body too. Amended by the program coordinator with Main's direction; no other row changes."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Scope amendment (Oct 23, whole-app goal-UI program, Linear AYO-9): /agents (SeekerAgents, the seeker agent-keys surface) has no split row; it belongs to the assistants family, so this row owns its switch and goal body too. Amended by the program coordinator with Main's direction; no other row changes. Status Oct 23: implemented in PR #563 (draft, dark), Tier 1 - held for the D-151 different-model review."
     },
     {
       "row": "D-048",
@@ -1014,7 +1015,7 @@
       "tier": 2,
       "lane": "d048-small",
       "branch": "agent/queue/d048-seeker-small",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1030,7 +1031,31 @@
         "client/src/pages/goal/seeker-small/**",
         "design/goal-ui/captures/seeker-small/**"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Status Oct 23: implemented in PR #572 (draft, dark), pending CI/review/merge."
+    },
+    {
+      "row": "D-048",
+      "packet": "docs/plans/D-048-seeker.md",
+      "epic": "D-048-p3",
+      "id": "D-048-p3-alerts",
+      "title": "/alerts and /notifications goal surface: what needs you, one Open-it commit, inline errors (dark)",
+      "tier": 2,
+      "lane": "d048-alerts",
+      "branch": "agent/queue/d048-alerts",
+      "status": "in-review",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-P-seeker",
+        "D-048-F-goal-check"
+      ],
+      "owns": [
+        "client/src/pages/Alerts.tsx",
+        "client/src/pages/goal/alerts/**",
+        "client/src/pages/alertsGoal.test.tsx",
+        "design/goal-ui/captures/alerts/**"
+      ],
+      "note": "Registered Oct 23 under the whole-app goal mandate: the alerts surface was pre-declared in GOAL_SURFACES (D-097) and built by the worker lane in PR #573 (draft, dark) before a row existed; this row registers it through the one-door rule so the PR is tracked, preserving its review gates. D-134: implement only the split-owned paths, keep the goal surface off in production, follow the packet for tests/captures."
     },
     {
       "id": "D-048-p3-skippy",
@@ -1126,7 +1151,7 @@
       "tier": 1,
       "lane": "d048-workspace",
       "branch": "agent/queue/d048-p3-referrer",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1141,7 +1166,7 @@
         "client/src/pages/referrerGoal.test.tsx",
         "design/goal-ui/captures/referrer/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('referrer'); no credits pill; referrerSignInHref() only.",
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('referrer'); no credits pill; referrerSignInHref() only. Status Oct 23: implemented in PR #575 (draft, dark), Tier 1 - held for the D-151 different-model review.",
       "epic": "D-048-p3"
     },
     {
@@ -1152,7 +1177,7 @@
       "tier": 1,
       "lane": "d048-referrer-home",
       "branch": "agent/queue/d048-p3-referrer-home",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1168,7 +1193,7 @@
         "client/src/pages/referrerHomeGoal.test.tsx",
         "design/goal-ui/captures/referrer-home/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('referrer-home').",
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('referrer-home'). Status Oct 23: implemented in PR #576 (draft, dark), Tier 1 - held for the D-151 different-model review.",
       "epic": "D-048-p3"
     },
     {
@@ -1179,7 +1204,7 @@
       "tier": 2,
       "lane": "d048-referrer-home",
       "branch": "agent/queue/d048-p3-invite",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1192,7 +1217,7 @@
         "client/src/pages/goal/invite/**",
         "design/goal-ui/captures/invite/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('invite').",
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('invite'). Status Oct 23: implemented in PR #577 (draft, dark); exact-head CI green; designer source+fixture-pixel PASS Oct 23; QA full-flow and D-097 release gates remain.",
       "epic": "D-048-p3"
     },
     {
@@ -1203,7 +1228,7 @@
       "tier": 2,
       "lane": "d048-post",
       "branch": "agent/queue/d048-p3-post",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1215,7 +1240,7 @@
         "client/src/pages/goal/post-opportunity/**",
         "design/goal-ui/captures/post-opportunity/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('post-opportunity').",
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('post-opportunity'). Landed Oct 23 in #578 (merge 79b0c337); surface stays dark (RELEASED = [\"home\"] only); release edit follows D-097 QA flag-on verification.",
       "epic": "D-048-p3"
     },
     {
@@ -1226,7 +1251,7 @@
       "tier": 1,
       "lane": "d048-verify",
       "branch": "agent/queue/d048-p3-email-review",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
@@ -1238,7 +1263,7 @@
         "client/src/pages/goal/email-review/**",
         "design/goal-ui/captures/email-review/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('email-review'). D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23).",
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('email-review'). D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23). Status Oct 23: implemented in PR #579 (draft, dark), Tier 1 - held for the D-151 different-model review.",
       "epic": "D-048-p3"
     },
     {
@@ -1688,9 +1713,9 @@
       "tier": 2,
       "lane": "d048-foundation",
       "branch": "agent/instinct/d048-fix-start-ask-handoff",
-      "status": "in-review",
+      "status": "done",
       "dependsOn": [],
-      "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top."
+      "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top. Landed Oct 23 in #586 (merge e12ae6f0)."
     }
   ]
 }
