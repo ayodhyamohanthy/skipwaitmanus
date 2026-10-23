@@ -50,7 +50,7 @@ export default function GoalLanded() {
   };
 
   const shell = (children: React.ReactNode) => (
-    <main data-skipwait-screen="landed" data-testid="goal-landed" className="page-content mx-auto w-full max-w-xl pb-10">
+    <main data-skipwait-screen="landed" data-testid="goal-landed" className="g-scope page-content mx-auto w-full max-w-xl pb-10">
       <header className="px-4 pt-6 gdesk:px-5 gdesk:pt-7">
         <h1 className="text-g-display text-g-ink">Close the loop on your new role.</h1>
       </header>
@@ -61,7 +61,7 @@ export default function GoalLanded() {
   if (!isLoaded) return shell(<div className="mx-4 my-5 gdesk:mx-5"><RequestsLoading slow={false} /></div>);
 
   if (!isSignedIn) {
-    return <main data-skipwait-screen="landed-sign-in" data-testid="goal-landed" className="page-content mx-auto w-full max-w-xl pb-10">
+    return <main data-skipwait-screen="landed-sign-in" data-testid="goal-landed" className="g-scope page-content mx-auto w-full max-w-xl pb-10">
       <header className="px-4 pt-6 gdesk:px-5 gdesk:pt-7">
         <h1 className="text-g-display text-g-ink">Close the loop on your new role.</h1>
         <p className="mt-2 text-g-meta text-g-ink-2">Someone helped you land it. Sign in to find the ask and send your thank-you.</p>

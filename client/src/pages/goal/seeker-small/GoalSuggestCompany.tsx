@@ -31,7 +31,7 @@ export default function GoalSuggestCompany() {
   const siteOk = SITE_PATTERN.test(website.trim());
 
   if (!isSignedIn) {
-    return <main data-skipwait-screen="suggest-company-sign-in" data-testid="goal-suggest-company" className="page-content mx-auto w-full max-w-xl pb-10">
+    return <main data-skipwait-screen="suggest-company-sign-in" data-testid="goal-suggest-company" className="g-scope page-content mx-auto w-full max-w-xl pb-10">
       <header className="px-4 pt-6 gdesk:px-5 gdesk:pt-7">
         <h1 className="text-g-display text-g-ink">Bring a company onto skipwait.</h1>
         <p className="mt-2 text-g-meta text-g-ink-2">Real employers only. We review every suggestion before it appears.</p>
@@ -59,7 +59,7 @@ export default function GoalSuggestCompany() {
   };
 
   if (sentName !== null) {
-    return <main data-skipwait-screen="suggest-company-done" data-testid="goal-suggest-company" className="page-content mx-auto w-full max-w-xl pb-10">
+    return <main data-skipwait-screen="suggest-company-done" data-testid="goal-suggest-company" className="g-scope page-content mx-auto w-full max-w-xl pb-10">
       <header className="px-4 pt-6 gdesk:px-5 gdesk:pt-7">
         <h1 className="text-g-display text-g-ink">Bring a company onto skipwait.</h1>
         <p className="mt-2 flex items-center gap-2 text-g-meta text-g-ink-2">
@@ -77,7 +77,7 @@ export default function GoalSuggestCompany() {
 
   const blockedReason = submitting ? "Sending…" : name.trim().length < 2 ? "Name the company first" : !siteOk ? "Add the company website" : listed ? `${listed.name} is already listed` : undefined;
 
-  return <main data-skipwait-screen="suggest-company" data-testid="goal-suggest-company" className="page-content mx-auto w-full max-w-xl pb-10">
+  return <main data-skipwait-screen="suggest-company" data-testid="goal-suggest-company" className="g-scope page-content mx-auto w-full max-w-xl pb-10">
     <header className="px-4 pt-6 gdesk:px-5 gdesk:pt-7">
       <h1 className="text-g-display text-g-ink">Bring a company onto skipwait.</h1>
       <p className="mt-2 text-g-meta text-g-ink-2">Real employers only. We review every suggestion before it appears.</p>
