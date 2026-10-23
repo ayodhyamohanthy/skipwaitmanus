@@ -76,7 +76,7 @@ function stub(options: { directory?: CompanyDirectoryResponse; credits?: number;
 const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Explore /></QueryClientProvider>);
 const openWipro = async () => {
   renderPage();
-  fireEvent.click(await screen.findByRole("link", { name: "Wipro, open to requests" }));
+  fireEvent.click(await screen.findByRole("link", { name: "Wipro" }));
   return screen.findByTestId("goal-drawer");
 };
 const fillLink = (drawer: HTMLElement, value = "https://careers.wipro.com/jobs/1234567-product-designer") => {
@@ -285,7 +285,7 @@ describe("ask drawer", () => {
     fillReasons(drawer);
     fireEvent.click(within(drawer).getByRole("button", { name: "Close" }));
     await waitFor(() => expect(screen.queryByTestId("goal-drawer")).toBeNull());
-    fireEvent.click(screen.getByRole("link", { name: "Merkle, open to requests" }));
+    fireEvent.click(screen.getByRole("link", { name: "Merkle" }));
     const next = await screen.findByTestId("goal-drawer");
     expect((within(next).getByLabelText("Job link") as HTMLInputElement).value).toBe("");
     expect((within(next).getByPlaceholderText(/One result/) as HTMLTextAreaElement).value).toBe("");
@@ -297,7 +297,7 @@ describe("ask drawer", () => {
   it("offers the alert on a company that is not open, and says an alert is not a referral", async () => {
     const fetchMock = stub({ directory: WIPRO_CLOSED });
     renderPage();
-    fireEvent.click(await screen.findByRole("link", { name: "Wipro, not open yet" }));
+    fireEvent.click(await screen.findByRole("link", { name: "Wipro" }));
     const drawer = await screen.findByTestId("goal-drawer");
     fireEvent.click(within(drawer).getByRole("button", { name: "Get told when a referrer joins" }));
     expect(await within(drawer).findByText("We’ll tell you when a verified employee at Wipro joins.")).toBeTruthy();
