@@ -26,7 +26,7 @@ describe("goal shell harness", () => {
     expect(goalHarnessFetch).not.toHaveBeenCalled();
     // The pill renders once in the rail and once in the bar; both carry the count.
     for (const pill of screen.getAllByTestId("goal-credits-pill")) {
-      expect(pill.getAttribute("aria-label")).toContain("7 credits");
+      expect(pill.getAttribute("aria-label")).toContain("7 referrals");
     }
   });
 

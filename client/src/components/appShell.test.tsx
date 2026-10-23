@@ -67,12 +67,12 @@ describe("AppShell on GoalShell (W0)", () => {
 
   it("shows the live credits count on seeker pages and never 0 on a failed load", () => {
     render(<AppShell><p>page</p></AppShell>);
-    expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toContain("9 credits");
+    expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toContain("9 referrals");
     cleanup();
     state.credits = { data: undefined, isError: true, refetch: vi.fn() };
     render(<AppShell><p>page</p></AppShell>);
     expect(screen.getAllByText("Balance didn't load").length).toBeGreaterThan(0);
-    expect(screen.queryByText(/0 credits/)).toBeNull();
+    expect(screen.queryByText(/0 referrals/)).toBeNull();
   });
 
   it("shows no credits pill on referrer surfaces (D-055)", () => {
@@ -133,9 +133,9 @@ describe("AppShell on GoalShell (W0)", () => {
     const pills = screen.getAllByTestId("goal-credits-pill");
     for (const pill of pills) {
       expect(pill.className).toContain("g-hit");
-      // Only the numeral is mono; "credits" stays sans (comp: button.credits).
+      // Only the numeral is mono; "referrals" stays sans (comp: button.credits).
       expect(pill.querySelector(".g-num")?.textContent).toBe("9");
     }
-    expect(pills.map(pill => pill.textContent)).toEqual(expect.arrayContaining(["9 credits", "9"]));
+    expect(pills.map(pill => pill.textContent)).toEqual(expect.arrayContaining(["9 referrals", "9"]));
   });
 });
