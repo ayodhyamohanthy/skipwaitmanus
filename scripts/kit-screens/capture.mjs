@@ -34,6 +34,7 @@ function parseArgs(argv) {
     const key = argv[i].replace(/^--/, "");
     args[key] = argv[i + 1];
   }
+  if (args.goal) return args; // goal mode: ids resolve their own routes
   if (!args.route || !args.name) {
     console.error("Required: --route <path> --name <screen file stem, e.g. 08_thread__default>");
     process.exit(2);
@@ -78,6 +79,8 @@ async function installMocks(page, fixture, unmatched) {
     }
     const hit = routes.find(r => (r.method || "GET").toUpperCase() === method && (r.match === "prefix" ? url.pathname.startsWith(r.path) : url.pathname === r.path));
     if (hit) {
+      if (hit.abort) return route.abort(); // offline: the request never answers
+      if (hit.delayMs) await new Promise(resolve => setTimeout(resolve, hit.delayMs)); // loading: still in flight at capture
       return route.fulfill({ status: hit.status || 200, contentType: "application/json", body: JSON.stringify(hit.body ?? {}) });
     }
     unmatched.add(`${method} ${url.pathname}`);
@@ -145,8 +148,80 @@ async function compare(referencePath, livePath, outDir, name, sliceHeight) {
   return { reference: hasRef ? referencePath : null, refHeight: refMeta.height, liveHeight, slices: results };
 }
 
+// Goal surfaces (D-048-F-harness): no kit reference PNGs. Each id's route comes
+// from client/src/lib/goalSurfaces.ts (single source of truth, parsed at run
+// time - that file lands with F-flags, so --goal errors clearly until then).
+// Captures go to design/goal-ui/captures/<id>/<fixture-state>-<width>.png.
+async function goalSurfaceRoutes() {
+  const file = path.join("client/src/lib/goalSurfaces.ts");
+  if (!existsSync(file)) throw new Error("--goal needs client/src/lib/goalSurfaces.ts (D-048-F-flags); integrate that row first or capture with --route instead");
+  const source = await readFile(file, "utf8");
+  const table = source.slice(source.indexOf("GOAL_SURFACES"), source.indexOf("} as const"));
+  const routes = {};
+  for (const m of table.matchAll(/"([\w-]+)":\s*\[((?:"[^"]*"\s*,?\s*)*)\]/g)) {
+    routes[m[1]] = [...m[2].matchAll(/"([^"]*)"/g)].map(x => x[1]);
+  }
+  return routes;
+}
+
+async function captureGoal(args) {
+  const ids = args.goal === "all" ? Object.keys(await goalSurfaceRoutes()) : args.goal.split(",");
+  const table = await goalSurfaceRoutes();
+  const fixture = await loadFixture(args.fixture);
+  const state = args.fixture ? (path.basename(args.fixture, ".json").split("__").pop() || "default") : "default";
+  const viewports = args.viewport === "both" ? ["web", "mobile"] : [args.viewport];
+  const browser = await chromium.launch();
+  const report = { goal: ids, viewports: {} };
+  try {
+    for (const id of ids) {
+      const patterns = table[id];
+      if (!patterns) throw new Error(`unknown goal id "${id}" - declared ids: ${Object.keys(table).join(", ")}`);
+      const route = args.route || patterns.find(r => !r.includes(":"));
+      if (!route) throw new Error(`every route for "${id}" is parameterized (${patterns.join(", ")}); pass --route with a concrete path`);
+      for (const vp of viewports) {
+        const spec = VIEWPORTS[vp];
+        const context = await browser.newContext({ viewport: { width: spec.width, height: spec.height }, deviceScaleFactor: spec.deviceScaleFactor, isMobile: spec.isMobile, hasTouch: spec.hasTouch, reducedMotion: "reduce", colorScheme: "light", locale: "en-US", timezoneId: "Asia/Kolkata" });
+        if (fixture.localStorage) {
+          await context.addInitScript(entries => { for (const [k, v] of Object.entries(entries)) localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v)); }, fixture.localStorage);
+        }
+        await context.addInitScript(() => { const fixed = new Date("2026-10-08T10:00:00+05:30").getTime(); const RealDate = Date; class FixedDate extends RealDate { constructor(...a) { super(...(a.length ? a : [fixed])); } static now() { return fixed; } } globalThis.Date = FixedDate; });
+        const page = await context.newPage();
+        const unmatched = new Set();
+        const consoleErrors = [];
+        page.on("console", msg => { if (msg.type() === "error") consoleErrors.push(msg.text().slice(0, 240)); });
+        page.on("pageerror", err => consoleErrors.push(`pageerror: ${String(err).slice(0, 240)}`));
+        await installMocks(page, fixture, unmatched);
+        // domcontentloaded, not networkidle: a loading fixture keeps a request
+        // in flight on purpose, and that request must still be open at capture.
+        await page.goto(new URL(route, args.base).href, { waitUntil: "domcontentloaded", timeout: 45000 });
+        await page.evaluate(() => document.fonts && document.fonts.ready);
+        await runActions(page, (vp === "web" ? fixture.actionsWeb : fixture.actionsMobile) || fixture.actions);
+        await page.waitForTimeout(400);
+        for (let pass = 0; pass < 3; pass++) {
+          const height = await page.evaluate(() => Math.ceil(document.documentElement.scrollHeight));
+          if (height <= page.viewportSize().height) break;
+          await page.setViewportSize({ width: spec.width, height });
+          await page.waitForTimeout(250);
+        }
+        const outDir = path.join("design/goal-ui/captures", id);
+        await mkdir(outDir, { recursive: true });
+        const width = spec.width;
+        const livePath = path.join(outDir, `${state}-${width}.png`);
+        await page.screenshot({ path: livePath, fullPage: true, animations: "disabled" });
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        report.viewports[`${id}/${vp}`] = { live: livePath, route, horizontalOverflowPx: overflow, unmatchedApi: [...unmatched], consoleErrors: consoleErrors.slice(0, 10) };
+        await context.close();
+      }
+    }
+  } finally {
+    await browser.close();
+  }
+  console.log(JSON.stringify(report, null, 2));
+}
+
 async function main() {
   const args = parseArgs(process.argv);
+  if (args.goal) return captureGoal(args);
   const fixture = await loadFixture(args.fixture);
   const viewports = args.viewport === "both" ? ["web", "mobile"] : [args.viewport];
   const browser = await chromium.launch();
