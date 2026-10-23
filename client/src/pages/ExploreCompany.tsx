@@ -106,6 +106,8 @@ function CompanyPage({ company }: { company: PublicCompany }) {
           work={composer.work}
           watch={composer.watch}
           cost={composer.cost}
+          topUp={composer.topUp}
+          onTopUp={composer.onTopUp}
           sendLabel={composer.sendLabel}
           sendBusyLabel={composer.sendBusyLabel}
           sending={composer.sending}

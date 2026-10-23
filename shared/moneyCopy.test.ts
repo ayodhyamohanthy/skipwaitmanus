@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "./referral";
-import { askCostLanding, askCostLine, CREDIT_RULE, CREDIT_RULE_V2 } from "./moneyCopy";
+import { askCostLanding, askCostLine, CREDIT_RULE, CREDIT_RULE_V2, topUpHref } from "./moneyCopy";
 
 /*
  * D-038-reconcile F3 (R-2, D-042): the credit rule may promise the reopen path
@@ -77,6 +77,7 @@ describe("level-aware ask cost (D-132 item 7)", () => {
     expect(askCostLine({ open: true, balance: 2 }).line).toBe("Uses 1 of your 2 credits");
     expect(askCostLine({ open: null, balance: null }).line).toBe("Uses 1 credit when a verified employee can see it");
     expect(askCostLine({ open: false, balance: 7 }).detail).toContain("1 credit is used");
+    expect(askCostLine({ open: false, balance: 7, cost: null }).detail).toContain("its credits are used");
   });
   it("a level cost is stated in the same line", () => {
     expect(askCostLine({ open: true, balance: 8, cost: 5 }).line).toBe("Uses 5 of your 8 credits");
@@ -87,6 +88,11 @@ describe("level-aware ask cost (D-132 item 7)", () => {
     const line = askCostLine({ open: true, balance: 3, cost: 5 });
     expect(line.line).toBe("This ask costs 5 credits. You have 3. Add 2 more.");
     expect(line.blockedReason).toBe("This ask costs 5 credits. You have 3. Add 2 more.");
+  });
+  it("top-up destination: lands on packs when available, falls back to premium role for job seeker", () => {
+    expect(topUpHref(true)).toBe("/plans#packs");
+    expect(topUpHref(false)).toBe("/premium?role=job_seeker");
+    expect(topUpHref()).toBe("/plans#packs");
   });
   it("landing copy: flat wording with the flag off, level wording with it on, never 'costs the same' under levels", () => {
     expect(askCostLanding(false).fairRule).toContain("1 credit");
@@ -113,5 +119,17 @@ describe("CREDIT_RULE_V2 against the live CREDIT_RULE (D-132 item 11)", () => {
   it("states the reopen promise exactly when the live rule does", () => {
     const liveHas = CREDIT_RULE.includes("reopens to other employees");
     expect(CREDIT_RULE_V2.includes("reopens to other employees")).toBe(liveHas);
+  });
+});
+
+describe("askCostLine: known-uncovered deferred cost grounding (D-132 item 3)", () => {
+  it("names the deferred charge only when a current quote grounds it", () => {
+    const grounded = askCostLine({ open: false, balance: null, cost: 6 });
+    expect(grounded.line).toBe("No credit used until a verified employee can see it");
+    expect(grounded.detail).toContain("6 credits are used");
+    const ungrounded = askCostLine({ open: false, balance: null, cost: null });
+    expect(ungrounded.detail).toBe(`It waits up to ${COVERAGE_WAIT_DAYS} days. When one can, its credits are used; if you don't have enough then, we hold it until you add more.`);
+    expect(ungrounded.detail).not.toContain("1 credit");
+    expect(ungrounded.blockedReason).toBeNull();
   });
 });
