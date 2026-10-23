@@ -208,7 +208,7 @@
       "tier": 2,
       "lane": "money-check",
       "branch": "agent/queue/d065c-delivery-key",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "A silent money-check failure found by the PR #395 review: the lookup matches the bare request id, which no spend row has; red-first with the real key shape."
     },

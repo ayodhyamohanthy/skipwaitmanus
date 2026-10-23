@@ -332,7 +332,10 @@ describe("D-065-B slice checks over the in-memory database", () => {
   afterEach(() => { vi.unstubAllEnvs(); });
 
   it("finds a delivery spend on an ask still waiting and a spend reversed twice, never a legacy create charge or a single reversal, and writes nothing", async () => {
-    const deliverySpend = (id: number, requestId: number) => spendRow({ id, referenceId: String(requestId), idempotencyKey: `ask-delivery:${requestId}#1`, tokenCount: -1 });
+    // The real shape: spendCreditsTx writes `${referenceId}#${n}` and keys the row
+    // `${idempotencyKey}#${n}`, so a delivery spend is "601#1" / "ask-delivery:601#1".
+    // The old fixture wrote the bare id, a shape production never writes (D-065-C).
+    const deliverySpend = (id: number, requestId: number) => spendRow({ id, referenceId: `${requestId}#1`, idempotencyKey: `ask-delivery:${requestId}#1`, tokenCount: -1 });
     const reversal = (id: number, spendId: number, kind: string) => spendRow({ id, tokenCount: 1, kind, reversesTransactionId: spendId, idempotencyKey: `reversal-${id}` });
     seedHeldAsks({
       asks: [
