@@ -166,7 +166,7 @@ function GoalSetupDialog({ initialStep = 0, onClose }: { initialStep?: number; o
           <div className="mt-5">
             <UserRound className="h-5 w-5 text-g-ink" aria-hidden="true" />
             <h2 id="goal-setup-title" className="mt-3 text-[24px] font-semibold leading-[1.15] tracking-[-0.02em]">Your private profile.</h2>
-            <p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">Your name is not listed publicly. Seekers see only that someone at the company is open to requests.</p>
+            <p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">Your name is not listed publicly. Seekers see the company, not who refers.</p>
             <div className="mt-4 flex items-center gap-3 rounded-[10px] border border-g-hairline p-3"><span className="grid h-9 w-9 place-items-center rounded-[8px] border border-g-hairline font-g-mono text-[13px]">?</span><span><strong className="block text-g-label">Verified person inside</strong><span className="block text-g-meta text-g-ink-3">Identity shown after acceptance</span></span></div>
           </div>
         ) : null}
