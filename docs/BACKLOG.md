@@ -87,7 +87,7 @@ Related: level pricing (D-110) is direction + draft-scope tapback only - flag-of
 | Item | Decision | Evidence |
 | --- | --- | --- |
 | Public per-company demand counts; asks for unlisted companies | D-086 | owner Oct 21 ~02:53 IST (recorded in D-086) |
-| Growth loops L1-L6; build order: demand list, then L2, L4, L5 | D-087 | owner Oct 21 02:53-03:02 IST |
+| Growth loops L1-L6; build order: demand list, then L2, L4, L5 (BYOR, L2, moved ahead of the demand list by D-162) | D-087 | owner Oct 21 02:53-03:02 IST |
 | BYOR one-time link (idea 2, loop L2) | D-090 | phonemsg-01M5DM4784BC7W6YMF2CV0G0PS |
 | Language experience: 6-language picker, consent line, no silent redirect | D-093 | owner Oct 21 03:15 IST |
 | AI-in-UI wave 1: reasons coach, job-link auto-fill, plain-language status help | D-094 | owner Oct 21 03:15 IST |
