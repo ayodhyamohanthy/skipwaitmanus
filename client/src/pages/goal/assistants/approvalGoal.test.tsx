@@ -27,6 +27,19 @@ describe("goal approval boundary", () => {
     fireEvent.click(screen.getByRole("button",{name:"Use 3 credits"}));expect(h.onDecide).not.toHaveBeenCalled();
     Object.defineProperty(navigator,"onLine",{configurable:true,value:true});
   });
+  it("never invents a missing cost and cannot approve until the actual cost loads", () => {
+    const h = handlers(); render(<GoalApprovalCard approval={{...base, creditCount: null}} balance={8} primary handlers={h} />);
+    expect(screen.queryByText("1 credit")).toBeNull();
+    expect(screen.queryByText(/after this/)).toBeNull();
+    expect(screen.getByText(/Cost unavailable/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Approve spend" }));
+    expect(h.onDecide).not.toHaveBeenCalled();
+  });
+  it("keeps a known-cost spend approvable with its exact figure", () => {
+    const h = handlers(); render(<GoalApprovalCard approval={base} balance={8} primary handlers={h} />);
+    fireEvent.click(screen.getByRole("button", { name: "Use 3 credits" }));
+    expect(h.onDecide).toHaveBeenCalledWith("approved");
+  });
   it("does not send unsaved edits and never offers send when slots are full", () => {
     const h = handlers(); const {rerender,container} = render(<GoalApprovalCard approval={{...base,kind:"ask_send"}} balance={8} primary handlers={{...h,editing:true,draftNote:"New note"}} />);
     expect(screen.queryByRole("button",{name:"Send ask"})).toBeNull();
