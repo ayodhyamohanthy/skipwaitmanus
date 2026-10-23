@@ -100,14 +100,14 @@ describe("My asks on the goal shell", () => {
     const next = screen.getByRole("region", { name: "Your next step" });
     expect(within(next).getByRole("link", { name: "Find a company" }).getAttribute("href")).toBe("/explore");
     expect(document.querySelectorAll("main .bg-g-primary")).toHaveLength(1);
-    expect(next.textContent).not.toMatch(/0 credits|1 credit/);
+    expect(next.textContent).not.toMatch(/0 referrals|1 referral/);
   });
 
   it("wraps the page in the goal shell with the live credit balance, not a placeholder", async () => {
     stub([openAsk(42)], slots(1));
     renderPage();
     expect(screen.getByTestId("goal-shell")).toBeTruthy();
-    await waitFor(() => expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toBe("4 credits"));
+    await waitFor(() => expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toBe("4 referrals"));
     const pill = screen.getAllByTestId("goal-credits-pill");
     expect(pill[0].getAttribute("href")).toBe("/plans");
     // My asks is the current destination; the avatar identifies the account.
@@ -135,7 +135,7 @@ describe("My asks on the goal shell", () => {
     await waitFor(() => expect(pill.textContent).toContain("Balance didn't load"), { timeout: 3000 });
     expect(pill.textContent).not.toMatch(/\b0\b/);
     fireEvent.click(within(pill).getByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toBe("4 credits"));
+    await waitFor(() => expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toBe("4 referrals"));
   });
 
   it("a verified referrer keeps their queue and sees no credits pill", async () => {

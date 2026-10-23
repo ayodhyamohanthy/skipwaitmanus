@@ -10,6 +10,7 @@ import { goalNavFor, type GoalNavId } from "./nav";
 import { GoalMoreMenu } from "./GoalMoreMenu";
 import { GoalNum } from "./GoalNum";
 import { GoalButton } from "./GoalButton";
+import { GoalInfoNote } from "./GoalInfoNote";
 
 export type GoalShellCredits =
   | { state: "ready"; count: number }
@@ -50,18 +51,26 @@ function CreditsPill({ credits, compact }: { credits: GoalShellCredits; compact?
       </span>
     );
   }
-  // Comp: the numeral is mono, "credits" is sans (button.credits.hit = 44px target via g-hit).
+  // Owner terminology (Oct 23): the balance reads "referrals", never "credits".
+  // The count is the total remaining - free monthly and bought together - so it
+  // never claims "free". Comp: numeral mono, word sans (44px target via g-hit).
   return (
-    <a
-      href="/plans"
-      data-testid="goal-credits-pill"
-      aria-label={`${credits.count} credits available. Open credit details`}
-      className={cn("g-hit inline-flex items-center gap-1.5 rounded-g-control border border-g-control-edge pl-2.5 pr-3 text-g-meta text-g-ink transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover", compact ? "h-9" : "h-8")}
-    >
-      <Coins aria-hidden="true" className="size-4 text-g-ink-2" strokeWidth={1.75} />
-      <GoalNum>{credits.count}</GoalNum>
-      {compact ? null : <span>{" "}credits</span>}
-    </a>
+    <span className="inline-flex items-center gap-0.5">
+      <a
+        href="/plans"
+        data-testid="goal-credits-pill"
+        aria-label={`${credits.count} referrals remaining. Open referral details`}
+        className={cn("g-hit inline-flex items-center gap-1.5 rounded-g-control border border-g-control-edge pl-2.5 pr-3 text-g-meta text-g-ink transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover", compact ? "h-9" : "h-8")}
+      >
+        <Coins aria-hidden="true" className="size-4 text-g-ink-2" strokeWidth={1.75} />
+        <GoalNum>{credits.count}</GoalNum>
+        {compact ? null : <span>{" "}referrals</span>}
+      </a>
+      <GoalInfoNote label="What are referrals?">
+        Referrals are what you spend to send an ask. Each ask shows its cost before you send; referrals are used only when a verified employee can see it, never while it waits. A referral delivers your request - it is not a guaranteed referral. Free plan: 3 free referrals every month.{" "}
+        <a href="/plans" className="text-g-ink underline underline-offset-[3px]">More about referrals on Plans</a>
+      </GoalInfoNote>
+    </span>
   );
 }
 

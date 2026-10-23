@@ -90,12 +90,12 @@ describe("GoalShell", () => {
     expect(screen.queryByTestId("goal-credits-pill")).toBeNull();
   });
 
-  it("a ready credit balance is a real link to the credit details, never a dead number", () => {
+  it("a ready referral balance is a real link to the details, never a dead number", () => {
     renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer credits={{ state: "ready", count: 4 }}><p>content</p></GoalShell>);
     const pills = screen.getAllByTestId("goal-credits-pill");
-    expect(pills[0].textContent).toBe("4 credits");
+    expect(pills[0].textContent).toBe("4 referrals");
     expect(pills[0].getAttribute("href")).toBe("/plans");
-    expect(pills[0].getAttribute("aria-label")).toBe("4 credits available. Open credit details");
+    expect(pills[0].getAttribute("aria-label")).toBe("4 referrals remaining. Open referral details");
   });
 
   it("the account slot prefers the adapter's menu (sign-in when signed out) and otherwise shows the account-menu button", () => {
