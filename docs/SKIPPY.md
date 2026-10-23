@@ -1,6 +1,6 @@
 # Skippy: build brief (the one place every agent reads)
 
-User-facing name: **Skippy** (founder's final word, Oct 22, 2026: "Lets stick to that"). Code name stays **Skippie** in code, routes and file names. Replaces the interim picks Reffy (dropped: reffy.io is an existing employee-referral AI copilot), Doorway and Skipper. No further renaming without the founder's explicit word. Decisions: D-136 to D-142 in `docs/DECISIONS.md`. Product summary: the Skippy section of `docs/PRD.md`.
+User-facing name: **Skippy** (founder's final word, Oct 22, 2026: "Lets stick to that"). Code name stays **Skippie** in code, routes and file names. Replaces the interim picks Reffy (dropped: reffy.io is an existing employee-referral AI copilot), Doorway and Skipper. No further renaming without the founder's explicit word. Decisions: D-136 to D-143 in `docs/DECISIONS.md`. Product summary: the Skippy section of `docs/PRD.md`.
 
 Top priority from the founder (Oct 22). He said: "I auto-approve what's best for users and us". Rules below are his standing rules; they do not loosen.
 
