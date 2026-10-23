@@ -8,7 +8,7 @@ Written Oct 18 2026 at `main` `5ef0626`. On that commit the full suite was green
 - **Owner:** decides (register), approves new features and pricing, triggers anything that touches live money or provider settings (catalog apply, the one live payment test, D-065), and answers the questions batched for the weekly review (D-064).
 - **CEO and architect (Claude Code, D-074, D-085):** sets direction and makes the high-stakes calls inside the owner's decisions; keeps the business, the architecture map, this file, the packets and the queue order true; re-analyses what we build toward the goal and brings the owner rated recommendations; writes a packet before a row is delegated; writes the red-first tests for Tier 1 packets; reviews Tier 1 work; handles P0 triage and register entries on the owner's say-so. It never builds a packet itself (the picker never offers it one).
 - **Implementer (an open frontier model):** executes exactly one packet per session, on its own branch; after it opens a Tier 1 draft pull request or lands, it reports to the CEO and ends the session (D-085).
-- **Reviewer (a different model session from the implementer):** checks Tier 1 work against the packet and §6 before it reaches `main`.
+- **Reviewer (a session of a model that neither built nor fixed the work, D-151):** checks Tier 1 work against the packet and §6 before it reaches `main`.
 
 ## 2. What to do next
 The binding order is the plan §3b (rules 1–7, D-072, D-053). The execution view with packet links, risk tiers and which lanes can run side by side is [`docs/plans/README.md`](plans/README.md). Only a row whose packet exists there may be handed to a model. A row without a packet goes to the architect first.
@@ -136,7 +136,7 @@ Left out / follow-ups: <list or none>
 ```
 
 ## 6. Review (required for Tier 1)
-The reviewer is a different session from the implementer, ideally a different model. Never trust pasted output: reproduce it.
+The reviewer is a session of a model that neither built nor fixed the work (the model is the part of an agent's name before " · ", D-151): a different session of the same model is not independent. The reviewer who wrote the findings may re-review the fixes. A session handed a review of its own model's work posts no verdict and reports it blocked. Never trust pasted output: reproduce it.
 0. **The head you review:** before reading any code, record `git fetch origin && git rev-parse origin/<branch>` and review exactly that commit; before posting, list anything pushed since (`git log --no-merges --format="%h %s" <reviewed>..origin/<branch> ^origin/main`) and review it too or return findings. Post the verdict naming that commit: a lander refuses any later commit, and any merge whose `git log --merges --cc` shows a diff hunk, as unreviewed (D-074, D-134).
 1. **Scope:** `git diff --stat origin/main...<branch>` touches only the packet's in-scope files and the docs it names.
 2. **Tests are honest:** every packet §7 test exists with its assertions; `git diff origin/main...<branch> -- '*.test.ts' '*.test.tsx'` shows no removed `expect`, no `.skip` or `.only`, no loosened literal. Check out the test commit without the fix and confirm the new tests fail.
