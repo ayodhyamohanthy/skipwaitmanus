@@ -42,6 +42,10 @@ describe("A3: the index.css phase-2 block carries only the approved goal hexes",
 
 describe("R1: no colour literal in goal scope", () => {
   it("rejects a hex", () => { expect(rules([goal('"#fff"')])).toEqual(["R1"]); });
+  it("covers pages/goal/** after D-048-F-flags", () => {
+    expect(rules([goal('"#fff"', "client/src/pages/goal/inbox/GoalInbox.tsx")])).toEqual(["R1"]);
+    expect(rules([goal('"text-g-display text-g-ink"', "client/src/pages/goal/inbox/GoalInbox.tsx")])).toEqual([]);
+  });
   it("rejects an rgb() function", () => { expect(rules([goal('"rgb(0 0 0 / 0.1)"')])).toEqual(["R1"]); });
   it("rejects oklch", () => { expect(rules([goal('"oklch(0.5 0.1 250)"')])).toEqual(["R1"]); });
 });
