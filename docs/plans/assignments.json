@@ -650,7 +650,7 @@
       "tier": 1,
       "lane": "row20",
       "branch": "agent/qoder/row20cd-thank-you-wall",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "ROW20-B"
       ],
