@@ -112,11 +112,11 @@ export default function GoalAlerts() {
   const next = unreadItems[0] ?? null;
 
   if (!isLoaded) {
-    return <main data-skipwait-screen="alerts" className="page-content mx-auto w-full max-w-2xl"><LoadingNote>Loading your alerts…</LoadingNote></main>;
+    return <main data-skipwait-screen="alerts" className="g-scope page-content mx-auto w-full max-w-2xl"><LoadingNote>Loading your alerts…</LoadingNote></main>;
   }
 
   if (!isSignedIn) {
-    return <main data-skipwait-screen="alerts-sign-in" data-testid="goal-alerts" className="page-content mx-auto w-full max-w-2xl pb-10">
+    return <main data-skipwait-screen="alerts-sign-in" data-testid="goal-alerts" className="g-scope page-content mx-auto w-full max-w-2xl pb-10">
       <header className="px-4 pt-6 gdesk:px-5 gdesk:pt-7">
         <h1 className="text-g-display text-g-ink">See what needs you.</h1>
         <p className="mt-2 text-g-meta text-g-ink-2">Replies, accepted asks and credit updates land here once you sign in.</p>
@@ -128,7 +128,7 @@ export default function GoalAlerts() {
     </main>;
   }
 
-  return <main data-skipwait-screen="alerts" data-testid="goal-alerts" className="page-content mx-auto w-full max-w-2xl pb-10">
+  return <main data-skipwait-screen="alerts" data-testid="goal-alerts" className="g-scope page-content mx-auto w-full max-w-2xl pb-10">
     <header className="px-4 pt-6 gdesk:px-5 gdesk:pt-7">
       <h1 className="text-g-display text-g-ink">See what needs you.</h1>
       <p className="mt-2 flex items-center gap-2 text-g-meta text-g-ink-2">
