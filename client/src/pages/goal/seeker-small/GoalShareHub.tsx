@@ -25,7 +25,7 @@ export default function GoalShareHub() {
   const share = (channel: "x" | "facebook" | "linkedin" | "medium" | "telegram") => { if (!link) return; if (channel === "x") return open(`https://x.com/intent/post?text=${encodeURIComponent(message)}`); if (channel === "facebook") return open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`); if (channel === "linkedin") return open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(link)}`); if (channel === "telegram") return open(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(message)}`); void navigator.clipboard.writeText(message).then(() => toast("Invite copied. Paste it into a Medium story."), () => toast("Copy the personal link and paste it into Medium.")); open("https://medium.com/new-story"); };
 
   if (!isSignedIn) {
-    return <main data-skipwait-screen="share-hub" data-testid="goal-share-hub" className="page-content mx-auto w-full max-w-xl pb-10">
+    return <main data-skipwait-screen="share-hub" data-testid="goal-share-hub" className="g-scope page-content mx-auto w-full max-w-xl pb-10">
       <header className="px-4 pt-6 gdesk:px-5 gdesk:pt-7">
         <h1 className="text-g-display text-g-ink">Help a friend find their next role.</h1>
         <p className="mt-2 text-g-meta text-g-ink-2">Sign in to share one personal link.</p>
@@ -38,7 +38,7 @@ export default function GoalShareHub() {
     </main>;
   }
 
-  return <main data-skipwait-screen="share-hub" data-testid="goal-share-hub" className="page-content mx-auto w-full max-w-xl pb-10">
+  return <main data-skipwait-screen="share-hub" data-testid="goal-share-hub" className="g-scope page-content mx-auto w-full max-w-xl pb-10">
     <header className="px-4 pt-6 gdesk:px-5 gdesk:pt-7">
       <h1 className="text-g-display text-g-ink">Help a friend find their next role.</h1>
       <p className="mt-2 flex items-center gap-2 text-g-meta text-g-ink-2">
