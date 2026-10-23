@@ -22,9 +22,21 @@ Until an ATS signal exists for a completion, the product must distinguish:
 
 A self-report must never be labeled or treated as ATS-verified. Money/reward flows stay frozen under D-132/D-152 and must not key off an unverified status.
 
+## Grounded feasibility (market research seat, Oct 24 1:10 IST - vendor developer docs read only; NOT integration-tested)
+
+- **Greenhouse**: Harvest API application objects carry a `referrer` object (https://developers.greenhouse.io/harvest.html). Access needs a customer-admin API key; per-endpoint data access is documented as close to all-or-nothing, which raises a data-minimization design question before any connection.
+- **Lever**: applications of type "referral" with a `referrer` user field, behind a `referrals:read:admin` scope (https://hire.lever.co/developer/documentation). Customer-created API key or OAuth via Lever's partner program.
+- **Ashby / SmartRecruiters**: referral endpoints exist in docs; research incomplete.
+- **Workday / SuccessFactors / Darwinbox / Zoho**: not covered by the research so far.
+
+Consequences the design must honor:
+1. **Employer-scoped authorization is the gate.** Every confirmation path sits behind that employer's own admin authorization. Public job feeds contain NO referral-completion signal. "Every ATS" is an ambition, never a promise; unconnected employers stay "reported by referrer".
+2. **Matching is its own problem.** An application existing does not prove OUR referral: the candidate, the job, and the credited referrer must all match. A credited-referrer field is the employer's record, not independent verification of the employee's action. And a referral is not a hire.
+3. **Data minimization needs design before connecting.** Broad ATS read scopes (Greenhouse's near-binary access) must not become skipwait silently holding full HR data; a scoped read or webhook design comes first.
+
 ## Open questions
 
-1. Which ATSes (Greenhouse, Lever, Workday, Ashby, ...) expose referral-completion signals, via what API/partnership, under what company consent?
+1. Which ATSes (beyond the Greenhouse/Lever docs read) expose referral-completion signals, via what API/partnership, under what company consent?
 2. Who grants the connection: the referrer (their employee account), the company (employer lane, D-048-P-employer), or a partnership?
 3. What does the seeker see for each state, and does any money/credit event ever key off ATS-confirmed completion (owner decision, D-132 frozen)?
 4. Fallback when a company has no supported ATS: self-report remains, labeled as such?
