@@ -11,7 +11,7 @@ export function GoalApprovalCard({ approval, balance, primary, handlers: h }: { 
   const expiry = Date.parse(approval.expiresAt);
   const ended = !Number.isFinite(expiry) || expiry <= now || approval.status !== "pending";
   const full = approval.kind === "ask_send" && approval.slotCount === 0;
-  // An unknown cost is never rendered as an invented number: the held #550
+  // An unknown cost is never rendered as an invented number: the held PR 550
   // card's \`?? 1\` showed "1 credit" the server never quoted, and the server
   // does not block or re-resolve a missing cost at decision time today. So an
   // unknown-cost spend cannot be approved here until the actual cost loads.
