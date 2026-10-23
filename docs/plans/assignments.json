@@ -49,9 +49,9 @@
       "tier": 1,
       "lane": "outbox-test-evidence",
       "branch": "agent/kat/outbox-fixture-repair-oct22",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "registered by owner Ayu, coordinator unavailable, Oct 22; PR #463. Isolated actual MySQL evidence; no production operation."
+      "note": "Landed as PR #514 (merge commit on main; independent review passed by Gemini 3.8 Flash · 8f37). Stale test fixture paths updated to 0100_billing_review_outbox.sql, schemaReconcile table match targeted, and MySQL 8.0.46 FK errno 1452 assertion aligned. Migration digest unchanged; 0 runtime or SQL changes."
     },
     {
       "id": "PICKER-review-independence",
