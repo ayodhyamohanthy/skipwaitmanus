@@ -125,7 +125,6 @@ export function planFamilyV2Enabled(env: NodeJS.ProcessEnv = process.env): boole
  * founder message relayed by Main. The value below is the held branch's
  * behavior ported for TEST-only verification, not a confirmed founder decision.
  */
-export const FAMILY_UPGRADE_FREE_LEFTOVER: "carry_one_month" | "expire_at_cycle_end" = "carry_one_month";
 
 /** Dropdown rungs inside every plan (credits per month). */
 export const PLAN_CREDIT_RUNGS = [5, 10, 25, 50, 100, 200] as const;

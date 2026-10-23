@@ -76,7 +76,7 @@ import { registerPlansCatalogRoutes } from "../plansCatalogRoutes";
 import { registerAdminBillingLedgerRoutes } from "../adminBillingLedger";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
-import { createPaymentRefundAlerter, createPaymentReviewAlerter, createUnmatchedPaymentAlerter, createCardValidationAlerter, createRetiredPlanAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
+import { createFailedPaymentAlerter, createPaymentRefundAlerter, createPaymentReviewAlerter, createUnmatchedPaymentAlerter, createCardValidationAlerter, createRetiredPlanAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
 import { globalSecurityHeaders } from "../securityHeaders";
 import { draftSmartReferralPitch } from "../ai";
 import { sendReferrerReviewEmail } from "../referrerReviewEmail";
@@ -331,6 +331,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     alertPaymentRefund: createPaymentRefundAlerter(),
     alertUnmatchedPayment: createUnmatchedPaymentAlerter(),
     alertRetiredPlanEvent: createRetiredPlanAlerter(),
+    alertFailedPayment: createFailedPaymentAlerter(),
     applyCardValidationEvent: db.applyCardValidationEvent,
     alertCardValidationEvent: createCardValidationAlerter(),
     createCardValidationPage: createCardValidationPageForUser,

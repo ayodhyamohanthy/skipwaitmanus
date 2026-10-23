@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createMaterialErrorEscalator, createPaymentReviewAlerter, createRetiredPlanAlerter } from "./errorAlerting";
+import { createFailedPaymentAlerter, createMaterialErrorEscalator, createPaymentReviewAlerter, createRetiredPlanAlerter } from "./errorAlerting";
 
 const originalApiKey = process.env.RESEND_API_KEY;
 const originalSender = process.env.ERROR_ALERT_FROM_EMAIL;
@@ -84,6 +84,37 @@ describe("material API error escalation", () => {
 
 // D-067: a late provider event for the retired Pro/Max plans (or a gift of one) grants nothing,
 // so it must reach a human who cancels and refunds it in Chargebee. Never deduplicated.
+describe("failed-payment alert", () => {
+  it("emails provider ids and amounts, every time (never deduplicated), and records the delivery", async () => {
+    process.env.RESEND_API_KEY = "re_test";
+    process.env.ERROR_ALERT_FROM_EMAIL = "noreply@skipwait.me";
+    const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+    const recordActivity = vi.fn(async () => undefined);
+    const alert = createFailedPaymentAlerter({ fetchImpl, recordActivity });
+    const input = { eventId: "ev_pay_fail_1", invoiceId: "inv_1042", subscriptionId: "sub_77", customerId: "cust_77", amount: 162400, currency: "INR" };
+    await expect(alert(input)).resolves.toEqual({ alerted: true });
+    // A second failed attempt is its own provider event and must alert again.
+    await expect(alert({ ...input, eventId: "ev_pay_fail_2" })).resolves.toEqual({ alerted: true });
+    const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
+    expect(payload).toMatchObject({ to: ["ayodhya@skipwait.me"], subject: "skipwait.me payment failed needs review · inv_1042" });
+    expect(payload.text).toContain("No money settled and no credits moved");
+    expect(payload.text).toContain("inv_1042");
+    expect(payload.text).toContain("sub_77");
+    expect(payload.text).toContain("cust_77");
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "system.payment_failed_alert_sent", outcome: "success", resourceType: "chargebee_invoice", resourceId: "inv_1042" }));
+  });
+
+  it("records a failed delivery without throwing, so the webhook never sees a silent gap", async () => {
+    process.env.RESEND_API_KEY = "";
+    process.env.ERROR_ALERT_FROM_EMAIL = "";
+    const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+    const recordActivity = vi.fn(async () => undefined);
+    const alert = createFailedPaymentAlerter({ fetchImpl, recordActivity });
+    await expect(alert({ eventId: "ev_pay_fail_3" })).resolves.toEqual({ alerted: false });
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "system.payment_failed_alert_sent", outcome: "failure" }));
+  });
+});
+
 describe("retired-plan event alert", () => {
   it("emails provider ids only, every time, and records the delivery", async () => {
     process.env.RESEND_API_KEY = "re_test";

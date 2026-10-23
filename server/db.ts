@@ -48,7 +48,7 @@ import { JOB_LEVELS, REFERRER_AREAS, jobFunctionSchema, parseJobFunction, type J
 import { resolveAskJobFunction } from "../shared/jobFunctionClassifier";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { isPaidPlanActive, resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
-import { FAMILY_UPGRADE_FREE_LEFTOVER, planFamilyV2Enabled } from "../shared/planFamily";
+import { planFamilyV2Enabled } from "../shared/planFamily";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { askWorkItemIdsSchema, dedupeAskWorkItemIds, type AskWorkItem } from "../shared/askWorkItems";
 import { AssistantPlanRequiredError, CompanyCapReachedError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
@@ -4801,32 +4801,17 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       const v2UserId = wallet?.userId ?? intent!.userId;
       const v2Role = wallet?.role ?? intent!.role;
       const retainsAccess = input.status === "active" || input.status === "non_renewing";
-      // D-132 fairness (main-delegated product call, Oct 22; reported + accepted): upgrading from Free never takes
-      // the open month's credits - they convert to a carryover grant outliving
-      // the free cycle by one month (the kit carryover shape), and the
-      // bundle's invoice credits (always >= Free's 3) land on top. Free cycles
-      // stop while the family plan runs. FAMILY_UPGRADE_FREE_LEFTOVER flips it.
-      // First transition onto the family plan, in either webhook order: when the
-      // payment beats the subscription event, the email binding attached the
-      // subscriptionId while the wallet was still plan "free" (sameSubscription
-      // is already true here). plan === "free" is the real once-only guard - a
-      // renewal or redelivery meets a family wallet and skips. Idempotent per
-      // event via the v2carry:<eventId> grant key.
-      if (retainsAccess && wallet && wallet.plan === "free" && wallet.monthlyCreditsRemaining > 0 && FAMILY_UPGRADE_FREE_LEFTOVER === "carry_one_month") {
-        const leftover = wallet.monthlyCreditsRemaining;
-        const cycleKey = wallet.monthlyCycleKey ?? currentMonthlyCycleKey(new Date());
-        const [cycleYear, cycleMonth] = cycleKey.split("-").map(Number);
-        const expiresAt = new Date(Date.UTC(cycleYear, cycleMonth + 1, 1));
-        const now = new Date();
-        // Bound to the new subscription: kit carryover grants outlive their
-        // cycle only while the wallet names the same subscription, and this
-        // one follows that rule (a lapse ends it like any plan carryover).
-        const inserted = await tx.insert(planCreditGrants).values({ userId: wallet.userId, role: wallet.role, source: "carryover", grantKey: `v2carry:${input.eventId}`, planId: "free", subscriptionId: input.subscriptionId, cycleKey, tokenCount: leftover, creditsRemaining: leftover, status: "active", grantedAt: now, expiresAt });
-        const grantId = Number(inserted[0]?.insertId ?? 0);
-        await writeLedgerRow(tx, { userId: wallet.userId, role: wallet.role, tokenCount: -leftover, kind: "plan_credit_carryover", source: BUCKET_SOURCES.cycle, sourceCycleKey: cycleKey, referenceType: "plan_cycle", referenceId: `${cycleKey}:v2upgrade`, idempotencyKey: `v2carry-out:${input.eventId}`, monthlyCreditsAfter: 0 });
-        await writeLedgerRow(tx, { userId: wallet.userId, role: wallet.role, tokenCount: leftover, kind: "plan_credit_carryover", source: BUCKET_SOURCES.carryover, sourceCycleKey: cycleKey, referenceType: "credit_grant", referenceId: String(grantId), idempotencyKey: `v2carry-in:${grantId}`, creditGrantId: grantId });
-        await tx.update(tokenBalances).set({ monthlyAllowance: 0, monthlyCreditsRemaining: 0 }).where(eq(tokenBalances.id, wallet.id));
-        wallet = { ...wallet, monthlyAllowance: 0, monthlyCreditsRemaining: 0 };
+      // UNRESOLVED PRODUCT RULE - blocked, test-only: whether upgrading from
+      // Free keeps the open month's leftover credits (the ported #416 comment
+      // claimed an accepted owner call, but no user-channel evidence supports
+      // it; see the PR's proof state). Until original user evidence or an
+      // explicit product decision covers it, this transition must not execute
+      // a leftover rule at all: a Free wallet with unused credits upgrading to
+      // a family plan is recorded and parked for review instead of applying
+      // any carry-over. A Free wallet at zero leftover upgrades normally.
+      if (retainsAccess && wallet && wallet.plan === "free" && wallet.monthlyCreditsRemaining > 0) {
+        await recordV2Event();
+        return { status: "ignored" as const, reason: "upgrade_leftover_rule_unresolved" };
       }
       const v2Patch = {
         plan: retainsAccess ? input.planFamily : ("free" as const),

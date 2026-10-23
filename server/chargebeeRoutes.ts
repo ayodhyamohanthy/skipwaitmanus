@@ -485,6 +485,14 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         record({ action: "billing.unlinked_subscription", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType, reason: applied.reason ?? "unknown", itemPriceId: subscription.itemPriceId } });
         void deps.alertRetiredPlanEvent?.({ eventId: subscription.eventId, eventType: subscription.eventType, reason: "unlinked_subscription", subscriptionId: subscription.subscriptionId, itemPriceId: subscription.itemPriceId }).catch(() => undefined);
       }
+      // Unresolved v2 upgrade-leftover rule (see db.ts): the event is recorded
+      // and parked without applying any leftover rule. It must reach a human,
+      // never pass silently.
+      const leftoverBlocked = applied?.status === "ignored" && applied.reason === "upgrade_leftover_rule_unresolved";
+      if (applied?.status !== "duplicate" && leftoverBlocked) {
+        console.error("[Chargebee] v2 upgrade with leftover Free credits blocked pending product decision", { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId });
+        record({ action: "billing.upgrade_leftover_blocked", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType } });
+      }
       if (applied?.status !== "duplicate" && (retired || unsupported)) {
         const reason = retired ? PLAN_RETIRED_CODE : "unsupported_plan";
         console.error(`[Chargebee] ${retired ? "retired" : "unrecognised"} plan event needs review`, { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId, reason });

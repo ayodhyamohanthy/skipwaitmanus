@@ -157,6 +157,26 @@ describe("D-132 v2 plan-family subscription events", () => {
     expect(reviewRows).toEqual([]);
   });
 
+  it("a Free wallet with leftover credits upgrading is blocked and recorded, never silently converted", async () => {
+    // UNRESOLVED PRODUCT RULE (see db.ts): no carry-over rule may execute until
+    // original user evidence or an explicit product decision covers it.
+    wallets[0].monthlyAllowance = 3;
+    wallets[0].monthlyCreditsRemaining = 2;
+    wallets[0].monthlyCycleKey = "2026-10";
+    const result = await applyChargebeeSubscriptionEvent(input);
+    expect(result).toMatchObject({ status: "ignored", reason: "upgrade_leftover_rule_unresolved" });
+    const wallet = wallets[0];
+    expect(wallet.plan).toBe("free");
+    expect(wallet.subscriptionId).toBeNull();
+    expect(wallet.monthlyAllowance).toBe(3);
+    expect(wallet.monthlyCreditsRemaining).toBe(2);
+    expect(wallet.monthlyCycleKey).toBe("2026-10");
+    expect(wallet.balance).toBe(12);
+    expect(intents[0].status).toBe("pending");
+    expect(events.map(event => event.providerEventId)).toEqual(["event_v2_new"]);
+    expect(reviewRows).toEqual([]);
+  });
+
   it("a renewal on the same subscription needs no hosted page or intent", async () => {
     await applyChargebeeSubscriptionEvent(input);
     const renewal = { eventId: "event_v2_renewal", eventType: "subscription_changed", subscriptionId: "subscription_v2", planFamily: "fast_track" as const, planFamilyRung: 25 as const, currency: "INR" as const, status: "active", currentTermStart: termEnd, currentTermEnd: new Date("2026-11-01T00:00:00.000Z"), resourceVersion: 11 };
