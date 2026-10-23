@@ -17,7 +17,7 @@ describe("PlansV2 (D-132, flag OFF)", () => {
 
   it("Open Door defaults to the 3 free credits: This month is Rs0, no paid default", () => {
     render(<PlansV2 book="INR" />);
-    const card = screen.getByRole("region", { name: "Junior" });
+    const card = screen.getByRole("region", { name: "Entry level Referrers" });
     expect(within(card as HTMLElement).getByTestId("this-month-open_door").textContent).toBe("₹0");
     expect(within(card as HTMLElement).getByText(/3 free credits every month/)).toBeTruthy();
   });
@@ -60,13 +60,13 @@ describe("PlansV2 (D-132, flag OFF)", () => {
   it("exactly one black commit (Fast Track); Insider applies, Open Door starts free", () => {
     render(<PlansV2 book="INR" />);
     expect(document.querySelectorAll('[data-g-primary="true"]').length).toBe(1);
-    expect(screen.getByRole("button", { name: "Apply for Senior+" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Apply for Senior level Referrers" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Start free" })).toBeTruthy();
   });
 
-  it("plan names are Junior / Mid / Senior+ with the D-132 numbers unchanged", () => {
+  it("plan names are Entry / Mid / Senior level Referrers (D-152) with the D-132 numbers unchanged", () => {
     render(<PlansV2 book="INR" />);
-    for (const n of ["Junior", "Mid", "Senior+"]) expect(screen.getByRole("region", { name: n })).toBeTruthy();
+    for (const n of ["Entry level Referrers", "Mid level Referrers", "Senior level Referrers"]) expect(screen.getByRole("region", { name: n })).toBeTruthy();
     expect(screen.queryByText(/Open Door|Fast Track|Insider/)).toBeNull();
     expect(screen.getByText("Plan names say how far you can reach, not how senior you are.")).toBeTruthy();
   });
