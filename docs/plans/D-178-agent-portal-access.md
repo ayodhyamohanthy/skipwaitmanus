@@ -20,7 +20,7 @@ This is DIRECTION, not authority. Nothing here authorizes charging anyone, weake
 
 ## Clarification, Oct 24 12:59 AM IST (same conversation)
 
-Founder follow-up (phonemsg-01M5N3T0SZFH12MGASAEZ6MSCX, runtime channel record author=user; observation-index verification pending at write time). Verbatim:
+Founder follow-up (phonemsg-01M5N3T0SZFH12MGASAEZ6MSCX, channel record verified author=user Oct 24 00:59 IST). Verbatim:
 
 > Any  agent can connect to skipwait.me and can apply for referrals if they have paid for referrals
 
