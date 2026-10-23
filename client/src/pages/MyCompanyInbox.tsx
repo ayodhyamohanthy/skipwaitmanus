@@ -150,7 +150,11 @@ export default function MyCompanyInbox() {
 
   // /referrer-home rows link here as /queue?request=:id and open that ask directly.
   useEffect(() => {
-    if (verified && Number.isInteger(requestedId) && requestedId > 0 && requests.length && !selectedId) setSelectedId(requestedId);
+    if (!verified || !Number.isInteger(requestedId) || requestedId <= 0 || !requests.length || selectedId) return;
+    const requested = requests.find(item => item.id === requestedId);
+    if (!requested) return;
+    if (requested.status !== "pending" || requested.isClaimedByYou) go(`/conversation/${requested.id}?from=inbox`);
+    else setSelectedId(requested.id);
   }, [verified, requestedId, requests, selectedId]);
 
   // The pitch and document count only exist on the unclaimed preview; claimed
@@ -181,6 +185,7 @@ export default function MyCompanyInbox() {
       setPassOpen(false); setSelectedId(null); setPreview(null);
       setNotice(decision === "approved" ? "Request accepted. You can now message the job seeker privately." : "Passed privately. The job seeker gets a short private note - never your name.");
       await loadInbox();
+      if (decision === "approved") go(`/conversation/${requestId}?from=inbox`);
     } catch (reason) { const message = reason instanceof Error ? reason.message : "This private request can no longer be reviewed"; setError(message.includes("no longer available") ? "Accept failed - Another employee accepted this request a moment earlier. Nothing was charged to your credits." : message); }
     finally { setWorking(false); }
   };

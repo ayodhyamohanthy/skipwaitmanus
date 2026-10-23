@@ -15,13 +15,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MyCompanyInbox from "./MyCompanyInbox";
 import { PASS_REASON_OPTIONS } from "@shared/passReasons";
 
-const { go, getToken } = vi.hoisted(() => ({
+const { go, getToken, authState } = vi.hoisted(() => ({
+  authState: { signedIn: true },
   go: vi.fn(),
   getToken: vi.fn().mockResolvedValue("quillmint-test-token"),
 }));
 
 vi.mock("@/_core/auth", () => ({
-  useAuth: () => ({ isSignedIn: true, getToken }),
+  useAuth: () => ({ isSignedIn: authState.signedIn, getToken }),
   useUser: () => ({
     user: {
       emailAddresses: [
@@ -181,6 +182,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
+  authState.signedIn = true;
 });
 
 describe("Quillmint company inbox goal review", () => {
@@ -284,6 +286,22 @@ describe("Quillmint company inbox goal review", () => {
         screen.getByRole("region", { name: "Referral queue" })
       ).queryByRole("alert")
     ).toBeNull();
+  });
+
+  it("routes signed-out referrers to sign-in without requesting a private inbox", async () => {
+    authState.signedIn = false;
+    const fetchMock = stubFetch();
+    render(<Queue />);
+    fireEvent.click(await screen.findByRole("button", { name: "Use company email" }));
+    expect(go).toHaveBeenCalledWith("/sign-in");
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("company-referrals"))).toBe(false);
+  });
+
+  it("hands a successful acceptance directly to its private conversation", async () => {
+    stubFetch();
+    await openFirstAsk();
+    fireEvent.click(screen.getByRole("button", { name: /Accept & connect/ }));
+    await waitFor(() => expect(go).toHaveBeenCalledWith("/conversation/41?from=inbox"));
   });
 
   it.each(PASS_REASON_OPTIONS)("posts pass code $code without an acceptance attestation or credit request", async option => {
