@@ -3,7 +3,7 @@
 // check passes and the owner's enable word is relayed (D-132 enable bar).
 // Design follows the owner's screenshot (Oct 21 18:24) in the goal-ui token
 // language: ink on white, mono labels, one black commit (Fast Track).
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import {
   OPEN_DOOR_FREE_CREDITS_PER_MONTH,
@@ -217,6 +217,22 @@ const COMPARE_ROWS: { label: string; cell: (id: PlanFamilyId) => string }[] = [
 ];
 
 export default function PlansV2({ book = "INR", seekerLevel = null, onPickLevel }: { book?: PlanPriceBook; seekerLevel?: number | null; onPickLevel?: (level: number | null) => void }) {
+  const cmpRef = useRef<HTMLDivElement>(null);
+  const [cmpCanScrollRight, setCmpCanScrollRight] = useState(false);
+  useEffect(() => {
+    const el = cmpRef.current;
+    if (!el) return;
+    const update = () => setCmpCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(update);
+      ro.observe(el);
+      return () => { el.removeEventListener("scroll", update); ro.disconnect(); };
+    }
+    window.addEventListener("resize", update);
+    return () => { el.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
+  }, []);
   return (
     <div className="mx-auto max-w-[1120px] px-5 py-8 gdesk:px-8 gdesk:py-12">
       <h1 className="text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Choose your reach.</h1>
@@ -247,23 +263,36 @@ export default function PlansV2({ book = "INR", seekerLevel = null, onPickLevel 
       <section aria-label="Compare plans" className="mt-12">
         <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Compare plans</p>
         <p className="mt-2 text-g-small text-g-ink-3">Caps are monthly and config-driven - current best, changeable. Past a cap, tools use normal credits.</p>
-        <div className="mt-4 overflow-x-auto">
+        <div className="relative mt-4">
+        <div
+          ref={cmpRef}
+          role="region"
+          aria-label="Plan comparison table, scroll horizontally to see all plans"
+          tabIndex={0}
+          className="overflow-x-auto"
+        >
           <table className="w-full min-w-[520px] border-collapse text-g-small">
             <thead>
               <tr className="border-b border-g-hairline">
-                <th className="py-2 pr-4 text-left font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3"><span className="sr-only">Feature</span></th>
+                <th className="sticky left-0 z-[1] border-r border-g-hairline bg-g-surface py-2 pr-4 text-left font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3"><span className="sr-only">Feature</span></th>
                 {PLAN_FAMILY.map(p => <th key={p.id} className="py-2 pr-4 text-right font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">{PLAN_DISPLAY_NAME[p.id]}</th>)}
               </tr>
             </thead>
             <tbody>
               {COMPARE_ROWS.map(row => (
                 <tr key={row.label} className="border-b border-g-hairline">
-                  <th scope="row" className="py-2.5 pr-4 text-left font-normal text-g-ink-2">{row.label}</th>
+                  <th scope="row" className="sticky left-0 z-[1] border-r border-g-hairline bg-g-surface py-2.5 pr-4 text-left font-normal text-g-ink-2">{row.label}</th>
                   {PLAN_FAMILY.map(p => <td key={p.id} className="py-2.5 pr-4 text-right font-g-mono text-[13px]">{row.cell(p.id)}</td>)}
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+        {cmpCanScrollRight ? (
+          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 flex w-12 items-center justify-end bg-[linear-gradient(to_right,transparent,var(--g-surface)_75%)] pr-1 text-g-ink-3">
+            <ChevronDown className="-rotate-90" size={16} />
+          </div>
+        ) : null}
         </div>
       </section>
     </div>

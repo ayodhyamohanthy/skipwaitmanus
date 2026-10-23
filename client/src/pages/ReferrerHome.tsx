@@ -79,7 +79,7 @@ export default function ReferrerHome() {
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
             <WaitingAsks view={view} nowMs={nowMs} />
-            <HomeAside impact={home.data?.impact ?? null} paused={view.paused} pending={pause.isPending} onToggle={() => setPaused(!view.paused)} />
+            <HomeAside impact={home.data?.impact ?? null} thankYous={home.data?.thankYous ?? null} paused={view.paused} pending={pause.isPending} onToggle={() => setPaused(!view.paused)} />
           </div>
         </>
       )}

@@ -38,7 +38,7 @@ export const MONEY_CHECK_BATCH = 200;
  * refund path (refundLedgerSpendTx) reads at most this many rows per effect. The delivery lookup
  * uses the same bound, so a spend it can see and a spend the refund path can reverse are the same set.
  */
-export const DELIVERY_SPEND_REFERENCE_BOUND = 32;
+export const DELIVERY_SPEND_REFERENCE_BOUND = 32; // a checked limit shared with the refund path, not proof every spend fits it; an ask drawn from more buckets needs it raised in both places
 /** Each check lists at most this many examples; the counts stay complete. */
 export const FINDINGS_PREVIEW_LIMIT = 50;
 /** The most finding lines one email carries; the subject keeps the full count. */
@@ -226,6 +226,7 @@ async function listLegacyPlanWallets(now: Date, limit: number): Promise<LegacyPl
 export async function listAskDeliverySpendsWhileWaiting(limit: number): Promise<AskSpentWhileWaitingRow[]> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
   const found: AskSpentWhileWaitingRow[] = [];
+  const seen = new Set<number>();
   let afterId = 0;
   for (;;) {
     const waiting = await db.select({ id: referralRequests.id }).from(referralRequests)
@@ -239,15 +240,18 @@ export async function listAskDeliverySpendsWhileWaiting(limit: number): Promise<
     // lookup asked for the bare id, a shape production never writes, so this finding could never
     // fire. Same 32-row bound the refund path uses (refundLedgerSpendTx).
     const referenceKeys = ids.flatMap(id => Array.from({ length: DELIVERY_SPEND_REFERENCE_BOUND }, (_, n) => `${id}#${n + 1}`));
+    // A delivery drawn from a promo bucket is kind "promo_spend" (spendCreditsTx), so both kinds count;
+    // one finding per ask, even when the spend drew from several buckets.
     const spends = await db.select({ id: tokenTransactions.id, referenceId: tokenTransactions.referenceId, idempotencyKey: tokenTransactions.idempotencyKey })
       .from(tokenTransactions)
-      .where(and(eq(tokenTransactions.kind, "credit_spend"), inArray(tokenTransactions.referenceId, referenceKeys)));
+      .where(and(inArray(tokenTransactions.kind, ["credit_spend", "promo_spend"]), inArray(tokenTransactions.referenceId, referenceKeys)));
     for (const spend of spends) {
       if (found.length >= limit) return found;
       if (!(spend.idempotencyKey ?? "").startsWith(`${ASK_DELIVERY_KEY_PREFIX}:`)) continue;
       // The ask id is the part before the bucket suffix; anything else is not a delivery spend.
       const requestId = Number((spend.referenceId ?? "").split("#")[0]);
-      if (!Number.isInteger(requestId) || !waitingIds.has(requestId)) continue;
+      if (!Number.isInteger(requestId) || !waitingIds.has(requestId) || seen.has(requestId)) continue;
+      seen.add(requestId);
       found.push({ transactionId: spend.id, requestId });
     }
     const last = waiting[waiting.length - 1];
