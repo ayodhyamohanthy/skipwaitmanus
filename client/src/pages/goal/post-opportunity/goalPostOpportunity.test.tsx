@@ -158,6 +158,12 @@ describe("Goal /post-opportunity wizard", () => {
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     await screen.findByText("Add useful details.");
     expect(screen.getByText("Public job link (optional)", { exact: true })).toBeTruthy();
+    expect(screen.getByText("Location", { exact: true })).toBeTruthy();
+    expect(screen.queryByText("Location (optional)")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Starts at"), { target: { value: "2026-11-02T09:00" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    await screen.findByText("Ends at", { exact: true });
+    expect(screen.queryByText("Ends at (optional)")).toBeNull();
   });
 
   it("switches the privacy line when the first-name opt-in is ticked", async () => {
