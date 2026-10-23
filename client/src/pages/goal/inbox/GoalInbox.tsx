@@ -136,7 +136,7 @@ export default function GoalInbox() {
 
   if (!isLoaded) {
     return (
-      <main data-skipwait-screen="inbox" data-skipwait-loading="true" className="pb-10">
+      <main data-skipwait-screen="inbox" data-skipwait-loading="true" className="g-scope pb-10">
         <PageHeading />
         <GoalSkeletonRows density="ask" count={3} className="mt-4" />
       </main>
@@ -145,7 +145,7 @@ export default function GoalInbox() {
 
   if (!isSignedIn) {
     return (
-      <main data-skipwait-screen="inbox-sign-in" className="pb-10">
+      <main data-skipwait-screen="inbox-sign-in" className="g-scope pb-10">
         <PageHeading />
         <section aria-labelledby="inbox-sign-in" className="mx-4 my-6 border border-g-hairline p-4 gdesk:mx-5">
           <h2 id="inbox-sign-in" className="text-g-heading text-g-ink">Your next step</h2>
@@ -169,7 +169,7 @@ export default function GoalInbox() {
   const waitingOnThem = visible.filter(thread => !needsYou(thread));
 
   return (
-    <main data-skipwait-screen="inbox" className="pb-10">
+    <main data-skipwait-screen="inbox" className="g-scope pb-10">
       <PageHeading />
 
       {showSkeleton ? (
