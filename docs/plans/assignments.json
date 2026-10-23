@@ -631,7 +631,8 @@
         ".env.example",
         "server/configContract.test.ts"
       ],
-      "note": "Landed as 0d8f3bf5 (merge of PR #560). RELEASED=[\"home\"] keeps production on the V9 landing; planFamilyFlagsOff.test.ts kept green via a compatibility re-export in goalFlags.ts (byte-identical rule; Main-approved Oct 23) \u2014 canonical home is planFamilyFlag.ts. Branch registry amendment (Main, Oct 23): the declared name agent/queue/d048-f-flags holds a divergent parallel attempt (4b98f72a, preserved, never overwritten); the landed implementation lived on agent/instinct/d048-f-flags, which this row now names."    },
+      "note": "Landed as 0d8f3bf5 (merge of PR #560). RELEASED=[\"home\"] keeps production on the V9 landing; planFamilyFlagsOff.test.ts kept green via a compatibility re-export in goalFlags.ts (byte-identical rule; Main-approved Oct 23) \u2014 canonical home is planFamilyFlag.ts. Branch registry amendment (Main, Oct 23): the declared name agent/queue/d048-f-flags holds a divergent parallel attempt (4b98f72a, preserved, never overwritten); the landed implementation lived on agent/instinct/d048-f-flags, which this row now names."
+    },
     {
       "id": "D-048-F-primitives",
       "title": "Goal primitives: audit and promote what the surface rows need, so no surface edits components/goal (D-134)",
@@ -1676,6 +1677,18 @@
       "status": "architect",
       "dependsOn": [],
       "note": "Any agent writes the packet (D-109): write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected."
+    },
+    {
+      "id": "AYO-20-approval-honesty",
+      "title": "Legacy approval sheet: fail closed on unstated cost, no false wallet math",
+      "row": "LIVE-OCT23",
+      "packet": null,
+      "tier": 2,
+      "lane": "ask-signin",
+      "branch": "agent/instinct/ayo20-approval-honesty",
+      "status": "in-review",
+      "dependsOn": [],
+      "note": "Coordinator prep under the whole-app + standing bug-fix mandate (Main, Oct 23): the live credit_spend approval card displayed an unstated cost as '1 credit' and promised wallet-after math the server's decide path never performs (QA runtime proof, AYO-20). UI-only honesty fix in client/src/components/assistants/ApprovalSheet.tsx: unknown cost fails closed (approve disabled, plain copy) and the balance shows without after-math; the server-side contract fix (null guard + actual charge path) stays out of scope pending proper authority (todo-01M5MPYCGYE7MF9KNCHKEWS3RH). ask_send behavior untouched."
     }
   ]
 }
