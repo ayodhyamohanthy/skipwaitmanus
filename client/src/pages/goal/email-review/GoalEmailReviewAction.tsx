@@ -75,7 +75,7 @@ export default function GoalEmailReviewAction() {
     );
   }
   if (state === "loading") return <GoalFrame><h1 className="text-[24px] font-semibold leading-[1.15] tracking-[-0.02em]">Opening private review…</h1><p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">No decision is recorded until you press a confirmation button.</p></GoalFrame>;
-  if (state === "error") return <GoalFrame><h1 className="text-[24px] font-semibold leading-[1.15] tracking-[-0.02em]">Review link unavailable</h1><p role="alert" className="mt-2 flex items-center gap-2 text-g-small text-g-crimson"><X className="h-4 w-4 shrink-0" aria-hidden="true" />{error}</p></GoalFrame>;
+  if (state === "error") return <GoalFrame><h1 className="text-[24px] font-semibold leading-[1.15] tracking-[-0.02em]">Review link unavailable</h1><p role="alert" className="mt-2 flex items-center gap-2 text-g-small text-g-ink"><X className="h-4 w-4 shrink-0" aria-hidden="true" />{error}</p></GoalFrame>;
   if (state === "review") {
     return (
       <GoalFrame>
