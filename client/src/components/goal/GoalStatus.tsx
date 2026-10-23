@@ -21,17 +21,17 @@ export function GoalStatus({ status, label, stepper, className }: { status: Goal
   const tone = TONE[status];
   return (
     <span data-testid="goal-status" className={cn("inline-flex items-center gap-2 text-g-meta whitespace-nowrap", tone.text, className)}>
-      {stepper ? <GoalMiniStepper stage={stepper.stage} terminal={stepper.terminal} /> : null}
+      {stepper ? <GoalMiniStepper stage={stepper.stage} terminal={stepper.terminal} status={status} /> : null}
       {!stepper && tone.dot ? <span aria-hidden="true" className="size-(--g-dot) shrink-0 rounded-full bg-current" /> : null}
       {label}
     </span>
   );
 }
 
-/** Four nodes joined by links; the current stage is ink, reached stages are quiet, the rest hollow (status tone lives on the label). Decorative unless a `label` is given, then it reads as an image with that name. (my-asks.css:38-49) */
-export function GoalMiniStepper({ stage, terminal, label }: { stage: number; terminal?: "expired" | "withdrawn"; status?: GoalStatusValue; label?: string }) {
+/** Four nodes joined by links; the current stage shares the status tone, reached stages are quiet and the rest hollow. Decorative unless a `label` is given, then it reads as an image with that name. (my-asks.css:38-49) */
+export function GoalMiniStepper({ stage, terminal, status, label }: { stage: number; terminal?: "expired" | "withdrawn"; status?: GoalStatusValue; label?: string }) {
   return (
-    <span {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })} data-testid="goal-mini-stepper" className="inline-flex items-center">
+    <span {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })} data-testid="goal-mini-stepper" className={cn("inline-flex items-center", TONE[status ?? terminal ?? (stage === 3 ? "referred" : stage === 2 ? "accepted" : "waiting")].text)}>
       {[0, 1, 2, 3].map(index => {
         const isStatus = index === stage;
         const reached = index < stage;
@@ -41,7 +41,7 @@ export function GoalMiniStepper({ stage, terminal, label }: { stage: number; ter
             <span
               className={cn(
                 "shrink-0 rounded-full",
-                isStatus ? "size-(--g-dot) bg-g-ink" : reached ? "size-1.5 bg-g-ink-2" : "size-1.5 border border-g-control-edge",
+                isStatus ? "size-(--g-dot) bg-current" : reached ? "size-1.5 bg-g-ink-2" : "size-1.5 border border-g-control-edge",
               )}
             />
           </span>
