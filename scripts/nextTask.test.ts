@@ -1,12 +1,14 @@
 // @vitest-environment node
 // D-083: the queue picker hands every agent the same next task, in Claude
 // Code's order, and never two agents the same one. Pins each decision.
-import { existsSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import * as core from "./nextTaskCore.mjs";
 import {
-  IDLE_MS, ciStateFromRuns, localSyncIssues, markerSubject, parseMarker, pickNextTask, reviewStateOf, roleOf, statusBoard, validateAssignments,
+  IDLE_MS, ciStateFromRuns, epicSummaries, localSyncIssues, markerSubject, parseMarker, pickNextTask, reviewStateOf, roleOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
 
@@ -659,7 +661,86 @@ describe("status reports to the CEO and the board (D-085)", () => {
 
   it("names the executive role from the lane", () => {
     expect(roleOf(task("A", { lane: "design" }))).toBe("CDO");
+    expect(roleOf(task("A", { lane: "design-system" }))).toBe("CDO");
+    expect(roleOf(task("A", { lane: "d048-platform" }))).toBe("CDO");
     expect(roleOf(task("A", { lane: "payments" }))).toBe("CTO");
+    expect(roleOf(task("A", { lane: "d049-platform" }))).toBe("CTO");
+  });
+
+  it("accepts only optional epic strings with the assignment identifier shape", () => {
+    expect(validateAssignments({ version: 1, repo: "o/r", tasks: [task("A")] }, exists)).toEqual([]);
+    for (const epic of ["D-048-p3", "epic.v2", "A1-foo.bar"]) {
+      expect(validateAssignments({ version: 1, repo: "o/r", tasks: [task("A", { epic })] }, exists)).toEqual([]);
+    }
+    for (const epic of ["", " bad", "bad ", "bad/epic", "bad_epic", 42, null, false, [], {}]) {
+      const errors = validateAssignments({ version: 1, repo: "o/r", tasks: [task("A", { epic })] }, exists);
+      expect(errors.some(e => e.includes("epic"))).toBe(true);
+    }
+  });
+
+  it("adds epic and only valid open-PR behind-main data to board rows", () => {
+    const tasks = [
+      task("A", { epic: "D-048-p3" }),
+      task("B", { epic: "D-048-p3" }),
+      task("C", { status: "done", epic: "D-048-p3" }),
+      task("D", { status: "done", epic: "D-048-p3" }),
+      task("U", { epic: "D-049" }),
+      task("N"),
+    ];
+    const openPrs = new Map([
+      ["agent/queue/a", "https://github.com/o/r/pull/1"],
+      ["agent/queue/b", "https://github.com/o/r/pull/2"],
+      ["agent/queue/c", "https://github.com/o/r/pull/3"],
+    ]);
+    const rows = statusBoard({
+      tasks, branches: new Map([
+        ["agent/queue/a", claimBy("Builder · a", "A")],
+        ["agent/queue/b", claimBy("Builder · b", "B")],
+        ["agent/queue/c", claimBy("Builder · c", "C")],
+      ]), openPrs,
+      prCi: new Map([["agent/queue/a", { state: "green" }], ["agent/queue/b", { state: "green" }]]),
+      prBehind: new Map([["agent/queue/a", 4], ["agent/queue/b", "bad"], ["agent/queue/c", 9], ["agent/queue/u", null]]),
+      now: NOW,
+    });
+    expect(rows.map(r => [r.id, r.epic, r.behindMain])).toEqual([
+      ["A", "D-048-p3", 4], ["B", "D-048-p3", null], ["C", "D-048-p3", undefined],
+      ["D", "D-048-p3", undefined], ["U", "D-049", undefined], ["N", undefined, undefined],
+    ]);
+    expect(rows[2]).toMatchObject({ pr: "https://github.com/o/r/pull/3" });
+    expect(rows[2]).not.toHaveProperty("behindMain");
+  });
+
+  it("keeps a measured zero distinct from missing or invalid behind-main data", () => {
+    for (const [measured, expected] of [[0, 0], [undefined, null], [null, null], [-1, null], [1.5, null], [NaN, null], [Infinity, null], ["2", null]]) {
+      const rows = statusBoard({
+        tasks: [task("A")], branches: new Map([["agent/queue/a", claimBy("Builder · a", "A")]]),
+        openPrs: new Map([["agent/queue/a", "https://github.com/o/r/pull/1"]]),
+        prBehind: new Map([["agent/queue/a", measured]]), now: NOW,
+      });
+      expect(rows[0].behindMain).toBe(expected);
+    }
+    expect(renderBoard([])).not.toContain("released:");
+    expect(epicSummaries([])).toEqual([]);
+  });
+
+  it("summarizes epics in first-seen order and renders summaries without dropping rows", () => {
+    const rows = [
+      { id: "A", title: "A title", tier: 2, role: "CTO", state: "pr-green", health: "green", holder: null, quietHours: null, pr: "https://github.com/o/r/pull/1", behindMain: 2, report: null, epic: "D-048-p3" },
+      { id: "B", title: "B title", tier: 2, role: "CDO", state: "done", health: "done", holder: null, quietHours: null, pr: "https://github.com/o/r/pull/2", report: null, epic: "D-048-p3" },
+      { id: "C", title: "C title", tier: 2, role: "CTO", state: "done", health: "done", holder: null, quietHours: null, pr: null, report: null, epic: "D-049" },
+      { id: "D", title: "D title", tier: 2, role: "CTO", state: "todo", health: "red", holder: null, quietHours: null, pr: null, report: null, epic: "D-048-p3" },
+      { id: "E", title: "E title", tier: 2, role: "CTO", state: "todo", health: "open", holder: null, quietHours: null, pr: null, report: null },
+    ];
+    expect(epicSummaries(rows)).toEqual([
+      { epic: "D-048-p3", total: 3, done: 1, prs: 1, red: 1, released: ["B"] },
+      { epic: "D-049", total: 1, done: 1, prs: 0, red: 0, released: ["C"] },
+    ]);
+    const text = renderBoard(rows);
+    expect(text).toMatch(/1\. A[\s\S]*2\. B[\s\S]*3\. C[\s\S]*4\. D[\s\S]*5\. E/);
+    expect(text).toContain("D-048-p3: 1/3 done, 1 PR, 1 red, released: B");
+    expect(text).toContain("D-049: 1/1 done, 0 PR, 0 red, released: C");
+    expect(text).toContain("behind main 2");
+    expect(renderBoard([{ ...rows[0], behindMain: null }])).toContain("behind main unknown");
   });
 
   it("shows every task in priority order with its state, holder, quiet time and latest report", () => {
@@ -1134,5 +1215,73 @@ describe("D-151 model-independent reviews and landings", () => {
     expect(text).toContain("No session of your model");
     expect(text).toContain("outside the picker");
     expect(text).toContain("post no verdict");
+  });
+});
+
+describe("actual next-task --status integration", () => {
+  it("counts main-only commits behind an open PR and renders its epic and role", () => {
+    const fixture = mkdtempSync(path.join(os.tmpdir(), "next-task-status-"));
+    const work = path.join(fixture, "work");
+    const origin = path.join(fixture, "origin.git");
+    const mock = path.join(fixture, "mock.mjs");
+    const runGit = (args: string[]) => execFileSync("git", args, { cwd: work, encoding: "utf8" }).trim();
+    const run = (args: string[]) => execFileSync("git", args, { cwd: work, encoding: "utf8" });
+    const mainSha = "a".repeat(40);
+    const branchSha = "b".repeat(40);
+    try {
+      mkdirSync(work, { recursive: true });
+      execFileSync("git", ["init", "--bare", origin], { encoding: "utf8" });
+      run(["init", "-b", "main"]);
+      run(["config", "user.name", "Fixture"]);
+      run(["config", "user.email", "fixture@example.test"]);
+      run(["remote", "add", "origin", origin]);
+      mkdirSync(path.join(work, "docs/plans"), { recursive: true });
+      writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture\n");
+      writeFileSync(path.join(work, "docs/plans/assignments.json"), JSON.stringify({
+        version: 1,
+        repo: "o/r",
+        tasks: [{
+          id: "A", title: "Fixture task", row: "A", packet: "docs/plans/test.md", tier: 2,
+          lane: "design", branch: "agent/queue/a", status: "todo", dependsOn: [], epic: "E",
+        }],
+      }, null, 2) + "\n");
+      run(["add", "."]);
+      run(["commit", "-m", "root"]);
+      run(["commit", "--allow-empty", "-m", "main-only 1"]);
+      run(["commit", "--allow-empty", "-m", "main-only 2"]);
+      run(["push", "-u", "origin", "main"]);
+      const rootSha = runGit(["rev-list", "--max-parents=0", "HEAD"]);
+      run(["branch", "agent/queue/a", rootSha]);
+      run(["switch", "agent/queue/a"]);
+      run(["commit", "--allow-empty", "-m", "Claim A: Builder · fixture"]);
+      run(["push", "-u", "origin", "agent/queue/a"]);
+      run(["switch", "main"]);
+
+      writeFileSync(mock, `
+const response = body => ({ ok: true, status: 200, json: async () => body });
+globalThis.fetch = async input => {
+  const url = String(input);
+  if (url.includes('/actions/workflows/ci.yml/runs?branch=main')) return response({ workflow_runs: [
+    { status: 'completed', conclusion: 'success', head_sha: '${mainSha}', head_branch: 'main', updated_at: '2026-10-23T12:00:00Z', html_url: 'https://example.test/ci/main' },
+  ] });
+  if (url.includes('/actions/workflows/ci.yml/runs?per_page=100')) return response({ workflow_runs: [
+    { status: 'completed', conclusion: 'success', head_sha: '${branchSha}', head_branch: 'agent/queue/a', updated_at: '2026-10-23T12:00:00Z', html_url: 'https://example.test/ci/branch' },
+  ] });
+  if (url.includes('/pulls?state=open')) return response([{ head: { repo: { full_name: 'o/r' }, ref: 'agent/queue/a' }, html_url: 'https://example.test/pr/1' }]);
+  if (url.includes('/pulls?state=closed')) return response([]);
+  throw new Error('unexpected fetch: ' + url);
+};
+`);
+      const result = execFileSync(process.execPath, ["--import", mock, path.join(root, "scripts/next-task.mjs"), "--status"], {
+        cwd: work,
+        encoding: "utf8",
+        env: { ...process.env, GH_TOKEN: "fixture-not-real", NODE_USE_ENV_PROXY: "1" },
+      });
+      expect(result).toContain("behind main 2");
+      expect(result).toContain("E: 0/1 done, 1 PR");
+      expect(result).toContain("CDO");
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
   });
 });

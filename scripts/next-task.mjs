@@ -242,7 +242,15 @@ async function state() {
       for (const head of heads) prCi.set(head, { state: "error" });
     }
   }
-  return { doc, mainCi, openPrs, mergedHeads, prCi, branches: loadBranches(doc.tasks), reports: loadReports() };
+  // Count main-only commits, not branch-only commits. Missing refs stay unknown,
+  // never a misleading zero; use argv (not a shell) for branch names from GitHub.
+  const prBehind = new Map();
+  for (const head of openPrs?.keys() ?? []) {
+    const raw = tryGit("rev-list", "--count", `${originRef(head)}..origin/main`);
+    const count = raw !== null && /^\d+$/.test(raw) ? Number(raw) : null;
+    prBehind.set(head, Number.isSafeInteger(count) ? count : null);
+  }
+  return { doc, mainCi, openPrs, mergedHeads, prCi, prBehind, branches: loadBranches(doc.tasks), reports: loadReports() };
 }
 
 function claim(pick, who, branches) {
@@ -316,9 +324,9 @@ async function main() {
     return;
   }
   if (args.status) {
-    const { doc, mainCi, openPrs, mergedHeads, prCi, branches, reports } = await state();
+    const { doc, mainCi, openPrs, mergedHeads, prCi, prBehind, branches, reports } = await state();
     console.log(`main CI: ${mainCi.state}${mainCi.url ? ` (${mainCi.url})` : ""}${openPrs === null || mergedHeads === null ? " · pull requests: UNKNOWN (GitHub read failed; the board may be wrong)" : ""}\n`);
-    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, reports, now: Date.now() })));
+    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, prBehind, reports, now: Date.now() })));
     return;
   }
   if (args.report) {
@@ -359,11 +367,11 @@ async function main() {
   const who = args.claim ? sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4)) : args.as ?? null;
   if (args.claim && who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const { doc, mainCi, openPrs, mergedHeads, prCi, branches, reports } = await state();
+    const { doc, mainCi, openPrs, mergedHeads, prCi, prBehind, branches, reports } = await state();
     const now = Date.now();
     const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, prCi, reports, now, claimant: who });
     // D-085: every agent starts from the same picture — the priorities top down, green or not.
-    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, reports, now });
+    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, prBehind, reports, now });
     if (pick.kind === "ceo") pick.board = board;
     else console.log(renderBoard(board));
     const { local, mainBehind } = localState();

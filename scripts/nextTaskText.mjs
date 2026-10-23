@@ -1,6 +1,6 @@
 // D-083: what the queue picker prints for each decision. Pure: the same pick
 // and context always print the same steps, which scripts/nextTask.test.ts pins.
-import { slugOf } from "./nextTaskCore.mjs";
+import { epicSummaries, slugOf } from "./nextTaskCore.mjs";
 
 const CMD = "node scripts/next-task.mjs";
 const land = [
@@ -153,10 +153,12 @@ export function renderBoard(rows) {
     if (r.holder) bits.push(r.holder);
     if (r.quietHours !== null && r.quietHours !== undefined) bits.push(`quiet ${r.quietHours}h`);
     if (r.pr) bits.push(r.pr);
+    if (r.pr && r.state !== "done") bits.push(`behind main ${Number.isSafeInteger(r.behindMain) && r.behindMain >= 0 ? r.behindMain : "unknown"}`);
     if (r.report) bits.push(`report: ${r.report.status} — ${r.report.who}${r.report.note ? `: ${r.report.note}` : ""}`);
     return bits.join(" · ");
   });
-  return ["STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)", ...lines, ""].join("\n");
+  const summaries = epicSummaries(rows).map(s => `${s.epic}: ${s.done}/${s.total} done, ${s.prs} PR, ${s.red} red, released: ${s.released.join(", ") || "none"}`);
+  return ["STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)", ...summaries, ...lines, ""].join("\n");
 }
 
 /** The steps for one pick. ctx: { who, date, claimed } (claimed = this run took the lock or holds it). */

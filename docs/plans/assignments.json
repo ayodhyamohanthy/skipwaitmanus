@@ -141,7 +141,8 @@
       "branch": "agent/queue/d048-live-review",
       "status": "done",
       "dependsOn": [],
-      "note": "D-134 (6): both pages went live in place with the merge button and no independent review; this checks them against their kit versions and the money rules, fixes what fails red-first, and passes an independent review."
+      "note": "D-134 (6): both pages went live in place with the merge button and no independent review; this checks them against their kit versions and the money rules, fixes what fails red-first, and passes an independent review.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-p3-live-review-find",
@@ -156,7 +157,8 @@
         "P0-ask-link-signin",
         "D-132-audit"
       ],
-      "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines)."
+      "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines).",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-p3-live-review-requests",
@@ -168,7 +170,8 @@
       "branch": "agent/queue/d048-live-review-requests",
       "status": "done",
       "dependsOn": [],
-      "note": "D-150: /requests went live as goal colours on the old layout; redesign it to the contract's \"Get your asks answered.\" with one next step. D-149: keeps every pin D-048-p3-live-review (#472) restored or verified, labels or drops the sample rows, and restores the GoalMiniStepper status tone or records why."
+      "note": "D-150: /requests went live as goal colours on the old layout; redesign it to the contract's \"Get your asks answered.\" with one next step. D-149: keeps every pin D-048-p3-live-review (#472) restored or verified, labels or drops the sample rows, and restores the GoalMiniStepper status tone or records why.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-p3-live-review-conversation",
@@ -184,7 +187,8 @@
         "D-132-audit",
         "ROW20-CD"
       ],
-      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first."
+      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-p3-live-review-queue",
@@ -198,7 +202,8 @@
       "dependsOn": [
         "P1-queue-attestation"
       ],
-      "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the referral queue against its kit version (pass codes, pre-acceptance privacy, verified-referrer check, lost test pins). After P1-queue-attestation, which edits the same page."
+      "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the referral queue against its kit version (pass codes, pre-acceptance privacy, verified-referrer check, lost test pins). After P1-queue-attestation, which edits the same page.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-065-C",
@@ -379,7 +384,8 @@
       "lane": "design-core",
       "branch": "agent/opencode/goal-kit-type-scale",
       "status": "done",
-      "dependsOn": []
+      "dependsOn": [],
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-p3-map",
@@ -391,7 +397,8 @@
       "branch": "agent/workbuddy/d048-phase3-plan",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed as `f9d7e8d5` (PR #358) by DeepSeek V4.1 Flash Free · 91af: merged with `main`, the map corrected against D-120, D-123 and D-130, full gate green. W0 (the shell) is next."
+      "note": "Landed as `f9d7e8d5` (PR #358) by DeepSeek V4.1 Flash Free · 91af: merged with `main`, the map corrected against D-120, D-123 and D-130, full gate green. W0 (the shell) is next.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-phase-3",
@@ -403,7 +410,8 @@
       "branch": "agent/queue/d048-foundation-packet",
       "status": "architect",
       "dependsOn": [],
-      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds the six D-048-F-* rows the split's list gives it exactly as the split's table lists them, and sets this row to done."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds the six D-048-F-* rows the split's list gives it exactly as the split's table lists them, and sets this row to done.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-p3-w0-shell",
@@ -417,7 +425,8 @@
       "dependsOn": [
         "D-048-p3-map"
       ],
-      "note": "Landed as `a89a0e60` (PR #361, Tier 2): the app shell renders inside GoalShell with one navigation, the credits pill (D-055), the carried-over account menu and the beta badge in the top bar (#402); no surface outside the shell re-skinned. Live follow-ups (PR #412) fix the phone shell (main claims row 2, no blank screen under the sticky bottom bar), the clipped rail wordmark (badge now in the top bar) and the desktop rail (sticky viewport height, so account/More stay reachable); corrected 1280/390 captures in design/goal-ui/captures/w0-shell/fix-explore-*.png."
+      "note": "Landed as `a89a0e60` (PR #361, Tier 2): the app shell renders inside GoalShell with one navigation, the credits pill (D-055), the carried-over account menu and the beta badge in the top bar (#402); no surface outside the shell re-skinned. Live follow-ups (PR #412) fix the phone shell (main claims row 2, no blank screen under the sticky bottom bar), the clipped rail wordmark (badge now in the top bar) and the desktop rail (sticky viewport height, so account/More stay reachable); corrected 1280/390 captures in design/goal-ui/captures/w0-shell/fix-explore-*.png.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-p3-home",
@@ -429,7 +438,8 @@
       "branch": "agent/instinct/goal-landing",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed through env flags (VITE_GOAL_UI_LANDING, VITE_GOAL_UI_LANDING_V9); D-048-F-flags folds them into goalSurfaces.ts. Signed-in visitors to / still get the old page until D-048-p3-home-signed-in."
+      "note": "Landed through env flags (VITE_GOAL_UI_LANDING, VITE_GOAL_UI_LANDING_V9); D-048-F-flags folds them into goalSurfaces.ts. Signed-in visitors to / still get the old page until D-048-p3-home-signed-in.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-p3-queue",
@@ -441,7 +451,8 @@
       "branch": "agent/instinct/w1-queue",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed in place as c1690f40 (#426) and f1812bf1 (#428), no flag, no independent review (D-149); its attestation gap is P1-queue-attestation. Landed, but not yet goal-focused (D-150): D-048-p3-live-review-queue redesigns it to the doctrine and checks the rest."
+      "note": "Landed in place as c1690f40 (#426) and f1812bf1 (#428), no flag, no independent review (D-149); its attestation gap is P1-queue-attestation. Landed, but not yet goal-focused (D-150): D-048-p3-live-review-queue redesigns it to the doctrine and checks the rest.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-p3-company",
@@ -453,7 +464,8 @@
       "branch": "agent/instinct/w2-explore-company",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed in place as 4e6f32c1 (#429), no flag, no independent review (D-149); it now sends asks itself through the shared composer, so it is Tier 1. Landed, but not yet goal-focused (D-150): D-048-p3-live-review-find redesigns it to the doctrine and checks it."
+      "note": "Landed in place as 4e6f32c1 (#429), no flag, no independent review (D-149); it now sends asks itself through the shared composer, so it is Tier 1. Landed, but not yet goal-focused (D-150): D-048-p3-live-review-find redesigns it to the doctrine and checks it.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-p3-ask",
@@ -465,7 +477,8 @@
       "branch": "agent/instinct/w2-ask",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed in place as d3da2497 (#431), no flag, no independent review (D-149); its sign-in regression is P0-ask-link-signin. Landed, but not yet goal-focused (D-150): D-048-p3-live-review-find redesigns it to the doctrine and checks the rest."
+      "note": "Landed in place as d3da2497 (#431), no flag, no independent review (D-149); its sign-in regression is P0-ask-link-signin. Landed, but not yet goal-focused (D-150): D-048-p3-live-review-find redesigns it to the doctrine and checks the rest.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-p3-explore",
@@ -477,7 +490,8 @@
       "branch": "agent/qoder/d048-phase-3-explore",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging main: /explore is owned by the page in App.tsx, the wave keeps its rewrite and carries main's #407 ?q= pre-filter into its query state, Explore.tsx joins MOVED_SURFACES, and three stale expectations are realigned (Neutrinos rebrand changes the row order and SEO line; the meta description carries main's current money copy). Captures at 1280/390 in five states (directory, drawer, not-open, empty, error). Gate: tsc, token audit, deploy triggers, 50 focused tests, build green; migration lint runs in CI. D-048-p3-live-review checked it (#472). Landed, but not yet goal-focused (D-150): D-048-p3-live-review-find redesigns it to the doctrine."
+      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging main: /explore is owned by the page in App.tsx, the wave keeps its rewrite and carries main's #407 ?q= pre-filter into its query state, Explore.tsx joins MOVED_SURFACES, and three stale expectations are realigned (Neutrinos rebrand changes the row order and SEO line; the meta description carries main's current money copy). Captures at 1280/390 in five states (directory, drawer, not-open, empty, error). Gate: tsc, token audit, deploy triggers, 50 focused tests, build green; migration lint runs in CI. D-048-p3-live-review checked it (#472). Landed, but not yet goal-focused (D-150): D-048-p3-live-review-find redesigns it to the doctrine.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-p3-requests",
@@ -489,7 +503,8 @@
       "branch": "agent/qoder/d048-phase-3-requests",
       "status": "done",
       "dependsOn": [],
-      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging origin/main: the shared goal/ shell takes main's newer W0 version (designer review 01:52: pill mono numeral + g-hit + /plans, account-menu slot, BetaBadge), MyRequests joins MOVED_SURFACES, and the pilot's superseded avatar assertion is re-pinned to the shell's real contract. Captures at 1280/390 in four states added with a reusable live-route capture tool (design/goal-ui/tools/capture-live.mjs). Gate: tsc, token audit, deploy triggers, 54 focused tests, build green; migration lint runs in CI (macOS bash 3.2 lacks declare -A). D-048-p3-live-review checked it (#472). Landed, but not yet goal-focused (D-150): D-048-p3-live-review-requests redesigns it to the doctrine."
+      "note": "Landed by workbuddy · 8dc3 (takeover, 2026-10-21) after merging origin/main: the shared goal/ shell takes main's newer W0 version (designer review 01:52: pill mono numeral + g-hit + /plans, account-menu slot, BetaBadge), MyRequests joins MOVED_SURFACES, and the pilot's superseded avatar assertion is re-pinned to the shell's real contract. Captures at 1280/390 in four states added with a reusable live-route capture tool (design/goal-ui/tools/capture-live.mjs). Gate: tsc, token audit, deploy triggers, 54 focused tests, build green; migration lint runs in CI (macOS bash 3.2 lacks declare -A). D-048-p3-live-review checked it (#472). Landed, but not yet goal-focused (D-150): D-048-p3-live-review-requests redesigns it to the doctrine.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-P-seeker",
@@ -503,7 +518,8 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-P-referrer",
@@ -517,7 +533,8 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-P-money",
@@ -531,7 +548,8 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-P-auth",
@@ -545,7 +563,8 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-P-account",
@@ -559,7 +578,8 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-P-admin",
@@ -573,7 +593,8 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-P-employer",
@@ -587,7 +608,8 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-P-public",
@@ -601,7 +623,8 @@
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-P-marketing",
@@ -616,7 +639,8 @@
         "D-048-phase-3",
         "D-048-P-account"
       ],
-      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md and the landing contract in docs/plans/GOAL_UI_MIGRATION.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123."
+      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md and the landing contract in docs/plans/GOAL_UI_MIGRATION.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+      "epic": "D-048-p3"
     },
     {
       "id": "ROW20-A",
