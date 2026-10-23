@@ -1208,7 +1208,8 @@
     "D-048-F-harness",
     "D-048-F-primitives",
     "D-048-P-referrer",
-    "D-048-F-goal-check"
+    "D-048-F-goal-check",
+    "D-048-fix-post-copy"
    ],
    "owns": [
     "client/src/pages/PostOpportunity.tsx",
