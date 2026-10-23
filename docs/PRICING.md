@@ -39,7 +39,7 @@ Frozen decisions bind: once the founder freezes a decision it is the single sour
 ## Next steps (in order, none live)
 1. D-132 audit, tests first, flags off.
 2. Enable path with INR and USD QA captures (local full-stack + held-branch TEST carts captured Oct 23, see Proof state; production captures still owed at enable).
-3. Additive Chargebee catalog items for plans and rungs: ALREADY on the TEST site (skipwait_v2plan_fast_track/insider + v2pack/v2credits rungs 5-200, both currencies, active; inventoried Oct 23). Live-site catalog apply still pending - no live subscription, no spend, audit file owed at apply time.
+3. Additive Chargebee catalog items for plans and rungs: DONE on both sites. TEST site inventoried Oct 23; LIVE site applied Oct 23 ~09:50 IST with D-152 names (create-only, zero subscriptions/invoices, audit: docs/qa/v2-live-catalog-apply.md). TEST plan prices renamed to D-152 the same day.
 4. No real payment without the founder's one-word yes. No pricing questions to the founder.
 
 ## Proof state
