@@ -33,7 +33,7 @@ import { composeWhyMe, overLimitReasons, splitWhyMe, WHY_ME_MAX, type WhyMeReaso
 import type { AskResume, AskSentView } from "./AskDrawer";
 import { askIdempotencyKey, ASK_IDEMPOTENCY_KEY, buildAskBody } from "./askSend";
 import { linkHint, roleTitleFromUrl, type LinkHint } from "./findModel";
-import { goToSeekerSignIn } from "./signInHandoff";
+import { askSignInReturnTo, goToSeekerSignIn } from "./signInHandoff";
 
 const MIN_WORDS = 10;
 
@@ -145,9 +145,10 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     setReasons(current => (current.some(reason => reason.trim()) ? current : splitWhyMe(remoteDraft.note)));
   }, [remoteDraft, company]);
 
-  // The sign-in handoff prefill does the same on /ask, for its own company.
+  // /ask restores the handoff even without a directory match. Other surfaces
+  // still accept only a prefill belonging to their own resolved company.
   useEffect(() => {
-    if (!prefill || !company || prefill.companySlug !== company.slug) return;
+    if (!prefill || (window.location.pathname !== "/ask" && (!company || prefill.companySlug !== company.slug))) return;
     setUrl(current => current || prefill.targetRoleUrl);
     setReasons(current => (current.some(reason => reason.trim()) ? current : splitWhyMe(prefill.note)));
   }, [prefill, company]);
@@ -215,12 +216,9 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       return;
     }
     if (!isSignedIn) {
-      // Sign in first; the company, link and reasons come back on /ask, where the seeker finishes.
-      if (company && saveAskPrefill({ companySlug: company.slug, targetRoleUrl: url, note: composeWhyMe(reasons) })) {
-        goToSeekerSignIn("/ask");
-        return;
-      }
-      goToSeekerSignIn("/ask");
+      // Save the seeker's work even when the directory cannot resolve the company.
+      saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons) });
+      goToSeekerSignIn(askSignInReturnTo(window.location.pathname, window.location.search));
       return;
     }
     try {
