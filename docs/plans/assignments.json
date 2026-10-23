@@ -67,7 +67,7 @@
     },
     {
       "id": "PICKER-board-newer-report",
-      "title": "The board and the unblock step show a newer report beside a standing blocked one (D-155)",
+      "title": "The board and the unblock step show the reports that came after a standing blocked one (D-155)",
       "row": "D-134",
       "packet": "docs/plans/PICKER-PARALLEL.md",
       "tier": 2,
@@ -75,7 +75,7 @@
       "branch": "agent/queue/picker-board-newer-report",
       "status": "todo",
       "dependsOn": [],
-      "note": "D-155: on Oct 23 the board kept workbuddy · b0eb's 02:14 blocked report on D-090-BYOR and hid its three later green reports, which named the owner's waiver; the CEO ruled from the stale report (D-154) and the owner had to restate his word. latestReports keeps the blocked report standing (unchanged) and also keeps the newest report after it; the board line and the printed unblock step show both."
+      "note": "D-155: on Oct 23 the board kept workbuddy · b0eb's 02:14 blocked report on D-090-BYOR and hid the three green reports after it; the first (a2fdbc3e) named the owner's waiver, the next two reported build progress. The CEO ruled from the stale report (D-154) and the owner had to restate his word. latestReports keeps the blocked report standing (unchanged) and also returns every non-CEO report after it; the board line and the printed unblock step show them."
     },
     {
       "id": "D-069-chargebee-catalog-sync",
@@ -701,7 +701,7 @@
       "branch": "agent/claude/d090-byor",
       "status": "todo",
       "dependsOn": [],
-      "note": "D-155: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main, keep main's packet §0 and Status text, drop the branch's D-148 register row (D-155 records the waiver), and renumber 0107_ask_invites.sql to the next free number at landing (main has 0107_seeker_levels.sql; ROW20-CD holds 0108). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5)."
+      "note": "D-155: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main, keep main's packet §0 and Status text, drop the branch's D-148 register row (D-155 records the waiver), and renumber 0107_ask_invites.sql to the next free number at landing (main has 0107_seeker_levels.sql; ROW20-CD holds 0108). Build C1-C4 (server) now; C5 edits My asks (MyRequests.tsx), which D-048-p3-live-review-requests is redesigning (in progress), so start C5 only after that row is done and build the invite action into the redesigned page; until then stop after C4, push and report 'waiting' to the CEO. Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5)."
     },
     {
       "id": "D-095-one-tap",

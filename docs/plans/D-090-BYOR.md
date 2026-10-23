@@ -11,12 +11,12 @@
 | Implementer | senior model only |
 | Branch | `agent/claude/d090-byor` from the latest `origin/main` |
 | Depends on | Nothing in the queue: the owner waived the D-086 gate (D-155). D-097 QA before the flags go on |
-| Do not run at the same time as | D-038 money-core; the D-048 ask/explore lanes; D-086 (demand list). All edit `server/db.ts` or the My asks / Explore surfaces |
+| Do not run at the same time as | D-132-audit items that edit the delivery functions named in §5 (D-038 is done); the D-048 ask/explore lanes; D-086 (demand list). All edit `server/db.ts` or the My asks / Explore surfaces. D-086-demand-list's build waits for this row (D-155). D-048-p3-live-review-requests is redesigning My asks now: build C1-C4 first and start C5 only after that row is done (D-155) |
 | Verified against | `main` `d54c0ca8` on 2026-10-23 |
 
 ## 0. Build gate (read before claiming a branch)
 
-**D-155 (Oct 23, owner word): BYOR builds now; this gate is waived.** The owner waived it in workbuddy · b0eb's session at 02:26 IST and confirmed it to the CEO on Oct 23, after D-154 had briefly made this row wait for `D-086-demand-list`. The dependency is ordering, not code: BYOR needs only a *waiting* ask, which D-034 produces whenever a company has no available referrer. The demand list's build now follows this one. Every other rule in this packet stands: both flags stay off (D-097), and the Tier 1 gate and independent review are unchanged. **Resuming `agent/claude/d090-byor`:** merge `main`; keep `main`'s §0 and Status text; drop the branch's D-148 register row, because D-155 records the waiver and `main`'s D-148 is the plan names; and renumber `0107_ask_invites.sql` to the next free number at landing (`main` has `0107_seeker_levels.sql`; ROW20-CD holds 0108). The two paragraphs below are history.
+**D-155 (Oct 23, owner word): BYOR builds now; this gate is waived.** The owner waived it in workbuddy · b0eb's session at 02:26 IST and confirmed it to the CEO on Oct 23, after D-154 had briefly made this row wait for `D-086-demand-list`. The dependency is ordering, not code: BYOR needs only a *waiting* ask, which D-034 produces whenever a company has no available referrer. The demand list's build now follows this one. **C5 waits for the /requests redesign:** `D-048-p3-live-review-requests` is redesigning My asks, which C5 edits, so build C1-C4 now and start C5 only after that row is done, putting the invite action into the redesigned page; until then stop after C4, push and report waiting. Every other rule in this packet stands, except the D-086 checks in §9 and §11, which are struck: both flags stay off (D-097), and the Tier 1 gate and independent review are unchanged. **Resuming `agent/claude/d090-byor`:** merge `main`; keep `main`'s §0 and Status text; drop the branch's D-148 register row, because D-155 records the waiver and `main`'s D-148 is the plan names; and renumber `0107_ask_invites.sql` to the next free number at landing (`main` has `0107_seeker_levels.sql`; ROW20-CD holds 0108). The two paragraphs below are history.
 
 D-090: "Builds after the demand list (owner order 2,1,3 per D-089)." The demand list is D-086 (asks at companies not in the directory, k-anonymous counts). On `main` at `c39ad909` **D-086 is not built and has no queue task**: `/explore` still lists only directory companies, and grepping `docs/plans/assignments.json` for `D-086` returns nothing.
 
@@ -153,7 +153,7 @@ All of it is behind `BYOR_LINK_ENABLED` (server) and `VITE_BYOR_LINK` (client), 
   - `shared/scheduledJobs.ts`, `server/scheduledJobRegistry.ts`.
   - `.env.example`, `src/worker.ts` (`CONTAINER_ENV_KEYS`), `server/configContract.test.ts`.
   - `client/src/lib/flags.ts`, `client/src/components/requests/requestsApi.ts`, `client/src/pages/MyRequests.tsx`, `client/src/App.tsx`, `client/src/components/goal/goalBoundary.test.ts` (allowlist entry for the new goal-UI page/components).
-  - Docs: this packet's Status line, `docs/plans/assignments.json` (status only), `AGENTS.md` living-map row, `docs/PRD.md`, `docs/BACKLOG.md`, `docs/DECISIONS.md` sync cell for D-090 (no decision text).
+  - Docs: the `docs/KIT_V4_BUILD_PLAN.md` §3b row "D-090" (its status cell only), `docs/plans/assignments.json` (status only), `AGENTS.md` living-map row, `docs/PRD.md`, `docs/BACKLOG.md`, `docs/DECISIONS.md` sync cell for D-090 (no decision text).
 - **Read only:** `server/coverageDelivery.ts`, `server/heldAsk.ts`, `shared/referral.ts`, `server/blockedPairs.ts`, `server/blockEnforcement.test.ts`, `shared/referrerAccess.ts`, `server/_core/otpLogin.ts`, `client/src/lib/referrerSignIn.ts`, `client/src/pages/EmailReviewAction.tsx`, `client/src/pages/SignIn.tsx`, `server/emailDelivery.ts`, `server/db.askCostStored.test.ts` (fixture pattern).
 - **Out of scope (never edit here):** `server/payments.ts`, `server/paymentWebhooks.ts`, `server/chargebee*`, `server/checkout*`, `shared/planCatalog.ts`, `shared/billingCatalog.ts`, `server/creditCycles.ts`, `server/_core/workosAuth.ts`, `server/_core/otpLogin.ts`, the decision text in `docs/DECISIONS.md`, any migration below 0107, D-057's middleware, and every other page's UI.
 
@@ -175,7 +175,7 @@ Add the `askInviteLinks` table to `drizzle/schema.ts`, `0107_ask_invites.sql`, t
 `/r/:token` page + route (`client/src/App.tsx`, noindex meta, `referrerSignInHref`), `AskInviteLink` states, My asks action + `AskInviteSheet` + revoke confirmation, goal-UI boundary allowlist. Tests: §7 C1–C4; captures at 1280 and 390 for: My asks waiting row, sheet, landing signed-out, landing signed-in verified, claimed/held. Commit: `Add the invite sheet and the /r/:token landing page`.
 
 **C6 — docs and handover.**
-Status line, `assignments.json`, `AGENTS.md` living map (new routes/modules/job), `PRD.md`, `BACKLOG.md`, `DECISIONS.md` sync cell. Attach the captures and the QA script (flag on in a test environment). Commit: `Sync BYOR docs, status and captures`.
+The §3b row "D-090" status cell, `assignments.json`, `AGENTS.md` living map (new routes/modules/job), `PRD.md`, `BACKLOG.md`, `DECISIONS.md` sync cell. Attach the captures and the QA script (flag on in a test environment). Commit: `Sync BYOR docs, status and captures`.
 
 Every commit leaves `pnpm check` and its focused tests green and is pushed. Do not open the PR until C1–C6 are all green; then the usual Tier 1 draft PR and independent review.
 
@@ -228,12 +228,12 @@ Every commit leaves `pnpm check` and its focused tests green and is pushed. Do n
 
 ## 9. Definition of done
 
-- [ ] **D-086 is live** (or the owner explicitly reordered); if not, this packet is not started.
+- [x] ~~D-086 is live~~ — gate waived by the owner (D-155); not a condition.
 - [ ] Every §7 test was red first and is green now; every control is green; no existing assertion weakened.
 - [ ] Gate on your commit merged with the latest `origin/main`: `pnpm check`, focused files, `pnpm test`, `pnpm build`, design-token audit, migration lint in CI.
 - [ ] Tier 1 independent review passed (`docs/DELEGATION.md` §6); findings fixed red-first.
 - [ ] Flags off in production; a QA pass with the flags on proves create → claim → delivered and create → claim → held/reserved on a test environment. No real-money QA.
-- [ ] Docs in the same push: this Status line, `assignments.json`, `AGENTS.md` living map, `PRD.md`, `BACKLOG.md`, `DECISIONS.md` sync cell.
+- [ ] Docs in the same push: the §3b row "D-090" status cell, `assignments.json`, `AGENTS.md` living map, `PRD.md`, `BACKLOG.md`, `DECISIONS.md` sync cell.
 - [ ] Pushed; API `verify-live-release.sh` CONVERGED on the exact commit; web `git-commit` meta matches; captures at 1280 and 390 for the five screens in C5.
 - [ ] Status set to `done — <sha>` with the evidence block (`docs/DELEGATION.md` §5); report to the CEO.
 
@@ -252,7 +252,7 @@ Every commit leaves `pnpm check` and its focused tests green and is pushed. Do n
 
 ## 11. Stop and ask if
 
-- **D-086 is not live** — this is the first check; stop and report.
+- ~~D-086 is not live~~ — waived by the owner (D-155); not a stop condition.
 - The four approved mocks appear and contradict §4 (surfaces, copy, claim states) — report before building the client.
 - A named function no longer matches its description (line drift is fine; a behaviour change is not).
 - You need a file outside §5, a second migration, a new dependency or an env key not named here.

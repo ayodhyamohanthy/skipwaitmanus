@@ -35,7 +35,7 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 | Bedrock AI provider plan | - | build | plan with owner; AWS access needed |
 
 ## Demand-list copy (D-086, verbatim)
-- "{N} people are asking for a referral at {Company}." (N from 3 up; for 1-2 people, "A few people are asking for a referral at {Company}."; never a count of 0 — D-086 (2), D-155)
+- "{N} people are asking for a referral at {Company}." (N from 3 up; for 1-2 people D-086 (2) gives only "A few people asking", and the D-086 packet proposes the full sentence; never a count of 0 — D-086 (2), D-155)
 - Empty: "No one has asked for {Company} yet." / "Nobody at {Company} is waiting right now. We'll tell you if that changes."
 - Bonus honesty: "Most companies pay their own referral bonus when a referral they make is hired. That programme is your employer's and they pay it - skipwait.me never pays referrers."
 
