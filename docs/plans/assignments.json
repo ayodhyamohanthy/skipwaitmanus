@@ -610,7 +610,7 @@
       "packet": "docs/plans/D-048-foundation.md",
       "tier": 2,
       "lane": "design-core",
-      "branch": "agent/queue/d048-f-flags",
+      "branch": "agent/instinct/d048-f-flags",
       "status": "todo",
       "dependsOn": [
         "D-048-phase-3"
@@ -630,7 +630,8 @@
         "scripts/designTokenAudit.test.ts",
         ".env.example",
         "server/configContract.test.ts"
-      ]
+      ],
+      "note": " Branch registry amendment (Main, Oct 23): the declared name agent/queue/d048-f-flags holds a divergent parallel attempt (4b98f72a, preserved, never overwritten); the packet-shaped implementation (D-048-foundation correction 2, D-164) lives on agent/instinct/d048-f-flags, which this row now names."
     },
     {
       "id": "D-048-F-primitives",
