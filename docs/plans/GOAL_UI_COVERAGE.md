@@ -80,7 +80,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/messages` | `pages/Messages` | `D-048-p3-messages` | D-048-p3-messages: to be added by its lane packet |
 | `/share` | `pages/ShareHub` | `D-048-p3-seeker-small` | D-048-p3-seeker-small: todo |
 | `/inbox` | `pages/UnifiedInbox` | `D-048-p3-inbox` | D-048-p3-inbox: todo |
-| `/queue` | `pages/MyCompanyInbox` | `D-048-p3-live-review-queue` | D-048-p3-live-review-queue: todo |
+| `/queue` | `pages/MyCompanyInbox` | `D-048-p3-live-review-queue` | Review pending: source `0c307b36`, proposed contract in GOAL_UI_MIGRATION; twelve 1280/390 captures in `design/goal-ui/captures/queue/goal-review/`; not landed or independently approved |
 | `/settings` | `pages/Settings` | `D-048-p3-settings` | D-048-p3-settings: to be added by its lane packet |
 | `/referrer` | `pages/Referrer` | `D-048-p3-referrer` | D-048-p3-referrer: todo |
 | `/referrer/impact` | `pages/ReferrerImpact` | `D-048-p3-referrer` | D-048-p3-referrer: todo |
