@@ -33,7 +33,7 @@ Applied reading (with Main, Oct 24):
 
 ## Open questions
 
-1. Does paid entitlement for agents mean the user's existing paid ask credits, or a separate agent-scoped purchase? (Money wording stays frozen under D-132/D-152 either way.)
+1. Paid entitlement = the user's EXISTING paid referral balance (the credit ledger wallet: purchased packs sit alongside the free monthly plan_grant allowance; see server/creditCycles.ts and the billing catalog). The founder's words are "if they have paid for referrals" - the grounded reading is the agent spends the signed-in user's existing paid balance with that user's approval. No agent-scoped purchase, price fork, or new payment product is requested or to be manufactured. (Money wording stays frozen under D-132/D-152 either way.) Remaining unknown: whether the free monthly allowance is agent-spendable or human-only - the directive conditions agent application on PAID balance, so default to paid-balance-only until the owner says otherwise.
 2. What does the user see and approve for each agent action (per-action approval vs standing grant with limits)?
 3. Rate limits and abuse controls for agent traffic vs human traffic?
 4. How is an agent identified and attested (user-declared API token vs verified agent identity)?
