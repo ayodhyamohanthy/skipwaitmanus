@@ -10,7 +10,7 @@
 | Size | M |
 | Implementer | any model; independent review required |
 | Branch | `agent/<model>/d057-session-gate` |
-| Depends on | the seeker-passwords lane live (it edits `server/_core/workosSession.ts` and adds the social-sign-in refusal) |
+| Depends on | nothing (D-163, Oct 23). None of the files in §5 is in the seeker-passwords branch, and this gate is D-080 (b)'s route to unblocking passwords, so it lands first; PR #324 merges it at its own landing |
 | Do not run at the same time as | D-057-referrer-continuity (the next lane builds on this one) |
 | Verified against | `main` `681ea79` |
 

@@ -10,7 +10,7 @@
 | Size | S |
 | Implementer | any model |
 | Branch | `agent/<model>/fnd4-token-paths` |
-| Depends on | the seeker sign-in lane (1.2) live, because that branch rewrites `server/sentry.ts` |
+| Depends on | nothing (D-163, Oct 23): it lands before the seeker sign-in lane (1.2, PR #324, owner-held), which merges it at its own landing and extends `shared/telemetryScrub.ts` instead of duplicating it |
 | Verified against | `main` `e6b87f8` |
 
 ## 1. Current behaviour

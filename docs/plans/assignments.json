@@ -184,10 +184,9 @@
       "status": "todo",
       "dependsOn": [
         "D-038-reconcile",
-        "D-132-audit",
         "ROW20-CD"
       ],
-      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first.",
+      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. D-163: no longer waits for the whole D-132 audit: its cost line landed with audit item 7, and the open item 3 edits only the composer, not SeekerConversation.tsx. ROW20-CD (the Hired link and thank-you) is done.",
       "epic": "D-048-p3"
     },
     {
@@ -743,12 +742,191 @@
       "id": "D-100-security-audit",
       "title": "Security, availability and payments hardening: read-only audit first, then flagged fixes (D-100)",
       "row": "D-100",
-      "packet": null,
+      "packet": "docs/plans/D-100-security-audit.md",
       "tier": 3,
       "lane": "security",
       "branch": "agent/claude/d100-security-audit",
-      "status": "architect",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Packet-only (D-163): its work is the D-100.* rows that follow, written in docs/plans/D-100-security-audit.md.",
+      "epic": "D-100"
+    },
+    {
+      "id": "D-100.csp-report",
+      "title": "The report-only CSP collects violations: report-uri and a scrubbed /api/csp-report",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-headers",
+      "branch": "agent/queue/d100-csp-report",
+      "status": "todo",
+      "dependsOn": [
+        "FND-4"
+      ],
+      "note": "D-163 subtask of D-100. After FND-4 (reuses its scrubber). One registration line in server/_core/index.ts.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts",
+        "server/securityHeaders.test.ts",
+        "server/cspReport.ts",
+        "server/cspReport.test.ts",
+        "server/_core/index.ts"
+      ]
+    },
+    {
+      "id": "D-100.csp-enforce",
+      "title": "An enforcing CSP built behind CSP_ENFORCED = false",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-csp",
+      "branch": "agent/queue/d100-csp-enforce",
+      "status": "todo",
+      "dependsOn": [
+        "D-100.csp-report"
+      ],
+      "note": "D-163 subtask of D-100. Off until D-100.csp-release.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts",
+        "server/securityHeaders.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.csp-release",
+      "title": "Switch CSP_ENFORCED on after 7 days of reports, with captures and the CEO's sign-off",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-csp-release",
+      "branch": "agent/queue/d100-csp-release",
+      "status": "todo",
+      "dependsOn": [
+        "D-100.csp-enforce"
+      ],
+      "note": "D-163 release row of the CSP pieces: one line, opens only 7 days after D-100.csp-report is live.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts"
+      ]
+    },
+    {
+      "id": "D-100.hsts-preload",
+      "title": "HSTS preload built behind HSTS_PRELOAD = false (switching it on is the owner's word)",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-hsts",
+      "branch": "agent/queue/d100-hsts-preload",
+      "status": "todo",
+      "dependsOn": [
+        "D-100.csp-release"
+      ],
+      "note": "D-163 subtask of D-100. Same file as the CSP rows, so after them.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts",
+        "server/securityHeaders.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.otp-hmac",
+      "title": "The work-email code is stored as an HMAC, with a one-TTL read of the old hash",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 1,
+      "lane": "security-otp",
+      "branch": "agent/queue/d100-otp-hmac",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-163 subtask of D-100. Sign-in path: independent review by another model (D-151).",
+      "epic": "D-100",
+      "owns": [
+        "server/workEmailOtp.ts",
+        "server/workEmailOtp.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.provider-recon",
+      "title": "The daily money check compares Chargebee's recent payments with ours (read-only)",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 1,
+      "lane": "security-recon",
+      "branch": "agent/queue/d100-provider-recon",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-163 subtask of D-100. Writes nothing; never adds a gateway key.",
+      "epic": "D-100",
+      "owns": [
+        "server/chargebeeAccountApi.ts",
+        "server/dailyMoneyCheck.ts",
+        "server/dailyMoneyCheck.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.secrets-sweep",
+      "title": "Read-only audit: no secret, token, code or personal data in logs, Sentry, alerts or error bodies",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-secrets",
+      "branch": "agent/queue/d100-secrets-sweep",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-163 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-secrets-sweep.md"
+      ]
+    },
+    {
+      "id": "D-100.authz-referral",
+      "title": "Read-only audit: authorization and personal data on the referral, document, block and safety routes",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-referral",
+      "branch": "agent/queue/d100-authz-referral",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-163 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-authz-referral.md"
+      ]
+    },
+    {
+      "id": "D-100.authz-account",
+      "title": "Read-only audit: authorization and personal data on the account, messaging, employer, agent and public routes",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-account",
+      "branch": "agent/queue/d100-authz-account",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-163 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-authz-account.md"
+      ]
+    },
+    {
+      "id": "D-100.authz-admin-money",
+      "title": "Read-only audit: authorization on the admin, payment, webhook, job and health routes",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-admin",
+      "branch": "agent/queue/d100-authz-admin-money",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-163 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-authz-admin-money.md"
+      ]
     },
     {
       "id": "D-099-bonus-pages",
@@ -871,7 +1049,7 @@
       "branch": "agent/claude/seeker-signin-finish",
       "status": "owner",
       "dependsOn": [],
-      "note": "Review passed on PR #324; lands only after the owner's WorkOS takeover test (D-080), the dashboard steps and SEEKER_CODE_VERIFY_UNTIL."
+      "note": "Review passed on PR #324. D-080: lands after the owner's WorkOS takeover test (a) or once D-057-session-gate is live (b), plus the owner's dashboard steps and SEEKER_CODE_VERIFY_UNTIL. At landing it merges main (FND-4 and D-057 land first, D-163) and gets a focused review of that delta."
     },
     {
       "id": "D-057-session-gate",
@@ -882,9 +1060,8 @@
       "lane": "sign-in",
       "branch": "agent/queue/d057-session-gate",
       "status": "todo",
-      "dependsOn": [
-        "seeker-passwords"
-      ]
+      "dependsOn": [],
+      "note": "D-163: no longer waits for seeker-passwords. It needs none of that branch's code (its packet's files do not include server/_core/workosSession.ts), and it is D-080 (b)'s route to unblock passwords: once it is live, #324 needs only the owner's WorkOS dashboard steps and SEEKER_CODE_VERIFY_UNTIL."
     },
     {
       "id": "FND-4",
@@ -895,9 +1072,8 @@
       "lane": "observability",
       "branch": "agent/queue/fnd4-token-paths",
       "status": "todo",
-      "dependsOn": [
-        "seeker-passwords"
-      ]
+      "dependsOn": [],
+      "note": "D-163: no longer waits for seeker-passwords (#324, owner-held). FND-4 lands first; #324 merges it at its own landing and extends the shared scrubber instead of duplicating it."
     },
     {
       "id": "SYNC-LOG-off-main",
