@@ -33,6 +33,45 @@ it("sends through ZeptoMail when it is the only configured provider, accepts its
   const row = memory.rows(billingReviewOutbox)[0];
   expect(row.status).toBe("accepted"); expect(row.providerMessageId).toBe("req_zepto_1");
 });
+it("payment_failed: a unique provider event alerts once - first failure retries to acceptance, redelivery dedupes", async () => {
+  const failed1 = { reason: "payment_failed" as const, eventId: "ev_fail_1", eventType: "payment_failed", subscriptionId: "sub_9", invoiceId: "inv_9", customerId: "cust_9", amount: 162400, currency: "INR" };
+  await memory.db.transaction(tx => enqueueBillingReviewTx(tx as never, failed1));
+  await memory.db.transaction(tx => enqueueBillingReviewTx(tx as never, failed1)); // webhook redelivery: same provider event
+  await memory.db.transaction(tx => enqueueBillingReviewTx(tx as never, { ...failed1, eventId: "ev_fail_2", invoiceId: "inv_10" })); // distinct failure
+  expect(memory.rows(billingReviewOutbox)).toHaveLength(2);
+  const transport = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response("failure", { status: 503 })).mockImplementation(async () => ok());
+  // First sweep: ev_fail_1's send fails (retryable), ev_fail_2's succeeds.
+  expect(await runBillingReviewOutbox({ now, fetchImpl: transport })).toEqual({ processed: 1, failed: 1 });
+  clock = new Date(clock.getTime() + 3 * 60_000);
+  expect(await runBillingReviewOutbox({ now, fetchImpl: transport })).toEqual({ processed: 1, failed: 0 });
+  expect(transport).toHaveBeenCalledTimes(3);
+  const firstBody = JSON.parse(String(transport.mock.calls[0][1]?.body));
+  expect(firstBody.subject).toBe("skipwait.me payment failed needs review · inv_9");
+  expect(firstBody.text).toContain("No money settled and no credits moved");
+  // Redelivery after acceptance: no new row, no resend (successful sends dedupe).
+  await memory.db.transaction(tx => enqueueBillingReviewTx(tx as never, failed1));
+  expect(await runBillingReviewOutbox({ now, fetchImpl: transport })).toEqual({ processed: 0, failed: 0 });
+  expect(transport).toHaveBeenCalledTimes(3);
+  expect(memory.rows(billingReviewOutbox).every(row => row.status === "accepted")).toBe(true);
+});
+
+it("concurrent duplicate enqueues of one provider event persist one obligation", async () => {
+  const input = { reason: "payment_failed" as const, eventId: "ev_race", eventType: "payment_failed", invoiceId: "inv_race" };
+  await Promise.all([0, 1, 2, 3].map(() => memory.db.transaction(tx => enqueueBillingReviewTx(tx as never, input))));
+  expect(memory.rows(billingReviewOutbox)).toHaveLength(1);
+});
+
+it("upgrade_leftover_blocked: a durable recoverable alert with reconciliation instructions, not log-only", async () => {
+  await memory.db.transaction(tx => enqueueBillingReviewTx(tx as never, { reason: "upgrade_leftover_blocked", eventId: "ev_upg_1", eventType: "subscription_created", subscriptionId: "sub_v2", itemPriceId: "skipwait_v2plan_fast_track-INR" }));
+  const transport = vi.fn<typeof fetch>().mockImplementation(async () => ok());
+  expect(await runBillingReviewOutbox({ now, fetchImpl: transport })).toEqual({ processed: 1, failed: 0 });
+  const body = JSON.parse(String(transport.mock.calls[0][1]?.body));
+  expect(body.subject).toBe("skipwait.me upgrade parked pending decision · sub_v2");
+  expect(body.text).toContain("RECOVERY");
+  expect(body.text).toContain("Nothing was granted automatically");
+  expect(memory.rows(billingReviewOutbox)[0].status).toBe("accepted");
+});
+
 it("uses the same opaque identity for claim and webhook, different subscription events remain distinct", () => {
   expect(billingReviewKey({ giftId: "g", reason: "gift_claimed" })).toBe(billingReviewKey({ giftId: "g", reason: "gift_claim_refused", eventId: "e" }));
   expect(billingReviewKey({ eventId: "a", reason: "plan_retired" })).not.toBe(billingReviewKey({ eventId: "b", reason: "plan_retired" }));

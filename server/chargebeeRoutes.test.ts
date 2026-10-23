@@ -194,6 +194,36 @@ describe("Chargebee webhook route", () => {
     delete process.env.CHARGEBEE_WEBHOOK_SECRET;
   });
 
+  it("a receipt failure fails the webhook so Chargebee retries; the retried delivery alerts exactly once", async () => {
+    // Crash window: if the receipt cannot be persisted the delivery is NOT
+    // acked, so the provider redelivers and the owner still hears.
+    const app = express();
+    app.use(express.json());
+    const secret = "crash-secret";
+    process.env.CHARGEBEE_WEBHOOK_SECRET = secret;
+    const seen = new Set<string>();
+    let crashes = 1;
+    const alertFailedPayment = vi.fn(async () => undefined);
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => undefined,
+      createPaymentIntent: async () => undefined,
+      fulfillPayment: async () => ({ status: "ignored" as const, reason: "unknown_checkout" }),
+      alertFailedPayment,
+      recordWebhookEventReceipt: async input => {
+        if (crashes-- > 0) throw new Error("crash after receipt before send");
+        return { duplicate: seen.has(input.eventId) ? true : (seen.add(input.eventId), false) };
+      },
+    });
+    const payload = { id: "ev_fail_crash", event_type: "payment_failed", content: { payment: { amount: 3299, currency_code: "USD", invoice_id: "inv_c", subscription_id: "sub_c" }, customer: { id: "cust_c" } } };
+    const crashed = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send(payload);
+    const retried = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send(payload);
+    expect(crashed.status).toBe(500);
+    expect(retried.status).toBe(200);
+    expect(alertFailedPayment).toHaveBeenCalledTimes(1);
+    expect(alertFailedPayment.mock.calls[0][0].eventId).toBe("ev_fail_crash");
+    delete process.env.CHARGEBEE_WEBHOOK_SECRET;
+  });
+
   it("connects a checkout intent to a verified paid event and wallet refresh", async () => {
     const app = express();
     app.use(express.json());

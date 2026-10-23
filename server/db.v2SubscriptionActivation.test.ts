@@ -174,7 +174,10 @@ describe("D-132 v2 plan-family subscription events", () => {
     expect(wallet.balance).toBe(12);
     expect(intents[0].status).toBe("pending");
     expect(events.map(event => event.providerEventId)).toEqual(["event_v2_new"]);
-    expect(reviewRows).toEqual([]);
+    // Recoverable alert path: one durable owner-alert row, enqueued atomically
+    // with the event receipt, retried by the billing-review-retry sweep.
+    expect(reviewRows).toHaveLength(1);
+    expect(JSON.parse(String(reviewRows[0].payload)).evidence).toMatchObject({ reason: "upgrade_leftover_blocked", eventId: "event_v2_new", subscriptionId: "subscription_v2" });
   });
 
   it("a renewal on the same subscription needs no hosted page or intent", async () => {

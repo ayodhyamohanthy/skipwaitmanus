@@ -609,7 +609,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       let duplicate = false;
       if (deps.recordWebhookEventReceipt) {
         try {
-          duplicate = (await deps.recordWebhookEventReceipt({ eventId: failedPayment.eventId, eventType: "payment_failed", subscriptionId: failedPayment.subscriptionId })).duplicate;
+          duplicate = (await deps.recordWebhookEventReceipt({ eventId: failedPayment.eventId, eventType: "payment_failed", subscriptionId: failedPayment.subscriptionId, invoiceId: failedPayment.invoiceId, customerId: failedPayment.customerId, amount: failedPayment.amount, currency: failedPayment.currency })).duplicate;
         } catch (error) {
           console.error("[Chargebee] payment-failed receipt error", error);
           return res.status(500).json({ error: "Event receipt retry required" });

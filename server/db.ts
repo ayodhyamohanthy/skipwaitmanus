@@ -4743,13 +4743,20 @@ export async function getWalletPlanSnapshot(userId: number, role: WalletRole): P
  * re-alert. Used for events that have no natural receipt of their own (today:
  * payment_failed - a failed payment creates no fulfillment row).
  */
-export async function recordChargebeeWebhookEventReceipt(input: { eventId: string; eventType: string; subscriptionId?: string }): Promise<{ duplicate: boolean }> {
+export async function recordChargebeeWebhookEventReceipt(input: { eventId: string; eventType: string; subscriptionId?: string; invoiceId?: string; customerId?: string; amount?: number; currency?: string }): Promise<{ duplicate: boolean }> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.transaction(async (tx) => {
     const existing = await tx.select({ id: subscriptionEvents.id }).from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee"), eq(subscriptionEvents.providerEventId, input.eventId))).limit(1);
     if (existing[0]) return { duplicate: true as const };
     await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId ?? null });
+    // Atomic with the receipt: a crash after this commit can never leave the
+    // failure unalerted - the durable outbox row is retried by the
+    // billing-review-retry sweep until the provider accepts the email, and the
+    // obligation key dedupes successful sends of this same provider event.
+    if (input.eventType === "payment_failed") {
+      await enqueueBillingReviewTx(tx, { reason: "payment_failed", eventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId, invoiceId: input.invoiceId, customerId: input.customerId, amount: input.amount, currency: input.currency });
+    }
     return { duplicate: false as const };
   });
 }
@@ -4844,6 +4851,9 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       // upgrades normally.
       if (retainsAccess && wallet && wallet.plan === "free" && wallet.monthlyCreditsRemaining > 0) {
         await recordV2Event();
+        // Recoverable alert path, not log-only: the same transaction enqueues a
+        // durable owner alert (billing-review-retry sweep delivers with retries).
+        await enqueueBillingReviewTx(tx, { reason: "upgrade_leftover_blocked", eventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId, itemPriceId: input.itemPriceId });
         return { status: "blocked" as const, reason: "upgrade_leftover_rule_unresolved" };
       }
       const v2Patch = {
