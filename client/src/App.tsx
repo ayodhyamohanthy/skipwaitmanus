@@ -10,7 +10,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { SmokeProvider } from "./contexts/SmokeContext";
 import { markSecureSessionVerified } from "./lib/pwaContinuity";
 import { askRedirectTarget } from "./lib/fastTrackHandoff";
-import { PLAN_FAMILY_V2_CLIENT } from "@/lib/goalFlags";
+import { PLAN_FAMILY_V2_CLIENT } from "@/lib/planFamilyFlag";
 import Home from "./pages/Home";
 import { OfflineNotice, PwaUpdatePrompt, SlowConnectionNotice } from "./components/PwaStatus";
 import { ErrorScreen, LoadingScreen, needsReload } from "./components/app-states/SystemStates";
