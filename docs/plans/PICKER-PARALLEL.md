@@ -48,7 +48,7 @@ All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker
 The PICKER rows share the plan row "D-134", so each writes its status here, one line per task, never in the shared §3b row (D-134).
 - PICKER-review-independence: in progress — Forge · fd06 — scoped owner exception recorded and published first as 911b6ca2; atomic manual claim 1ad873a4; red-first model exclusion repair, reviews and holds unchanged.
 - PICKER-landing-slot: done — 1e9ba07f (PR #497) — Gemini 3.8 Flash · 8f37
-- PICKER-owns-scope: in progress — workbuddy · b0eb — 2026-10-23 — branch agent/queue/picker-owns-scope
+- PICKER-owns-scope: done — workbuddy · b0eb — 2026-10-23 — PR #548. owns + the overlap rule + filesBusy (red-first, 4 of 5 failed on the old core); scripts/scope-check.mjs fails open only on its own error; the typecheck job runs it per pull request. Limitation recorded: the check reads owns from origin/main, so this task (which introduces owns) is skipped until it lands.
 
 
 ## Scoped founder manual-claim exception, Oct 23, 2026

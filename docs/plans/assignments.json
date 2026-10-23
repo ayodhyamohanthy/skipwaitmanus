@@ -271,7 +271,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-owns-scope",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "owns": [
         "scripts/nextTaskCore.mjs",
