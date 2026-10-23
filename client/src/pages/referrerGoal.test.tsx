@@ -8,7 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Referrer from "./Referrer";
 import ReferrerImpact from "./ReferrerImpact";
 
-const { authState, userState, go, search, surfaces } = vi.hoisted(() => ({
+const { authState, userState, go, search, surfaces, otpControl } = vi.hoisted(() => ({
+  otpControl: { useReal: false },
   authState: { isLoaded: true, isSignedIn: true, userId: "12", getToken: vi.fn().mockResolvedValue("test-token") },
   userState: { user: null as null | { primaryEmailAddress?: { emailAddress?: string } } },
   go: vi.fn(),
@@ -17,7 +18,10 @@ const { authState, userState, go, search, surfaces } = vi.hoisted(() => ({
 }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => authState, useUser: () => userState, SignInButton: ({ children }: { children?: React.ReactNode }) => <button type="button">{children ?? "Sign in"}</button> }));
 vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
-vi.mock("@/components/ReferrerOtpSignIn", () => ({ ReferrerOtpSignIn: () => <div data-testid="referrer-otp-sign-in" /> }));
+vi.mock("@/components/ReferrerOtpSignIn", async () => {
+  const actual = await vi.importActual<typeof import("@/components/ReferrerOtpSignIn")>("@/components/ReferrerOtpSignIn");
+  return { ReferrerOtpSignIn: () => (otpControl.useReal ? <actual.ReferrerOtpSignIn /> : <div data-testid="referrer-otp-sign-in" />) };
+});
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/referrer", go],
@@ -47,6 +51,7 @@ beforeEach(() => {
   authState.isLoaded = true; authState.isSignedIn = true; userState.user = null;
   search.value = ""; surfaces.on = new Set(["referrer"]);
   window.sessionStorage.clear();
+  otpControl.useReal = false;
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); go.mockClear(); });
 
@@ -72,6 +77,80 @@ describe("Goal /referrer workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close setup" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByText("Help when the fit feels right.")).toBeTruthy();
+  });
+
+  it("keeps Tab inside the OTP dialog so background actions stay unreachable", async () => {
+    authState.isSignedIn = false;
+    stubWorkspace();
+    renderWithQuery(<Referrer />);
+    const dialog = await screen.findByRole("dialog");
+    const setupCta = screen.getByRole("button", { name: /Set up as a referrer/ });
+    for (let i = 0; i < 4; i += 1) fireEvent.keyDown(window, { key: "Tab" });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).not.toBe(setupCta);
+    fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("opens the work-email step directly for ?setup=work-email links", async () => {
+    search.value = "setup=work-email";
+    authState.isSignedIn = false;
+    stubWorkspace();
+    const { unmount } = renderWithQuery(<Referrer />);
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+    expect(screen.getByTestId("referrer-otp-sign-in")).toBeTruthy();
+    unmount();
+    authState.isSignedIn = true;
+    stubWorkspace();
+    renderWithQuery(<Referrer />);
+    expect(await screen.findByText("REFERRER SETUP · 2 OF 3")).toBeTruthy();
+    expect(screen.getByText("Verify work email.")).toBeTruthy();
+  });
+
+  it("sends a signed-in account without a verified domain to /verify from the setup dialog", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      const path = String(url);
+      if (path.endsWith("/access")) return ok({ verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null });
+      if (path.endsWith("/referrer-preferences")) return ok(PREFS);
+      return ok({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderWithQuery(<Referrer />);
+    fireEvent.click(await screen.findByRole("button", { name: /Set up as a referrer/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/ }));
+    const link = await screen.findByRole("link", { name: /Verify with a one-time code/ });
+    expect(link.getAttribute("href")).toBe("/verify");
+    expect(fetchMock.mock.calls.some(call => String(call[0]).endsWith("/verify-work-email"))).toBe(false);
+  });
+
+  it("surfaces the server rejection of a personal email through the real OTP form", async () => {
+    otpControl.useReal = true;
+    authState.isSignedIn = false;
+    stubWorkspace();
+    renderWithQuery(<Referrer />);
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+    const fetchMock = vi.fn(async (_url: string) => ({ ok: false, status: 400, json: async () => ({ error: "Personal email providers cannot access private referral requests. Use your company address." }) }));
+    vi.stubGlobal("fetch", fetchMock);
+    fireEvent.change(screen.getByLabelText("Company email"), { target: { value: "person@gmail.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send sign-in code" }));
+    await screen.findByRole("alert");
+    expect(screen.getByText(/personal email providers cannot access private referral requests/i)).toBeTruthy();
+    expect(fetchMock.mock.calls.every(call => String(call[0]).includes("/api/auth/otp/send"))).toBe(true);
+  });
+
+  it("shows verification as done and saves the chosen lane through the real preferences contract", async () => {
+    const fetchMock = stubWorkspace();
+    renderWithQuery(<Referrer />);
+    fireEvent.click(await screen.findByRole("button", { name: /Set up as a referrer/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/ }));
+    expect(await screen.findByText(/Verified ·/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    expect(await screen.findByText("Choose your lane.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(fetchMock.mock.calls.some(call => String(call[0]).endsWith("/referrer-preferences") && call[1]?.method === "PUT" && String(call[1]?.body).includes('"preferAreas"'))).toBeTruthy();
   });
 
   it("shows the goal overview with the next-step commit for signed-in visitors", async () => {
