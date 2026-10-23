@@ -13,7 +13,7 @@
       "tier": 1,
       "lane": "ask-signin",
       "branch": "agent/queue/p0-ask-link-signin",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "D-149 (1): since #431 the signed-out send returns to a bare /ask, so ?fast= / ?referCompany&referAlias / ?post= are lost and the ask reaches the whole company. Red-first, independent review before landing, live check."
     },
