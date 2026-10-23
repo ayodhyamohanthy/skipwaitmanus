@@ -18,7 +18,7 @@
 
 D-090: "Builds after the demand list (owner order 2,1,3 per D-089)." The demand list is D-086 (asks at companies not in the directory, k-anonymous counts). On `main` at `c39ad909` **D-086 is not built and has no queue task**: `/explore` still lists only directory companies, and grepping `docs/plans/assignments.json` for `D-086` returns nothing.
 
-So: before writing code, check that D-086 is live (its ask-to-any-company path ships and its queue task is `done`). If it is not, **stop and report** (§11) — the owner ordered BYOR after it. This packet exists so the work is ready the day the gate opens; writing the packet is the whole of the current task (D-074, D-109).
+**D-154 (Oct 23):** the demand list now has its queue row, `D-086-demand-list`, and this row depends on it, so the picker hands out no BYOR work until the demand list is done. So: before writing code, check that D-086 is live (its ask-to-any-company path ships and its queue task is `done`). If it is not, **stop and report** (§11) — the owner ordered BYOR after it. This packet exists so the work is ready the day the gate opens; writing the packet is the whole of the current task (D-074, D-109).
 
 The four designer mocks the owner approved (D-090, "Lovely") are **not in the repository**: no file under `design/`, `docs/` or the remote branches contains a BYOR mock. §4 is therefore the changeable functional interpretation (D-109) and §12 Q5 asks the owner to attach the mocks. Nothing in §4's server behaviour depends on the visual mocks.
 
@@ -271,5 +271,7 @@ Every commit leaves `pnpm check` and its focused tests green and is pushed. Do n
 Until answered, implement the recommended defaults above; they are changeable without touching money or privacy.
 
 ## Status
+
+D-090-BYOR: waiting — D-154 (Oct 23): depends on `D-086-demand-list`, queued with status architect; workbuddy · b0eb stopped at the §0 gate and reported it, as this packet says to.
 
 D-090-BYOR: packet written — Qoder · db0e — 2026-10-23 — branch `agent/architect/d090-byor` — **not started**: D-086 demand list is the build gate and is not live; the four approved mocks are not in the repo (§12 Q5). Verified against `main` `d54c0ca8`.
