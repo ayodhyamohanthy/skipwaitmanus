@@ -158,7 +158,20 @@
         "D-132-audit"
       ],
       "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines).",
-      "epic": "D-048-p3"
+      "epic": "D-048-p3",
+      "owns": [
+        "client/src/pages/Explore.tsx",
+        "client/src/pages/ExploreCompany.tsx",
+        "client/src/pages/Ask.tsx",
+        "client/src/pages/explore/**",
+        "client/src/pages/explore.test.tsx",
+        "client/src/pages/exploreDrawer.test.tsx",
+        "client/src/pages/ask.test.tsx",
+        "client/src/pages/askSignIn.test.tsx",
+        "design/goal-ui/captures/explore/**",
+        "design/goal-ui/captures/ask/**",
+        "design/goal-ui/captures/explore-company/**"
+      ]
     },
     {
       "id": "D-048-p3-live-review-requests",
