@@ -5,22 +5,22 @@
 | Field | Value |
 |---|---|
 | Queue row | `docs/plans/assignments.json` → `D-090-BYOR` (the picker reads it). Its status goes in the `docs/KIT_V4_BUILD_PLAN.md` §3b row "D-090" (added by D-154; this task is its only one, D-134) |
-| Decisions | D-090 (approved for build), D-155 (gate waived, BYOR builds now), D-086 (demand list), D-087, D-089, D-097, D-082, D-034, D-047, D-061, D-062, D-050, D-055, D-030/D-049, D-019(e), D-057, D-060, D-066(4), D-088, D-120, D-068, D-109 |
+| Decisions | D-090 (approved for build), D-162 (gate waived, BYOR builds now), D-086 (demand list), D-087, D-089, D-097, D-082, D-034, D-047, D-061, D-062, D-050, D-055, D-030/D-049, D-019(e), D-057, D-060, D-066(4), D-088, D-120, D-068, D-109 |
 | Risk tier | 1 (money, identity, privacy, migration) |
 | Size | L (five commits, server + client + migration; split only along §6) |
 | Implementer | senior model only |
 | Branch | `agent/claude/d090-byor` from the latest `origin/main` |
-| Depends on | Nothing in the queue: the owner waived the D-086 gate (D-155). D-097 QA before the flags go on |
-| Do not run at the same time as | D-132-audit items that edit the delivery functions named in §5 (D-038 is done); the D-048 ask/explore lanes; D-086 (demand list). All edit `server/db.ts` or the My asks / Explore surfaces. D-086-demand-list's build waits for this row (D-155). D-048-p3-live-review-requests is redesigning My asks now: build C1-C4 first and start C5 only after that row is done (D-155) |
+| Depends on | Nothing in the queue: the owner waived the D-086 gate (D-162). D-097 QA before the flags go on |
+| Do not run at the same time as | D-132-audit items that edit the delivery functions named in §5 (D-038 is done); the D-048 ask/explore lanes; D-086 (demand list). All edit `server/db.ts` or the My asks / Explore surfaces. D-086-demand-list's build waits for this row (D-162). D-048-p3-live-review-requests is redesigning My asks now: build C1-C4 first and start C5 only after that row is done (D-162) |
 | Verified against | `main` `d54c0ca8` on 2026-10-23 |
 
 ## 0. Build gate (read before claiming a branch)
 
-**D-155 (Oct 23, owner word): BYOR builds now; this gate is waived.** The owner waived it in workbuddy · b0eb's session at 02:26 IST and confirmed it to the CEO on Oct 23, after D-154 had briefly made this row wait for `D-086-demand-list`. The dependency is ordering, not code: BYOR needs only a *waiting* ask, which D-034 produces whenever a company has no available referrer. The demand list's build now follows this one. **C5 waits for the /requests redesign:** `D-048-p3-live-review-requests` is redesigning My asks, which C5 edits, so build C1-C4 now and start C5 only after that row is done, putting the invite action into the redesigned page; until then stop after C4, push and report waiting. Every other rule in this packet stands, except the D-086 checks in §9 and §11, which are struck: both flags stay off (D-097), and the Tier 1 gate and independent review are unchanged. **Resuming `agent/claude/d090-byor`:** merge `main`; keep `main`'s §0 and Status text; drop the branch's D-148 register row, because D-155 records the waiver and `main`'s D-148 is the plan names; and renumber `0107_ask_invites.sql` to the next free number at landing (`main` has `0107_seeker_levels.sql`; ROW20-CD holds 0108). The two paragraphs below are history.
+**D-162 (Oct 23, owner word): BYOR builds now; this gate is waived.** The owner waived it in workbuddy · b0eb's session at 02:26 IST and confirmed it to the CEO on Oct 23, after D-154 had briefly made this row wait for `D-086-demand-list`. The dependency is ordering, not code: BYOR needs only a *waiting* ask, which D-034 produces whenever a company has no available referrer. The demand list's build now follows this one. **C5 waits for the /requests redesign:** `D-048-p3-live-review-requests` is redesigning My asks, which C5 edits, so build C1-C4 now and start C5 only after that row is done, putting the invite action into the redesigned page; if that row is not done when C4 is pushed, report it blocked with `node scripts/next-task.mjs --report blocked --task D-090-BYOR --as "<your name>" --note "C1-C4 pushed; C5 waits for D-048-p3-live-review-requests (D-162)"` and end the session; the CEO then makes this row depend on that one until it is done. A session handed a takeover of this row that finds C1-C4 pushed and that row still not done makes no commits, sends the same report and ends. Every other rule in this packet stands, except the D-086 checks in §9 and §11, which are struck: both flags stay off (D-097), and the Tier 1 gate and independent review are unchanged. **Resuming `agent/claude/d090-byor`:** merge `main`. The merge is clean, so nothing flags the old text: delete by hand the branch's D-148 register row, its "Gate waived by the owner (D-148 ...)" paragraph in this §0 and its "in progress — workbuddy · b0eb" Status line, because D-162 records the waiver and `main`'s D-148 is the plan names; and renumber `0107_ask_invites.sql` to the next free number at landing (check `drizzle/deploy/` on `main` and plan §5 at landing: `main` has `0107_seeker_levels.sql`, and open branches hold 0108-0110, #314, #523 and #527). The two paragraphs below are history.
 
 D-090: "Builds after the demand list (owner order 2,1,3 per D-089)." The demand list is D-086 (asks at companies not in the directory, k-anonymous counts). On `main` at `c39ad909` **D-086 is not built and has no queue task**: `/explore` still lists only directory companies, and grepping `docs/plans/assignments.json` for `D-086` returns nothing.
 
-**D-154 (Oct 23, superseded by D-155):** the demand list now has its queue row, `D-086-demand-list`, and this row depends on it, so the picker hands out no BYOR work until the demand list is done. So: before writing code, check that D-086 is live (its ask-to-any-company path ships and its queue task is `done`). If it is not, **stop and report** (§11) — the owner ordered BYOR after it. This packet exists so the work is ready the day the gate opens; writing the packet is the whole of the current task (D-074, D-109).
+**D-154 (Oct 23, superseded by D-162):** the demand list now has its queue row, `D-086-demand-list`, and this row depends on it, so the picker hands out no BYOR work until the demand list is done. So: before writing code, check that D-086 is live (its ask-to-any-company path ships and its queue task is `done`). If it is not, **stop and report** (§11) — the owner ordered BYOR after it. This packet exists so the work is ready the day the gate opens; writing the packet is the whole of the current task (D-074, D-109).
 
 The four designer mocks the owner approved (D-090, "Lovely") are **not in the repository**: no file under `design/`, `docs/` or the remote branches contains a BYOR mock. §4 is therefore the changeable functional interpretation (D-109) and §12 Q5 asks the owner to attach the mocks. Nothing in §4's server behaviour depends on the visual mocks.
 
@@ -29,6 +29,8 @@ The four designer mocks the owner approved (D-090, "Lovely") are **not in the re
 A seeker who already knows someone at the company — a friend, a former colleague — can put their ask directly in that person's hands instead of waiting for coverage to appear. My asks shows "Invite someone you know"; the seeker gets one private one-time link to send outside SkipWait; the insider opens it, signs in with their work email at that company, and takes the ask. The credit follows the standard rules: nothing is spent while the ask waits, one credit at first visibility, and no credit means the ask is held with one notice — never delivered free, never billed later. The seeker's name and files stay hidden until the insider accepts, exactly as on every other surface. This closes loop L2 (D-087) and is the first product surface that turns a seeker's own network into supply.
 
 ## 2. Binding rules (quoted, not paraphrased)
+
+**D-162** (owner word, Oct 23): BYOR builds now, ahead of the demand list. Where D-090 and D-087 below put the demand list first, D-162 wins for BYOR.
 
 **D-090** (owner, Oct 21 03:10 IST): "**BYOR (bring-your-own-referrer) one-time link approved for build (idea 2, loop L2).** Owner Oct 21 03:10 IST, verbatim: "Lovely" (approving the designer's four-surface mocks, phone stepper pattern and standard credit rules; free BYOR stays frozen). Changeable knobs per D-087: weekly link cap 5 per seeker, anonymous-by-default referrer identity. Builds after the demand list (owner order 2,1,3 per D-089)."
 
@@ -228,7 +230,7 @@ Every commit leaves `pnpm check` and its focused tests green and is pushed. Do n
 
 ## 9. Definition of done
 
-- [x] ~~D-086 is live~~ — gate waived by the owner (D-155); not a condition.
+- [x] ~~D-086 is live~~ — gate waived by the owner (D-162); not a condition.
 - [ ] Every §7 test was red first and is green now; every control is green; no existing assertion weakened.
 - [ ] Gate on your commit merged with the latest `origin/main`: `pnpm check`, focused files, `pnpm test`, `pnpm build`, design-token audit, migration lint in CI.
 - [ ] Tier 1 independent review passed (`docs/DELEGATION.md` §6); findings fixed red-first.
@@ -252,7 +254,7 @@ Every commit leaves `pnpm check` and its focused tests green and is pushed. Do n
 
 ## 11. Stop and ask if
 
-- ~~D-086 is not live~~ — waived by the owner (D-155); not a stop condition.
+- ~~D-086 is not live~~ — waived by the owner (D-162); not a stop condition.
 - The four approved mocks appear and contradict §4 (surfaces, copy, claim states) — report before building the client.
 - A named function no longer matches its description (line drift is fine; a behaviour change is not).
 - You need a file outside §5, a second migration, a new dependency or an env key not named here.
@@ -274,7 +276,7 @@ Until answered, implement the recommended defaults above; they are changeable wi
 
 ## Status
 
-D-090-BYOR: todo — D-155 (Oct 23): the owner's waiver stands and this row depends on nothing. workbuddy · b0eb's branch `agent/claude/d090-byor` holds C1 and the C2 token layer (`ecff975b`); its claim is free (quiet since 02:37 IST), so the picker hands out a takeover on that branch. From here, status goes in the §3b row "D-090". The lines below are history.
+D-090-BYOR: todo — D-162 (Oct 23): the owner's waiver stands and this row depends on nothing. workbuddy · b0eb's branch `agent/claude/d090-byor` holds C1 and the C2 token layer (`ecff975b`); its claim is free (quiet since 02:37 IST), so the picker hands out a takeover on that branch. From here, status goes in the §3b row "D-090". The lines below are history.
 
 D-090-BYOR: waiting — D-154 (Oct 23): depends on `D-086-demand-list`, queued with status architect; workbuddy · b0eb stopped at the §0 gate and reported it, as this packet says to.
 
