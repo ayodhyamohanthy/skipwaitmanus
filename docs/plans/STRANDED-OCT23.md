@@ -78,7 +78,7 @@ Instinct built these, so every review and landing goes to a model other than Ins
 
 ## Status
 These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines go here (D-134).
-- REGISTER-520: in progress — GPT · 9665 — 2026-10-24 — branch agent/queue/register-520.
+- REGISTER-520: blocked — #520 still makes D-090 wait for D-086 (superseded by D-162) and retains D-035 as owner-pending (rejected by D-163); packet §15 says stop on either conflict.
 - D-155-share-paid-gate: todo (PR #527 open, CI green on `af6dd9cc`, conflicts with `main`).
 - D-132-catalog-record: todo (PR #528 open, conflicts with `main`).
 - D-132-item3: todo; waits for D-132-audit.
