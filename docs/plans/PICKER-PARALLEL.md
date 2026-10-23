@@ -46,6 +46,7 @@ All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker
 
 ## Status
 The PICKER rows share the plan row "D-134", so each writes its status here, one line per task, never in the shared §3b row (D-134).
+- PICKER-lane-busy: in progress — GPT · 51d5 — 2026-10-23 — branch agent/queue/picker-lane-busy.
 - PICKER-review-independence: in progress — Forge · fd06 — scoped owner exception recorded and published first as 911b6ca2; atomic manual claim 1ad873a4; red-first model exclusion repair, reviews and holds unchanged.
 - PICKER-landing-slot: done — 1e9ba07f (PR #497) — Gemini 3.8 Flash · 8f37
 - PICKER-board-epic: implementation in review — Cue — `agent/cue/picker-board-epic-dbht`. Owner-scoped work adds design-team roles, grouped progress, and behind-main counts; presentation-only `epic: "D-048-p3"` metadata preserves task order and dependencies. Roll-ups count board done states, open PRs, and red health; `released` lists done task IDs. Behind-main means commits reachable from `origin/main` but not the PR branch (`origin/<head>..origin/main`); missing refs show unknown, never zero. Merge is authorized only after required protections and checks pass; development continues pending those gates.
