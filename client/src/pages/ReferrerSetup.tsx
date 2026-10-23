@@ -1,3 +1,5 @@
+import { lazy, Suspense } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { ArrowRight, BadgeCheck } from "lucide-react";
 import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +21,7 @@ async function fetchSetup(getToken: TokenSource): Promise<SetupData> {
   return { access, preferences, handle };
 }
 
-export default function ReferrerSetup() {
+function KitReferrerSetup() {
   const { isSignedIn, userId, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const queryClient = useQueryClient();
@@ -62,4 +64,17 @@ export default function ReferrerSetup() {
       )}
     </main>
   );
+}
+
+const GoalReferrerSetup = lazy(() => import("./goal/referrer-home/GoalReferrerSetup"));
+
+export default function ReferrerSetup() {
+  if (goalSurfaceOn("referrer-home")) {
+    return (
+      <Suspense fallback={null}>
+        <GoalReferrerSetup />
+      </Suspense>
+    );
+  }
+  return <KitReferrerSetup />;
 }

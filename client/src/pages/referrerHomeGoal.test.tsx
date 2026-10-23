@@ -5,7 +5,8 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import ReferrerHome from "../../ReferrerHome";
+import ReferrerHome from "./ReferrerHome";
+import ReferrerSetup from "./ReferrerSetup";
 
 const { authState, surfaces } = vi.hoisted(() => ({ authState: { isSignedIn: true, userId: "11", getToken: vi.fn().mockResolvedValue("test-token") }, surfaces: { on: new Set<string>() } }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => authState, SignInButton: ({ children }: { children?: React.ReactNode }) => <button type="button">{children ?? "Sign in"}</button> }));
@@ -98,5 +99,70 @@ describe("Goal /referrer-home", () => {
     expect(await screen.findByText("New asks are paused. Open conversations still work.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Resume$/ }));
     await waitFor(() => expect(fetchMock.mock.calls.some(call => String(call[0]).endsWith("/referrer-preferences") && call[1]?.method === "PUT" && String(call[1]?.body).includes('"paused":false'))).toBeTruthy());
+  });
+});
+
+const SETUP_PREFS = { preferences: { preferAreas: ["Design"], preferLevels: ["Mid-level"], referralCapacity: 3, referrerVisibility: "anon", notifyNewAsk: true, notifyDigest: false, paused: false } };
+function stubSetup(preferences: Record<string, unknown> = SETUP_PREFS) {
+  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+    const path = String(url);
+    if (path.endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
+    if (path.endsWith("/referrer-preferences") && init?.method === "PUT") return ok({ preferences: { preferAreas: ["Design"], preferLevels: ["Mid-level"], referralCapacity: 5, notifyNewAsk: true, paused: false } });
+    if (path.endsWith("/referrer-preferences")) return ok(preferences);
+    if (path.endsWith("/profile/me")) return ok({ profile: { handle: "aya-d" } });
+    return ok({});
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+describe("Goal /referrer-setup", () => {
+  it("keeps setup behind work-email sign-in via the referrer OTP href", async () => {
+    authState.isSignedIn = false;
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    renderWithQuery(<ReferrerSetup />);
+    const link = await screen.findByRole("link", { name: "Sign in with work email" });
+    expect(link.getAttribute("href")).toBe("/sign-in?intent=referrer&returnTo=%2Freferrer-setup");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("gates setup behind verification without inventing state", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ verifiedCompanyAccess: false, workEmailDomain: null })));
+    renderWithQuery(<ReferrerSetup />);
+    expect(await screen.findByText("Verify first.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Verify work email/ }).getAttribute("href")).toBe("/verify");
+    expect(screen.queryByText("Which roles can you judge?")).toBeNull();
+  });
+
+  it("walks the four steps and saves through the real preferences write", async () => {
+    const fetchMock = stubSetup();
+    renderWithQuery(<ReferrerSetup />);
+    expect(await screen.findByText("Verified at Wipro")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Design" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Engineering" }).getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    expect(await screen.findByText("How many asks a month?")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Monthly capacity"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    expect(await screen.findByText("When should we tell you?")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
+    expect(await screen.findByText("You're open for asks.")).toBeTruthy();
+    const put = fetchMock.mock.calls.find(call => String(call[0]).endsWith("/referrer-preferences") && call[1]?.method === "PUT");
+    expect(String(put?.[1]?.body)).toContain('"referralCapacity":5');
+    expect(screen.getByRole("link", { name: "Share my profile" }).getAttribute("href")).toBe("/p/aya-d");
+    expect(screen.getByRole("link", { name: /Go to referrer home/ }).getAttribute("href")).toBe("/referrer-home");
+  });
+
+  it("requires at least one area before continuing", async () => {
+    stubSetup({ preferences: { preferAreas: [], preferLevels: [], referralCapacity: 3, referrerVisibility: "anon", notifyNewAsk: true, paused: false } });
+    renderWithQuery(<ReferrerSetup />);
+    expect(await screen.findByText("Which roles can you judge?")).toBeTruthy();
+    const next = screen.getByRole("button", { name: /Continue/ });
+    fireEvent.click(next);
+    expect(screen.queryByText("How many asks a month?")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Design" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    expect(await screen.findByText("How many asks a month?")).toBeTruthy();
   });
 });
