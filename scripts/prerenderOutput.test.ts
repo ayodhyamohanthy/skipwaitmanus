@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { main } from "./prerender-public-pages";
 import { PUBLIC_ROUTES } from "../shared/publicRoutes";
 import { GUIDES } from "../client/src/content/guides";
+import { GOAL_LANDING_H1 } from "../shared/landingContent";
 
 /**
  * The prerender step had no test that ran it. A refactor of the file-writing
@@ -51,7 +52,8 @@ describe("the prerender step writes a file Cloudflare Pages can serve for every 
     const written = readdirSync(dist);
     expect(written).not.toContain(".html");
     const home = readFileSync(path.join(dist, "index.html"), "utf8");
-    expect(home).toContain("<h1>");
+    // The h1 carries the goal page's display classes; pin the tag, not a bare one.
+    expect(home).toMatch(/<h1[ >]/);
     expect(home).toContain('data-skipwait-snapshot="landing"');
   });
 
@@ -67,9 +69,10 @@ describe("the prerender step writes a file Cloudflare Pages can serve for every 
     }
   });
 
-  it("gives the home page the FAQ answers it prints, and exactly one H1", () => {
+  it("gives the home page the goal landing's headline, exactly one H1, and no FAQ markup the page does not print", () => {
     const home = readFileSync(path.join(dist, "index.html"), "utf8");
-    expect(home).toContain('"@type":"FAQPage"');
+    expect(home).toContain(GOAL_LANDING_H1);
+    expect(home).not.toContain('"@type":"FAQPage"');
     expect(home.match(/<h1/g)?.length).toBe(1);
   });
 
