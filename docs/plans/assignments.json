@@ -1689,9 +1689,9 @@
    "tier": 2,
    "lane": "d048-foundation",
    "branch": "agent/instinct/d048-fix-start-ask-handoff",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [],
-   "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top."
+   "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top. LANDED: PR #586 merged Oct 23 (merge commit 6ba057e1); status flipped by Claude Code's Oct 24 board sync."
   },
   {
    "id": "D-048-fix-explore-open-first",
@@ -1725,7 +1725,7 @@
    "tier": 2,
    "lane": "d048-foundation",
    "branch": "agent/coordinator/landing-flash-snapshot-v2",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [
     "D-048-fix-landing-load-flash"
    ],
@@ -1735,21 +1735,21 @@
     "client/src/pages/GoalLanding.tsx",
     "client/src/pages/home.snapshotParity.test.tsx"
    ],
-   "note": "Coordinator bounded fix, second approach (Main, Oct 24; user report phonemsg-01M5MX4KWB09PKKC7E6XP3BN5V + phonemsg-01M5MX5BFXQ060R444J7GKX3W2). The v1 row gated the reveal timing; the designer gate (Main, Oct 23 23:59 IST) rejected the copy-only snapshot as a fix: on a slow or blocked bundle the failsafe painted raw unstyled text that jumped into the styled goal page. This row mirrors GoalLandingV9's DOM section by section in scripts/prerender-public-pages.tsx with the same goal utility classes (all verified present in the compiled stylesheet, which loads in the shell head before the bundle), so the pre-mount frame and the mounted page are visually identical. The hero search becomes a real no-JS GET form to /explore?q=. Explore/guides/employer/policy links stay crawler-readable as screen-reader-only nav (V9 does not render them visually). FOOTER_COLS moved to shared/landingContent.ts as GOAL_FOOTER_COLS (single source, re-exported by GoalLanding.tsx). Pixel proof: playwright fixture serving dist/public with the bundle delayed 25s - snapshot painted and stable at 3s/6s on 390x844 and 1280x900, visually identical to post-mount captures except the client-only cookie banner. 25/25 prerender + snapshot-parity tests. scripts/prerenderPublicPages.test.ts is also touched (one h1 assertion now that the h1 carries display classes); that file sits in D-048-F-static-frame's owns (in-review) - same reconciliation pattern as D-048-fix-explore-open-first: that row reconciles on its next rebase."
+   "note": "Coordinator bounded fix, second approach (Main, Oct 24; user report phonemsg-01M5MX4KWB09PKKC7E6XP3BN5V + phonemsg-01M5MX5BFXQ060R444J7GKX3W2). The v1 row gated the reveal timing; the designer gate (Main, Oct 23 23:59 IST) rejected the copy-only snapshot as a fix: on a slow or blocked bundle the failsafe painted raw unstyled text that jumped into the styled goal page. This row mirrors GoalLandingV9's DOM section by section in scripts/prerender-public-pages.tsx with the same goal utility classes (all verified present in the compiled stylesheet, which loads in the shell head before the bundle), so the pre-mount frame and the mounted page are visually identical. The hero search becomes a real no-JS GET form to /explore?q=. Explore/guides/employer/policy links stay crawler-readable as screen-reader-only nav (V9 does not render them visually). FOOTER_COLS moved to shared/landingContent.ts as GOAL_FOOTER_COLS (single source, re-exported by GoalLanding.tsx). Pixel proof: playwright fixture serving dist/public with the bundle delayed 25s - snapshot painted and stable at 3s/6s on 390x844 and 1280x900, visually identical to post-mount captures except the client-only cookie banner. 25/25 prerender + snapshot-parity tests. scripts/prerenderPublicPages.test.ts is also touched (one h1 assertion now that the h1 carries display classes); that file sits in D-048-F-static-frame's owns (in-review) - same reconciliation pattern as D-048-fix-explore-open-first: that row reconciles on its next rebase. LANDED: PR #600 merged Oct 24 (merge commit 26a35834), QA-passed live per the Oct 24 reconciliation; merge is not a flag release. Status flipped by Claude Code's Oct 24 board sync."
   },
   {
    "id": "D-174-expiry-clock-removal",
    "title": "Remove the ask death clocks per D-174 (7-day unclaimed expiry, 90-day waiting cap, day-30 closure)",
    "row": "D-174",
    "packet": "docs/plans/D-048-seeker.md",
-   "tier": 2,
+   "tier": 1,
    "lane": "ask-flow",
    "branch": "agent/coordinator/expiry-clock-removal",
-   "status": "todo",
+   "status": "owner",
    "dependsOn": [
     "D-166-journey-decisions-sync"
    ],
-   "note": "Builds D-174 (merged in #601): asks never expire at launch. Scope: remove the 7-day unclaimed expiry, the 90-day waiting cap and the day-30 closure (D-021/D-034/D-050/D-061/D-076(3)) from runtime and sweeps, including the ASK_TTL_DAYS copy sweep - copy changes land only with the runtime change (Main, Oct 24 00:14 IST). Untouched: referrer action timers, security/session/payment bounds, credit and refund rules; no new debit behavior. QA and any expiry-sweep workers must be informed before this merges. Intent is recorded; live expiry behavior is unchanged until this row lands."
+   "note": "Builds D-174 (merged in #601): asks never expire at launch. Scope: remove the 7-day unclaimed expiry, the 90-day waiting cap and the day-30 closure (D-021/D-034/D-050/D-061/D-076(3)) from runtime and sweeps, including the ASK_TTL_DAYS copy sweep - copy changes land only with the runtime change (Main, Oct 24 00:14 IST). Untouched: referrer action timers, security/session/payment bounds, credit and refund rules; no new debit behavior. QA and any expiry-sweep workers must be informed before this merges. Intent is recorded; live expiry behavior is unchanged until this row lands. RETIERED TO 1 AND HELD FOR THE OWNER (Claude Code as CEO, Oct 24): removing the clocks stops the unclaimed-expiry credit return and changes how open-ask places free up (openAskCondition in server/planGates.ts counts an unclaimed visible ask only for ASK_TTL after first visibility), so it is a money path that needs an independent review (D-151), and the open-ask place rule is plan contents (Free: 3 open asks; D-006 cap of 2 per company), which is the owner's word. Question with recommendation in docs/KIT_V4_BUILD_PLAN.md section 6; status returns to todo when he answers. Runtime pieces and tests in docs/plans/D-048-seeker.md section 13."
   },
   {
    "id": "D-176-availability-framing-removal",
@@ -1763,7 +1763,7 @@
    "dependsOn": [
     "D-166-journey-decisions-sync"
    ],
-   "note": "Builds D-176 (merged in #601; user instruction phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST): availability framing does not map to the seeker's mental model. Remove the labels, chips and open-first grouping; availability becomes backend routing only, with an honest delivered-vs-waiting status after save and no false immediate-referral claim. Supersedes the shipped D-048-fix-explore-open-first grouping (#594 stands as completed history - removal is this row, not a rollback). Preserves verified company-employee access and privacy rules."
+   "note": "Builds D-176 (merged in #601; user instruction phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST): availability framing does not map to the seeker's mental model. Remove the labels, chips and open-first grouping; availability becomes backend routing only, with an honest delivered-vs-waiting status after save and no false immediate-referral claim. Supersedes the shipped D-048-fix-explore-open-first grouping (#594 stands as completed history - removal is this row, not a rollback). Preserves verified company-employee access and privacy rules. PARTLY LANDED: #609 (c6a4ceb5) removed the /explore list labels, chips and open-first grouping. STILL OPEN on main 636644fb: the company door header in client/src/pages/ExploreCompany.tsx ('People open to referral requests' / 'Not open yet' + 'Alert me') and the retired labels in design/goal-ui/content.json; exact steps in docs/plans/D-048-seeker.md section 13 (Claude Code, Oct 24). The branch was deleted after #609; continue on the same branch name."
   },
   {
    "id": "D-174-seeker-journey-build",
@@ -1777,7 +1777,7 @@
    "dependsOn": [
     "D-166-journey-decisions-sync"
    ],
-   "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately."
+   "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. PARTLY LANDED: #612 (5747cc87) posted roles on the company door with the in-place composer and role filter; #614 (1c14dfef) door pick replaces the composer selection plus first-look copy. STILL OPEN: directory search suggestions, verified live jobs per company, location/seniority filters, the questions step, keyword search without a link (D-170) and the cross-company switch keeping the draft (D-171); one pull request per step, steps in docs/plans/D-048-seeker.md section 13 (Claude Code, Oct 24)."
   },
   {
    "id": "D-166-founder-decisions-sync",
@@ -1787,9 +1787,9 @@
    "tier": 2,
    "lane": "process",
    "branch": "agent/coordinator/founder-decisions-sync",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [],
-   "note": "Owner instruction (iMessage phonemsg-01M5MYS5WDHAMNZ7TF602GTK65 'Push the decisions as instructions' + phonemsg-01M5MYSQVDTXCYGCPBR001P7Q9 'So old decisions are updated' + phonemsg-01M5MZ7J6YYH3ZRBJNKT6TCZJS 'Push then'). Scope: docs/DECISIONS.md + the AGENTS.md compass amendment line only. Adds D-169 (open-first directory), D-170 (keyword job search), D-171 (cross-company verified switch preserving the draft), D-172 (automatic device-saved sign-in prompt with native-flow guardrails), D-173 (buyer-facing 'referrals' terminology + plan allowance/extras structure). Supersession limited to the 'credits' name (wording only); no price, count, SKU, security or auth-mechanism content decided; unresolved allowances/prices/level-cost stay open. D-168 is claimed on agent/claude/ceo-oct23-release-rows, so numbering starts at D-169."
+   "note": "Owner instruction (iMessage phonemsg-01M5MYS5WDHAMNZ7TF602GTK65 'Push the decisions as instructions' + phonemsg-01M5MYSQVDTXCYGCPBR001P7Q9 'So old decisions are updated' + phonemsg-01M5MZ7J6YYH3ZRBJNKT6TCZJS 'Push then'). Scope: docs/DECISIONS.md + the AGENTS.md compass amendment line only. Adds D-169 (open-first directory), D-170 (keyword job search), D-171 (cross-company verified switch preserving the draft), D-172 (automatic device-saved sign-in prompt with native-flow guardrails), D-173 (buyer-facing 'referrals' terminology + plan allowance/extras structure). Supersession limited to the 'credits' name (wording only); no price, count, SKU, security or auth-mechanism content decided; unresolved allowances/prices/level-cost stay open. D-168 is claimed on agent/claude/ceo-oct23-release-rows, so numbering starts at D-169. LANDED: PR #599 merged Oct 23 (commit 13432c08). The cross-doc sync (BRIEF, PRD, AGENTS, plan, design contract) followed in Claude Code's Oct 24 docs sync."
   },
   {
    "id": "D-166-journey-decisions-sync",
@@ -1799,9 +1799,9 @@
    "tier": 2,
    "lane": "process",
    "branch": "agent/coordinator/journey-decisions-sync",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [],
-   "note": "Owner instruction (iMessage phonemsg-01M5N07FQX1Q4Y0GXPDW5WPPTQ 'Update in repo' on phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2's journey + no-expiry rule and phonemsg-01M5N06NBY8DC123RMAPV44NYR's all-companies coverage goal). Scope: docs/DECISIONS.md only. D-174 suspends ask death clocks for launch (7-day unclaimed expiry, 90-day waiting cap, day-30 closure) and records the maintained-directory journey with the company pool; referrer action timers, security/session/payment bounds and credit rules untouched, no new debit/refund behavior. D-175 records the coverage goal as a goal with an open free/legal feasibility study; no fake jobs, no coverage claims without proof, no paid data or account-risk scraping. IDs checked against main (D-169..D-173 landed in #599) and agent/claude/ceo-oct23-release-rows (D-168); D-174/D-175 free. Builds inside these decisions stay pending under their own rows; QA and any expiry-sweep workers must be informed before expiry behavior merges. Amended before merge: D-176 (phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST) supersedes D-169's availability framing and open-first grouping - availability is backend routing only, honest delivered-vs-waiting status after save, no false immediate-referral claim; #594 stands as completed history. IDs D-174..D-176 free on main (D-169..D-173 via #599) and checked against agent/claude/ceo-oct23-release-rows."
+   "note": "Owner instruction (iMessage phonemsg-01M5N07FQX1Q4Y0GXPDW5WPPTQ 'Update in repo' on phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2's journey + no-expiry rule and phonemsg-01M5N06NBY8DC123RMAPV44NYR's all-companies coverage goal). Scope: docs/DECISIONS.md only. D-174 suspends ask death clocks for launch (7-day unclaimed expiry, 90-day waiting cap, day-30 closure) and records the maintained-directory journey with the company pool; referrer action timers, security/session/payment bounds and credit rules untouched, no new debit/refund behavior. D-175 records the coverage goal as a goal with an open free/legal feasibility study; no fake jobs, no coverage claims without proof, no paid data or account-risk scraping. IDs checked against main (D-169..D-173 landed in #599) and agent/claude/ceo-oct23-release-rows (D-168); D-174/D-175 free. Builds inside these decisions stay pending under their own rows; QA and any expiry-sweep workers must be informed before expiry behavior merges. Amended before merge: D-176 (phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST) supersedes D-169's availability framing and open-first grouping - availability is backend routing only, honest delivered-vs-waiting status after save, no false immediate-referral claim; #594 stands as completed history. IDs D-174..D-176 free on main (D-169..D-173 via #599) and checked against agent/claude/ceo-oct23-release-rows. LANDED: PR #601 merged Oct 24 (merge commit ac2c4095). Its three build rows (D-174-expiry-clock-removal, D-176-availability-framing-removal, D-174-seeker-journey-build) were held on this row's in-review status until Claude Code's Oct 24 board sync set it done."
   },
   {
    "id": "D-048-fix-post-copy",
@@ -1830,7 +1830,7 @@
     "D-048-p3-post",
     "D-174-seeker-journey-build"
    ],
-   "note": "Founder direction Oct 24 00:57 IST (phonemsg-01M5N3Q94QHYJK0VEHA3WBERS0). Audience model must hold before build: public vs internal-restricted (never public) vs referral-drive (shareable by design). 'Internal' meaning unresolved - open questions in the packet. No money fields (D-132/D-152 frozen).",
+   "note": "Founder direction Oct 24 00:57 IST (phonemsg-01M5N3Q94QHYJK0VEHA3WBERS0). Audience model must hold before build: public vs internal-restricted (never public) vs referral-drive (shareable by design). 'Internal' meaning unresolved - open questions in the packet. No money fields (D-132/D-152 frozen). UPDATE Oct 24 1:18 IST (owner, phonemsg-01M5N4XQX4YY5R18T59S38BYJ5): 'internal' is RESOLVED - outside-candidate-visible opportunities shared by email rather than on a careers page, labelled honestly as employee-shared, never employee-only; see D-177 and the packet's audience model. Open before build: recruiter/HR verification, drive fields, moderation (packet questions 2-4).",
    "row": "D-177",
    "tier": 2
   },
@@ -1850,7 +1850,7 @@
     "D-048-p3-assistants",
     "D-048-p3-agents"
    ],
-   "note": "Founder direction Oct 24 00:58 IST (phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M). Direction not authority: no charges, no auth bypass, no invented protocol. Delegated identity rides existing assistant-grant work; payment needs explicit user approval per the money rules; retry-safe apply/pay required."
+   "note": "Founder direction Oct 24 00:58 IST (phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M). Direction not authority: no charges, no auth bypass, no invented protocol. Delegated identity rides existing assistant-grant work; payment needs explicit user approval per the money rules; retry-safe apply/pay required. UPDATE Oct 24 (D-178 as recorded): any agent may ask for referrals when the user it acts for has paid referrals, spent with that user's approval; no agent-only purchase or price; Skippy and outside agents get screen parity (capability, never privilege). Free-allowance agent eligibility is the owner's open question (asked Oct 24 1:20 IST; plan section 6): no default either way."
   }
  ]
 }

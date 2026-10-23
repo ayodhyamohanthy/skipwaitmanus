@@ -1,5 +1,7 @@
 # Packet D-048 phase 3: Find a referral with the ask drawer
 
+> **Superseded in part (Oct 24):** D-176 removes every "Open to requests" / "Not open yet" label, chip, filter and grouping, and the not-open alert offer, from the directory and the company door; availability only routes the ask. D-174 suspends ask expiry at launch, so the 7-day and 90-day wording below describes the runtime only until `D-174-expiry-clock-removal` lands. Build the journey from `docs/plans/D-048-seeker.md` §13, not from the availability parts of this packet.
+
 > Read `docs/BRIEF.md` first, then this packet and `DESIGN.md`. This moves the directory and the ask composer to the approved goal UI (D-048 phase 3), stacked on the pilot packet [D-048-phase-3-my-asks.md](D-048-phase-3-my-asks.md).
 
 | Field | Value |

@@ -132,7 +132,7 @@ The transitions:
 - **Pass.** Records the reason, clears `referrerId`, and the ask reopens to colleagues (D-021).
 - **Progress.** `intro_made` ("Referred", with an optional reference id), `interview`, `offer`, `closed` (hired).
 - **Withdraw.** Before pickup, the credit comes back once.
-- **Expire.** `closed` with no referrer:
+- **Expire.** `closed` with no referrer (runtime today; D-174 suspends both clocks for launch, and `D-174-expiry-clock-removal` removes them):
   - 7 days after first visibility, with the credit back if nobody picked it up;
   - 90 days for a waiting ask, at no cost.
 
@@ -162,7 +162,7 @@ Note: `closed` means hired when a referrer accepted, and expired when none did (
 **How they run.** The Worker cron fires hourly and POSTs `/api/internal/jobs/tick` with HMAC(`JWT_SECRET`, minute) (accepted ±1 minute). The server runs each registered job once per window: a `jobRuns` lease, a compare-and-set takeover, up to 3 attempts, Sentry on failure. Status is at `GET /api/admin/jobs`.
 
 **The jobs** (`shared/scheduledJobs.ts`):
-- `ask-expiry-sweep`
+- `ask-expiry-sweep` (runtime today; suspended as direction by D-174)
 - `coverage-delivery-retry`
 - `first-look-release`
 - `plan-credit-cycles`

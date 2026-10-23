@@ -50,7 +50,7 @@
 | `--g-emerald` | `#047857` | `text-g-emerald` (goal primitives only) | Referred | Accepted, availability, validation |
 | `--g-amber` | `#b45309` | `text-g-amber` (goal primitives only) | pending; clocks of 2 days or fewer | text on surfaces darker than `#f4f4f5` |
 | `--g-crimson` | `#b91c1c` | `text-g-crimson` (goal primitives only) | ended states; input errors | anything in the referrer queue |
-Availability: "Open to requests" = solid 8px ink dot + ink text; "Not open yet" = 8px ring (1.5px control edge) + ink-3 text. Validation passes are ink with lucide `check`.
+Availability: ~~"Open to requests" = solid 8px ink dot + ink text; "Not open yet" = 8px ring (1.5px control edge) + ink-3 text.~~ Retired by D-176 (owner, Oct 24): no referrer-availability status, label, chip, grouping or count on any surface a seeker browses; availability only routes the ask, and the seeker learns after saving whether it reached verified employees or waits in the company pool. The solid-dot and ring styles stay for ask and referrer status. Validation passes are ink with lucide `check`.
 
 ## Typography
 - Faces (already installed, no new font): Instrument Sans 400/500/600/700 (`--g-font-sans`, `font-g-sans`) and JetBrains Mono 500 (`--g-font-mono`, `font-g-mono`). Tailwind's `font-mono` is IBM Plex Mono (Kit v4) — never use it in goal UI.

@@ -12,7 +12,7 @@ Migrate every user-facing screen, landing through platform, to the goal-first pa
 | --- | --- | --- | --- |
 | Landing (signed out) | "Get referred." | "Find your company" | 3-step how-it-goes; fair rules (referring always free, price by job level only, no outcome promises); "Join as a referrer" link |
 | Home (seeker) | "Get referred." | contextual - pending confirmation: "I got the referral email" | search field (company/function/level); free-credit line; 3-step how-it-goes |
-| Company (e.g. Quillmint) | "Get referred at Quillmint." | "Ask for a referral" (role selected, cost in line) | honest availability (verified employees, answer time, % answered); role rows with level + credit cost; "Claim this company" link |
+| Company (e.g. Quillmint) | "Get referred at Quillmint." | "Ask for a referral" (role selected, cost in line) | the company's live jobs with filters (D-174); role rows with level + credit cost; "Claim this company" link. ~~honest availability (verified employees, answer time, % answered)~~: retired by D-176, which keeps referrer availability and coverage figures off every surface a seeker browses (a company with no referrer would show it by its empty answer figures) |
 | Requests / My asks | "Get your asks answered." | the ask needing action: "I got the referral email" | ask list with dot+text status (Sent/Accepted ink, Referred emerald, waiting amber), date + credits in mono; ghost "New ask" |
 | Plans | "Choose your reach." | plan card commits ("Start free" / "Start Fast Track" / "Apply") | credits dropdown inside each plan (D-115 steps), this-month total, fair rules footer |
 
@@ -26,7 +26,7 @@ The next-step block is contextual: it shows the single most important pending ac
 4. Status is dot + text only; no pills or badges.
 5. Numerals in JetBrains Mono; no colour literals outside tokens.css.
 6. No kit/ imports; GoalShell only.
-7. Cost shown before every ask; availability numbers honest or omitted.
+7. Cost shown before every ask; no referrer-availability status, label or coverage figure (D-176); demand counts only as D-086 allows; no job list called complete when it is not (D-175).
 8. Copy re-read against the doctrine before ship; 1280+390 captures on the branch.
 
 ## Docs to update so old looks never reappear

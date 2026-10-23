@@ -9,6 +9,9 @@ Record each new decision in `docs/DECISIONS.md` BEFORE building on it, and sync 
 
 Frozen decisions bind: once the founder freezes a decision it is the single source every agent follows; nobody builds against anything older unless he reopens it (Oct 23, 01:00 IST).
 
+## Words (D-173, owner Oct 23)
+The buyer-facing unit is a **referral** (formerly "credit"): each plan includes a referral allowance and extra referrals are bought inside the plan; the free plan keeps 3 free referrals a month. This changes words and structure only, not one amount, count, SKU, allowance or per-ask cost. The amounts below stay frozen until the D-132 audit lands, the server quote states the per-ask cost (never a guessed number in copy), and money lines in `shared/moneyCopy.ts` change only in the terminology row (draft PR #598). This file and the code keep "credit" as the internal name.
+
 ## The model: D-132 only (D-146)
 - Plans, each with an in-plan monthly credits dropdown (5/10/25/50/100/200, "Save X%" beside each, 2/4/8/12/16/20%). The page shows one "This month" total = plan fee + picked rung.
   - Entry level Referrers (`open_door`): free, 3 free credits a month, no paid default.

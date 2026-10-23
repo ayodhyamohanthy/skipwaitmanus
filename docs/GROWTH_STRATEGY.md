@@ -6,6 +6,7 @@ Saved as instructions by the owner on 2026-10-16. Read with `docs/DECISIONS.md`:
 - **How it was made:** 5 research angles (supply, reach, trust and speed, employers, contrarian) produced 25 candidate moves. Three independent skeptics scored every move: evidence, feasibility for a solo founder with no budget, and risk and ethics. A final ranker merged them, checked against `main` (ec440c2d).
 - **What changed from v1:** the corridor went 9 → 7, the bounded-answer promise 8 → 5 and referrer links 8 → 6. The bonus-led referrer pitch was rejected (see "Rejected").
 - **Scope:** every item that needs new code still goes through the priority queue and owner approval (D-010).
+- **Founder direction, Oct 23-24:** the journey starts from a company's live jobs (D-174), jobs come from verified sources with a goal of every company's careers page covered (D-175, feasibility open), recruiters/HR and employee referral drives add supply (D-177), outside agents and Skippy act with screen parity (D-178), and completed referrals are validated through ATS connections (D-179). Ambition: LinkedIn-scale reach with referrals as the core action; never published as a claim that nobody else does this. These are queue rows, not moves ranked here.
 
 ## Why nothing scores above 7
 Supply is 0: live `/api/companies` lists 39 companies (Oct 18) and only skipwait.me has an available referrer. The same supply plan produced 0 outside referrers in August–October, because the outreach never actually happened.

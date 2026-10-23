@@ -10,6 +10,9 @@ An in-product assistant, like Sentry Seer: it asks, shows an approve or deny car
 2. **Admins**: read first, then approved actions.
 3. **Seekers' own AI agents**: only with the seeker's permission.
 
+## Parity (D-178, owner Oct 24)
+Skippy does the work, not only explains where to click: whatever a signed-in user can do on screen (find jobs, ask for referrals, pay, manage the account) must be doable in natural language in Skippy, by people and bots alike, and by outside agents through the reviewed contract in `docs/plans/D-178-agent-portal-access.md`. Parity of capability, never of privilege: the same checks, prices, approval cards and consent as the page, and retries never double-ask or double-charge. Agents spend only the user's paid referrals, each spend with the user's approval; there is no agent-only purchase or price (D-141's "never buy credits" stands). Whether an agent may spend the free monthly allowance is the owner's open question: no default either way. Not supported end to end today: inventory the screen actions against Skippy before claiming parity.
+
 ## Binding rules
 - Proof before "done": a screenshot or real test or log output he can see. Unproven claims are labelled "unverified". Verify the full stack (UI, API, data, deploy).
 - Every step ships behind a flag that stays OFF in production until proven. CI green for the exact head before any merge.
