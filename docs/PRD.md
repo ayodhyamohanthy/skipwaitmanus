@@ -60,4 +60,4 @@ Skippy is a chat front door to what the product already does. It asks, shows an 
 - **Before any seeker-facing launch:** confirm provider data terms, set the global spend cap, pass the red-team injection test, founder sees a demo on the live URL, run a trademark and name-clearance search for "Skippy" (also a known food brand).
 
 ## Pricing
-One source of truth: [`docs/PRICING.md`](PRICING.md) (D-146: Lovable-style plans with credit dropdowns only; fixed passes off; packs on). Decisions are recorded in `docs/DECISIONS.md` before anything is built on them.
+One source of truth: [`docs/PRICING.md`](PRICING.md) (D-146: Lovable-style plans with credit dropdowns only; fixed passes off; packs on). Decisions are recorded in `docs/DECISIONS.md` before anything is built on them. Plan names (D-152): Entry level Referrers, Mid level Referrers, Senior level Referrers; plan ids, prices, credits and benefits unchanged. Writing rule (D-153, frozen): intent reaches users faster anywhere - every page says plainly what users can do, what they get and what it costs, and promises only what works today.

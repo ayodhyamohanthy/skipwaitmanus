@@ -15,6 +15,6 @@ Items refer to the 11 numbered checks in `docs/plans/D-132-pricing-v2.md`.
 | 8 | Plans page | Unverified. `PlansV2.test.tsx` has 8 tests; no source-text guard that every number comes from `shared/planFamily.ts`. | Add guard test |
 | 9 | Mentor and referrers | Unverified; Mentor is data only per the packet. | Add a guard test |
 | 10 | Config | Verified: `server/configContract.test.ts` passes (5 tests) with the four flags in `.env.example` (all false) and `ASK_LEVEL_COST`, `PLAN_FAMILY_V2` in `src/worker.ts` container env keys. The two `VITE_` flags are build-time and not container env. | Done |
-| 11 | V2 credit rule | Partial. `CREDIT_RULE_V2` (`shared/moneyCopy.ts:70`) states the per-level and per-bucket rules and "paid credits never expire". Not yet checked line by line against the live `CREDIT_RULE` refund cases (lapsed 48-hour hold, pass reason, reopened ask). | Compare, add test |
+| 11 | V2 credit rule | Done (code read, not run live). `refundLedgerSpendTx` (`server/db.ts` ~2355-2390) restores a purchased-bucket spend unconditionally (`balance += credits`), so "paid credits never expire, so they always come back" holds. Only expiring buckets can refuse: an expired promo or plan grant, or a monthly cycle that has rolled, return a 0-credit row and the "bucket ended" notice. `CREDIT_RULE_V2` only promises the return for paid credits, so it matches. | None |
 
 Order of work: 2 (migration, red tests first) then 5, 6, 3, 7, 4, 8, 9, 11, 1, 10. Each lands as its own PR with CI green, flags off.
