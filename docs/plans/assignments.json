@@ -1257,20 +1257,22 @@
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
+        "D-048-F-goal-check",
         "D-048-P-auth"
       ],
       "owns": [
-        "client/src/pages/Verify.tsx",
+        "client/src/pages/Verify.tsx (switch only)",
         "client/src/pages/goal/verify/**",
         "client/src/pages/verifyGoal.test.tsx",
+        "client/src/components/verify/VerifyPanels.tsx",
         "design/goal-ui/captures/verify/**"
       ],
-      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('verify'); verify.test.tsx and loginRule.test.tsx stay unedited and green with it on.",
+      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('verify'); verify.test.tsx and loginRule.test.tsx stay unedited and green with it on; D-048-F-goal-check per D-167; owns verify/VerifyPanels.tsx per GOAL_UI_COVERAGE §4.",
       "epic": "D-048-p3"
     },
     {
       "id": "D-048-p3-signin",
-      "title": "W2 /sign-in, /forgot-password and /reset-password on the goal surface",
+      "title": "W2 /sign-in, /forgot-password, /reset-password and /reviewer-sign-in on the goal surface",
       "row": "D-048",
       "packet": "docs/plans/D-048-auth.md",
       "tier": 1,
@@ -1280,18 +1282,20 @@
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
+        "D-048-F-goal-check",
         "D-048-P-auth",
         "seeker-passwords"
       ],
       "owns": [
-        "client/src/pages/SignIn.tsx",
-        "client/src/pages/ForgotPassword.tsx",
-        "client/src/pages/ResetPassword.tsx",
+        "client/src/pages/SignIn.tsx (switch only)",
+        "client/src/pages/ForgotPassword.tsx (switch only)",
+        "client/src/pages/ResetPassword.tsx (switch only)",
+        "client/src/pages/ReviewerSignIn.tsx (switch only)",
         "client/src/pages/goal/sign-in/**",
         "client/src/pages/signInGoal.test.tsx",
         "design/goal-ui/captures/sign-in/**"
       ],
-      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on.",
+      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on; D-048-F-goal-check per D-167; /reviewer-sign-in stays behind REVIEWER_LOGIN_ENABLED, fixed demo accounts only (D-167).",
       "epic": "D-048-p3"
     },
     {
