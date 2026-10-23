@@ -1,6 +1,8 @@
 // Inbox data boundary: parses the live seeker (/mine) and referrer (/inbox)
 // request lists and derives kit v4 inbox rows from them. Pure functions only,
 // so the identity rules (seeker hidden until accept) are unit-testable.
+import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
+import { addCreditPhrase } from "@shared/moneyCopy";
 import { z } from "zod";
 import { getJobSeekerReferralState, isPostApprovalReferralStatus, referralStatuses, referralStatusLabels, type ReferralStatus } from "@shared/referral";
 import { companyIdentityFieldsSchema, companyIdentityOf, type CompanyIdentity, type CompanyIdentitySource } from "@shared/companies";
@@ -101,7 +103,7 @@ export function askingThread(row: AskingRow): InboxThread {
       : !pending && row.referrerMessage
         ? row.referrerMessage
         : pending
-          ? row.queueStatus === "waiting_for_coverage" ? "Waiting for coverage" : row.queueStatus === "held_for_credit" ? "Add a credit to send it" : row.queueStatus === "available_for_review" ? "Available for review" : "Waiting for a referrer to accept"
+          ? row.queueStatus === "waiting_for_coverage" ? "Waiting for coverage" : row.queueStatus === "held_for_credit" ? `${addCreditPhrase(ASK_LEVEL_COST_CLIENT)} to send it` : row.queueStatus === "available_for_review" ? "Available for review" : "Waiting for a referrer to accept"
           : getJobSeekerReferralState({ status: row.status, referrerId: row.referrerId }).label;
   return {
     key: `asking-${row.id}`,

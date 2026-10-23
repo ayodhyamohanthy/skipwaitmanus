@@ -19,7 +19,7 @@ describe("material API error escalation", () => {
     const escalate = createMaterialErrorEscalator({ fetchImpl, recordActivity, now: () => 1_000 });
 
     await expect(escalate({ method: "POST", path: "/api/company-referrals?resume=private.pdf&otp=123456", statusCode: 500, durationMs: 48.6 })).resolves.toEqual({ alerted: true, reason: "sent" });
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
     const [url, request] = fetchImpl.mock.calls[0] ?? [];
     expect(url).toBe("https://api.resend.com/emails");
     expect(request?.headers).toMatchObject({ Authorization: "Bearer re_test" });
@@ -62,7 +62,7 @@ describe("material API error escalation", () => {
     await expect(escalate({ method: "GET", path: "/api/private-request", statusCode: 503, durationMs: 12 })).resolves.toEqual({ alerted: false, reason: "deduplicated" });
     await expect(escalate({ method: "GET", path: "/api/private-request", statusCode: 400, durationMs: 12 })).resolves.toEqual({ alerted: false, reason: "not_material" });
     await expect(escalate({ method: "GET", path: "/start", statusCode: 500, durationMs: 12 })).resolves.toEqual({ alerted: false, reason: "not_material" });
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it("records a delivery failure without interrupting the original application response", async () => {
@@ -94,7 +94,7 @@ describe("retired-plan event alert", () => {
     const input = { eventId: "ev_max_renewal", eventType: "subscription_renewed", reason: "plan_retired" as const, subscriptionId: "sub_max_legacy", itemPriceId: "skipwait_max_monthly-USD" };
     await expect(alert(input)).resolves.toEqual({ alerted: true });
     await expect(alert(input)).resolves.toEqual({ alerted: true });
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
     const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
     expect(payload).toMatchObject({ to: ["ayodhya@skipwait.me"], subject: "skipwait.me retired plan event needs review · sub_max_legacy" });
     expect(payload.text).toContain("Nothing was granted");

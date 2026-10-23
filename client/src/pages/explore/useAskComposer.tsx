@@ -8,27 +8,31 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
-import { askErrorMessage, confirmedDomainFor, parseSentAsk, parseSlotCapReached } from "@/components/ask/askApi";
+import { askErrorMessage, confirmedDomainFor, parsePlanLimit, parseSentAsk, parseSlotCapReached } from "@/components/ask/askApi";
+import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
 import { useOnlineStatus } from "@/components/goal";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { clearAskPrefill, readAskPrefill, saveAskPrefill } from "@/lib/askPrefill";
+import { defaultPinnedWorkIds, useAskWorkPieces } from "@/lib/askWorkPieces";
 import { discardAskDraftRemote, saveAskDraftRemote, useAskDraft } from "@/lib/askDraftApi";
 import { fastTrackAskFields } from "@/lib/fastTrackHandoff";
 import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUpload";
 import { useSeekerSetup } from "@/lib/useSeekerSetup";
 import { countWords } from "@shared/askQuality";
 import type { PublicCompany } from "@shared/companies";
-import { CREDIT_ENDED_CAVEAT } from "@shared/moneyCopy";
+import { askCostLine, CREDIT_ENDED_CAVEAT, creditUsedPhrase, type AskCostLine } from "@shared/moneyCopy";
+import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
 import { COMPANY_CAP_REACHED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
+import { MAX_ASK_WORK_ITEMS } from "@shared/askWorkItems";
 import { parseOpportunityAskSearch, type OpportunityAskSearch } from "@shared/companyOpportunities";
 import { isValidTargetRoleUrl, jobLinkFitsCompany } from "@shared/referralUrl";
 import { composeWhyMe, overLimitReasons, splitWhyMe, WHY_ME_MAX, type WhyMeReasons } from "@shared/whyMe";
 import type { AskResume, AskSentView } from "./AskDrawer";
 import { askIdempotencyKey, ASK_IDEMPOTENCY_KEY, buildAskBody } from "./askSend";
-import { costLine, linkHint, roleTitleFromUrl, type CostLine, type LinkHint } from "./findModel";
+import { linkHint, roleTitleFromUrl, type LinkHint } from "./findModel";
 import { goToSeekerSignIn } from "./signInHandoff";
 
 const MIN_WORDS = 10;
@@ -54,7 +58,7 @@ export type AskComposer = {
   onReasonChange(index: number, value: string): void;
   reasonsError: string;
   watch: { state: "idle" | "busy" | "done" | "error"; message: string; onWatch(): void } | null;
-  cost: CostLine;
+  cost: AskCostLine;
   context: string | null;
   sendLabel: string;
   sendBusyLabel: string;
@@ -65,6 +69,8 @@ export type AskComposer = {
   draftState: "idle" | "saving" | "saved";
   sendError: ReactNode;
   sent: AskSentView | null;
+  /** Task 13: the showcase pieces this ask carries, and the picker's state. */
+  work: PinnedWorkState;
   /** D-022: the posted role this ask opened from, while it still applies. */
   postSelection: OpportunityAskSearch | null;
   /** Fresh form for a new company; the resume carries unless clearResume is set. */
@@ -94,6 +100,32 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   const [sent, setSent] = useState<AskSentView | null>(null);
   const [draftState, setDraftState] = useState<"idle" | "saving" | "saved">("idle");
   const [watch, setWatch] = useState<{ state: "idle" | "busy" | "done" | "error"; message: string }>({ state: "idle", message: "" });
+  // Task 13: the seeker's own showcase, the pieces they pick, and the plan cap
+  // the server quotes back if they pick more than it puts in front of a
+  // referrer. The picker owns none of this; both surfaces read it here so the
+  // drawer and /ask can never send different lists.
+  const workPieces = useAskWorkPieces(Boolean(isLoaded && isSignedIn), fetchToken);
+  const [pickedWork, setPickedWork] = useState<number[] | null>(null);
+  const [pinCap, setPinCap] = useState<number | null>(null);
+  const [pinNotice, setPinNotice] = useState("");
+  // Until the seeker touches the picker, the pieces they already pin ride
+  // along, up to the transport ceiling. A plan downgrade can leave more pinned
+  // pieces than the plan now allows; that case is not pre-empted here (the
+  // composer has no plan number) — the first send is refused, and the picker
+  // trims to the cap the server quotes. See `send` below.
+  const selectedWork = pickedWork ?? defaultPinnedWorkIds(workPieces.pieces, MAX_ASK_WORK_ITEMS);
+  const workLimit = Math.min(pinCap ?? MAX_ASK_WORK_ITEMS, MAX_ASK_WORK_ITEMS);
+  const toggleWork = (id: number) => {
+    const base = pickedWork ?? defaultPinnedWorkIds(workPieces.pieces, MAX_ASK_WORK_ITEMS);
+    if (base.includes(id)) { setPickedWork(base.filter(value => value !== id)); setPinNotice(""); return; }
+    // Refusing a pick says why: a silent no-op looks like a broken control.
+    if (base.length >= workLimit) {
+      setPinNotice(`This plan puts ${workLimit === 1 ? "1 piece" : `${workLimit} pieces`} of work in front of a referrer — unpin one to swap it.`);
+      return;
+    }
+    setPickedWork([...base, id]);
+    setPinNotice("");
+  };
   // A handoff back from sign-in (/ask keeps the link and reasons), and an ask
   // opened from a posted role ("/ask?post=<id>&job=<link>", D-022): the post
   // id travels with the send so the poster sees it first; a fresh form drops it.
@@ -126,7 +158,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   const linkOk = isValidTargetRoleUrl(url.trim()) && (!company || jobLinkFitsCompany(url, company.domains));
   const words = countWords(composeWhyMe(reasons));
   const tooLong = overLimitReasons(reasons).length > 0;
-  const cost = costLine({ open: company ? company.openToReferrals : null, balance: isSignedIn && balance?.state === "ready" ? balance.count : null });
+  const cost = askCostLine({ open: company ? company.openToReferrals : null, balance: isSignedIn && balance?.state === "ready" ? balance.count : null });
   const context = company ? [company.name, roleTitleFromUrl(url)].filter(Boolean).join(" · ") : roleTitleFromUrl(url);
 
   const missing = !linkOk
@@ -148,6 +180,9 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     setWatch({ state: "idle", message: "" });
     setDraftState("idle");
     setPostSelection(null);
+    setPickedWork(null);
+    setPinCap(null);
+    setPinNotice("");
     if (options?.clearResume) { setResumeFile(null); setUploaded(null); }
   };
 
@@ -199,6 +234,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
         fastTrack: fastTrackAskFields(window.location.search),
         confirmedCompanyDomain: confirmedDomain(url.trim()),
         opportunityId: postSelection?.opportunityId,
+        workItemIds: selectedWork,
       });
       const token = await fetchToken();
       const response = await fetch("/api/company-referrals", {
@@ -219,6 +255,19 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
         setSendError(companyCapCopy(payload.companyDomain));
         return;
       }
+      // Task 13: more pinned work than the plan puts in front of a referrer. The
+      // server quoted the cap; trim the picker to it and retire the submission
+      // key, because the corrected ask is a different body and must not replay
+      // against one that was never created. Nothing was charged, no ask exists.
+      const pinLimit = parsePlanLimit(response.status, payload);
+      if (pinLimit?.limit === "showcase_pins") {
+        setPinCap(pinLimit.cap);
+        setPickedWork(selectedWork.slice(0, pinLimit.cap));
+        setPinNotice(`Kept the first ${pinLimit.cap === 1 ? "piece" : `${pinLimit.cap} pieces`}. Tap another to swap it in.`);
+        session()?.removeItem(ASK_IDEMPOTENCY_KEY);
+        setSendError(typeof payload.error === "string" ? payload.error : "Your plan puts fewer pieces of work in front of a referrer. Unpin one and send again.");
+        return;
+      }
       const created = response.ok ? parseSentAsk(payload) : null;
       if (!created) throw new Error(typeof payload.error === "string" ? payload.error : "We could not send this ask");
       session()?.removeItem(ASK_IDEMPOTENCY_KEY);
@@ -232,7 +281,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
         detail: created.fastTrack
           ? `Only the ${where}employee whose link you used will see it. If they don’t pick it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}.`
           : created.waitingForCoverage
-            ? `No verified employee there can see it yet, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, 1 credit is used and it goes live; if you have no credit then, we hold it until you add one.`
+            ? `No verified employee there can see it yet, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, ${creditUsedPhrase(ASK_LEVEL_COST_CLIENT)} and it goes live; ${ASK_LEVEL_COST_CLIENT ? "if you do not have enough then, we hold it until you add more." : "if you have no credit then, we hold it until you add one."}`
             : `Verified ${where}employees can see it now. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`,
         slots: created.slots ? (created.slots.cap === null ? `Open asks ${created.slots.open}` : `Open asks ${created.slots.open} of ${created.slots.cap}`) : null,
         trackHref: `/conversation/${created.requestId}`,
@@ -308,6 +357,15 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     draftState,
     sendError,
     sent,
+    work: {
+      pieces: workPieces.pieces,
+      state: workPieces.state,
+      selected: selectedWork,
+      limit: workLimit,
+      notice: pinNotice,
+      reload: workPieces.reload,
+      toggle: toggleWork,
+    },
     postSelection,
     resetForm,
     clearAfterClose,

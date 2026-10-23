@@ -64,12 +64,12 @@ describe("Plans on live data", () => {
     expect(screen.getByRole("heading", { name: "Free", level: 2 })).toBeTruthy();
     expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).not.toEqual(expect.arrayContaining(["Pro", "Max"]));
     // Signed out: the price of a credit, never a balance or a welcome offer that is not live yet.
-    expect(screen.getByText("$1 a credit")).toBeTruthy();
+    expect(screen.getByText("Credits")).toBeTruthy();
     expect(screen.getByText("PAY AS YOU GO")).toBeTruthy();
     expect(screen.getByText("3 referral requests open at once")).toBeTruthy();
     // Review round 2 (D-063): the credit cost strip never calls a referral request free.
     const costs = screen.getByRole("list", { name: "Credit costs" });
-    expect(within(costs).getAllByRole("listitem").map(item => item.textContent)).toEqual(["1 creditEach ask a verified employee can see", "$1Each credit you buy", "NeverBought credits expire"]);
+    expect(within(costs).getAllByRole("listitem").map(item => item.textContent)).toEqual(["1 creditEach ask a verified employee can see", "PacksEach credit you buy", "NeverBought credits expire"]);
     // The canonical free-allowance sentence (D-127 copy) is allowed; the guard
     // still bans any OTHER "free credits" framing (paid credits are never free).
     const text = (document.body.textContent ?? "").split(FREE_ASKS_CHIP).join("");

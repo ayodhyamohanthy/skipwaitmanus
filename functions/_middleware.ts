@@ -28,6 +28,7 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/approve",
   "/ask",
   "/assistants",
+  "/agents",
   "/cancellations",
   "/choosing-a-job-referral-platform",
   "/components",
@@ -112,6 +113,7 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/admin/money-check",
   "/admin/token-recovery",
   "/admin/users",
+  "/skippy",
 ];
 
 /**

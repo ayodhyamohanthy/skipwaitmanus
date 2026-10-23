@@ -1,0 +1,20 @@
+-- 0102: Skippy step 5 (D-141) - a seeker's own AI agents, draft-only.
+-- Grants hold only the sha256 hex of the agent key plus a display prefix;
+-- drafts never send or spend; events are the seeker-readable audit log.
+-- Additive only; the information_schema guards make re-runs no-ops.
+
+SET @tbl_exists = (SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'seekerAgentGrants');
+SET @ddl = IF(@tbl_exists = 0, 'CREATE TABLE IF NOT EXISTS `seekerAgentGrants` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `name` varchar(120) NOT NULL, `keyPrefix` varchar(16) NOT NULL, `keyHash` varchar(64) NOT NULL, `canLookup` boolean NOT NULL DEFAULT true, `canDraft` boolean NOT NULL DEFAULT true, `maxCreditsPerAsk` int NOT NULL, `maxCreditsPerDay` int NOT NULL, `maxCreditsPerWeek` int NOT NULL, `maxAsksPerDay` int NOT NULL, `expiresAt` timestamp NOT NULL, `revokedAt` timestamp NULL, `lastUsedAt` timestamp NULL, `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT `seekerAgentGrants_id` PRIMARY KEY(`id`), CONSTRAINT `seeker_agent_grants_user_fk` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE CASCADE, UNIQUE INDEX `seeker_agent_grants_key_hash_unique`(`keyHash`), INDEX `seeker_agent_grants_user_idx`(`userId`))', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @tbl_exists = (SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'seekerAgentControls');
+SET @ddl = IF(@tbl_exists = 0, 'CREATE TABLE IF NOT EXISTS `seekerAgentControls` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `pausedAt` timestamp NULL, `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT `seekerAgentControls_id` PRIMARY KEY(`id`), CONSTRAINT `seeker_agent_controls_user_fk` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE CASCADE, UNIQUE INDEX `seeker_agent_controls_user_unique`(`userId`))', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @tbl_exists = (SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'seekerAgentDrafts');
+SET @ddl = IF(@tbl_exists = 0, 'CREATE TABLE IF NOT EXISTS `seekerAgentDrafts` (`id` int AUTO_INCREMENT NOT NULL, `grantId` int NOT NULL, `userId` int NOT NULL, `companySlug` varchar(48) NOT NULL, `targetRoleUrl` varchar(2048) NOT NULL, `note` varchar(2000) NOT NULL DEFAULT '''', `jobLevel` int NOT NULL, `creditCost` int NOT NULL, `status` ENUM(''draft'',''discarded'') NOT NULL DEFAULT ''draft'', `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT `seekerAgentDrafts_id` PRIMARY KEY(`id`), CONSTRAINT `seeker_agent_drafts_user_fk` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE CASCADE, INDEX `seeker_agent_drafts_grant_idx`(`grantId`,`createdAt`), INDEX `seeker_agent_drafts_user_idx`(`userId`,`createdAt`))', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @tbl_exists = (SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'seekerAgentEvents');
+SET @ddl = IF(@tbl_exists = 0, 'CREATE TABLE IF NOT EXISTS `seekerAgentEvents` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `grantId` int NULL, `agentName` varchar(120) NOT NULL, `action` varchar(48) NOT NULL, `outcome` ENUM(''success'',''denied'',''failure'') NOT NULL, `detail` varchar(600) NULL, `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT `seekerAgentEvents_id` PRIMARY KEY(`id`), CONSTRAINT `seeker_agent_events_user_fk` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE CASCADE, INDEX `seeker_agent_events_grant_idx`(`grantId`,`createdAt`), INDEX `seeker_agent_events_user_idx`(`userId`,`createdAt`))', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
