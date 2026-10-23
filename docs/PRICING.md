@@ -21,6 +21,10 @@ Frozen decisions bind: once the founder freezes a decision it is the single sour
 
 - Plan names (D-148, frozen): Junior (Open Door terms), Mid (Fast Track terms), Senior+ (Insider terms, by application). Same fees, credits and benefits as D-132; plan ids and Chargebee items keep open_door / fast_track / insider. Reach is display only ("Who you can ask", job-level names L1-L10, never the plan names): Junior own level, Mid up to 2 levels above, Senior+ up to 4. No gate.
 
+## Open launch gaps (UNRESOLVED, do not build against these silently)
+- **Reach promise has no enforcement (recorded Oct 23, ~05:50 IST; D-148 unchanged).** The "Who you can ask" row (+0/+2/+4) is display only: `planReachFor` is read only by the V2 plans page and no server path filters which verified employees a seeker's ask may reach. So the copy promises a ladder with no gate behind it, and the V2 page is off (`PLAN_FAMILY_V2`). Before V2 ships this needs a founder product decision: enforce the ladder at ask time (a new server path, not a warning label) or soften the copy. Designer confirmed Oct 23: credits do not widen relative reach; no client copy claims they do. Not a live false promise while the flag stays off.
+- **Founder is exploring a five-plan model (Entry-level / Senior / Manager / Director / Executive), Oct 23 ~05:47 IST.** Exploration only, not a freeze and not authority to build; the frozen three-plan Junior / Mid / Senior+ model remains the baseline. No five-plan prices or benefit mapping exist and none may be invented.
+
 ## What is live today
 - Credit packs: LIVE in INR and USD (13 Chargebee items, Oct 22 21:01 IST). Packs stay on sale. About Rs39.99 to Rs49.50 or $0.70 to $1.00 a credit, derived from the catalog. The single credit is not sold while packs are on.
 - Fixed passes (Keep warm, Start, Momentum, Land Focus, Land Sprint, Land Concierge): NOT sold, and stay off (`PASS_SALES_ENABLED = false`, D-084). PR #473 (switch them on) is parked, not merged. The Chargebee pass item prices created Oct 22 stay in place but unsold.
