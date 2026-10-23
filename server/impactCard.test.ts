@@ -1,7 +1,7 @@
 import { getTableColumns } from "drizzle-orm";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { companies, companyDomains, profiles, referralRequests, referralTransitionEvents, referrerFastTrackLinks } from "../drizzle/schema";
+import { companies, companyDomains, jobs, profiles, referralRequests, referralTransitionEvents, referrerFastTrackLinks } from "../drizzle/schema";
 import { createInMemoryDrizzle, type Row } from "./inMemoryDrizzle.testkit";
 import { loadImpactCard } from "./impactCard";
 
@@ -34,13 +34,16 @@ const company = (status = "listed"): Row => full(companies, { id: 5, slug: "acme
 const ask = (id: number, createdAt: string, visibleAt: string | null, over: Row = {}): Row => full(referralRequests, { id, jobId: 11, jobSeekerId: 7, referrerId: REFERRER, status: "approved", createdAt: at(createdAt), coverageVisibleAt: visibleAt === null ? null : at(visibleAt), ...over });
 const event = (id: number, requestId: number, action: string, resultingStatus: string, createdAt: string, actorUserId = REFERRER): Row => full(referralTransitionEvents, { id, referralRequestId: requestId, operationKey: `${action}:${id}`, actorUserId, action, fromStatus: "pending", resultingStatus, resultingRevision: id, createdAt: at(createdAt) });
 
-type Seed = { links?: Row[]; domains?: Row[]; companies?: Row[]; asks?: Row[]; events?: Row[]; profiles?: Row[] };
+type Seed = { links?: Row[]; domains?: Row[]; companies?: Row[]; jobs?: Row[]; asks?: Row[]; events?: Row[]; profiles?: Row[] };
+/** The employer an ask belongs to: `jobs.company` holds the canonical domain. */
+const job = (id: number, companyDomain: string): Row => full(jobs, { id, title: "Designer", company: companyDomain, location: "Remote", seniority: "Mid", employmentType: "Full-time", workMode: "Remote", description: "x" });
 function seed(over: Seed = {}) {
   store.reset([
     [referrerFastTrackLinks, over.links ?? [link()]],
     [profiles, over.profiles ?? [profile()]],
     [companyDomains, over.domains ?? [companyDomain()]],
     [companies, over.companies ?? [company()]],
+    [jobs, over.jobs ?? [job(11, "acme.com")]],
     [referralRequests, over.asks ?? []],
     [referralTransitionEvents, over.events ?? []],
   ]);
@@ -187,5 +190,85 @@ describe("loadImpactCard: the aggregates", () => {
     seed({ links: [link({ vanityAlias: null })], asks, events });
     const card = await loadImpactCard(REFERRER, NOW);
     expect(card).toMatchObject({ state: "ready", screenName: "your link", linkPath: "/fast/abc12345" });
+  });
+});
+
+/*
+ * D-106 review F1: the card is published as "{company} impact", so every number
+ * must come from asks at THAT company. The link follows the referrer to their new
+ * employer (getOrCreateReferrerFastTrackLink updates it), while their historical
+ * asks keep their old employer in `jobs.company` — so filtering on actorUserId or
+ * referrerId alone credits the old employer's work to the new one.
+ */
+describe("loadImpactCard: one company's work only (F1)", () => {
+  it("is insufficient when every answered ask belongs to the previous employer", async () => {
+    // The link and profile are verified at acme.com; all three asks are oldco.com jobs.
+    const { asks, events } = threeAnswers();
+    seed({ jobs: [job(11, "oldco.com")], asks, events });
+    expect(await loadImpactCard(REFERRER, NOW)).toEqual({ state: "insufficient" });
+  });
+
+  it("never counts a referral made at the previous employer", async () => {
+    // Three answered Acme asks plus one old-company ask that reached intro_made this month.
+    seed({
+      jobs: [job(11, "oldco.com"), job(12, "acme.com")],
+      asks: [
+        ask(601, "2026-10-10T00:00:00.000Z", "2026-10-10T00:00:00.000Z", { jobId: 12 }),
+        ask(602, "2026-10-11T00:00:00.000Z", "2026-10-11T00:00:00.000Z", { jobId: 12 }),
+        ask(603, "2026-10-12T00:00:00.000Z", null, { jobId: 12 }),
+        ask(604, "2026-10-13T00:00:00.000Z", "2026-10-13T00:00:00.000Z", { jobId: 11 }),
+      ],
+      events: [
+        event(1, 601, "approve", "approved", "2026-10-10T04:00:00.000Z"),
+        event(2, 602, "pass", "pending", "2026-10-11T02:00:00.000Z"),
+        event(3, 603, "approve", "approved", "2026-10-12T10:00:00.000Z"),
+        event(4, 604, "approve", "approved", "2026-10-13T04:00:00.000Z"),
+        event(5, 604, "progress", "intro_made", "2026-10-20T00:00:00.000Z"),
+      ],
+    });
+    const card = await loadImpactCard(REFERRER, NOW);
+    expect(card).toMatchObject({ state: "ready", stats: { referredThisMonth: 0, acceptRatePct: 67 } });
+  });
+
+  it("uses the same company scope for min-3, referrals, accept rate and reply median", async () => {
+    // Acme: approve 4 h, pass 2 h, approve 10 h -> 67%, median 4 h, one referral.
+    // Oldco: three passes 100 h in, all referred, which would swamp every number.
+    seed({
+      jobs: [job(12, "acme.com"), job(11, "oldco.com")],
+      asks: [
+        ask(601, "2026-10-10T00:00:00.000Z", "2026-10-10T00:00:00.000Z", { jobId: 12 }),
+        ask(602, "2026-10-11T00:00:00.000Z", "2026-10-11T00:00:00.000Z", { jobId: 12 }),
+        ask(603, "2026-10-12T00:00:00.000Z", null, { jobId: 12 }),
+        ask(701, "2026-10-05T00:00:00.000Z", "2026-10-05T00:00:00.000Z", { jobId: 11 }),
+        ask(702, "2026-10-06T00:00:00.000Z", "2026-10-06T00:00:00.000Z", { jobId: 11 }),
+        ask(703, "2026-10-07T00:00:00.000Z", "2026-10-07T00:00:00.000Z", { jobId: 11 }),
+      ],
+      events: [
+        event(1, 601, "approve", "approved", "2026-10-10T04:00:00.000Z"),
+        event(2, 602, "pass", "pending", "2026-10-11T02:00:00.000Z"),
+        event(3, 603, "approve", "approved", "2026-10-12T10:00:00.000Z"),
+        event(4, 601, "progress", "intro_made", "2026-10-20T00:00:00.000Z"),
+        event(5, 701, "pass", "pending", "2026-10-09T04:00:00.000Z"),
+        event(6, 702, "pass", "pending", "2026-10-10T04:00:00.000Z"),
+        event(7, 703, "pass", "pending", "2026-10-11T04:00:00.000Z"),
+        event(8, 701, "progress", "intro_made", "2026-10-20T01:00:00.000Z"),
+        event(9, 702, "progress", "intro_made", "2026-10-20T02:00:00.000Z"),
+        event(10, 703, "progress", "intro_made", "2026-10-20T03:00:00.000Z"),
+      ],
+    });
+    const card = await loadImpactCard(REFERRER, NOW);
+    expect(card).toMatchObject({ state: "ready", stats: { referredThisMonth: 1, acceptRatePct: 67, medianFirstReplyHours: 4 } });
+  });
+
+  it("treats a second domain mapped to the same company as the same employer", async () => {
+    // companyDomains holds several domains per company: acme.io is an alias of Acme.
+    const { asks, events } = threeAnswers();
+    seed({
+      domains: [companyDomain(), full(companyDomains, { id: 2, companyId: 5, domain: "acme.io", isPrimary: false })],
+      jobs: [job(11, "acme.io")],
+      asks,
+      events,
+    });
+    expect(await loadImpactCard(REFERRER, NOW)).toMatchObject({ state: "ready", stats: { acceptRatePct: 67 } });
   });
 });
