@@ -10,7 +10,7 @@ The picker's order (`assignments.json`): first the two live regressions (P0-ask-
 ## Frozen pricing (D-132, D-135)
 > Pricing source of truth is [`docs/PRICING.md`](../PRICING.md). D-146: D-132 only; the fixed passes stay off.
 
-The owner froze the bundled pricing on Oct 21 (three plans with in-plan credit dropdowns; asks cost their job level in credits). The level classifier (#381), the plans page (#410) and the per-level spend (#415) are on `main` with their flags off; D-132-audit ([`D-132-pricing-v2.md`](D-132-pricing-v2.md)) reviews them in lane `money-core` after D-035, D-048-p3-live-review and TASK13-pinned-work. Switching it on is a separate step that needs the owner's word.
+The owner froze the bundled pricing on Oct 21 (three plans with in-plan credit dropdowns; asks cost their job level in credits). The level classifier (#381), the plans page (#410) and the per-level spend (#415) are on `main` with their flags off; D-132-audit ([`D-132-pricing-v2.md`](D-132-pricing-v2.md)) reviews them in lane `money-core` after D-048-p3-live-review and TASK13-pinned-work (D-035 is rejected, D-147); the held item-3 and checkout work follows it as `D-132-item3` and `D-132-v2-checkout` (D-165). Switching it on is a separate step that needs the owner's word.
 
 ## D-048 phase 3 in parallel (D-134)
 Every screen, landing to admin, is redesigned to the goal doctrine, UI and UX, never the old layout recoloured (D-150). The rollout runs as one foundation chain (lane `design-core`) and then up to 13 cluster lanes at once, every page landing dark behind its own flag or, for a doctrine redesign, in place with a parity check and a review before landing (D-149): [`D-048-phase-3-split.md`](D-048-phase-3-split.md) (76 rows, owned paths, landing steps, bug controls). The picker changes that make it safer are in [`PICKER-PARALLEL.md`](PICKER-PARALLEL.md).
@@ -31,16 +31,16 @@ Every screen, landing to admin, is redesigned to the goal doctrine, UI and UX, n
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on | Runs beside |
 |---|---|---|---|---|---|---|---|
 | 1.1 | D-067-pro-max-removal | [D-067-packet.md](D-067-packet.md) (verification for slices 3–4 and the review) | 1 | L (sliced into commits) | done — `08d193a0`, live (independent review passed on PR #318) | — | 0.1, 1.2, 1.4 |
-| 1.2 | 2 + Drift-D030-seeker-signin | [seeker-passwords.md](seeker-passwords.md) | 1 | M | review passed — landing blocked by D-080 (PR #324, head `bcff1742`; also waits on the owner's dashboard steps and `SEEKER_CODE_VERIFY_UNTIL`) | — | 0.1, 1.1, 1.4 |
+| 1.2 | 2 + Drift-D030-seeker-signin | [seeker-passwords.md](seeker-passwords.md) | 1 | M | review passed — landing waits for 1.2b, the D-057 session gate (D-080 (b), D-163), the owner's dashboard steps and `SEEKER_CODE_VERIFY_UNTIL` (PR #324, head `bcff1742`) | 1.2b | 0.1, 1.1, 1.4 |
 | 1.2b | D-057-session-gate (new, from the sign-in review finding S-4) | [D-057-session-gate.md](D-057-session-gate.md) | 1 | M | ready | none (D-163: goes before 1.2, which waits for it under D-080 (b)) | 1.3, 1.4 |
 | 1.3 | D-069-chargebee-catalog-sync | [D-069-chargebee-catalog-sync.md](D-069-chargebee-catalog-sync.md) | 1 | M | done — `c573af21`, live (independent review passed on PR #326); nothing applied: the owner's dry run, then apply | 1.1 live | 1.2, 1.4, 3.1 |
 | 1.4 | D-048 (phase 2) | [D-048-phase-2.md](D-048-phase-2.md) | 2 | M | done — `b6ea65f1` (PR #320); phase 3 packets next (architect) | — | 0.1, 1.1, 1.2, 1.3 |
 
-## Stage 2 — payments ready before referrers onboard (D-046, D-064, D-075)
+## Stage 2 — payments ready before referrers onboard (D-046, D-064, D-075; since D-146 only credit packs are sold)
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on | Runs beside |
 |---|---|---|---|---|---|---|---|
-| 2.1 | 1 (go-live slice: `/plans` packs and passes, coverage before payment, no accidental renewal) | [GO-LIVE-1-plans-purchase.md](GO-LIVE-1-plans-purchase.md) | 1 | M | done — #351; passes switched off again by the D-084 P0 until 2.1b | 1.1 live, 1.3 built | 3.1 |
-| 2.1b | 1 (pass slice: a paid pass always activates, then passes go back on sale; D-084) | [GO-LIVE-1b-pass-activation.md](GO-LIVE-1b-pass-activation.md) | 1 | M | landed — PR #359 (merge of `agent/queue/go-live-passes`); passes stay off until the owner's §4.5 test-site evidence | 2.1 live | 3.1 |
+| 2.1 | 1 (go-live slice: `/plans` packs and passes, coverage before payment, no accidental renewal) | [GO-LIVE-1-plans-purchase.md](GO-LIVE-1-plans-purchase.md) | 1 | M | done — #351; passes switched off by the D-084 P0 and kept off by D-146 | 1.1 live, 1.3 built | 3.1 |
+| 2.1b | 1 (pass slice: a paid pass always activates, then passes go back on sale; D-084) | [GO-LIVE-1b-pass-activation.md](GO-LIVE-1b-pass-activation.md) | 1 | M | landed — PR #359 (merge of `agent/queue/go-live-passes`); passes stay off (D-146) | 2.1 live | 3.1 |
 | 2.2 | D-065-daily-money-check | live (`eed80e5f`, PR #317); follow-up [D-065-B-slice-checks.md](D-065-B-slice-checks.md) | 2 | S | done — `dc8d0bf3` (PR #333) | — | everything |
 | 2.3 | Owner: read the D-069 dry run, apply, fix `billing_cycles` mismatches in Chargebee, add the pass-refund wording to `/refunds`, then the one live ₹99 UPI buy-and-refund (D-065) | plan §6 | — | — | owner action | 1.3, 2.1 | — |
 
@@ -81,7 +81,7 @@ Every screen, landing to admin, is redesigned to the goal doctrine, UI and UX, n
 - **D-069 (1.3) waits for D-067:** D-067 rewrites `shared/planCatalog.ts`, `shared/billingCatalog.ts`, `server/chargebee.ts` and `server/adminBillingCatalog.ts`, which the sync reads.
 - **GO-LIVE-1 (2.1) waits for D-067 and D-069:** it edits `client/src/pages/Plans.tsx` and `client/src/components/plans/`, which D-067 empties of Pro/Max, and it sells only item prices the sync created.
 - **The D-038 and D-035 slices (3.x):** each edits the claim, accept, pass and transition functions. One at a time, never beside each other or beside a P0 in those functions.
-- **F-4 waits for the sign-in branch:** that branch already rewrites `server/sentry.ts`.
+- **F-4 builds against `main` now (D-163):** the sign-in branch picks up its scrubber when it merges `main`.
 - **F-5 waits for D-067:** D-067 removes the gift keys from `.env.example`.
 
 ## Owner-registered follow-ups, Oct 22

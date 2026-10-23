@@ -25,7 +25,7 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 ## Roadmap (status board)
 | Slice | Loop | Owner lane | Status |
 | --- | --- | --- | --- |
-| GO-LIVE-1b (PR #359) | - | QA + build | awaiting QA second review + PASS_SALES_ENABLED confirmation |
+| GO-LIVE-1b (PR #359) | - | QA + build | landed (#359); passes stay off (`PASS_SALES_ENABLED = false`, D-146) |
 | W0 goal shell (PR #361) | L6 | build | live (#361) |
 | W1 comps: /explore + ask drawer (w1-comps) | L1 | build | live (#362), reviewed in #472; the redesign to the doctrine is D-048-p3-live-review-find (D-150) |
 | Demand list (D-086) | L1 | build | approved; queued as `D-086-demand-list`, packet to write (D-154); its build follows BYOR (D-162); mocks in hand |
@@ -48,7 +48,7 @@ Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COM
 - Public launch when the 10 most-asked companies each have a verified referrer (confirmed by the owner, Oct 21; no payment test in the trigger).
 - Loops L1 to L4. Measure: asks per company, companies with a verified referrer, asks answered within 5 days, reports-as-annoying.
 
-## Skippy (in-product assistant, code name Skippie; D-136 to D-142)
+## Skippy (in-product assistant, code name Skippie; D-136 to D-143)
 Skippy is a chat front door to what the product already does. It asks, shows an approve or deny card, then acts through the same server functions as the normal pages. User-facing name Skippy (founder's final word, Oct 22). Code and routes keep the name Skippie for now.
 - **Audiences:** seekers (ask for a referral by chat), admins (read first, then approved actions), and seekers' own AI agents (only with permission).
 - **Rules (binding):** same checks as the pages, never a second rulebook (D-137). Live prices, never hardcoded. Never promises a referral. Referrers never pay or get paid (D-055).
