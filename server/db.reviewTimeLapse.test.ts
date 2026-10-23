@@ -53,7 +53,7 @@ describe("D-038-A: review-time claim lapse enforcement", () => {
     expect(eventActions()).toEqual(["claim", "review"]);
   });
 
-  it("a review at the lapse instant lapses the claim in its own transaction and conflicts instead of approving", async () => {
+  it("a review at the lapse instant lapses the claim and conflicts instead of approving", async () => {
     seedHeldAsks({ asks: [claimedByOwner()], events: [claimAt()] });
     vi.setSystemTime(LAPSE);
 
@@ -106,5 +106,29 @@ describe("D-038-A: review-time claim lapse enforcement", () => {
     await expect(review("approved")).resolves.toMatchObject({ status: "approved" });
     expect(askById()).toMatchObject({ status: "approved", referrerId: LINK_OWNER });
     expect(eventActions()).toEqual(["claim", "review"]);
+  });
+
+  it("a review one millisecond before the lapse instant still approves (boundary)", async () => {
+    seedHeldAsks({ asks: [claimedByOwner()], events: [claimAt()] });
+    vi.setSystemTime(LAPSE - 1);
+
+    await expect(review("approved")).resolves.toMatchObject({ status: "approved" });
+    expect(askById()).toMatchObject({ status: "approved", referrerId: LINK_OWNER });
+    expect(eventActions()).toEqual(["claim", "review"]);
+  });
+
+  it("a tenure that began after a referred lapse, without a claim event, is never claim-lapsed at review time", async () => {
+    // The stale claim below ended in a referred lapse; the current tenure holds the
+    // ask with no claim event of its own (a coverage delivery sets referrerId with
+    // no event). The review-time lapse must not let the dead tenure's clock govern
+    // this one, past the dead claim's lapse instant or not.
+    const referredLapse = { ...claimEvent(REQUEST_ID, 40), action: "referred_lapse", operationKey: "referred-lapse:39", createdAt: new Date(T + 8 * 24 * HOUR) };
+    seedHeldAsks({ asks: [askRow({ revision: 3, updatedAt: new Date(T + 8 * 24 * HOUR) })], events: [claimAt(), referredLapse] });
+    vi.setSystemTime(T + 8 * 24 * HOUR + 2 * HOUR);
+
+    await expect(review("approved")).resolves.toMatchObject({ status: "approved" });
+    expect(askById()).toMatchObject({ status: "approved", referrerId: LINK_OWNER });
+    expect(eventActions()).toEqual(["claim", "referred_lapse", "review"]);
+    expect(passRows()).toEqual([]);
   });
 });
