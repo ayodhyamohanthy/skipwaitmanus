@@ -1730,7 +1730,7 @@
   },
   {
    "id": "D-166-journey-decisions-sync",
-   "title": "Record the Oct 23 seeker-journey + no-expiry and all-companies coverage decisions (D-174, D-175)",
+   "title": "Record the Oct 23-24 seeker-journey, no-expiry, coverage-goal and no-availability-framing decisions (D-174..D-176)",
    "row": "D-166",
    "packet": null,
    "tier": 2,
@@ -1738,7 +1738,7 @@
    "branch": "agent/coordinator/journey-decisions-sync",
    "status": "in-review",
    "dependsOn": [],
-   "note": "Owner instruction (iMessage phonemsg-01M5N07FQX1Q4Y0GXPDW5WPPTQ 'Update in repo' on phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2's journey + no-expiry rule and phonemsg-01M5N06NBY8DC123RMAPV44NYR's all-companies coverage goal). Scope: docs/DECISIONS.md only. D-174 suspends ask death clocks for launch (7-day unclaimed expiry, 90-day waiting cap, day-30 closure) and records the maintained-directory journey with the company pool; referrer action timers, security/session/payment bounds and credit rules untouched, no new debit/refund behavior. D-175 records the coverage goal as a goal with an open free/legal feasibility study; no fake jobs, no coverage claims without proof, no paid data or account-risk scraping. IDs checked against main (D-169..D-173 landed in #599) and agent/claude/ceo-oct23-release-rows (D-168); D-174/D-175 free. Builds inside these decisions stay pending under their own rows; QA and any expiry-sweep workers must be informed before expiry behavior merges."
+   "note": "Owner instruction (iMessage phonemsg-01M5N07FQX1Q4Y0GXPDW5WPPTQ 'Update in repo' on phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2's journey + no-expiry rule and phonemsg-01M5N06NBY8DC123RMAPV44NYR's all-companies coverage goal). Scope: docs/DECISIONS.md only. D-174 suspends ask death clocks for launch (7-day unclaimed expiry, 90-day waiting cap, day-30 closure) and records the maintained-directory journey with the company pool; referrer action timers, security/session/payment bounds and credit rules untouched, no new debit/refund behavior. D-175 records the coverage goal as a goal with an open free/legal feasibility study; no fake jobs, no coverage claims without proof, no paid data or account-risk scraping. IDs checked against main (D-169..D-173 landed in #599) and agent/claude/ceo-oct23-release-rows (D-168); D-174/D-175 free. Builds inside these decisions stay pending under their own rows; QA and any expiry-sweep workers must be informed before expiry behavior merges. Amended before merge: D-176 (phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST) supersedes D-169's availability framing and open-first grouping - availability is backend routing only, honest delivered-vs-waiting status after save, no false immediate-referral claim; #594 stands as completed history. IDs D-174..D-176 free on main (D-169..D-173 via #599) and checked against agent/claude/ceo-oct23-release-rows."
   }
  ]
 }
