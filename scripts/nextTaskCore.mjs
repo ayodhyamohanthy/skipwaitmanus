@@ -249,7 +249,7 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports }) {
       task, at, work, info, lockName, lock, archName, arch: arch && !arch.merged ? arch : null,
       slug: slugOf(task.branch), owner: holderOf(info, id), pr, ci: ci.state, said,
       builders: everyone(stageMarkers(info, id), ["Claim", "Takeover"]),
-      reviewers: everyone(lockMarkers, ["Review claim"]), fixers: everyone(lockMarkers, ["Fix claim"]),
+      reviewers: everyone(lockMarkers, ["Review claim"]), fixers: everyone(lockMarkers, ["Fix claim", "Fixed"]),
       reviewer: lastBy(lockMarkers, ["Review claim"])?.who ?? null, fixer: lastBy(lockMarkers, ["Fix claim"])?.who ?? null,
       lander: lastBy(lockMarkers, ["Land claim"])?.who ?? null, review: reviewStateOf(lock, id), stageHolder: lockMarkers.at(-1)?.who ?? null,
       unblocker: archMarkers.at(-1)?.verb === "Unblock" ? archMarkers.at(-1).who : null,
@@ -312,7 +312,7 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   // D-085, narrowed by D-109: a priority that is red (CI, or its team reported red or blocked) holds its own lane
   // and every task that depends on it, never unrelated lanes; red main (above) still holds everything.
   const gate = (reason, extra = {}) => ({ kind: "gate", reason, ...extra });
-  const did = (v, roles) => Boolean(claimant) && roles.some(r => v[r].includes(claimant));
+  const did = (v, roles) => Boolean(claimant) && roles.some(r => v[r].some(who => modelOf(who) === modelOf(claimant)));
   const green = (v, why) => ({ kind: "green", task: v.task, work: v.work, pr: v.pr, from: v.owner, since: workAt(v), why });
   const reportWhy = said => `${said.who} reported it ${said.status}${said.note ? `: ${said.note}` : ""}`;
   const slot = landingSlot(branches, now);
