@@ -13,13 +13,13 @@ export function GoalApprovalCard({ approval, balance, primary, handlers: h }: { 
   const full = approval.kind === "ask_send" && approval.slotCount === 0;
   // An unknown cost is never rendered as an invented number: the held PR 550
   // card's \`?? 1\` showed "1 credit" the server never quoted, and the server
-  // does not block or re-resolve a missing cost at decision time today. So an
-  // unknown-cost spend cannot be approved here until the actual cost loads.
+  // does not block or re-resolve a missing cost at decision time today, so this
+// card fails closed: an unknown-cost spend cannot be approved at all.
   const cost = approval.creditCount;
   const exactCost = typeof cost === "number" && Number.isFinite(cost) && cost >= 0;
   const title = approval.kind === "credit_spend" ? "Review this paid tool" : `Review your ask to ${approval.companyDomain ?? "this company"}`;
   const costUnknown = approval.kind === "credit_spend" && !exactCost;
-  const blocked = ended ? "This approval has ended. Refresh your approvals." : h.working ? "A decision is being recorded" : costUnknown ? "The cost is unavailable. Refresh your approvals to load it before deciding." : undefined;
+  const blocked = ended ? "This approval has ended. Refresh your approvals." : h.working ? "A decision is being recorded" : costUnknown ? "Cost unavailable. You can't approve this spend." : undefined;
   return <article aria-label={title}>
     <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2"><span className="text-g-meta text-g-ink-2">Prepared by {providerLabel(approval.provider)}</span><GoalStatus status={ended ? "expired" : "waiting"} label={ended ? "Approval ended" : "Waiting for your decision"} /></div>
     <h2 className="text-g-heading">{title}</h2>
@@ -28,7 +28,7 @@ export function GoalApprovalCard({ approval, balance, primary, handlers: h }: { 
       {exactCost ? <p className="text-g-label">{creditsLabel(cost)}</p> : null}
       {approval.kind === "credit_spend" && exactCost && balance !== null ? <p className="mt-2 text-g-meta text-g-ink-2"><GoalNum>{balance}</GoalNum> available · <GoalNum>{Math.max(0, balance - cost)}</GoalNum> after this</p> : balance === null ? <p className="mt-2 text-g-meta text-g-ink-2">Balance unavailable. The server checks your balance before acting.</p> : null}
       {approval.kind === "ask_send" ? <p className="mt-2 text-g-meta text-g-ink-2">{full ? "All your slots are in use. Keep this as a draft or manage your asks." : "The same credit checks, open-request limits and routing apply as when you send an ask yourself."}</p> : null}
-      {costUnknown ? <p className="mt-2 text-g-meta text-g-ink-2">Cost unavailable. This cannot be approved until the actual cost loads.</p> : null}
+      {costUnknown ? <p className="mt-2 text-g-meta text-g-ink-2">Cost unavailable. You can't approve this spend.</p> : null}
     </Section>
     {approval.kind === "ask_send" && exactCost && cost > 0 ? <p className="mb-5 text-g-meta text-g-ink-2">{creditsLabel(cost)} and 1 open slot are used only when the ask reaches a referrer. While it waits for one, nothing is charged and no slot is held.</p> : null}
     {approval.kind === "ask_send" ? <Section title="Your note">{h.editing ? <label className="grid gap-2 text-g-label">Ask note<textarea className="min-h-40 w-full rounded-g-control border border-g-control-edge bg-g-surface p-3 text-g-body" value={h.draftNote} onChange={event => h.onDraftChange(event.target.value)} /></label> : <p className="whitespace-pre-wrap break-words text-g-body">{approval.note || "No note yet. Edit before sending."}</p>}</Section> : null}

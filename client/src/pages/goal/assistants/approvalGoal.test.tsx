@@ -27,11 +27,11 @@ describe("goal approval boundary", () => {
     fireEvent.click(screen.getByRole("button",{name:"Use 3 credits"}));expect(h.onDecide).not.toHaveBeenCalled();
     Object.defineProperty(navigator,"onLine",{configurable:true,value:true});
   });
-  it("never invents a missing cost and cannot approve until the actual cost loads", () => {
+  it("never invents a missing cost and fails closed: the spend cannot be approved", () => {
     const h = handlers(); render(<GoalApprovalCard approval={{...base, creditCount: null}} balance={8} primary handlers={h} />);
     expect(screen.queryByText("1 credit")).toBeNull();
     expect(screen.queryByText(/after this/)).toBeNull();
-    expect(screen.getByText(/Cost unavailable/)).toBeTruthy();
+    expect(screen.getAllByText(/Cost unavailable/).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Approve spend" }));
     expect(h.onDecide).not.toHaveBeenCalled();
   });
