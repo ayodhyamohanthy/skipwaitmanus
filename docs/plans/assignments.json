@@ -260,7 +260,8 @@
       "status": "todo",
       "dependsOn": [
         "P0-ask-link-signin",
-        "D-132-audit"
+        "D-132-audit",
+        "D-048-F-goal-check"
       ],
       "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines).",
       "epic": "D-048-p3"
@@ -290,7 +291,8 @@
       "dependsOn": [
         "D-038-reconcile",
         "D-132-audit",
-        "ROW20-CD"
+        "ROW20-CD",
+        "D-048-F-goal-check"
       ],
       "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first.",
       "epic": "D-048-p3"
@@ -305,7 +307,8 @@
       "branch": "agent/queue/d048-live-review-queue",
       "status": "todo",
       "dependsOn": [
-        "P1-queue-attestation"
+        "P1-queue-attestation",
+        "D-048-F-goal-check"
       ],
       "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the referral queue against its kit version (pass codes, pre-acceptance privacy, verified-referrer check, lost test pins). After P1-queue-attestation, which edits the same page.",
       "epic": "D-048-p3"
@@ -709,6 +712,69 @@
       ]
     },
     {
+      "id": "D-048-F-goal-check",
+      "title": "Goal page contract: GoalNextStep, assertGoalPage and a no-kit boundary for moved pages (D-150 made executable)",
+      "row": "D-048",
+      "packet": "docs/plans/GOAL_UI_COVERAGE.md",
+      "tier": 2,
+      "lane": "design-check",
+      "branch": "agent/queue/d048-f-goal-check",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-primitives"
+      ],
+      "epic": "D-048-p3",
+      "owns": [
+        "client/src/components/goal/GoalNextStep.tsx",
+        "client/src/components/goal/index.ts (switch only)",
+        "client/src/test/goalPageContract.ts",
+        "client/src/test/goalPageContract.test.tsx",
+        "client/src/test/goalPagesBoundary.test.ts"
+      ],
+      "note": "D-167: a page counts as moved only when its test calls assertGoalPage (one h1 goal line, exactly one data-g-primary inside the GoalNextStep block, no kit.css classes) and the boundary test finds no kit or ui import. Every surface row depends on this one."
+    },
+    {
+      "id": "D-048-F-shell-parts",
+      "title": "Shell parts on the goal system: AccountMenu, NotificationBell, BetaNotice, CookieConsent",
+      "row": "D-048",
+      "packet": "docs/plans/GOAL_UI_COVERAGE.md",
+      "tier": 2,
+      "lane": "design-shell",
+      "branch": "agent/queue/d048-f-shell-parts",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-credits",
+        "D-048-F-goal-check"
+      ],
+      "epic": "D-048-p3",
+      "owns": [
+        "client/src/components/AccountMenu.tsx",
+        "client/src/components/NotificationBell.tsx",
+        "client/src/components/BetaNotice.tsx",
+        "client/src/components/CookieConsent.tsx",
+        "client/src/components/shellParts.goal.test.tsx"
+      ],
+      "note": "D-167 §6.2: shown on every signed-in page and the landing, so they move before the surfaces. Behaviour unchanged, including cookie consent and applyAnalyticsConsent."
+    },
+    {
+      "id": "D-048-F-coverage",
+      "title": "Coverage test: every route and component in GOAL_UI_COVERAGE.md has an owner row",
+      "row": "D-048",
+      "packet": "docs/plans/GOAL_UI_COVERAGE.md",
+      "tier": 3,
+      "lane": "design-check",
+      "branch": "agent/queue/d048-f-coverage",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-goal-check"
+      ],
+      "epic": "D-048-p3",
+      "owns": [
+        "scripts/goalUiCoverage.test.ts"
+      ],
+      "note": "D-167 §6.3: fails on an unowned route or component, prints how many pages still import the kit."
+    },
+    {
       "id": "D-048-p3-w0-shell",
       "title": "D-048 phase 3 wave 0 (#361): the app shell onto the goal system",
       "row": "D-048",
@@ -829,7 +895,8 @@
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
-        "D-048-P-seeker"
+        "D-048-P-seeker",
+        "D-048-F-goal-check"
       ],
       "owns": [
         "client/src/pages/UnifiedInbox.tsx",
@@ -853,7 +920,8 @@
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
-        "D-048-P-seeker"
+        "D-048-P-seeker",
+        "D-048-F-goal-check"
       ],
       "owns": [
         "client/src/pages/Onboarding.tsx",
@@ -876,7 +944,8 @@
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
-        "D-048-P-seeker"
+        "D-048-P-seeker",
+        "D-048-F-goal-check"
       ],
       "owns": [
         "client/src/pages/ProfileSetup.tsx",
@@ -899,7 +968,8 @@
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
-        "D-048-P-seeker"
+        "D-048-P-seeker",
+        "D-048-F-goal-check"
       ],
       "owns": [
         "client/src/pages/Assistants.tsx",
@@ -925,7 +995,8 @@
         "D-048-F-primitives",
         "D-048-P-seeker",
         "ROW20-CD",
-        "ROW20-B"
+        "ROW20-B",
+        "D-048-F-goal-check"
       ],
       "owns": [
         "client/src/pages/Landed.tsx",
@@ -935,6 +1006,49 @@
         "design/goal-ui/captures/seeker-small/**"
       ],
       "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+    },
+    {
+      "id": "D-048-p3-skippy",
+      "title": "Redesign /skippy (the seeker's assistant chat) to the goal doctrine (D-150)",
+      "row": "D-048",
+      "packet": "docs/plans/GOAL_UI_COVERAGE.md",
+      "tier": 1,
+      "lane": "d048-skippy",
+      "branch": "agent/queue/d048-skippy",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-F-goal-check",
+        "REGISTER-520"
+      ],
+      "epic": "D-048-p3",
+      "owns": [
+        "client/src/pages/Skippy.tsx",
+        "client/src/pages/Skippy.test.tsx"
+      ],
+      "note": "D-167 §6.4: had no row. Behind SKIPPIE_SEEKER_ENABLED (off); the CEO adds SKIPPY-fix to dependsOn once REGISTER-520 puts it on main."
+    },
+    {
+      "id": "D-048-p3-agents",
+      "title": "Redesign /agents (seeker agent grants) to the goal doctrine (D-150)",
+      "row": "D-048",
+      "packet": "docs/plans/GOAL_UI_COVERAGE.md",
+      "tier": 1,
+      "lane": "d048-agents",
+      "branch": "agent/queue/d048-agents",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-F-goal-check"
+      ],
+      "epic": "D-048-p3",
+      "owns": [
+        "client/src/pages/SeekerAgents.tsx",
+        "client/src/pages/seekerAgents.test.tsx"
+      ],
+      "note": "D-167 §6.5: had no row. Behind SKIPPIE_AGENT_ENABLED (off); every limit, expiry, revoke and pause-all control stays visible (D-141)."
     },
     {
       "id": "D-048-P-referrer",
@@ -966,7 +1080,8 @@
         "D-048-P-referrer",
         "D-038-reconcile",
         "D-105-win-card",
-        "ROW20-CD"
+        "ROW20-CD",
+        "D-048-F-goal-check"
       ],
       "owns": [
         "client/src/pages/ReferralConversation.tsx",
@@ -990,7 +1105,8 @@
         "D-048-F-harness",
         "D-048-F-primitives",
         "D-048-P-referrer",
-        "ROW20-A"
+        "ROW20-A",
+        "D-048-F-goal-check"
       ],
       "owns": [
         "client/src/pages/Referrer.tsx",
@@ -1016,7 +1132,8 @@
         "D-048-F-primitives",
         "D-048-P-referrer",
         "ROW20-CD",
-        "D-106-impact-card"
+        "D-106-impact-card",
+        "D-048-F-goal-check"
       ],
       "owns": [
         "client/src/pages/ReferrerHome.tsx",
@@ -1041,7 +1158,8 @@
         "D-048-F-harness",
         "D-048-F-primitives",
         "D-048-P-referrer",
-        "ROW20-B"
+        "ROW20-B",
+        "D-048-F-goal-check"
       ],
       "owns": [
         "client/src/pages/Invite.tsx",
@@ -1063,7 +1181,8 @@
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
-        "D-048-P-referrer"
+        "D-048-P-referrer",
+        "D-048-F-goal-check"
       ],
       "owns": [
         "client/src/pages/PostOpportunity.tsx",
@@ -1085,7 +1204,8 @@
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
-        "D-048-P-referrer"
+        "D-048-P-referrer",
+        "D-048-F-goal-check"
       ],
       "owns": [
         "client/src/pages/EmailReviewAction.tsx",

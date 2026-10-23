@@ -490,6 +490,11 @@ which rules were adopted or rejected when this section changes.
   place on Oct 21-22 (D-149) do not meet it yet; the D-048 live-review rows
   redesign them. A re-skin may land in place only as such a redesign, with a
   parity check and a Tier 1 review before landing (D-149).
+- **D-167 (Oct 23): coverage and acceptance.** Every route and every component
+  has exactly one owning row in `docs/plans/GOAL_UI_COVERAGE.md`; a surface counts
+  as moved only under its §1 definition (goal line, one next-step block with one
+  black commit, no kit imports, the flow rebuilt rather than recoloured,
+  `assertGoalPage`, captures). Every surface row depends on `D-048-F-goal-check`.
 - **D-048 phase 2 shipped (Oct 19):** `DESIGN.md` is the goal-UI visual contract
   (comps approved by D-071, `design/goal-ui/pick/`). It governs each surface as
   the migration moves it to `client/src/components/goal/` (tokens: the phase-2
