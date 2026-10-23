@@ -1,14 +1,17 @@
 // @vitest-environment node
 // D-083: the queue picker hands every agent the same next task, in Claude
 // Code's order, and never two agents the same one. Pins each decision.
-import { existsSync, readFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import * as core from "./nextTaskCore.mjs";
 import {
-  IDLE_MS, ciStateFromRuns, localSyncIssues, markerSubject, parseMarker, pickNextTask, reviewStateOf, roleOf, statusBoard, validateAssignments,
+  IDLE_MS, ciStateFromRuns, epicSummaries, localSyncIssues, markerSubject, parseMarker, pickNextTask, reviewStateOf, roleOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
+import { scopeViolations } from "./scope-check.mjs";
 
 const root = path.resolve(__dirname, "..");
 const real = JSON.parse(readFileSync(path.join(root, "docs/plans/assignments.json"), "utf8"));
@@ -659,7 +662,86 @@ describe("status reports to the CEO and the board (D-085)", () => {
 
   it("names the executive role from the lane", () => {
     expect(roleOf(task("A", { lane: "design" }))).toBe("CDO");
+    expect(roleOf(task("A", { lane: "design-system" }))).toBe("CDO");
+    expect(roleOf(task("A", { lane: "d048-platform" }))).toBe("CDO");
     expect(roleOf(task("A", { lane: "payments" }))).toBe("CTO");
+    expect(roleOf(task("A", { lane: "d049-platform" }))).toBe("CTO");
+  });
+
+  it("accepts only optional epic strings with the assignment identifier shape", () => {
+    expect(validateAssignments({ version: 1, repo: "o/r", tasks: [task("A")] }, exists)).toEqual([]);
+    for (const epic of ["D-048-p3", "epic.v2", "A1-foo.bar"]) {
+      expect(validateAssignments({ version: 1, repo: "o/r", tasks: [task("A", { epic })] }, exists)).toEqual([]);
+    }
+    for (const epic of ["", " bad", "bad ", "bad/epic", "bad_epic", 42, null, false, [], {}]) {
+      const errors = validateAssignments({ version: 1, repo: "o/r", tasks: [task("A", { epic })] }, exists);
+      expect(errors.some(e => e.includes("epic"))).toBe(true);
+    }
+  });
+
+  it("adds epic and only valid open-PR behind-main data to board rows", () => {
+    const tasks = [
+      task("A", { epic: "D-048-p3" }),
+      task("B", { epic: "D-048-p3" }),
+      task("C", { status: "done", epic: "D-048-p3" }),
+      task("D", { status: "done", epic: "D-048-p3" }),
+      task("U", { epic: "D-049" }),
+      task("N"),
+    ];
+    const openPrs = new Map([
+      ["agent/queue/a", "https://github.com/o/r/pull/1"],
+      ["agent/queue/b", "https://github.com/o/r/pull/2"],
+      ["agent/queue/c", "https://github.com/o/r/pull/3"],
+    ]);
+    const rows = statusBoard({
+      tasks, branches: new Map([
+        ["agent/queue/a", claimBy("Builder · a", "A")],
+        ["agent/queue/b", claimBy("Builder · b", "B")],
+        ["agent/queue/c", claimBy("Builder · c", "C")],
+      ]), openPrs,
+      prCi: new Map([["agent/queue/a", { state: "green" }], ["agent/queue/b", { state: "green" }]]),
+      prBehind: new Map([["agent/queue/a", 4], ["agent/queue/b", "bad"], ["agent/queue/c", 9], ["agent/queue/u", null]]),
+      now: NOW,
+    });
+    expect(rows.map(r => [r.id, r.epic, r.behindMain])).toEqual([
+      ["A", "D-048-p3", 4], ["B", "D-048-p3", null], ["C", "D-048-p3", undefined],
+      ["D", "D-048-p3", undefined], ["U", "D-049", undefined], ["N", undefined, undefined],
+    ]);
+    expect(rows[2]).toMatchObject({ pr: "https://github.com/o/r/pull/3" });
+    expect(rows[2]).not.toHaveProperty("behindMain");
+  });
+
+  it("keeps a measured zero distinct from missing or invalid behind-main data", () => {
+    for (const [measured, expected] of [[0, 0], [undefined, null], [null, null], [-1, null], [1.5, null], [NaN, null], [Infinity, null], ["2", null]]) {
+      const rows = statusBoard({
+        tasks: [task("A")], branches: new Map([["agent/queue/a", claimBy("Builder · a", "A")]]),
+        openPrs: new Map([["agent/queue/a", "https://github.com/o/r/pull/1"]]),
+        prBehind: new Map([["agent/queue/a", measured]]), now: NOW,
+      });
+      expect(rows[0].behindMain).toBe(expected);
+    }
+    expect(renderBoard([])).not.toContain("released:");
+    expect(epicSummaries([])).toEqual([]);
+  });
+
+  it("summarizes epics in first-seen order and renders summaries without dropping rows", () => {
+    const rows = [
+      { id: "A", title: "A title", tier: 2, role: "CTO", state: "pr-green", health: "green", holder: null, quietHours: null, pr: "https://github.com/o/r/pull/1", behindMain: 2, report: null, epic: "D-048-p3" },
+      { id: "B", title: "B title", tier: 2, role: "CDO", state: "done", health: "done", holder: null, quietHours: null, pr: "https://github.com/o/r/pull/2", report: null, epic: "D-048-p3" },
+      { id: "C", title: "C title", tier: 2, role: "CTO", state: "done", health: "done", holder: null, quietHours: null, pr: null, report: null, epic: "D-049" },
+      { id: "D", title: "D title", tier: 2, role: "CTO", state: "todo", health: "red", holder: null, quietHours: null, pr: null, report: null, epic: "D-048-p3" },
+      { id: "E", title: "E title", tier: 2, role: "CTO", state: "todo", health: "open", holder: null, quietHours: null, pr: null, report: null },
+    ];
+    expect(epicSummaries(rows)).toEqual([
+      { epic: "D-048-p3", total: 3, done: 1, prs: 1, red: 1, released: ["B"] },
+      { epic: "D-049", total: 1, done: 1, prs: 0, red: 0, released: ["C"] },
+    ]);
+    const text = renderBoard(rows);
+    expect(text).toMatch(/1\. A[\s\S]*2\. B[\s\S]*3\. C[\s\S]*4\. D[\s\S]*5\. E/);
+    expect(text).toContain("D-048-p3: 1/3 done, 1 PR, 1 red, released: B");
+    expect(text).toContain("D-049: 1/1 done, 0 PR, 0 red, released: C");
+    expect(text).toContain("behind main 2");
+    expect(renderBoard([{ ...rows[0], behindMain: null }])).toContain("behind main unknown");
   });
 
   it("shows every task in priority order with its state, holder, quiet time and latest report", () => {
@@ -1134,5 +1216,215 @@ describe("D-151 model-independent reviews and landings", () => {
     expect(text).toContain("No session of your model");
     expect(text).toContain("outside the picker");
     expect(text).toContain("post no verdict");
+  });
+});
+
+describe("actual next-task --status integration", () => {
+  it("counts main-only commits behind an open PR and renders its epic and role", () => {
+    const fixture = mkdtempSync(path.join(os.tmpdir(), "next-task-status-"));
+    const work = path.join(fixture, "work");
+    const origin = path.join(fixture, "origin.git");
+    const mock = path.join(fixture, "mock.mjs");
+    const runGit = (args: string[]) => execFileSync("git", args, { cwd: work, encoding: "utf8" }).trim();
+    const run = (args: string[]) => execFileSync("git", args, { cwd: work, encoding: "utf8" });
+    const mainSha = "a".repeat(40);
+    const branchSha = "b".repeat(40);
+    try {
+      mkdirSync(work, { recursive: true });
+      execFileSync("git", ["init", "--bare", origin], { encoding: "utf8" });
+      run(["init", "-b", "main"]);
+      run(["config", "user.name", "Fixture"]);
+      run(["config", "user.email", "fixture@example.test"]);
+      run(["remote", "add", "origin", origin]);
+      mkdirSync(path.join(work, "docs/plans"), { recursive: true });
+      writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture\n");
+      writeFileSync(path.join(work, "docs/plans/assignments.json"), JSON.stringify({
+        version: 1,
+        repo: "o/r",
+        tasks: [{
+          id: "A", title: "Fixture task", row: "A", packet: "docs/plans/test.md", tier: 2,
+          lane: "design", branch: "agent/queue/a", status: "todo", dependsOn: [], epic: "E",
+        }],
+      }, null, 2) + "\n");
+      run(["add", "."]);
+      run(["commit", "-m", "root"]);
+      run(["commit", "--allow-empty", "-m", "main-only 1"]);
+      run(["commit", "--allow-empty", "-m", "main-only 2"]);
+      run(["push", "-u", "origin", "main"]);
+      const rootSha = runGit(["rev-list", "--max-parents=0", "HEAD"]);
+      run(["branch", "agent/queue/a", rootSha]);
+      run(["switch", "agent/queue/a"]);
+      run(["commit", "--allow-empty", "-m", "Claim A: Builder · fixture"]);
+      run(["push", "-u", "origin", "agent/queue/a"]);
+      run(["switch", "main"]);
+
+      writeFileSync(mock, `
+const response = body => ({ ok: true, status: 200, json: async () => body });
+globalThis.fetch = async input => {
+  const url = String(input);
+  if (url.includes('/actions/workflows/ci.yml/runs?branch=main')) return response({ workflow_runs: [
+    { status: 'completed', conclusion: 'success', head_sha: '${mainSha}', head_branch: 'main', updated_at: '2026-10-23T12:00:00Z', html_url: 'https://example.test/ci/main' },
+  ] });
+  if (url.includes('/actions/workflows/ci.yml/runs?per_page=100')) return response({ workflow_runs: [
+    { status: 'completed', conclusion: 'success', head_sha: '${branchSha}', head_branch: 'agent/queue/a', updated_at: '2026-10-23T12:00:00Z', html_url: 'https://example.test/ci/branch' },
+  ] });
+  if (url.includes('/pulls?state=open')) return response([{ head: { repo: { full_name: 'o/r' }, ref: 'agent/queue/a' }, html_url: 'https://example.test/pr/1' }]);
+  if (url.includes('/pulls?state=closed')) return response([]);
+  throw new Error('unexpected fetch: ' + url);
+};
+`);
+      const result = execFileSync(process.execPath, ["--import", mock, path.join(root, "scripts/next-task.mjs"), "--status"], {
+        cwd: work,
+        encoding: "utf8",
+        env: { ...process.env, GH_TOKEN: "fixture-not-real", NODE_USE_ENV_PROXY: "1" },
+      });
+      expect(result).toContain("behind main 2");
+      expect(result).toContain("E: 0/1 done, 1 PR");
+      expect(result).toContain("CDO");
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
+  });
+});
+
+/*
+ * PICKER-owns-scope (docs/plans/PICKER-PARALLEL.md): a task declares the files it will
+ * touch, so two lanes cannot edit one file unseen. `owns` holds paths, folder prefixes
+ * ending in "/", globs using "*" and "**", and " (switch only)" for a file a task may
+ * only flip a flag in.
+ */
+describe("PICKER-owns-scope: declared file ownership", () => {
+  it("matches exact paths, folder prefixes and globs, and keeps a single star inside one folder", () => {
+    expect(core.ownsMatches("client/src/pages/Landed.tsx", "client/src/pages/Landed.tsx")).toBe(true);
+    expect(core.ownsMatches("client/src/pages/", "client/src/pages/Landed.tsx")).toBe(true);
+    expect(core.ownsMatches("client/src/**", "client/src/a/b/c.ts")).toBe(true);
+    expect(core.ownsMatches("client/src/*.ts", "client/src/a/b.ts")).toBe(false);
+    expect(core.ownsMatches("server/db.ts", "server/db.tsx")).toBe(false);
+    expect(core.ownsMatches("./server/db.ts", "server/db.ts")).toBe(true);
+    expect(core.ownsEntry("shared/planCatalog.ts (switch only)")).toEqual({ pattern: "shared/planCatalog.ts", switchOnly: true });
+    expect(core.ownsEntry("shared/planCatalog.ts").switchOnly).toBe(false);
+  });
+
+  it("refuses two live tasks that own overlapping paths", () => {
+    const doc = {
+      version: 1, repo: "o/r", tasks: [
+        task("A", { owns: ["client/src/pages/"] }),
+        task("B", { owns: ["client/src/pages/Landed.tsx"] }),
+      ],
+    };
+    const errors = validateAssignments(doc, exists).join("\n");
+    expect(errors).toContain("tasks A and B own overlapping paths and neither waits for the other");
+  });
+
+  it("allows the same overlap when one task waits for the other", () => {
+    const doc = {
+      version: 1, repo: "o/r", tasks: [
+        task("A", { owns: ["client/src/pages/"] }),
+        task("B", { owns: ["client/src/pages/Landed.tsx"], dependsOn: ["A"] }),
+      ],
+    };
+    expect(validateAssignments(doc, exists).filter(e => e.includes("overlapping"))).toEqual([]);
+  });
+
+  it("lets disjoint ownership through, and refuses a malformed owns", () => {
+    const ok = { version: 1, repo: "o/r", tasks: [task("A", { owns: ["client/src/pages/"] }), task("B", { owns: ["server/db.ts"] })] };
+    expect(validateAssignments(ok, exists).filter(e => e.includes("overlapping"))).toEqual([]);
+    const bad = { version: 1, repo: "o/r", tasks: [task("A", { owns: "client/src/pages/" })] };
+    expect(validateAssignments(bad, exists).join("\n")).toContain("owns must be a non-empty array of paths");
+    const empty = { version: 1, repo: "o/r", tasks: [task("A", { owns: [] })] };
+    expect(validateAssignments(empty, exists).join("\n")).toContain("owns must be a non-empty array of paths");
+  });
+
+  it("holds a build while another lane's open task owns an overlapping path, and frees it when they differ", () => {
+    const claimant = "workbuddy · b0eb";
+    const held = pick([task("A", { status: "in-review", owns: ["client/src/pages/"] }), task("B", { owns: ["client/src/pages/Landed.tsx"] })], { claimant });
+    expect(JSON.stringify(held)).toContain("owns the same files");
+    const free = pick([task("A", { status: "in-review", owns: ["client/src/pages/"] }), task("B", { owns: ["server/db.ts"] })], { claimant });
+    expect(free.kind).toBe("build");
+  });
+});
+/*
+ * PICKER-owns-scope: the runtime guard. It judges what the branch changed against the
+ * owns its task declared on origin/main, and fails open only when it cannot run at all.
+ */
+describe("PICKER-owns-scope: the scope check", () => {
+  it("passes inside owns and fails outside it", () => {
+    const owns = ["client/src/pages/"];
+    expect(scopeViolations({ owns, changed: ["client/src/pages/Landed.tsx"] })).toEqual([]);
+    // server/ has its own message: a task that owns nothing there may not touch it at all.
+    expect(scopeViolations({ owns, changed: ["client/src/pages/Landed.tsx", "server/db.ts"] }).join("\n")).toContain("owns nothing under shared/ or server/");
+  });
+
+  it("always allows the task's own packet and its status line", () => {
+    const owns = ["client/src/pages/"];
+    expect(scopeViolations({ owns, changed: ["docs/plans/ROW20.md", "docs/plans/assignments.json"], packet: "docs/plans/ROW20.md" })).toEqual([]);
+  });
+
+  it("fails on a test file it does not own", () => {
+    const owns = ["client/src/pages/Landed.tsx"];
+    expect(scopeViolations({ owns, changed: ["client/src/pages/other.test.tsx"] }).join("\n")).toContain("a test file outside this task's owns");
+  });
+
+  it("fails on shared/ or server/ when the task owns neither", () => {
+    const owns = ["client/src/pages/"];
+    expect(scopeViolations({ owns, changed: ["shared/moneyCopy.ts"] }).join("\n")).toContain("owns nothing under shared/ or server/");
+  });
+
+  it("bounds a switch-only file at twelve changed lines", () => {
+    const owns = ["shared/planCatalog.ts (switch only)"];
+    expect(scopeViolations({ owns, changed: ["shared/planCatalog.ts"], lineCounts: new Map([["shared/planCatalog.ts", 12]]) })).toEqual([]);
+    expect(scopeViolations({ owns, changed: ["shared/planCatalog.ts"], lineCounts: new Map([["shared/planCatalog.ts", 13]]) }).join("\n")).toContain("changed 13 lines");
+  });
+
+  it("fails open when it cannot run at all, and says so", () => {
+    const run = spawnSync(process.execPath, ["scripts/scope-check.mjs", "no-such-task"], { encoding: "utf8", cwd: root });
+    expect(run.status).toBe(0);
+    expect(`${run.stdout}${run.stderr}`).toContain("could not run");
+  });
+});
+
+describe("PICKER-lane-busy", () => {
+  const builder = "Qwen · busy";
+  const laneTasks = (ownsA: string[] | undefined, ownsB: string[] | undefined) => [
+    task("A", { tier: 1, lane: "cluster", owns: ownsA }),
+    task("B", { lane: "cluster", owns: ownsB }),
+  ];
+  const waiting = (ci = "green"): PickOpts => ({
+    claimant: builder,
+    branches: [["agent/queue/a", claimBy(builder, "A", 0.5)]],
+    prs: [["agent/queue/a", "#1"]], prCi: [["agent/queue/a", ci]],
+  });
+  it("builds disjoint work while the builder's green Tier 1 PR awaits independent review", () => {
+    expect(pick(laneTasks(["client/a.ts"], ["client/b.ts"]), waiting())).toMatchObject({ kind: "build", task: { id: "B" } });
+  });
+  it("keeps overlapping ownership blocked even with a green PR", () => {
+    expect(pick(laneTasks(["client/"], ["client/b.ts"]), waiting()).kind).not.toBe("build");
+  });
+  it.each([[undefined, ["client/b.ts"]], [["client/a.ts"], undefined], [undefined, undefined]])(
+    "does not assume missing ownership is disjoint (%j, %j)", (a, b) => {
+      expect(pick(laneTasks(a, b), waiting()).kind).not.toBe("build");
+    },
+  );
+  it.each(["red", "running", "running-after-red", "unknown", "error"])("does not release an active %s PR", ci => {
+    expect(pick(laneTasks(["client/a.ts"], ["client/b.ts"]), waiting(ci)).kind).not.toBe("build");
+  });
+  it("keeps a claimed build with no PR in its lane", () => {
+    expect(pick(laneTasks(["client/a.ts"], ["client/b.ts"]), { ...waiting(), prs: [] }).kind).not.toBe("build");
+  });
+  it("releases disjoint work while a green Tier 2 PR waits for landing", () => {
+    const tasks = laneTasks(["client/a.ts"], ["client/b.ts"]);
+    tasks[0].tier = 2;
+    expect(pick(tasks, { ...waiting(), claimant: "Kimi · next" })).toMatchObject({ kind: "build", task: { id: "B" } });
+  });
+  it("still prioritizes an eligible independent review", () => {
+    expect(pick(laneTasks(["client/a.ts"], ["client/b.ts"]), { ...waiting(), claimant: "Kimi · review" })).toMatchObject({ kind: "review", task: { id: "A" } });
+  });
+  it("lets an architect write a same-lane packet below a blocked priority", () => {
+    const tasks = [task("A", { lane: "cluster" }), task("B", { lane: "cluster", status: "architect" })];
+    expect(pick(tasks, { ...waiting(), claimant: "Kimi · architect", reports: [{ id: "A", status: "blocked", who: builder, at: NOW, note: "needs CEO" }] })).toMatchObject({ kind: "architect", task: { id: "B" } });
+  });
+  it("does not bypass an architect's unfinished explicit dependency", () => {
+    const tasks = [task("A", { lane: "cluster" }), task("B", { lane: "cluster", status: "architect", dependsOn: ["A"] })];
+    expect(pick(tasks, { ...waiting(), claimant: "Kimi · architect", reports: [{ id: "A", status: "blocked", who: builder, at: NOW, note: "needs CEO" }] }).kind).not.toBe("architect");
   });
 });
