@@ -129,7 +129,7 @@ function GoalPostOpportunityBody() {
         )}
         <div className="mt-6 border-t border-g-hairline pt-4">
           <p className="mb-3 flex items-start gap-2 text-g-meta leading-[1.5] text-g-ink-3"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />Your company is confirmed only when you publish. Your name and work email never appear on the card.</p>
-          {error ? <p role="alert" className="mb-3 flex items-center gap-2 text-g-meta text-g-crimson">{error}</p> : null}
+          {error ? <p role="alert" className="mb-3 flex items-center gap-2 text-g-meta text-g-ink">{error}</p> : null}
           {step < totalSteps
             ? <GoalButton variant="primary" type="submit" disabledReason={canProceed ? undefined : "Add the required details first"}>Continue<ArrowRight className="h-4 w-4" aria-hidden="true" /></GoalButton>
             : isSignedIn
