@@ -59,7 +59,7 @@ function GoalSetupWizard({ initial, companyName, profileHandle, fetchToken, onSa
     <div className="max-w-[640px]">
       <p className="flex items-center gap-2 text-g-small text-g-ink-2"><BadgeCheck className="h-4 w-4" aria-hidden="true" />Verified at {companyName}</p>
       <ol className="mt-4 grid grid-cols-4 gap-1.5" aria-label="Setup progress">
-        {STEPS.map((label, index) => <li key={label}><span className={`block h-0.5 rounded-full ${index <= step ? "bg-g-ink" : "bg-g-hairline"}`} /><span className="mt-1.5 hidden font-g-mono text-[10px] uppercase tracking-[0.12em] text-g-ink-3 sm:block">{label}</span></li>)}
+        {STEPS.map((label, index) => <li key={label}><span className={`block h-0.5 rounded-full ${index <= step ? "bg-g-ink" : "bg-g-hairline"}`} /><span className="mt-1.5 hidden font-g-mono text-[10px] uppercase tracking-[0.12em] text-g-ink-3 gdesk:block">{label}</span></li>)}
       </ol>
 
       {step === 0 ? (
