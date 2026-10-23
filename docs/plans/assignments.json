@@ -261,7 +261,8 @@
       "dependsOn": [
         "P0-ask-link-signin",
         "D-132-audit",
-        "D-048-F-goal-check"
+        "D-048-F-goal-check",
+        "D-048-fix-start-ask-handoff"
       ],
       "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row\u2019s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete.",
       "epic": "D-048-p3",
@@ -1690,6 +1691,16 @@
       "status": "in-review",
       "dependsOn": [],
       "note": "Coordinator prep under the whole-app + standing bug-fix mandate (Main, Oct 23): the live credit_spend approval card displayed an unstated cost as '1 credit' and promised wallet-after math the server's decide path never performs (QA runtime proof, AYO-20). UI-only honesty fix (Tier 1 review: it touches the credit approval action) in client/src/components/assistants/ApprovalSheet.tsx: unknown cost fails closed (approve disabled, plain copy) and the balance shows without after-math; the server-side contract fix (null guard + actual charge path) stays out of scope pending proper authority (todo-01M5MPYCGYE7MF9KNCHKEWS3RH). ask_send behavior untouched."
+      "id": "D-048-fix-start-ask-handoff",
+      "title": "Preserve the job link from /start through the ask form (receiver-side prefill)",
+      "row": "D-048",
+      "packet": null,
+      "tier": 2,
+      "lane": "d048-foundation",
+      "branch": "agent/instinct/d048-fix-start-ask-handoff",
+      "status": "in-review",
+      "dependsOn": [],
+      "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top."
     }
   ]
 }
