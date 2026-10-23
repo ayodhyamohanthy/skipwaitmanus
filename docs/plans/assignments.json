@@ -1,9 +1,4 @@
 {
- "version": 1,
- "repo": "ayodhyamohanthy/skipwaitmanus",
- "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
- "updated": "2026-10-23",
- "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks, except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
  "tasks": [
   {
    "id": "P0-ask-link-signin",
@@ -550,7 +545,7 @@
    "tier": 1,
    "lane": "share",
    "branch": "agent/instinct/share-impact-card",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
    "note": "D-151 (Oct 23): the re-review of head 7ee3f97e comes from a model that neither built nor fixed #382 (not Instinct, not Qoder); the CEO takes it. The branch conflicts with main: the merge is fix-stage work after the verdict, and the resolution gets its own look before landing."
   },
@@ -1691,6 +1686,54 @@
    "status": "in-review",
    "dependsOn": [],
    "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top."
+  },
+  {
+   "id": "D-048-fix-explore-open-first",
+   "title": "Show open-to-requests companies first in the referral directory",
+   "row": "D-048",
+   "packet": null,
+   "tier": 2,
+   "lane": "d048-foundation",
+   "branch": "agent/coordinator/explore-open-first",
+   "status": "in-review",
+   "dependsOn": [],
+   "note": "Coordinator bounded fix (Main, Oct 23; user instruction phonemsg-01M5MX75AC41CEM8BGFGD1ZBS5): the /explore directory was strictly alphabetical; companies open to requests (openToReferrals, a server fact) now sort first, alphabetical within each group. Scope: client/src/pages/explore/findModel.ts + findModel.test.ts only - no filter, availability, pricing or ranking change. Those files sit inside D-048-p3-live-review-find's owns glob (held in review); that row reconciles on its next rebase, same pattern as D-048-fix-start-ask-handoff. 12/12 findModel tests including a new grouping test."
+  },
+  {
+   "id": "D-048-fix-landing-load-flash",
+   "title": "Stop the prerendered landing snapshot flashing before the goal landing mounts",
+   "row": "D-048",
+   "packet": null,
+   "tier": 2,
+   "lane": "d048-foundation",
+   "branch": "agent/coordinator/landing-load-flash",
+   "status": "in-review",
+   "dependsOn": [],
+   "note": "Coordinator bounded fix (Main, Oct 23; user report phonemsg-01M5MX4KWB09PKKC7E6XP3BN5V + clarification phonemsg-01M5MX5BFXQ060R444J7GKX3W2): the app revealed at font-ready before React's first commit, so the static landing snapshot inside #root painted ~1s before GoalLandingV9 mounted over it. Scope: client/index.html + client/src/main.tsx only - reveal is gated on the first React commit; the 2.5s failsafe now fires only when the bundle never parsed (__swBootAlive unset, blocked-script fallback keeps the snapshot), plus a 12s absolute failsafe. Verified by playwright timeline sampling on the production build: zero snapshot paints in slow-bundle and fast loads at 1280/390; blocked bundle still degrades to the static snapshot. Known edge: a bundle not yet executing at 2.5s can still paint the snapshot once (indistinguishable from blocked JS)."
+  },
+  {
+   "id": "D-166-founder-decisions-sync",
+   "title": "Push the founder's Oct 23 decisions into the working instructions (D-169..D-173)",
+   "row": "D-166",
+   "packet": null,
+   "tier": 2,
+   "lane": "process",
+   "branch": "agent/coordinator/founder-decisions-sync",
+   "status": "in-review",
+   "dependsOn": [],
+   "note": "Owner instruction (iMessage phonemsg-01M5MYS5WDHAMNZ7TF602GTK65 'Push the decisions as instructions' + phonemsg-01M5MYSQVDTXCYGCPBR001P7Q9 'So old decisions are updated' + phonemsg-01M5MZ7J6YYH3ZRBJNKT6TCZJS 'Push then'). Scope: docs/DECISIONS.md + the AGENTS.md compass amendment line only. Adds D-169 (open-first directory), D-170 (keyword job search), D-171 (cross-company verified switch preserving the draft), D-172 (automatic device-saved sign-in prompt with native-flow guardrails), D-173 (buyer-facing 'referrals' terminology + plan allowance/extras structure). Supersession limited to the 'credits' name (wording only); no price, count, SKU, security or auth-mechanism content decided; unresolved allowances/prices/level-cost stay open. D-168 is claimed on agent/claude/ceo-oct23-release-rows, so numbering starts at D-169."
+  },
+  {
+   "id": "D-166-journey-decisions-sync",
+   "title": "Record the Oct 23-24 seeker-journey, no-expiry, coverage-goal and no-availability-framing decisions (D-174..D-176)",
+   "row": "D-166",
+   "packet": null,
+   "tier": 2,
+   "lane": "process",
+   "branch": "agent/coordinator/journey-decisions-sync",
+   "status": "in-review",
+   "dependsOn": [],
+   "note": "Owner instruction (iMessage phonemsg-01M5N07FQX1Q4Y0GXPDW5WPPTQ 'Update in repo' on phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2's journey + no-expiry rule and phonemsg-01M5N06NBY8DC123RMAPV44NYR's all-companies coverage goal). Scope: docs/DECISIONS.md only. D-174 suspends ask death clocks for launch (7-day unclaimed expiry, 90-day waiting cap, day-30 closure) and records the maintained-directory journey with the company pool; referrer action timers, security/session/payment bounds and credit rules untouched, no new debit/refund behavior. D-175 records the coverage goal as a goal with an open free/legal feasibility study; no fake jobs, no coverage claims without proof, no paid data or account-risk scraping. IDs checked against main (D-169..D-173 landed in #599) and agent/claude/ceo-oct23-release-rows (D-168); D-174/D-175 free. Builds inside these decisions stay pending under their own rows; QA and any expiry-sweep workers must be informed before expiry behavior merges. Amended before merge: D-176 (phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST) supersedes D-169's availability framing and open-first grouping - availability is backend routing only, honest delivered-vs-waiting status after save, no false immediate-referral claim; #594 stands as completed history. IDs D-174..D-176 free on main (D-169..D-173 via #599) and checked against agent/claude/ceo-oct23-release-rows."
   },
   {
    "id": "D-048-fix-post-copy",
