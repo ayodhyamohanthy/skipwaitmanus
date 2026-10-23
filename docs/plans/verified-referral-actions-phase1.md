@@ -1,0 +1,41 @@
+# VRA phase 1: shadow assessment foundation
+
+## Authority and status
+
+Owner explicitly authorized plan and phase-one implementation in parallel on Oct 22, 2026, without waiting for plan review. Independent Tier 1 review and exact-candidate gates still precede merge. Registration uses the owner's standing delegation when Claude is unavailable, not CEO identity. Builder: Kat VRA phase1 oct22. Branch: agent/kat/vra-phase1-oct22. Base: c1c8e383. Main unchanged. Global plan owned separately; no edits to it here.
+
+## Scope and contracts
+
+Owned paths: this packet, server/verifiedReferralActions.ts, server/verifiedReferralActions.test.ts. No shared files, schema, migration, configuration, routes, dependencies or UI. New module exports VRA_SHADOW_ENABLED=false, assessReferralAction, buildReferralBrief. Existing product rules inspected: D-034/D-047 delivery spend, D-035/D-038 release, D-055 reward prohibition, D-132/D-135 pricing flags, D-139 consent, server/referrerDocumentAccess.ts acceptance/grant rules, server/referrerAskView.ts allow-list projection. None change.
+
+This is an unimported server-only foundation, NOT a verification service or a reward policy. Input references server-loaded referral transition rows; typed or claimed verification is never accepted. Assessment is shadow-only and never sufficient to grant credits, spend, refund, pay, transfer personal information or claim delivery. No accepted event is treated as proof that an employer received a referral. Even a recorded intro_made transition means only a recorded mark, not external proof. An external verifier and approved policy remain necessary for later slices.
+
+Boundary inputs are strict Zod schemas. Actor and company scope come from a future authenticated caller, never the request body; persisted rows are loaded by a future repository adapter. Missing acceptance, foreign ownership/company, revoked access, future or inconsistent evidence, unknown fields and read failure fail closed. Consent refers to a specific request, person, recipient and version. The brief projection carries only request id, company domain, role title and optional seeker-confirmed note. No names, emails, resumes, file ids/links, proof tokens or freeform evidence. A note may itself contain PII, so it is omitted by default and allowed only by explicit note consent with active access.
+
+## Implementation and verification
+
+Write red-first focused tests, implement pure assessment and projection functions, run focused Vitest and typecheck before each atomic commit. Run full exact-candidate gate after integration, then draft PR and independent review. No production writes or deployment. The module is dark because nothing imports it and its switch is hard-off; no environment variable or activation path.
+
+## Deferred, explicitly not implemented
+
+Durable immutable verification receipt storage; atomic idempotency/conflict handling; proof replay and concurrency backstops; DB migration allocation and MySQL tests; authenticated routes; document transfer; reward eligibility and amount; ledger writes and refund integration; provider verification; expiry or dispute policy; client/UI. These require the reviewed global plan and persistence contract. Twenty-four hours passing, clicks, elapsed time, user assertions and acceptance alone never earn anything.
+
+## Evidence
+
+Inspection complete. Red-first behavior run: 4 failures and 26 passing controls with the unavailable-only implementation. Implementation: 30/30 focused tests pass; pnpm check exits 0. Full gate, build, remote publication and independent review pending. Picker board read attempted; GitHub CI state unknown because picker fetch failed, so no main landing allowed. Isolated work may proceed under explicit owner authorization. No claim that the picker assigned this unregistered task.
+
+## Exact decision boundary and relay contract
+
+D-132 explicitly preserves D-055/D-059: no referrer credits or money for accepting or referring; the earlier reward approval was reversed. D-135(2) holds Mentor because earned credits for handling asks conflict with D-055; D-135(1),(3) preserve purchases and stored ask/refund rules. The Oct 22 VRA proposal is a future versioned model, not retroactive authority to change these rules. Existing asks remain grandfathered without mutation. This slice performs zero reads or writes to production and has no earned-credit/cash mutation, not even behind an environment flag.
+
+Concrete exports: VRA_SHADOW_ENABLED=false; assessReferralAction(context, record) returns unavailable or shadow_candidate with requestId and acceptanceEventId, always externallyVerified=false and rewardAuthorized=false. buildReferralBrief(context, record, consent) returns null or an allowlisted requestId/companyDomain/roleTitle object, with note only under exact scoped opt-in. Context is future server-authenticated actorUserId/companyDomain/now; record is future server-loaded acceptance/access evidence, not HTTP payload. Consent matches request, seeker, recipient and version 1. No persistence adapter, endpoint, transport, operational activation or verification claim. Integration must independently load/check current consent and document access; these pure helpers do not establish either.
+
+Adversarial follow-up: 42 focused tests pass, typecheck exits 0. Acceptance evidence now binds its requestId, not just actor. Exact red-first provenance proof: without the request-id equality guard, 1 test fails / 41 controls pass; with guard, 42/42 pass. Logs /tmp/vra-provenance-red-real.log and /tmp/vra-provenance-green.log. Tests cover foreign/same-company unauthorized recipient, scoped consent mismatches, missing/claimed proof, unknown profile/email/attachment fields, default note PII omission and deterministic no-reward/no-verification at 24h minus/at/plus 1ms. A note explicitly opted into can contain personal data; this is not automatic semantic PII sanitization. Role title is future server-selected job data, not a profile field. Helpers cannot authenticate their input's provenance: the future repository adapter must supply authoritative rows and current consent/access. No persistent idempotency or elapsed-24h eligibility policy is implemented or claimed. Full-suite run begun earlier is not exact-candidate evidence for this follow-up commit.
+
+## Oct 23 current-main owner continuation
+
+Owner Ayu explicitly reprioritized this existing phase-one shadow-only packet after Premium and outbox on Oct 23. Registered by owner Ayu, coordinator unavailable, Oct 23, for these three owned paths only. Forge owns this isolated continuation on `agent/forge/owner-priority-oct23`, based on main `ad6f4826a847ed842e21fb9d667d11d8f046a079`. This is the owner's direct scoped delegation, not a picker assignment or CEO identity; VRA is not in the current main assignments. Live verification found registration #466 and Premium #467 already merged, and outbox fixture repair landed through #514. No duplicate implementation of those tasks is needed.
+
+Only the three safe blobs from `f4cfa103781d731a80cdc2b01634f1abef19ab14` are restored onto current main; no historical VRA branch ancestry is merged. The module remains unimported, its shadow switch hard-off, and every assessment has `externallyVerified=false` and `rewardAuthorized=false`. Rewards remain prohibited; no runtime route, job, configuration, provider, persistence, ledger, money, refund, migration, or UI change is authorized. Founder rejected D-035: any employee decline keeps credit spent; retain the revert. Anonymous-reason display is not approved implementation. Phone files and history remain untouched. PR #508 is owner-merge-only and receives no automated actions.
+
+Fresh integration validation passed: all 42 focused tests, `pnpm check`, and `pnpm build` exit 0. Logs are local under `/home/kit/audit/owner-priority-oct23/` as `vra-focused.log`, `vra-typecheck.log`, and `vra-build.log`. This is not a full-suite gate. Historical evidence above is provenance only, not approval of this candidate. Under D-151, a genuinely different model from all builders/fixers must review this exact integrated tree before publication or landing. This Forge continuation cannot provide that verdict or impersonate another model. Full gate and actual required merge-result CI remain pending; no production or deployment claim.
