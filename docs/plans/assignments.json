@@ -667,11 +667,11 @@
       "tier": 3,
       "lane": "d048-packets",
       "branch": "agent/queue/d048-p-referrer",
-      "status": "done",
+      "status": "architect",
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-134): packet landed; six child rows below were added exactly from docs/plans/D-048-phase-3-split.md.",
+      "note": "Packet-only (D-134): packet prepared; six child rows below were added exactly from docs/plans/D-048-phase-3-split.md.",
       "epic": "D-048-p3"
     },
     {
@@ -681,7 +681,7 @@
       "packet": "docs/plans/D-048-referrer.md",
       "tier": 1,
       "lane": "d048-thread",
-      "branch": "agent/<model>/p3-conversation",
+      "branch": "agent/queue/d048-p3-conversation",
       "status": "todo",
       "dependsOn": [
         "D-048-F-harness",
@@ -708,7 +708,7 @@
       "packet": "docs/plans/D-048-referrer.md",
       "tier": 1,
       "lane": "d048-workspace",
-      "branch": "agent/<model>/p3-referrer",
+      "branch": "agent/queue/d048-p3-referrer",
       "status": "todo",
       "dependsOn": [
         "D-048-F-harness",
@@ -733,7 +733,7 @@
       "packet": "docs/plans/D-048-referrer.md",
       "tier": 1,
       "lane": "d048-referrer-home",
-      "branch": "agent/<model>/p3-referrer-home",
+      "branch": "agent/queue/d048-p3-referrer-home",
       "status": "todo",
       "dependsOn": [
         "D-048-F-harness",
@@ -759,7 +759,7 @@
       "packet": "docs/plans/D-048-referrer.md",
       "tier": 2,
       "lane": "d048-referrer-home",
-      "branch": "agent/<model>/p3-invite",
+      "branch": "agent/queue/d048-p3-invite",
       "status": "todo",
       "dependsOn": [
         "D-048-F-harness",
@@ -782,7 +782,7 @@
       "packet": "docs/plans/D-048-referrer.md",
       "tier": 2,
       "lane": "d048-post",
-      "branch": "agent/<model>/p3-post",
+      "branch": "agent/queue/d048-p3-post",
       "status": "todo",
       "dependsOn": [
         "D-048-F-harness",
@@ -804,7 +804,7 @@
       "packet": "docs/plans/D-048-referrer.md",
       "tier": 1,
       "lane": "d048-verify",
-      "branch": "agent/<model>/p3-email-review",
+      "branch": "agent/queue/d048-p3-email-review",
       "status": "todo",
       "dependsOn": [
         "D-048-F-static-frame",

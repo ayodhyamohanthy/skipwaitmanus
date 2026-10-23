@@ -40,7 +40,7 @@ The builder must use the following rows exactly; `owns` must match the paths bel
 | `D-048-p3-post` | W4 `/post-opportunity` and My openings; posting gate follows server verdict | `d048-post` | `D-048-F-harness`, `D-048-F-primitives`, `D-048-P-referrer` | 2 | `goalSurfaceOn('post-opportunity')` | `client/src/pages/PostOpportunity.tsx` (switch only); `client/src/pages/goal/post-opportunity/**`; `design/goal-ui/captures/post-opportunity/**` |
 | `D-048-p3-email-review` | W4 `/email-review/:linkToken`; one-click email decision behind work-email sign-in | `d048-verify` | `D-048-F-static-frame`, `D-048-F-primitives`, `D-048-P-referrer`, `D-035` | 1 | `goalSurfaceOn('email-review')` | `client/src/pages/EmailReviewAction.tsx` (switch only); `client/src/pages/goal/email-review/**`; `design/goal-ui/captures/email-review/**` |
 
-All rows are `status: "todo"`, `packet: "docs/plans/D-048-referrer.md"`, `row: "D-048"`, `epic: "D-048-p3"`, and use the lane/tier/dependsOn/flag/owns values above. Their branches are `agent/<model>/d048-<surface>` (the builder chooses the model prefix).
+All rows are `status: "todo"`, `packet: "docs/plans/D-048-referrer.md"`, `row: "D-048"`, `epic: "D-048-p3"`, and use the lane/tier/dependsOn/flag/owns values above. Each builder must use the exact `branch` value registered for its row in `docs/plans/assignments.json`; do not choose, rename, or derive a branch.
 
 ## 4. Implementation guardrails for builders
 
@@ -59,7 +59,7 @@ Required gate for each implementation PR: `pnpm check`; focused Vitest files; `n
 
 ## 6. Definition of done
 
-- Only the row's owned paths and named read-only imports changed; `git diff --check` is clean and no conflict markers exist.
+- Only the row's owned paths changed; named read-only imports are unchanged, including API/data/auth/shared read-only modules; `git diff --check` is clean and no conflict markers exist.
 - Goal surface passes the contract and all focused tests plus the full gate on a branch merged with current `origin/main`.
 - Capture evidence exists for both viewports where UI changed; no production flag is enabled by the implementation PR.
 - Tier 1 builder opens a draft PR, reports `review` with exact head, and stops. Tier 2 builder opens a PR and follows the green-CI landing protocol.
@@ -79,4 +79,4 @@ None. The split's open design questions are already decided under D-123 in `D-04
 
 ## Status
 
-`D-048-P-referrer`: in progress — GPT · d492 — 2026-10-23 — branch `agent/architect/d048-p-referrer`
+`D-048-P-referrer`: prepared PR pending landing — GPT · d492 — 2026-10-23 — branch `agent/architect/d048-p-referrer`
