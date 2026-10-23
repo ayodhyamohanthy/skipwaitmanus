@@ -195,14 +195,14 @@ export default function Skippy() {
       {step === "quote" && quote ? (
         <section className="mt-4 space-y-2 rounded-md border p-3" aria-label="Cost and send">
           {quote.covered === false ? (
-            <p className="text-sm font-medium">No employee at this company is open on skipwait.me yet, so your ask waits - free - until one is. Your credit is only used at that moment.</p>
+            <p className="text-sm font-medium">No employee at this company is open on skipwait.me yet, so your ask waits - free - until one is. It uses {quote.cost} credit{quote.cost === 1 ? "" : "s"} only at that moment.</p>
           ) : (
             <p className="text-sm font-medium">This ask costs {quote.cost} credit{quote.cost === 1 ? "" : "s"}. You have {quote.totalAvailable}.</p>
           )}
           {session?.note ? <p className="whitespace-pre-wrap break-words rounded-md bg-neutral-50 p-2 text-sm">Your note: {session.note}</p> : null}
           {session?.noteFlags?.length ? <p className="text-sm text-amber-700">Double-check: {session.noteFlags.join("; ")}</p> : null}
-          {quote.shortfall > 0 && quote.covered !== false ? (
-            <a href="/plans" className="block min-h-11 rounded-md bg-black px-4 py-3 text-center text-white">Add {quote.shortfall} more credit{quote.shortfall === 1 ? "" : "s"} on /plans</a>
+          {quote.shortfall > 0 && quote.covered === true ? (
+            <a href="/plans#packs" className="block min-h-11 rounded-md bg-black px-4 py-3 text-center text-white">Add credits on /plans</a>
           ) : (
             <div className="flex gap-2">
               <button type="button" className="min-h-11 flex-1 rounded-md bg-black px-4 text-white" disabled={busy} onClick={() => void send({ kind: "confirm_send", send: true }, "Send it")}>Send it</button>

@@ -92,7 +92,8 @@ describe("Skippy page", () => {
     }));
     render(<Skippy />);
     await screen.findByText(/waits - free - until one is/);
-    expect(screen.queryByRole("link", { name: /Add \d+ more credit/ })).toBeNull();
+    await screen.findByText(/uses 6 credits only at that moment/);
+    expect(screen.queryByRole("link", { name: /Add credits/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Send it" }));
     await screen.findByText("Your ask is saved.");
     expect(created).toEqual([{ kind: "confirm_send", send: true }]);
@@ -106,7 +107,8 @@ describe("Skippy page", () => {
     }));
     render(<Skippy />);
     await screen.findByText(/costs 6 credits/);
-    expect(screen.getByRole("link", { name: /Add 6 more credits on \/plans/ })).toBeTruthy();
+    const topUp = screen.getByRole("link", { name: "Add credits on /plans" }) as HTMLAnchorElement;
+    expect(topUp.getAttribute("href")).toBe("/plans#packs");
     expect(screen.queryByRole("button", { name: "Send it" })).toBeNull();
   });
 

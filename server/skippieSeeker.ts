@@ -209,11 +209,15 @@ type Out = { session: SkippieSession; replies: string[] };
 
 function quoteLine(quote: SkippieQuote): string {
   // A known-uncovered company waits free by contract (createAsk accepts with no
-  // debit), so a short wallet is never pushed to top-up for it.
+  // debit), so a short wallet is never pushed to top-up for it - and the
+  // deferred charge is named with the quote's own grounded cost, never "1".
   if (quote.covered === false)
-    return "No employee at this company is open on skipwait.me yet, so your ask waits - free - until one is. Your credit is only used at that moment. Send it?";
-  return quote.shortfall > 0
-    ? `This ask costs ${quote.cost} credit${quote.cost === 1 ? "" : "s"}. You have ${quote.totalAvailable}. Add ${quote.shortfall} more on /plans first - Skippy never takes a payment.`
+    return `No employee at this company is open on skipwait.me yet, so your ask waits - free - until one is. It uses ${quote.cost} credit${quote.cost === 1 ? "" : "s"} only at that moment. Send it?`;
+  // Unknown coverage (the employer domain did not resolve) claims nothing free
+  // and pushes no purchase: the send-time createAsk decides - charge, free
+  // wait, or its own nothing-charged refusal.
+  return quote.shortfall > 0 && quote.covered === true
+    ? `This ask costs ${quote.cost} credit${quote.cost === 1 ? "" : "s"}. You have ${quote.totalAvailable}. Add credits on /plans first - Skippy never takes a payment.`
     : `This ask costs ${quote.cost} credit${quote.cost === 1 ? "" : "s"}. You have ${quote.totalAvailable}. Send it?`;
 }
 
@@ -397,18 +401,27 @@ export async function advanceSkippieSeeker(userId: number, current: SkippieSessi
         session.step = "fit";
         return say("No problem - nothing was sent and nothing was spent. You can keep editing your note.");
       }
-      if (input.kind !== "confirm_send") return say(session.quote?.shortfall && session.quote.covered !== false ? "Add credits on /plans first - Skippy never takes a payment." : 'Say "Send it" to send your ask, or "not yet" to keep editing.');
+      if (input.kind !== "confirm_send") return say(session.quote?.shortfall && session.quote.covered === true ? "Add credits on /plans first - Skippy never takes a payment." : 'Say "Send it" to send your ask, or "not yet" to keep editing.');
       if (!session.note) return say("Write your note to the referrer first - the final words are yours.");
       if (!session.noteSha256 || session.noteSha256 !== sha256(session.note)) return say("Your note changed since you confirmed it. Confirm the final words again before sending.");
       // Price is live, never hardcoded: quote again at send time and refuse drift.
+      const shown = session.quote;
       const fresh = await deps.getQuote(userId, session.targetRoleUrl!);
       session.quote = fresh;
-      // The short-wallet refusal applies only when coverage means a charge is
-      // coming: a known-uncovered company accepts the ask into free waiting
-      // (createAsk debits nothing until an employee can see it), so it must
-      // never be blocked here. Unknown coverage refuses too - it cannot claim
-      // the free path - and createAsk stays the final backstop.
-      if (fresh.shortfall > 0 && fresh.covered !== false) return say(`This ask costs ${fresh.cost} credit${fresh.cost === 1 ? "" : "s"} and you have ${fresh.totalAvailable}. Nothing was sent and nothing was charged. Add credits on /plans first.`);
+      // The confirmed quote is the representation the seeker said yes to. If
+      // coverage or price moved since (a company opened up, the flag changed),
+      // a funded wallet must not be charged against the old words: show the
+      // fresh numbers and ask for a new confirmation. The fresh quote is
+      // already stored, so the next "Send it" confirms the new price.
+      if (shown && (shown.covered !== fresh.covered || shown.cost !== fresh.cost)) {
+        return say(`The price or coverage for this ask changed since you confirmed. ${quoteLine(fresh)} Nothing was sent and nothing was charged.`);
+      }
+      // The short-wallet refusal applies only when coverage is KNOWN to mean a
+      // charge is coming (covered === true). Known-uncovered waits free by
+      // contract; unknown coverage claims nothing free and pushes no purchase -
+      // createAsk then decides: charge, free wait, or its own nothing-charged
+      // refusal, and the catch below reports it.
+      if (fresh.shortfall > 0 && fresh.covered === true) return say(`This ask costs ${fresh.cost} credit${fresh.cost === 1 ? "" : "s"} and you have ${fresh.totalAvailable}. Nothing was sent and nothing was charged. Add credits on /plans first.`);
       let result: CreateAskResult;
       try {
         result = await deps.createAsk(userId, { targetRoleUrl: session.targetRoleUrl!, attachmentIds: [session.attachmentId!], personalPitch: session.note, idempotencyKey: session.idempotencyKey });
@@ -421,7 +434,7 @@ export async function advanceSkippieSeeker(userId: number, current: SkippieSessi
       session.replayed = Boolean(result.replayed);
       session.step = "done";
       if (session.coverageStatus === "waiting_for_company_coverage") {
-        return say(`Your ask is saved for ${result.companyDomain}. No employee there is open on skipwait.me yet, so it cost you nothing: it's held (never shown, never charged) until a verified employee can see it - your credit is only used at that moment. We'll tell you when that happens. Track it under My asks.`);
+        return say(`Your ask is saved for ${result.companyDomain}. No employee there is open on skipwait.me yet, so it cost you nothing: it's held (never shown) and nothing is charged while it waits. When a verified employee can see it, ${fresh.cost} credit${fresh.cost === 1 ? "" : "s"} are used and it goes live; if you don't have enough then, we hold it until you add more. We'll tell you when that happens. Track it under My asks.`);
       }
       return say(`Asked - your request is with verified employees at ${result.companyDomain}. One credit was used, exactly the cost you confirmed. If nobody picks it up you can withdraw it for the credit back. Track it under My asks.`);
     }
