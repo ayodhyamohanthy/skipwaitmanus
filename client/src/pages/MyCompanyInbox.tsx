@@ -231,9 +231,11 @@ export default function MyCompanyInbox() {
   const listHead = (
     <header className="border-b border-g-hairline px-3 pb-3 pt-4 gdesk:px-4">
       <div className="flex items-baseline justify-between gap-3">
-        <h1 className="text-g-heading text-g-ink">Referral queue</h1>
+        <h2 className="text-g-meta text-g-ink-2">Referral queue</h2>
         <span className="text-g-meta text-g-ink-3"><GoalNum>{requests.length}</GoalNum> waiting</span>
       </div>
+      <h1 className="mt-3 text-g-heading text-g-ink">Open a door for someone.</h1>
+      <p className="mt-2 text-g-meta text-g-ink-2">Read one ask. Accept only if you can use your company's referral process.</p>
       <div className="mt-1.5 flex flex-wrap items-center gap-3">
         <GoalVerifiedMark as="span" mutedText>{`Verified${company ? ` · ${company}` : ""}`}</GoalVerifiedMark>
         <Link href="/referrer/impact" className="flex min-h-11 items-center gap-1 text-g-meta text-g-ink-2"><HandHelping aria-hidden="true" className="size-4" />Impact</Link>
@@ -293,7 +295,7 @@ export default function MyCompanyInbox() {
         </ul>
         <p className="px-3 py-3 text-g-meta text-g-ink-3 gdesk:px-4">Referrers are never charged.</p>
       </section>
-      <section className={cn("min-w-0", selected ? "" : "max-gdesk:hidden")} aria-label="Ask detail">
+      <section className={cn("min-w-0 max-gdesk:pb-24", selected ? "" : "max-gdesk:hidden")} aria-label="Ask detail">
         {selected ? (
           <QueueDetail
             item={selected}
@@ -336,6 +338,7 @@ function QueueDetail({ item, index, count, preview, previewLoading, nowMs, worki
   const strengthLabel = item.askStrength === "strong" ? "Strong" : item.askStrength === "good" ? "Good" : item.askStrength === "basic" ? "Basic" : null;
   return (
     <GoalDetailPane
+      className="max-gdesk:h-auto [&>div]:max-gdesk:flex-none [&>div>div]:max-gdesk:flex-none"
       labelledBy="ask-role"
       titleSize="display"
       eyebrow={<>{fn ? `${fn} · ` : ""}{company}</>}
@@ -349,7 +352,9 @@ function QueueDetail({ item, index, count, preview, previewLoading, nowMs, worki
       phoneBack={{ href: "/queue", label: "Referral queue" }}
       phonePosition={<GoalNum>{index + 1} / {count}</GoalNum>}
       dock={item.status === "pending" ? (
-        <div className="border-t border-g-hairline px-3 py-3 gdesk:px-4">
+        <section aria-label="Your next step" className="border border-g-control-edge p-4">
+          <h3 className="mb-2 text-g-label text-g-ink">Your next step</h3>
+          <p className="mb-3 text-g-meta text-g-ink-2">Accept if you can refer through your company's official process. If not, pass privately.</p>
           <GoalLockedPanel title="Identity and resume are shared after you accept" documentCount={preview?.attachments.length ?? 0} />
           <p className="mt-2 text-g-meta text-g-ink-3">Accepting shares names both ways and their resume. Referring comes later, through {company}&rsquo;s own process.</p>
           <p className="mt-1 text-g-meta text-g-ink-3">By accepting, you confirm you&apos;ll refer only through {company}&apos;s official process.</p>
@@ -362,21 +367,21 @@ function QueueDetail({ item, index, count, preview, previewLoading, nowMs, worki
               <span className="text-g-meta text-g-ink-3"><GoalNum>{index + 1} / {count}</GoalNum></span>
             </span>
             <span className="ml-auto max-gdesk:hidden" />
-            <GoalButton variant="ghost" keys={["P"]} disabledReason={working ? "Working…" : undefined} onClick={() => onPassOpen(true)} className="max-gdesk:flex-1">Pass privately</GoalButton>
+            <GoalButton variant="ghost" keys={["P"]} disabledReason={working ? "Working…" : undefined} onClick={() => onPassOpen(true)} className="max-gdesk:flex-1 max-gdesk:scroll-mb-24">Pass privately</GoalButton>
             <GoalButton
               variant="primary"
               keys={["A"]}
               busy={working}
               busyLabel="Working…"
               onClick={onAccept}
-              className="max-gdesk:flex-1"
+              className="max-gdesk:flex-1 max-gdesk:scroll-mb-24"
               title={`By accepting, you confirm you'll refer only through ${company}'s official process.`}
               aria-keyshortcuts="a"
             >
               Accept &amp; connect
             </GoalButton>
           </div>
-        </div>
+        </section>
       ) : undefined}
     >
       {previewLoading ? <GoalSkeletonRows density="queue" count={3} className="p-3" /> : (

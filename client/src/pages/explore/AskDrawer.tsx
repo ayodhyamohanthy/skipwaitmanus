@@ -79,7 +79,8 @@ export function AskDrawer(props: AskDrawerProps) {
       <GoalButton asChild variant="primary" touch="large"><Link href={sent.trackHref}>Track this ask</Link></GoalButton>
     </div>
   ) : (
-    <>
+    <section aria-label="Your next step" className="max-h-[38dvh] overflow-y-auto overscroll-contain border border-g-control-edge p-3">
+      <h2 className="mb-3 text-g-label text-g-ink">Your next step</h2>
       <p data-testid="goal-ask-cost" className="text-g-label text-g-ink">{props.cost.line}</p>
       <p className="text-pretty text-g-meta text-g-ink-2">{props.cost.detail}</p>
       <p data-testid="goal-money-sentence" className="text-pretty text-g-meta text-g-ink-3">{MONEY_SENTENCE}</p>
@@ -95,7 +96,7 @@ export function AskDrawer(props: AskDrawerProps) {
           {props.sendLabel}
         </GoalButton>
       </div>
-    </>
+    </section>
   );
 
   return (

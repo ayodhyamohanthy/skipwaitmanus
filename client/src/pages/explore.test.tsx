@@ -99,6 +99,7 @@ describe("Find a referral directory", () => {
     const fetchMock = stubDirectory();
     renderWithQuery(<Explore />);
     expect(await screen.findByText("Where do you want a referral?")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Your next step" })).toBeTruthy();
     expect(screen.getByTestId("goal-directory-summary").textContent).toMatch(/^5 companies\s*·\s*5 open to requests$/);
     expect(screen.getAllByRole("link", { name: /(open to requests|not open yet)$/ }).map(row => row.getAttribute("aria-label"))).toEqual(rowNames);
     expect(screen.getAllByTestId("goal-availability").map(dot => dot.textContent)).toEqual(Array(5).fill("Open to requests"));
