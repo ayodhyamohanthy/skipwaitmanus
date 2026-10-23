@@ -33,6 +33,12 @@ const DAY_MS = 24 * 60 * 60_000;
 /** The hourly ask-expiry sweep has had a full day to close an ask past its shelf life; later than this it is stuck. */
 export const ALLOCATED_ASK_GRACE_MS = 24 * 60 * 60_000;
 export const MONEY_CHECK_BATCH = 200;
+/**
+ * D-065-C: a ledger spend is stored as `${referenceId}#${n}`, one row per bucket drawn, and the
+ * refund path (refundLedgerSpendTx) reads at most this many rows per effect. The delivery lookup
+ * uses the same bound, so a spend it can see and a spend the refund path can reverse are the same set.
+ */
+export const DELIVERY_SPEND_REFERENCE_BOUND = 32;
 /** Each check lists at most this many examples; the counts stay complete. */
 export const FINDINGS_PREVIEW_LIMIT = 50;
 /** The most finding lines one email carries; the subject keeps the full count. */
@@ -228,13 +234,19 @@ export async function listAskDeliverySpendsWhileWaiting(limit: number): Promise<
     if (waiting.length === 0) break;
     const ids = waiting.map(row => row.id);
     const waitingIds = new Set(ids);
+    // D-065-C: a ledger spend is written as `${referenceId}#${n}` (spendCreditsTx, one row per
+    // bucket drawn), so the delivery spend is "<id>#1" and its key "ask-delivery:<id>#1". The old
+    // lookup asked for the bare id, a shape production never writes, so this finding could never
+    // fire. Same 32-row bound the refund path uses (refundLedgerSpendTx).
+    const referenceKeys = ids.flatMap(id => Array.from({ length: DELIVERY_SPEND_REFERENCE_BOUND }, (_, n) => `${id}#${n + 1}`));
     const spends = await db.select({ id: tokenTransactions.id, referenceId: tokenTransactions.referenceId, idempotencyKey: tokenTransactions.idempotencyKey })
       .from(tokenTransactions)
-      .where(and(eq(tokenTransactions.kind, "credit_spend"), inArray(tokenTransactions.referenceId, ids.map(String))));
+      .where(and(eq(tokenTransactions.kind, "credit_spend"), inArray(tokenTransactions.referenceId, referenceKeys)));
     for (const spend of spends) {
       if (found.length >= limit) return found;
       if (!(spend.idempotencyKey ?? "").startsWith(`${ASK_DELIVERY_KEY_PREFIX}:`)) continue;
-      const requestId = Number(spend.referenceId);
+      // The ask id is the part before the bucket suffix; anything else is not a delivery spend.
+      const requestId = Number((spend.referenceId ?? "").split("#")[0]);
       if (!Number.isInteger(requestId) || !waitingIds.has(requestId)) continue;
       found.push({ transactionId: spend.id, requestId });
     }
