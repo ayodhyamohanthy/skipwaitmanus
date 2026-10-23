@@ -652,12 +652,132 @@
       "tier": 3,
       "lane": "d048-packets",
       "branch": "agent/queue/d048-p-seeker",
-      "status": "architect",
+      "status": "done",
       "dependsOn": [
         "D-048-phase-3"
       ],
       "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
       "epic": "D-048-p3"
+    },
+    {
+      "row": "D-048",
+      "packet": "docs/plans/D-048-seeker.md",
+      "epic": "D-048-p3",
+      "id": "D-048-p3-inbox",
+      "title": "/inbox unified inbox plus the /thread list alias; preserve pre-acceptance privacy",
+      "tier": 1,
+      "lane": "d048-asks",
+      "branch": "agent/queue/d048-inbox",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-P-seeker"
+      ],
+      "owns": [
+        "client/src/pages/UnifiedInbox.tsx",
+        "client/src/pages/ThreadAlias.tsx",
+        "client/src/pages/goal/inbox/**",
+        "client/src/pages/inboxGoal.test.tsx",
+        "design/goal-ui/captures/inbox/**"
+      ],
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+    },
+    {
+      "row": "D-048",
+      "packet": "docs/plans/D-048-seeker.md",
+      "epic": "D-048-p3",
+      "id": "D-048-p3-start",
+      "title": "W2 /start onboarding job-link preview and resume",
+      "tier": 2,
+      "lane": "d048-onboard",
+      "branch": "agent/queue/d048-start",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-P-seeker"
+      ],
+      "owns": [
+        "client/src/pages/Onboarding.tsx",
+        "client/src/pages/goal/start/**",
+        "client/src/pages/startGoal.test.tsx",
+        "design/goal-ui/captures/start/**"
+      ],
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+    },
+    {
+      "row": "D-048",
+      "packet": "docs/plans/D-048-seeker.md",
+      "epic": "D-048-p3",
+      "id": "D-048-p3-onboarding",
+      "title": "W2 /onboarding profile setup",
+      "tier": 2,
+      "lane": "d048-onboard",
+      "branch": "agent/queue/d048-onboarding",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-P-seeker"
+      ],
+      "owns": [
+        "client/src/pages/ProfileSetup.tsx",
+        "client/src/pages/goal/onboarding/**",
+        "client/src/pages/onboardingGoal.test.tsx",
+        "design/goal-ui/captures/onboarding/**"
+      ],
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+    },
+    {
+      "row": "D-048",
+      "packet": "docs/plans/D-048-seeker.md",
+      "epic": "D-048-p3",
+      "id": "D-048-p3-assistants",
+      "title": "W5 /assistants, /approve and /connect-assistant; approval preserves credit boundaries",
+      "tier": 1,
+      "lane": "d048-assistants",
+      "branch": "agent/queue/d048-assistants",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-P-seeker"
+      ],
+      "owns": [
+        "client/src/pages/Assistants.tsx",
+        "client/src/pages/Approve.tsx",
+        "client/src/pages/ConnectAssistant.tsx",
+        "client/src/pages/goal/assistants/**",
+        "design/goal-ui/captures/assistants/**"
+      ],
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+    },
+    {
+      "row": "D-048",
+      "packet": "docs/plans/D-048-seeker.md",
+      "epic": "D-048-p3",
+      "id": "D-048-p3-seeker-small",
+      "title": "W5 /landed, /suggest-company and /share, one surface per commit",
+      "tier": 2,
+      "lane": "d048-small",
+      "branch": "agent/queue/d048-seeker-small",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-P-seeker",
+        "ROW20-CD",
+        "ROW20-B"
+      ],
+      "owns": [
+        "client/src/pages/Landed.tsx",
+        "client/src/pages/SuggestCompany.tsx",
+        "client/src/pages/ShareHub.tsx",
+        "client/src/pages/goal/seeker-small/**",
+        "design/goal-ui/captures/seeker-small/**"
+      ],
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
     },
     {
       "id": "D-048-P-referrer",
