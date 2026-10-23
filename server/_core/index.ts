@@ -1,4 +1,5 @@
 import { registerCompanyClaimRoutes } from "../companyClaimRoutes";
+import { jsonBodyError } from "../bodyErrors";
 import { initServerSentry, captureServerError, flushServerSentry, isServerSentryActive, scrubSentryPath, sentryErrorMiddleware } from "../sentry";
 import { registerJobLinkPreviewRoutes } from "../jobLinkPreviewRoutes";
 
@@ -181,7 +182,7 @@ async function startServer() {
   });
   app.use((req, res, next) => {
     if (req.path === "/api/documents" || req.path === "/api/documents/opaque") return next();
-    smallJson(req, res, error => error ? res.status(413).json({ error: "Request body is too large" }) : next());
+    smallJson(req, res, error => error ? res.status(jsonBodyError(error).status).json(jsonBodyError(error).body) : next());
   });
   const smallForm = express.urlencoded({ limit: "256kb", extended: true });
   app.use((req, res, next) => smallForm(req, res, error => error ? res.status(413).json({ error: "Request body is too large" }) : next()));
