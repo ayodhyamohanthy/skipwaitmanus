@@ -36,7 +36,8 @@ describe("the credit_spend approval card", () => {
     render(<ApprovalCard approval={approval(2)} balance={3} primary handlers={handlers()} />);
     expect(screen.getByText("The assistant states: 2 credits")).toBeTruthy();
     expect(screen.getByText(/You have 3 credits/)).toBeTruthy();
-    expect(screen.getByText(/no credits move yet/)).toBeTruthy();
+    expect(screen.getByText(/Approving records your decision only/)).toBeTruthy();
+    expect(screen.getByText(/No credits move/)).toBeTruthy();
     expect(screen.queryByText(/after this/)).toBeNull();
     expect(screen.queryByRole("button", { name: /Use / })).toBeNull();
     expect((screen.getByRole("button", { name: "Approve" }) as HTMLButtonElement).disabled).toBe(false);
