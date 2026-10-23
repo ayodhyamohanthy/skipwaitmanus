@@ -51,7 +51,7 @@ const setup = { goal: "Actively looking", roles: [], level: "", links: [], city:
 const LINK = "https://careers.wipro.com/jobs/1234567-product-designer";
 type QuoteBody = { level: number; cost: number; totalAvailable: number; shortfall: number };
 
-function stub(options: { quote?: { status: number; body: QuoteBody | { error: string } } | (() => Promise<unknown>); send?: { status: number; body: unknown }; directory?: CompanyDirectoryResponse | (() => CompanyDirectoryResponse) } = {}) {
+function stub(options: { quote?: { status: number; body: QuoteBody | { error: string } } | (() => Promise<unknown>); send?: { status: number; body: unknown } | (() => unknown); directory?: CompanyDirectoryResponse | (() => CompanyDirectoryResponse) } = {}) {
   const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
     const path = String(input);
     const method = init?.method ?? "GET";
@@ -66,6 +66,7 @@ function stub(options: { quote?: { status: number; body: QuoteBody | { error: st
       return json(reply.status, reply.body);
     }
     if (path === "/api/company-referrals" && method === "POST") {
+      if (typeof options.send === "function") return options.send();
       const reply = options.send ?? { status: 200, body: { requestId: 501, companyDomain: "wipro.com", coverageStatus: "visible", fastTrack: false, slots: { plan: "free", planLabel: "Free", open: 1, cap: 3, full: false, nextPlan: null } } };
       return json(reply.status, reply.body);
     }
@@ -333,6 +334,57 @@ describe("shared composer quote (D-132 item 3)", () => {
     await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 6 credits. You have 2. Add 4 more."));
     const flipTopUp = screen.getByRole("link", { name: "Add credits" }) as HTMLAnchorElement;
     expect(flipTopUp.href).toContain("/plans#packs");
+  });
+
+  it("coverage flip 409: the stale free-waiting line is dropped and Send stays gated until the refreshed quote lands; the second send binds the new price once", async () => {
+    vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
+    let open = false;
+    let quoteCount = 0;
+    let sendCount = 0;
+    let release!: (value: unknown) => void;
+    const gate = new Promise(resolve => { release = resolve; });
+    const WIPRO_FLIP = () => directoryOf(LAUNCH_COMPANY_SEED.map(seed => company(seed.slug, seed.slug !== "wipro" ? true : open)));
+    const fetchMock = stub({
+      directory: WIPRO_FLIP,
+      quote: () => {
+        quoteCount += 1;
+        // The refetch after the 409 hangs until released: nothing stale may
+        // stay on screen (or stay sendable) in between.
+        if (quoteCount > 1) return gate.then(() => json(200, { level: 6, cost: 6, totalAvailable: 12, shortfall: 0 }));
+        return Promise.resolve(json(200, { level: 6, cost: 6, totalAvailable: 12, shortfall: 0 }));
+      },
+      send: () => {
+        sendCount += 1;
+        if (sendCount === 1) return json(409, { error: "This company just opened up to referrals, so sending now uses its cost in credits. Nothing was sent and nothing was charged - check the live price and send again if it works for you.", code: "company_coverage_changed", companyDomain: "wipro.com" });
+        return json(201, { requestId: 888, companyDomain: "wipro.com", coverageStatus: "visible", fastTrack: false, slots: { plan: "free", planLabel: "Free", open: 1, cap: 3, full: false, nextPlan: null } });
+      },
+    });
+    renderPage(<Ask />);
+    await typeLink();
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("No credit used until a verified employee can see it"));
+    fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+    fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
+    fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
+    open = true; // the company opens up before the commit lands
+    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    await screen.findByText(/Nothing was sent and nothing was charged/);
+    // The stale free-waiting terms are gone and Send is gated while the fresh
+    // quote is still in flight: a second click here cannot authorize terms the
+    // seeker never saw.
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Pricing this ask…"));
+    expect(screen.getByRole("button", { name: /send ask/i }).getAttribute("aria-disabled")).toBe("true");
+    release(null);
+    // The refreshed covered line is the server's own numbers; Send unlocks
+    // only now, visibly against the new price.
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 6 of your 12 credits"));
+    expect(screen.getByRole("button", { name: /send ask/i }).getAttribute("aria-disabled")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    await screen.findByText(/can see it now/i);
+    const posts = fetchMock.mock.calls.filter(([u, i]) => String(u) === "/api/company-referrals" && (i as RequestInit | undefined)?.method === "POST");
+    expect(posts.length).toBe(2);
+    const secondBody = JSON.parse(String((posts[1][1] as RequestInit).body));
+    expect(Number(secondBody.expectedCost)).toBe(6);
+    expect("expectedCoverage" in secondBody).toBe(false);
   });
 
   it("flag on, company not open and quote still pending: Send waits for the price - a free-waiting ask still debits its cost at delivery, never unseen", async () => {

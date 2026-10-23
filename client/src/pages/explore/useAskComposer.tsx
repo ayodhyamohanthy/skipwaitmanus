@@ -103,6 +103,10 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   const [resumeError, setResumeError] = useState("");
   const [sendStage, setSendStage] = useState<"idle" | "resume" | "ask">("idle");
   const [sendError, setSendError] = useState<ReactNode>(null);
+  // The server's coverage-flip 409 is the commit-time coverage truth (D-132
+  // item 3): the directory can lag the flip, so the opened domain is bound
+  // here directly until the composer moves to another company's link.
+  const [openedDomain409, setOpenedDomain409] = useState<string | null>(null);
   const [sent, setSent] = useState<AskSentView | null>(null);
   const [draftState, setDraftState] = useState<"idle" | "saving" | "saved">("idle");
   const [watch, setWatch] = useState<{ state: "idle" | "busy" | "done" | "error"; message: string }>({ state: "idle", message: "" });
@@ -181,8 +185,10 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   // is different by contract (QA-verified): the server accepts the ask into
   // coverage-wait with NO debit even when the wallet is short, so the flat
   // "no credit used until…" line is the truth and Send never waits on pricing.
-  const covered = company?.openToReferrals === true;
-  const uncovered = company?.openToReferrals === false;
+  const coverageOpened409 = openedDomain409 !== null && !!company && company.domains.some(domain => domain.trim().toLowerCase() === openedDomain409);
+  const openForPricing = coverageOpened409 ? true : company ? company.openToReferrals : null;
+  const covered = openForPricing === true;
+  const uncovered = openForPricing === false;
   const gated = quoteState.status === "pending" || quoteState.status === "error";
   // A free-waiting ask still charges its cost at delivery: sending against an
   // unresolved price would authorize a deferred debit the seeker never saw.
@@ -191,7 +197,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       ? { line: "Pricing this ask…", detail: "Send unlocks when the price is in.", blockedReason: "Pricing this ask…" }
       : quoteState.status === "error"
         ? { line: "We could not price this ask", detail: "Edit the job link to try again.", blockedReason: "We could not price this ask" }
-        : askCostLine({ open: company ? company.openToReferrals : null, balance: quote ? quote.totalAvailable : isSignedIn && balance?.state === "ready" ? balance.count : null, cost: quote?.cost ?? (askLevelCostOn ? undefined : 1) });
+        : askCostLine({ open: openForPricing, balance: quote ? quote.totalAvailable : isSignedIn && balance?.state === "ready" ? balance.count : null, cost: quote?.cost ?? (askLevelCostOn ? undefined : 1) });
   // The shortfall top-up swap applies only at a covered company: an uncovered
   // ask waits for free by contract, so a short wallet must never be pushed to
   // top-up for it. Coverage unknown (no directory match) keeps Send on the
@@ -222,6 +228,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     setPickedWork(null);
     setPinCap(null);
     setPinNotice("");
+    setOpenedDomain409(null);
     if (options?.clearResume) { setResumeFile(null); setUploaded(null); }
   };
 
@@ -301,10 +308,14 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       // quote so the covered cost line (and any top-up) is live, and the
       // seeker sends again only after seeing the real price.
       if (response.status === 409 && (payload.code === COMPANY_COVERAGE_CHANGED || payload.code === ASK_PRICE_CHANGED)) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: companyDirectoryKeys.all }),
-          queryClient.invalidateQueries({ queryKey: ["ask-quote"] }),
-        ]);
+        // Remove, not invalidate: invalidation refetches but keeps the old
+        // numbers on screen while it does, so the stale free-waiting line
+        // could sit beside this refusal and authorize a second click at terms
+        // the seeker never saw. With the data gone the quote reads "pending",
+        // which gates Send until the server's fresh numbers land.
+        queryClient.removeQueries({ queryKey: ["ask-quote"] });
+        if (payload.code === COMPANY_COVERAGE_CHANGED && typeof payload.companyDomain === "string") setOpenedDomain409(payload.companyDomain.trim().toLowerCase());
+        await queryClient.invalidateQueries({ queryKey: companyDirectoryKeys.all });
         setSendError(typeof payload.error === "string" ? payload.error : "This company just opened up to referrals. Nothing was sent and nothing was charged - check the live price and send again if it works for you.");
         return;
       }
@@ -346,8 +357,10 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     } catch (reason) {
       setSendError(askErrorMessage(reason, "We could not send this ask"));
       // The server is the balance authority at commit; after a refusal the
-      // snapshot the composer priced against may be stale, so re-price.
-      void queryClient.invalidateQueries({ queryKey: ["ask-quote"] });
+      // snapshot the composer priced against may be stale, so re-price. Remove
+      // rather than invalidate so the old numbers never authorize a retry
+      // while the fresh quote is in flight.
+      queryClient.removeQueries({ queryKey: ["ask-quote"] });
     } finally {
       setSendStage("idle");
     }
