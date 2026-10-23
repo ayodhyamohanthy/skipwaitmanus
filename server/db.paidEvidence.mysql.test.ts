@@ -3,6 +3,13 @@ import { readFile } from "node:fs/promises";
 import mysql from "mysql2/promise";
 import { expect, it } from "vitest";
 
+// Verified 2026-10-23 on real MySQL 8.0.43 strict mode (unprivileged user,
+// isolated d155_paid_* scratch DBs, revision b6a79706): migration 0110 applies
+// twice and the column exists; stamp lands on the wallet matched by provider
+// subscriptionId; server-enforced unique-key dedupe; out-of-order backfill on
+// read; credited fulfillment unlocks while refunded-only, pending and
+// activation-alone stay locked; pending-to-credited flips to unlocked.
+// 1 integration test PASS (1.63s); scratch DB created and dropped.
 // D-155 paid evidence against an actual MySQL server: migration 0110 applies,
 // the stamp lands on the wallet matched by provider subscriptionId, a
 // redelivered event is a duplicate (unique key enforced by the server), and a
