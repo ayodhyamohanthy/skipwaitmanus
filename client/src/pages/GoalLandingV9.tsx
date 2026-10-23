@@ -14,6 +14,7 @@ import { GoalBrandMark } from "@/components/goal/GoalBrandMark";
 import { GoalVerifiedMark } from "@/components/goal/GoalVerifiedMark";
 import { BetaBadge, BetaNoticeLine } from "@/components/BetaNotice";
 import { COST_COPY, FAIR_RULES, FOOTER_COLS, Kicker, Reveal, AskCardArt } from "./GoalLanding";
+import { GOAL_LANDING_H1, GOAL_LANDING_HERO_LEAD } from "@shared/landingContent";
 
 // Benefit-led copy (owner 17:59:41 phonemsg-01M5F70MEJM3WQEYVW9JZJKP6N
 // "Have outcome benfit oriented wording" + 18:00:59
@@ -81,8 +82,8 @@ export default function GoalLandingV9() {
       <section className="border-b border-g-hairline">
         <div className="mx-auto max-w-[1120px] px-5 pb-16 pt-14 gdesk:px-8 gdesk:pb-24 gdesk:pt-24">
           <Kicker>Private job referrals</Kicker>
-          <h1 className="mt-5 text-[56px] font-semibold leading-[0.98] tracking-[-0.045em] gdesk:text-[96px]">Nobody reads the pile.</h1>
-          <p className="mt-5 max-w-[520px] text-g-body leading-[1.6] text-g-ink-2">Mass applications meet software, not people. Here, one verified employee at the company you want to join reads your ask - and can open a private conversation. No commissions, no outcome promises.</p>
+          <h1 className="mt-5 text-[56px] font-semibold leading-[0.98] tracking-[-0.045em] gdesk:text-[96px]">{GOAL_LANDING_H1}</h1>
+          <p className="mt-5 max-w-[520px] text-g-body leading-[1.6] text-g-ink-2">{GOAL_LANDING_HERO_LEAD}</p>
           <SearchCTA />
           <p className="mt-3 text-[13px] text-g-ink-3">Explore before signing in.</p>
           <div className="mt-3"><BetaNoticeLine tone="goal" /></div>

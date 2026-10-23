@@ -94,3 +94,15 @@ export const LANDING_FAQ: readonly { question: string; answer: string }[] = [
   { question: "What does it cost?", answer: `${MONEY_SENTENCE} Extra credits are sold in one-time packs (from ₹99 for 2 credits in India, $5 for 5 credits elsewhere) and never expire. ${CREDIT_RULE}` },
   { question: "Does a referral guarantee an interview?", answer: "No. Employees choose whether to help, and a referral never guarantees an interview, an offer, or a job. You can withdraw an unclaimed request at any time." },
 ];
+
+/**
+ * Goal landing (V9, D-131/D-150): the copy the released landing renders.
+ * The static public snapshot must show THIS current design, never the pre-goal
+ * landing (D-048-fix-landing-load-flash): on a slow or blocked bundle the
+ * reveal failsafe paints the snapshot, and painting the old design is the bug.
+ */
+export const GOAL_LANDING_H1 = "Nobody reads the pile.";
+export const GOAL_LANDING_HERO_LEAD = "Mass applications meet software, not people. Here, one verified employee at the company you want to join reads your ask - and can open a private conversation. No commissions, no outcome promises.";
+export const GOAL_LANDING_QUOTE = "A referral is an introduction, never a promise of an interview or a job.";
+export const GOAL_LANDING_EMPLOYEE_H2 = "Be the way in for someone good.";
+export const GOAL_LANDING_EMPLOYEE_LEAD = "Review asks when it feels right and open a door you believe in. Referring is always free - and referrers are never paid, so every yes stays genuine.";
