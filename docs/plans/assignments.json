@@ -431,7 +431,7 @@
       "tier": 2,
       "lane": "design-core",
       "branch": "agent/queue/d048-f-flags",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-phase-3"
       ],
@@ -450,7 +450,8 @@
         "scripts/designTokenAudit.test.ts",
         ".env.example",
         "server/configContract.test.ts"
-      ]
+      ],
+      "note": "landed dark; RELEASED=[\"home\"] keeps production on the V9 landing; planFamilyFlagsOff.test.ts kept green via a compatibility re-export in goalFlags.ts (byte-identical rule) — canonical home is planFamilyFlag.ts"
     },
     {
       "id": "D-048-F-primitives",

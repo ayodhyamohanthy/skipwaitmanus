@@ -8,7 +8,7 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const CLIENT_SRC = join(__dirname, "..", "..");
-const ALLOWLIST = /components[\\/]goal[\\/]|pages[\\/]ComponentShowcase\.tsx$|pages[\\/]GoalLanding\.tsx$|pages[\\/]GoalLandingV9\.tsx$|pages[\\/]GoalSignIn\.tsx$|\.test\.tsx?$/;
+const ALLOWLIST = /components[\\/]goal[\\/]|pages[\\/]goal[\\/]|pages[\\/]ComponentShowcase\.tsx$|pages[\\/]GoalLanding\.tsx$|pages[\\/]GoalLandingV9\.tsx$|pages[\\/]GoalSignIn\.tsx$|\.test\.tsx?$/;
 
 // Phase-3 waves that have landed, one entry per moved surface.
 const MOVED_SURFACES = new Set(["components/AppShell.tsx", "pages/MyRequests.tsx", "pages/Explore.tsx", "pages/explore/AskDrawer.tsx", "pages/MyCompanyInbox.tsx", "pages/ExploreCompany.tsx", "pages/explore/useAskComposer.tsx", "pages/Ask.tsx", "pages/conversation/SeekerConversation.tsx", "components/requests/askView.ts", "components/ask/PinnedWorkPicker.tsx"]); // W0: the app shell; W1: My asks, referral queue, then Find a referral (page + drawer); task 13: the pinned-work picker, new and goal-native (rendered only by the migrated composer and its drawer) // W0: the app shell; W1: My asks, then Find a referral (page + drawer)
@@ -28,6 +28,18 @@ describe("goal boundary", () => {
       const rel = relative(CLIENT_SRC, file);
       if (ALLOWLIST.test(rel) || MOVED_SURFACES.has(rel)) continue;
       if (/components\/goal|@\/components\/goal/.test(readFileSync(file, "utf8"))) offenders.push(rel);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("no goal page file imports kit (reverse check)", () => {
+    const goalPagesDir = join(CLIENT_SRC, "pages", "goal");
+    let files: string[] = [];
+    try { files = [...walk(goalPagesDir)]; } catch { files = []; }
+    const offenders: string[] = [];
+    for (const file of files) {
+      const source = readFileSync(file, "utf8");
+      if (/components\/kit|styles\/kit\.css/.test(source)) offenders.push(relative(CLIENT_SRC, file));
     }
     expect(offenders).toEqual([]);
   });
