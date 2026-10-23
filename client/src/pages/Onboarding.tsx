@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, FileText, Mail, UserRoundCheck } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { AccountMenu } from "@/components/AccountMenu";
@@ -7,7 +8,12 @@ import { clearReferralDraft, readReferralDraft, saveReferralDraft } from "@/lib/
 import { clearPendingResumeFiles } from "@/lib/pendingResume";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl, reviewedEmployerFromTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
 
+const GoalStart = lazy(() => import("./goal/start/GoalStart"));
+
 export default function Onboarding() {
+  // Goal-UI migration (D-048-p3-start): the goal start replaces this page when
+  // its surface is on; the kit page below stays the default until release.
+  if (goalSurfaceOn("start")) return <Suspense fallback={null}><GoalStart /></Suspense>;
   const [, go] = useLocation();
   const { isSignedIn, getToken } = useAuth();
   const referralParams = typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);
