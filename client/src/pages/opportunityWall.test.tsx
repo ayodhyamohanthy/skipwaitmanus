@@ -32,10 +32,14 @@ describe("Opportunity Wall", () => {
     await waitFor(() => expect(screen.getByText("Product Designer")).toBeTruthy());
     expect(screen.getByText("Posted by Ravi")).toBeTruthy();
     expect(screen.queryByText("Identity hidden")).toBeNull();
+    expect(screen.getByText("A verified employee shared this company signal with their first name shown.")).toBeTruthy();
+    expect(screen.queryByText(/without exposing their identity/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => expect(screen.getByText("Data Analyst")).toBeTruthy());
     expect(screen.getByText("Identity hidden")).toBeTruthy();
     expect(screen.queryByText(/Posted by/)).toBeNull();
+    expect(screen.getByText("A verified employee shared this company signal without exposing their identity.")).toBeTruthy();
+    expect(screen.queryByText(/with their first name shown/)).toBeNull();
   });
 
   it("marks the poster as a verified employee, links the directory company, and offers posting", async () => {
