@@ -124,3 +124,14 @@ Built by Gemini 3.8 Flash · 8f37 on 2026-10-23.
 - Item 4: implemented in `client/src/pages/Pricing.tsx` (signed-out CTA button linking to `/plans`), pinned by `client/src/pages/pricing.test.tsx`.
 - Item 5: implemented in `client/src/components/plans/PlansKitSections.tsx` (`PassesSection` collapses when passes are not available), pinned by `client/src/pages/plans.goLive.test.tsx`.
 All 5 items verified and full local gate passing.
+
+**Landing — Qoder · b796 — 2026-10-23 — PR #495.** Items 1 and 3 were already built and stay pinned by `client/src/pages/premium.oneTapSignin.test.tsx` and `client/src/pages/jobExplorer.test.tsx`; items 2, 4 and 5 shipped here. The landing gate re-ran in full on the branch head `0a78ef69`, merged with `origin/main` `ad6f4826`, and GitHub CI is green on that exact commit. The live check and its screens run on the landed merge.
+
+```text
+Evidence — D-095-one-tap — Qoder · b796 — 2026-10-23
+Branch `agent/claude/d095-one-tap` @ `0a78ef69`, merged with origin/main `ad6f4826`
+Red first: builder commit `1bd6adf8` adds the three failing tests before their fixes (`signIn.test.tsx`, `pricing.test.tsx`, `plans.goLive.test.tsx`); items 1 and 3 are the two declared guards, already built and green
+Gate: check 0 · token audit OK · migration lint OK · deploy triggers OK · vitest 454 files / 4,140 passed / 17 skipped / 2 failed, both host timeouts proven alone (`settings.gating.test.tsx` 4/4 isolated; `deployMigrations`' 20 s cap vs this Mac's 21.7 s lint) · build 0
+Live: checked on the landed merge; the status line below records the SHA and the result
+Left out / follow-ups: none; items 1 and 3 were already built
+```
