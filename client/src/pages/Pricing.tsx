@@ -25,7 +25,7 @@ export default function Pricing() {
       </ul>
     </PolicySection>
     <PolicySection number="03" title="Payment">
-      <p>Payments are processed securely by our payment providers (Razorpay for INR, PayPal for USD) through Chargebee. Everything is delivered digitally: credits are added to your account once the payment provider confirms the payment, usually within seconds; see <Link href="/shipping" className="font-semibold text-black">Shipping &amp; delivery</Link>.</p>
+      <p>Payments are processed securely by our payment providers (Razorpay for INR, PayPal for USD) through Chargebee. Everything is delivered digitally: credits are added to your account once the payment provider confirms the payment; see <Link href="/shipping" className="font-semibold text-black">Shipping &amp; delivery</Link>.</p>
     </PolicySection>
     <PolicySection number="04" title="Employers">
       <p>Everything above prices the job-seeker and employee side. Companies pay separately to sponsor roles and unlock anonymized opt-in talent; see <Link href="/employer" className="font-semibold text-black">Hire on skipwait.me</Link>.</p>
