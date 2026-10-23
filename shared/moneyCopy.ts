@@ -114,6 +114,8 @@ export function askCostLine(input: { open: boolean | null; balance: number | nul
 
 /** D-132 item 7: short cost phrases for the surfaces that retype the ask cost. Flat 1 credit while the level model is off. */
 export const addCreditPhrase = (levelCost: boolean): string => (levelCost ? "Add credits" : "Add a credit");
+/** D-132 item 3: the one-tap top-up that replaces Send when a by-level quote is short of credits. */
+export const topUpCreditsLabel = (shortfall: number): string => `Add ${shortfall} more credit${shortfall === 1 ? "" : "s"}`;
 export const creditUsedPhrase = (levelCost: boolean): string => (levelCost ? "its credits are used" : "1 credit is used");
 export const creditReservedPhrase = (levelCost: boolean): string => (levelCost ? "Credits reserved" : "1 credit reserved");
 
