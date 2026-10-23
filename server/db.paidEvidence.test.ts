@@ -24,7 +24,7 @@ const PAID_LATER = at("2026-10-21T10:00:00Z");
 const SEEKER = 7;
 
 const wallet = (patch: Row = {}): Row => ({ id: 1, userId: SEEKER, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 3, monthlyAllowance: 3, monthlyCycleKey: "2026-10", plan: "start", subscriptionId: "sub_123", subscriptionStatus: "active", subscriptionCurrency: "INR", subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, cardValidatedAt: null, lastPaidAt: null, updatedAt: NOW, ...patch });
-const paidEvent = (eventId: string, patch: Row = {}): Row => ({ id: 1, provider: "chargebee", providerEventId: eventId, subscriptionId: "sub_123", resourceVersion: null, eventType: "payment_succeeded", createdAt: NOW, ...patch });
+const paidEvent = (eventId: string, patch: Row = {}): Row => ({ id: 1, provider: "chargebee_paid", providerEventId: eventId, subscriptionId: "sub_123", resourceVersion: null, eventType: "paid_evidence", createdAt: NOW, ...patch });
 const fulfillment = (status: string, patch: Row = {}): Row => ({ id: 41, provider: "chargebee", providerEventId: "evt_pack_1", providerInvoiceId: "inv_41", providerHostedPageId: "hp_41", checkoutIntentId: "intent_41", userId: SEEKER, role: "job_seeker", tokenCount: 5, amount: 50000, currency: "INR", status, reconciliationReason: null, lastCheckedAt: null, creditedAt: PAID_FIRST, createdAt: PAID_FIRST, ...patch });
 
 beforeEach(() => {
@@ -45,7 +45,7 @@ describe("recordSubscriptionPaymentEvidence", () => {
     const result = await recordSubscriptionPaymentEvidence({ eventId: "evt_pay_1", subscriptionId: "sub_123", occurredAt: PAID_FIRST });
     expect(result).toEqual({ status: "recorded", reason: "stamped" });
     expect(db.wallets[0].lastPaidAt).toEqual(PAID_FIRST);
-    expect(db.events.filter(row => row.eventType === "payment_succeeded")).toHaveLength(1);
+    expect(db.events.filter(row => row.eventType === "paid_evidence")).toHaveLength(1);
   });
 
   it("treats a redelivered event as a duplicate and never moves the stamp", async () => {
@@ -72,7 +72,7 @@ describe("recordSubscriptionPaymentEvidence", () => {
     fixture.reset({ wallets: [] });
     const result = await recordSubscriptionPaymentEvidence({ eventId: "evt_pay_4", subscriptionId: "sub_123", occurredAt: PAID_FIRST });
     expect(result).toEqual({ status: "recorded", reason: "wallet_not_linked_yet" });
-    expect(db.events.filter(row => row.eventType === "payment_succeeded")).toHaveLength(1);
+    expect(db.events.filter(row => row.eventType === "paid_evidence")).toHaveLength(1);
   });
 });
 
