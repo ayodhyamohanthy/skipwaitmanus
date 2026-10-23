@@ -20,7 +20,7 @@ it.runIf(!!process.env.D155_ISOLATED_MYSQL_URL)("actual MySQL paid-evidence stam
   target.pathname = database;
   const pool = mysql.createPool({ uri: target.toString(), connectionLimit: 2, timezone: "Z", multipleStatements: true });
   try {
-    // Minimal production-shaped tables (columns the evidence paths touch).
+    // Scratch tables carry every column drizzle's full-row select() can request; enum values match schema.ts exactly.
     await pool.query(`CREATE TABLE \`users\` (\`id\` int AUTO_INCREMENT NOT NULL PRIMARY KEY, \`email\` varchar(320) NULL)`);
     await pool.query(`CREATE TABLE \`tokenBalances\` (
       \`id\` int AUTO_INCREMENT NOT NULL PRIMARY KEY,
@@ -31,10 +31,33 @@ it.runIf(!!process.env.D155_ISOLATED_MYSQL_URL)("actual MySQL paid-evidence stam
       \`monthlyAllowance\` int NOT NULL DEFAULT 3,
       \`monthlyCycleKey\` varchar(16) NOT NULL DEFAULT 'legacy',
       \`cardValidatedAt\` timestamp NULL,
+      \`lastPaidAt\` timestamp NULL,
       \`plan\` enum('free','pro','max','start','momentum','land_100','land_200','land_500','keep_warm','land_focus','land_sprint','land_concierge') NOT NULL DEFAULT 'free',
       \`subscriptionId\` varchar(80) NULL,
       \`subscriptionStatus\` varchar(32) NULL,
-      UNIQUE INDEX \`token_balances_user_role_unique\`(\`userId\`, \`role\`)
+      \`subscriptionCurrency\` varchar(3) NULL,
+      \`subscriptionCurrentTermStart\` timestamp NULL,
+      \`subscriptionCurrentTermEnd\` timestamp NULL,
+      \`subscriptionResourceVersion\` bigint NULL,
+      \`subscriptionItemPriceId\` varchar(100) NULL,
+      \`subscriptionBillingPeriod\` enum('monthly','yearly','30d','90d') NULL,
+      \`subscriptionAmount\` int NULL,
+      \`pendingPlan\` varchar(32) NULL,
+      \`pendingBillingPeriod\` enum('monthly','yearly','30d','90d') NULL,
+      \`pendingPlanEffectiveAt\` timestamp NULL,
+      \`subscriptionPauseAt\` timestamp NULL,
+      \`subscriptionResumeAt\` timestamp NULL,
+      \`paymentDueSince\` timestamp NULL,
+      \`paymentDueInvoiceId\` varchar(80) NULL,
+      \`paymentDueAmount\` int NULL,
+      \`paymentNextRetryAt\` timestamp NULL,
+      \`paymentFailureReason\` varchar(32) NULL,
+      \`paymentRetryRequestedAt\` timestamp NULL,
+      \`trialStartedAt\` timestamp NULL,
+      \`trialEndsAt\` timestamp NULL,
+      \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE INDEX \`token_balances_user_role_unique\`(\`userId\`, \`role\`),
+      UNIQUE INDEX \`token_balances_subscription_unique\`(\`subscriptionId\`)
     )`);
     await pool.query(`CREATE TABLE \`subscriptionEvents\` (
       \`id\` int AUTO_INCREMENT NOT NULL PRIMARY KEY,
@@ -72,7 +95,7 @@ it.runIf(!!process.env.D155_ISOLATED_MYSQL_URL)("actual MySQL paid-evidence stam
     process.env.BILLING_ENV = "test"; process.env.CHARGEBEE_SITE = "fixture-test";
     const db = await import("./db");
     await pool.query(`INSERT INTO \`users\` (\`id\`, \`email\`) VALUES (7, 'seeker@example.invalid')`);
-    await pool.query(`INSERT INTO \`tokenBalances\` (\`userId\`, \`role\`, \`plan\`, \`subscriptionId\`, \`subscriptionStatus\`) VALUES (7, 'job_seeker', 'fast_track', 'sub_123', 'active')`);
+    await pool.query(`INSERT INTO \`tokenBalances\` (\`userId\`, \`role\`, \`plan\`, \`subscriptionId\`, \`subscriptionStatus\`) VALUES (7, 'job_seeker', 'start', 'sub_123', 'active')`);
 
     const first = await db.recordSubscriptionPaymentEvidence({ eventId: "evt_pay_1", subscriptionId: "sub_123", occurredAt: new Date("2026-10-20T10:00:00Z") });
     expect(first).toEqual({ status: "recorded", reason: "stamped" });
@@ -103,7 +126,7 @@ it.runIf(!!process.env.D155_ISOLATED_MYSQL_URL)("actual MySQL paid-evidence stam
     // Gate: credited fulfillment unlocks; refunded-only, pending and
     // activation-alone do not.
     await pool.query(`INSERT INTO \`users\` (\`id\`, \`email\`) VALUES (9, 'refunded@example.invalid'), (10, 'pending@example.invalid'), (11, 'active-only@example.invalid')`);
-    await pool.query(`INSERT INTO \`tokenBalances\` (\`userId\`, \`role\`, \`plan\`, \`subscriptionId\`, \`subscriptionStatus\`) VALUES (9, 'job_seeker', 'free', NULL, NULL), (10, 'job_seeker', 'free', NULL, NULL), (11, 'job_seeker', 'fast_track', 'sub_no_pay', 'active')`);
+    await pool.query(`INSERT INTO \`tokenBalances\` (\`userId\`, \`role\`, \`plan\`, \`subscriptionId\`, \`subscriptionStatus\`) VALUES (9, 'job_seeker', 'free', NULL, NULL), (10, 'job_seeker', 'free', NULL, NULL), (11, 'job_seeker', 'start', 'sub_no_pay', 'active')`);
     await pool.query(`INSERT INTO \`paymentFulfillments\` (\`provider\`, \`providerEventId\`, \`userId\`, \`role\`, \`tokenCount\`, \`amount\`, \`currency\`, \`status\`) VALUES
       ('chargebee', 'evt_ref_1', 9, 'job_seeker', 5, 50000, 'INR', 'refunded'),
       ('chargebee', 'evt_pen_1', 10, 'job_seeker', 5, 50000, 'INR', 'pending')`);
