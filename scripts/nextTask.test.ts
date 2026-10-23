@@ -1382,3 +1382,49 @@ describe("PICKER-owns-scope: the scope check", () => {
     expect(`${run.stdout}${run.stderr}`).toContain("could not run");
   });
 });
+
+describe("PICKER-lane-busy", () => {
+  const builder = "Qwen · busy";
+  const laneTasks = (ownsA: string[] | undefined, ownsB: string[] | undefined) => [
+    task("A", { tier: 1, lane: "cluster", owns: ownsA }),
+    task("B", { lane: "cluster", owns: ownsB }),
+  ];
+  const waiting = (ci = "green"): PickOpts => ({
+    claimant: builder,
+    branches: [["agent/queue/a", claimBy(builder, "A", 0.5)]],
+    prs: [["agent/queue/a", "#1"]], prCi: [["agent/queue/a", ci]],
+  });
+  it("builds disjoint work while the builder's green Tier 1 PR awaits independent review", () => {
+    expect(pick(laneTasks(["client/a.ts"], ["client/b.ts"]), waiting())).toMatchObject({ kind: "build", task: { id: "B" } });
+  });
+  it("keeps overlapping ownership blocked even with a green PR", () => {
+    expect(pick(laneTasks(["client/"], ["client/b.ts"]), waiting()).kind).not.toBe("build");
+  });
+  it.each([[undefined, ["client/b.ts"]], [["client/a.ts"], undefined], [undefined, undefined]])(
+    "does not assume missing ownership is disjoint (%j, %j)", (a, b) => {
+      expect(pick(laneTasks(a, b), waiting()).kind).not.toBe("build");
+    },
+  );
+  it.each(["red", "running", "running-after-red", "unknown", "error"])("does not release an active %s PR", ci => {
+    expect(pick(laneTasks(["client/a.ts"], ["client/b.ts"]), waiting(ci)).kind).not.toBe("build");
+  });
+  it("keeps a claimed build with no PR in its lane", () => {
+    expect(pick(laneTasks(["client/a.ts"], ["client/b.ts"]), { ...waiting(), prs: [] }).kind).not.toBe("build");
+  });
+  it("releases disjoint work while a green Tier 2 PR waits for landing", () => {
+    const tasks = laneTasks(["client/a.ts"], ["client/b.ts"]);
+    tasks[0].tier = 2;
+    expect(pick(tasks, { ...waiting(), claimant: "Kimi · next" })).toMatchObject({ kind: "build", task: { id: "B" } });
+  });
+  it("still prioritizes an eligible independent review", () => {
+    expect(pick(laneTasks(["client/a.ts"], ["client/b.ts"]), { ...waiting(), claimant: "Kimi · review" })).toMatchObject({ kind: "review", task: { id: "A" } });
+  });
+  it("lets an architect write a same-lane packet below a blocked priority", () => {
+    const tasks = [task("A", { lane: "cluster" }), task("B", { lane: "cluster", status: "architect" })];
+    expect(pick(tasks, { ...waiting(), claimant: "Kimi · architect", reports: [{ id: "A", status: "blocked", who: builder, at: NOW, note: "needs CEO" }] })).toMatchObject({ kind: "architect", task: { id: "B" } });
+  });
+  it("does not bypass an architect's unfinished explicit dependency", () => {
+    const tasks = [task("A", { lane: "cluster" }), task("B", { lane: "cluster", status: "architect", dependsOn: ["A"] })];
+    expect(pick(tasks, { ...waiting(), claimant: "Kimi · architect", reports: [{ id: "A", status: "blocked", who: builder, at: NOW, note: "needs CEO" }] }).kind).not.toBe("architect");
+  });
+});
