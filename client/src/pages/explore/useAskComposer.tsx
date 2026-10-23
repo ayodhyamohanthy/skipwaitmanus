@@ -100,6 +100,8 @@ export type AskComposer = {
   sendBusyLabel: string;
   sending: boolean;
   sendBlocked?: string;
+  sendGuidance: string | null;
+  creditRecovery: boolean;
   send(): void;
   onSaveDraft: (() => void) | null;
   draftState: "idle" | "saving" | "saved";
@@ -397,6 +399,8 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     sendBusyLabel: sendStage === "resume" ? "Uploading your resume…" : "Sending your ask…",
     sending: sendStage !== "idle",
     sendBlocked: blocked,
+    sendGuidance: !online ? blocked ?? null : cost.blockedReason && isSignedIn ? "Your balance is too low to send this referral request." : url.trim() ? missing : null,
+    creditRecovery: online && Boolean(isSignedIn && cost.blockedReason),
     send: () => { void send(); },
     onSaveDraft: isSignedIn ? () => { void saveDraft(); } : null,
     draftState,
