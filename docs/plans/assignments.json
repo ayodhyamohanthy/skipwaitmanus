@@ -25,7 +25,7 @@
       "tier": 1,
       "lane": "queue-attest",
       "branch": "agent/queue/p1-queue-attestation",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "D-149 (1): the goal /queue always sends ethicsConfirmed: true without showing the sentence; the CEO ruling in the packet says show it above Accept, no checkbox."
     },
