@@ -550,9 +550,9 @@
    "tier": 1,
    "lane": "share",
    "branch": "agent/instinct/share-impact-card",
-   "status": "done",
+   "status": "architect",
    "dependsOn": [],
-   "note": "D-151 (Oct 23): the re-review of head 7ee3f97e comes from a model that neither built nor fixed #382 (not Instinct, not Qoder); the CEO takes it. The branch conflicts with main: the merge is fix-stage work after the verdict, and the resolution gets its own look before landing."
+   "note": "Bookkeeping correction (Main, Oct 24): the code LANDED - origin/main's tip f7e0f8cc carries the client (ReferrerHome impact card behind VITE_SHARE_IMPACT_CARD) and the server route server/impactCardRoutes.ts; the working branch agent/instinct/share-impact-card no longer exists. Activation is HELD, not shipped: the deployed web f7e0f8cc serves the chunk with the flag compiled false (the component returns null, so no unavailable action is exposed; signed-in runtime untested per QA Oct 24 00:38), and the API deploy 33c12532 lags main, so GET /api/referrer/impact-card 404s live. Activation requires, in order: an API deploy to current main, the flag flip (owner action), and signed-in full-stack QA. Until then this row is neither an unstarted todo nor a shipped feature."
   },
   {
    "id": "D-155-share-paid-gate",
