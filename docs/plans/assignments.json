@@ -261,7 +261,8 @@
       "dependsOn": [
         "P0-ask-link-signin",
         "D-132-audit",
-        "D-048-F-goal-check"
+        "D-048-F-goal-check",
+        "D-048-fix-start-ask-handoff"
       ],
       "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row\u2019s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete.",
       "epic": "D-048-p3",
@@ -631,7 +632,8 @@
         ".env.example",
         "server/configContract.test.ts"
       ],
-      "note": "Landed as 0d8f3bf5 (merge of PR #560). RELEASED=[\"home\"] keeps production on the V9 landing; planFamilyFlagsOff.test.ts kept green via a compatibility re-export in goalFlags.ts (byte-identical rule; Main-approved Oct 23) \u2014 canonical home is planFamilyFlag.ts. Branch registry amendment (Main, Oct 23): the declared name agent/queue/d048-f-flags holds a divergent parallel attempt (4b98f72a, preserved, never overwritten); the landed implementation lived on agent/instinct/d048-f-flags, which this row now names."    },
+      "note": "Landed as 0d8f3bf5 (merge of PR #560). RELEASED=[\"home\"] keeps production on the V9 landing; planFamilyFlagsOff.test.ts kept green via a compatibility re-export in goalFlags.ts (byte-identical rule; Main-approved Oct 23) \u2014 canonical home is planFamilyFlag.ts. Branch registry amendment (Main, Oct 23): the declared name agent/queue/d048-f-flags holds a divergent parallel attempt (4b98f72a, preserved, never overwritten); the landed implementation lived on agent/instinct/d048-f-flags, which this row now names."
+    },
     {
       "id": "D-048-F-primitives",
       "title": "Goal primitives: audit and promote what the surface rows need, so no surface edits components/goal (D-134)",
@@ -704,7 +706,7 @@
       "tier": 2,
       "lane": "design-core",
       "branch": "agent/queue/d048-f-static-frame",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-048-p3-w0-shell"
       ],
@@ -712,7 +714,8 @@
         "client/src/components/goal/GoalStaticFrame.tsx",
         "client/src/components/goal/goalStaticFrame.test.tsx",
         "scripts/prerenderPublicPages.test.ts"
-      ]
+      ],
+      "note": "implemented in PR (this branch), pending CI and merge; flips to done with its merge SHA"
     },
     {
       "id": "D-048-F-routes",
@@ -1676,6 +1679,18 @@
       "status": "architect",
       "dependsOn": [],
       "note": "Any agent writes the packet (D-109): write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected."
+    },
+    {
+      "id": "D-048-fix-start-ask-handoff",
+      "title": "Preserve the job link from /start through the ask form (receiver-side prefill)",
+      "row": "D-048",
+      "packet": null,
+      "tier": 2,
+      "lane": "d048-foundation",
+      "branch": "agent/instinct/d048-fix-start-ask-handoff",
+      "status": "in-review",
+      "dependsOn": [],
+      "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top."
     }
   ]
 }

@@ -1,0 +1,7 @@
+{
+  "signedIn": { "id": 41, "name": "Asha Rao", "email": "asha@example.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/credits/summary", "match": "prefix", "status": 200, "delayMs": 15000, "body": { "summary": { "totalAvailable": 8 } } },
+    { "method": "GET", "path": "/api/company-referrals/access", "match": "exact", "status": 200, "body": { "verifiedCompanyAccess": false, "workEmailDomain": null, "companyName": null, "companyInitials": null } }
+  ]
+}
