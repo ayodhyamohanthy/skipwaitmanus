@@ -85,6 +85,18 @@ describe("Goal /referrer-home", () => {
     expect(screen.getByRole("link", { name: "Verify work email" }).getAttribute("href")).toBe("/verify");
   });
 
+  it("shows the Become a referrer link only before verification", async () => {
+    stubHome({ verified: false });
+    const { unmount } = renderWithQuery(<ReferrerHome />);
+    expect(await screen.findByText("Verify a work email to begin.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Become a referrer" }).getAttribute("href")).toBe("/verify");
+    unmount();
+    stubHome({ fresh: [] });
+    renderWithQuery(<ReferrerHome />);
+    expect(await screen.findByText(/Verified ·/)).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Become a referrer" })).toBeNull();
+  });
+
   it("shows inert SAMPLE rows for a first-run verified referrer", async () => {
     stubHome({ fresh: [], neverReviewed: true });
     renderWithQuery(<ReferrerHome />);

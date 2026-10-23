@@ -121,7 +121,7 @@ export default function GoalReferrerHome() {
           <div className="flex flex-wrap items-center gap-2">
             {view.verified ? <span className="flex items-center gap-1.5 text-g-small text-g-ink-2"><BadgeCheck className="h-4 w-4" aria-hidden="true" />Verified · {company?.name ?? "work email"}</span> : null}
             <GoalButton variant="outline" size="sm" asChild><Link href="/queue">Queue &amp; settings</Link></GoalButton>
-            <GoalButton variant="ghost" size="sm" asChild><Link href="/verify">Become a referrer</Link></GoalButton>
+            {view.verified ? null : <GoalButton variant="ghost" size="sm" asChild><Link href="/verify">Become a referrer</Link></GoalButton>}
           </div>
         ) : null}
       </div>
