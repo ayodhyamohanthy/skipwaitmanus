@@ -12,7 +12,7 @@
 | Branch | `agent/architect/d048-p-seeker` from the latest `origin/main` |
 | Depends on | `D-048-phase-3` live |
 | Do not run at the same time as | Any child work touching the same surface paths; foundation files remain owned by the foundation rows |
-| Verified against | `origin/main` `56c00bed` on 2026-10-23 |
+| Verified against | `origin/main` `db36cd52` on 2026-10-23 |
 
 ## 1. Goal
 
@@ -132,4 +132,4 @@ None for this packet. The split and register decide the lane. Any new choice abo
 
 ## Status
 
-- D-048-P-seeker: in progress — GPT · 8884 — 2026-10-23 — branch `agent/architect/d048-p-seeker`
+- D-048-P-seeker: prepared — PR pending landing — GPT · 8884 — 2026-10-23 — branch `agent/architect/d048-p-seeker`
