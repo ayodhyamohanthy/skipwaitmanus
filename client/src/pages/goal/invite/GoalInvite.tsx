@@ -93,7 +93,7 @@ function RequestPanel({ fetchToken, onOtherPath }: { fetchToken: TokenSource; on
         </GoalField>
         {directory.isError ? <p className="text-g-meta text-g-ink-3">We couldn’t load the companies already on skipwait.me, so suggestions are off. You can still send your request.</p> : null}
         {listed ? <p className="flex items-start gap-2 text-g-small text-g-ink-2"><Building2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>{listed.name} already has a door on skipwait.me. <Link href={`/explore/${listed.slug}`} className="underline underline-offset-2 hover:text-g-ink">Open it</Link></span></p> : null}
-        {request.isError ? <p role="alert" className="flex items-center gap-2 text-g-meta text-g-crimson">{request.error.message || "We could not save this request. Try again."}</p> : null}
+        {request.isError ? <p role="alert" className="flex items-center gap-2 text-g-meta text-g-ink">{request.error.message || "We could not save this request. Try again."}</p> : null}
         <div><GoalButton variant="primary" type="submit" busy={request.isPending} busyLabel="Sending…">Send company request</GoalButton></div>
       </div>
     </form>
@@ -125,7 +125,7 @@ function InvitePanel({ fetchToken, userId }: { fetchToken: TokenSource; userId: 
       <h2 className="mt-3 text-[22px] font-semibold leading-[1.15] tracking-[-0.02em]">Send your personal link.</h2>
       {invite.isPending ? <p role="status" className="mt-4 text-g-small text-g-ink-2">Creating your personal link…</p> : invite.isError ? (
         <div className="mt-4">
-          <p role="alert" className="text-g-meta text-g-crimson">{invite.error.message || "We could not create your personal link. Try again."}</p>
+          <p role="alert" className="text-g-meta text-g-ink">{invite.error.message || "We could not create your personal link. Try again."}</p>
           <div className="mt-4"><GoalButton variant="outline" busy={invite.isFetching} busyLabel="Trying again…" onClick={() => { void invite.refetch(); }}>Try again</GoalButton></div>
         </div>
       ) : (
