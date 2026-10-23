@@ -663,15 +663,161 @@
       "id": "D-048-P-referrer",
       "title": "D-048 phase 3 referrer lane packet: its cluster rows from the split, with owned paths",
       "row": "D-048",
-      "packet": null,
+      "packet": "docs/plans/D-048-referrer.md",
       "tier": 3,
       "lane": "d048-packets",
       "branch": "agent/queue/d048-p-referrer",
-      "status": "architect",
+      "status": "done",
       "dependsOn": [
         "D-048-phase-3"
       ],
-      "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+      "note": "Packet-only (D-134): packet landed; six child rows below were added exactly from docs/plans/D-048-phase-3-split.md.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-p3-conversation",
+      "title": "W2 /conversation/:requestId, referrer decision panels; privacy after acceptance",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-referrer.md",
+      "tier": 1,
+      "lane": "d048-thread",
+      "branch": "agent/<model>/p3-conversation",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-P-referrer",
+        "D-038-reconcile",
+        "D-035",
+        "D-105-win-card",
+        "ROW20-CD"
+      ],
+      "owns": [
+        "client/src/pages/ReferralConversation.tsx",
+        "client/src/pages/conversation/ReferrerConversation.tsx",
+        "client/src/pages/referralConversation.test.tsx",
+        "design/goal-ui/captures/conversation/**"
+      ],
+      "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-p3-referrer",
+      "title": "W4 /referrer and /referrer/impact workspace",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-referrer.md",
+      "tier": 1,
+      "lane": "d048-workspace",
+      "branch": "agent/<model>/p3-referrer",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-P-referrer",
+        "ROW20-A"
+      ],
+      "owns": [
+        "client/src/pages/Referrer.tsx",
+        "client/src/pages/ReferrerImpact.tsx",
+        "client/src/pages/goal/referrer/**",
+        "client/src/pages/referrerGoal.test.tsx",
+        "design/goal-ui/captures/referrer/**"
+      ],
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('referrer'); no credits pill; referrerSignInHref() only.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-p3-referrer-home",
+      "title": "W4 /referrer-home and /referrer-setup; shared referrer data, never-paid line",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-referrer.md",
+      "tier": 1,
+      "lane": "d048-referrer-home",
+      "branch": "agent/<model>/p3-referrer-home",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-P-referrer",
+        "ROW20-CD",
+        "D-106-impact-card"
+      ],
+      "owns": [
+        "client/src/pages/ReferrerHome.tsx",
+        "client/src/pages/ReferrerSetup.tsx",
+        "client/src/pages/goal/referrer-home/**",
+        "client/src/pages/referrerHomeGoal.test.tsx",
+        "design/goal-ui/captures/referrer-home/**"
+      ],
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('referrer-home').",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-p3-invite",
+      "title": "W4 /invite company request and invite-link panels",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-referrer.md",
+      "tier": 2,
+      "lane": "d048-referrer-home",
+      "branch": "agent/<model>/p3-invite",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-P-referrer",
+        "ROW20-B"
+      ],
+      "owns": [
+        "client/src/pages/Invite.tsx",
+        "client/src/pages/goal/invite/**",
+        "design/goal-ui/captures/invite/**"
+      ],
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('invite').",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-p3-post",
+      "title": "W4 /post-opportunity and My openings; server posting verdict",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-referrer.md",
+      "tier": 2,
+      "lane": "d048-post",
+      "branch": "agent/<model>/p3-post",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-P-referrer"
+      ],
+      "owns": [
+        "client/src/pages/PostOpportunity.tsx",
+        "client/src/pages/goal/post-opportunity/**",
+        "design/goal-ui/captures/post-opportunity/**"
+      ],
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('post-opportunity').",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-p3-email-review",
+      "title": "W4 /email-review/:linkToken one-click decision behind work-email sign-in",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-referrer.md",
+      "tier": 1,
+      "lane": "d048-verify",
+      "branch": "agent/<model>/p3-email-review",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-static-frame",
+        "D-048-F-primitives",
+        "D-048-P-referrer",
+        "D-035"
+      ],
+      "owns": [
+        "client/src/pages/EmailReviewAction.tsx",
+        "client/src/pages/goal/email-review/**",
+        "design/goal-ui/captures/email-review/**"
+      ],
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('email-review').",
       "epic": "D-048-p3"
     },
     {
