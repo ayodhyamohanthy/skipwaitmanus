@@ -29,6 +29,7 @@ function makeDeps(overrides: Partial<DailyMoneyCheckDeps> = {}) {
     listLegacyPlanWallets: vi.fn(async () => []),
     listAskDeliverySpendsWhileWaiting: vi.fn(async () => []),
     listDoublyReversedSpends: vi.fn(async () => []),
+    listAskCostMismatches: vi.fn(async () => []),
     listRefundsAfterPickup: vi.fn(async () => []),
     listReferredPastDeadline: vi.fn(async () => []),
     sendEmail: vi.fn(async (input: Sent) => { sent.push(input); return true; }),
@@ -121,6 +122,27 @@ describe("daily-money-check (D-065)", () => {
     expect(sent[0]!.text).toContain("stale checkouts: 1221 unpaid checkout page(s) from 3 account(s) still pending after a day, oldest 2026-09-23T03:02:28.000Z");
     expect(sent[0]!.text).toContain("none credited, no money moved (oldest ids: #41)");
     expect(sent[0]!.text).not.toContain("stale checkout: payment");
+  });
+
+  it("lists checkouts older than the reconcile window as their own unverified finding, never as never paid", async () => {
+    const calls: Array<{ older: number; newer: number | null }> = [];
+    const { deps, sent } = makeDeps({
+      summarizeStaleCheckouts: vi.fn(async (older: Date, newer?: Date) => { calls.push({ older: older.getTime(), newer: newer ? newer.getTime() : null }); return newer ? { total: 0, users: 0, oldest: null, newest: null } : { total: 1246, users: 5, oldest: new Date("2026-09-23T03:02:28Z"), newest: new Date("2026-10-14T01:00:00Z") }; }),
+    });
+    await runJob(deps);
+    expect(calls[0]).toEqual({ older: NOW.getTime() - DAY, newer: NOW.getTime() - 7 * DAY });
+    expect(calls[1]).toEqual({ older: NOW.getTime() - 7 * DAY, newer: null });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("aged-out checkouts: 1246 checkout page(s) from 5 account(s) are older than 7 days, aged out of reconciliation");
+    expect(sent[0]!.text).toContain("payment status at the provider is unverified");
+    expect(sent[0]!.text).not.toMatch(/never paid|abandoned/i);
+    expect(sent[0]!.text).not.toContain("stale checkouts:");
+  });
+
+  it("stays quiet about aged-out checkouts when there are none", async () => {
+    const { deps, sent } = makeDeps({});
+    await runJob(deps);
+    expect(sent.join(" ")).not.toContain("aged-out checkouts");
   });
 
   it("caps the email lines while the subject keeps the full count", async () => {

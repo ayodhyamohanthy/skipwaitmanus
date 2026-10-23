@@ -68,13 +68,34 @@ describe("My asks on the goal shell", () => {
     expect(urls).toContain("/api/credits/summary?role=job_seeker");
   });
 
+  it("says the balance failed to load instead of drawing 0 credits, and retries it", async () => {
+    let creditCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).includes("/api/credits/summary")) {
+        creditCalls += 1;
+        return creditCalls <= 2
+          ? { ok: false, status: 500, json: async () => ({ error: "down" }) }
+          : { ok: true, status: 200, json: async () => ({ summary: { totalAvailable: 4 } }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ requests: [openAsk(42)], slots: slots(1) }) };
+    }));
+    renderPage();
+    const pill = (await screen.findAllByTestId("goal-credits-pill"))[0];
+    await waitFor(() => expect(pill.textContent).toContain("Balance didn't load"), { timeout: 3000 });
+    expect(pill.textContent).not.toMatch(/\b0\b/);
+    fireEvent.click(within(pill).getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toBe("4 credits"));
+  });
+
   it("a verified referrer keeps their queue and sees no credits pill", async () => {
     access.status = "verified";
-    stub([openAsk(42)], slots(1));
+    const fetchMock = stub([openAsk(42)], slots(1));
     renderPage();
     await screen.findAllByText("Product Designer");
     expect(screen.queryByTestId("goal-credits-pill")).toBeNull();
     expect(screen.getAllByRole("link", { name: "Queue" }).length).toBeGreaterThan(0);
+    // D-055: the referrer surface never even asks for a seeker balance.
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/credits/summary"))).toBe(false);
   });
 
   it("gates signed-out visitors behind a sign-in panel and never loads asks", () => {

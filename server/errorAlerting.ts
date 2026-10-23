@@ -3,6 +3,15 @@ import type { RequestHandler } from "express";
 import { recordOperationalActivity } from "./db";
 
 const ADMIN_ERROR_RECIPIENT = "ayodhya@skipwait.me";
+// Second recipient: the owner mailbox. Best effort: the primary result decides success.
+export const ADMIN_ALERT_COPY_RECIPIENT = "ayodhya@mail.instinct.com";
+
+export async function sendAdminAlertEmail(fetchImpl: typeof fetch | undefined, input: { subject: string; text: string }) {
+  const send = createTransactionalEmailSender({ fetchImpl });
+  const primary = await send({ to: ADMIN_ERROR_RECIPIENT, ...input });
+  try { await send({ to: ADMIN_ALERT_COPY_RECIPIENT, ...input }); } catch { /* copy is best effort */ }
+  return primary;
+}
 const DEDUPLICATION_WINDOW_MS = 10 * 60 * 1000;
 
 type AlertInput = {
@@ -55,7 +64,7 @@ export function createMaterialErrorEscalator(dependencies: AlertDependencies = {
     ].join("\n");
 
     try {
-      const delivery = await createTransactionalEmailSender({ fetchImpl })({ to: ADMIN_ERROR_RECIPIENT, subject, text });
+      const delivery = await sendAdminAlertEmail(fetchImpl, { subject, text });
       if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
 
       await recordActivity({
@@ -125,7 +134,7 @@ export function createPaymentReviewAlerter(dependencies: AlertDependencies = {})
     ].join("\n");
     const metadata = { paymentId: input.paymentId, reason: input.reason };
     try {
-      const delivery = await createTransactionalEmailSender({ fetchImpl })({ to: ADMIN_ERROR_RECIPIENT, subject, text });
+      const delivery = await sendAdminAlertEmail(fetchImpl, { subject, text });
       if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
       await recordActivity({ action: "system.payment_review_alert_sent", outcome: "success", resourceType: "payment_fulfillment", resourceId: String(input.paymentId), metadata });
       return { alerted: true as const };
@@ -161,7 +170,7 @@ export function createUnmatchedPaymentAlerter(dependencies: AlertDependencies = 
     ].join("\n");
     const metadata = { eventId: input.eventId, invoiceId: input.invoiceId, reason: input.reason };
     try {
-      const delivery = await createTransactionalEmailSender({ fetchImpl })({ to: ADMIN_ERROR_RECIPIENT, subject, text });
+      const delivery = await sendAdminAlertEmail(fetchImpl, { subject, text });
       if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
       await recordActivity({ action: "system.unmatched_payment_alert_sent", outcome: "success", resourceType: "chargebee_invoice", resourceId: ref, metadata });
       return { alerted: true as const };
@@ -198,7 +207,7 @@ export function createPaymentRefundAlerter(dependencies: AlertDependencies = {})
     ].join("\n");
     const metadata = { eventId: input.eventId, invoiceId: input.invoiceId, paymentId: input.paymentId, reason: input.reason };
     try {
-      const delivery = await createTransactionalEmailSender({ fetchImpl })({ to: ADMIN_ERROR_RECIPIENT, subject, text });
+      const delivery = await sendAdminAlertEmail(fetchImpl, { subject, text });
       if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
       await recordActivity({ action: "system.payment_refund_alert_sent", outcome: "success", resourceType: "chargebee_invoice", resourceId: ref, metadata });
       return { alerted: true as const };
@@ -250,7 +259,7 @@ export function createCardValidationAlerter(dependencies: AlertDependencies = {}
     ].join("\n");
     const metadata = { eventId: input.eventId, reason: input.reason, customerId: input.customerId, paymentSourceId: input.paymentSourceId };
     try {
-      const delivery = await createTransactionalEmailSender({ fetchImpl })({ to: ADMIN_ERROR_RECIPIENT, subject, text });
+      const delivery = await sendAdminAlertEmail(fetchImpl, { subject, text });
       if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
       await recordActivity({ action: "system.card_validation_alert_sent", outcome: "success", resourceType: "chargebee_payment_source", resourceId: input.paymentSourceId ?? undefined, metadata });
       return { alerted: true as const };
@@ -288,7 +297,7 @@ export function createRetiredPlanAlerter(dependencies: AlertDependencies = {}) {
     const action = unsupported ? "system.unsupported_plan_alert_sent" : "system.retired_plan_alert_sent";
     const metadata = { eventId: input.eventId, reason: input.reason, subscriptionId: input.subscriptionId, giftId: input.giftId };
     try {
-      const delivery = await createTransactionalEmailSender({ fetchImpl })({ to: ADMIN_ERROR_RECIPIENT, subject, text });
+      const delivery = await sendAdminAlertEmail(fetchImpl, { subject, text });
       if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
       await recordActivity({ action, outcome: "success", resourceType: "chargebee_subscription", resourceId: ref, metadata });
       return { alerted: true as const };

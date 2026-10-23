@@ -4,4 +4,5 @@
 export const GOAL_UI_LANDING = import.meta.env.VITE_GOAL_UI_LANDING === "true";
 export const GOAL_UI_SIGNIN = import.meta.env.VITE_GOAL_UI_SIGNIN === "true";
 export const GOAL_UI_LANDING_V9 = import.meta.env.VITE_GOAL_UI_LANDING_V9 === "true";
+export const ASK_LEVEL_COST_CLIENT = import.meta.env.VITE_ASK_LEVEL_COST === "true";
 export const PLAN_FAMILY_V2_CLIENT = import.meta.env.VITE_PLAN_FAMILY_V2 === "true";

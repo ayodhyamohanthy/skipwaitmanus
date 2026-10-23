@@ -37,3 +37,4 @@ All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker
 
 ## Status
 The PICKER rows share the plan row "D-134", so each writes its status here, one line per task, never in the shared §3b row (D-134).
+- PICKER-landing-slot: done — 1e9ba07f (PR #497) — Gemini 3.8 Flash · 8f37
