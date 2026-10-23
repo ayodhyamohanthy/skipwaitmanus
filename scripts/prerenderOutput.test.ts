@@ -52,7 +52,8 @@ describe("the prerender step writes a file Cloudflare Pages can serve for every 
     const written = readdirSync(dist);
     expect(written).not.toContain(".html");
     const home = readFileSync(path.join(dist, "index.html"), "utf8");
-    expect(home).toContain("<h1>");
+    // The h1 carries the goal page's display classes; pin the tag, not a bare one.
+    expect(home).toMatch(/<h1[ >]/);
     expect(home).toContain('data-skipwait-snapshot="landing"');
   });
 
