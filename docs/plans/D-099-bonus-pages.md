@@ -9,7 +9,7 @@
 | Size | A: L (four commits); B: S (one commit) |
 | Implementer | any model; A gets an independent Tier 1 review by a model other than its builder (D-151) |
 | Branches | A: `agent/claude/d099-bonus-pages`; B: `agent/queue/d099-bonus-line`, both from the latest `origin/main` |
-| Depends on | A: `D-090-BYOR`, `D-089-request-inbox` and `D-086-demand-list` (the owner's order: ideas 2, then 1, then 3, after the demand list; D-162 waived the demand-list gate for BYOR only). B: `D-099-bonus-pages` and `D-048-p3-live-review-find` (B adds one line to the pages that row redesigns). The picker enforces both. |
+| Depends on | A: `D-090-BYOR`, `D-089-request-inbox` and `D-086-demand-list` (the owner's order: ideas 2, then 1, then 3, after the demand list; D-162 waived the demand-list gate for BYOR only), plus `D-048-F-flags` and `D-048-F-routes`, which own `client/src/App.tsx` and `.env.example` first. B: `D-099-bonus-pages`, `D-048-p3-live-review-find` (B adds one line to the pages that row redesigns) and `D-048-F-primitives` (it owns `GoalListRow.tsx` first). The picker enforces all of them. |
 | Verified against | `main` `06323e5c` on 2026-10-23 (CEO, Claude Code · e11c) |
 
 ## 1. Goal
@@ -179,5 +179,5 @@ Zod schemas, strict, so unknown keys fail.
 
 ## Status
 Two rows share this packet (D-134); each writes its own line.
-- D-099-bonus-pages: todo; waits for `D-090-BYOR`, `D-089-request-inbox` and `D-086-demand-list`.
-- D-099-bonus-line: todo; waits for `D-099-bonus-pages` and `D-048-p3-live-review-find`.
+- D-099-bonus-pages: todo; waits for `D-090-BYOR`, `D-089-request-inbox`, `D-086-demand-list`, `D-048-F-flags` and `D-048-F-routes`.
+- D-099-bonus-line: todo; waits for `D-099-bonus-pages`, `D-048-p3-live-review-find` and `D-048-F-primitives`.
