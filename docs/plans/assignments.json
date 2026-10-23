@@ -1819,6 +1819,21 @@
    "note": "Founder direction Oct 24 00:57 IST (phonemsg-01M5N3Q94QHYJK0VEHA3WBERS0). Audience model must hold before build: public vs internal-restricted (never public) vs referral-drive (shareable by design). 'Internal' meaning unresolved - open questions in the packet. No money fields (D-132/D-152 frozen).",
    "row": "D-177",
    "tier": 2
+  },
+  {
+   "id": "D-179-ats-referral-validation",
+   "title": "Connect ATSes to technically validate completed referrals (ATS-confirmed vs referrer-reported)",
+   "row": "D-179",
+   "packet": "docs/plans/D-179-ats-referral-validation.md",
+   "tier": 2,
+   "lane": "employer",
+   "branch": "agent/coordinator/ats-referral-validation",
+   "status": "todo",
+   "owns": [
+    "docs/plans/D-179-ats-referral-validation.md"
+   ],
+   "dependsOn": [],
+   "note": "Founder direction Oct 24 1:09 IST (phonemsg-01M5N4DC140W9347XWW34NAWX1). Distinct from jobs ingestion. Product truth rule: self-report is never ATS-verified; states stay labeled until a real ATS signal exists. No employer private access, no spend; integration research routed to the market research seat - incorporate grounded findings, do not invent universal APIs. Money events stay frozen under D-132/D-152."
   }
  ]
 }
