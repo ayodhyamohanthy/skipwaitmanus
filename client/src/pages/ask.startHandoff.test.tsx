@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ASK_PREFILL_KEY } from "@/lib/askPrefill";
+import { clearPrivateReferralBrowserData } from "@/lib/logoutPrivacy";
 import Ask from "./Ask";
 
 const { go, authState, signIn } = vi.hoisted(() => ({
@@ -84,6 +85,17 @@ describe("the /start hand-off into the real ask form", () => {
 
   it("never applies a stale draft and cleans the hand-off up", async () => {
     writeHandoff(Date.now() - 2 * 60 * 60 * 1000);
+    renderPage();
+    await waitFor(() => expect(linkInput()).toBeTruthy());
+    expect(linkInput().value).toBe("");
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+    expect(localStorage.getItem("bridge-target-url")).toBeNull();
+    expect(localStorage.getItem("bridge-company-confirmation")).toBeNull();
+  });
+
+  it("never applies a hand-off that crossed a sign-out boundary (account binding)", async () => {
+    writeHandoff(Date.now());
+    await clearPrivateReferralBrowserData();
     renderPage();
     await waitFor(() => expect(linkInput()).toBeTruthy());
     expect(linkInput().value).toBe("");
