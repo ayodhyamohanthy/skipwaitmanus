@@ -130,7 +130,7 @@ function InvitePanel({ fetchToken, userId }: { fetchToken: TokenSource; userId: 
         </div>
       ) : (
         <div className="mt-4 grid gap-4">
-          <div className="flex items-center gap-2 rounded-g-control border border-g-control-edge px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2 overflow-hidden rounded-g-control border border-g-control-edge px-3 py-2">
             <span className="min-w-0 flex-1 truncate font-g-mono text-[13px] text-g-ink">{link.replace(/^https?:\/\//, "")}</span>
             <GoalButton variant="ghost" size="xs" aria-label={canShare ? "Share invitation link" : "Copy invitation link"} onClick={() => { void shareOrCopy(); }}>{copied ? <Check className="h-4 w-4" aria-hidden="true" /> : canShare ? <Share2 className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}</GoalButton>
           </div>
