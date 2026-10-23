@@ -58,7 +58,7 @@ export function ReferrerSetupDialog({ initialStep = 0, onClose }: { initialStep?
           <div className="setup-step">
             <UserRound />
             <h2 id="setup-title">Your private profile.</h2>
-            <p>Your name is not listed publicly. Seekers see only that someone at the company is open to requests.</p>
+            <p>Your name is not listed publicly. Seekers see the company, not who refers.</p>
             <div className="profile-preview"><span className="company-mark">?</span><span><strong>Verified person inside</strong><small>Identity shown after acceptance</small></span></div>
           </div>
         ) : null}

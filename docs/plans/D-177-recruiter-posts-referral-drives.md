@@ -9,18 +9,18 @@ Source: founder message, Oct 24, 2026 12:57 AM IST. Provenance: phonemsg-01M5N3Q
 Company job feeds are not the only job source. Three new supply paths, all inside the existing company -> job -> ask journey (D-174-seeker-journey-build), not a competing surface:
 
 1. **Recruiter/HR job posts, public.** A verified recruiter or HR person at a company can publish a job description that any seeker can see and ask against.
-2. **Recruiter/HR job posts, internal.** A recruiter/HR person can publish a description whose audience is restricted (see the open question on what "internal" means). An internal description must never render on a public surface, in search, in sitemap, or in any logged-out response.
+2. **Recruiter/HR job posts, internal = employee-shared opportunities (RESOLVED, owner Oct 24 1:18 IST).** The owner settled the fork: "internal jobs" means referral opportunities that OUTSIDE CANDIDATES can see and request, which are sometimes shared in company emails instead of appearing on career portals - NOT employee-only vacancies or transfers. So an internal post is candidate-visible; its "internal" character is its provenance (shared by an employee/recruiter, possibly never on the career portal), not a visibility restriction. Because there may be no public career-page URL, a public career link is NOT mandatory for this type; the post must be labeled honestly as employee-shared, never "career-portal confirmed", and the private email thread and its recipients are never published - only the shareable job details the poster chooses to publish.
 3. **Employee-published referral drives.** A verified employee (referrer) can publish an internal referral drive - the common corporate practice of "we are hiring for these roles, refer people." A referral drive is meant to be SHARED by employees, including externally; it is not an employee-only secret. Treating it as confidential would defeat its purpose, and treating an employee-only opening as shareable would leak it. These are different audiences and must not be conflated.
 
 ## Audience model (must hold before any build)
 
 - **public**: anyone, logged out included. Safe for sitemap/search/prerender.
-- **internal-restricted**: employee-only opening. Never leaves authorized surfaces; server enforces, not the client. Exact eligible audience (own-company employees only? employees + their referred candidates?) is an OPEN question below.
+- **internal / employee-shared** (resolved Oct 24 1:18 IST): candidate-visible referral opportunity whose source is an employee/recruiter share (often a company email) rather than the career portal. Provenance is displayed honestly; the current universal "hiring-now requires a verified public role link" enforcement must become type-aware - career-portal-confirmed posts keep the verified link, employee-shared posts carry the provenance label and the poster's verified identity instead. This reconciles the types; it does NOT waive all link/identity checks, and email-only jobs are not silently rejected. The employee-only-restricted interpretation is REJECTED; if a true employee-only vacancy product is ever wanted, it needs its own owner decision.
 - **referral-drive**: published by an employee, intended for external sharing by employees. Public-by-design content with the author's consent, but the drive's existence/terms may still carry internal context (headcount, team) that needs an explicit publish-time confirmation from the author.
 
-## Open questions (not resolved by the founder message; ask before build locks them)
+## Open questions (not resolved by the founder messages; ask before build locks them)
 
-1. What does "internal" mean for a recruiter post: visible to that company's verified employees only, or employees plus candidates those employees choose to refer in?
+1. ~~What does "internal" mean~~ RESOLVED Oct 24 1:18 IST (phonemsg-01M5N4XQX4YY5R18T59S38BYJ5): outside-candidate-visible, email-shared referral opportunities. See the audience model above.
 2. Who verifies a recruiter/HR identity at a company (same employer verification as referrers, or a new role)?
 3. Does a referral drive carry any reward/terms fields, and do money-adjacent fields stay frozen under D-132 until its audit?
 4. Moderation: can a company admin unpublish an employee's drive?
