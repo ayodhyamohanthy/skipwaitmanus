@@ -550,7 +550,7 @@
    "tier": 1,
    "lane": "share",
    "branch": "agent/instinct/share-impact-card",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
    "note": "D-151 (Oct 23): the re-review of head 7ee3f97e comes from a model that neither built nor fixed #382 (not Instinct, not Qoder); the CEO takes it. The branch conflicts with main: the merge is fix-stage work after the verdict, and the resolution gets its own look before landing."
   },
