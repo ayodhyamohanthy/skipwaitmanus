@@ -78,6 +78,18 @@
    "note": "D-162: on Oct 23 the board kept workbuddy · b0eb's 02:14 blocked report on D-090-BYOR and hid the three green reports after it; the first (a2fdbc3e) named the owner's waiver, the next two reported build progress. The CEO ruled from the stale report (D-154) and the owner had to restate his word. latestReports keeps the blocked report standing (unchanged) and also returns every non-CEO report after it; the board line and the printed unblock step show them."
   },
   {
+   "id": "PICKER-architect-slot",
+   "title": "A packet PR on an agent/architect/* branch with a passed review gets the landing slot, not its packet heartbeat (D-168)",
+   "row": "D-134",
+   "packet": null,
+   "tier": 2,
+   "lane": "picker",
+   "branch": "agent/queue/picker-architect-slot",
+   "status": "architect",
+   "dependsOn": [],
+   "note": "D-168 (5): GPT · 5deb reported (report ac044cd9, Oct 23) that for PR #557 on agent/architect/d048-p-money the picker sends the landing step to the packet heartbeat (workBranchOf, buildView, ownStage and leaseFor in scripts/nextTaskCore.mjs) instead of agent/queue/landing. First reproduce it as a failing case in scripts/nextTask.test.ts, then route a reviewed packet PR to the landing slot. Until it lands, such PRs use split step 5's fallback."
+  },
+  {
    "id": "REGISTER-520",
    "title": "Land #520's rulings (Skippy reviews, newest-decision sync, CEO mandate, credits toolbox, branch hygiene), renumbered onto main",
    "row": "D-163",
@@ -1240,6 +1252,48 @@
     "design/goal-ui/captures/email-review/**"
    ],
    "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('email-review'). D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23).",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-R1",
+   "title": "Release 1: the goal inbox goes live (inbox enters RELEASED), signed off against the doctrine checklist and captures",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-phase-3-split.md",
+   "tier": 1,
+   "lane": "d048-release",
+   "branch": "agent/queue/d048-r1",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-p3-inbox",
+    "D-048-F-credits",
+    "D-048-p3-live-review"
+   ],
+   "owns": [
+    "client/src/lib/goalSurfaces.ts"
+   ],
+   "note": "D-168 (2): registered as soon as every row it depends on is registered, so the inbox reaches users through the picker the moment it lands. Kit drift checked against #308 and #324. Split section 6: an independent reviewer and the CEO sign off against docs/plans/GOAL_UI_COVERAGE.md section 1 and the 1280 and 390 captures after preview QA; kit-drift check; behaviour tests re-run with the ids on; the PR edits only the RELEASED block; after deploy, live-flow-audit, a signed-in check at 1280 and 390 and 24 h of Sentry watch on the routes; rollback is a revert of the line. The owner gets the captures in the report.",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-R4",
+   "title": "Release 4, referrer: referrer, referrer-home, invite and post-opportunity go live (their ids enter RELEASED)",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-phase-3-split.md",
+   "tier": 1,
+   "lane": "d048-release",
+   "branch": "agent/queue/d048-r4",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-R1",
+    "D-048-p3-referrer",
+    "D-048-p3-referrer-home",
+    "D-048-p3-invite",
+    "D-048-p3-post"
+   ],
+   "owns": [
+    "client/src/lib/goalSurfaces.ts"
+   ],
+   "note": "D-168 (2): registered as soon as every row it depends on is registered. email-review rides the next release row after its own QA (split R4); the queue went live in place (D-149). Split section 6: an independent reviewer and the CEO sign off against docs/plans/GOAL_UI_COVERAGE.md section 1 and the 1280 and 390 captures after preview QA; kit-drift check; behaviour tests re-run with the ids on; the PR edits only the RELEASED block; after deploy, live-flow-audit, a signed-in check at 1280 and 390 and 24 h of Sentry watch on the routes; rollback is a revert of the line. The owner gets the captures in the report.",
    "epic": "D-048-p3"
   },
   {
