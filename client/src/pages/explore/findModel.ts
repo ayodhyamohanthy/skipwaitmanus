@@ -1,6 +1,6 @@
 // Pure helpers for Find a referral (design/goal-ui/pick/find-a-referral.*).
-// The directory is alphabetical so open companies are not pushed to the top;
-// availability is a fact from the server (openToReferrals), never a guess.
+// Companies open to requests sort first, then the rest; availability is a
+// fact from the server (openToReferrals), never a guess.
 // Money lines say what the code does (shared/moneyCopy.ts, D-063): an open
 // company spends a credit when a verified employee can see the ask, a company
 // with no available employee waits for free (D-034) and holds the ask if the
@@ -21,7 +21,9 @@ export function companyMatches(company: PublicCompany, filter: DirectoryFilter):
 }
 
 export function filterCompanies(companies: readonly PublicCompany[], filter: DirectoryFilter): PublicCompany[] {
-  return companies.filter(company => companyMatches(company, filter)).sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
+  return companies
+    .filter(company => companyMatches(company, filter))
+    .sort((a, b) => Number(b.openToReferrals) - Number(a.openToReferrals) || a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
 }
 
 export const directorySummary = (shown: readonly PublicCompany[]) => ({ total: shown.length, open: shown.filter(company => company.openToReferrals).length });

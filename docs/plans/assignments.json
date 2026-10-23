@@ -1693,6 +1693,18 @@
    "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top."
   },
   {
+   "id": "D-048-fix-explore-open-first",
+   "title": "Show open-to-requests companies first in the referral directory",
+   "row": "D-048",
+   "packet": null,
+   "tier": 2,
+   "lane": "d048-foundation",
+   "branch": "agent/coordinator/explore-open-first",
+   "status": "in-review",
+   "dependsOn": [],
+   "note": "Coordinator bounded fix (Main, Oct 23; user instruction phonemsg-01M5MX75AC41CEM8BGFGD1ZBS5): the /explore directory was strictly alphabetical; companies open to requests (openToReferrals, a server fact) now sort first, alphabetical within each group. Scope: client/src/pages/explore/findModel.ts + findModel.test.ts only - no filter, availability, pricing or ranking change. Those files sit inside D-048-p3-live-review-find's owns glob (held in review); that row reconciles on its next rebase, same pattern as D-048-fix-start-ask-handoff. 12/12 findModel tests including a new grouping test."
+  },
+  {
    "id": "D-048-fix-landing-load-flash",
    "title": "Stop the prerendered landing snapshot flashing before the goal landing mounts",
    "row": "D-048",
