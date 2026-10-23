@@ -271,8 +271,17 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-owns-scope",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/scope-check.mjs",
+        "scripts/nextTask.test.ts",
+        ".github/workflows/ci.yml",
+        "docs/plans/PICKER-PARALLEL.md",
+        "AGENTS.md"
+      ]
     },
     {
       "id": "PICKER-status-rows",
