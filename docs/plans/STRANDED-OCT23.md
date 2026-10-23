@@ -80,6 +80,6 @@ Instinct built these, so every review and landing goes to a model other than Ins
 These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines go here (D-134).
 - REGISTER-520: todo.
 - D-155-share-paid-gate: todo (PR #527 open, CI green on `af6dd9cc`, conflicts with `main`).
-- D-132-catalog-record: todo (PR #528 open, conflicts with `main`).
+- D-132-catalog-record: done — PR #528 landing candidate (docs only; no catalog/API/payment operation). Main merged, public account/customer details removed; source audit `761e78e0`. Focused checks, eligible non-Instinct delta review and exact-head CI are mandatory before landing; final SHA is recorded in the PR.
 - D-132-item3: todo; waits for D-132-audit.
 - D-132-v2-checkout: todo; waits for D-132-item3.
