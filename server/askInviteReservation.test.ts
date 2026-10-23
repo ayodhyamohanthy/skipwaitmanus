@@ -1,10 +1,10 @@
 import { getTableColumns } from "drizzle-orm";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { askCosts, askInviteLinks, canonicalPeople, jobs, notifications, operationalActivityLogs, planCreditGrants, profiles, promoCreditGrants, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequestPasses, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions, userBlocks, users } from "../drizzle/schema";
+import { askCosts, askInviteLinks, canonicalPeople, jobs, notifications, operationalActivityLogs, planCreditGrants, profiles, promoCreditGrants, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequestPasses, referralRequestSaves, referralRequests, referralTransitionEvents, referrerReviewEmailLinks, tokenBalances, tokenTransactions, userBlocks, users } from "../drizzle/schema";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { createInMemoryDrizzle, type Row } from "./inMemoryDrizzle.testkit";
-import { deliverWaitingAsksToReferrer, openCompanyReferralAvailability, tryDeliverWaitingAsk } from "./db";
+import { deliverWaitingAsksToReferrer, expireStalePendingReferralRequest, oneClickReviewReferralRequest, openCompanyReferralAvailability, tryDeliverWaitingAsk, withdrawCompanyReferralRequest } from "./db";
 import { ASK_INVITE_RESERVATION_MS } from "../shared/askInvites";
 import { claimAskInvite, hashAskInviteToken } from "./askInvites";
 
@@ -46,6 +46,8 @@ function seed(options: { asks?: readonly Row[]; referrers?: readonly Row[]; seek
     [referralAvailabilitySlots, []],
     [referralDocumentAccessGrants, []],
     [referralRequestPasses, []],
+    [referralRequestSaves, []],
+    [referrerReviewEmailLinks, []],
     [referralTransitionEvents, []],
     [notifications, []],
     [operationalActivityLogs, []],
@@ -126,6 +128,66 @@ describe("D-090 C3 reservation guard", () => {
     expect(askById(REQUEST_ID)).toMatchObject({ referrerId: null, waitingForCoverage: true });
     expect(inviteById(1)).toMatchObject({ status: "claimed", claimedByUserId: REFERRER });
     expect(spends()).toEqual([]);
+  });
+
+  it("closes an active link atomically with seeker withdrawal and logs only once", async () => {
+    seed({ invites: [invitation(1, REQUEST_ID, { linkTokenHash: hashAskInviteToken(TOKEN), status: "active", claimedByUserId: null, claimedAt: null, reservationExpiresAt: null, activeRequestKey: `link:${REQUEST_ID}` })] });
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+
+    expect(await withdrawCompanyReferralRequest(SEEKER, REQUEST_ID)).toMatchObject({ withdrawn: true, status: "withdrawn" });
+    expect(askById(REQUEST_ID)).toMatchObject({ status: "withdrawn" });
+    expect(inviteById(1)).toMatchObject({ status: "expired", activeRequestKey: null, closedAt: NOW });
+    const closure = store.rows(operationalActivityLogs).filter(row => row.action === "ask_invite.expired");
+    expect(closure).toHaveLength(1);
+    expect(JSON.parse(String(closure[0].metadata))).toEqual({ requestId: REQUEST_ID, linkId: 1, outcome: "ask_withdrawn" });
+
+    await withdrawCompanyReferralRequest(SEEKER, REQUEST_ID);
+    expect(store.rows(operationalActivityLogs).filter(row => row.action === "ask_invite.expired")).toHaveLength(1);
+  });
+
+  it("closes an active link atomically with stale ask expiry without changing refund semantics", async () => {
+    seed({
+      asks: [ask(REQUEST_ID, SEEKER, { createdAt: new Date(NOW.getTime() - 100 * DAY_MS), updatedAt: new Date(NOW.getTime() - 100 * DAY_MS) })],
+      invites: [invitation(1, REQUEST_ID, { linkTokenHash: hashAskInviteToken(TOKEN), status: "active", claimedByUserId: null, claimedAt: null, reservationExpiresAt: null, activeRequestKey: `link:${REQUEST_ID}` })],
+    });
+
+    expect(await expireStalePendingReferralRequest(SEEKER, REQUEST_ID, NOW.getTime())).toMatchObject({ expired: true, status: "closed" });
+    expect(askById(REQUEST_ID)).toMatchObject({ status: "closed", waitingForCoverage: false });
+    expect(inviteById(1)).toMatchObject({ status: "expired", activeRequestKey: null, closedAt: NOW });
+    expect(spends()).toEqual([]);
+    expect(store.rows(operationalActivityLogs).filter(row => row.action === "ask_invite.expired")).toHaveLength(1);
+
+    expect(await expireStalePendingReferralRequest(SEEKER, REQUEST_ID, NOW.getTime())).toMatchObject({ expired: false, status: "closed" });
+    expect(store.rows(operationalActivityLogs).filter(row => row.action === "ask_invite.expired")).toHaveLength(1);
+  });
+
+  it("releases a live claimed reservation on withdrawal and notifies its claimer once", async () => {
+    seed({ invites: [invitation(1, REQUEST_ID, { linkTokenHash: hashAskInviteToken(TOKEN), status: "claimed", activeRequestKey: null, claimedByUserId: REFERRER, reservationExpiresAt: new Date(NOW.getTime() + DAY_MS) })] });
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+
+    await withdrawCompanyReferralRequest(SEEKER, REQUEST_ID);
+    expect(inviteById(1)).toMatchObject({ status: "expired", activeRequestKey: null, reservationExpiresAt: null, closedAt: NOW });
+    expect(store.rows(notifications).filter(row => row.eventKey === "ask-invite:1:ask-withdrawn:claimer")).toHaveLength(1);
+    expect(store.rows(operationalActivityLogs).filter(row => row.action === "ask_invite.expired")).toHaveLength(1);
+    await expect(claimAskInvite(TOKEN, REFERRER, NOW.getTime())).rejects.toMatchObject({ code: "ask_unavailable" });
+
+    await withdrawCompanyReferralRequest(SEEKER, REQUEST_ID);
+    expect(store.rows(notifications).filter(row => row.eventKey === "ask-invite:1:ask-withdrawn:claimer")).toHaveLength(1);
+    expect(store.rows(operationalActivityLogs).filter(row => row.action === "ask_invite.expired")).toHaveLength(1);
+  });
+
+  it("keeps a claimed one-time link unusable after its employee passes", async () => {
+    seed({
+      asks: [ask(REQUEST_ID, SEEKER, { referrerId: REFERRER, waitingForCoverage: false })],
+      invites: [invitation(1, REQUEST_ID, { linkTokenHash: hashAskInviteToken(TOKEN), status: "claimed", activeRequestKey: null, claimedByUserId: REFERRER, reservationExpiresAt: new Date(NOW.getTime() + DAY_MS) })],
+    });
+
+    expect(await oneClickReviewReferralRequest(REFERRER, { requestId: REQUEST_ID, decision: "declined", declineReason: "timing", passReason: "at_capacity" })).toMatchObject({ status: "passed", reopened: true });
+    expect(askById(REQUEST_ID)).toMatchObject({ status: "pending", referrerId: null, waitingForCoverage: false });
+    expect(inviteById(1)).toMatchObject({ status: "claimed", claimedByUserId: REFERRER, reservationExpiresAt: new Date(NOW.getTime() + DAY_MS) });
+    await expect(claimAskInvite(TOKEN, REFERRER, NOW.getTime())).rejects.toMatchObject({ code: "ask_unavailable" });
   });
 
   it("closes an unclaimed active link atomically when ordinary coverage delivers the ask", async () => {

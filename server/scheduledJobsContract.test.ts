@@ -68,7 +68,7 @@ describe("scheduled jobs contract", () => {
     // GO-LIVE-1b added chargebee-subscription-reconcile (pending pass checkout safety net);
     // the D-067 recovery adds billing-review-retry (durable retired-plan review transport);
     // D-038 adds referral-timers (48 h claim and allocation lapses; referred deadline behind its switch).
-    expect(SCHEDULED_JOB_NAMES).toEqual(["ask-expiry-sweep", "first-look-release", "plan-credit-cycles", "chargebee-pending-reconcile", "chargebee-subscription-reconcile", "work-email-reverify-sweep", "data-export-sweep", "work-email-otp-purge", "coverage-delivery-retry", "referral-timers", "daily-money-check", "billing-review-retry"]);
+    expect(SCHEDULED_JOB_NAMES).toEqual(["ask-expiry-sweep", "ask-invite-expiry", "first-look-release", "plan-credit-cycles", "chargebee-pending-reconcile", "chargebee-subscription-reconcile", "work-email-reverify-sweep", "data-export-sweep", "work-email-otp-purge", "coverage-delivery-retry", "referral-timers", "daily-money-check", "billing-review-retry"]);
     expect(new Set(SCHEDULED_JOB_NAMES).size).toBe(SCHEDULED_JOB_NAMES.length);
     expect(Math.max(...SCHEDULED_JOB_NAMES.map(name => name.length))).toBeLessThanOrEqual(64);
   });

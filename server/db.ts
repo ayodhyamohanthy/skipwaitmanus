@@ -2285,6 +2285,20 @@ async function heldForReferrerTx(tx: LedgerTx, row: { id: number; status: string
 
 const WITHDRAW_REFUSED = "This request was already claimed by a verified employee and can no longer be withdrawn";
 
+/** Close an active link or live reservation only after its ask row is locked; preserve a delivery to its claimer. */
+async function closeAskInviteForTerminalStateTx(tx: any, requestId: number, actorUserId: number, outcome: "ask_withdrawn" | "ask_expired", closedAt: Date, ask: { waitingForCoverage: boolean; referrerId: number | null }): Promise<void> {
+  const [link] = await tx.select({ id: askInviteLinks.id, status: askInviteLinks.status, claimedByUserId: askInviteLinks.claimedByUserId }).from(askInviteLinks).where(and(eq(askInviteLinks.referralRequestId, requestId), inArray(askInviteLinks.status, ["active", "claimed"]))).limit(1).for("update");
+  if (!link) return;
+  if (link.status === "claimed" && link.claimedByUserId !== null && !ask.waitingForCoverage && ask.referrerId === link.claimedByUserId) return;
+  const updated = await tx.update(askInviteLinks).set({ status: "expired", activeRequestKey: null, reservationExpiresAt: null, closedAt }).where(and(eq(askInviteLinks.id, link.id), inArray(askInviteLinks.status, ["active", "claimed"])));
+  if (Number(updated[0]?.affectedRows ?? 0) !== 1) return;
+  if (link.status === "claimed" && link.claimedByUserId !== null) {
+    const eventKey = `ask-invite:${link.id}:${outcome === "ask_withdrawn" ? "ask-withdrawn" : "ask-expired"}:claimer`;
+    await tx.insert(notifications).values({ userId: link.claimedByUserId, category: "status", kind: "ask_invite_expired", title: "Your reserved ask is no longer available", body: outcome === "ask_withdrawn" ? "The seeker withdrew the ask, so this invite can no longer be used." : "The ask expired before this reservation was completed, so the invite can no longer be used.", eventKey, refId: requestId }).onDuplicateKeyUpdate({ set: { eventKey } });
+  }
+  await tx.insert(operationalActivityLogs).values({ actorUserId, action: "ask_invite.expired", outcome: "success", resourceType: "ask_invite", resourceId: String(link.id), metadata: JSON.stringify({ requestId, linkId: link.id, outcome }) });
+}
+
 export async function withdrawCompanyReferralRequest(userId: number, requestId: number) {
   const db=await getDb();if(!db)throw new Error("Database unavailable");
   return db.transaction(async tx=>{
@@ -2295,6 +2309,7 @@ export async function withdrawCompanyReferralRequest(userId: number, requestId: 
     // allocation) is still unclaimed; any other assigned ask was picked up.
     const heldFor=current.referrerId===null?null:await heldForReferrerTx(tx,current);
     if(current.referrerId!==null&&heldFor===null)throw new Error(WITHDRAW_REFUSED);
+    await closeAskInviteForTerminalStateTx(tx, requestId, userId, "ask_withdrawn", new Date(), { waitingForCoverage: current.waitingForCoverage === true, referrerId: current.referrerId });
     // Each transition re-checks the locked row. Releasing an unclaimed assignment clears its referrer in the same write, so
     // the withdrawn ask never reads as assigned or reveals who held it; the release audit row keeps that, in this transaction.
     const heldReferrerId=heldFor?.referrerId??null;
@@ -2450,6 +2465,7 @@ export async function expireStalePendingReferralRequest(userId: number, requestI
     // expires like an unclaimed one; any other assigned ask is left alone.
     const heldFor = current.referrerId === null ? null : await heldForReferrerTx(tx, current);
     if (current.referrerId !== null && heldFor === null) return { expired: false as const, requestId, status: current.status };
+    await closeAskInviteForTerminalStateTx(tx, requestId, userId, "ask_expired", new Date(nowMs), { waitingForCoverage: current.waitingForCoverage === true, referrerId: current.referrerId });
     const heldReferrerId = heldFor?.referrerId ?? null;
     const authorize: ReferralTransitionInput["authorize"] = row => { if (row.jobSeekerId !== userId || row.referrerId !== heldReferrerId) throw new Error("This request is already in conversation and cannot expire"); };
     const release = heldFor === null ? undefined : { referrerId: null };

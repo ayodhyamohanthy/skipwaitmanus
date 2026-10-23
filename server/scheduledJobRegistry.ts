@@ -4,6 +4,7 @@ import { runBillingReviewOutbox } from "./billingReviewOutbox";
 // is a whole number of cron periods so every period lands in exactly one.
 import { ASK_TTL_DAYS } from "../shared/referral";
 import { createAskExpirySweep } from "./askExpirySweep";
+import { createAskInviteSweep } from "./askInviteSweep";
 import { createCoverageDeliverySweep } from "./coverageDeliverySweep";
 import { createDailyMoneyCheck } from "./dailyMoneyCheck";
 import { createFirstLookRelease } from "./firstLookRelease";
@@ -24,6 +25,13 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createAskExpirySweep(),
+  },
+  {
+    name: "ask-invite-expiry",
+    description: "Expires BYOR links and reservations, releases waiting asks, and sends one-time notices",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createAskInviteSweep(),
   },
   {
     name: "first-look-release",
