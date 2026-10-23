@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { personalReferralInviteEligibility } from "./db";
+import { personalReferralInviteEligibility, personalInviteUnlockedFromEvidence } from "./db";
 
 describe("personal referral invite eligibility", () => {
   const invitedAt = new Date("2026-08-19T00:00:00.000Z");
@@ -13,5 +13,14 @@ describe("personal referral invite eligibility", () => {
     expect(personalReferralInviteEligibility({ inviterUserId: 1, joinerUserId: 1, invitationCreatedAt: invitedAt, joinerCreatedAt: joinedAfterInvite, storedEmail: "owner@example.com", verifiedEmail: "owner@example.com" })).toBe("self_invite");
     expect(personalReferralInviteEligibility({ inviterUserId: 1, joinerUserId: 2, invitationCreatedAt: invitedAt, joinerCreatedAt: invitedAt, storedEmail: "friend@example.com", verifiedEmail: "friend@example.com" })).toBe("ineligible");
     expect(personalReferralInviteEligibility({ inviterUserId: 1, joinerUserId: 2, invitationCreatedAt: invitedAt, joinerCreatedAt: joinedAfterInvite, storedEmail: "friend@example.com", verifiedEmail: "other@example.com" })).toBe("ineligible");
+  });
+});
+
+describe("personal referral link unlock evidence (D-155)", () => {
+  it("unlocks only on provider-verified payment evidence", () => {
+    expect(personalInviteUnlockedFromEvidence({ creditedPayments: 0, activatedSubscriptions: 0 })).toBe(false);
+    expect(personalInviteUnlockedFromEvidence({ creditedPayments: 1, activatedSubscriptions: 0 })).toBe(true);
+    expect(personalInviteUnlockedFromEvidence({ creditedPayments: 0, activatedSubscriptions: 1 })).toBe(true);
+    expect(personalInviteUnlockedFromEvidence({ creditedPayments: 2, activatedSubscriptions: 1 })).toBe(true);
   });
 });

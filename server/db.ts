@@ -3797,6 +3797,41 @@ async function addPersonalReferralRewardCredit(tx: any, userId: number) {
   else await tx.insert(tokenBalances).values({ userId, role: "job_seeker", balance: PERSONAL_REFERRAL_REWARD_TOKENS, ...freshWalletCycle("job_seeker") });
 }
 
+/**
+ * Referral-link unlock (D-155): provider-verified payment evidence on the
+ * account. Two real payment paths: a one-time checkout whose fulfillment
+ * reached "credited" (pending / requires_review / rejected / refunded never
+ * count), or a subscription the webhook activated (the wallet keeps its
+ * subscriptionId even after cancel, so a past paid term still counts). The
+ * promoCreditGrants first_paid_invoice row is not usable here: promo grants
+ * are disabled (grantPromoCreditsTx returns early).
+ */
+export function personalInviteUnlockedFromEvidence(evidence: { creditedPayments: number; activatedSubscriptions: number }): boolean {
+  return evidence.creditedPayments > 0 || evidence.activatedSubscriptions > 0;
+}
+
+export async function hasUserMadePayment(userId: number): Promise<boolean> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const [credited, subscriptions] = await Promise.all([
+    db.select({ id: paymentFulfillments.id }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), eq(paymentFulfillments.status, "credited"))).limit(1),
+    db.select({ id: tokenBalances.id }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), isNotNull(tokenBalances.subscriptionId))).limit(1),
+  ]);
+  return personalInviteUnlockedFromEvidence({ creditedPayments: credited.length, activatedSubscriptions: subscriptions.length });
+}
+
+export type PersonalReferralInviteState = { status: "locked" } | { status: "unlocked"; inviteCode: string };
+
+/**
+ * The /share personal invite link (D-155): locked until the account's first
+ * paid invoice; no invite row is created while locked. Once unlocked, the
+ * existing get-or-create behaviour applies unchanged.
+ */
+export async function getPersonalReferralInviteState(userId: number): Promise<PersonalReferralInviteState> {
+  if (!(await hasUserMadePayment(userId))) return { status: "locked" };
+  const invite = await getOrCreatePersonalReferralInvite(userId);
+  return { status: "unlocked", inviteCode: invite.inviteCode };
+}
+
 export async function getOrCreatePersonalReferralInvite(userId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const existing = (await db.select().from(personalReferralInvites).where(eq(personalReferralInvites.inviterUserId, userId)).limit(1))[0];
