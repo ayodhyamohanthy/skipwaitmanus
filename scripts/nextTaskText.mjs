@@ -121,12 +121,22 @@ const fixMainSteps = (pick, who) => steps([
   "Tell the owner what broke, which commit, and how you fixed it.",
 ]);
 
-const unblockSteps = (pick, who) => steps([
-  `Read the row "${pick.task.row}", its branch and pull request, and every decision it names.`,
-  "Decide it as CEO under D-074 and record the ruling in docs/DECISIONS.md, or, if the call is the owner's (prices, legal text, live money, the frozen list), set the task's status to \"owner\" in docs/plans/assignments.json and put the question to the owner.",
-  `Run \`${CMD} --heartbeat --as "${who}"\` before any long step: an unblock lock nobody has pushed to for 2 hours goes to the next Claude Code session (D-085).`,
-  `Answer the team where it will see it (the row and the pull request), then report: \`${CMD} --report review --task ${pick.task.id} --as "${who}" --note "<the ruling>"\`. That newer report releases every priority below it.`,
-]);
+const unblockSteps = (pick, who) => {
+  const newer = pick.report.newer ?? [];
+  const newerLines = newer.map(entry => {
+    const at = Number.isFinite(entry.at) ? ` (${new Date(entry.at).toISOString()})` : "";
+    return `- ${entry.status} — ${entry.who}${at}${entry.note ? `: ${entry.note}` : ""}`;
+  });
+  return steps([
+    ...(newerLines.length ? [
+      `Newer reports after the standing block (oldest first):\n${newerLines.join("\n")}\nRead these newer reports before ruling; a builder may have recorded an owner's word.`,
+    ] : []),
+    `Read the row "${pick.task.row}", its branch and pull request, and every decision it names.`,
+    "Decide it as CEO under D-074 and record the ruling in docs/DECISIONS.md, or, if the call is the owner's (prices, legal text, live money, the frozen list), set the task's status to \"owner\" in docs/plans/assignments.json and put the question to the owner.",
+    `Run \`${CMD} --heartbeat --as "${who}"\` before any long step: an unblock lock nobody has pushed to for 2 hours goes to the next Claude Code session (D-085).`,
+    `Answer the team where it will see it (the row and the pull request), then report: \`${CMD} --report review --task ${pick.task.id} --as "${who}" --note "<the ruling>"\`. That newer report releases every priority below it.`,
+  ]);
+};
 
 const ceoSteps = () => steps([
   `Read the board above: every priority, top down, green or not, and the latest report from its team. A red or blocked priority comes first: unblock it (decide it under D-074, or move the task to "owner" in docs/plans/assignments.json and ask the owner) before anything lower moves.`,
@@ -156,7 +166,14 @@ export function renderBoard(rows) {
     if (r.quietHours !== null && r.quietHours !== undefined) bits.push(`quiet ${r.quietHours}h`);
     if (r.pr) bits.push(r.pr);
     if (r.pr && r.state !== "done") bits.push(`behind main ${Number.isSafeInteger(r.behindMain) && r.behindMain >= 0 ? r.behindMain : "unknown"}`);
-    if (r.report) bits.push(`report: ${r.report.status} — ${r.report.who}${r.report.note ? `: ${r.report.note}` : ""}`);
+    if (r.report) {
+      bits.push(`report: ${r.report.status} — ${r.report.who}${r.report.note ? `: ${r.report.note}` : ""}`);
+      const newer = r.report.newer ?? [];
+      for (const entry of newer.slice(0, 3)) {
+        bits.push(`then: ${entry.status} — ${entry.who}${entry.note ? `: ${entry.note}` : ""}`);
+      }
+      if (newer.length > 3) bits.push(`+${newer.length - 3} more`);
+    }
     return bits.join(" · ");
   });
   const summaries = epicSummaries(rows).map(s => `${s.epic}: ${s.done}/${s.total} done, ${s.prs} PR, ${s.red} red, released: ${s.released.join(", ") || "none"}`);

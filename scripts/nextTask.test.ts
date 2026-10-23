@@ -788,7 +788,12 @@ describe("status reports to the CEO and the board (D-085)", () => {
         { note: "focused tests passed" },
       ] },
     });
-    expect(pick([task("A"), task("B")], { reports, claimant: "Kimi · s2" })).toMatchObject({ kind: "wait", blocked: true });
+    expect(pick([task("A", { lane: "shared" }), task("B", { lane: "shared" })], {
+      branches: [["agent/queue/a", claimBy("Builder · s1", "A")]], reports, claimant: "Kimi · s2",
+    })).toMatchObject({ kind: "wait", gate: "A", blocked: true });
+    expect(pick([task("A"), task("B")], {
+      branches: [["agent/queue/a", claimBy("Builder · s1", "A")]], reports, claimant: "Kimi · s2",
+    })).toMatchObject({ kind: "build", task: { id: "B" } });
     const text = renderBoard(rows);
     expect(text).toContain("report: blocked — Builder · s1: awaiting CEO ruling");
     const notes = ["owner waiver recorded", "implementation underway", "focused tests passed"]
