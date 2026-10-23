@@ -965,7 +965,6 @@
         "D-048-F-primitives",
         "D-048-P-referrer",
         "D-038-reconcile",
-        "D-035",
         "D-105-win-card",
         "ROW20-CD"
       ],
@@ -975,7 +974,7 @@
         "client/src/pages/referralConversation.test.tsx",
         "design/goal-ui/captures/conversation/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark.",
+      "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23).",
       "epic": "D-048-p3"
     },
     {
@@ -1086,15 +1085,14 @@
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
-        "D-048-P-referrer",
-        "D-035"
+        "D-048-P-referrer"
       ],
       "owns": [
         "client/src/pages/EmailReviewAction.tsx",
         "client/src/pages/goal/email-review/**",
         "design/goal-ui/captures/email-review/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('email-review').",
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('email-review'). D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23).",
       "epic": "D-048-p3"
     },
     {
