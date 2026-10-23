@@ -1,6 +1,6 @@
 # D-177 - Recruiter/HR job posts and employee referral drives
 
-Source: founder message, Oct 24, 2026 12:57 AM IST (phonemsg-01M5N3Q94QHYJK0VEHA3WBERS0, channel-verified, author=user). Verbatim:
+Source: founder message, Oct 24, 2026 12:57 AM IST. Provenance: phonemsg-01M5N3Q94QHYJK0VEHA3WBERS0 in conversation phoneconv-01M293K2H1ENERN9WSP2W33SPT (iMessage); the observation record shows author=user for that message ID (verified Oct 24 00:58 IST). This packet records the direction; the channel record is the authority, not this file. Verbatim:
 
 > Now as we are showing jobs like career portals and linkedin inside our portal ,we should have recruiters or hr's posting job descriptions too , internal and public , job referrers can publish a internal job referral drive too which is very often happens in corporate
 
