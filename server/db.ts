@@ -3798,25 +3798,38 @@ async function addPersonalReferralRewardCredit(tx: any, userId: number) {
 }
 
 /**
- * Referral-link unlock (D-155): provider-verified payment evidence on the
- * account. Two real payment paths: a one-time checkout whose fulfillment
- * reached "credited" (pending / requires_review / rejected / refunded never
- * count), or a subscription the webhook activated (the wallet keeps its
- * subscriptionId even after cancel, so a past paid term still counts). The
- * promoCreditGrants first_paid_invoice row is not usable here: promo grants
- * are disabled (grantPromoCreditsTx returns early).
+ * Referral-link unlock (D-155): provider-verified paid-invoice evidence on
+ * the account. Two real payment paths:
+ *
+ * 1. A one-time checkout whose fulfillment reached "credited" - only written
+ *    from a payment_succeeded webhook with a nonzero INR/USD amount after
+ *    the amount check (mismatches park as requires_review and never count;
+ *    pending / rejected / checkout-or-page creation never count). A purchase
+ *    later refunded by the provider still counts as "made a payment" (the
+ *    owner's wording; the same credited+refunded pair backs listMyPayments).
+ * 2. A subscription the webhook activated (the wallet keeps its
+ *    subscriptionId even after cancel, so a past paid term still counts).
+ *    Activation only reaches the wallet through applySubscriptionEvent with
+ *    an active/non_renewing provider status, and this catalog sells no trial
+ *    and no zero-amount first invoice - hosted checkout collects the first
+ *    invoice before Chargebee activates - so an activated subscription
+ *    implies a paid first invoice. Residual edge: a manual no-payment
+ *    activation inside the Chargebee dashboard would also set it.
+ *
+ * The promoCreditGrants first_paid_invoice row is not usable here: promo
+ * grants are disabled (grantPromoCreditsTx returns early).
  */
-export function personalInviteUnlockedFromEvidence(evidence: { creditedPayments: number; activatedSubscriptions: number }): boolean {
-  return evidence.creditedPayments > 0 || evidence.activatedSubscriptions > 0;
+export function personalInviteUnlockedFromEvidence(evidence: { paidPayments: number; activatedSubscriptions: number }): boolean {
+  return evidence.paidPayments > 0 || evidence.activatedSubscriptions > 0;
 }
 
 export async function hasUserMadePayment(userId: number): Promise<boolean> {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const [credited, subscriptions] = await Promise.all([
-    db.select({ id: paymentFulfillments.id }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), eq(paymentFulfillments.status, "credited"))).limit(1),
+  const [payments, subscriptions] = await Promise.all([
+    db.select({ id: paymentFulfillments.id }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), inArray(paymentFulfillments.status, ["credited", "refunded"]))).limit(1),
     db.select({ id: tokenBalances.id }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), isNotNull(tokenBalances.subscriptionId))).limit(1),
   ]);
-  return personalInviteUnlockedFromEvidence({ creditedPayments: credited.length, activatedSubscriptions: subscriptions.length });
+  return personalInviteUnlockedFromEvidence({ paidPayments: payments.length, activatedSubscriptions: subscriptions.length });
 }
 
 export type PersonalReferralInviteState = { status: "locked" } | { status: "unlocked"; inviteCode: string };

@@ -18,9 +18,9 @@ describe("personal referral invite eligibility", () => {
 
 describe("personal referral link unlock evidence (D-155)", () => {
   it("unlocks only on provider-verified payment evidence", () => {
-    expect(personalInviteUnlockedFromEvidence({ creditedPayments: 0, activatedSubscriptions: 0 })).toBe(false);
-    expect(personalInviteUnlockedFromEvidence({ creditedPayments: 1, activatedSubscriptions: 0 })).toBe(true);
-    expect(personalInviteUnlockedFromEvidence({ creditedPayments: 0, activatedSubscriptions: 1 })).toBe(true);
-    expect(personalInviteUnlockedFromEvidence({ creditedPayments: 2, activatedSubscriptions: 1 })).toBe(true);
+    expect(personalInviteUnlockedFromEvidence({ paidPayments: 0, activatedSubscriptions: 0 })).toBe(false);
+    expect(personalInviteUnlockedFromEvidence({ paidPayments: 1, activatedSubscriptions: 0 })).toBe(true);
+    expect(personalInviteUnlockedFromEvidence({ paidPayments: 0, activatedSubscriptions: 1 })).toBe(true);
+    expect(personalInviteUnlockedFromEvidence({ paidPayments: 2, activatedSubscriptions: 1 })).toBe(true);
   });
 });
