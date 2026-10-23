@@ -1,0 +1,97 @@
+#!/usr/bin/env node
+/**
+ * PICKER-owns-scope (docs/plans/PICKER-PARALLEL.md): fail a branch that changed a file
+ * its task does not own.
+ *
+ *   node scripts/scope-check.mjs <task-id>
+ *
+ * Reads `owns` from `origin/main`'s task list and diffs `origin/main...HEAD`, so it judges
+ * what the branch actually changed against what the task declared, not against what the
+ * branch says about itself.
+ *
+ * It fails open (exit 0 with a warning) only on its own internal error — a missing git,
+ * an unreadable task list — never on a definite violation: a check that cannot run must
+ * not silently pass a real breach, but it also must not block a branch for a broken tool.
+ */
+import { execFileSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
+import { ownsEntry, ownsMatches } from "./nextTaskCore.mjs";
+
+const ASSIGNMENTS = "docs/plans/assignments.json";
+const SWITCH_ONLY_LINE_LIMIT = 12;
+const TEST_FILE = /\.test\.tsx?$/;
+const SERVER_OR_SHARED = /^(shared|server)\//;
+
+const git = args => execFileSync("git", args, { encoding: "utf8" }).trim();
+
+/**
+ * The rules, with no I/O, so they can be tested directly.
+ * `changed` is every path the branch touched; `editedTests` the ones that are tests;
+ * `lineCounts` maps a switch-only owned path to the number of lines the diff touches.
+ */
+export function scopeViolations({ owns = [], changed = [], packet = null, lineCounts = new Map() }) {
+  const violations = [];
+  const allowed = path => path === ASSIGNMENTS || (packet !== null && path === packet) || owns.some(entry => ownsMatches(entry, path));
+  const ownsSharedOrServer = owns.some(entry => SERVER_OR_SHARED.test(ownsEntry(entry).pattern));
+
+  for (const path of changed) {
+    if (allowed(path)) continue;
+    if (TEST_FILE.test(path)) violations.push(`${path}: a test file outside this task's owns (a retirement row must name the tests it deletes)`);
+    else if (SERVER_OR_SHARED.test(path) && !ownsSharedOrServer) violations.push(`${path}: this task owns nothing under shared/ or server/`);
+    else violations.push(`${path}: outside this task's owns`);
+  }
+
+  for (const entry of owns) {
+    const { pattern, switchOnly } = ownsEntry(entry);
+    if (!switchOnly) continue;
+    const touched = lineCounts.get(pattern) ?? 0;
+    if (touched > SWITCH_ONLY_LINE_LIMIT) violations.push(`${pattern}: a switch-only file changed ${touched} lines (limit ${SWITCH_ONLY_LINE_LIMIT})`);
+  }
+  return violations;
+}
+
+/** Collect what the branch changed, then judge it. Throws only on its own failure. */
+export function checkBranch(taskId) {
+  const doc = JSON.parse(git(["show", `origin/main:${ASSIGNMENTS}`]));
+  const task = (doc.tasks ?? []).find(t => t.id === taskId);
+  if (!task) throw new Error(`task ${taskId} is not in origin/main's task list`);
+  const owns = Array.isArray(task.owns) ? task.owns : [];
+  if (!owns.length) return { owns, violations: [], skipped: `task ${taskId} declares no owns` };
+  const changed = git(["diff", "--name-only", "origin/main...HEAD"]).split("\n").filter(Boolean);
+  const lineCounts = new Map();
+  for (const entry of owns) {
+    const { pattern, switchOnly } = ownsEntry(entry);
+    if (!switchOnly) continue;
+    const numstat = git(["diff", "--numstat", "origin/main...HEAD", "--", pattern]).split("\n").filter(Boolean);
+    lineCounts.set(pattern, numstat.reduce((sum, row) => sum + row.split("\t").slice(0, 2).reduce((n, cell) => n + (Number(cell) || 0), 0), 0));
+  }
+  return { owns, violations: scopeViolations({ owns, changed, packet: task.packet, lineCounts }), skipped: null };
+}
+
+function main() {
+  const taskId = process.argv[2];
+  if (!taskId) {
+    console.error("usage: node scripts/scope-check.mjs <task-id>");
+    return 2;
+  }
+  try {
+    const { owns, violations, skipped } = checkBranch(taskId);
+    if (skipped) {
+      console.log(`scope-check: ${skipped} — nothing to compare.`);
+      return 0;
+    }
+    if (!violations.length) {
+      console.log(`scope-check: ${owns.length} owned path(s), every change inside them.`);
+      return 0;
+    }
+    for (const violation of violations) console.error(`scope-check: ${violation}`);
+    console.error(`scope-check: ${violations.length} violation(s). Add the path to this task's owns, or revert the change.`);
+    return 1;
+  } catch (error) {
+    // Fail open, loudly: an internal error must not be mistaken for a clean branch.
+    console.error(`scope-check: could not run (${error instanceof Error ? error.message : String(error)}) — not failing the branch.`);
+    return 0;
+  }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = main();
