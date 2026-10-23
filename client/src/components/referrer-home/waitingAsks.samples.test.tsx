@@ -18,7 +18,7 @@ vi.mock("wouter", () => ({
 const ACCESS = { verified: true, domain: "example.com", companyName: "Example", companyInitials: "E" };
 
 function data(overrides: Partial<ReferrerHomeData> = {}): ReferrerHomeData {
-  return { access: ACCESS, preferences: null, verifiedAt: "2026-10-01T00:00:00.000Z", profileCapacity: 3, impact: null, fresh: [], completed: [], hasEverReviewed: false, ...overrides };
+  return { access: ACCESS, preferences: null, verifiedAt: "2026-10-01T00:00:00.000Z", profileCapacity: 3, impact: null, thankYous: null, fresh: [], completed: [], hasEverReviewed: false, ...overrides };
 }
 
 afterEach(cleanup);
