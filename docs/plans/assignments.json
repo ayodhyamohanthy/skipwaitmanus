@@ -777,7 +777,7 @@
         "client/src/components/CookieConsent.tsx",
         "client/src/components/shellParts.goal.test.tsx"
       ],
-      "note": "D-167 \u00a76.2: shown on every signed-in page and the landing, so they move before the surfaces. Behaviour unchanged, including cookie consent and applyAnalyticsConsent."
+      "note": "D-167 \u00a76.2: shown on every signed-in page and the landing, so they move before the surfaces. Behaviour unchanged, including cookie consent and applyAnalyticsConsent. Oct 23 finding (Main, from the AYO-8 kit/settings 390px capture): the existing AppShell chrome duplicates the bell/profile affordances at mobile width (bell+profile left, bell right); whole-app scope, not any surface worker\u2019s bug. The dedup fix is a candidate for this row\u2019s scope and must not change auth behaviour."
     },
     {
       "id": "D-048-F-coverage",
