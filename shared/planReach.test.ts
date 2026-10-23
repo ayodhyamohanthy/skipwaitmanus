@@ -14,8 +14,8 @@ describe("planReachFor (D-148 display only)", () => {
     expect(row("insider", 10)).toBe("VP or C-level · L10");
     expect(row("open_door", 0)).toBe("Intern · L1");
   });
-  it("level names never reuse a plan name; plan names are Junior / Mid / Senior+", () => {
-    expect(PLAN_DISPLAY_NAME).toEqual({ open_door: "Junior", fast_track: "Mid", insider: "Senior+" });
+  it("level names never reuse a plan name; plan names are Entry / Mid / Senior level Referrers (D-152)", () => {
+    expect(PLAN_DISPLAY_NAME).toEqual({ open_door: "Entry level Referrers", fast_track: "Mid level Referrers", insider: "Senior level Referrers" });
     const plans = Object.values(PLAN_DISPLAY_NAME).map(n => n.toLowerCase());
     for (const n of Object.values(REACH_LEVEL_NAMES)) expect(plans).not.toContain(n.toLowerCase());
   });
