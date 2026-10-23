@@ -1,21 +1,21 @@
 // Pure helpers for Find a referral (design/goal-ui/pick/find-a-referral.*).
-// Companies open to requests sort first, then the rest; availability is a
-// fact from the server (openToReferrals), never a guess.
-// Money lines say what the code does (shared/moneyCopy.ts, D-063): an open
-// company spends a credit when a verified employee can see the ask, a company
+// D-176 (owner, Oct 24): the directory has NO availability framing - no open
+// labels, chips or open-first grouping. Availability stays a server fact that
+// only routes the ask after it is sent; the list is alphabetical, period.
+// Money lines say what the code does (shared/moneyCopy.ts, D-063): an ask at
+// a company spends a credit when a verified employee can see it, a company
 // with no available employee waits for free (D-034) and holds the ask if the
 // seeker has no credit then (D-047).
 import type { PublicCompany } from "@shared/companies";
 import { JOB_FUNCTIONS, parseJobFunction, type JobFunction } from "@shared/jobFunctions";
 import { HOSTED_JOB_PLATFORMS, isValidTargetRoleUrl, jobLinkFitsCompany, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
 
-export type DirectoryFilter = { query: string; openOnly: boolean; fn: JobFunction | null };
+export type DirectoryFilter = { query: string; fn: JobFunction | null };
 export const FILTER_FUNCTIONS: readonly JobFunction[] = JOB_FUNCTIONS;
 
 export function companyMatches(company: PublicCompany, filter: DirectoryFilter): boolean {
   const query = filter.query.trim().toLowerCase();
   if (query && !`${company.name} ${company.industry} ${company.functions.join(" ")}`.toLowerCase().includes(query)) return false;
-  if (filter.openOnly && !company.openToReferrals) return false;
   if (filter.fn && !company.functions.some(label => label === filter.fn || parseJobFunction(label) === filter.fn)) return false;
   return true;
 }
@@ -23,10 +23,10 @@ export function companyMatches(company: PublicCompany, filter: DirectoryFilter):
 export function filterCompanies(companies: readonly PublicCompany[], filter: DirectoryFilter): PublicCompany[] {
   return companies
     .filter(company => companyMatches(company, filter))
-    .sort((a, b) => Number(b.openToReferrals) - Number(a.openToReferrals) || a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
+    .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
 }
 
-export const directorySummary = (shown: readonly PublicCompany[]) => ({ total: shown.length, open: shown.filter(company => company.openToReferrals).length });
+export const directorySummary = (shown: readonly PublicCompany[]) => ({ total: shown.length });
 
 export type LinkHint = { tone: "pass" | "muted"; text: string } | { tone: "error"; text: string } | null;
 
