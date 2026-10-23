@@ -29,7 +29,6 @@ function GoalPostOpportunityBody() {
   const [roleTitle, setRoleTitle] = useState("");
   const [targetRoleUrl, setTargetRoleUrl] = useState("");
   const [location, setLocation] = useState("");
-  const [compensation, setCompensation] = useState("");
   const [walkInAt, setWalkInAt] = useState("");
   const [walkInEndsAt, setWalkInEndsAt] = useState("");
   const [step, setStep] = useState(1);
@@ -48,7 +47,7 @@ function GoalPostOpportunityBody() {
     setPublishing(true); setError("");
     try {
       const token = await getToken();
-      const response = await fetch("/api/opportunities", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ kind: mode, roleTitle, targetRoleUrl: targetRoleUrl || undefined, location: location || undefined, compensation: compensation.trim() || undefined, walkInAt: localInputToIso(walkInAt), walkInEndsAt: localInputToIso(walkInEndsAt), ...(showPosterFirstName ? { showPosterFirstName: true } : {}) }) });
+      const response = await fetch("/api/opportunities", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ kind: mode, roleTitle, targetRoleUrl: targetRoleUrl || undefined, location: location || undefined, walkInAt: localInputToIso(walkInAt), walkInEndsAt: localInputToIso(walkInEndsAt), ...(showPosterFirstName ? { showPosterFirstName: true } : {}) }) });
       const payload = await readApiJson<{ opportunity?: { companyDomain: string; roleTitle: string }; error?: string }>(response, "We could not publish that opportunity");
       if (!response.ok || !payload.opportunity) throw new Error(payload.error || "We could not publish that opportunity");
       setPublished(payload.opportunity);
@@ -114,7 +113,6 @@ function GoalPostOpportunityBody() {
             <div className="mt-5 grid gap-4">
               <GoalField label="Public job link (optional)" htmlFor="goal-opp-link"><GoalTextInput id="goal-opp-link" aria-label="Public job link" type="url" value={targetRoleUrl} onChange={event => setTargetRoleUrl(event.target.value)} placeholder="https://careers.company.com/role" /></GoalField>
               <GoalField label="Location (optional)" htmlFor="goal-opp-location"><GoalTextInput id="goal-opp-location" value={location} onChange={event => setLocation(event.target.value)} placeholder="e.g. Bengaluru or Remote" /></GoalField>
-              <GoalField label="Compensation (optional)" htmlFor="goal-opp-comp" help="One line for the public pay range. Leave blank if you prefer not to share."><GoalTextInput id="goal-opp-comp" aria-label="Compensation" value={compensation} onChange={event => setCompensation(event.target.value.slice(0, 80))} placeholder="₹12–18 LPA or $80k–$110k" /></GoalField>
               <label className="flex items-start gap-3 rounded-[10px] border border-g-hairline p-4"><input type="checkbox" checked={showPosterFirstName} onChange={event => setShowPosterFirstName(event.target.checked)} className="mt-0.5 h-4 w-4 accent-g-ink" /><span><strong className="block text-g-label text-g-ink">Show my first name</strong><span className="mt-1 block text-g-meta leading-[1.5] text-g-ink-3">Candidates see just your first name on the card. Your last name and work email never appear.</span></span></label>
               {mode === "walk_in" ? <GoalField label="Starts at" htmlFor="goal-opp-start"><input id="goal-opp-start" aria-label="Starts at" required type="datetime-local" value={walkInAt} onChange={event => setWalkInAt(event.target.value)} className={inputClass} /></GoalField> : null}
             </div>
