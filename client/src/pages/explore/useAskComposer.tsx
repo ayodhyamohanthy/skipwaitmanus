@@ -109,6 +109,9 @@ export type AskComposer = {
   work: PinnedWorkState;
   /** D-022: the posted role this ask opened from, while it still applies. */
   postSelection: OpportunityAskSearch | null;
+  /** D-174: pick a posted role in place. Replaces the whole selection - a
+   * linkless pick clears any stale link and identity from an earlier pick. */
+  selectPost(selection: OpportunityAskSearch | null): void;
   /** Fresh form for a new company; the resume carries unless clearResume is set. */
   resetForm(options?: { clearResume?: boolean }): void;
   /** Clear the terminal send view and error after the drawer has closed. */
@@ -174,6 +177,15 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     if (postSelection?.jobUrl) setUrl(current => current || postSelection.jobUrl!);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // D-174 in-place pick from a door: the selection is REPLACED, never merged -
+  // a linkless post clears the previous post's link so no stale link, pass
+  // check or opportunity id can leak into the next ask.
+  const selectPost = (selection: OpportunityAskSearch | null) => {
+    setPostSelection(selection);
+    setUrl(selection?.jobUrl ?? "");
+    setDraftState("idle");
+  };
 
   // A saved draft fills only what is still empty for the company it was written for.
   useEffect(() => {
@@ -412,6 +424,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       toggle: toggleWork,
     },
     postSelection,
+    selectPost,
     resetForm,
     clearAfterClose,
   };
