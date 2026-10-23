@@ -285,4 +285,38 @@ All 45 owner messages from Oct 23 ~20:37 IST through Oct 24 1:18 IST (conversati
 - #600 (goal flash fix, merge 26a35834) is merged and QA-passed live; merge is not deploy and not flag-release.
 - Bug-report directives from the same window (sign-in CTA, send-ask CTA, "my asks not reflecting", credits confusion) route through existing journey/registry rows, not new decisions; the D-173 referral-words row owns the terminology application under the D-132/D-152 freeze.
 - Branch-coverage pass (all 27 open PR branches, Oct 24 1:22 IST): no open branch's docs diff reintroduces availability framing, open-first grouping, the old internal-audience fork, or ask-expiry clauses; the only "expiry" additions are the D-141 agent-key expiry-control registry notes (#595/#596/#598), which are correct and unrelated. #592's DECISIONS.md edit carries no stale availability/expiry content. No reassertion risk found on merge.
+### Message-to-decision coverage (all 45 owner messages, Oct 23 20:37 IST - Oct 24 1:18 IST, grouped)
+
+1. Goal-UI completion for the whole app with collaborative child tasks (phonemsg-01M5MMTE8XPG4Q3BZAJ1WR36K1) -> standing goal-UI lane (D-048 rows, D-168 release rows in #592); in flight, no decision change.
+2. Flash of old design before the new UI (phonemsg-01M5MX4KWB09PKKC7E6XP3BN5V, phonemsg-01M5MX5BFXQ060R444J7GKX3W2) -> bug, fixed by #600 (merge 26a35834, live QA pass); registry row flip to done pending.
+3. "Open to requests should show first" (phonemsg-01M5MX75AC41CEM8BGFGD1ZBS5) -> D-169 -> SUPERSEDED by D-176 ("the concept of open to requests doesnt map well", phonemsg-01M5N0ED9V8M2929BBYJY7QXCG) -> implemented in draft PR #609.
+4. Career-portal job IDs on company click, no-URL seekers, keyword search like LinkedIn (phonemsg-01M5MX8N2SN1E6PMN7ZZJGNW94, phonemsg-01M5MX8ZT4J9XG776CCN42DBG4, phonemsg-01M5MXCZTH5QSAVCVHC5A82P8Q) -> D-170 (pending build) feeding D-174/D-175.
+5. Sign-in CTA not working (phonemsg-01M5MXF1C8DQ86C6Y7TXJQY01X) -> bug, PR #595 (Tier 1, held under D-151).
+6. Cross-company pasted job links redirect (phonemsg-01M5MXG6K176B1KSMWVZRHW17Z) -> D-171 (pending build).
+7. Automatic device sign-in prompts, phone or laptop (phonemsg-01M5MXMBCS305A75Z7GF957GZ3, phonemsg-01M5MYZK70EN9XGAR8W8NH2NRS) -> D-172 (constraints recorded; free mechanism qualification pending; no paid default).
+8. Send-ask CTA blocked after URL entry (phonemsg-01M5MXNSDQ0VJMG8M3MVQWT8JF) -> bug, PR #596 (CI green, in review).
+9. Credits confusion + terminology + plan structure (phonemsg-01M5MXQ324YGRXAPCCPXZMTDAJ, phonemsg-01M5MXXGE16QPDDC6ES20K5SMN, phonemsg-01M5MXXXXCF1Z6SSY4F2420XB9, phonemsg-01M5MXYDWXDCYCV39DP8VHYCWV, phonemsg-01M5MY021FHBE9CCBP9YVNCAEQ, phonemsg-01M5MYCBQ8BGB3NDKR5QPDWKRN) -> D-173; application row D-173-referral-words-goal-ui rides #598; D-132/D-152 amounts and names stay frozen.
+10. "My asks are not reflecting" (phonemsg-01M5MXQYYK9JJJBY0Q1C81V1TS) -> bug report routed to the journey/ask-state rows; no new decision.
+11. Push directives (phonemsg-01M5MYS5WDHAMNZ7TF602GTK65, phonemsg-01M5MYSQVDTXCYGCPBR001P7Q9, phonemsg-01M5MZ7J6YYH3ZRBJNKT6TCZJS) -> fulfilled by the #605/#606 merges (verified merge SHAs 25ac26e0, a64168cc).
+12. Journey definition verbatim (phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2) -> D-174, including the launch expiry suspension (Superseded list); build in flight.
+13. Coverage: all companies, all live jobs equal to career portals, "update in repo" (phonemsg-01M5N06NBY8DC123RMAPV44NYR, phonemsg-01M5N07FQX1Q4Y0GXPDW5WPPTQ, phonemsg-01M5N4JDMXPRS7125RE7HZ00QP) -> D-175; feasibility open, honest-coverage rule stands.
+14. Recruiter/HR posts + employee referral drives (phonemsg-01M5N3Q94QHYJK0VEHA3WBERS0) -> D-177; the internal-audience fork resolved by phonemsg-01M5N4XQX4YY5R18T59S38BYJ5 (see D-177).
+15. Agent portal access, any-agent-paid, Skippy parity (phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M, phonemsg-01M5N3T0SZFH12MGASAEZ6MSCX, phonemsg-01M5N3XV03FBKPFXF8DQPEXF50) -> D-178; free-allowance agent eligibility pending (owner question 2).
+16. World-class compass (phonemsg-01M5N40P9PH06V6Z6SAS3K9E0S) -> compass note (already on main).
+17. ATS completion validation (phonemsg-01M5N4DC140W9347XWW34NAWX1) -> D-179 (packet + #608).
+18. Machines end-to-end, less manual (phonemsg-01M5N4G72YFMW48RTAM6M2KFY0) -> automation-default compass note (#608 branch).
+19. "If there's any objection find a work around" (phonemsg-01M5N4K9S2B4ATV89A9QDBXWTB) -> bounded to legitimate routes only (free, legal, authorized); no account-risk scraping, no permission bypass.
+20. LinkedIn-scale vision (phonemsg-01M5N4NVG20T9DK301WK4SS90D) -> recorded as ambition above and on the #608 compass tail; never a published competitive-absence claim.
+21. Reconciliation directives + push-status question (phonemsg-01M5N4QREJP4H8AC0TPRHJ56TR, phonemsg-01M5N4RED3DBEA00XNTN9QJF71, phonemsg-01M5N4TCJF1WZZXB284WSJZ4T7, phonemsg-01M5N4Q70G1NHWX3ASVB11RTCC) -> this reconciliation; push status answered with verified merge links.
+22. Doubts invitations (phonemsg-01M5N4TXJK095QKVBH3T7M1ZK1, phonemsg-01M5N50S4KV48KCB0MK4TXCE5H) -> owner question 1 resolved (D-177 audience), question 2 pending (D-178 free allowance).
+23. No decision content: the GitHub ruleset console paste (phonemsg-01M5MQK0QEFDM5MDTNA8QR2CQ7) and "Ok" (phonemsg-01M5MYHSF9TA7XX55RFJNSK2ZK).
+
+### Branch cross-reference findings (beyond keyword diffs)
+
+- #575 (agent/queue/d048-p3-referrer) ADDS copy "Seekers see only that someone at the company is open to requests" - contradicts D-176 (no visible availability status); reconcile that copy before merge.
+- Stale branches with availability-framed code and no open PR (do not resume without rebasing onto post-D-176 semantics): agent/claude/goal-ui, agent/opencode/d048-phase-3-find, agent/instinct/goal-ui-w1-comps, agent/workbuddy/kit-v4-safety-reports, agent/workbuddy/v4-landing.
+- AGENTS.md (P0-allocated-ask-stuck status line) still described the 7-day unclaimed expiry as live; D-174 suspended ask expiry for launch - amendment marker added there in this PR; the runtime sweep stays owned by the D-174-expiry-clock-removal row.
+- Scans covered changed lines versus main on every open branch; branches are NOT rebased, so their base copies of this register are old - workers must read the register on main, never from a branch base.
+- All other open branches: no contradictory changed lines found in docs or code scans.
+
 - Open and pending: D-178 free-allowance agent eligibility (owner asked Oct 24 1:20 IST); level-based pricing research (D-056 freeze stands); free human credit allowance unchanged.
