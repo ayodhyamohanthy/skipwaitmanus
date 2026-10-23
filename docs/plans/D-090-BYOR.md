@@ -147,7 +147,7 @@ All of it is behind `BYOR_LINK_ENABLED` (server) and `VITE_BYOR_LINK` (client), 
 ## 5. Files
 
 - **In scope (edit only these):**
-  - New: `drizzle/deploy/0107_ask_invites.sql` (re-check the number), `shared/askInvites.ts`, `server/askInvites.ts`, `server/askInviteRoutes.ts`, `server/askInviteSweep.ts`, `client/src/components/requests/AskInviteSheet.tsx`, `client/src/components/requests/askInviteApi.ts`, `client/src/pages/AskInviteLink.tsx`, and their tests.
+  - New: `drizzle/deploy/0111_ask_invites.sql`, `shared/askInvites.ts`, `server/askInvites.ts`, `server/askInviteRoutes.ts`, `server/askInviteSweep.ts`, `client/src/components/requests/AskInviteSheet.tsx`, `client/src/components/requests/askInviteApi.ts`, `client/src/pages/AskInviteLink.tsx`, and their tests.
   - `drizzle/schema.ts` (new table only), `server/schemaReconcile.ts` (table, unique indexes, FK).
   - `server/db.ts` (**surgical only**): `deliverWaitingAskTx`, `listDeliverableWaitingAsksTx`, `tryDeliverWaitingAsk`, the close hooks in `withdrawCompanyReferralRequest` and `expireStalePendingReferralRequest`, and the assignment hook at the end of `deliverWaitingAskTx`. No other function body.
   - `server/coverageDeliverySweep.ts` only if the reserved-ask routing needs it (preferred: keep it in `tryDeliverWaitingAsk`).
@@ -162,7 +162,7 @@ All of it is behind `BYOR_LINK_ENABLED` (server) and `VITE_BYOR_LINK` (client), 
 ## 6. Steps (one commit each)
 
 **C1 — contract, flag, migration.**
-Add the `askInviteLinks` table to `drizzle/schema.ts`, `0107_ask_invites.sql`, the `server/schemaReconcile.ts` entry (table, `ask_invites_token_hash_unique`, `ask_invites_active_request_unique`, `ask_invites_request_idx`, `ask_invites_status_expiry_idx`, FK cascade to `referralRequests`), `shared/askInvites.ts` (statuses, `ASK_INVITE_TTL_MS = 7 days`, `ASK_INVITE_RESERVATION_MS = 7 days`, `ASK_INVITE_WEEKLY_CAP = 5`, landing/claim state types), `.env.example` (`BYOR_LINK_ENABLED=`, `VITE_BYOR_LINK=`), `src/worker.ts`, `client/src/lib/flags.ts`, and the config-contract test. Tests: config contract + a schema round-trip. Commit: `Add the BYOR link table, flag and contract`.
+Add the `askInviteLinks` table to `drizzle/schema.ts`, `0111_ask_invites.sql`, the `server/schemaReconcile.ts` entry (table, `ask_invites_token_hash_unique`, `ask_invites_active_request_unique`, `ask_invites_request_idx`, `ask_invites_status_expiry_idx`, FK cascade to `referralRequests`), `shared/askInvites.ts` (statuses, `ASK_INVITE_TTL_MS = 7 days`, `ASK_INVITE_RESERVATION_MS = 7 days`, `ASK_INVITE_WEEKLY_CAP = 5`, landing/claim state types), `.env.example` (`BYOR_LINK_ENABLED=`, `VITE_BYOR_LINK=`), `src/worker.ts`, `client/src/lib/flags.ts`, and the config-contract test. Tests: config contract + a schema round-trip. Commit: `Add the BYOR link table, flag and contract`.
 
 **C2 — create, revoke, My asks payload.**
 `server/askInvites.ts` (`createAskInvite`, `revokeAskInvite`, `listAskInvitesForRequests`, token hashing), `server/askInviteRoutes.ts` (create/revoke), registration in `server/_core/index.ts`, the `askInvite` field in the `/mine` block, `requestsApi.ts`. Tests: §7 S1–S4. Commit: `Create and revoke BYOR links from My asks`.
