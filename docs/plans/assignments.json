@@ -1715,6 +1715,18 @@
    "status": "in-review",
    "dependsOn": [],
    "note": "Coordinator bounded fix (Main, Oct 23; user report phonemsg-01M5MX4KWB09PKKC7E6XP3BN5V + clarification phonemsg-01M5MX5BFXQ060R444J7GKX3W2): the app revealed at font-ready before React's first commit, so the static landing snapshot inside #root painted ~1s before GoalLandingV9 mounted over it. Scope: client/index.html + client/src/main.tsx only - reveal is gated on the first React commit; the 2.5s failsafe now fires only when the bundle never parsed (__swBootAlive unset, blocked-script fallback keeps the snapshot), plus a 12s absolute failsafe. Verified by playwright timeline sampling on the production build: zero snapshot paints in slow-bundle and fast loads at 1280/390; blocked bundle still degrades to the static snapshot. Known edge: a bundle not yet executing at 2.5s can still paint the snapshot once (indistinguishable from blocked JS)."
+  },
+  {
+   "id": "D-166-founder-decisions-sync",
+   "title": "Push the founder's Oct 23 decisions into the working instructions (D-169..D-173)",
+   "row": "D-166",
+   "packet": null,
+   "tier": 2,
+   "lane": "process",
+   "branch": "agent/coordinator/founder-decisions-sync",
+   "status": "in-review",
+   "dependsOn": [],
+   "note": "Owner instruction (iMessage phonemsg-01M5MYS5WDHAMNZ7TF602GTK65 'Push the decisions as instructions' + phonemsg-01M5MYSQVDTXCYGCPBR001P7Q9 'So old decisions are updated' + phonemsg-01M5MZ7J6YYH3ZRBJNKT6TCZJS 'Push then'). Scope: docs/DECISIONS.md + the AGENTS.md compass amendment line only. Adds D-169 (open-first directory), D-170 (keyword job search), D-171 (cross-company verified switch preserving the draft), D-172 (automatic device-saved sign-in prompt with native-flow guardrails), D-173 (buyer-facing 'referrals' terminology + plan allowance/extras structure). Supersession limited to the 'credits' name (wording only); no price, count, SKU, security or auth-mechanism content decided; unresolved allowances/prices/level-cost stay open. D-168 is claimed on agent/claude/ceo-oct23-release-rows, so numbering starts at D-169."
   }
  ]
 }
