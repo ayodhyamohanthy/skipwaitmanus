@@ -11,3 +11,9 @@ Pick work only from the priority queue in [`docs/KIT_V4_BUILD_PLAN.md`](./docs/K
 Push to `main` only when everything is green (D-082): `main`'s latest CI, the full gate on your commit merged with `origin/main`, and GitHub CI on that exact commit (pull request first). While `main` is red, push nothing but the fix.
 
 @AGENTS.md
+
+
+Scoped owner routing authority (Oct 23): see docs/DECISIONS.md, section "Scoped owner routing release and standing procedural authority, Oct 23, 2026". Release only the #529 builder routing hold using the existing holder-report mechanism; independent review and landing stay blocked. Analogous procedural unblocking of eligible priority work is covered after a repo record, without repeated owner asks. No identity, review, CI, provenance, product or security waiver; #508 Ayu-only, D-035 rejection and phone holds unchanged.
+
+
+Derived one-build claim scope (Oct 23): docs/DECISIONS.md, Derived single-build procedural claim exception, permits actual Forge · fd06 one atomic claim of D-048-p3-live-review-requests after record publication and fresh eligibility/ownership checks under existing c6b8ec0b standing authority. Preserve sticky #529 blocked report and all substantive holds; no CEO identity or broad exception.

@@ -87,3 +87,9 @@ Every screen, landing to admin, is redesigned to the goal doctrine, UI and UX, n
 ## Owner-registered follow-ups, Oct 22
 
 registered by owner Ayu, coordinator unavailable, Oct 22. Scoped owner exception to D-083/D-134 registration authority for PR #462 (`PREMIUM-total-label`) and PR #463 (`D-067-outbox-fixture-repair`) only. Both packets are registered together immediately after the two live regressions that newer D-149 puts first; all pre-existing rows retain their order and content. Normal origin/main picker claims, full exact-candidate gate, GitHub CI and independent Tier 1 review still apply. Neither implementation nor production operations are authorized by registration alone. See the two packets for owned paths and evidence.
+
+
+Scoped owner routing authority (Oct 23): see docs/DECISIONS.md, section "Scoped owner routing release and standing procedural authority, Oct 23, 2026". Release only the #529 builder routing hold using the existing holder-report mechanism; independent review and landing stay blocked. Analogous procedural unblocking of eligible priority work is covered after a repo record, without repeated owner asks. No identity, review, CI, provenance, product or security waiver; #508 Ayu-only, D-035 rejection and phone holds unchanged.
+
+
+Derived one-build claim scope (Oct 23): docs/DECISIONS.md, Derived single-build procedural claim exception, permits actual Forge · fd06 one atomic claim of D-048-p3-live-review-requests after record publication and fresh eligibility/ownership checks under existing c6b8ec0b standing authority. Preserve sticky #529 blocked report and all substantive holds; no CEO identity or broad exception.

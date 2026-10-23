@@ -61,3 +61,6 @@ Skippy is a chat front door to what the product already does. It asks, shows an 
 
 ## Pricing
 One source of truth: [`docs/PRICING.md`](PRICING.md) (D-146: Lovable-style plans with credit dropdowns only; fixed passes off; packs on). Decisions are recorded in `docs/DECISIONS.md` before anything is built on them. Plan names (D-152): Entry level Referrers, Mid level Referrers, Senior level Referrers; plan ids, prices, credits and benefits unchanged. Writing rule (D-153, frozen): intent reaches users faster anywhere - every page says plainly what users can do, what they get and what it costs, and promises only what works today.
+
+
+Scoped owner routing authority (Oct 23): see docs/DECISIONS.md, section "Scoped owner routing release and standing procedural authority, Oct 23, 2026". Release only the #529 builder routing hold using the existing holder-report mechanism; independent review and landing stay blocked. Analogous procedural unblocking of eligible priority work is covered after a repo record, without repeated owner asks. No identity, review, CI, provenance, product or security waiver; #508 Ayu-only, D-035 rejection and phone holds unchanged.
