@@ -1,3 +1,5 @@
+import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
+import { creditReservedPhrase } from "@shared/moneyCopy";
 import { AlertCircle, CheckSquare, ChevronDown, ListFilter, LoaderCircle, ShieldCheck } from "lucide-react";
 import { AdminSignInCta } from "@/components/admin/AdminSignInCta";
 import React, { useEffect, useMemo, useState } from "react";
@@ -25,7 +27,7 @@ function rowContext(item: AdminApprovalQueueItem) {
 }
 
 function metaChips(item: AdminApprovalQueueItem) {
-  if (item.kind === "referral_request") return <>{item.meta.targetRoleUrl ? <a href={item.meta.targetRoleUrl} target="_blank" rel="noreferrer" className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-[10px] font-bold text-[#505050] hover:border-[#141414] hover:bg-[#f5f5f5] hover:text-black">Role link</a> : null}<span className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-[10px] font-bold text-[#505050]">1 credit reserved</span>{item.meta.waitingForCoverage && <span className="rounded-full border border-[#b45309]/30 bg-[#b45309]/10 px-2.5 py-1 text-[10px] font-bold text-[#B45309]">Waiting for coverage</span>}</>;
+  if (item.kind === "referral_request") return <>{item.meta.targetRoleUrl ? <a href={item.meta.targetRoleUrl} target="_blank" rel="noreferrer" className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-[10px] font-bold text-[#505050] hover:border-[#141414] hover:bg-[#f5f5f5] hover:text-black">Role link</a> : null}<span className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-[10px] font-bold text-[#505050]">{creditReservedPhrase(ASK_LEVEL_COST_CLIENT)}</span>{item.meta.waitingForCoverage && <span className="rounded-full border border-[#b45309]/30 bg-[#b45309]/10 px-2.5 py-1 text-[10px] font-bold text-[#B45309]">Waiting for coverage</span>}</>;
   if (item.kind === "referrer_enrollment") return <><span className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-[10px] font-bold text-[#505050]">Work email verified</span>{item.meta.referrerEmail ? <span className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-[10px] font-bold text-[#505050]">{item.meta.referrerEmail}</span> : null}</>;
   return <><span className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-[10px] font-bold text-[#505050]">{item.meta.tokenCount ?? 0} token{(item.meta.tokenCount ?? 0) === 1 ? "" : "s"}</span>{item.meta.reason ? <span className="rounded-full border border-[#b45309]/30 bg-[#b45309]/10 px-2.5 py-1 text-[10px] font-bold text-[#B45309]">{item.meta.reason}</span> : <span className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-[10px] font-bold text-[#505050]">{item.meta.userEmail || `User #${item.id}`}</span>}</>;
 }

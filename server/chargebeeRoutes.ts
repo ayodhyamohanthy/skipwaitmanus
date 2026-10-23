@@ -117,7 +117,10 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if (!isTokenPackId(itemPriceId)) return res.status(400).json({ error: "Choose a supported token currency" });
       const billingCountry = req.body?.billingCountry;
       if (billingCountry !== "IN" && billingCountry !== "INTL") return res.status(400).json({ error: "Choose India or international billing" });
-      const role = roleFromBody(req.body?.role);
+      const rawRole = req.body?.role;
+      if (rawRole !== undefined && rawRole !== "job_seeker" && rawRole !== "referrer") return res.status(400).json({ error: "Choose a valid account role" });
+      const role = roleFromBody(rawRole);
+      if (req.body && Object.prototype.hasOwnProperty.call(req.body, "quantity") && req.body.quantity === null) return res.status(400).json({ error: "Choose a whole number of tokens between 1 and 1,000" });
       const quantity = req.body?.quantity ?? 1;
       if (!isTokenQuantity(quantity)) return res.status(400).json({ error: "Choose a whole number of tokens between 1 and 1,000" });
       const pack = CHARGEBEE_TOKEN_PACKS[itemPriceId];

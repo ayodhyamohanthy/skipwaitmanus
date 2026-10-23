@@ -33,6 +33,7 @@ Money rules refined by the owner on Oct 16 2026 (details in `docs/DECISIONS.md`)
 
 ## Team rules (owner standing instructions, Oct 16 2026, relayed by the parent - numbered, binding for every agent and model)
 0. **Frozen decisions bind.** once the founder freezes a decision it is the single source every agent follows from then on. No agent builds against anything older unless the founder reopens it. Record it in DECISIONS.md first. (D-146)
+- **Writing rule (D-153, frozen).** Intent should reach users faster anywhere: names, CTAs and benefit wording state the actual action, outcome and cost plainly, and promise only what works today.
 1. **Read before acting.** At the START of every session, read this file, `docs/DECISIONS.md` (the current decisions list, newest first, including D-030 login rule, D-031 money rule and the product compass above) before any work. The whole team stays in sync on decisions.
 2. **Money rule (D-031).** Never choose money-spending options. Choose free or money-earning options only. Paid plans and add-ons are dropped, not proposed as defaults.
 3. **Meritocracy (D-032).** If you see a better approach than a recorded decision, always recommend it with evidence. The founder takes the call: ask him, never override a decision on your own.
@@ -576,3 +577,11 @@ The build brief, rules, step-by-step tests and proof, name decision and pre-laun
 
 ## Claim-your-company (D-107, draft)
 Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COMPANY_CLAIM (off). No per-person data or account-role changes. Same-account, single-use email link. Current-month aggregates hidden below 3 referrers or answered asks. See docs/DECISIONS.md D-107. QA and delivery verification required before enablement.
+
+## Owner-registered follow-ups, Oct 22
+
+registered by owner Ayu, coordinator unavailable, Oct 22. Scoped owner exception to D-083/D-134 registration authority for PR #462 (`PREMIUM-total-label`) and PR #463 (`D-067-outbox-fixture-repair`) only. Both packets are registered together immediately after the two live regressions that newer D-149 puts first; all pre-existing rows retain their order and content. Normal origin/main picker claims, full exact-candidate gate, GitHub CI and independent Tier 1 review still apply. Neither implementation nor production operations are authorized by registration alone. See the two packets for owned paths and evidence.
+
+### Owner merge-policy amendment, Oct 23, 2026
+
+The scoped amendment in `docs/DECISIONS.md` supersedes repeating a full local gate solely because main moves. Conflict-free docs/registry integrations with no runtime delta use focused checks, separate independent delta review and required CI. Runtime PRs use supported GitHub merge/queue with actual required merge-result CI, never historical-head CI or a bypass. D-035 and phone-file/history holds remain unchanged.

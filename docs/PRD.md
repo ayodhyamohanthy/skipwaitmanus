@@ -28,8 +28,8 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 | GO-LIVE-1b (PR #359) | - | QA + build | awaiting QA second review + PASS_SALES_ENABLED confirmation |
 | W0 goal shell (PR #361) | L6 | build | designer fixes pushed; re-review pending |
 | W1 comps: /explore + ask drawer (w1-comps) | L1 | build | pushed; designer review pending; /queue held for #353 |
-| Demand list (D-086) | L1 | build | approved; after #361 + drawer review; mocks in hand |
-| BYOR one-time link (idea 2) | L2 | build | approved (D-090); packet `docs/plans/D-090-BYOR.md`; gated on the demand list (D-086) |
+| Demand list (D-086) | L1 | build | approved; its gate is open (#361, #362/#472); queued as `D-086-demand-list`, packet to write (D-154); mocks in hand |
+| BYOR one-time link (idea 2) | L2 | build | approved (D-090); packet `docs/plans/D-090-BYOR.md`; waits for `D-086-demand-list` in the queue (D-154) |
 | Employee request-inbox link (idea 1) | L4 | design | after idea 2 |
 | Sourced bonus pages (idea 3) | L5 | design | after idea 1 |
 | Bedrock AI provider plan | - | build | plan with owner; AWS access needed |
@@ -60,4 +60,4 @@ Skippy is a chat front door to what the product already does. It asks, shows an 
 - **Before any seeker-facing launch:** confirm provider data terms, set the global spend cap, pass the red-team injection test, founder sees a demo on the live URL, run a trademark and name-clearance search for "Skippy" (also a known food brand).
 
 ## Pricing
-One source of truth: [`docs/PRICING.md`](PRICING.md) (D-146: Lovable-style plans with credit dropdowns only; fixed passes off; packs on). Decisions are recorded in `docs/DECISIONS.md` before anything is built on them.
+One source of truth: [`docs/PRICING.md`](PRICING.md) (D-146: Lovable-style plans with credit dropdowns only; fixed passes off; packs on). Decisions are recorded in `docs/DECISIONS.md` before anything is built on them. Plan names (D-152): Entry level Referrers, Mid level Referrers, Senior level Referrers; plan ids, prices, credits and benefits unchanged. Writing rule (D-153, frozen): intent reaches users faster anywhere - every page says plainly what users can do, what they get and what it costs, and promises only what works today.
