@@ -107,6 +107,39 @@ describe("Goal /post-opportunity wizard", () => {
     expect(String(post?.[1]?.body)).toContain('"showPosterFirstName":true');
   });
 
+  it("pins compensation payload parity with the server contract", async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === ACCESS_PATH) return ok(verified);
+      if (url === "/api/opportunities" && init?.method === "POST") return ok({ opportunity: { companyDomain: "acme.com", roleTitle: "Designer" } });
+      return ok({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPost();
+    fireEvent.change(await screen.findByLabelText("Role or job title"), { target: { value: "Designer" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    fireEvent.change(await screen.findByLabelText("Compensation"), { target: { value: "30-40 LPA" } });
+    fireEvent.click(screen.getByRole("button", { name: /Publish privately/ }));
+    await waitFor(() => expect(fetchMock.mock.calls.some(call => call[0] === "/api/opportunities")).toBeTruthy());
+    const post = fetchMock.mock.calls.find(call => call[0] === "/api/opportunities");
+    expect(String(post?.[1]?.body)).toContain('"compensation":"30-40 LPA"');
+  });
+
+  it("omits the compensation key from the payload when the field is left blank", async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === ACCESS_PATH) return ok(verified);
+      if (url === "/api/opportunities" && init?.method === "POST") return ok({ opportunity: { companyDomain: "acme.com", roleTitle: "Designer" } });
+      return ok({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPost();
+    fireEvent.change(await screen.findByLabelText("Role or job title"), { target: { value: "Designer" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Publish privately/ }));
+    await waitFor(() => expect(fetchMock.mock.calls.some(call => call[0] === "/api/opportunities")).toBeTruthy());
+    const post = fetchMock.mock.calls.find(call => call[0] === "/api/opportunities");
+    expect(String(post?.[1]?.body)).not.toContain('"compensation"');
+  });
+
   it("requires a start time before a walk-in can reach timing", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string) => (url === ACCESS_PATH ? ok(verified) : ok({}))));
     renderPost();
