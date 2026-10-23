@@ -29,7 +29,7 @@ const JOB = [
   "- Kubernetes in production",
 ].join("\n");
 
-const quoteOk: SkippieQuote = { level: 5, cost: 1, totalAvailable: 3, shortfall: 0 };
+const quoteOk: SkippieQuote = { level: 5, cost: 1, totalAvailable: 3, shortfall: 0, covered: true };
 
 function makeDeps(overrides: Partial<SkippieSeekerDeps> = {}) {
   const calls = { createAsk: [] as unknown[][], analyzeFit: 0, extractResumeText: 0, fetchJobText: 0 };
@@ -108,7 +108,7 @@ describe("seeker Skippy happy path", () => {
 
 describe("cost and credit rules", () => {
   it("quotes the live price and refuses drift: cost comes from getQuote, never hardcoded", async () => {
-    const levelQuote: SkippieQuote = { level: 7, cost: 7, totalAvailable: 10, shortfall: 0 };
+    const levelQuote: SkippieQuote = { level: 7, cost: 7, totalAvailable: 10, shortfall: 0, covered: true };
     const getQuote = vi.fn(async () => levelQuote);
     const { deps, calls } = makeDeps({ getQuote });
     const { session, replies } = await drive(7, newSkippieSession(), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
@@ -118,7 +118,7 @@ describe("cost and credit rules", () => {
   });
 
   it("no credit means no Send and nothing is created or charged", async () => {
-    const broke: SkippieQuote = { level: 5, cost: 1, totalAvailable: 0, shortfall: 1 };
+    const broke: SkippieQuote = { level: 5, cost: 1, totalAvailable: 0, shortfall: 1, covered: true };
     const { deps, calls } = makeDeps({ getQuote: vi.fn(async () => broke) });
     const { session, replies } = await drive(7, newSkippieSession(), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
     expect(replies.join("\n")).toContain("Add");
@@ -126,6 +126,52 @@ describe("cost and credit rules", () => {
     expect(calls.createAsk).toHaveLength(0);
     expect(session.step).toBe("quote");
     expect(session.createdRequestId).toBeUndefined();
+  });
+
+  it("a known-uncovered company waits free even with a short wallet - no top-up push, ask is created", async () => {
+    const uncovered: SkippieQuote = { level: 6, cost: 6, totalAvailable: 0, shortfall: 6, covered: false };
+    const createAsk = vi.fn(async () => ({ requestId: 888, companyDomain: "newco.com", coverageStatus: "waiting_for_company_coverage" as const }));
+    const { deps } = makeDeps({ getQuote: vi.fn(async () => uncovered), createAsk });
+    const { session, replies } = await drive(7, newSkippieSession(), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
+    const blob = replies.join("\n");
+    expect(blob).toContain("waits - free -");
+    expect(blob).toContain("uses 6 credits only at that moment");
+    expect(blob).not.toContain("Add credits on /plans first");
+    expect(blob).toContain("6 credits are used and it goes live");
+    expect(blob).not.toContain("never charged");
+    expect(createAsk).toHaveBeenCalledTimes(1);
+    expect(session.createdRequestId).toBe(888);
+  });
+
+  it("unknown coverage with a short wallet pushes no purchase: the server decides at send, nothing is charged on refusal", async () => {
+    const unknown: SkippieQuote = { level: 6, cost: 6, totalAvailable: 0, shortfall: 6, covered: null };
+    const createAsk = vi.fn(async () => { throw new Error("Not enough referral credits for this ask"); });
+    const { deps } = makeDeps({ getQuote: vi.fn(async () => unknown), createAsk });
+    const { replies } = await drive(7, newSkippieSession(), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
+    const blob = replies.join("\n");
+    expect(blob).not.toContain("Add credits on /plans first");
+    expect(blob).toContain("Nothing was charged");
+    expect(createAsk).toHaveBeenCalledTimes(1);
+  });
+
+  it("a company that opens up after the free-waiting confirmation is never charged against the old words", async () => {
+    // Quote step resolves uncovered (waits free); by send time an employee is
+    // open. A funded wallet must re-confirm the real price first.
+    const uncovered: SkippieQuote = { level: 6, cost: 6, totalAvailable: 8, shortfall: 0, covered: false };
+    const coveredNow: SkippieQuote = { level: 6, cost: 6, totalAvailable: 8, shortfall: 0, covered: true };
+    let calls = 0;
+    const getQuote = vi.fn(async () => (calls++ === 0 ? uncovered : coveredNow));
+    const createAsk = vi.fn(async () => ({ requestId: 890, companyDomain: "acme.com", coverageStatus: "covered" as const }));
+    const { deps } = makeDeps({ getQuote, createAsk });
+    const first = await drive(7, newSkippieSession(), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
+    const blob = first.replies.join("\n");
+    expect(blob).toContain("changed since you confirmed");
+    expect(blob).toContain("Nothing was sent and nothing was charged");
+    expect(createAsk).not.toHaveBeenCalled();
+    // The fresh quote is stored, so the next Send it confirms the new price.
+    const second = await drive(7, first.session, [{ kind: "confirm_send", send: true }], deps);
+    expect(createAsk).toHaveBeenCalledTimes(1);
+    expect(second.session.createdRequestId).toBe(890);
   });
 
   it("a waiting (no-referrer) ask is held and spends nothing", async () => {
