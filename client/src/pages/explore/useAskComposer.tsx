@@ -22,7 +22,8 @@ import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUp
 import { useSeekerSetup } from "@/lib/useSeekerSetup";
 import { countWords } from "@shared/askQuality";
 import type { PublicCompany } from "@shared/companies";
-import { askCostLine, CREDIT_ENDED_CAVEAT, type AskCostLine } from "@shared/moneyCopy";
+import { askCostLine, CREDIT_ENDED_CAVEAT, creditUsedPhrase, type AskCostLine } from "@shared/moneyCopy";
+import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
 import { COMPANY_CAP_REACHED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { MAX_ASK_WORK_ITEMS } from "@shared/askWorkItems";
@@ -32,7 +33,7 @@ import { composeWhyMe, overLimitReasons, splitWhyMe, WHY_ME_MAX, type WhyMeReaso
 import type { AskResume, AskSentView } from "./AskDrawer";
 import { askIdempotencyKey, ASK_IDEMPOTENCY_KEY, buildAskBody } from "./askSend";
 import { linkHint, roleTitleFromUrl, type LinkHint } from "./findModel";
-import { goToSeekerSignIn } from "./signInHandoff";
+import { askSignInReturnTo, goToSeekerSignIn } from "./signInHandoff";
 
 const MIN_WORDS = 10;
 
@@ -144,9 +145,10 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     setReasons(current => (current.some(reason => reason.trim()) ? current : splitWhyMe(remoteDraft.note)));
   }, [remoteDraft, company]);
 
-  // The sign-in handoff prefill does the same on /ask, for its own company.
+  // /ask restores the handoff even without a directory match. Other surfaces
+  // still accept only a prefill belonging to their own resolved company.
   useEffect(() => {
-    if (!prefill || !company || prefill.companySlug !== company.slug) return;
+    if (!prefill || (window.location.pathname !== "/ask" && (!company || prefill.companySlug !== company.slug))) return;
     setUrl(current => current || prefill.targetRoleUrl);
     setReasons(current => (current.some(reason => reason.trim()) ? current : splitWhyMe(prefill.note)));
   }, [prefill, company]);
@@ -214,12 +216,9 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       return;
     }
     if (!isSignedIn) {
-      // Sign in first; the company, link and reasons come back on /ask, where the seeker finishes.
-      if (company && saveAskPrefill({ companySlug: company.slug, targetRoleUrl: url, note: composeWhyMe(reasons) })) {
-        goToSeekerSignIn("/ask");
-        return;
-      }
-      goToSeekerSignIn("/ask");
+      // Save the seeker's work even when the directory cannot resolve the company.
+      saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons) });
+      goToSeekerSignIn(askSignInReturnTo(window.location.pathname, window.location.search));
       return;
     }
     try {
@@ -280,7 +279,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
         detail: created.fastTrack
           ? `Only the ${where}employee whose link you used will see it. If they don’t pick it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}.`
           : created.waitingForCoverage
-            ? `No verified employee there can see it yet, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, 1 credit is used and it goes live; if you have no credit then, we hold it until you add one.`
+            ? `No verified employee there can see it yet, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, ${creditUsedPhrase(ASK_LEVEL_COST_CLIENT)} and it goes live; ${ASK_LEVEL_COST_CLIENT ? "if you do not have enough then, we hold it until you add more." : "if you have no credit then, we hold it until you add one."}`
             : `Verified ${where}employees can see it now. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`,
         slots: created.slots ? (created.slots.cap === null ? `Open asks ${created.slots.open}` : `Open asks ${created.slots.open} of ${created.slots.cap}`) : null,
         trackHref: `/conversation/${created.requestId}`,

@@ -1046,6 +1046,16 @@ export const askWorkItems = mysqlTable("askWorkItems", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("ask_work_items_request_piece_unique").on(table.referralRequestId, table.workItemId), index("ask_work_items_request_idx").on(table.referralRequestId, table.position)]);
 
+/** D-132 audit item 2 (0106): the job level and credit cost an ask was priced at, stored once at creation. Written only while ASK_LEVEL_COST is on; no row means the flat 1-credit price. */
+export const askCosts = mysqlTable("askCosts", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  jobLevel: int("jobLevel").notNull(),
+  creditCost: int("creditCost").notNull(),
+  source: varchar("source", { length: 40 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("ask_costs_request_unique").on(table.referralRequestId)]);
+
 export const resumeUploadSessions = mysqlTable("resumeUploadSessions", {
   id: varchar("id", { length: 64 }).primaryKey(),
   ownerId: int("ownerId").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -1147,6 +1157,26 @@ export const oauthAuthCodes = mysqlTable("oauthAuthCodes", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("oauth_auth_codes_user_idx").on(table.userId), index("oauth_auth_codes_expiry_idx").on(table.expiresAt)]);
 
+/**
+ * The kit landed journey (queue row 20 slices C/D): one row per ask that ended with
+ * a hire, holding the seeker's thank-you, whether they let the referrer keep it on
+ * their private wall, and the pay-it-forward answer. `deliveredAt` is the claim that
+ * makes the note send-at-most-once, and `conversationMessageId` (plain int, like
+ * `referralRequests.debitTransactionId`) records the thread message it produced.
+ */
+export const landedJourney = mysqlTable("landedJourney", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  seekerUserId: int("seekerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  referrerUserId: int("referrerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  thankYouMessage: text("thankYouMessage"),
+  shareOnWall: boolean("shareOnWall").default(false).notNull(),
+  payForwardChoice: varchar("payForwardChoice", { length: 12 }),
+  deliveredAt: timestamp("deliveredAt"),
+  conversationMessageId: int("conversationMessageId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("landed_journey_request_unique").on(table.referralRequestId), index("landed_journey_referrer_wall_idx").on(table.referrerUserId, table.shareOnWall)]);
 // Aggregate-only company access. Work-mailbox proof grants no employee/admin rights.
 export const companyAggregateAccess = mysqlTable("companyAggregateAccess", {
   id: int("id").autoincrement().primaryKey(),
@@ -1259,3 +1289,11 @@ export const seekerAgentEvents = mysqlTable("seekerAgentEvents", {
   detail: varchar("detail", { length: 600 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("seeker_agent_events_grant_idx").on(table.grantId, table.createdAt), index("seeker_agent_events_user_idx").on(table.userId, table.createdAt)]);
+
+/** D-148 (0107): the level a seeker picks for themselves (1-10). Display only (plans "Who you can ask"); never inferred. */
+export const seekerLevels = mysqlTable("seekerLevels", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  level: int("level").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("seeker_levels_user_unique").on(table.userId)]);

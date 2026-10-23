@@ -29,6 +29,7 @@ function makeDeps(overrides: Partial<DailyMoneyCheckDeps> = {}) {
     listLegacyPlanWallets: vi.fn(async () => []),
     listAskDeliverySpendsWhileWaiting: vi.fn(async () => []),
     listDoublyReversedSpends: vi.fn(async () => []),
+    listAskCostMismatches: vi.fn(async () => []),
     listRefundsAfterPickup: vi.fn(async () => []),
     listReferredPastDeadline: vi.fn(async () => []),
     sendEmail: vi.fn(async (input: Sent) => { sent.push(input); return true; }),
@@ -121,6 +122,27 @@ describe("daily-money-check (D-065)", () => {
     expect(sent[0]!.text).toContain("stale checkouts: 1221 unpaid checkout page(s) from 3 account(s) still pending after a day, oldest 2026-09-23T03:02:28.000Z");
     expect(sent[0]!.text).toContain("none credited, no money moved (oldest ids: #41)");
     expect(sent[0]!.text).not.toContain("stale checkout: payment");
+  });
+
+  it("lists checkouts older than the reconcile window as their own unverified finding, never as never paid", async () => {
+    const calls: Array<{ older: number; newer: number | null }> = [];
+    const { deps, sent } = makeDeps({
+      summarizeStaleCheckouts: vi.fn(async (older: Date, newer?: Date) => { calls.push({ older: older.getTime(), newer: newer ? newer.getTime() : null }); return newer ? { total: 0, users: 0, oldest: null, newest: null } : { total: 1246, users: 5, oldest: new Date("2026-09-23T03:02:28Z"), newest: new Date("2026-10-14T01:00:00Z") }; }),
+    });
+    await runJob(deps);
+    expect(calls[0]).toEqual({ older: NOW.getTime() - DAY, newer: NOW.getTime() - 7 * DAY });
+    expect(calls[1]).toEqual({ older: NOW.getTime() - 7 * DAY, newer: null });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("aged-out checkouts: 1246 checkout page(s) from 5 account(s) are older than 7 days, aged out of reconciliation");
+    expect(sent[0]!.text).toContain("payment status at the provider is unverified");
+    expect(sent[0]!.text).not.toMatch(/never paid|abandoned/i);
+    expect(sent[0]!.text).not.toContain("stale checkouts:");
+  });
+
+  it("stays quiet about aged-out checkouts when there are none", async () => {
+    const { deps, sent } = makeDeps({});
+    await runJob(deps);
+    expect(sent.join(" ")).not.toContain("aged-out checkouts");
   });
 
   it("caps the email lines while the subject keeps the full count", async () => {
@@ -310,7 +332,10 @@ describe("D-065-B slice checks over the in-memory database", () => {
   afterEach(() => { vi.unstubAllEnvs(); });
 
   it("finds a delivery spend on an ask still waiting and a spend reversed twice, never a legacy create charge or a single reversal, and writes nothing", async () => {
-    const deliverySpend = (id: number, requestId: number) => spendRow({ id, referenceId: String(requestId), idempotencyKey: `ask-delivery:${requestId}#1`, tokenCount: -1 });
+    // The real shape: spendCreditsTx writes `${referenceId}#${n}` and keys the row
+    // `${idempotencyKey}#${n}`, so a delivery spend is "601#1" / "ask-delivery:601#1".
+    // The old fixture wrote the bare id, a shape production never writes (D-065-C).
+    const deliverySpend = (id: number, requestId: number) => spendRow({ id, referenceId: `${requestId}#1`, idempotencyKey: `ask-delivery:${requestId}#1`, tokenCount: -1 });
     const reversal = (id: number, spendId: number, kind: string) => spendRow({ id, tokenCount: 1, kind, reversesTransactionId: spendId, idempotencyKey: `reversal-${id}` });
     seedHeldAsks({
       asks: [
@@ -343,6 +368,34 @@ describe("D-065-B slice checks over the in-memory database", () => {
     expect(sent[0]!.text).not.toContain("transaction #61 ");
     expect(sent[0]!.text).not.toContain("@");
     // Read-only: no ask or ledger row moved.
+    expect(store.rows(referralRequests)).toEqual(before.requests);
+    expect(store.rows(tokenTransactions)).toEqual(before.ledger);
+  });
+
+  it("finds a promo-bucket delivery spend too, and reports one finding per ask across bucket rows", async () => {
+    seedHeldAsks({
+      asks: [
+        // Delivery drawn from the promo bucket: kind promo_spend (spendCreditsTx).
+        askRow({ id: 604, referrerId: null, waitingForCoverage: true, debitTransactionId: null }),
+        // A level-priced ask drew from two buckets: two rows, one ask, one finding.
+        askRow({ id: 605, referrerId: null, waitingForCoverage: true, debitTransactionId: null }),
+      ],
+      spends: [
+        spendRow({ id: 71, kind: "promo_spend", source: "promo_grant", referenceId: "604#1", idempotencyKey: "ask-delivery:604#1", tokenCount: -1 }),
+        spendRow({ id: 72, referenceId: "605#1", idempotencyKey: "ask-delivery:605#1", tokenCount: -2 }),
+        spendRow({ id: 73, kind: "promo_spend", source: "promo_grant", referenceId: "605#2", idempotencyKey: "ask-delivery:605#2", tokenCount: -1 }),
+      ],
+    });
+    const before = { requests: structuredClone(store.rows(referralRequests)), ledger: structuredClone(store.rows(tokenTransactions)) };
+    const { deps, sent } = makeDeps({ listAllocatedAsks: listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting });
+    const output = await createDailyMoneyCheck(deps)({ nowMs: KIT_NOW, windowKey: "2026-10-18T12:00Z" });
+    expect(output.failed).toBe(0);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.subject).toBe("skipwait.me daily money check · 2 findings");
+    expect(sent[0]!.text).toContain("ask_spent_while_waiting: ask #604 still waits for coverage, but ledger row #71 spent a credit for it");
+    expect(sent[0]!.text).toContain("ask_spent_while_waiting: ask #605 still waits for coverage");
+    expect(sent[0]!.text.match(/ask_spent_while_waiting/g)).toHaveLength(2);
+    expect(sent[0]!.text).not.toContain("#73 ");
     expect(store.rows(referralRequests)).toEqual(before.requests);
     expect(store.rows(tokenTransactions)).toEqual(before.ledger);
   });

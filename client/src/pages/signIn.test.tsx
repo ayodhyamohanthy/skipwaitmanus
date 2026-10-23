@@ -59,6 +59,19 @@ describe("SignIn", () => {
     for (const name of ["LinkedIn", "Slack", "Microsoft"]) expect(screen.getByRole("button", { name: new RegExp(`Continue with ${name}`) })).toBeTruthy();
   });
 
+  it("the email field is reachable without a tap (D-095 item 2)", () => {
+    render(<SignIn />);
+    const emailInput = screen.getByLabelText(/email address/i);
+    expect(emailInput).toBeTruthy();
+    expect(screen.getByRole("button", { name: /send sign-in code/i })).toBeTruthy();
+    const seekerForm = screen.getByTestId("seeker-sign-in");
+    const focusable = seekerForm.querySelectorAll<HTMLElement>("input, button");
+    expect(focusable[0]).toBe(emailInput);
+    for (const name of ["Google", "GitHub", "Microsoft", "LinkedIn", "Slack"]) {
+      expect(screen.getByRole("button", { name: new RegExp(`Continue with ${name}`) })).toBeTruthy();
+    }
+  });
+
   it("ships no design-preview scaffolding", () => {
     render(<SignIn />);
     expect(screen.queryByText(/whole flow|design preview|preview/i)).toBeNull();

@@ -76,11 +76,11 @@ function AskRow({ request, nowMs }: { request: ReferralRequest; nowMs: number })
 function PageHeading({ slots, loading, failed = false, onReload, showAction = true }: { slots: Awaited<ReturnType<typeof fetchMyRequests>>["slots"]; loading: boolean; failed?: boolean; onReload: () => void; showAction?: boolean }) {
   return (
     <header className="grid gap-1 px-4 pt-6 pb-1 gdesk:px-5 gdesk:pt-7 gdesk:pb-2">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-g-display text-g-ink">My asks</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h1 className="text-g-display text-g-ink">Get your asks answered.</h1>
         {showAction ? (
-          <GoalButton variant="primary" asChild>
-            <Link href="/explore"><Plus aria-hidden="true" className="size-4" strokeWidth={1.75} />Ask for a referral</Link>
+          <GoalButton variant="ghost" asChild>
+            <Link href="/explore"><Plus aria-hidden="true" className="size-4" strokeWidth={1.75} />New ask</Link>
           </GoalButton>
         ) : null}
       </div>
@@ -96,6 +96,31 @@ function PageHeading({ slots, loading, failed = false, onReload, showAction = tr
         </p>
       )}
     </header>
+  );
+}
+
+/** This is navigation only: the existing conversation owns confirmation eligibility and mutations. */
+function NextStep({ requests }: { requests: ReferralRequest[] }) {
+  const target = requests.find(request => request.status === "intro_made")
+    ?? requests.find(request => request.status === "approved" && request.unreadMessageCount > 0)
+    ?? requests.find(request => request.status === "approved")
+    ?? requests.find(request => !isClosedRequest(request));
+  const referred = target?.status === "intro_made";
+  const unread = target?.status === "approved" && target.unreadMessageCount > 0;
+  const label = referred ? "Check referral update" : unread ? "Read update" : target ? "View ask" : "Find a company";
+  const detail = referred ? "Open the conversation to check the referral update and any next steps."
+    : unread ? "Your accepted ask has an unread update. Open the conversation to read it."
+    : target ? "Open your ask to see its latest status and what happens next."
+    : "Find a company and write one great ask. You’ll see the cost before sending.";
+  return (
+    <section aria-labelledby="requests-next-step" className="mx-4 my-5 border border-g-hairline p-4 gdesk:mx-5">
+      <h2 id="requests-next-step" className="text-g-heading text-g-ink">Your next step</h2>
+      {target ? <p className="mt-2 text-g-label text-g-ink">{companyIdentity(target).name} · {target.title || "Referral request"}</p> : null}
+      <p className="mt-2 text-g-meta text-g-ink-2">{detail}</p>
+      <GoalButton variant="primary" asChild className="mt-4">
+        <Link href={target ? `/conversation/${target.id}` : "/explore"}>{label}</Link>
+      </GoalButton>
+    </section>
   );
 }
 
@@ -188,6 +213,7 @@ export default function MyRequests() {
   } else if (ready) {
     body = (
       <>
+        <NextStep requests={requests} />
         {full ? (
           <p role="status" className="mx-4 mt-3 rounded-g-tile bg-g-surface-sunken px-3 py-2 text-g-meta text-g-ink-2 gdesk:mx-5">
             {full.lead} {full.next}

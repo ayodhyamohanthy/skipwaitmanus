@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
+import { AdminSignInCta } from "@/components/admin/AdminSignInCta";
 
 type Result = { ranAt: string; findingsFound: boolean; emailSent: boolean; subject: string | null; findings: string | null };
 
@@ -9,6 +10,7 @@ type AlertStatus = { latestOutcome: string | null; latestAt: string | null; last
 export default function AdminMoneyCheck() {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
+  const [needsSignIn, setNeedsSignIn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [plan, setPlan] = useState<{ candidates: number; accounts: number; oldest: string | null; newest: string | null; applied: boolean; closed: number } | null>(null);
   const [closing, setClosing] = useState(false);
@@ -18,13 +20,14 @@ export default function AdminMoneyCheck() {
     try {
       const response = await fetch("/api/admin/money-check/close-abandoned", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apply }) });
       const body = await response.json().catch(() => ({}));
+      if (response.status === 401 || response.status === 403) { setNeedsSignIn(true); return; }
       if (!response.ok) { setError(body.error ?? "We could not check abandoned checkouts."); return; }
       setPlan(body);
     } finally { setClosing(false); }
   };
   const [alertStatus, setAlertStatus] = useState<AlertStatus | null>(null);
   useEffect(() => {
-    void fetch("/api/admin/money-check/status", { credentials: "include" }).then(r => (r.ok ? r.json() : null)).then(b => setAlertStatus(b as AlertStatus | null)).catch(() => undefined);
+    void fetch("/api/admin/money-check/status", { credentials: "include" }).then(r => { if (r.status === 401 || r.status === 403) setNeedsSignIn(true); return r.ok ? r.json() : null; }).then(b => setAlertStatus(b as AlertStatus | null)).catch(() => undefined);
   }, []);
   const [testMsg, setTestMsg] = useState("");
   const sendTest = async () => {
@@ -32,6 +35,7 @@ export default function AdminMoneyCheck() {
     try {
       const response = await fetch("/api/admin/alerts/test", { method: "POST", credentials: "include" });
       const body = await response.json().catch(() => ({}));
+      if (response.status === 401 || response.status === 403) { setNeedsSignIn(true); setTestMsg(""); return; }
       setTestMsg(!response.ok ? (response.status === 429 ? "Sent a moment ago. Wait 5 minutes." : body.error ?? "The test alert could not be sent.") : body.sent ? "Test alert sent. Check the owner inbox." : "The test alert was not accepted by the mail service.");
     } catch { setTestMsg("The test alert could not be sent."); }
   };
@@ -41,6 +45,7 @@ export default function AdminMoneyCheck() {
     try {
       const response = await fetch("/api/admin/money-check/run", { method: "POST", credentials: "include" });
       const body = await response.json().catch(() => ({}));
+      if (response.status === 401 || response.status === 403) { setNeedsSignIn(true); return; }
       if (!response.ok) { setError(response.status === 429 ? "It just ran. Wait 5 minutes and try again." : response.status === 401 || response.status === 403 ? "Sign in as an administrator to run this." : body.error ?? "The money check could not run."); return; }
       setResult(body as Result);
     } finally { setBusy(false); }
@@ -49,6 +54,7 @@ export default function AdminMoneyCheck() {
     <main className="min-h-screen bg-white px-5 py-6 text-black sm:px-6">
       <div className="mx-auto max-w-3xl space-y-6">
         <AdminNav current="money-check" badge="Administrator diagnostics" />
+        {needsSignIn ? <AdminSignInCta path="/admin/money-check" message="Administrator access is required. Sign in with the administrator account, then you come back to this page." /> : null}
         <section className="space-y-2">
           <h1 className="text-2xl font-semibold">Money check</h1>
           <p className="text-sm text-muted-foreground">Checks every wallet, credited payment, parked payment and refund for entries that do not add up. It only reads. It changes no money. If it finds something, it also sends the usual owner email once. You can run it every 5 minutes at most.</p>

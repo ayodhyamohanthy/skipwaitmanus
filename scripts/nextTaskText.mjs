@@ -87,6 +87,7 @@ const greenSteps = (pick, who) => steps([
 ]);
 
 const landSteps = (pick, who) => steps([
+  `Take the landing slot first: agent/queue/landing (first push wins; a quiet slot is free after 30 minutes). Keep it alive during deploys with \`${CMD} --heartbeat --as "${who}"\`.`,
   worktree(pick.work),
   `Read docs/BRIEF.md and the §3b row "${pick.task.row}". Merge the latest origin/main into ${pick.work} and re-run the full gate yourself; never land on someone else's word.`,
   ...(pick.tier1 ? [unreviewed(pick)] : []),
@@ -94,6 +95,7 @@ const landSteps = (pick, who) => steps([
     ? `Set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`
     : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(pick.task)} to "done — <sha>".`,
   keepAlive(who),
+  `After main's CI and both deploys finish, release the landing slot: \`${CMD} --landed --task ${pick.task.id} --as "${who}"\`.`,
   report(pick.task, who),
 ]);
 
@@ -135,6 +137,7 @@ const ceoSteps = () => steps([
 /** WAIT: for red main, for a red priority above you, or for a blocked one only the CEO or the owner can clear. */
 function waitLines(pick, who) {
   if (pick.mainRed) return [pick.reason, `Do not start other work and do not push to main until main is green. If you hold a claim, keep it alive: \`${CMD} --heartbeat --as "${who}"\`.`];
+  if (pick.landing) return [pick.reason, `Only one landing at a time (D-082, PICKER-landing-slot). Run this again once ${pick.holder} finishes and releases agent/queue/landing, and keep any claim you hold alive with \`${CMD} --heartbeat --as "${who}"\`.`];
   if (pick.own) return [`${pick.reason}.`, `Push your work on ${pick.work}, tell the owner exactly what you need to go on, and stop. Run \`${CMD} --claim "${who}"\` again once it is unblocked.`];
   if (pick.blocked) return [`${pick.reason}.`, `Do not start anything ranked below ${pick.gate}. Tell the owner you are waiting on ${pick.gate} and stop; run this again after a Claude Code session or the owner unblocks it.`];
   return [`${pick.reason}. A priority must be green before anything below it is touched (D-085).`, `Do not start anything ranked below ${pick.gate}; help only if its holder asks. Run this again later, and keep any claim you hold alive with \`${CMD} --heartbeat --as "${who}"\`.`];
@@ -184,7 +187,7 @@ export function renderPick(pick, { who, date, claimed }) {
     ]) + take;
     case "review": return head(`REVIEW ${pick.task.id} — ${pick.task.title}`, [
       `Tier 1 · pull request ${pick.pr} · branch ${pick.work} · review lock ${pick.lock}`,
-      `You must not have built or fixed this (built by ${pick.builder ?? "unknown"}).`,
+      `No session of your model may have built or fixed this (D-151; built by ${pick.builder ?? "unknown"}). For work built or fixed outside the picker, check pull-request comments and the task reports on the board for your model; if found, post no verdict and report it blocked to the CEO.`,
       ...holding(pick),
       reviewSteps(pick, who),
     ]) + take;
