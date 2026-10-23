@@ -165,6 +165,18 @@ describe("ask drawer", () => {
     expect(go).toHaveBeenCalledWith("/explore", { replace: true });
   });
 
+  it("says the poster sees a post-bound ask first, then the pool, with the money sentence verbatim (D-174)", async () => {
+    stub({ send: () => ({ status: 200, body: { ...CREATED, fromPost: true, firstLook: true } }) });
+    const drawer = await openWipro();
+    fillLink(drawer);
+    fillReasons(drawer);
+    await within(drawer).findByText("ada-resume.pdf");
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    const active = await screen.findByTestId("goal-drawer");
+    expect(within(active).getByText(`The employee who posted this role sees your ask first. Verified wipro.com employees can see it after that first look. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`)).toBeTruthy();
+    expect(within(active).queryByText(/^Verified wipro.com employees can see it now\./)).toBeNull();
+  });
+
   it("states the uncovered company's free wait and the later hold, verbatim (D-034, D-047)", async () => {
     stub({ send: () => ({ status: 200, body: { ...CREATED, coverageStatus: "waiting_for_company_coverage" } }) });
     const drawer = await openWipro();
