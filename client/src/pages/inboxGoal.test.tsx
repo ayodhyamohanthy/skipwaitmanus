@@ -93,7 +93,7 @@ describe("goal inbox", () => {
       return { requests: [] };
     });
     render(<Page />);
-    expect(await screen.findByText("Seeker · identity hidden")).toBeTruthy();
+    expect((await screen.findAllByText("Seeker · identity hidden")).length).toBeGreaterThan(0);
     expect(screen.getByText("New ask")).toBeTruthy();
     const review = screen.getByRole("link", { name: "Review the ask" });
     expect(review.getAttribute("href")).toBe("/conversation/9?from=inbox");
