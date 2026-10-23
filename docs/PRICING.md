@@ -11,12 +11,14 @@ Frozen decisions bind: once the founder freezes a decision it is the single sour
 
 ## The model: D-132 only (D-146)
 - Plans, each with an in-plan monthly credits dropdown (5/10/25/50/100/200, "Save X%" beside each, 2/4/8/12/16/20%). The page shows one "This month" total = plan fee + picked rung.
-  - Open Door: free, 3 free credits a month, no paid default.
-  - Fast Track: $9.99 / Rs499 a month.
-  - Insider: $59 / Rs1,299 a month, by application.
+  - Entry level Referrers (`open_door`): free, 3 free credits a month, no paid default.
+  - Mid level Referrers (`fast_track`): $9.99 / Rs499 a month.
+  - Senior level Referrers (`insider`): $59 / Rs1,299 a month, by application.
+  - Display names are D-152's; ids and Chargebee item ids stay `open_door` / `fast_track` / `insider`.
 - An ask costs its job level in credits (L1 = 1 to L10 = 10), stated before sending, with a one-tap top-up.
 - Paid credits never expire. Free monthly credits end with the month.
-- Referrers are never paid and never pay (D-055, D-006, D-135). Mentor and Organisation stay drafts.
+- Referrers are never paid and never pay (D-055, D-006, D-135). Mentor and Organisation stay drafts. Referrer-side candidate plans are open with the owner and not built (D-156).
+- Upgrading from Free keeps the seeker's unused free credits until their own month ends, as a carry-over grant; they never become paid credits (D-165 (3), with the D-132 enable).
 - Price source in code: `shared/planFamily.ts` only. "Save X%" is computed, not typed.
 
 - Plan names (D-152, Oct 23 05:52 IST, supersedes the D-148 names Junior / Mid / Senior+): Entry level Referrers (Open Door terms), Mid level Referrers (Fast Track terms), Senior level Referrers (Insider terms, by application). Same fees, credits and benefits as D-132; plan ids and Chargebee items keep open_door / fast_track / insider. Reach: the old relative setting (own level / +2 / +4, shown with the superseded names Junior / Mid / Senior+) is historical configured display only, NOT a current entitlement and not the meaning of the D-152 names; the mapping of Entry / Mid / Senior level Referrers to actual access is unresolved (open launch gaps below). No gate exists.
