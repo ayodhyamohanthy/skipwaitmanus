@@ -1,11 +1,11 @@
-# Packet STRANDED-OCT23: two open pull requests that carry decisions no agent could see (D-163)
+# Packet STRANDED-OCT23: open pull requests that carry decisions or work no agent could see (D-163, D-165)
 
-> Read `docs/BRIEF.md` first, then this packet. Each section is one queue row. Both pull requests are already written: this packet is the review and landing brief, not a build.
+> Read `docs/BRIEF.md` first, then this packet. Each section is one queue row. Every pull request here is already written: this packet is its review, fix-stage and landing brief, not a fresh build.
 
 | Field | Value |
 |---|---|
 | Decisions | D-163 (4), D-074, D-151, the Oct 23 merge-policy amendment (`docs/DECISIONS.md`) |
-| Rows | `REGISTER-520` (Tier 1, lane `register`) and `D-155-share-paid-gate` (Tier 1, lane `share-link`) |
+| Rows | `REGISTER-520` (Tier 1, lane `register`), `D-155-share-paid-gate` (Tier 1, lane `share-link`), and the D-132 chain (D-165): `D-132-catalog-record` (Tier 2, docs), `D-132-item3` and `D-132-v2-checkout` (Tier 1, lane `money-core`) |
 | Verified against | `main` `06323e5c`, PR heads `fe1790bf` (#520) and `af6dd9cc` (#527) |
 
 Why they are queued: a decision on an open pull request with no queue row is never handed to anyone, so it never lands, and agents keep building from the older entry on `main` (D-163 (4)). Decision IDs and migration numbers are fixed **at landing**: take the highest ID on `main` and every open branch + 1, renumbering every reference in the diff (`docs/DECISIONS.md` ID rule).
@@ -40,7 +40,46 @@ Why they are queued: a decision on an open pull request with no queue row is nev
 - **Fix stage at landing.** Merge `main` (the branch conflicts). Renumber the decision to the next free ID across `main` and every open branch, and the migration to the next free number on `main` and in plan §5 (on Oct 23 `main` ends at `0108`, and #523 holds `0108`-`0109`, so check again at landing). Update every reference.
 - **Flag.** None today. The owner asked for the behaviour itself, and it only withholds a link, never charges. If the reviewer finds a path where a paid seeker stays locked, that is blocking.
 
+## The D-132 chain (D-165): pricing pull requests built outside the queue
+
+Instinct built these, so every review and landing goes to a model other than Instinct (D-151). Flags stay off throughout (`PLAN_FAMILY_V2`, `ASK_LEVEL_COST` and their `VITE_*` twins). No real payment, no hosted page and no catalog change (`docs/PAYMENTS_TEST_RUNBOOK.md`). The enable is a separate row the CEO writes after the owner's enable word (D-123).
+
+### D-132-catalog-record: land PR #528 (docs only)
+- It adds `docs/qa/v2-live-catalog-apply.md` and one line in `docs/PRICING.md`: the v2 plan and credit items were created on the LIVE Chargebee site on Oct 23, create-only, with zero subscriptions, invoices and payments, on the founder's instruction quoted in the file.
+- Reviewer: check the file names no secret, no customer data and no account id (D-059: the repo is public), and that the `docs/PRICING.md` line matches the file. If a site id or customer count is a problem under D-059, remove that detail and keep the fact.
+- Merge `main` (it conflicts), focused checks, required CI, land.
+
+### D-132-item3: the held item-3 follow-ups, after D-132-audit
+- **Branch:** `agent/queue/d132-item3`, cut once from #550's head (`git push origin origin/agent/d132-item3-main-integration:refs/heads/agent/queue/d132-item3`). Then `git merge origin/agent/d132-bridge-quote-gate` (#542, the `/request` bridge page's quote gate, the only piece #550 lacks), then `git merge origin/main` after D-132-audit (#547) has landed. Never rebase or force-push.
+- **What it holds:** the Skippy coverage-aware credit gate (#543); the bridge page adopting the shared quote gate (#542); the accepted-price precondition (#544: `expectedCost` on the send, `AskPriceChangedError` / `CoverageOpenedUpError`, a two-click 409 re-quote). #547 already holds #541's composer quote, so where #547 and this branch both change a file, keep #547's version of #541's part and this branch's additions.
+- **Review checklist:**
+  1. With both flags off, every send behaves byte for byte as on `main`: prove it with the flags-off tests, not by reading code.
+  2. With the flags on in tests, a send whose cost changed since the quote is refused with the 409 and spends nothing, and the second click after a re-quote spends exactly the quoted cost once.
+  3. Skippy's credit gate uses the same quote math as `/ask` (D-144, D-132), and an uncovered company stays waiting at no cost (D-034, D-047).
+  4. Money copy comes only from `shared/moneyCopy.ts`.
+  5. Nothing changes the refund rules (D-147: a decline keeps the credit spent).
+- **Landing:** then close #541, #543, #544 and #550 with a link to the landing commit, and #542 too.
+
+### D-132-v2-checkout: the v2 checkout and crediting port (#523), after D-132-item3
+- **What it holds:** `server/v2Checkout.ts`, `server/v2Crediting.ts`, `shared/planFamilyBilling.ts`, webhook, activation and catalog-sync deltas, and two additive migrations. It routes failed payments through the D-067 durable outbox.
+- **Fix stage before review.**
+  1. Merge `main`.
+  2. Renumber `0108_v2_plan_family_intents.sql` and `0109_v2_plan_family_wallets.sql` to the next free numbers on `main` and in plan §5 (on Oct 23 `main` ends at `0108_landed_thank_you.sql`), with every reference.
+  3. Implement D-165 (3), red first: a Free wallet with unused free credits is no longer refused at checkout. On the webhook-confirmed upgrade, its unused free monthly credits move into a `planCreditGrants` carry-over grant that expires when their free month would have ended. They are spent soonest-expiring first, as today, and never become paid credits. The checkout copy line comes from `shared/moneyCopy.ts`: "Your {N} free credits stay until {date}."
+     Tests: the upgrade with 0 and with 3 unused credits; a replayed webhook grants nothing twice; the carried credits expire on their date with an expiry row; the money check's `getCreditLedgerAudit` reconciles.
+- **Review checklist:**
+  1. The line-by-line deletion review of the three-way port that #523's own description lists as open: no function or test on `main` was lost.
+  2. Every money move is idempotent and keyed; a lost webhook has a reconcile path.
+  3. Flags off means no new route answers anything but its current refusal.
+  4. The migrations are additive and idempotent, with the reconcile arrays in step.
+  5. D-165 (3) is implemented as written.
+- **Before any enable,** QA attaches the TEST-site cart proof in INR and USD on this exact wiring. #416's proof was on other wiring.
+- **#416** is superseded by this row: close it with a link when this lands.
+
 ## Status
-Both rows share the §3b row D-163, so their status lines go here (D-134).
+These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines go here (D-134).
 - REGISTER-520: todo.
 - D-155-share-paid-gate: todo (PR #527 open, CI green on `af6dd9cc`, conflicts with `main`).
+- D-132-catalog-record: todo (PR #528 open, conflicts with `main`).
+- D-132-item3: todo; waits for D-132-audit.
+- D-132-v2-checkout: todo; waits for D-132-item3.

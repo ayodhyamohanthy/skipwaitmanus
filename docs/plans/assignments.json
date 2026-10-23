@@ -268,6 +268,46 @@
       "note": "D-146 (founder, Oct 23): the D-132 audit is next, so it no longer waits on D-035, which D-147 holds for the founder. D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. First-pass findings are in docs/plans/D-132-audit-findings.md (#481) and items 2 (the stored level and cost, migration 0106, #482) and 6 (the money check against the stored cost, #487) are on main; the remaining items land one pull request each. It runs after the live review (which moved the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends). The D-048 rows that redesign the compose screens and the seeker conversation (D-048-p3-live-review-find, D-048-p3-live-review-conversation) wait for it, because it edits their cost lines first."
     },
     {
+      "id": "D-132-catalog-record",
+      "title": "Record the live Chargebee v2 catalog apply (#528, docs only) so docs/PRICING.md states the truth",
+      "row": "D-132",
+      "packet": "docs/plans/STRANDED-OCT23.md",
+      "tier": 2,
+      "lane": "pricing-docs",
+      "branch": "agent/instinct/v2-live-catalog-audit",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-165: the v2 plan and credit items were created on the LIVE Chargebee site on Oct 23 (create-only, zero subscriptions) on the founder's instruction, but main's PRICING.md does not say so. Merge main, check D-059 (no secrets, customer data or account ids), required CI, land. Reviewer or lander: a model other than Instinct."
+    },
+    {
+      "id": "D-132-item3",
+      "title": "D-132 item-3 follow-ups held outside the queue (#550 + #542): Skippy and bridge-page quote gates, accepted-price precondition; flags off",
+      "row": "D-132",
+      "packet": "docs/plans/STRANDED-OCT23.md",
+      "tier": 1,
+      "lane": "money-core",
+      "branch": "agent/queue/d132-item3",
+      "status": "todo",
+      "dependsOn": [
+        "D-132-audit"
+      ],
+      "note": "D-165: cut agent/queue/d132-item3 from #550's head, merge #542 (the only piece #550 lacks), then merge main after D-132-audit lands; keep #547's version of #541's part. Tier 1 review by a model other than Instinct; then close #541-#544 and #550."
+    },
+    {
+      "id": "D-132-v2-checkout",
+      "title": "D-132 v2 checkout and crediting port (#523), flags off, with D-165 (3): free credits survive an upgrade",
+      "row": "D-132",
+      "packet": "docs/plans/STRANDED-OCT23.md",
+      "tier": 1,
+      "lane": "money-core",
+      "branch": "agent/instinct/v2-checkout-port",
+      "status": "todo",
+      "dependsOn": [
+        "D-132-item3"
+      ],
+      "note": "D-165: fix stage first - merge main, renumber its two migrations (main already has 0108), implement D-165 (3) red-first (no refusal for a Free wallet with unused credits; they move to a carry-over grant expiring at their own month end). Tier 1 review by a model other than Instinct, including the line-by-line deletion review of the three-way port. #416 is superseded and closes when this lands."
+    },
+    {
       "id": "PICKER-landing-slot",
       "title": "One landing at a time, enforced: the agent/queue/landing slot",
       "row": "D-134",
