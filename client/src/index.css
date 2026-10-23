@@ -330,6 +330,30 @@ input, textarea { caret-color: var(--primary); }
 .sharecard__stat b { font-family: var(--font-label); font-size: 20px; font-weight: 600; color: var(--foreground); display: block; }
 .sharecard__stat span { font: 11px var(--font-label); color: var(--muted-foreground); }
 .sharecard__brand { font: 11px var(--font-label); color: var(--muted-foreground); margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--border); }
+
+/* Claim company: isolated single-column layout, aggregate-only. */
+.company-claim-site{min-height:100vh;background:var(--g-surface);color:var(--g-ink);font-family:"Instrument Sans",sans-serif}
+.company-claim-header{display:flex;justify-content:space-between;padding:20px 28px;border-bottom:1px solid var(--g-hairline)}
+.company-claim-header a{color:inherit;text-decoration:none;font-size:14px}
+.company-claim-header a:first-child{font-weight:700}
+.company-claim-main{max-width:560px;margin:48px auto;padding:0 24px 48px;box-sizing:content-box}
+.company-claim-main h1{font-size:40px;line-height:1.12;letter-spacing:-.04em;margin:8px 0 14px;font-weight:600}
+.company-claim-main h2,.company-claim-label{font:11px "JetBrains Mono",monospace;text-transform:uppercase;letter-spacing:.04em;color:var(--g-ink-3);margin:26px 0 10px}
+.company-claim-main p{font-size:14px;line-height:1.6;margin:10px 0;color:var(--g-ink-3)}
+.company-claim-main .company-claim-intro{font-size:17px}
+.company-claim-benefits{border:1px solid var(--g-hairline);border-radius:14px;padding:0 18px}
+.company-claim-benefits section{padding:16px 0;border-bottom:1px solid var(--g-hairline)}.company-claim-benefits section:last-child{border:0}
+.company-claim-benefits h3{font-size:14px;font-weight:600;margin:0}.company-claim-benefits p{font-size:13px;margin:5px 0 0}
+.company-claim-primary{display:inline-block;background:var(--g-ink);color:var(--g-surface);border:1px solid var(--g-ink);border-radius:10px;padding:12px 16px;margin:12px 0;text-decoration:none;font-size:14px;font-weight:600;cursor:pointer}
+.company-claim-primary:disabled{opacity:.55;cursor:default}.company-claim-primary:focus-visible{outline:2px solid var(--g-ink);outline-offset:3px}
+.company-claim-main small{display:block;font-size:11px;color:var(--g-ink-3);line-height:1.6;margin-top:16px}
+.company-claim-form{display:grid;margin-top:24px}.company-claim-form label{font-size:13px;margin-bottom:8px}.company-claim-form input{padding:12px;border:1px solid var(--g-control-edge);border-radius:8px;min-width:0}
+.company-claim-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:24px 0}.company-claim-kpis strong{display:block;font:26px "JetBrains Mono",monospace}.company-claim-kpis span{font-size:11px;color:var(--g-ink-3)}
+.company-claim-main .company-claim-verified{display:flex;align-items:center;gap:6px;font-size:12px}.company-claim-verified svg{color:var(--g-trust);flex-shrink:0}
+@media(max-width:600px){.company-claim-main{margin-top:30px;padding-inline:20px}.company-claim-main h1{font-size:34px}.company-claim-header{padding:18px 20px}.company-claim-kpis{gap:10px}.company-claim-kpis strong{font-size:22px}.company-claim-main .company-claim-verified{flex-wrap:wrap}}
+
+.company-claim-public{border:1px solid var(--g-hairline);border-radius:14px;padding:12px 18px;margin:12px 0}.company-claim-public .company-claim-kpis{margin:12px 0}.company-claim-public .company-claim-kpis strong{font-size:20px}
+
 /* Seeker win card shares the impact-card visual language. No kit imports. */
 .share-win .share-win-card{border:2px solid var(--foreground);background:var(--background);border-radius:12px;display:grid;gap:8px;padding:20px;margin:0}
 .share-win-card .sharecard__status{font-size:12px;text-transform:none;letter-spacing:normal;margin:0 0 4px}

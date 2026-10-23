@@ -3,6 +3,7 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { REFERRED_DEADLINE_ENABLED } from "@shared/referral";
 import ReferralConversation from "./ReferralConversation";
 
 const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralConversation /></QueryClientProvider>);
@@ -186,10 +187,16 @@ describe("ReferralConversation thread", () => {
     await waitFor(() => expect(screen.getByText("Thank you — what should I prepare next?")).toBeTruthy());
   });
 
-  it("asks the accepted seeker to confirm the referral email; progress opens once referred (kit v4)", async () => {
+  it("asks the accepted seeker to confirm the referral email only while part B is on; progress opens once referred (kit v4)", async () => {
     stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [seekerApproved] }) : ok({ messages: [] })));
     renderPage();
-    expect(await screen.findByRole("button", { name: "I got the referral email" })).toBeTruthy();
+    await screen.findByText("Product Designer", { exact: false });
+    // D-038-reconcile R-2: the confirm route answers 409 while part B is off, so no control is offered.
+    if (REFERRED_DEADLINE_ENABLED) {
+      expect(screen.getByRole("button", { name: "I got the referral email" })).toBeTruthy();
+    } else {
+      expect(screen.queryByRole("button", { name: "I got the referral email" })).toBeNull();
+    }
     expect(screen.queryByRole("button", { name: /Mark Interviewing/ })).toBeNull();
   });
 

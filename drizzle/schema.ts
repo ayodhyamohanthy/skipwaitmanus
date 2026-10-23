@@ -151,6 +151,10 @@ export const companySuggestions = mysqlTable("companySuggestions", {
   submitterUserId: int("submitterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   companyName: varchar("companyName", { length: 160 }).notNull(),
   website: varchar("website", { length: 512 }),
+  // Job function taxonomy (0104): a JOB_FUNCTIONS value from shared/jobFunctions.ts
+  // chosen on a seeker demand vote; NULL means the seeker chose nothing. Reads
+  // parse with parseJobFunction, so an unknown stored value becomes null.
+  jobFunction: varchar("jobFunction", { length: 32 }),
   role: mysqlEnum("role", ["seeker", "employee"]).default("seeker").notNull(),
   status: mysqlEnum("status", ["open", "under_review", "approved", "dismissed"]).default("open").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1024,6 +1028,34 @@ export const referralAttachments = mysqlTable("referralAttachments", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [new ForeignKeyBuilder(() => ({ name: "referralAttachments_uploadSessionId_fk", columns: [table.uploadSessionId], foreignColumns: [resumeUploadSessions.id] })).onDelete("set null"), index("referral_attachments_request_idx").on(table.referralRequestId), index("referral_attachments_owner_idx").on(table.ownerId), uniqueIndex("referral_attachments_upload_session_unique").on(table.uploadSessionId)]);
 
+/**
+ * The work a seeker pinned onto one ask (task 13). Columns are copied at send
+ * time, not joined on read, so editing or deleting a showcase piece later never
+ * rewrites what a referrer was already shown. How many pieces ride along is the
+ * plan's existing `showcase.pins` entitlement, enforced in server/db.ts.
+ */
+export const askWorkItems = mysqlTable("askWorkItems", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  workItemId: int("workItemId").references(() => workItems.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 160 }).notNull(),
+  kind: mysqlEnum("kind", ["case_study", "project", "article", "code", "other"]).default("other").notNull(),
+  source: varchar("source", { length: 80 }),
+  url: varchar("url", { length: 2048 }),
+  position: int("position").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("ask_work_items_request_piece_unique").on(table.referralRequestId, table.workItemId), index("ask_work_items_request_idx").on(table.referralRequestId, table.position)]);
+
+/** D-132 audit item 2 (0106): the job level and credit cost an ask was priced at, stored once at creation. Written only while ASK_LEVEL_COST is on; no row means the flat 1-credit price. */
+export const askCosts = mysqlTable("askCosts", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  jobLevel: int("jobLevel").notNull(),
+  creditCost: int("creditCost").notNull(),
+  source: varchar("source", { length: 40 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("ask_costs_request_unique").on(table.referralRequestId)]);
+
 export const resumeUploadSessions = mysqlTable("resumeUploadSessions", {
   id: varchar("id", { length: 64 }).primaryKey(),
   ownerId: int("ownerId").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -1125,6 +1157,22 @@ export const oauthAuthCodes = mysqlTable("oauthAuthCodes", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("oauth_auth_codes_user_idx").on(table.userId), index("oauth_auth_codes_expiry_idx").on(table.expiresAt)]);
 
+// Aggregate-only company access. Work-mailbox proof grants no employee/admin rights.
+export const companyAggregateAccess = mysqlTable("companyAggregateAccess", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  domain: varchar("domain", { length: 255 }).notNull(),
+  verifiedAt: timestamp("verifiedAt").defaultNow().notNull(),
+}, t => [uniqueIndex("company_aggregate_user_domain").on(t.userId, t.domain)]);
+export const companyClaimChallenges = mysqlTable("companyClaimChallenges", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  domain: varchar("domain", { length: 255 }).notNull(),
+  tokenHash: varchar("tokenHash", { length: 64 }).notNull().unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  consumedAt: timestamp("consumedAt"),
+}, t => [index("company_claim_user_created").on(t.userId, t.createdAt)]);
 const billingReviewDigest = customType<{ data: string; driverData: string }>({ dataType() { return "varchar(64) CHARACTER SET ascii COLLATE ascii_bin"; } });
 
 /** D-067 review notifications, no user cascade may erase unresolved evidence. */
@@ -1162,3 +1210,70 @@ export const aiToolCallLogs = mysqlTable("aiToolCallLogs", {
   userId: int("userId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("ai_tool_call_log_tool_idx").on(table.tool, table.createdAt)]);
+
+// Skippy step 5 (D-141): a seeker's own AI agents. Draft-only: scope lookups
+// and ask drafts, never send, never buy. The key itself is never stored -
+// only its sha256 hex and a short display prefix.
+export const seekerAgentGrants = mysqlTable("seekerAgentGrants", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 120 }).notNull(),
+  keyPrefix: varchar("keyPrefix", { length: 16 }).notNull(),
+  keyHash: varchar("keyHash", { length: 64 }).notNull(),
+  canLookup: boolean("canLookup").default(true).notNull(),
+  canDraft: boolean("canDraft").default(true).notNull(),
+  maxCreditsPerAsk: int("maxCreditsPerAsk").notNull(),
+  maxCreditsPerDay: int("maxCreditsPerDay").notNull(),
+  maxCreditsPerWeek: int("maxCreditsPerWeek").notNull(),
+  maxAsksPerDay: int("maxAsksPerDay").notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  revokedAt: timestamp("revokedAt"),
+  lastUsedAt: timestamp("lastUsedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("seeker_agent_grants_key_hash_unique").on(table.keyHash), index("seeker_agent_grants_user_idx").on(table.userId)]);
+
+// Pause-all (D-141): one row per seeker; pausedAt set means every agent of
+// theirs is refused until resumed.
+export const seekerAgentControls = mysqlTable("seekerAgentControls", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  pausedAt: timestamp("pausedAt"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("seeker_agent_controls_user_unique").on(table.userId)]);
+
+export const seekerAgentDrafts = mysqlTable("seekerAgentDrafts", {
+  id: int("id").autoincrement().primaryKey(),
+  grantId: int("grantId").notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companySlug: varchar("companySlug", { length: 48 }).notNull(),
+  targetRoleUrl: varchar("targetRoleUrl", { length: 2048 }).notNull(),
+  note: varchar("note", { length: 2000 }).default("").notNull(),
+  jobLevel: int("jobLevel").notNull(),
+  creditCost: int("creditCost").notNull(),
+  status: mysqlEnum("status", ["draft", "discarded"]).default("draft").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("seeker_agent_drafts_grant_idx").on(table.grantId, table.createdAt), index("seeker_agent_drafts_user_idx").on(table.userId, table.createdAt)]);
+
+// Audit log (D-141): every agent call and every grant lifecycle action, with
+// the agent's name snapshotted so the log still reads after a revoke. The key
+// and its hash are never written here.
+export const seekerAgentEvents = mysqlTable("seekerAgentEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  grantId: int("grantId"),
+  agentName: varchar("agentName", { length: 120 }).notNull(),
+  action: varchar("action", { length: 48 }).notNull(),
+  outcome: mysqlEnum("outcome", ["success", "denied", "failure"]).notNull(),
+  detail: varchar("detail", { length: 600 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("seeker_agent_events_grant_idx").on(table.grantId, table.createdAt), index("seeker_agent_events_user_idx").on(table.userId, table.createdAt)]);
+
+/** D-148 (0107): the level a seeker picks for themselves (1-10). Display only (plans "Who you can ask"); never inferred. */
+export const seekerLevels = mysqlTable("seekerLevels", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  level: int("level").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("seeker_levels_user_unique").on(table.userId)]);

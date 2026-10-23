@@ -5,6 +5,7 @@
 // aggregate or a timestamp: no names, emails, domains-of-people or request text
 // leave this layer.
 import { and, count, eq, gte, inArray, isNull } from "drizzle-orm";
+import { isReferrerExclusionCode } from "../shared/passReasons";
 import { canonicalPeople, companyDomains, jobs, profiles, referralAvailabilitySlots, referralRequests, referralRequestPasses, referralTransitionEvents, tokenBalances, users } from "../drizzle/schema";
 import type { getDb } from "./db";
 
@@ -31,7 +32,11 @@ export function drizzleFlowBaselineSource(db: Db): FlowBaselineSource {
     // Statuses, timestamps and company domains only; a seeker's note never enters this query.
     loadRequests: () => db.select({ id: referralRequests.id, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, createdAt: referralRequests.createdAt, coverageVisibleAt: referralRequests.coverageVisibleAt })
       .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)),
-    loadPassedRequestIds: async () => (await db.select({ id: referralRequestPasses.referralRequestId }).from(referralRequestPasses)).map(row => row.id),
+    // D-038-A/B (§4.2): a lapse writes a pass row so every exclusion applies, but it is not a pass the
+    // referrer chose: counting it would credit the referrer with a decision they never made.
+    loadPassedRequestIds: async () => (await db.select({ id: referralRequestPasses.referralRequestId, reasonCode: referralRequestPasses.reasonCode }).from(referralRequestPasses))
+      .filter(row => !isReferrerExclusionCode(row.reasonCode))
+      .map(row => row.id),
     // Accept and pass are the referrer's decisions; claim and review only mark activity.
     loadTransitionsSince: sinceMs => db.select({ requestId: referralTransitionEvents.referralRequestId, actorUserId: referralTransitionEvents.actorUserId, action: referralTransitionEvents.action, createdAt: referralTransitionEvents.createdAt, resultingStatus: referralTransitionEvents.resultingStatus })
       .from(referralTransitionEvents).where(gte(referralTransitionEvents.createdAt, new Date(sinceMs))),

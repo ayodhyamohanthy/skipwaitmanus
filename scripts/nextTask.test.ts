@@ -41,12 +41,15 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
   });
 
   it("hands a fresh agent the first pickable task in order", () => {
-    // GO-LIVE-1b is done (landed through PR #359; passes stay off until its §4.5
-    // test-site evidence), so the queue head moves to the next pickable task:
-    // D-038-reconcile, whose pull request #353 waits on its review findings - finishing
-    // half-built money work comes before starting anything new (D-085).
+    // D-149 keeps the two live regressions first. Owner-registered follow-ups
+    // remain together immediately afterward; all existing rows keep their order.
+    expect(real.tasks.slice(0, 4).map(t => t.id)).toEqual([
+      "P0-ask-link-signin", "P1-queue-attestation", "PREMIUM-total-label", "D-067-outbox-fixture-repair",
+    ]);
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    expect(first).toMatchObject({ kind: "build", task: { id: "D-038-reconcile" } });
+    expect(first).toMatchObject({ kind: "build", task: { id: "P0-ask-link-signin" } });
+    const followUps = pickNextTask({ tasks: real.tasks.slice(2), mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
+    expect(followUps).toMatchObject({ kind: "build", task: { id: "D-067-outbox-fixture-repair" } });
   });
 
   it("rejects unknown keys, duplicates, bad branches, missing packets, unknown dependencies and cycles", () => {
@@ -966,5 +969,113 @@ describe("hardening from the second D-085 review", () => {
     expect(pick([task("A")], { claimant: "claude code · s1" }).kind).toBe("ceo");
     const rows = statusBoard({ tasks: [t1], branches: new Map([["agent/queue/m", claimBy("DeepSeek · s4", "M", 1)]]), openPrs: new Map([pr]), prCi: new Map([["agent/queue/m", { state: "green" }]]), reports: [{ id: "M", status: "red", who: "Mistral · r1", at: NOW - HOUR, note: "3 findings" }], now: NOW });
     expect(rows[0].health).not.toBe("red");
+  });
+});
+
+describe("PICKER-landing-slot: one landing at a time, without discipline", () => {
+  const t2prA: [string, string] = ["agent/queue/a", "https://github.com/o/r/pull/11"];
+  const t2prB: [string, string] = ["agent/queue/b", "https://github.com/o/r/pull/12"];
+  const taskA = task("A", { tier: 2, lane: "lane-a" });
+  const taskB = task("B", { tier: 2, lane: "lane-b" });
+  const builtA: [string, Branch] = ["agent/queue/a", claimBy("Lander 1 · s1", "A", 1)];
+  const builtB: [string, Branch] = ["agent/queue/b", claimBy("Lander 2 · s2", "B", 1)];
+
+  it("reserves agent/queue/landing as a marker-only ref", () => {
+    const doc = { version: 1, repo: "o/r", tasks: [task("A", { branch: "agent/queue/landing" })] };
+    expect(validateAssignments(doc, exists).filter(e => e.includes("reserved"))).toHaveLength(1);
+    expect(core.LAND_SLOT).toBe("agent/queue/landing");
+  });
+
+  it("two landers: the second waits and names the first", () => {
+    const slotHeld: [string, Branch] = ["agent/queue/landing", {
+      tipMs: NOW - 5 * 60_000,
+      merged: false,
+      markers: [{ verb: "Land claim", id: "A", who: "Lander 1 · s1" }],
+    }];
+    const branches = [builtA, builtB, slotHeld];
+    const prs = [t2prA, t2prB];
+    const prCi: [string, string][] = [["agent/queue/a", "green"], ["agent/queue/b", "green"]];
+
+    expect(pick([taskA, taskB], { branches, prs, prCi, claimant: "Lander 1 · s1" })).toMatchObject({
+      kind: "continue",
+      of: "land",
+      task: { id: "A" },
+    });
+
+    const second = pick([taskA, taskB], { branches, prs, prCi, claimant: "Lander 2 · s2" });
+    expect(second).toMatchObject({
+      kind: "wait",
+      landing: true,
+      holder: "Lander 1 · s1",
+    });
+    expect(second.reason).toContain("Lander 1 · s1");
+
+    const text = renderPick(second, { who: "Lander 2 · s2", date: "2026-10-23", claimed: false });
+    expect(text).toContain("Lander 1 · s1");
+    expect(text).toContain("NEXT: WAIT");
+  });
+
+  it("a quiet slot is taken over", () => {
+    const slotQuiet: [string, Branch] = ["agent/queue/landing", {
+      tipMs: NOW - 35 * 60_000,
+      merged: false,
+      markers: [{ verb: "Land claim", id: "A", who: "Lander 1 · s1" }],
+    }];
+    const branches = [builtA, builtB, slotQuiet];
+    const prs = [t2prA, t2prB];
+    const prCi: [string, string][] = [["agent/queue/a", "green"], ["agent/queue/b", "green"]];
+
+    const res = pick([taskA, taskB], { branches, prs, prCi, claimant: "Lander 2 · s2" });
+    expect(res).toMatchObject({
+      kind: "continue",
+      of: "land",
+      task: { id: "B" },
+    });
+  });
+
+  it("--landed by someone else is refused", () => {
+    const slotHeld: [string, Branch] = ["agent/queue/landing", {
+      tipMs: NOW - 5 * 60_000,
+      merged: false,
+      markers: [{ verb: "Land claim", id: "A", who: "Lander 1 · s1" }],
+    }];
+    const branches = new Map<string, Branch>([slotHeld]);
+
+    const err = core.releaseLandingSlotError({ branches, task: taskA, claimant: "Lander 2 · s2", now: NOW });
+    expect(err).toContain("only the lander holding agent/queue/landing releases it");
+    expect(err).toContain("Lander 1 · s1");
+
+    const ok = core.releaseLandingSlotError({ branches, task: taskA, claimant: "Lander 1 · s1", now: NOW });
+    expect(ok).toBeNull();
+
+    const slotReleased: [string, Branch] = ["agent/queue/landing", {
+      tipMs: NOW - 2 * 60_000,
+      merged: false,
+      markers: [
+        { verb: "Land claim", id: "A", who: "Lander 1 · s1" },
+        { verb: "Landed", id: "A", who: "Lander 1 · s1" },
+      ],
+    }];
+    const freeBranches = new Map<string, Branch>([slotReleased]);
+    const slot = core.landingSlot(freeBranches, NOW);
+    expect(slot.holder).toBeNull();
+    expect(slot.quiet).toBe(true);
+  });
+
+  it("red main still beats everything", () => {
+    const slotHeld: [string, Branch] = ["agent/queue/landing", {
+      tipMs: NOW - 5 * 60_000,
+      merged: false,
+      markers: [{ verb: "Land claim", id: "A", who: "Lander 1 · s1" }],
+    }];
+    const red = { state: "red", sha: "e".repeat(40), url: "https://ci/red" };
+    const branches = [builtA, builtB, slotHeld];
+    const prs = [t2prA, t2prB];
+    const prCi: [string, string][] = [["agent/queue/a", "green"], ["agent/queue/b", "green"]];
+
+    const res = pick([taskA, taskB], { ci: red, branches, prs, prCi, claimant: "Lander 2 · s2" });
+    expect(res).toMatchObject({
+      kind: "fix-main",
+    });
   });
 });

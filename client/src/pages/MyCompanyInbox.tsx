@@ -30,6 +30,8 @@ import { useSlowLoad } from "@/hooks/useSlowLoad";
 import { displayJobFunction, parseJobFunction, type JobFunction } from "@shared/jobFunctions";
 import { getAskShelfLifeEndsAtMs, type ReferralStatus } from "@shared/referral";
 import { PASS_REASON_OPTIONS, type PassReasonCode } from "@shared/passReasons";
+import { askWorkItemsListSchema, ASK_WORK_SECTION_TITLE, safeAskWorkUrl } from "@shared/askWorkItems";
+import { workKindLabel } from "@/components/profile/workItems";
 import { splitWhyMe } from "@shared/whyMe";
 import { formatDay } from "@/lib/displayPrefs";
 import { readApiJson } from "@/lib/apiResponse";
@@ -50,10 +52,11 @@ type QueueItem = {
   attachmentCount: number;
   isClaimedByYou: boolean;
   expiresAt?: string | null;
+  decisionDueAt?: string | null;
   waitingForCoverage?: boolean | null;
   coverageVisibleAt?: string | null;
 };
-type Preview = { id: number; candidateMessage: string; targetRoleUrl: string | null; attachments: unknown[]; publicRef?: string };
+type Preview = { id: number; candidateMessage: string; targetRoleUrl: string | null; attachments: unknown[]; publicRef?: string; /** Task 13: parsed at this boundary (below). */ workItems?: unknown };
 type InboxPayload = { requests?: QueueItem[] };
 /** Read model for the honest empty state: paused / active (capacity left) / at_capacity. */
 type RoutingState = "paused" | "active" | "at_capacity";
@@ -77,6 +80,15 @@ function daysLeft(item: QueueItem, nowMs: number): { label: string; soon: boolea
 
 function roleTitle(item: QueueItem): string {
   return item.jobTitle?.trim() || "Private ask";
+}
+
+/** D-038-A: the server's 48-hour decision deadline for the viewer's own claim or allocation.
+    Neutral wording, never a countdown: the ask goes back to colleagues and nothing is taken. */
+function decisionDue(item: QueueItem, nowMs: number): string | null {
+  const ms = item.decisionDueAt ? Date.parse(item.decisionDueAt) : Number.NaN;
+  if (Number.isNaN(ms)) return null;
+  const hours = Math.ceil((ms - nowMs) / 3_600_000);
+  return hours <= 0 ? "Decision due now" : `Decide within ${hours} hour${hours === 1 ? "" : "s"}`;
 }
 
 export default function MyCompanyInbox() {
@@ -146,7 +158,12 @@ export default function MyCompanyInbox() {
     let cancelled = false;
     setPreviewLoading(true); setPreview(null);
     void companyFetch<{ request?: Preview }>(`/api/company-referrals/${selected.id}/preview`)
-      .then(payload => { if (!cancelled) setPreview(payload.request ?? null); })
+      .then(payload => {
+        // Task 13: a preview without the list reads as "no pinned work" instead
+        // of crashing the pane — the web bundle can lead the API by one deploy.
+        const request = payload.request;
+        if (!cancelled) setPreview(request ? { ...request, workItems: askWorkItemsListSchema.parse(request.workItems) } : null);
+      })
       .catch(() => { if (!cancelled) setPreview(null); })
       .finally(() => { if (!cancelled) setPreviewLoading(false); });
     return () => { cancelled = true; };
@@ -259,6 +276,7 @@ export default function MyCompanyInbox() {
         <ul>
           {requests.map(item => {
             const left = daysLeft(item, nowMs);
+            const due = decisionDue(item, nowMs);
             const claimed = item.status !== "pending" || item.isClaimedByYou;
             return (
               <GoalListRow
@@ -268,7 +286,7 @@ export default function MyCompanyInbox() {
                 onSelect={() => { setError(""); setNotice(""); if (claimed) go(`/conversation/${item.id}?from=inbox`); else setSelectedId(item.id); }}
                 title={roleTitle(item)}
                 trailing={<GoalStatus status={claimed ? "queue_review" : "queue_new"} label={claimed ? "Under review" : "New"} />}
-                meta={<span>{displayJobFunction(item.jobFunction) ?? item.companyName ?? item.companyDomain}{left ? <>{" · "}<GoalNum tone={left.soon ? "warn" : undefined}>{left.label}</GoalNum></> : null}</span>}
+                meta={<span>{displayJobFunction(item.jobFunction) ?? item.companyName ?? item.companyDomain}{left ? <>{" · "}<GoalNum tone={left.soon ? "warn" : undefined}>{left.label}</GoalNum></> : null}{due ? <>{" · "}<GoalNum>{due}</GoalNum></> : null}</span>}
               />
             );
           })}
@@ -310,6 +328,8 @@ function QueueDetail({ item, index, count, preview, previewLoading, nowMs, worki
 }) {
   const left = daysLeft(item, nowMs);
   const reasons = splitWhyMe(preview?.candidateMessage ?? "");
+  // Task 13: the send-time snapshot, parsed once here. Ordered as the seeker chose it.
+  const pinnedWork = askWorkItemsListSchema.parse(preview?.workItems);
   const company = item.companyName ?? item.companyDomain;
   const fn = displayJobFunction(item.jobFunction);
   const closes = item.expiresAt ?? null;
@@ -363,12 +383,33 @@ function QueueDetail({ item, index, count, preview, previewLoading, nowMs, worki
               ))}
             </ol>
           </section>
+          {pinnedWork.length > 0 ? (
+            <section aria-labelledby="pinned-h" className="mt-5">
+              <h3 id="pinned-h" className="text-g-meta uppercase tracking-[0.12em] text-g-ink-3">{ASK_WORK_SECTION_TITLE}</h3>
+              <p className="mt-1 text-pretty text-g-meta text-g-ink-3">Work the seeker chose to show with this ask, from their own portfolio. It is what they sent — a later edit never rewrites it.</p>
+              <ul className="mt-2 space-y-2">
+                {pinnedWork.map((piece, pieceIndex) => {
+                  const href = safeAskWorkUrl(piece.url);
+                  return (
+                    <li key={`${pieceIndex}-${piece.title}`} className="flex items-start gap-3">
+                      <span aria-hidden="true" className="text-g-meta text-g-ink-3"><GoalNum>{String(pieceIndex + 1).padStart(2, "0")}</GoalNum></span>
+                      <span className="min-w-0">
+                        {href ? <a href={href} target="_blank" rel="noopener noreferrer" className="block truncate text-g-label text-g-ink underline underline-offset-2">{piece.title}</a> : <span className="block truncate text-g-label text-g-ink">{piece.title}</span>}
+                        <span className="text-g-meta text-g-ink-3">{workKindLabel(piece.kind)}{piece.source ? ` · ${piece.source}` : ""}</span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
           <section aria-labelledby="quality-h" className="mt-5">
             <h3 id="quality-h" className="text-g-meta uppercase tracking-[0.12em] text-g-ink-3">Ask quality</h3>
             <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-g-meta text-g-ink-2">
               <li>{(preview?.targetRoleUrl ?? item.targetRoleUrl) ? "✓" : "·"} Official job link</li>
               <li>{reasons.some(Boolean) ? "✓" : "·"} Specific proof of fit</li>
               <li>{(preview?.attachments.length ?? 0) > 0 ? "✓" : "·"} Resume attached</li>
+              <li>{pinnedWork.length > 0 ? "✓" : "·"} Work attached</li>
               {strengthLabel ? <li>✓ Ask strength: {strengthLabel}</li> : null}
             </ul>
             <p className="mt-1 text-g-meta text-g-ink-3">Checks on the ask, never a score of the person.</p>

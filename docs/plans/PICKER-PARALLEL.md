@@ -35,5 +35,15 @@ All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker
 **What.** `ROLE_BY_LANE` becomes a prefix match (`design*` and `d048-*` map to CDO). An optional `epic` key groups rows, and `--status` prints one roll-up line per epic (for example `D-048-p3: 12/76 done, 6 PR, 1 red, released: inbox`). Each open pull request shows `behind main N` from `git rev-list --count` (no GitHub read).
 **Tests.** Prefix roles; the epic roll-up counts; `behind main` from a fixture.
 
+## PICKER-review-independence: a Tier 1 review never goes to the model that built or fixed the work (D-151)
+**Why.** D-151: a Tier 1 review is independent only when its model (the part of the name before " · ", `modelOf` in `scripts/nextTaskCore.mjs`) neither built nor fixed the work. `did(v, roles)` compares exact session names, so another session of the builder's or a fixer's model is handed the review: on Oct 22 Qoder · a236 was handed #382 minutes after Qoder · 31dd fixed it, and blocked it rather than pass its own model's fixes. The `Fixed` marker a fixer pushes with `--fixed` is not counted as a fix either: `fixers` reads only `Fix claim`.
+**What.**
+1. `did()` in `scripts/nextTaskCore.mjs` matches by model: a claimant counts as having built or fixed a task when `modelOf(claimant)` equals `modelOf` of any name in the roles asked for. This covers both places that call it: the review hand-out ("needs a review, and you built or fixed it") and the landing after a passed review ("its review passed, and you built or fixed it"). Exact-name checks elsewhere (your own claim, heartbeats, takeovers) stay as they are.
+2. `fixers` also counts the `who` of every `Fixed` marker on the review lock, beside `Fix claim`.
+3. The printed review step (`case "review"` in `scripts/nextTaskText.mjs`, now "You must not have built or fixed this") names the rule: no session of your model may have built or fixed it (D-151); for a pull request built or fixed outside the picker, check its comments and the task's reports on the board for your model, and if you find it, post no verdict and report it blocked to the CEO.
+4. `docs/DELEGATION.md` §6 already states the rule (D-151); the living system map in `AGENTS.md` (the agent work queue row) says the picker matches reviewers by model.
+**Tests** (red first, in `scripts/nextTask.test.ts`). A session of the builder's model is not handed the review, while a session of another model is; a session of a fixer's model is not handed the re-review, counting a fixer known only from a `Fixed` marker; a session of the builder's model is not handed the landing after a pass; the reviewer who returned findings is handed the re-review; the CEO, whose model built nothing, is handed it.
+
 ## Status
 The PICKER rows share the plan row "D-134", so each writes its status here, one line per task, never in the shared §3b row (D-134).
+- PICKER-landing-slot: done — 1e9ba07f (PR #497) — Gemini 3.8 Flash · 8f37

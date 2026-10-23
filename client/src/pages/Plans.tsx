@@ -17,7 +17,7 @@ import { PendingCheckoutReturn } from "@/components/plans/PendingCheckoutReturn"
 import { CoverageBlock, PacksSection, PassesSection, useKitCheckout } from "@/components/plans/PlansKitSections";
 import { PlansCatalogOfflineError, usePlansCatalog } from "@/components/plans/plansCatalogApi";
 import { UpgradeMoments, upgradeMoments } from "@/components/plans/UpgradeMoments";
-import { activePaidPlan } from "@/components/plans/planCatalog";
+import { activePaidPlan, creditFrom } from "@/components/plans/planCatalog";
 
 // /plans: Free, the account's own plan when it holds one, credits, usage and the
 // fairness promise. D-067 removed the Pro/Max plans, their checkout and the gift
@@ -38,11 +38,13 @@ export default function Plans() {
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [cancelError, setCancelError] = useState("");
 
-  const currency = route as CatalogCurrency;
-  const routeDetails = paymentRouteDetails(route);
   // Live prices, packs and passes; referrers never see a purchase (D-055).
   const catalogQuery = usePlansCatalog(!isReferrer);
   const catalog = catalogQuery.data ?? null;
+  // One currency per view: the server's region answer (catalog) wins over the browser guess once loaded.
+  const currency: CatalogCurrency = catalog?.currency ?? (route as CatalogCurrency);
+  const routeDetails = paymentRouteDetails(currency);
+  const creditPrice = creditFrom(catalog);
   const packsOnSale = catalog !== null && catalog.packs.some(pack => pack.available);
   const creditsHref = packsOnSale ? "/plans#packs" : `/premium?role=${isReferrer ? "referrer" : "job_seeker"}`;
   const activePlan = activePaidPlan(summary);
@@ -97,7 +99,7 @@ export default function Plans() {
   }
 
   return <main data-skipwait-screen="plans" className="page-content plans-page">
-    <div className="page-heading"><div><span className="eyebrow">PLANS · <Link href="/billing" className="underline">Manage plan</Link></span><h1>Choose how much help you need<span className="brand-dot">.</span></h1><p>Everyone starts free — no card needed. {ASK_COST_SENTENCE} {isReferrer ? `${REFERRERS_NEVER_PAY} Reviewing requests is free, and skipwait.me never pays a referrer.` : REFERRER_MONEY_SENTENCE} Queue position never changes.</p></div>{isReferrer ? null : <CreditCta summary={summary} currency={currency} href={creditsHref} />}</div>
+    <div className="page-heading"><div><span className="eyebrow">PLANS · <Link href="/billing" className="underline">Manage plan</Link></span><h1>Choose how much help you need<span className="brand-dot">.</span></h1><p>Everyone starts free — no card needed. {ASK_COST_SENTENCE} {isReferrer ? `${REFERRERS_NEVER_PAY} Reviewing requests is free, and skipwait.me never pays a referrer.` : REFERRER_MONEY_SENTENCE} Queue position never changes.</p></div>{isReferrer ? null : <CreditCta summary={summary} creditPrice={creditPrice} href={creditsHref} />}</div>
 
     {payment === "cancelled" ? <p role="status" className="plan-grid-note font-semibold">Checkout was cancelled. Nothing was charged.</p> : null}
 
@@ -106,6 +108,7 @@ export default function Plans() {
       : <>
         <PlanCards
           currency={currency}
+          creditPrice={creditPrice}
           activePlan={activePlan}
           endsAt={summary?.subscriptionCurrentTermEnd ?? null}
           renewing={summary?.subscriptionStatus === "active"}
@@ -116,10 +119,10 @@ export default function Plans() {
         {catalog ? <PassesSection catalog={catalog} activePlan={activePlan} checkout={checkout} /> : null}
         {catalogQuery.isError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{catalogQuery.error instanceof PlansCatalogOfflineError ? catalogQuery.error.message : "We could not load live prices. Check your connection and try again."} <button type="button" className="underline underline-offset-4" onClick={() => void catalogQuery.refetch()}>Try again</button></p> : null}
         <p className="plan-grid-note">Every account starts on the free tier, and tracking every request is free. {CREDIT_RULE}</p>
-        <p className="plan-grid-note">{routeDetails.gateway} · {routeDetails.gatewayDescriptor}. <button type="button" onClick={() => setRoute(current => alternatePaymentRoute(current))} className="font-semibold text-foreground underline underline-offset-4">Different billing country? {routeDetails.alternateLabel}</button></p>
+        <p className="plan-grid-note">{routeDetails.gateway} · {routeDetails.gatewayDescriptor}. {catalog ? null : <button type="button" onClick={() => setRoute(current => alternatePaymentRoute(current))} className="font-semibold text-foreground underline underline-offset-4">Different billing country? {routeDetails.alternateLabel}</button>}</p>
         {cancelError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{cancelError}</p> : null}
 
-        <CreditsSection summary={summary} currency={currency} creditsHref={creditsHref} />
+        <CreditsSection summary={summary} creditPrice={creditPrice} creditsHref={creditsHref} />
         {summary ? <UsagePanel summary={summary} /> : null}
         {summary ? <UpgradeMoments moments={upgradeMoments(summary, new Date(), creditsHref)} /> : null}
       </>}

@@ -28,7 +28,8 @@ const INTENT_COPY: Readonly<Record<Intent, { goal: string; sub: string; kicker: 
 export default function GoalSignIn() {
   const [intent, setIntent] = useState<Intent>(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("intent") === "referrer" ? "referrer" : "seeker"));
   const referrerReturnTo = typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.referrer) : INTENT_RETURN_TO.referrer;
-  const seekerReturnTo = ONE_TAP_PAY_SIGNIN && typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.seeker) : INTENT_RETURN_TO.seeker;
+  const requestedReturnTo = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("returnTo") : null;
+  const seekerReturnTo = (ONE_TAP_PAY_SIGNIN || requestedReturnTo?.startsWith("/admin")) && typeof window !== "undefined" ? safeReturnTo(requestedReturnTo, INTENT_RETURN_TO.seeker) : INTENT_RETURN_TO.seeker;
   const copy = INTENT_COPY[intent];
   return (
     <div data-skipwait-screen="sign-in" className="min-h-screen bg-white font-g-sans text-g-ink">

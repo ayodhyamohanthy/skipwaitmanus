@@ -139,6 +139,41 @@ describe("private referral HTTP routes", () => {
     expect((await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-b")).status).toBe(409);
   });
 
+  // D-038-A (§4.7): the 5-claim cap is a state conflict the referrer can act on, not a server fault.
+  it("answers 409, with the cap copy, when the referrer already holds five claims", async () => {
+    const app = express(); app.use(express.json());
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") === "employee-a" ? { account: { id: 2, openId: "workos-employee-a" }, primaryEmail: { emailAddress: "a@acme.com", verification: { status: "verified" } } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 701, companyDomain: "acme.com", notifiedEmployees: 0 }),
+      listCompanyReferralInbox: async () => [], listCompanyReferralInboxByState: async () => [],
+      claimCompanyReferralRequest: async () => { const cap = new Error("You can hold 5 asks at once. Accept or pass one of them first."); cap.name = "ReferralTransitionConflict"; throw cap; },
+      getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
+    });
+
+    const response = await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-a");
+    expect(response.status).toBe(409);
+    expect(response.body.error).toBe("You can hold 5 asks at once. Accept or pass one of them first.");
+  });
+
+  it("answers 409, not a server error, when a referrer who already passed or lapsed tries to claim again", async () => {
+    const app = express(); app.use(express.json());
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") === "employee-a" ? { account: { id: 2, openId: "workos-employee-a" }, primaryEmail: { emailAddress: "a@acme.com", verification: { status: "verified" } } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 701, companyDomain: "acme.com", notifiedEmployees: 0 }),
+      listCompanyReferralInbox: async () => [], listCompanyReferralInboxByState: async () => [],
+      claimCompanyReferralRequest: async () => { throw new Error("You already passed on this referral request"); },
+      getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
+    });
+
+    const response = await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-a");
+    expect(response.status).toBe(409);
+    expect(response.body.error).toBe("You already passed on this referral request");
+  });
+
   it("saves a no-coverage referral as waiting, reserves no Job Seeker credit and queues the coverage follow-up", async () => {
     const app = express(); app.use(express.json());
     const activity: Array<{ action: string; companyDomain?: string; metadata?: Record<string, unknown> }> = [];

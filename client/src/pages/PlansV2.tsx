@@ -12,6 +12,9 @@ import {
   PLAN_CREDIT_RUNGS,
   PLAN_FAMILY,
   perCreditMinor,
+  PLAN_DISPLAY_NAME,
+  REACH_LEVEL_NAMES,
+  planReachFor,
   planFeeMinor,
   rungSavingsMinor,
   thisMonthMinor,
@@ -25,36 +28,37 @@ type Pick = PlanCreditRung | null; // null = the free pick (Open Door default)
 
 const CARD_COPY: Record<PlanFamilyId, { name: string; feeNote: string; bullets: string[]; cta: string; primary: boolean }> = {
   open_door: {
-    name: "Free to join",
+    name: "Free to join. Start with no card.",
     feeNote: "no commitment",
-    bullets: ["3 free credits every month", "Referrers matched at your level", "Cost shown before every ask"],
+    bullets: ["3 free credits every month", "Referrers matched at your own level", "Cost shown before every ask"],
     cta: "Start free",
     primary: false,
   },
   fast_track: {
-    name: "Move faster, reach higher",
+    name: "Move faster, reach higher.",
     feeNote: "/ month",
     bullets: [
       "4 open asks at once",
       "Ask coach 10/mo - profile check 2/mo - tailoring 3/mo",
       "Follow-up drafts 6/mo",
-      "Reach referrers 1-2 levels up + level-fit insight",
+      "Reach up to 2 levels above your own",
       "Credits never expire, top up any time",
     ],
-    cta: "Start Fast Track",
+    cta: "Start Mid level Referrers",
     primary: true,
   },
   insider: {
-    name: "Your whole search, automated",
+    name: "Your whole search, automated. By application.",
     feeNote: "/ month - by application",
     bullets: [
-      "Everything in Fast Track",
+      "Everything in Mid level Referrers",
+      "Reach up to 4 levels above your own",
       "6 open asks at once",
       "Research briefs 10/mo - dossiers + mock interviews 4/mo each",
       "Offer + salary coach 2/mo each - smart timing",
       "Stealth included - your employer never sees you",
     ],
-    cta: "Apply for Insider",
+    cta: "Apply for Senior level Referrers",
     primary: false,
   },
 };
@@ -125,7 +129,26 @@ function RungList({ planId, book, value, onPick }: { planId: PlanFamilyId; book:
   );
 }
 
-function PlanCard({ planId, book }: { planId: PlanFamilyId; book: PlanPriceBook }) {
+const REACH_SUB: Record<PlanFamilyId, string> = { open_door: "Your own level", fast_track: "Up to 2 levels above yours", insider: "Up to 4 levels above yours" };
+
+function ReachRow({ planId, seekerLevel }: { planId: PlanFamilyId; seekerLevel: number | null }) {
+  const r = seekerLevel !== null && Number.isFinite(seekerLevel) ? planReachFor(planId, seekerLevel) : null;
+  return (
+    <div className="mt-4 border-t border-g-hairline pt-4" data-testid={`reach-${planId}`}>
+      <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Who you can ask</p>
+      {r ? (
+        <p className="mt-1 text-g-small">
+          {planId === "open_door" ? `Your own level: ${r.levelNames}` : r.levelNames} <span aria-hidden="true">·</span> <span className="font-g-mono text-[13px]">{r.levelText}</span>
+        </p>
+      ) : (
+        <p className="mt-1 text-g-small">{REACH_SUB[planId]}</p>
+      )}
+      {r && planId !== "open_door" ? <p className="mt-0.5 text-g-badge text-g-ink-3">{REACH_SUB[planId]}</p> : null}
+    </div>
+  );
+}
+
+function PlanCard({ planId, book, seekerLevel }: { planId: PlanFamilyId; book: PlanPriceBook; seekerLevel: number | null }) {
   const entry = PLAN_FAMILY.find(p => p.id === planId)!;
   const copy = CARD_COPY[planId];
   const [pick, setPick] = useState<Pick>(DEFAULT_PICK[planId]);
@@ -133,8 +156,8 @@ function PlanCard({ planId, book }: { planId: PlanFamilyId; book: PlanPriceBook 
   const fee = planFeeMinor(planId, book);
   const total = thisMonthMinor(planId, pick, book);
   return (
-    <section aria-label={entry.label} className="flex flex-col rounded-2xl border border-g-hairline bg-g-surface p-5 gdesk:p-6">
-      <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">{entry.label}</p>
+    <section aria-label={PLAN_DISPLAY_NAME[planId]} className="flex flex-col rounded-2xl border border-g-hairline bg-g-surface p-5 gdesk:p-6">
+      <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">{PLAN_DISPLAY_NAME[planId]}</p>
       <h2 className="mt-2 text-[22px] font-semibold leading-tight tracking-[-0.01em]">{copy.name}</h2>
       <p className="mt-1 text-g-small text-g-ink-2">Plan fee {money(fee, book)} {copy.feeNote}</p>
       <div className="mt-4">
@@ -152,6 +175,7 @@ function PlanCard({ planId, book }: { planId: PlanFamilyId; book: PlanPriceBook 
         )}
         <div className="flex justify-between pt-1 text-[15px] font-semibold"><dt>This month</dt><dd className="font-g-mono" data-testid={`this-month-${planId}`}>{money(total, book)}</dd></div>
       </dl>
+      <ReachRow planId={planId} seekerLevel={seekerLevel} />
       <ul className="mt-4 space-y-1.5 border-t border-g-hairline pt-4">
         {copy.bullets.map(line => (
           <li key={line} className="flex items-start gap-2 text-g-small text-g-ink-2"><span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 rounded-full bg-g-ink" />{line}</li>
@@ -192,7 +216,7 @@ const COMPARE_ROWS: { label: string; cell: (id: PlanFamilyId) => string }[] = [
   { label: "Smart timing", cell: id => (id === "insider" ? "Yes" : "-") },
 ];
 
-export default function PlansV2({ book = "INR" }: { book?: PlanPriceBook }) {
+export default function PlansV2({ book = "INR", seekerLevel = null, onPickLevel }: { book?: PlanPriceBook; seekerLevel?: number | null; onPickLevel?: (level: number | null) => void }) {
   return (
     <div className="mx-auto max-w-[1120px] px-5 py-8 gdesk:px-8 gdesk:py-12">
       <h1 className="text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">Choose your reach.</h1>
@@ -202,10 +226,23 @@ export default function PlansV2({ book = "INR" }: { book?: PlanPriceBook }) {
           ? "Prices for India - set by your profile location, confirmed against your card's billing country at checkout."
           : "Global prices - set by your profile location, confirmed against your card's billing country at checkout."}
       </p>
+      <p className="mt-2 max-w-[640px] text-g-small text-g-ink-3">Plan names say how far you can reach, not how senior you are.</p>
+      <p className="mt-1 max-w-[640px] text-g-small text-g-ink-3">Reach sets who you can ask. It never changes your place in a queue.</p>
+      {onPickLevel ? (
+        <label className="mt-3 flex max-w-[360px] flex-col gap-1 text-g-small">
+          <span className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Your level</span>
+          <select aria-label="Your level" aria-describedby={seekerLevel === null ? "level-hint" : undefined} value={seekerLevel ?? ""} onChange={e => onPickLevel(e.target.value === "" ? null : Number(e.target.value))} className="rounded-g-tile border border-g-hairline bg-g-surface px-3 py-2.5">
+            <option value="">Not set</option>
+            {Object.entries(REACH_LEVEL_NAMES).map(([n, label]) => <option key={n} value={n}>{`L${n} - ${label}`}</option>)}
+          </select>
+        </label>
+      ) : null}
+      {seekerLevel === null && onPickLevel ? <p id="level-hint" className="mt-1 text-g-small text-g-ink-3">Set your level here to see exactly who each plan reaches.</p> : null}
+      {seekerLevel === null && !onPickLevel ? <p className="mt-1 text-g-small text-g-ink-3">Sign in and set your level to see exactly who each plan reaches.</p> : null}
       <div className="mt-8 grid gap-4 gdesk:grid-cols-3">
-        <PlanCard planId="open_door" book={book} />
-        <PlanCard planId="fast_track" book={book} />
-        <PlanCard planId="insider" book={book} />
+        <PlanCard planId="open_door" book={book} seekerLevel={seekerLevel} />
+        <PlanCard planId="fast_track" book={book} seekerLevel={seekerLevel} />
+        <PlanCard planId="insider" book={book} seekerLevel={seekerLevel} />
       </div>
       <section aria-label="Compare plans" className="mt-12">
         <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Compare plans</p>
@@ -215,7 +252,7 @@ export default function PlansV2({ book = "INR" }: { book?: PlanPriceBook }) {
             <thead>
               <tr className="border-b border-g-hairline">
                 <th className="py-2 pr-4 text-left font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3"><span className="sr-only">Feature</span></th>
-                {PLAN_FAMILY.map(p => <th key={p.id} className="py-2 pr-4 text-right font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">{p.label}</th>)}
+                {PLAN_FAMILY.map(p => <th key={p.id} className="py-2 pr-4 text-right font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">{PLAN_DISPLAY_NAME[p.id]}</th>)}
               </tr>
             </thead>
             <tbody>
