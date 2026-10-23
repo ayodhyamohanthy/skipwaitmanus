@@ -4,7 +4,7 @@
 // or company name of any seeker can leave this file: there is no field for one.
 // The min-3 gate (D-104 rule) lives in shared/shareImpactCard.ts.
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { companies, companyDomains, profiles, referralRequests, referralTransitionEvents, referrerFastTrackLinks } from "../drizzle/schema";
+import { companies, companyDomains, jobs, profiles, referralRequests, referralTransitionEvents, referrerFastTrackLinks } from "../drizzle/schema";
 import { IMPACT_DECISION_ACTIONS, IMPACT_REFERRAL_ACTIONS, impactCardVisible, summarizeImpact, type ImpactCardPayload, type ImpactEvent } from "../shared/shareImpactCard";
 import { getDb } from "./db";
 import { isVerifiedEmployeeOfCompany } from "./referrerAvailability";
@@ -51,6 +51,16 @@ export async function loadImpactCard(referrerId: number, now: Date = new Date())
   const [company] = await db.select({ name: companies.name, slug: companies.slug, status: companies.status }).from(companies).where(eq(companies.id, domainRow.companyId)).limit(1);
   if (!company || company.status !== "listed") return { state: "insufficient" };
 
+  // F1 (D-106 review): every number below is published as "{company} impact", so it
+  // must come from asks at THIS company. `jobs.company` is the employer's canonical
+  // domain, and a company may hold several mapped domains (companyDomains), so the
+  // scope is every domain mapped to this company plus the link's own. The link follows
+  // the referrer to a new employer while their older asks keep the old company in
+  // `jobs.company`, so filtering on actorUserId or referrerId alone would credit the
+  // previous employer's work to the new one.
+  const domainRows = await db.select({ domain: companyDomains.domain }).from(companyDomains).where(eq(companyDomains.companyId, domainRow.companyId));
+  const companyScope = Array.from(new Set([link.companyDomain.trim().toLowerCase(), ...domainRows.map(row => String(row.domain).trim().toLowerCase())]));
+
   // Two sources, because the truth rule is status-based, not actor-based:
   // - this referrer's OWN decisions (approve/review/pass; review is the
   //   /referrer record action's accept);
@@ -63,12 +73,15 @@ export async function loadImpactCard(referrerId: number, now: Date = new Date())
   const decisionRows = await db
     .select({ action: referralTransitionEvents.action, resultingStatus: referralTransitionEvents.resultingStatus, createdAt: referralTransitionEvents.createdAt, requestId: referralTransitionEvents.referralRequestId })
     .from(referralTransitionEvents)
-    .where(and(eq(referralTransitionEvents.actorUserId, referrerId), inArray(referralTransitionEvents.action, [...IMPACT_DECISION_ACTIONS])));
+    .innerJoin(referralRequests, eq(referralRequests.id, referralTransitionEvents.referralRequestId))
+    .innerJoin(jobs, eq(jobs.id, referralRequests.jobId))
+    .where(and(eq(referralTransitionEvents.actorUserId, referrerId), inArray(jobs.company, companyScope), inArray(referralTransitionEvents.action, [...IMPACT_DECISION_ACTIONS])));
   const referralRows = await db
     .select({ action: referralTransitionEvents.action, resultingStatus: referralTransitionEvents.resultingStatus, createdAt: referralTransitionEvents.createdAt, requestId: referralTransitionEvents.referralRequestId })
     .from(referralTransitionEvents)
     .innerJoin(referralRequests, eq(referralRequests.id, referralTransitionEvents.referralRequestId))
-    .where(and(eq(referralRequests.referrerId, referrerId), inArray(referralTransitionEvents.action, [...IMPACT_REFERRAL_ACTIONS])));
+    .innerJoin(jobs, eq(jobs.id, referralRequests.jobId))
+    .where(and(eq(referralRequests.referrerId, referrerId), inArray(jobs.company, companyScope), inArray(referralTransitionEvents.action, [...IMPACT_REFERRAL_ACTIONS])));
 
   const events: ImpactEvent[] = [...decisionRows, ...referralRows].map(row => ({ requestId: row.requestId, action: row.action, resultingStatus: row.resultingStatus, createdAt: new Date(row.createdAt) }));
   const summary = summarizeImpact(events, now);
@@ -80,7 +93,8 @@ export async function loadImpactCard(referrerId: number, now: Date = new Date())
   const asks = await db
     .select({ requestId: referralRequests.id, visibleAt: referralRequests.coverageVisibleAt, createdAt: referralRequests.createdAt })
     .from(referralRequests)
-    .where(inArray(referralRequests.id, decisions.map(row => row.requestId)));
+    .innerJoin(jobs, eq(jobs.id, referralRequests.jobId))
+    .where(and(inArray(referralRequests.id, decisions.map(row => row.requestId)), inArray(jobs.company, companyScope)));
   const firstDecisionByRequest = new Map<number, Date>();
   for (const row of decisions) {
     const at = row.createdAt;
