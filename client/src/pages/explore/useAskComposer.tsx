@@ -14,7 +14,8 @@ import { useOnlineStatus } from "@/components/goal";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
-import { clearAskPrefill, readAskPrefill, saveAskPrefill } from "@/lib/askPrefill";
+import { ASK_PREFILL_TTL_MS, clearAskPrefill, readAskPrefill, saveAskPrefill } from "@/lib/askPrefill";
+import { clearReferralDraft, readReferralDraft } from "@/lib/pwaContinuity";
 import { defaultPinnedWorkIds, useAskWorkPieces } from "@/lib/askWorkPieces";
 import { discardAskDraftRemote, saveAskDraftRemote, useAskDraft } from "@/lib/askDraftApi";
 import { fastTrackAskFields } from "@/lib/fastTrackHandoff";
@@ -33,7 +34,7 @@ import { composeWhyMe, overLimitReasons, splitWhyMe, WHY_ME_MAX, type WhyMeReaso
 import type { AskResume, AskSentView } from "./AskDrawer";
 import { askIdempotencyKey, ASK_IDEMPOTENCY_KEY, buildAskBody } from "./askSend";
 import { linkHint, roleTitleFromUrl, type LinkHint } from "./findModel";
-import { goToSeekerSignIn } from "./signInHandoff";
+import { askSignInReturnTo, goToSeekerSignIn } from "./signInHandoff";
 
 const MIN_WORDS = 10;
 
@@ -43,6 +44,41 @@ function session(): Storage | null {
 
 function confirmedDomain(url: string): string | undefined {
   try { return confirmedDomainFor(url, localStorage.getItem("bridge-company-confirmation")); } catch { return undefined; }
+}
+
+// The /start hand-off (todo "Preserve the job link from start through the ask
+// form"): Onboarding.begin writes the referral draft and the company
+// confirmation binding, then routes through /request to /ask. Only a fresh,
+// confirmation-bound draft fills the composer, so a stale, malformed or
+// mismatched draft is cleaned up instead of applied; sign-out already destroys
+// the hand-off (logoutPrivacy), so it can never reach a different account.
+type StartHandoff = { targetUrl: string };
+
+function readStartHandoff(now: number = Date.now()): StartHandoff | null {
+  let store: Storage | null = null;
+  try { store = typeof window === "undefined" ? null : window.localStorage; } catch { store = null; }
+  if (!store) return null;
+  const draft = readReferralDraft(store);
+  if (!draft) return null;
+  let bound = false;
+  try {
+    const confirmation = JSON.parse(store.getItem("bridge-company-confirmation") || "null") as { canonicalUrl?: unknown } | null;
+    bound = typeof confirmation?.canonicalUrl === "string" && confirmation.canonicalUrl === draft.targetUrl;
+  } catch { bound = false; }
+  if (now - draft.updatedAt > ASK_PREFILL_TTL_MS || !bound) {
+    try { store.removeItem("bridge-target-url"); store.removeItem("bridge-company-confirmation"); } catch { /* persistence is best-effort */ }
+    clearReferralDraft(store);
+    return null;
+  }
+  return { targetUrl: draft.targetUrl };
+}
+
+function clearStartHandoff(): void {
+  try {
+    localStorage.removeItem("bridge-target-url");
+    localStorage.removeItem("bridge-company-confirmation");
+  } catch { /* persistence is best-effort */ }
+  clearReferralDraft();
 }
 
 export type AskComposer = {
@@ -130,6 +166,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   // opened from a posted role ("/ask?post=<id>&job=<link>", D-022): the post
   // id travels with the send so the poster sees it first; a fresh form drops it.
   const [prefill] = useState(() => readAskPrefill(session()));
+  const [startHandoff] = useState(() => readStartHandoff());
   const [postSelection, setPostSelection] = useState<OpportunityAskSearch | null>(() => parseOpportunityAskSearch(typeof window === "undefined" ? "" : window.location.search));
 
   // The posted role's link fills an untouched composer, wherever the composer lives.
@@ -145,12 +182,22 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     setReasons(current => (current.some(reason => reason.trim()) ? current : splitWhyMe(remoteDraft.note)));
   }, [remoteDraft, company]);
 
-  // The sign-in handoff prefill does the same on /ask, for its own company.
+  // /ask restores the handoff even without a directory match. Other surfaces
+  // still accept only a prefill belonging to their own resolved company.
   useEffect(() => {
-    if (!prefill || !company || prefill.companySlug !== company.slug) return;
+    if (!prefill || (window.location.pathname !== "/ask" && (!company || prefill.companySlug !== company.slug))) return;
     setUrl(current => current || prefill.targetRoleUrl);
     setReasons(current => (current.some(reason => reason.trim()) ? current : splitWhyMe(prefill.note)));
   }, [prefill, company]);
+
+  // Lowest fill precedence: the /start hand-off fills only the still-empty
+  // link, on /ask or where the link fits the resolved company. The account
+  // draft, the posted role and the sign-in/session prefill all outrank it.
+  useEffect(() => {
+    if (!startHandoff) return;
+    if (window.location.pathname !== "/ask" && !(company && jobLinkFitsCompany(startHandoff.targetUrl, company.domains))) return;
+    setUrl(current => current || startHandoff.targetUrl);
+  }, [startHandoff, company]);
 
   const resumeView: AskResume = resumeFile ? { name: resumeFile.name } : uploaded ? { name: uploaded.fileName } : setup?.resume ? { name: setup.resume.fileName } : null;
   const resumeDoc = uploaded ?? (resumeFile ? null : setup?.resume ?? null);
@@ -215,12 +262,9 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       return;
     }
     if (!isSignedIn) {
-      // Sign in first; the company, link and reasons come back on /ask, where the seeker finishes.
-      if (company && saveAskPrefill({ companySlug: company.slug, targetRoleUrl: url, note: composeWhyMe(reasons) })) {
-        goToSeekerSignIn("/ask");
-        return;
-      }
-      goToSeekerSignIn("/ask");
+      // Save the seeker's work even when the directory cannot resolve the company.
+      saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons) });
+      goToSeekerSignIn(askSignInReturnTo(window.location.pathname, window.location.search));
       return;
     }
     try {
@@ -272,6 +316,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       if (!created) throw new Error(typeof payload.error === "string" ? payload.error : "We could not send this ask");
       session()?.removeItem(ASK_IDEMPOTENCY_KEY);
       clearAskPrefill(session());
+      clearStartHandoff();
       setPostSelection(null);
       void discardAskDraftRemote(fetchToken);
       const name = company?.name ?? created.companyDomain ?? "the company";

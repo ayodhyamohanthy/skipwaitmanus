@@ -16,7 +16,7 @@ import express, { type Express, type Request, type Response as ExpressResponse }
 import { validatePrivateDocument } from "./documentValidation";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "./schemaReconcile";
 import { publicAskRef } from "./askRef";
-import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, listMyPaymentReceipts, listSeekerAlerts, createSeekerAlert, setSeekerAlertPaused, deleteSeekerAlert, revokeReferralShareCard, listCreditLedger, getMyProfile, getReferrerPreferences } from "./db";
+import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, listMyPaymentReceipts, listSeekerAlerts, createSeekerAlert, setSeekerAlertPaused, deleteSeekerAlert, revokeReferralShareCard, listCreditLedger, getMyProfile, getReferrerPreferences, listReferrerThankYous } from "./db";
 import type { ReferrerImpactSummary } from "./db";
 import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
@@ -34,6 +34,7 @@ import { BlockedPersonalLinkError } from "./blockedPairs";
 import { creditLedgerQuerySchema, creditLedgerResponseSchema, type CreditLedgerEntry } from "../shared/creditLedger";
 import type { ReferrerAccessResponse } from "../shared/referrerAccess";
 import { resolveAskNote } from "../shared/askNote";
+import { landedJourneyRequestSchema, type LandedJourneyRequest, type LandedJourneyState, type ReferrerThankYouWall } from "../shared/landedJourney";
 import { isOpportunityExpired, myOpportunitiesResponseSchema, opportunityAskSelectionSchema, OPPORTUNITY_TTL_MS } from "../shared/companyOpportunities";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
@@ -145,6 +146,10 @@ export type PrivateReferralRouteDeps = {
   getApprovedReferralProgressStatus?: (userId: number, requestId: number) => Promise<{ status: ReferralStatus; referenceId?: string | null }>;
   listReferralConversation?: (userId: number, requestId: number) => Promise<Array<{ id: number; body: string; createdAt: Date; isMine: boolean }>>;
   sendReferralConversationMessage?: (userId: number, requestId: number, body: string) => Promise<{ id: number }>;
+  /** Kit landed journey write (queue row 20 slice C) — server/db.ts recordLandedJourney. */
+  recordLandedJourney?: (userId: number, input: LandedJourneyRequest) => Promise<LandedJourneyState>;
+  /** A referrer's private thank-you wall (queue row 20 slice D). */
+  listReferrerThankYous?: (userId: number, limit?: number) => Promise<ReferrerThankYouWall>;
   listPublicCompanyOpportunities: () => Promise<unknown[]>;
   publishCompanyOpportunity: (userId: number, input: { kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl?: string; location?: string; compensation?: string; walkInAt?: Date; walkInEndsAt?: Date; showPosterFirstName?: boolean }) => Promise<unknown>;
   /** The poster's own openings: owner list plus the renew/close controls (D-022). */
@@ -1149,14 +1154,15 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         try { return await run(); } catch { failed.push(name); return null; }
       };
       const verified = access.verifiedCompanyAccess;
-      const [preferences, fresh, completed, profile, impact] = await Promise.all([
+      const [preferences, fresh, completed, profile, impact, thankYous] = await Promise.all([
         section("preferences", () => (deps.getReferrerPreferences ?? getReferrerPreferences)(userId), !verified),
         section("inboxNew", () => loadInbox(userId, "new"), !verified),
         section("inboxCompleted", () => loadInbox(userId, "completed"), !verified),
         section("profile", () => (deps.getMyProfile ?? getMyProfile)(userId), !verified),
         section("impact", () => (deps.getPrivateReferrerImpactSummary ?? getPrivateReferrerImpactSummary)(userId), !verified),
+        section("thankYous", () => (deps.listReferrerThankYous ?? listReferrerThankYous)(userId), !verified),
       ]);
-      res.json({ access, preferences, inboxNew: fresh, inboxCompleted: completed, profile, impact, failed });
+      res.json({ access, preferences, inboxNew: fresh, inboxCompleted: completed, profile, impact, thankYous, failed });
     } catch { res.status(500).json({ error: "We could not load your referrer home" }); }
   });
   app.post("/api/company-referrals/availability/open", async (req, res) => {
@@ -1340,6 +1346,60 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const message = error instanceof Error ? error.message : "We could not send this private message";
       record({ actorUserId, action: "company_referral.conversation_message_sent", outcome: "denied", resourceType: "referral_conversation", resourceId: Number.isInteger(requestId) ? requestId : undefined });
       res.status(/only available after the referral is accepted/i.test(message) ? 409 : 403).json({ error: message });
+    }
+  });
+  // Kit landed journey (queue row 20 slice C): the seeker whose ask ended with a hire
+  // records their thank-you, their wall choice and their pay-it-forward answer. The note
+  // reaches the referrer's conversation at most once (server/db.ts claims delivery before
+  // it sends), and `state.delivered` tells the page the truth when a send failed, so it
+  // can offer a retry instead of claiming "thanks sent".
+  app.post("/api/landed/journey", async (req, res) => {
+    let actorUserId: number | undefined;
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to send your thank-you" });
+      actorUserId = identity.account.id;
+      const parsed = landedJourneyRequestSchema.safeParse(req.body ?? {});
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Check your thank-you" });
+      const requestId = parsed.data.referralRequestId;
+      if (await isRequestBlocked(actorUserId, requestId)) return blockedThreadDeny(actorUserId, requestId, res);
+      if (!deps.recordLandedJourney) return res.status(503).json({ error: "Thank-yous are not available yet" });
+      const state = await deps.recordLandedJourney(actorUserId, parsed.data);
+      record({ actorUserId, action: "landed.thanks_recorded", outcome: "success", resourceType: "landed_journey", resourceId: state.referralRequestId, metadata: { delivered: state.delivered, shareOnWall: state.shareOnWall, messageLength: state.thankYouMessage?.length ?? 0 } });
+      if (parsed.data.payForward) record({ actorUserId, action: "landed.pay_forward_chosen", outcome: "success", resourceType: "landed_journey", resourceId: state.referralRequestId, metadata: { choice: parsed.data.payForward } });
+      res.json({ state });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not send your thank-you";
+      const isKnownClientError = /not available to you/i.test(message) || /marks the ask as hired/i.test(message) || /database unavailable/i.test(message);
+      if (isKnownClientError) {
+        record({ actorUserId, action: "landed.thanks_recorded", outcome: "denied", resourceType: "landed_journey" });
+        res.status(/not available to you/i.test(message) ? 404 : /database unavailable/i.test(message) ? 503 : 409).json({ error: message });
+      } else {
+        record({ actorUserId, action: "landed.thanks_recorded", outcome: "failure", resourceType: "landed_journey" });
+        captureServerError(error, { route: "POST /api/landed/journey", actorUserId });
+        res.status(500).json({ error: "We could not send your thank-you" });
+      }
+    }
+  });
+  // The referrer's private thank-you wall (queue row 20 slice D). Only the notes a seeker
+  // let this referrer keep show on the wall; the total counts every one they received.
+  app.get("/api/referrer/thank-yous", async (req, res) => {
+    let actorUserId: number | undefined;
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in with your company email to continue" });
+      actorUserId = identity.account.id;
+      res.set("Cache-Control", "private, no-store");
+      if (!deps.getVerifiedWorkEmailAccess) return res.status(503).json({ error: "Referrer access is not available yet" });
+      const access = await loadAccess(identity.account.id);
+      if (!access.verifiedCompanyAccess) { record({ actorUserId: identity.account.id, action: "landed.wall_viewed", outcome: "denied", resourceType: "thank_you_wall" }); return res.status(403).json({ error: "Verify your work email to see your thank-yous" }); }
+      const wall = await (deps.listReferrerThankYous ?? listReferrerThankYous)(identity.account.id);
+      record({ actorUserId: identity.account.id, action: "landed.wall_viewed", outcome: "success", resourceType: "thank_you_wall", metadata: { noteCount: wall.thankYous.length, total: wall.total } });
+      res.json(wall);
+    } catch (error) {
+      if (actorUserId) record({ actorUserId, action: "landed.wall_viewed", outcome: "failure", resourceType: "thank_you_wall" });
+      captureServerError(error, { route: "GET /api/referrer/thank-yous", actorUserId });
+      res.status(500).json({ error: "We could not load your thank-yous" });
     }
   });
   app.get("/api/company-referrals/:requestId/preview", async (req, res) => {

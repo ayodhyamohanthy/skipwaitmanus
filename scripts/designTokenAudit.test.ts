@@ -42,6 +42,10 @@ describe("A3: the index.css phase-2 block carries only the approved goal hexes",
 
 describe("R1: no colour literal in goal scope", () => {
   it("rejects a hex", () => { expect(rules([goal('"#fff"')])).toEqual(["R1"]); });
+  it("covers pages/goal/** after D-048-F-flags", () => {
+    expect(rules([goal('"#fff"', "client/src/pages/goal/inbox/GoalInbox.tsx")])).toEqual(["R1"]);
+    expect(rules([goal('"text-g-display text-g-ink"', "client/src/pages/goal/inbox/GoalInbox.tsx")])).toEqual([]);
+  });
   it("rejects an rgb() function", () => { expect(rules([goal('"rgb(0 0 0 / 0.1)"')])).toEqual(["R1"]); });
   it("rejects oklch", () => { expect(rules([goal('"oklch(0.5 0.1 250)"')])).toEqual(["R1"]); });
 });
@@ -86,8 +90,20 @@ describe("R6: comp sample data and the compensation row", () => {
     expect(rules([], { sampleNames: ["R-8F3K2"], r6Files: [live('"R-8F3K2"', "client/src/pages/ComponentShowcase.tsx")] })).toEqual(["R6"]);
   });
   it("rejects the word compensation in goal scope", () => { expect(rules([goal('"compensation"')])).toEqual(["R6"]); });
+  it("excuses only the exact shared draft-handoff storage key", () => {
+    expect(rules([goal('localStorage.removeItem("bridge-target-compensation")')])).toEqual([]);
+    expect(rules([goal('"bridge-target-compensation" + "Compensation details"')])).toEqual(["R6"]);
+    expect(rules([goal('"target-compensation"')])).toEqual(["R6"]);
+  });
   it("passes neutral placeholders", () => {
     expect(run([goal('"Company A"')], { sampleNames: ["Fernhill Bank"] })).toEqual([]);
+  });
+  it("excuses the legitimate post-opportunity field but still bans the queue copy there", () => {
+    const postOpp = (source: string) => goal(source, "client/src/pages/goal/post-opportunity/GoalPostOpportunity.tsx");
+    expect(rules([postOpp('"compensation" "Compensation (optional)"')])).toEqual([]);
+    expect(rules([postOpp('"Compensation (Recommended)"')])).toEqual(["R6"]);
+    expect(rules([postOpp('"expected compensation"')])).toEqual(["R6"]);
+    expect(rules([postOpp('"Recommended compensation"')])).toEqual(["R6"]);
   });
 });
 
