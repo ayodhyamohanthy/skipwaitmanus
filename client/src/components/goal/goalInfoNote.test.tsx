@@ -9,7 +9,7 @@ import { GoalInfoNote } from "@/components/goal/GoalInfoNote";
 function renderNote() {
   return render(
     <GoalInfoNote label="What are referrals?">
-      Referrals send your asks. 1 referral is used when a verified employee can see your ask; an ask still waiting costs nothing.{" "}
+      Referrals are what you spend to send an ask: 1 referral when a verified employee can see it, none while it waits. A referral delivers your request - it is not a guaranteed referral.{" "}
       <a href="/plans">More about referrals on Plans</a>
     </GoalInfoNote>,
   );

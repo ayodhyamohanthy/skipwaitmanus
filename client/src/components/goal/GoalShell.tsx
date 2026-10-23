@@ -67,7 +67,7 @@ function CreditsPill({ credits, compact }: { credits: GoalShellCredits; compact?
         {compact ? null : <span>{" "}referrals</span>}
       </a>
       <GoalInfoNote label="What are referrals?">
-        Referrals send your asks. 1 referral is used when a verified employee can see your ask; an ask still waiting costs nothing. Free plan: 3 free referrals every month.{" "}
+        Referrals are what you spend to send an ask: 1 referral when a verified employee can see it, none while it waits. A referral delivers your request - it is not a guaranteed referral. Free plan: 3 free referrals every month.{" "}
         <a href="/plans" className="text-g-ink underline underline-offset-[3px]">More about referrals on Plans</a>
       </GoalInfoNote>
     </span>
