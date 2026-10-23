@@ -20,7 +20,12 @@ export const SKIPPIE_JOB_TEXT_MAX = 20000;
 export const SKIPPIE_RESUME_TEXT_MAX = 40000;
 export const SKIPPIE_NOTE_MAX = 1400;
 
-export type SkippieQuote = { level: number; cost: number; totalAvailable: number; shortfall: number };
+// covered mirrors createAsk's coverage decision (verified + available referrer at the
+// resolved employer domain): true = the level cost is charged at send, false = the ask
+// waits for company coverage with NO debit. null = the domain could not be resolved,
+// so coverage is unknown and no free-waiting claim is made; the send-time re-quote and
+// createAsk remain the backstop either way.
+export type SkippieQuote = { level: number; cost: number; totalAvailable: number; shortfall: number; covered: boolean | null };
 export type OwnedResume = { id: number; fileName: string; fileKey?: string; mimeType?: string };
 export type ResumeFact = { id: string; text: string; source: string };
 export type FitDraft = {
@@ -203,6 +208,10 @@ function sha256(text: string): string {
 type Out = { session: SkippieSession; replies: string[] };
 
 function quoteLine(quote: SkippieQuote): string {
+  // A known-uncovered company waits free by contract (createAsk accepts with no
+  // debit), so a short wallet is never pushed to top-up for it.
+  if (quote.covered === false)
+    return "No employee at this company is open on skipwait.me yet, so your ask waits - free - until one is. Your credit is only used at that moment. Send it?";
   return quote.shortfall > 0
     ? `This ask costs ${quote.cost} credit${quote.cost === 1 ? "" : "s"}. You have ${quote.totalAvailable}. Add ${quote.shortfall} more on /plans first - Skippy never takes a payment.`
     : `This ask costs ${quote.cost} credit${quote.cost === 1 ? "" : "s"}. You have ${quote.totalAvailable}. Send it?`;
@@ -388,13 +397,18 @@ export async function advanceSkippieSeeker(userId: number, current: SkippieSessi
         session.step = "fit";
         return say("No problem - nothing was sent and nothing was spent. You can keep editing your note.");
       }
-      if (input.kind !== "confirm_send") return say(session.quote?.shortfall ? "Add credits on /plans first - Skippy never takes a payment." : 'Say "Send it" to send your ask, or "not yet" to keep editing.');
+      if (input.kind !== "confirm_send") return say(session.quote?.shortfall && session.quote.covered !== false ? "Add credits on /plans first - Skippy never takes a payment." : 'Say "Send it" to send your ask, or "not yet" to keep editing.');
       if (!session.note) return say("Write your note to the referrer first - the final words are yours.");
       if (!session.noteSha256 || session.noteSha256 !== sha256(session.note)) return say("Your note changed since you confirmed it. Confirm the final words again before sending.");
       // Price is live, never hardcoded: quote again at send time and refuse drift.
       const fresh = await deps.getQuote(userId, session.targetRoleUrl!);
       session.quote = fresh;
-      if (fresh.shortfall > 0) return say(`This ask costs ${fresh.cost} credit${fresh.cost === 1 ? "" : "s"} and you have ${fresh.totalAvailable}. Nothing was sent and nothing was charged. Add credits on /plans first.`);
+      // The short-wallet refusal applies only when coverage means a charge is
+      // coming: a known-uncovered company accepts the ask into free waiting
+      // (createAsk debits nothing until an employee can see it), so it must
+      // never be blocked here. Unknown coverage refuses too - it cannot claim
+      // the free path - and createAsk stays the final backstop.
+      if (fresh.shortfall > 0 && fresh.covered !== false) return say(`This ask costs ${fresh.cost} credit${fresh.cost === 1 ? "" : "s"} and you have ${fresh.totalAvailable}. Nothing was sent and nothing was charged. Add credits on /plans first.`);
       let result: CreateAskResult;
       try {
         result = await deps.createAsk(userId, { targetRoleUrl: session.targetRoleUrl!, attachmentIds: [session.attachmentId!], personalPitch: session.note, idempotencyKey: session.idempotencyKey });
