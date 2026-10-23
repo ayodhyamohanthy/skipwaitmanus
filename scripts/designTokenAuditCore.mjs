@@ -21,7 +21,7 @@ export const APPROVED = new Set([
 
 export const THIRD_PARTY = new Set(["#25d366", "#229ed9", "#0a66c2"]);
 
-export const GOAL_SCOPE = /^client\/src\/components\/goal\//;
+export const GOAL_SCOPE = /^client\/src\/(components\/goal|pages\/goal)\//;
 export const GOAL_VERIFIED_MARK = "client/src/components/goal/GoalVerifiedMark.tsx";
 export const INDEX_CSS = "client/src/index.css";
 export const ALLOWED_CSS_FILES = new Set([INDEX_CSS, "client/src/styles/kit.css"]);

@@ -158,3 +158,9 @@ describe("goal tokens match the approved comp tokens", () => {
     expect(APPROVED.has("#b45309")).toBe(true);
   });
 });
+
+describe("GOAL_SCOPE covers pages/goal", () => {
+  it("rejects colour literals in client/src/pages/goal/**", () => {
+    expect(rules([goal('"#fff"', "client/src/pages/goal/x/X.tsx")])).toEqual(["R1"]);
+  });
+});
