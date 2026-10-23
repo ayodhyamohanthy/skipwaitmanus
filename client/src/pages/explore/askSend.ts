@@ -4,6 +4,7 @@
 // (D-017), and a confirmed employer domain travels only for exactly this link.
 // Compensation is not sent (D-071); the server infers the job function.
 import { composeWhyMe } from "@shared/whyMe";
+import { dedupeAskWorkItemIds } from "@shared/askWorkItems";
 import type { FastTrackAskFields } from "@/lib/fastTrackHandoff";
 
 export const ASK_IDEMPOTENCY_KEY = "skipwait-ask-idempotency-key";
@@ -25,12 +26,19 @@ export function buildAskBody(input: {
   confirmedCompanyDomain: string | undefined;
   /** D-022: an ask opened from a posted role keeps the post so the poster sees it first. */
   opportunityId?: number;
+  /**
+   * Task 13: the showcase pieces this ask carries. Folded here, once, so the
+   * body the server receives is already the body the referrer will read — and
+   * both composer surfaces send it, because both build the body here.
+   */
+  workItemIds?: readonly number[];
 }): Record<string, string | number | number[]> {
   const body: Record<string, string | number | number[]> = {
     targetRoleUrl: input.targetRoleUrl.trim(),
     attachmentIds: [input.resumeId],
     candidateMessage: composeWhyMe(input.reasons),
   };
+  if (input.workItemIds?.length) body.workItemIds = dedupeAskWorkItemIds(input.workItemIds);
   if (input.companySlug) body.companySlug = input.companySlug;
   if ("fastTrackCode" in input.fastTrack) body.fastTrackCode = input.fastTrack.fastTrackCode;
   if ("fastTrackCompanySlug" in input.fastTrack) {

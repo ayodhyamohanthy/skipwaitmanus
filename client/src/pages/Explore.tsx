@@ -148,6 +148,7 @@ export default function Explore() {
           reasons={composer.reasons}
           onReasonChange={composer.onReasonChange}
           reasonsError={composer.reasonsError}
+          work={composer.work}
           watch={composer.watch}
           cost={composer.cost}
           sendLabel={composer.sendLabel}

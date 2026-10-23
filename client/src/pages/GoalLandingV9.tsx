@@ -13,7 +13,7 @@ import { Link, useLocation } from "wouter";
 import { GoalBrandMark } from "@/components/goal/GoalBrandMark";
 import { GoalVerifiedMark } from "@/components/goal/GoalVerifiedMark";
 import { BetaBadge, BetaNoticeLine } from "@/components/BetaNotice";
-import { FAIR_RULES, FOOTER_COLS, Kicker, Reveal, AskCardArt } from "./GoalLanding";
+import { COST_COPY, FAIR_RULES, FOOTER_COLS, Kicker, Reveal, AskCardArt } from "./GoalLanding";
 
 // Benefit-led copy (owner 17:59:41 phonemsg-01M5F70MEJM3WQEYVW9JZJKP6N
 // "Have outcome benfit oriented wording" + 18:00:59
@@ -21,13 +21,13 @@ import { FAIR_RULES, FOOTER_COLS, Kicker, Reveal, AskCardArt } from "./GoalLandi
 // main 18:02). V7 keeps its own wording - these arrays are V9-only.
 const V9_STEPS: Array<{ title: string; body: string }> = [
   { title: "Pick where you want in", body: "See the companies with verified employees inside, and the roles you can ask about." },
-  { title: "Ask with the cost up front", body: "You see the cost before you ask: 3 free credits every month; extra asks use credits. Every ask costs the same." },
+  { title: "Ask with the cost up front", body: COST_COPY.stepBody },
   { title: "A yes opens a conversation", body: "An accepted ask opens a private conversation. A referral is an introduction, never a promise of an interview or a job." },
 ];
 const V9_TRUST: Array<{ title: string; body: string; blue: boolean }> = [
   { title: "A real insider reads you", body: "Every referrer proves their company email before they can see a single ask.", blue: true },
   { title: "Private until it counts", body: "Your name stays private until a referrer chooses to open the conversation.", blue: false },
-  { title: "Nothing spent while it waits", body: "1 credit only when a verified employee can see your ask - back if you withdraw first.", blue: false },
+  { title: "Nothing spent while it waits", body: COST_COPY.waitBody, blue: false },
 ];
 
 // Single swappable band photo: "d" (handshake, default per main 17:54) or

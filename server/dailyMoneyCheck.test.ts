@@ -29,6 +29,7 @@ function makeDeps(overrides: Partial<DailyMoneyCheckDeps> = {}) {
     listLegacyPlanWallets: vi.fn(async () => []),
     listAskDeliverySpendsWhileWaiting: vi.fn(async () => []),
     listDoublyReversedSpends: vi.fn(async () => []),
+    listAskCostMismatches: vi.fn(async () => []),
     listRefundsAfterPickup: vi.fn(async () => []),
     listReferredPastDeadline: vi.fn(async () => []),
     sendEmail: vi.fn(async (input: Sent) => { sent.push(input); return true; }),

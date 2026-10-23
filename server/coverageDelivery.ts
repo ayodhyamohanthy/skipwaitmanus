@@ -19,6 +19,7 @@
 //            by a pass).
 // Covered-at-create asks (an available referrer at send time) keep the older
 // single-step path: credit at create, coverageVisibleAt=createdAt.
+import { addCreditPhrase } from "../shared/moneyCopy";
 import { and, eq, isNull, type SQL } from "drizzle-orm";
 import { referralRequests } from "../drizzle/schema";
 import { COVERAGE_WAIT_DAYS } from "../shared/referral";
@@ -55,7 +56,8 @@ export function coverageDeliveredNotice(companyDomain: string): { title: string;
 
 /** D-047, verbatim: the ask is held at first visibility because the seeker has no credit to send it. */
 export function coverageHeldNotice(companyDomain: string): { title: string; body: string } {
-  return { title: "Add a credit to send your ask", body: `A verified employee at ${companyDomain} can now see asks. Add a credit to send yours.` };
+  const add = addCreditPhrase(process.env.ASK_LEVEL_COST === "true");
+  return { title: `${add} to send your ask`, body: `A verified employee at ${companyDomain} can now see asks. ${add} to send yours.` };
 }
 
 /** The in-app notice a referrer gets when an ask is handed to them (the enrollment-path words). */

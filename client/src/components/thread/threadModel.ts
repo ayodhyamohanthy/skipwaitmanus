@@ -1,3 +1,5 @@
+import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
+import { addCreditPhrase, creditUsedPhrase } from "@shared/moneyCopy";
 import { askDaysLeft, askDaysShown, isPostApprovalReferralStatus } from "@shared/referral";
 import { companyIdentityOf, isUnknownCompany, type CompanyIdentitySource } from "@shared/companies";
 import type { ThreadRequest, ThreadRole } from "@/lib/threadApi";
@@ -63,8 +65,8 @@ export function seekerWaitingCopy(request: Pick<ThreadRequest, "companyDomain" |
   const employee = unknown ? "employee at the company" : `${company} employee`;
   const held = request.referrerId !== null && request.heldForReferrer === true;
   if (request.referrerId !== null && !held) return `A verified ${employee} is reviewing your request. We'll notify you the moment it's accepted.`;
-  if (request.queueStatus === "held_for_credit") return `A verified ${employee} can see asks now. Add a credit to send yours.`;
-  if (request.queueStatus === "waiting_for_coverage") return `No verified ${employee} is available yet. Your ask waits at no cost, and when one can see it, 1 credit is used — we'll notify you.`;
+  if (request.queueStatus === "held_for_credit") return `A verified ${employee} can see asks now. ${addCreditPhrase(ASK_LEVEL_COST_CLIENT)} to send yours.`;
+  if (request.queueStatus === "waiting_for_coverage") return `No verified ${employee} is available yet. Your ask waits at no cost, and when one can see it, ${creditUsedPhrase(ASK_LEVEL_COST_CLIENT)} — we'll notify you.`;
   const days = askDaysShown({ createdAt: request.createdAt }, nowMs);
   const when = days === null || days < 0 ? null : days === 0 ? "Expires today" : days === 1 ? "Expires tomorrow" : `Expires in ${days} days`;
   if (held) {
