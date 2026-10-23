@@ -20,9 +20,9 @@ import path from "node:path";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Router } from "wouter";
-import { ASK_COST_SENTENCE, CREDIT_RULE, FREE_ASKS_CHIP, REFERRER_MONEY_SENTENCE } from "../shared/moneyCopy";
+import { askCostLanding, ASK_COST_SENTENCE, CREDIT_RULE, FREE_ASKS_CHIP, REFERRER_MONEY_SENTENCE } from "../shared/moneyCopy";
 import { FREE_PLAN } from "../shared/planCatalog";
-import { LANDING_COMMITMENTS, LANDING_EMPLOYEE_STEPS, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_GUIDES, LANDING_H1, LANDING_HERO_LEAD, LANDING_SEEKER_STEPS, LANDING_SUMMARY, type LandingStep } from "../shared/landingContent";
+import { GOAL_LANDING_BAND_H2, GOAL_LANDING_BAND_LEAD, GOAL_LANDING_COMPARE_H2, GOAL_LANDING_COMPARE_ROWS, GOAL_LANDING_EMPLOYEE_H2, GOAL_LANDING_EMPLOYEE_LEAD, GOAL_LANDING_EXPLORE_NOTE, GOAL_LANDING_FAIR_H2, GOAL_LANDING_FIGURES_TEXT, GOAL_LANDING_H1, GOAL_LANDING_HERO_LEAD, GOAL_LANDING_QUOTE, GOAL_LANDING_STEPS_H2, GOAL_LANDING_TRUST_H2, goalLandingFairRules, goalLandingSteps, goalLandingTrust, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_GUIDES } from "../shared/landingContent";
 import { publicRoute } from "../shared/publicRoutes";
 import { GUIDES } from "../client/src/content/guides";
 import { LAUNCH_COMPANY_SEED } from "../shared/companyDirectorySeed";
@@ -61,19 +61,30 @@ export const PUBLIC_PAGES: PublicPage[] = [
   })),
 ];
 
-function stepsSection(heading: string, steps: readonly LandingStep[]) {
-  return `<h2>${escapeHtml(heading)}</h2><ol>${steps.map(step => `<li><strong>${escapeHtml(step.title)}</strong> ${escapeHtml(step.body)}</li>`).join("")}</ol>`;
-}
-
 /**
  * The landing page as plain HTML for crawlers that never run JavaScript. Every
  * string comes from @shared/landingContent, which the React landing page also
  * renders, so this snapshot cannot promise something the product does not show.
  */
 export function landingSnapshot(policyLinks: ReadonlyArray<{ route: string; title: string }>): string {
+  // The released landing is the goal page (goalSurfaces RELEASED: "home"), so
+  // the snapshot shows ITS copy: on a slow or blocked bundle the reveal
+  // failsafe paints this snapshot, and painting the pre-goal landing is the
+  // D-048-fix-landing-load-flash bug. Cost wording is pinned to the released
+  // build's flag state (VITE_ASK_LEVEL_COST unset); if D-132 ever releases
+  // level cost, this line and the deployed flag flip together.
+  const costCopy = askCostLanding(false);
   const employer = `<p><a href="${LANDING_EMPLOYER_LINK.href}">${escapeHtml(LANDING_EMPLOYER_LINK.label)}</a> — ${escapeHtml(LANDING_EMPLOYER_LINK.summary)}</p>`;
   const guides = `<h2>Guides</h2><ul>${LANDING_GUIDES.map(item => `<li><a href="${item.href}">${escapeHtml(item.label)}</a> — ${escapeHtml(item.summary)}</li>`).join("")}</ul>`;
-  return `<main data-skipwait-snapshot="landing"><h1>${escapeHtml(LANDING_H1)}</h1><p>${escapeHtml(LANDING_HERO_LEAD)}</p><p><a href="/start">Request a private job referral</a> · <a href="/referrer">I work at a company and can help someone</a></p>${stepsSection("How job seekers use skipwait.me", LANDING_SEEKER_STEPS)}${stepsSection("How verified employees help", LANDING_EMPLOYEE_STEPS)}<h2>Private by default</h2><ul>${LANDING_COMMITMENTS.map(item => `<li><strong>${escapeHtml(item.title)}</strong> ${escapeHtml(item.body)}</li>`).join("")}</ul><h2>${escapeHtml(LANDING_FAQ_HEADING)}</h2><dl>${LANDING_FAQ.map(entry => `<dt>${escapeHtml(entry.question)}</dt><dd>${escapeHtml(entry.answer)}</dd>`).join("")}</dl><h2>Explore skipwait.me</h2><ul>${LANDING_EXPLORE.map(item => `<li><a href="${item.href}">${escapeHtml(item.label)}</a> — ${escapeHtml(item.summary)}</li>`).join("")}</ul>${guides}${employer}${homeLinks(policyLinks)}</main>`;
+  const compare = GOAL_LANDING_COMPARE_ROWS.map(([label, mass, referral]) => `<p><strong>${escapeHtml(label)}</strong> Mass applying: ${escapeHtml(mass)} A referral on skipwait.me: ${escapeHtml(referral)}</p>`).join("");
+  const steps = goalLandingSteps(costCopy).map(step => `<li><strong>${escapeHtml(step.title)}</strong> ${escapeHtml(step.body)}</li>`).join("");
+  const trust = goalLandingTrust(costCopy).map(item => `<li><strong>${escapeHtml(item.title)}</strong> ${escapeHtml(item.body)}</li>`).join("");
+  const fairRules = goalLandingFairRules(costCopy).map(rule => `<li>${escapeHtml(rule)}</li>`).join("");
+  // Explore links are label-only: their summaries carry stale money wording
+  // (an unverified "never expire", the paid-plans sentence) that the released
+  // landing does not print and the D-132 audit has not cleared.
+  const exploreLinks = `<h2>Explore skipwait.me</h2><ul>${LANDING_EXPLORE.map(item => `<li><a href="${item.href}">${escapeHtml(item.label)}</a></li>`).join("")}</ul>`;
+  return `<main data-skipwait-snapshot="landing"><h1>${escapeHtml(GOAL_LANDING_H1)}</h1><p>${escapeHtml(GOAL_LANDING_HERO_LEAD)}</p><p><a href="/explore">Find your company</a> · <a href="/sign-in?intent=referrer">Join as a referrer</a> · <a href="/sign-in">Sign in</a></p><p>${escapeHtml(GOAL_LANDING_EXPLORE_NOTE)}</p><h2>${escapeHtml(GOAL_LANDING_BAND_H2)}</h2><p>${escapeHtml(GOAL_LANDING_BAND_LEAD)}</p><h2>${escapeHtml(GOAL_LANDING_COMPARE_H2)}</h2>${compare}<p>${escapeHtml(GOAL_LANDING_FIGURES_TEXT)}</p><h2>${escapeHtml(GOAL_LANDING_STEPS_H2)}</h2><ol>${steps}</ol><blockquote><p>${escapeHtml(GOAL_LANDING_QUOTE)}</p></blockquote><h2>${escapeHtml(GOAL_LANDING_TRUST_H2)}</h2><ul>${trust}</ul><h2>${escapeHtml(GOAL_LANDING_EMPLOYEE_H2)}</h2><p>${escapeHtml(GOAL_LANDING_EMPLOYEE_LEAD)}</p><p><a href="/referrer">Join as a referrer</a></p><h2>${escapeHtml(GOAL_LANDING_FAIR_H2)}</h2><ul>${fairRules}</ul>${exploreLinks}${guides}${employer}${homeLinks(policyLinks)}</main>`;
 }
 
 export type PublicSnapshot = { route: string; title: string; description: string; markup: string };
@@ -174,9 +185,9 @@ export async function main(dist = path.resolve(import.meta.dirname, "../dist/pub
   const policyLinks = PUBLIC_PAGES.map(page => ({ route: page.route, title: require(page.route).title }));
   const home = require("/");
   const landing = landingSnapshot(policyLinks);
-  // The FAQ answers are printed in the snapshot above, so the markup describes
-  // text a visitor can actually read on the page.
-  write("/", renderPublicPage(template, home, landing, { extraJsonLd: [faqJsonLd(LANDING_FAQ)] }), landing.length);
+  // The goal landing prints no FAQ, so the home page carries no FAQPage markup
+  // either: structured data may only describe text a visitor can actually read.
+  write("/", renderPublicPage(template, home, landing), landing.length);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.meta.filename)) main().catch(error => { console.error(error); process.exit(1); });
