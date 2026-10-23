@@ -1821,21 +1821,6 @@
    "tier": 2
   },
   {
-<<<<<<< HEAD
-   "id": "D-179-ats-referral-validation",
-   "title": "Connect ATSes to technically validate completed referrals (ATS-confirmed vs referrer-reported)",
-   "row": "D-179",
-   "packet": "docs/plans/D-179-ats-referral-validation.md",
-   "tier": 2,
-   "lane": "employer",
-   "branch": "agent/coordinator/ats-referral-validation",
-   "status": "todo",
-   "owns": [
-    "docs/plans/D-179-ats-referral-validation.md"
-   ],
-   "dependsOn": [],
-   "note": "Founder direction Oct 24 1:09 IST (phonemsg-01M5N4DC140W9347XWW34NAWX1). Distinct from jobs ingestion. Product truth rule: self-report is never ATS-verified; states stay labeled until a real ATS signal exists. No employer private access, no spend; integration research routed to the market research seat - incorporate grounded findings, do not invent universal APIs. Money events stay frozen under D-132/D-152."
-=======
    "id": "D-178-agent-portal-access",
    "title": "External agents using the portal: user-scoped sign-in, approved payment, apply-for-referral (protocol TBD)",
    "row": "D-178",
@@ -1852,7 +1837,21 @@
     "D-048-p3-agents"
    ],
    "note": "Founder direction Oct 24 00:58 IST (phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M). Direction not authority: no charges, no auth bypass, no invented protocol. Delegated identity rides existing assistant-grant work; payment needs explicit user approval per the money rules; retry-safe apply/pay required."
->>>>>>> origin/main
+  },
+  {
+   "id": "D-179-ats-referral-validation",
+   "title": "Connect ATSes to technically validate completed referrals (ATS-confirmed vs referrer-reported)",
+   "row": "D-179",
+   "packet": "docs/plans/D-179-ats-referral-validation.md",
+   "tier": 2,
+   "lane": "employer",
+   "branch": "agent/coordinator/ats-referral-validation",
+   "status": "todo",
+   "owns": [
+    "docs/plans/D-179-ats-referral-validation.md"
+   ],
+   "dependsOn": [],
+   "note": "Founder direction Oct 24 1:09 IST (phonemsg-01M5N4DC140W9347XWW34NAWX1). Distinct from jobs ingestion. Product truth rule: self-report is never ATS-verified; states stay labeled until a real ATS signal exists. No employer private access, no spend; integration research routed to the market research seat - incorporate grounded findings, do not invent universal APIs. Money events stay frozen under D-132/D-152."
   }
  ]
 }
