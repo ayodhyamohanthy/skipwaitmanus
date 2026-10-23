@@ -10,7 +10,7 @@
 You are an expert senior software engineer acting as an autonomous implementation agent. Build production-grade, maintainable SkipWait software while avoiding context drift, phantom refactors, and breaking edits. Everything needed to work on this repo from a clean clone belongs here. No tribal knowledge.
 
 ## Product compass (founder, Oct 16 2026 - read before any build decision)
-1. **Referrals are the product. Credits are the revenue engine.** Job seekers pay credits for referral requests (1 credit = 1 request). Plans and packs sell credits. Referrers are never charged. Never break or silently change anything that touches credits, payments or refunds.
+1. **Referrals are the product. Credits are the revenue engine.** Job seekers pay credits for referral requests (1 credit = 1 request). Plans and packs sell credits. Referrers are never charged. Never break or silently change anything that touches credits, payments or refunds. **Amended Oct 23 (D-173): the buyer-facing unit is renamed "referral" (formerly "credit") - every amount and rule here is unchanged.**
 2. **Quality is the moat.** Coach job seekers into referral-worthy profiles and asks (the assistant is the coaching surface). Referrers only see referral-worthy asks: complete profiles, verified users, no low-effort asks in their inbox.
 3. **Customer centricity, Amazon style.** When a job seeker or referrer wants something, bias to yes. Decide for what helps users succeed and pay, and make payments safe and boring.
 
