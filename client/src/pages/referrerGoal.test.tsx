@@ -158,7 +158,7 @@ describe("Goal /referrer workspace", () => {
     renderWithQuery(<Referrer />);
     expect(await screen.findByText("Help when the fit feels right.")).toBeTruthy();
     expect(document.querySelector(".referrer-workspace")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Preview incoming asks/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Preview incoming referral requests/ }));
     expect(go).toHaveBeenCalledWith("/queue");
     fireEvent.click(screen.getByRole("tab", { name: "Impact" }));
     expect(go).toHaveBeenCalledWith("/referrer/impact");

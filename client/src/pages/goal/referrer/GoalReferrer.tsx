@@ -60,7 +60,7 @@ function GoalOverview({ onPreviewAsks }: { onPreviewAsks: () => void }) {
         <Kicker>YOUR NEXT STEP</Kicker>
         <h2 className="mt-3 text-[22px] font-semibold leading-[1.15] tracking-[-0.02em]">Help when the fit feels right.</h2>
         <p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">You decide your pace, your criteria, and every introduction. Passing is private and always okay.</p>
-        <div className="mt-5"><GoalButton variant="primary" onClick={onPreviewAsks}>Preview incoming asks<ArrowRight className="h-4 w-4" aria-hidden="true" /></GoalButton></div>
+        <div className="mt-5"><GoalButton variant="primary" onClick={onPreviewAsks}>Preview incoming referral requests<ArrowRight className="h-4 w-4" aria-hidden="true" /></GoalButton></div>
       </div>
       <ul className="grid max-w-[640px] gap-2">
         {([[ShieldCheck, "Your identity stays private", "Revealed only after you accept."], [Settings2, "Set a real capacity", "Pause or change it at any time."], [EyeOff, "No public ratings", "Kindness is not a performance metric."]] as const).map(([Icon, title, sub]) => (
@@ -188,7 +188,7 @@ function GoalSetupDialog({ initialStep = 0, onClose }: { initialStep?: number; o
           <div className="mt-5">
             <BriefcaseBusiness className="h-5 w-5 text-g-ink" aria-hidden="true" />
             <h2 id="goal-setup-title" className="mt-3 text-[24px] font-semibold leading-[1.15] tracking-[-0.02em]">Choose your lane.</h2>
-            <p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">Pick the kinds of roles you can assess and how many asks you want to receive.</p>
+            <p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">Pick the kinds of roles you can assess and how many referral requests you want to receive.</p>
             <label className="mt-4 block text-g-label text-g-ink">Function
               <span className="relative mt-2 block"><select className="h-(--g-control-h) w-full appearance-none rounded-g-control border border-g-control-edge bg-white px-3 text-g-body text-g-ink outline-none focus:border-g-ink" value={area} onChange={event => { setPicked(event.target.value); if (save.isError) save.reset(); }}>{WORK_FUNCTIONS.map(item => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-g-ink-3" aria-hidden="true" /></span>
             </label>
