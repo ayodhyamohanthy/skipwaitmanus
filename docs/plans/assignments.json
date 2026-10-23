@@ -1819,6 +1819,24 @@
    "note": "Founder direction Oct 24 00:57 IST (phonemsg-01M5N3Q94QHYJK0VEHA3WBERS0). Audience model must hold before build: public vs internal-restricted (never public) vs referral-drive (shareable by design). 'Internal' meaning unresolved - open questions in the packet. No money fields (D-132/D-152 frozen).",
    "row": "D-177",
    "tier": 2
+  },
+  {
+   "id": "D-178-agent-portal-access",
+   "title": "External agents using the portal: user-scoped sign-in, approved payment, apply-for-referral (protocol TBD)",
+   "row": "D-178",
+   "packet": "docs/plans/D-178-agent-portal-access.md",
+   "tier": 2,
+   "lane": "d048-foundation",
+   "branch": "agent/coordinator/agent-portal-direction",
+   "status": "todo",
+   "owns": [
+    "docs/plans/D-178-agent-portal-access.md"
+   ],
+   "dependsOn": [
+    "D-048-p3-assistants",
+    "D-048-p3-agents"
+   ],
+   "note": "Founder direction Oct 24 00:58 IST (phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M). Direction not authority: no charges, no auth bypass, no invented protocol. Delegated identity rides existing assistant-grant work; payment needs explicit user approval per the money rules; retry-safe apply/pay required."
   }
  ]
 }
