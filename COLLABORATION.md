@@ -67,3 +67,6 @@ Next: <next action or requested coordination>
 Update the shared issue/PR with the commit SHA, changed files, design decisions, tests run, known failures, unresolved questions, and remaining work. Release the scope explicitly when finished. Record deployment status separately from push status; a successful push does not prove a successful deployment.
 
 If another model cannot access the shared record, give the user this handoff to relay. Never invent agreement, approval, test results, or completion by another session.
+
+
+Scoped Oct 23 founder exception for one manual claim only: see docs/DECISIONS.md, section "Scoped founder manual-claim exception, Oct 23, 2026". Applies only to PICKER-review-independence by Forge · fd06 after the attestation is committed and published; reviews and every other hold remain unchanged.

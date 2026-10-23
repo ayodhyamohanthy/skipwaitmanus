@@ -1081,3 +1081,57 @@ describe("PICKER-landing-slot: one landing at a time, without discipline", () =>
     });
   });
 });
+
+describe("D-151 model-independent reviews and landings", () => {
+  const money = task("M", { tier: 1 });
+  const next = task("N");
+  const built: [string, Branch] = [money.branch, claimBy("DeepSeek · s4", "M", 3)];
+  const pr: [string, string] = [money.branch, "https://github/pr/1"];
+  const lock = (...markers: Marker[]): [string, Branch] => ["agent/review/m", { tipMs: NOW - 3 * HOUR, merged: false, markers }];
+
+  it("skips another builder session's review and selects the next eligible build", () => {
+    expect(pick([money, next], { branches: [built], prs: [pr], claimant: "DeepSeek · other" }))
+      .toMatchObject({ kind: "build", task: { id: "N" } });
+  });
+
+  it.each(["Fixed", "Fix claim"])("excludes a same-model fixer known by %s", verb => {
+    const fixed = lock({ verb, id: "M", who: "Qoder · fixer" }, { verb: "Fixed", id: "M", who: "Qoder · fixer" });
+    expect(pick([money, next], { branches: [built, fixed], prs: [pr], claimant: "Qoder · other" }))
+      .toMatchObject({ kind: "build", task: { id: "N" } });
+  });
+
+  it.each(["Kimi · independent", "Claude Code · ceo"])("offers an independent review to %s", claimant => {
+    expect(pick([money, next], { branches: [built], prs: [pr], claimant }))
+      .toMatchObject({ kind: "review", task: { id: "M" } });
+  });
+
+  it("returns a re-review to its independent findings reviewer", () => {
+    const fixed = lock(
+      { verb: "Review claim", id: "M", who: "Mistral · reviewer" },
+      { verb: "Verdict", id: "M", who: "Mistral · reviewer", verdict: "findings" },
+      { verb: "Fixed", id: "M", who: "Qoder · fixer" },
+    );
+    expect(pick([money, next], { branches: [built, fixed], prs: [pr], claimant: "Mistral · reviewer" }))
+      .toMatchObject({ kind: "review", task: { id: "M" } });
+  });
+
+  it.each(["DeepSeek · other", "Qoder · other"])("excludes builder/fixer model %s from landing", claimant => {
+    const passed = lock(
+      { verb: "Fixed", id: "M", who: "Qoder · fixer" },
+      { verb: "Review claim", id: "M", who: "Mistral · reviewer" },
+      { verb: "Verdict", id: "M", who: "Mistral · reviewer", verdict: "pass" },
+    );
+    expect(pick([money, next], { branches: [built, passed], prs: [pr], claimant }))
+      .toMatchObject({ kind: "build", task: { id: "N" } });
+    expect(pick([money], { branches: [built, passed], prs: [pr], claimant: "Kimi · independent" }))
+      .toMatchObject({ kind: "land", task: { id: "M" } });
+  });
+
+  it("prints the model and outside-picker attribution checks", () => {
+    const selection = pick([money], { branches: [built], prs: [pr], claimant: "Kimi · independent" });
+    const text = renderPick(selection, "Kimi · independent");
+    expect(text).toContain("No session of your model");
+    expect(text).toContain("outside the picker");
+    expect(text).toContain("post no verdict");
+  });
+});

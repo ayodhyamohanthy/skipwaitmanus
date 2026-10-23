@@ -222,3 +222,10 @@ Proposed by the step-2 build from the delegated task brief and the founder's two
 ## Scoped owner merge-policy amendment, Oct 23, 2026
 
 Direct owner authorization supersedes repeated full-local-gate requirements solely because main advances. For docs/registry-only PRs such as #466, a conflict-free integration that introduces no runtime delta against current main may land after focused checks, a separate independent delta review and required GitHub CI; a fresh full local gate is not required solely for main movement. Runtime PRs use GitHub's supported merge or merge-queue mechanism with actual required CI on the merge result, not historical-head CI, without bypassing required checks. Conflicts require explicit resolution and renewed independent review; they do not qualify automatically. This changes no product rule, task ownership, D-035 founder hold, phone-file/history hold, production verification or other applicable safety gate.
+
+
+## Scoped founder manual-claim exception, Oct 23, 2026
+
+> Approved under Ayu’s standing owner approval: one-task manual-claim exception for PICKER-review-independence, record it in the repo first. Reviews and holds unchanged.
+
+Source: Ayu's explicit instruction, Oct 23, 2026. This exception permits only Forge · fd06 to record one manual claim for the already approved PICKER-review-independence task on agent/queue/picker-review-independence, after this attestation is committed and published in the repository. It does not amend queue order, confer reviewer eligibility, authorize any other manual claim, or bypass checks or reviews. The task remains Tier 2 with the existing PICKER-PARALLEL packet and minimal scope. All other D-083/D-085 claim rules remain binding. D-035 rejection, phone hold, #508 owner-only merge, and #526/#529 review and landing holds remain unchanged. No production or feature activation is authorized.
