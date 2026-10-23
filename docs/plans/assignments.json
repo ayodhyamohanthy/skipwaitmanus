@@ -294,7 +294,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-lane-busy",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "PICKER-owns-scope"
       ]
