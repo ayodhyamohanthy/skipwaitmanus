@@ -97,7 +97,7 @@ function NextStep({ threads }: { threads: readonly InboxThread[] }) {
   return (
     <section aria-labelledby="inbox-next-step" className="mx-4 my-5 border border-g-hairline p-4 gdesk:mx-5">
       <h2 id="inbox-next-step" className="text-g-heading text-g-ink">Your next step</h2>
-      {target ? <p className="mt-2 text-g-label text-g-ink">{target.who} · {target.companyName}</p> : null}
+      {target ? <p className="mt-2 text-g-label text-g-ink">{target.who}</p> : null}
       <p className="mt-2 text-g-meta text-g-ink-2">{detail}</p>
       <GoalButton variant="primary" asChild className="mt-4">
         <Link href={href}>{label}</Link>
