@@ -3437,8 +3437,19 @@ async function transitionReferralRequestTx(tx: any, input: ReferralTransitionInp
   return { status: input.toStatus, revision: nextRevision, replayed: false as const };
 }
 
-export async function reviewReferralRequest(userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) {
+export async function reviewReferralRequest(userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }, nowMs: number = Date.now()) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  // D-038-A review-time enforcement: a claim past its 48-hour lapse is returned to
+  // colleagues BEFORE any decision is recorded, so a down or lagging timers job can
+  // never let a lapsed claim approve or decline. The lapse commits in its own
+  // transaction (a rolled-back lapse would report a return that never persisted); the
+  // review then answers as a conflict with the post-lapse state. No-ops for unclaimed
+  // asks, un-lapsed claims and every non-pending status, on the same claimLapseAtMs
+  // rule and REFERRAL_TIMERS_SINCE floor the sweep uses.
+  if ((await db.transaction(async tx => lapseClaimTx(tx, input.requestId, nowMs))).lapsed) {
+    const after = (await db.select({ status: referralRequests.status, revision: referralRequests.revision }).from(referralRequests).where(eq(referralRequests.id, input.requestId)).limit(1))[0];
+    throw new ReferralTransitionConflict("This referral request can no longer be reviewed", { status: after?.status ?? "missing", revision: typeof after?.revision === "number" ? after.revision : -1 });
+  }
   return db.transaction(async tx => {
     const rows = await tx.select({ request: referralRequests, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, input.requestId)).limit(1).for("update");
     const current = rows[0]?.request;
