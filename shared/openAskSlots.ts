@@ -125,6 +125,14 @@ export const COMPANY_CAP_REACHED = "company_cap_reached" as const;
  */
 export const COMPANY_COVERAGE_CHANGED = "company_coverage_changed" as const;
 
+/**
+ * POST /api/company-referrals when the commit-time cost no longer equals the
+ * price the seeker accepted (flag or classification moved mid-send): 409, the
+ * ask was NOT created and nothing was charged. Same re-confirm flow as
+ * COMPANY_COVERAGE_CHANGED.
+ */
+export const ASK_PRICE_CHANGED = "ask_price_changed" as const;
+
 /** POST /api/company-referrals (and an assistant-approved ask) with 2 asks already open at that company: 409 with this body. */
 export const companyCapReachedSchema = z.strictObject({
   error: z.string().min(1),

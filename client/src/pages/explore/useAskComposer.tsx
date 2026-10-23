@@ -26,7 +26,7 @@ import { countWords } from "@shared/askQuality";
 import type { PublicCompany } from "@shared/companies";
 import { askCostLine, CREDIT_ENDED_CAVEAT, creditUsedPhrase, type AskCostLine } from "@shared/moneyCopy";
 import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
-import { COMPANY_CAP_REACHED, COMPANY_COVERAGE_CHANGED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
+import { COMPANY_CAP_REACHED, COMPANY_COVERAGE_CHANGED, ASK_PRICE_CHANGED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { MAX_ASK_WORK_ITEMS } from "@shared/askWorkItems";
 import { parseOpportunityAskSearch, type OpportunityAskSearch } from "@shared/companyOpportunities";
@@ -271,6 +271,9 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
         opportunityId: postSelection?.opportunityId,
         workItemIds: selectedWork,
         expectedCoverage: uncovered ? "waiting_for_company_coverage" : undefined,
+        // The accepted price is binding at commit: a ready quote grounds it,
+        // flag off means the flat 1, and a pending/error quote names nothing.
+        expectedCost: quoteState.status === "ready" ? quote!.cost : askLevelCostOn ? undefined : 1,
       });
       const token = await fetchToken();
       const response = await fetch("/api/company-referrals", {
@@ -296,7 +299,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       // created nothing and charged nothing; re-read the directory and the
       // quote so the covered cost line (and any top-up) is live, and the
       // seeker sends again only after seeing the real price.
-      if (response.status === 409 && payload.code === COMPANY_COVERAGE_CHANGED) {
+      if (response.status === 409 && (payload.code === COMPANY_COVERAGE_CHANGED || payload.code === ASK_PRICE_CHANGED)) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: companyDirectoryKeys.all }),
           queryClient.invalidateQueries({ queryKey: ["ask-quote"] }),

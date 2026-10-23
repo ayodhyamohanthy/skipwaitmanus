@@ -2,7 +2,7 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
-import { CoverageOpenedUpError } from "./planGates";
+import { AskPriceChangedError, CoverageOpenedUpError } from "./planGates";
 import { publicAskRef } from "./askRef";
 
 describe("authenticated work email OTP routes", () => {
@@ -135,6 +135,38 @@ describe("private referral HTTP routes", () => {
     const confirmed = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000002").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch." });
     expect(confirmed.status).toBe(201);
     expect(seenExpected).toBeUndefined();
+  });
+
+  it("D-132 item 3: expectedCost binds the accepted price - forwarded when sane, dropped when garbage, 409 when the price moved", async () => {
+    const app = express();
+    app.use(express.json());
+    let seenExpectedCost: unknown = "unset";
+    let forcePriceChange = false;
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => String(req.header("x-test-user")) === "seeker" ? { account: { id: 1, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("%PDF-test"), sanitizeDocumentName: value => value,
+      createCompanyReferralRequest: async (_userId, input) => {
+        seenExpectedCost = (input as { expectedCost?: number }).expectedCost;
+        if (forcePriceChange) throw new AskPriceChangedError(1, 3);
+        return { requestId: 501, companyDomain: "acme.com", notifiedEmployees: 1 };
+      },
+      recordActivity: async () => {},
+    });
+    const base = { targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch." };
+    const ok = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000003").set("x-test-user", "seeker").send({ ...base, expectedCost: 3 });
+    expect(ok.status).toBe(201);
+    expect(seenExpectedCost).toBe(3);
+    // Garbage is dropped rather than forwarded.
+    seenExpectedCost = "unset";
+    const garbage = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000004").set("x-test-user", "seeker").send({ ...base, expectedCost: -2 });
+    expect(garbage.status).toBe(201);
+    expect(seenExpectedCost).toBeUndefined();
+    // A moved price refuses with 409 and nothing charged.
+    forcePriceChange = true;
+    const moved = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000005").set("x-test-user", "seeker").send({ ...base, expectedCost: 1 });
+    expect(moved.status).toBe(409);
+    expect(moved.body.code).toBe("ask_price_changed");
+    expect(moved.body.error).toContain("Nothing was sent and nothing was charged");
   });
 
   it("loads each matching employee's unclaimed request on inbox launch, then removes it after the first claim", async () => {

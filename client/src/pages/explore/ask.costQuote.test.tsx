@@ -196,6 +196,12 @@ describe("shared composer quote (D-132 item 3)", () => {
     fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
     const before = quoteCalls(fetchMock).length;
     fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    // A ready quote was accepted, so the commit carries it as a binding precondition.
+    await waitFor(() => {
+      const post = fetchMock.mock.calls.find(([u, i]) => String(u) === "/api/company-referrals" && (i as RequestInit | undefined)?.method === "POST");
+      expect(post).toBeTruthy();
+      expect(JSON.parse(String((post![1] as RequestInit).body)).expectedCost).toBe(2);
+    });
     await waitFor(() => expect(screen.getByRole("alert").textContent ?? "").toContain("This ask costs 2 credits and your balance is lower"));
     await waitFor(() => expect(quoteCalls(fetchMock).length).toBeGreaterThan(before));
   });
@@ -318,6 +324,9 @@ describe("shared composer quote (D-132 item 3)", () => {
       const post = fetchMock.mock.calls.find(([u, i]) => String(u) === "/api/company-referrals" && (i as RequestInit | undefined)?.method === "POST");
       expect(post).toBeTruthy();
       expect(String(JSON.parse(String((post![1] as RequestInit).body)).expectedCoverage)).toBe("waiting_for_company_coverage");
+      // The quote was still pricing at this click (the free-waiting line is
+      // directory-driven), so no numeric price was accepted and none is sent.
+      expect(JSON.parse(String((post![1] as RequestInit).body)).expectedCost).toBeUndefined();
     });
     // Nothing was created: the refusal copy shows, no sent view.
     await screen.findByText(/Nothing was sent and nothing was charged/);

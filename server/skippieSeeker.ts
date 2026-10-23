@@ -36,7 +36,7 @@ export type FitDraft = {
   suggestedNote: string;
   noteFactIds: string[];
 };
-export type CreateAskInput = { targetRoleUrl: string; attachmentIds: number[]; personalPitch: string; idempotencyKey: string };
+export type CreateAskInput = { targetRoleUrl: string; attachmentIds: number[]; personalPitch: string; idempotencyKey: string; /** Binding accepted representation (D-132 item 3): free-waiting shown, and the numeric cost the seeker confirmed. */ expectedCoverage?: "waiting_for_company_coverage"; expectedCost?: number };
 export type CreateAskResult = { requestId: number; companyDomain: string; coverageStatus?: "covered" | "waiting_for_company_coverage"; replayed?: boolean };
 
 export type SkippieSeekerDeps = {
@@ -424,7 +424,10 @@ export async function advanceSkippieSeeker(userId: number, current: SkippieSessi
       if (fresh.shortfall > 0 && fresh.covered === true) return say(`This ask costs ${fresh.cost} credit${fresh.cost === 1 ? "" : "s"} and you have ${fresh.totalAvailable}. Nothing was sent and nothing was charged. Add credits on /plans first.`);
       let result: CreateAskResult;
       try {
-        result = await deps.createAsk(userId, { targetRoleUrl: session.targetRoleUrl!, attachmentIds: [session.attachmentId!], personalPitch: session.note, idempotencyKey: session.idempotencyKey });
+        // The accepted representation is binding inside the commit transaction
+        // too: a company that opened up since the re-quote, or a cost that
+        // moved, refuses with nothing charged instead of a silent funded debit.
+        result = await deps.createAsk(userId, { targetRoleUrl: session.targetRoleUrl!, attachmentIds: [session.attachmentId!], personalPitch: session.note, idempotencyKey: session.idempotencyKey, expectedCoverage: fresh.covered === false ? "waiting_for_company_coverage" : undefined, expectedCost: fresh.cost });
       } catch (error) {
         return say(`The ask could not be sent: ${error instanceof Error ? error.message : "please try again"}. Nothing was charged.`);
       }

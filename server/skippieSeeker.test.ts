@@ -73,7 +73,9 @@ describe("seeker Skippy happy path", () => {
     expect(session.createdRequestId).toBe(501);
     expect(session.coverageStatus).toBe("covered");
     expect(calls.createAsk).toHaveLength(1);
-    const [uid, input] = calls.createAsk[0] as [number, { targetRoleUrl: string; attachmentIds: number[]; personalPitch: string; idempotencyKey: string }];
+    const [uid, input] = calls.createAsk[0] as [number, { targetRoleUrl: string; attachmentIds: number[]; personalPitch: string; idempotencyKey: string; expectedCost?: number; expectedCoverage?: string }];
+    expect(input.expectedCost).toBe(1);
+    expect(input.expectedCoverage).toBeUndefined();
     expect(uid).toBe(7);
     expect(input.targetRoleUrl).toBe("https://careers.acme.com/jobs/123");
     expect(input.attachmentIds).toEqual([11]);
@@ -172,13 +174,18 @@ describe("cost and credit rules", () => {
     const second = await drive(7, first.session, [{ kind: "confirm_send", send: true }], deps);
     expect(createAsk).toHaveBeenCalledTimes(1);
     expect(second.session.createdRequestId).toBe(890);
+    // The accepted representation rides into the commit transaction as a binding precondition.
+    expect(createAsk.mock.calls[0]?.[1]).toMatchObject({ expectedCost: 6 });
+    expect((createAsk.mock.calls[0]?.[1] as { expectedCoverage?: string }).expectedCoverage).toBeUndefined();
   });
 
   it("a waiting (no-referrer) ask is held and spends nothing", async () => {
     const createAsk = vi.fn(async () => ({ requestId: 777, companyDomain: "newco.com", coverageStatus: "waiting_for_company_coverage" as const }));
-    const { deps } = makeDeps({ createAsk });
+    const { deps } = makeDeps({ getQuote: vi.fn(async () => ({ level: 5, cost: 1, totalAvailable: 3, shortfall: 0, covered: false })), createAsk });
     const { session, replies } = await drive(7, newSkippieSession(), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
     expect(session.coverageStatus).toBe("waiting_for_company_coverage");
+    // Free-waiting was shown, so the commit must refuse rather than charge if coverage opened.
+    expect(createAsk.mock.calls[0]?.[1]).toMatchObject({ expectedCoverage: "waiting_for_company_coverage", expectedCost: 1 });
     const blob = replies.join("\n");
     expect(blob).toContain("cost you nothing");
     expect(blob).toContain("held");

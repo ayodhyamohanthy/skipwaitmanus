@@ -48,7 +48,7 @@ import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegr
 import { isPaidPlanActive, resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { askWorkItemIdsSchema, dedupeAskWorkItemIds, type AskWorkItem } from "../shared/askWorkItems";
-import { AssistantPlanRequiredError, CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
+import { AskPriceChangedError, AssistantPlanRequiredError, CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskWindow, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks, type UnclaimedAssignmentKind, type UnclaimedAssignments } from "./heldAsk";
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
@@ -1870,7 +1870,7 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   return { id: requestId };
 }
 
-export type CreateCompanyReferralInput = { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; workItemIds?: number[]; /** Set when the composer showed the free-waiting (uncovered) representation: the commit must not charge because coverage flipped - it refuses instead, and the seeker re-confirms at the live price (D-132 item 3). */ expectedCoverage?: "waiting_for_company_coverage" };
+export type CreateCompanyReferralInput = { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; workItemIds?: number[]; /** Set when the composer showed the free-waiting (uncovered) representation: the commit must not charge because coverage flipped - it refuses instead, and the seeker re-confirms at the live price (D-132 item 3). */ expectedCoverage?: "waiting_for_company_coverage"; /** The numeric price the seeker accepted (ready quote, or 1 with the flag off): the commit must not charge or store a different cost - it refuses and the seeker re-confirms (D-132 item 3). */ expectedCost?: number };
 /**
  * The private `jobs` row behind a company ask. Its function is the seeker's
  * explicit choice ("seeker") or the shared classifier's guess from the job
@@ -1939,6 +1939,12 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const coverageStatus=companyCoverageStatus(available.length);const isWaiting=coverageStatus==="waiting_for_company_coverage";
     // D-132 item 3: a composer that promised free waiting never commits a charge because coverage flipped. Thrown before the slot-cap check, the spend and every write; the retry after re-pricing carries no expectation.
     if(input.expectedCoverage==="waiting_for_company_coverage"&&!isWaiting)throw new CoverageOpenedUpError(companyDomain);
+    // D-132 item 3: the accepted price is binding at commit. The job row is built
+    // here (same deterministic inputs the spend and the stored cost classify on
+    // below) so a flag or classifier move mid-send refuses inside this
+    // transaction - before attachments, the request row, or any wallet write.
+    const earlyJobRow=companyAskJobRow({companyDomain,targetRoleUrl:input.targetRoleUrl,roleLinkUrl:input.submittedTargetRoleUrl,compensation,jobFunction:input.jobFunction,publishedAt:new Date()});
+    if(input.expectedCost!==undefined){const commitCost=askCreditCost({title:earlyJobRow.title,description:earlyJobRow.description,url:earlyJobRow.targetRoleUrl});if(commitCost!==input.expectedCost)throw new AskPriceChangedError(input.expectedCost,commitCost);}
     // D-061: a waiting ask uses no open slot and bypasses the cap until it can reach a referrer.
     // The cap refusal stays ahead of the attachment read, as before, so it needs no document lock.
     if(!isWaiting&&entitlements.openRequests!==null&&openAsks>=entitlements.openRequests)throw new OpenAskSlotCapError(openAskSlots(entitlements,openAsks));
@@ -1978,7 +1984,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const firstLookCandidate=opportunity?await resolveAskFirstLookTx(tx,{posterUserId:opportunity.ownerId,seekerUserId:userId,companyDomain,nowMs}):null;
     const firstLook=firstLookCandidate?reachable.find(employee=>employee.userId===firstLookCandidate.referrerId)??null:null;
     const firstLookUntil=firstLook&&firstLookCandidate?firstLookCandidate.until:null;
-    const jobRow=companyAskJobRow({companyDomain,targetRoleUrl:input.targetRoleUrl,roleLinkUrl:input.submittedTargetRoleUrl,compensation,jobFunction:input.jobFunction,publishedAt:new Date()});const jobResult=await tx.insert(jobs).values(jobRow);const jobId=Number(jobResult[0].insertId);
+    const jobRow=earlyJobRow;const jobResult=await tx.insert(jobs).values(jobRow);const jobId=Number(jobResult[0].insertId);
     const requestResult=await tx.insert(referralRequests).values({jobId,jobSeekerId:userId,referrerId:fastTrackLink?.referrerId??null,personalPitch:input.personalPitch,status:"pending",waitingForCoverage:isWaiting,coverageQueuedAt:isWaiting?new Date():null,coverageVisibleAt:isWaiting?null:new Date(nowMs),coverageHeldAt:null,idempotencyKey:input.idempotencyKey,requestFingerprint:fingerprint,opportunityId:opportunity?.id??null,firstLookReferrerId:firstLook?.userId??null,firstLookUntil});const requestId=Number(requestResult[0].insertId);
     // 1 credit = 1 request, spent when the ask first reaches an available referrer (D-034): a covered ask pays
     // here, in this transaction and under the wallet lock, through the credit ledger (soonest-expiring bucket
