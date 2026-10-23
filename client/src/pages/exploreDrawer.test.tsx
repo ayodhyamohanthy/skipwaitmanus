@@ -174,7 +174,7 @@ describe("ask drawer", () => {
     await within(drawer).findByText("ada-resume.pdf");
     fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
     const active = await screen.findByTestId("goal-drawer");
-    expect(within(active).getByText(`The employee who posted this role sees your ask first. If they pass, or after ${OPPORTUNITY_FIRST_LOOK_HOURS} hours, verified wipro.com employees can see it. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`)).toBeTruthy();
+    expect(within(active).getByText(`The employee who posted this role sees your ask first. If they pass, or don’t accept within ${OPPORTUNITY_FIRST_LOOK_HOURS} hours, other verified wipro.com employees can see it. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`)).toBeTruthy();
     expect(within(active).queryByText(/^Verified wipro.com employees can see it now\./)).toBeNull();
   });
 
