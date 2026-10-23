@@ -24,6 +24,21 @@ describe("ask prefill hand-off", () => {
     expect(readAskPrefill(storage, 1_000 + ASK_PREFILL_TTL_MS)).toEqual({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1", note: "Strong fit.", savedAt: 1_000 });
   });
 
+  it("round-trips an unresolved-company draft", () => {
+    const storage = memoryStorage();
+    expect(saveAskPrefill({ companySlug: null, targetRoleUrl: "https://careers.example.com/jobs/1", note: "Strong fit." }, storage, 1)).toBe(true);
+    expect(readAskPrefill(storage, 1)?.companySlug).toBeNull();
+  });
+
+  it("keeps reason-only input but refuses a completely empty draft", () => {
+    const storage = memoryStorage();
+    expect(saveAskPrefill({ companySlug: null, targetRoleUrl: "", note: "  Strong fit.  " }, storage, 1)).toBe(true);
+    expect(readAskPrefill(storage, 1)?.note).toBe("Strong fit.");
+    clearAskPrefill(storage);
+    expect(saveAskPrefill({ companySlug: null, targetRoleUrl: " ", note: " " }, storage, 1)).toBe(false);
+    expect(readAskPrefill(storage, 1)).toBeNull();
+  });
+
   it("caps the note at the composer limit", () => {
     const storage = memoryStorage();
     saveAskPrefill({ companySlug: "tcs", targetRoleUrl: "https://tcs.com/careers/1", note: "x".repeat(ASK_NOTE_LIMIT + 50) }, storage, 5);

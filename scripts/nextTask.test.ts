@@ -47,7 +47,8 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
       "P0-ask-link-signin", "P1-queue-attestation", "PREMIUM-total-label", "D-067-outbox-fixture-repair",
     ]);
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    expect(first).toMatchObject({ kind: "build", task: { id: "P0-ask-link-signin" } });
+    // P0-ask-link-signin is done (landed after its independent review), so P1 is next.
+    expect(first).toMatchObject({ kind: "build", task: { id: "P1-queue-attestation" } });
     // Both owner follow-ups (PREMIUM-total-label and D-067-outbox-fixture-repair) are done,
     // so slicing off the live regressions leaves PICKER-review-independence as next.
     const followUps = pickNextTask({ tasks: real.tasks.slice(2), mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
