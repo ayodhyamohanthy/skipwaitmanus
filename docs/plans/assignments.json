@@ -1603,7 +1603,8 @@
         "D-089-request-inbox",
         "D-086-demand-list",
         "D-048-F-flags",
-        "D-048-F-routes"
+        "D-048-F-routes",
+        "D-048-p3-admin"
       ],
       "owns": [
         "drizzle/deploy/*_company_referral_bonuses.sql",
@@ -1639,7 +1640,7 @@
         "docs/DECISIONS.md",
         "docs/KIT_V4_BUILD_PLAN.md"
       ],
-      "note": "D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing). It also waits for D-048-F-flags and D-048-F-routes, which own App.tsx and .env.example first (CEO, Oct 23)."
+      "note": "Oct 23 owns reconciliation (coordinator): this row and D-048-p3-admin both switch client/src/pages/AdminOverview.tsx; the goal redesign lands first (whole-app mandate) and this row reconciles its bonus sections on top of the goal switch at activation (D-167 one-owner-per-file). D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing). It also waits for D-048-F-flags and D-048-F-routes, which own App.tsx and .env.example first (CEO, Oct 23)."
     },
     {
       "id": "D-099-bonus-line",
