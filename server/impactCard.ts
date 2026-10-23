@@ -5,21 +5,14 @@
 // The min-3 gate (D-104 rule) lives in shared/shareImpactCard.ts.
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { companies, companyDomains, profiles, referralRequests, referralTransitionEvents, referrerFastTrackLinks } from "../drizzle/schema";
-import { IMPACT_DECISION_ACTIONS, impactCardVisible, summarizeImpact, type ImpactEvent, type ImpactStats } from "../shared/shareImpactCard";
+import { IMPACT_DECISION_ACTIONS, IMPACT_REFERRAL_ACTIONS, impactCardVisible, summarizeImpact, type ImpactCardPayload, type ImpactEvent } from "../shared/shareImpactCard";
 import { getDb } from "./db";
 import { isVerifiedEmployeeOfCompany } from "./referrerAvailability";
 
 export const IMPACT_CARD_FLAG = "SHARE_IMPACT_CARD_ENABLED";
 export const impactCardEnabled = () => process.env[IMPACT_CARD_FLAG] === "true";
 
-export type ImpactCardPayload = {
-  state: "ready" | "insufficient";
-  screenName?: string;
-  companyName?: string;
-  companySlug?: string;
-  linkPath?: string;
-  stats?: ImpactStats;
-};
+export type { ImpactCardPayload };
 
 const median = (values: number[]): number | null => {
   if (values.length === 0) return null;
@@ -58,16 +51,26 @@ export async function loadImpactCard(referrerId: number, now: Date = new Date())
   const [company] = await db.select({ name: companies.name, slug: companies.slug, status: companies.status }).from(companies).where(eq(companies.id, domainRow.companyId)).limit(1);
   if (!company || company.status !== "listed") return { state: "insufficient" };
 
-  // All of this referrer's answer events (approve/pass) and progress events
-  // (intro_made or later = a real referral). The min-3 gate and the referred
-  // count work on DISTINCT asks via shared/shareImpactCard.summarizeImpact
-  // (QA note: one ask can carry more than one event from the same referrer).
-  const rows = await db
+  // Two sources, because the truth rule is status-based, not actor-based:
+  // - this referrer's OWN decisions (approve/review/pass; review is the
+  //   /referrer record action's accept);
+  // - milestones on asks this referrer owns, whoever recorded them: the
+  //   seeker's "I got the referral email" also writes intro_made.
+  // A colleague's decision or milestone on their own ask never counts here.
+  // The min-3 gate and the referred count work on DISTINCT asks via
+  // shared/shareImpactCard.summarizeImpact (QA note: one ask can carry more
+  // than one event from the same referrer).
+  const decisionRows = await db
     .select({ action: referralTransitionEvents.action, resultingStatus: referralTransitionEvents.resultingStatus, createdAt: referralTransitionEvents.createdAt, requestId: referralTransitionEvents.referralRequestId })
     .from(referralTransitionEvents)
-    .where(and(eq(referralTransitionEvents.actorUserId, referrerId), inArray(referralTransitionEvents.action, [...IMPACT_DECISION_ACTIONS, "progress"])));
+    .where(and(eq(referralTransitionEvents.actorUserId, referrerId), inArray(referralTransitionEvents.action, [...IMPACT_DECISION_ACTIONS])));
+  const referralRows = await db
+    .select({ action: referralTransitionEvents.action, resultingStatus: referralTransitionEvents.resultingStatus, createdAt: referralTransitionEvents.createdAt, requestId: referralTransitionEvents.referralRequestId })
+    .from(referralTransitionEvents)
+    .innerJoin(referralRequests, eq(referralRequests.id, referralTransitionEvents.referralRequestId))
+    .where(and(eq(referralRequests.referrerId, referrerId), inArray(referralTransitionEvents.action, [...IMPACT_REFERRAL_ACTIONS])));
 
-  const events: ImpactEvent[] = rows.map(row => ({ requestId: row.requestId, action: row.action, resultingStatus: row.resultingStatus, createdAt: new Date(row.createdAt) }));
+  const events: ImpactEvent[] = [...decisionRows, ...referralRows].map(row => ({ requestId: row.requestId, action: row.action, resultingStatus: row.resultingStatus, createdAt: new Date(row.createdAt) }));
   const summary = summarizeImpact(events, now);
   if (!impactCardVisible(summary.answeredAsks)) return { state: "insufficient" };
   const referredThisMonth = summary.referredThisMonth;
@@ -95,6 +98,7 @@ export async function loadImpactCard(referrerId: number, now: Date = new Date())
 
   const screenName = link.vanityAlias ?? "your link";
   const linkPath = link.vanityAlias ? `/refer/${company.slug}/${link.vanityAlias.toLowerCase()}` : `/fast/${link.linkCode}`;
+  const medianReplyHours = median(replyHours);
   return {
     state: "ready",
     screenName,
@@ -103,7 +107,7 @@ export async function loadImpactCard(referrerId: number, now: Date = new Date())
     linkPath,
     stats: {
       referredThisMonth,
-      medianFirstReplyHours: median(replyHours) === null ? null : Math.round(median(replyHours)!),
+      medianFirstReplyHours: medianReplyHours === null ? null : Math.round(medianReplyHours),
       acceptRatePct: summary.acceptRatePct,
     },
   };

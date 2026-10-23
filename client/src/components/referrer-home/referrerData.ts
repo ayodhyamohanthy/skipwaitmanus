@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getAskShelfLifeEndsAtMs, referralStatuses } from "@shared/referral";
 import { companyIdentityOf, type CompanyIdentity } from "@shared/companies";
 import { REFERRER_ACCESS_PATH, isVerifiedReferrer, referrerAccessResponseSchema } from "@shared/referrerAccess";
+import { impactCardPayloadSchema, type ImpactCardPayload } from "@shared/shareImpactCard";
 import { JOB_LEVELS, REFERRER_AREAS, jobFunctionFieldSchema } from "@shared/jobFunctions";
 import { readApiJson } from "@/lib/apiResponse";
 
@@ -110,6 +111,11 @@ export async function fetchReferrerPreferences(getToken: TokenSource): Promise<R
 
 export async function saveReferrerPreferences(getToken: TokenSource, patch: ReferrerPreferencesPatch): Promise<ReferrerPreferences> {
   return (await sendJson("/api/referrer-preferences", "PUT", patch, getToken, preferencesPayloadSchema, "We could not save your referrer settings.")).preferences;
+}
+
+/** The signed-in referrer's own share card, parsed at the edge; 5xx answers reach Sentry via readApiJson. */
+export async function fetchImpactCard(getToken: TokenSource): Promise<ImpactCardPayload> {
+  return getJson("/api/referrer/impact-card", getToken, impactCardPayloadSchema, "We could not load your impact card.");
 }
 
 const bundleSchema = z.object({

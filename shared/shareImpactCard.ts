@@ -5,10 +5,11 @@
 // name, title, pitch or ask id, so no seeker can ever appear on it.
 //
 // TRUTH RULES (designer review, Oct 21):
-// - "people referred" counts asks that reached INTRO MADE or later
+// - "referrals" counts distinct asks that reached INTRO MADE or later
 //   (progress to intro_made/interview/offer). An accept alone is NOT a referral.
 // - The min-3 gate counts DISTINCT ANSWERED ASKS, never events (QA note: one
 //   ask can carry more than one event from the same referrer).
+import { z } from "zod";
 import copy from "../design/goal-ui/content.json" with { type: "json" };
 
 export const IMPACT_CARD_COPY = copy.shareImpact;
@@ -31,8 +32,14 @@ export type ImpactCardInput = {
 /** Min-3 gate on DISTINCT answered asks (same rule as the company response signal, D-104). */
 export const IMPACT_MIN_ANSWERED = 3;
 
-/** Actions that answer an ask. Verified against server/db.ts transition writes. */
-export const IMPACT_DECISION_ACTIONS = ["approve", "pass"] as const;
+/**
+ * Actions that answer an ask. Verified against server/db.ts transition writes:
+ * the queue accepts with "approve", the /referrer record action accepts with
+ * "review" (reviewReferralRequest), and both declines and passes write "pass".
+ */
+export const IMPACT_DECISION_ACTIONS = ["approve", "review", "pass"] as const;
+/** Actions that move an accepted ask along; the seeker may record them too. */
+export const IMPACT_REFERRAL_ACTIONS = ["progress", "seeker_confirmed_referred"] as const;
 /** resultingStatus values that mean an intro actually happened ("referred"). */
 export const IMPACT_REFERRED_STATUSES = ["intro_made", "interview", "offer"] as const;
 
@@ -59,9 +66,11 @@ export function summarizeImpact(events: readonly ImpactEvent[], now: Date = new 
   const referred = new Set<number>();
   const monthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
   for (const event of events) {
-    if (event.action === "approve") { answered.add(event.requestId); approved.add(event.requestId); }
-    else if (event.action === "pass") answered.add(event.requestId);
-    else if ((IMPACT_REFERRED_STATUSES as readonly string[]).includes(event.resultingStatus) && event.createdAt.getTime() >= monthStart) referred.add(event.requestId);
+    if (event.action === "pass") answered.add(event.requestId);
+    else if (event.action === "approve" || event.action === "review") {
+      answered.add(event.requestId);
+      if (event.resultingStatus === "approved") approved.add(event.requestId);
+    } else if ((IMPACT_REFERRED_STATUSES as readonly string[]).includes(event.resultingStatus) && event.createdAt.getTime() >= monthStart) referred.add(event.requestId);
   }
   const answeredAsks = answered.size;
   return {
@@ -80,8 +89,10 @@ export function impactVerifiedLine(input: Pick<ImpactCardInput, "screenName" | "
   return fill(IMPACT_CARD_COPY.verifiedLine, { screenName: input.screenName, company: input.companyName });
 }
 
+/** Counts distinct asks that reached intro_made or later, never people: the unit is "referrals". */
 export function impactReferredBig(count: number): string {
-  return fill(IMPACT_CARD_COPY.referredBig, { count });
+  if (count <= 0) return IMPACT_CARD_COPY.referredBigZero;
+  return fill(count === 1 ? IMPACT_CARD_COPY.referredBigOne : IMPACT_CARD_COPY.referredBig, { count });
 }
 
 export function impactReferredLine(companyName: string): string {
@@ -112,3 +123,28 @@ export function impactCardLinkedIn(input: ImpactCardInput): string {
   const lines = [`I help people get referred into ${input.companyName}.`, "", referredSentence(input), ...impactStatPairs(input.stats).map(pair => `${pair.value} ${pair.label}`), "", `Ask me for a referral: https://skipwait.me${input.linkPath}`];
   return lines.join("\n");
 }
+
+/**
+ * The route's payload, parsed at the fetch boundary. A "ready" card carries
+ * only the referrer's screen name, their company identity, the public link path
+ * and aggregates: there is no field that could carry a seeker detail.
+ */
+export const impactStatsSchema = z.object({
+  referredThisMonth: z.number().int().nonnegative(),
+  medianFirstReplyHours: z.number().int().nonnegative().nullable(),
+  acceptRatePct: z.number().int().min(0).max(100).nullable(),
+});
+
+export const impactCardPayloadSchema = z.discriminatedUnion("state", [
+  z.object({ state: z.literal("insufficient") }),
+  z.object({
+    state: z.literal("ready"),
+    screenName: z.string().min(1),
+    companyName: z.string().min(1),
+    companySlug: z.string().min(1),
+    linkPath: z.string().regex(/^\//),
+    stats: impactStatsSchema,
+  }),
+]);
+
+export type ImpactCardPayload = z.infer<typeof impactCardPayloadSchema>;

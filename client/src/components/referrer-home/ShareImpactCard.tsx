@@ -7,32 +7,33 @@
 // captures under design/goal-ui/captures/share-impact/ (impact-1280.png,
 // impact-390.png): blue verified mark, hero numeral, mono stat numerals,
 // one black commit button + ghost LinkedIn.
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { BadgeCheck, Check, Copy, Linkedin } from "lucide-react";
+import { useAuth } from "@/_core/auth";
 import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
+import { usePersistFn } from "@/hooks/usePersistFn";
 import { SHARE_IMPACT_CARD } from "@/lib/shareFlags";
 import { trackClarityEvent } from "@/lib/clarity";
 import { IMPACT_CARD_COPY, impactCardLinkedIn, impactCardText, impactVerifiedLine, impactReferredBig, impactReferredLine, impactStatPairs, type ImpactCardInput } from "@shared/shareImpactCard";
-
-type Payload = { state: "ready" | "insufficient"; screenName?: string; companyName?: string; companySlug?: string; linkPath?: string; stats?: ImpactCardInput["stats"] };
+import { fetchImpactCard } from "./referrerData";
 
 export function ShareImpactCard() {
-  const [payload, setPayload] = useState<Payload | null>(null);
+  const { isSignedIn, userId, getToken } = useAuth();
+  const fetchToken = usePersistFn(getToken);
   const [copied, setCopied] = useState<null | "text" | "linkedin">(null);
+  const card = useQuery({
+    queryKey: ["referrer-impact-card", userId ?? null] as const,
+    queryFn: () => fetchImpactCard(fetchToken),
+    enabled: SHARE_IMPACT_CARD && Boolean(isSignedIn),
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
 
-  useEffect(() => {
-    if (!SHARE_IMPACT_CARD) return;
-    let alive = true;
-    fetch("/api/referrer/impact-card", { credentials: "include" })
-      .then(res => (res.ok ? res.json() : null))
-      .then(data => { if (alive) setPayload(data); })
-      .catch(() => { if (alive) setPayload({ state: "insufficient" }); });
-    return () => { alive = false; };
-  }, []);
-
-  if (!SHARE_IMPACT_CARD || !payload || payload.state !== "ready" || !payload.screenName || !payload.companyName || !payload.linkPath || !payload.stats) return null;
-  const input: ImpactCardInput = { screenName: payload.screenName, companyName: payload.companyName, companySlug: payload.companySlug ?? "", linkPath: payload.linkPath, stats: payload.stats };
+  const payload = card.data ?? null;
+  if (!SHARE_IMPACT_CARD || !payload || payload.state !== "ready") return null;
+  const input: ImpactCardInput = { screenName: payload.screenName, companyName: payload.companyName, companySlug: payload.companySlug, linkPath: payload.linkPath, stats: payload.stats };
 
   const copy = async (kind: "text" | "linkedin") => {
     const text = kind === "text" ? impactCardText(input) : impactCardLinkedIn(input);
