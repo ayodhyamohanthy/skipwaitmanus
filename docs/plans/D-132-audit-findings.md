@@ -20,3 +20,16 @@ Items refer to the 11 numbered checks in `docs/plans/D-132-pricing-v2.md`.
 | 11 | V2 credit rule | Done (code read, not run live). `refundLedgerSpendTx` (`server/db.ts` ~2355-2390) restores a purchased-bucket spend unconditionally (`balance += credits`), so "paid credits never expire, so they always come back" holds. Only expiring buckets can refuse: an expired promo or plan grant, or a monthly cycle that has rolled, return a 0-credit row and the "bucket ended" notice. `CREDIT_RULE_V2` only promises the return for paid credits, so it matches. | None |
 
 Order of work: 2 (migration, red tests first) then 5, 6, 3, 7, 4, 8, 9, 11, 1, 10. Each lands as its own PR with CI green, flags off. Remaining (Oct 23): item 3's composer quote/top-up/cost lines in the shared composer (`useAskComposer`, `askSend`) - that work follows P0-ask-link-signin (#529, routing hold) and overlaps the held enable PR #416 (`useAskQuote`, Ask/Explore); not started here to avoid duplicating held work.
+
+## Item 3 remainder: shared-composer quote/top-up spec (prepared Oct 23, not started)
+
+Dependency analysis - real code/contract dependencies, not assignments.json sequencing:
+
+1. `client/src/pages/explore/useAskComposer.tsx` - PR #529 (P0-ask-link-signin, head 9461a01f) edits this file for the sign-in handoff/draft restore and is review/landing-blocked (D-151: needs a provenance-qualified independent reviewer). Writing the quote flow into the same file now would conflict with an actively blocked PR.
+2. `client/src/pages/explore/findModel.ts` and `findModel.test.ts` - held enable PR #416 edits both for its explore quote model. Direct overlap.
+3. Quote hook contract - #416 adds `client/src/hooks/useAskQuote.ts`; the composer work should reuse that hook, not write a parallel one, so it inherits a held contract that can still change in review.
+4. `askSend.ts` is untouched by both held PRs, but carries no cost logic; no work needed there.
+
+Stable ground that does NOT depend on held work: the quote route `/api/company-referrals/quote` (#415) is live, sign-in-gated, no-store, and answers 1 while `ASK_LEVEL_COST` is off; `askCostLine` (item 7) already accepts an optional `cost` and renders the short-of-credits sentence; the ask page (`ReferralRequest.tsx`) already pins the short-of-credits line and top-up link pattern ("This ask costs N credits. You have M. Add K more.", e53aaf18).
+
+Implementation contract once unblocked: when the pasted link resolves to a classified job in `findModel`, the composer fetches the quote (reusing #416's `useAskQuote` once landed, same route contract), passes `cost` into `askCostLine`, and when the balance is short shows the shortfall sentence plus the top-up link in place of Send (ask-page wording). With `VITE_ASK_LEVEL_COST` off the composer keeps today's text byte for byte and makes no quote call (item 1's flags-off invariant). No server, schema or copy work is needed: the route is live, the stored cost landed (item 2), and the level-aware lines exist (item 7).
