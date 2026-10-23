@@ -31,6 +31,18 @@ Applied reading (with Main, Oct 24):
 3. **Free human allowance untouched.** The existing free monthly allowance for human seekers is NOT revoked by this directive; agent access is an additional path gated on paid entitlement. Removing or changing the free allowance would need its own explicit owner decision.
 4. **Auth/consent/isolation stand.** Every agent still acts only within its authenticated user's account and grant; no shared access, no bypass, no retry-storm double-apply/double-charge.
 
+## Clarification, Oct 24 1:01 AM IST (same conversation): Skippy action parity
+
+Founder follow-up (phonemsg-01M5N3XV03FBKPFXF8DQPEXF50, channel record verified author=user Oct 24 1:02 IST). Verbatim:
+
+> Skippy product assistant should be implemented  humans or bots  just use it  with natural language and get things done including payments, referrals, whatever everyone are bale to get on screen using ui , can be done in product assitant skippy and same should be done by agent bots too.
+
+Applied reading (with Main, Oct 24):
+
+1. **Skippy is the product assistant's name; it does the work, not just explains where to click.** Action parity rule: whatever a signed-in user can do on screen - finding jobs, requesting referrals, making payments, managing the account - must also be doable in natural language inside Skippy, for humans AND bots, and by outside agent bots through the D-178 contract. Same capabilities on all three paths.
+2. **Same safeguards on all three paths.** The existing account permissions, prices, payment approvals and consent apply identically; no parallel permissive backend, no duplicate charges or requests on retries, clear results. Parity is of CAPABILITY, never of privilege.
+3. **Not end-to-end yet.** This is the implementation rule, acknowledged as not currently supported end to end. Grounding work: inventory the actual UI actions, map them against the current Skippy/assistant implementation (D-048-p3-skippy redesign, the held assistant work #563 and the paid-tool contract - relevant but NOT assumed complete), and carry the gaps into the build instead of claiming parity.
+
 ## Open questions
 
 1. Paid entitlement = the user's EXISTING paid referral balance (the credit ledger wallet: purchased packs sit alongside the free monthly plan_grant allowance; see server/creditCycles.ts and the billing catalog). The founder's words are "if they have paid for referrals" - the grounded reading is the agent spends the signed-in user's existing paid balance with that user's approval. No agent-scoped purchase, price fork, or new payment product is requested or to be manufactured. (Money wording stays frozen under D-132/D-152 either way.) Remaining unknown: whether the free monthly allowance is agent-spendable or human-only - the directive conditions agent application on PAID balance, so default to paid-balance-only until the owner says otherwise.

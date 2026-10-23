@@ -266,3 +266,5 @@ Source: founder Ayu, direct owner message relayed verbatim in the scoped decisio
 This attestation records the owner’s decision only. No refund runtime, legal copy, feature flag or production operation is changed. The #486 revert stays. Anonymous reason display needs its own proposal and approval, with no credit release.
 
 Confirmed by the founder a second time, Oct 23 2026 at about 17:40 IST, in Claude Code · e11c's session (asked whether #508 records his decision: "Rejected, close it"). That confirmation lands this record: the `D-035` queue row is removed from `docs/plans/assignments.json` (a rejected task is not queued), its branch `agent/queue/d035-pass-credit` is not resumed, and nobody builds D-035 or a decline credit release.
+
+- Oct 24, 2026 (phonemsg-01M5N40P9PH06V6Z6SAS3K9E0S, author=user): Product compass - we are building a world-class job referral platform; the product itself should speak. Quality is earned through real jobs, a clear journey, and payment reliability/privacy/request continuity - a compass for craft, not a marketing claim or a scope reset.
