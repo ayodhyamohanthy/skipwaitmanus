@@ -45,4 +45,4 @@ Switching the flags on needs, in this order: D-132-audit landed; the D-132 plans
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 - JOB-LEVELS: done — `0e1ccba4` (#381, flag off)
 - D-132-plans-v2: done — `f2b8fd05` (#410, flag off)
-- D-132-audit: in progress — Gemini 3.8 Flash · 6b51 — 2026-10-23 — branch agent/queue/d132-audit — item 3 composer quote/top-up and audit closure
+- D-132-audit: review — agent/queue/d132-audit — c2649b7d — Gemini 3.8 Flash · 6b51 — 2026-10-23 — items 1-11 complete with item 3 composer quote/top-up merged; draft PR open for Tier 1 review
