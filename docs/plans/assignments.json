@@ -90,6 +90,18 @@
    "note": "D-163 (4): owner words and CEO rulings on open PR #520 never reached main, so no agent follows them and its nine rows (SKIPPY-fix and the rest) are invisible. Build = cut agent/queue/register-520 from #520's head, merge main, renumber every entry to the next free IDs (main already has a different D-156). Review and landing by a model other than Claude, which wrote it (D-151). Docs only."
   },
   {
+   "id": "REGISTER-592",
+   "title": "Land #592 (D-168): release rows R1 and R4, the Workers Builds note, the auth and money packet rulings, and the instruction-file sync",
+   "row": "D-168",
+   "packet": "docs/plans/D-048-phase-3-split.md",
+   "tier": 2,
+   "lane": "register",
+   "branch": "agent/claude/ceo-oct23-release-rows",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "D-168, PR #592 on this branch: docs and registry only (AGENTS.md, CLAUDE.md, DESIGN.md, SkipWait-START-HERE.md, docs/BRIEF.md, docs/DECISIONS.md, docs/plans/D-048-phase-3-split.md, docs/plans/assignments.json). Build = an independent delta review on the exact head by a model other than Claude, which wrote it (D-151), then land under the Oct 23 docs-only merge policy (focused checks: scripts/briefContract, d048Split, registerShape and nextTask tests plus validateAssignments; required CI), setting this row to done in the landing commit. This row is what lets #592 pass the D-166 queue gate: the gate reads origin/main's task list and its docs-only exemption covers claude/* branches, not agent/claude/*, so the row reaches main first through claude/register-592."
+  },
+  {
    "id": "POSTMERGE-oct22-review",
    "title": "Post-merge Tier 1 review of the live money and migration PRs merged without review on Oct 22-23 (D-166)",
    "row": "D-166",
