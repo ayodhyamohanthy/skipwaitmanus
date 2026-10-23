@@ -90,6 +90,32 @@
       "note": "D-156: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. All flags are off in production and stay off until this lands with its proof. The owner asked to work on Skippy (Oct 23), so it sits right after the live regressions and the two picker fixes."
     },
     {
+      "id": "BRANCH-HYGIENE-1",
+      "title": "Branch cleanup script (dry run first) and the backlog: delete branches that are done and merged, online and offline (D-160)",
+      "row": "D-160",
+      "packet": "docs/plans/BRANCH-HYGIENE.md",
+      "tier": 2,
+      "lane": "repo-hygiene",
+      "branch": "agent/queue/branch-hygiene",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "The owner, Oct 23. On ecdbc227, origin had 345 branches besides main; 69 tips are already in main, and squash-merged heads need the merged-PR check. Never delete main, agent/reports/log, the landing slot, unmerged work or any branch of a task that is not done. Paste the dry run in the PR; the lander pastes the --apply output after landing."
+    },
+    {
+      "id": "BRANCH-HYGIENE-2",
+      "title": "The picker deletes merged local branches on every run, and its landing step deletes the task's branches after the live check (D-160)",
+      "row": "D-160",
+      "packet": "docs/plans/BRANCH-HYGIENE.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/branch-hygiene-picker",
+      "status": "todo",
+      "dependsOn": [
+        "BRANCH-HYGIENE-1"
+      ],
+      "note": "Uses BRANCH-HYGIENE-1's pure classifier. Safe delete only (git branch -d); never the checked-out branch, another worktree's branch or a dirty worktree. Notes, never blocking."
+    },
+    {
       "id": "SKIPPY-redteam",
       "title": "Skippy prompt-injection red-team suite in CI: resume, job page, note, admin tool output, agent drafts (pre-launch checklist, D-140)",
       "row": "D-156",
