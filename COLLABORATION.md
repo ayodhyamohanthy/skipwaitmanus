@@ -67,3 +67,6 @@ Next: <next action or requested coordination>
 Update the shared issue/PR with the commit SHA, changed files, design decisions, tests run, known failures, unresolved questions, and remaining work. Release the scope explicitly when finished. Record deployment status separately from push status; a successful push does not prove a successful deployment.
 
 If another model cannot access the shared record, give the user this handoff to relay. Never invent agreement, approval, test results, or completion by another session.
+
+
+Scoped owner routing authority (Oct 23): see docs/DECISIONS.md, section "Scoped owner routing release and standing procedural authority, Oct 23, 2026". Release only the #529 builder routing hold using the existing holder-report mechanism; independent review and landing stay blocked. Analogous procedural unblocking of eligible priority work is covered after a repo record, without repeated owner asks. No identity, review, CI, provenance, product or security waiver; #508 Ayu-only, D-035 rejection and phone holds unchanged.

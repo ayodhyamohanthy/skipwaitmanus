@@ -222,3 +222,14 @@ Proposed by the step-2 build from the delegated task brief and the founder's two
 ## Scoped owner merge-policy amendment, Oct 23, 2026
 
 Direct owner authorization supersedes repeated full-local-gate requirements solely because main advances. For docs/registry-only PRs such as #466, a conflict-free integration that introduces no runtime delta against current main may land after focused checks, a separate independent delta review and required GitHub CI; a fresh full local gate is not required solely for main movement. Runtime PRs use GitHub's supported merge or merge-queue mechanism with actual required CI on the merge result, not historical-head CI, without bypassing required checks. Conflicts require explicit resolution and renewed independent review; they do not qualify automatically. This changes no product rule, task ownership, D-035 founder hold, phone-file/history hold, production verification or other applicable safety gate.
+
+
+## Scoped owner routing release and standing procedural authority, Oct 23, 2026
+
+> Approved (owner standing approval): release builder’s routing hold on #529; #529 review/landing blocks stay. Keep taking eligible work by priority without asking for these procedural approvals; Ayu’s standing approval covers them.
+
+Source: Ayu's explicit owner instruction, Oct 23, 2026. Record and publish this instruction before using the existing task-holder report mechanism to replace the P0-ask-link-signin builder's routing-only blocked report with a review-pending report. Forge · fd06 keeps its actual identity. No review verdict, reviewer eligibility or landing permission is created. PR #529 remains independently review-blocked and landing-blocked, and browser verification remains unverified.
+
+Standing owner approval also covers analogous procedural routing/claim unblocking for already-approved, eligible priority work, recorded in the repository before use. This supersedes procedural approval pauses only, not queue priority or scope. Use the legitimate board/report/claim mechanisms; never invent another model or session identity. A routing release must keep substantive holds explicit in its report and packet. PR #530 still requires the assigned independent Tier 2 review and actual required merge-result CI before landing; exact-head CI alone is insufficient.
+
+No review, CI, actual-model-provenance, product-policy, security, production, or activation hold is waived. PR #508 remains Ayu-only merge. D-035 stays rejected with credits spent after any employee decline. Phone-file/history holds and PR #526 review/landing holds remain unchanged.

@@ -20,3 +20,6 @@ Owned paths: `client/src/pages/explore/useAskComposer.tsx` (the sign-in branch o
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
+
+
+Scoped owner routing authority (Oct 23): see docs/DECISIONS.md, section "Scoped owner routing release and standing procedural authority, Oct 23, 2026". Release only the #529 builder routing hold using the existing holder-report mechanism; independent review and landing stay blocked. Analogous procedural unblocking of eligible priority work is covered after a repo record, without repeated owner asks. No identity, review, CI, provenance, product or security waiver; #508 Ayu-only, D-035 rejection and phone holds unchanged.
