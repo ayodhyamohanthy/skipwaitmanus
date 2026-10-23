@@ -54,7 +54,7 @@ describe("ReferralConversation thread", () => {
   it("names the company from the server directory fields on the thread", async () => {
     stubFetch(() => ok({ requests: [{ ...seekerPending, companyDomain: "goneutrinos.com", companyName: "Go Neutrinos", companyInitials: "GN" }] }));
     renderPage();
-    expect(await screen.findByRole("heading", { level: 1, name: "Go Neutrinos" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 2, name: "Go Neutrinos" })).toBeTruthy();
     expect(screen.getByText("Product Designer", { exact: false })).toBeTruthy();
     expect(screen.getByText(/Waiting for a verified Go Neutrinos referrer/)).toBeTruthy();
     expect(screen.queryByText(/goneutrinos\.com/)).toBeNull();
@@ -70,7 +70,7 @@ describe("ReferralConversation thread", () => {
   it("never names the platform as the company: unknown company falls back to the role title and neutral copy", async () => {
     stubFetch(() => ok({ requests: [{ ...seekerPending, companyDomain: "skipwait.me", title: "Product Designer" }] }));
     renderPage();
-    expect(await screen.findByRole("heading", { level: 1, name: "Product Designer" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 2, name: "Product Designer" })).toBeTruthy();
     expect(screen.getByText(/Waiting for a verified referrer at the company\./)).toBeTruthy();
     expect(within(document.querySelector("[data-skipwait-screen]") as HTMLElement).queryByText(/skipwait\.me/)).toBeNull();
   });
@@ -86,7 +86,7 @@ describe("ReferralConversation thread", () => {
   it("shows the seeker status row: Waiting word, stepper and the thread's honesty line", async () => {
     stubFetch(() => ok({ requests: [{ ...seekerPending, companyName: "Wipro", companyInitials: "W" }] }));
     renderPage();
-    await screen.findByRole("heading", { level: 1, name: "Wipro" });
+    await screen.findByRole("heading", { level: 2, name: "Wipro" });
     expect(screen.getByTestId("goal-status").textContent).toContain("Waiting");
     expect(screen.getAllByTestId("goal-mini-stepper").length).toBeGreaterThan(0);
     expect(screen.getByText(/A referral is an introduction\. It never promises an interview or a job\. Companies decide hiring\./)).toBeTruthy();

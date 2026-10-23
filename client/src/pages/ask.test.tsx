@@ -95,6 +95,7 @@ describe("Ask composer page (goal, W2)", () => {
     stub();
     renderPage();
     await waitFor(() => expect(page().getByRole("heading", { name: "Ask for a referral" })).toBeTruthy());
+    expect(page().getByRole("region", { name: "Your next step" }).querySelector('[data-g-primary="true"]')).toBeTruthy();
     expect(screen.getByText("Referrers see your job link and reasons. Your name and resume are shared only if one accepts.")).toBeTruthy();
     expect(screen.getByLabelText("Job link")).toBeTruthy();
     expect(screen.getByText("ada-resume.pdf")).toBeTruthy();

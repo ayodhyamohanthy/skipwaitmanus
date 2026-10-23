@@ -1,13 +1,8 @@
-import { ArrowLeft, BadgeCheck, ShieldCheck } from "lucide-react";
-import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useRoute } from "wouter";
-import { SignInButton, useAuth, useUser } from "@/_core/auth";
-import { Button, buttonVariants } from "@/components/kit/button";
-import { ReferrerPanel } from "@/components/thread/ThreadDecisionPanels";
-import { ThreadMain } from "@/components/thread/ThreadMain";
-import { AppShell } from "@/components/AppShell";
+import { useRoute } from "wouter";
+import { useAuth, useUser } from "@/_core/auth";
 import { ConversationSignInGate, SeekerConversation } from "./conversation/SeekerConversation";
+import { ReferrerConversation } from "./conversation/ReferrerConversation";
 import { ShareWinCard } from "@/components/thread/ShareWinCard";
 import { canMessage, companyName, isAccepted } from "@/components/thread/threadModel";
 import { usePersistFn } from "@/hooks/usePersistFn";
@@ -56,10 +51,6 @@ export default function ReferralConversation({ framed = false }: { framed?: bool
   }, [fetchToken, isSignedIn, requestId, validId]);
 
   useEffect(() => { void reload(); }, [reload]);
-
-  const back = <Link href={returnPath} className="text-link flex items-center gap-1 text-sm"><ArrowLeft className="size-4" />All requests</Link>;
-
-  const wrap = (node: React.ReactElement) => (framed ? <AppShell>{node}</AppShell> : node);
 
   if (!isSignedIn) return <ConversationSignInGate returnPath={returnPath} />;
 
@@ -111,72 +102,52 @@ export default function ReferralConversation({ framed = false }: { framed?: bool
     );
   }
 
-  return wrap(
-    <main data-skipwait-screen="referral-conversation" className="page-content">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">{back}</div>
-      {loading && !request ? <p className="mt-10 text-center text-sm text-muted-foreground">Opening this private thread…</p> : null}
-      {failure && !request ? (
-        <section className="mx-auto mt-10 max-w-xl text-center">
-          <h1 className="text-2xl font-semibold">This thread isn&apos;t available.</h1>
-          <p role="alert" className="mt-2 text-sm text-muted-foreground">{failure}</p>
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            {validId ? <Button onClick={() => { void reload(); }} disabled={loading}>Try again</Button> : null}
-            <Button variant={validId ? "ghost" : "default"} asChild><Link href={returnPath}>Back to requests</Link></Button>
-          </div>
-        </section>
-      ) : null}
-      {failure && request ? (
-        <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-muted p-4 text-sm">
-          <span>{failure}</span>
-          <Button variant="ghost" size="sm" onClick={() => { void reload(); }} disabled={loading}>Try again</Button>
-        </div>
-      ) : null}
-      {request && role ? (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <ThreadMain
-            request={request}
-            role={role}
-            seekerIdentity={{ name: seekerName, headline }}
-            passed={passed}
-            messages={messages}
-            draft={draft}
-            setDraft={setDraft}
-            sending={sending}
-            sendError={messageError}
-            onSend={() => { void send(); }}
-          />
-          <aside className="space-y-4">
-            <div className="rounded-3xl border border-border p-5">
-              <span className="eyebrow">YOUR DECISION</span>
-              {(
-                <ReferrerPanel
-                  request={request}
-                  role={role}
-                  passed={passed}
-                  returnPath={returnPath}
-                  onAccept={async () => { await decideReview(request.id, "approved", undefined, fetchToken); await reload(); }}
-                  // A pass leaves the request in the queue for other verified
-                  // employees and out of this referrer's reach, so there is
-                  // nothing further to reload for this account.
-                  onPass={async (reason, passReason) => { await decideReview(request.id, "declined", reason, fetchToken, passReason); setPassed(true); }}
-                  onMarkReferred={async reference => { await recordProgress(request.id, "intro_made", fetchToken, reference); await reload(); }}
-                  onExtendReferredDeadline={async () => { await extendReferredDeadline(request.id, fetchToken); await reload(); }}
-                  onStepBack={async () => { await stepBackFromReferral(request.id, fetchToken); await reload(); }}
-                />
-              )}
-            </div>
-            <div className="rounded-3xl bg-muted p-5 text-sm">
-              <span className="eyebrow">REFERRER</span>
-              <p className="mt-2 flex items-center gap-2 font-medium">{referrerLabel}<BadgeCheck className="size-4 text-primary" /></p>
-              <p className="text-muted-foreground">Verified via work email</p>
-              {referenceId ? <p className="mt-2 font-medium">Referred! Reference ID {referenceId}</p> : null}
-            </div>
-            <div className="rounded-3xl border border-border p-5 text-sm text-muted-foreground">
-              <ShieldCheck className="mb-2 size-5 text-primary" />Referrers are never paid and never ask for money. Never pay or accept money for a referral. <Link href="/report" className="text-link">Report or block</Link>
-            </div>
-          </aside>
-        </div>
-      ) : null}
-    </main>,
+  return (
+    <ReferrerConversation
+      request={request!}
+      role={role}
+      passed={passed}
+      referrerLabel={referrerLabel}
+      messages={messages}
+      draft={draft}
+      setDraft={setDraft}
+      sending={sending}
+      messageError={messageError}
+      referenceId={referenceId}
+      failure={failure}
+      loading={loading}
+      onReload={() => {
+        void reload();
+      }}
+      onSend={() => {
+        void send();
+      }}
+      onAccept={async () => {
+        await decideReview(request!.id, "approved", undefined, fetchToken);
+        await reload();
+      }}
+      onPass={async (reason, passReason) => {
+        await decideReview(
+          request!.id,
+          "declined",
+          reason,
+          fetchToken,
+          passReason
+        );
+        setPassed(true);
+      }}
+      onMarkReferred={async reference => {
+        await recordProgress(request!.id, "intro_made", fetchToken, reference);
+        await reload();
+      }}
+      onExtendReferredDeadline={async () => {
+        await extendReferredDeadline(request!.id, fetchToken);
+        await reload();
+      }}
+      onStepBack={async () => {
+        await stepBackFromReferral(request!.id, fetchToken);
+        await reload();
+      }}
+    />
   );
 }
