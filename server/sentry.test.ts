@@ -18,6 +18,7 @@ describe("server Sentry wiring", () => {
     expect(scrubSentryPath("/share-card/xyz?foo=1")).toBe("/share-card/[redacted]");
     expect(scrubSentryPath("/fast/r12-34abcdef")).toBe("/fast/[redacted]");
     expect(scrubSentryPath("/refer/acme/vanity1")).toBe("/refer/[redacted]");
+    expect(scrubSentryPath(`/api/ask-invites/${"secret-token"}/claim?utm_source=private`)).toBe("/api/ask-invites/[redacted]/claim");
     expect(scrubSentryPath("/api/company-referrals/mine")).toBe("/api/company-referrals/mine");
   });
 });

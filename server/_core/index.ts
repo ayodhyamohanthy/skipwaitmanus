@@ -45,7 +45,7 @@ import { createContext } from "./context";
 import { registerDevAuthRoutes, resolveDevIdentity } from "./devAuth";
 import { serveStatic, setupVite } from "./vite";
 import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
-import { registerAskInviteRoutes } from "../askInviteRoutes";
+import { askInviteFeatureGateMiddleware, registerAskInviteRoutes } from "../askInviteRoutes";
 import { registerCompanyDirectoryRoutes } from "../companyDirectoryRoutes";
 import { registerSitemapRoutes } from "../sitemapRoutes";
 import { listCompanyDirectory } from "../companyDirectory";
@@ -164,6 +164,8 @@ async function startServer() {
     return { account: identity.account, primaryEmail: identity.primaryEmail, emailAddresses: identity.emailAddresses };
   };
   registerJobLinkPreviewRoutes(app, { resolveEmployerDomainFromTargetUrl: db.resolveEmployerDomainFromTargetUrl });
+  // BYOR off must answer before body parsers and session renewal can reach any user/database state.
+  app.use(askInviteFeatureGateMiddleware);
     // Public control-plane bodies stay small. The two deprecated JSON document
   // routes opt into their own authenticated, bounded parser at registration.
   const smallJson = express.json({ limit: "256kb" });
@@ -177,7 +179,7 @@ async function startServer() {
     }) as typeof res.writeHead;
     res.on("finish", () => {
       const ms = Math.round(performance.now() - started);
-      if (ms >= 800) console.warn(`[slow-api] ${req.method} ${req.baseUrl}${req.path} ${res.statusCode} ${ms}ms`);
+      if (ms >= 800) console.warn(`[slow-api] ${req.method} ${scrubSentryPath(`${req.baseUrl}${req.path}`)} ${res.statusCode} ${ms}ms`);
     });
     next();
   });

@@ -37,6 +37,10 @@ class MemoryAskInviteStore implements AskInviteStore {
         this.calls.push("active-link");
         return this.links.find(link => link.referralRequestId === requestId && link.createdByUserId === userId && link.status === "active" && link.activeRequestKey !== null);
       },
+      getLiveClaimedInviteForUpdate: async (requestId, userId, now) => {
+        this.calls.push("claimed-link");
+        return this.links.find(link => link.referralRequestId === requestId && link.createdByUserId === userId && link.status === "claimed" && link.reservationExpiresAt instanceof Date && link.reservationExpiresAt > now);
+      },
       getLatestInviteForUpdate: async (requestId, userId) => {
         this.calls.push("latest-link");
         return this.links.filter(link => link.referralRequestId === requestId && link.createdByUserId === userId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id - a.id)[0];
@@ -85,7 +89,7 @@ describe("D-090 ask invite create/revoke", () => {
       activeRequestKey: askInviteActiveRequestKey(REQUEST),
     });
     expect(JSON.stringify(store.links)).not.toContain(created.token);
-    expect(store.calls.slice(0, 4)).toEqual(["ask", "active-link", "recent-links", "insert"]);
+    expect(store.calls.slice(0, 5)).toEqual(["ask", "active-link", "claimed-link", "recent-links", "insert"]);
   });
 
   it("rejects a second active link and any ask that is not waiting", async () => {
@@ -97,6 +101,14 @@ describe("D-090 ask invite create/revoke", () => {
     const visible = new MemoryAskInviteStore();
     visible.asks.set(REQUEST, waitingAsk({ waitingForCoverage: false }));
     await expect(createAskInvite(SEEKER, REQUEST, NOW, visible)).rejects.toBeInstanceOf(AskInviteNotWaitingError);
+  });
+
+  it("does not create a competing link while an insider reservation is live", async () => {
+    const store = new MemoryAskInviteStore();
+    store.asks.set(REQUEST, waitingAsk());
+    store.links.push(inviteRow({ id: 77, status: "claimed", activeRequestKey: null, claimedByUserId: OTHER, reservationExpiresAt: new Date(NOW + DAY) }));
+    await expect(createAskInvite(SEEKER, REQUEST, NOW, store)).rejects.toBeInstanceOf(AskInviteLinkActiveError);
+    expect(store.links).toHaveLength(1);
   });
 
   it("returns the same not-found error for a missing or another seeker's ask", async () => {

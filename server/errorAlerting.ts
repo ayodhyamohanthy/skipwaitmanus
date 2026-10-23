@@ -1,6 +1,7 @@
 import { createTransactionalEmailSender } from "./emailDelivery";
 import type { RequestHandler } from "express";
 import { recordOperationalActivity } from "./db";
+import { scrubSentryPath } from "./sentry";
 
 const ADMIN_ERROR_RECIPIENT = "ayodhya@skipwait.me";
 // Second recipient: the owner mailbox. Best effort: the primary result decides success.
@@ -28,7 +29,7 @@ type AlertDependencies = {
 };
 
 function normalizedPath(path: string) {
-  const pathname = path.split("?")[0]?.trim() || "/";
+  const pathname = scrubSentryPath(path).trim() || "/";
   return pathname.startsWith("/api/") ? pathname.slice(0, 180) : "";
 }
 

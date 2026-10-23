@@ -12,7 +12,7 @@ import { CREDIT_ENDED_CAVEAT } from "../shared/moneyCopy";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { accountPreferences, askCosts, seekerLevels, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, userBlocks, users } from "../drizzle/schema";
+import { accountPreferences, askCosts, askInviteLinks, seekerLevels, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, userBlocks, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
@@ -55,6 +55,7 @@ import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskWindow, listHeldFor
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
 import { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
 import { COVERAGE_ATTEMPTS_PER_SLOT, COVERAGE_TARGET_SCAN_LIMIT, COVERAGE_WITHDRAWN_NOTICE, askDeliveryKey, coverageDeliveredEventKey, coverageDeliveredNotice, coverageHeldEventKey, coverageHeldNotice, coverageReferrerEventKey, coverageReferrerNotice, coverageWaitExpiredNotice, isAwaitingCoverageActionAllowed, type CoverageDeliveryOutcome, type CoverageHandoffSummary } from "./coverageDelivery";
+import { askInviteActiveRequestKey } from "../shared/askInvites";
 // Re-exported for every existing caller (tests and companyDirectory.ts import
 // these from ./db); the definitions live in server/referrerAvailability.ts.
 export { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
@@ -2698,6 +2699,13 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
   const request = locked?.request;
   if (!locked || !request || request.status !== "pending" || !request.waitingForCoverage) return { outcome: "settled", requestId: input.requestId };
   if (request.jobSeekerId === input.referrerId) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
+  // Ask → invite → profile is the BYOR lock order. A live reservation is a
+  // hard delivery target, not a hint: another employee must leave it waiting.
+  const invite = (await tx.select({ id: askInviteLinks.id, status: askInviteLinks.status, claimedByUserId: askInviteLinks.claimedByUserId, reservationExpiresAt: askInviteLinks.reservationExpiresAt })
+    .from(askInviteLinks).where(and(eq(askInviteLinks.referralRequestId, input.requestId), inArray(askInviteLinks.status, ["active", "claimed"])))
+    .orderBy(desc(askInviteLinks.id)).limit(1).for("update"))[0];
+  const hasLiveReservation = invite?.status === "claimed" && invite.reservationExpiresAt !== null && new Date(invite.reservationExpiresAt).getTime() > input.nowMs;
+  if (hasLiveReservation && invite.claimedByUserId !== input.referrerId) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
   const companyDomain = locked.companyDomain;
   const referrer = (await tx.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended })
     .from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId)).where(eq(profiles.userId, input.referrerId)).limit(1).for("update"))[0];
@@ -2737,6 +2745,13 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
   // transaction. The conditional update re-checks the flip under the row lock already held above.
   const flipped = await tx.update(referralRequests).set({ referrerId: input.referrerId, waitingForCoverage: false, coverageQueuedAt: null, coverageVisibleAt: now, coverageHeldAt: null, debitTransactionId }).where(and(eq(referralRequests.id, input.requestId), eq(referralRequests.waitingForCoverage, true)));
   if (Number(flipped[0]?.affectedRows ?? 0) !== 1) throw new Error("The coverage delivery lost a stale-write race");
+  if (invite?.status === "active") {
+    await tx.update(askInviteLinks).set({ status: "expired", activeRequestKey: null, closedAt: now }).where(and(eq(askInviteLinks.id, invite.id), eq(askInviteLinks.status, "active"), eq(askInviteLinks.activeRequestKey, askInviteActiveRequestKey(input.requestId))));
+    await tx.insert(operationalActivityLogs).values({ actorUserId: input.referrerId, action: "ask_invite.expired", outcome: "success", resourceType: "ask_invite", resourceId: String(invite.id), companyDomain: companyDomain.toLowerCase().slice(0, 255), metadata: JSON.stringify({ requestId: input.requestId, linkId: invite.id, outcome: "coverage_delivered" }) });
+  } else if (invite?.status === "claimed" && hasLiveReservation && invite.claimedByUserId === input.referrerId) {
+    await tx.update(askInviteLinks).set({ status: "delivered", reservationExpiresAt: null, activeRequestKey: null, closedAt: now }).where(and(eq(askInviteLinks.id, invite.id), eq(askInviteLinks.status, "claimed"), eq(askInviteLinks.claimedByUserId, input.referrerId)));
+    await tx.insert(operationalActivityLogs).values({ actorUserId: input.referrerId, action: "ask_invite.delivered", outcome: "success", resourceType: "ask_invite", resourceId: String(invite.id), companyDomain: companyDomain.toLowerCase().slice(0, 255), metadata: JSON.stringify({ requestId: input.requestId, linkId: invite.id, outcome: "delivered" }) });
+  }
   await tx.insert(referralAvailabilitySlots).values({ referrerId: input.referrerId, companyDomain, referralRequestId: input.requestId, status: "allocated", activeRequestKey: `request:${input.requestId}` });
   const deliveredNotice = coverageDeliveredNotice(companyDomain);
   await tx.insert(notifications).values({ userId: request.jobSeekerId, category: "status", kind: "coverage_delivered", refId: input.requestId, title: deliveredNotice.title, body: deliveredNotice.body, eventKey: coverageDeliveredEventKey(input.requestId) }).onDuplicateKeyUpdate({ set: { eventKey: coverageDeliveredEventKey(input.requestId) } });
@@ -2750,12 +2765,24 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
 }
 
 /** The company's waiting and held asks a hand-off may deliver, oldest queue position first. */
-async function listDeliverableWaitingAsksTx(tx: LedgerTx, input: { companyDomain: string; limit: number }): Promise<Array<{ id: number; jobSeekerId: number }>> {
+async function listDeliverableWaitingAsksTx(tx: LedgerTx, input: { companyDomain: string; limit: number; nowMs: number }): Promise<Array<{ id: number; jobSeekerId: number }>> {
+  const reserved = await tx.select({ requestId: askInviteLinks.referralRequestId }).from(askInviteLinks)
+    .innerJoin(referralRequests, eq(referralRequests.id, askInviteLinks.referralRequestId)).innerJoin(jobs, eq(jobs.id, referralRequests.jobId))
+    .where(and(eq(jobs.company, input.companyDomain), eq(askInviteLinks.status, "claimed"), gt(askInviteLinks.reservationExpiresAt, new Date(input.nowMs))));
+  const excluded = Array.from(new Set(reserved.map(row => row.requestId))).map(id => ne(referralRequests.id, id));
   return tx.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId })
     .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id))
-    .where(and(eq(jobs.company, input.companyDomain), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, true), isNull(referralRequests.referrerId)))
+    .where(and(eq(jobs.company, input.companyDomain), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, true), isNull(referralRequests.referrerId), ...excluded))
     .orderBy(asc(referralRequests.coverageQueuedAt), asc(referralRequests.id))
     .limit(input.limit);
+}
+
+/** Live asks reserved for this employee go ahead of the ordinary oldest-first queue. */
+async function listReservedWaitingAsksForReferrerTx(tx: LedgerTx, input: { referrerId: number; companyDomain: string; nowMs: number; limit: number }): Promise<Array<{ id: number; jobSeekerId: number }>> {
+  return tx.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId }).from(askInviteLinks)
+    .innerJoin(referralRequests, eq(referralRequests.id, askInviteLinks.referralRequestId)).innerJoin(jobs, eq(jobs.id, referralRequests.jobId))
+    .where(and(eq(jobs.company, input.companyDomain), eq(askInviteLinks.status, "claimed"), eq(askInviteLinks.claimedByUserId, input.referrerId), gt(askInviteLinks.reservationExpiresAt, new Date(input.nowMs)), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, true), isNull(referralRequests.referrerId)))
+    .orderBy(asc(askInviteLinks.claimedAt), asc(referralRequests.id)).limit(input.limit);
 }
 
 /**
@@ -2774,7 +2801,11 @@ async function handOffWaitingAsksToReferrerTx(tx: LedgerTx, input: { referrerId:
   const target = Math.min(input.maxDeliveries ?? remaining, remaining);
   const summary = { deliveredRequestIds: [] as number[], held: 0, skipped: 0 };
   if (target <= 0) return summary;
-  const candidates = await listDeliverableWaitingAsksTx(tx, { companyDomain: input.companyDomain, limit: target * COVERAGE_ATTEMPTS_PER_SLOT });
+  const scanLimit = target * COVERAGE_ATTEMPTS_PER_SLOT;
+  const reserved = await listReservedWaitingAsksForReferrerTx(tx, { referrerId: input.referrerId, companyDomain: input.companyDomain, nowMs: input.nowMs, limit: scanLimit });
+  const ordinary = await listDeliverableWaitingAsksTx(tx, { companyDomain: input.companyDomain, nowMs: input.nowMs, limit: scanLimit });
+  const reservedIds = new Set(reserved.map(ask => ask.id));
+  const candidates = [...reserved, ...ordinary.filter(ask => !reservedIds.has(ask.id))].slice(0, scanLimit);
   for (const ask of candidates) {
     if (summary.deliveredRequestIds.length >= target) break;
     const outcome = await deliverWaitingAskTx(tx, { requestId: ask.id, referrerId: input.referrerId, nowMs: input.nowMs });
@@ -2812,6 +2843,12 @@ export async function tryDeliverWaitingAsk(requestId: number, nowMs: number = Da
     const current = (await tx.select({ request: referralRequests, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, requestId)).limit(1).for("update"))[0];
     if (!current || current.request.status !== "pending" || !current.request.waitingForCoverage) return { outcome: "settled", requestId };
     const wasHeld = current.request.coverageHeldAt !== null;
+    const reservation = (await tx.select({ claimedByUserId: askInviteLinks.claimedByUserId }).from(askInviteLinks)
+      .where(and(eq(askInviteLinks.referralRequestId, requestId), eq(askInviteLinks.status, "claimed"), gt(askInviteLinks.reservationExpiresAt, new Date(nowMs))))
+      .limit(1).for("update"))[0];
+    if (reservation?.claimedByUserId !== null && reservation?.claimedByUserId !== undefined) {
+      return deliverWaitingAskTx(tx, { requestId, referrerId: reservation.claimedByUserId, nowMs });
+    }
     for (const candidate of await selectDeliveryCandidatesTx(tx, { companyDomain: current.companyDomain, seekerUserId: current.request.jobSeekerId })) {
       const outcome = await deliverWaitingAskTx(tx, { requestId, referrerId: candidate.userId, nowMs });
       if (outcome.outcome === "delivered" || outcome.outcome === "held" || outcome.outcome === "settled") return outcome;
