@@ -641,7 +641,7 @@
       "tier": 2,
       "lane": "design-core",
       "branch": "agent/queue/d048-f-primitives",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-048-F-flags"
       ],
@@ -652,7 +652,8 @@
         "client/src/components/goal/index.ts",
         "client/src/components/goal/goalAtoms.test.tsx",
         "client/src/components/goal/goalComposites.test.tsx"
-      ]
+      ],
+      "note": " Audit outcome (Oct 23, accepted by Main): the barrel (20+ exports) covers every built surface; AYO-7 composed in-place pages with zero new primitives. The only cross-surface gap, the \"Your next step\" block, is D-048-F-goal-check's GoalNextStep per D-167 (local copies to migrate later: MyRequests.tsx, goal/inbox/GoalInbox.tsx, goal/assistants/AssistantLayout.tsx, inline markups on the AYO-7 pages). AYO-9's Section/Message/AccessStatus/NetworkButton stay single-consumer (promote on a second consumer). Name-collisions MyRequests.NextStep/ReferralRequest.NextStep/AdminCatalogSync.Section are different semantics - do not unify. No code to promote: audit-only row, no manufactured code."
     },
     {
       "id": "D-048-F-harness",
