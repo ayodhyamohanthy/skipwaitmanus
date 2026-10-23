@@ -9,6 +9,7 @@ import { z } from "zod";
 import { companyIdentityFieldsSchema } from "@shared/companies";
 import { openAskSlotsSchema, type OpenAskSlots } from "@shared/openAskSlots";
 import { referralStatuses } from "@shared/referral";
+import { askInviteMineSchema } from "@shared/askInvites";
 import { readApiJson } from "@/lib/apiResponse";
 
 export const LOAD_ERROR = "We could not load your referral requests";
@@ -38,6 +39,8 @@ const referralRequestSchema = z.object({
   // P0-allocated-ask-stuck: an ask assigned to one referrer who has not claimed it, through a personal link or a
   // queue allocation (a D-034 delivery), still counts as unclaimed. Optional so a payload from before the flag parses.
   unclaimedAssignment: z.boolean().optional().catch(undefined),
+  // D-090: optional, private BYOR status; older or malformed values do not discard the entire requests list.
+  askInvite: askInviteMineSchema.optional().catch(undefined),
   referrerMessage: z.string().nullish().transform(value => value ?? null),
   unreadMessageCount: z.coerce.number().int().min(0).catch(0),
   createdAt: z.string(),

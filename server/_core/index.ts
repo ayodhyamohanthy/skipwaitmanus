@@ -45,6 +45,7 @@ import { createContext } from "./context";
 import { registerDevAuthRoutes, resolveDevIdentity } from "./devAuth";
 import { serveStatic, setupVite } from "./vite";
 import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
+import { registerAskInviteRoutes } from "../askInviteRoutes";
 import { registerCompanyDirectoryRoutes } from "../companyDirectoryRoutes";
 import { registerSitemapRoutes } from "../sitemapRoutes";
 import { listCompanyDirectory } from "../companyDirectory";
@@ -212,6 +213,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   registerPasswordResetRoutes(app);
   if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);
   else registerDevAuthRoutes(app);
+  registerAskInviteRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   app.use(materialErrorAlertMiddleware);
   registerStorageProxy(app);
   registerDbDocumentRoute(app, { resolveIdentity });
