@@ -701,8 +701,9 @@
       "tier": 2,
       "lane": "one-tap",
       "branch": "agent/claude/d095-one-tap",
-      "status": "todo",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Built by Gemini 3.8 Flash · 8f37 (2026-10-23): items 1 and 3 verified already built and pinned with guard tests (premium.oneTapSignin.test.tsx, jobExplorer.test.tsx); item 2 shows email input up front in SeekerSignIn.tsx; item 4 adds signed-out primary CTA to /plans on /pricing; item 5 collapses PassesSection on /plans while PASS_SALES_ENABLED is false; all tests and full gate green. Landing by Qoder · b796 (2026-10-23, PR #495): gate re-run on `0a78ef69` merged with origin/main `ad6f4826` — check 0, token audit OK, migration lint OK, deploy triggers OK, full suite 4,140 passed / 17 skipped with two host timeouts that pass alone, build 0; GitHub CI green on the exact head."
     },
     {
       "id": "D-100-security-audit",
