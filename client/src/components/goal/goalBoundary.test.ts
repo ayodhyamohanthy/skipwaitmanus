@@ -35,7 +35,7 @@ describe("goal boundary", () => {
   it("no goal page file imports kit (reverse check)", () => {
     const goalPagesDir = join(CLIENT_SRC, "pages", "goal");
     let files: string[] = [];
-    try { files = [...walk(goalPagesDir)]; } catch { files = []; }
+    try { files = Array.from(walk(goalPagesDir)); } catch { files = []; }
     const offenders: string[] = [];
     for (const file of files) {
       const source = readFileSync(file, "utf8");

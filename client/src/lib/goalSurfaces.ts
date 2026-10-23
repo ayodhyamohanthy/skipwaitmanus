@@ -122,7 +122,7 @@ export function duplicateGoalRoutes(): string[] {
       else seen.set(route, id);
     }
   }
-  return [...duplicates];
+  return Array.from(duplicates);
 }
 
 export { declaredIds as goalSurfaceIds };
