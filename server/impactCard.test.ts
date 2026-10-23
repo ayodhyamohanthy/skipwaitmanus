@@ -141,6 +141,38 @@ describe("loadImpactCard: the aggregates", () => {
     });
   });
 
+  it("F1: an accept recorded as review counts as answered and accepted, and its reply joins the median", async () => {
+    seed({
+      asks: [ask(601, "2026-10-10T00:00:00.000Z", "2026-10-10T00:00:00.000Z"), ask(602, "2026-10-11T00:00:00.000Z", "2026-10-11T00:00:00.000Z"), ask(603, "2026-10-12T00:00:00.000Z", null)],
+      events: [
+        // The /referrer record action accepts with action "review" (reviewReferralRequest).
+        event(1, 601, "review", "approved", "2026-10-10T04:00:00.000Z"),
+        event(2, 602, "pass", "pending", "2026-10-11T02:00:00.000Z"),
+        event(3, 603, "approve", "approved", "2026-10-12T10:00:00.000Z"),
+      ],
+    });
+    expect(await loadImpactCard(REFERRER, NOW)).toMatchObject({ state: "ready", stats: { medianFirstReplyHours: 4, acceptRatePct: 67 } });
+  });
+
+  it("F2: a referral the seeker recorded counts; lapses, step-backs and a colleague's accept never do", async () => {
+    // The rule is status-based, not actor-based: the seeker's own confirmation
+    // (seeker_confirmed_referred, actor = seeker) moves the ask to intro_made.
+    const { asks, events } = threeAnswers();
+    seed({
+      asks: [...asks, ask(604, "2026-10-13T00:00:00.000Z", "2026-10-13T00:00:00.000Z", { referrerId: OTHER_REFERRER })],
+      events: [
+        ...events,
+        event(31, 601, "seeker_confirmed_referred", "intro_made", "2026-10-20T00:00:00.000Z", 7),
+        event(32, 602, "referred_lapse", "pending", "2026-10-21T00:00:00.000Z"),
+        event(33, 603, "step_back", "pending", "2026-10-21T00:00:00.000Z"),
+        event(34, 604, "approve", "approved", "2026-10-21T00:00:00.000Z", OTHER_REFERRER),
+        event(35, 604, "progress", "intro_made", "2026-10-21T00:00:00.000Z", OTHER_REFERRER),
+      ],
+    });
+    const card = await loadImpactCard(REFERRER, NOW);
+    expect(card).toMatchObject({ state: "ready", stats: { referredThisMonth: 1, acceptRatePct: 67 } });
+  });
+
   it("F5: the referral count is route-agnostic; the copy claims no link attribution", async () => {
     // referralRequests carries no link attribution, so this count never proves
     // the referral came through the fast-track link. The published line (F5)

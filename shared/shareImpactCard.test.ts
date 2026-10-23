@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import copy from "../design/goal-ui/content.json" with { type: "json" };
-import { IMPACT_CARD_COPY, IMPACT_MIN_ANSWERED, impactCardLinkedIn, impactCardText, impactCardVisible, summarizeImpact, type ImpactCardInput, type ImpactEvent } from "./shareImpactCard";
+import { IMPACT_CARD_COPY, IMPACT_MIN_ANSWERED, impactCardLinkedIn, impactCardText, impactCardVisible, impactReferredBig, summarizeImpact, type ImpactCardInput, type ImpactEvent } from "./shareImpactCard";
 
 const input: ImpactCardInput = {
   screenName: "QuietFalcon",
@@ -54,10 +54,27 @@ describe("referrer impact card", () => {
     const events = [ev(1, "approve", "approved"), ev(2, "pass", "declined"), ev(3, "pass", "declined")];
     expect(summarizeImpact(events, NOW).acceptRatePct).toBe(33);
   });
+  it("F1: an accept recorded as review counts as answered and approved", () => {
+    // /referrer records an accept with action "review" (reviewReferralRequest),
+    // not "approve": the gate and the accept rate must read both.
+    const events = [ev(1, "review", "approved"), ev(2, "review", "approved"), ev(3, "pass", "pending")];
+    const summary = summarizeImpact(events, NOW);
+    expect(summary.answeredAsks).toBe(3);
+    expect(summary.acceptRatePct).toBe(67);
+  });
+  it("F3: the hero counts referrals, with an honest singular and zero", () => {
+    // It counts distinct asks that reached intro_made or later, never people:
+    // one seeker can hold two asks (D-006), so the unit is "referrals".
+    expect(impactReferredBig(0)).toBe("No referrals");
+    expect(impactReferredBig(1)).toBe("1 referral");
+    expect(impactReferredBig(3)).toBe("3 referrals");
+    expect(impactCardText({ ...input, stats: { ...input.stats, referredThisMonth: 1 } })).toContain("1 referral into Kestrel Pay this month.");
+    expect(impactCardText({ ...input, stats: { ...input.stats, referredThisMonth: 0 } })).toContain("No referrals into Kestrel Pay this month.");
+  });
   it("plain text card carries screen name, company, aggregates and the link", () => {
     const text = impactCardText(input);
     expect(text).toContain("QuietFalcon · Verified at Kestrel Pay");
-    expect(text).toContain("3 people referred into Kestrel Pay this month.");
+    expect(text).toContain("3 referrals into Kestrel Pay this month.");
     expect(text).toContain("3h median first reply, all time");
     expect(text).toContain("64% asks accepted, all time");
     expect(text).toContain("https://skipwait.me/refer/kestrel-pay/quietfalcon");
