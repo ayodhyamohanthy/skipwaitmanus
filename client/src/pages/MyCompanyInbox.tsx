@@ -352,6 +352,7 @@ function QueueDetail({ item, index, count, preview, previewLoading, nowMs, worki
         <div className="border-t border-g-hairline px-3 py-3 gdesk:px-4">
           <GoalLockedPanel title="Identity and resume are shared after you accept" documentCount={preview?.attachments.length ?? 0} />
           <p className="mt-2 text-g-meta text-g-ink-3">Accepting shares names both ways and their resume. Referring comes later, through {company}&rsquo;s own process.</p>
+          <p className="mt-1 text-g-meta text-g-ink-3">By accepting, you confirm you&apos;ll refer only through {company}&apos;s official process.</p>
           <div className="mt-3 flex items-center gap-1.5">
             {/* Comp phone rule: position and K/J move to the sub bar (phonePosition
                 above); the two actions split the bar evenly. */}
@@ -362,7 +363,18 @@ function QueueDetail({ item, index, count, preview, previewLoading, nowMs, worki
             </span>
             <span className="ml-auto max-gdesk:hidden" />
             <GoalButton variant="ghost" keys={["P"]} disabledReason={working ? "Working…" : undefined} onClick={() => onPassOpen(true)} className="max-gdesk:flex-1">Pass privately</GoalButton>
-            <GoalButton variant="primary" keys={["A"]} busy={working} busyLabel="Working…" onClick={onAccept} className="max-gdesk:flex-1">Accept &amp; connect</GoalButton>
+            <GoalButton
+              variant="primary"
+              keys={["A"]}
+              busy={working}
+              busyLabel="Working…"
+              onClick={onAccept}
+              className="max-gdesk:flex-1"
+              title={`By accepting, you confirm you'll refer only through ${company}'s official process.`}
+              aria-keyshortcuts="a"
+            >
+              Accept &amp; connect
+            </GoalButton>
           </div>
         </div>
       ) : undefined}

@@ -20,3 +20,4 @@ Owned paths: `client/src/pages/explore/useAskComposer.tsx` (the sign-in branch o
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
+P1-queue-attestation: in progress — Gemini 3.8 Flash · 8f37 — 2026-10-23 — branch agent/queue/p1-queue-attestation
