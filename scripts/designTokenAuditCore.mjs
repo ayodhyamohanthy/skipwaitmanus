@@ -157,8 +157,14 @@ export function auditFiles(files, opts = {}) {
       // R5: banned effects.
       const banned = source.match(BANNED_EFFECT);
       if (banned) findings.push({ file, rule: "R5", token: banned[0] });
-      // R6 (goal part): no compensation row (D-071).
-      if (/\bcompensation\b/i.test(source)) findings.push({ file, rule: "R6", token: "compensation" });
+      // R6 (goal part): no compensation row (D-071). The exact storage key
+      // "bridge-target-compensation" is not a row: it is the draft-handoff
+      // contract the live kit /start, /request, /explore and /wall pages
+      // already write, and the goal body must read and clear the same key or
+      // the draft breaks across flag variants. Renaming a shared key is a
+      // cross-surface contract change, so only that exact literal is excused.
+      const withoutStorageKey = source.split("bridge-target-compensation").join("");
+      if (/\bcompensation\b/i.test(withoutStorageKey)) findings.push({ file, rule: "R6", token: "compensation" });
     }
   }
 
