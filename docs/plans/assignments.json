@@ -201,7 +201,10 @@
         "ROW20-CD"
       ],
       "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first.",
-      "epic": "D-048-p3"
+      "epic": "D-048-p3",
+      "owns": [
+        "client/src/pages/conversation/SeekerConversation.tsx"
+      ]
     },
     {
       "id": "D-048-p3-live-review-queue",
@@ -216,7 +219,11 @@
         "P1-queue-attestation"
       ],
       "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the referral queue against its kit version (pass codes, pre-acceptance privacy, verified-referrer check, lost test pins). After P1-queue-attestation, which edits the same page.",
-      "epic": "D-048-p3"
+      "epic": "D-048-p3",
+      "owns": [
+        "client/src/pages/MyCompanyInbox.tsx",
+        "design/goal-ui/captures/queue/**"
+      ]
     },
     {
       "id": "D-065-C",
