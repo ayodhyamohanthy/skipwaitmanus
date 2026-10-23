@@ -279,7 +279,8 @@
         "scripts/scope-check.mjs",
         "scripts/nextTask.test.ts",
         ".github/workflows/ci.yml",
-        "docs/plans/PICKER-PARALLEL.md"
+        "docs/plans/PICKER-PARALLEL.md",
+        "AGENTS.md"
       ]
     },
     {
