@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { landingSnapshot, PUBLIC_PAGES, publicSnapshots } from "./prerender-public-pages";
 import { breadcrumbsHtml, faqJsonLd, homeLinks, renderPublicPage } from "./prerenderSeo";
 import { LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_H1, LANDING_HERO_LEAD, LANDING_SUMMARY } from "../shared/landingContent";
@@ -198,5 +198,29 @@ describe("D-067: no crawlable copy names a removed plan", () => {
     expect(route("/plans").title).toBe("Plans and credits");
     expect(LANDING_EXPLORE.find(link => link.href === "/plans")?.label).toBe("Plans and credits");
     expect(route("/cancellations").description).toBe("How to cancel a referral request, a paid plan, or a credit purchase, and when any money comes back.");
+  });
+});
+
+// D-048-F-static-frame: the prerender path never fetches, with every goal
+// surface id forced on (VITE_GOAL_SURFACES=all), and each page still renders
+// its own text. A page that starts fetching during prerender fails here
+// before it can ship in the flags-on CI build.
+describe("goal static frame: prerender fetches nothing with every surface on", () => {
+  it("every PUBLIC_PAGES module and public snapshot renders fetch-free", async () => {
+    vi.stubEnv("VITE_GOAL_SURFACES", "all");
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { Router } = await import("wouter");
+    const React = await import("react");
+    for (const page of PUBLIC_PAGES) {
+      const { default: Component } = await page.load();
+      const markup = renderToStaticMarkup(React.createElement(Router, { ssrPath: page.route }, React.createElement(Component)));
+      expect(markup.length, `${page.route} rendered empty`).toBeGreaterThan(200);
+    }
+    for (const snapshot of publicSnapshots()) {
+      expect(snapshot.markup).toContain("<h1>");
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
   });
 });

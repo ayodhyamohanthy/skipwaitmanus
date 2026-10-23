@@ -30,9 +30,15 @@ describe("find-a-referral directory", () => {
 
   it("filters by availability and one job function", () => {
     const filter = { query: "", openOnly: false, fn: null } as const;
-    expect(filterCompanies([beta, alpha, gamma], filter).map(item => item.name)).toEqual(["Alpha", "Beta", "Gamma"]);
+    expect(filterCompanies([beta, alpha, gamma], filter).map(item => item.name)).toEqual(["Alpha", "Gamma", "Beta"]);
     expect(filterCompanies([beta, alpha, gamma], { ...filter, openOnly: true }).map(item => item.name)).toEqual(["Alpha", "Gamma"]);
     expect(filterCompanies([beta, alpha, gamma], { ...filter, fn: "Finance" }).map(item => item.name)).toEqual(["Beta"]);
+  });
+
+  it("shows open-to-requests companies first, alphabetical within each group", () => {
+    const closedEarly = company("Aardvark", { openToReferrals: false, domains: ["aardvark.com"] });
+    const openLate = company("Zephyr", { domains: ["zephyr.com"] });
+    expect(filterCompanies([closedEarly, openLate, beta, alpha], { query: "", openOnly: false, fn: null }).map(item => item.name)).toEqual(["Alpha", "Zephyr", "Aardvark", "Beta"]);
   });
 
   it("counts the companies shown and how many are open", () => {
