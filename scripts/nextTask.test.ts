@@ -50,8 +50,10 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
       "P0-ask-link-signin", "P1-queue-attestation", "PREMIUM-total-label", "D-067-outbox-fixture-repair",
     ]);
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    // P0-ask-link-signin is done (landed after its independent review), so P1 is next.
-    expect(first).toMatchObject({ kind: "build", task: { id: "P1-queue-attestation" } });
+    // P0-ask-link-signin and P1-queue-attestation are both done (each landed after its
+    // review; P1 as merge 2be41b2d), and both owner follow-ups are done, so
+    // PICKER-review-independence is next.
+    expect(first).toMatchObject({ kind: "build", task: { id: "PICKER-review-independence" } });
     // Both owner follow-ups (PREMIUM-total-label and D-067-outbox-fixture-repair) are done,
     // so slicing off the live regressions leaves PICKER-review-independence as next.
     const followUps = pickNextTask({ tasks: real.tasks.slice(2), mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });

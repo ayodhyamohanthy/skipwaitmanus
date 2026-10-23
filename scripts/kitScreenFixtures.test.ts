@@ -45,3 +45,36 @@ describe("kit screen fixtures after D-067", () => {
     for (const route of fixture.routes ?? []) expect(String(route.path)).not.toMatch(/^\/api\/chargebee\/gift/);
   });
 });
+
+/*
+ * 00_goal-* fixtures feed capture.mjs --goal (D-048-F-harness): the shell
+ * states a goal surface must survive. They are synthetic only - the comps'
+ * sample names and the retired pro/max plans are banned here so a fixture can
+ * never reintroduce them, and the required state set stays complete.
+ */
+describe("00_goal fixtures (D-048-F-harness)", () => {
+  const goalFiles = files.filter(name => name.startsWith("00_goal-"));
+
+  it("covers the signed-in seeker, the verified referrer and the states a surface must survive", () => {
+    for (const required of [
+      "00_goal-seeker__default.json",
+      "00_goal-referrer__verified.json",
+      "00_goal-seeker__credits-loading.json",
+      "00_goal-seeker__empty.json",
+      "00_goal-seeker__credits-error.json",
+      "00_goal-seeker__offline.json",
+    ]) expect(goalFiles).toContain(required);
+  });
+
+  it.each(goalFiles.length ? goalFiles : ["(none)"])("%s parses, is signed in and carries no comp sample name or retired plan", name => {
+    if (name === "(none)") return;
+    const fixture = load(name);
+    expect(fixture.signedIn).toBeTruthy();
+    const text = JSON.stringify(fixture);
+    expect(text).not.toMatch(/Fernhill Bank|Kestrel Pay|R-8F3K2/);
+    expect(text).not.toMatch(/skipwait_(?:pro|max)_/);
+    for (const route of (fixture as { routes?: Array<{ path?: unknown }> }).routes ?? []) {
+      expect(String(route.path)).toMatch(/^\/(api\/|trpc)/);
+    }
+  });
+});
