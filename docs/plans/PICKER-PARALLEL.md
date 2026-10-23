@@ -44,6 +44,15 @@ All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker
 4. `docs/DELEGATION.md` §6 already states the rule (D-151); the living system map in `AGENTS.md` (the agent work queue row) says the picker matches reviewers by model.
 **Tests** (red first, in `scripts/nextTask.test.ts`). A session of the builder's model is not handed the review, while a session of another model is; a session of a fixer's model is not handed the re-review, counting a fixer known only from a `Fixed` marker; a session of the builder's model is not handed the landing after a pass; the reviewer who returned findings is handed the re-review; the CEO, whose model built nothing, is handed it.
 
+## PICKER-board-newer-report: a newer report shows beside a standing blocked one (D-155)
+**Why.** `latestReports` in `scripts/nextTaskCore.mjs` keeps a blocked report standing until the CEO reports on the task, so the CEO sees every block. Anything the agent reports after its block is hidden. On Oct 23 workbuddy · b0eb reported D-090-BYOR blocked at 02:14 IST, then three green reports from 02:27 saying the owner had waived the gate in its session. The board and the CEO's unblock step showed only the blocked report, so the CEO ruled the gate back in (D-154) and the owner had to restate his word (D-155).
+**What.**
+1. `latestReports` returns, for each task, the standing report exactly as today, plus `newer`: the newest report on that task that is newer in log order than a standing blocked report and comes from a session that is not a CEO. With no standing blocked report, there is no `newer`.
+2. The status board line (`scripts/nextTaskText.mjs`, the `report:` bit) adds `· newer: <status> — <who>: <note>` when `newer` exists.
+3. The printed unblock step (`kind: "unblock"` and its `continue` form) prints the newer report under the blocked one and tells the CEO to read it before ruling, because a builder may have recorded an owner's word.
+4. The health colour and every hand-out decision are unchanged: a blocked report still holds its lane until the CEO reports.
+**Tests** (red first, in `scripts/nextTask.test.ts`). A blocked report followed by a green one from the same agent: the board shows both and the task stays red. The unblock step prints the newer note. A CEO report after both clears the block and shows no `newer`. A green report older than the blocked one never shows as `newer`.
+
 ## Status
 The PICKER rows share the plan row "D-134", so each writes its status here, one line per task, never in the shared §3b row (D-134).
 - PICKER-landing-slot: done — 1e9ba07f (PR #497) — Gemini 3.8 Flash · 8f37
