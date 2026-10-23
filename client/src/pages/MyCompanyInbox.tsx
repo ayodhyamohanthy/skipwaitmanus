@@ -207,7 +207,7 @@ export default function MyCompanyInbox() {
         const next = key === "j" ? Math.min(requests.length - 1, openIndex + 1) : Math.max(0, openIndex < 0 ? 0 : openIndex - 1);
         setSelectedId(requests[next]?.id ?? null);
       } else if (key === "p" && selected?.status === "pending") { event.preventDefault(); setPassOpen(true); }
-      else if (key === "a" && selected?.status === "pending" && !working) { event.preventDefault(); void review(selected.id, "approved"); }
+      else if (key === "a" && selected?.status === "pending" && !working && !passOpen) { event.preventDefault(); void review(selected.id, "approved"); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

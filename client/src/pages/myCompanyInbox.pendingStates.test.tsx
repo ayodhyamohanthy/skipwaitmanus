@@ -240,6 +240,33 @@ describe("queue empty state follows routing state", () => {
       ));
     });
 
+    it("does not accept with 'a' while the pass sheet owns the keyboard, and restores the shortcut after Cancel", async () => {
+      const fetchMock = stubFetch((url) => {
+        if (url.includes("/preview")) return previewPayload;
+        if (url.includes("/inbox?scope=new")) return { requests: [inboxItem] };
+        if (url.includes("/inbox")) return { requests: [] };
+        if (url.includes("/one-click-review")) return { status: "approved" };
+        return {};
+      });
+      render(<Queue />);
+      fireEvent.click(await screen.findByRole("button", { name: /Private ask/ }));
+      fireEvent.click(await screen.findByRole("button", { name: /Pass privately/ }));
+      const reason = await screen.findByRole("button", { name: /Not my team or function/ });
+      reason.focus();
+
+      await act(async () => { fireEvent.keyDown(reason, { key: "a" }); });
+      expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/one-click-review"))).toHaveLength(0);
+      expect(screen.getByTestId("goal-sheet")).toBeTruthy();
+
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(screen.queryByTestId("goal-sheet")).toBeNull();
+      fireEvent.keyDown(window, { key: "a" });
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+        "/api/company-referrals/7/one-click-review",
+        expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "approved", ethicsConfirmed: true }) })
+      ));
+    });
+
     it("pass path never posts ethicsConfirmed", async () => {
       const fetchMock = stubFetch((url) => {
         if (url.includes("/preview")) return previewPayload;
