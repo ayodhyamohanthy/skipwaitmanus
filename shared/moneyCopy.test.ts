@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "./referral";
-import { askCostLanding, askCostLine } from "./moneyCopy";
+import { askCostLanding, askCostLine, CREDIT_RULE, CREDIT_RULE_V2 } from "./moneyCopy";
 
 /*
  * D-038-reconcile F3 (R-2, D-042): the credit rule may promise the reopen path
@@ -94,5 +94,24 @@ describe("level-aware ask cost (D-132 item 7)", () => {
     const on = askCostLanding(true);
     for (const text of [on.stepBody, on.waitBody, on.fairRule]) { expect(text).not.toMatch(/costs the same|\b1 credit only\b/); }
     expect(on.fairRule).toContain("its job level");
+  });
+});
+
+describe("CREDIT_RULE_V2 against the live CREDIT_RULE (D-132 item 11)", () => {
+  it("holds an ask when credits are insufficient, not only when there are none", () => {
+    expect(CREDIT_RULE_V2).toContain("if you do not have enough then");
+    expect(CREDIT_RULE_V2).not.toContain("if you have none");
+  });
+  it("keeps the same waiting, refund, window and picked-up rules as the live rule", () => {
+    for (const part of ["waits at no cost", `${ASK_TTL_DAYS} days after it first reached a verified employee`, `closes after ${COVERAGE_WAIT_DAYS} days and costs nothing`, "even if they pass"]) {
+      expect(CREDIT_RULE_V2).toContain(part);
+      expect(CREDIT_RULE).toContain(part);
+    }
+    expect(CREDIT_RULE_V2).toContain("the credits stay spent");
+    expect(CREDIT_RULE).toContain("the credit stays spent");
+  });
+  it("states the reopen promise exactly when the live rule does", () => {
+    const liveHas = CREDIT_RULE.includes("reopens to other employees");
+    expect(CREDIT_RULE_V2.includes("reopens to other employees")).toBe(liveHas);
   });
 });
