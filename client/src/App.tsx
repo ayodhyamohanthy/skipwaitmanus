@@ -48,7 +48,7 @@ const Premium = lazy(() => import("./pages/Premium"));
 const Billing = lazy(() => import("./pages/Billing"));
 const Messages = lazy(() => import("./pages/Messages"));
 const Plans = lazy(() => import("./pages/Plans"));
-const PlansV2 = lazy(() => import("./pages/PlansV2"));
+const PlansV2 = lazy(() => import("./pages/PlansV2Connected"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Offline = lazy(() => import("./pages/Offline"));
 const OpportunityWall = lazy(() => import("./pages/OpportunityWall"));

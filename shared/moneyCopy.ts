@@ -67,7 +67,12 @@ export const CREDIT_RULE = `An ask at a company where no verified employee is av
  * until the new model ships (D-042: copy never promises what the product
  * does not do).
  */
-export const CREDIT_RULE_V2 = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, credits are used by the role's level; if you have none then, we hold the ask until you add them. Credits used on an ask come back once if you withdraw before someone picks the ask up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee - paid credits never expire, so they always come back; free monthly credits come back only if their month has not ended. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credits stay spent, even if they pass.`;
+/** Same switch and promise as REFERRED_REOPEN_SENTENCE, worded for credits. */
+const REFERRED_REOPEN_SENTENCE_V2 = REFERRED_DEADLINE_ENABLED
+  ? " If an accepted ask is not marked Referred in time, or the referrer steps back, the ask reopens to other employees with those credits still on it, and the credits come back if the ask is then withdrawn or expires unclaimed."
+  : "";
+
+export const CREDIT_RULE_V2 = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, credits are used by the role's level; if you do not have enough then, we hold the ask until you add more. Credits used on an ask come back once if you withdraw before someone picks the ask up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee - paid credits never expire, so they always come back; free monthly credits come back only if their month has not ended. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credits stay spent, even if they pass.${REFERRED_REOPEN_SENTENCE_V2}`;
 
 export const CREDIT_ENDED_CAVEAT_V2 = "paid credits never expire; free monthly credits end with the month";
 
@@ -85,19 +90,51 @@ export type AskCostLine = { line: string; detail: string; blockedReason: string 
  * behind its flags, so when it ships this function alone changes and every
  * surface that quotes a cost follows (D-048-p3-live-review item 3).
  */
-export function askCostLine(input: { open: boolean | null; balance: number | null }): AskCostLine {
+export function askCostLine(input: { open: boolean | null; balance: number | null; /** Credits this ask costs; 1 unless the level model (D-132, flagged) supplies it. */ cost?: number }): AskCostLine {
+  const cost = Math.max(1, Math.round(input.cost ?? 1));
+  const credits = (n: number) => `${n} ${n === 1 ? "credit" : "credits"}`;
   if (input.open === false) {
     return {
       line: "No credit used until a verified employee can see it",
-      detail: `It waits up to ${COVERAGE_WAIT_DAYS} days. When one can, 1 credit is used; if you have none then, we hold it until you add one.`,
+      detail: `It waits up to ${COVERAGE_WAIT_DAYS} days. When one can, ${credits(cost)} ${cost === 1 ? "is" : "are"} used; if you don't have enough then, we hold it until you add ${cost === 1 ? "one" : "more"}.`,
       blockedReason: null,
     };
   }
   const detail = `Comes back if you withdraw before anyone picks it up, or if nobody picks it up within ${ASK_TTL_DAYS} days, ${CREDIT_ENDED_CAVEAT}. Once picked up, it stays spent, even if they pass.`;
-  if (input.open === null) return { line: "Uses 1 credit when a verified employee can see it", detail, blockedReason: null };
-  if (input.balance === null) return { line: "Uses 1 credit", detail, blockedReason: null };
+  if (input.open === null) return { line: `Uses ${credits(cost)} when a verified employee can see it`, detail, blockedReason: null };
+  if (input.balance === null) return { line: `Uses ${credits(cost)}`, detail, blockedReason: null };
+  if (cost > 1 && input.balance < cost) {
+    const short = `This ask costs ${credits(cost)}. You have ${input.balance}. Add ${cost - input.balance} more.`;
+    return { line: short, detail: "Add credits in Plans and credits to send this ask now.", blockedReason: short };
+  }
   if (input.balance <= 0) return { line: "You have no credits left", detail: "Add a credit pack in Plans and credits to send this ask now.", blockedReason: "You have no credits left. Add a credit pack in Plans and credits." };
-  return { line: `Uses 1 of your ${input.balance} ${input.balance === 1 ? "credit" : "credits"}`, detail, blockedReason: null };
+  return { line: `Uses ${cost} of your ${input.balance} ${input.balance === 1 ? "credit" : "credits"}`, detail, blockedReason: null };
+}
+
+
+/** D-132 item 7: short cost phrases for the surfaces that retype the ask cost. Flat 1 credit while the level model is off. */
+export const addCreditPhrase = (levelCost: boolean): string => (levelCost ? "Add credits" : "Add a credit");
+export const creditUsedPhrase = (levelCost: boolean): string => (levelCost ? "its credits are used" : "1 credit is used");
+export const creditReservedPhrase = (levelCost: boolean): string => (levelCost ? "Credits reserved" : "1 credit reserved");
+
+/**
+ * Landing copy for the ask cost (D-132 item 7). Flat 1 credit while the level model is off;
+ * with it on, the cost is the job level in credits (1 to 10). One place, so no page says
+ * "every ask costs the same" once levels are live.
+ */
+export function askCostLanding(levelCost: boolean): { stepBody: string; waitBody: string; fairRule: string } {
+  if (levelCost) {
+    return {
+      stepBody: `You see the cost before you ask: ${ASK_COST_SENTENCE} An ask costs its job level in credits, from 1 to 10.`,
+      waitBody: "Credits are used only when a verified employee can see your ask - back if you withdraw first.",
+      fairRule: "An ask costs its job level in credits, from 1 to 10, shown before you send. Nothing is used while it waits.",
+    };
+  }
+  return {
+    stepBody: `You see the cost before you ask: ${ASK_COST_SENTENCE} Every ask costs the same.`,
+    waitBody: "1 credit only when a verified employee can see your ask - back if you withdraw first.",
+    fairRule: "Every ask costs the same: 1 credit when a verified employee can see it, nothing while it waits.",
+  };
 }
 
 /**
