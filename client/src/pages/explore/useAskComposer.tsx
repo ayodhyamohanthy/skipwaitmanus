@@ -24,7 +24,8 @@ import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUp
 import { useSeekerSetup } from "@/lib/useSeekerSetup";
 import { countWords } from "@shared/askQuality";
 import type { PublicCompany } from "@shared/companies";
-import { ADD_CREDITS_HREF, askCostLine, CREDIT_ENDED_CAVEAT, creditUsedPhrase, type AskCostLine } from "@shared/moneyCopy";
+import { ADD_CREDITS_HREF, askCostLine, CREDIT_ENDED_CAVEAT, creditUsedPhrase, topUpHref, type AskCostLine } from "@shared/moneyCopy";
+import { usePlansCatalog } from "@/components/plans/plansCatalogApi";
 import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
 import { COMPANY_CAP_REACHED, COMPANY_COVERAGE_CHANGED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
@@ -64,7 +65,7 @@ export type AskComposer = {
   /** D-132 item 3 (flag VITE_ASK_LEVEL_COST): the by-level quote for the current link. Null while the flag is off or the quote is pending or failed; the flat one-credit line holds then. */
   costQuote: AskCostQuote | null;
   /** D-132 item 3: set only when the target is a COVERED company and the wallet is short - the primary action becomes the top-up. Uncovered asks wait for free and never swap. */
-  topUp: { shortfall: number } | null;
+  topUp: { shortfall: number; href: string } | null;
   onTopUp(event?: React.MouseEvent): void;
   context: string | null;
   sendLabel: string;
@@ -173,7 +174,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   // exactly like flag-off. With a quote the server's numbers win: its
   // totalAvailable and shortfall are the true wallet position, so the cost
   // line and the top-up can never disagree.
-  const askLevelCostOn = import.meta.env.VITE_ASK_LEVEL_COST === "true";
+  const askLevelCostOn = ASK_LEVEL_COST_CLIENT;
   const quoteState = useAskQuote(url, askLevelCostOn && linkOk);
   const quote = quoteState.status === "ready" ? quoteState.quote : null;
   // Flag on with a valid link at a COVERED company (or coverage not yet
@@ -187,7 +188,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   const uncovered = company?.openToReferrals === false;
   const gated = quoteState.status === "pending" || quoteState.status === "error";
   const cost: AskCostLine = gated && uncovered
-    ? askCostLine({ open: false, balance: null })
+    ? askCostLine({ open: false, balance: null, cost: null })
     : quoteState.status === "pending"
       ? { line: "Pricing this ask…", detail: "Send unlocks when the price is in.", blockedReason: "Pricing this ask…" }
       : quoteState.status === "error"
@@ -198,7 +199,11 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   // top-up for it. Coverage unknown (no directory match) keeps Send on the
   // line's wording; the server refuses covered-and-short submits with the
   // exact wording shown in the send error, and the composer re-prices then.
-  const topUp = quote && covered && quote.shortfall > 0 ? { shortfall: quote.shortfall } : null;
+  const catalogQuery = usePlansCatalog(Boolean(isSignedIn));
+  const catalog = catalogQuery.data ?? null;
+  const packsOnSale = catalog !== null ? catalog.packs.some(pack => pack.available) : true;
+  const resolvedTopUpHref = topUpHref(packsOnSale);
+  const topUp = quote && covered && quote.shortfall > 0 ? { shortfall: quote.shortfall, href: resolvedTopUpHref } : null;
   const context = company ? [company.name, roleTitleFromUrl(url)].filter(Boolean).join(" · ") : roleTitleFromUrl(url);
 
   const missing = !linkOk
@@ -376,7 +381,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
         return;
       }
     }
-    navigate(ADD_CREDITS_HREF);
+    navigate(topUp?.href ?? resolvedTopUpHref);
   };
 
   const watchCompany = async () => {

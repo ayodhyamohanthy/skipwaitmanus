@@ -61,8 +61,7 @@ export { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany,
 import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
 import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
-import { grantFreeCycleOnValidationTx, grantPaidRungCreditsTx, openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
-export { grantPaidRungCreditsTx } from "./creditCycles";
+import { grantFreeCycleOnValidationTx, openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
 import { PAID_CREDITS_NEVER_EXPIRE } from "../shared/planFamily";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
 import { bucketOfLedgerRow } from "../shared/creditSpend";
@@ -2378,7 +2377,7 @@ export async function refundLedgerSpendTx(tx: any, input: { userId: number; requ
     if (spend.source === BUCKET_SOURCES.purchased) { balance += credits; restored = credits; }
     else if (spend.source === BUCKET_SOURCES.cycle) {
       if (spend.sourceCycleKey === input.wallet.monthlyCycleKey) { const next = Math.min(input.wallet.monthlyAllowance, monthly + credits); restored = next - monthly; monthly = next; }
-      else if (PAID_CREDITS_NEVER_EXPIRE && input.wallet.plan !== "free" && input.wallet.subscriptionId !== null) { balance += credits; restored = credits; }
+      else if (askLevelCostEnabled() && PAID_CREDITS_NEVER_EXPIRE && input.wallet.plan !== "free" && input.wallet.subscriptionId !== null) { balance += credits; restored = credits; }
     } else if (spend.source === BUCKET_SOURCES.promo) {
       const promo = (await tx.select().from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, userId), eq(promoCreditGrants.role, "job_seeker"))).limit(1).for("update"))[0];
       if (promo && (promo.status === "active" || promo.status === "exhausted") && promo.expiresAt.getTime() > now.getTime() && promo.creditsRemaining + credits <= promo.tokenCount) {

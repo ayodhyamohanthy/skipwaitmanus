@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { grantPaidRungCreditsTx, refundLedgerSpendTx, spendCredits } from "./db";
+import { refundLedgerSpendTx, spendCredits } from "./db";
 import { createLedgerFixture, type Row } from "./ledgerFixtureDb";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -112,44 +112,7 @@ describe("ledger-spent ask credit refund", () => {
     ]));
   });
 
-  it("grants paid plan rung credits to purchased balance idempotently under PAID_CREDITS_NEVER_EXPIRE", async () => {
-    const grantResult = await (fixture.database as any).transaction(async (tx: any) => {
-      return grantPaidRungCreditsTx(tx, {
-        userId: SEEKER,
-        role: "job_seeker",
-        credits: 25,
-        subscriptionId: "sub_123",
-        referenceId: "rung-25",
-        idempotencyKey: "grant-rung-25",
-      });
-    });
-    expect(grantResult.granted).toBe(true);
-    expect(grantResult.balanceAfter).toBe(25);
-    expect(db.wallets[0].balance).toBe(25);
-    expect(db.txns).toContainEqual(expect.objectContaining({
-      kind: "purchase",
-      source: "purchased_balance",
-      tokenCount: 25,
-      idempotencyKey: "grant-rung-25",
-    }));
-
-    // Idempotent retry
-    const replay = await (fixture.database as any).transaction(async (tx: any) => {
-      return grantPaidRungCreditsTx(tx, {
-        userId: SEEKER,
-        role: "job_seeker",
-        credits: 25,
-        subscriptionId: "sub_123",
-        referenceId: "rung-25",
-        idempotencyKey: "grant-rung-25",
-      });
-    });
-    expect(replay.granted).toBe(false);
-    expect(replay.balanceAfter).toBe(25);
-    expect(db.wallets[0].balance).toBe(25);
-  });
-
-  it("a paid rung credit spent on a paid plan returns after cycle roll under PAID_CREDITS_NEVER_EXPIRE", async () => {
+  it("a paid rung credit spent on a paid plan returns after cycle roll under PAID_CREDITS_NEVER_EXPIRE only when ASK_LEVEL_COST is on", async () => {
     Object.assign(db.wallets[0], {
       plan: "start",
       subscriptionId: "sub_start",
@@ -165,10 +128,17 @@ describe("ledger-spent ask credit refund", () => {
     expect(db.wallets[0].monthlyCreditsRemaining).toBe(0);
     // Cycle rolls over to 2026-11
     Object.assign(db.wallets[0], { monthlyCycleKey: "2026-11", monthlyCreditsRemaining: 10 });
-    const result = await refund(510);
-    // Because PAID_CREDITS_NEVER_EXPIRE is true and wallet is on paid plan with subscription,
-    // the credit returns (to balance) instead of being lost
-    expect(result.returned).toBe(1);
+
+    // Live flags-off path: cycle credits expire and are not returned
+    const offResult = await refund(510);
+    expect(offResult.returned).toBe(0);
+    expect(db.wallets[0].balance).toBe(0);
+
+    // Flags-on counterpart: paid subscriber cycle credits never expire and return to balance
+    vi.stubEnv("ASK_LEVEL_COST", "true");
+    db.txns = db.txns.filter(t => t.kind !== "withdrawal_refund");
+    const onResult = await refund(510);
+    expect(onResult.returned).toBe(1);
     expect(db.wallets[0].balance).toBe(1);
   });
 });

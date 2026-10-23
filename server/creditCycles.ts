@@ -9,7 +9,6 @@ import { BUCKET_SOURCES } from "../shared/creditLedger";
 import { grantShouldExpire, paidPlanLapsed, planCreditsExpireAt, planCycleAt, planCycleByIndex, planCycleIndexOfKey, walletCycleStart } from "../shared/creditCycles";
 import { isPaidPlanActive } from "../shared/planEntitlements";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
-import { PAID_CREDITS_NEVER_EXPIRE } from "../shared/planFamily";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { CreditSpendConflictError, asLedgerGrant, cycleRulesFor, digest, readGrantsTx, writeLedgerRow, type CyclePatch, type GrantRow, type LedgerTx, type WalletRole, type WalletRow } from "./creditLedger";
 
@@ -100,90 +99,6 @@ export async function grantFreeCycleOnValidationTx(tx: LedgerTx, input: { wallet
   const updated = await tx.update(tokenBalances).set({ monthlyAllowance: allowance, monthlyCreditsRemaining: allowance }).where(eq(tokenBalances.id, wallet.id));
   if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new CreditSpendConflictError();
   return { granted: true, patch: { monthlyAllowance: allowance, monthlyCreditsRemaining: allowance, monthlyCycleKey: key } };
-}
-
-/**
- * D-132 item 4: grants paid plan rung credits to a wallet.
- * Under PAID_CREDITS_NEVER_EXPIRE, paid rung credits enter BUCKET_SOURCES.purchased
- * (wallet.balance) which never expires and always returns on refund.
- * Idempotent on idempotencyKey.
- */
-export async function grantPaidRungCreditsTx(
-  tx: LedgerTx,
-  input: {
-    userId: number;
-    role: WalletRole;
-    credits: number;
-    subscriptionId?: string | null;
-    referenceId: string;
-    idempotencyKey: string;
-  }
-): Promise<{ granted: boolean; balanceAfter: number }> {
-  const { userId, role, credits, referenceId, idempotencyKey } = input;
-  if (credits <= 0) return { granted: false, balanceAfter: 0 };
-
-  const existing = await tx
-    .select({ id: tokenTransactions.id, balanceAfter: tokenTransactions.balanceAfter })
-    .from(tokenTransactions)
-    .where(
-      and(
-        eq(tokenTransactions.userId, userId),
-        eq(tokenTransactions.role, role),
-        eq(tokenTransactions.idempotencyKey, idempotencyKey)
-      )
-    )
-    .limit(1);
-  if (existing.length > 0) {
-    const wallet = await tx
-      .select({ balance: tokenBalances.balance })
-      .from(tokenBalances)
-      .where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role)))
-      .limit(1);
-    return { granted: false, balanceAfter: wallet[0]?.balance ?? (existing[0]?.balanceAfter ?? 0) };
-  }
-
-  const source = PAID_CREDITS_NEVER_EXPIRE ? BUCKET_SOURCES.purchased : BUCKET_SOURCES.cycle;
-  const walletRows = await tx
-    .select()
-    .from(tokenBalances)
-    .where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role)))
-    .limit(1)
-    .for("update");
-
-  let balanceAfter: number;
-  if (walletRows.length === 0) {
-    balanceAfter = credits;
-    await tx.insert(tokenBalances).values({
-      userId,
-      role,
-      balance: credits,
-      monthlyCreditsRemaining: 0,
-      monthlyAllowance: 0,
-      monthlyCycleKey: currentMonthlyCycleKey(),
-      plan: "free",
-      subscriptionId: input.subscriptionId ?? null,
-    });
-  } else {
-    balanceAfter = walletRows[0].balance + credits;
-    await tx
-      .update(tokenBalances)
-      .set({ balance: balanceAfter })
-      .where(eq(tokenBalances.id, walletRows[0].id));
-  }
-
-  await writeLedgerRow(tx, {
-    userId,
-    role,
-    tokenCount: credits,
-    kind: "purchase",
-    source,
-    referenceType: "plan_rung",
-    referenceId,
-    idempotencyKey,
-    balanceAfter,
-  });
-
-  return { granted: true, balanceAfter };
 }
 
 /** The cycle a new or renewed term opens: the term's current monthly cycle, else the term start's month. */

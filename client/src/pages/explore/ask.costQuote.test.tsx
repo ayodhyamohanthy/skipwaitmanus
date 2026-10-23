@@ -11,6 +11,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
+import { planCatalogResponse } from "@shared/billingCatalog";
 import Ask from "@/pages/Ask";
 import Explore from "@/pages/Explore";
 
@@ -22,6 +23,15 @@ const { go, searchState, authState, accessState, signIn } = vi.hoisted(() => ({
   signIn: vi.fn(),
 }));
 
+vi.mock("@/lib/goalFlags", async importOriginal => {
+  const actual = await importOriginal<typeof import("@/lib/goalFlags")>();
+  return {
+    ...actual,
+    get ASK_LEVEL_COST_CLIENT() {
+      return import.meta.env.VITE_ASK_LEVEL_COST === "true";
+    },
+  };
+});
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isLoaded: authState.isLoaded, isSignedIn: authState.isSignedIn, userId: authState.isSignedIn ? "user-7" : null, getToken: async () => (authState.isSignedIn ? "test-token" : null) }),
   useUser: () => ({ user: authState.isSignedIn ? { fullName: "Ada Byron", primaryEmailAddress: { emailAddress: "ada@example.com" }, emailAddresses: [] } : null }),
@@ -51,13 +61,22 @@ const setup = { goal: "Actively looking", roles: [], level: "", links: [], city:
 const LINK = "https://careers.wipro.com/jobs/1234567-product-designer";
 type QuoteBody = { level: number; cost: number; totalAvailable: number; shortfall: number };
 
-function stub(options: { quote?: { status: number; body: QuoteBody | { error: string } } | (() => Promise<unknown>); send?: { status: number; body: unknown }; directory?: CompanyDirectoryResponse | (() => CompanyDirectoryResponse); draftPut?: { status: number; body: unknown } } = {}) {
+const defaultCatalog = (packsAvailable = true) => planCatalogResponse({
+  region: "IN",
+  available: () => packsAvailable,
+  usdRecurringConfirmed: false,
+  sessionsStaffed: false,
+  indiaGstRegistered: false,
+});
+
+function stub(options: { quote?: { status: number; body: QuoteBody | { error: string } } | (() => Promise<unknown>); send?: { status: number; body: unknown }; directory?: CompanyDirectoryResponse | (() => CompanyDirectoryResponse); draftPut?: { status: number; body: unknown }; catalog?: unknown } = {}) {
   let savedDraft: unknown = null;
   const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
     const path = String(input);
     const method = init?.method ?? "GET";
     if (path === "/api/companies") return json(200, typeof options.directory === "function" ? options.directory() : options.directory ?? ALL_OPEN);
     if (path.startsWith("/api/credits/summary")) return json(200, { summary: { totalAvailable: 3 } });
+    if (path.startsWith("/api/plans/catalog")) return json(200, options.catalog ?? defaultCatalog(true));
     if (path === "/api/profile/setup") return json(200, setup);
     if (path === "/api/work-items") return json(200, { items: [] });
     if (path === "/api/ask-drafts" && method === "GET") return json(200, { draft: savedDraft });
@@ -114,6 +133,19 @@ describe("shared composer quote (D-132 item 3)", () => {
     expect(topUp.getAttribute("href")).toBe("/plans#packs");
     expect(screen.queryByRole("button", { name: /send ask/i })).toBeNull();
     expect(quoteCalls(fetchMock).length).toBeGreaterThan(0);
+  });
+
+  it("top-up link falls back to /premium?role=job_seeker when no pack is on sale (F5)", async () => {
+    vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
+    stub({
+      quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } },
+      catalog: defaultCatalog(false),
+    });
+    renderPage(<Ask />);
+    await typeLink();
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
+    const topUp = screen.getByRole("link", { name: "Add credits" }) as HTMLAnchorElement;
+    expect(topUp.getAttribute("href")).toBe("/premium?role=job_seeker");
   });
 
   it("flag on, enough credits: the line uses the quote's numbers and Send stays", async () => {

@@ -90,14 +90,14 @@ export type AskCostLine = { line: string; detail: string; blockedReason: string 
  * behind its flags, so when it ships this function alone changes and every
  * surface that quotes a cost follows (D-048-p3-live-review item 3).
  */
-export function askCostLine(input: { open: boolean | null; balance: number | null; /** Credits this ask costs; 1 unless the level model (D-132, flagged) supplies it. */ cost?: number }): AskCostLine {
+export function askCostLine(input: { open: boolean | null; balance: number | null; /** Credits this ask costs; null when unpriced/pending quote, 1 by default (D-132). */ cost?: number | null }): AskCostLine {
   const cost = Math.max(1, Math.round(input.cost ?? 1));
   const credits = (n: number) => `${n} ${n === 1 ? "credit" : "credits"}`;
   if (input.open === false) {
     // A known-uncovered ask waits free. The deferred charge is named only when
     // a current server quote grounds it: a pending or failed price must not
     // state a stale or fallback K (D-132 item 3).
-    const when = input.cost === undefined
+    const when = input.cost === null
       ? "When one can, its credits are used; if you don't have enough then, we hold it until you add more."
       : `When one can, ${credits(cost)} ${cost === 1 ? "is" : "are"} used; if you don't have enough then, we hold it until you add ${cost === 1 ? "one" : "more"}.`;
     return {
@@ -126,6 +126,7 @@ export const addCreditPhrase = (levelCost: boolean): string => (levelCost ? "Add
 // because no pack sells exactly K credits (D-132 item 3, designer review).
 export const ADD_CREDITS_LABEL = "Add credits";
 export const ADD_CREDITS_HREF = "/plans#packs";
+export const topUpHref = (packsOnSale = true): string => (packsOnSale ? "/plans#packs" : "/premium?role=job_seeker");
 export const creditUsedPhrase = (levelCost: boolean): string => (levelCost ? "its credits are used" : "1 credit is used");
 export const creditReservedPhrase = (levelCost: boolean): string => (levelCost ? "Credits reserved" : "1 credit reserved");
 

@@ -52,7 +52,7 @@ export type AskDrawerProps = {
   watch: { state: "idle" | "busy" | "done" | "error"; message: string; onWatch(): void } | null;
   cost: AskCostLine;
   /** D-132 item 3 (flag VITE_ASK_LEVEL_COST): set when the by-level quote is short; the primary action becomes the top-up. */
-  topUp: { shortfall: number } | null;
+  topUp: { shortfall: number; href?: string } | null;
   onTopUp?: (event?: React.MouseEvent) => void;
   sendLabel: string;
   sendBusyLabel: string;
@@ -96,7 +96,7 @@ export function AskDrawer(props: AskDrawerProps) {
         <span aria-hidden="true" className="h-6 w-px bg-g-hairline max-gdesk:hidden" />
         {props.topUp ? (
           <GoalButton asChild variant="primary" touch="large" className={props.onSaveDraft ? undefined : "max-gdesk:col-span-2"}>
-            <Link href={ADD_CREDITS_HREF} onClick={props.onTopUp}>{ADD_CREDITS_LABEL}</Link>
+            <Link href={props.topUp?.href ?? ADD_CREDITS_HREF} onClick={props.onTopUp}>{ADD_CREDITS_LABEL}</Link>
           </GoalButton>
         ) : (
           <GoalButton variant="primary" touch="large" keys={[{ icon: "command" }, { icon: "corner-down-left" }]} busy={props.sending} busyLabel={props.sendBusyLabel} disabledReason={props.sendBlocked} onClick={props.onSend} className={props.onSaveDraft ? undefined : "max-gdesk:col-span-2"}>
