@@ -394,7 +394,7 @@
       "tier": 2,
       "lane": "pricing-docs",
       "branch": "agent/instinct/v2-live-catalog-audit",
-      "status": "done",
+      "status": "todo",
       "dependsOn": [],
       "note": "D-165: the v2 plan and credit items were created on the LIVE Chargebee site on Oct 23 (create-only, zero subscriptions) on the founder's instruction, but main's PRICING.md does not say so. Merge main, check D-059 (no secrets, customer data or account ids), required CI, land. Reviewer or lander: a model other than Instinct."
     },
