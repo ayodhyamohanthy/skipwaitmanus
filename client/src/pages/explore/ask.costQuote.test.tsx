@@ -51,11 +51,11 @@ const setup = { goal: "Actively looking", roles: [], level: "", links: [], city:
 const LINK = "https://careers.wipro.com/jobs/1234567-product-designer";
 type QuoteBody = { level: number; cost: number; totalAvailable: number; shortfall: number };
 
-function stub(options: { quote?: { status: number; body: QuoteBody | { error: string } } | (() => Promise<unknown>); send?: { status: number; body: unknown }; directory?: CompanyDirectoryResponse } = {}) {
+function stub(options: { quote?: { status: number; body: QuoteBody | { error: string } } | (() => Promise<unknown>); send?: { status: number; body: unknown }; directory?: CompanyDirectoryResponse | (() => CompanyDirectoryResponse) } = {}) {
   const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
     const path = String(input);
     const method = init?.method ?? "GET";
-    if (path === "/api/companies") return json(200, options.directory ?? ALL_OPEN);
+    if (path === "/api/companies") return json(200, typeof options.directory === "function" ? options.directory() : options.directory ?? ALL_OPEN);
     if (path.startsWith("/api/credits/summary")) return json(200, { summary: { totalAvailable: 3 } });
     if (path === "/api/profile/setup") return json(200, setup);
     if (path === "/api/work-items") return json(200, { items: [] });
@@ -104,8 +104,8 @@ describe("shared composer quote (D-132 item 3)", () => {
     renderPage(<Ask />);
     await typeLink();
     await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
-    const topUp = screen.getByRole("link", { name: "Add 2 more credits" }) as HTMLAnchorElement;
-    expect(topUp.getAttribute("href")).toBe("/premium?role=job_seeker");
+    const topUp = screen.getByRole("link", { name: "Add credits" }) as HTMLAnchorElement;
+    expect(topUp.getAttribute("href")).toBe("/plans#packs");
     expect(screen.queryByRole("button", { name: /send ask/i })).toBeNull();
     expect(quoteCalls(fetchMock).length).toBeGreaterThan(0);
   });
@@ -116,7 +116,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     renderPage(<Ask />);
     await typeLink();
     await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 2 of your 3 credits"));
-    expect(screen.queryByRole("link", { name: /Add \d+ more credit/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
     expect(screen.getByRole("button", { name: /send ask/i })).toBeTruthy();
   });
 
@@ -127,7 +127,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     await typeLink();
     await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("We could not price this ask"));
     expect(screen.getByTestId("goal-ask-cost").textContent).not.toContain("1 credit");
-    expect(screen.queryByRole("link", { name: /Add \d+ more credit/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
     const sendButton = screen.getByRole("button", { name: /send ask/i });
     expect(sendButton.getAttribute("aria-disabled")).toBe("true");
   });
@@ -239,8 +239,8 @@ describe("shared composer quote (D-132 item 3)", () => {
     const drawer = await screen.findByRole("dialog");
     await typeLink(drawer);
     await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("This ask costs 4 credits. You have 3. Add 1 more."));
-    const topUp = within(drawer).getByRole("link", { name: "Add 1 more credit" }) as HTMLAnchorElement;
-    expect(topUp.getAttribute("href")).toBe("/premium?role=job_seeker");
+    const topUp = within(drawer).getByRole("link", { name: "Add credits" }) as HTMLAnchorElement;
+    expect(topUp.getAttribute("href")).toBe("/plans#packs");
     expect(within(drawer).queryByRole("button", { name: /send ask/i })).toBeNull();
   });
 
@@ -272,7 +272,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     renderPage(<Ask />);
     await typeLink();
     await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("No credit used until a verified employee can see it"));
-    expect(screen.queryByRole("link", { name: /Add \d+ more credit/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
     const sendButton = screen.getByRole("button", { name: /send ask/i });
     expect(sendButton.getAttribute("aria-disabled")).toBeNull();
   });
@@ -288,13 +288,44 @@ describe("shared composer quote (D-132 item 3)", () => {
     renderPage(<Ask />);
     await typeLink();
     await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("No credit used until a verified employee can see it"));
-    expect(screen.queryByRole("link", { name: /Add \d+ more credit/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
     fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
     fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([u, i]) => String(u) === "/api/company-referrals" && (i as RequestInit | undefined)?.method === "POST")).toBe(true));
     await waitFor(() => expect(screen.getByText(/nothing was spent/i)).toBeTruthy());
+  });
+
+  it("coverage opens between compose and send: 409, nothing created or charged, re-priced to the covered line", async () => {
+    vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
+    let open = false;
+    const WIPRO_FLIP = () => directoryOf(LAUNCH_COMPANY_SEED.map(seed => company(seed.slug, seed.slug !== "wipro" ? true : open)));
+    const fetchMock = stub({
+      directory: WIPRO_FLIP,
+      quote: { status: 200, body: { level: 6, cost: 6, totalAvailable: 2, shortfall: 4 } },
+      send: { status: 409, body: { error: "This company just opened up to referrals, so sending now uses its cost in credits. Nothing was sent and nothing was charged - check the live price and send again if it works for you.", code: "company_coverage_changed", companyDomain: "wipro.com" } },
+    });
+    renderPage(<Ask />);
+    await typeLink();
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("No credit used until a verified employee can see it"));
+    fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+    fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
+    fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
+    open = true; // the company opens up before the commit lands
+    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    await waitFor(() => {
+      const post = fetchMock.mock.calls.find(([u, i]) => String(u) === "/api/company-referrals" && (i as RequestInit | undefined)?.method === "POST");
+      expect(post).toBeTruthy();
+      expect(String(JSON.parse(String((post![1] as RequestInit).body)).expectedCoverage)).toBe("waiting_for_company_coverage");
+    });
+    // Nothing was created: the refusal copy shows, no sent view.
+    await screen.findByText(/Nothing was sent and nothing was charged/);
+    expect(screen.queryByText(/nothing was spent/i)).toBeNull();
+    // Directory + quote invalidated: the covered cost line and top-up are live for a conscious re-send.
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 6 credits. You have 2. Add 4 more."));
+    const flipTopUp = screen.getByRole("link", { name: "Add credits" }) as HTMLAnchorElement;
+    expect(flipTopUp.href).toContain("/plans#packs");
   });
 
   it("flag on, company not open and quote still pending: Send never waits on pricing for a free-waiting ask", async () => {

@@ -25,7 +25,7 @@ import { readAskPrefill } from "@/lib/askPrefill";
 import { useAskDraft } from "@/lib/askDraftApi";
 import { useCompanyDirectory, type PublicCompany } from "@/lib/companyDirectory";
 import { applySeo } from "@/lib/seo";
-import { topUpCreditsLabel } from "@shared/moneyCopy";
+import { ADD_CREDITS_HREF, ADD_CREDITS_LABEL } from "@shared/moneyCopy";
 import { jobLinkFitsCompany, isValidTargetRoleUrl } from "@shared/referralUrl";
 import { WHY_ME_MAX } from "@shared/whyMe";
 import { useAskComposer } from "./explore/useAskComposer";
@@ -113,7 +113,7 @@ export default function Ask() {
                 ) : null}
                 {composer.topUp ? (
                   <GoalButton asChild variant="primary" touch="large" className="max-gdesk:w-full">
-                    <Link href="/premium?role=job_seeker">{topUpCreditsLabel(composer.topUp.shortfall)}</Link>
+                    <Link href={ADD_CREDITS_HREF}>{ADD_CREDITS_LABEL}</Link>
                   </GoalButton>
                 ) : (
                   <GoalButton variant="primary" touch="large" className="max-gdesk:w-full" busy={composer.sending} busyLabel={composer.sendBusyLabel} disabledReason={composer.sendBlocked} onClick={composer.send}>

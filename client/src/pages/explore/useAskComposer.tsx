@@ -5,6 +5,7 @@
 // (idempotency key, slot and per-company caps, sign-in hand-off with a saved
 // prefill). The parent owns where the composer lives and what closing means.
 import { useQueryClient } from "@tanstack/react-query";
+import { companyDirectoryKeys } from "@/lib/companyDirectory";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
@@ -25,7 +26,7 @@ import { countWords } from "@shared/askQuality";
 import type { PublicCompany } from "@shared/companies";
 import { askCostLine, CREDIT_ENDED_CAVEAT, creditUsedPhrase, type AskCostLine } from "@shared/moneyCopy";
 import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
-import { COMPANY_CAP_REACHED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
+import { COMPANY_CAP_REACHED, COMPANY_COVERAGE_CHANGED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { MAX_ASK_WORK_ITEMS } from "@shared/askWorkItems";
 import { parseOpportunityAskSearch, type OpportunityAskSearch } from "@shared/companyOpportunities";
@@ -189,7 +190,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       ? { line: "Pricing this ask…", detail: "Send unlocks when the price is in.", blockedReason: "Pricing this ask…" }
       : quoteState.status === "error"
         ? { line: "We could not price this ask", detail: "Edit the job link to try again.", blockedReason: "We could not price this ask" }
-        : askCostLine({ open: company ? company.openToReferrals : null, balance: quote ? quote.totalAvailable : isSignedIn && balance?.state === "ready" ? balance.count : null, cost: quote?.cost });
+        : askCostLine({ open: company ? company.openToReferrals : null, balance: quote ? quote.totalAvailable : isSignedIn && balance?.state === "ready" ? balance.count : null, cost: quote?.cost ?? (askLevelCostOn ? undefined : 1) });
   // The shortfall top-up swap applies only at a covered company: an uncovered
   // ask waits for free by contract, so a short wallet must never be pushed to
   // top-up for it. Coverage unknown (no directory match) keeps Send on the
@@ -269,6 +270,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
         confirmedCompanyDomain: confirmedDomain(url.trim()),
         opportunityId: postSelection?.opportunityId,
         workItemIds: selectedWork,
+        expectedCoverage: uncovered ? "waiting_for_company_coverage" : undefined,
       });
       const token = await fetchToken();
       const response = await fetch("/api/company-referrals", {
@@ -287,6 +289,19 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       }
       if (response.status === 409 && payload.code === COMPANY_CAP_REACHED && typeof payload.companyDomain === "string") {
         setSendError(companyCapCopy(payload.companyDomain));
+        return;
+      }
+      // D-132 item 3: we showed "no credit used until a verified employee can
+      // see it", but the company opened up before the commit. The server
+      // created nothing and charged nothing; re-read the directory and the
+      // quote so the covered cost line (and any top-up) is live, and the
+      // seeker sends again only after seeing the real price.
+      if (response.status === 409 && payload.code === COMPANY_COVERAGE_CHANGED) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: companyDirectoryKeys.all }),
+          queryClient.invalidateQueries({ queryKey: ["ask-quote"] }),
+        ]);
+        setSendError(typeof payload.error === "string" ? payload.error : "This company just opened up to referrals. Nothing was sent and nothing was charged - check the live price and send again if it works for you.");
         return;
       }
       // Task 13: more pinned work than the plan puts in front of a referrer. The

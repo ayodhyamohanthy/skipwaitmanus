@@ -16,7 +16,7 @@ import {
   GoalTextInput,
 } from "@/components/goal";
 import type { PublicCompany } from "@shared/companies";
-import { MONEY_SENTENCE, topUpCreditsLabel, type AskCostLine } from "@shared/moneyCopy";
+import { ADD_CREDITS_HREF, ADD_CREDITS_LABEL, MONEY_SENTENCE, type AskCostLine } from "@shared/moneyCopy";
 import { WHY_ME_MAX } from "@shared/whyMe";
 import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
 import { PinnedWorkPicker } from "@/components/ask/PinnedWorkPicker";
@@ -95,7 +95,7 @@ export function AskDrawer(props: AskDrawerProps) {
         <span aria-hidden="true" className="h-6 w-px bg-g-hairline max-gdesk:hidden" />
         {props.topUp ? (
           <GoalButton asChild variant="primary" touch="large" className={props.onSaveDraft ? undefined : "max-gdesk:col-span-2"}>
-            <Link href="/premium?role=job_seeker">{topUpCreditsLabel(props.topUp.shortfall)}</Link>
+            <Link href={ADD_CREDITS_HREF}>{ADD_CREDITS_LABEL}</Link>
           </GoalButton>
         ) : (
           <GoalButton variant="primary" touch="large" keys={[{ icon: "command" }, { icon: "corner-down-left" }]} busy={props.sending} busyLabel={props.sendBusyLabel} disabledReason={props.sendBlocked} onClick={props.onSend} className={props.onSaveDraft ? undefined : "max-gdesk:col-span-2"}>
