@@ -18,9 +18,11 @@ describe("personal referral invite eligibility", () => {
 
 describe("personal referral link unlock evidence (D-155)", () => {
   it("unlocks only on provider-verified payment evidence", () => {
-    expect(personalInviteUnlockedFromEvidence({ paidPayments: 0, activatedSubscriptions: 0 })).toBe(false);
-    expect(personalInviteUnlockedFromEvidence({ paidPayments: 1, activatedSubscriptions: 0 })).toBe(true);
-    expect(personalInviteUnlockedFromEvidence({ paidPayments: 0, activatedSubscriptions: 1 })).toBe(true);
-    expect(personalInviteUnlockedFromEvidence({ paidPayments: 2, activatedSubscriptions: 1 })).toBe(true);
+    expect(personalInviteUnlockedFromEvidence({ paidPayments: 0 })).toBe(false);
+    expect(personalInviteUnlockedFromEvidence({ paidPayments: 1 })).toBe(true);
+    expect(personalInviteUnlockedFromEvidence({ paidPayments: 2 })).toBe(true);
+    // A subscription activation alone is not paid evidence (activation can
+    // precede settlement), and a refunded first payment is an open policy
+    // question - neither unlocks the link until resolved.
   });
 });

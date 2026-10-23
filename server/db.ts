@@ -3798,38 +3798,42 @@ async function addPersonalReferralRewardCredit(tx: any, userId: number) {
 }
 
 /**
- * Referral-link unlock (D-155): provider-verified paid-invoice evidence on
- * the account. Two real payment paths:
+ * Referral-link unlock (D-155): source-backed, provider-verified evidence of
+ * a successful nonzero payment on the account.
  *
- * 1. A one-time checkout whose fulfillment reached "credited" - only written
- *    from a payment_succeeded webhook with a nonzero INR/USD amount after
- *    the amount check (mismatches park as requires_review and never count;
- *    pending / rejected / checkout-or-page creation never count). A purchase
- *    later refunded by the provider still counts as "made a payment" (the
- *    owner's wording; the same credited+refunded pair backs listMyPayments).
- * 2. A subscription the webhook activated (the wallet keeps its
- *    subscriptionId even after cancel, so a past paid term still counts).
- *    Activation only reaches the wallet through applySubscriptionEvent with
- *    an active/non_renewing provider status, and this catalog sells no trial
- *    and no zero-amount first invoice - hosted checkout collects the first
- *    invoice before Chargebee activates - so an activated subscription
- *    implies a paid first invoice. Residual edge: a manual no-payment
- *    activation inside the Chargebee dashboard would also set it.
+ * The one evidence path implemented here: a one-time checkout whose
+ * fulfillment reached "credited" - written only from a payment_succeeded
+ * webhook with a nonzero INR/USD amount after the amount check (mismatches
+ * park as requires_review and never count; pending / rejected fulfillments
+ * and mere checkout-or-page creation never count).
+ *
+ * Two deliberate exclusions, held open rather than invented as policy:
+ *
+ * - Refunded purchases. The owner's Oct 23 wording ("unlock after your first
+ *   paid invoice ... once you've made a payment") is ambiguous for a
+ *   first-ever payment that was later refunded. Until he rules, a
+ *   credited-then-refunded fulfillment does NOT unlock the link. D-155 keeps
+ *   this as an open question, not a settled fact.
+ * - Subscriptions. A wallet's subscriptionId only proves the webhook saw an
+ *   activation; activation can precede settlement (or be created by hand in
+ *   the Chargebee dashboard) and subscription payments never create a
+ *   paymentFulfillments row, so a subscription alone does not unlock the
+ *   link. The safe path is to stamp the wallet from the payment_succeeded
+ *   webhook for the subscription's owner (provider-verified, nonzero) and
+ *   gate on that stamp. Until that lands, subscription-only buyers stay
+ *   locked - a false lock, never a false unlock.
  *
  * The promoCreditGrants first_paid_invoice row is not usable here: promo
  * grants are disabled (grantPromoCreditsTx returns early).
  */
-export function personalInviteUnlockedFromEvidence(evidence: { paidPayments: number; activatedSubscriptions: number }): boolean {
-  return evidence.paidPayments > 0 || evidence.activatedSubscriptions > 0;
+export function personalInviteUnlockedFromEvidence(evidence: { paidPayments: number }): boolean {
+  return evidence.paidPayments > 0;
 }
 
 export async function hasUserMadePayment(userId: number): Promise<boolean> {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const [payments, subscriptions] = await Promise.all([
-    db.select({ id: paymentFulfillments.id }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), inArray(paymentFulfillments.status, ["credited", "refunded"]))).limit(1),
-    db.select({ id: tokenBalances.id }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), isNotNull(tokenBalances.subscriptionId))).limit(1),
-  ]);
-  return personalInviteUnlockedFromEvidence({ paidPayments: payments.length, activatedSubscriptions: subscriptions.length });
+  const payments = await db.select({ id: paymentFulfillments.id }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), eq(paymentFulfillments.status, "credited"))).limit(1);
+  return personalInviteUnlockedFromEvidence({ paidPayments: payments.length });
 }
 
 export type PersonalReferralInviteState = { status: "locked" } | { status: "unlocked"; inviteCode: string };
