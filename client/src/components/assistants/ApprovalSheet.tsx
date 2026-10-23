@@ -43,9 +43,11 @@ export function ApprovalCard({ approval, balance, primary, handlers }: { approva
   const error = actionError ? <p role="alert" className="mt-3 text-sm font-semibold text-destructive">{actionError}</p> : null;
 
   if (approval.kind === "credit_spend") {
-    // Honesty fix (AYO-20): the server's decide path moves no credits today, so
-    // the sheet never shows wallet-after math, and an approval whose cost the
-    // assistant did not state fails closed instead of displaying a made-up "1".
+    // Honesty fix (AYO-20): the server's decide path only records the decision
+    // - no credits move today (runtime-proved) - so the sheet says exactly
+    // that, never shows wallet-after math, never promises a charge, and an
+    // approval whose cost the assistant did not state fails closed instead of
+    // displaying a made-up "1".
     const knownCost = typeof approval.creditCount === "number" && approval.creditCount > 0 ? approval.creditCount : null;
     const target = [approval.role, approval.companyDomain].filter((part): part is string => Boolean(part)).join(" at ");
     if (knownCost === null) {
@@ -68,11 +70,11 @@ export function ApprovalCard({ approval, balance, primary, handlers }: { approva
         <SourceLine approval={approval} />
         <Title primary={primary}>Run this paid tool?</Title>
         <p className="mt-1 text-sm text-muted-foreground">For {target || "your ask"}</p>
-        <Panel tone="muted" className="mt-4 flex items-center gap-3"><Coins className="size-6" /><span className="flex-1"><strong className="block">{creditsLabel(knownCost)}</strong><small className="text-muted-foreground">{balance !== null ? `You have ${creditsLabel(balance)}` : "The cost shows before anything is spent"}</small></span></Panel>
+        <Panel tone="muted" className="mt-4 flex items-center gap-3"><Coins className="size-6" /><span className="flex-1"><strong className="block">The assistant states: {creditsLabel(knownCost)}</strong><small className="text-muted-foreground">{balance !== null ? `You have ${creditsLabel(balance)}. ` : ""}Approving only records your decision - no credits move yet.</small></span></Panel>
         {error}
         <div className="mt-5 grid grid-cols-2 gap-2">
           <Button variant="outline" disabled={working} onClick={() => onDecide("declined")}>Not now</Button>
-          <Button disabled={working} onClick={() => onDecide("approved")}>Use {creditsLabel(knownCost)}</Button>
+          <Button disabled={working} onClick={() => onDecide("approved")}>Approve</Button>
         </div>
       </Sheet>
     );

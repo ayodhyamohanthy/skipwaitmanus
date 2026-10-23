@@ -32,12 +32,14 @@ describe("the credit_spend approval card", () => {
     expect((screen.getByRole("button", { name: "Not now" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it("shows the stated cost and the balance without promising after-math", () => {
+  it("shows the stated cost and balance with record-only semantics, no charge promise", () => {
     render(<ApprovalCard approval={approval(2)} balance={3} primary handlers={handlers()} />);
-    expect(screen.getByText("2 credits")).toBeTruthy();
-    expect(screen.getByText("You have 3 credits")).toBeTruthy();
+    expect(screen.getByText("The assistant states: 2 credits")).toBeTruthy();
+    expect(screen.getByText(/You have 3 credits/)).toBeTruthy();
+    expect(screen.getByText(/no credits move yet/)).toBeTruthy();
     expect(screen.queryByText(/after this/)).toBeNull();
-    expect((screen.getByRole("button", { name: "Use 2 credits" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByRole("button", { name: /Use / })).toBeNull();
+    expect((screen.getByRole("button", { name: "Approve" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("treats a zero or negative stated cost as unknown", () => {
