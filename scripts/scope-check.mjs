@@ -15,7 +15,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { ownsEntry, ownsMatches } from "./nextTaskCore.mjs";
+import { ownsEntry, ownsMatches, slugOf } from "./nextTaskCore.mjs";
 
 const ASSIGNMENTS = "docs/plans/assignments.json";
 const SWITCH_ONLY_LINE_LIMIT = 12;
@@ -53,10 +53,13 @@ export function scopeViolations({ owns = [], changed = [], packet = null, lineCo
 /** Collect what the branch changed, then judge it. Throws only on its own failure. */
 export function checkBranch(taskId) {
   const doc = JSON.parse(git(["show", `origin/main:${ASSIGNMENTS}`]));
-  const task = (doc.tasks ?? []).find(t => t.id === taskId);
-  if (!task) throw new Error(`task ${taskId} is not in origin/main's task list`);
+  const tasks = doc.tasks ?? [];
+  // CI has no task id in hand, only the branch: match it by the slug the picker already uses.
+  const branch = process.env.GITHUB_HEAD_REF || git(["rev-parse", "--abbrev-ref", "HEAD"]);
+  const task = taskId === "--branch" ? tasks.find(t => slugOf(t.branch) === slugOf(branch)) : tasks.find(t => t.id === taskId);
+  if (!task) throw new Error(taskId === "--branch" ? `no task in origin/main uses the branch ${branch}` : `task ${taskId} is not in origin/main's task list`);
   const owns = Array.isArray(task.owns) ? task.owns : [];
-  if (!owns.length) return { owns, violations: [], skipped: `task ${taskId} declares no owns` };
+  if (!owns.length) return { owns, violations: [], skipped: `task ${task.id} declares no owns` };
   const changed = git(["diff", "--name-only", "origin/main...HEAD"]).split("\n").filter(Boolean);
   const lineCounts = new Map();
   for (const entry of owns) {
