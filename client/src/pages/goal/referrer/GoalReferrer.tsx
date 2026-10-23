@@ -29,7 +29,7 @@ type CompanyResponse = { error?: string; reward?: { rewarded?: boolean }; reques
 type View = "overview" | "setup";
 /** The work-email sign-in door for views that cannot open the OTP dialog themselves. */
 const REFERRER_SIGN_IN_HREF = "/referrer?setup=work-email";
-const alertClass = "rounded-[10px] border border-g-crimson/30 bg-g-crimson/5 p-3 text-g-small text-g-crimson";
+const alertClass = "rounded-[10px] border border-g-hairline p-3 text-g-small text-g-ink";
 
 function Kicker({ children }: { children: string }) {
   return <p className="flex items-center gap-2 font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3"><span className="h-1.5 w-1.5 rounded-full bg-g-ink" aria-hidden="true" />{children}</p>;
