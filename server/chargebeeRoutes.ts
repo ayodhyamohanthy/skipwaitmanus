@@ -467,9 +467,16 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     }
 
     // D-155: a paid event tied to a subscription is provider-verified paid
-    // evidence for that wallet, independent of token-pack fulfillment. This
-    // arm runs for every paid event with a subscription id, including
-    // amounts that are not pack multiples (plan invoices).
+    // evidence for that wallet, independent of token-pack fulfillment. The
+    // parser already enforced a positive integer INR/USD amount and event id;
+    // the subscription id it returns comes from the settled invoice, never
+    // from a bare or conflicting subscription object. This arm runs for
+    // every paid event with such an id, including plan invoices whose
+    // amounts are not pack multiples.
+    if (payment?.subscriptionIdentityConflict) {
+      console.error("[Chargebee] paid event subscription identity conflict", { eventId: payment.eventId, invoiceId: payment.invoiceId });
+      record({ action: "billing.paid_evidence_identity_conflict", outcome: "failure", resourceType: "chargebee_invoice", resourceId: payment.invoiceId, metadata: { eventId: payment.eventId } });
+    }
     if (payment?.subscriptionId && deps.recordSubscriptionPaymentEvidence) {
       handled = true;
       try {

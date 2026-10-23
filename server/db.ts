@@ -3805,9 +3805,10 @@ async function addPersonalReferralRewardCredit(tx: any, userId: number) {
  *    from a payment_succeeded webhook with a nonzero INR/USD amount after
  *    the amount check (mismatches park as requires_review and never count;
  *    pending / rejected fulfillments and mere checkout-or-page creation
- *    never count). A fulfillment later marked refunded is still counted ONLY
- *    so a link that already unlocked while it was credited is not silently
- *    revoked; refunded-first-payment policy is OPEN (D-155), not settled.
+ *    never count). A fulfillment later marked "refunded" does NOT unlock:
+ *    refunded-first-payment policy is OPEN (D-155), no founder ruling exists,
+ *    and the refunded-only case is surfaced for his decision rather than
+ *    admitted or revoked silently (production today has no gate at all).
  * 2. A subscription payment stamped onto the wallet by
  *    recordSubscriptionPaymentEvidence from a payment_succeeded webhook tied
  *    to the wallet's subscriptionId. Activation alone (wallet
@@ -3848,7 +3849,7 @@ export async function recordSubscriptionPaymentEvidence(input: { eventId: string
 
 export async function hasUserMadePayment(userId: number): Promise<boolean> {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const payments = await db.select({ id: paymentFulfillments.id }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), inArray(paymentFulfillments.status, ["credited", "refunded"]))).limit(1);
+  const payments = await db.select({ id: paymentFulfillments.id }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), eq(paymentFulfillments.status, "credited"))).limit(1);
   if (payments.length > 0) return true;
   const wallet = (await db.select({ id: tokenBalances.id, subscriptionId: tokenBalances.subscriptionId, lastPaidAt: tokenBalances.lastPaidAt }).from(tokenBalances).where(eq(tokenBalances.userId, userId)).limit(1))[0];
   if (!wallet) return personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 0 });

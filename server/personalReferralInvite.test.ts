@@ -23,7 +23,9 @@ describe("personal referral link unlock evidence (D-155)", () => {
     expect(personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 1 })).toBe(true);
     expect(personalInviteUnlockedFromEvidence({ paidPayments: 2, subscriptionPayments: 1 })).toBe(true);
     // Subscription evidence is the payment_succeeded wallet stamp, never
-    // activation alone; refunded first payments stay an open policy question
-    // (D-155) and are counted only so existing unlocks are not revoked.
+    // activation alone. Refunded-first-payment stays an OPEN policy question
+    // (D-155): a refunded-only fulfillment does not unlock until the owner
+    // rules - production has no gate today, so nothing existing is revoked
+    // by the gate itself.
   });
 });
