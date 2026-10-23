@@ -184,9 +184,10 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   const covered = company?.openToReferrals === true;
   const uncovered = company?.openToReferrals === false;
   const gated = quoteState.status === "pending" || quoteState.status === "error";
-  const cost: AskCostLine = gated && uncovered
-    ? askCostLine({ open: false, balance: null })
-    : quoteState.status === "pending"
+  // A free-waiting ask still charges its cost at delivery: sending against an
+  // unresolved price would authorize a deferred debit the seeker never saw.
+  // Pending and failed quotes block Send at uncovered companies too (D-132 item 3).
+  const cost: AskCostLine = quoteState.status === "pending"
       ? { line: "Pricing this ask…", detail: "Send unlocks when the price is in.", blockedReason: "Pricing this ask…" }
       : quoteState.status === "error"
         ? { line: "We could not price this ask", detail: "Edit the job link to try again.", blockedReason: "We could not price this ask" }

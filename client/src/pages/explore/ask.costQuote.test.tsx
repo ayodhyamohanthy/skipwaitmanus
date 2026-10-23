@@ -324,9 +324,7 @@ describe("shared composer quote (D-132 item 3)", () => {
       const post = fetchMock.mock.calls.find(([u, i]) => String(u) === "/api/company-referrals" && (i as RequestInit | undefined)?.method === "POST");
       expect(post).toBeTruthy();
       expect(String(JSON.parse(String((post![1] as RequestInit).body)).expectedCoverage)).toBe("waiting_for_company_coverage");
-      // The quote was still pricing at this click (the free-waiting line is
-      // directory-driven), so no numeric price was accepted and none is sent.
-      expect(JSON.parse(String((post![1] as RequestInit).body)).expectedCost).toBeUndefined();
+      expect(Number(JSON.parse(String((post![1] as RequestInit).body)).expectedCost)).toBe(6);
     });
     // Nothing was created: the refusal copy shows, no sent view.
     await screen.findByText(/Nothing was sent and nothing was charged/);
@@ -337,7 +335,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     expect(flipTopUp.href).toContain("/plans#packs");
   });
 
-  it("flag on, company not open and quote still pending: Send never waits on pricing for a free-waiting ask", async () => {
+  it("flag on, company not open and quote still pending: Send waits for the price - a free-waiting ask still debits its cost at delivery, never unseen", async () => {
     vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
     const WIPRO_CLOSED = directoryOf(LAUNCH_COMPANY_SEED.map(seed => company(seed.slug, seed.slug !== "wipro")));
     let release!: (value: unknown) => void;
@@ -345,9 +343,13 @@ describe("shared composer quote (D-132 item 3)", () => {
     stub({ directory: WIPRO_CLOSED, quote: () => gate.then(() => json(200, { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 })) });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("No credit used until a verified employee can see it"));
-    const sendButton = screen.getByRole("button", { name: /send ask/i });
-    expect(sendButton.getAttribute("aria-disabled")).toBeNull();
+    // While the price loads, no free-waiting line and no sendable state: the
+    // delivery-time debit must never be authorized at a cost the seeker never saw.
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Pricing this ask…"));
+    expect(screen.getByRole("button", { name: /send ask/i }).getAttribute("aria-disabled")).toBe("true");
     release(null);
+    // Once the price is in, the free-waiting line shows and Send unlocks.
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("No credit used until a verified employee can see it"));
+    expect(screen.getByRole("button", { name: /send ask/i }).getAttribute("aria-disabled")).toBeNull();
   });
 });

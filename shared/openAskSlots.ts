@@ -133,6 +133,13 @@ export const COMPANY_COVERAGE_CHANGED = "company_coverage_changed" as const;
  */
 export const ASK_PRICE_CHANGED = "ask_price_changed" as const;
 
+/**
+ * POST /api/company-referrals without a usable accepted price (missing or
+ * malformed expectedCost): 400 before any work. Supported clients always send
+ * the accepted price; a silent drop would bypass the accepted-price boundary.
+ */
+export const ASK_PRICE_UNCONFIRMED = "ask_price_unconfirmed" as const;
+
 /** POST /api/company-referrals (and an assistant-approved ask) with 2 asks already open at that company: 409 with this body. */
 export const companyCapReachedSchema = z.strictObject({
   error: z.string().min(1),

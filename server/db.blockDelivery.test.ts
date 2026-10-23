@@ -85,7 +85,7 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
-const sendAsk = (app: express.Express, body: Record<string, unknown> = {}) => request(app).post("/api/company-referrals").set("x-test-user", String(SEEKER)).set("Idempotency-Key", "block-delivery-key-0001").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "A specific note about the role.", ...body });
+const sendAsk = (app: express.Express, body: Record<string, unknown> = {}) => request(app).post("/api/company-referrals").set("x-test-user", String(SEEKER)).set("Idempotency-Key", "block-delivery-key-0001").send({ expectedCost: 1, targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "A specific note about the role.", ...body });
 
 /** A failed lookup is fail-open, never silent: logged and sent to Sentry with the path that skipped it. */
 const expectReportedLookupFailure = (area: string) => {

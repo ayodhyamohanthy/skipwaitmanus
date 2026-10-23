@@ -88,7 +88,7 @@ describe("an ask sent with no credit left", () => {
       recordActivity: async () => undefined,
     };
     registerPrivateReferralRoutes(app, deps as unknown as PrivateReferralRouteDeps);
-    const response = await request(app).post("/api/company-referrals").set("x-test-user", String(SEEKER)).set("Idempotency-Key", "ask-key-0123456789abcdef").send({ targetRoleUrl: "https://careers.wipro.com/job/product-designer-123", attachmentIds: [5], candidateMessage: "A specific note about the role." });
+    const response = await request(app).post("/api/company-referrals").set("x-test-user", String(SEEKER)).set("Idempotency-Key", "ask-key-0123456789abcdef").send({ expectedCost: 1, targetRoleUrl: "https://careers.wipro.com/job/product-designer-123", attachmentIds: [5], candidateMessage: "A specific note about the role." });
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: OUT_OF_CREDITS });
   });
