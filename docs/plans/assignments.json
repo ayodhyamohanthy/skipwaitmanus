@@ -1700,9 +1700,9 @@
    "tier": 2,
    "lane": "d048-foundation",
    "branch": "agent/coordinator/explore-open-first",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [],
-   "note": "Coordinator bounded fix (Main, Oct 23; user instruction phonemsg-01M5MX75AC41CEM8BGFGD1ZBS5): the /explore directory was strictly alphabetical; companies open to requests (openToReferrals, a server fact) now sort first, alphabetical within each group. Scope: client/src/pages/explore/findModel.ts + findModel.test.ts only - no filter, availability, pricing or ranking change. Those files sit inside D-048-p3-live-review-find's owns glob (held in review); that row reconciles on its next rebase, same pattern as D-048-fix-start-ask-handoff. 12/12 findModel tests including a new grouping test."
+   "note": "Coordinator bounded fix (Main, Oct 23; user instruction phonemsg-01M5MX75AC41CEM8BGFGD1ZBS5): the /explore directory was strictly alphabetical; companies open to requests (openToReferrals, a server fact) now sort first, alphabetical within each group. Scope: client/src/pages/explore/findModel.ts + findModel.test.ts only - no filter, availability, pricing or ranking change. Those files sit inside D-048-p3-live-review-find's owns glob (held in review); that row reconciles on its next rebase, same pattern as D-048-fix-start-ask-handoff. 12/12 findModel tests including a new grouping test. LANDED: PR #594 merged Oct 23 (merge commit d2bb576b)."
   },
   {
    "id": "D-048-fix-landing-load-flash",
@@ -1712,9 +1712,9 @@
    "tier": 2,
    "lane": "d048-foundation",
    "branch": "agent/coordinator/landing-load-flash",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [],
-   "note": "Coordinator bounded fix (Main, Oct 23; user report phonemsg-01M5MX4KWB09PKKC7E6XP3BN5V + clarification phonemsg-01M5MX5BFXQ060R444J7GKX3W2): the app revealed at font-ready before React's first commit, so the static landing snapshot inside #root painted ~1s before GoalLandingV9 mounted over it. Scope: client/index.html + client/src/main.tsx only - reveal is gated on the first React commit; the 2.5s failsafe now fires only when the bundle never parsed (__swBootAlive unset, blocked-script fallback keeps the snapshot), plus a 12s absolute failsafe. Verified by playwright timeline sampling on the production build: zero snapshot paints in slow-bundle and fast loads at 1280/390; blocked bundle still degrades to the static snapshot. Known edge: a bundle not yet executing at 2.5s can still paint the snapshot once (indistinguishable from blocked JS)."
+   "note": "Coordinator bounded fix (Main, Oct 23; user report phonemsg-01M5MX4KWB09PKKC7E6XP3BN5V + clarification phonemsg-01M5MX5BFXQ060R444J7GKX3W2): the app revealed at font-ready before React's first commit, so the static landing snapshot inside #root painted ~1s before GoalLandingV9 mounted over it. Scope: client/index.html + client/src/main.tsx only - reveal is gated on the first React commit; the 2.5s failsafe now fires only when the bundle never parsed (__swBootAlive unset, blocked-script fallback keeps the snapshot), plus a 12s absolute failsafe. Verified by playwright timeline sampling on the production build: zero snapshot paints in slow-bundle and fast loads at 1280/390; blocked bundle still degrades to the static snapshot. Known edge: a bundle not yet executing at 2.5s can still paint the snapshot once (indistinguishable from blocked JS). LANDED: PR #593 merged Oct 23 (merge commit 4f47ca13)."
   },
   {
    "id": "D-048-fix-landing-flash-snapshot-v2",
