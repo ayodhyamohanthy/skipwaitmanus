@@ -105,4 +105,4 @@ Red-first tests; the gate on the merged result; required CI green; the row's Sta
 - PROCESS-review-gate: todo; waits for PROCESS-queue-gate.
 - PROCESS-id-check: todo; waits for PROCESS-review-gate.
 - PROCESS-scorecard: todo; waits for PROCESS-id-check.
-- POSTMERGE-oct22-review: todo.
+- POSTMERGE-oct22-review: in progress — Cue Agent · f8b2 — 2026-10-24 — branch agent/queue/postmerge-oct22-review.
