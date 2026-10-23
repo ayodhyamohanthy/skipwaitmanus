@@ -776,6 +776,18 @@
       "note": "D-163: no longer waits for seeker-passwords; shared/telemetryScrub.ts is new on main and #324 picks it up when it merges main. Scope per the packet's CEO addendum (§0): adds the vanity alias and /api/documents/by-key/:key; alerts drop the query."
     },
     {
+      "id": "D-089-request-inbox",
+      "title": "Employee request-inbox link with screen name (idea 1, loop L4, D-089 (3)): write the packet",
+      "row": "D-089",
+      "packet": null,
+      "tier": 1,
+      "lane": "supply-inbox",
+      "branch": "agent/queue/d089-request-inbox",
+      "status": "architect",
+      "dependsOn": [],
+      "note": "D-163: the owner's order puts idea 1 between BYOR and the bonus pages (D-089 (3), D-099), and it had no row, so D-099 could never start. Write the packet now (D-109); its build follows D-090-BYOR, so the packet PR adds D-090-BYOR (and D-086-demand-list, which ideas 1 and 3 still follow) to this row's dependsOn. Start from what is live: the referrer fast-track link already routes asks to one employee (/fast/:linkCode and /refer/:companySlug/:vanityAlias, D-050; client/src/pages/FastTrackLink.tsx, VanityFastTrackLink.tsx, getOrCreateReferrerFastTrackLink). The packet decides what 'with screen name' adds on top, reusing the D-106 screen name if #382 has landed, never the referrer's real name before an accept (D-019(e)), and names its owned paths. Tier 1: referrer identity on a public link."
+    },
+    {
       "id": "D-095-one-tap",
       "title": "One-tap queue items 1-5 (D-095): sign-in keeps the cart, email up front, /jobs prefills /start, /pricing CTA, /plans collapses unsold passes",
       "row": "D-095",
@@ -800,14 +812,75 @@
     },
     {
       "id": "D-099-bonus-pages",
-      "title": "Public referral-bonus pages, one per company, every figure sourced (D-099, loop L5)",
+      "title": "Referral-bonus pages, slice A (D-099, loop L5): sourced figures, admin entry, /bonuses and /bonuses/:slug, sitemap; flags off",
       "row": "D-099",
-      "packet": null,
-      "tier": 2,
+      "packet": "docs/plans/D-099-bonus-pages.md",
+      "tier": 1,
       "lane": "seo",
       "branch": "agent/claude/d099-bonus-pages",
-      "status": "architect",
-      "dependsOn": []
+      "status": "todo",
+      "dependsOn": [
+        "D-090-BYOR",
+        "D-089-request-inbox",
+        "D-086-demand-list"
+      ],
+      "owns": [
+        "drizzle/deploy/*_company_referral_bonuses.sql",
+        "drizzle/schema.ts",
+        "server/schemaReconcile.ts",
+        "shared/referralBonus.ts",
+        "shared/referralBonus.test.ts",
+        "shared/sitemap.ts",
+        "shared/sitemap.test.ts",
+        "shared/moneyCopy.ts (switch only)",
+        "server/referralBonusStore.ts",
+        "server/referralBonusRoutes.ts",
+        "server/referralBonusRoutes.test.ts",
+        "server/sitemapRoutes.ts",
+        "server/sitemapRoutes.test.ts",
+        "server/_core/index.ts (switch only)",
+        "functions/sitemap.xml.ts",
+        "functions/_middleware.ts (switch only)",
+        "src/worker.ts (switch only)",
+        ".env.example (switch only)",
+        "client/src/App.tsx (switch only)",
+        "client/src/lib/flags.ts (switch only)",
+        "client/src/pages/Bonuses.tsx",
+        "client/src/pages/BonusCompany.tsx",
+        "client/src/pages/AdminBonuses.tsx",
+        "client/src/pages/AdminOverview.tsx (switch only)",
+        "client/src/pages/bonuses.test.tsx",
+        "client/src/pages/bonusCompany.test.tsx",
+        "client/src/pages/adminBonuses.test.tsx",
+        "client/src/components/bonus/",
+        "AGENTS.md",
+        "docs/PRD.md",
+        "docs/DECISIONS.md",
+        "docs/KIT_V4_BUILD_PLAN.md"
+      ],
+      "note": "D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing)."
+    },
+    {
+      "id": "D-099-bonus-line",
+      "title": "Referral-bonus pages, slice B: one 'Referral bonus: figure, source' line on /explore and /explore/:slug (D-099)",
+      "row": "D-099",
+      "packet": "docs/plans/D-099-bonus-pages.md",
+      "tier": 2,
+      "lane": "seo",
+      "branch": "agent/queue/d099-bonus-line",
+      "status": "todo",
+      "dependsOn": [
+        "D-099-bonus-pages",
+        "D-048-p3-live-review-find"
+      ],
+      "owns": [
+        "client/src/pages/Explore.tsx",
+        "client/src/pages/ExploreCompany.tsx",
+        "client/src/components/goal/GoalListRow.tsx",
+        "client/src/pages/explore/",
+        "client/src/pages/explore.bonusLine.test.tsx"
+      ],
+      "note": "D-163 packet §5.5: the line goes into the pages D-048-p3-live-review-find redesigns, so it waits for that row as well as slice A. A failed bonus fetch shows no line and never blocks the directory."
     },
     {
       "id": "D-093-language",
