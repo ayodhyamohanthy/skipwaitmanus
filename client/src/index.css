@@ -163,6 +163,12 @@
 }
 
 html { scroll-behavior: smooth; background: var(--color-background); }
+/* Phone bottom bar (GoalShell) is sticky over scrolling content: keep a
+   focused field above it when the browser scrolls it into view. h-14 = 3.5rem,
+   and the range matches max-gdesk exactly (--breakpoint-gdesk: 40.0625rem). */
+@media (width < 40.0625rem) {
+  html { scroll-padding-bottom: 3.5rem; }
+}
 body { margin: 0; min-width: 320px; background: var(--color-background); color: var(--color-foreground); font-family: var(--font-ui); letter-spacing: 0; overscroll-behavior-y: contain; }
 h1, h2, h3, p { letter-spacing: 0; }
 h1, h2 { font-family: var(--font-ui); font-weight: 600; }
