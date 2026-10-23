@@ -71,7 +71,7 @@ describe("billing catalog", () => {
     expect(resolveItemPrice("skipwait_written_review-USD")).toEqual({ kind: "session", sessionId: "written_review", currency: "USD", amount: 4_900, itemPriceId: "skipwait_written_review-USD" });
     for (const unsold of ["skipwait_pack_2-USD", "skipwait_pack_5-INR", "skipwait_keep_warm_30d-USD", "skipwait_start_yearly-USD", "skipwait_momentum_monthly-USD", "skipwait_land_500_monthly-USD", "skipwait_pro_yearly-USD", "skipwait_token_1-USD"]) expect(resolveItemPrice(unsold)).toBeUndefined();
     expect(resolveItemPrice(undefined)).toBeUndefined();
-    expect(sellableItemPrices()).toHaveLength(34);
+    expect(sellableItemPrices()).toHaveLength(62);
   });
 
   // D-067: Pro and Max are removed completely. The price book neither sells nor
