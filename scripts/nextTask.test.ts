@@ -1136,3 +1136,60 @@ describe("D-151 model-independent reviews and landings", () => {
     expect(text).toContain("post no verdict");
   });
 });
+
+/*
+ * PICKER-owns-scope (docs/plans/PICKER-PARALLEL.md): a task declares the files it will
+ * touch, so two lanes cannot edit one file unseen. `owns` holds paths, folder prefixes
+ * ending in "/", globs using "*" and "**", and " (switch only)" for a file a task may
+ * only flip a flag in.
+ */
+describe("PICKER-owns-scope: declared file ownership", () => {
+  it("matches exact paths, folder prefixes and globs, and keeps a single star inside one folder", () => {
+    expect(core.ownsMatches("client/src/pages/Landed.tsx", "client/src/pages/Landed.tsx")).toBe(true);
+    expect(core.ownsMatches("client/src/pages/", "client/src/pages/Landed.tsx")).toBe(true);
+    expect(core.ownsMatches("client/src/**", "client/src/a/b/c.ts")).toBe(true);
+    expect(core.ownsMatches("client/src/*.ts", "client/src/a/b.ts")).toBe(false);
+    expect(core.ownsMatches("server/db.ts", "server/db.tsx")).toBe(false);
+    expect(core.ownsMatches("./server/db.ts", "server/db.ts")).toBe(true);
+    expect(core.ownsEntry("shared/planCatalog.ts (switch only)")).toEqual({ pattern: "shared/planCatalog.ts", switchOnly: true });
+    expect(core.ownsEntry("shared/planCatalog.ts").switchOnly).toBe(false);
+  });
+
+  it("refuses two live tasks that own overlapping paths", () => {
+    const doc = {
+      version: 1, repo: "o/r", tasks: [
+        task("A", { owns: ["client/src/pages/"] }),
+        task("B", { owns: ["client/src/pages/Landed.tsx"] }),
+      ],
+    };
+    const errors = validateAssignments(doc, exists).join("\n");
+    expect(errors).toContain("tasks A and B own overlapping paths and neither waits for the other");
+  });
+
+  it("allows the same overlap when one task waits for the other", () => {
+    const doc = {
+      version: 1, repo: "o/r", tasks: [
+        task("A", { owns: ["client/src/pages/"] }),
+        task("B", { owns: ["client/src/pages/Landed.tsx"], dependsOn: ["A"] }),
+      ],
+    };
+    expect(validateAssignments(doc, exists).filter(e => e.includes("overlapping"))).toEqual([]);
+  });
+
+  it("lets disjoint ownership through, and refuses a malformed owns", () => {
+    const ok = { version: 1, repo: "o/r", tasks: [task("A", { owns: ["client/src/pages/"] }), task("B", { owns: ["server/db.ts"] })] };
+    expect(validateAssignments(ok, exists).filter(e => e.includes("overlapping"))).toEqual([]);
+    const bad = { version: 1, repo: "o/r", tasks: [task("A", { owns: "client/src/pages/" })] };
+    expect(validateAssignments(bad, exists).join("\n")).toContain("owns must be a non-empty array of paths");
+    const empty = { version: 1, repo: "o/r", tasks: [task("A", { owns: [] })] };
+    expect(validateAssignments(empty, exists).join("\n")).toContain("owns must be a non-empty array of paths");
+  });
+
+  it("holds a build while another lane's open task owns an overlapping path, and frees it when they differ", () => {
+    const claimant = "workbuddy · b0eb";
+    const held = pick([task("A", { status: "in-review", owns: ["client/src/pages/"] }), task("B", { owns: ["client/src/pages/Landed.tsx"] })], { claimant });
+    expect(JSON.stringify(held)).toContain("owns the same files");
+    const free = pick([task("A", { status: "in-review", owns: ["client/src/pages/"] }), task("B", { owns: ["server/db.ts"] })], { claimant });
+    expect(free.kind).toBe("build");
+  });
+});
