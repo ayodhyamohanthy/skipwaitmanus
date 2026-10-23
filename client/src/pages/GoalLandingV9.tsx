@@ -6,7 +6,7 @@
 // then a BLACK band carrying the warm walking-in photo (Pexels 7651982,
 // self-hosted /brand/banner-take-e.jpg). Behind GOAL_UI_LANDING_V9, OFF
 // everywhere; live landing untouched until main relays the owner's "ship".
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CookieConsent from "@/components/CookieConsent";
 import type { FormEvent, ReactNode } from "react";
 import { Link, useLocation } from "wouter";
@@ -33,7 +33,18 @@ const BAND_ALT: Record<string, string> = {
 
 function SearchCTA() {
   const [, setLocation] = useLocation();
-  const [q, setQ] = useState("");
+  // A visitor can type into the prerendered snapshot's identical form while
+  // the bundle is still loading; mounting must not eat that input. The
+  // snapshot's inline script mirrors the value and focus into these globals.
+  const boot = () => (typeof window === "undefined" ? {} : window) as { __swLandingQuery?: string; __swLandingFocus?: boolean };
+  const [q, setQ] = useState(() => boot().__swLandingQuery ?? "");
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (boot().__swLandingFocus) {
+      inputRef.current?.focus();
+      boot().__swLandingFocus = false;
+    }
+  }, []);
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const term = q.trim();
@@ -44,7 +55,7 @@ function SearchCTA() {
       <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-[10px] bg-g-surface-hover px-4">
         <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-g-ink-3" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="9" cy="9" r="6" /><path d="m14 14 3.5 3.5" strokeLinecap="round" /></svg>
         <span className="sr-only">Search companies</span>
-        <input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Search companies" className="w-full min-w-0 bg-transparent text-g-small text-g-ink outline-none placeholder:text-g-ink-3" />
+        <input ref={inputRef} value={q} onChange={(event) => setQ(event.target.value)} placeholder="Search companies" className="w-full min-w-0 bg-transparent text-g-small text-g-ink outline-none placeholder:text-g-ink-3" />
       </label>
       <button type="submit" className="h-12 w-full shrink-0 rounded-[10px] bg-g-ink px-5 text-g-small font-semibold text-g-ink-inverse hover:bg-g-primary-hover gdesk:h-11 gdesk:w-auto">Find your company <span aria-hidden="true">&rarr;</span></button>
     </form>

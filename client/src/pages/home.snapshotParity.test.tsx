@@ -67,6 +67,29 @@ describe("landing first paint matches the goal page (D-048-fix-landing-load-flas
     }
   });
 
+  it("mounting keeps a query typed into the snapshot's no-JS form, with focus", () => {
+    const w = window as { __swLandingQuery?: string; __swLandingFocus?: boolean };
+    w.__swLandingQuery = "acme";
+    w.__swLandingFocus = true;
+    const { container } = render(<GoalLandingV9 />);
+    const input = container.querySelector('input[placeholder="Search companies"]') as HTMLInputElement;
+    expect(input.value).toBe("acme");
+    expect(document.activeElement).toBe(input);
+    delete w.__swLandingQuery;
+    delete w.__swLandingFocus;
+  });
+
+  it("the snapshot's no-JS form is a working GET to /explore and keeps typed input across mount", () => {
+    const doc = new DOMParser().parseFromString(landingSnapshot([]), "text/html");
+    const form = doc.querySelector('form[action="/explore"][method="get"]');
+    expect(form).not.toBeNull();
+    expect(form?.querySelector('input[name="q"]')).not.toBeNull();
+    expect(form?.querySelector('button[type="submit"]')).not.toBeNull();
+    // The snapshot mirrors typed input + focus into globals the mounted page reads.
+    expect(landingSnapshot([])).toContain("__swLandingQuery");
+    expect(landingSnapshot([])).toContain("__swLandingFocus");
+  });
+
   it("the snapshot prints no FAQ, no pre-goal landing copy, and exactly one H1", () => {
     const doc = new DOMParser().parseFromString(landingSnapshot([]), "text/html");
     expect(doc.querySelector("dl")).toBeNull();
