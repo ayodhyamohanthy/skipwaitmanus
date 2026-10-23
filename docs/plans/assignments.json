@@ -431,7 +431,7 @@
       "tier": 2,
       "lane": "design-core",
       "branch": "agent/queue/d048-f-flags",
-      "status": "done",
+      "status": "in_progress",
       "dependsOn": [
         "D-048-phase-3"
       ],
@@ -451,7 +451,7 @@
         ".env.example",
         "server/configContract.test.ts"
       ],
-      "note": "landed dark; RELEASED=[\"home\"] keeps production on the V9 landing; planFamilyFlagsOff.test.ts kept green via a compatibility re-export in goalFlags.ts (byte-identical rule) — canonical home is planFamilyFlag.ts"
+      "note": "implemented in PR #560, pending CI and merge; on merge this row flips to done. RELEASED=[\"home\"] keeps production on the V9 landing; planFamilyFlagsOff.test.ts kept green via a compatibility re-export in goalFlags.ts (byte-identical rule; Main-approved Oct 23) — canonical home is planFamilyFlag.ts"
     },
     {
       "id": "D-048-F-primitives",
