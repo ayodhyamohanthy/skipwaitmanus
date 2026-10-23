@@ -37,9 +37,9 @@
       "tier": 1,
       "lane": "premium-display",
       "branch": "agent/kat/premium-total-repair-oct22",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "registered by owner Ayu, coordinator unavailable, Oct 22; PR #462. Display only; independent exact-head review and full gate before main."
+      "note": "Landed as PR #467 (merge commit on main; independent review passed by Gemini 3.8 Flash · 8f37). Pay callout shows the selected total (matching footer and CTA) without altering unit-price heading, checkout payload, quantity controls or guards. Red-first tests (9 tests in client/src/pages/premium.totalLabel.test.tsx, 4 expectation updates in tokenRecovery.routes.test.tsx), gate green."
     },
     {
       "id": "D-067-outbox-fixture-repair",
