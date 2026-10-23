@@ -72,14 +72,14 @@ export default function GoalStart() {
   const begin = () => { if (!canBegin) return; const normalizedTargetUrl = normalizeTargetRoleUrl(targetUrl); if (normalizedTargetUrl !== normalizeTargetRoleUrl(readReferralDraft()?.targetUrl || "")) localStorage.removeItem("bridge-target-compensation"); localStorage.setItem("bridge-name", name || localStorage.getItem("bridge-name") || "Candidate"); localStorage.setItem("bridge-target-url", normalizedTargetUrl); localStorage.setItem("bridge-company-confirmation", JSON.stringify({ canonicalUrl: normalizedTargetUrl, confirmedDomain: confirmedDomain.trim().toLowerCase() })); saveReferralDraft({ name, targetUrl: normalizedTargetUrl }); const next = fastTrackCode ? `/request?fast=${encodeURIComponent(fastTrackCode)}` : fastTrackCompanySlug && fastTrackAlias ? `/request?referCompany=${encodeURIComponent(fastTrackCompanySlug)}&referAlias=${encodeURIComponent(fastTrackAlias)}` : "/request"; go(next); };
 
   return (
-    <main data-skipwait-screen="onboarding" data-testid="goal-start" className="flex min-h-dvh flex-col bg-g-surface px-4 text-g-ink gdesk:px-6">
+    <main data-skipwait-screen="onboarding" data-testid="goal-start" className="g-scope flex min-h-dvh flex-col bg-g-surface px-4 text-g-ink gdesk:px-6">
       <div className="mx-auto flex w-full max-w-xl flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center justify-between gap-3">
           <GoalButton variant="ghost" flush leadingIcon={ArrowLeft} onClick={() => go("/")}>Back</GoalButton>
           <AccountMenu />
         </header>
         <section className="flex flex-1 flex-col justify-center py-6">
-          <p className="text-g-badge uppercase tracking-[0.12em] text-g-ink-3">{fastTrackCode || (fastTrackCompanySlug && fastTrackAlias) ? "Private referral path" : "Step 1 of 3 · Referral request"}</p>
+          {fastTrackCode || (fastTrackCompanySlug && fastTrackAlias) ? <p className="text-g-badge uppercase tracking-[0.12em] text-g-ink-3">Private referral path</p> : null}
           <h1 className="mt-3 text-g-display text-g-ink">Paste the job link.</h1>
           <p className="mt-3 max-w-sm text-g-body text-g-ink-2">We match it privately to the company. Your resume comes next.</p>
 
