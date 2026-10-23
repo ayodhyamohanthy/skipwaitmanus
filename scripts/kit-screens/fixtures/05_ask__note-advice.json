@@ -1,0 +1,10 @@
+{
+  "signedIn": { "id": 4105, "name": "Asha Rao", "email": "asha.rao@example.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/notifications", "match": "exact", "status": 200, "body": { "notifications": [] } }
+  ],
+  "actions": [
+    { "fill": ["textarea[placeholder^=\"Name the role\"]", "I am a hard working person who is very interested in this role and would love a referral from you if you have the time."] },
+    { "wait": 300 }
+  ]
+}

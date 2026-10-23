@@ -1,0 +1,10 @@
+{
+  "signedIn": { "id": 4105, "name": "Asha Rao", "email": "asha.rao@example.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/notifications", "match": "exact", "status": 200, "body": { "notifications": [] } }
+  ],
+  "actions": [
+    { "fill": ["textarea[placeholder^=\"Name the role\"]", "Shipped the payments retry path at my last company and want to do the same here. Reach me at asha.rao@example.com to talk."] },
+    { "wait": 300 }
+  ]
+}
