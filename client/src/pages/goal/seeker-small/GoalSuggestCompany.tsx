@@ -54,7 +54,7 @@ export default function GoalSuggestCompany() {
       const payload = await readApiJson<{ error?: string }>(response, "We could not save this suggestion");
       if (!response.ok) throw new Error(payload.error || "We could not save this suggestion");
       setSentName(name.trim());
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not save this suggestion"); }
+    } catch (reason) { setError(reason instanceof TypeError ? "We could not save this suggestion. Check your connection, then try again." : reason instanceof Error ? reason.message : "We could not save this suggestion"); }
     finally { setSubmitting(false); }
   };
 
