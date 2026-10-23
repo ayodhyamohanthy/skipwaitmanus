@@ -440,10 +440,138 @@
       "tier": 3,
       "lane": "d048-packets",
       "branch": "agent/queue/d048-foundation-packet",
-      "status": "architect",
+      "status": "done",
       "dependsOn": [],
       "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds the six D-048-F-* rows the split's list gives it exactly as the split's table lists them, and sets this row to done.",
       "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-F-flags",
+      "title": "Goal surfaces flag module: every surface id pre-declared, RELEASED in code, goalFlags folded in, flags-on CI build (D-134)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-foundation.md",
+      "tier": 2,
+      "lane": "design-core",
+      "branch": "agent/queue/d048-f-flags",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-phase-3"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts",
+        "client/src/lib/goalSurfaces.test.ts",
+        "client/src/lib/goalFlags.ts",
+        "client/src/lib/planFamilyFlag.ts",
+        "client/src/pages/Home.tsx",
+        "client/src/pages/SignIn.tsx",
+        "client/src/App.tsx",
+        ".github/workflows/deploy-pages.yml",
+        ".github/workflows/ci.yml",
+        "client/src/components/goal/goalBoundary.test.ts",
+        "scripts/designTokenAuditCore.mjs",
+        "scripts/designTokenAudit.test.ts",
+        ".env.example",
+        "server/configContract.test.ts"
+      ]
+    },
+    {
+      "id": "D-048-F-primitives",
+      "title": "Goal primitives: audit and promote what the surface rows need, so no surface edits components/goal (D-134)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-foundation.md",
+      "tier": 2,
+      "lane": "design-core",
+      "branch": "agent/queue/d048-f-primitives",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-flags"
+      ],
+      "owns": [
+        "client/src/components/goal/GoalListRow.tsx",
+        "client/src/components/goal/GoalStates.tsx",
+        "client/src/components/goal/GoalReasonInput.tsx",
+        "client/src/components/goal/index.ts",
+        "client/src/components/goal/goalAtoms.test.tsx",
+        "client/src/components/goal/goalComposites.test.tsx"
+      ]
+    },
+    {
+      "id": "D-048-F-harness",
+      "title": "Goal test harness and captures: one signed-in render path, capture.mjs --goal, synthetic 00_goal fixtures (D-134)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-foundation.md",
+      "tier": 2,
+      "lane": "design-core",
+      "branch": "agent/queue/d048-f-harness",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-p3-w0-shell"
+      ],
+      "owns": [
+        "client/src/test/goalShellHarness.tsx",
+        "client/src/test/goalShellHarness.test.tsx",
+        "scripts/kit-screens/capture.mjs",
+        "scripts/kit-screens/fixtures/00_goal-*.json",
+        "scripts/kitScreenFixtures.test.ts",
+        "docs/plans/D-048-capture-checklist.md"
+      ]
+    },
+    {
+      "id": "D-048-F-credits",
+      "title": "Shell meta and the one credit balance: no credits pill on a referrer route, a failed load says so (D-055, D-134)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-foundation.md",
+      "tier": 1,
+      "lane": "design-core",
+      "branch": "agent/queue/d048-f-credits",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-harness"
+      ],
+      "owns": [
+        "client/src/components/AppShell.tsx",
+        "client/src/components/goal/useGoalShellMeta.ts",
+        "client/src/hooks/useCreditBalance.ts",
+        "client/src/hooks/useCreditBalance.test.ts",
+        "client/src/components/appShell.test.tsx"
+      ]
+    },
+    {
+      "id": "D-048-F-static-frame",
+      "title": "Goal static frame that fetches nothing, for the twelve prerendered public pages (D-134)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-foundation.md",
+      "tier": 2,
+      "lane": "design-core",
+      "branch": "agent/queue/d048-f-static-frame",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-p3-w0-shell"
+      ],
+      "owns": [
+        "client/src/components/goal/GoalStaticFrame.tsx",
+        "client/src/components/goal/goalStaticFrame.test.tsx",
+        "scripts/prerenderPublicPages.test.ts"
+      ]
+    },
+    {
+      "id": "D-048-F-routes",
+      "title": "App.tsx router as one <Route> per line, formatting only, so feature lanes stop conflicting (D-134)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-foundation.md",
+      "tier": 2,
+      "lane": "d048-routes",
+      "branch": "agent/queue/d048-f-routes",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-flags"
+      ],
+      "owns": [
+        "client/src/App.tsx",
+        "client/src/metadataAndRouteLoading.test.ts",
+        "client/src/appSessionContinuity.test.ts",
+        "scripts/seoRouteCoverage.test.ts"
+      ]
     },
     {
       "id": "D-048-p3-w0-shell",
