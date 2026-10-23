@@ -4,8 +4,6 @@
 
 # SkipWait goal UI: design brief and three directions
 
-> **History (Oct 24):** the availability styling and copy in this brief ("Open to requests", "Not open yet", "N open to requests" readouts and summaries) are retired by D-176: no referrer-availability status on any surface a seeker browses. `DESIGN.md` and `docs/plans/GOAL_UI_MIGRATION.md` are the current contract.
-
 D-048 · 18 Oct 2026 · For the owner's review. Nothing here is built or rolled out until the owner picks a direction. Until then the existing tokens and components stay in use.
 
 - This brief: `design/goal-ui/BRIEF.md`
