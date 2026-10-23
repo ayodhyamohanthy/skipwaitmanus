@@ -12,6 +12,21 @@ const ASSIGNMENTS = "docs/plans/assignments.json";
 const NO_ROW = "This branch matches no queue row. Nothing merges to main outside the queue (D-166). Ask the CEO for a row in docs/plans/assignments.json, or work on the row's own branch.";
 const git = args => execFileSync("git", args, { encoding: "utf8" }).trim();
 
+function ensureOriginMainHistory() {
+  try {
+    git(["merge-base", "origin/main", "HEAD"]);
+    return;
+  } catch {
+    // actions/checkout's default depth-one checkout may not include the base history.
+    const shallow = git(["rev-parse", "--is-shallow-repository"]) === "true";
+    const refspec = "+refs/heads/main:refs/remotes/origin/main";
+    git(shallow
+      ? ["fetch", "--no-tags", "--unshallow", "origin", refspec]
+      : ["fetch", "--no-tags", "origin", refspec]);
+    git(["merge-base", "origin/main", "HEAD"]);
+  }
+}
+
 function knownTaskList(tasks) {
   return Array.isArray(tasks) && tasks.every(task =>
     task !== null && typeof task === "object" && !Array.isArray(task) &&
@@ -79,6 +94,7 @@ export function runQueueGate() {
     const eventName = process.env.GITHUB_EVENT_NAME;
     if (eventName && eventName !== "pull_request") return 0;
 
+    ensureOriginMainHistory();
     const assignments = JSON.parse(git(["show", `origin/main:${ASSIGNMENTS}`]));
     const tasks = assignments?.tasks;
     if (!knownTaskList(tasks)) {
