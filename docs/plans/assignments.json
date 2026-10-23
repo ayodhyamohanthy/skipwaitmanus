@@ -166,7 +166,7 @@
       "tier": 1,
       "lane": "d048-asks",
       "branch": "agent/queue/d048-live-review-requests",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "D-150: /requests went live as goal colours on the old layout; redesign it to the contract's \"Get your asks answered.\" with one next step. D-149: keeps every pin D-048-p3-live-review (#472) restored or verified, labels or drops the sample rows, and restores the GoalMiniStepper status tone or records why."
     },
