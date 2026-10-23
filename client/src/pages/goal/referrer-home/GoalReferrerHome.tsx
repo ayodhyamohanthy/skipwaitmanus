@@ -68,7 +68,7 @@ function Waiting({ view, nowMs }: { view: ReferrerHomeView; nowMs: number }) {
                     <strong className="block truncate text-g-label text-g-ink">{item.jobTitle?.trim() || `Private ask · Ref-${1000 + item.id}`}</strong>
                     <span className="block truncate text-g-meta text-g-ink-3">{displayJobFunction(item.jobFunction) ?? name}{item.askStrength ? ` · ask strength: ${item.askStrength === "strong" ? "Strong" : item.askStrength === "good" ? "Good" : "Basic"}` : ""}{files > 0 ? ` · ${files} ${files === 1 ? "file" : "files"} attached` : ""}</span>
                   </span>
-                  {countdown ? <span className={`shrink-0 font-g-mono text-[11px] uppercase ${countdown.urgent ? "text-g-crimson" : "text-g-ink-3"}`}>{countdown.label}</span> : null}
+                  {countdown ? <span className={`shrink-0 font-g-mono text-[11px] uppercase ${countdown.urgent ? "text-g-ink" : "text-g-ink-3"}`}>{countdown.label}</span> : null}
                   <ArrowRight className="h-4 w-4 shrink-0 text-g-ink-3" aria-hidden="true" />
                 </Link>
               </li>
@@ -140,7 +140,7 @@ export default function GoalReferrerHome() {
           <>
             {view.reverifyDue ? <Banner tone="accent"><span role="status" className="flex items-center gap-2 text-g-small text-g-ink"><CalendarClock className="h-4 w-4" aria-hidden="true" />{reverifyCopy(company?.name ?? "work", view.reverifyDaysLeft)}</span><GoalButton size="sm" asChild><Link href="/verify">Re-verify</Link></GoalButton></Banner> : null}
             {view.paused ? <Banner tone="muted"><span role="status" className="flex items-center gap-2 text-g-small text-g-ink"><Pause className="h-4 w-4" aria-hidden="true" />New asks are paused. Open conversations still work.</span><GoalButton size="sm" busy={pause.isPending} busyLabel="Resuming…" onClick={() => setPaused(false)}><Play className="h-4 w-4" aria-hidden="true" />Resume</GoalButton></Banner> : null}
-            {pause.isError ? <p role="alert" className="mb-4 text-g-meta text-g-crimson">{pause.error.message || "We could not update your pause setting. Try again."}</p> : null}
+            {pause.isError ? <p role="alert" className="mb-4 text-g-meta text-g-ink">{pause.error.message || "We could not update your pause setting. Try again."}</p> : null}
 
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-[10px] border border-g-hairline p-4"><Inbox className="mb-2 h-4 w-4 text-g-ink-3" aria-hidden="true" /><strong className="block text-[28px] font-semibold leading-none">{view.waiting.length}</strong><p className="mt-1 text-g-meta text-g-ink-3">New asks waiting</p></div>

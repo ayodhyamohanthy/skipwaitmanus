@@ -110,7 +110,7 @@ function GoalSetupWizard({ initial, companyName, profileHandle, fetchToken, onSa
         </section>
       ) : null}
 
-      {save.isError ? <p role="alert" className="mt-4 rounded-[10px] border border-g-crimson/30 bg-g-crimson/5 p-3 text-g-small text-g-crimson">{save.error.message || "We could not save your setup"}</p> : null}
+      {save.isError ? <p role="alert" className="mt-4 rounded-[10px] border border-g-hairline p-3 text-g-small text-g-ink">{save.error.message || "We could not save your setup"}</p> : null}
       {step < 3 ? (
         <footer className="mt-8 flex justify-between">
           {step > 0 ? <GoalButton variant="ghost" onClick={() => setStep(step - 1)}><ArrowLeft className="h-4 w-4" aria-hidden="true" />Back</GoalButton> : <span />}
