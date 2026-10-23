@@ -668,6 +668,18 @@
       "dependsOn": []
     },
     {
+      "id": "D-086-demand-list",
+      "title": "Demand list (D-086, loop L1): k-anonymous public demand counts per company and asks at companies not yet open",
+      "row": "D-086",
+      "packet": null,
+      "tier": 1,
+      "lane": "demand",
+      "branch": "agent/queue/d086-demand-list",
+      "status": "architect",
+      "dependsOn": [],
+      "note": "D-154: the owner's order puts the demand list before BYOR (D-087, D-089, D-090); its own gate (W0 #361, W1 drawer #362/#472) is open and ROW20-B (#311) built the one-vote-per-person count. Write the packet first (D-109): public counts from 3 up, 'a few people' for 1-2, never 0 as a count, no seeker detail; the ask-to-any-company path (no credit, no slot until a verified referrer exists, then D-034/D-047/D-062); D-102's honest availability; the verbatim copy in docs/PRD.md; owned paths and its order against D-048-p3-live-review-find (both edit /explore)."
+    },
+    {
       "id": "D-090-BYOR",
       "title": "Bring-your-own-referrer one-time link (D-090, loop L2)",
       "row": "D-090",
@@ -676,8 +688,10 @@
       "lane": "supply",
       "branch": "agent/claude/d090-byor",
       "status": "todo",
-      "dependsOn": [],
-      "note": "Packet written. Build gate: D-090 orders BYOR after the demand list (D-086), which is not live and has no queue task; verify D-086 before starting or stop and report. The four approved mocks are not in the repo (packet §12 Q5)."
+      "dependsOn": [
+        "D-086-demand-list"
+      ],
+      "note": "D-154: waits for D-086-demand-list (the owner's order, D-087/D-089/D-090); the picker holds it until the demand list is done. Packet written (docs/plans/D-090-BYOR.md); the four approved mocks are not in the repo (packet §12 Q5)."
     },
     {
       "id": "D-095-one-tap",
