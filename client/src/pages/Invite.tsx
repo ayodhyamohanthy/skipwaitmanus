@@ -1,5 +1,6 @@
 import { ArrowLeft, Share2, UsersRound } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { Link, useSearch } from "wouter";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { usePersistFn } from "@/hooks/usePersistFn";
@@ -20,7 +21,7 @@ function SignedOutPanel({ mode }: { mode: Mode }) {
   );
 }
 
-export default function Invite() {
+function KitInvite() {
   const { isSignedIn, userId, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const fromReferrer = new URLSearchParams(useSearch()).get("mode") === "invite";
@@ -41,4 +42,17 @@ export default function Invite() {
         : <InviteLinkPanel fetchToken={fetchToken} userId={userId ?? null} />}
     </main>
   );
+}
+
+const GoalInvite = lazy(() => import("./goal/invite/GoalInvite"));
+
+export default function Invite() {
+  if (goalSurfaceOn("invite")) {
+    return (
+      <Suspense fallback={null}>
+        <GoalInvite />
+      </Suspense>
+    );
+  }
+  return <KitInvite />;
 }
