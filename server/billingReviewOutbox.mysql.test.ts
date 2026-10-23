@@ -37,7 +37,10 @@ it.runIf(!!process.env.D067_ISOLATED_MYSQL_URL)("actual MySQL worker races, roll
       expect(actual.Null === "NO", column.name).toBe(column.notNull);
     }
     const reconcile = await readFile("server/schemaReconcile.ts", "utf8");
-    const reconcileSql = reconcile.slice(reconcile.indexOf("createSql: `") + 12, reconcile.indexOf("` }," )).replaceAll("\\`", "`");
+    const reconcileEntry = '{ table: "billingReviewOutbox", createSql: `';
+    const reconcileStart = reconcile.indexOf(reconcileEntry);
+    expect(reconcileStart, "billingReviewOutbox entry present in schemaReconcile").toBeGreaterThanOrEqual(0);
+    const reconcileSql = reconcile.slice(reconcileStart + reconcileEntry.length, reconcile.indexOf("` },", reconcileStart)).replaceAll("\\`", "`");
     const normalize = (s: string) => s.replace(/--[^\n]*/g, "").replace(/;$/, "").replace(/\s+/g, " ").trim();
     expect(normalize(reconcileSql)).toBe(normalize(sql.trim()));
     // IF NOT EXISTS is not structural verification: deliberately wrong tables must fail the gate.
