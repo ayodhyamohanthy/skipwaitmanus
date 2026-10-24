@@ -262,7 +262,9 @@
     "P0-ask-link-signin",
     "D-132-audit",
     "D-048-F-goal-check",
-    "D-048-fix-start-ask-handoff"
+    "D-048-fix-start-ask-handoff",
+    "D-174-seeker-journey-build",
+    "D-174-fix-post-binding"
    ],
    "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row’s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete.",
    "epic": "D-048-p3",
@@ -1494,7 +1496,8 @@
     "D-089-request-inbox",
     "D-086-demand-list",
     "D-048-F-flags",
-    "D-048-F-routes"
+    "D-048-F-routes",
+    "D-174-held-ask-reconfirm"
    ],
    "owns": [
     "drizzle/deploy/*_company_referral_bonuses.sql",
@@ -1764,6 +1767,219 @@
     "D-166-journey-decisions-sync"
    ],
    "note": "Builds D-176 (merged in #601; user instruction phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST): availability framing does not map to the seeker's mental model. Remove the labels, chips and open-first grouping; availability becomes backend routing only, with an honest delivered-vs-waiting status after save and no false immediate-referral claim. Supersedes the shipped D-048-fix-explore-open-first grouping (#594 stands as completed history - removal is this row, not a rollback). Preserves verified company-employee access and privacy rules."
+  },
+  {
+   "id": "D-174-fix-post-binding",
+   "title": "Keep a picked posted role through sign-in, and never carry a stale one into a later request (#612 regressions)",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-fix",
+   "branch": "agent/queue/d174-fix-post-binding",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    "client/src/lib/askPrefill.ts",
+    "client/src/lib/askPrefill.test.ts",
+    "client/src/pages/explore/signInHandoff.ts",
+    "client/src/pages/explore/useAskComposer.tsx",
+    "client/src/pages/ExploreCompany.tsx",
+    "client/src/pages/explore.test.tsx",
+    "client/src/pages/exploreDrawer.test.tsx"
+   ],
+   "note": "D-193 packet section 5.1. Latent today: production has zero posted roles at all 39 companies. Lands before the journey row's next composer step.",
+   "epic": "D-174"
+  },
+  {
+   "id": "D-174-sample-job-removal",
+   "title": "Remove the fabricated acme.com 'Test role for loop verification' listing from production /jobs, the sitemap and JobPosting markup",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-data",
+   "branch": "agent/queue/d174-sample-job-removal",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "D-193 packet section 5.2. Reviewed data migration with the next free number; hide instead of delete if a request references the row. Breaks D-001's lasting no-sample-data rule today.",
+   "epic": "D-174"
+  },
+  {
+   "id": "D-176-public-claims",
+   "title": "Stop claiming availability on the signed-in Home and in the /explore description, and drop availability fields from the public directory API",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 2,
+   "lane": "d176-claims",
+   "branch": "agent/queue/d176-public-claims",
+   "status": "todo",
+   "dependsOn": [
+    "D-176-availability-framing-removal",
+    "D-048-fix-landing-flash-snapshot-v2"
+   ],
+   "owns": [
+    "client/src/pages/Home.tsx",
+    "shared/publicRoutes.ts",
+    "client/src/lib/companyDirectory.ts",
+    "shared/companies.ts",
+    "server/companyDirectory.ts",
+    "scripts/prerender-public-pages.tsx"
+   ],
+   "note": "D-193 packet section 5.3. Production marks only skipwait and go-neutrinos open, while Home and the /explore description claim Wipro and TCS too.",
+   "epic": "D-174"
+  },
+  {
+   "id": "D-174-job-catalog",
+   "title": "Company jobs from verified Greenhouse boards: contracts, migration, adapter, refresh and GET /api/companies/:slug/jobs with filters (flag off)",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-jobs",
+   "branch": "agent/queue/d174-job-catalog",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    "shared/jobCatalog.ts",
+    "shared/jobCatalog.test.ts",
+    "server/jobSources/**",
+    "server/jobCatalogRoutes.ts",
+    "server/jobCatalogRoutes.test.ts",
+    "drizzle/schema.ts",
+    "server/schemaReconcile.ts",
+    "server/scheduledJobRegistry.ts",
+    "server/_core/index.ts (switch only)",
+    "src/worker.ts (switch only)",
+    ".env.example"
+   ],
+   "note": "D-193 packet section 5.4. No code anywhere fetches a company's jobs today; the D-174 journey's jobs step needs this. JOB_CATALOG_ENABLED stays off until QA.",
+   "epic": "D-174"
+  },
+  {
+   "id": "D-174-company-search",
+   "title": "Server company search with name aliases and accent-folding: GET /api/companies/search (at most 10, name only)",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-search",
+   "branch": "agent/queue/d174-company-search",
+   "status": "todo",
+   "dependsOn": [
+    "D-176-public-claims",
+    "D-174-job-catalog"
+   ],
+   "owns": [
+    "server/companySearch.ts",
+    "server/companySearch.test.ts",
+    "server/companyDirectoryRoutes.ts",
+    "shared/companies.ts",
+    "drizzle/schema.ts",
+    "server/schemaReconcile.ts"
+   ],
+   "note": "D-193 packet section 5.6. Feeds the journey's 'companies pop up as you type' step. Does not touch normalizedEmployerKey (routing).",
+   "epic": "D-174"
+  },
+  {
+   "id": "D-174-job-sources-more",
+   "title": "Ashby and Lever job sources behind the catalog contract",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-jobs",
+   "branch": "agent/queue/d174-job-sources-more",
+   "status": "todo",
+   "dependsOn": [
+    "D-174-company-search"
+   ],
+   "owns": [
+    "server/jobSources/**",
+    "shared/jobCatalog.ts",
+    "drizzle/schema.ts",
+    "server/schemaReconcile.ts"
+   ],
+   "note": "D-193 packet section 5.5. Waits for company search only because the schema rows run as one chain.",
+   "epic": "D-174"
+  },
+  {
+   "id": "D-174-ask-from-job",
+   "title": "A referral request can carry a picked catalog job or posted role: one Zod body schema, company bound from the job's source",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-ask",
+   "branch": "agent/queue/d174-ask-from-job",
+   "status": "todo",
+   "dependsOn": [
+    "D-174-job-catalog",
+    "D-048-fix-post-copy"
+   ],
+   "owns": [
+    "shared/companyReferralRequest.ts",
+    "shared/companyReferralRequest.test.ts",
+    "server/privateReferralRoutes.ts",
+    "server/db.ts"
+   ],
+   "note": "D-193 packet section 5.7. Credit rules unchanged.",
+   "epic": "D-174"
+  },
+  {
+   "id": "D-174-pool-nudges",
+   "title": "Waiting-pool nudges: review email on delivery, colleague notice on a lapse or pass, waiting count for the referrer's own company",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 2,
+   "lane": "d174-pool",
+   "branch": "agent/queue/d174-pool-nudges",
+   "status": "todo",
+   "dependsOn": [
+    "D-174-ask-from-job"
+   ],
+   "owns": [
+    "server/db.ts",
+    "server/referralReviewDispatch.ts",
+    "server/privateReferralRoutes.ts"
+   ],
+   "note": "D-193 packet section 5.8 and ruling (4): keeps the D-062 one-at-a-time hand-off and makes 'whoever signs up sees it' true where it charges nobody.",
+   "epic": "D-174"
+  },
+  {
+   "id": "D-174-held-ask-reconfirm",
+   "title": "A waiting or held request older than 30 days needs the seeker's one-tap reconfirm before its credit is spent; it never closes (flag off)",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-pool",
+   "branch": "agent/queue/d174-held-ask-reconfirm",
+   "status": "todo",
+   "dependsOn": [
+    "D-174-pool-nudges",
+    "D-174-job-sources-more"
+   ],
+   "owns": [
+    "server/db.ts",
+    "server/heldAsk.ts",
+    "shared/reconfirmCopy.ts",
+    "drizzle/schema.ts",
+    "server/schemaReconcile.ts",
+    ".env.example",
+    "src/worker.ts (switch only)"
+   ],
+   "note": "D-193 packet section 5.9 and ruling (5): D-061's reconfirm-before-spend without its closure, so no-expiry (D-174) never spends a forgotten request's credit months later. ASK_RECONFIRM_ENABLED switches on with the no-expiry switch.",
+   "epic": "D-174"
+  },
+  {
+   "id": "D-175-coverage-study",
+   "title": "D-175 coverage study: per-company job source table, Indian employers, Wikidata seeding proposal, owner questions with evidence",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 3,
+   "lane": "d175-research",
+   "branch": "agent/queue/d175-coverage-study",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    "docs/research/D-175-coverage.md"
+   ],
+   "note": "D-193 packet section 5.10; starts from the packet's appendix (live GETs, Oct 24). Docs only, no paid or account-based access.",
+   "epic": "D-174"
   },
   {
    "id": "D-174-seeker-journey-build",
