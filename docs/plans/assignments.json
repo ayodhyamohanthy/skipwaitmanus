@@ -154,6 +154,20 @@
    "note": "D-163 (4): owner words and CEO rulings on open PR #520 never reached main, so no agent follows them and its nine rows (SKIPPY-fix and the rest) are invisible. Build = cut agent/queue/register-520 from #520's head, merge main, renumber every entry to the next free IDs (main already has a different D-156). Review and landing by a model other than Claude, which wrote it (D-151). Docs only."
   },
   {
+   "id": "DECISION-SYNC-oct24",
+   "title": "Every doc states the current decisions and none presents a superseded one as current (owner, Oct 24)",
+   "row": "D-068",
+   "packet": "docs/plans/DECISION-SYNC-oct24.md",
+   "tier": 2,
+   "lane": "docs-sync",
+   "branch": "agent/queue/decision-sync-oct24",
+   "status": "todo",
+   "dependsOn": [
+    "REGISTER-oct24"
+   ],
+   "note": "Owner, Oct 24: make sure all up-to-date decisions are everywhere and old decisions are nowhere. Markdown only. The register keeps every entry and fixes only its status column; every other doc states the current rule, deletes superseded guidance, and keeps runtime caveats true. Inventory table, required searches, tests and stop rules are in the packet. Review by a model other than the builder and other than Claude. Lands only once the D-198 approving identity exists."
+  },
+  {
    "id": "POSTMERGE-oct22-review",
    "title": "Post-merge Tier 1 review of the live money and migration PRs merged without review on Oct 22-23 (D-166)",
    "row": "D-166",
