@@ -64,7 +64,7 @@ export { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany,
 import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, writeLedgerRow, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
 import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
-import { grantFreeCycleOnValidationTx, openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
+import { carryFreeCreditsOnUpgradeTx, grantFreeCycleOnValidationTx, openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
 import { bucketOfLedgerRow } from "../shared/creditSpend";
 import { fetchPublicJobLink } from "./jobLinkPreview";
@@ -4852,10 +4852,10 @@ export async function markSubscriptionCheckoutIntentCancelled(hostedPageId: stri
 }
 
 /** Cheap wallet read for pre-commitment checkout checks: no creation, no reconciliation. */
-export async function getWalletPlanSnapshot(userId: number, role: WalletRole): Promise<{ plan: string; monthlyCreditsRemaining: number } | null> {
+export async function getWalletPlanSnapshot(userId: number, role: WalletRole): Promise<{ plan: string; monthlyCreditsRemaining: number; monthlyCycleKey: string } | null> {
   const db = await getDb();
   if (!db) return null;
-  const row = (await db.select({ plan: tokenBalances.plan, monthlyCreditsRemaining: tokenBalances.monthlyCreditsRemaining }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1))[0];
+  const row = (await db.select({ plan: tokenBalances.plan, monthlyCreditsRemaining: tokenBalances.monthlyCreditsRemaining, monthlyCycleKey: tokenBalances.monthlyCycleKey }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1))[0];
   return row ?? null;
 }
 
@@ -4899,7 +4899,9 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       const receiptWallet = (await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update"))[0];
       if (duplicate[0].subscriptionId !== input.subscriptionId) throw new Error("Duplicate receipt identity conflict");
       const receiptPlan = receiptIntent?.plan ?? input.plan ?? (receiptWallet?.plan !== "free" ? receiptWallet?.plan : undefined);
-      if ((receiptWallet || receiptIntent) && (!receiptPlan || !isBillablePlanId(receiptPlan))) {
+      // A v2 family event is never parked: fast_track/insider are deliberately
+      // not BillablePlanIds (D-132), and its first delivery already reconciled.
+      if (!input.planFamily && (receiptWallet || receiptIntent) && (!receiptPlan || !isBillablePlanId(receiptPlan))) {
         await enqueueBillingReviewTx(tx, { eventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId, itemPriceId: input.itemPriceId, reason: isRetiredPlanId(receiptPlan) ? "plan_retired" : "unsupported_plan" });
       }
       return { status: "duplicate" as const };
@@ -4957,29 +4959,15 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       const v2UserId = wallet?.userId ?? intent!.userId;
       const v2Role = wallet?.role ?? intent!.role;
       const retainsAccess = input.status === "active" || input.status === "non_renewing";
-      // UNRESOLVED PRODUCT RULE - blocked, test-only: whether upgrading from
-      // Free keeps the open month's leftover credits (the ported #416 comment
-      // claimed an accepted owner call, but no user-channel evidence supports
-      // it; see the PR's proof state). Until original user evidence or an
-      // explicit product decision covers it, no leftover rule may execute.
-      // Checkout is refused before commitment (chargebeeRoutes); this webhook
-      // branch is only the recoverable exception for a race (e.g. checkout
-      // opened before the refusal shipped, or credits granted mid-checkout):
-      // the event is recorded and the transition parks as "blocked", never a
-      // terminal ignored/success. RECONCILIATION: the wallet keeps plan
-      // "free" and the intent stays pending, so support resolves by replaying
-      // or completing the activation once the owner decides the leftover
-      // rule (or by refunding in Chargebee per that decision - this code
-      // invents no carry/refund policy). A Free wallet at zero leftover
-      // upgrades normally.
-      if (retainsAccess && wallet && wallet.plan === "free" && wallet.monthlyCreditsRemaining > 0) {
-        await recordV2Event();
-        // Recoverable alert path, not log-only: the same transaction enqueues a
-        // durable owner alert (billing-review-retry sweep delivers with retries).
-        await enqueueBillingReviewTx(tx, { reason: "upgrade_leftover_blocked", eventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId, itemPriceId: input.itemPriceId });
-        return { status: "blocked" as const, reason: "upgrade_leftover_rule_unresolved" };
-      }
+      // D-165 (3): the upgrade proceeds. The open month's unused free credits
+      // move into a carry-over grant that ends when their own free month would
+      // have - they never become paid or open-ended credits - and the checkout
+      // said so before payment (chargebeeRoutes, shared moneyCopy).
+      const freeCarry = retainsAccess && wallet && wallet.plan === "free"
+        ? await carryFreeCreditsOnUpgradeTx(tx, { wallet, freeCycleKey: wallet.monthlyCycleKey, subscriptionId: input.subscriptionId, now: new Date() })
+        : undefined;
       const v2Patch = {
+        ...(freeCarry ?? {}),
         plan: retainsAccess ? input.planFamily : ("free" as const),
         subscriptionId: input.subscriptionId,
         subscriptionStatus: input.status,

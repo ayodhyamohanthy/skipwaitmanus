@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { billingReviewOutbox, operationalActivityLogs, paymentFulfillments, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, promoCreditGrants, tokenTransactions, notifications } from "../drizzle/schema";
+import { billingReviewOutbox, operationalActivityLogs, paymentFulfillments, planCreditGrants, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, promoCreditGrants, tokenTransactions, notifications } from "../drizzle/schema";
 
 import { applyChargebeeSubscriptionEvent } from "./db";
 
@@ -25,6 +25,7 @@ let wallets: Wallet[];
 let intents: Intent[];
 let events: Event[];
 let promoGrants: Array<Record<string, unknown>>;
+let planGrants: Array<Record<string, unknown>>;
 let promoTxns: Array<Record<string, unknown>>;
 let promoNotes: Array<Record<string, unknown>>;
 let locks: Array<{ table: unknown; params: unknown[] }>;
@@ -54,6 +55,7 @@ function fixtureDatabase() {
     if (table === subscriptionCheckoutIntents) return intents;
     if (table === subscriptionEvents) return events;
     if (table === promoCreditGrants) return promoGrants;
+    if (table === planCreditGrants) return planGrants;
     if (table === tokenTransactions) return promoTxns;
     if (table === notifications) return promoNotes;
     if (table === operationalActivityLogs) return activityLogs;
@@ -100,11 +102,11 @@ function fixtureDatabase() {
     } }),
   };
   return { transaction: async (callback: (transaction: typeof tx) => Promise<unknown>) => {
-    const snapshot = structuredClone({ wallets, intents, events, promoGrants, promoTxns, promoNotes, activityLogs, fulfillments });
+    const snapshot = structuredClone({ wallets, intents, events, promoGrants, planGrants, promoTxns, promoNotes, activityLogs, fulfillments });
     try { return await callback(tx); }
     catch (error) {
       wallets = snapshot.wallets; intents = snapshot.intents; events = snapshot.events;
-      promoGrants = snapshot.promoGrants; promoTxns = snapshot.promoTxns; promoNotes = snapshot.promoNotes;
+      promoGrants = snapshot.promoGrants; planGrants = snapshot.planGrants; promoTxns = snapshot.promoTxns; promoNotes = snapshot.promoNotes;
       activityLogs = snapshot.activityLogs; fulfillments = snapshot.fulfillments;
       throw error;
     }
@@ -120,6 +122,7 @@ beforeEach(() => {
   intents = [{ id: 1, userId: 7, role: "job_seeker", hostedPageId: "page_v2", checkoutIntentId: "intent_v2", plan: "fast_track", itemPriceId: "skipwait_v2plan_fast_track-INR", amount: 162400, currency: "INR", status: "pending", createdAt: termStart, updatedAt: termStart }];
   events = [];
   promoGrants = [];
+  planGrants = [];
   promoTxns = [];
   promoNotes = [];
   activityLogs = [];
@@ -157,27 +160,26 @@ describe("D-132 v2 plan-family subscription events", () => {
     expect(reviewRows).toEqual([]);
   });
 
-  it("a Free wallet with leftover credits upgrading parks as recoverable blocked, never silently converted", async () => {
-    // UNRESOLVED PRODUCT RULE (see db.ts): no carry-over rule may execute until
-    // original user evidence or an explicit product decision covers it.
+  it("a Free wallet with leftover credits upgrades normally: the free bucket empties, never blocks (D-165 (3))", async () => {
+    // D-165 (3): the upgrade proceeds; the unused credits move into a carry-over
+    // grant on the webhook-confirmed term (server/db.creditLedger.test.ts pins
+    // the grant, its date, spending order and the expiry row), so no "blocked"
+    // status and no owner alert exist here any more.
     wallets[0].monthlyAllowance = 3;
     wallets[0].monthlyCreditsRemaining = 2;
     wallets[0].monthlyCycleKey = "2026-10";
     const result = await applyChargebeeSubscriptionEvent(input);
-    expect(result).toMatchObject({ status: "blocked", reason: "upgrade_leftover_rule_unresolved" });
+    expect(result).toMatchObject({ status: "applied", plan: "fast_track" });
     const wallet = wallets[0];
-    expect(wallet.plan).toBe("free");
-    expect(wallet.subscriptionId).toBeNull();
-    expect(wallet.monthlyAllowance).toBe(3);
-    expect(wallet.monthlyCreditsRemaining).toBe(2);
+    expect(wallet.plan).toBe("fast_track");
+    expect(wallet.subscriptionId).toBe("subscription_v2");
+    expect(wallet.monthlyAllowance).toBe(0);
+    expect(wallet.monthlyCreditsRemaining).toBe(0);
     expect(wallet.monthlyCycleKey).toBe("2026-10");
     expect(wallet.balance).toBe(12);
-    expect(intents[0].status).toBe("pending");
+    expect(intents[0].status).toBe("activated");
     expect(events.map(event => event.providerEventId)).toEqual(["event_v2_new"]);
-    // Recoverable alert path: one durable owner-alert row, enqueued atomically
-    // with the event receipt, retried by the billing-review-retry sweep.
-    expect(reviewRows).toHaveLength(1);
-    expect(JSON.parse(String(reviewRows[0].payload)).evidence).toMatchObject({ reason: "upgrade_leftover_blocked", eventId: "event_v2_new", subscriptionId: "subscription_v2" });
+    expect(reviewRows).toEqual([]);
   });
 
   it("a renewal on the same subscription needs no hosted page or intent", async () => {

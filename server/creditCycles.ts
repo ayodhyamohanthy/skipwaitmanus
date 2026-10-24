@@ -6,7 +6,7 @@
 import { and, eq } from "drizzle-orm";
 import { planCreditGrants, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { BUCKET_SOURCES } from "../shared/creditLedger";
-import { grantShouldExpire, paidPlanLapsed, planCreditsExpireAt, planCycleAt, planCycleByIndex, planCycleIndexOfKey, walletCycleStart } from "../shared/creditCycles";
+import { freeMonthEnd, grantShouldExpire, paidPlanLapsed, planCreditsExpireAt, planCycleAt, planCycleByIndex, planCycleIndexOfKey, walletCycleStart } from "../shared/creditCycles";
 import { isPaidPlanActive } from "../shared/planEntitlements";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
@@ -77,6 +77,33 @@ export async function openCycleTx(tx: LedgerTx, input: { userId: number; role: W
     else await writeLedgerRow(tx, { userId, role, tokenCount: allowance, kind: "plan_grant", source: BUCKET_SOURCES.cycle, sourceCycleKey: next.key, referenceType: "plan_cycle", referenceId: `${next.key}:${cycleId.slice(0, 24)}`, idempotencyKey, monthlyCreditsAfter: allowance });
   }
   return { monthlyAllowance: allowance, monthlyCreditsRemaining: allowance, monthlyCycleKey: next.key };
+}
+
+/**
+ * D-165 (3): an upgrade from Free carries the open month's unused free credits
+ * into a carry-over grant that ends when their free month would have. They are
+ * spent before paid credits (soonest expiry first) and never become paid
+ * credits. The wallet's free cycle bucket empties either way; a month that has
+ * already ended writes an expiry row for the leftover instead.
+ */
+export async function carryFreeCreditsOnUpgradeTx(tx: LedgerTx, input: { wallet: WalletRow; freeCycleKey: string; subscriptionId: string; now: Date }): Promise<CyclePatch> {
+  const { wallet, freeCycleKey, subscriptionId, now } = input;
+  const { userId, role } = wallet;
+  const leftover = Math.max(0, wallet.monthlyCreditsRemaining);
+  if (leftover > 0) {
+    const carryId = digest("upgrade-carry", freeCycleKey, subscriptionId, userId, role);
+    const monthEnd = freeMonthEnd(freeCycleKey);
+    const referenceId = `${freeCycleKey}:${carryId.slice(0, 24)}`;
+    if (!monthEnd || monthEnd.getTime() <= now.getTime()) {
+      await writeLedgerRow(tx, { userId, role, tokenCount: -leftover, kind: "plan_credit_expiry", source: BUCKET_SOURCES.cycle, sourceCycleKey: freeCycleKey, referenceType: "plan_cycle", referenceId, idempotencyKey: `upgrade-expiry:${carryId}`, monthlyCreditsAfter: 0 });
+    } else {
+      const inserted = await tx.insert(planCreditGrants).values({ userId, role, source: "carryover", grantKey: `upgrade-carry:${carryId}`, planId: wallet.plan, subscriptionId, cycleKey: freeCycleKey, tokenCount: leftover, creditsRemaining: leftover, status: "active", grantedAt: now, expiresAt: monthEnd });
+      const grantId = Number(inserted[0].insertId);
+      await writeLedgerRow(tx, { userId, role, tokenCount: -leftover, kind: "plan_credit_carryover", source: BUCKET_SOURCES.cycle, sourceCycleKey: freeCycleKey, referenceType: "plan_cycle", referenceId, idempotencyKey: `upgrade-carry-out:${carryId}`, monthlyCreditsAfter: 0 });
+      await writeLedgerRow(tx, { userId, role, tokenCount: leftover, kind: "plan_credit_carryover", source: BUCKET_SOURCES.carryover, sourceCycleKey: freeCycleKey, referenceType: "plan_cycle", referenceId: String(grantId), idempotencyKey: `upgrade-carry-in:${grantId}`, creditGrantId: grantId });
+    }
+  }
+  return { monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: freeCycleKey };
 }
 
 /**

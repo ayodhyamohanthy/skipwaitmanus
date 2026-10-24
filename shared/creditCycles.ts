@@ -95,6 +95,17 @@ export function walletCycleStart(wallet: Pick<LedgerWallet, "monthlyCycleKey" | 
   return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
 }
 
+/**
+ * The first instant after the Free month `cycleKey` names, or null for a key
+ * that names no month. Free's monthly credits stop then (D-165 (3): an upgrade
+ * carries them only until their own month would have ended).
+ */
+export function freeMonthEnd(cycleKey: string): Date | null {
+  const match = CYCLE_KEY.exec(cycleKey);
+  if (!match) return null;
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]), 1));
+}
+
 /** A cancelled-at-term-end plan's credits end with the term; a renewing plan's do not. */
 export function termCutoff(wallet: LedgerWallet, now: Date): Date | null {
   return isPaidPlanActive(wallet, now) && wallet.subscriptionStatus === "non_renewing" ? wallet.subscriptionCurrentTermEnd : null;

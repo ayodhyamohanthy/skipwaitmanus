@@ -14,6 +14,8 @@ import { anyPackAvailableForCurrency, refusalBody, startKitPackCheckout, startKi
 import { startV2PackCheckout, startV2PlanCheckout, type V2CheckoutDeps } from "./v2Checkout";
 import { v2PackCheckoutRequestSchema, v2PlanCheckoutRequestSchema } from "../shared/subscriptionManagement";
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
+import { freeMonthEnd } from "../shared/creditCycles";
+import { freeCreditsStayUntilLine } from "../shared/moneyCopy";
 import type { RetiredPlanAlertInput } from "./errorAlerting";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
@@ -56,8 +58,8 @@ type Deps = {
   runAlertOutbox?: () => Promise<unknown>;
   /** Durable provider-event receipt (subscriptionEvents): false on first delivery, true on redelivery. */
   recordWebhookEventReceipt?: (input: { eventId: string; eventType: string; subscriptionId?: string; invoiceId?: string; customerId?: string; amount?: number; currency?: string }) => Promise<{ duplicate: boolean }>;
-  /** Wallet snapshot for the signed-in account+role, for pre-commitment upgrade checks. */
-  getWalletSnapshot?: (userId: number, role: "job_seeker" | "referrer") => Promise<{ plan: string; monthlyCreditsRemaining: number } | null>;
+  /** Wallet snapshot for the signed-in account+role, for pre-commitment upgrade copy. */
+  getWalletSnapshot?: (userId: number, role: "job_seeker" | "referrer") => Promise<{ plan: string; monthlyCreditsRemaining: number; monthlyCycleKey: string } | null>;
   /** Durable receipt for a provider gift event (D-067: receipts only; a claimed gift is parked as plan_retired). */
   recordGiftEvent?: (input: { eventId: string; eventType: string; giftId: string; status: string; receiverEmail?: string; receiverCustomerId?: string; subscriptionId?: string; buyerUserId?: number }) => Promise<{ giftId: string; fulfillmentStatus: string; parked: boolean }>;
   listBuyerGifts?: (buyerUserId: number) => Promise<Array<{ giftId: string; plan: RetiredPlanId | null; currency: string | null; amount: number | null; receiverEmail: string | null; providerStatus: string | null; fulfillmentStatus: string; subscriptionId: string | null; creditedAt: Date | null; createdAt: Date }>>;
@@ -91,6 +93,18 @@ function isReviewResult(value: unknown): value is ReviewResult {
 
 function roleFromBody(value: unknown): TokenRole {
   return value === "referrer" ? "referrer" : "job_seeker";
+}
+
+/**
+ * D-165 (3): the pre-payment line for a Free wallet's unused credits. Absent
+ * when there are none, when the wallet is not Free, or when their month has
+ * already ended (nothing is carried then; the webhook expires the leftover).
+ */
+function freeCreditsLeftoverNotice(wallet: { plan: string; monthlyCreditsRemaining: number; monthlyCycleKey: string } | null, now: Date): string | undefined {
+  if (!wallet || wallet.plan !== "free" || wallet.monthlyCreditsRemaining <= 0) return undefined;
+  const monthEnd = freeMonthEnd(wallet.monthlyCycleKey);
+  if (!monthEnd || monthEnd.getTime() <= now.getTime()) return undefined;
+  return freeCreditsStayUntilLine(wallet.monthlyCreditsRemaining, monthEnd);
 }
 
 function isChargebeeNotConfigured(error: unknown): boolean {
@@ -200,21 +214,11 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const v2Plan = v2PlanCheckoutRequestSchema.safeParse(req.body);
       if (v2Plan.success) {
         if (!deps.createSubscriptionIntent) return res.status(503).json({ error: "Subscription checkout is not configured" });
-        // UNRESOLVED PRODUCT RULE (see db.ts / PR proof state): while the
-        // upgrade-leftover rule has no user-evidenced decision, a Free wallet
-        // with unused credits must not reach payment at all - refused before
-        // any hosted page, intent, or charge. The webhook-side parked
-        // "blocked" status remains only as the recoverable race exception.
-        // Support: nothing was charged; the wallet and its credits are
-        // untouched, so no reconciliation is owed - the owner decides the
-        // leftover rule, then upgrades reopen.
-        if (deps.getWalletSnapshot) {
-          const wallet = await deps.getWalletSnapshot(identity.account.id, v2Plan.data.role);
-          if (wallet && wallet.plan === "free" && wallet.monthlyCreditsRemaining > 0) {
-            record({ actorUserId: identity.account.id, action: "billing.upgrade_leftover_blocked", outcome: "failure", resourceType: "subscription_intent", resourceId: String(identity.account.id), metadata: { stage: "checkout_refused", role: v2Plan.data.role } });
-            return res.status(409).json({ error: "Your account still has unused free credits, and upgrades from Free are paused while upgrade terms are finalized. Nothing has been charged. Please contact support and we will sort it out for you.", code: "upgrade_leftover_rule_unresolved" });
-          }
-        }
+        // D-165 (3): an upgrade from Free proceeds, and the checkout says what
+        // happens to the open month's unused free credits before payment. The
+        // carry itself runs on the webhook-confirmed term (db.ts).
+        const snapshot = deps.getWalletSnapshot ? await deps.getWalletSnapshot(identity.account.id, v2Plan.data.role) : null;
+        const leftoverNotice = freeCreditsLeftoverNotice(snapshot, new Date());
         const origin = publicOutboundOrigin(req);
         const started = await startV2PlanCheckout({
           req,
@@ -226,7 +230,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         if (!started.ok) return res.status(started.status).json(refusalBody(started));
         await deps.createSubscriptionIntent({ hostedPageId: started.checkout.hostedPageId, checkoutIntentId: started.checkoutIntentId, userId: identity.account.id, role: v2Plan.data.role, plan: started.plan, itemPriceId: started.planItemPriceId, amount: started.amount, currency: started.currency, billingPeriod: "monthly", kind: "new" });
         record({ actorUserId: identity.account.id, action: "billing.subscription_checkout_started", outcome: "success", resourceType: "subscription_intent", resourceId: started.checkout.hostedPageId, metadata: { role: v2Plan.data.role, v2Plan: started.plan, v2Rung: started.rung, amount: started.amount, currency: started.currency, billingCountry: v2Plan.data.billingCountry } });
-        return res.json({ checkoutUrl: started.checkout.checkoutUrl, hostedPageId: started.checkout.hostedPageId });
+        return res.json({ checkoutUrl: started.checkout.checkoutUrl, hostedPageId: started.checkout.hostedPageId, ...(leftoverNotice ? { leftoverNotice } : {}) });
       }
       const kitPlan = kitPlanCheckoutRequestSchema.safeParse(req.body);
       if (kitPlan.success) {
@@ -503,16 +507,6 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         console.error("[Chargebee] unlinked kit subscription needs review", { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId, reason: applied.reason });
         record({ action: "billing.unlinked_subscription", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType, reason: applied.reason ?? "unknown", itemPriceId: subscription.itemPriceId } });
         void deps.alertRetiredPlanEvent?.({ eventId: subscription.eventId, eventType: subscription.eventType, reason: "unlinked_subscription", subscriptionId: subscription.subscriptionId, itemPriceId: subscription.itemPriceId }).catch(() => undefined);
-      }
-      // Unresolved v2 upgrade-leftover rule (see db.ts): the event is recorded
-      // and the transition parked as an explicit, recoverable "blocked" - never
-      // a terminal ignored/success. The wallet keeps plan "free" with its
-      // credits; a human resolves by completing the activation or refunding
-      // once the owner decides the leftover rule. It must reach a human.
-      const leftoverBlocked = applied?.status === "blocked" && applied.reason === "upgrade_leftover_rule_unresolved";
-      if (leftoverBlocked) {
-        console.error("[Chargebee] v2 upgrade with leftover Free credits blocked pending product decision", { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId });
-        record({ action: "billing.upgrade_leftover_blocked", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType, stage: "webhook_parked" } });
       }
       if (applied?.status !== "duplicate" && (retired || unsupported)) {
         const reason = retired ? PLAN_RETIRED_CODE : "unsupported_plan";

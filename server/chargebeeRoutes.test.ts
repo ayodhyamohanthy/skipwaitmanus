@@ -65,26 +65,28 @@ describe("Chargebee checkout readiness", () => {
   });
 });
 
-  it("refuses a v2 plan checkout before commitment when the Free wallet still has credits", async () => {
-    // UNRESOLVED PRODUCT RULE (see db.ts / PR proof state): no hosted page, no
-    // intent, no charge while the upgrade-leftover rule is undecided.
+  it("opens a v2 plan checkout with unused Free credits and quotes their carry-over line (D-165 (3))", async () => {
+    // D-165 (3): the upgrade proceeds; the unused free credits move into a
+    // carry-over grant on the webhook-confirmed term, so the pre-payment
+    // screen must say where they go, in the shared copy.
     vi.stubEnv("PLAN_FAMILY_V2", "true");
     const app = express(); app.use(express.json());
-    const createSubscriptionIntent = vi.fn();
-    const createBundleCheckout = vi.fn();
+    const createSubscriptionIntent = vi.fn(async () => undefined);
+    const createBundleCheckout = vi.fn(async () => ({ hostedPageId: "hp_v2", checkoutUrl: "https://checkout.example/hp_v2" }));
+    const freeMonth = `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`;
     registerChargebeeRoutes(app, {
       resolveIdentity: async () => ({ account: { id: 7 } }),
       createPaymentIntent: vi.fn(), fulfillPayment: vi.fn(),
       createSubscriptionIntent,
-      getWalletSnapshot: async () => ({ plan: "free", monthlyCreditsRemaining: 2 }),
-      v2Checkout: { createBundleCheckout },
+      getWalletSnapshot: async () => ({ plan: "free", monthlyCreditsRemaining: 2, monthlyCycleKey: freeMonth }),
+      v2Checkout: { isAvailable: async () => true, createBundleCheckout, newCheckoutIntentId: () => "intent_v2_test" },
     });
     const response = await request(app).post("/api/chargebee/subscription-checkout").send({ v2Plan: "fast_track", v2Rung: 0, currency: "INR", billingCountry: "IN", role: "job_seeker" });
-    expect(response.status).toBe(409);
-    expect(response.body.code).toBe("upgrade_leftover_rule_unresolved");
-    expect(response.body.error).toContain("Nothing has been charged");
-    expect(createSubscriptionIntent).not.toHaveBeenCalled();
-    expect(createBundleCheckout).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(response.body.checkoutUrl).toBe("https://checkout.example/hp_v2");
+    expect(response.body.leftoverNotice).toMatch(/^Your 2 free credits stay until \d{1,2} [A-Z][a-z]{2} \d{4}\.$/);
+    expect(createSubscriptionIntent).toHaveBeenCalled();
+    expect(createBundleCheckout).toHaveBeenCalled();
   });
 
   it("allows a v2 plan checkout when the Free wallet has no credits left", async () => {
@@ -96,12 +98,13 @@ describe("Chargebee checkout readiness", () => {
       resolveIdentity: async () => ({ account: { id: 7 } }),
       createPaymentIntent: vi.fn(), fulfillPayment: vi.fn(),
       createSubscriptionIntent,
-      getWalletSnapshot: async () => ({ plan: "free", monthlyCreditsRemaining: 0 }),
+      getWalletSnapshot: async () => ({ plan: "free", monthlyCreditsRemaining: 0, monthlyCycleKey: "2026-10" }),
       v2Checkout: { isAvailable: async () => true, createBundleCheckout, newCheckoutIntentId: () => "intent_v2_test" },
     });
     const response = await request(app).post("/api/chargebee/subscription-checkout").send({ v2Plan: "fast_track", v2Rung: 0, currency: "INR", billingCountry: "IN", role: "job_seeker" });
     expect(response.status).toBe(200);
     expect(response.body.checkoutUrl).toBe("https://checkout.example/hp_v2");
+    expect(response.body.leftoverNotice).toBeUndefined();
     expect(createSubscriptionIntent).toHaveBeenCalled();
   });
 
