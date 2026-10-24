@@ -105,6 +105,34 @@
    ]
   },
   {
+   "id": "POSTMERGE-oct22-fixes",
+   "title": "Fix the four Oct 22 post-merge findings: held-ask repricing guard, stale-sample window, catalog-price tests, catalog-composed pack copy (D-166)",
+   "row": "D-166",
+   "packet": "docs/plans/POSTMERGE-oct22-fixes.md",
+   "tier": 1,
+   "lane": "audit",
+   "branch": "agent/queue/postmerge-oct22-fixes",
+   "status": "todo",
+   "dependsOn": [
+      "D-048-fix-post-copy",
+      "D-048-fix-landing-flash-snapshot-v2"
+   ],
+   "note": "Findings from docs/plans/POSTMERGE-oct22-findings.md (#619): P1 #482 preserve creation-time flat price for waiting asks created flag-off (server/db.ts + regression test); P2 #506 add the 7-day lower bound to the stale-checkout sample query (server/dailyMoneyCheck.ts + test); P2 #478 rendered-page tests asserting catalog-derived prices (3 plans test files); P2 #534 compose pack copy from shared/planCatalog.ts (Pricing.tsx, landingContent.ts, policyPages.test.tsx). Fix before any ASK_LEVEL_COST activation. No flags, no workflow edits.",
+   "owns": [
+      "server/db.ts",
+      "server/db.askCostStored.test.ts",
+      "server/dailyMoneyCheck.ts",
+      "server/dailyMoneyCheck.test.ts",
+      "client/src/pages/plans.kit.test.tsx",
+      "client/src/pages/plans.paymentRecovery.test.tsx",
+      "client/src/pages/plans.paymentRoute.test.tsx",
+      "client/src/pages/Pricing.tsx",
+      "shared/landingContent.ts",
+      "shared/planCatalog.ts",
+      "client/src/pages/policyPages.test.tsx"
+   ]
+  },
+  {
    "id": "PROCESS-queue-gate",
    "title": "CI queue gate: a PR whose branch matches no queue row fails (D-166)",
    "row": "D-166",
