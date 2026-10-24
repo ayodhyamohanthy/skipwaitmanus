@@ -3,6 +3,11 @@ import { ArrowRight, Tag } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { PolicyPageShell, PolicySection } from "@/components/PolicyPageShell";
 import { ASK_COST_SENTENCE, CREDIT_RULE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { firstPackClaim } from "@shared/planCatalog";
+
+// POSTMERGE-oct22 #534: the first-pack claim comes from the catalog the server sells, never from copy here.
+const FIRST_PACK_INR = firstPackClaim("INR") ?? "our smallest pack";
+const FIRST_PACK_USD = firstPackClaim("USD") ?? "our smallest pack";
 
 /** /pricing — public price list. Mirrors the checkout prices; no sign-in. */
 export default function Pricing() {
@@ -20,7 +25,7 @@ export default function Pricing() {
     </PolicySection>
     <PolicySection number="02" title="Extra credits (one-time)">
       <ul>
-        <li>Credits are sold in one-time packs: from <strong>₹99 for 2 credits</strong> (India) or <strong>$5 for 5 credits</strong> (rest of the world). Larger packs cost less per credit.</li>
+        <li>Credits are sold in one-time packs: from <strong>{FIRST_PACK_INR}</strong> (India) or <strong>{FIRST_PACK_USD}</strong> (rest of the world). Larger packs cost less per credit.</li>
         <li>Purchased credits never expire. {CREDIT_RULE}</li>
       </ul>
     </PolicySection>

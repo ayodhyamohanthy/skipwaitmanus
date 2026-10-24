@@ -294,21 +294,23 @@ export const stageHolderOf = (lock, id) => stageMarkers(lock, id).at(-1)?.who ??
  * The report that stands for each task: the newest (reports arrive newest first, log order, never
  * sorted by an agent's clock), except that a blocked report stands until a newer report on the task
  * from another session, or its own session's newer green or landed report, clears it (D-200).
+ * A standing block carries the reports that came after it, oldest first, under `newer`, so the board
+ * and the unblock step can show them (D-162); those reports never clear it by themselves.
  */
 const latestReports = reports => {
-  const latest = new Map(), settled = new Set(), newer = new Map();
+  const latest = new Map(), settled = new Set(), afterOf = new Map();
   for (const r of reports) {
     if (settled.has(r.id)) continue;
-    const after = newer.get(r.id) ?? [];
+    const after = afterOf.get(r.id) ?? [];
     if (r.status === "blocked") {
       const cleared = after.some(n => n.who !== r.who || n.status === "green" || n.status === "landed");
-      if (!cleared) latest.set(r.id, r);
+      if (!cleared) latest.set(r.id, { ...r, newer: [...after].reverse() });
       settled.add(r.id);
       continue;
     }
-    if (!latest.has(r.id)) latest.set(r.id, r);
+    if (!latest.has(r.id)) latest.set(r.id, { ...r, newer: [] });
     after.push(r);
-    newer.set(r.id, after);
+    afterOf.set(r.id, after);
   }
   return latest;
 };
