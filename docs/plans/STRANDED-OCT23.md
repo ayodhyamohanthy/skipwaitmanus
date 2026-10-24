@@ -78,7 +78,7 @@ Instinct built these, so every review and landing goes to a model other than Ins
 
 ## Status
 These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines go here (D-134).
-- REGISTER-520: todo.
+- REGISTER-520: blocked — local `pnpm check` fails with TS2688 (missing `node`, `vite/client`, `vite-plugin-pwa/client` type definitions) and TS5101 (`baseUrl` deprecated); needs project-local dependencies/toolchain restored before verification.
 - D-155-share-paid-gate: todo (PR #527 open, CI green on `af6dd9cc`, conflicts with `main`).
 - D-132-catalog-record: todo (PR #528 open, conflicts with `main`).
 - D-132-item3: todo; waits for D-132-audit.
