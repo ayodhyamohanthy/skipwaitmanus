@@ -55,6 +55,8 @@ D-084: GO-LIVE-1 (#351) put passes and Keep warm on sale; the P0 switch took the
 6. With `PASS_SALES_ENABLED` mocked on, the catalog and checkout sell a live pass term (the GO-LIVE-1 tests already cover the off state).
 
 ## 7. Definition of done
+
+- Setup: in a fresh worktree run `pnpm install` before the first `pnpm check`; missing local dependencies fail as TS2688/TS5101 (REGISTER-520, Oct 24).
 - [ ] Gate (green on `a93d3f0f`: `pnpm check`, design-token-audit, lint-deploy-migrations, check-deploy-triggers, full vitest 433 passed / 3 skipped, `pnpm build`); draft PR #359; independent review round 1 (opencode · 78db) recorded **findings** — all six fixed red-first on `agent/queue/go-live-passes` (finding 3 as a ruling-6 amendment raised to the CEO; findings 4–6 in the same push), re-review next (Tier 1).
 - [ ] Test-site evidence in the row (§4.5), then the switch commit, then live checks: API and web CONVERGED; `/plans` at 1280 and 390 with passes on sale.
 - [x] Docs: BUGFREE 4.18 legs for pass activation and recovery (first live run pending the release); runbook §7 (a paid pass whose webhook never arrived: recovery by checkout page, then the admin match); `AGENTS.md` living-map payments row; D-084 sync cell; row 1. (D-046 sync cell: updated when passes go back on sale.)

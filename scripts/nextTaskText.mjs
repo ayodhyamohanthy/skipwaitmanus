@@ -14,7 +14,7 @@ const land = [
 
 const head = (title, lines) => [`NEXT: ${title}`, ...lines, ""].join("\n");
 const steps = list => list.map((s, i) => `${i + 1}. ${s}`).join("\n");
-const worktree = branch => `Work in your own worktree, never by switching branches in a shared checkout: git fetch origin && git worktree add ../skipwaitmanus-wt/${slugOf(branch)} ${branch} (if it already exists, use it).`;
+const worktree = branch => `Work in your own worktree, never by switching branches in a shared checkout: git fetch origin && git worktree add ../skipwaitmanus-wt/${slugOf(branch)} ${branch} (if it already exists, use it). Then run \`pnpm install\` before your first \`pnpm check\`: a fresh worktree has no dependencies, and missing ones fail as TS2688/TS5101 (REGISTER-520, Oct 24).`;
 /** D-085: origin is the only place other agents can see; a claim nobody pushes to for 2 hours is free again. */
 const keepAlive = who => `Push your branch after every commit. Before any step that may take over an hour without a commit (the full gate, a long test run), run \`${CMD} --heartbeat --as "${who}"\`: a claim nobody has pushed to for 2 hours is handed to the next agent (D-085). Before you stop for any reason, commit (a WIP commit is fine) and push.`;
 const unclear = "If anything is unclear, a test fails for a reason the packet does not give, or the call is the owner's: stop, write the question in your status line (your §3b row, or your line in the packet's Status section when the row is shared), push the branch and ask the owner. Never guess about money, sign-in, identity or privacy.";
@@ -70,7 +70,7 @@ const reviewSteps = (pick, who) => steps([
 ]);
 
 const fixSteps = (pick, who) => steps([
-  `git fetch origin && git worktree add ../skipwaitmanus-wt/${slugOf(pick.work)}-fix ${pick.work} (if it already exists, use it)`,
+  `git fetch origin && git worktree add ../skipwaitmanus-wt/${slugOf(pick.work)}-fix ${pick.work} (if it already exists, use it). Then run \`pnpm install\` before your first \`pnpm check\`: a fresh worktree has no dependencies, and missing ones fail as TS2688/TS5101 (REGISTER-520, Oct 24).`,
   `Read docs/BRIEF.md, ${pick.task.packet} and the findings on the pull request. Fix each one red-first on ${pick.work}, then re-run the full gate merged with the latest origin/main and push.`,
   keepAlive(who),
   `Run \`${CMD} --fixed --task ${pick.task.id} --as "${who}"\` once every fix is pushed, so the next run hands it back for review. Do not land it.`,
@@ -103,7 +103,7 @@ const landSteps = (pick, who) => steps([
 
 // A claimed lock always exists on origin (the claim pushed it), so the worktree tracks it; branching from main would lose the claim marker.
 const architectSteps = (pick, who, claimed) => steps([
-  `git fetch origin && git worktree add ../skipwaitmanus-wt/architect-${slugOf(pick.lock)} ${pick.lockExists || claimed ? pick.lock : `-b ${pick.lock} origin/main`} (if it already exists, use it). Never force-push this branch: its first commit is your claim.`,
+  `git fetch origin && git worktree add ../skipwaitmanus-wt/architect-${slugOf(pick.lock)} ${pick.lockExists || claimed ? pick.lock : `-b ${pick.lock} origin/main`} (if it already exists, use it). Then run \`pnpm install\` before your first \`pnpm check\`: a fresh worktree has no dependencies, and missing ones fail as TS2688/TS5101 (REGISTER-520, Oct 24). Never force-push this branch: its first commit is your claim.`,
   `Read the §3b row "${pick.task.row}", the task's note in docs/plans/assignments.json and every decision it names in docs/DECISIONS.md.`,
   "Write the packet in docs/plans/ exactly as docs/DELEGATION.md describes (goal, binding rules quoted, current behaviour verified in code with file:line, rulings, files in and out of scope, red-first tests, definition of done, review checklist, stop-and-ask). Claude Code records its rulings as register entries marked \"decided under D-074\"; any other agent makes no ruling the decisions do not already make: a real choice they leave open on money, sign-in, identity, privacy or prices goes to the CEO as `--report blocked` with the question, and any other gap gets a stated, changeable assumption in the packet (D-109).",
   `In the same pull request update docs/plans/assignments.json: a packet-only task (its note says so: its work is the rows it adds) gets "status": "done" and its rows are added exactly as its packet's list gives them (the D-048 split, or the packet the CEO wrote); any other task gets its "packet" and "status": "todo", so the next \`${CMD}\` hands it to a builder (D-134).`,
@@ -113,7 +113,7 @@ const architectSteps = (pick, who, claimed) => steps([
 
 // D-085: the fix is committed on the lock branch itself, so every commit keeps the lock alive.
 const fixMainSteps = (pick, who) => steps([
-  `Work on the lock branch itself: git fetch origin && git worktree add ../skipwaitmanus-wt/${slugOf(pick.lock)} ${pick.lock} (if it already exists, use it). Never force-push it: its first commit is your claim.`,
+  `Work on the lock branch itself: git fetch origin && git worktree add ../skipwaitmanus-wt/${slugOf(pick.lock)} ${pick.lock} (if it already exists, use it). Then run \`pnpm install\` before your first \`pnpm check\`: a fresh worktree has no dependencies, and missing ones fail as TS2688/TS5101 (REGISTER-520, Oct 24). Never force-push it: its first commit is your claim.`,
   "Find the commit that turned main red (the run above and `gh run list --branch main --workflow CI`).",
   `Fix it red-first on ${pick.lock}, or revert that commit if the fix is not obvious. Nothing else: no other change rides along.`,
   keepAlive(who),
