@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, skipwait-mac]
     steps:
       - uses: actions/checkout@v4
         with:

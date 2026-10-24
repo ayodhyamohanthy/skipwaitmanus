@@ -13,7 +13,7 @@ concurrency:
 jobs:
   check:
     name: typecheck
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, skipwait-mac]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -46,7 +46,7 @@ jobs:
 
   test:
     name: unit + component + route tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, skipwait-mac]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -65,7 +65,7 @@ jobs:
 
   build:
     name: production build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, skipwait-mac]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
