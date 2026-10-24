@@ -14,7 +14,6 @@ Migrate every user-facing screen, landing through platform, to the goal-first pa
 | Home (seeker) | "Get referred." | contextual - pending confirmation: "I got the referral email" | search field (company/function/level); free-credit line; 3-step how-it-goes |
 | Company (e.g. Quillmint) | "Get referred at Quillmint." | "Ask for a referral" (role selected, cost in line) | honest availability (verified employees, answer time, % answered); role rows with level + credit cost; "Claim this company" link |
 | Requests / My asks | "Get your asks answered." | the ask needing action: "I got the referral email" | ask list with dot+text status (Sent/Accepted ink, Referred emerald, waiting amber), date + credits in mono; ghost "New ask" |
-| Referral queue | "Help the right person get referred." | "Read next ask" before selection; selected ask: "Accept & connect" in its bordered "Your next step" decision block | private pass as ghost; official-process attestation; locked identity and document count; keyboard help; retryable preview and verification errors; no credit balance or referral promise |
 | Plans | "Choose your reach." | plan card commits ("Start free" / "Start Fast Track" / "Apply") | credits dropdown inside each plan (D-115 steps), this-month total, fair rules footer |
 
 The next-step block is contextual: it shows the single most important pending action for that user on that screen. When nothing is pending, the block collapses to the screen's primary action (search on Home, ask on Company).
