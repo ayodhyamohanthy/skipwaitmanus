@@ -140,7 +140,7 @@ async function summarizeStaleCheckouts(olderThan: Date, newerThan?: Date): Promi
 
 /** The oldest few in-window checkouts by id. `newerThan` keeps the sample inside the same 1-7 day window the
  * summary counts, so an aged-out row (its own line, unverified at the provider) is never named here. */
-async function listStaleCheckouts(olderThan: Date, limit: number, newerThan?: Date): Promise<StaleCheckoutRow[]> {
+export async function listStaleCheckouts(olderThan: Date, limit: number, newerThan?: Date): Promise<StaleCheckoutRow[]> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
   return db.select({ id: paymentFulfillments.id, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, createdAt: paymentFulfillments.createdAt })
     .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan), ...(newerThan ? [gte(paymentFulfillments.createdAt, newerThan)] : []), or(isNull(paymentFulfillments.reconciliationReason), ne(paymentFulfillments.reconciliationReason, ABANDONED_CHECKOUT_REASON))))
