@@ -32,7 +32,7 @@ Numbered, testable rules. Every rule maps to at least one test in §7.
 - **Out of scope (never edit here):** paths a model might be tempted to touch.
 
 ## 6. Steps (one commit each)
-For each step: purpose, files, functions, the change, the focused tests to run, and the commit message. Each commit leaves `pnpm check` and its focused tests green.
+For each step: purpose, files, functions, the change, the focused tests to run, and the commit message. Each commit leaves `pnpm check` and its focused tests green. In a fresh worktree or clone, run `pnpm install` before the first `pnpm check`; missing local dependencies fail as TS2688/TS5101 (REGISTER-520, Oct 24).
 
 ## 7. Tests to write first (red before the fix)
 For each test: file, name, setup, exact assertions, and why it fails on today's code. Then the **controls**: existing behaviour that must stay green. Never weaken, skip or delete an existing assertion to make a test pass.

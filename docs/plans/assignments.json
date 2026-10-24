@@ -753,7 +753,7 @@
    "tier": 2,
    "lane": "d048-routes",
    "branch": "agent/queue/d048-f-routes",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [
     "D-048-F-flags"
    ],
@@ -762,7 +762,8 @@
     "client/src/metadataAndRouteLoading.test.ts",
     "client/src/appSessionContinuity.test.ts",
     "scripts/seoRouteCoverage.test.ts"
-   ]
+   ],
+   "note": "PR #633: Router() reformatted to one <Route> per line (95 route elements, same paths/components/order; JSX body whitespace-identical before and after). The /notifications redirect stays inline so server/notificationCenterUi.test.ts (not an owned path, D-134 byte-identical rule) is untouched; metadataAndRouteLoading.test.ts's Suspense pin follows the reformat. Full quality gate green on 17cab0c4 merged with main; focused 16/16 green on the final head."
   },
   {
    "id": "D-048-F-goal-check",
