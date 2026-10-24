@@ -73,9 +73,9 @@
    "tier": 2,
    "lane": "picker",
    "branch": "agent/queue/picker-board-newer-report",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
-   "note": "D-162: on Oct 23 the board kept workbuddy · b0eb's 02:14 blocked report on D-090-BYOR and hid the three green reports after it; the first (a2fdbc3e) named the owner's waiver, the next two reported build progress. The CEO ruled from the stale report (D-154) and the owner had to restate his word. latestReports keeps the blocked report standing (unchanged) and also returns every non-CEO report after it; the board line and the printed unblock step show them."
+   "note": "D-162: on Oct 23 the board kept workbuddy · b0eb's 02:14 blocked report on D-090-BYOR and hid the three green reports after it; the first (a2fdbc3e) named the owner's waiver, the next two reported build progress. The CEO ruled from the stale report (D-154) and the owner had to restate his word. latestReports keeps D-200's clearing rule and returns every report after a standing blocked one in newer; the board line and the printed unblock step show them. Display only: no hand-out decision changes."
   },
   {
    "id": "PICKER-review-wording",
@@ -190,7 +190,7 @@
    "tier": 1,
    "lane": "audit",
    "branch": "agent/queue/postmerge-oct22-fixes",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [
     "D-048-fix-post-copy",
     "D-048-fix-landing-flash-snapshot-v2"

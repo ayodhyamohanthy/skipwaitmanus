@@ -1,8 +1,8 @@
 // D-065 daily money check: the job reconciles, reports, and never writes.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
+import { paymentFulfillments, referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, REFERRAL_TIMERS_SINCE } from "../shared/referral";
-import { runMoneyCheckNow, createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
+import { runMoneyCheckNow, createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, listStaleCheckouts, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
 import { DAY_MS, LINK_OWNER, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -122,6 +122,27 @@ describe("daily-money-check (D-065)", () => {
     expect(sent[0]!.text).toContain("stale checkouts: 1221 unpaid checkout page(s) from 3 account(s) still pending after a day, oldest 2026-09-23T03:02:28.000Z");
     expect(sent[0]!.text).toContain("none credited, no money moved (oldest ids: #41)");
     expect(sent[0]!.text).not.toContain("stale checkout: payment");
+  });
+
+  it("names only in-window checkouts in the sample, never an aged-out one", async () => {
+    // The mock answers like the query: it keeps rows inside the window it is given. A missing
+    // lower bound therefore leaks the aged-out row into the sample, which is the finding.
+    const seen: Array<{ older: number; newer: number | null }> = [];
+    const { deps, sent } = makeDeps({
+      summarizeStaleCheckouts: vi.fn(async () => ({ total: 1, users: 1, oldest: new Date(NOW.getTime() - 2 * DAY), newest: new Date(NOW.getTime() - 2 * DAY) })),
+      listStaleCheckouts: vi.fn(async (older: Date, limit: number, newer?: Date) => {
+        seen.push({ older: older.getTime(), newer: newer ? newer.getTime() : null });
+        const all = [
+          { id: 41, amount: 9900, currency: "INR", createdAt: new Date(NOW.getTime() - 2 * DAY) },
+          { id: 42, amount: 9900, currency: "INR", createdAt: new Date(NOW.getTime() - 9 * DAY) },
+        ];
+        return all.filter(row => row.createdAt < older && (!newer || row.createdAt >= newer)).slice(0, limit);
+      }),
+    });
+    await runJob(deps);
+    expect(seen[0]).toEqual({ older: NOW.getTime() - DAY, newer: NOW.getTime() - 7 * DAY });
+    expect(sent[0]!.text).toContain("oldest ids: #41");
+    expect(sent[0]!.text).not.toContain("#42");
   });
 
   it("lists checkouts older than the reconcile window as their own unverified finding, never as never paid", async () => {
@@ -541,6 +562,83 @@ describe("refund_after_pickup over the in-memory database", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]!.text).toContain("refund_after_pickup: ledger row #61 returned a credit for ask #501 (withdrawal_refund) although the ask's latest pickup was a claim");
     expect(sent[0]!.text).not.toContain("@");
+  });
+});
+
+/*
+ * P2 (#506): `listStaleCheckouts` query lower bound.
+ * Proves the real query's WHERE clause enforces the 7-day lower bound (`gte(paymentFulfillments.createdAt, newerThan)`)
+ * against drizzle so an aged-out row (>7 days old) is never included in the sample.
+ */
+describe("listStaleCheckouts over the in-memory database", () => {
+  beforeEach(() => {
+    vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+    mocks.createPool.mockResolvedValue({});
+    mocks.drizzle.mockReturnValue(store.db);
+  });
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  const staleCheckout = (id: number, createdAt: Date, over: Record<string, unknown> = {}) => ({
+    id,
+    provider: "chargebee",
+    providerEventId: `evt_${id}`,
+    providerInvoiceId: null,
+    providerHostedPageId: null,
+    checkoutIntentId: null,
+    userId: 1,
+    role: "job_seeker",
+    tokenCount: 1,
+    amount: 9900,
+    currency: "INR",
+    status: "pending",
+    reconciliationReason: null,
+    lastCheckedAt: null,
+    creditedAt: null,
+    createdAt,
+    ...over,
+  });
+
+  it("names only in-window checkouts in the sample, filtering out aged-out ones via the real query lower bound", async () => {
+    const staleCutoff = new Date(NOW.getTime() - DAY);
+    const agedOutCutoff = new Date(NOW.getTime() - 7 * DAY);
+
+    store.reset([
+      [paymentFulfillments, [
+        staleCheckout(41, new Date(NOW.getTime() - 2 * DAY)),
+        staleCheckout(42, new Date(NOW.getTime() - 9 * DAY)),
+      ]],
+    ]);
+
+    // The real query with lower bound filters out #42 (9 days old fails gte lower bound)
+    const sampled = await listStaleCheckouts(staleCutoff, 3, agedOutCutoff);
+    expect(sampled.map(row => row.id)).toEqual([41]);
+
+    // Without lower bound, #42 leaks into the sample
+    const allOlder = await listStaleCheckouts(staleCutoff, 3);
+    expect(allOlder.map(row => row.id)).toEqual([41, 42]);
+  });
+
+  it("integrates with createDailyMoneyCheck to include only in-window ids in the alert", async () => {
+    store.reset([
+      [paymentFulfillments, [
+        staleCheckout(41, new Date(NOW.getTime() - 2 * DAY)),
+        staleCheckout(42, new Date(NOW.getTime() - 9 * DAY)),
+      ]],
+    ]);
+
+    const { deps, sent } = makeDeps({
+      summarizeStaleCheckouts: vi.fn(async (_older: Date, newer?: Date) => {
+        return newer
+          ? { total: 1, users: 1, oldest: new Date(NOW.getTime() - 2 * DAY), newest: new Date(NOW.getTime() - 2 * DAY) }
+          : { total: 1, users: 1, oldest: new Date(NOW.getTime() - 9 * DAY), newest: new Date(NOW.getTime() - 9 * DAY) };
+      }),
+      listStaleCheckouts, // Real query function against in-memory drizzle!
+    });
+
+    await createDailyMoneyCheck(deps)({ nowMs: NOW.getTime(), windowKey: "2026-10-19T02:00Z" });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("oldest ids: #41");
+    expect(sent[0]!.text).not.toContain("#42");
   });
 });
 
