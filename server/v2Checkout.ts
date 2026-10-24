@@ -19,13 +19,16 @@ import { resolveItemPrice, type CatalogPrice } from "../shared/billingCatalog";
 import { createBundleCheckout, createPackCheckout, type CheckoutCustomer, type HostedPageResult } from "./chargebeeSubscriptionApi";
 import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
 
+type CheckoutCredentials = NonNullable<AvailabilityDeps["credentials"]>;
+
 export type V2CheckoutDeps = {
   credentials?: (req: Request) => AvailabilityDeps["credentials"];
   isAvailable?: (req: Request, price: CatalogPrice) => boolean | Promise<boolean>;
   lookup?: AvailabilityDeps["lookup"];
   probeTimeoutMs?: number;
-  createBundleCheckout?: typeof createBundleCheckout;
-  createPackCheckout?: typeof createPackCheckout;
+  // Test seams: a fake may be consulted before provider credentials resolve.
+  createPackCheckout?: (credentials: CheckoutCredentials | null, input: Parameters<typeof createPackCheckout>[1]) => ReturnType<typeof createPackCheckout>;
+  createBundleCheckout?: (credentials: CheckoutCredentials | null, input: Parameters<typeof createBundleCheckout>[1]) => ReturnType<typeof createBundleCheckout>;
   newCheckoutIntentId?: () => string;
 };
 
@@ -58,18 +61,23 @@ async function availabilityOf(req: Request, itemPriceId: string, deps: V2Checkou
 export async function startV2PackCheckout(input: { req: Request; request: V2PackCheckoutRequest; customer: CheckoutCustomer; urls: { redirectUrl: string; cancelUrl: string }; deps?: V2CheckoutDeps }): Promise<V2PackCheckout | V2CheckoutRefusal> {
   if (!planFamilyV2Enabled()) return flagOff;
   const deps = input.deps ?? {};
-  const currency = input.request.billingCountry === "IN" ? "INR" : "USD";
+  const currency: "INR" | "USD" = input.request.billingCountry === "IN" ? "INR" : "USD";
   const itemPriceId = packItemPriceId(input.request.v2Rung, currency);
   const parsed = parseV2ItemPriceId(itemPriceId);
-  if (!parsed) return { ok: false, status: 400, error: "That credit pack is not available for this billing route" };
+  if (parsed?.kind !== "pack") return { ok: false, status: 400, error: "That credit pack is not available for this billing route" };
   const credentials = credentialsFor(input.req, deps);
-  if (!credentials && !deps.createPackCheckout) return notConfigured;
+  const createCheckout = deps.createPackCheckout;
+  if (!credentials && !createCheckout) return notConfigured;
   const verdict = await availabilityOf(input.req, itemPriceId, deps);
   // The provider did not answer: that is an outage, not a price that is missing.
   if (verdict === "unknown") return notConfigured;
   if (verdict !== "available") return { ok: false, status: 409, code: NOT_AVAILABLE_CODE, error: `The ${input.request.v2Rung}-credit pack is not on sale yet. Nothing has been charged.` };
   const checkoutIntentId = (deps.newCheckoutIntentId ?? randomUUID)();
-  const checkout = await (deps.createPackCheckout ?? createPackCheckout)(credentials!, { ...input.customer, itemPriceId, currency, checkoutIntentId, redirectUrl: input.urls.redirectUrl, cancelUrl: input.urls.cancelUrl });
+  const checkoutInput = { ...input.customer, itemPriceId, currency, checkoutIntentId, redirectUrl: input.urls.redirectUrl, cancelUrl: input.urls.cancelUrl };
+  let checkout: HostedPageResult;
+  if (createCheckout) checkout = await createCheckout(credentials, checkoutInput);
+  else if (credentials) checkout = await createPackCheckout(credentials, checkoutInput);
+  else return notConfigured;
   return { ok: true, credits: input.request.v2Rung, amount: parsed.amount, currency, itemPriceId, checkoutIntentId, checkout };
 }
 
@@ -83,16 +91,28 @@ export async function startV2PlanCheckout(input: { req: Request; request: V2Plan
   const currency = input.request.billingCountry === "IN" ? "INR" : "USD";
   const planId = planItemPriceId(plan.id, currency);
   const creditsId = input.request.v2Rung === 0 ? undefined : planCreditsItemPriceId(input.request.v2Rung, currency);
+  const notOnSale: V2CheckoutRefusal = { ok: false, status: 409, code: NOT_AVAILABLE_CODE, error: `${plan.label} is not on sale yet. Nothing has been charged.` };
+  const planRef = parseV2ItemPriceId(planId);
+  if (planRef?.kind !== "plan") return notOnSale;
+  let creditsAmount = 0;
+  if (creditsId) {
+    const creditsRef = parseV2ItemPriceId(creditsId);
+    if (creditsRef?.kind !== "planCredits") return notOnSale;
+    creditsAmount = creditsRef.amount;
+  }
   const credentials = credentialsFor(input.req, deps);
-  if (!credentials && !deps.createBundleCheckout) return notConfigured;
+  const createCheckout = deps.createBundleCheckout;
+  if (!credentials && !createCheckout) return notConfigured;
   for (const itemPriceId of creditsId ? [planId, creditsId] : [planId]) {
     const verdict = await availabilityOf(input.req, itemPriceId, deps);
     if (verdict === "unknown") return notConfigured;
-    if (verdict !== "available") return { ok: false, status: 409, code: NOT_AVAILABLE_CODE, error: `${plan.label} is not on sale yet. Nothing has been charged.` };
+    if (verdict !== "available") return notOnSale;
   }
   const checkoutIntentId = (deps.newCheckoutIntentId ?? randomUUID)();
-  const checkout = await (deps.createBundleCheckout ?? createBundleCheckout)(credentials!, { ...input.customer, planItemPriceId: planId, creditsItemPriceId: creditsId, checkoutIntentId, redirectUrl: input.urls.redirectUrl, cancelUrl: input.urls.cancelUrl });
-  const planAmount = parseV2ItemPriceId(planId)!.amount;
-  const creditsAmount = creditsId ? parseV2ItemPriceId(creditsId)!.amount : 0;
-  return { ok: true, plan: plan.id as "fast_track" | "insider", rung: input.request.v2Rung, amount: planAmount + creditsAmount, currency, planItemPriceId: planId, creditsItemPriceId: creditsId, checkoutIntentId, checkout };
+  const checkoutInput = { ...input.customer, planItemPriceId: planId, creditsItemPriceId: creditsId, checkoutIntentId, redirectUrl: input.urls.redirectUrl, cancelUrl: input.urls.cancelUrl };
+  let checkout: HostedPageResult;
+  if (createCheckout) checkout = await createCheckout(credentials, checkoutInput);
+  else if (credentials) checkout = await createBundleCheckout(credentials, checkoutInput);
+  else return notConfigured;
+  return { ok: true, plan: input.request.v2Plan, rung: input.request.v2Rung, amount: planRef.amount + creditsAmount, currency, planItemPriceId: planId, creditsItemPriceId: creditsId, checkoutIntentId, checkout };
 }

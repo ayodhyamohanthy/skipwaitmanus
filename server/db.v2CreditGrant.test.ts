@@ -136,6 +136,14 @@ describe("D-132 grantV2PaidCredits", () => {
     expect(activityLogs.some(row => row.action === "billing.payment_amount_mismatch")).toBe(true);
   });
 
+  it("an invoice in a currency the frozen ladder cannot price parks for review, never credits", async () => {
+    const result = await grantV2PaidCredits({ eventId: "ev_c1", invoiceId: "inv_c1", subscriptionId: "sub_v2_1", planFamily: "fast_track", rung: 25, amount: 162_400, currency: "EUR" });
+    expect(result).toMatchObject({ status: "requires_review", reason: "checkout_amount_mismatch", expectedAmount: null });
+    expect(wallets[0].balance).toBe(12);
+    expect(txns).toHaveLength(0);
+    expect(fulfillments[0]).toMatchObject({ status: "requires_review", reconciliationReason: "checkout_amount_mismatch", currency: "EUR" });
+  });
+
   it("a bare invoice email never names the buyer: nothing is credited, it waits for review", async () => {
     // Review F2: users.email is nullable, not unique and free-typed at the
     // provider's page, so a matching address is not proof of identity.

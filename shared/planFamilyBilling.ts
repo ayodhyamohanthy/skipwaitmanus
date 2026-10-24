@@ -54,22 +54,38 @@ function planAmountFor(planId: PlanFamilyId, currency: BillingCurrency): number 
 
 const ID_PATTERN = /^skipwait_v2(plan|credits|pack)_([a-z_0-9]+)-(INR|USD)$/;
 
+const ITEM_FAMILIES = ["plan", "credits", "pack"] as const;
+const BILLING_CURRENCIES = ["INR", "USD"] as const;
+
+function isItemFamily(value: string): value is (typeof ITEM_FAMILIES)[number] {
+  return (ITEM_FAMILIES as readonly string[]).includes(value);
+}
+
+function isBillingCurrency(value: string): value is BillingCurrency {
+  return (BILLING_CURRENCIES as readonly string[]).includes(value);
+}
+
+function creditRungOf(value: string): PlanCreditRung | undefined {
+  return PLAN_CREDIT_RUNGS.find(rung => String(rung) === value);
+}
+
 /** Parse any D-132 item price id back into its typed reference; undefined for foreign ids. */
 export function parseV2ItemPriceId(id: string): V2ItemPriceRef | undefined {
   const match = ID_PATTERN.exec(id);
   if (!match) return undefined;
-  const [, family, key, currency] = match as unknown as [string, "plan" | "credits" | "pack", string, BillingCurrency];
+  const [, family, key, currency] = match;
+  if (!isItemFamily(family) || !isBillingCurrency(currency)) return undefined;
   if (family === "plan") {
     const plan = PLAN_FAMILY.find(entry => entry.id === key);
     if (!plan || plan.monthlyInrPaise === 0) return undefined; // Open Door is free: nothing to bill
     return { kind: "plan", planId: plan.id, currency, amount: planAmountFor(plan.id, currency), recurring: true };
   }
-  const rung = Number(key);
-  if (!(PLAN_CREDIT_RUNGS as readonly number[]).includes(rung)) return undefined;
-  const amount = amountFor(rung as PlanCreditRung, currency);
+  const rung = creditRungOf(key);
+  if (!rung) return undefined;
+  const amount = amountFor(rung, currency);
   return family === "credits"
-    ? { kind: "planCredits", rung: rung as PlanCreditRung, currency, amount, recurring: true }
-    : { kind: "pack", rung: rung as PlanCreditRung, currency, amount, recurring: false };
+    ? { kind: "planCredits", rung, currency, amount, recurring: true }
+    : { kind: "pack", rung, currency, amount, recurring: false };
 }
 
 /**

@@ -4550,16 +4550,20 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
 type GrantV2PaidCreditsInput = { eventId: string; invoiceId?: string; subscriptionId?: string; hostedPageId?: string; passThruContent?: string; customerId?: string; planFamily: PlanFamilyId; rung: PlanCreditRung; amount: number; currency: string };
 
 export async function grantV2PaidCredits(input: GrantV2PaidCreditsInput) {
-  if (!input.invoiceId) return { status: "ignored" as const, reason: "missing_invoice" };
+  const invoiceId = input.invoiceId;
+  if (!invoiceId) return { status: "ignored" as const, reason: "missing_invoice" };
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  return db.transaction(async tx => grantV2PaidCreditsTx(tx, { ...input, invoiceId: input.invoiceId! }));
+  return db.transaction(async tx => grantV2PaidCreditsTx(tx, { ...input, invoiceId }));
 }
 
 async function grantV2PaidCreditsTx(tx: LedgerTx, input: GrantV2PaidCreditsInput & { invoiceId: string }) {
   {
     const invoiceId = input.invoiceId;
-    const expected = expectedBundleAmount(input.planFamily, input.rung, input.currency as "INR" | "USD");
+    const currency = input.currency;
+    // A currency the frozen ladder does not price cannot be verified: it parks
+    // for the same human review as an untrusted amount, never credits blind.
+    const expected = currency === "INR" || currency === "USD" ? expectedBundleAmount(input.planFamily, input.rung, currency) : undefined;
     const duplicate = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, input.eventId))).limit(1);
     if (duplicate[0]) return { status: "duplicate" as const, tokenCount: duplicate[0].tokenCount };
     // Renewal: the wallet already carries the subscription. First month: the
@@ -4592,14 +4596,14 @@ async function grantV2PaidCreditsTx(tx: LedgerTx, input: GrantV2PaidCreditsInput
       await tx.insert(operationalActivityLogs).values({ actorUserId: null, action: "billing.v2_grant_unknown_subscription", outcome: "failure", resourceType: "chargebee_invoice", resourceId: invoiceId, metadata: JSON.stringify({ eventId: input.eventId, subscriptionId: input.subscriptionId ?? null, customerId: input.customerId ?? null, ambiguousCustomerBinding: boundByCustomer.length > 1, planFamily: input.planFamily, rung: input.rung, amount: input.amount, currency: input.currency }) });
       return { status: "ignored" as const, reason: "unknown_v2_subscription" };
     }
-    if (input.amount !== expected) {
+    if (expected === undefined || input.amount !== expected) {
       // Tax, coupon, rounding or catalog drift: the user has paid but the
       // amount is untrusted. Park it where the admin review list already
       // looks; the route raises the payment-review alert.
       const parked = await tx.insert(paymentFulfillments).values({ provider: "chargebee", providerEventId: input.eventId, providerInvoiceId: invoiceId, providerHostedPageId: input.hostedPageId ?? null, checkoutIntentId: input.passThruContent ?? null, userId, role, tokenCount: input.rung, amount: input.amount, currency: input.currency, status: "requires_review", reconciliationReason: "checkout_amount_mismatch", lastCheckedAt: new Date() });
       const paymentId = Number(parked[0]?.insertId ?? 0);
-      await tx.insert(operationalActivityLogs).values({ actorUserId: userId, action: "billing.payment_amount_mismatch", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify({ role, planFamily: input.planFamily, rung: input.rung, expectedAmount: expected, expectedCurrency: input.currency, paidAmount: input.amount, paidCurrency: input.currency, invoiceId }) });
-      return { status: "requires_review" as const, reason: "checkout_amount_mismatch" as const, paymentId, userId, role, expectedAmount: expected, expectedCurrency: input.currency, paidAmount: input.amount, paidCurrency: input.currency };
+      await tx.insert(operationalActivityLogs).values({ actorUserId: userId, action: "billing.payment_amount_mismatch", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify({ role, planFamily: input.planFamily, rung: input.rung, expectedAmount: expected ?? null, expectedCurrency: input.currency, paidAmount: input.amount, paidCurrency: input.currency, invoiceId }) });
+      return { status: "requires_review" as const, reason: "checkout_amount_mismatch" as const, paymentId, userId, role, expectedAmount: expected ?? null, expectedCurrency: input.currency, paidAmount: input.amount, paidCurrency: input.currency };
     }
     const creditedAt = new Date();
     await tx.insert(paymentFulfillments).values({ provider: "chargebee", providerEventId: input.eventId, providerInvoiceId: invoiceId, providerHostedPageId: input.hostedPageId ?? null, checkoutIntentId: input.passThruContent ?? null, userId, role, tokenCount: input.rung, amount: input.amount, currency: input.currency, status: "credited", creditedAt, lastCheckedAt: creditedAt });
@@ -4952,12 +4956,13 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
         await recordV2Event();
         return { status: "stale" as const };
       }
-      if (!wallet && !intent) {
+      const owner = wallet ?? intent;
+      if (!owner) {
         await recordV2Event();
         return { status: "ignored" as const, reason: "unknown_subscription" };
       }
-      const v2UserId = wallet?.userId ?? intent!.userId;
-      const v2Role = wallet?.role ?? intent!.role;
+      const v2UserId = owner.userId;
+      const v2Role = owner.role;
       const retainsAccess = input.status === "active" || input.status === "non_renewing";
       // D-165 (3): the upgrade proceeds. The open month's unused free credits
       // move into a carry-over grant that ends when their own free month would
