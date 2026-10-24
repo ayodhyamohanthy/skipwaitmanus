@@ -22,22 +22,27 @@ describe("find-a-referral directory", () => {
   const gamma = company("Gamma", { functions: ["Design"], domains: ["gamma.com"] });
 
   it("matches the search across name, industry and functions, case-insensitively", () => {
-    expect(companyMatches(alpha, { query: "alp", openOnly: false, fn: null })).toBe(true);
-    expect(companyMatches(alpha, { query: "software", openOnly: false, fn: null })).toBe(true);
-    expect(companyMatches(gamma, { query: "design", openOnly: false, fn: null })).toBe(true);
-    expect(companyMatches(alpha, { query: "finance", openOnly: false, fn: null })).toBe(false);
+    expect(companyMatches(alpha, { query: "alp", fn: null })).toBe(true);
+    expect(companyMatches(alpha, { query: "software", fn: null })).toBe(true);
+    expect(companyMatches(gamma, { query: "design", fn: null })).toBe(true);
+    expect(companyMatches(alpha, { query: "finance", fn: null })).toBe(false);
   });
 
-  it("filters by availability and one job function", () => {
-    const filter = { query: "", openOnly: false, fn: null } as const;
+  it("filters by one job function, alphabetically with no availability grouping (D-176)", () => {
+    const filter = { query: "", fn: null } as const;
     expect(filterCompanies([beta, alpha, gamma], filter).map(item => item.name)).toEqual(["Alpha", "Beta", "Gamma"]);
-    expect(filterCompanies([beta, alpha, gamma], { ...filter, openOnly: true }).map(item => item.name)).toEqual(["Alpha", "Gamma"]);
     expect(filterCompanies([beta, alpha, gamma], { ...filter, fn: "Finance" }).map(item => item.name)).toEqual(["Beta"]);
   });
 
-  it("counts the companies shown and how many are open", () => {
-    expect(directorySummary([alpha, beta, gamma])).toEqual({ total: 3, open: 2 });
-    expect(directorySummary([])).toEqual({ total: 0, open: 0 });
+  it("sorts alphabetically only - availability never reorders the directory (D-176)", () => {
+    const closedEarly = company("Aardvark", { openToReferrals: false, domains: ["aardvark.com"] });
+    const openLate = company("Zephyr", { domains: ["zephyr.com"] });
+    expect(filterCompanies([closedEarly, openLate, beta, alpha], { query: "", fn: null }).map(item => item.name)).toEqual(["Aardvark", "Alpha", "Beta", "Zephyr"]);
+  });
+
+  it("counts the companies shown, with no availability count (D-176)", () => {
+    expect(directorySummary([alpha, beta, gamma])).toEqual({ total: 3 });
+    expect(directorySummary([])).toEqual({ total: 0 });
   });
 });
 
