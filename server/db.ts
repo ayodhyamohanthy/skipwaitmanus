@@ -4396,7 +4396,25 @@ export async function createChargebeePaymentIntent(input: { hostedPageId: string
 export async function listPendingChargebeePaymentIntents(limit = 25) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  return db.select({ hostedPageId: paymentFulfillments.providerHostedPageId }).from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.status, "pending"), like(paymentFulfillments.providerEventId, "pending:%"))).orderBy(desc(paymentFulfillments.createdAt)).limit(Math.max(1, Math.min(limit, 25)));
+  const bounded = Math.max(1, Math.min(limit, 25));
+  // Both checkout kinds leave a hosted page open until their subscription or
+  // pack lands: pending pack/pass intents and pending subscription intents
+  // (the D-132 bundle's first month is the latter). A webhook without a hosted
+  // page re-reads these provider pages to tie the invoice to our signed intent
+  // (review F2) - never to a free-typed email.
+  const [payments, subscriptions] = await Promise.all([
+    db.select({ hostedPageId: paymentFulfillments.providerHostedPageId, createdAt: paymentFulfillments.createdAt }).from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.status, "pending"), like(paymentFulfillments.providerEventId, "pending:%"))).orderBy(desc(paymentFulfillments.createdAt)).limit(bounded),
+    db.select({ hostedPageId: subscriptionCheckoutIntents.hostedPageId, createdAt: subscriptionCheckoutIntents.createdAt }).from(subscriptionCheckoutIntents).where(eq(subscriptionCheckoutIntents.status, "pending")).orderBy(desc(subscriptionCheckoutIntents.createdAt)).limit(bounded),
+  ]);
+  const seen = new Set<string>();
+  return [...payments, ...subscriptions]
+    .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+    .flatMap(row => {
+      if (!row.hostedPageId || seen.has(row.hostedPageId)) return [];
+      seen.add(row.hostedPageId);
+      return [{ hostedPageId: row.hostedPageId }];
+    })
+    .slice(0, bounded);
 }
 
 export async function getChargebeePaymentRecovery(userId: number, role: WalletRole, hostedPageId: string) {
@@ -4529,7 +4547,7 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
  * knows is logged for the webhook's unmatched-payment alert. Nothing drops
  * silently.
  */
-type GrantV2PaidCreditsInput = { eventId: string; invoiceId?: string; subscriptionId?: string; hostedPageId?: string; passThruContent?: string; customerId?: string; customerEmail?: string; planFamily: PlanFamilyId; rung: PlanCreditRung; amount: number; currency: string };
+type GrantV2PaidCreditsInput = { eventId: string; invoiceId?: string; subscriptionId?: string; hostedPageId?: string; passThruContent?: string; customerId?: string; planFamily: PlanFamilyId; rung: PlanCreditRung; amount: number; currency: string };
 
 export async function grantV2PaidCredits(input: GrantV2PaidCreditsInput) {
   if (!input.invoiceId) return { status: "ignored" as const, reason: "missing_invoice" };
@@ -4553,21 +4571,25 @@ async function grantV2PaidCreditsTx(tx: LedgerTx, input: GrantV2PaidCreditsInput
       ? (await tx.select().from(subscriptionCheckoutIntents).where(and(eq(subscriptionCheckoutIntents.hostedPageId, input.hostedPageId), eq(subscriptionCheckoutIntents.checkoutIntentId, input.passThruContent))).limit(1).for("update"))[0]
       : undefined;
     if (intent && walletBySubscription && (walletBySubscription.userId !== intent.userId || walletBySubscription.role !== intent.role)) return { status: "ignored" as const, reason: "subscription_owner_mismatch" };
-    // First invoice before the subscription event has bound anything: the
-    // payer's Chargebee customer email names the seeker (v2 plans are
-    // job_seeker-only). This is the normal first-month path when Chargebee
-    // delivers payment_succeeded ahead of subscription_created.
-    const userByEmail = !walletBySubscription && !intent && input.customerEmail
-      ? (await tx.select().from(users).where(eq(users.email, input.customerEmail.trim().toLowerCase())).limit(1).for("update"))[0]
-      : undefined;
-    const userId = walletBySubscription?.userId ?? intent?.userId ?? userByEmail?.id;
-    const role = walletBySubscription?.role ?? intent?.role ?? (userByEmail ? ("job_seeker" as const) : undefined);
+    // First invoice before the subscription event has bound anything: only a
+    // binding the provider itself set may name the seeker. The invoice email is
+    // free-typed at the provider's page and users.email is nullable and not
+    // unique, so a matching address is never proof of identity (review F2);
+    // the signed checkout intent or a unique provider customer binding is.
+    // Anything else waits as unknown for the human replay path below.
+    const boundByCustomer = !walletBySubscription && !intent && input.customerId
+      ? await tx.select({ id: users.id }).from(users).where(eq(users.chargebeeCustomerId, input.customerId)).limit(2).for("update")
+      : [];
+    const userByCustomer = boundByCustomer.length === 1 ? boundByCustomer[0] : undefined;
+    const userId = walletBySubscription?.userId ?? intent?.userId ?? userByCustomer?.id;
+    const role = walletBySubscription?.role ?? intent?.role ?? (userByCustomer ? ("job_seeker" as const) : undefined);
     if (userId === undefined || !role) {
-      // No wallet or checkout intent names this subscriber: the webhook's #77
-      // unmatched-payment alert carries it to a human. Logged so it is never
-      // silent; no receipt row exists (paymentFulfillments needs a user), so a
-      // redelivery re-enters and alerts again until a human maps it.
-      await tx.insert(operationalActivityLogs).values({ actorUserId: null, action: "billing.v2_grant_unknown_subscription", outcome: "failure", resourceType: "chargebee_invoice", resourceId: invoiceId, metadata: JSON.stringify({ eventId: input.eventId, subscriptionId: input.subscriptionId ?? null, planFamily: input.planFamily, rung: input.rung, amount: input.amount, currency: input.currency }) });
+      // No wallet, checkout intent or unique provider customer names this
+      // subscriber: the webhook's #77 unmatched-payment alert carries it to a
+      // human. Logged so it is never silent; no receipt row exists
+      // (paymentFulfillments needs a user), so a redelivery re-enters and
+      // alerts again until a human maps it.
+      await tx.insert(operationalActivityLogs).values({ actorUserId: null, action: "billing.v2_grant_unknown_subscription", outcome: "failure", resourceType: "chargebee_invoice", resourceId: invoiceId, metadata: JSON.stringify({ eventId: input.eventId, subscriptionId: input.subscriptionId ?? null, customerId: input.customerId ?? null, ambiguousCustomerBinding: boundByCustomer.length > 1, planFamily: input.planFamily, rung: input.rung, amount: input.amount, currency: input.currency }) });
       return { status: "ignored" as const, reason: "unknown_v2_subscription" };
     }
     if (input.amount !== expected) {

@@ -136,14 +136,39 @@ describe("D-132 grantV2PaidCredits", () => {
     expect(activityLogs.some(row => row.action === "billing.payment_amount_mismatch")).toBe(true);
   });
 
-  it("the first invoice before the subscription event lands resolves the buyer by customer email", async () => {
+  it("a bare invoice email never names the buyer: nothing is credited, it waits for review", async () => {
+    // Review F2: users.email is nullable, not unique and free-typed at the
+    // provider's page, so a matching address is not proof of identity.
     wallets = [];
     intents = [];
-    const result = await grantV2PaidCredits({ eventId: "ev_e1", invoiceId: "inv_e1", subscriptionId: "sub_new_1", customerId: "cust_1", customerEmail: "qa-preview-dev@skipwait.me", planFamily: "fast_track", rung: 5, amount: 1_489, currency: "USD" });
-    expect(result).toMatchObject({ status: "credited", tokenCount: 5, userId: 9, role: "job_seeker" });
+    const result = await grantV2PaidCredits({ eventId: "ev_e1", invoiceId: "inv_e1", subscriptionId: "sub_new_1", customerId: "cust_1", customerEmail: "qa-preview-dev@skipwait.me", planFamily: "fast_track", rung: 5, amount: expectedBundleAmount("fast_track", 5, "USD"), currency: "USD" });
+    expect(result).toMatchObject({ status: "ignored", reason: "unknown_v2_subscription" });
+    expect(wallets).toHaveLength(0);
+    expect(txns).toHaveLength(0);
+    expect(fulfillments).toHaveLength(0);
+    expect(activityLogs.some(row => row.action === "billing.v2_grant_unknown_subscription")).toBe(true);
+  });
+
+  it("the first invoice resolves through the unique provider customer binding", async () => {
+    wallets = [];
+    intents = [];
+    userRows = [{ id: 11, email: "payer@example.test", chargebeeCustomerId: "cust_bound_1" }];
+    const result = await grantV2PaidCredits({ eventId: "ev_b1", invoiceId: "inv_b1", subscriptionId: "sub_bound_1", customerId: "cust_bound_1", planFamily: "fast_track", rung: 5, amount: expectedBundleAmount("fast_track", 5, "USD"), currency: "USD" });
+    expect(result).toMatchObject({ status: "credited", tokenCount: 5, userId: 11, role: "job_seeker" });
     expect(wallets).toHaveLength(1);
-    expect(wallets[0]).toMatchObject({ userId: 9, role: "job_seeker", balance: 5, subscriptionId: "sub_new_1" });
+    expect(wallets[0]).toMatchObject({ userId: 11, role: "job_seeker", balance: 5, subscriptionId: "sub_bound_1" });
     expect(activityLogs.some(row => row.action === "billing.v2_grant_unknown_subscription")).toBe(false);
+  });
+
+  it("an ambiguous provider customer binding grants nothing and alerts", async () => {
+    wallets = [];
+    intents = [];
+    userRows = [{ id: 11, email: "one@example.test", chargebeeCustomerId: "cust_dup" }, { id: 12, email: "two@example.test", chargebeeCustomerId: "cust_dup" }];
+    const result = await grantV2PaidCredits({ eventId: "ev_dup", invoiceId: "inv_dup", subscriptionId: "sub_dup", customerId: "cust_dup", planFamily: "fast_track", rung: 5, amount: expectedBundleAmount("fast_track", 5, "USD"), currency: "USD" });
+    expect(result).toMatchObject({ status: "ignored", reason: "unknown_v2_subscription" });
+    expect(wallets).toHaveLength(0);
+    expect(txns).toHaveLength(0);
+    expect(activityLogs.some(row => row.action === "billing.v2_grant_unknown_subscription")).toBe(true);
   });
 
   it("every v2 rung credits exactly its own credit count against its bundle total", async () => {

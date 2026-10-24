@@ -29,7 +29,7 @@ type Deps = {
   // Optional so older tests and tools can mount the router without the v2
   // arm; a bundle invoice with no grant wired fails loudly (500 -> provider
   // retry), never silently. Production always wires it.
-  grantV2Credits?: (input: { eventId: string; invoiceId?: string; subscriptionId?: string; hostedPageId?: string; passThruContent?: string; customerId?: string; customerEmail?: string; planFamily: PlanFamilyId; rung: PlanCreditRung; amount: number; currency: string }) => Promise<unknown>;
+  grantV2Credits?: (input: { eventId: string; invoiceId?: string; subscriptionId?: string; hostedPageId?: string; passThruContent?: string; customerId?: string; planFamily: PlanFamilyId; rung: PlanCreditRung; amount: number; currency: string }) => Promise<unknown>;
   createSubscriptionIntent?: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; plan: BillablePlanId | "fast_track" | "insider"; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) => Promise<unknown>;
   /** Kit checkout (a 30/90-day pass, Keep warm yearly, a credit pack): availability and provider calls. */
   kitCheckout?: KitCheckoutDeps;
@@ -555,7 +555,23 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
           // subscription events. A v2 pack (rung without a plan fee) falls
           // through to the pack fulfillment below.
           if (!deps.grantV2Credits) throw new Error("v2 credit grant is not wired");
-          obligations.payment = await deps.grantV2Credits({ ...payment, planFamily: payment.v2PlanFamily, rung: payment.v2CreditsRung });
+          // The first month's payment often arrives before the subscription
+          // binds its wallet, and the event may not carry the hosted page. The
+          // buyer is named only by the signed checkout intent that page holds
+          // (review F2): re-read the provider page, never trust a bare email.
+          const v2Runtime = (!payment.hostedPageId || !payment.passThruContent) && deps.resolveHostedPage
+            ? resolveChargebeeRuntime(req.hostname)
+            : undefined;
+          const v2HostedPage = v2Runtime && deps.resolveHostedPage
+            ? await deps.resolveHostedPage({ invoiceId: payment.invoiceId, amount: payment.amount, currency: payment.currency, site: v2Runtime.site, apiKey: v2Runtime.apiKey })
+            : undefined;
+          obligations.payment = await deps.grantV2Credits({
+            ...payment,
+            hostedPageId: payment.hostedPageId ?? v2HostedPage?.hostedPageId,
+            passThruContent: payment.passThruContent ?? v2HostedPage?.passThruContent,
+            planFamily: payment.v2PlanFamily,
+            rung: payment.v2CreditsRung,
+          });
         } else {
           const runtime = (!payment.hostedPageId || !payment.passThruContent) && deps.resolveHostedPage
             ? resolveChargebeeRuntime(req.hostname)

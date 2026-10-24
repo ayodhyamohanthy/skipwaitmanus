@@ -53,6 +53,30 @@ describe("D-132 bundle crediting webhook arm", () => {
     expect(fulfillPayment).not.toHaveBeenCalled();
   });
 
+  it("a first-month invoice without a hosted page re-reads the provider page before granting (review F2)", async () => {
+    vi.stubEnv("BILLING_ENV", "test");
+    vi.stubEnv("CHARGEBEE_SITE", "fixture-test");
+    vi.stubEnv("CHARGEBEE_API_KEY", "fixture-key");
+    const grantV2Credits = vi.fn(async () => ({ status: "credited", tokenCount: 25, userId: 9, role: "job_seeker" }));
+    const resolveHostedPage = vi.fn(async () => ({ hostedPageId: "hp_v2_1", passThruContent: "intent_v2_1", pageState: "succeeded", paid: true }));
+    const response = await request(app({ grantV2Credits, resolveHostedPage })).post("/api/chargebee/webhook").set("Authorization", auth("v2-secret")).send(bundlePayload({}));
+    expect(response.status).toBe(200);
+    expect(resolveHostedPage).toHaveBeenCalledExactlyOnceWith({ invoiceId: "inv_v2_1", amount: 162_400, currency: "INR", site: "fixture-test", apiKey: "fixture-key" });
+    expect(grantV2Credits).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ hostedPageId: "hp_v2_1", passThruContent: "intent_v2_1", planFamily: "fast_track", rung: 25 }));
+  });
+
+  it("a first-month invoice that already names its hosted page never re-reads or replaces it", async () => {
+    vi.stubEnv("BILLING_ENV", "test");
+    vi.stubEnv("CHARGEBEE_SITE", "fixture-test");
+    vi.stubEnv("CHARGEBEE_API_KEY", "fixture-key");
+    const grantV2Credits = vi.fn(async () => ({ status: "credited", tokenCount: 25, userId: 7, role: "job_seeker" }));
+    const resolveHostedPage = vi.fn();
+    const response = await request(app({ grantV2Credits, resolveHostedPage })).post("/api/chargebee/webhook").set("Authorization", auth("v2-secret")).send(bundlePayload({ withHostedPage: true }));
+    expect(response.status).toBe(200);
+    expect(resolveHostedPage).not.toHaveBeenCalled();
+    expect(grantV2Credits).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ hostedPageId: "hp_v2_1", passThruContent: "intent_v2_1" }));
+  });
+
   it("a v2 pack invoice (rung item, no plan fee) still fulfils through the pack path", async () => {
     const grantV2Credits = vi.fn();
     const fulfillPayment = vi.fn(async () => ({ status: "credited", tokenCount: 10, userId: 7, role: "job_seeker" }));
