@@ -124,6 +124,27 @@ describe("daily-money-check (D-065)", () => {
     expect(sent[0]!.text).not.toContain("stale checkout: payment");
   });
 
+  it("names only in-window checkouts in the sample, never an aged-out one", async () => {
+    // The mock answers like the query: it keeps rows inside the window it is given. A missing
+    // lower bound therefore leaks the aged-out row into the sample, which is the finding.
+    const seen: Array<{ older: number; newer: number | null }> = [];
+    const { deps, sent } = makeDeps({
+      summarizeStaleCheckouts: vi.fn(async () => ({ total: 1, users: 1, oldest: new Date(NOW.getTime() - 2 * DAY), newest: new Date(NOW.getTime() - 2 * DAY) })),
+      listStaleCheckouts: vi.fn(async (older: Date, limit: number, newer?: Date) => {
+        seen.push({ older: older.getTime(), newer: newer ? newer.getTime() : null });
+        const all = [
+          { id: 41, amount: 9900, currency: "INR", createdAt: new Date(NOW.getTime() - 2 * DAY) },
+          { id: 42, amount: 9900, currency: "INR", createdAt: new Date(NOW.getTime() - 9 * DAY) },
+        ];
+        return all.filter(row => row.createdAt < older && (!newer || row.createdAt >= newer)).slice(0, limit);
+      }),
+    });
+    await runJob(deps);
+    expect(seen[0]).toEqual({ older: NOW.getTime() - DAY, newer: NOW.getTime() - 7 * DAY });
+    expect(sent[0]!.text).toContain("oldest ids: #41");
+    expect(sent[0]!.text).not.toContain("#42");
+  });
+
   it("lists checkouts older than the reconcile window as their own unverified finding, never as never paid", async () => {
     const calls: Array<{ older: number; newer: number | null }> = [];
     const { deps, sent } = makeDeps({
