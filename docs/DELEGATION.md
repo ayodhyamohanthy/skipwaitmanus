@@ -170,6 +170,7 @@ Verdict: `pass` (then the reviewer pushes the merged candidate to the pull reque
 15. Never refactor, rename or reformat outside the packet; never force-push, rewrite shared history or `git reset --hard` a shared tree.
 16. Never push to `main` with red or unfinished CI, or while `main` is red (D-082): `c53ea471` went straight to `main` with six failing tests and unreviewed Tier 1 money code, and three of its routes crashed live and lacked an ownership check (fixed forward in #330).
 17. Never build on an owner's word that exists only in your session or on your branch. workbuddy · b0eb recorded the owner's BYOR gate waiver only on its task branch, as D-148, an ID that open PR #488 already held (it reached `main` 13 minutes later). The board still showed its blocked report, so four hours later the CEO's D-154 put the gate back, and the owner had to restate his word (D-162). First record the word on `main` in its own docs pull request, under an ID fetched from `main` and every open branch, then report it, then build.
+18. Never merge a pull request from an unregistered branch: the queue gate rejects it before the required CI check can pass (D-166).
 
 ## 8. Working in a small context window
 - Required reading is the brief (under 10 KB) plus one packet. Aim for under 15 KB; a large lane keeps its packet under 60 KB and moves reference tables (verification, token values, specs) to an appendix that the implementer opens by section. The architecture map (`docs/ARCHITECTURE.md`) is also a reference: read only the section the packet names.
