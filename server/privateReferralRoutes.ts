@@ -175,6 +175,8 @@ export type PrivateReferralRouteDeps = {
   reconcileCardValidation?: (userId: number) => Promise<unknown>;
   listCreditLedger?: (userId: number, role: "job_seeker" | "referrer", limit: number) => Promise<CreditLedgerEntry[]>;
   getOrCreatePersonalReferralInvite?: (userId: number) => Promise<{ inviteCode: string }>;
+  // D-155: locked until the account's first paid invoice; preferred over getOrCreatePersonalReferralInvite.
+  getPersonalReferralInviteState?: (userId: number) => Promise<{ status: "locked" } | { status: "unlocked"; inviteCode: string }>;
   claimPersonalReferralInvite?: (joinerUserId: number, input: { inviteCode: string; verifiedEmail: string }) => Promise<{ rewarded: boolean; tokenCount?: number; reason?: string }>;
   exportUserData?: (userId: number) => Promise<unknown>;
   requestDataExport?: (userId: number) => Promise<{ kind: "created" | "active" | "cooldown"; id: number; retryAfterSeconds?: number }>;
@@ -1071,9 +1073,15 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to create your personal invite link" });
+      // D-155: the link unlocks after the first paid invoice; locked accounts
+      // get no invite row and a 200 with locked: true, never an error.
+      if (deps.getPersonalReferralInviteState) {
+        const state = await deps.getPersonalReferralInviteState(identity.account.id);
+        return res.json({ invite: state.status === "unlocked" ? { inviteCode: state.inviteCode } : null, locked: state.status === "locked" });
+      }
       if (!deps.getOrCreatePersonalReferralInvite) return res.status(503).json({ error: "Personal invites are not available yet" });
       const invite = await deps.getOrCreatePersonalReferralInvite(identity.account.id);
-      res.json({ invite });
+      res.json({ invite, locked: false });
     } catch { res.status(500).json({ error: "We could not create your personal invite link" }); }
   });
   app.post("/api/personal-invites/claim", async (req, res) => {

@@ -514,3 +514,46 @@ describe("/api/company-referrals/inbox hasEverReviewed (sample empty states)", (
     expect(response.body.hasEverReviewed).toBe(true);
   });
 });
+
+describe("personal invite link route (D-155)", () => {
+  function setup(state: { status: "locked" } | { status: "unlocked"; inviteCode: string } | undefined) {
+    const app = express();
+    app.use(express.json());
+    const getPersonalReferralInviteState = vi.fn(async () => state);
+    const getOrCreatePersonalReferralInvite = vi.fn(async () => ({ inviteCode: "r1-legacy" }));
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") ? { account: { id: 7, openId: "workos-test" } } : undefined,
+      getPersonalReferralInviteState: state === undefined ? undefined : getPersonalReferralInviteState,
+      getOrCreatePersonalReferralInvite,
+    } as unknown as PrivateReferralRouteDeps);
+    return { app, getPersonalReferralInviteState, getOrCreatePersonalReferralInvite };
+  }
+
+  it("returns locked with no invite and never creates one before the first paid invoice", async () => {
+    const { app, getOrCreatePersonalReferralInvite } = setup({ status: "locked" });
+    const response = await request(app).get("/api/personal-invites/me").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ invite: null, locked: true });
+    expect(getOrCreatePersonalReferralInvite).not.toHaveBeenCalled();
+  });
+
+  it("returns the invite unlocked after a paid invoice", async () => {
+    const { app } = setup({ status: "unlocked", inviteCode: "r7-abc12345" });
+    const response = await request(app).get("/api/personal-invites/me").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ invite: { inviteCode: "r7-abc12345" }, locked: false });
+  });
+
+  it("falls back to legacy get-or-create when the gated dep is absent", async () => {
+    const { app, getOrCreatePersonalReferralInvite } = setup(undefined);
+    const response = await request(app).get("/api/personal-invites/me").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ invite: { inviteCode: "r1-legacy" }, locked: false });
+    expect(getOrCreatePersonalReferralInvite).toHaveBeenCalledWith(7);
+  });
+
+  it("requires sign-in", async () => {
+    const { app } = setup({ status: "locked" });
+    expect((await request(app).get("/api/personal-invites/me")).status).toBe(401);
+  });
+});
