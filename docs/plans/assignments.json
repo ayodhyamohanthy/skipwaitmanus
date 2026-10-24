@@ -1523,14 +1523,14 @@
    "branch": "agent/claude/d099-bonus-pages",
    "status": "todo",
    "dependsOn": [
+    "D-174-held-ask-reconfirm",
+    "D-174-sample-job-removal",
+    "D-174-job-catalog",
     "D-090-BYOR",
     "D-089-request-inbox",
     "D-086-demand-list",
     "D-048-F-flags",
-    "D-048-F-routes",
-    "D-174-held-ask-reconfirm",
-    "D-174-sample-job-removal",
-    "D-174-job-catalog"
+    "D-048-F-routes"
    ],
    "owns": [
     "drizzle/deploy/*_company_referral_bonuses.sql",
