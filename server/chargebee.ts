@@ -28,6 +28,9 @@ export type ParsedPaidPaymentEvent = {
   /** Chargebee customer behind the payment: binds a first invoice whose subscription event has not landed yet. */
   customerId?: string;
   customerEmail?: string;
+  occurredAt?: Date;
+  /** The invoice and subscription objects named different subscriptions - never stamp paid evidence from this event. */
+  subscriptionIdentityConflict?: boolean;
   /** D-132: the credits rung this invoice's line items sell (bundle renewal or one-time pack). */
   v2CreditsRung?: PlanCreditRung;
   /** D-132: the family plan fee on this invoice's line items, when present. */
@@ -127,11 +130,22 @@ export function parsePaidPaymentEvent(payload: any) {
     ? invoice.line_items.map((item: any) => (typeof item?.item_price_id === "string" ? item.item_price_id : typeof item?.entity_id === "string" ? item.entity_id : undefined)).filter((id: any): id is string => typeof id === "string")
     : [];
   const v2 = classifyV2SubscriptionItems(lineItemPriceIds);
-  const subscriptionId = typeof payment.subscription_id === "string" ? payment.subscription_id : typeof invoice?.subscription_id === "string" ? invoice.subscription_id : undefined;
+  // D-155: the subscription this settled invoice belongs to. The invoice's
+  // own subscription_id is authoritative - the invoice is what was actually
+  // paid. A content.subscription.id that disagrees with it is a provider
+  // identity conflict, not paid evidence: no subscription id is returned and
+  // the caller alerts rather than stamps. A bare content.subscription.id
+  // with no invoice reference is likewise not enough: it is detached from
+  // the settled invoice.
+  const invoiceSubscriptionId = typeof invoice?.subscription_id === "string" && invoice.subscription_id.length > 0 ? invoice.subscription_id : undefined;
+  const contentSubscriptionId = typeof payload?.content?.subscription?.id === "string" && payload.content.subscription.id.length > 0 ? payload.content.subscription.id : undefined;
+  const subscriptionIdentityConflict = invoiceSubscriptionId !== undefined && contentSubscriptionId !== undefined && invoiceSubscriptionId !== contentSubscriptionId;
+  const subscriptionId = subscriptionIdentityConflict ? undefined : invoiceSubscriptionId;
   const customer = payload?.content?.customer;
   const customerId = typeof customer?.id === "string" ? customer.id : typeof invoice?.customer_id === "string" ? invoice.customer_id : typeof payment.customer_id === "string" ? payment.customer_id : undefined;
   const customerEmail = typeof customer?.email === "string" && customer.email ? customer.email : undefined;
-  return { eventId, invoiceId, hostedPageId, passThruContent, amount, currency, subscriptionId, customerId, customerEmail, v2CreditsRung: v2.credits?.rung ?? v2.pack?.rung, v2PlanFamily: v2.plan?.planId } satisfies ParsedPaidPaymentEvent;
+  const occurredAt = dateFromChargebeeSeconds(payload?.occurred_at);
+  return { eventId, invoiceId, hostedPageId, passThruContent, amount, currency, subscriptionId, customerId, customerEmail, occurredAt, subscriptionIdentityConflict, v2CreditsRung: v2.credits?.rung ?? v2.pack?.rung, v2PlanFamily: v2.plan?.planId } satisfies ParsedPaidPaymentEvent;
 }
 
 export type ParsedRefundEvent = { eventId: string; invoiceId?: string; refundAmount?: number; currency?: string };
