@@ -1807,7 +1807,7 @@
    "dependsOn": [
     "D-166-journey-decisions-sync"
    ],
-   "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately."
+   "note": "Slice merged Oct 24 (PR #612, merge commit 5747cc87d7d742a1bb7ed9164e7c20a1ed1be5be): posted roles on the company door with in-place ask composer, role/location filter, linked-post prefill, linkless stale-link clear, opportunityId send binding. Journey row stays OPEN: ingestion/seniority, reload continuity, D-177 linkless type-aware identity, availability header/wait copy and runtime expiry removal remain. Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately."
   },
   {
    "id": "D-166-founder-decisions-sync",
@@ -1891,7 +1891,22 @@
    "note": "Founder direction Oct 24 00:58 IST (phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M). Direction not authority: no charges, no auth bypass, no invented protocol. Delegated identity rides existing assistant-grant work; payment needs explicit user approval per the money rules; retry-safe apply/pay required."
   },
   {
-   "id": "D-180-terminology-docs-sync",
+   "id": "D-179-ats-referral-validation",
+   "title": "Connect ATSes to technically validate completed referrals (ATS-confirmed vs referrer-reported)",
+   "row": "D-179",
+   "packet": "docs/plans/D-179-ats-referral-validation.md",
+   "tier": 2,
+   "lane": "employer",
+   "branch": "agent/coordinator/ats-referral-validation",
+   "status": "todo",
+   "owns": [
+    "docs/plans/D-179-ats-referral-validation.md"
+   ],
+   "dependsOn": [],
+   "note": "Founder direction Oct 24 1:09 IST (phonemsg-01M5N4DC140W9347XWW34NAWX1). Distinct from jobs ingestion. Product truth rule: self-report is never ATS-verified; states stay labeled until a real ATS signal exists. No employer private access, no spend; integration research routed to the market research seat - incorporate grounded findings, do not invent universal APIs. Money events stay frozen under D-132/D-152."
+  },
+  {
+"id": "D-180-terminology-docs-sync",
    "title": "Record D-180 (referral-only public terminology) and reconcile superseded decision entries (docs only)",
    "row": "D-180",
    "packet": null,
