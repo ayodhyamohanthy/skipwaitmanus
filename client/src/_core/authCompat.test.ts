@@ -2,7 +2,7 @@ import React from "react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, waitFor, act } from "@testing-library/react";
 import { builtinEnvironments } from "vitest/runtime";
-import { AuthProvider, useAuth } from "./auth";
+import { AuthProvider, SDK_WAIT_MS, useAuth } from "./auth";
 import { getGlobalAccessToken, setGlobalAccessToken } from "./accessToken";
 
 const mocks = vi.hoisted(() => ({
@@ -87,6 +87,19 @@ describe("WorkOS client and server-session compatibility", () => {
     mount();
     expect(auth.isSignedIn).toBe(true);
     expect(auth.isLoaded).toBe(true);
+  });
+
+  it("stops waiting for a hung SDK probe once the server says signed out", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.me.data = null;
+      mocks.sdk.isLoading = true;
+      mount();
+      expect(auth.isLoaded).toBe(false);
+      await act(async () => { vi.advanceTimersByTime(SDK_WAIT_MS + 10); });
+      expect(auth.isLoaded).toBe(true);
+      expect(auth.isSignedIn).toBe(false);
+    } finally { vi.useRealTimers(); }
   });
 
   it.each(["providerError", "hookError"] as const)("keeps cookie auth usable after %s", failure => {

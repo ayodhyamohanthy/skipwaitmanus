@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AuthKitProvider as WorkOSAuthKitProvider, useAuth as useWorkOSAuth } from "@workos-inc/authkit-react";
 import { setGlobalAccessToken } from "./accessToken";
 import { trpc } from "@/lib/trpc";
@@ -41,6 +41,8 @@ type CompatSdkAuth = {
   signOut: (options?: { navigate: false }) => Promise<void>;
 };
 
+export const SDK_WAIT_MS = 2500;
+
 const CompatContext = createContext<CompatValue | null>(null);
 
 function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth: CompatSdkAuth }) {
@@ -54,7 +56,18 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
 
   const serverUser = meQuery.data ?? null;
   const signedIn = Boolean(synthetic) || Boolean(serverUser) || Boolean(auth.user);
-  const isLoaded = Boolean(synthetic || serverUser) || (!meQuery.isLoading && !auth.isLoading);
+  // The server cookie (auth.me) is the source of truth. The AuthKit SDK's own
+  // session probe can hang for 15-25s for signed-out visitors (QA, Sep 24:
+  // /premium and /plans stuck on "Checking sign-in..."), so once auth.me has
+  // settled we wait at most SDK_WAIT_MS for the SDK. If it later finds a
+  // session, signedIn flips to true reactively.
+  const [sdkWaitExpired, setSdkWaitExpired] = useState(false);
+  useEffect(() => {
+    if (meQuery.isLoading || !auth.isLoading) return;
+    const timer = window.setTimeout(() => setSdkWaitExpired(true), SDK_WAIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [meQuery.isLoading, auth.isLoading]);
+  const isLoaded = Boolean(synthetic || serverUser) || (!meQuery.isLoading && (!auth.isLoading || sdkWaitExpired));
   const signingOut = useRef(false);
 
   const user: CompatUser = synthetic
@@ -125,9 +138,15 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
     window.location.href = safeAuthReturnTo(options?.returnTo, window.location.origin) ?? "/";
   }, [auth.signOut, utils]);
 
+  // Every API call also carries the server cookie, so the bearer token is
+  // optional. Never let a slow SDK refresh hold a click hostage (QA: Choose
+  // Pro/Max took 25-35s): no SDK user -> no token; otherwise cap the wait.
   const getToken = useCallback(async () => {
-    try { return await auth.getAccessToken(); } catch { return null; }
-  }, [auth.getAccessToken]);
+    if (!auth.user) return null;
+    try {
+      return await Promise.race([auth.getAccessToken(), new Promise<null>(resolve => window.setTimeout(() => resolve(null), SDK_WAIT_MS))]);
+    } catch { return null; }
+  }, [auth.user, auth.getAccessToken]);
 
   const value = useMemo<CompatValue>(
     () => ({ isLoaded, isSignedIn: signedIn, userId: user?.id ?? null, getToken, signOut, user, openSignIn }),
