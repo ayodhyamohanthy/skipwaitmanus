@@ -18,11 +18,15 @@ The PR replaced assertions for the displayed `$1 a credit` / `₹99 a credit` an
 
 The user-facing text hard-codes the first-pack claims (`₹99 for 2 credits in India` and `$5 for 5 credits elsewhere`) in `client/src/pages/Pricing.tsx:23` and `shared/landingContent.ts:94`. The canonical current pack values live in `shared/planCatalog.ts:146-160`; the pricing guide says pack prices are derived from the catalog (`docs/PRICING.md:37`). The current literals match the first packs, but a later catalog change could leave the landing and pricing copy stale. `client/src/pages/policyPages.test.tsx:127-128` asserts those same literals rather than tying them to the catalog. Compose the copy from the shared catalog or a helper backed by it, then test the rendered values against that source.
 
+### P2 — #506: the stale-checkout sample can include aged-out checkouts
+
+The stale summary covers pending checkouts older than one day but younger than seven days, using both `staleCutoff` and `agedOutCutoff`. Its sample query currently receives only `staleCutoff`, so it can return older-than-seven-day checkout IDs whose provider status is unverified under the separate aged-out rule. This can make the “stale checkouts” line name examples outside its stated window. Add the same seven-day lower bound to the sample query and a regression test with one 1–7-day row and one older-than-seven-day row; assert the aged-out ID is absent. Relevant code: [`server/dailyMoneyCheck.ts`](https://github.com/ayodhyamohanthy/skipwaitmanus/blob/main/server/dailyMoneyCheck.ts#L459-L473).
+
 ## Resolved items and clean reviews
 
 - **#534 accidental deletion — resolved by #535.** Merge #534 deleted `drizzle/0000_bouncy_victor_mancha.sql`; #535 restored it byte-for-byte. The migration is present on current `main`, so no deletion fix remains.
-- **#478 stale `₹99` floor claim — corrected on current `main`.** The merged PR temporarily showed “same ₹99 floor” on the retired single-credit `/premium` page. A later change removed that claim; it is not present in the current page and needs no separate fix row.
-- **No additional findings:** #465 (API input checks), #506 and #517 (money-check reconciliation), #490 (seeker-level migration and flag-gated UI), #479 (admin sign-in return path), #510 (plan display names), and #535 (migration restoration). The migration review found 0106/0107 additive and idempotent, mirrored in schema reconciliation, and listed in the migration plan. No reviewed PR deleted tests; the #478 assertion reductions above are the test-coverage exception.
+- **#478 stale `₹99` floor claim — corrected on current `main`.** The merged PR temporarily showed “same ₹99 floor” on the retired single-credit `/premium` page. A later change removed that claim; it is not present on the current page and needs no separate fix row.
+- **No additional findings:** #465 (API input checks), #517 (money-check reconciliation), #490 (seeker-level migration and flag-gated UI), #479 (admin sign-in return path), #510 (plan display names), and #535 (migration restoration). The migration review found 0106/0107 additive and idempotent, mirrored in schema reconciliation, and listed in the migration plan. No reviewed PR deleted tests; the #478 assertion reductions above are the test-coverage exception.
 
 ## Validation note
 
