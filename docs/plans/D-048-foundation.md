@@ -51,6 +51,7 @@ None of the six changes what a user sees, except `F-credits` fixing the pill on 
 - The split, "Bug controls": "Test-mode rule: under vitest, `goalSurfaceOn` ignores `RELEASED` and reads only `VITE_GOAL_SURFACES` (empty by default). Releasing an id therefore never makes unedited kit tests render the goal page."
 - AGENTS.md 0a: "Silent failure is a defect." (Why a failed balance load says so and never shows 0.)
 - D-055: "Referrers never pay and are never paid" — the shell shows no credits pill on any referrer surface, decided by the server's verified-referrer verdict, never by the session's emails.
+- Note (Oct 24): D-055's "never pay" half is narrowed, not reversed: D-196 (owner, Oct 24 12:56) makes an opt-in referrer plan with level-matched first access the current rule - basic referring stays free, the never-PAID payout core stands, and D-006/D-040 stand (nobody buys a referral, a ranking of people, inbox placement or seeker access; no outcome is ever guaranteed), narrowed only to admit D-196's referrer-side level-matched first access - first access, never a guaranteed referral or result. Not registered or enabled; prices, the plan's contents and the window are open (the free-3 allowance and D-181's agent-spendability are untouched). The no-credits-pill rule guards against advertising an unimplemented benefit only.
 - D-082: "Push to `main` only when `main`'s latest CI is green ... open a pull request first, a draft for Tier 1, and wait for every check."
 
 ## 3. Current behaviour (verified on `main` `cd4c58bd`)
@@ -116,6 +117,8 @@ Every row's owned paths are the ones its line in the split's table lists, verbat
 2. **Fold `goalFlags.ts`.** `GOAL_UI_LANDING` and `GOAL_UI_LANDING_V9` become the `home` id (`Home.tsx` keeps the V9 body); `GOAL_UI_SIGNIN` becomes `sign-in`; `PLAN_FAMILY_V2_CLIENT` moves unchanged to `client/src/lib/planFamilyFlag.ts` and `App.tsx`'s import line follows it. Retain `goalFlags.ts` with only the unchanged `ASK_LEVEL_COST_CLIENT` export and the comment "Cost flag only; it moves with the D-132 enable (D-146)." Do not edit any of its six cost consumers. Keep `VITE_ASK_LEVEL_COST` in `.env.example`. Remove the two flag lines from `deploy-pages.yml`. Add `VITE_GOAL_SURFACES=` to `.env.example` and remove the three `VITE_GOAL_UI_*` keys.
 3. **Guards.** `goalBoundary.test.ts` allows `client/src/pages/goal/**` and gains the reverse check (no file under `pages/goal/` imports `components/kit` or `styles/kit.css`); `designTokenAuditCore.mjs` `GOAL_SCOPE` adds `pages/goal/`; `designTokenAudit.test.ts` covers the new scope.
 4. **CI.** Add one step to the required `production build` job that builds with `VITE_GOAL_SURFACES=all`, so a fetch or an import error on an unreleased page fails CI before it lands.
+Setup: in a fresh worktree run `pnpm install` before the first `pnpm check` (missing local dependencies fail as TS2688/TS5101; REGISTER-520, Oct 24).
+
 5. **Gate.** `pnpm check`, `pnpm vitest run client/src/lib/goalSurfaces.test.ts client/src/components/goal/goalBoundary.test.ts scripts/designTokenAudit.test.ts`, `VITE_GOAL_SURFACES=all pnpm build`, then the full gate.
 6. Commit: `Goal surfaces: one flag module with every id pre-declared, RELEASED in code (D-134)`.
 
