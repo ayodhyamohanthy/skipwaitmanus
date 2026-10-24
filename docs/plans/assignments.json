@@ -772,7 +772,7 @@
    "tier": 2,
    "lane": "design-core",
    "branch": "agent/queue/d048-f-primitives",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [
     "D-048-F-flags"
    ],
@@ -784,7 +784,7 @@
     "client/src/components/goal/goalAtoms.test.tsx",
     "client/src/components/goal/goalComposites.test.tsx"
    ],
-   "note": " Audit outcome (Oct 23, accepted by Main): the barrel (20+ exports) covers every built surface; AYO-7 composed in-place pages with zero new primitives. The only cross-surface gap, the \"Your next step\" block, is D-048-F-goal-check's GoalNextStep per D-167 (local copies to migrate later: MyRequests.tsx, goal/inbox/GoalInbox.tsx, goal/assistants/AssistantLayout.tsx, inline markups on the AYO-7 pages). AYO-9's Section/Message/AccessStatus/NetworkButton stay single-consumer (promote on a second consumer). Name-collisions MyRequests.NextStep/ReferralRequest.NextStep/AdminCatalogSync.Section are different semantics - do not unify. No code to promote: audit-only row, no manufactured code."
+   "note": "done - e90e0671 (audit-only outcome on main: no code to promote; GoalNextStep belongs to D-048-F-goal-check). Flipped by D-200 (Oct 24): the stale in-review status held 15 rows. Earlier note: Audit outcome (Oct 23, accepted by Main): the barrel (20+ exports) covers every built surface; AYO-7 composed in-place pages with zero new primitives. The only cross-surface gap, the \"Your next step\" block, is D-048-F-goal-check's GoalNextStep per D-167 (local copies to migrate later: MyRequests.tsx, goal/inbox/GoalInbox.tsx, goal/assistants/AssistantLayout.tsx, inline markups on the AYO-7 pages). AYO-9's Section/Message/AccessStatus/NetworkButton stay single-consumer (promote on a second consumer). Name-collisions MyRequests.NextStep/ReferralRequest.NextStep/AdminCatalogSync.Section are different semantics - do not unify. No code to promote: audit-only row, no manufactured code."
   },
   {
    "id": "D-048-F-harness",
@@ -836,7 +836,7 @@
    "tier": 2,
    "lane": "design-core",
    "branch": "agent/queue/d048-f-static-frame",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [
     "D-048-p3-w0-shell"
    ],
@@ -845,7 +845,7 @@
     "client/src/components/goal/goalStaticFrame.test.tsx",
     "scripts/prerenderPublicPages.test.ts"
    ],
-   "note": "implemented in PR (this branch), pending CI and merge; flips to done with its merge SHA"
+   "note": "done - e62ab474 (PR #561 merged the static frame; refined by #600, 26a35834). Flipped by D-200 (Oct 24): the row stayed in-review after its merge. Earlier note: implemented in PR (this branch), pending CI and merge; flips to done with its merge SHA"
   },
   {
    "id": "D-048-F-routes",
@@ -875,7 +875,7 @@
    "tier": 2,
    "lane": "design-check",
    "branch": "agent/queue/d048-f-goal-check",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [
     "D-048-F-primitives"
    ],
@@ -887,7 +887,7 @@
     "client/src/test/goalPageContract.test.tsx",
     "client/src/test/goalPagesBoundary.test.ts"
    ],
-   "note": "D-167: a page counts as moved only when its test calls assertGoalPage (one h1 goal line, exactly one data-g-primary inside the GoalNextStep block, no kit.css classes) and the boundary test finds no kit or ui import. Every surface row depends on this one. Built by the coordinator lane (Main, Oct 23 - it blocks 14 surface rows): PR #567, stacked on #560."
+   "note": "done - 5c8ae021 (GoalNextStep, client/src/test/goalPageContract.ts assertGoalPage and the moved-page boundary are on main; delivered through the coordinator lane's PR #567, never on this row's branch, so the picker could not see it land). Flipped by D-200 (Oct 24): the stale in-review status held 18 rows. Earlier note: D-167: a page counts as moved only when its test calls assertGoalPage (one h1 goal line, exactly one data-g-primary inside the GoalNextStep block, no kit.css classes) and the boundary test finds no kit or ui import. Every surface row depends on this one. Built by the coordinator lane (Main, Oct 23 - it blocks 14 surface rows): PR #567, stacked on #560."
   },
   {
    "id": "D-048-F-shell-parts",
