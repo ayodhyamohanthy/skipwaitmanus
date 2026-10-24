@@ -72,7 +72,7 @@ export type DailyMoneyCheckDeps = {
   countPaymentCreditRows: (paymentIds: number[]) => Promise<PaymentCreditCount[]>;
   listParkedPayments: (limit: number) => Promise<ParkedPaymentRow[]>;
   listUnmatchedRefunds: (limit: number) => Promise<UnmatchedRefundRow[]>;
-  listStaleCheckouts: (olderThan: Date, limit: number) => Promise<StaleCheckoutRow[]>;
+  listStaleCheckouts: (olderThan: Date, limit: number, newerThan?: Date) => Promise<StaleCheckoutRow[]>;
   listAllocatedAsks: (cutoffs: AllocatedAskCutoffs, afterId: number, limit: number) => Promise<AllocatedAskRow[]>;
   listLegacyPlanWallets: (now: Date, limit: number) => Promise<LegacyPlanWalletRow[]>;
   listAskDeliverySpendsWhileWaiting: (limit: number) => Promise<AskSpentWhileWaitingRow[]>;
@@ -138,10 +138,12 @@ async function summarizeStaleCheckouts(olderThan: Date, newerThan?: Date): Promi
   return { total: Number(row?.total ?? 0), users: Number(row?.users ?? 0), oldest: row?.oldest ? new Date(row.oldest) : null, newest: row?.newest ? new Date(row.newest) : null };
 }
 
-async function listStaleCheckouts(olderThan: Date, limit: number): Promise<StaleCheckoutRow[]> {
+/** The oldest few in-window checkouts by id. `newerThan` keeps the sample inside the same 1-7 day window the
+ * summary counts, so an aged-out row (its own line, unverified at the provider) is never named here. */
+export async function listStaleCheckouts(olderThan: Date, limit: number, newerThan?: Date): Promise<StaleCheckoutRow[]> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
   return db.select({ id: paymentFulfillments.id, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, createdAt: paymentFulfillments.createdAt })
-    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan), or(isNull(paymentFulfillments.reconciliationReason), ne(paymentFulfillments.reconciliationReason, ABANDONED_CHECKOUT_REASON))))
+    .from(paymentFulfillments).where(and(eq(paymentFulfillments.status, "pending"), lt(paymentFulfillments.createdAt, olderThan), ...(newerThan ? [gte(paymentFulfillments.createdAt, newerThan)] : []), or(isNull(paymentFulfillments.reconciliationReason), ne(paymentFulfillments.reconciliationReason, ABANDONED_CHECKOUT_REASON))))
     .orderBy(asc(paymentFulfillments.id)).limit(limit);
 }
 
@@ -464,7 +466,7 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCh
     const agedOutCutoff = new Date(nowMs - PENDING_MAX_AGE_MS);
     const staleSummary = await deps.summarizeStaleCheckouts(staleCutoff, agedOutCutoff);
     if (staleSummary.total > 0) {
-      const sample = await deps.listStaleCheckouts(staleCutoff, 3);
+      const sample = await deps.listStaleCheckouts(staleCutoff, 3, agedOutCutoff);
       findings.push(`stale checkouts: ${staleSummary.total} unpaid checkout page(s) from ${staleSummary.users} account(s) still pending after a day, oldest ${staleSummary.oldest?.toISOString() ?? "unknown"}, newest ${staleSummary.newest?.toISOString() ?? "unknown"}; none credited, no money moved (oldest ids: ${sample.map(row => `#${row.id}`).join(", ")})`);
     }
 

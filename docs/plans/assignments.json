@@ -73,9 +73,9 @@
    "tier": 2,
    "lane": "picker",
    "branch": "agent/queue/picker-board-newer-report",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
-   "note": "D-162: on Oct 23 the board kept workbuddy · b0eb's 02:14 blocked report on D-090-BYOR and hid the three green reports after it; the first (a2fdbc3e) named the owner's waiver, the next two reported build progress. The CEO ruled from the stale report (D-154) and the owner had to restate his word. latestReports keeps the blocked report standing (unchanged) and also returns every non-CEO report after it; the board line and the printed unblock step show them."
+   "note": "D-162: on Oct 23 the board kept workbuddy · b0eb's 02:14 blocked report on D-090-BYOR and hid the three green reports after it; the first (a2fdbc3e) named the owner's waiver, the next two reported build progress. The CEO ruled from the stale report (D-154) and the owner had to restate his word. latestReports keeps D-200's clearing rule and returns every report after a standing blocked one in newer; the board line and the printed unblock step show them. Display only: no hand-out decision changes."
   },
   {
    "id": "REGISTER-520",
@@ -112,7 +112,7 @@
    "tier": 1,
    "lane": "audit",
    "branch": "agent/queue/postmerge-oct22-fixes",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [
     "D-048-fix-post-copy",
     "D-048-fix-landing-flash-snapshot-v2"
@@ -671,7 +671,7 @@
    "tier": 2,
    "lane": "design-core",
    "branch": "agent/queue/d048-f-primitives",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [
     "D-048-F-flags"
    ],
@@ -683,7 +683,7 @@
     "client/src/components/goal/goalAtoms.test.tsx",
     "client/src/components/goal/goalComposites.test.tsx"
    ],
-   "note": " Audit outcome (Oct 23, accepted by Main): the barrel (20+ exports) covers every built surface; AYO-7 composed in-place pages with zero new primitives. The only cross-surface gap, the \"Your next step\" block, is D-048-F-goal-check's GoalNextStep per D-167 (local copies to migrate later: MyRequests.tsx, goal/inbox/GoalInbox.tsx, goal/assistants/AssistantLayout.tsx, inline markups on the AYO-7 pages). AYO-9's Section/Message/AccessStatus/NetworkButton stay single-consumer (promote on a second consumer). Name-collisions MyRequests.NextStep/ReferralRequest.NextStep/AdminCatalogSync.Section are different semantics - do not unify. No code to promote: audit-only row, no manufactured code."
+   "note": "done - e90e0671 (audit-only outcome on main: no code to promote; GoalNextStep belongs to D-048-F-goal-check). Flipped by D-200 (Oct 24): the stale in-review status held 15 rows. Earlier note: Audit outcome (Oct 23, accepted by Main): the barrel (20+ exports) covers every built surface; AYO-7 composed in-place pages with zero new primitives. The only cross-surface gap, the \"Your next step\" block, is D-048-F-goal-check's GoalNextStep per D-167 (local copies to migrate later: MyRequests.tsx, goal/inbox/GoalInbox.tsx, goal/assistants/AssistantLayout.tsx, inline markups on the AYO-7 pages). AYO-9's Section/Message/AccessStatus/NetworkButton stay single-consumer (promote on a second consumer). Name-collisions MyRequests.NextStep/ReferralRequest.NextStep/AdminCatalogSync.Section are different semantics - do not unify. No code to promote: audit-only row, no manufactured code."
   },
   {
    "id": "D-048-F-harness",
@@ -735,7 +735,7 @@
    "tier": 2,
    "lane": "design-core",
    "branch": "agent/queue/d048-f-static-frame",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [
     "D-048-p3-w0-shell"
    ],
@@ -744,7 +744,7 @@
     "client/src/components/goal/goalStaticFrame.test.tsx",
     "scripts/prerenderPublicPages.test.ts"
    ],
-   "note": "implemented in PR (this branch), pending CI and merge; flips to done with its merge SHA"
+   "note": "done - e62ab474 (PR #561 merged the static frame; refined by #600, 26a35834). Flipped by D-200 (Oct 24): the row stayed in-review after its merge. Earlier note: implemented in PR (this branch), pending CI and merge; flips to done with its merge SHA"
   },
   {
    "id": "D-048-F-routes",
@@ -774,7 +774,7 @@
    "tier": 2,
    "lane": "design-check",
    "branch": "agent/queue/d048-f-goal-check",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [
     "D-048-F-primitives"
    ],
@@ -786,7 +786,7 @@
     "client/src/test/goalPageContract.test.tsx",
     "client/src/test/goalPagesBoundary.test.ts"
    ],
-   "note": "D-167: a page counts as moved only when its test calls assertGoalPage (one h1 goal line, exactly one data-g-primary inside the GoalNextStep block, no kit.css classes) and the boundary test finds no kit or ui import. Every surface row depends on this one. Built by the coordinator lane (Main, Oct 23 - it blocks 14 surface rows): PR #567, stacked on #560."
+   "note": "done - 5c8ae021 (GoalNextStep, client/src/test/goalPageContract.ts assertGoalPage and the moved-page boundary are on main; delivered through the coordinator lane's PR #567, never on this row's branch, so the picker could not see it land). Flipped by D-200 (Oct 24): the stale in-review status held 18 rows. Earlier note: D-167: a page counts as moved only when its test calls assertGoalPage (one h1 goal line, exactly one data-g-primary inside the GoalNextStep block, no kit.css classes) and the boundary test finds no kit or ui import. Every surface row depends on this one. Built by the coordinator lane (Main, Oct 23 - it blocks 14 surface rows): PR #567, stacked on #560."
   },
   {
    "id": "D-048-F-shell-parts",
@@ -1865,7 +1865,7 @@
    "branch": "agent/ayo7/signin-loading-click",
    "status": "todo",
    "dependsOn": [],
-   "note": "D-199 registers legacy PR #595 (built by Instinct Agent; user report phonemsg-01M5MXF1C8DQ86C6Y7TXJQY01X) under its existing branch: no rename, no gate bypass. Scope: client/src/_core/auth.tsx and authCompat.test.ts only; the signed-in no-op, the same-origin returnTo guard and server-owned authentication stay unchanged. The branch drops its own copy of this row at its next merge-up. Review: Tier 1, by a model other than Instinct, the fixer or Claude. Lands with an independent PASS and fresh green CI on the exact head, and only once the D-198 approving identity exists. Fixture evidence only: the user's exact failing URL stays open. Packet section 2.",
+   "note": "D-199 registers legacy PR #595 (built by Instinct Agent; user report phonemsg-01M5MXF1C8DQ86C6Y7TXJQY01X) under its existing branch: no rename, no gate bypass. Scope: client/src/_core/auth.tsx and authCompat.test.ts only; the signed-in no-op, the same-origin returnTo guard and server-owned authentication stay unchanged. The branch drops its own copy of this row at its next merge-up. Review: Tier 1, by a model other than Instinct (builder) or the fixer's (D-151, D-200). Lands with an independent PASS and fresh green CI on the exact head. Fixture evidence only: the user's exact failing URL stays open. Packet section 2.",
    "owns": [
     "client/src/_core/auth.tsx",
     "client/src/_core/authCompat.test.ts"
@@ -1883,7 +1883,7 @@
    "dependsOn": [
     "D-132-audit"
    ],
-   "note": "D-199 registers legacy PR #596 (built by Instinct Agent; user report phonemsg-01M5MXNSDQ0VJMG8M3MVQWT8JF) under its existing branch. Scope: six files (packet section 3). No validation, eligibility, price, quote or send-contract change; new strings use D-180 vocabulary. Waits for D-132-audit (same composer files; money core first, D-146/D-197), then merges main. The branch drops its own copy of this row at merge-up. Review by a model other than Instinct, the fixer or Claude. Lands only once the D-198 approving identity exists.",
+   "note": "D-199 registers legacy PR #596 (built by Instinct Agent; user report phonemsg-01M5MXNSDQ0VJMG8M3MVQWT8JF) under its existing branch. Scope: six files (packet section 3). No validation, eligibility, price, quote or send-contract change; new strings use D-180 vocabulary. Waits for D-132-audit (same composer files; money core first, D-146/D-197), then merges main. The branch drops its own copy of this row at merge-up. Tier 2: lands on green required CI (D-200).",
    "owns": [
     "client/src/pages/Ask.tsx",
     "client/src/pages/Explore.tsx",

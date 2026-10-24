@@ -8,7 +8,7 @@ Three pull requests from before the queue gate (D-166) fail CI only because thei
 - **No renaming and no gate bypass.** A branch keeps its name. A legacy PR becomes landable when the CEO registers a row on `main` whose `branch` is that PR's branch, through a reviewed `claude/` registry PR (the REGISTER-592 and REGISTER-oct24 pattern).
 - **Only Claude Code adds rows.** A branch that carries its own copy of a row drops it at its next merge-up and takes `main`'s `docs/plans/assignments.json` unchanged.
 - **One owner per surface** (D-167, D-189). A PR that spans surfaces other rows own is not registered. Its changes become source material for those rows.
-- **Gates unchanged.** Each PR lands only with an independent PASS and fresh green required CI on its exact final head, and under D-198 only once the owner's approving identity exists.
+- **Gates (D-200).** Tier 1 (#595) needs one independent PASS by a model other than the builder's (Instinct), plus fresh green required CI on its exact final head. Tier 2 (#596) lands on green required CI.
 
 ## 2. `D-048-fix-signin-click-loading` — #595 (Tier 1, sign-in)
 - **Branch:** `agent/ayo7/signin-loading-click`, head `70705891` when registered. Built by Instinct Agent; user report phonemsg-01M5MXF1C8DQ86C6Y7TXJQY01X.
@@ -20,7 +20,7 @@ Three pull requests from before the queue gate (D-166) fail CI only because thei
   - `authCompat.test.ts` shows a click during loading starting the server flow. It fails if the fix is reverted.
   - `client/src/pages/loginRule.test.tsx` and `client/src/pages/signIn.test.tsx` stay green.
   - Fresh required CI is green on the final head after this row is on `main`.
-- **Review:** Tier 1, by a model that neither built nor fixed it: not Instinct, not Claude, not the fixer's model. Record it with `node scripts/next-task.mjs --verdict pass|findings --task D-048-fix-signin-click-loading --as "<name>"`.
+- **Review:** Tier 1, by a model that neither built nor fixed it: not Instinct, not the fixer's model (D-151, D-200). Record it with `node scripts/next-task.mjs --verdict pass|findings --task D-048-fix-signin-click-loading --as "<name>"`.
 - **Evidence:** the verdict marker, the green run on the exact head, and the focused test output in the PR.
 - **Open item, not a blocker:** the user's exact failing URL is unknown. This row fixes the documented mechanism (fixture evidence), and the original report stays open until it is reproduced.
 
@@ -37,7 +37,7 @@ Three pull requests from before the queue gate (D-166) fail CI only because thei
   - The existing explore, ask and quote tests stay green.
   - Captures of a blocked Send at 1280 and 390.
   - Fresh required CI is green on the final head.
-- **Review:** by a model other than Instinct, the fixer's model or Claude.
+- **Review:** none separate. Tier 2 lands on green required CI (D-200).
 - **Evidence:** the verdict, the green run, and the captures in the PR.
 - **Open item, not a blocker:** the user's exact failing case is unverified.
 
