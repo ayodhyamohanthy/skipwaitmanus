@@ -11,7 +11,7 @@ import { registerPrivateReferralRoutes } from "./privateReferralRoutes";
 
 const day = 86_400_000;
 const key = (suffix: string) => `00000000-0000-4000-8000-0000000000${suffix}`;
-const askBody = (extra: Record<string, unknown> = {}) => ({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [88], ...extra });
+const askBody = (extra: Record<string, unknown> = {}) => ({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [88], expectedCost: 1, ...extra });
 
 type ActivityInput = { action: string; outcome?: string; resourceId?: string | number; metadata?: Record<string, unknown> };
 

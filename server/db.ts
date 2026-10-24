@@ -49,7 +49,7 @@ import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegr
 import { isPaidPlanActive, resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { askWorkItemIdsSchema, dedupeAskWorkItemIds, type AskWorkItem } from "../shared/askWorkItems";
-import { AssistantPlanRequiredError, CompanyCapReachedError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
+import { AskPriceChangedError, AssistantPlanRequiredError, CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskWindow, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks, type UnclaimedAssignmentKind, type UnclaimedAssignments } from "./heldAsk";
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
@@ -700,10 +700,13 @@ export async function proposeAssistantAsk(userId: number, input: { targetRoleUrl
   const provider = typeof input.provider === "string" && input.provider.trim() ? input.provider.trim().slice(0, 80) : "assistant";
   const inserted = await db.insert(assistantApprovals).values({
     userId, connectionId: null, kind: "ask_send", provider, companyDomain, role: null, note: message,
-    creditCount: ASSISTANT_ASK_CREDIT_COST, slotCount: null, targetRoleUrl, attachmentIds: JSON.stringify(ids),
+    // The approved cost is the classified ask cost at proposal time (flag-aware;
+    // flat 1 with ASK_LEVEL_COST off, unchanged), so execution below can bind it.
+    creditCount: askCreditCost({ title: COMPANY_ASK_PRICE_TITLE, description: COMPANY_ASK_PRICE_DESCRIPTION, url: targetRoleUrl }), slotCount: null, targetRoleUrl, attachmentIds: JSON.stringify(ids),
     idempotencyKey: randomBytes(24).toString("base64url").slice(0, 40), expiresAt: new Date(getApprovalExpiresAtMs(now.getTime())),
   });
-  return { id: Number(inserted[0].insertId), status: "pending" as const, creditCost: ASSISTANT_ASK_CREDIT_COST, expiresAt: new Date(getApprovalExpiresAtMs(now.getTime())).toISOString() };
+  const creditCost = askCreditCost({ title: COMPANY_ASK_PRICE_TITLE, description: COMPANY_ASK_PRICE_DESCRIPTION, url: targetRoleUrl });
+  return { id: Number(inserted[0].insertId), status: "pending" as const, creditCost, expiresAt: new Date(getApprovalExpiresAtMs(now.getTime())).toISOString() };
 }
 
 export async function decideAssistantApproval(userId: number, approvalId: number, decision: "approved" | "declined") {
@@ -725,11 +728,21 @@ export async function decideAssistantApproval(userId: number, approvalId: number
     let attachmentIds: number[] = [];
     try { const parsed = JSON.parse(current.attachmentIds ?? "[]"); if (Array.isArray(parsed)) attachmentIds = parsed.filter((v: unknown): v is number => typeof v === "number"); } catch { /* handled below */ }
     try {
-      const created = await createCompanyReferralRequest(userId, { targetRoleUrl: current.targetRoleUrl, personalPitch: current.note?.trim() || "No personal note was included with this referral request.", attachmentIds, idempotencyKey: current.idempotencyKey });
+      // D-132 item 3: execution binds the cost the owner approved. If pricing
+      // moved since approval (flag flip, classifier change), create refuses with
+      // AskPriceChangedError, the approval returns to pending and the owner sees
+      // why - never a debit above the approved number. Coverage drift cannot
+      // create a money surprise once cost is bound: uncovered waits free.
+      const created = await createCompanyReferralRequest(userId, { targetRoleUrl: current.targetRoleUrl, personalPitch: current.note?.trim() || "No personal note was included with this referral request.", attachmentIds, idempotencyKey: current.idempotencyKey, expectedCost: current.creditCount ?? ASSISTANT_ASK_CREDIT_COST });
       await db.update(assistantApprovals).set({ executedRequestId: created.requestId }).where(eq(assistantApprovals.id, approvalId));
       return { id: approvalId, status: "approved" as const, requestId: created.requestId };
     } catch (error) {
-      await db.update(assistantApprovals).set({ status: "pending", decidedAt: null }).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.status, "approved")));
+      // A moved price must not fail the approval forever: the pending row is
+      // repriced to the current classified cost, so re-review shows the true
+      // number and approving then binds it - same re-confirmation rule as the
+      // composer. Any other failure keeps the stored representation untouched.
+      const reprice = error instanceof AskPriceChangedError ? { creditCount: error.actual } : {};
+      await db.update(assistantApprovals).set({ status: "pending", decidedAt: null, ...reprice }).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.status, "approved")));
       throw error;
     }
   }
@@ -1522,6 +1535,33 @@ export function companyCoverageStatus(eligibleEmployeeCount: number) {
   return eligibleEmployeeCount > 0 ? "covered" as const : "waiting_for_company_coverage" as const;
 }
 
+/**
+ * D-132 item 3: read-only coverage preview for pre-send quotes (Skippy). Uses
+ * the exact domain resolution and availability predicate of
+ * createCompanyReferralRequest's non-fastTrack path - verified employee of the
+ * resolved domain, unpaused, unsuspended, under monthly capacity via the same
+ * allocated-slot counts - so a quote can never disagree with the send-time
+ * charge decision. No locks and no writes: a preview can go stale, which is
+ * why the send path always re-quotes and createAsk remains the backstop.
+ * covered is null when the employer domain cannot be resolved from the link
+ * alone (createAsk would then need a confirmed domain); callers must treat
+ * null as unknown, never as free waiting.
+ */
+export async function previewCompanyCoverageForTargetUrl(targetRoleUrl: string): Promise<{ companyDomain: string | null; covered: boolean | null }> {
+  const db = await getDb();
+  if (!db) return { companyDomain: null, covered: null };
+  const companyDomain = await resolveEmployerDomainFromTargetUrl(targetRoleUrl);
+  if (!companyDomain) return { companyDomain: null, covered: null };
+  const candidates = await db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended, email: users.email }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
+  const eligible = candidates.filter(profile => isVerifiedEmployeeOfCompany(profile, companyDomain));
+  // readAllocatedSlotCountsTx takes the ledger transaction type; a short
+  // read-only transaction keeps this preview on the same typed path.
+  const eligibleIds = eligible.map(profile => profile.userId);
+  const allocated = await db.transaction(async tx => readAllocatedSlotCountsTx(tx, eligibleIds));
+  const available = eligible.filter(profile => isOpenReferrer(profile, companyDomain, allocated.get(profile.userId) ?? 0));
+  return { companyDomain, covered: available.length > 0 };
+}
+
 export function fastTrackLinkMatchesCompany(linkCompanyDomain: string, resolvedCompanyDomain: string) {
   return linkCompanyDomain.trim().toLowerCase() === resolvedCompanyDomain.trim().toLowerCase();
 }
@@ -1847,7 +1887,7 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   return { id: requestId };
 }
 
-export type CreateCompanyReferralInput = { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; workItemIds?: number[] };
+export type CreateCompanyReferralInput = { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; workItemIds?: number[]; /** Set when the composer showed the free-waiting (uncovered) representation: the commit must not charge because coverage flipped - it refuses instead, and the seeker re-confirms at the live price (D-132 item 3). */ expectedCoverage?: "waiting_for_company_coverage"; /** The numeric price the seeker accepted (ready quote, or 1 with the flag off): the commit must not charge or store a different cost - it refuses and the seeker re-confirms (D-132 item 3). */ expectedCost?: number };
 /**
  * The private `jobs` row behind a company ask. Its function is the seeker's
  * explicit choice ("seeker") or the shared classifier's guess from the job
@@ -1855,9 +1895,14 @@ export type CreateCompanyReferralInput = { selectedCompany?: { name: string; dom
  * reads the link as submitted (`roleLinkUrl`) because normalization drops the
  * role words from some links (LinkedIn keeps only the job id).
  */
+/** The fixed fields every company-ask job row classifies on: the quote, the
+ * commit precondition, the stored cost, the spend and assistant-approval
+ * pricing must all agree by construction (D-132 item 3). */
+export const COMPANY_ASK_PRICE_TITLE = "Role from shared job link";
+export const COMPANY_ASK_PRICE_DESCRIPTION = "Private referral request routed from a Target Role URL.";
 export function companyAskJobRow(input: { companyDomain: string; targetRoleUrl: string; roleLinkUrl?: string; compensation: string | null; jobFunction?: JobFunction; publishedAt: Date }) {
   const decided = resolveAskJobFunction({ explicit: input.jobFunction, targetRoleUrl: input.roleLinkUrl ?? input.targetRoleUrl });
-  return { title: "Role from shared job link", company: input.companyDomain, location: "Not specified", compensation: input.compensation, description: "Private referral request routed from a Target Role URL.", targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", jobFunction: decided.jobFunction, jobFunctionSource: decided.source, publishedAt: input.publishedAt };
+  return { title: COMPANY_ASK_PRICE_TITLE, company: input.companyDomain, location: "Not specified", compensation: input.compensation, description: COMPANY_ASK_PRICE_DESCRIPTION, targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", jobFunction: decided.jobFunction, jobFunctionSource: decided.source, publishedAt: input.publishedAt };
 }
 export class CompanyLinkMismatchError extends Error { constructor(companyName: string) { super(`This job link is not from ${companyName}. Paste a job link from ${companyName}’s own careers page.`); this.name="CompanyLinkMismatchError"; } }
 /** Task 13: an id that is not one of the caller's own showcase pieces, or vanished while the ask was being written. */
@@ -1914,6 +1959,14 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const allocatedByReferrer=fastTrackLink?new Map<number,number>():await readAllocatedSlotCountsTx(tx,eligible.map(profile=>profile.userId));
     const available=fastTrackLink?eligible:eligible.filter(profile=>isOpenReferrer(profile,companyDomain,allocatedByReferrer.get(profile.userId)??0));
     const coverageStatus=companyCoverageStatus(available.length);const isWaiting=coverageStatus==="waiting_for_company_coverage";
+    // D-132 item 3: a composer that promised free waiting never commits a charge because coverage flipped. Thrown before the slot-cap check, the spend and every write; the retry after re-pricing carries no expectation.
+    if(input.expectedCoverage==="waiting_for_company_coverage"&&!isWaiting)throw new CoverageOpenedUpError(companyDomain);
+    // D-132 item 3: the accepted price is binding at commit. The job row is built
+    // here (same deterministic inputs the spend and the stored cost classify on
+    // below) so a flag or classifier move mid-send refuses inside this
+    // transaction - before attachments, the request row, or any wallet write.
+    const earlyJobRow=companyAskJobRow({companyDomain,targetRoleUrl:input.targetRoleUrl,roleLinkUrl:input.submittedTargetRoleUrl,compensation,jobFunction:input.jobFunction,publishedAt:new Date()});
+    if(input.expectedCost!==undefined){const commitCost=askCreditCost({title:earlyJobRow.title,description:earlyJobRow.description,url:earlyJobRow.targetRoleUrl});if(commitCost!==input.expectedCost)throw new AskPriceChangedError(input.expectedCost,commitCost);}
     // D-061: a waiting ask uses no open slot and bypasses the cap until it can reach a referrer.
     // The cap refusal stays ahead of the attachment read, as before, so it needs no document lock.
     if(!isWaiting&&entitlements.openRequests!==null&&openAsks>=entitlements.openRequests)throw new OpenAskSlotCapError(openAskSlots(entitlements,openAsks));
@@ -1953,7 +2006,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const firstLookCandidate=opportunity?await resolveAskFirstLookTx(tx,{posterUserId:opportunity.ownerId,seekerUserId:userId,companyDomain,nowMs}):null;
     const firstLook=firstLookCandidate?reachable.find(employee=>employee.userId===firstLookCandidate.referrerId)??null:null;
     const firstLookUntil=firstLook&&firstLookCandidate?firstLookCandidate.until:null;
-    const jobRow=companyAskJobRow({companyDomain,targetRoleUrl:input.targetRoleUrl,roleLinkUrl:input.submittedTargetRoleUrl,compensation,jobFunction:input.jobFunction,publishedAt:new Date()});const jobResult=await tx.insert(jobs).values(jobRow);const jobId=Number(jobResult[0].insertId);
+    const jobRow=earlyJobRow;const jobResult=await tx.insert(jobs).values(jobRow);const jobId=Number(jobResult[0].insertId);
     const requestResult=await tx.insert(referralRequests).values({jobId,jobSeekerId:userId,referrerId:fastTrackLink?.referrerId??null,personalPitch:input.personalPitch,status:"pending",waitingForCoverage:isWaiting,coverageQueuedAt:isWaiting?new Date():null,coverageVisibleAt:isWaiting?null:new Date(nowMs),coverageHeldAt:null,idempotencyKey:input.idempotencyKey,requestFingerprint:fingerprint,opportunityId:opportunity?.id??null,firstLookReferrerId:firstLook?.userId??null,firstLookUntil});const requestId=Number(requestResult[0].insertId);
     // 1 credit = 1 request, spent when the ask first reaches an available referrer (D-034): a covered ask pays
     // here, in this transaction and under the wallet lock, through the credit ledger (soonest-expiring bucket
@@ -1968,7 +2021,8 @@ export async function createCompanyReferralRequest(userId: number, input: Create
       remaining=await creditSummaryTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoState,now:summaryNow});
     }else{
       const askCost=askCreditCost({title:jobRow.title,description:jobRow.description,url:jobRow.targetRoleUrl});
-      const spent=await spendCreditsTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoGrantsEnabled()?promoHolding(promoState.grant):null,credits:askCost,meta:{idempotencyKey:input.idempotencyKey,referenceType:"referral_request",referenceId:String(requestId)},now:summaryNow}).catch(error=>{if(error instanceof InsufficientCreditsError)throw new Error(askLevelCostEnabled()?`This ask costs ${askCost} credit${askCost===1?"":"s"} and your balance is lower. Add credits in Plans & credits to send it now, or wait for your included credits to renew.`:"You have no referral credits left. Add a credit pack or choose a plan in Plans & credits to send this ask now, or wait for your included credits to renew.");throw error;});
+      const spent=await spendCreditsTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoGrantsEnabled()?promoHolding(promoState.grant):null,credits:askCost,meta:{idempotencyKey:input.idempotencyKey,referenceType:"referral_request",referenceId:String(requestId)},now:summaryNow}).catch(error=>{if(error instanceof InsufficientCreditsError){// The renewal route is named only when a renewed cycle can actually reach this ask's cost: the Free month's 3 credits never carry over, so for a costlier ask "wait for renewal" would promise a path that does not exist. Bought credits persist, so they count toward what a renewal can add to.
+const renewalCanFund=reconciled.wallet.balance+reconciled.wallet.monthlyAllowance>=(askLevelCostEnabled()?askCost:1);throw new Error(askLevelCostEnabled()?`This ask costs ${askCost} credit${askCost===1?"":"s"} and your balance is lower. Add credits in Plans & credits to send it${renewalCanFund?" now, or wait for your included credits to renew.":"."}`:`You have no referral credits left. Add a credit pack or choose a plan in Plans & credits to send this ask${renewalCanFund?" now, or wait for your included credits to renew.":"."}`);}throw error;});
       const debitRow=(await tx.select({id:tokenTransactions.id}).from(tokenTransactions).where(and(eq(tokenTransactions.userId,userId),eq(tokenTransactions.role,"job_seeker"),eq(tokenTransactions.idempotencyKey,`${input.idempotencyKey}#1`))).limit(1))[0];if(!debitRow)throw new Error("The referral credit debit was not recorded");
       await tx.update(referralRequests).set({debitTransactionId:debitRow.id}).where(eq(referralRequests.id,requestId));
       const promoAfter=promoState.grant&&spent.promoRemaining!==null?{grant:{...promoState.grant,creditsRemaining:spent.promoRemaining},status:spent.promoRemaining>0?promoState.status:"exhausted" as const}:promoState;

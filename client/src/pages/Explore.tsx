@@ -147,6 +147,7 @@ export default function Explore() {
           work={composer.work}
           watch={composer.watch}
           cost={composer.cost}
+          topUp={composer.topUp}
           sendLabel={composer.sendLabel}
           sendBusyLabel={composer.sendBusyLabel}
           sending={composer.sending}

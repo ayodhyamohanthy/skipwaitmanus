@@ -37,7 +37,7 @@ function setup(over: Partial<Record<keyof PrivateReferralRouteDeps, unknown>> = 
 }
 
 const send = (app: express.Express, user = "11") =>
-  request(app).post("/api/company-referrals").set("x-test-user", user).set("Idempotency-Key", "ask-key-0123456789abcdef").send({ targetRoleUrl: "https://careers.wipro.com/job/product-designer-123", attachmentIds: [5], candidateMessage: "A specific note about the role." });
+  request(app).post("/api/company-referrals").set("x-test-user", user).set("Idempotency-Key", "ask-key-0123456789abcdef").send({ expectedCost: 1, targetRoleUrl: "https://careers.wipro.com/job/product-designer-123", attachmentIds: [5], candidateMessage: "A specific note about the role." });
 
 describe("open-ask slot routes", () => {
   it("answers a send at the cap with 409 and the typed slots body, and logs the refusal", async () => {

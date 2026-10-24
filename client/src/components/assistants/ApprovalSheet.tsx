@@ -78,13 +78,18 @@ export function ApprovalCard({ approval, balance, primary, handlers }: { approva
     );
   }
 
-  const slotLine = typeof approval.slotCount === "number" && approval.slotCount > 0 ? `uses 1 of your ${approval.slotCount} open slots` : "uses 1 of your open slots";
-  const subtitle = [approval.role, slotLine, approval.creditCount ? creditsLabel(approval.creditCount) : null].filter((part): part is string => Boolean(part)).join(" · ");
+  const askCost = approval.creditCount;
+  const subtitle = [approval.role, askCost ? creditsLabel(askCost) : null].filter((part): part is string => Boolean(part)).join(" · ");
   return (
     <Sheet>
       <SourceLine approval={approval} />
       <Title primary={primary}>Send this ask to {company}?</Title>
       <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+      {askCost ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {creditsLabel(askCost)} and 1 open slot are used only when the ask reaches a referrer. While it waits for one, nothing is charged and no slot is held.
+        </p>
+      ) : null}
       {editing ? (
         <label className="mt-4 block"><span className="sr-only">Ask note</span><textarea className="min-h-40 w-full rounded-2xl border border-input bg-background p-4 text-base" value={draftNote} onChange={event => onDraftChange(event.target.value)} /></label>
       ) : (

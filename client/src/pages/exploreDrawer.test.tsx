@@ -154,6 +154,7 @@ describe("ask drawer", () => {
       attachmentIds: [77],
       candidateMessage: "Led a checkout redesign that cut drop-off 18%.\nShipped a design system used by 40 teams.\nBuilt the onboarding flow end to end.",
       companySlug: "wipro",
+      expectedCost: 1,
     });
     expect((init as RequestInit).headers).toMatchObject({ "Idempotency-Key": expect.stringMatching(/^[0-9a-f-]{36}$/) });
     const active = await screen.findByTestId("goal-drawer");

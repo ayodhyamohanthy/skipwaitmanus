@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
 import { profiles, referralAttachments, tokenBalances } from "../drizzle/schema";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
-import { createCompanyReferralRequest } from "./db";
+import { COMPANY_ASK_PRICE_DESCRIPTION, COMPANY_ASK_PRICE_TITLE, askCreditCost, createCompanyReferralRequest } from "./db";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
 
 /*
@@ -79,6 +79,34 @@ describe("an ask sent with no credit left", () => {
     expect(rowsByTable.get(tokenBalances)?.[0]).toMatchObject({ monthlyCreditsRemaining: 0, balance: 0 });
   });
 
+  it("flag on: the renewal route is named only when a renewed cycle can reach the ask's cost (D-132 item 3)", async () => {
+    // Free gives 3 credits a month with NO carryover: when the classified cost
+    // exceeds what one renewed cycle plus the bought balance can reach, "wait
+    // for your included credits to renew" would promise a funding path that
+    // does not exist. The clause is dropped then, kept when it is real.
+    vi.stubEnv("ASK_LEVEL_COST", "true");
+    // A senior slug classifies above the Free month's 3: one renewal alone can never fund it.
+    const SENIOR_URL = "https://careers.acme.com/jobs/principal-platform-engineer-1";
+    const cost = askCreditCost({ title: COMPANY_ASK_PRICE_TITLE, description: COMPANY_ASK_PRICE_DESCRIPTION, url: SENIOR_URL });
+    expect(cost).toBeGreaterThan(3); // the fixture's premise: one Free renewal alone can never fund this ask
+    rowsByTable.set(profiles, [{ id: 91, userId: 501, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: new Date(), paused: false, referralCapacity: 3 }]);
+    rowsByTable.set(referralAttachments, [{ id: 77 }]);
+    const walletRow = (balance: number) => ({ id: 1, userId: SEEKER, role: "job_seeker", balance, monthlyCreditsRemaining: 0, monthlyAllowance: 3, monthlyCycleKey: currentMonthlyCycleKey(), plan: "free", subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, updatedAt: new Date() });
+    const sendAsk = (key: string) => createCompanyReferralRequest(SEEKER, { targetRoleUrl: SENIOR_URL, personalPitch: "I led the approvals redesign this role describes.", attachmentIds: [77], idempotencyKey: key, expectedCost: cost }).then(
+      () => { throw new Error("the ask was accepted without enough credit"); },
+      (error: Error) => error,
+    );
+    // Empty wallet: renewal alone (3) cannot reach the cost - no renewal route.
+    rowsByTable.set(tokenBalances, [walletRow(0)]);
+    const unfundable = await sendAsk("ask-renewal-cannot-fund-0001");
+    expect(unfundable.message).toBe(`This ask costs ${cost} credits and your balance is lower. Add credits in Plans & credits to send it.`);
+    expect(unfundable.message).not.toContain("renew");
+    // Bought 5 credits persist and a renewed cycle adds 3: 5 + 3 reaches 6, so the renewal route is real and stays.
+    rowsByTable.set(tokenBalances, [walletRow(cost - 1)]);
+    const fundable = await sendAsk("ask-renewal-can-fund-0001");
+    expect(fundable.message).toBe(`This ask costs ${cost} credits and your balance is lower. Add credits in Plans & credits to send it now, or wait for your included credits to renew.`);
+  });
+
   it("answers the refusal as the seeker's 400 with the same copy", async () => {
     const app = express();
     app.use(express.json());
@@ -88,7 +116,7 @@ describe("an ask sent with no credit left", () => {
       recordActivity: async () => undefined,
     };
     registerPrivateReferralRoutes(app, deps as unknown as PrivateReferralRouteDeps);
-    const response = await request(app).post("/api/company-referrals").set("x-test-user", String(SEEKER)).set("Idempotency-Key", "ask-key-0123456789abcdef").send({ targetRoleUrl: "https://careers.wipro.com/job/product-designer-123", attachmentIds: [5], candidateMessage: "A specific note about the role." });
+    const response = await request(app).post("/api/company-referrals").set("x-test-user", String(SEEKER)).set("Idempotency-Key", "ask-key-0123456789abcdef").send({ expectedCost: 1, targetRoleUrl: "https://careers.wipro.com/job/product-designer-123", attachmentIds: [5], candidateMessage: "A specific note about the role." });
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: OUT_OF_CREDITS });
   });
