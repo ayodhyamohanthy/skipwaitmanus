@@ -562,9 +562,9 @@
    "tier": 1,
    "lane": "share-link",
    "branch": "agent/instinct/referral-link-paid-gate",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
-   "note": "D-163 (4): PR #527 carries the owner's D-155 and a migration (0110) with no queue row. Independent Tier 1 review by a model other than Instinct (D-151) with the packet's checklist; at landing merge main and renumber the decision and the migration to the next free numbers."
+   "note": "D-163 (4): PR #527 carries the owner's D-155 and a migration (0110) with no queue row. Independent Tier 1 review by a model other than Instinct (D-151) with the packet's checklist; at landing merge main and renumber the decision and the migration to the next free numbers. Landed Oct 24 as D-194 with migration 0114: code reviewed at 17ab8732 (pass, Claude Code · 61d2), then merged with main and renumbered by the lander (DeepSeek V4.1 Flash Free · 3ecf)."
   },
   {
    "id": "D-048-F-typescale",
