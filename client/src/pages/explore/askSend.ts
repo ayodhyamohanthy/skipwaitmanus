@@ -32,6 +32,10 @@ export function buildAskBody(input: {
    * both composer surfaces send it, because both build the body here.
    */
   workItemIds?: readonly number[];
+  /** Set when the composer showed the free-waiting (uncovered) line: the server must refuse rather than charge if coverage opened up since (D-132 item 3). */
+  expectedCoverage?: "waiting_for_company_coverage";
+  /** The price the seeker saw: the server must refuse rather than charge or store a different cost (D-132 item 3). */
+  expectedCost?: number;
 }): Record<string, string | number | number[]> {
   const body: Record<string, string | number | number[]> = {
     targetRoleUrl: input.targetRoleUrl.trim(),
@@ -39,6 +43,8 @@ export function buildAskBody(input: {
     candidateMessage: composeWhyMe(input.reasons),
   };
   if (input.workItemIds?.length) body.workItemIds = dedupeAskWorkItemIds(input.workItemIds);
+  if (input.expectedCoverage) body.expectedCoverage = input.expectedCoverage;
+  if (input.expectedCost !== undefined) body.expectedCost = input.expectedCost;
   if (input.companySlug) body.companySlug = input.companySlug;
   if ("fastTrackCode" in input.fastTrack) body.fastTrackCode = input.fastTrack.fastTrackCode;
   if ("fastTrackCompanySlug" in input.fastTrack) {
