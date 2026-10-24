@@ -10,13 +10,14 @@
 
 Why they are queued: a decision on an open pull request with no queue row is never handed to anyone, so it never lands, and agents keep building from the older entry on `main` (D-163 (4)). Decision IDs and migration numbers are fixed **at landing**: take the highest ID on `main` and every open branch + 1, renumbering every reference in the diff (`docs/DECISIONS.md` ID rule).
 
-## REGISTER-520: land PR #520 (CEO rulings D-156 to D-161 on its branch)
+## REGISTER-520: land PR #520 (CEO rulings D-201 to D-206 on its branch)
 
 - **What it holds.** Docs, decisions and the queue only, no product code: Skippy's missing Tier 1 reviews with six findings (S-1, an SSRF in Skippy's job-page reader, is high), the packets `SKIPPY-fix.md` and `SKIPPY-next.md`, newest-decision sync (`PICKER-decision-sync.md`), the CEO mandate, the startup-credits toolbox, branch hygiene (`BRANCH-HYGIENE.md`) and decision re-rating (`DECISION-REVIEW.md`). It adds nine queue rows: `PICKER-decision-sync`, `SKIPPY-fix`, `BRANCH-HYGIENE-1`, `BRANCH-HYGIENE-2`, `SKIPPY-redteam`, `SKIPPY-3`, `SKIPPY-stepup`, `SKIPPY-6` and `SKIPPY-7`.
 - **Who.** A Claude Code session wrote it, so the review and the landing go to a model other than Claude (D-151). Its Tier 1 here buys exactly that. A Claude Code session handed this row's review or landing posts no verdict and reports it blocked (the D-151 interim rule).
 - **Branch.** The queue needs `agent/<owner>/<slug>` names, so the row's branch is `agent/queue/register-520`, cut from #520's head; #520's own branch `claude/zealous-mendel-qvqdu0` stays untouched.
 - **Build stage (the builder carries the merge and the renumbering; nothing else).**
   1. `git fetch origin && git push origin origin/claude/zealous-mendel-qvqdu0:refs/heads/agent/queue/register-520` (once; if it already exists, use it), check it out in a worktree, then `git merge origin/main` (never rebase or force-push).
+  - Setup: in a fresh worktree run `pnpm install` before the first `pnpm check`; missing local dependencies fail as TS2688/TS5101 (this row's own October 24 block).
   2. `docs/DECISIONS.md` conflicts. `main` already holds a different D-156 (referrer-side candidate plans), and by the time you merge it may hold D-162 (#518) and D-163 (this ruling). Keep every row `main` has, unchanged. Give this branch's entries the next free IDs in their order (156→first free, 157→next, and so on), and replace every reference to the old IDs in this branch's diff: the entries, `AGENTS.md`, `CLAUDE.md`, `docs/BRIEF.md`, the agent entry docs, `docs/SKIPPY.md`, the new packets and `docs/plans/assignments.json`.
   3. `docs/plans/assignments.json`: keep `main`'s rows, unchanged, and add this branch's nine rows where the branch puts them. Then run `validateAssignments` (it must print `[]`) and `node_modules/.bin/vitest run scripts/` (all pass).
   4. `docs/BRIEF.md` must stay under its size test. If the merge pushes it over, keep `main`'s lines and shorten this branch's new line, never `main`'s.
@@ -28,7 +29,7 @@ Why they are queued: a decision on an open pull request with no queue row is nev
 ## D-155-share-paid-gate: review and land PR #527 (the /share link unlocks after the first paid invoice)
 
 - **The owner's word (verbatim, D-155 on the branch):** "Referrals should show unavailable and this line / Referrals unlock after your first paid invoice. Once you've made a payment, come back here to get your referral link."
-- **What it changes.** `GET /api/personal-invites/me` answers `{ invite: null, locked: true }` and creates no invite row until the account has provider-verified payment evidence (a one-time fulfillment at status `credited`, or a webhook-activated subscription); `/share` shows the locked line; the claim route is unchanged. It adds `drizzle/deploy/0110_referral_paid_evidence.sql` and touches `server/chargebee.ts`, `server/chargebeeRoutes.ts`, `server/db.ts` and `server/privateReferralRoutes.ts`. So it is Tier 1 (money evidence and a migration), not docs.
+- **What it changes.** `GET /api/personal-invites/me` answers `{ invite: null, locked: true }` and creates no invite row until the account has provider-verified payment evidence (a one-time fulfillment at status `credited`, or a webhook-activated subscription); `/share` shows the locked line; the claim route is unchanged. It adds `drizzle/deploy/0114_referral_paid_evidence.sql` and touches `server/chargebee.ts`, `server/chargebeeRoutes.ts`, `server/db.ts` and `server/privateReferralRoutes.ts`. So it is Tier 1 (money evidence and a migration), not docs.
 - **Who.** Instinct built it, so the review goes to a model other than Instinct (D-151).
 - **Review checklist** (on top of `docs/DELEGATION.md` §6):
   1. Only provider-verified payment counts: pending, `requires_review`, rejected and refunded rows, checkout or hosted-page creation and promo grants never unlock. A refund after unlock: say in the review whether the link stays (the owner's line says "after your first paid invoice"; keeping it is the reading the code should implement).
@@ -78,8 +79,8 @@ Instinct built these, so every review and landing goes to a model other than Ins
 
 ## Status
 These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines go here (D-134).
-- REGISTER-520: blocked — local `pnpm check` fails with TS2688 (missing `node`, `vite/client`, `vite-plugin-pwa/client` type definitions) and TS5101 (`baseUrl` deprecated); needs project-local dependencies/toolchain restored before verification.
-- D-155-share-paid-gate: todo (PR #527 open, CI green on `af6dd9cc`, conflicts with `main`).
-- D-132-catalog-record: todo (PR #528 open, conflicts with `main`).
+- REGISTER-520: blocked — D-203 ("Claude Code never develops") contradicts the newer D-195 and D-200 ("Claude Code builds too"). Re-cut from `fe1790bf`, renumbered to D-201-D-206 and merged with `main`; it waits on the owner's word on those two IDs before review.
+- D-155-share-paid-gate: done — 4dfeb6ba (merged `main`, renumbered to D-194 with migration 0114; delta review pass by DeepSeek V4.1 Flash Free · 3ecf, owner's go Oct 24).
+- D-132-catalog-record: done — 166fe5ff (docs only; landed on `main` by the status commit). Independent delta review passed: the audit names no secret, customer data or account/site id (D-059), and the `docs/PRICING.md` line matches the audit and `shared/planFamily.ts`. Focused checks 219/219 and `pnpm check` green; exact-head CI required before landing.
 - D-132-item3: todo; waits for D-132-audit.
 - D-132-v2-checkout: todo; waits for D-132-item3.
