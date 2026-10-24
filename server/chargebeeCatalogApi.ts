@@ -77,7 +77,7 @@ export function itemForm(input: ItemSpec & { itemFamilyId: string | null }): URL
   return form;
 }
 
-/** The documented form fields for one item price: no period on a one-time charge. */
+/** The documented form fields for one item price: no period on a one-time charge; recurring addons (D-132 monthly credits rung) carry a period like plans. */
 export function itemPriceForm(spec: ItemPriceSpec): URLSearchParams {
   const form = new URLSearchParams({
     id: spec.id,
@@ -88,7 +88,7 @@ export function itemPriceForm(spec: ItemPriceSpec): URLSearchParams {
     currency_code: spec.currencyCode,
     external_name: spec.externalName,
   });
-  if (spec.itemType === "plan") {
+  if (spec.itemType === "plan" || spec.itemType === "addon") {
     if (spec.period !== null) form.set("period", String(spec.period));
     if (spec.periodUnit !== null) form.set("period_unit", spec.periodUnit);
     if (spec.billingCycles !== null) form.set("billing_cycles", String(spec.billingCycles));

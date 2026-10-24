@@ -81,3 +81,36 @@ jobs:
         run: pnpm build
         env:
           VITE_GOAL_SURFACES: all
+
+  outbox-mysql:
+    name: D-067 outbox real-MySQL concurrency
+    # Isolated throwaway MySQL service container, empty root password, created and
+    # destroyed with the job. No credentials, no production data, standard runner
+    # minutes only. The test creates its own random d067_worker_* database and is
+    # hard-gated to refuse any URL that is not 127.0.0.1:34879.
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        ports:
+          - 34879:3306
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot --silent"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Outbox worker races, rollback, lease takeover and stale completion on real MySQL
+        env:
+          D067_ISOLATED_MYSQL_URL: mysql://root@127.0.0.1:34879
+        run: pnpm vitest run server/billingReviewOutbox.mysql.test.ts

@@ -2,7 +2,7 @@
 // carryover windows, the renewal grace and when a grant ends. Pure: callers
 // pass the JS clock (invariant 5).
 import { CATALOG_PLAN_IDS, type Carryover } from "./planCatalog";
-import { isPaidPlanActive } from "./planEntitlements";
+import { isPaidPlanActive, isPlanFamilyPaidPlan } from "./planEntitlements";
 import { currentMonthlyCycleKey } from "./subscriptionPlans";
 import { RENEWAL_GRACE_MS, type LedgerGrant, type LedgerWallet } from "./creditLedger";
 
@@ -95,6 +95,17 @@ export function walletCycleStart(wallet: Pick<LedgerWallet, "monthlyCycleKey" | 
   return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
 }
 
+/**
+ * The first instant after the Free month `cycleKey` names, or null for a key
+ * that names no month. Free's monthly credits stop then (D-165 (3): an upgrade
+ * carries them only until their own month would have ended).
+ */
+export function freeMonthEnd(cycleKey: string): Date | null {
+  const match = CYCLE_KEY.exec(cycleKey);
+  if (!match) return null;
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]), 1));
+}
+
 /** A cancelled-at-term-end plan's credits end with the term; a renewing plan's do not. */
 export function termCutoff(wallet: LedgerWallet, now: Date): Date | null {
   return isPaidPlanActive(wallet, now) && wallet.subscriptionStatus === "non_renewing" ? wallet.subscriptionCurrentTermEnd : null;
@@ -132,7 +143,11 @@ export function grantIsSpendable(grant: LedgerGrant, wallet: LedgerWallet, now: 
  */
 export function paidPlanLapsed(wallet: LedgerWallet, now: Date): boolean {
   if (wallet.plan === "free") return false;
-  if (!(CATALOG_PLAN_IDS as readonly string[]).includes(wallet.plan)) return true;
+  // A stored plan outside the catalog AND outside the D-132 paid family (the
+  // retired Pro/Max of D-067, the reserved Land ids) has lapsed now; a family
+  // plan (fast_track/insider) is a real subscription and lapses only by the
+  // status/term rules below.
+  if (!(CATALOG_PLAN_IDS as readonly string[]).includes(wallet.plan) && !isPlanFamilyPaidPlan(wallet.plan)) return true;
   if (isPaidPlanActive(wallet, now)) return false;
   const end = wallet.subscriptionCurrentTermEnd;
   if (wallet.subscriptionStatus !== "active" || !end) return true;

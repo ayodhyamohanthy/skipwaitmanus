@@ -71,7 +71,18 @@ function periodMatches(price: ProviderItemPrice, interval: BillingPeriod): boole
 export function itemPriceMatches(price: ProviderItemPrice | null, expected: CatalogPrice): boolean {
   if (!price || price.id !== expected.itemPriceId) return false;
   if (price.status !== "active" || price.currency_code !== expected.currency || price.price !== expected.amount) return false;
-  if (expected.kind === "pack" || expected.kind === "session") return price.item_type === undefined || price.item_type === "charge";
+  if (expected.kind === "pack" || expected.kind === "session" || expected.kind === "v2pack") return price.item_type === undefined || price.item_type === "charge";
+  // D-132: the bundle's plan fee is a plan item, its monthly credits rung an
+  // addon (a subscription holds one plan plus addons, never two plans); both
+  // bill monthly.
+  if (expected.kind === "v2plan") {
+    if (price.item_type !== undefined && price.item_type !== "plan") return false;
+    return periodMatches(price, "monthly");
+  }
+  if (expected.kind === "v2credits") {
+    if (price.item_type !== undefined && price.item_type !== "addon") return false;
+    return periodMatches(price, "monthly");
+  }
   if (price.item_type !== undefined && price.item_type !== "plan") return false;
   return periodMatches(price, expected.interval);
 }

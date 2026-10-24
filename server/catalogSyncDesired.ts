@@ -1,6 +1,7 @@
-// The 26 item prices the catalog sells, derived from shared/planCatalog.ts so a
-// catalog or price change needs no edit here. Nothing in this file touches the
-// provider: it only describes what the sync would create.
+// The 26 kit item prices plus the 28 D-132 v2 bundle prices the catalog sells,
+// derived from shared/planCatalog.ts and shared/planFamily.ts so a catalog or
+// price change needs no edit here. Nothing in this file touches the provider:
+// it only describes what the sync would create.
 import type { CatalogPrice } from "../shared/billingCatalog";
 import { resolveItemPrice } from "../shared/billingCatalog";
 import type { ItemPriceSpec } from "../shared/catalogSync";
@@ -13,12 +14,14 @@ import {
   catalogSessionItemPriceId,
   planDisplayName,
 } from "../shared/planCatalog";
+import { PLAN_CREDIT_LADDER, PLAN_FAMILY } from "../shared/planFamily";
+import { packItemPriceId as v2PackItemPriceId, planCreditsItemPriceId as v2CreditsItemPriceId, planItemPriceId as v2PlanItemPriceId } from "../shared/planFamilyBilling";
 
 /** A provider item as the sync would create it, before the family is attached. */
 export type ItemSpec = {
   id: string;
   name: string;
-  type: "plan" | "charge";
+  type: "plan" | "addon" | "charge";
   externalName: string;
   enabledInPortal: boolean | null;
 };
@@ -85,7 +88,47 @@ function planEntry(plan: (typeof CATALOG_PLANS)[number], term: (typeof TERMS)[nu
   };
 }
 
-/** Every item price the catalog sells: 8 packs, 16 passes and 2 Keep warm prices. */
+/**
+ * D-132 v2 bundle catalog (28 prices): the monthly plan fee (a plan item; no
+ * billing-cycles cap - a bundle runs until cancelled), the in-plan monthly
+ * credits rung (an ADDON: a subscription holds one plan plus addons, never two
+ * plans), and the one-time top-up pack (a charge, like the kit packs). Open
+ * Door is free and lists nothing.
+ */
+function v2Entries(currency: "INR" | "USD"): DesiredCatalogEntry[] {
+  const entries: DesiredCatalogEntry[] = [];
+  for (const plan of PLAN_FAMILY) {
+    if (plan.id === "open_door") continue;
+    const amount = currency === "INR" ? plan.monthlyInrPaise : plan.monthlyUsdCents;
+    const itemId = `skipwait_v2plan_${plan.id}`;
+    const itemPriceId = v2PlanItemPriceId(plan.id, currency);
+    entries.push({
+      price: { kind: "v2plan", planFamily: plan.id, currency, amount, itemPriceId },
+      item: { id: itemId, name: itemId, type: "plan", externalName: plan.label, enabledInPortal: false },
+      spec: { id: itemPriceId, name: itemPriceId, itemId, itemType: "plan", pricingModel: "flat_fee", price: amount, currencyCode: currency, externalName: `${plan.label}, monthly`, period: 1, periodUnit: "month", billingCycles: null },
+    });
+  }
+  for (const rung of PLAN_CREDIT_LADDER) {
+    const amount = currency === "INR" ? rung.inrPaise : rung.usdCents;
+    const creditsId = `skipwait_v2credits_${rung.credits}`;
+    const creditsPriceId = v2CreditsItemPriceId(rung.credits, currency);
+    entries.push({
+      price: { kind: "v2credits", rung: rung.credits, currency, amount, itemPriceId: creditsPriceId },
+      item: { id: creditsId, name: creditsId, type: "addon", externalName: `${rung.credits} credits, monthly`, enabledInPortal: false },
+      spec: { id: creditsPriceId, name: creditsPriceId, itemId: creditsId, itemType: "addon", pricingModel: "flat_fee", price: amount, currencyCode: currency, externalName: `${rung.credits} credits, monthly`, period: 1, periodUnit: "month", billingCycles: null },
+    });
+    const packId = `skipwait_v2pack_${rung.credits}`;
+    const packPriceId = v2PackItemPriceId(rung.credits, currency);
+    entries.push({
+      price: { kind: "v2pack", rung: rung.credits, currency, amount, itemPriceId: packPriceId },
+      item: { id: packId, name: packId, type: "charge", externalName: `${rung.credits} credits`, enabledInPortal: null },
+      spec: { id: packPriceId, name: packPriceId, itemId: packId, itemType: "charge", pricingModel: "per_unit", price: amount, currencyCode: currency, externalName: `${rung.credits} credits`, period: null, periodUnit: null, billingCycles: null },
+    });
+  }
+  return entries;
+}
+
+/** Every item price the catalog sells: 8 packs, 16 passes and 2 Keep warm prices, plus the 28 v2 bundle prices. */
 export function desiredCatalog(): DesiredCatalogEntry[] {
   const entries: DesiredCatalogEntry[] = [];
   for (const currency of CURRENCIES) {
@@ -103,6 +146,7 @@ export function desiredCatalog(): DesiredCatalogEntry[] {
       }
     }
   }
+  for (const currency of CURRENCIES) entries.push(...v2Entries(currency));
   return entries;
 }
 

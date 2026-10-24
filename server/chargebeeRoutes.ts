@@ -1,7 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
-import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parsePaymentSourceEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
+import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, isTokenPackId, isTokenQuantity, parseFailedPaymentEvent, parseGiftEvent, parsePaidPaymentEvent, parsePaymentSourceEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole, VerifiedChargebeeHostedPage } from "./chargebee";
+import type { PlanCreditRung, PlanFamilyId } from "../shared/planFamily";
 import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 import { retrieveCheckoutSubscription, subscriptionEventFromCheckoutPage, type RetrievedCheckoutSubscription } from "./chargebeeSubscriptionApi";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
@@ -10,7 +11,11 @@ import { PLAN_RETIRED_CODE, kitPlanCheckoutRequestSchema, packCheckoutRequestSch
 import { isRetiredPlanId, isRetiredPlanItemPrice, resolvePlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId } from "../shared/billingCatalog";
 import { SINGLE_CREDIT_RETIRED_CODE, SINGLE_CREDIT_RETIRED_ERROR, singleCreditRetired } from "../shared/planCatalog";
 import { anyPackAvailableForCurrency, refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
+import { startV2PackCheckout, startV2PlanCheckout, type V2CheckoutDeps } from "./v2Checkout";
+import { v2PackCheckoutRequestSchema, v2PlanCheckoutRequestSchema } from "../shared/subscriptionManagement";
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
+import { freeMonthEnd } from "../shared/creditCycles";
+import { freeCreditsStayUntilLine } from "../shared/moneyCopy";
 import type { RetiredPlanAlertInput } from "./errorAlerting";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
@@ -23,9 +28,15 @@ type Deps = {
   createCheckout?: typeof createChargebeeCheckout;
   createPaymentIntent: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; tokenCount: number; amount: number; currency: string }) => Promise<unknown>;
   fulfillPayment: (input: { eventId: string; hostedPageId?: string; invoiceId?: string; passThruContent?: string; amount: number; currency: string }) => Promise<unknown>;
-  createSubscriptionIntent?: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; plan: BillablePlanId; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) => Promise<unknown>;
+  // Optional so older tests and tools can mount the router without the v2
+  // arm; a bundle invoice with no grant wired fails loudly (500 -> provider
+  // retry), never silently. Production always wires it.
+  grantV2Credits?: (input: { eventId: string; invoiceId?: string; subscriptionId?: string; hostedPageId?: string; passThruContent?: string; customerId?: string; planFamily: PlanFamilyId; rung: PlanCreditRung; amount: number; currency: string }) => Promise<unknown>;
+  createSubscriptionIntent?: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; plan: BillablePlanId | "fast_track" | "insider"; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) => Promise<unknown>;
   /** Kit checkout (a 30/90-day pass, Keep warm yearly, a credit pack): availability and provider calls. */
   kitCheckout?: KitCheckoutDeps;
+  /** D-132 plan family checkout (flag PLAN_FAMILY_V2): availability and provider calls. */
+  v2Checkout?: V2CheckoutDeps;
   applySubscriptionEvent?: (input: NonNullable<ReturnType<typeof parseSubscriptionEvent>>) => Promise<unknown>;
   recordSubscriptionPaymentEvidence?: (input: { eventId: string; subscriptionId: string; occurredAt?: Date }) => Promise<unknown>;
   getUserSubscription?: (userId: number, role: TokenRole) => Promise<{ subscriptionId: string; status: string; currentTermEnd?: Date } | undefined>;
@@ -44,6 +55,12 @@ type Deps = {
   applyPaymentRefund?: (input: { eventId: string; invoiceId?: string; refundAmount?: number; currency?: string }) => Promise<{ status: string; paymentId?: number; reason?: string }>;
   alertPaymentRefund?: (input: { eventId: string; invoiceId?: string; paymentId?: number; reason: string; refundAmount?: number; currency?: string }) => Promise<unknown>;
   alertUnmatchedPayment?: (input: { eventId: string; invoiceId?: string; hostedPageId?: string; reason: string; paidAmount: number; paidCurrency: string }) => Promise<unknown>;
+  /** Immediate attempt of the durable alert outbox (same claim/state path as the sweep): best effort after a unique payment failure is recorded. */
+  runAlertOutbox?: () => Promise<unknown>;
+  /** Durable provider-event receipt (subscriptionEvents): false on first delivery, true on redelivery. */
+  recordWebhookEventReceipt?: (input: { eventId: string; eventType: string; subscriptionId?: string; invoiceId?: string; customerId?: string; amount?: number; currency?: string }) => Promise<{ duplicate: boolean }>;
+  /** Wallet snapshot for the signed-in account+role, for pre-commitment upgrade copy. */
+  getWalletSnapshot?: (userId: number, role: "job_seeker" | "referrer") => Promise<{ plan: string; monthlyCreditsRemaining: number; monthlyCycleKey: string } | null>;
   /** Durable receipt for a provider gift event (D-067: receipts only; a claimed gift is parked as plan_retired). */
   recordGiftEvent?: (input: { eventId: string; eventType: string; giftId: string; status: string; receiverEmail?: string; receiverCustomerId?: string; subscriptionId?: string; buyerUserId?: number }) => Promise<{ giftId: string; fulfillmentStatus: string; parked: boolean }>;
   listBuyerGifts?: (buyerUserId: number) => Promise<Array<{ giftId: string; plan: RetiredPlanId | null; currency: string | null; amount: number | null; receiverEmail: string | null; providerStatus: string | null; fulfillmentStatus: string; subscriptionId: string | null; creditedAt: Date | null; createdAt: Date }>>;
@@ -79,6 +96,18 @@ function roleFromBody(value: unknown): TokenRole {
   return value === "referrer" ? "referrer" : "job_seeker";
 }
 
+/**
+ * D-165 (3): the pre-payment line for a Free wallet's unused credits. Absent
+ * when there are none, when the wallet is not Free, or when their month has
+ * already ended (nothing is carried then; the webhook expires the leftover).
+ */
+function freeCreditsLeftoverNotice(wallet: { plan: string; monthlyCreditsRemaining: number; monthlyCycleKey: string } | null, now: Date): string | undefined {
+  if (!wallet || wallet.plan !== "free" || wallet.monthlyCreditsRemaining <= 0) return undefined;
+  const monthEnd = freeMonthEnd(wallet.monthlyCycleKey);
+  if (!monthEnd || monthEnd.getTime() <= now.getTime()) return undefined;
+  return freeCreditsStayUntilLine(wallet.monthlyCreditsRemaining, monthEnd);
+}
+
 function isChargebeeNotConfigured(error: unknown): boolean {
   return error instanceof Error && /Chargebee API key(?:\/site)? is not configured/.test(error.message);
 }
@@ -97,6 +126,23 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if (!identity) return res.status(401).json({ error: "Sign in before purchasing tokens" });
       // Covers both arms below: a kit credit pack and the /premium per-credit token checkout.
       if (isReferrerPurchaseRefused(req.body?.role)) return refuseReferrerPurchase(res, identity.account.id, "billing.credit_checkout_refused");
+      // D-132 one-time top-up pack (flag PLAN_FAMILY_V2): named by rung, priced
+      // from shared/planFamilyBilling, availability-gated like the kit packs.
+      const v2Pack = v2PackCheckoutRequestSchema.safeParse(req.body);
+      if (v2Pack.success) {
+        const origin = publicOutboundOrigin(req);
+        const started = await startV2PackCheckout({
+          req,
+          request: v2Pack.data,
+          customer: { email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined, firstName: identity.account.name?.split(" ")[0], lastName: identity.account.name?.split(" ").slice(1).join(" "), billingCountry: v2Pack.data.billingCountry },
+          urls: { redirectUrl: `${origin}/plans?role=${v2Pack.data.role}&payment=pending`, cancelUrl: `${origin}/plans?role=${v2Pack.data.role}&payment=cancelled` },
+          deps: deps.v2Checkout,
+        });
+        if (!started.ok) return res.status(started.status).json(refusalBody(started));
+        await deps.createPaymentIntent({ hostedPageId: started.checkout.hostedPageId, checkoutIntentId: started.checkoutIntentId, userId: identity.account.id, role: v2Pack.data.role, tokenCount: started.credits, amount: started.amount, currency: started.currency });
+        record({ actorUserId: identity.account.id, action: "billing.credit_checkout_started", outcome: "success", resourceType: "payment_intent", resourceId: started.checkout.hostedPageId, metadata: { role: v2Pack.data.role, v2Rung: v2Pack.data.v2Rung, tokenCount: started.credits, amount: started.amount, currency: started.currency, billingCountry: v2Pack.data.billingCountry } });
+        return res.json({ checkoutUrl: started.checkout.checkoutUrl, hostedPageId: started.checkout.hostedPageId });
+      }
       const itemPriceId = req.body?.itemPriceId;
       // A kit credit pack names a pack, not a legacy token item price. Refuse
       // before anything else so a pack body never falls through to "unsupported".
@@ -164,6 +210,29 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if (isReferrerPurchaseRefused(req.body?.role)) return refuseReferrerPurchase(res, identity.account.id, "billing.subscription_checkout_refused");
       // A kit pass/Keep warm body names a plan term. The pre-kit monthly body
       // ({plan: "pro" | "max", ...}) is retired (D-067) and refused below.
+      // D-132 plan family (flag PLAN_FAMILY_V2): fee + optional monthly credits
+      // rung as one renewing monthly subscription.
+      const v2Plan = v2PlanCheckoutRequestSchema.safeParse(req.body);
+      if (v2Plan.success) {
+        if (!deps.createSubscriptionIntent) return res.status(503).json({ error: "Subscription checkout is not configured" });
+        // D-165 (3): an upgrade from Free proceeds, and the checkout says what
+        // happens to the open month's unused free credits before payment. The
+        // carry itself runs on the webhook-confirmed term (db.ts).
+        const snapshot = deps.getWalletSnapshot ? await deps.getWalletSnapshot(identity.account.id, v2Plan.data.role) : null;
+        const leftoverNotice = freeCreditsLeftoverNotice(snapshot, new Date());
+        const origin = publicOutboundOrigin(req);
+        const started = await startV2PlanCheckout({
+          req,
+          request: v2Plan.data,
+          customer: { email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined, firstName: identity.account.name?.split(" ")[0], lastName: identity.account.name?.split(" ").slice(1).join(" "), billingCountry: v2Plan.data.billingCountry },
+          urls: { redirectUrl: `${origin}/plans?role=${v2Plan.data.role}&payment=pending`, cancelUrl: `${origin}/plans?role=${v2Plan.data.role}&payment=cancelled` },
+          deps: deps.v2Checkout,
+        });
+        if (!started.ok) return res.status(started.status).json(refusalBody(started));
+        await deps.createSubscriptionIntent({ hostedPageId: started.checkout.hostedPageId, checkoutIntentId: started.checkoutIntentId, userId: identity.account.id, role: v2Plan.data.role, plan: started.plan, itemPriceId: started.planItemPriceId, amount: started.amount, currency: started.currency, billingPeriod: "monthly", kind: "new" });
+        record({ actorUserId: identity.account.id, action: "billing.subscription_checkout_started", outcome: "success", resourceType: "subscription_intent", resourceId: started.checkout.hostedPageId, metadata: { role: v2Plan.data.role, v2Plan: started.plan, v2Rung: started.rung, amount: started.amount, currency: started.currency, billingCountry: v2Plan.data.billingCountry } });
+        return res.json({ checkoutUrl: started.checkout.checkoutUrl, hostedPageId: started.checkout.hostedPageId, ...(leftoverNotice ? { leftoverNotice } : {}) });
+      }
       const kitPlan = kitPlanCheckoutRequestSchema.safeParse(req.body);
       if (kitPlan.success) {
         if (!deps.createSubscriptionIntent) return res.status(503).json({ error: "Subscription checkout is not configured" });
@@ -492,20 +561,46 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     // invoice with tax/coupon/rounding is not a pack multiple, and dropping it
     // here would be a silent loss of a real payment. fulfillPayment parks
     // amount mismatches for admin review.
-    if (payment && (tokenPackFromAmount(payment.amount, payment.currency) || payment.passThruContent)) {
+    if (payment && (payment.v2PlanFamily || payment.v2CreditsRung || tokenPackFromAmount(payment.amount, payment.currency) || payment.passThruContent)) {
       handled = true;
       try {
-        const runtime = (!payment.hostedPageId || !payment.passThruContent) && deps.resolveHostedPage
-          ? resolveChargebeeRuntime(req.hostname)
-          : undefined;
-        const resolvedHostedPage = runtime && deps.resolveHostedPage
-          ? await deps.resolveHostedPage({ invoiceId: payment.invoiceId, amount: payment.amount, currency: payment.currency, site: runtime.site, apiKey: runtime.apiKey })
-          : undefined;
-        obligations.payment = await deps.fulfillPayment({
-          ...payment,
-          hostedPageId: payment.hostedPageId ?? resolvedHostedPage?.hostedPageId,
-          passThruContent: payment.passThruContent ?? resolvedHostedPage?.passThruContent,
-        });
+        if (payment.v2PlanFamily && payment.v2CreditsRung) {
+          // D-132 bundle month (first month or renewal): plan fee + rung in
+          // one invoice, provider truth from the line items. The rung credits
+          // are paid and never expire; entitlements arrive via the
+          // subscription events. A v2 pack (rung without a plan fee) falls
+          // through to the pack fulfillment below.
+          if (!deps.grantV2Credits) throw new Error("v2 credit grant is not wired");
+          // The first month's payment often arrives before the subscription
+          // binds its wallet, and the event may not carry the hosted page. The
+          // buyer is named only by the signed checkout intent that page holds
+          // (review F2): re-read the provider page, never trust a bare email.
+          const v2Runtime = (!payment.hostedPageId || !payment.passThruContent) && deps.resolveHostedPage
+            ? resolveChargebeeRuntime(req.hostname)
+            : undefined;
+          const v2HostedPage = v2Runtime && deps.resolveHostedPage
+            ? await deps.resolveHostedPage({ invoiceId: payment.invoiceId, amount: payment.amount, currency: payment.currency, site: v2Runtime.site, apiKey: v2Runtime.apiKey })
+            : undefined;
+          obligations.payment = await deps.grantV2Credits({
+            ...payment,
+            hostedPageId: payment.hostedPageId ?? v2HostedPage?.hostedPageId,
+            passThruContent: payment.passThruContent ?? v2HostedPage?.passThruContent,
+            planFamily: payment.v2PlanFamily,
+            rung: payment.v2CreditsRung,
+          });
+        } else {
+          const runtime = (!payment.hostedPageId || !payment.passThruContent) && deps.resolveHostedPage
+            ? resolveChargebeeRuntime(req.hostname)
+            : undefined;
+          const resolvedHostedPage = runtime && deps.resolveHostedPage
+            ? await deps.resolveHostedPage({ invoiceId: payment.invoiceId, amount: payment.amount, currency: payment.currency, site: runtime.site, apiKey: runtime.apiKey })
+            : undefined;
+          obligations.payment = await deps.fulfillPayment({
+            ...payment,
+            hostedPageId: payment.hostedPageId ?? resolvedHostedPage?.hostedPageId,
+            passThruContent: payment.passThruContent ?? resolvedHostedPage?.passThruContent,
+          });
+        }
         const fulfilled = obligations.payment;
         if (isReviewResult(fulfilled)) {
           console.error("[Chargebee] paid invoice parked for review", { paymentId: fulfilled.paymentId, reason: fulfilled.reason });
@@ -525,7 +620,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     const subscriptionHandled = Boolean(subscription && obligations.subscription && (obligations.subscription as { status?: string }).status !== "ignored");
     const paymentResult = obligations.payment as { status?: string; reason?: string } | undefined;
     const paymentUnmatched = payment && !subscriptionHandled && (
-      (paymentResult?.status === "ignored" && ["unknown_checkout", "missing_hosted_page", "missing_checkout_intent"].includes(paymentResult.reason ?? ""))
+      (paymentResult?.status === "ignored" && ["unknown_checkout", "missing_hosted_page", "missing_checkout_intent", "unknown_v2_subscription", "missing_invoice"].includes(paymentResult.reason ?? ""))
       || (!paymentResult && !subscriptionHandled)
     );
     if (payment && paymentUnmatched) {
@@ -535,6 +630,33 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       console.error("[Chargebee] unmatched paid invoice needs review", { eventId: payment.eventId, invoiceId: payment.invoiceId, reason });
       record({ action: "billing.payment_unmatched", outcome: "failure", resourceType: "chargebee_invoice", resourceId: payment.invoiceId ?? payment.eventId, metadata: { eventId: payment.eventId, hostedPageId: payment.hostedPageId, reason, amount: payment.amount, currency: payment.currency } });
       void deps.alertUnmatchedPayment?.({ eventId: payment.eventId, invoiceId: payment.invoiceId, hostedPageId: payment.hostedPageId, reason, paidAmount: payment.amount, paidCurrency: payment.currency });
+    }
+
+    const failedPayment = parseFailedPaymentEvent(req.body);
+    if (failedPayment) {
+      handled = true;
+      // Distinct provider failures each alert; redelivery of the SAME provider
+      // event must not storm. The durable receipt (provider + event id, unique)
+      // is the idempotency backstop; provider-event identity is preserved on it.
+      let duplicate = false;
+      if (deps.recordWebhookEventReceipt) {
+        try {
+          duplicate = (await deps.recordWebhookEventReceipt({ eventId: failedPayment.eventId, eventType: "payment_failed", subscriptionId: failedPayment.subscriptionId, invoiceId: failedPayment.invoiceId, customerId: failedPayment.customerId, amount: failedPayment.amount, currency: failedPayment.currency })).duplicate;
+        } catch (error) {
+          console.error("[Chargebee] payment-failed receipt error", error);
+          return res.status(500).json({ error: "Event receipt retry required" });
+        }
+      }
+      if (!duplicate) {
+      console.error("[Chargebee] payment failed", { eventId: failedPayment.eventId, invoiceId: failedPayment.invoiceId, subscriptionId: failedPayment.subscriptionId });
+      // One durable delivery obligation per unique provider event, enqueued
+      // atomically with the receipt inside recordWebhookEventReceipt. The
+      // immediate attempt goes through the SAME outbox claim/state path as the
+      // scheduled sweep - acceptance evidence (accepted + providerMessageId)
+      // is what stops any later resend; ambiguity is preserved, never hidden.
+      record({ action: "billing.payment_failed", outcome: "failure", resourceType: "chargebee_invoice", resourceId: failedPayment.invoiceId ?? failedPayment.eventId, metadata: { eventId: failedPayment.eventId, invoiceId: failedPayment.invoiceId ?? null, subscriptionId: failedPayment.subscriptionId ?? null, customerId: failedPayment.customerId ?? null, amount: failedPayment.amount ?? null, currency: failedPayment.currency ?? null } });
+      void deps.runAlertOutbox?.().catch(() => undefined);
+      }
     }
 
     const gift = parseGiftEvent(req.body);
