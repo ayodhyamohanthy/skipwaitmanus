@@ -146,6 +146,26 @@ describe("D-090 C3 reservation guard", () => {
     expect(store.rows(operationalActivityLogs).filter(row => row.action === "ask_invite.expired")).toHaveLength(1);
   });
 
+  it("closes a stale claimed row and a fresh active link together on withdrawal", async () => {
+    seed({
+      invites: [
+        invitation(1, REQUEST_ID),
+        invitation(2, REQUEST_ID, { linkTokenHash: hashAskInviteToken(TOKEN), status: "active", claimedByUserId: null, claimedAt: null, reservationExpiresAt: null, activeRequestKey: `link:${REQUEST_ID}` }),
+      ],
+    });
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+
+    await withdrawCompanyReferralRequest(SEEKER, REQUEST_ID);
+    expect(inviteById(1)).toMatchObject({ status: "expired", activeRequestKey: null, reservationExpiresAt: null, closedAt: NOW });
+    expect(inviteById(2)).toMatchObject({ status: "expired", activeRequestKey: null, closedAt: NOW });
+    expect(store.rows(operationalActivityLogs).filter(row => row.action === "ask_invite.expired")).toHaveLength(2);
+    expect(store.rows(notifications).filter(row => row.eventKey === "ask-invite:1:ask-withdrawn:claimer")).toHaveLength(1);
+
+    await withdrawCompanyReferralRequest(SEEKER, REQUEST_ID);
+    expect(store.rows(operationalActivityLogs).filter(row => row.action === "ask_invite.expired")).toHaveLength(2);
+  });
+
   it("closes an active link atomically with stale ask expiry without changing refund semantics", async () => {
     seed({
       asks: [ask(REQUEST_ID, SEEKER, { createdAt: new Date(NOW.getTime() - 100 * DAY_MS), updatedAt: new Date(NOW.getTime() - 100 * DAY_MS) })],

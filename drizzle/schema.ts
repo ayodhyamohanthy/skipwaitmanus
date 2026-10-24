@@ -1046,7 +1046,7 @@ export const askWorkItems = mysqlTable("askWorkItems", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("ask_work_items_request_piece_unique").on(table.referralRequestId, table.workItemId), index("ask_work_items_request_idx").on(table.referralRequestId, table.position)]);
 
-/** D-090 BYOR (0107): one private one-time link per waiting ask, which the seeker sends to an insider they already know. Only the token's SHA-256 is stored — never the token. `activeRequestKey` is `link:<requestId>` while the link is live and NULL otherwise, the house pattern for "at most one active row" (referralAvailabilitySlots). */
+/** D-090 BYOR (0111): one private one-time link per waiting ask, which the seeker sends to an insider they already know. Only the token's SHA-256 is stored — never the token. `activeRequestKey` is `link:<requestId>` while the link is live and NULL otherwise, the house pattern for "at most one active row" (referralAvailabilitySlots). */
 export const askInviteLinks = mysqlTable("askInviteLinks", {
   id: int("id").autoincrement().primaryKey(),
   referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),

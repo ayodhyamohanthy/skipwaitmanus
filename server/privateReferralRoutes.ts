@@ -1116,16 +1116,22 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const blockedMine = await blockedRequestIds(identity.account.id, listed);
       let requests: Array<Record<string, unknown>> = await attachCompanyIdentities((listed as Array<Record<string, unknown>>).filter(row => !blockedMine.has(Number(row.id))).map((row): Record<string, unknown> => ({ ...withParsedJobFunction(row), expiresAt: toExpiresAt(row) })), row => row.companyDomain, lookupCompanies);
       if (process.env.BYOR_LINK_ENABLED === "true") {
-        const waitingIds = requests.filter(row => row.status === "pending" && (row.waitingForCoverage === true || row.waitingForCoverage === 1) && row.referrerId == null).map(row => Number(row.id)).filter(id => Number.isInteger(id) && id > 0);
-        if (waitingIds.length) {
+        const waitingForInvite = (row: Record<string, unknown>) => row.status === "pending" && (row.waitingForCoverage === true || row.waitingForCoverage === 1) && row.referrerId == null;
+        // Item 12/27: the insider already took the ask, so the row is no longer waiting but still shows its delivered line.
+        const takenByReferrer = (row: Record<string, unknown>) => row.status === "pending" && row.referrerId != null;
+        const inviteIds = requests.filter(row => waitingForInvite(row) || takenByReferrer(row)).map(row => Number(row.id)).filter(id => Number.isInteger(id) && id > 0);
+        if (inviteIds.length) {
           try {
             const listInvites = deps.listAskInvitesForRequests ?? (await import("./askInvites")).listAskInvitesForRequests;
-            const invites = await listInvites(identity.account.id, waitingIds);
+            const invites = await listInvites(identity.account.id, inviteIds);
             requests = requests.map(row => {
               const requestId = Number(row.id);
-              if (row.status !== "pending" || !(row.waitingForCoverage === true || row.waitingForCoverage === 1) || row.referrerId != null || !Number.isInteger(requestId)) return row;
+              if (!Number.isInteger(requestId)) return row;
               const invite = invites.get(requestId);
-              return invite ? { ...row, askInvite: { state: invite.state, createdAt: invite.createdAt, expiresAt: invite.expiresAt } } : row;
+              if (!invite) return row;
+              // A non-waiting row only ever projects the delivered state; an active or claimed link cannot describe it.
+              if (!waitingForInvite(row) && !(takenByReferrer(row) && invite.state === "delivered")) return row;
+              return { ...row, askInvite: { state: invite.state, createdAt: invite.createdAt, expiresAt: invite.expiresAt } };
             });
           } catch (error) { captureServerError(error, { area: "ask_invite_mine_projection" }); }
         }

@@ -1,5 +1,5 @@
--- 0107: D-090 BYOR — a seeker's own insider gets a one-time link to a waiting ask.
--- (D-148 waives the D-086 build gate; the packet is docs/plans/D-090-BYOR.md.)
+-- 0111: D-090 BYOR — a seeker's own insider gets a one-time link to a waiting ask.
+-- (D-162 waives the D-086 build gate; the packet is docs/plans/D-090-BYOR.md.)
 -- Additive only: one new table, no change to any existing table or row. With
 -- BYOR_LINK_ENABLED off nothing writes here and every surface answers 404.
 --

@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, isNull, isNotNull, lte, ne, or } from "drizzle-orm";
 import { askInviteLinks, notifications, operationalActivityLogs, referralRequests } from "../drizzle/schema";
 import { getDb } from "./db";
+import type { LedgerTx } from "./creditLedger";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
 import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
 
@@ -46,7 +47,7 @@ export async function listDueAskInviteLinks(nowMs: number, limit: number): Promi
     .limit(Math.max(0, Math.min(ASK_INVITE_SWEEP_BATCH, Math.floor(limit))));
 }
 
-async function writeInviteNotice(tx: any, userId: number | null, requestId: number, linkId: number, suffix: string, title: string, body: string): Promise<void> {
+async function writeInviteNotice(tx: LedgerTx, userId: number | null, requestId: number, linkId: number, suffix: string, title: string, body: string): Promise<void> {
   if (userId === null) return;
   const eventKey = `ask-invite:${linkId}:${suffix}`;
   await tx.insert(notifications).values({ userId, category: "status", kind: "ask_invite_expired", title, body, eventKey, refId: requestId })
