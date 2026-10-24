@@ -9,7 +9,7 @@ import { pathToFileURL } from "node:url";
 import { slugOf } from "./nextTaskCore.mjs";
 
 const ASSIGNMENTS = "docs/plans/assignments.json";
-const NO_ROW = "This branch matches no queue row. Nothing merges to main outside the queue (D-166). Ask the CEO for a row in docs/plans/assignments.json, or work on the row's own branch.";
+const NO_ROW = "This branch matches no queue row. Nothing merges to main outside the queue (D-166). Register a row in docs/plans/assignments.json with a docs-only pull request (any session may, D-200), or work on the row's own branch.";
 const git = args => execFileSync("git", args, { encoding: "utf8" }).trim();
 
 function ensureOriginMainHistory() {
@@ -54,7 +54,8 @@ export function queueGateViolation({ tasks, branch, changed, labels = [] } = {})
   const markerBranch = /^agent\/(architect|review|heartbeat)\/([^/]+)$/.exec(branch);
   if (markerBranch && tasks.some(task => slugOf(task.branch) === markerBranch[2])) return null;
 
-  if (branch.startsWith("claude/") && changed.every(isDocumentPath)) return null;
+  // D-200: a docs-only change (decisions, packets, queue rows) lands from any session's branch, so no step waits for one model.
+  if (changed.length > 0 && changed.every(isDocumentPath)) return null;
   if (branch.startsWith("dependabot/")) return null;
   if (labels.includes("owner-direct")) return null;
 
