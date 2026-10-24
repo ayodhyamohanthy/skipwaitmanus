@@ -79,7 +79,7 @@ Instinct built these, so every review and landing goes to a model other than Ins
 
 ## Status
 These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines go here (D-134).
-- REGISTER-520: blocked — D-203 ("Claude Code never develops") contradicts the newer D-195 and D-200 ("Claude Code builds too"). Re-cut from `fe1790bf`, renumbered to D-201-D-206 and merged with `main`; it waits on the owner's word on those two IDs before review.
+- REGISTER-520: ruling recorded, ready for review — F2 (D-203 "Claude Code never develops" against the newer D-195 and D-200) is decided by the register's own rule, not by a new owner word: D-200 is the owner's newer decision on the same subject and D-157 makes the newest win, so D-203 now carries an "Amended by D-200" note and its status reads "superseded in part by D-200 (Oct 24)"; clause (3)'s "never develops" and clause (2)'s "open models make no ruling" give way wherever they would make a step Claude-only, and the CEO's direction, packets and queue order stand. Re-cut from `fe1790bf`, renumbered to D-201-D-206, merged with `main` to `ee1dfd7a`; docs only.
 - D-155-share-paid-gate: done — 4dfeb6ba (merged `main`, renumbered to D-194 with migration 0114; delta review pass by DeepSeek V4.1 Flash Free · 3ecf, owner's go Oct 24).
 - D-132-catalog-record: done — 166fe5ff (docs only; landed on `main` by the status commit). Independent delta review passed: the audit names no secret, customer data or account/site id (D-059), and the `docs/PRICING.md` line matches the audit and `shared/planFamily.ts`. Focused checks 219/219 and `pnpm check` green; exact-head CI required before landing.
 - D-132-item3: todo; waits for D-132-audit.
