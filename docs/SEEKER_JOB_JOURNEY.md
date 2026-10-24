@@ -11,6 +11,7 @@
 5. **The sole job action is "Ask for referral"** — "We dont have concept of apply job we have only ask for referral" (phonemsg-01M5QJS0KW4PTATQAF1JMEG1HB). There is no Apply button and no application flow. (Record of correction: an Apply action was proposed by the assistant side at 23:58 in response to the owner's 23:57 note about LinkedIn's varied apply routes (phonemsg-01M5QJPH1PPE3D1WG9TP3PBV1Q); the owner's 23:59 message corrected that proposal. This was a correction of an assistant proposal, not an owner reversal.) The original job link stays as source identity and role context only.
 6. **Employee-posted openings keep first preference** for referrals (phonemsg-01M5QGPV4WC15J3N58NTPH6T8F).
 7. **One consolidated "where do you want to work" flow** (phonemsg-01M5QGPV4WC15J3N58NTPH6T8F); separate company-mode / job-mode framings are superseded.
+8. **Light and dark mode across the whole platform** — "Have light and dark mode" (phonemsg-01M5QMXR28JFTXNHA7T2E8A9G6), clarified platform-wide: "In our platform" (phonemsg-01M5QMXZ43RKWCF0JPKYC2K44T). Both modes across the full product, desktop and mobile — not only the search/referral journey.
 
 ## Part B — implementation recommendations (proposals, not owner approvals)
 
@@ -21,6 +22,7 @@
 - Freshness: fetched jobs in their own table (per repo packet D-193, cited as repo state), refreshed in the background; selecting a company attempts a fresh fetch and shows a checked-at timestamp; on failure the last verified data shows with an honest refresh state. A failed, incomplete or 404 feed is "unverified"; a complete successful verified feed that returns no postings does prove zero current openings for that source.
 - Coverage honesty: no "all jobs" or exhaustive-coverage claim unless a source returned a complete list.
 - Provider selection for company-name discovery is NOT frozen: Clearbit Autocomplete (free, keyless, unmaintained, derived-data storage permission unverified) and Brandfetch Brand Search (free plan; terms forbid persisting search data) are candidates; aggregator backfill (Adzuna / Jooble / The Muse / Arbeitnow) is hypothesis pending per-source terms passes. Refresh cadence and capacity await a bounded real test.
+- Appearance (implementing decision 8): the repo already has the platform theme system — semantic `:root` (light) + `.dark` oklch tokens in `app/src/styles.css`, a working toggle under Settings → App persisting `sw-theme` per device, applied pre-paint by the inline script in `app/src/routes/__root.tsx`. This is a tune-and-verify requirement, not a rebuild. Every new journey surface ships readable in both modes on desktop and 390 px from the start; older fixed-color screens recorded as "still being tuned" get a tune-up pass. Default/persistence: the existing per-device toggle with stored choice is the current behavior; system-preference default is a recorded intent in repo docs, not an owner ruling. Proof bar per surface: both modes, desktop + 390, verified visually before that surface is called done — theme classes alone are not proof.
 
 ## Part C — data the reference example shows that we have no verified source for
 
