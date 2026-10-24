@@ -5,7 +5,7 @@
 | Field | Value |
 |---|---|
 | Row | `DECISION-SYNC-oct24` (Tier 2, lane `docs-sync`, branch `agent/queue/decision-sync-oct24`) |
-| Waits for | `REGISTER-oct24` (#637), so D-182 to D-198 are on `main` before the sweep starts. Any decision that lands later is synced by the PR that lands it (D-068). |
+| Waits for | `REGISTER-oct24` (#637), so D-182 to D-200 are on `main` before the sweep starts. Any decision that lands later is synced by the PR that lands it (D-068). |
 | Changes | Markdown only. No code, test, workflow, flag, price or copy-string change. |
 
 ## 1. Rules
@@ -25,7 +25,7 @@
 | Decision | What to look for |
 |---|---|
 | D-194 | D-155 was renumbered to D-194 (#527); fix references that name the /share rule D-155. |
-| D-195, D-198 | The CEO seat is not a gate. Nothing lands until the owner's second approving identity exists; steps that say "push to main" or "merge" must say so. |
+| D-195, D-200 | Nothing waits for one model or session; Claude Code builds too; Tier 2/3 land on green required CI; Tier 1 gets one review by a model other than the builder's. D-198 is withdrawn: no second account, approvals are 0, and a PR is still required. Fix every doc that says Claude never builds, that a step is Claude-only, or that landing waits for an identity. |
 | D-196 | Paid referrer plans get level-matched first access. Fix lines saying referrers never pay, or that no paid referrer benefit exists. The never-PAID core (D-055) stands. |
 | D-173, D-180 | The user-facing unit and object are "referral" and "referral request"; "ask" and "credit" are internal. Describe the copy rule; renaming strings in code is the terminology lane's (#598). |
 | D-174, D-176 | No ask expiry as direction (runtime caveat in §1.3). No availability framing; D-102's visible lines are superseded. |
@@ -48,8 +48,7 @@
   - `pnpm vitest run scripts/` is green, including `briefContract` and `registerShape`;
   - `pnpm check` is green;
   - required CI is green on the exact head.
-- **Review:** an independent delta review by a model other than the builder's model and other than Claude.
-- **Landing:** only once D-198's approving identity exists.
+- **Landing:** Tier 2. It lands on green required CI with no separate review (D-200).
 
 ## 5. Stop and ask
 - Two active decisions conflict (§1.4).
