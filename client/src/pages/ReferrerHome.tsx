@@ -1,4 +1,6 @@
 import { ArrowRight, BadgeCheck, CalendarClock, Clock3, Inbox, Pause, Play, ShieldCheck } from "lucide-react";
+import { lazy, Suspense } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
@@ -13,7 +15,7 @@ import { deriveReferrerHome, fetchReferrerHome, greetingFor, saveReferrerPrefere
 
 const SUBTITLE = "Here's what needs you today. Nothing here is urgent unless it says so.";
 
-export default function ReferrerHome() {
+function KitReferrerHome() {
   const { isSignedIn, userId, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const queryClient = useQueryClient();
@@ -92,4 +94,17 @@ export default function ReferrerHome() {
 export function reverifyCopy(company: string, daysLeft: number | null): string {
   if (daysLeft === null || daysLeft <= 0) return `Re-verify your ${company} email now to keep receiving asks.`;
   return `Re-verify your ${company} email within ${daysLeft} ${daysLeft === 1 ? "day" : "days"} to keep receiving asks.`;
+}
+
+const GoalReferrerHome = lazy(() => import("./goal/referrer-home/GoalReferrerHome"));
+
+export default function ReferrerHome() {
+  if (goalSurfaceOn("referrer-home")) {
+    return (
+      <Suspense fallback={null}>
+        <GoalReferrerHome />
+      </Suspense>
+    );
+  }
+  return <KitReferrerHome />;
 }
