@@ -82,4 +82,4 @@ These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines g
 - D-155-share-paid-gate: todo (PR #527 open, CI green on `af6dd9cc`, conflicts with `main`).
 - D-132-catalog-record: done — 166fe5ff (docs only; landed on `main` by the status commit). Independent delta review passed: the audit names no secret, customer data or account/site id (D-059), and the `docs/PRICING.md` line matches the audit and `shared/planFamily.ts`. Focused checks 219/219 and `pnpm check` green; exact-head CI required before landing.
 - D-132-item3: todo; waits for D-132-audit.
-- D-132-v2-checkout: todo; waits for D-132-item3.
+- D-132-v2-checkout: review findings fixed on `agent/instinct/v2-checkout-port` — F1 `81311412`, F2 `b1071690`, F3 `54b34637`, F4 `0188a447`; the full gate on a merged head and the re-review are still open.
