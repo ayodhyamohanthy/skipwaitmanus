@@ -139,7 +139,7 @@
    "branch": "agent/queue/register-oct24",
    "status": "todo",
    "dependsOn": [],
-   "note": "Every board report since Oct 24 cites rulings that only exist on open claude/* PRs, which the picker cannot see: #621 (D-186, D-187), #620 (D-182 to D-185, D-188 to D-191) and #624 (D-193 and its ten D-174 journey rows). agent/queue/register-oct24 holds all three merged onto main, register rows in ID order; validateAssignments returns []. Nothing to build. Review: one independent delta review of the whole branch against main, by a model other than Claude, which wrote every line (D-151, D-195 (1)): check each entry against the decisions it cites, each new row against its packet, and that no row already on main changed except as the three PRs describe. Its CI goes green once this row is on main (the queue gate in scope-check reads origin/main). Landing: the owner merges (1-approval ruleset, D-195 (4)); the landing commit sets this row to done and adds its line to the STRANDED-OCT23.md Status section; then close #621, #620 and #624 with a pointer."
+   "note": "Every board report since Oct 24 cites rulings that only exist on open claude/* PRs, which the picker cannot see: #621 (D-186, D-187), #620 (D-182 to D-185, D-188 to D-191) and #624 (D-193 and its ten D-174 journey rows). agent/queue/register-oct24 holds all three merged onto main, register rows in ID order; validateAssignments returns []. Nothing to build. Review: one independent delta review of the whole branch against main, by a model other than Claude, which wrote every line (D-151, D-195 (1)): check each entry against the decisions it cites, each new row against its packet, and that no row already on main changed except as the three PRs describe. Its CI fails the queue gate until this row is on main (scope-check reads origin/main); then merge main into the branch and require fresh green required checks on that new head, never assuming earlier red checks clear by themselves. Landing needs, on the exact final head: an independent review PASS and fresh green required CI; any later push needs a new review. main-protection also requires one approving review, and every session pushes as the one owner account, so no session can supply it: the owner decides the merge route (an approval from a second identity, or an explicit owner exception for this PR as in D-195 (3)). This row grants no exception, and no session uses an admin bypass. The landing commit sets this row to done and adds its line to the STRANDED-OCT23.md Status section; then close #621, #620 and #624 with a pointer."
   },
   {
    "id": "REGISTER-520",
@@ -477,9 +477,30 @@
    "dependsOn": [
     "D-048-p3-live-review",
     "TASK13-pinned-work",
-    "D-065-C"
+    "D-065-C",
+    "POSTMERGE-oct22-fixes"
    ],
-   "note": "D-146 (founder, Oct 23): the D-132 audit is next, so it no longer waits on D-035, which D-147 holds for the founder. D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. First-pass findings are in docs/plans/D-132-audit-findings.md (#481) and items 2 (the stored level and cost, migration 0106, #482) and 6 (the money check against the stored cost, #487) are on main; the remaining items land one pull request each. It runs after the live review (which moved the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends). The D-048 rows that redesign the compose screens and the seeker conversation (D-048-p3-live-review-find, D-048-p3-live-review-conversation) wait for it, because it edits their cost lines first."
+   "note": "D-146 (founder, Oct 23): the D-132 audit is next, so it no longer waits on D-035, which D-147 holds for the founder. D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. First-pass findings are in docs/plans/D-132-audit-findings.md (#481) and items 2 (the stored level and cost, migration 0106, #482) and 6 (the money check against the stored cost, #487) are on main; the remaining items land one pull request each. It runs after the live review (which moved the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends). The D-048 rows that redesign the compose screens and the seeker conversation (D-048-p3-live-review-find, D-048-p3-live-review-conversation) wait for it, because it edits their cost lines first. D-197 (Oct 24, CEO): these owns are declared on main, and the audit branch carries no edit of its own row (only Claude Code changes rows). The audit waits for POSTMERGE-oct22-fixes (#635; both edit server/db.ts) and merges main once that lands; D-132-audit-item5-correction and D-099-bonus-pages wait for the audit.",
+   "owns": [
+    "client/src/hooks/useAskQuote.ts",
+    "client/src/pages/Ask.tsx",
+    "client/src/pages/Explore.tsx",
+    "client/src/pages/ExploreCompany.tsx",
+    "client/src/pages/explore/AskDrawer.tsx",
+    "client/src/pages/explore/ask.costQuote.test.tsx",
+    "client/src/pages/explore/askSend.ts",
+    "client/src/pages/explore/findModel.ts",
+    "client/src/pages/explore/useAskComposer.tsx",
+    "docs/plans/D-132-audit-findings.md",
+    "server/db.askCreditRefund.test.ts",
+    "server/db.ts",
+    "server/planGates.ts",
+    "server/privateReferralRoutes.integration.test.ts",
+    "server/privateReferralRoutes.ts",
+    "shared/moneyCopy.test.ts",
+    "shared/moneyCopy.ts",
+    "shared/openAskSlots.ts"
+   ]
   },
   {
    "id": "D-132-catalog-record",
@@ -1920,9 +1941,10 @@
    "status": "todo",
    "dependsOn": [
     "D-048-fix-post-copy",
-    "POSTMERGE-oct22-fixes"
+    "POSTMERGE-oct22-fixes",
+    "D-132-audit"
    ],
-   "note": "D-193 packet section 5.3 and ruling (5): builds D-061's never-built reconfirm-before-spend without its closure, in deliverWaitingAskTx (every delivery path). Transition events, no migration; in-app notice only (no D-060 email exists yet). ASK_RECONFIRM_ENABLED stays false until QA; D-174-expiry-clock-removal waits for this row.",
+   "note": "D-193 packet section 5.3 and ruling (5): builds D-061's never-built reconfirm-before-spend without its closure, in deliverWaitingAskTx (every delivery path). Transition events, no migration; in-app notice only (no D-060 email exists yet). ASK_RECONFIRM_ENABLED stays false until QA; D-174-expiry-clock-removal waits for this row. D-197: also waits for D-132-audit (both own server/db.ts, server/privateReferralRoutes.ts and shared/moneyCopy.ts; the money-core audit goes first, D-146).",
    "epic": "D-174",
    "owns": [
     "shared/askReconfirm.ts",
@@ -2245,11 +2267,13 @@
    "lane": "money-core",
    "branch": "agent/queue/d132-item5-correction",
    "status": "todo",
-   "dependsOn": [],
+   "dependsOn": [
+    "D-132-audit"
+   ],
    "owns": [
     "docs/plans/D-132-audit-findings.md"
    ],
-   "note": "Item 5's 'no path re-prices an existing ask' holds only when a stored askCosts row exists; flag-off-created waiting asks fall back to the CURRENT flag cost at delivery (server/db.ts:2718-2719 -> 4073-4076), per #619's P1 finding. Docs-only correction to docs/plans/D-132-audit-findings.md; any runtime repair still needs the cross-flag real-DB regression before ASK_LEVEL_COST activation. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact."
+   "note": "Item 5's 'no path re-prices an existing ask' holds only when a stored askCosts row exists; flag-off-created waiting asks fall back to the CURRENT flag cost at delivery (server/db.ts:2718-2719 -> 4073-4076), per #619's P1 finding. Docs-only correction to docs/plans/D-132-audit-findings.md; any runtime repair still needs the cross-flag real-DB regression before ASK_LEVEL_COST activation. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact. D-197: waits for D-132-audit, which rewrites the same findings doc. Write the correction against the code as it stands after #635, which charges a waiting ask with no stored cost the flat price."
   },
   {
    "id": "GO-LIVE-1b-agedout-evidence",
