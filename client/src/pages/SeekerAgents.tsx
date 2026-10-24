@@ -1,3 +1,5 @@
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+import GoalSeekerAgents from "./goal/assistants/GoalSeekerAgents";
 import { useCallback, useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { usePersistFn } from "@/hooks/usePersistFn";
@@ -18,7 +20,7 @@ const DEFAULT_LIMITS: Limits = { creditsPerAsk: 10, creditsPerDay: 20, creditsPe
 
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "never");
 
-export default function SeekerAgents() {
+function LegacySeekerAgents() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -194,4 +196,8 @@ export default function SeekerAgents() {
       </section>
     </main>
   );
+}
+
+export default function SeekerAgents() {
+  return goalSurfaceOn("assistants") ? <GoalSeekerAgents /> : <LegacySeekerAgents />;
 }
