@@ -69,3 +69,6 @@ export function roleTitleFromUrl(url: string): string | null {
   if (words.length < 2) return null;
   return words.map(word => (word.length <= 3 && word === word.toUpperCase() ? word : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())).join(" ").slice(0, 80);
 }
+
+/** The /api/company-referrals/quote answer: the by-level cost under V2 (D-132). */
+export type AskCostQuote = { cost: number; totalAvailable: number; shortfall: number };

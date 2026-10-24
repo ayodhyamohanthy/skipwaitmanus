@@ -5,6 +5,7 @@
 // (idempotency key, slot and per-company caps, sign-in hand-off with a saved
 // prefill). The parent owns where the composer lives and what closing means.
 import { useQueryClient } from "@tanstack/react-query";
+import { companyDirectoryKeys } from "@/lib/companyDirectory";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
@@ -12,6 +13,7 @@ import { askErrorMessage, confirmedDomainFor, parsePlanLimit, parseSentAsk, pars
 import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
 import { useOnlineStatus } from "@/components/goal";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
+import { useAskQuote } from "@/hooks/useAskQuote";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { ASK_PREFILL_TTL_MS, clearAskPrefill, readAskPrefill, saveAskPrefill } from "@/lib/askPrefill";
@@ -26,7 +28,7 @@ import type { PublicCompany } from "@shared/companies";
 import { askCostLine, CREDIT_ENDED_CAVEAT, creditUsedPhrase, type AskCostLine } from "@shared/moneyCopy";
 import { OPPORTUNITY_FIRST_LOOK_HOURS } from "@shared/companyOpportunities";
 import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
-import { COMPANY_CAP_REACHED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
+import { COMPANY_CAP_REACHED, COMPANY_COVERAGE_CHANGED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { MAX_ASK_WORK_ITEMS } from "@shared/askWorkItems";
 import { parseOpportunityAskSearch, type OpportunityAskSearch } from "@shared/companyOpportunities";
@@ -34,7 +36,7 @@ import { isValidTargetRoleUrl, jobLinkFitsCompany } from "@shared/referralUrl";
 import { composeWhyMe, overLimitReasons, splitWhyMe, WHY_ME_MAX, type WhyMeReasons } from "@shared/whyMe";
 import type { AskResume, AskSentView } from "./AskDrawer";
 import { askIdempotencyKey, ASK_IDEMPOTENCY_KEY, buildAskBody } from "./askSend";
-import { linkHint, roleTitleFromUrl, type LinkHint } from "./findModel";
+import { linkHint, roleTitleFromUrl, type AskCostQuote, type LinkHint } from "./findModel";
 import { askSignInReturnTo, goToSeekerSignIn } from "./signInHandoff";
 
 const MIN_WORDS = 10;
@@ -96,6 +98,10 @@ export type AskComposer = {
   reasonsError: string;
   watch: { state: "idle" | "busy" | "done" | "error"; message: string; onWatch(): void } | null;
   cost: AskCostLine;
+  /** D-132 item 3 (flag VITE_ASK_LEVEL_COST): the by-level quote for the current link. Null while the flag is off or the quote is pending or failed; the flat one-credit line holds then. */
+  costQuote: AskCostQuote | null;
+  /** D-132 item 3: set only when the target is a COVERED company and the wallet is short - the primary action becomes the top-up. Uncovered asks wait for free and never swap. */
+  topUp: { shortfall: number } | null;
   context: string | null;
   sendLabel: string;
   sendBusyLabel: string;
@@ -218,7 +224,38 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   const linkOk = isValidTargetRoleUrl(url.trim()) && (!company || jobLinkFitsCompany(url, company.domains));
   const words = countWords(composeWhyMe(reasons));
   const tooLong = overLimitReasons(reasons).length > 0;
-  const cost = askCostLine({ open: company ? company.openToReferrals : null, balance: isSignedIn && balance?.state === "ready" ? balance.count : null });
+  // D-132 item 3 (flag VITE_ASK_LEVEL_COST): the single shared by-level quote
+  // for /ask, the drawer and the door — one fetch per validated link, and only
+  // for a signed-in seeker. Pending or failed keeps the flat one-credit line,
+  // exactly like flag-off. With a quote the server's numbers win: its
+  // totalAvailable and shortfall are the true wallet position, so the cost
+  // line and the top-up can never disagree.
+  const askLevelCostOn = import.meta.env.VITE_ASK_LEVEL_COST === "true";
+  const quoteState = useAskQuote(url, askLevelCostOn && linkOk);
+  const quote = quoteState.status === "ready" ? quoteState.quote : null;
+  // Flag on with a valid link at a COVERED company (or coverage not yet
+  // resolved): Send waits for the price, because the server charges the level
+  // cost at submit there. A pending or failed quote can never fall back to
+  // the flat one-credit line or leave Send enabled. A company known NOT open
+  // is different by contract (QA-verified): the server accepts the ask into
+  // coverage-wait with NO debit even when the wallet is short, so the flat
+  // "no credit used until…" line is the truth and Send never waits on pricing.
+  const covered = company?.openToReferrals === true;
+  const uncovered = company?.openToReferrals === false;
+  const gated = quoteState.status === "pending" || quoteState.status === "error";
+  const cost: AskCostLine = gated && uncovered
+    ? askCostLine({ open: false, balance: null })
+    : quoteState.status === "pending"
+      ? { line: "Pricing this ask…", detail: "Send unlocks when the price is in.", blockedReason: "Pricing this ask…" }
+      : quoteState.status === "error"
+        ? { line: "We could not price this ask", detail: "Edit the job link to try again.", blockedReason: "We could not price this ask" }
+        : askCostLine({ open: company ? company.openToReferrals : null, balance: quote ? quote.totalAvailable : isSignedIn && balance?.state === "ready" ? balance.count : null, cost: quote?.cost ?? (askLevelCostOn ? undefined : 1) });
+  // The shortfall top-up swap applies only at a covered company: an uncovered
+  // ask waits for free by contract, so a short wallet must never be pushed to
+  // top-up for it. Coverage unknown (no directory match) keeps Send on the
+  // line's wording; the server refuses covered-and-short submits with the
+  // exact wording shown in the send error, and the composer re-prices then.
+  const topUp = quote && covered && quote.shortfall > 0 ? { shortfall: quote.shortfall } : null;
   const context = company ? [company.name, roleTitleFromUrl(url)].filter(Boolean).join(" · ") : roleTitleFromUrl(url);
 
   const missing = !linkOk
@@ -292,6 +329,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
         confirmedCompanyDomain: confirmedDomain(url.trim()),
         opportunityId: postSelection?.opportunityId,
         workItemIds: selectedWork,
+        expectedCoverage: uncovered ? "waiting_for_company_coverage" : undefined,
       });
       const token = await fetchToken();
       const response = await fetch("/api/company-referrals", {
@@ -310,6 +348,19 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       }
       if (response.status === 409 && payload.code === COMPANY_CAP_REACHED && typeof payload.companyDomain === "string") {
         setSendError(companyCapCopy(payload.companyDomain));
+        return;
+      }
+      // D-132 item 3: we showed "no credit used until a verified employee can
+      // see it", but the company opened up before the commit. The server
+      // created nothing and charged nothing; re-read the directory and the
+      // quote so the covered cost line (and any top-up) is live, and the
+      // seeker sends again only after seeing the real price.
+      if (response.status === 409 && payload.code === COMPANY_COVERAGE_CHANGED) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: companyDirectoryKeys.all }),
+          queryClient.invalidateQueries({ queryKey: ["ask-quote"] }),
+        ]);
+        setSendError(typeof payload.error === "string" ? payload.error : "This company just opened up to referrals. Nothing was sent and nothing was charged - check the live price and send again if it works for you.");
         return;
       }
       // Task 13: more pinned work than the plan puts in front of a referrer. The
@@ -352,6 +403,9 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       ]);
     } catch (reason) {
       setSendError(askErrorMessage(reason, "We could not send this ask"));
+      // The server is the balance authority at commit; after a refusal the
+      // snapshot the composer priced against may be stale, so re-price.
+      void queryClient.invalidateQueries({ queryKey: ["ask-quote"] });
     } finally {
       setSendStage("idle");
     }
@@ -407,6 +461,8 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     reasonsError: attempted && words < MIN_WORDS ? "Write your reasons first: one specific result beats a list of skills." : "",
     watch: company && !company.openToReferrals ? { ...watch, onWatch: () => { void watchCompany(); } } : null,
     cost,
+    costQuote: quote,
+    topUp,
     context,
     sendLabel: isSignedIn ? "Send ask" : "Sign in and send",
     sendBusyLabel: sendStage === "resume" ? "Uploading your resume…" : "Sending your ask…",
