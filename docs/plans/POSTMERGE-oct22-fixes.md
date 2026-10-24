@@ -4,7 +4,7 @@
 
 | Field | Value |
 |---|---|
-| Decisions | D-166 (the post-merge review these findings came from); findings doc landed via #619 |
+| Decisions | D-166 (the post-merge review these findings came from); findings doc lands via #619 (merged before this registration) |
 | Rows | `POSTMERGE-oct22-fixes` (Tier 1, lane `audit`) |
 | Verified against | `main` `196103f6` (Oct 24); finding line references are from the findings doc against `02a8a028` and `main` |
 
@@ -32,4 +32,4 @@ The post-merge Tier 1 review of the Oct 22-23 merges (#619) found four items nee
 ## Validation
 - Required CI green on the PR head (typecheck, unit + component + route tests, production build); Tier 1 independent review on the exact head before landing (D-074, D-151). No workflow edits (`.github/workflows/ci.yml` is owned by `D-048-F-flags`). No flags enabled. Migration: none.
 - Owns: `server/db.ts`, `server/db.askCostStored.test.ts`, `server/dailyMoneyCheck.ts`, `server/dailyMoneyCheck.test.ts`, `client/src/pages/plans.kit.test.tsx`, `client/src/pages/plans.paymentRecovery.test.tsx`, `client/src/pages/plans.paymentRoute.test.tsx`, `client/src/pages/Pricing.tsx`, `shared/landingContent.ts`, `shared/planCatalog.ts`, `client/src/pages/policyPages.test.tsx`.
-- Order: waits for `D-048-fix-post-copy` (owns `server/db.ts`) and `D-048-fix-landing-flash-snapshot-v2` (owns `shared/landingContent.ts`) so the edits never collide (PICKER-owns-scope).
+- Order: `#619` (the findings doc) merges before this registration; then waits for `D-048-fix-post-copy` (owns `server/db.ts`) and `D-048-fix-landing-flash-snapshot-v2` (owns `shared/landingContent.ts`) so the edits never collide (PICKER-owns-scope).
