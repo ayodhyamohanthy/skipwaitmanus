@@ -29,7 +29,12 @@ against a local build with `VITE_GOAL_SURFACES` naming the id; output lands in
   settle delay; drawer or modal captures are taken after the overlay is fully
   open.
 - **No horizontal overflow.** The report's `horizontalOverflowPx` is 0 at
-  both widths; `unmatchedApi` is empty and `consoleErrors` is empty.
+  both widths; `unmatchedApi` is empty and `consoleErrors` is empty. One
+  exception (D-188): a capture run with `VITE_WORKOS_CLIENT_ID` unset may show
+  only the `[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to
+  server-session-only auth` line, which `client/src/_core/auth.tsx` prints by
+  design; any other console error still fails, and the live check on
+  skipwait.me still needs a clean console.
 - **Auth and build state stated.** The caption records the fixture name, the
   persona (seeker / verified referrer), the build's `VITE_GOAL_SURFACES`
   value and the commit SHA. A capture without these is a screenshot, not

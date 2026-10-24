@@ -149,6 +149,7 @@ All of it is behind `BYOR_LINK_ENABLED` (server) and `VITE_BYOR_LINK` (client), 
 - **In scope (edit only these):**
   - New: `drizzle/deploy/0107_ask_invites.sql` (re-check the number), `shared/askInvites.ts`, `server/askInvites.ts`, `server/askInviteRoutes.ts`, `server/askInviteSweep.ts`, `client/src/components/requests/AskInviteSheet.tsx`, `client/src/components/requests/askInviteApi.ts`, `client/src/pages/AskInviteLink.tsx`, and their tests.
   - `drizzle/schema.ts` (new table only), `server/schemaReconcile.ts` (table, unique indexes, FK).
+  - `functions/_middleware.ts`: exactly one `KNOWN_ROUTE_PATTERNS` entry, `/r/:token` (D-188). It is the Pages route table, not D-057's middleware; the route stays out of the sitemap and `shared/publicRoutes.ts`.
   - `server/db.ts` (**surgical only**): `deliverWaitingAskTx`, `listDeliverableWaitingAsksTx`, `tryDeliverWaitingAsk`, the close hooks in `withdrawCompanyReferralRequest` and `expireStalePendingReferralRequest`, and the assignment hook at the end of `deliverWaitingAskTx`. No other function body.
   - `server/coverageDeliverySweep.ts` only if the reserved-ask routing needs it (preferred: keep it in `tryDeliverWaitingAsk`).
   - `server/privateReferralRoutes.ts` (**mine payload only**, line ~1070 block); `server/_core/index.ts` (one registration line).
