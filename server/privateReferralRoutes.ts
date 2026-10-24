@@ -327,7 +327,22 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     try {
       const opportunities = await deps.listPublicCompanyOpportunities();
       const nowMs = Date.now();
-      const live = opportunities.filter(row => !isOpportunityExpired(wallRowExpiresAt(row), nowMs));
+      const live = opportunities.filter(row => !isOpportunityExpired(wallRowExpiresAt(row), nowMs))
+        // The wall is a public read: map to the explicit card shape so owner
+        // name/email/flag columns can never ride along, however the store row
+        // was shaped. The poster projection arrives already opt-in-gated.
+        .map(row => {
+          const source = row as Record<string, unknown>;
+          return {
+            id: source.id, companyDomain: source.companyDomain, kind: source.kind, roleTitle: source.roleTitle,
+            targetRoleUrl: source.targetRoleUrl ?? null, location: source.location ?? null, compensation: source.compensation ?? null,
+            walkInAt: source.walkInAt ?? null, walkInEndsAt: source.walkInEndsAt ?? null, createdAt: source.createdAt,
+            expiresAt: source.expiresAt ?? null, isSponsored: source.isSponsored === true,
+            poster: (source.poster as { kind: string; firstName?: string } | undefined)?.kind === "firstName" && typeof (source.poster as { firstName?: unknown }).firstName === "string"
+              ? { kind: "firstName" as const, firstName: (source.poster as { firstName: string }).firstName }
+              : { kind: "anonymous" as const },
+          };
+        });
       // The repair loop's only signal for lapsed posts the wall is hiding.
       if (live.length < opportunities.length) record({ action: "opportunity.expired_hidden", outcome: "success", resourceType: "opportunity", metadata: { hiddenCount: opportunities.length - live.length } });
       res.json({ opportunities: live });
