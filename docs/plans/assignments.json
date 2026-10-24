@@ -114,6 +114,22 @@
    "note": "D-189: workBranchOf skips reserved agent/architect/ branches, so #557 and #585 sat green with no landing hand-out on Oct 23. Use the lock branch as the work branch for architect rows that carry file changes; hand the landing to anyone but the writer. Waits for the two rows that own files it edits."
   },
   {
+   "id": "SEC-deps-oct24",
+   "title": "Patch dompurify, zod, body-parser and undici to their fixed versions (1 critical, 4 high advisories)",
+   "row": "D-190",
+   "packet": "docs/plans/SEC-deps-oct24.md",
+   "tier": 2,
+   "lane": "deps",
+   "branch": "agent/queue/sec-deps-oct24",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    "package.json",
+    "pnpm-lock.yaml"
+   ],
+   "note": "D-190: pnpm audit --prod on main 02a8a028 - dompurify 3.4.16 (critical+high, via mermaid), zod 4.1.12, body-parser 1.20.6 (override), undici 7.29.1 (high, DoS). Version bumps and lockfile only; stop and report if a bump breaks a type or test."
+  },
+  {
    "id": "REGISTER-520",
    "title": "Land #520's rulings (Skippy reviews, newest-decision sync, CEO mandate, credits toolbox, branch hygiene), renumbered onto main",
    "row": "D-163",
