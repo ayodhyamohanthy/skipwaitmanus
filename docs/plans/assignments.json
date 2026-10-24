@@ -95,7 +95,7 @@
   },
   {
    "id": "PICKER-architect-landing",
-   "title": "A packet's pull request on its agent/architect lock branch can be landed through the picker, never by its writer (D-189)",
+   "title": "A packet's pull request on its agent/architect lock branch can be landed through the picker, never by its writer (D-190)",
    "row": "D-134",
    "packet": "docs/plans/PICKER-PARALLEL.md",
    "tier": 2,
@@ -111,12 +111,12 @@
     "scripts/nextTaskText.mjs",
     "scripts/nextTaskArchitectLanding.test.ts"
    ],
-   "note": "D-189: workBranchOf skips reserved agent/architect/ branches, so #557 and #585 sat green with no landing hand-out on Oct 23. Use the lock branch as the work branch for architect rows that carry file changes; hand the landing to anyone but the writer. Waits for the two rows that own files it edits."
+   "note": "D-190: workBranchOf skips reserved agent/architect/ branches, so #557 and #585 sat green with no landing hand-out on Oct 23. Use the lock branch as the work branch for architect rows that carry file changes; hand the landing to anyone but the writer. Waits for the two rows that own files it edits."
   },
   {
    "id": "SEC-deps-oct24",
    "title": "Patch dompurify, zod, body-parser and undici to their fixed versions (1 critical, 4 high advisories)",
-   "row": "D-190",
+   "row": "D-191",
    "packet": "docs/plans/SEC-deps-oct24.md",
    "tier": 2,
    "lane": "deps",
@@ -127,7 +127,7 @@
     "package.json",
     "pnpm-lock.yaml"
    ],
-   "note": "D-190: pnpm audit --prod on main 02a8a028 - dompurify 3.4.16 (critical+high, via mermaid), zod 4.1.12, body-parser 1.20.6 (override), undici 7.29.1 (high, DoS). Version bumps and lockfile only; stop and report if a bump breaks a type or test."
+   "note": "D-191: pnpm audit --prod on main 02a8a028 - dompurify 3.4.16 (critical+high, via mermaid), zod 4.1.12, body-parser 1.20.6 (override), undici 7.29.1 (high, DoS). Version bumps and lockfile only; stop and report if a bump breaks a type or test."
   },
   {
    "id": "REGISTER-520",
@@ -1816,7 +1816,7 @@
    "dependsOn": [
     "D-166-journey-decisions-sync"
    ],
-   "note": "Builds D-176 (merged in #601; user instruction phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST): availability framing does not map to the seeker's mental model. Remove the labels, chips and open-first grouping; availability becomes backend routing only, with an honest delivered-vs-waiting status after save and no false immediate-referral claim. Supersedes the shipped D-048-fix-explore-open-first grouping (#594 stands as completed history - removal is this row, not a rollback). Preserves verified company-employee access and privacy rules. D-187: done by #609 (labels, chips and open-first grouping removed)."
+   "note": "Builds D-176 (merged in #601; user instruction phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST): availability framing does not map to the seeker's mental model. Remove the labels, chips and open-first grouping; availability becomes backend routing only, with an honest delivered-vs-waiting status after save and no false immediate-referral claim. Supersedes the shipped D-048-fix-explore-open-first grouping (#594 stands as completed history - removal is this row, not a rollback). Preserves verified company-employee access and privacy rules. D-189: done by #609 (labels, chips and open-first grouping removed)."
   },
   {
    "id": "D-174-seeker-journey-build",
@@ -1830,7 +1830,7 @@
    "dependsOn": [
     "D-166-journey-decisions-sync"
    ],
-   "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-187: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176."
+   "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-189: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176."
   },
   {
    "id": "D-166-founder-decisions-sync",
@@ -1891,7 +1891,7 @@
     "D-048-p3-post",
     "D-174-seeker-journey-build"
    ],
-   "note": "Founder direction Oct 24 00:57 IST (phonemsg-01M5N3Q94QHYJK0VEHA3WBERS0). Audience model must hold before build: public vs internal-restricted (never public) vs referral-drive (shareable by design). 'Internal' meaning unresolved - open questions in the packet. No money fields (D-132/D-152 frozen). D-187: the old branch name carried #605 (the direction record), which made the picker read this row done. The build packet comes first: answer or route the open questions in docs/plans/D-177-recruiter-posts-referral-drives.md, then owned paths, tests and tiers.",
+   "note": "Founder direction Oct 24 00:57 IST (phonemsg-01M5N3Q94QHYJK0VEHA3WBERS0). Audience model must hold before build: public vs internal-restricted (never public) vs referral-drive (shareable by design). 'Internal' meaning unresolved - open questions in the packet. No money fields (D-132/D-152 frozen). D-189: the old branch name carried #605 (the direction record), which made the picker read this row done. The build packet comes first: answer or route the open questions in docs/plans/D-177-recruiter-posts-referral-drives.md, then owned paths, tests and tiers.",
    "row": "D-177",
    "tier": 2
   },
@@ -1911,7 +1911,7 @@
     "D-048-p3-assistants",
     "D-048-p3-agents"
    ],
-   "note": "Founder direction Oct 24 00:58 IST (phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M). Direction not authority: no charges, no auth bypass, no invented protocol. Delegated identity rides existing assistant-grant work; payment needs explicit user approval per the money rules; retry-safe apply/pay required. D-187: the old branch name carried #606 (the direction record), which made the picker read this row done. The build packet comes first: the contract design the direction record asks for (docs/plans/D-178-agent-portal-access.md), with D-181's free-allowance eligibility, owned paths, tests and tiers."
+   "note": "Founder direction Oct 24 00:58 IST (phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M). Direction not authority: no charges, no auth bypass, no invented protocol. Delegated identity rides existing assistant-grant work; payment needs explicit user approval per the money rules; retry-safe apply/pay required. D-189: the old branch name carried #606 (the direction record), which made the picker read this row done. The build packet comes first: the contract design the direction record asks for (docs/plans/D-178-agent-portal-access.md), with D-181's free-allowance eligibility, owned paths, tests and tiers."
   },
   {
    "id": "D-180-terminology-docs-sync",

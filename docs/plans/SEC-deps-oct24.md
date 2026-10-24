@@ -1,4 +1,4 @@
-# SEC-deps-oct24: patch four production dependencies with known advisories (D-190)
+# SEC-deps-oct24: patch four production dependencies with known advisories (D-191)
 
 > Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code as CEO (D-085) on Oct 24 2026. The picker hands out this row; do only what it prints.
 
@@ -6,7 +6,7 @@
 |---|---|
 | Row | `SEC-deps-oct24` (Tier 2, lane `deps`) |
 | Verified against | `main` `02a8a028` |
-| Decisions | D-190, D-019 (basics always work), D-082 |
+| Decisions | D-191, D-019 (basics always work), D-082 |
 
 ## Why
 `pnpm audit --prod` on `main` `02a8a028` (Oct 24) reports 1 critical and 4 high advisories in four packages the product ships:
@@ -34,4 +34,4 @@ Three of them sit on the API's request path, so each is an availability risk for
 `package.json`, `pnpm-lock.yaml`, and this file's Status line.
 
 ## Status
-- SEC-deps-oct24: todo (D-190).
+- SEC-deps-oct24: todo (D-191).
