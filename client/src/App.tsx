@@ -142,9 +142,7 @@ function Router() {
           <Route path="/alerts">
             <AppShell><Alerts /></AppShell>
           </Route>
-          <Route path="/notifications">
-            <Redirect to="/alerts" />
-          </Route>
+          <Route path="/notifications"><Redirect to="/alerts" /></Route>
           <Route path="/onboarding">
             <AppShell><ProfileSetup /></AppShell>
           </Route>
