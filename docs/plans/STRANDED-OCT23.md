@@ -80,6 +80,6 @@ Instinct built these, so every review and landing goes to a model other than Ins
 These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines go here (D-134).
 - REGISTER-520: todo.
 - D-155-share-paid-gate: todo (PR #527 open, CI green on `af6dd9cc`, conflicts with `main`).
-- D-132-catalog-record: todo — PR #528 landing candidate (docs only; not yet live on `main`). The branch merges latest `main`; public account/customer details are removed from the audit. Focused checks, independent delta review, exact-head CI and landing are required. Mark done only after the tested change is live on `main`.
+- D-132-catalog-record: done — 166fe5ff (docs only; landed on `main` by the status commit). Independent delta review passed: the audit names no secret, customer data or account/site id (D-059), and the `docs/PRICING.md` line matches the audit and `shared/planFamily.ts`. Focused checks 219/219 and `pnpm check` green; exact-head CI required before landing.
 - D-132-item3: todo; waits for D-132-audit.
 - D-132-v2-checkout: todo; waits for D-132-item3.
