@@ -1157,6 +1157,26 @@ export const oauthAuthCodes = mysqlTable("oauthAuthCodes", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("oauth_auth_codes_user_idx").on(table.userId), index("oauth_auth_codes_expiry_idx").on(table.expiresAt)]);
 
+/**
+ * The kit landed journey (queue row 20 slices C/D): one row per ask that ended with
+ * a hire, holding the seeker's thank-you, whether they let the referrer keep it on
+ * their private wall, and the pay-it-forward answer. `deliveredAt` is the claim that
+ * makes the note send-at-most-once, and `conversationMessageId` (plain int, like
+ * `referralRequests.debitTransactionId`) records the thread message it produced.
+ */
+export const landedJourney = mysqlTable("landedJourney", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  seekerUserId: int("seekerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  referrerUserId: int("referrerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  thankYouMessage: text("thankYouMessage"),
+  shareOnWall: boolean("shareOnWall").default(false).notNull(),
+  payForwardChoice: varchar("payForwardChoice", { length: 12 }),
+  deliveredAt: timestamp("deliveredAt"),
+  conversationMessageId: int("conversationMessageId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("landed_journey_request_unique").on(table.referralRequestId), index("landed_journey_referrer_wall_idx").on(table.referrerUserId, table.shareOnWall)]);
 // Aggregate-only company access. Work-mailbox proof grants no employee/admin rights.
 export const companyAggregateAccess = mysqlTable("companyAggregateAccess", {
   id: int("id").autoincrement().primaryKey(),

@@ -37,6 +37,12 @@ jobs:
       # work merged on Sep 24 and never deployed. Nothing called it either.
       - name: Deploy trigger coverage
         run: node scripts/check-deploy-triggers.mjs
+      # PICKER-owns-scope (docs/plans/PICKER-PARALLEL.md): judge what this branch changed
+      # against the files its task declared it would touch. It reads the task from the
+      # branch name, and fails open (with a warning) only when it cannot run at all, so a
+      # broken tool never blocks a real fix — but a definite change outside `owns` fails.
+      - name: Scope check (declared file ownership)
+        run: node scripts/scope-check.mjs --branch
 
   test:
     name: unit + component + route tests
@@ -71,6 +77,10 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build
         run: pnpm build
+      - name: Build with all goal surfaces on
+        run: pnpm build
+        env:
+          VITE_GOAL_SURFACES: all
 
   outbox-mysql:
     name: D-067 outbox real-MySQL concurrency

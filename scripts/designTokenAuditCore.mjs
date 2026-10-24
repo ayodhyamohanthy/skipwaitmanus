@@ -21,8 +21,9 @@ export const APPROVED = new Set([
 
 export const THIRD_PARTY = new Set(["#25d366", "#229ed9", "#0a66c2"]);
 
-export const GOAL_SCOPE = /^client\/src\/components\/goal\//;
+export const GOAL_SCOPE = /^client\/src\/(components\/goal|pages\/goal)\//;
 export const GOAL_VERIFIED_MARK = "client/src/components/goal/GoalVerifiedMark.tsx";
+const GOAL_POST_OPPORTUNITY = "client/src/pages/goal/post-opportunity/";
 export const INDEX_CSS = "client/src/index.css";
 export const ALLOWED_CSS_FILES = new Set([INDEX_CSS, "client/src/styles/kit.css"]);
 export const GOAL_BLOCK_MARKER = "D-048 phase 2 · goal-UI tokens";
@@ -157,8 +158,26 @@ export function auditFiles(files, opts = {}) {
       // R5: banned effects.
       const banned = source.match(BANNED_EFFECT);
       if (banned) findings.push({ file, rule: "R5", token: banned[0] });
-      // R6 (goal part): no compensation row (D-071).
-      if (/\bcompensation\b/i.test(source)) findings.push({ file, rule: "R6", token: "compensation" });
+      // R6 (goal part): no compensation row (D-071). The exact storage key
+      // "bridge-target-compensation" is not a row: it is the draft-handoff
+      // contract the live kit /start, /request, /explore and /wall pages
+      // already write, and the goal body must read and clear the same key or
+      // the draft breaks across flag variants. Renaming a shared key is a
+      // cross-surface contract change, so only that exact literal is excused.
+      // R6 exception (Oct 23, coordinator): D-071 drops the compensation ROW
+      // from the referral-queue comps and defers the "expected compensation"
+      // question; it never banned the employer's optional compensation field
+      // on /post-opportunity - the POST contract
+      // (shared/companyOpportunities.ts) keeps optional compensation and /wall
+      // and /jobs display it. The goal post-opportunity surface may therefore
+      // carry the field, while the banned queue copy stays rejected
+      // everywhere, including inside that surface.
+      const withoutStorageKey = source.split("bridge-target-compensation").join("");
+      const bannedQueueCopy = /compensation\s*\(recommended\)|recommended\s+compensation|expected\s+compensation/i;
+      const hitsR6 = file.startsWith(GOAL_POST_OPPORTUNITY)
+        ? bannedQueueCopy.test(withoutStorageKey)
+        : /\bcompensation\b/i.test(withoutStorageKey);
+      if (hitsR6) findings.push({ file, rule: "R6", token: "compensation" });
     }
   }
 

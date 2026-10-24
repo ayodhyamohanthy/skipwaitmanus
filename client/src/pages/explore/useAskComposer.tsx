@@ -14,7 +14,8 @@ import { useOnlineStatus } from "@/components/goal";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
-import { clearAskPrefill, readAskPrefill, saveAskPrefill } from "@/lib/askPrefill";
+import { ASK_PREFILL_TTL_MS, clearAskPrefill, readAskPrefill, saveAskPrefill } from "@/lib/askPrefill";
+import { clearReferralDraft, readReferralDraft } from "@/lib/pwaContinuity";
 import { defaultPinnedWorkIds, useAskWorkPieces } from "@/lib/askWorkPieces";
 import { discardAskDraftRemote, saveAskDraftRemote, useAskDraft } from "@/lib/askDraftApi";
 import { fastTrackAskFields } from "@/lib/fastTrackHandoff";
@@ -23,6 +24,7 @@ import { useSeekerSetup } from "@/lib/useSeekerSetup";
 import { countWords } from "@shared/askQuality";
 import type { PublicCompany } from "@shared/companies";
 import { askCostLine, CREDIT_ENDED_CAVEAT, creditUsedPhrase, type AskCostLine } from "@shared/moneyCopy";
+import { OPPORTUNITY_FIRST_LOOK_HOURS } from "@shared/companyOpportunities";
 import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
 import { COMPANY_CAP_REACHED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
@@ -33,7 +35,7 @@ import { composeWhyMe, overLimitReasons, splitWhyMe, WHY_ME_MAX, type WhyMeReaso
 import type { AskResume, AskSentView } from "./AskDrawer";
 import { askIdempotencyKey, ASK_IDEMPOTENCY_KEY, buildAskBody } from "./askSend";
 import { linkHint, roleTitleFromUrl, type LinkHint } from "./findModel";
-import { goToSeekerSignIn } from "./signInHandoff";
+import { askSignInReturnTo, goToSeekerSignIn } from "./signInHandoff";
 
 const MIN_WORDS = 10;
 
@@ -43,6 +45,41 @@ function session(): Storage | null {
 
 function confirmedDomain(url: string): string | undefined {
   try { return confirmedDomainFor(url, localStorage.getItem("bridge-company-confirmation")); } catch { return undefined; }
+}
+
+// The /start hand-off (todo "Preserve the job link from start through the ask
+// form"): Onboarding.begin writes the referral draft and the company
+// confirmation binding, then routes through /request to /ask. Only a fresh,
+// confirmation-bound draft fills the composer, so a stale, malformed or
+// mismatched draft is cleaned up instead of applied; sign-out already destroys
+// the hand-off (logoutPrivacy), so it can never reach a different account.
+type StartHandoff = { targetUrl: string };
+
+function readStartHandoff(now: number = Date.now()): StartHandoff | null {
+  let store: Storage | null = null;
+  try { store = typeof window === "undefined" ? null : window.localStorage; } catch { store = null; }
+  if (!store) return null;
+  const draft = readReferralDraft(store);
+  if (!draft) return null;
+  let bound = false;
+  try {
+    const confirmation = JSON.parse(store.getItem("bridge-company-confirmation") || "null") as { canonicalUrl?: unknown } | null;
+    bound = typeof confirmation?.canonicalUrl === "string" && confirmation.canonicalUrl === draft.targetUrl;
+  } catch { bound = false; }
+  if (now - draft.updatedAt > ASK_PREFILL_TTL_MS || !bound) {
+    try { store.removeItem("bridge-target-url"); store.removeItem("bridge-company-confirmation"); } catch { /* persistence is best-effort */ }
+    clearReferralDraft(store);
+    return null;
+  }
+  return { targetUrl: draft.targetUrl };
+}
+
+function clearStartHandoff(): void {
+  try {
+    localStorage.removeItem("bridge-target-url");
+    localStorage.removeItem("bridge-company-confirmation");
+  } catch { /* persistence is best-effort */ }
+  clearReferralDraft();
 }
 
 export type AskComposer = {
@@ -73,6 +110,9 @@ export type AskComposer = {
   work: PinnedWorkState;
   /** D-022: the posted role this ask opened from, while it still applies. */
   postSelection: OpportunityAskSearch | null;
+  /** D-174: pick a posted role in place. Replaces the whole selection - a
+   * linkless pick clears any stale link and identity from an earlier pick. */
+  selectPost(selection: OpportunityAskSearch | null): void;
   /** Fresh form for a new company; the resume carries unless clearResume is set. */
   resetForm(options?: { clearResume?: boolean }): void;
   /** Clear the terminal send view and error after the drawer has closed. */
@@ -130,6 +170,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   // opened from a posted role ("/ask?post=<id>&job=<link>", D-022): the post
   // id travels with the send so the poster sees it first; a fresh form drops it.
   const [prefill] = useState(() => readAskPrefill(session()));
+  const [startHandoff] = useState(() => readStartHandoff());
   const [postSelection, setPostSelection] = useState<OpportunityAskSearch | null>(() => parseOpportunityAskSearch(typeof window === "undefined" ? "" : window.location.search));
 
   // The posted role's link fills an untouched composer, wherever the composer lives.
@@ -138,6 +179,15 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // D-174 in-place pick from a door: the selection is REPLACED, never merged -
+  // a linkless post clears the previous post's link so no stale link, pass
+  // check or opportunity id can leak into the next ask.
+  const selectPost = (selection: OpportunityAskSearch | null) => {
+    setPostSelection(selection);
+    setUrl(selection?.jobUrl ?? "");
+    setDraftState("idle");
+  };
+
   // A saved draft fills only what is still empty for the company it was written for.
   useEffect(() => {
     if (!remoteDraft || !company || remoteDraft.companySlug !== company.slug) return;
@@ -145,12 +195,22 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     setReasons(current => (current.some(reason => reason.trim()) ? current : splitWhyMe(remoteDraft.note)));
   }, [remoteDraft, company]);
 
-  // The sign-in handoff prefill does the same on /ask, for its own company.
+  // /ask restores the handoff even without a directory match. Other surfaces
+  // still accept only a prefill belonging to their own resolved company.
   useEffect(() => {
-    if (!prefill || !company || prefill.companySlug !== company.slug) return;
+    if (!prefill || (window.location.pathname !== "/ask" && (!company || prefill.companySlug !== company.slug))) return;
     setUrl(current => current || prefill.targetRoleUrl);
     setReasons(current => (current.some(reason => reason.trim()) ? current : splitWhyMe(prefill.note)));
   }, [prefill, company]);
+
+  // Lowest fill precedence: the /start hand-off fills only the still-empty
+  // link, on /ask or where the link fits the resolved company. The account
+  // draft, the posted role and the sign-in/session prefill all outrank it.
+  useEffect(() => {
+    if (!startHandoff) return;
+    if (window.location.pathname !== "/ask" && !(company && jobLinkFitsCompany(startHandoff.targetUrl, company.domains))) return;
+    setUrl(current => current || startHandoff.targetUrl);
+  }, [startHandoff, company]);
 
   const resumeView: AskResume = resumeFile ? { name: resumeFile.name } : uploaded ? { name: uploaded.fileName } : setup?.resume ? { name: setup.resume.fileName } : null;
   const resumeDoc = uploaded ?? (resumeFile ? null : setup?.resume ?? null);
@@ -215,12 +275,9 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       return;
     }
     if (!isSignedIn) {
-      // Sign in first; the company, link and reasons come back on /ask, where the seeker finishes.
-      if (company && saveAskPrefill({ companySlug: company.slug, targetRoleUrl: url, note: composeWhyMe(reasons) })) {
-        goToSeekerSignIn("/ask");
-        return;
-      }
-      goToSeekerSignIn("/ask");
+      // Save the seeker's work even when the directory cannot resolve the company.
+      saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons) });
+      goToSeekerSignIn(askSignInReturnTo(window.location.pathname, window.location.search));
       return;
     }
     try {
@@ -272,6 +329,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       if (!created) throw new Error(typeof payload.error === "string" ? payload.error : "We could not send this ask");
       session()?.removeItem(ASK_IDEMPOTENCY_KEY);
       clearAskPrefill(session());
+      clearStartHandoff();
       setPostSelection(null);
       void discardAskDraftRemote(fetchToken);
       const name = company?.name ?? created.companyDomain ?? "the company";
@@ -282,7 +340,9 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
           ? `Only the ${where}employee whose link you used will see it. If they don’t pick it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}.`
           : created.waitingForCoverage
             ? `No verified employee there can see it yet, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, ${creditUsedPhrase(ASK_LEVEL_COST_CLIENT)} and it goes live; ${ASK_LEVEL_COST_CLIENT ? "if you do not have enough then, we hold it until you add more." : "if you have no credit then, we hold it until you add one."}`
-            : `Verified ${where}employees can see it now. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`,
+            : created.firstLook
+              ? `The employee who posted this role sees your ask first. If they pass, or don’t accept within ${OPPORTUNITY_FIRST_LOOK_HOURS} hours, other verified ${where}employees can see it. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`
+              : `Verified ${where}employees can see it now. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`,
         slots: created.slots ? (created.slots.cap === null ? `Open asks ${created.slots.open}` : `Open asks ${created.slots.open} of ${created.slots.cap}`) : null,
         trackHref: `/conversation/${created.requestId}`,
       });
@@ -367,6 +427,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       toggle: toggleWork,
     },
     postSelection,
+    selectPost,
     resetForm,
     clearAfterClose,
   };

@@ -38,7 +38,10 @@ vi.mock("wouter", () => ({
   useSearch: () => searchState.value,
   useRoute: () => [false, null],
 }));
-vi.mock("@/pages/explore/signInHandoff", () => ({ goToSeekerSignIn: signIn, seekerSignInUrl: (returnTo: string) => `/sign-in?returnTo=${encodeURIComponent(returnTo)}` }));
+vi.mock("@/pages/explore/signInHandoff", async importOriginal => ({
+  ...await importOriginal<typeof import("@/pages/explore/signInHandoff")>(),
+  goToSeekerSignIn: signIn,
+}));
 
 const company = (slug: string, openToReferrals = true): PublicCompany => {
   const seed = LAUNCH_COMPANY_SEED.find(item => item.slug === slug);
@@ -235,7 +238,7 @@ describe("pinned work on the ask (task 13)", () => {
     // Then the drawer, opened from the company row, with the same inputs.
     const drawerFetch = stub();
     renderPage(<Explore />);
-    fireEvent.click(await screen.findByRole("link", { name: "Wipro, open to requests" }));
+    fireEvent.click(await screen.findByRole("link", { name: "Wipro" }));
     const drawer = await screen.findByTestId("goal-drawer");
     await waitFor(() => expect(chips(drawer)).toHaveLength(2));
     expect(pressed(drawer)).toEqual(["Checkout redesign · Case study"]);
