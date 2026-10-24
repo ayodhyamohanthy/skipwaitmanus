@@ -186,6 +186,7 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   // cardValidatedAt means "no validated card" and a null chargebeeCustomerId
   // means the provider customer is created on first use.
   { table: "tokenBalances", column: "cardValidatedAt", definition: "TIMESTAMP NULL" },
+  { table: "tokenBalances", column: "lastPaidAt", definition: "TIMESTAMP NULL" },
   { table: "users", column: "chargebeeCustomerId", definition: "VARCHAR(80) NULL" },
   // Seeker company demand (0104): the optional work function on a demand vote.
   { table: "companySuggestions", column: "jobFunction", definition: "VARCHAR(32) NULL" },
