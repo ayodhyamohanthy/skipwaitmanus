@@ -144,6 +144,9 @@ const mount=()=>createRoot(document.getElementById("root")!).render(
   </QueryClientProvider>
 );;
 const nativeFetch=globalThis.fetch.bind(globalThis);
+// Marks that the app bundle parsed and is booting, so index.html's 2.5s reveal
+// failsafe does not paint the static snapshot while React is still loading.
+(window as unknown as { __swBootAlive?: boolean }).__swBootAlive = true;
 // Reveal the app only once the brand font is ready (index.html hides it until then; a 2.5s timer there is the failsafe).
 function revealWhenFontsReady() {
   const reveal = (window as unknown as { __swReveal?: () => void }).__swReveal;
@@ -153,4 +156,15 @@ function revealWhenFontsReady() {
   const loads = ["400", "500", "600", "700"].map(weight => fonts.load(`${weight} 1em "Instrument Sans"`, "Abc 123 skipwait.me").catch(() => []));
   void Promise.race([Promise.all(loads), new Promise(resolve => setTimeout(resolve, 1800))]).then(() => requestAnimationFrame(() => requestAnimationFrame(reveal)));
 }
-void bootstrapSmoke(nativeFetch).finally(()=>{globalThis.fetch=smokeFetch as typeof fetch;mount();revealWhenFontsReady()});
+// The prerendered static snapshot lives inside #root for crawlers. Revealing on
+// fonts alone would paint that snapshot before React commits, flashing the old
+// static page for about a second. Reveal only after React's first commit (which
+// replaces the snapshot), still waiting for the brand font; the 2.5s timer in
+// index.html stays the failsafe.
+function revealAfterFirstCommit() {
+  const rootEl = document.getElementById("root");
+  if (!rootEl || typeof MutationObserver === "undefined") { revealWhenFontsReady(); return; }
+  const observer = new MutationObserver(() => { observer.disconnect(); revealWhenFontsReady(); });
+  observer.observe(rootEl, { childList: true });
+}
+void bootstrapSmoke(nativeFetch).finally(()=>{globalThis.fetch=smokeFetch as typeof fetch;mount();revealAfterFirstCommit()});
