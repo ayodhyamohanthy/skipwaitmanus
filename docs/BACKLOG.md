@@ -86,7 +86,7 @@ Related: level pricing (D-110) is direction + draft-scope tapback only - flag-of
 
 | Item | Branch | Status | Blocker |
 | --- | --- | --- | --- |
-| BYOR one-time link (D-090, loop L2) | `agent/claude/d090-byor` | C1–C6 implementation and evidence recorded; typecheck/build and 14 ask-expiry tests pass; flags OFF; no PR | Blocked: `/r/:token` is missing from the D-057 route allowlist, but D-090 §5 forbids that edit and the owner directed skip. Zero-console QA also needs a non-production WorkOS test configuration. |
+| BYOR one-time link (D-090, loop L2) | `agent/claude/d090-byor` | in review on draft PR; C1–C6 complete; `/r/:token` in `functions/_middleware.ts`; full local gate and route coverage pass; flags OFF | Ready for independent Tier 1 review |
 
 ### Approved by the owner, not yet built
 
