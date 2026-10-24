@@ -24,6 +24,7 @@ Why they are queued: a decision on an open pull request with no queue row is nev
 - **Review stage.** A model other than Claude and other than the builder reviews the new pull request against current `main`: the resolved merge on its own (the merge-policy amendment), then every claim with file:line, especially the six Skippy findings and the line numbers in `SKIPPY-fix.md`. A finding is a claim that `main` does not support.
 - **Landing.** Docs only: focused checks plus the required CI on the exact head, then the normal landing (D-082, D-134 (6)). Close #520 after the landing.
 - **Stop and ask.** If a decision on the branch contradicts a newer one on `main` (for example D-146, D-147, D-152, D-162 or D-163), report it blocked with both IDs; do not pick one.
+- **D-183 (Oct 24): inherited text is not a conflict.** The stop rule covers decisions the branch makes. Lines #520 never changed take `main`'s version in the merge (the D-035 row stays deleted, `D-090-BYOR` keeps `dependsOn: []`); in `docs/plans/README.md` line 8, which both sides rewrote, keep `main`'s paragraph and add only #520's clauses (PICKER-decision-sync, the Skippy rows, branch hygiene). Renumber after every open branch, #620 included.
 
 ## D-155-share-paid-gate: review and land PR #527 (the /share link unlocks after the first paid invoice)
 
@@ -78,7 +79,7 @@ Instinct built these, so every review and landing goes to a model other than Ins
 
 ## Status
 These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines go here (D-134).
-- REGISTER-520: todo.
+- REGISTER-520: todo; the Oct 24 block on inherited D-035/D-090 text is answered by D-183.
 - D-155-share-paid-gate: todo (PR #527 open, CI green on `af6dd9cc`, conflicts with `main`).
 - D-132-catalog-record: todo (PR #528 open, conflicts with `main`).
 - D-132-item3: todo; waits for D-132-audit.
