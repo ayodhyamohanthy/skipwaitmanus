@@ -78,6 +78,18 @@
    "note": "D-162: on Oct 23 the board kept workbuddy · b0eb's 02:14 blocked report on D-090-BYOR and hid the three green reports after it; the first (a2fdbc3e) named the owner's waiver, the next two reported build progress. The CEO ruled from the stale report (D-154) and the owner had to restate his word. latestReports keeps the blocked report standing (unchanged) and also returns every non-CEO report after it; the board line and the printed unblock step show them."
   },
   {
+   "id": "REGISTER-oct24",
+   "title": "Land the Oct 24 CEO rulings as one reviewed docs change: #621 (D-186, D-187), #620 (D-182 to D-185, D-188 to D-191) and #624 (D-193, the journey rows)",
+   "row": "D-163",
+   "packet": "docs/plans/STRANDED-OCT23.md",
+   "tier": 1,
+   "lane": "register-ceo",
+   "branch": "agent/queue/register-oct24",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "Every board report since Oct 24 cites rulings that only exist on open claude/* PRs, which the picker cannot see: #621 (D-186, D-187), #620 (D-182 to D-185, D-188 to D-191) and #624 (D-193 and its ten D-174 journey rows). agent/queue/register-oct24 holds all three merged onto main, register rows in ID order; validateAssignments returns []. Nothing to build. Review: one independent delta review of the whole branch against main, by a model other than Claude, which wrote every line (D-151, D-195 (1)): check each entry against the decisions it cites, each new row against its packet, and that no row already on main changed except as the three PRs describe. Its CI goes green once this row is on main (the queue gate in scope-check reads origin/main). Landing: the owner merges (1-approval ruleset, D-195 (4)); the landing commit sets this row to done and adds its line to the STRANDED-OCT23.md Status section; then close #621, #620 and #624 with a pointer."
+  },
+  {
    "id": "REGISTER-520",
    "title": "Land #520's rulings (Skippy reviews, newest-decision sync, CEO mandate, credits toolbox, branch hygiene), renumbered onto main",
    "row": "D-163",
@@ -114,22 +126,22 @@
    "branch": "agent/queue/postmerge-oct22-fixes",
    "status": "todo",
    "dependsOn": [
-      "D-048-fix-post-copy",
-      "D-048-fix-landing-flash-snapshot-v2"
+    "D-048-fix-post-copy",
+    "D-048-fix-landing-flash-snapshot-v2"
    ],
    "note": "Findings from docs/plans/POSTMERGE-oct22-findings.md (#619): P1 #482 preserve creation-time flat price for waiting asks created flag-off (server/db.ts + regression test); P2 #506 add the 7-day lower bound to the stale-checkout sample query (server/dailyMoneyCheck.ts + test); P2 #478 rendered-page tests asserting catalog-derived prices (3 plans test files); P2 #534 compose pack copy from shared/planCatalog.ts (Pricing.tsx, landingContent.ts, policyPages.test.tsx). Fix before any ASK_LEVEL_COST activation. No flags, no workflow edits.",
    "owns": [
-      "server/db.ts",
-      "server/db.askCostStored.test.ts",
-      "server/dailyMoneyCheck.ts",
-      "server/dailyMoneyCheck.test.ts",
-      "client/src/pages/plans.kit.test.tsx",
-      "client/src/pages/plans.paymentRecovery.test.tsx",
-      "client/src/pages/plans.paymentRoute.test.tsx",
-      "client/src/pages/Pricing.tsx",
-      "shared/landingContent.ts",
-      "shared/planCatalog.ts",
-      "client/src/pages/policyPages.test.tsx"
+    "server/db.ts",
+    "server/db.askCostStored.test.ts",
+    "server/dailyMoneyCheck.ts",
+    "server/dailyMoneyCheck.test.ts",
+    "client/src/pages/plans.kit.test.tsx",
+    "client/src/pages/plans.paymentRecovery.test.tsx",
+    "client/src/pages/plans.paymentRoute.test.tsx",
+    "client/src/pages/Pricing.tsx",
+    "shared/landingContent.ts",
+    "shared/planCatalog.ts",
+    "client/src/pages/policyPages.test.tsx"
    ]
   },
   {
