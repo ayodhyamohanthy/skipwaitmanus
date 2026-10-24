@@ -85,3 +85,4 @@ None. The split's open design questions are already decided under D-123 in `D-04
 ## Status
 
 `D-048-P-referrer`: prepared PR pending landing — GPT · d492 — 2026-10-23 — branch `agent/architect/d048-p-referrer`
+`D-048-postopp-copy-v2`: in progress — Cue GPT · 2026-10-25-0212 — 2026-10-25 — branch `agent/queue/postopp-copy-v2`
