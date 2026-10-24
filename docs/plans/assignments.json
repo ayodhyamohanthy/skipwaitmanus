@@ -94,6 +94,26 @@
    "note": "D-184: on Oct 23 GPT · 5deb stopped the re-reviews of #547 and #527 because the review step says to look for 'your model' in the comments, without 'as builder or fixer'. One sentence in case \"review\" of scripts/nextTaskText.mjs plus a new test file (scripts/nextTaskReviewWording.test.ts, so it shares no owned file with PROCESS-review-gate); hand-outs unchanged."
   },
   {
+   "id": "PICKER-architect-landing",
+   "title": "A packet's pull request on its agent/architect lock branch can be landed through the picker, never by its writer (D-189)",
+   "row": "D-134",
+   "packet": "docs/plans/PICKER-PARALLEL.md",
+   "tier": 2,
+   "lane": "picker",
+   "branch": "agent/queue/picker-architect-landing",
+   "status": "todo",
+   "dependsOn": [
+    "PICKER-review-wording",
+    "PROCESS-review-gate"
+   ],
+   "owns": [
+    "scripts/nextTaskCore.mjs",
+    "scripts/nextTaskText.mjs",
+    "scripts/nextTaskArchitectLanding.test.ts"
+   ],
+   "note": "D-189: workBranchOf skips reserved agent/architect/ branches, so #557 and #585 sat green with no landing hand-out on Oct 23. Use the lock branch as the work branch for architect rows that carry file changes; hand the landing to anyone but the writer. Waits for the two rows that own files it edits."
+  },
+  {
    "id": "REGISTER-520",
    "title": "Land #520's rulings (Skippy reviews, newest-decision sync, CEO mandate, credits toolbox, branch hygiene), renumbered onto main",
    "row": "D-163",
