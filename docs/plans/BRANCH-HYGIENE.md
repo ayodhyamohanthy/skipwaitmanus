@@ -1,0 +1,31 @@
+# Packet BRANCH-HYGIENE: GitHub and every clone stay in sync, and merged branches are deleted online and offline
+
+> Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code as CEO (D-205) on Oct 23 2026 against `main` `ecdbc227`; file:line references are from that commit. Two tasks share this packet (D-134): BRANCH-HYGIENE-1, then BRANCH-HYGIENE-2. The picker hands out one at a time; do only the task it prints. The register wins any conflict.
+
+## Why
+The owner, Oct 23: "the online repo and offline should always be in sync and once branches are done and merged to main those should be deleted online and offline". On `ecdbc227`, origin has 345 branches besides `main`. The tips of 69 are already in `main`. The other 276 mix real unmerged work with squash-merged PRs (a squash merge leaves the branch tip outside `main`) and with the picker's marker branches: 11 review locks, 7 heartbeats, 3 architect claims, plus 7 dependabot branches. Nothing deletes a branch after it lands. The picker already prunes remote-tracking refs (`scripts/next-task.mjs:207`, `git fetch -q --prune origin`) but never local branches.
+
+## Rulings (D-205)
+1. **Done and merged** means either the branch tip is an ancestor of `origin/main`, or a merged pull request's head SHA equals the branch tip (merge button or squash). Only such branches are deleted. A branch with any commit outside that, or with an open pull request, is never deleted by a script; it is listed for the CEO's triage.
+2. **Never deleted:** `main`, `agent/reports/log` (the team's report log), the landing slot `agent/queue/landing` (`scripts/nextTaskCore.mjs:30`), and any branch of a task whose status is not `done` (its task branch, its review lock `agent/review/<slug>`, its heartbeat `agent/heartbeat/<slug>`), and the fix-main lock of a red `main`.
+3. **Marker branches** go when the stage they mark is over. An architect claim `agent/architect/<slug>` goes once its row is no longer `architect`. A review lock and a heartbeat go once their task is `done`. Their tips are not in `main`, so for them rule 1 is replaced by this check. The review record stays on the pull request, where reviews are posted (`docs/DELEGATION.md` §6).
+4. **Online, going forward:** the owner turns on GitHub's "Automatically delete head branches" (Settings, General; free), so a merged pull request's branch goes at once. The picker's printed landing step also deletes the task branch and its marker branches after the live check.
+5. **Offline:** on every run, the picker deletes local branches whose upstream is gone and whose tip is in `origin/main`, using safe delete (`git branch -d`, never `-D`). It never touches the checked-out branch, a branch checked out in another worktree, or a dirty worktree. Anything else it reports as a note.
+
+## BRANCH-HYGIENE-1: the cleanup script and the backlog (lane `repo-hygiene`, Tier 2)
+**Build** `scripts/branchHygieneCore.mjs` (pure) and `scripts/branch-cleanup.mjs` (git and GitHub I/O, the same way `scripts/next-task.mjs` reads origin and the GitHub API).
+- `classifyBranches({ branches, mainTipAncestry, mergedPrHeads, openPrHeads, tasks, mainRed })` is pure and returns, per branch, `delete` with its reason (`merged`, `squash-merged`, `stale-architect`, `done-review`, `done-heartbeat`), or `keep` with its reason (`protected`, `open-pr`, `task-not-done`, `unmerged`). The input is structured data (refs, SHAs, the parsed task list), never presentation text.
+- `node scripts/branch-cleanup.mjs` is a dry run by default. It prints a table and the counts per reason, and writes nothing. `--apply` deletes the `delete` rows on origin (`git push origin --delete <b>`, in batches of 20; each failure is reported and the run continues) and prunes. `--local` applies rule 5 to the clone it runs in.
+- **Red-first tests** (`scripts/branchHygiene.test.ts`): every protected name is kept. A task branch that is not done is kept, and so are its review lock and heartbeat. A tip in `main` is deleted. A squash-merged head is deleted only when the merged pull request's head SHA equals the tip, and kept when a commit was added after the merge. An open pull request's branch is kept. An architect claim is deleted only when its row has left `architect`. Unmerged work is kept and listed. Unknown or malformed input fails loudly (AGENTS.md "Fix generators").
+- **The backlog:** paste the dry-run output in the pull request. After landing, the lander runs `--apply` once and pastes that output in the pull request too. If the dry run lists more than 150 deletions, stop and `--report blocked` with the counts, so the CEO looks first.
+**Owned paths.** The three new files, `package.json` (one `branch:cleanup` script line), and this packet's Status section. Done: tests, the dry run in the pull request, CI green, a review by any other session, landed, and the apply output pasted.
+
+## BRANCH-HYGIENE-2: the picker keeps it that way (lane `picker`, Tier 2, after BRANCH-HYGIENE-1)
+- After the existing fetch with prune (`scripts/next-task.mjs:207`), run the `--local` cleanup from BRANCH-HYGIENE-1 as a pure call. Print what it deleted in one line, and notes for what it kept. It never blocks a pick.
+- In `scripts/nextTaskText.mjs`, the landing steps (the `land` lines, `:33`, and the fix-main landing, `:118`) end with this step, after the live check: delete the task branch and its marker branches on origin and locally with `node scripts/branch-cleanup.mjs --apply --only <task id>`.
+- Extend `localSyncIssues` (`scripts/nextTaskCore.mjs:578`) so a local branch that is merged but not deleted shows as a note, never as blocking.
+- Docs in the same pull request (D-068): `AGENTS.md` rule 6 and its system-map row "Agent work queue", and `docs/BRIEF.md` "How to ship" (kept under its 10 KB test).
+**Owned paths.** `scripts/next-task.mjs`, `scripts/nextTaskText.mjs`, `scripts/nextTaskCore.mjs` (the `localSyncIssues` note only), `scripts/nextTask.test.ts`, plus the docs above. Done: red-first tests, CI green, a review by any other session, landed.
+
+## Status
+One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is on `main` (D-134).
