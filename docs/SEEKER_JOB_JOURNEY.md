@@ -1,0 +1,27 @@
+# Seeker job journey — owner direction and implementation notes (Oct 24–25, 2026)
+
+> Status: Part A records owner decisions from authenticated owner iMessages, Oct 24 23:04 – Oct 25 00:05 IST, each with its message ID. Part B is implementation recommendations — proposals, not owner approvals. Part C inventories data the reference example shows that we have no verified source for, with truthful handling. This document changes no `assignments.json` rows, no `DECISIONS.md` rows, no prices, no plan contents, no eligibility, no privacy rule and no money behavior; queue/register integration stays with the CEO lane under the queue rules.
+
+## Part A — owner decisions
+
+1. **One universal search box** takes a role keyword, a company, a location, or a pasted job link — one field, not separate modes (phonemsg-01M5QG9DV3C1HB49CMH0RJMYCM, phonemsg-01M5QGH05P5T3N66534Q0PWTQT). The earlier paste-only framing is superseded; search and pasted link are the two entry points.
+2. **Location-only search works with nothing else typed**: "visakhapatnam jobs" returns jobs in Visakhapatnam; "UX jobs in Visakhapatnam" combines role and location; a city name is never forced into the role slot (phonemsg-01M5QK5809YDS43KZ6VEPE9HPK).
+3. **Company autocomplete, then that company's jobs**: typing offers company suggestions; selecting one shows that company's current jobs (phonemsg-01M5QJXHSWJYGHG9P7K4CSQ2G2, phonemsg-01M5QK039VQG5NGDRC0P2J1N8Z). Any company may be typed, with honest unsupported / not-yet-verified states and disambiguation — no invented catalog (phonemsg-01M5QGB6QVXRBRZ6TTTVGTAVGM).
+4. **The full search experience** of the owner's LinkedIn example screenshot is the expectation: "Im expecting all of this. Not missing anything." (phonemsg-01M5QJHQ96CXBE1EX4RPYAM8K1), including filtering by company within term results, filters for date posted, workplace type, experience level and employment type, company logos on job cards (also phonemsg-01M5QGCA6V1BSGD92YVP4A9E1D), and a results list beside the selected job's details.
+5. **The sole job action is "Ask for referral"** — "We dont have concept of apply job we have only ask for referral" (phonemsg-01M5QJS0KW4PTATQAF1JMEG1HB). There is no Apply button and no application flow. (Record of correction: an Apply action was proposed by the assistant side at 23:58 in response to the owner's 23:57 note about LinkedIn's varied apply routes (phonemsg-01M5QJPH1PPE3D1WG9TP3PBV1Q); the owner's 23:59 message corrected that proposal. This was a correction of an assistant proposal, not an owner reversal.) The original job link stays as source identity and role context only.
+6. **Employee-posted openings keep first preference** for referrals (phonemsg-01M5QGPV4WC15J3N58NTPH6T8F).
+7. **One consolidated "where do you want to work" flow** (phonemsg-01M5QGPV4WC15J3N58NTPH6T8F); separate company-mode / job-mode framings are superseded.
+
+## Part B — implementation recommendations (proposals, not owner approvals)
+
+- The parsed location renders as a visible, editable filter in the results UI.
+- Duplicate handling for a role posted both by an employee and on the careers portal: show one opening with the employee route preferred and the portal listing preserved (mechanics implementing decision 6).
+- Company identity is not gated on a readable job board: a legitimate company with no openings or an unsupported portal stays a valid suggestion with an honest status.
+- Job identity: source-native IDs only — (source, board slug, posting ID) plus the canonical URL; stable within one provider/board, no guarantee on custom sites; never invent IDs.
+- Freshness: fetched jobs in their own table (per repo packet D-193, cited as repo state), refreshed in the background; selecting a company attempts a fresh fetch and shows a checked-at timestamp; on failure the last verified data shows with an honest refresh state. A failed, incomplete or 404 feed is "unverified"; a complete successful verified feed that returns no postings does prove zero current openings for that source.
+- Coverage honesty: no "all jobs" or exhaustive-coverage claim unless a source returned a complete list.
+- Provider selection for company-name discovery is NOT frozen: Clearbit Autocomplete (free, keyless, unmaintained, derived-data storage permission unverified) and Brandfetch Brand Search (free plan; terms forbid persisting search data) are candidates; aggregator backfill (Adzuna / Jooble / The Muse / Arbeitnow) is hypothesis pending per-source terms passes. Refresh cadence and capacity await a bounded real test.
+
+## Part C — data the reference example shows that we have no verified source for
+
+The 23:55 example screenshot shows LinkedIn-private data skipwait has no verified source for: applicant counts ("Over 100 applicants"), "actively reviewing applicants", and school/connection network metadata and hiring-team messaging on the detail panel. Truthful handling while building: these stay visibly absent — never fabricated, never a dead button — and skipwait's distinct native features sit nearby where they genuinely overlap: verified-employee presence at a company (not LinkedIn's network graph), referral-request status (not application status), and source + checked-at marking (not LinkedIn's "Verified" chip). These gaps do not block the search build; they bound what its cards and detail panel can truthfully show.
