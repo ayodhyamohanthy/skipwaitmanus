@@ -67,8 +67,8 @@
     },
     {
       "id": "PICKER-decision-sync",
-      "title": "Every agent works from the newest decision: tasks record syncedTo, decisions name the tasks they change, the picker withholds out-of-sync work and prints the newest decisions first (D-157)",
-      "row": "D-157",
+      "title": "Every agent works from the newest decision: tasks record syncedTo, decisions name the tasks they change, the picker withholds out-of-sync work and prints the newest decisions first (D-202)",
+      "row": "D-202",
       "packet": "docs/plans/PICKER-decision-sync.md",
       "tier": 2,
       "lane": "picker",
@@ -80,19 +80,19 @@
     {
       "id": "SKIPPY-fix",
       "title": "Skippy post-landing review (#442, #451, #453, #454): fix S-1 SSRF, S-2 credit copy, S-3 price drift, S-4 agent allow-list, S-5 company at link time, S-6 ask log; live proof on skipwait_qa",
-      "row": "D-156",
+      "row": "D-201",
       "packet": "docs/plans/SKIPPY-fix.md",
       "tier": 1,
       "lane": "skippy-seeker",
       "branch": "agent/queue/skippy-fix",
       "status": "todo",
       "dependsOn": [],
-      "note": "D-156: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. All flags are off in production and stay off until this lands with its proof. The owner asked to work on Skippy (Oct 23), so it sits right after the live regressions and the two picker fixes."
+      "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. All flags are off in production and stay off until this lands with its proof. The owner asked to work on Skippy (Oct 23), so it sits right after the live regressions and the two picker fixes."
     },
     {
       "id": "BRANCH-HYGIENE-1",
-      "title": "Branch cleanup script (dry run first) and the backlog: delete branches that are done and merged, online and offline (D-160)",
-      "row": "D-160",
+      "title": "Branch cleanup script (dry run first) and the backlog: delete branches that are done and merged, online and offline (D-205)",
+      "row": "D-205",
       "packet": "docs/plans/BRANCH-HYGIENE.md",
       "tier": 2,
       "lane": "repo-hygiene",
@@ -103,8 +103,8 @@
     },
     {
       "id": "BRANCH-HYGIENE-2",
-      "title": "The picker deletes merged local branches on every run, and its landing step deletes the task's branches after the live check (D-160)",
-      "row": "D-160",
+      "title": "The picker deletes merged local branches on every run, and its landing step deletes the task's branches after the live check (D-205)",
+      "row": "D-205",
       "packet": "docs/plans/BRANCH-HYGIENE.md",
       "tier": 2,
       "lane": "picker",
@@ -118,7 +118,7 @@
     {
       "id": "SKIPPY-redteam",
       "title": "Skippy prompt-injection red-team suite in CI: resume, job page, note, admin tool output, agent drafts (pre-launch checklist, D-140)",
-      "row": "D-156",
+      "row": "D-201",
       "packet": "docs/plans/SKIPPY-fix.md",
       "tier": 2,
       "lane": "skippy-redteam",
@@ -132,7 +132,7 @@
     {
       "id": "SKIPPY-3",
       "title": "Skippy step 3: buy a credit pack in the chat with a one-use money card and the shared kit-pack checkout (test site only, flag off)",
-      "row": "D-156",
+      "row": "D-201",
       "packet": "docs/plans/SKIPPY-next.md",
       "tier": 1,
       "lane": "skippy-seeker",
@@ -146,7 +146,7 @@
     {
       "id": "SKIPPY-stepup",
       "title": "Fresh sign-in before a Skippy money card: an interactive sign-in no older than 15 minutes, both auth planes, free methods only (D-140)",
-      "row": "D-156",
+      "row": "D-201",
       "packet": null,
       "tier": 1,
       "lane": "auth-stepup",
@@ -160,7 +160,7 @@
     {
       "id": "SKIPPY-6",
       "title": "Skippy step 6: agents request a send, the seeker approves each one; limits under a grant lock; 'Sent via the seeker's assistant' for referrers (flag off)",
-      "row": "D-156",
+      "row": "D-201",
       "packet": "docs/plans/SKIPPY-next.md",
       "tier": 1,
       "lane": "skippy-agents",
@@ -174,7 +174,7 @@
     {
       "id": "SKIPPY-7",
       "title": "Skippy step 7: opt-in auto-send within the grant's limits, through the step 6 approve function (flag off)",
-      "row": "D-156",
+      "row": "D-201",
       "packet": null,
       "tier": 1,
       "lane": "skippy-agents",

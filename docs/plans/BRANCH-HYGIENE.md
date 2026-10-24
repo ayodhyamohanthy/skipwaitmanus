@@ -1,11 +1,11 @@
 # Packet BRANCH-HYGIENE: GitHub and every clone stay in sync, and merged branches are deleted online and offline
 
-> Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code as CEO (D-160) on Oct 23 2026 against `main` `ecdbc227`; file:line references are from that commit. Two tasks share this packet (D-134): BRANCH-HYGIENE-1, then BRANCH-HYGIENE-2. The picker hands out one at a time; do only the task it prints. The register wins any conflict.
+> Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code as CEO (D-205) on Oct 23 2026 against `main` `ecdbc227`; file:line references are from that commit. Two tasks share this packet (D-134): BRANCH-HYGIENE-1, then BRANCH-HYGIENE-2. The picker hands out one at a time; do only the task it prints. The register wins any conflict.
 
 ## Why
 The owner, Oct 23: "the online repo and offline should always be in sync and once branches are done and merged to main those should be deleted online and offline". On `ecdbc227`, origin has 345 branches besides `main`. The tips of 69 are already in `main`. The other 276 mix real unmerged work with squash-merged PRs (a squash merge leaves the branch tip outside `main`) and with the picker's marker branches: 11 review locks, 7 heartbeats, 3 architect claims, plus 7 dependabot branches. Nothing deletes a branch after it lands. The picker already prunes remote-tracking refs (`scripts/next-task.mjs:207`, `git fetch -q --prune origin`) but never local branches.
 
-## Rulings (D-160)
+## Rulings (D-205)
 1. **Done and merged** means either the branch tip is an ancestor of `origin/main`, or a merged pull request's head SHA equals the branch tip (merge button or squash). Only such branches are deleted. A branch with any commit outside that, or with an open pull request, is never deleted by a script; it is listed for the CEO's triage.
 2. **Never deleted:** `main`, `agent/reports/log` (the team's report log), the landing slot `agent/queue/landing` (`scripts/nextTaskCore.mjs:30`), and any branch of a task whose status is not `done` (its task branch, its review lock `agent/review/<slug>`, its heartbeat `agent/heartbeat/<slug>`), and the fix-main lock of a red `main`.
 3. **Marker branches** go when the stage they mark is over. An architect claim `agent/architect/<slug>` goes once its row is no longer `architect`. A review lock and a heartbeat go once their task is `done`. Their tips are not in `main`, so for them rule 1 is replaced by this check. The review record stays on the pull request, where reviews are posted (`docs/DELEGATION.md` §6).
