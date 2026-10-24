@@ -94,7 +94,7 @@ function GoalPostOpportunityBody() {
         {step === 1 ? (
           <>
             <h2 className="mt-3 text-[28px] font-semibold leading-[1.08] tracking-[-0.02em]">Share one useful signal.</h2>
-            <p className="mt-2 text-g-body leading-[1.6] text-g-ink-2">Just the useful company signal. Your identity stays private.</p>
+            <p className="mt-2 text-g-body leading-[1.6] text-g-ink-2">Just the useful company signal. You choose what appears on the card.</p>
             <div className="mt-5 grid grid-cols-2 gap-3" role="group" aria-label="Opportunity kind">
               {([["hiring_now", "Hiring now", "A role open to referrals.", BadgeCheck], ["walk_in", "Walk-in", "A public event.", CalendarDays]] as const).map(([id, title, sub, Icon]) => (
                 <button key={id} type="button" aria-label={title} aria-pressed={mode === id} onClick={() => { setMode(id); setStep(1); }} className={`rounded-[10px] border p-4 text-left transition-colors ${mode === id ? "border-g-ink" : "border-g-hairline hover:border-g-control-edge"}`}>
@@ -112,8 +112,8 @@ function GoalPostOpportunityBody() {
             <h2 className="mt-3 text-[28px] font-semibold leading-[1.08] tracking-[-0.02em]">Add useful details.</h2>
             <p className="mt-2 text-g-body leading-[1.6] text-g-ink-2">A link and location help candidates act without exposing you.</p>
             <div className="mt-5 grid gap-4">
-              <GoalField label="Public job link (optional)" htmlFor="goal-opp-link"><GoalTextInput id="goal-opp-link" aria-label="Public job link" type="url" value={targetRoleUrl} onChange={event => setTargetRoleUrl(event.target.value)} placeholder="https://careers.company.com/role" /></GoalField>
-              <GoalField label="Location (optional)" htmlFor="goal-opp-location"><GoalTextInput id="goal-opp-location" value={location} onChange={event => setLocation(event.target.value)} placeholder="e.g. Bengaluru or Remote" /></GoalField>
+              <GoalField label={mode === "hiring_now" ? "Public job link" : "Public job link (optional)"} htmlFor="goal-opp-link" help={mode === "hiring_now" ? "Required for hiring-now posts. We check the link before publishing." : undefined}><GoalTextInput id="goal-opp-link" aria-label="Public job link" type="url" value={targetRoleUrl} onChange={event => setTargetRoleUrl(event.target.value)} placeholder="https://careers.company.com/role" /></GoalField>
+              <GoalField label={mode === "walk_in" ? "Location" : "Location (optional)"} htmlFor="goal-opp-location" help={mode === "walk_in" ? "Required for walk-ins." : undefined}><GoalTextInput id="goal-opp-location" value={location} onChange={event => setLocation(event.target.value)} placeholder="e.g. Bengaluru or Remote" /></GoalField>
               <GoalField label="Compensation (optional)" htmlFor="goal-opp-comp" help="One line for the public pay range. Leave blank if you prefer not to share."><GoalTextInput id="goal-opp-comp" aria-label="Compensation" value={compensation} onChange={event => setCompensation(event.target.value.slice(0, 80))} placeholder="₹12–18 LPA or $80k–$110k" /></GoalField>
               <label className="flex items-start gap-3 rounded-[10px] border border-g-hairline p-4"><input type="checkbox" checked={showPosterFirstName} onChange={event => setShowPosterFirstName(event.target.checked)} className="mt-0.5 h-4 w-4 accent-g-ink" /><span><strong className="block text-g-label text-g-ink">Show my first name</strong><span className="mt-1 block text-g-meta leading-[1.5] text-g-ink-3">Candidates see just your first name on the card. Your last name and work email never appear.</span></span></label>
               {mode === "walk_in" ? <GoalField label="Starts at" htmlFor="goal-opp-start"><input id="goal-opp-start" aria-label="Starts at" required type="datetime-local" value={walkInAt} onChange={event => setWalkInAt(event.target.value)} className={inputClass} /></GoalField> : null}
@@ -124,11 +124,11 @@ function GoalPostOpportunityBody() {
             <span className="grid h-11 w-11 place-items-center rounded-[10px] border border-g-hairline text-g-ink"><Clock3 className="h-5 w-5" aria-hidden="true" /></span>
             <h2 className="mt-4 text-[28px] font-semibold leading-[1.08] tracking-[-0.02em]">Confirm the timing.</h2>
             <p className="mt-2 text-g-body leading-[1.6] text-g-ink-2">Share only public walk-in information.</p>
-            <div className="mt-5"><GoalField label="Ends at (optional)" htmlFor="goal-opp-end"><input id="goal-opp-end" type="datetime-local" value={walkInEndsAt} onChange={event => setWalkInEndsAt(event.target.value)} className={inputClass} /></GoalField></div>
+            <div className="mt-5"><GoalField label="Ends at" htmlFor="goal-opp-end" help="Required - the walk-in must have a valid start and end time."><input id="goal-opp-end" type="datetime-local" value={walkInEndsAt} onChange={event => setWalkInEndsAt(event.target.value)} className={inputClass} /></GoalField></div>
           </>
         )}
         <div className="mt-6 border-t border-g-hairline pt-4">
-          <p className="mb-3 flex items-start gap-2 text-g-meta leading-[1.5] text-g-ink-3"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />Your company is confirmed only when you publish. Your name and work email never appear on the card.</p>
+          <p className="mb-3 flex items-start gap-2 text-g-meta leading-[1.5] text-g-ink-3"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />Your company is confirmed only when you publish. {showPosterFirstName ? "Your first name appears on the card. Your last name and work email never appear." : "Your name and work email never appear on the card."}</p>
           {error ? <p role="alert" className="mb-3 flex items-center gap-2 text-g-meta text-g-ink">{error}</p> : null}
           {step < totalSteps
             ? <GoalButton variant="primary" type="submit" disabledReason={canProceed ? undefined : "Add the required details first"}>Continue<ArrowRight className="h-4 w-4" aria-hidden="true" /></GoalButton>
