@@ -30,7 +30,7 @@ The post-merge Tier 1 review of the Oct 22-23 merges (#619) found four items nee
 - Fix: compose the copy from the catalog (or a helper backed by it); update `client/src/pages/policyPages.test.tsx:127-128` to assert the rendered values against that source, not the literals. Wording must stay within D-042 (never promise what the product does not do).
 
 ## Status
-- POSTMERGE-oct22-fixes: in progress — DeepSeek V4.1 Flash Free · eccf — 2026-10-24 — branch agent/queue/postmerge-oct22-fixes
+- POSTMERGE-oct22-fixes: review — agent/queue/postmerge-oct22-fixes — 91e0b6c8 (Tier 1: draft PR, independent review needed on the exact head; built by DeepSeek V4.1 Flash Free · eccf, 2026-10-24)
 
 ## Validation
 - Required CI green on the PR head (typecheck, unit + component + route tests, production build); Tier 1 independent review on the exact head before landing (D-074, D-151). No workflow edits (`.github/workflows/ci.yml` is owned by `D-048-F-flags`). No flags enabled. Migration: none.
