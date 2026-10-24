@@ -68,12 +68,15 @@ Instinct built these, so every review and landing goes to a model other than Ins
   2. Renumber `0108_v2_plan_family_intents.sql` and `0109_v2_plan_family_wallets.sql` to the next free numbers on `main` and in plan §5 (on Oct 23 `main` ends at `0108_landed_thank_you.sql`), with every reference.
   3. Implement D-165 (3), red first: a Free wallet with unused free credits is no longer refused at checkout. On the webhook-confirmed upgrade, its unused free monthly credits move into a `planCreditGrants` carry-over grant that expires when their free month would have ended. They are spent soonest-expiring first, as today, and never become paid credits. The checkout copy line comes from `shared/moneyCopy.ts`: "Your {N} free credits stay until {date}."
      Tests: the upgrade with 0 and with 3 unused credits; a replayed webhook grants nothing twice; the carried credits expire on their date with an expiry row; the money check's `getCreditLedgerAudit` reconciles.
+  4. D-132 item 4's grant half (D-185), red first: the crediting grants paid rung credits where they never expire (`PAID_CREDITS_NEVER_EXPIRE` in `shared/planFamily.ts`), keyed once per term, so with the flags on no paid credit expires at a cycle roll, spent or unspent. D-132-audit (#547) does the refund half behind `ASK_LEVEL_COST`.
+     Tests: a rung grant survives a cycle roll; a replayed grant writes nothing twice; a refund after the roll returns the credit.
 - **Review checklist:**
   1. The line-by-line deletion review of the three-way port that #523's own description lists as open: no function or test on `main` was lost.
   2. Every money move is idempotent and keyed; a lost webhook has a reconcile path.
   3. Flags off means no new route answers anything but its current refusal.
   4. The migrations are additive and idempotent, with the reconcile arrays in step.
   5. D-165 (3) is implemented as written.
+  6. D-132 item 4's grant half is implemented as written (D-185).
 - **Before any enable,** QA attaches the TEST-site cart proof in INR and USD on this exact wiring. #416's proof was on other wiring.
 - **#416** is superseded by this row: close it with a link when this lands.
 
