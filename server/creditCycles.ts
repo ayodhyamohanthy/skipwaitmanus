@@ -7,7 +7,7 @@ import { and, eq } from "drizzle-orm";
 import { planCreditGrants, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { BUCKET_SOURCES } from "../shared/creditLedger";
 import { freeMonthEnd, grantShouldExpire, paidPlanLapsed, planCreditsExpireAt, planCycleAt, planCycleByIndex, planCycleIndexOfKey, walletCycleStart } from "../shared/creditCycles";
-import { isPaidPlanActive } from "../shared/planEntitlements";
+import { isPaidPlanActive, isPlanFamilyPaidPlan } from "../shared/planEntitlements";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { CreditSpendConflictError, asLedgerGrant, cycleRulesFor, digest, readGrantsTx, writeLedgerRow, type CyclePatch, type GrantRow, type LedgerTx, type WalletRole, type WalletRow } from "./creditLedger";
@@ -155,6 +155,10 @@ async function expireGrantsTx(tx: LedgerTx, wallet: WalletRow, grants: GrantRow[
 
 /** True when reconcileSeekerWalletTx would open, end or close a cycle (grant expiry aside). */
 export function seekerCycleDue(wallet: WalletRow, now: Date): boolean {
+  // An active D-132 paid family plan has no kit cycles: its credits arrive per
+  // paid invoice (grantV2PaidCredits). The lapse arm below still applies once
+  // the term ends.
+  if (isPlanFamilyPaidPlan(wallet.plan) && isPaidPlanActive(wallet, now)) return false;
   if (wallet.plan !== "free" && isPaidPlanActive(wallet, now)) return paidCycleSteps(wallet, now).length > 0;
   if (paidPlanLapsed(wallet, now)) return true;
   if (wallet.plan === "free" && freeCycleBehind(wallet.monthlyCycleKey, now)) return true;
@@ -202,7 +206,7 @@ export async function reconcileSeekerWalletTx(tx: LedgerTx, locked: WalletRow, n
   };
   const termStart = wallet.subscriptionCurrentTermStart;
   const termEnd = wallet.subscriptionCurrentTermEnd;
-  if (wallet.plan !== "free" && isPaidPlanActive(wallet, now)) {
+  if (wallet.plan !== "free" && !isPlanFamilyPaidPlan(wallet.plan) && isPaidPlanActive(wallet, now)) {
     for (const index of paidCycleSteps(wallet, now)) {
       const cycle = termStart && termEnd ? planCycleByIndex(termStart, termEnd, index) : null;
       if (!cycle) break;

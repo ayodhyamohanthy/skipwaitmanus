@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { creditsLedgerSchema } from "../shared/creditLedger";
-import { InsufficientCreditsError, grantTrialCreditsTx, type LedgerTx } from "./creditLedger";
+import { InsufficientCreditsError, cycleRulesFor, grantTrialCreditsTx, type LedgerTx } from "./creditLedger";
 import { applyChargebeeSubscriptionEvent, ensureTokenWallet, getCreditLedgerAudit, getTokenWallet, listCreditLedger, reconcileSeekerCredits, spendCredits, spendToken } from "./db";
 import { createLedgerFixture, type Row } from "./ledgerFixtureDb";
 import { listWalletsDueForCreditCycle } from "./planCreditCycleJob";
@@ -400,5 +400,33 @@ describe("Free monthly credits carried into a v2 upgrade (D-165 (3))", () => {
     expect(db.grants).toEqual([]);
     expect(txns({ kind: "plan_credit_expiry" })).toEqual([expect.objectContaining({ tokenCount: -2, source: "monthly_allowance", sourceCycleKey: "2026-08" })]);
     expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
+  });
+});
+
+describe("D-132 paid family plans never open kit cycles (review P1)", () => {
+  it("cycleRulesFor gives a paid family plan a zero monthly allowance", () => {
+    expect(cycleRulesFor("fast_track", "job_seeker")).toEqual({ creditsPerMonth: 0, carryover: 0 });
+    expect(cycleRulesFor("insider", "job_seeker")).toEqual({ creditsPerMonth: 0, carryover: 0 });
+  });
+
+  it("an active Fast Track wallet opens no kit cycle and grants nothing", async () => {
+    Object.assign(db.wallets[0], {
+      plan: "fast_track", subscriptionId: "sub_ft", subscriptionStatus: "active",
+      monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: "2026-10",
+      subscriptionCurrentTermStart: at("2026-11-24T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-12-24T00:00:00Z"),
+    });
+    expect(await reconcileSeekerCredits(SEEKER, at("2026-11-25T00:05:00Z"))).toEqual({ changed: false });
+    expect(db.wallets[0]).toMatchObject({ plan: "fast_track", monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: "2026-10" });
+    expect(txns({ kind: "plan_grant" })).toEqual([]);
+  });
+
+  it("a lapsed family subscription still rolls onto the Free month", async () => {
+    Object.assign(db.wallets[0], {
+      plan: "fast_track", subscriptionId: "sub_ft", subscriptionStatus: "active",
+      monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: "2026-10",
+      subscriptionCurrentTermStart: at("2026-10-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-11-01T00:00:00Z"),
+    });
+    expect(await reconcileSeekerCredits(SEEKER, at("2026-11-25T00:05:00Z"))).toEqual({ changed: true });
+    expect(db.wallets[0]).toMatchObject({ plan: "free", monthlyCycleKey: "2026-11" });
   });
 });
