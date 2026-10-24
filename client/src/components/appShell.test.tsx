@@ -12,7 +12,7 @@ const { state } = vi.hoisted(() => ({
     path: "/requests",
     signedIn: true,
     referrer: "unverified" as "unverified" | "verified" | "checking",
-    credits: { data: { totalAvailable: 9 } as { totalAvailable: number } | undefined, isError: false, refetch: vi.fn() },
+    credits: { state: "ready", count: 9 } as { state: "ready"; count: number } | { state: "error"; onRetry: () => void } | { state: "loading" } | null,
   },
 }));
 
@@ -23,8 +23,10 @@ vi.mock("@/_core/auth", () => ({
 vi.mock("@/hooks/useReferrerAccess", () => ({
   useReferrerAccess: () => ({ status: state.referrer, access: { verified: state.referrer === "verified" } }),
 }));
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => state.credits,
+// AppShell no longer queries inline (F-credits): the one balance query is the
+// hook; the mock honours its enabled contract (disabled -> null, no fetch).
+vi.mock("@/hooks/useCreditBalance", () => ({
+  useCreditBalance: (enabled: boolean) => (enabled ? state.credits : null),
 }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div data-testid="account-menu">account menu</div> }));
 vi.mock("wouter", () => ({
@@ -33,7 +35,7 @@ vi.mock("wouter", () => ({
 }));
 
 describe("AppShell on GoalShell (W0)", () => {
-  afterEach(() => { cleanup(); state.path = "/requests"; state.signedIn = true; state.referrer = "unverified"; state.credits = { data: { totalAvailable: 9 }, isError: false, refetch: vi.fn() }; });
+  afterEach(() => { cleanup(); state.path = "/requests"; state.signedIn = true; state.referrer = "unverified"; state.credits = { state: "ready", count: 9 }; });
 
   it("renders the one navigation for a seeker: Find, My asks, Inbox - no Queue", () => {
     render(<AppShell><p>page</p></AppShell>);
@@ -69,7 +71,7 @@ describe("AppShell on GoalShell (W0)", () => {
     render(<AppShell><p>page</p></AppShell>);
     expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toContain("9 credits");
     cleanup();
-    state.credits = { data: undefined, isError: true, refetch: vi.fn() };
+    state.credits = { state: "error", onRetry: vi.fn() };
     render(<AppShell><p>page</p></AppShell>);
     expect(screen.getAllByText("Balance didn't load").length).toBeGreaterThan(0);
     expect(screen.queryByText(/0 credits/)).toBeNull();
@@ -79,6 +81,19 @@ describe("AppShell on GoalShell (W0)", () => {
     state.path = "/queue"; state.referrer = "verified";
     render(<AppShell><p>page</p></AppShell>);
     expect(screen.queryByTestId("goal-credits-pill")).toBeNull();
+  });
+
+  it("shows no credits pill on the four referrer routes the old pattern missed (F-credits)", () => {
+    for (const route of ["/referrer-home", "/referrer-setup", "/verify", "/post-opportunity"]) {
+      state.path = route;
+      const { unmount } = render(<AppShell><p>page</p></AppShell>);
+      expect(screen.queryByTestId("goal-credits-pill")).toBeNull();
+      unmount();
+    }
+    // And the pill still shows on a seeker route.
+    state.path = "/requests";
+    render(<AppShell><p>page</p></AppShell>);
+    expect(screen.getAllByTestId("goal-credits-pill").length).toBeGreaterThan(0);
   });
 
   it("carries the account menu unchanged for a signed-in user and offers Sign in when signed out", () => {
@@ -128,7 +143,7 @@ describe("AppShell on GoalShell (W0)", () => {
 
   it("sets only the credits numeral in mono, the word credits in sans", () => {
     state.path = "/requests"; state.signedIn = true;
-    state.credits = { data: { totalAvailable: 9 }, isError: false, refetch: vi.fn() };
+    state.credits = { state: "ready", count: 9 };
     render(<AppShell><p>page</p></AppShell>);
     const pills = screen.getAllByTestId("goal-credits-pill");
     for (const pill of pills) {
