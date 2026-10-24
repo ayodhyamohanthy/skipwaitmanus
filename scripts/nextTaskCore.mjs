@@ -292,14 +292,25 @@ export const stageHolderOf = (lock, id) => stageMarkers(lock, id).at(-1)?.who ??
 /**
  * The report that stands for each task: the newest (reports arrive newest first, log order, never
  * sorted by an agent's clock), except that a blocked report stands until the CEO reports on the task.
+ * A standing block carries later non-CEO reports in log order under `newer`; those reports do not clear it.
  */
 const latestReports = reports => {
-  const latest = new Map(), settled = new Set();
+  const latest = new Map(), settled = new Set(), pendingNewer = new Map();
   for (const r of reports) {
     if (settled.has(r.id)) continue;
-    if (!latest.has(r.id)) latest.set(r.id, r);
-    if (isArchitect(r.who)) settled.add(r.id);
-    else if (r.status === "blocked") { latest.set(r.id, r); settled.add(r.id); }
+    if (!latest.has(r.id)) latest.set(r.id, { ...r, newer: [] });
+    if (isArchitect(r.who)) {
+      settled.add(r.id);
+      continue;
+    }
+    if (r.status === "blocked") {
+      latest.set(r.id, { ...r, newer: [...(pendingNewer.get(r.id) ?? [])].reverse() });
+      settled.add(r.id);
+      continue;
+    }
+    const newer = pendingNewer.get(r.id) ?? [];
+    newer.push(r);
+    pendingNewer.set(r.id, newer);
   }
   return latest;
 };
