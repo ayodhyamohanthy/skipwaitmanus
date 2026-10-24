@@ -79,7 +79,7 @@ Instinct built these, so every review and landing goes to a model other than Ins
 ## Status
 These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines go here (D-134).
 - REGISTER-520: todo.
-- D-155-share-paid-gate: done — landed by #527 (code reviewed at `17ab8732`, independent re-review pass by Claude Code · 61d2, Oct 24; D-186 settles the refund reading).
+- D-155-share-paid-gate: done — landed by #527 (code reviewed at `17ab8732`, independent re-review pass by Claude Code · 61d2, Oct 24; D-188 in #620 settles the refund reading).
 - D-132-catalog-record: todo (PR #528 open, conflicts with `main`).
 - D-132-item3: todo; waits for D-132-audit.
 - D-132-v2-checkout: todo; waits for D-132-item3.
