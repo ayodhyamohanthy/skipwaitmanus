@@ -65,15 +65,17 @@ The parent PR changes only this packet and `docs/plans/assignments.json`: set `D
 
 | ID / branch | Lane / tier | Depends on (exact split order) | Owned implementation paths |
 |---|---|---|---|
-| `D-048-p3-plans` / `agent/queue/d048-p3-plans` | `d048-money` / 1 | `D-048-F-harness`, `D-048-F-primitives`, `D-048-F-credits`, `D-048-P-money`, `GO-LIVE-1b`, `D-132-plans-v2` | `client/src/pages/Billing.tsx` **switch only**; `client/src/pages/goal/plans/**`; `client/src/pages/plansGoal.test.tsx`; `design/goal-ui/captures/plans/**` |
-| `D-048-p3-premium` / `agent/queue/d048-p3-premium` | `d048-premium` / 1 | `D-048-F-harness`, `D-048-F-primitives`, `D-048-P-money` | `client/src/pages/Premium.tsx` **switch only**; `client/src/pages/goal/premium/**`; `client/src/pages/premiumGoal.test.tsx`; `design/goal-ui/captures/premium/**` |
-| `D-048-p3-pricing` / `agent/queue/d048-p3-pricing` | `d048-pricing` / 1 | `D-048-F-static-frame`, `D-048-P-money` | `client/src/pages/Pricing.tsx` **switch only**; `client/src/pages/goal/pricing/**`; `client/src/pages/pricingGoal.test.tsx`; `design/goal-ui/captures/pricing/**` |
+| `D-048-p3-plans` / `agent/queue/d048-p3-plans` | `d048-money` / 1 | `D-048-F-harness`, `D-048-F-primitives`, `D-048-F-credits`, `D-048-P-money`, `GO-LIVE-1b`, `D-132-plans-v2`, `D-048-F-goal-check` | `client/src/pages/Billing.tsx` **switch only**; `client/src/pages/goal/plans/**`; `client/src/pages/plansGoal.test.tsx`; `design/goal-ui/captures/plans/**`; `client/src/components/plans/BillingPanels.tsx`, `client/src/components/plans/CancelPlanDialog.tsx`, `client/src/components/plans/KitDialog.tsx` (D-167 §4) |
+| `D-048-p3-premium` / `agent/queue/d048-p3-premium` | `d048-premium` / 1 | `D-048-F-harness`, `D-048-F-primitives`, `D-048-P-money`, `D-048-F-goal-check` | `client/src/pages/Premium.tsx` **switch only**; `client/src/pages/goal/premium/**`; `client/src/pages/premiumGoal.test.tsx`; `design/goal-ui/captures/premium/**` |
+| `D-048-p3-pricing` / `agent/queue/d048-p3-pricing` | `d048-pricing` / 1 | `D-048-F-static-frame`, `D-048-P-money`, `D-048-F-goal-check` | `client/src/pages/Pricing.tsx` **switch only**; `client/src/pages/goal/pricing/**`; `client/src/pages/pricingGoal.test.tsx`; `design/goal-ui/captures/pricing/**` |
+
+**D-167 applied at landing (Claude Code · 6029, Oct 24).** D-167 (on `main` since #552) makes every surface row wait for `D-048-F-goal-check` and gives each row the single-page components `docs/plans/GOAL_UI_COVERAGE.md` §4 lists for its page. The three rows above carry that edge. `D-048-p3-plans` owns `Billing.tsx`'s three single-page components and redesigns them in its own pull request, one component per commit (GOAL_UI_COVERAGE.md §4). `Premium.tsx` and `Pricing.tsx` have no single-page components there. `Plans.tsx`'s components stay out of scope, because `/plans` stays on the frozen D-132 path.
 
 All children: status `todo`, row `D-048`, epic `D-048-p3`, packet `docs/plans/D-048-money.md`. Flag descriptions belong in the note, not an unsupported registry key. The three child slugs had no remote match at preparation; fetch and check again before publishing. Architecture locks use the picker-created `agent/architect/` branch; this is normal, not a second build claim.
 
 **Read only:** the code/data modules cited in §3; `shared/planFamily.ts`, `shared/moneyCopy.ts`, `shared/referrerPurchases.ts`; existing billing/plans/premium/pricing tests; `client/src/test/goalShellHarness.tsx`; approved goal components and fetch-free `GoalStaticFrame` once foundation dependencies land; doctrine, comps and capture checklist. UI-only state/request wiring stays within the goal surface, consuming the same contracts and endpoints; financial rules are never cloned. Do not import kit presentation components into goal code.
 
-**Out of scope:** `App.tsx`, `AppShell.tsx`, hooks, shared lib/data/API modules, `components/goal/**`, `components/plans/**`, `server/**`, `shared/**`, CSS/token/kit/ui layers, workflows, migrations, dependencies, env keys, production switches/RELEASED, legal text, decisions, brief, shared §3b row and other tasks. A child may update only its own assignment status and its own Status line in this packet. Any unavailable shared helper/goal primitive goes back to design-core, not a local substitute or owns expansion.
+**Out of scope:** `App.tsx`, `AppShell.tsx`, hooks, shared lib/data/API modules, `components/goal/**`, `components/plans/**` (except the three `Billing.tsx` components `D-048-p3-plans` owns under D-167), `server/**`, `shared/**`, CSS/token/kit/ui layers, workflows, migrations, dependencies, env keys, production switches/RELEASED, legal text, decisions, brief, shared §3b row and other tasks. A child may update only its own assignment status and its own Status line in this packet. Any unavailable shared helper/goal primitive goes back to design-core, not a local substitute or owns expansion.
 
 ## 6. Implementation steps — each child separately
 
@@ -154,7 +156,7 @@ No new owner decision is needed to register these three dark presentation tasks.
 
 ## Status
 
-- `D-048-P-money`: in progress — GPT · 5deb — 2026-10-23 — branch `agent/architect/d048-p-money`; packet/registry preparation, no runtime or price activation.
+- `D-048-P-money`: done when #557 lands. Written by GPT · 5deb (2026-10-23, branch `agent/architect/d048-p-money`; packet and registry only, no runtime or price activation). On 2026-10-24 Claude Code · 6029 merged `main` and applied D-167 to the three rows: the `D-048-F-goal-check` edge and the `Billing.tsx` components. `validateAssignments` returns `[]`.
 - `D-048-p3-plans`: not started; waiting for the registered foundation dependencies.
 - `D-048-p3-premium`: not started; waiting for the registered foundation dependencies.
 - `D-048-p3-pricing`: not started; waiting for the registered foundation dependencies.

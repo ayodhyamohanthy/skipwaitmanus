@@ -45,6 +45,7 @@ import { createContext } from "./context";
 import { registerDevAuthRoutes, resolveDevIdentity } from "./devAuth";
 import { serveStatic, setupVite } from "./vite";
 import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
+import { registerImpactCardRoutes } from "../impactCardRoutes";
 import { registerCompanyDirectoryRoutes } from "../companyDirectoryRoutes";
 import { registerSitemapRoutes } from "../sitemapRoutes";
 import { listCompanyDirectory } from "../companyDirectory";
@@ -202,6 +203,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   });
 
   registerAccountPreferenceRoutes(app, { resolveIdentity, getPreferences: db.getAccountPreferences, savePreferences: db.saveAccountPreferences });
+  registerImpactCardRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
 
   // Dev session routes read JSON bodies, so they register after the parsers.
   // WorkOS AuthKit takes precedence over the dev fallback when configured.

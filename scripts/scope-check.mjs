@@ -16,6 +16,7 @@
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { ownsEntry, ownsMatches, slugOf } from "./nextTaskCore.mjs";
+import { runQueueGate } from "./queue-gate.mjs";
 
 const ASSIGNMENTS = "docs/plans/assignments.json";
 const SWITCH_ONLY_LINE_LIMIT = 12;
@@ -72,6 +73,9 @@ export function checkBranch(taskId) {
 }
 
 function main() {
+  const queueGateExit = runQueueGate();
+  if (queueGateExit !== 0) return queueGateExit;
+
   const taskId = process.argv[2];
   if (!taskId) {
     console.error("usage: node scripts/scope-check.mjs <task-id>");
