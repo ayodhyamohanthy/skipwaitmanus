@@ -274,6 +274,13 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "askCosts", name: "ask_costs_request_unique", columns: "`referralRequestId`" },
   { table: "seekerLevels", name: "seeker_levels_user_unique", columns: "`userId`" },
   { table: "askWorkItems", name: "ask_work_items_request_piece_unique", columns: "`referralRequestId`,`workItemId`" },
+  // D-090 BYOR (0111): one live link per ask (a NULL activeRequestKey is not a row, so the
+  // unique index only binds live links), hashed tokens only, and the sweep's status+expiry scan.
+  { table: "askInviteLinks", name: "ask_invites_token_hash_unique", columns: "`linkTokenHash`" },
+  { table: "askInviteLinks", name: "ask_invites_active_request_unique", columns: "`activeRequestKey`" },
+  { table: "askInviteLinks", name: "ask_invites_request_idx", columns: "`referralRequestId`", nonUnique: true },
+  { table: "askInviteLinks", name: "ask_invites_status_expiry_idx", columns: "`status`,`expiresAt`", nonUnique: true },
+  { table: "askInviteLinks", name: "ask_invites_creator_created_idx", columns: "`createdByUserId`,`createdAt`", nonUnique: true },
   { table: "askWorkItems", name: "ask_work_items_request_idx", columns: "`referralRequestId`,`position`", nonUnique: true },
 ];
 
@@ -307,6 +314,11 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "seekerLevels", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "askWorkItems", column: "referralRequestId", referencedTable: "referralRequests", referencedColumn: "id" },
   { table: "askWorkItems", column: "workItemId", referencedTable: "workItems", referencedColumn: "id" },
+  // D-090 BYOR (0111): a deleted ask takes its links; a deleted account takes the links it
+  // created and only nulls the claimer it left behind.
+  { table: "askInviteLinks", column: "referralRequestId", referencedTable: "referralRequests", referencedColumn: "id" },
+  { table: "askInviteLinks", column: "createdByUserId", referencedTable: "users", referencedColumn: "id" },
+  { table: "askInviteLinks", column: "claimedByUserId", referencedTable: "users", referencedColumn: "id" },
   { table: "dataExports", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "accountPreferences", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "moderationEvents", column: "reportId", referencedTable: "safetyReports", referencedColumn: "id" },

@@ -7,6 +7,7 @@ let initialized = false;
 export function scrubSentryPath(path: string): string {
   return path
     .split("?")[0]
+    .replace(/^\/api\/ask-invites\/[^/]+/, "/api/ask-invites/[redacted]")
     .replace(/^\/email-review\/[^/]+/, "/email-review/[redacted]")
     .replace(/^\/share-card\/[^/]+/, "/share-card/[redacted]")
     .replace(/^\/fast\/[^/]+/, "/fast/[redacted]")
