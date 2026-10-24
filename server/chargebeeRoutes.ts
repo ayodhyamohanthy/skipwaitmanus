@@ -588,6 +588,13 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
             planFamily: payment.v2PlanFamily,
             rung: payment.v2CreditsRung,
           });
+        } else if (payment.v2PlanFamily) {
+          // D-132 plan-fee-only invoice (rung 0): the plan fee is the
+          // subscription's own billing, recorded through the paid-evidence arm
+          // above. No credits are due, no kit fulfillment applies, and a
+          // legitimate plan invoice must never reach the unmatched-payment
+          // alert (review P2).
+          obligations.payment = { status: "ignored", reason: "v2_plan_fee" };
         } else {
           const runtime = (!payment.hostedPageId || !payment.passThruContent) && deps.resolveHostedPage
             ? resolveChargebeeRuntime(req.hostname)

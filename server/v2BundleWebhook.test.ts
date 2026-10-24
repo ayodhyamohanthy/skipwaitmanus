@@ -112,3 +112,18 @@ describe("D-132 bundle crediting webhook arm", () => {
     expect(response.body.error).toBe("Fulfillment retry required");
   });
 });
+
+describe("D-132 plan-fee-only invoices (review P2)", () => {
+  it("a plan-fee-only invoice (rung 0) never touches kit fulfillment and never alerts as unmatched", async () => {
+    const grantV2Credits = vi.fn();
+    const fulfillPayment = vi.fn(async () => ({ status: "ignored", reason: "unknown_checkout" }));
+    const alertUnmatchedPayment = vi.fn();
+    const payload = bundlePayload({ amount: 49_900 }); // Fast Track plan fee alone, no rung line.
+    payload.content.invoice.line_items = [{ item_price_id: "skipwait_v2plan_fast_track-INR" }];
+    const response = await request(app({ grantV2Credits, fulfillPayment, alertUnmatchedPayment })).post("/api/chargebee/webhook").set("Authorization", auth("v2-secret")).send(payload);
+    expect(response.status).toBe(200);
+    expect(grantV2Credits).not.toHaveBeenCalled();
+    expect(fulfillPayment).not.toHaveBeenCalled();
+    expect(alertUnmatchedPayment).not.toHaveBeenCalled();
+  });
+});
