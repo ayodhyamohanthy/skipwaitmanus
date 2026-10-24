@@ -1352,9 +1352,10 @@
    "dependsOn": [
     "D-048-F-static-frame",
     "D-048-P-money",
-    "D-048-F-goal-check"
+    "D-048-F-goal-check",
+    "POSTMERGE-oct22-fixes"
    ],
-   "note": "D-134 money cluster. goalSurfaceOn('pricing'); land dark, independent Tier 1 review, no pricing/cost flag enable. Existing API/data/payment contracts read-only; all original assertions stay unchanged.",
+   "note": "D-134 money cluster. goalSurfaceOn('pricing'); land dark, independent Tier 1 review, no pricing/cost flag enable. Existing API/data/payment contracts read-only; all original assertions stay unchanged. Waits for POSTMERGE-oct22-fixes, which owns Pricing.tsx for the catalog-composed pack copy: the copy fix lands before this switch.",
    "epic": "D-048-p3",
    "owns": [
     "client/src/pages/Pricing.tsx (switch only)",
