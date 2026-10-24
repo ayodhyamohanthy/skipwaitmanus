@@ -93,6 +93,15 @@ describe("My Company Inbox auth and composition", () => {
     expect(detail.textContent).toContain("R-T9ST");
   });
 
+  it("sends a claimed deep link to the conversation without fetching a private preview", async () => {
+    search.value = "?request=9";
+    const fetchMock = stubFetch(url => ({ requests: url.includes("scope=new") ? [row(9, { status: "approved", isClaimedByYou: true })] : [] }));
+    render(<Queue />);
+    await waitFor(() => expect(go).toHaveBeenCalledWith("/conversation/9?from=inbox"));
+    expect(screen.queryByTestId("goal-detail-pane")).toBeNull();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/preview"))).toBe(false);
+  });
+
   it("shows Why me reasons and the role link but never the seeker's name before acceptance", async () => {
     stubFetch((url) => {
       if (url.includes("/preview")) return previewOf(7);

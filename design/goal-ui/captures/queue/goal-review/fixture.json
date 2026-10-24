@@ -1,0 +1,151 @@
+{
+  "signedIn": {
+    "id": "9",
+    "name": "Quiet Falcon",
+    "email": "rao.verma@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": true,
+        "workEmailDomain": "quillmint.example",
+        "companyName": "Quillmint",
+        "companyInitials": "W"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/inbox",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "requests": [
+          {
+            "id": 7,
+            "publicRef": "R-8F3K2",
+            "jobTitle": "Product Designer",
+            "targetRoleUrl": "https://careers.quillmint.example/jobs/4482",
+            "companyDomain": "quillmint.example",
+            "companyName": "Quillmint",
+            "companyInitials": "W",
+            "jobFunction": "Design",
+            "askStrength": "strong",
+            "status": "pending",
+            "savedAt": null,
+            "createdAt": "2026-10-20T08:00:00.000Z",
+            "updatedAt": "2026-10-20T08:00:00.000Z",
+            "attachmentCount": 2,
+            "isClaimedByYou": false,
+            "expiresAt": null
+          },
+          {
+            "id": 8,
+            "publicRef": "R-K2M9P",
+            "jobTitle": "Frontend Engineer",
+            "targetRoleUrl": null,
+            "companyDomain": "quillmint.example",
+            "companyName": "Quillmint",
+            "companyInitials": "W",
+            "jobFunction": "Engineering",
+            "askStrength": "good",
+            "status": "pending",
+            "savedAt": null,
+            "createdAt": "2026-10-18T08:00:00.000Z",
+            "updatedAt": "2026-10-18T08:00:00.000Z",
+            "attachmentCount": 1,
+            "isClaimedByYou": false,
+            "expiresAt": "2026-10-23T08:00:00.000Z"
+          },
+          {
+            "id": 9,
+            "publicRef": "R-4WQ7D",
+            "jobTitle": "Data Analyst",
+            "targetRoleUrl": null,
+            "companyDomain": "quillmint.example",
+            "companyName": "Quillmint",
+            "companyInitials": "W",
+            "jobFunction": "Data",
+            "askStrength": "basic",
+            "status": "approved",
+            "savedAt": null,
+            "createdAt": "2026-10-15T08:00:00.000Z",
+            "updatedAt": "2026-10-15T08:00:00.000Z",
+            "attachmentCount": 0,
+            "isClaimedByYou": true,
+            "expiresAt": null
+          }
+        ],
+        "scope": "new",
+        "hasEverReviewed": true
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/7/preview",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "request": {
+          "id": 7,
+          "publicRef": "R-8F3K2",
+          "candidateName": null,
+          "candidateMessage": "I shipped Quillmint's internal design system audit across 14 products last year.\nTwo of your open roles list Figma token migration, which I led at my current company.\nI can start interviews within a week and have a referral-ready portfolio.",
+          "targetRoleUrl": "https://careers.quillmint.example/jobs/4482",
+          "companyDomain": "quillmint.example",
+          "companyName": "Quillmint",
+          "companyInitials": "W",
+          "attachments": [
+            {
+              "id": 1,
+              "fileName": "locked.pdf",
+              "mimeType": "application/pdf",
+              "fileSize": 1200
+            },
+            {
+              "id": 2,
+              "fileName": "locked-2.pdf",
+              "mimeType": "application/pdf",
+              "fileSize": 900
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 0
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/referrer/home",
+      "body": {
+        "home": {
+          "routing": {
+            "state": "active"
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/referrer-preferences",
+      "body": {
+        "preferences": {
+          "notifyNewAsk": false
+        }
+      }
+    }
+  ]
+}
