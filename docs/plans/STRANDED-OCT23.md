@@ -28,7 +28,7 @@ Why they are queued: a decision on an open pull request with no queue row is nev
 ## D-155-share-paid-gate: review and land PR #527 (the /share link unlocks after the first paid invoice)
 
 - **The owner's word (verbatim, D-155 on the branch):** "Referrals should show unavailable and this line / Referrals unlock after your first paid invoice. Once you've made a payment, come back here to get your referral link."
-- **What it changes.** `GET /api/personal-invites/me` answers `{ invite: null, locked: true }` and creates no invite row until the account has provider-verified payment evidence (a one-time fulfillment at status `credited`, or a webhook-activated subscription); `/share` shows the locked line; the claim route is unchanged. It adds `drizzle/deploy/0110_referral_paid_evidence.sql` and touches `server/chargebee.ts`, `server/chargebeeRoutes.ts`, `server/db.ts` and `server/privateReferralRoutes.ts`. So it is Tier 1 (money evidence and a migration), not docs.
+- **What it changes.** `GET /api/personal-invites/me` answers `{ invite: null, locked: true }` and creates no invite row until the account has provider-verified payment evidence (a one-time fulfillment at status `credited`, or a webhook-activated subscription); `/share` shows the locked line; the claim route is unchanged. It adds `drizzle/deploy/0114_referral_paid_evidence.sql` and touches `server/chargebee.ts`, `server/chargebeeRoutes.ts`, `server/db.ts` and `server/privateReferralRoutes.ts`. So it is Tier 1 (money evidence and a migration), not docs.
 - **Who.** Instinct built it, so the review goes to a model other than Instinct (D-151).
 - **Review checklist** (on top of `docs/DELEGATION.md` §6):
   1. Only provider-verified payment counts: pending, `requires_review`, rejected and refunded rows, checkout or hosted-page creation and promo grants never unlock. A refund after unlock: say in the review whether the link stays (the owner's line says "after your first paid invoice"; keeping it is the reading the code should implement).
@@ -79,7 +79,7 @@ Instinct built these, so every review and landing goes to a model other than Ins
 ## Status
 These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines go here (D-134).
 - REGISTER-520: todo.
-- D-155-share-paid-gate: done — landed by #527 (code reviewed at `17ab8732`, independent re-review pass by Claude Code · 61d2, Oct 24; D-188 in #620 settles the refund reading).
-- D-132-catalog-record: todo (PR #528 open, conflicts with `main`).
+- D-155-share-paid-gate: todo (PR #527 open; merged `main`; the delta review and the owner's go are pending).
+- D-132-catalog-record: done — 166fe5ff (docs only; landed on `main` by the status commit). Independent delta review passed: the audit names no secret, customer data or account/site id (D-059), and the `docs/PRICING.md` line matches the audit and `shared/planFamily.ts`. Focused checks 219/219 and `pnpm check` green; exact-head CI required before landing.
 - D-132-item3: todo; waits for D-132-audit.
 - D-132-v2-checkout: todo; waits for D-132-item3.

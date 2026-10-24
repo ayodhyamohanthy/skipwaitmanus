@@ -1,5 +1,5 @@
--- 0110: D-155 - /share personal referral link unlocks on provider-verified
--- paid evidence (docs/DECISIONS.md D-155). Additive only:
+-- 0114: D-194 - /share personal referral link unlocks on provider-verified
+-- paid evidence (docs/DECISIONS.md D-194). Additive only:
 --   tokenBalances.lastPaidAt   when the provider (Chargebee) first reported a
 --                              successful nonzero payment for this wallet's
 --                              subscription; null means no settled payment is

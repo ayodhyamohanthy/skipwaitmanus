@@ -91,7 +91,7 @@ it.runIf(!!process.env.D155_ISOLATED_MYSQL_URL)("actual MySQL paid-evidence stam
     )`);
 
     // The migration under review applies twice without error (idempotent).
-    const sql = await readFile("drizzle/deploy/0110_referral_paid_evidence.sql", "utf8");
+    const sql = await readFile("drizzle/deploy/0114_referral_paid_evidence.sql", "utf8");
     await pool.query(sql);
     await pool.query(sql);
     const [columns] = await pool.query<mysql.RowDataPacket[]>("SHOW COLUMNS FROM tokenBalances WHERE Field = 'lastPaidAt'");
