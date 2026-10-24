@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import { LoadingNote } from "@/components/app-states/SystemStates";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth, useUser } from "@/_core/auth";
 import { Button } from "@/components/kit/button";
@@ -17,7 +18,12 @@ function errorMessage(error: unknown) {
   return error instanceof Error && error.message ? error.message : "Check your connection and try again.";
 }
 
+const GoalInbox = lazy(() => import("./goal/inbox/GoalInbox"));
+
 export default function UnifiedInbox() {
+  // Goal-UI migration (D-048-p3-inbox): the goal inbox replaces this page when
+  // its surface is on; the kit page below stays the default until release.
+  if (goalSurfaceOn("inbox")) return <Suspense fallback={null}><GoalInbox /></Suspense>;
   const { isLoaded, isSignedIn, getToken, openSignIn } = useAuth();
   const { user } = useUser();
   const fetchToken = usePersistFn(getToken);
