@@ -27,6 +27,6 @@ describe("skipwait.me metadata and route loading", () => {
 
   it("lazy-loads the private BYOR token landing route", () => {
     expect(app).toContain('lazy(() => import("./pages/AskInviteLink")');
-    expect(app).toContain('<Route path="/r/:token" component={AskInviteLink}/>');
+    expect(app).toContain('<Route path="/r/:token" component={AskInviteLink} />');
   });
 });
