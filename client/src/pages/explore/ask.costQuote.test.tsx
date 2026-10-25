@@ -14,13 +14,16 @@ import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { planCatalogResponse } from "@shared/billingCatalog";
 import Ask from "@/pages/Ask";
 import Explore from "@/pages/Explore";
+import ExploreCompany from "@/pages/ExploreCompany";
 
-const { go, searchState, authState, accessState, signIn } = vi.hoisted(() => ({
+const { go, searchState, authState, accessState, signIn, routeState, uploadResumeMock } = vi.hoisted(() => ({
   go: vi.fn(),
   searchState: { value: "" },
   authState: { isLoaded: true, isSignedIn: true },
   accessState: { status: "unverified" as "unverified" | "verified" | "signed-out" },
   signIn: vi.fn(),
+  routeState: { slug: null as string | null },
+  uploadResumeMock: vi.fn(),
 }));
 
 vi.mock("@/lib/goalFlags", async importOriginal => {
@@ -37,12 +40,16 @@ vi.mock("@/_core/auth", () => ({
   useUser: () => ({ user: authState.isSignedIn ? { fullName: "Ada Byron", primaryEmailAddress: { emailAddress: "ada@example.com" }, emailAddresses: [] } : null }),
   SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
+vi.mock("@/lib/resumeUpload", async importOriginal => {
+  const actual = await importOriginal<typeof import("@/lib/resumeUpload")>();
+  return { ...actual, uploadResume: uploadResumeMock };
+});
 vi.mock("@/hooks/useReferrerAccess", () => ({ useReferrerAccess: () => accessState }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
-  useLocation: () => ["/ask", go],
+  useLocation: () => [window.location.pathname, go],
   useSearch: () => searchState.value,
-  useRoute: () => [false, null],
+  useRoute: () => routeState.slug ? [true, { slug: routeState.slug }] : [false, null],
 }));
 vi.mock("@/pages/explore/signInHandoff", async importOriginal => ({
   ...await importOriginal<typeof import("@/pages/explore/signInHandoff")>(),
@@ -69,16 +76,18 @@ const defaultCatalog = (packsAvailable = true) => planCatalogResponse({
   indiaGstRegistered: false,
 });
 
-function stub(options: { quote?: { status: number; body: QuoteBody | { error: string } } | (() => Promise<unknown>); send?: { status: number; body: unknown }; directory?: CompanyDirectoryResponse | (() => CompanyDirectoryResponse); draftPut?: { status: number; body: unknown }; catalog?: unknown } = {}) {
+function stub(options: { quote?: { status: number; body: QuoteBody | { error: string } } | (() => Promise<unknown>); send?: { status: number; body: unknown }; directory?: CompanyDirectoryResponse | (() => CompanyDirectoryResponse); draftPut?: { status: number; body: unknown }; catalog?: unknown; workItems?: unknown[] } = {}) {
   let savedDraft: unknown = null;
   const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
     const path = String(input);
     const method = init?.method ?? "GET";
     if (path === "/api/companies") return json(200, typeof options.directory === "function" ? options.directory() : options.directory ?? ALL_OPEN);
+    if (path === "/api/companies/wipro") return json(200, { company: company("wipro") });
+    if (path === "/api/companies/wipro/opportunities") return json(200, { opportunities: [] });
     if (path.startsWith("/api/credits/summary")) return json(200, { summary: { totalAvailable: 3 } });
     if (path.startsWith("/api/plans/catalog")) return json(200, options.catalog ?? defaultCatalog(true));
     if (path === "/api/profile/setup") return json(200, setup);
-    if (path === "/api/work-items") return json(200, { items: [] });
+    if (path === "/api/work-items") return json(200, { items: options.workItems ?? [] });
     if (path === "/api/ask-drafts" && method === "GET") return json(200, { draft: savedDraft });
     if (path === "/api/ask-drafts" && method === "PUT") {
       if (options.draftPut) return json(options.draftPut.status, options.draftPut.body);
@@ -109,18 +118,46 @@ const typeLink = async (scope: HTMLElement | typeof document.body = document.bod
   fireEvent.blur(field);
 };
 
+const workItems = [
+  { id: 11, title: "Default pinned work", kind: "project", pinned: true },
+  { id: 22, title: "Selected work sample", kind: "project", pinned: false },
+];
+const pickCustomResume = (scope: HTMLElement | typeof document.body = document.body) => {
+  const file = new File(["selected resume bytes"], "selected-resume.pdf", { type: "application/pdf", lastModified: 123456789 });
+  fireEvent.change(within(scope as HTMLElement).getByLabelText(/resume/i), { target: { files: [file] } });
+  return file;
+};
+const pickNonDefaultWork = async (scope: HTMLElement | typeof document.body = document.body) => {
+  const selected = await within(scope as HTMLElement).findByText(/Selected work sample/);
+  fireEvent.click(selected);
+  fireEvent.click(within(scope as HTMLElement).getByText(/Default pinned work/));
+};
+const expectNonDefaultWorkSelected = (scope: HTMLElement | typeof document.body = document.body) => {
+  expect(within(scope as HTMLElement).getByText(/Selected work sample/).closest("button")?.getAttribute("aria-pressed")).toBe("true");
+  expect(within(scope as HTMLElement).getByText(/Default pinned work/).closest("button")?.getAttribute("aria-pressed")).toBe("false");
+};
+const readFileText = (file: File) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result));
+  reader.onerror = () => reject(reader.error ?? new Error("Could not read test file"));
+  reader.readAsText(file);
+});
+
 beforeEach(() => {
   authState.isLoaded = true;
   authState.isSignedIn = true;
   accessState.status = "unverified";
   searchState.value = "";
+  routeState.slug = null;
   sessionStorage.clear();
   signIn.mockReset();
   go.mockReset();
+  uploadResumeMock.mockReset();
+  uploadResumeMock.mockResolvedValue({ id: 901, fileName: "selected-resume.pdf" });
   window.history.replaceState(null, "", "/ask");
   vi.stubGlobal("matchMedia", (query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false }));
 });
-afterEach(() => { cleanup(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("shared composer quote (D-132 item 3)", () => {
   it("flag on, short of credits: the line states cost, balance and gap, and Send swaps for the top-up link", async () => {
@@ -414,26 +451,46 @@ describe("shared composer quote (D-132 item 3)", () => {
     release(null);
   });
 
-  it("flag on, short of credits: top-up persists draft so link, reasons and resume survive route transition on /ask", async () => {
+  it("flag on, short of credits: top-up preserves the selected resume and non-default work on /ask", async () => {
     vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
-    stub({ quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } } });
+    let returned = false;
+    const fetchMock = stub({
+      quote: () => Promise.resolve(json(200, returned ? { level: 5, cost: 5, totalAvailable: 5, shortfall: 0 } : { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 })),
+      workItems,
+    });
     renderPage(<Ask />);
     await typeLink();
-    fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+    fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off by eighteen percent." } });
+    fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Built and shipped a reusable design system." } });
+    fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Mentored teammates across three product launches." } });
+    const selectedResume = pickCustomResume();
+    await pickNonDefaultWork();
     await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
     const topUp = screen.getByRole("link", { name: "Add credits" });
     fireEvent.click(topUp);
+    await waitFor(() => expect(go).toHaveBeenCalledWith("/plans#packs"));
+    returned = true;
     cleanup();
     // Simulate return to /ask
     renderPage(<Ask />);
     await waitFor(() => expect((screen.getByLabelText(/job link/i) as HTMLInputElement).value).toBe(LINK));
-    expect((screen.getByPlaceholderText(/One result/) as HTMLInputElement).value).toBe("Led a checkout redesign that cut drop-off 18%.");
-    expect(screen.getByText("ada-resume.pdf")).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 5 of your 5 credits"));
+    expect((screen.getByPlaceholderText(/One result/) as HTMLInputElement).value).toBe("Led a checkout redesign that cut drop-off by eighteen percent.");
+    expect(screen.getByText("selected-resume.pdf")).toBeTruthy();
+    expectNonDefaultWorkSelected();
+    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    await waitFor(() => expect(uploadResumeMock).toHaveBeenCalledTimes(1));
+    const restoredFile = uploadResumeMock.mock.calls[0][0] as File;
+    expect(restoredFile.name).toBe(selectedResume.name);
+    expect(await readFileText(restoredFile)).toBe("selected resume bytes");
+    const post = fetchMock.mock.calls.find(([url, init]) => String(url) === "/api/company-referrals" && (init as RequestInit | undefined)?.method === "POST");
+    expect(post).toBeTruthy();
+    expect(JSON.parse(String((post![1] as RequestInit).body)).workItemIds).toEqual([22]);
   });
 
-  it("flag on, short of credits: top-up persists draft in explore drawer", async () => {
+  it("flag on, short of credits: top-up preserves the selected resume and non-default work in the explore drawer", async () => {
     vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
-    stub({ quote: { status: 200, body: { level: 4, cost: 4, totalAvailable: 3, shortfall: 1 } } });
+    stub({ quote: { status: 200, body: { level: 4, cost: 4, totalAvailable: 3, shortfall: 1 } }, workItems });
     window.history.replaceState(null, "", "/explore");
     renderPage(<Explore />);
     const card = await screen.findAllByText("Wipro");
@@ -441,9 +498,12 @@ describe("shared composer quote (D-132 item 3)", () => {
     const drawer = await screen.findByRole("dialog");
     await typeLink(drawer);
     fireEvent.change(within(drawer).getByPlaceholderText(/One result/), { target: { value: "Led checkout redesign." } });
+    pickCustomResume(drawer);
+    await pickNonDefaultWork(drawer);
     await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("This ask costs 4 credits. You have 3. Add 1 more."));
     const topUp = within(drawer).getByRole("link", { name: "Add credits" });
     fireEvent.click(topUp);
+    await waitFor(() => expect(go).toHaveBeenCalledWith("/plans#packs"));
     cleanup();
     // Return to explore drawer
     renderPage(<Explore />);
@@ -452,7 +512,56 @@ describe("shared composer quote (D-132 item 3)", () => {
     const drawer2 = await screen.findByRole("dialog");
     await waitFor(() => expect((within(drawer2).getByLabelText(/job link/i) as HTMLInputElement).value).toBe(LINK));
     expect((within(drawer2).getByPlaceholderText(/One result/) as HTMLInputElement).value).toBe("Led checkout redesign.");
-    expect(within(drawer2).getByText("ada-resume.pdf")).toBeTruthy();
+    expect(within(drawer2).getByText("selected-resume.pdf")).toBeTruthy();
+    expectNonDefaultWorkSelected(drawer2);
+  });
+
+  it("flag on, short of credits: top-up preserves the selected resume and non-default work on the company door", async () => {
+    vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
+    stub({ quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } }, workItems });
+    routeState.slug = "wipro";
+    window.history.replaceState(null, "", "/explore/wipro");
+    renderPage(<ExploreCompany />);
+    fireEvent.click(await screen.findByRole("button", { name: "Ask for a referral" }));
+    const drawer = await screen.findByRole("dialog");
+    await typeLink(drawer);
+    fireEvent.change(within(drawer).getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+    pickCustomResume(drawer);
+    await pickNonDefaultWork(drawer);
+    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
+    fireEvent.click(within(drawer).getByRole("link", { name: "Add credits" }));
+    await waitFor(() => expect(go).toHaveBeenCalledWith("/plans#packs"));
+    cleanup();
+    routeState.slug = "wipro";
+    window.history.replaceState(null, "", "/explore/wipro");
+    renderPage(<ExploreCompany />);
+    fireEvent.click(await screen.findByRole("button", { name: "Ask for a referral" }));
+    const drawerAfterReturn = await screen.findByRole("dialog");
+    await waitFor(() => expect(within(drawerAfterReturn).getByLabelText(/job link/i)).toHaveProperty("value", LINK));
+    expect(within(drawerAfterReturn).getByText("selected-resume.pdf")).toBeTruthy();
+    expectNonDefaultWorkSelected(drawerAfterReturn);
+  });
+
+  it("flag on, short of credits: selection save failure is visible and keeps the ask in place", async () => {
+    vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
+    stub({ quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } }, workItems });
+    const originalSetItem = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
+      if (key === "skipwait-ask-topup-selection") throw new DOMException("Storage full", "QuotaExceededError");
+      return originalSetItem.call(this, key, value);
+    });
+    renderPage(<Ask />);
+    await typeLink();
+    fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+    pickCustomResume();
+    await pickNonDefaultWork();
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
+    fireEvent.click(screen.getByRole("link", { name: "Add credits" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Your ask is still here"));
+    expect(go).not.toHaveBeenCalled();
+    expect((screen.getByLabelText(/job link/i) as HTMLInputElement).value).toBe(LINK);
+    expect(screen.getByText("selected-resume.pdf")).toBeTruthy();
+    expectNonDefaultWorkSelected();
   });
 
   it("flag on, short of credits: top-up displays visible error if draft save fails and does not navigate", async () => {

@@ -6,7 +6,8 @@
 // prefill). The parent owns where the composer lives and what closing means.
 import { useQueryClient } from "@tanstack/react-query";
 import { companyDirectoryKeys } from "@/lib/companyDirectory";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { z } from "zod";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { askErrorMessage, confirmedDomainFor, parsePlanLimit, parseSentAsk, parseSlotCapReached } from "@/components/ask/askApi";
@@ -44,6 +45,130 @@ const MIN_WORDS = 10;
 
 function session(): Storage | null {
   try { return typeof window === "undefined" ? null : window.sessionStorage; } catch { return null; }
+}
+
+const ASK_TOPUP_SELECTION_KEY = "skipwait-ask-topup-selection";
+const askTopUpSelectionSchema = z.strictObject({
+  version: z.literal(1),
+  userId: z.string().min(1).max(128),
+  companySlug: z.string().min(1).max(64).nullable(),
+  savedAt: z.number().int().nonnegative(),
+  pickedWork: z.array(z.number().int().positive()).max(MAX_ASK_WORK_ITEMS).nullable(),
+  uploaded: z.strictObject({ id: z.number().int().positive(), fileName: z.string().min(1).max(255) }).nullable(),
+  resumeFile: z.strictObject({
+    fileName: z.string().min(1).max(255),
+    mimeType: z.string().max(128),
+    lastModified: z.number().int().nonnegative(),
+    dataUrl: z.string().min(1).max(15 * 1024 * 1024),
+  }).nullable(),
+}).refine(value => value.pickedWork !== null || value.uploaded !== null || value.resumeFile !== null);
+
+type AskTopUpSelection = z.infer<typeof askTopUpSelectionSchema>;
+type RestoredAskTopUpSelection = { resumeFile: File | null; uploaded: ResumeDoc | null; pickedWork: number[] | null; error?: string };
+
+function fileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Could not read the selected resume"));
+    reader.onerror = () => reject(reader.error ?? new Error("Could not read the selected resume"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function fileFromSnapshot(file: NonNullable<AskTopUpSelection["resumeFile"]>): File {
+  const comma = file.dataUrl.indexOf(",");
+  if (comma < 0 || !/^data:[^,]*;base64$/i.test(file.dataUrl.slice(0, comma))) throw new Error("Invalid resume snapshot");
+  const binary = atob(file.dataUrl.slice(comma + 1));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  const restored = new File([bytes], file.fileName, { type: file.mimeType, lastModified: file.lastModified });
+  if (validateResumeFile(restored)) throw new Error("Invalid resume snapshot");
+  return restored;
+}
+
+async function saveAskTopUpSelection(
+  store: Storage | null,
+  userId: string | null,
+  companySlug: string | null,
+  resumeFile: File | null,
+  uploaded: ResumeDoc | null,
+  pickedWork: number[] | null,
+): Promise<boolean> {
+  const hasSelection = resumeFile !== null || uploaded !== null || pickedWork !== null;
+  if (!hasSelection) {
+    try { store?.removeItem(ASK_TOPUP_SELECTION_KEY); return true; } catch { return false; }
+  }
+  if (!store || !userId) return false;
+  try {
+    store.removeItem(ASK_TOPUP_SELECTION_KEY);
+    const resume = resumeFile ? {
+      fileName: resumeFile.name,
+      mimeType: resumeFile.type,
+      lastModified: resumeFile.lastModified,
+      dataUrl: await fileAsDataUrl(resumeFile),
+    } : null;
+    const selection = askTopUpSelectionSchema.parse({
+      version: 1,
+      userId,
+      companySlug,
+      savedAt: Date.now(),
+      pickedWork,
+      uploaded: uploaded ? { id: uploaded.id, fileName: uploaded.fileName } : null,
+      resumeFile: resume,
+    });
+    store.setItem(ASK_TOPUP_SELECTION_KEY, JSON.stringify(selection));
+    return true;
+  } catch {
+    try { store.removeItem(ASK_TOPUP_SELECTION_KEY); } catch { /* storage may be unavailable */ }
+    return false;
+  }
+}
+
+function clearAskTopUpSelection(store: Storage | null): void {
+  try { store?.removeItem(ASK_TOPUP_SELECTION_KEY); } catch { /* tab storage may be unavailable */ }
+}
+
+function readAskTopUpSelection(
+  store: Storage | null,
+  userId: string,
+  companySlug: string | null,
+  pathname: string,
+  now: number = Date.now(),
+): RestoredAskTopUpSelection | null {
+  if (!store) return null;
+  let raw: string | null;
+  try { raw = store.getItem(ASK_TOPUP_SELECTION_KEY); } catch { return null; }
+  if (!raw) return null;
+  const clear = () => clearAskTopUpSelection(store);
+  let value: unknown;
+  try { value = JSON.parse(raw); } catch {
+    clear();
+    return { resumeFile: null, uploaded: null, pickedWork: null, error: "We could not restore your selected resume or work. Your ask details are still here; check your selections before sending." };
+  }
+  const parsed = askTopUpSelectionSchema.safeParse(value);
+  if (!parsed.success) {
+    clear();
+    return { resumeFile: null, uploaded: null, pickedWork: null, error: "We could not restore your selected resume or work. Your ask details are still here; check your selections before sending." };
+  }
+  const saved = parsed.data;
+  if (saved.userId !== userId || saved.savedAt > now + 60_000 || now - saved.savedAt > ASK_PREFILL_TTL_MS) {
+    clear();
+    return null;
+  }
+  if (pathname !== "/ask" && (!companySlug || saved.companySlug !== companySlug)) return null;
+  try {
+    const restoredFile = saved.resumeFile ? fileFromSnapshot(saved.resumeFile) : null;
+    clear();
+    return { resumeFile: restoredFile, uploaded: saved.uploaded, pickedWork: saved.pickedWork };
+  } catch {
+    clear();
+    return {
+      resumeFile: null,
+      uploaded: saved.uploaded,
+      pickedWork: saved.pickedWork,
+      error: "We could not restore your selected resume. Choose it again; your ask details and work choice are still here.",
+    };
+  }
 }
 
 function confirmedDomain(url: string): string | undefined {
@@ -128,7 +253,7 @@ export type AskComposer = {
 };
 
 export function useAskComposer(company: PublicCompany | null): AskComposer {
-  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { isLoaded, isSignedIn, userId, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const online = useOnlineStatus();
   const queryClient = useQueryClient();
@@ -157,6 +282,29 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   const [pickedWork, setPickedWork] = useState<number[] | null>(null);
   const [pinCap, setPinCap] = useState<number | null>(null);
   const [pinNotice, setPinNotice] = useState("");
+  const topUpRestoreAttempted = useRef(false);
+  useEffect(() => {
+    if (!isLoaded) return;
+    const store = session();
+    if (!isSignedIn || !userId) {
+      clearAskTopUpSelection(store);
+      setResumeFile(null);
+      setUploaded(null);
+      setPickedWork(null);
+      return;
+    }
+    if (topUpRestoreAttempted.current) return;
+    const restored = readAskTopUpSelection(store, userId, company?.slug ?? null, typeof window === "undefined" ? "" : window.location.pathname);
+    if (!restored) return;
+    topUpRestoreAttempted.current = true;
+    setResumeFile(restored.resumeFile);
+    setUploaded(restored.uploaded);
+    if (restored.pickedWork !== null) setPickedWork(restored.pickedWork);
+    if (restored.error) {
+      setResumeError(restored.error);
+      setSendError(restored.error);
+    }
+  }, [isLoaded, isSignedIn, userId, company?.slug]);
   // Until the seeker touches the picker, the pieces they already pin ride
   // along, up to the transport ceiling. A plan downgrade can leave more pinned
   // pieces than the plan now allows; that case is not pre-empted here (the
@@ -396,6 +544,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       if (!created) throw new Error(typeof payload.error === "string" ? payload.error : "We could not send this ask");
       session()?.removeItem(ASK_IDEMPOTENCY_KEY);
       clearAskPrefill(session());
+      clearAskTopUpSelection(session());
       clearStartHandoff();
       setPostSelection(null);
       void discardAskDraftRemote(fetchToken);
@@ -443,7 +592,17 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   const onTopUp = async (event?: React.MouseEvent) => {
     event?.preventDefault();
     setSendError(null);
-    saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons) }, session());
+    const store = session();
+    const selectionsSaved = await saveAskTopUpSelection(store, userId ?? null, company?.slug ?? null, resumeFile, uploaded, pickedWork);
+    if (!selectionsSaved) {
+      setSendError("We could not save your selected resume or work. Your ask is still here. Try again.");
+      return;
+    }
+    if (!saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons) }, store)) {
+      clearAskTopUpSelection(store);
+      setSendError("We could not save your ask before opening credits. Your ask is still here. Try again.");
+      return;
+    }
     if (isSignedIn && company && isValidTargetRoleUrl(url.trim())) {
       try {
         await saveAskDraftRemote({ companySlug: company.slug, targetRoleUrl: url.trim(), note: composeWhyMe(reasons) }, fetchToken);
