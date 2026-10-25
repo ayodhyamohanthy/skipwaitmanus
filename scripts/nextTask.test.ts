@@ -51,13 +51,13 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
     ]);
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
     // P0-ask-link-signin and P1-queue-attestation are both done (each landed after its
-    // review; P1 as merge 2be41b2d), and both owner follow-ups are done, so
-    // PICKER-review-independence is next.
-    expect(first).toMatchObject({ kind: "build", task: { id: "PICKER-review-independence" } });
+    // review; P1 as merge 2be41b2d), and both owner follow-ups are done. The launch batch
+    // (LAUNCH-oct25, D-200 (2)) comes next, starting with the security advisories.
+    expect(first).toMatchObject({ kind: "build", task: { id: "SEC-deps-oct24" } });
     // Both owner follow-ups (PREMIUM-total-label and D-067-outbox-fixture-repair) are done,
-    // so slicing off the live regressions leaves PICKER-review-independence as next.
+    // so slicing off the live regressions still leaves the launch batch first.
     const followUps = pickNextTask({ tasks: real.tasks.slice(2), mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    expect(followUps).toMatchObject({ kind: "build", task: { id: "PICKER-review-independence" } });
+    expect(followUps).toMatchObject({ kind: "build", task: { id: "SEC-deps-oct24" } });
   });
 
   it("rejects unknown keys, duplicates, bad branches, missing packets, unknown dependencies and cycles", () => {
@@ -770,6 +770,94 @@ describe("status reports to the CEO and the board (D-085)", () => {
     expect(text).toContain("red — Qwen · s1: gate red on the coverage test");
   });
 
+  it("shows the three reports after a standing block in oldest-first order while the task stays red", () => {
+    // D-200: only a newer report from another session, or this session's own green or landed one, clears a block.
+    const reports: Report[] = [
+      { id: "A", status: "review", who: "Builder · s1", at: NOW - HOUR, note: "asked for a ruling" },
+      { id: "A", status: "red", who: "Builder · s1", at: NOW - 2 * HOUR, note: "implementation underway" },
+      { id: "A", status: "review", who: "Builder · s1", at: NOW - 3 * HOUR, note: "owner waiver reported" },
+      { id: "A", status: "blocked", who: "Builder · s1", at: NOW - 4 * HOUR, note: "awaiting a ruling" },
+      { id: "A", status: "green", who: "Builder · s1", at: NOW - 5 * HOUR, note: "predates block" },
+    ];
+    const rows = statusBoard({
+      tasks: [task("A")], branches: new Map([["agent/queue/a", claimBy("Builder · s1", "A")]]),
+      openPrs: new Map(), reports, now: NOW,
+    });
+    expect(rows[0]).toMatchObject({
+      health: "red",
+      report: { status: "blocked", newer: [
+        { note: "owner waiver reported" },
+        { note: "implementation underway" },
+        { note: "asked for a ruling" },
+      ] },
+    });
+    const text = renderBoard(rows);
+    expect(text).toContain("report: blocked — Builder · s1: awaiting a ruling");
+    for (const line of ["then: review — Builder · s1: owner waiver reported", "then: red — Builder · s1: implementation underway", "then: review — Builder · s1: asked for a ruling"]) expect(text).toContain(line);
+    const notes = ["owner waiver reported", "implementation underway", "asked for a ruling"]
+      .map(note => text.indexOf(note));
+    expect(notes[0]).toBeLessThan(notes[1]);
+    expect(notes[1]).toBeLessThan(notes[2]);
+    expect(text).not.toContain("predates block");
+  });
+
+  it("shows at most three of five newer reports on the board and counts the rest", () => {
+    const followUps = [5, 4, 3, 2, 1].map((n, i) => ({
+      id: "A", status: "review", who: "Builder · s1", at: NOW - (i + 1) * HOUR, note: `follow-up ${n}`,
+    }));
+    const rows = statusBoard({
+      tasks: [task("A")], branches: new Map([["agent/queue/a", claimBy("Builder · s1", "A")]]),
+      openPrs: new Map(), reports: [...followUps, { id: "A", status: "blocked", who: "Builder · s1", at: NOW - 6 * HOUR, note: "awaiting CEO" }], now: NOW,
+    });
+    expect(rows[0].report.newer).toHaveLength(5);
+    const text = renderBoard(rows);
+    const firstThree = ["follow-up 1", "follow-up 2", "follow-up 3"]
+      .map(note => text.indexOf(`then: review — Builder · s1: ${note}`));
+    expect(firstThree.every(index => index >= 0)).toBe(true);
+    expect(firstThree[0]).toBeLessThan(firstThree[1]);
+    expect(firstThree[1]).toBeLessThan(firstThree[2]);
+    expect(text).toContain("+2 more");
+    expect(text).not.toContain("follow-up 4");
+    expect(text).not.toContain("follow-up 5");
+  });
+
+  it("clears the block when another session reports after it, so no newer reports are listed (D-200)", () => {
+    const reports: Report[] = [
+      { id: "A", status: "review", who: "Kimi · s9", at: NOW, note: "ruling recorded" },
+      { id: "A", status: "green", who: "Builder · s1", at: NOW - HOUR, note: "focused tests passed" },
+      { id: "A", status: "green", who: "Builder · s1", at: NOW - 2 * HOUR, note: "implementation underway" },
+      { id: "A", status: "green", who: "Builder · s1", at: NOW - 3 * HOUR, note: "owner waiver reported" },
+      { id: "A", status: "blocked", who: "Builder · s1", at: NOW - 4 * HOUR, note: "awaiting a ruling" },
+    ];
+    const rows = statusBoard({
+      tasks: [task("A")], branches: new Map([["agent/queue/a", claimBy("Builder · s1", "A")]]),
+      openPrs: new Map(), reports, now: NOW,
+    });
+    expect(rows[0].report).toMatchObject({ status: "review", newer: [] });
+    expect(rows[0].health).not.toBe("red");
+  });
+
+  it("prints every newer report in full before ruling, including on a resumed unblock", () => {
+    const newer = [
+      { id: "A", status: "green", who: "Builder · s1", at: NOW - 2 * HOUR, note: "owner waiver recorded" },
+      { id: "A", status: "green", who: "Builder · s1", at: NOW - HOUR, note: "focused tests passed" },
+    ];
+    const report = { id: "A", status: "blocked", who: "Builder · s1", at: NOW - 3 * HOUR, note: "awaiting CEO ruling", newer };
+    const shared = { task: task("A"), report, lock: "agent/architect/a", lockExists: false };
+    const picks = [
+      { kind: "unblock", ...shared },
+      { kind: "continue", of: "unblock", ...shared },
+    ];
+    for (const pickResult of picks) {
+      const text = renderPick(pickResult, { who: "Claude Code · s9", date: "2026-10-23", claimed: true });
+      expect(text).toContain("Read these newer reports before ruling; a builder may have recorded an owner's word.");
+      expect(text).toContain(new Date(NOW - 2 * HOUR).toISOString());
+      const notes = ["owner waiver recorded", "focused tests passed"].map(note => text.indexOf(note));
+      expect(notes.every(index => index >= 0)).toBe(true);
+      expect(notes[0]).toBeLessThan(notes[1]);
+    }
+  });
+
   it("the CEO review starts from the board", () => {
     const text = renderPick({ kind: "ceo", skipped: [], board: [{ id: "A", title: "A title", tier: 2, role: "CTO", state: "todo", holder: null, quietHours: null, pr: null, report: null }] }, { who: "Claude Code · s9", date: "2026-10-20", claimed: true });
     expect(text).toContain("STATUS BOARD");
@@ -871,7 +959,7 @@ describe("hardening from the D-085 review", () => {
     const busyA: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 1)];
     const own = pick([task("A"), task("B")], { branches: [busyA], reports: [blocked], claimant: "Qwen · s1" });
     expect(own).toMatchObject({ kind: "wait", gate: "A", blocked: true, own: true });
-    expect(renderPick(own, { who: "Qwen · s1", date: "2026-10-20", claimed: true })).toContain("another session or the owner");
+    expect(renderPick(own, { who: "Qwen · s1", date: "2026-10-20", claimed: true })).toContain("neither raised the block nor holds the task, or the owner");
     const ctx = { who: "Kimi · s2", date: "2026-10-20", claimed: false };
     const other = pick([task("A"), task("B", { lane: "A" })], { branches: [busyA], reports: [blocked], claimant: "Kimi · s2" });
     expect(other).toMatchObject({ kind: "unblock", task: { id: "A" } });
@@ -1442,5 +1530,56 @@ describe("PICKER-lane-busy", () => {
   it("does not bypass an architect's unfinished explicit dependency", () => {
     const tasks = [task("A", { lane: "cluster" }), task("B", { lane: "cluster", status: "architect", dependsOn: ["A"] })];
     expect(pick(tasks, { ...waiting(), claimant: "Kimi · architect", reports: [{ id: "A", status: "blocked", who: builder, at: NOW, note: "needs CEO" }] }).kind).not.toBe("architect");
+  });
+});
+
+// Findings from the independent review of #640 (D-200): one block rule for the picker, the board and the reports.
+describe("D-200 block rule: nobody clears a block they raised or a task they hold", () => {
+  const busyA: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 1)];
+  const at = (h: number) => NOW - h * HOUR;
+  const rep = (who: string, status: string, hoursAgo: number) => ({ id: "A", status, who, at: at(hoursAgo), note: "" });
+  const unblockLock = (who: string, hoursAgo = 0.5): [string, Branch] => ["agent/architect/a", { tipMs: at(hoursAgo), merged: false, markers: [{ verb: "Unblock", id: "A", who }] }];
+
+  it("an unblocker that reports the block itself hands it on: it waits, its lock holds nobody off, and its own review does not clear it", () => {
+    const tasks = [task("A"), task("B", { lane: "A" })];
+    const branches = [busyA, unblockLock("Mistral · u1")];
+    const reports = [rep("Mistral · u1", "blocked", 0.2), rep("Qwen · s1", "blocked", 2)];
+    expect(pick(tasks, { branches, reports, claimant: "Mistral · u1" })).toMatchObject({ kind: "wait", gate: "A", blocked: true });
+    expect(pick(tasks, { branches, reports, claimant: "Kimi · s2" })).toMatchObject({ kind: "unblock", task: { id: "A" }, from: "Mistral · u1" });
+    const after = [rep("Mistral · u1", "review", 0.1), ...reports];
+    expect(pick(tasks, { branches, reports: after, claimant: "Kimi · s2" })).toMatchObject({ kind: "unblock", task: { id: "A" } });
+    expect(core.heldBy({ tasks, branches: new Map(branches), openPrs: new Map(), reports, claimant: "Mistral · u1", now: NOW })).toBeNull();
+  });
+
+  it("a second block does not let the first blocker clear its own question", () => {
+    const reports = [rep("Cue · c1", "review", 0.1), rep("Kimi · s2", "blocked", 0.5), rep("Cue · c1", "blocked", 1)];
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports, claimant: "Mistral · s3" })).toMatchObject({ kind: "unblock", task: { id: "A" } });
+    expect(pick([task("A"), task("B", { lane: "A" })], { branches: [busyA], reports, claimant: "Cue · c1" })).toMatchObject({ kind: "wait", gate: "A", blocked: true });
+  });
+
+  it("the holder of a task someone else blocked is not offered the unblock, and only its green or landed report clears it", () => {
+    const blocked = [rep("Mistral · r1", "blocked", 1)];
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: blocked, claimant: "Qwen · s1" })).toMatchObject({ kind: "wait", gate: "A", own: true });
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: [rep("Qwen · s1", "review", 0.5), ...blocked], claimant: "Kimi · s2" })).toMatchObject({ kind: "unblock", task: { id: "A" } });
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: [rep("Qwen · s1", "green", 0.5), ...blocked], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "B" } });
+    const rows = statusBoard({ tasks: [task("A")], branches: new Map([busyA]), openPrs: new Map(), reports: [rep("Qwen · s1", "review", 0.5), ...blocked], now: NOW });
+    expect(rows[0]).toMatchObject({ health: "red", report: { status: "blocked", who: "Mistral · r1" } });
+  });
+
+  it("a holder with other work keeps building it instead of being handed the unblock of its own blocked task", () => {
+    const ceo = "Claude Code · s9";
+    const branches: [string, Branch][] = [["agent/queue/a", claimBy(ceo, "A", 1)], ["agent/queue/c", claimBy(ceo, "C", 1)]];
+    expect(pick([task("A"), task("C")], { branches, reports: [rep("Kimi · r2", "blocked", 0.5)], claimant: ceo })).toMatchObject({ kind: "continue", task: { id: "C" } });
+  });
+
+  it("a Claude Code session that raised a block waits; it never gets the CEO review telling it to clear that block", () => {
+    const reports = [rep("Claude Code · s9", "blocked", 0.5)];
+    expect(pick([task("A"), task("B", { lane: "A" })], { branches: [busyA], reports, claimant: "Claude Code · s9" })).toMatchObject({ kind: "wait", gate: "A", blocked: true });
+  });
+
+  it("the unblock steps say to report before landing the ruling, and how to hand on a block you cannot decide", () => {
+    const text = renderPick({ kind: "unblock", task: task("A"), report: rep("Qwen · s1", "blocked", 1), lock: "agent/architect/a", lockExists: false }, { who: "Kimi · s2", date: "d", claimed: true });
+    expect(text).toContain("Report before you land the ruling's pull request");
+    expect(text).toContain("report it `blocked`");
   });
 });

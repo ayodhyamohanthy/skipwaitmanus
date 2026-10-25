@@ -2715,12 +2715,13 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
     if (!lockedWallet) return { outcome: "held", requestId: input.requestId, seekerUserId: request.jobSeekerId, companyDomain };
     const reconciled = await reconcileWalletTx(tx, lockedWallet, now);
     const promo = await promoStateForTx(tx, request.jobSeekerId, "job_seeker", now);
-    // D-110/D-132: the waiting ask pays the same level cost the covered ask
-    // paid at creation, classified from the same stored job row.
-    const deliveryJob = (await tx.select({ title: jobs.title, description: jobs.description, url: jobs.targetRoleUrl }).from(jobs).where(eq(jobs.id, request.jobId)).limit(1))[0];
-    // D-132 audit item 2: read the cost stored at creation; only an ask with no stored row (made with the flag off) is priced again.
+    // D-110/D-132 + POSTMERGE-oct22 P1 (#482): the waiting ask pays the price it was quoted at creation.
+    // D-132 audit item 2: a stored row is that price. A missing row means the ask was created while level
+    // pricing was off (rows are written only while the flag is on), so it keeps the flat one-credit price:
+    // delivery must never reclassify it against the flag as it stands now, or an ask that waited across the
+    // activation would be repriced higher than the seeker was ever told.
     const storedCost = (await tx.select({ creditCost: askCosts.creditCost }).from(askCosts).where(eq(askCosts.referralRequestId, input.requestId)).limit(1))[0];
-    const deliveryCost = storedCost ? storedCost.creditCost : askCreditCost({ title: deliveryJob?.title, description: deliveryJob?.description, url: deliveryJob?.url });
+    const deliveryCost = storedCost ? storedCost.creditCost : FLAT_ASK_COST;
     try {
       await spendCreditsTx(tx, { wallet: reconciled.wallet, grants: reconciled.grants, promo: promoGrantsEnabled() ? promoHolding(promo.grant) : null, credits: deliveryCost, meta: { idempotencyKey: askDeliveryKey(input.requestId), referenceType: "referral_request", referenceId: String(input.requestId) }, now });
     } catch (error) {
@@ -4162,12 +4163,14 @@ export function promoGrantsEnabled(): boolean { return process.env.PROMO_GRANTS_
  * equal to its job's classified level (L1=1 ... L10=10); off keeps the flat
  * 1-credit cost. Changeable default per the owner. */
 export function askLevelCostEnabled(): boolean { return process.env.ASK_LEVEL_COST === "true"; }
+/** The flat one-credit price used while ASK_LEVEL_COST is off (D-110/D-132). */
+export const FLAT_ASK_COST = 1;
 /** Cost of one ask in credits. The create spend and the waiting-ask delivery
  * spend both classify the same stored job fields, and the pre-send quote
  * (/api/company-referrals/quote) classifies the same normalized link, so all
  * three always agree. */
 export function askCreditCost(job: { title?: string | null; description?: string | null; url?: string | null }): number {
-  if (!askLevelCostEnabled()) return 1;
+  if (!askLevelCostEnabled()) return FLAT_ASK_COST;
   return creditsForLevel(assignJobLevel({ title: job.title, description: job.description, url: job.url }).level);
 }
 /** D-132 audit item 2: the level and cost an ask is priced at, for the one row stored at creation. */
