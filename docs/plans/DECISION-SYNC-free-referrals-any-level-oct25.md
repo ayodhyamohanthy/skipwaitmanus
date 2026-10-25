@@ -77,6 +77,7 @@ Exactly open (NO source settles these; do not present arithmetic that presumes a
 2. **Mixed-quantity checkout**: how a combined pick (e.g. 10 of one level + 1 of another) prices against the fixed rungs is not defined in the catalog or any decision - per-rung, combined-units, or per-request pricing is undecided.
 3. **Plan included counts**: inclusion is SETTLED - each plan gives certain referrals (owner today; consistent with D-173's allowance + in-plan purchase wording). OPEN: the included COUNT per seeker plan (early/mid/senior) - asked of the owner Oct 25 ~17:54, reply pending. The v2 config on main carries no allowances yet ("allowances land with the pricing build"). How included referrals interact with the separately priced dropdown is part of the same count answer; no fee-plus-separate-only model is encoded.
 4. **Axes**: recorded rules denominate cost by JOB level only; today's plan axis is target REFERRER career level. No recorded rule prices by referrer career level; whether it should is a new decision, not an assumption.
+5. **Spending order** (raised by the proposal review, Oct 25 ~18:19): if the ANY-level free grant is spent first, a low-level early request can burn it and leave a later senior-level need to the plan's narrower included bundle. Whether spend order is free-first, included-first, or user-chosen is UNDECIDED - the proposals' free-first order is not agreed, and no order is encoded.
 
 
 ## Pricing-page value communication (owner, Oct 25 ~17:58 IST, phonemsg-01M5SGJ2YR4JC775A9H14HQKBQ)
