@@ -262,7 +262,7 @@ export default function GoalLandingV9() {
         </div>
         <div className="border-t border-g-ink-3/30">
           <div className="mx-auto flex max-w-[1120px] items-center justify-between px-5 py-5 text-[13px] opacity-60 gdesk:px-8">
-            <span>skipwait.me</span>
+            <span>SkipWait.me</span>
             <span>Made with care, in beta.</span>
           </div>
         </div>

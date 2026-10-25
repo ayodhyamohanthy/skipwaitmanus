@@ -24,7 +24,7 @@ export default function ReviewerSignIn() {
   }
   const field = "mt-1 block w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-base text-neutral-900 focus:border-neutral-900 focus:outline-none";
   return <main data-skipwait-screen="reviewer-sign-in" className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-    <p className="text-sm font-semibold text-neutral-900">skipwait.me</p>
+    <p className="text-sm font-semibold text-neutral-900">SkipWait.me</p>
     <h1 className="mt-2 text-3xl font-semibold text-neutral-900">Review account sign-in</h1>
     <p className="mt-2 text-sm text-neutral-600">For website and payment review. These accounts hold demo data only.</p>
     <form onSubmit={submit} className="mt-6" noValidate>
