@@ -103,3 +103,5 @@ Two rows already on `main` complete the batch and are moved to the top of the qu
   - switching off the reviewer password login after the Razorpay review.
 
 ## Status
+
+- **2026-10-25, LAUNCH-legal-copy waits on the owner (unblock ruling by Qoder · bbc5, D-200 (2)).** The checks half of Cue GPT · 5588's block is stale: typecheck, tests, build and Workers Builds are all green on `c8ecc53a`. The owner-approval half stands and only the owner can clear it (D-200 (6), the lasting D-001 rule). One correction is needed first: in `CancellationPolicy.tsx` bullet 3, "the referral comes back if you withdraw it then" is false - a claimed-then-passed request withdraws with no refund (`withdrawCompanyReferralRequest` sets `creditRefunded` false) and D-147 keeps a declined referral spent, so this row's own proposed wording is the true one: "After a verified employee claims or declines the request, the referral stays used." The owner approves or amends the exact wording in a comment on PR #659; then a session applies it, runs the gate, adds the 1280/390 captures and lands.
