@@ -54,7 +54,7 @@ The frozen v2 family (shared/planFamily.ts on main, frozen Oct 21 under D-132) h
 
 ### C. Price recommendation (owner decides; two price books per D-122; no GST per D-007)
 
-Seeker side: **CANCELED as speculation.** The controlling clarification (phonemsg-01M5SG36CB2WMTCKY6HFRS4X7A) says prior pricing is retained - no remapping was needed. The recorded mapping stands as canonized in D-148/D-152 (Entry = the Open Door terms, Mid = the Fast Track terms, Senior = the Insider terms; fees unchanged from D-132: Mid $9.99 / Rs499 monthly, Senior $59 / Rs1,299 monthly by application; referral quantity ladder 5/10/25/50/100/200 at single $1 / Rs49 with save 2-20%). One genuine mapping gap the clarification does NOT resolve: Open Door's terms are $0, so the Entry level Referrers plan's fee under the new three-plan listing is unmapped - owner confirmation needed, no silent assignment.
+Seeker side: **CANCELED as speculation.** The controlling clarification (phonemsg-01M5SG36CB2WMTCKY6HFRS4X7A) says prior pricing is retained - no remapping was needed. The recorded mapping stands as canonized in D-148/D-152 (Entry = the Open Door terms, Mid = the Fast Track terms, Senior = the Insider terms; fees unchanged from D-132: Mid $9.99 / Rs499 monthly, Senior $59 / Rs1,299 monthly by application; referral quantity ladder 5/10/25/50/100/200 at single $1 / Rs49 with save 2-20%). The Entry tier mapping to the $0 Open Door terms is consistent with free-for-everyone and is NOT a conflict - the owner never said every tier is paid.
 
 Referrer side, grounded in the referrer's own economics (D-119 owner: referrers monetise "because more senior greater the referral bonus" - employer referral bonuses run roughly Rs10k-Rs1L / $1k-5k per successful referral, so a monthly fee for priority access to convertible requests has clear ROI) plus D-096's win-win rule:
 - Same three price points by level: **$9.99 / $24 / $59 per month (Rs499 / Rs999 / Rs1,299)** for early / mid / senior seeker-request priority.
@@ -62,9 +62,16 @@ Referrer side, grounded in the referrer's own economics (D-119 owner: referrers 
 
 ### D. Priority timing recommendation (respecting the frozen poster-first 24h)
 
-- A request matching a posted internal job: the poster holds first match for the frozen 24 HOURS; on non-acceptance it moves to paid-priority referrers of the matching level, then the free pool.
-- A request with no posted-job match: paid-priority referrers of the matching level get **12 HOURS** first access (RECOMMENDATION - half the poster window, keeps the free pool viable per D-096), then the free pool.
-- The 12h paid-priority window and the 24h poster window are distinct clocks; neither is a request expiry (D-174: asks do not expire).
+- A request matching a posted internal job: the poster holds first match for the frozen 24 HOURS; on non-acceptance it moves to the next eligible referrers (owner's rule today). How the paid-priority stage orders after that window, and its OWN window length, are OPEN - owner decision, no recommendation encoded yet (a prior 12-hour suggestion is WITHDRAWN as unsupported).
+- Neither the poster window nor any future paid-priority window is a request expiry (D-174: asks do not expire).
+
+
+### E. Units vs requests (clarified so the shop does not mislead)
+
+- The customer-facing unit is ONE REFERRAL REQUEST (D-173 owner: "When buying show 10 senior referrals, 1 junior referrals. Users will buy as they like"). The ledger/balance stays denominated in underlying units; the customer never sees "credits" (D-180).
+- Recorded spend contract (D-110, retained by today's clarification): a request consumes units equal to the JOB's level, L1=1 ... L10=10. The buy ladder prices are UNIT prices (single $1 / Rs49; rungs 5-200 at save 2-20%).
+- Worked owner example priced under the recorded rules: "10 senior + 1 mid" - if senior = L10 jobs, 10 senior requests = 100 units = $84 / Rs4,100 (rung 100); 1 mid (L5) request = 5 units = $4.90 / Rs240 (rung 5). Units are fungible across levels; the shop PRESENTS them as level-typed request counts.
+- PRECISE UNRESOLVED CLASSIFICATION (owner's call only if he wants it changed): recorded rules denominate cost by JOB level (L1-L10) only. Today's plan axis is the target REFERRER's career level (early/mid/senior). No recorded rule prices a request by the target referrer's career level; the grounded reading is that the plan axis is access-only and cost stays job-level-denominated. If he intends referrer-career-level pricing, that is a new decision.
 
 ## Anchors
 
