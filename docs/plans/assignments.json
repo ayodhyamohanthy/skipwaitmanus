@@ -54,6 +54,126 @@
    "note": "Landed as PR #514 (merge commit on main; independent review passed by Gemini 3.8 Flash · 8f37). Stale test fixture paths updated to 0100_billing_review_outbox.sql, schemaReconcile table match targeted, and MySQL 8.0.46 FK errno 1452 assertion aligned. Migration digest unchanged; 0 runtime or SQL changes."
   },
   {
+   "id": "SEC-deps-oct24",
+   "title": "Patch dompurify, zod, body-parser and undici to their fixed versions (1 critical, 4 high advisories)",
+   "row": "D-191",
+   "packet": "docs/plans/SEC-deps-oct24.md",
+   "tier": 2,
+   "lane": "deps",
+   "branch": "agent/queue/sec-deps-oct24",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    "package.json",
+    "pnpm-lock.yaml"
+   ],
+   "note": "D-191: pnpm audit --prod on main 02a8a028 - dompurify 3.4.16 (critical+high, via mermaid), zod 4.1.12, body-parser 1.20.6 (override), undici 7.29.1 (high, DoS). Version bumps and lockfile only; stop and report if a bump breaks a type or test."
+  },
+  {
+   "id": "FIX-device-signin",
+   "title": "Sign-in on a returning device: prefill the last email, ready the emailed code for autofill (owner report, Oct 25)",
+   "row": "D-019",
+   "packet": "docs/plans/FIX-device-signin.md",
+   "tier": 1,
+   "lane": "auth-device",
+   "branch": "agent/queue/fix-device-signin",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168); next is one independent review by a model other than Claude (D-200), then landing on green required CI. Face ID, passkeys and Sign in with Apple are not in this row: they change the login rule and wait for the owner.",
+   "owns": [
+    "client/src/lib/rememberedSignInEmail.ts",
+    "client/src/components/SeekerSignIn.tsx",
+    "client/src/components/ReferrerOtpSignIn.tsx",
+    "client/src/components/deviceSignIn.test.tsx",
+    "server/workEmailOtp.ts",
+    "server/workEmailOtp.test.ts"
+   ]
+  },
+  {
+   "id": "D-174-sample-job-removal",
+   "title": "Remove the fabricated acme.com 'Test role for loop verification' listing from production /jobs, the sitemap and JobPosting markup",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-data",
+   "branch": "agent/queue/d174-sample-job-removal",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "D-193 packet section 5.2. Data migration 0121 (reserved in plan section 5), one guarded DELETE: never deletes a row a referral request references (referralRequests.jobId cascades). Breaks D-001's lasting no-sample-data rule today.",
+   "epic": "D-174",
+   "owns": [
+    "drizzle/deploy/0121_remove_sample_job.sql",
+    "server/sampleJobRemoval.test.ts"
+   ]
+  },
+  {
+   "id": "D-048-fix-signin-click-loading",
+   "title": "Let an explicit sign-in click start the server flow while client auth loads (#595)",
+   "row": "D-199",
+   "packet": "docs/plans/LEGACY-BRANCHES-oct24.md",
+   "tier": 1,
+   "lane": "d048-fix-signin",
+   "branch": "agent/ayo7/signin-loading-click",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "D-199 registers legacy PR #595 (built by Instinct Agent; user report phonemsg-01M5MXF1C8DQ86C6Y7TXJQY01X) under its existing branch: no rename, no gate bypass. Scope: client/src/_core/auth.tsx and authCompat.test.ts only; the signed-in no-op, the same-origin returnTo guard and server-owned authentication stay unchanged. The branch drops its own copy of this row at its next merge-up. Review: Tier 1, by a model other than Instinct (builder) or the fixer's (D-151, D-200). Lands with an independent PASS and fresh green CI on the exact head. Fixture evidence only: the user's exact failing URL stays open. Packet section 2.",
+   "owns": [
+    "client/src/_core/auth.tsx",
+    "client/src/_core/authCompat.test.ts"
+   ]
+  },
+  {
+   "id": "LAUNCH-legal-copy",
+   "title": "Terms, Cancellation and Privacy say what is true while referral packs are sold (owner approves the wording)",
+   "row": "LAUNCH",
+   "packet": "docs/plans/LAUNCH-oct25.md",
+   "tier": 2,
+   "lane": "launch-legal",
+   "branch": "agent/queue/launch-legal-copy",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    "client/src/pages/Terms.tsx",
+    "client/src/pages/CancellationPolicy.tsx",
+    "client/src/pages/TrustPrivacy.tsx",
+    "client/src/pages/policyPages.test.tsx",
+    "client/src/pages/trustPrivacy.test.tsx"
+   ],
+   "note": "Launch audit Oct 25: Terms.tsx:23 says 'Referrals are always free' and CancellationPolicy.tsx:25 omits the ended-month exception, while packs sell for money; the privacy page names no sign-in, email, error or hosting processor. Agents draft; the owner's approval comment on the pull request comes before landing (legal text is the owner's)."
+  },
+  {
+   "id": "LAUNCH-live-qa",
+   "title": "Signed-in, no-money live QA of the current release, captures at 1280 and 390, BUGFREE_GATE sections 1-4 updated",
+   "row": "LAUNCH",
+   "packet": "docs/plans/LAUNCH-oct25.md",
+   "tier": 2,
+   "lane": "launch-qa",
+   "branch": "agent/queue/launch-live-qa",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    "docs/BUGFREE_GATE.md",
+    "docs/qa/"
+   ],
+   "note": "Rule 8 proof before any seeker is invited: the last signed-in QA is Oct 14-16, before /ask, /explore, /queue, /requests and /conversation were rebuilt in place. Needs a headed browser (a Claude Code session; Manus sessions have no Chromium) and one owner-forwarded work-email code. Never pay or pass the hosted payment form (D-065). Defects found become their own rows."
+  },
+  {
+   "id": "LAUNCH-marker-ci-skip",
+   "title": "CI skips marker-branch pull requests (reports, review, heartbeat, architect locks, landing slot), which never merge",
+   "row": "LAUNCH",
+   "packet": "docs/plans/LAUNCH-oct25.md",
+   "tier": 2,
+   "lane": "launch-ci",
+   "branch": "agent/queue/launch-marker-ci-skip",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    ".github/workflows/ci.yml",
+    "scripts/ciMarkerSkip.test.ts"
+   ],
+   "note": "About 40 of the newest 100 CI runs are marker PRs (#455 agent/reports/log and the lock branches); the picker reads CI from the newest 100 runs, so real pull requests show 'unknown'. Job-level skip on those head refs only; never on push to main or on task branches."
+  },
+  {
    "id": "PICKER-review-independence",
    "title": "A Tier 1 review or landing never goes to a session of the model that built or fixed the work (D-151)",
    "row": "D-134",
@@ -232,22 +352,6 @@
     "scripts/nextTaskArchitectLanding.test.ts"
    ],
    "note": "D-190: workBranchOf skips reserved agent/architect/ branches, so #557 and #585 sat green with no landing hand-out on Oct 23. Use the lock branch as the work branch for architect rows that carry file changes; hand the landing to anyone but the writer. Waits for the two rows that own files it edits."
-  },
-  {
-   "id": "SEC-deps-oct24",
-   "title": "Patch dompurify, zod, body-parser and undici to their fixed versions (1 critical, 4 high advisories)",
-   "row": "D-191",
-   "packet": "docs/plans/SEC-deps-oct24.md",
-   "tier": 2,
-   "lane": "deps",
-   "branch": "agent/queue/sec-deps-oct24",
-   "status": "todo",
-   "dependsOn": [],
-   "owns": [
-    "package.json",
-    "pnpm-lock.yaml"
-   ],
-   "note": "D-191: pnpm audit --prod on main 02a8a028 - dompurify 3.4.16 (critical+high, via mermaid), zod 4.1.12, body-parser 1.20.6 (override), undici 7.29.1 (high, DoS). Version bumps and lockfile only; stop and report if a bump breaks a type or test."
   },
   {
    "id": "REGISTER-oct24",
@@ -497,6 +601,7 @@
    "branch": "agent/queue/d048-live-review-find",
    "status": "todo",
    "dependsOn": [
+    "D-048-fix-send-ask-blocker",
     "P0-ask-link-signin",
     "D-132-audit",
     "D-048-F-goal-check",
@@ -505,7 +610,7 @@
     "D-174-fix-post-binding",
     "D-176-public-claims"
    ],
-   "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row’s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete.",
+   "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row’s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
    "epic": "D-048-p3",
    "owns": [
     "client/src/pages/Explore.tsx",
@@ -549,7 +654,7 @@
     "ROW20-CD",
     "D-048-F-goal-check"
    ],
-   "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first.",
+   "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
    "epic": "D-048-p3",
    "owns": [
     "client/src/pages/conversation/SeekerConversation.tsx"
@@ -568,10 +673,11 @@
     "P1-queue-attestation",
     "D-048-F-goal-check"
    ],
-   "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the referral queue against its kit version (pass codes, pre-acceptance privacy, verified-referrer check, lost test pins). After P1-queue-attestation, which edits the same page.",
+   "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the referral queue against its kit version (pass codes, pre-acceptance privacy, verified-referrer check, lost test pins). After P1-queue-attestation, which edits the same page. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
    "epic": "D-048-p3",
    "owns": [
     "client/src/pages/MyCompanyInbox.tsx",
+    "client/src/pages/myCompanyInbox*.test.tsx",
     "design/goal-ui/captures/queue/**"
    ]
   },
@@ -1378,7 +1484,7 @@
     "client/src/pages/referralConversation.test.tsx",
     "design/goal-ui/captures/conversation/**"
    ],
-   "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23).",
+   "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
    "epic": "D-048-p3"
   },
   {
@@ -2044,7 +2150,8 @@
    "branch": "agent/queue/d174-fix-post-binding",
    "status": "todo",
    "dependsOn": [
-    "D-132-audit"
+    "D-132-audit",
+    "D-048-fix-send-ask-blocker"
    ],
    "note": "D-193 packet section 5.1. Latent today: production has zero posted roles at all 39 companies. Waits for D-132-audit, which edits the same composer files (#547).",
    "epic": "D-174",
@@ -2057,23 +2164,6 @@
     "client/src/pages/ExploreCompany.tsx",
     "client/src/pages/explore.test.tsx",
     "client/src/pages/exploreDrawer.test.tsx"
-   ]
-  },
-  {
-   "id": "D-174-sample-job-removal",
-   "title": "Remove the fabricated acme.com 'Test role for loop verification' listing from production /jobs, the sitemap and JobPosting markup",
-   "row": "D-193",
-   "packet": "docs/plans/D-193-journey-foundations.md",
-   "tier": 1,
-   "lane": "d174-data",
-   "branch": "agent/queue/d174-sample-job-removal",
-   "status": "todo",
-   "dependsOn": [],
-   "note": "D-193 packet section 5.2. Data migration 0121 (reserved in plan section 5), one guarded DELETE: never deletes a row a referral request references (referralRequests.jobId cascades). Breaks D-001's lasting no-sample-data rule today.",
-   "epic": "D-174",
-   "owns": [
-    "drizzle/deploy/0121_remove_sample_job.sql",
-    "server/sampleJobRemoval.test.ts"
    ]
   },
   {
@@ -2321,6 +2411,28 @@
     "server/privateReferralRoutes.ts"
    ],
    "note": "Coordinator-imported AYO-10 bounded repair under the whole-app goal-UI request (Main, Oct 23; QA flag-on finding on 79b0c337), extended by coordinator first-name repair 8753c2a9 (QA PASS Oct 24). Two reviewed repairs: (1) post-opportunity copy state-aware - hiring-now required the job link server-side while the label said \"(optional)\", and the footer's absolute \"your name never appears\" contradicted the first-name opt-in; copy now follows mode and opt-in. (2) Opted-in poster first name reaches the public wall feed: db feed joins the poster, /api/opportunities projects an explicit public card shape so owner name/email/flag never leave the route unless opted in; anonymous and address-shaped names stay hidden; the wall renders \"Posted by <first name>\" else \"Identity hidden\". Server response contract changes only by that explicit public projection. Reviewed net diff is exactly the 7 owns files plus this registry row; QA inspected named/anonymous 390 pixels and the fixture API privacy gates PASS on 8753c2a9. QA still owes the walk-in / View-Opportunity-Wall / first-name-opt-in-out legs on the final head before any D-097 release step. RATIFIED: this row's registration and the D-048-p3-post dependsOn edge (landed in #616, merge 636644fb, Oct 24 02:56 IST) are approved under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact. LANDED: PR #597 merged Oct 24 (merge commit 196103f6); row flip verified against the GitHub API Oct 24."
+  },
+  {
+   "id": "D-048-fix-send-ask-blocker",
+   "title": "Show the actual blocker and a recovery link on the Send ask CTA (#596)",
+   "row": "D-199",
+   "packet": "docs/plans/LEGACY-BRANCHES-oct24.md",
+   "tier": 2,
+   "lane": "d048-fix-sendask",
+   "branch": "agent/ayo9/send-ask-blocker-ux",
+   "status": "todo",
+   "dependsOn": [
+    "D-132-audit"
+   ],
+   "note": "D-199 registers legacy PR #596 (built by Instinct Agent; user report phonemsg-01M5MXNSDQ0VJMG8M3MVQWT8JF) under its existing branch. Scope: six files (packet section 3). No validation, eligibility, price, quote or send-contract change; new strings use D-180 vocabulary. Waits for D-132-audit (same composer files; money core first, D-146/D-197), then merges main. The branch drops its own copy of this row at merge-up. Tier 2: lands on green required CI (D-200).",
+   "owns": [
+    "client/src/pages/Ask.tsx",
+    "client/src/pages/Explore.tsx",
+    "client/src/pages/ExploreCompany.tsx",
+    "client/src/pages/explore/AskDrawer.tsx",
+    "client/src/pages/explore/useAskComposer.tsx",
+    "client/src/pages/askCta.test.tsx"
+   ]
   },
   {
    "id": "D-177-recruiter-posts-referral-drives",
