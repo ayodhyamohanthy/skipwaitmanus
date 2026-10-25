@@ -792,9 +792,10 @@
    "branch": "agent/instinct/v2-checkout-port",
    "status": "todo",
    "dependsOn": [
-    "D-132-item3"
+    "D-132-item3",
+    "D-132-audit"
    ],
-   "note": "D-165: fix stage first - merge main, renumber its two migrations (main already has 0108), implement D-165 (3) red-first (no refusal for a Free wallet with unused credits; they move to a carry-over grant expiring at their own month end). Tier 1 review by a model other than Instinct, including the line-by-line deletion review of the three-way port. #416 is superseded and closes when this lands. D-185: also carries D-132 item 4's grant half - paid rung credits are granted where they never expire (PAID_CREDITS_NEVER_EXPIRE), keyed once per term."
+   "note": "D-165: fix stage first - merge main, renumber its two migrations (main already has 0108), implement D-165 (3) red-first (no refusal for a Free wallet with unused credits; they move to a carry-over grant expiring at their own month end). Tier 1 review by a model other than Instinct, including the line-by-line deletion review of the three-way port. #416 is superseded and closes when this lands. D-185: also carries D-132 item 4's grant half - paid rung credits are granted where they never expire (PAID_CREDITS_NEVER_EXPIRE), keyed once per term. D-165 and D-197 (5): lands only after D-132-audit; the edge is in dependsOn since Oct 25, so the picker never offers the landing first."
   },
   {
    "id": "PICKER-landing-slot",
