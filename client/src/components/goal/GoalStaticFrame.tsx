@@ -36,7 +36,7 @@ export function GoalStaticFrame({ status, children }: GoalStaticFrameProps) {
       <header className="border-b border-g-hairline bg-g-surface">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-5">
           <a href="/" aria-label="skipwait.me home" className="inline-flex items-center">
-            <img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="h-5 w-auto" />
+            <img src="/brand/lockup.svg" alt="skipwait.me" className="h-5 w-auto" />
           </a>
           <nav aria-label="Site" className="flex items-center gap-4 text-g-meta text-g-ink-2">
             {FRAME_NAV.map(item => (

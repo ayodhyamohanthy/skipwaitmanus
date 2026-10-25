@@ -140,7 +140,7 @@ export function PolicyPageShell({ screen, eyebrow, title, intro, description, up
   </>;
   return <div data-skipwait-screen={screen} className="min-h-screen bg-background">
     <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4">
-      <Link href="/" className="wordmark" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
+      <Link href="/" className="wordmark" aria-label="skipwait.me home"><img src="/brand/lockup.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
       <nav aria-label="Legal" className="flex gap-4 text-sm">
         {LEGAL_NAV.map(item => {
           const active = item.href === canonicalPath;

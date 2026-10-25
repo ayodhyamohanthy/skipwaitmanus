@@ -100,7 +100,7 @@ export default function Emails() {
   const emailed = template.channel !== "In-app";
   return <div data-skipwait-screen="emails" className="min-h-screen bg-muted">
     <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-      <Link href="/" className="wordmark" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
+      <Link href="/" className="wordmark" aria-label="skipwait.me home"><img src="/brand/lockup.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
       <h1 className="text-xs font-semibold text-muted-foreground">EMAIL & IN-APP TEMPLATES</h1>
     </header>
     <div className="mx-auto grid max-w-6xl gap-4 px-5 pb-16 md:grid-cols-[240px_minmax(0,1fr)]">
@@ -118,7 +118,7 @@ export default function Emails() {
             {template.subject ? <p className="font-semibold">{template.subject}</p> : <p className="font-semibold">{template.name}</p>}
           </div>
           <div className="p-8">
-            <p className="wordmark text-xl"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></p>
+            <p className="wordmark text-xl"><img src="/brand/lockup.svg" alt="skipwait.me" className="wordmark-logo" /></p>
             {(template.body ?? [template.trigger]).map(line => <p key={line} className="mt-4 leading-relaxed">{line}</p>)}
             {template.body ? <p className="mt-4 leading-relaxed text-muted-foreground">Fired when: {template.trigger.replace(/^Sent when /, "")}</p> : null}
             <p className="mt-4 leading-relaxed text-muted-foreground">Sent by: {template.channel}</p>

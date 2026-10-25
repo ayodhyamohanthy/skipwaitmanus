@@ -14,7 +14,7 @@ const QUICK_START = `curl ${MCP_ENDPOINT} \\
 export default function Developers() {
   return (
     <div data-skipwait-screen="developers" className="min-h-screen">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5"><Link href="/" className="wordmark text-xl"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link><Button asChild variant="outline" size="sm"><Link href="/assistants">Connected assistants</Link></Button></header>
+      <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5"><Link href="/" className="wordmark text-xl"><img src="/brand/lockup.svg" alt="skipwait.me" className="wordmark-logo" /></Link><Button asChild variant="outline" size="sm"><Link href="/assistants">Connected assistants</Link></Button></header>
       <main className="mx-auto max-w-5xl px-4 pb-20">
         <span className="eyebrow">For assistants & developers</span>
         <h1 className="mt-2 max-w-3xl text-4xl font-semibold sm:text-5xl">Use skipwait.me from ChatGPT, Claude, or your own code<span className="brand-dot">.</span></h1>
