@@ -104,7 +104,10 @@ Recorded:
 - Channel permissions are unchanged: website and product copy go through the normal queue/review lanes; external posting in the owner's name (LinkedIn/X/email) needs its own per-channel approval - this directive is not a blanket posting grant.
 
 
-## Pricing proposal status (Oct 25 ~18:05 IST)
+## Pricing proposal status (Oct 25 ~18:22 IST - REOPENED by owner)
+
+**The first proposal is REJECTED (Oct 25 ~18:21, phonemsg-01M5SHVTBD1GFGGK9X30YZCZWH):** "I dont think the pricing is well thought . Reiterate pricing . And early career referrals is 0$ it should be some amount as it a plan. Rethink and give me monetisation and pricing plan again". Pricing is REOPENED: the early-career seeker plan must cost money (a plan is not $0), the free allowance is separate, and the owner wants a full monetisation + pricing rethink (India + global). A rebuilt proposal is being prepared; nothing in the rejected proposal (entry $0, any counts, any fees) may be implemented. The previously recorded frozen fees stay as the last canonical record but no longer bind the rethink - the owner explicitly reopened them. What STAYS confirmed regardless: free 3 referrals/month ANY level with verified card, no carry-forward; basic referring free; subscription access axes (seeker plan = referrer level, referrer plan = seeker-level priority); poster-first 24h matching; "referrals" terminology; the final tagline.
+
 
 A full pricing recommendation (seeker and optional referrer plans, included referral counts, extra-referral prices, INR + USD) was delivered to the owner as a private proposal File (https://files.instinct.com/ndpk6adodk6k-skipwait-pricing-recommended-plans). **None of its numbers are adopted.** They are a proposal awaiting the owner's decision; only the recorded frozen fees (Mid $9.99/Rs499, Senior $59/Rs1,299, Entry $0 terms) and the controlling spec in this document are canonical. The proposal's suggested changes (e.g. a $39 senior global fee, per-referrer-level top-up prices, optional referrer plan fees) must not be implemented or treated as frozen until the owner explicitly decides. Tax treatment for checkout publication is unresolved.
 
