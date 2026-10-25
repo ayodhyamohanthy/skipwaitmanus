@@ -21,6 +21,28 @@ Owner question and correction, iMessage Oct 25 ~17:30 IST (phonemsg-01M5SEXKKF8Q
 - Free-allowance implementation reconciliation (3 requests any level vs level-denominated grant): money-core, with D-132-audit.
 - Buyer-facing terminology ("referrals", never "credits"): D-173/D-180 sweep lane, PR #598.
 
+
+## Controlling pricing + matching specification (owner, Oct 25 ~17:48 IST, phonemsg-01M5SFYFY54D3VAEDAEA3591SS)
+
+Raw original, verbatim: "Our pricing is simple , subscriptions , free 3 job referrals for everyone who has verified card for anti spam doesnt carry forward, 2) job seeker plans: early career referrer ( job seekers referral requests get matched/access with early career professionals) , mid career referrers(job seekers referral requests get matched/access with mid level career professionals/referrers), senior level referrers plans (job seekers referral requests get matched/access with senior career level professionals) . Same with referrers but referring is free . They can opt in for plans early career job seeker requests , mid career job requests, senior level job requests . They get priority access of respective level job seeker requests than free pool referrers. For companies they can post internal jobs , employees can also post internal jobs ,who ever posted they get priority first than the rest if any matching requests happen. Eg: an employee posted internal referrerals they get firs match when someone sends request , then if dont accept in 24 hours it moves to next referrers ."
+
+Canonical reading (controls over older rows where they conflict):
+
+1. **Free allowance**: 3 free job referrals per month for everyone whose card is verified (anti-spam). Unused free referrals do NOT carry forward. Amends D-039/D-173: adds the verified-card condition and the no-carry-forward rule.
+2. **Seeker subscriptions**: the plan names the REFERRER career level the seeker's requests get matched with - early career referrers / mid career referrers / senior level referrers. Confirms and clarifies D-152 (the plan describes the referrer level reached, not the buyer's own stage).
+3. **Referrer side**: referring stays FREE. Optional referrer subscriptions name the SEEKER career level whose requests the referrer gets PRIORITY access to (early career job seeker requests / mid career job requests / senior level job requests), ahead of the free referrer pool. Confirms and extends D-196.
+4. **Internal-job postings**: companies can post internal jobs; employees can also post internal jobs. Whoever posted gets FIRST match priority when a matching referral request arrives. If the poster does not accept within 24 HOURS, the request moves to the next eligible referrers. The 24-hour window is the poster's first-match window only - it is not a general request expiry, and it is not the paid referrer priority window (whose length stays open).
+
+Explicit reconciliation of older rows against this controlling spec:
+
+- **D-110/D-132 per-level per-ask spend (ASK_LEVEL_COST) CONFLICTS with "Our pricing is simple, subscriptions" and is SUPERSEDED as the go-forward pricing shape.** Paid usage is subscription-based plan access; no per-request paid debit is introduced as a substitute. The ASK_LEVEL_COST and PLAN_FAMILY_V2 flags stay OFF; nothing already live changes; the money-core audit lane reconciles implementation against this spec before anything is enabled. The free-allowance rule above replaces D-110's level-denominated free grant outright.
+- **D-132's plan contents (rungs/dropdowns)**: the subscription model stands; exact plan contents and prices were NOT supplied in this message - none are invented.
+- **D-196**: confirmed and extended by point 3. Still open from D-196, owner-only: the plan PRICES and the paid-priority WINDOW LENGTH (the 24-hour rule in point 4 is the poster window, not this one).
+- **Matching/allocation behavior** (current code): poster-first matching with the 24-hour handoff is NEW scope to reconcile in the allocation implementation; it does not alter ask expiry (D-174 launch rule: asks do not expire) or the D-034/D-047 spend rules.
+
 ## Anchors
 
+
 phonemsg-01M5SEXKKF8QTNV1T46DK3GTN1 (today); phonemsg-01M5MXXXXCF1Z6SSY4F2420XB9 ("Just say 3 free referrals"); phonemsg-01M5MXYDWXDCYCV39DP8VHYCWV ("Use term referrals get rid of credits"); phonemsg-01M5MYCBQ8BGB3NDKR5QPDWKRN (D-173); phonemsg-01M5PCTYNS691PYJJ4DGJRG4QY, phonemsg-01M5PCVJPYDBTH963Q4T1NVF8Q, phonemsg-01M5PCWF2FH1XBBZ6C6WJA2CRY (D-196).
+
+Controlling spec: phonemsg-01M5SFYFY54D3VAEDAEA3591SS (Oct 25 ~17:48 IST).
