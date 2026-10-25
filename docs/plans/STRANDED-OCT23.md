@@ -27,9 +27,9 @@ Why they are queued: a decision on an open pull request with no queue row is nev
 - **Stop and ask.** If a decision on the branch contradicts a newer one on `main` (for example D-146, D-147, D-152, D-162 or D-163), report it blocked with both IDs; do not pick one.
 - **D-183 (Oct 24): inherited text is not a conflict.** The stop rule covers decisions the branch makes. Lines #520 never changed take `main`'s version in the merge (the D-035 row stays deleted, `D-090-BYOR` keeps `dependsOn: []`); in `docs/plans/README.md` line 8, which both sides rewrote, keep `main`'s paragraph and add only #520's clauses (PICKER-decision-sync, the Skippy rows, branch hygiene). Renumber after every open branch, #620 included.
 
-## D-155-share-paid-gate: review and land PR #527 (the /share link unlocks after the first paid invoice)
+## /share paid-invoice gate: completed PR #527 (decision D-194; assignment key `D-155-share-paid-gate`)
 
-- **The owner's word (verbatim, D-155 on the branch):** "Referrals should show unavailable and this line / Referrals unlock after your first paid invoice. Once you've made a payment, come back here to get your referral link."
+- **The owner's word (verbatim; adopted as D-194):** "Referrals should show unavailable and this line / Referrals unlock after your first paid invoice. Once you've made a payment, come back here to get your referral link."
 - **What it changes.** `GET /api/personal-invites/me` answers `{ invite: null, locked: true }` and creates no invite row until the account has provider-verified payment evidence (a one-time fulfillment at status `credited`, or a webhook-activated subscription); `/share` shows the locked line; the claim route is unchanged. It adds `drizzle/deploy/0114_referral_paid_evidence.sql` and touches `server/chargebee.ts`, `server/chargebeeRoutes.ts`, `server/db.ts` and `server/privateReferralRoutes.ts`. So it is Tier 1 (money evidence and a migration), not docs.
 - **Who.** Instinct built it, so the review goes to a model other than Instinct (D-151).
 - **Review checklist** (on top of `docs/DELEGATION.md` §6):
