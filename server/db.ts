@@ -1751,7 +1751,7 @@ export function firstLookExcludesViewer(input: { firstLookReferrerId: number | n
 }
 
 /**
- * Whether the poster of a post keeps the ask for 48 hours: they must still be an
+ * Whether the poster of a post keeps the ask for 24 hours: they must still be an
  * open referrer of the post's company (the same D-062 availability rule the
  * public directory and coverage delivery use), and someone other than the
  * asker. Returns the referrer id and the first-look end, or null so the ask
@@ -1948,7 +1948,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const blockedWithSeeker=await blockedCounterpartsFailOpen(tx,userId,[...eligible.map(employee=>employee.userId),...(fastTrackLink?[fastTrackLink.referrerId]:[])],"ask_create_delivery");
     if(fastTrackLink&&blockedWithSeeker.has(fastTrackLink.referrerId))throw new BlockedPersonalLinkError();
     const reachable=eligible.filter(employee=>!blockedWithSeeker.has(employee.userId));
-    // D-022: an ask written from a post goes to the poster alone for 48 hours
+    // D-022: an ask written from a post goes to the poster alone for 24 hours
     // while they still count as an open referrer; otherwise it opens to the team.
     const firstLookCandidate=opportunity?await resolveAskFirstLookTx(tx,{posterUserId:opportunity.ownerId,seekerUserId:userId,companyDomain,nowMs}):null;
     const firstLook=firstLookCandidate?reachable.find(employee=>employee.userId===firstLookCandidate.referrerId)??null:null;
@@ -1984,12 +1984,12 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     // complete inside this transaction; a waiting ask has not gone out yet, so its rewards unlock at delivery (see
     // deliverWaitingAskTx).
     if(!isWaiting)await grantPendingActionRewardsTx(tx,userId,"job_seeker","referral_request",String(requestId));
-    // D-022 first look: only the poster is told while their 48 hours run; every
+    // D-022 first look: only the poster is told while their 24 hours run; every
     // other eligible employee is told when the first look lapses (the sweep).
     // A waiting ask reaches no one yet, so it writes no referrer notice and no review link (delivery writes them).
     const notified=isWaiting?[]:firstLook?[firstLook]:reachable;
     for(const employee of notified){
-      await tx.insert(notifications).values({ kind: "ask_new",userId:employee.userId,category:"referral",title:firstLook?"A candidate asked from your post":fastTrackLink?"A referral request from your link is ready":"A private referral request is available",body:firstLook?`A Job Seeker asked for a referral at ${companyDomain} after seeing your opening. You have the first look for 48 hours; if you cannot take it, it opens to other verified employees.`:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
+      await tx.insert(notifications).values({ kind: "ask_new",userId:employee.userId,category:"referral",title:firstLook?"A candidate asked from your post":fastTrackLink?"A referral request from your link is ready":"A private referral request is available",body:firstLook?`A Job Seeker asked for a referral at ${companyDomain} after seeing your opening. You have the first look for 24 hours; if you cannot take it, it opens to other verified employees.`:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
       const email=employee.email?.trim().toLowerCase()||"";if(email&&email.split("@")[1]===companyDomain){const token=reviewLinkToken();const expiresAt=new Date(Date.now()+reviewEmailLifetimeMs);await tx.insert(referrerReviewEmailLinks).values({referralRequestId:requestId,referrerId:employee.userId,linkToken:token,expiresAt});await tx.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId:employee.userId,channel:"email",grantVersion:1,status:"pending"});}
     }
     let inviteCode:string|undefined;if(!fastTrackLink&&isWaiting){inviteCode=randomUUID().replace(/-/g,"");await tx.insert(companyCoverageInvitations).values({inviteCode,inviterUserId:userId,companyDomain:companyDomain.trim().toLowerCase(),referralRequestId:requestId});}
@@ -2244,7 +2244,7 @@ export async function getUnclaimedCompanyReferralPreview(userId: number, request
   // One captured instant for both sides of the lapsed check below.
   const freshNow = new Date();
   const request = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateMessage: referralRequests.personalPitch }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralRequestPasses,and(eq(referralRequestPasses.referralRequestId,referralRequests.id),eq(referralRequestPasses.referrerId,userId))).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, false), or(isNull(referralRequests.referrerId), eq(referralRequests.referrerId, userId)), eq(jobs.company, profile.workEmailDomain),isNull(referralRequestPasses.id),
-    // D-022 first look: only the poster may preview during their 48 hours (or anyone after it lapses).
+    // D-022 first look: only the poster may preview during their 24 hours (or anyone after it lapses).
     // Lapsed = firstLookUntil <= now, kept as lt-or-eq so every row-lock fixture in this repo can evaluate it.
     or(isNull(referralRequests.firstLookReferrerId), isNull(referralRequests.firstLookUntil), lt(referralRequests.firstLookUntil, freshNow), eq(referralRequests.firstLookUntil, freshNow), eq(referralRequests.firstLookReferrerId, userId)))).limit(1);
   if (!request[0]) return undefined;
@@ -2498,7 +2498,7 @@ export async function expireStalePendingReferralRequest(userId: number, requestI
 }
 
 /**
- * D-022 first-look release: after the poster's 48 hours lapse without a
+ * D-022 first-look release: after the poster's 24 hours lapse without a
  * decision, the ask opens to the rest of the company. Runs under the ask's row
  * lock and re-checks every precondition, so a claim, a decision or a repeated
  * sweep can never release twice or overwrite a decision; each colleague is

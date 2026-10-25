@@ -22,7 +22,7 @@ import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE } from "./blockedPa
 
 /*
  * D-022 referrer-posted roles: an ask written from a post goes to the poster
- * alone for 48 hours; every other read path (inbox, preview, save, claim,
+ * alone for 24 hours (owner rule, Oct 25 2026); every other read path (inbox, preview, save, claim,
  * decision, email/Slack delivery) hides it until the first look lapses or the
  * poster decides, and the lapsed first look opens the ask to the company once.
  *
@@ -343,17 +343,17 @@ const sendWithPost = (over: Record<string, unknown> = {}) => createCompanyReferr
 const insertedRequest = () => rows.referralRequests.find(row => row.jobSeekerId === SEEKER && row.idempotencyKey === "post-ask-key-0001")!;
 
 describe("an ask written from a post", () => {
-  it("gives the poster the 48-hour first look and tells nobody else", async () => {
+  it("gives the poster the 24-hour first look and tells nobody else", async () => {
     const result = await sendWithPost();
 
     expect(result).toMatchObject({ fromPost: true, firstLook: true, notifiedEmployees: 1, coverageStatus: "covered", replayed: false });
     const request = insertedRequest();
     expect(request).toMatchObject({ opportunityId: 55, firstLookReferrerId: POSTER });
     expect((request.firstLookUntil as Date).getTime()).toBe(NOW + OPPORTUNITY_FIRST_LOOK_MS);
-    // Only the poster is notified; the in-app copy names the 48 hours.
+    // Only the poster is notified; the in-app copy names the 24 hours.
     expect(rows.notifications).toHaveLength(1);
     expect(rows.notifications[0]).toMatchObject({ userId: POSTER, kind: "ask_new", category: "referral", title: "A candidate asked from your post" });
-    expect(String(rows.notifications[0].body)).toContain("first look for 48 hours");
+    expect(String(rows.notifications[0].body)).toContain("first look for 24 hours");
     // The email/Slack grant rows exist only for the poster.
     expect(rows.referrerReviewEmailLinks).toEqual([expect.objectContaining({ referralRequestId: request.id, referrerId: POSTER })]);
     expect(rows.referralReviewDeliveries).toEqual([expect.objectContaining({ referralRequestId: request.id, referrerId: POSTER, channel: "email" })]);
@@ -539,7 +539,7 @@ describe("the first look hides the ask from everyone else", () => {
     expect(await listCompanyReferralInboxByState(COLLEAGUE, "new")).toHaveLength(1);
   });
 
-  it("lets a colleague in once the 48 hours lapse, even before the sweep runs", async () => {
+  it("lets a colleague in once the 24 hours lapse, even before the sweep runs", async () => {
     vi.setSystemTime(NOW + 49 * HOUR);
     expect(await getUnclaimedCompanyReferralPreview(COLLEAGUE, 501)).toBeDefined();
     expect(await claimCompanyReferralRequest(COLLEAGUE, 501)).toMatchObject({ claimed: true });

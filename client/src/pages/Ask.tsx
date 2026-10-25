@@ -150,7 +150,7 @@ function AskFields({ composer, company }: { composer: Composer; company: PublicC
         />
       </GoalField>
       {composer.postSelection ? (
-        <p className="-mt-4 text-pretty text-g-meta text-g-ink-3">The employee who posted this role sees your ask first, for 48 hours. After that, other verified referrers at the company can pick it up.</p>
+        <p className="-mt-4 text-pretty text-g-meta text-g-ink-3">The employee who posted this role sees your ask first, for 24 hours. After that, other verified referrers at the company can pick it up.</p>
       ) : null}
 
       <GoalField
