@@ -90,6 +90,18 @@
    "note": "D-163 (4): owner words and CEO rulings on open PR #520 never reached main, so no agent follows them and its nine rows (SKIPPY-fix and the rest) are invisible. Build = cut agent/queue/register-520 from #520's head, merge main, renumber every entry to the next free IDs (main already has a different D-156). Review and landing by a model other than Claude, which wrote it (D-151). Docs only."
   },
   {
+   "id": "D-200-instructions-sync",
+   "title": "Instruction files say what D-200 and the picker already do: Claude Code builds too, nothing waits for one model or session",
+   "row": "D-200",
+   "packet": "docs/plans/D-200-instructions-sync.md",
+   "tier": 3,
+   "lane": "d200-docs",
+   "branch": "agent/queue/d200-instructions-sync",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "D-200 (7): CLAUDE.md, AGENTS.md, docs/BRIEF.md and docs/DELEGATION.md still say Claude Code never builds. Docs only, five exact edits in the packet. Any model except a Claude Code session builds it (its safety check refuses edits to its own instruction files)."
+  },
+  {
    "id": "POSTMERGE-oct22-review",
    "title": "Post-merge Tier 1 review of the live money and migration PRs merged without review on Oct 22-23 (D-166)",
    "row": "D-166",
