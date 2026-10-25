@@ -1284,7 +1284,7 @@
       "tier": 2,
       "lane": "design-core",
       "branch": "agent/queue/d048-f-harness",
-      "status": "in-progress",
+      "status": "done",
       "dependsOn": [
         "D-048-p3-w0-shell"
       ],
@@ -1296,7 +1296,7 @@
         "scripts/kitScreenFixtures.test.ts",
         "docs/plans/D-048-capture-checklist.md"
       ],
-      "note": "Started Oct 25 22:03 by coordinator (agent-01M5RMHHEAGSQQ8FVE1QF135EB): harness + capture.mjs --goal + goal fixtures + checklist, enabling desktop/390 goal journey proofs for all surface rows."
+      "note": "Verified complete on main 216066dd (Oct 25): goalShellHarness signed-in render path + network-throwing stub, capture.mjs --goal mode resolving goalSurfaces.ts ids, 5x 00_goal-* fixtures, kitScreenFixtures.test.ts, capture checklist. Proof: vitest goalShellHarness.test.tsx + kitScreenFixtures.test.ts = 239/239 green. Row was stale-todo; work landed earlier."
     },
     {
       "id": "D-048-F-credits",
@@ -1411,7 +1411,7 @@
       "tier": 3,
       "lane": "design-check",
       "branch": "agent/queue/d048-f-coverage",
-      "status": "todo",
+      "status": "in-progress",
       "dependsOn": [
         "D-048-F-goal-check"
       ],
@@ -1419,7 +1419,8 @@
       "owns": [
         "scripts/goalUiCoverage.test.ts"
       ],
-      "note": "D-167 §6.3: fails on an unowned route or component, prints how many pages still import the kit."
+      "note": "D-167 §6.3: fails on an unowned route or component, prints how many pages still import the kit. Owner assigned Oct 25 22:04 via Main: coverage worker on the bounded one-file lane (scripts/goalUiCoverage.test.ts only).",
+      "owner": "agent-01M5SYHV19PHDSSBATT9WFKFQV"
     },
     {
       "id": "D-048-p3-w0-shell",
