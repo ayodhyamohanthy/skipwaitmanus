@@ -56,6 +56,17 @@ export async function fetchJobBoard(
   return { ok: true, jobs: parseGreenhouseJobs(parsed.data), bytes: res.bytes };
 }
 
+// Region/country tokens: a comma part matching one of these means the label
+// is hierarchical ("Los Angeles, California, United States"), not a
+// multi-city list, so it must not be comma-split.
+const REGION_TOKENS = new Set(
+  (
+    "al|ak|az|ar|ca|co|ct|de|fl|ga|hi|id|il|in|ia|ks|ky|la|me|md|ma|mi|mn|ms|mo|mt|ne|nv|nh|nj|nm|ny|nc|nd|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|vt|va|wa|wv|wi|wy|dc|" +
+    "alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|georgia|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming|district of columbia|" +
+    "united states|usa|us|uk|united kingdom|england|canada|india|germany|france|netherlands|ireland|singapore|australia|japan|spain|italy|brazil|mexico|poland|israel|sweden|switzerland|united arab emirates|uae|portugal|austria|belgium|denmark|finland|norway|new zealand|south korea|china|hong kong|taiwan|argentina|chile|colombia|philippines|indonesia|vietnam|thailand|malaysia|south africa|nigeria|kenya|turkey|greece|czech republic|czechia|romania|hungary|estonia|latvia|lithuania|ukraine|pakistan|bangladesh|sri lanka"
+  ).split("|"),
+);
+
 const LOCATION_ALIASES: Record<string, string> = {
   bangalore: "Bengaluru",
   nyc: "New York",
@@ -82,10 +93,22 @@ export function parseGreenhouseLocation(raw: string | null | undefined): {
     if (workMode !== "hybrid") workMode = "remote";
     text = rest.replace(/^from\s+/i, "").replace(/^the\s+(?=(?:US|USA|United States)\b)/i, "");
   }
-  // Real boards join multi-city labels with commas ("Seattle, San Francisco,
-  // New York City"). Split only on 2+ commas so "London, UK" stays one label.
-  const parts = text
-    .split(text.split(",").length >= 3 ? /\s*,\s*/ : /\s*;\s*|\s+\/\s+|\s+or\s+/i)
+  // Delimiter precedence: ";" / " / " / " or " always separate locations
+  // ("New York, NY; Pittsburgh, PA"). A comma split applies only inside one
+  // of those parts, only at 2+ commas, and never when a comma part is a
+  // region/country token ("Los Angeles, California, United States" is one
+  // hierarchical label). True multi-city labels ("Seattle, San Francisco,
+  // New York City") still split; "London, UK" stays whole.
+  const rawParts: string[] = [];
+  for (const segment of text.split(/\s*;\s*|\s+\/\s+|\s+or\s+/i)) {
+    const commaParts = segment.split(/\s*,\s*/).filter(Boolean);
+    if (commaParts.length >= 3 && !commaParts.slice(1).some((p) => REGION_TOKENS.has(p.toLowerCase()))) {
+      rawParts.push(...commaParts);
+    } else {
+      rawParts.push(segment);
+    }
+  }
+  const parts = rawParts
     .map((p) => p.trim().replace(/^[–-]\s*/, "").replace(/\s*[–-]$/, ""))
     .filter(Boolean)
     .map((p) => LOCATION_ALIASES[p.toLowerCase()] ?? p);

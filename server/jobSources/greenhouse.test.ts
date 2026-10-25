@@ -156,3 +156,35 @@ describe("greenhouse real-board hardening (PR #650 review findings)", () => {
     expect(job.locations).toEqual(["Austin", "London"]);
   });
 });
+
+describe("city-state labels (PR #650 re-review regression)", () => {
+  it("honors semicolons between city-state labels", () => {
+    expect(parseGreenhouseLocation("New York, NY; Pittsburgh, PA")).toEqual({
+      locations: ["New York, NY", "Pittsburgh, PA"],
+      workMode: "onsite",
+    });
+    expect(parseGreenhouseLocation("San Francisco, CA; Chicago, IL; Seattle, WA; New York, NY")).toEqual({
+      locations: ["San Francisco, CA", "Chicago, IL", "Seattle, WA", "New York, NY"],
+      workMode: "onsite",
+    });
+    expect(parseGreenhouseLocation("Los Angeles, CA; San Francisco, CA")).toEqual({
+      locations: ["Los Angeles, CA", "San Francisco, CA"],
+      workMode: "onsite",
+    });
+  });
+
+  it("keeps a hierarchical city-region-country label whole", () => {
+    expect(parseGreenhouseLocation("Los Angeles, California, United States")).toEqual({
+      locations: ["Los Angeles, California, United States"],
+      workMode: "onsite",
+    });
+  });
+
+  it("still splits a true comma-joined multi-city label", () => {
+    expect(parseGreenhouseLocation("Seattle, San Francisco, New York City")).toEqual({
+      locations: ["Seattle", "San Francisco", "New York"],
+      workMode: "onsite",
+    });
+    expect(parseGreenhouseLocation("London, UK")).toEqual({ locations: ["London, UK"], workMode: "onsite" });
+  });
+});
