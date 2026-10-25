@@ -109,10 +109,15 @@ function stubFetch(
     review?: unknown;
     reviewPromise?: Promise<unknown>;
     previewAttempts?: { first: unknown; next: unknown };
+    holdInboxRefreshAfterReview?: boolean;
   } = {}
 ) {
   const requests = options.requests ?? [baseItem];
   let previewAttempt = 0;
+  let reviewSettled = false;
+  const heldRefresh = options.holdInboxRefreshAfterReview
+    ? new Promise<void>(() => {})
+    : null;
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.includes("/one-click-review") && init?.method === "POST") {
       if (options.reviewPromise) return options.reviewPromise;
@@ -126,6 +131,7 @@ function stubFetch(
           false
         );
       }
+      reviewSettled = true;
       return response(options.review ?? { status: "approved" });
     }
     if (url.includes("/preview")) {
@@ -144,7 +150,10 @@ function stubFetch(
       }
       return response(options.preview ?? { request: preview });
     }
-    if (url.includes("/inbox?scope=new")) return response({ requests });
+    if (url.includes("/inbox?scope=new")) {
+      if (heldRefresh && reviewSettled) await heldRefresh;
+      return response({ requests });
+    }
     if (url.includes("/inbox?scope=saved")) return response({ requests: [] });
     if (url.includes("/api/referrer/home"))
       return response({ home: { routing: { state: "active" } } });
@@ -302,6 +311,21 @@ describe("Quillmint company inbox goal review", () => {
     await openFirstAsk();
     fireEvent.click(screen.getByRole("button", { name: /Accept & connect/ }));
     await waitFor(() => expect(go).toHaveBeenCalledWith("/conversation/41?from=inbox"));
+  });
+
+  it("hands a successful acceptance to its private conversation even while the inbox refresh is still pending", async () => {
+    const fetchMock = stubFetch({ holdInboxRefreshAfterReview: true });
+    await openFirstAsk();
+    fireEvent.click(screen.getByRole("button", { name: /Accept & connect/ }));
+
+    await waitFor(() =>
+      expect(go).toHaveBeenCalledWith("/conversation/41?from=inbox")
+    );
+    expect(
+      fetchMock.mock.calls.filter(([url]) =>
+        String(url).includes("/inbox?scope=new")
+      )
+    ).toHaveLength(2);
   });
 
   it.each(PASS_REASON_OPTIONS)("posts pass code $code without an acceptance attestation or credit request", async option => {

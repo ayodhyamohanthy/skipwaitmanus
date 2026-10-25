@@ -184,8 +184,9 @@ export default function MyCompanyInbox() {
       await companyFetch(`/api/company-referrals/${requestId}/one-click-review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(decision === "approved" ? { decision, ethicsConfirmed: true } : { decision, declineReason: option?.legacy, passReason }) });
       setPassOpen(false); setSelectedId(null); setPreview(null);
       setNotice(decision === "approved" ? "Request accepted. You can now message the job seeker privately." : "Passed privately. The job seeker gets a short private note - never your name.");
-      await loadInbox();
-      if (decision === "approved") go(`/conversation/${requestId}?from=inbox`);
+      // Acceptance hands off at once; a slow inbox refresh must not strand the referrer.
+      if (decision === "approved") { void loadInbox(); go(`/conversation/${requestId}?from=inbox`); }
+      else await loadInbox();
     } catch (reason) { const message = reason instanceof Error ? reason.message : "This private request can no longer be reviewed"; setError(message.includes("no longer available") ? "Accept failed - Another employee accepted this request a moment earlier. Nothing was charged to your credits." : message); }
     finally { setWorking(false); }
   };
