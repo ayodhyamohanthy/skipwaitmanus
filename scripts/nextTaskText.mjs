@@ -121,13 +121,23 @@ const fixMainSteps = (pick, who) => steps([
   "Tell the owner what broke, which commit, and how you fixed it.",
 ]);
 
-const unblockSteps = (pick, who) => steps([
-  `Read the row "${pick.task.row}", its branch and pull request, and every decision it names.`,
-  "Decide it under D-200 (any session that neither raised the block nor holds the task may: the best evidence wins, D-032) and record the ruling in docs/DECISIONS.md, or, if the call changes an owner decision (prices, plan contents, legal text, live money, the login rule, referrer fairness), set the task's status to \"owner\" in docs/plans/assignments.json and put the question to the owner. A missing permission, tool or setting (a GitHub review you cannot post, an API that answers 403, missing node_modules) is not a ruling: record the verdict with --verdict, run pnpm install, or name the exact owner click needed, and move on.",
-  `Run \`${CMD} --heartbeat --as "${who}"\` before any long step: an unblock lock nobody has pushed to for 2 hours goes to the next session (D-085, D-200).`,
-  `Report before you land the ruling's pull request (once it lands from the unblock lock, the lock no longer names you): \`${CMD} --report review --task ${pick.task.id} --as "${who}" --note "<the ruling>"\`. That newer report releases every priority below it. Then answer the team where it will see it (the row and the pull request) and land the ruling.`,
-  `If you cannot decide it either, report it \`blocked\` with the question: your unblock lock then stops holding anyone off, and the next session that did not raise the block takes it.`,
-]);
+const unblockSteps = (pick, who) => {
+  const newer = pick.report.newer ?? [];
+  const newerLines = newer.map(entry => {
+    const at = Number.isFinite(entry.at) ? ` (${new Date(entry.at).toISOString()})` : "";
+    return `- ${entry.status} — ${entry.who}${at}${entry.note ? `: ${entry.note}` : ""}`;
+  });
+  return steps([
+    ...(newerLines.length ? [
+      `Newer reports after the standing block (oldest first):\n${newerLines.join("\n")}\nRead these newer reports before ruling; a builder may have recorded an owner's word.`,
+    ] : []),
+    `Read the row "${pick.task.row}", its branch and pull request, and every decision it names.`,
+    "Decide it under D-200 (any session that neither raised the block nor holds the task may: the best evidence wins, D-032) and record the ruling in docs/DECISIONS.md, or, if the call changes an owner decision (prices, plan contents, legal text, live money, the login rule, referrer fairness), set the task's status to \"owner\" in docs/plans/assignments.json and put the question to the owner. A missing permission, tool or setting (a GitHub review you cannot post, an API that answers 403, missing node_modules) is not a ruling: record the verdict with --verdict, run pnpm install, or name the exact owner click needed, and move on.",
+    `Run \`${CMD} --heartbeat --as "${who}"\` before any long step: an unblock lock nobody has pushed to for 2 hours goes to the next session (D-085, D-200).`,
+    `Report before you land the ruling's pull request (once it lands from the unblock lock, the lock no longer names you): \`${CMD} --report review --task ${pick.task.id} --as "${who}" --note "<the ruling>"\`. That newer report releases every priority below it. Then answer the team where it will see it (the row and the pull request) and land the ruling.`,
+    `If you cannot decide it either, report it \`blocked\` with the question: your unblock lock then stops holding anyone off, and the next session that did not raise the block takes it.`,
+  ]);
+};
 
 const ceoSteps = () => steps([
   `Read the board above: every priority, top down, green or not, and the latest report from its team. A red or blocked priority comes first: unblock any block you neither raised nor hold the task of (decide it under D-200, or move the task to "owner" in docs/plans/assignments.json and ask the owner) before anything lower moves.`,
@@ -157,7 +167,14 @@ export function renderBoard(rows) {
     if (r.quietHours !== null && r.quietHours !== undefined) bits.push(`quiet ${r.quietHours}h`);
     if (r.pr) bits.push(r.pr);
     if (r.pr && r.state !== "done") bits.push(`behind main ${Number.isSafeInteger(r.behindMain) && r.behindMain >= 0 ? r.behindMain : "unknown"}`);
-    if (r.report) bits.push(`report: ${r.report.status} — ${r.report.who}${r.report.note ? `: ${r.report.note}` : ""}`);
+    if (r.report) {
+      bits.push(`report: ${r.report.status} — ${r.report.who}${r.report.note ? `: ${r.report.note}` : ""}`);
+      const newer = r.report.newer ?? [];
+      for (const entry of newer.slice(0, 3)) {
+        bits.push(`then: ${entry.status} — ${entry.who}${entry.note ? `: ${entry.note}` : ""}`);
+      }
+      if (newer.length > 3) bits.push(`+${newer.length - 3} more`);
+    }
     return bits.join(" · ");
   });
   const summaries = epicSummaries(rows).map(s => `${s.epic}: ${s.done}/${s.total} done, ${s.prs} PR, ${s.red} red, released: ${s.released.join(", ") || "none"}`);

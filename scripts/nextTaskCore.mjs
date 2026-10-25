@@ -304,23 +304,29 @@ const reportsByTask = reports => {
  * The report that stands for one task: the newest, except that a block stands until a newer report clears
  * it (D-200). A green or landed report clears it from anyone; any other report clears it only from a session
  * that neither raised a block still open on the task nor holds the task, so nobody rules on their own
- * question or their own work. A standing block carries `blockers`: every session whose block is still open.
+ * question or their own work. A standing block carries `blockers` (every session whose block is still open)
+ * and `newer`: the reports after it that did not clear it, oldest first, for the board and the unblock step (D-162).
  */
 const standingReport = (reports, holder) => {
-  let latest = null, block = null, blockers = [];
+  let latest = null, block = null, blockers = [], newer = [];
   for (let i = reports.length - 1; i >= 0; i--) {
     const r = reports[i];
     if (r.status === "blocked") {
       block = r;
+      newer = [];
       if (!blockers.includes(r.who)) blockers.push(r.who);
       continue;
     }
-    if (block && r.status !== "green" && r.status !== "landed" && (blockers.includes(r.who) || r.who === holder)) continue;
+    if (block && r.status !== "green" && r.status !== "landed" && (blockers.includes(r.who) || r.who === holder)) {
+      newer.push(r);
+      continue;
+    }
     block = null;
     blockers = [];
+    newer = [];
     latest = r;
   }
-  return block ? { ...block, blockers } : latest;
+  return block ? { ...block, blockers, newer } : latest && { ...latest, newer: [] };
 };
 
 /** One row per task with everything every decision reads. */

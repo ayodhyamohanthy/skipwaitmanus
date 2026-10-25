@@ -770,6 +770,94 @@ describe("status reports to the CEO and the board (D-085)", () => {
     expect(text).toContain("red — Qwen · s1: gate red on the coverage test");
   });
 
+  it("shows the three reports after a standing block in oldest-first order while the task stays red", () => {
+    // D-200: only a newer report from another session, or this session's own green or landed one, clears a block.
+    const reports: Report[] = [
+      { id: "A", status: "review", who: "Builder · s1", at: NOW - HOUR, note: "asked for a ruling" },
+      { id: "A", status: "red", who: "Builder · s1", at: NOW - 2 * HOUR, note: "implementation underway" },
+      { id: "A", status: "review", who: "Builder · s1", at: NOW - 3 * HOUR, note: "owner waiver reported" },
+      { id: "A", status: "blocked", who: "Builder · s1", at: NOW - 4 * HOUR, note: "awaiting a ruling" },
+      { id: "A", status: "green", who: "Builder · s1", at: NOW - 5 * HOUR, note: "predates block" },
+    ];
+    const rows = statusBoard({
+      tasks: [task("A")], branches: new Map([["agent/queue/a", claimBy("Builder · s1", "A")]]),
+      openPrs: new Map(), reports, now: NOW,
+    });
+    expect(rows[0]).toMatchObject({
+      health: "red",
+      report: { status: "blocked", newer: [
+        { note: "owner waiver reported" },
+        { note: "implementation underway" },
+        { note: "asked for a ruling" },
+      ] },
+    });
+    const text = renderBoard(rows);
+    expect(text).toContain("report: blocked — Builder · s1: awaiting a ruling");
+    for (const line of ["then: review — Builder · s1: owner waiver reported", "then: red — Builder · s1: implementation underway", "then: review — Builder · s1: asked for a ruling"]) expect(text).toContain(line);
+    const notes = ["owner waiver reported", "implementation underway", "asked for a ruling"]
+      .map(note => text.indexOf(note));
+    expect(notes[0]).toBeLessThan(notes[1]);
+    expect(notes[1]).toBeLessThan(notes[2]);
+    expect(text).not.toContain("predates block");
+  });
+
+  it("shows at most three of five newer reports on the board and counts the rest", () => {
+    const followUps = [5, 4, 3, 2, 1].map((n, i) => ({
+      id: "A", status: "review", who: "Builder · s1", at: NOW - (i + 1) * HOUR, note: `follow-up ${n}`,
+    }));
+    const rows = statusBoard({
+      tasks: [task("A")], branches: new Map([["agent/queue/a", claimBy("Builder · s1", "A")]]),
+      openPrs: new Map(), reports: [...followUps, { id: "A", status: "blocked", who: "Builder · s1", at: NOW - 6 * HOUR, note: "awaiting CEO" }], now: NOW,
+    });
+    expect(rows[0].report.newer).toHaveLength(5);
+    const text = renderBoard(rows);
+    const firstThree = ["follow-up 1", "follow-up 2", "follow-up 3"]
+      .map(note => text.indexOf(`then: review — Builder · s1: ${note}`));
+    expect(firstThree.every(index => index >= 0)).toBe(true);
+    expect(firstThree[0]).toBeLessThan(firstThree[1]);
+    expect(firstThree[1]).toBeLessThan(firstThree[2]);
+    expect(text).toContain("+2 more");
+    expect(text).not.toContain("follow-up 4");
+    expect(text).not.toContain("follow-up 5");
+  });
+
+  it("clears the block when another session reports after it, so no newer reports are listed (D-200)", () => {
+    const reports: Report[] = [
+      { id: "A", status: "review", who: "Kimi · s9", at: NOW, note: "ruling recorded" },
+      { id: "A", status: "green", who: "Builder · s1", at: NOW - HOUR, note: "focused tests passed" },
+      { id: "A", status: "green", who: "Builder · s1", at: NOW - 2 * HOUR, note: "implementation underway" },
+      { id: "A", status: "green", who: "Builder · s1", at: NOW - 3 * HOUR, note: "owner waiver reported" },
+      { id: "A", status: "blocked", who: "Builder · s1", at: NOW - 4 * HOUR, note: "awaiting a ruling" },
+    ];
+    const rows = statusBoard({
+      tasks: [task("A")], branches: new Map([["agent/queue/a", claimBy("Builder · s1", "A")]]),
+      openPrs: new Map(), reports, now: NOW,
+    });
+    expect(rows[0].report).toMatchObject({ status: "review", newer: [] });
+    expect(rows[0].health).not.toBe("red");
+  });
+
+  it("prints every newer report in full before ruling, including on a resumed unblock", () => {
+    const newer = [
+      { id: "A", status: "green", who: "Builder · s1", at: NOW - 2 * HOUR, note: "owner waiver recorded" },
+      { id: "A", status: "green", who: "Builder · s1", at: NOW - HOUR, note: "focused tests passed" },
+    ];
+    const report = { id: "A", status: "blocked", who: "Builder · s1", at: NOW - 3 * HOUR, note: "awaiting CEO ruling", newer };
+    const shared = { task: task("A"), report, lock: "agent/architect/a", lockExists: false };
+    const picks = [
+      { kind: "unblock", ...shared },
+      { kind: "continue", of: "unblock", ...shared },
+    ];
+    for (const pickResult of picks) {
+      const text = renderPick(pickResult, { who: "Claude Code · s9", date: "2026-10-23", claimed: true });
+      expect(text).toContain("Read these newer reports before ruling; a builder may have recorded an owner's word.");
+      expect(text).toContain(new Date(NOW - 2 * HOUR).toISOString());
+      const notes = ["owner waiver recorded", "focused tests passed"].map(note => text.indexOf(note));
+      expect(notes.every(index => index >= 0)).toBe(true);
+      expect(notes[0]).toBeLessThan(notes[1]);
+    }
+  });
+
   it("the CEO review starts from the board", () => {
     const text = renderPick({ kind: "ceo", skipped: [], board: [{ id: "A", title: "A title", tier: 2, role: "CTO", state: "todo", holder: null, quietHours: null, pr: null, report: null }] }, { who: "Claude Code · s9", date: "2026-10-20", claimed: true });
     expect(text).toContain("STATUS BOARD");
