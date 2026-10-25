@@ -51,7 +51,7 @@ export type JobCatalogStore = {
 
 export type JobCatalogRouteDeps = {
   enabled?: boolean;
-  resolveIdentity: (req: Request) => Promise<{ account: { id: number; role: string } } | null>;
+  resolveIdentity: (req: Request) => Promise<{ account: { id: number; role?: "user" | "admin" } } | null | undefined>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number }) => Promise<void>;
   store: JobCatalogStore;
   maybeRefresh: (source: CatalogSourceRow) => void;
@@ -159,6 +159,7 @@ export function registerJobCatalogRoutes(app: Express, deps: JobCatalogRouteDeps
 /** Default store: drizzle over the 0120 tables. */
 export async function createDrizzleJobCatalogStore(): Promise<JobCatalogStore> {
   const db = await getDb();
+  if (!db) throw new Error("database unavailable");
   return {
     async findCompanyBySlug(slug) {
       const rows = await db.select({ id: companies.id, slug: companies.slug }).from(companies).where(eq(companies.slug, slug)).limit(1);

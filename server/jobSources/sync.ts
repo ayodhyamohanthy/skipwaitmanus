@@ -108,6 +108,7 @@ export function createJobCatalogSync(store?: CatalogSyncStore) {
 
 export async function createDrizzleCatalogSyncStore(): Promise<CatalogSyncStore> {
   const db = await getDb();
+  if (!db) throw new Error("database unavailable");
   return {
     async loadSources() {
       const rows = await db

@@ -99,7 +99,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     leaseMs: 15 * MINUTE,
     run: createDailyMoneyCheck(),
   },
-  { name: "billing-review-retry", description: "Retries durable billing review notifications; expired ambiguous submissions need operator reconciliation", windowMs: 60 * MINUTE, leaseMs: 5 * MINUTE, run: () => runBillingReviewOutbox() },,
+  { name: "billing-review-retry", description: "Retries durable billing review notifications; expired ambiguous submissions need operator reconciliation", windowMs: 60 * MINUTE, leaseMs: 5 * MINUTE, run: () => runBillingReviewOutbox() },
   {
     // D-174-job-catalog (packet section 5.5): daily refresh of catalog rows
     // from verified boards. Does nothing while JOB_CATALOG_ENABLED is false.
