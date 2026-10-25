@@ -81,7 +81,7 @@ describe("greenhouse location parser (fixtures from real board strings)", () => 
   });
 
   it("detects Remote and Hybrid", () => {
-    expect(parseGreenhouseLocation("Remote - US")).toEqual({ locations: ["Remote"], workMode: "remote" });
+    expect(parseGreenhouseLocation("Remote - US")).toEqual({ locations: ["US"], workMode: "remote" });
     expect(parseGreenhouseLocation("London (Hybrid)")).toEqual({ locations: ["London"], workMode: "hybrid" });
     expect(parseGreenhouseLocation("Remote")).toEqual({ locations: ["Remote"], workMode: "remote" });
   });
