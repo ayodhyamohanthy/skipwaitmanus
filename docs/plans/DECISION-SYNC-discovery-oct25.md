@@ -18,6 +18,13 @@ Requirements for the careers-source stage:
 4. **Verification**: the careers source must belong to the resolved company domain (or be linked from it); a board that cannot be tied back to the official domain stays unverified and serves nothing - same rule as admin registration today.
 5. **Manual registration stays** as the escape hatch for companies whose careers site defies every automatic path - it is the exception path, never the default flow.
 
+## Result presentation and CTA (founder lock, phonemsg-01M5SEMY1SE2M1SFHC2PJNFTFD, Oct 25 ~17:25 IST)
+
+1. **Only jobs load**: the result of the chain is a list of current jobs rendered inside skipwait.me. We never embed or proxy the careers page itself.
+2. **One CTA: "Ask referral"**: the sole action on every job is the referral request. There is no Apply button and no external application flow; this confirms the existing referral-only conversion freeze and does not reopen it.
+3. **Job URLs are evidence, not exits**: the official careers URL attached to each job is kept as source/identity evidence (for verification and trust), never surfaced as a conversion path out of skipwait.me.
+4. **Scope guard**: "only jobs should load" constrains the job-results surface; it does not remove or narrow the company typeahead discovery stage.
+
 ## What this means for existing work
 
 - The fixed directory stays only as seed data and coverage display, never as the boundary of what a user can pick.
