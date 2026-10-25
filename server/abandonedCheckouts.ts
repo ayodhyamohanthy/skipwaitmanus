@@ -8,12 +8,19 @@
 // did pay, the payment webhook and the reconciler still find the row and credit it. Undo = clear the reason.
 //
 // Apply mode verifies every candidate against the provider before marking. Age
-// plus a "requested"/"created" page does NOT prove a checkout can never be
-// paid: no repo source documents a hosted-page expiry guarantee, so only a
-// terminal provider state (expired or cancelled) makes a row markable. Pages
-// that are gone (404), unreadable (auth/outage/timeout), still open, or paid
-// are never marked, and a run where the provider faults for every candidate
-// aborts instead of stamping an outage as abandonment.
+// plus a "requested"/"created" page state alone does NOT prove a checkout can
+// never be paid: Chargebee's documented hosted-page states are only created,
+// requested, succeeded, cancelled and acknowledged - there is no "expired"
+// state. The documented terminal-unpayable fact is the page's own expires_at:
+// after it, the page URL can no longer be accessed (checkout_new/_existing/
+// _one_time URLs expire 3 hours after creation; source:
+// https://apidocs.chargebee.com/docs/api/hosted_pages). A row is markable only
+// when the provider shows (a) state "cancelled" (the buyer ended the checkout)
+// or (b) a non-success state whose expires_at has passed. Success states
+// (succeeded/acknowledged) are left to the webhook/reconciler and review, gone
+// (404) and unreadable (auth/outage/timeout) pages are never marked, and a run
+// where the provider faults for every candidate aborts instead of stamping an
+// outage as abandonment.
 import { and, count, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import { paymentFulfillments } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -26,8 +33,9 @@ export const ABANDONED_CHECKOUT_AGE_MS = 7 * 24 * 60 * 60_000;
 export const ABANDONED_VERIFY_BATCH = 200;
 /** This many provider faults with nothing readable at all looks like a broken key, site or outage, not abandonment. */
 export const ABANDONED_UNVERIFIABLE_ABORT_MIN = 3;
-/** Only a terminal provider state proves the checkout can no longer be paid. */
-export const ABANDONED_TERMINAL_PAGE_STATES: ReadonlySet<string> = new Set(["expired", "cancelled"]);
+/** States where the buyer or the provider's own expiry ended the checkout's payability. "expired" is NOT a documented Chargebee hosted-page state; expiry comes from expires_at, not the state string. */
+export const ABANDONED_CANCELLED_PAGE_STATE = "cancelled";
+export const ABANDONED_SUCCESS_PAGE_STATES: ReadonlySet<string> = new Set(["succeeded", "acknowledged"]);
 
 export type AbandonedCheckoutPlan = { cutoff: string; candidates: number; accounts: number; oldest: string | null; newest: string | null; byCurrency: Array<{ currency: string; count: number }> };
 export type AbandonedCheckoutResult = AbandonedCheckoutPlan & { applied: boolean; closed: number; skippedNonTerminal: number; skippedNotFound: number; skippedFault: number; skippedPaid: number; skippedOverBatch: number; aborted: string | null };
@@ -105,8 +113,11 @@ export function createAbandonedCheckoutCloser(deps: AbandonedCloseDeps) {
       }
       if (probe.outcome === "fault") { skippedFault += 1; continue; }
       if (probe.outcome === "not_found") { skippedNotFound += 1; continue; }
-      if (probe.paid) { skippedPaid += 1; continue; }
-      if (!ABANDONED_TERMINAL_PAGE_STATES.has(probe.pageState)) { skippedNonTerminal += 1; continue; }
+      // Success states mean the checkout reached the provider's paid path;
+      // they belong to the webhook, the reconciler and review, never here.
+      if (probe.paid || ABANDONED_SUCCESS_PAGE_STATES.has(probe.pageState)) { skippedPaid += 1; continue; }
+      const expired = probe.expiresAtMs !== undefined && probe.expiresAtMs <= nowMs;
+      if (probe.pageState !== ABANDONED_CANCELLED_PAGE_STATE && !expired) { skippedNonTerminal += 1; continue; }
       eligible.push(candidate.id);
     }
     // The provider faulting for every candidate points at a wrong key, site or
