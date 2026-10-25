@@ -6,6 +6,8 @@
 
 Company discovery is **automatic as the user types**, the way LinkedIn's company field works. It is not the manually maintained directory, and it is not an admin-registered list. This was decided before Oct 25 and was re-frozen today; it supersedes any plan that treats the fixed 39-company directory as the company source for seekers.
 
+**Freeze directive: this document and its presentation lock are FROZEN by explicit founder instruction "Freeze this and push to repo" (phonemsg-01M5SEPSD0B9BWSEAZZY2Q8XN3, Oct 25 ~17:26 IST), immediately following the no-external-Apply reinforcement (phonemsg-01M5SEP2GS3HS398WXXWVZK8ES). Changes to this scope require new founder direction.**
+
 ## The full chain (founder clarification, phonemsg-01M5SEJS8A37W54H4QPDPMA9FQ, Oct 25 ~17:24 IST)
 
 Discovery does not stop at the company name. The frozen chain is: **company selection -> verified official careers source -> current job links -> referral request.** Manually registering an ATS board per company is a fallback, not the mechanism.
