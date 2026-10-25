@@ -37,9 +37,13 @@ packet per session; claim the row branch with scripts/next-task.mjs.
    consent bypass. Dismissal sets a cooldown (Google's own + localStorage);
    the normal sign-in path always remains. Referrer/work-email flow is
    untouched (FOUNDER-LOCKED work-email OTP only).
-3. After any successful email-code sign-in, offer the browser's Credential
-   Management store() where supported (progressive enhancement, silent
-   no-op elsewhere), so returning device-saved offers improve over time.
+3. After a successful Google sign-in, offer the browser's Credential
+   Management store() of a FederatedCredential where supported (progressive
+   enhancement, silent no-op elsewhere), so returning device-saved offers
+   improve over time. SECURITY: never store anything from the email-code
+   flow - a one-time code is not a password and must not become a persistent
+   PasswordCredential. If only password credentials are available in a
+   browser, this step silently does nothing there.
 4. New env key: GOOGLE_SIGNIN_CLIENT_ID (declare in .env.example; feature
    is inert without it - no prompt, no route mounted beyond a 404).
 
@@ -55,6 +59,9 @@ to session lengths or security posture, any paid provider or plan.
   nonce, expired exp, wrong iss (mock Google's JWKS with a jose-generated
   keypair); accepts a valid token; an unverified-email match signs NOBODY
   in and logs nothing personal; replay of the same nonce fails.
+- client/src/components/googleOneTapPrompt.test.tsx: the FederatedCredential
+  store fires only after a Google sign-in and carries no OTP, code or token;
+  no PasswordCredential is ever constructed in the email-code flow.
 - client/src/components/GoogleOneTapPrompt.test.tsx: prompt requested only
   when signed out, only on the seeker path; dismissal cooldown respected;
   absent client ID = nothing renders and no script loads; normal sign-in
