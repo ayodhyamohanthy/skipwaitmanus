@@ -90,6 +90,17 @@ Recorded intent with guardrails (so copy stays truthful):
 - Any numbers shown must come from real sourced examples or be labeled hypothetical arithmetic; the annualized cost must match the actual proposed billing cadence (no invented annual discount).
 - Exact pricing-page words follow the owner's price decision; nothing here approves publication or live prices.
 
+
+## Marketing positioning directive (owner, Oct 25 ~18:00 IST, phonemsg-01M5SGNG5TKJ26KPNF9WX372VR + phonemsg-01M5SGNTHM0236HNH1HGST8GS6)
+
+Verbatim: "Job hunting? never cold-apply. Check if you can get referred first.this should be used left right and center" and "In all our marketing efforts".
+
+Recorded:
+- The founder's EXACT words are the canonical tagline: **"Job hunting? never cold-apply. Check if you can get referred first."** Referral-first positioning goes across the website and all marketing ("left right and center").
+- A safer variant has been proposed ("Job hunting? Before you cold-apply, check if you can get referred first.") - it is a RECOMMENDATION, not an approved replacement. The founder's original words stand until he chooses otherwise.
+- Guardrails: the positioning never claims a guaranteed referral, job, or better success rate, and never tells users not to apply elsewhere; it presents referral-first as the smarter first step.
+- Channel permissions are unchanged: website and product copy go through the normal queue/review lanes; external posting in the owner's name (LinkedIn/X/email) needs its own per-channel approval - this directive is not a blanket posting grant.
+
 ## Anchors
 
 
