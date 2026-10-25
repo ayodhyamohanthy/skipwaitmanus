@@ -1284,7 +1284,7 @@
       "tier": 2,
       "lane": "design-core",
       "branch": "agent/queue/d048-f-harness",
-      "status": "todo",
+      "status": "in-progress",
       "dependsOn": [
         "D-048-p3-w0-shell"
       ],
@@ -1295,7 +1295,8 @@
         "scripts/kit-screens/fixtures/00_goal-*.json",
         "scripts/kitScreenFixtures.test.ts",
         "docs/plans/D-048-capture-checklist.md"
-      ]
+      ],
+      "note": "Started Oct 25 22:03 by coordinator (agent-01M5RMHHEAGSQQ8FVE1QF135EB): harness + capture.mjs --goal + goal fixtures + checklist, enabling desktop/390 goal journey proofs for all surface rows."
     },
     {
       "id": "D-048-F-credits",
