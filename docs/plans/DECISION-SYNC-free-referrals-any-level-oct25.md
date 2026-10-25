@@ -75,7 +75,7 @@ Recorded (anchored):
 Exactly open (NO source settles these; do not present arithmetic that presumes answers):
 1. **Label mapping**: no source maps the shop's senior/mid/junior REQUEST labels to L-numbers (L1-L10) or to the new referrer-career axes. Any "10 senior = 100 units" style math is unsupported until the owner maps the labels.
 2. **Mixed-quantity checkout**: how a combined pick (e.g. 10 of one level + 1 of another) prices against the fixed rungs is not defined in the catalog or any decision - per-rung, combined-units, or per-request pricing is undecided.
-3. **Plan inclusion**: the owner today says "Each plan gives certain referrals" and D-173 says plans carry an allowance with in-plan purchases on top; the D-132 build shape is plan fee + a SEPARATELY PRICED monthly dropdown, and the v2 config on main carries no allowances yet ("allowances land with the pricing build"). Whether the plan fee INCLUDES referrals, and how many per plan, is undecided.
+3. **Plan included counts**: inclusion is SETTLED - each plan gives certain referrals (owner today; consistent with D-173's allowance + in-plan purchase wording). OPEN: the included COUNT per seeker plan (early/mid/senior) - asked of the owner Oct 25 ~17:54, reply pending. The v2 config on main carries no allowances yet ("allowances land with the pricing build"). How included referrals interact with the separately priced dropdown is part of the same count answer; no fee-plus-separate-only model is encoded.
 4. **Axes**: recorded rules denominate cost by JOB level only; today's plan axis is target REFERRER career level. No recorded rule prices by referrer career level; whether it should is a new decision, not an assumption.
 
 ## Anchors
