@@ -26,7 +26,7 @@ Sources of truth: `docs/DECISIONS.md` (the register: it wins over every other do
 - **The repo is public (D-059).** Never commit a secret or put one in a `VITE_*` key; no business numbers or personal data in docs, fixtures or commits.
 
 ## Working with the owner
-- **Roles (D-085, D-109):** Claude Code is the CEO: direction, high-stakes calls, architecture, the business, Tier 1 reviews and the queue order; it claims as `--claim "Claude Code"` and never builds. The open models (CTO, CDO and team) build, write packets and report to the CEO.
+- **Roles (D-085, D-200):** Claude Code leads direction, high-stakes calls, architecture and queue, and may build when assigned. Any capable session may do picker-authorized work, write packets, update decisions/queue, review or land; no step waits for one model or session.
 - Be brutally honest (D-023): risks first, the strongest counter-argument, ideas rated 1–10, "I don't know" over a guess. Each session: fetch `main`, read new decisions, report the log and rated ideas (D-026). D-123/D-126: research, decide on merit, ship flagged, report deviations.
 - Never override a decision; recommend a better one with evidence. Value-adding features are pre-approved (D-091); the owner's word is still needed for real cash, posts in his name, prices or credit rules going live, new charges, and anything that could upset users (D-123). Record each decision (owner's or CEO's, D-123) once, in the register's active table, as highest ID + 1 across `main` and open branches. Every change updates every affected markdown file in the same push (D-068).
 
