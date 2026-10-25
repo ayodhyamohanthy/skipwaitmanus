@@ -445,6 +445,7 @@
    "branch": "agent/queue/d048-live-review-find",
    "status": "todo",
    "dependsOn": [
+    "D-048-fix-send-ask-blocker",
     "P0-ask-link-signin",
     "D-132-audit",
     "D-048-F-goal-check",
@@ -453,7 +454,7 @@
     "D-174-fix-post-binding",
     "D-176-public-claims"
    ],
-   "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row’s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete.",
+   "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row’s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
    "epic": "D-048-p3",
    "owns": [
     "client/src/pages/Explore.tsx",
@@ -497,7 +498,7 @@
     "ROW20-CD",
     "D-048-F-goal-check"
    ],
-   "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first.",
+   "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
    "epic": "D-048-p3",
    "owns": [
     "client/src/pages/conversation/SeekerConversation.tsx"
@@ -516,7 +517,7 @@
     "P1-queue-attestation",
     "D-048-F-goal-check"
    ],
-   "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the referral queue against its kit version (pass codes, pre-acceptance privacy, verified-referrer check, lost test pins). After P1-queue-attestation, which edits the same page.",
+   "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the referral queue against its kit version (pass codes, pre-acceptance privacy, verified-referrer check, lost test pins). After P1-queue-attestation, which edits the same page. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
    "epic": "D-048-p3",
    "owns": [
     "client/src/pages/MyCompanyInbox.tsx",
@@ -1326,7 +1327,7 @@
     "client/src/pages/referralConversation.test.tsx",
     "design/goal-ui/captures/conversation/**"
    ],
-   "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23).",
+   "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
    "epic": "D-048-p3"
   },
   {
@@ -1992,7 +1993,8 @@
    "branch": "agent/queue/d174-fix-post-binding",
    "status": "todo",
    "dependsOn": [
-    "D-132-audit"
+    "D-132-audit",
+    "D-048-fix-send-ask-blocker"
    ],
    "note": "D-193 packet section 5.1. Latent today: production has zero posted roles at all 39 companies. Waits for D-132-audit, which edits the same composer files (#547).",
    "epic": "D-174",
@@ -2252,6 +2254,44 @@
     "server/privateReferralRoutes.ts"
    ],
    "note": "Coordinator-imported AYO-10 bounded repair under the whole-app goal-UI request (Main, Oct 23; QA flag-on finding on 79b0c337), extended by coordinator first-name repair 8753c2a9 (QA PASS Oct 24). Two reviewed repairs: (1) post-opportunity copy state-aware - hiring-now required the job link server-side while the label said \"(optional)\", and the footer's absolute \"your name never appears\" contradicted the first-name opt-in; copy now follows mode and opt-in. (2) Opted-in poster first name reaches the public wall feed: db feed joins the poster, /api/opportunities projects an explicit public card shape so owner name/email/flag never leave the route unless opted in; anonymous and address-shaped names stay hidden; the wall renders \"Posted by <first name>\" else \"Identity hidden\". Server response contract changes only by that explicit public projection. Reviewed net diff is exactly the 7 owns files plus this registry row; QA inspected named/anonymous 390 pixels and the fixture API privacy gates PASS on 8753c2a9. QA still owes the walk-in / View-Opportunity-Wall / first-name-opt-in-out legs on the final head before any D-097 release step. RATIFIED: this row's registration and the D-048-p3-post dependsOn edge (landed in #616, merge 636644fb, Oct 24 02:56 IST) are approved under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact. LANDED: PR #597 merged Oct 24 (merge commit 196103f6); row flip verified against the GitHub API Oct 24."
+  },
+  {
+   "id": "D-048-fix-signin-click-loading",
+   "title": "Let an explicit sign-in click start the server flow while client auth loads (#595)",
+   "row": "D-199",
+   "packet": "docs/plans/LEGACY-BRANCHES-oct24.md",
+   "tier": 1,
+   "lane": "d048-fix-signin",
+   "branch": "agent/ayo7/signin-loading-click",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "D-199 registers legacy PR #595 (built by Instinct Agent; user report phonemsg-01M5MXF1C8DQ86C6Y7TXJQY01X) under its existing branch: no rename, no gate bypass. Scope: client/src/_core/auth.tsx and authCompat.test.ts only; the signed-in no-op, the same-origin returnTo guard and server-owned authentication stay unchanged. The branch drops its own copy of this row at its next merge-up. Review: Tier 1, by a model other than Instinct (builder) or the fixer's (D-151, D-200). Lands with an independent PASS and fresh green CI on the exact head. Fixture evidence only: the user's exact failing URL stays open. Packet section 2.",
+   "owns": [
+    "client/src/_core/auth.tsx",
+    "client/src/_core/authCompat.test.ts"
+   ]
+  },
+  {
+   "id": "D-048-fix-send-ask-blocker",
+   "title": "Show the actual blocker and a recovery link on the Send ask CTA (#596)",
+   "row": "D-199",
+   "packet": "docs/plans/LEGACY-BRANCHES-oct24.md",
+   "tier": 2,
+   "lane": "d048-fix-sendask",
+   "branch": "agent/ayo9/send-ask-blocker-ux",
+   "status": "todo",
+   "dependsOn": [
+    "D-132-audit"
+   ],
+   "note": "D-199 registers legacy PR #596 (built by Instinct Agent; user report phonemsg-01M5MXNSDQ0VJMG8M3MVQWT8JF) under its existing branch. Scope: six files (packet section 3). No validation, eligibility, price, quote or send-contract change; new strings use D-180 vocabulary. Waits for D-132-audit (same composer files; money core first, D-146/D-197), then merges main. The branch drops its own copy of this row at merge-up. Tier 2: lands on green required CI (D-200).",
+   "owns": [
+    "client/src/pages/Ask.tsx",
+    "client/src/pages/Explore.tsx",
+    "client/src/pages/ExploreCompany.tsx",
+    "client/src/pages/explore/AskDrawer.tsx",
+    "client/src/pages/explore/useAskComposer.tsx",
+    "client/src/pages/askCta.test.tsx"
+   ]
   },
   {
    "id": "D-177-recruiter-posts-referral-drives",
