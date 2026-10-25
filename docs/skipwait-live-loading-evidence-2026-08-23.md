@@ -1,3 +1,5 @@
+> Historical record (2026-08-23). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+
 # skipwait.me loading incident — independent evidence
 
 ## Observed served behavior

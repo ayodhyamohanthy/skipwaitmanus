@@ -1,3 +1,5 @@
+> Historical record (Sep 3 2026). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+
 # Risk Register & Rollback — skipwait.me design
 
 ## Risks

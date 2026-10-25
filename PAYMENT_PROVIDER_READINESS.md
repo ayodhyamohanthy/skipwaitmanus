@@ -18,7 +18,7 @@ The selected provider, provider transaction ID, currency, amount, token quantity
 
 ## Current readiness
 
-Production checkout is live-wired through the live Chargebee site: completing a payment charges real money (`docs/BUGFREE_GATE.md`). Razorpay approved skipwait.chargebee.com on Oct 16 (BUGFREE_GATE 4.14). Every payment option goes on sale under D-046 (once D-063, D-067 and D-051 land, per D-059), and a plan or pack is sold only once its Chargebee item price exists with the exact catalog id; otherwise checkout answers `409 not_available_yet` and opens no page. On Oct 18 every pack showed `available: false`; D-069 adds an admin catalog sync (a dry run, then an apply step the owner triggers; not built yet) to create the missing item prices. Agents never make real payments; the owner runs one live ₹99 UPI buy-and-refund (D-065).
+Production checkout is live-wired through the live Chargebee site: completing a payment charges real money (`docs/BUGFREE_GATE.md`). Razorpay approved skipwait.chargebee.com on Oct 16 (BUGFREE_GATE 4.14). Only credit packs are sold, in INR and USD (D-146). Passes and Keep warm stay off (`PASS_SALES_ENABLED` false, D-084, D-146), and the D-132 plans stay behind flags that are off (D-135). `docs/PRICING.md` is the one pricing source. A plan or pack is sold only once its Chargebee item price exists with the exact catalog id; otherwise checkout answers `409 not_available_yet` and opens no page. D-069's admin catalog sync (`server/adminCatalogSyncRoutes.ts`: a dry run, then an apply step the owner triggers) creates missing item prices. Agents never make real payments; the owner runs one live ₹99 UPI buy-and-refund (D-065).
 
 ## Local dummy configuration
 

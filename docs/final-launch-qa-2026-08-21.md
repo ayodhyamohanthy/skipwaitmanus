@@ -1,3 +1,5 @@
+> Historical record (2026-08-21). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+
 # Final Launch-Readiness QA — 2026-08-21
 
 ## Scope

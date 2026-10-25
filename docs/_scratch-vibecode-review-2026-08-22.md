@@ -1,3 +1,5 @@
+> Historical record (2026-08-22). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+
 # Temporary Vibecode Sandbox Review Notes — 2026-08-22
 
 ## Independent review in progress

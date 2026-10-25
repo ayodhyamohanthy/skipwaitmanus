@@ -1,3 +1,5 @@
+> Historical record (2026-09-04). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+
 # /wall 500 fix — handoff (2026-09-04)
 
 ## Symptom

@@ -1,18 +1,16 @@
 # Follow System & Messaging Gate (X-style) — skipwait.me
 
-Shipped: build `aebe0a6` (2026-09-10). Design reference: X's follow-gated DM state (empty conversation shows credibility signals + paid access path).
+Shipped: build `aebe0a6` (2026-09-10). Design reference: X's follow-gated DM state (empty conversation shows credibility signals). No paid access path exists (D-067).
 
 ## The rule (as implemented)
-> **Superseded by D-012(3) (Oct 2026) for referrers.** When either person is a verified referrer, a direct message (new thread or reply) can be sent only after that referrer accepted a referral request linking the two; a paid plan, mutual follow and an earlier thread no longer open it, and the send is rejected with `403 { reason: "referrer_acceptance_required" }` (`server/dmReferrerGate.ts`, rechecked inside `sendDirectMessage`). The paid "message referrers directly" perk has ended. The rule below now applies only between two members who are not verified referrers.
+**With a verified referrer on either side (D-012(3)).** A direct message (new thread or reply) can be sent only after that referrer accepted a referral request linking the two. A paid plan, mutual follow or an earlier thread does not open it. Otherwise the send is rejected with `403 { reason: "referrer_acceptance_required" }` (`server/dmReferrerGate.ts`, rechecked inside `sendDirectMessage`).
 
-You can start a direct message with a member if ANY of these is true:
+**Between two members who are not verified referrers.** You can start a direct message if ANY of these is true:
 1. **Mutual follow** — you follow each other (X-style: following is one-way and free; mutual = both directions), OR
 2. **Existing thread** — you already share a conversation (replies are always free).
-Otherwise the send is rejected with `403 { reason: "mutual_follow_required" }` and no upgrade path: no plan opens a thread (D-067). `/messages` keeps the draft and shows a "Follow each other to message" card.
+Otherwise the send is rejected with `403 { reason: "mutual_follow_required" }` and no upgrade path. No plan opens a thread (D-067): `sendDirectMessage` reads no plan, and the refusal inside the send transaction is `DirectMessageFollowRequiredError`. `/messages` keeps the draft and shows a "Follow each other to message" card.
 
-> **D-067 (owner, Oct 18 2026):** the retired paid plans are removed completely, including their member-message perk and its paywall; a wallet still marked with one counts as Free. Live since `08d193a0`: `hasActivePremiumSubscription` is gone and `sendDirectMessage` reads no plan (the refusal inside the send transaction is `DirectMessageFollowRequiredError`).
-
-Referral *requests* through fast-track links and the wall follow the ask credit rules (D-063 as worded by D-135: 3 free credits every month; extra asks use credits), never this messaging gate.
+Referral requests through referral links and the wall follow the referral allowance rules (3 free every month, D-039/D-063; extra requests use paid referrals, D-173), never this messaging gate. Code and copy still call the paid unit "credits" until the terminology lane renames them (D-173, D-180).
 
 ## API
 - `POST /api/users/:userId/follow` — follow (idempotent). 400 self, 404 unknown, 401 anon.
@@ -20,7 +18,7 @@ Referral *requests* through fast-track links and the wall follow the ask credit 
 - `GET /api/users/:userId/follow-state` — `{ followers, followingCount, isFollowingViewer, isFollowingTarget, isMutual, joinedMonthYear, viewerSignedIn }`.
 - `GET /api/users/:userId/followers` / `/following` — anonymous-safe labels only (`Member` / `Referrer · company.com`); never names/emails.
 - `GET /api/dms/compose/:userId` — **retired** (D-012(3) review, Oct 2026): no client read it, and its answer let any member learn, without sending anything, whether a user ID has a verified work email. Unknown `/api` paths return the JSON 404.
-- DM gate: `POST /api/dms/threads/:userId` — mutual follow OR existing thread (no plan opens one, D-067; otherwise `403 mutual_follow_required`), between two members who are not verified referrers only. With a verified referrer on either side it opens only after that referrer accepted a request linking the two (`403 referrer_acceptance_required` otherwise; superseded by D-012(3), see the note above). The thread view returns the same `sendBlock`. After 10 refused sends in an hour (`server/dmRefusalLimit.ts`), every further refusal by that sender is the same `429` with `retryAt`, so the two refusal reasons (`referrer_acceptance_required`, `mutual_follow_required`) cannot be used to enumerate verified referrers at scale.
+- DM gate: `POST /api/dms/threads/:userId` — mutual follow OR existing thread (no plan opens one, D-067; otherwise `403 mutual_follow_required`), between two members who are not verified referrers only. With a verified referrer on either side it opens only after that referrer accepted a request linking the two (`403 referrer_acceptance_required` otherwise, D-012(3)). The thread view returns the same `sendBlock`. After 10 refused sends in an hour (`server/dmRefusalLimit.ts`), every further refusal by that sender is the same `429` with `retryAt`, so the two refusal reasons (`referrer_acceptance_required`, `mutual_follow_required`) cannot be used to enumerate verified referrers at scale.
 
 ## Schema
 `userFollows` (migration `drizzle/0038_user_follows.sql`): followerUserId, followingUserId (both FK → users, cascade), createdAt; unique pair index. Auto-created by the boot-time schema reconciler (also in `server/schemaReconcile.ts` DESIRED_TABLES). Verified live: follow endpoints return 200 on skipwait.me.

@@ -35,7 +35,7 @@ The product must not use “Fast-Tracked,” “guaranteed,” “priority,” �
 
 ### Public delivery contract
 
-Each card uses an opaque high-entropy token. The public share page and dynamic social image resolve only an active token’s safe company-level copy. They do not require sign-in and contain no application action, job link, participant identifiers, referral-request ID, or private data. A revoked or unknown token returns a neutral unavailable state. The image is generated deterministically from the safe copy in the product's existing design tokens (`DESIGN.md`; no re-skin before the owner approves the D-048 goal-UI designs); no AI-generated text image is needed.
+Each card uses an opaque high-entropy token. The public share page and dynamic social image resolve only an active token’s safe company-level copy. They do not require sign-in and contain no application action, job link, participant identifiers, referral-request ID, or private data. A revoked or unknown token returns a neutral unavailable state. The image is generated deterministically from the safe copy using the goal UI design tokens (`DESIGN.md`, D-120); a surface moves to the goal UI only under `docs/plans/GOAL_UI_COVERAGE.md` section 1 (D-167). No AI-generated text image is needed.
 
 ## Acceptance criteria
 
@@ -43,4 +43,4 @@ Each card uses an opaque high-entropy token. The public share page and dynamic s
 2. Model failure and non-PDF attachment handling return an editable factual fallback, not an error dead-end.
 3. Every generated draft is bounded, editable, and prohibited from inventing facts or a referral guarantee.
 4. Every public card is company-only, contains the required disclaimer, and is revocable.
-5. The mobile flows retain a single primary action per viewport and use only the existing design tokens (`DESIGN.md`, D-048).
+5. The mobile flows retain a single primary action per viewport and use only the goal UI design tokens (`DESIGN.md`, D-120).

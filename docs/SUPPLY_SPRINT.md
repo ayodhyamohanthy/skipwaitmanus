@@ -29,7 +29,7 @@ Pace: 5 each weekday from Mon Oct 19 (anything you send before then is a head st
 ## 2. Corridor shortlist
 
 The corridor is the short list of companies where supply is built first. Rank it on three things together (D-043 multiplies them):
-1. **Aggregate waiting demand** from the panel. Count every waiting ask the same. Never look at who paid, and never pick a company because a paying customer wants it (D-015). Waiting asks expire after 7 days, so the panel shows only the last week. Read it at each checkpoint, not once.
+1. **Aggregate waiting demand** from the panel. Count every waiting ask the same. Never look at who paid, and never pick a company because a paying customer wants it (D-015). The current runtime still expires waiting asks after 7 days, so the panel shows only the last week; D-174 removes that expiry when `D-174-expiry-clock-removal` lands. Read it at each checkpoint, not once.
 2. **Your access.** A company where you can send 5 messages beats one where you can send 1. A company with demand but no way in waits until you find one.
 3. **Referral leverage:** India offices hiring lateral engineering, product and data roles, Bengaluru and Hyderabad first (D-043).
 
@@ -72,6 +72,7 @@ Rules for every message:
 - In outreach, send only this link: https://skipwait.me/sign-in?intent=referrer. It opens "Give a referral" (work email only, D-030, D-049).
 - Never send a link that contains `invite=`, including your own `/invite` or `/share` links, and never point anyone to those pages. Those links can add a credit, and a credit is a perk (D-015, D-055).
 - Keep "Please follow your company's referral policy." in every message (D-043).
+- Say "referral request", not "ask" (D-180). Leave the money sentence word for word until the terminology lane rewords it (D-173).
 - Never mention a specific seeker, job or resume, a referral bonus, or anything for them (perks, credits, gifts). Never say how fast anything will happen.
 - Via a mutual: ask the mutual first ("Okay if I message {Name} about SkipWait?"). Send only after a yes.
 - One follow-up after 3 days if there is no reply. Then stop.
@@ -79,27 +80,27 @@ Rules for every message:
 **A. Warm contact**
 ```
 Hi {Name}! A small ask, and no is a fine answer.
-I'm building SkipWait: job seekers send a private referral ask, and verified employees decide whether to help.
+I'm building SkipWait: job seekers send a private referral request, and verified employees decide whether to help.
 Would you verify your {Company} work email? It's one code to your work inbox: https://skipwait.me/sign-in?intent=referrer
-You choose which asks to take, if any, and can pause anytime. Seekers don't see your name unless you accept. If people already message you for referrals, you also get your own link to send them.
+You choose which requests to take, if any, and can pause anytime. Seekers don't see your name unless you accept. If people already message you for referrals, you also get your own link to send them.
 Please follow your company's referral policy.
 ```
 
 **B. Second-degree, via a mutual**
 ```
 Hi {Name}, I'm {your name}. {Mutual} said it was okay to message you.
-I'm building SkipWait: job seekers send a private referral ask, and verified employees decide whether to help. I'm looking for people at {Company} open to an occasional ask.
+I'm building SkipWait: job seekers send a private referral request, and verified employees decide whether to help. I'm looking for people at {Company} open to an occasional request.
 If that's you, it's one code to your work email: https://skipwait.me/sign-in?intent=referrer
-You pick which asks to take, if any, and can pause anytime. Your name stays hidden unless you accept. You also get your own link for people who already ask you for referrals.
+You pick which requests to take, if any, and can pause anytime. Your name stays hidden unless you accept. You also get your own link for people who already ask you for referrals.
 Please follow your company's referral policy. If it's not for you, no reply needed.
 ```
 
 **C. Past colleague**
 ```
 Hi {Name}, {your name} here, from our {team} days. Hope all is well at {Company}.
-I'm building SkipWait: job seekers send a private referral ask, and verified employees decide whether to help. Would you be open to an occasional ask for roles at {Company}?
+I'm building SkipWait: job seekers send a private referral request, and verified employees decide whether to help. Would you be open to an occasional referral request for roles at {Company}?
 If yes, verify your work email with one code: https://skipwait.me/sign-in?intent=referrer
-You decide which asks to take, if any, and how many a month. You can pause anytime, and your name stays hidden unless you accept. You also get your own link for people who already ask you for referrals.
+You decide which requests to take, if any, and how many a month. You can pause anytime, and your name stays hidden unless you accept. You also get your own link for people who already ask you for referrals.
 Please follow your company's referral policy. Totally fine to say no.
 ```
 
@@ -129,7 +130,7 @@ Please follow your company's referral policy. If it helps, I can send a calendar
 - *Will seekers see who I am?* "Not unless you accept. Until then they see 'Someone at {Company}' and 'Verified via work email'. After you accept, they see your account name. For an account made with the work-email code, that is the part of your work email before the @."
 - *The code didn't arrive.* "Check spam or quarantine; some company filters hold new senders. You can ask for a new code after 30 seconds."
 - *Why does my queue show 'Referral credits'?* "Ignore it. Referrers never spend credits, and accepting an ask costs you nothing."
-- *Will my company know?* "SkipWait doesn't tell your company. Its public page shows only whether someone there is open to referrals, never who or how many. The code, and new-ask emails if you keep them on, go to your work inbox. You can turn new-ask emails off in setup."
+- *Will my company know?* "SkipWait doesn't tell your company. Its public page never shows who is verified there or how many. The code, and new-ask emails if you keep them on, go to your work inbox. You can turn new-ask emails off in setup."
 - *How much time?* "You set how many asks a month, from 1 to 15. The default is 3. The app estimates about 5 minutes an ask."
 - *Why a work email?* "The code proves you can receive email at {Company} today. It doesn't prove your role, and it doesn't mean {Company} endorses SkipWait."
 - *What if I leave {Company}?* "Pass on your open asks, then ask through skipwait.me/help to remove your badge."
@@ -139,7 +140,7 @@ Please follow your company's referral policy. If it helps, I can send a calendar
 - That referrals are free (D-043 move 3, D-063).
 - That their record follows them to the next job. D-057 is decided, not built.
 - That SkipWait stores only a fingerprint of their email. Work-email sign-in keeps the address as the account login (`server/_core/otpLogin.ts`).
-- That passing gives the seeker their credit back. The decline screen on an opened ask says so, but today the credit stays spent while the ask goes on to colleagues (D-035 is not built).
+- That passing gives the seeker their credit back. A pass keeps the credit spent while the ask goes on to colleagues (D-147; D-035 is rejected).
 - That {Company} is a partner of SkipWait or endorses it.
 
 ## 4. Two vouch questions
@@ -161,7 +162,7 @@ Decision rule: if 4 of the first 5 answer 1B and 2B (their form doesn't ask, and
 
 ## 5. Tracker (aggregate fields only)
 
-- **Fill it in a private copy (a private sheet or note), never in this file.** This repo is public. Per-company numbers here could point to one referrer or alert an employer. The public directory deliberately shows only "open" or not, never counts (`shared/companies.ts`). D-043 rejects showing employers per-company demand and publishing per-company norms.
+- **Fill it in a private copy (a private sheet or note), never in this file.** This repo is public. Per-company numbers here could point to one referrer or alert an employer. The public directory shows no availability status and no counts (D-176). D-043 rejects showing employers per-company demand and publishing per-company norms.
 - Counts only, even in private. No seeker names or details, ever.
 - Referrer names, numbers and emails stay in your own phone, WhatsApp or private sheet, never in this repo.
 - Update it once a day. Every Monday, record messages sent, outside referrers verified and available referrers at the focus company (D-064). For a review, paste the totals into a session with an agent.
@@ -234,7 +235,7 @@ If an onboarded referrer turns out to sell referrals: suspend them at https://sk
 | What | Where | Notes |
 |---|---|---|
 | Sign-in and verification by work-email code (D-030, D-049) | https://skipwait.me/sign-in?intent=referrer | Work email only. Six-digit code, valid 10 minutes, subject "Your skipwait.me verification code". Resend after 30 seconds; 5 wrong codes lock it for 15 minutes. Lands on setup. Members already signed in verify at https://skipwait.me/verify. |
-| Company shows as open | https://skipwait.me/explore | Within a minute of verifying. Verified, not paused, not suspended and under capacity (3 by default) makes the company show as open. |
+| Asks start reaching them | https://skipwait.me/explore | Within a minute of verifying. Verified, not paused, not suspended and under capacity (3 by default) routes the company's asks to them. The /explore list shows no availability label (D-176); the company page still does (known gap below). |
 | Setup | https://skipwait.me/referrer-setup | Areas and levels, asks a month (1–15), new-ask emails on or off. |
 | Home and pause | https://skipwait.me/referrer-home | "Pause new asks" stops new review emails, and a paused referrer stops counting as available. It does not switch off the personal link: use the link card's "Pause link" for that. |
 | Asks | https://skipwait.me/queue, https://skipwait.me/inbox | Accept, or "Pass privately". The seeker gets a short note, never the referrer's name, and the ask stays open to colleagues (D-021). On a personal-link ask the seeker knows whose link they used. |
@@ -244,10 +245,9 @@ If an onboarded referrer turns out to sell referrals: suspend them at https://sk
 | Help | https://skipwait.me/help | Leaving the company: pass on open asks, then ask here to remove the badge. |
 
 Known gaps (not fixed by this kit; tell an agent):
-- **D-050 not live yet.** Until queue row P0-personal-link-asks ships, an ask sent through a personal link never expires and the seeker cannot withdraw it; it waits for that one referrer. A pass frees it. Until then, don't suggest the LinkedIn-bio step, and ask every referrer to pass on link asks they won't take.
-- **Pausing leaves the personal link on.** A paused referrer's link still creates asks for them, and they get no review email while paused. Until D-050 ships, those asks can't expire or be withdrawn. Anyone who pauses should also tap "Pause link".
+- **Pausing leaves the personal link on.** A paused referrer's link still creates asks for them, and they get no review email while paused. Anyone who pauses should also tap "Pause link".
+- **The company page still shows availability.** https://skipwait.me/explore/{slug} still reads "People open to referral requests" or "Not open yet" (`client/src/pages/ExploreCompany.tsx`). D-176 removes availability framing; #609 removed it from the /explore list only.
 - **The link card hides behind waiting asks.** On https://skipwait.me/queue the card shows only when the queue is empty (`client/src/pages/MyCompanyInbox.tsx`).
-- **The decline screen overstates refunds.** An opened ask's decline step says the seeker's credit is returned (`client/src/components/referrer/CandidatePreviewCard.tsx`). It isn't today (D-035).
 - **Referrers see a "Referral credits" meter** on an empty /queue (`client/src/components/ReferrerCreditsCard.tsx`), though referrers never spend credits (D-055).
 - **What asking costs.** The truth pass shipped (D-063, Oct 18): every product surface says "3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money." (worded by D-135, Oct 21) Use the same words in outreach; the legal pages (Terms, Refund Policy) still carry older lines until the owner rewords them.
 - **Link previews are generic.** Every SkipWait link, including personal links, unfurls on WhatsApp as the general seeker card (D-028, queued).
@@ -260,8 +260,8 @@ Known gaps (not fixed by this kit; tell an agent):
 - **Follow-up:** the single nudge after 3 days. Not counted toward the 50.
 - **Reply:** any answer, including no. **Yes:** says they will verify.
 - **Verified:** the panel's "Verified" for shortlist companies (https://skipwait.me/admin/flow-health, "Verified coverage by company"). SkipWait's own domain and the admin mailbox domain never count.
-- **Available now:** the panel's "Available now": verified, not paused, not suspended, under capacity. The same rule decides "open" on /explore.
-- **Open outside company:** a directory company other than SkipWait with at least 1 available referrer. Public check: the companies marked `"openToReferrals":true` at https://skipwait.me/api/companies, not counting SkipWait. Oct 18: 0.
+- **Available now:** the panel's "Available now": verified, not paused, not suspended, under capacity. The same rule routes an ask to a referrer. The /explore list shows no availability (D-176); the company page still does (known gap above).
+- **Open outside company:** a directory company other than SkipWait with at least 1 available referrer. Check: the companies marked `"openToReferrals":true` at https://skipwait.me/api/companies, not counting SkipWait. D-176 makes availability routing only, never a public label. Oct 18: 0.
 - **3×3 bar:** at least 3 outside companies with at least 3 available referrers each. The panel prints "Companies at or above 3 available referrers" under the coverage table; leave SkipWait out if it is one of them.
 - **Focus company:** the one company you aim to bring to 3 or more available outside verified referrers, with one outside ask decided within 72 hours, by day 30 (D-064). Name it only in your private copy.
 - **Active outside referrers:** the panel's "External referrers active, 7 days".
@@ -276,14 +276,14 @@ Known gaps (not fixed by this kit; tell an agent):
 4. Verified but not available? Ask the person whether they paused or their capacity is full.
 5. "My friends would have to pay" counted 2 or more times? The owner rules on free link asks (D-043 move 2).
 6. Anyone found selling referrals? Suspend, stop public-offer outreach (section 6).
-7. Is D-050 live? If yes, start suggesting the LinkedIn-bio step.
+7. D-050 is live, so suggest the LinkedIn-bio step.
 8. Re-rank the shortlist with the latest demand bands.
 
 **Day 30, Wed Nov 18**
 1. Does the focus company have 3 or more available outside verified referrers (D-064)? Name it in your private copy, not in this repo. The 3×3 bar is due Fri Dec 18.
 2. No company with 2 or more available outside referrers? Narrow to one company for the next 30 days, and the owner revisits the launch-door row (D-016).
 3. Did 10% or more of the first 100 messages end in a verified referrer? Was any outside ask decided within 72 hours? Ask your referrers: the panel's median mixes in SkipWait's own asks.
-4. Personal link: fewer than 3 of 25 pitched referrers shared it, or fewer than 5 link asks in total? Keep the link as a feature only (D-043 move 2). If you held back the LinkedIn-bio step because D-050 shipped late, say so: the test was not fair.
+4. Personal link: fewer than 3 of 25 pitched referrers shared it, or fewer than 5 link asks in total? Keep the link as a feature only (D-043 move 2).
 5. Vouch: did 4 of the first 5 answer 1B and 2B? Drop the vouch step (section 4).
 6. Launch doors: have people at Wipro, TCS, Merkle and Go Neutrinos verified? If not, the owner decides whether the landing row stays (D-016).
 7. Write the before and after into the D-015 row of `docs/DECISIONS.md`: open outside companies 0 on Oct 18, and the Nov 18 number.

@@ -1,3 +1,5 @@
+> Historical record (2026-08-21). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+
 # Slack and Linear Private Triage Audit
 
 ## Scope and product boundary

@@ -1,3 +1,5 @@
+> Historical record (2026-08-20). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+
 # How to Transfer skipwait.me to VibeCodingApp
 
 ## Recommended approach

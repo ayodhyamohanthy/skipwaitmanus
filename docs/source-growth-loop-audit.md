@@ -1,4 +1,4 @@
-> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-055).
+> Historical record (2026-08-21). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
 
 # skipwait.me Source-App Growth Loop Audit
 

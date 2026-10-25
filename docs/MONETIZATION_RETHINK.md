@@ -1,3 +1,5 @@
+> Historical record (Oct 16 2026). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+
 # Monetization rethink — proposals awaiting the owner (Oct 16 2026)
 
 **Status: PROPOSALS, not decisions.** The owner asked on Oct 16 to "rethink and push to main the 10/10 monetizable for us, 100x value for users decisions". Each proposal below becomes binding only when the owner approves it. It is then recorded in `docs/DECISIONS.md` as the next free D-number (D-044 is taken by the #293 ruling). Until then agents must not build from this file (D-010). Read with D-034–D-043 and `docs/GROWTH_STRATEGY.md`.

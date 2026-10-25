@@ -1,3 +1,5 @@
+> Historical record (2026-09-04). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+
 # Handoff — Job seeker & referrer flows (final state 2026-09-04)
 
 ## The real root cause of "referrer flow not completed" (now fixed)

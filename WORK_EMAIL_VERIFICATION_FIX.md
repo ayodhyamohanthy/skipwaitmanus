@@ -1,4 +1,4 @@
-> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-030, D-057).
+> Historical record (Aug 14 2026). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
 
 # Referrer Work-Email Verification Fix
 

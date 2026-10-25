@@ -1,6 +1,6 @@
 # Referrer Fast-Track Links
 
-> RENAMED (D-128, Oct 21 2026): the user-facing feature is "Your referral link" - "Fast Track" is the seeker plan. Internal identifiers, the /fast/:linkCode route, aliases and the table name below are unchanged and historical.
+User-facing name: **"Your referral link"** (D-128). "Fast-Track Link" below is the internal name only; the /fast/:linkCode route, aliases, table and identifiers keep it.
 
 ## Purpose
 
@@ -22,7 +22,7 @@ The recipient-facing page uses factual copy: **“Request a private referral at 
 | Candidate privacy | Resumes and notes remain private. The Referrer sees the role and note in the established private preview, and the seeker's name and resume only after accepting the request (D-019(e)). |
 | Candidate messaging | Conversation remains unavailable until the Referrer approves the request. |
 | Abuse protection | Only one active link exists per verified Referrer; inactive links do not route requests. Link retrieval and creation are idempotent. A candidate never receives a public position, capacity number, ranking, or scarcity signal. |
-| Credits | A Fast-Track request follows the established server-side Job Seeker credit policy. No browser callback can grant or deduct credit. Until the link owner claims, accepts or passes, the request counts as unclaimed: the seeker can withdraw it with the credit back, and the unclaimed 7-day expiry returns the credit (D-050; code pending). |
+| Credits | A Fast-Track request follows the established server-side Job Seeker credit policy. No browser callback can grant or deduct credit. Until the link owner claims, accepts or passes, the request counts as unclaimed: the seeker can withdraw it with the credit back (D-050). Asks do not expire for launch (D-174). Runtime: the unclaimed 7-day expiry still runs and returns the credit until row `D-174-expiry-clock-removal` lands. |
 | Auditability | Creation, deactivation, public resolution, and request routing log privacy-safe operational metadata without copying resumes, candidate messages, or Referrer identity into public responses. |
 
 ## Routes
@@ -50,6 +50,6 @@ Every active Fast-Track Link also receives one **generated pseudonymous alias**.
 
 ## Mobile interaction model
 
-The Referrer controls the feature from a single card in the verified company inbox: **“Your Fast-Track Link”**, a company-labelled opaque URL, one **Copy link** action, and an optional **Pause link** control. The link card is available even when there are no inbound requests. The recipient page uses one primary action: **“Start private request.”**
+The Referrer controls the feature from a single card in the verified company inbox: **“Your referral link”** (D-128), a company-labelled opaque URL, one **Copy link** action, and an optional **Pause link** control. The link card is available even when there are no inbound requests. The recipient page uses one primary action: **“Start private request.”**
 
 No public candidate list, queue rank, request counter, social proof, streak, leaderboard, bulk contact import, or automatic posting is part of this feature.

@@ -1,3 +1,5 @@
+> Historical record (2026-09-03). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+
 # Bug Inventory & Fix Log — 2026-09-03
 
 Method: adversarial review by an independent reviewer across 7 scan areas

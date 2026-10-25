@@ -1,3 +1,5 @@
+> Historical record (2026-09-03). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+
 # Changelog — Bug-fix release 2026-09-03
 
 ## Fixed
