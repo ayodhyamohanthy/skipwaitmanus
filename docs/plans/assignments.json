@@ -61,13 +61,13 @@
    "tier": 2,
    "lane": "deps",
    "branch": "agent/queue/sec-deps-oct24",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
    "owns": [
     "package.json",
     "pnpm-lock.yaml"
    ],
-   "note": "D-191: pnpm audit --prod on main 02a8a028 - dompurify 3.4.16 (critical+high, via mermaid), zod 4.1.12, body-parser 1.20.6 (override), undici 7.29.1 (high, DoS). Version bumps and lockfile only; stop and report if a bump breaks a type or test."
+   "note": "D-191: pnpm audit --prod on main 02a8a028 - dompurify 3.4.16 (critical+high, via mermaid), zod 4.1.12, body-parser 1.20.6 (override), undici 7.29.1 (high, DoS). Version bumps and lockfile only; stop and report if a bump breaks a type or test. Done - 1e97d6ea (#663): pnpm audit --prod reports no known vulnerabilities; zod 4.6.7, undici 7.30.1, body-parser 1.20.9, dompurify 3.4.17."
   },
   {
    "id": "FIX-device-signin",
