@@ -954,14 +954,14 @@
       "tier": 1,
       "lane": "money-core",
       "branch": "agent/queue/d132-audit",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "D-048-p3-live-review",
         "TASK13-pinned-work",
         "D-065-C",
         "POSTMERGE-oct22-fixes"
       ],
-      "note": "D-146 (founder, Oct 23): the D-132 audit is next, so it no longer waits on D-035, which D-147 holds for the founder. D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. First-pass findings are in docs/plans/D-132-audit-findings.md (#481) and items 2 (the stored level and cost, migration 0106, #482) and 6 (the money check against the stored cost, #487) are on main; the remaining items land one pull request each. It runs after the live review (which moved the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends). The D-048 rows that redesign the compose screens and the seeker conversation (D-048-p3-live-review-find, D-048-p3-live-review-conversation) wait for it, because it edits their cost lines first. D-197 (Oct 24, CEO): these owns are declared on main, and the audit branch carries no edit of its own row (only Claude Code changes rows). The audit waits for POSTMERGE-oct22-fixes (#635; both edit server/db.ts) and merges main once that lands; D-132-audit-item5-correction and D-099-bonus-pages wait for the audit. Oct 25 (#644): ASK_LEVEL_COST also stays off until ASSIST-approval-cost lands, so an approved assistant ask is never charged more than the owner saw.",
+      "note": "D-146 (founder, Oct 23): the D-132 audit is next, so it no longer waits on D-035, which D-147 holds for the founder. D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. First-pass findings are in docs/plans/D-132-audit-findings.md (#481) and items 2 (the stored level and cost, migration 0106, #482) and 6 (the money check against the stored cost, #487) are on main; the remaining items land one pull request each. It runs after the live review (which moved the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends). The D-048 rows that redesign the compose screens and the seeker conversation (D-048-p3-live-review-find, D-048-p3-live-review-conversation) wait for it, because it edits their cost lines first. D-197 (Oct 24, CEO): these owns are declared on main, and the audit branch carries no edit of its own row (only Claude Code changes rows). The audit waits for POSTMERGE-oct22-fixes (#635; both edit server/db.ts) and merges main once that lands; D-132-audit-item5-correction and D-099-bonus-pages wait for the audit. Oct 25 (#644): ASK_LEVEL_COST also stays off until ASSIST-approval-cost lands, so an approved assistant ask is never charged more than the owner saw. Oct 25 coordinator correction: implementation is PR #547 (branch agent/queue/d132-audit, head 32811bb7, all 11 items, CI all-green incl. typecheck since owns are declared on main per D-197) at zero reviews; review branch #556. Row was stale-todo. Item-3 remainder stays parked on held #416 (useAskQuote/findModel overlap); its other blocker #529 has merged.",
       "owns": [
         "client/src/hooks/useAskQuote.ts",
         "client/src/pages/Ask.tsx",
@@ -1696,7 +1696,7 @@
         "client/src/pages/SeekerAgents.tsx",
         "client/src/pages/seekerAgents.test.tsx"
       ],
-      "note": "D-167 §6.5: had no row. Behind SKIPPIE_AGENT_ENABLED (off); every limit, expiry, revoke and pause-all control stays visible (D-141). Assignment (Main, Oct 23): built by the assistants lane (AYO-9) together with D-048-p3-assistants; one PR (#563, agent/queue/d048-assistants) carries both rows with per-row review boundaries in the PR body."
+      "note": "D-167 §6.5: had no row. Behind SKIPPIE_AGENT_ENABLED (off); every limit, expiry, revoke and pause-all control stays visible (D-141). Assignment (Main, Oct 23): built by the assistants lane (AYO-9) together with D-048-p3-assistants; one PR (#563, agent/queue/d048-assistants) carries both rows with per-row review boundaries in the PR body. Oct 25 designer coverage resolution: reconcile into open #563 (GoalSeekerAgents modifies SeekerAgents.tsx under its assistants lane). Do not start a duplicate lane; this row closes when #563 lands."
     },
     {
       "id": "D-048-P-referrer",
