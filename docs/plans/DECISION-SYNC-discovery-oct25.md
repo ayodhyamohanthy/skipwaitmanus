@@ -15,10 +15,12 @@ Company discovery is **automatic as the user types**, the way LinkedIn's company
 ## Requirements for the build row(s)
 
 1. **Typeahead**: as the user types a company name, matching companies appear with name + logo + domain, ranked; selecting one resolves to a canonical company identity keyed by its official domain (consistent with `workEmailDomain` verification for referrers).
-2. **Any company**: typing a company we have never seen must still resolve it when a usable source knows it; when no source knows it, the user can continue with the name they typed (a `companySuggestions`-style record), not a dead end.
+2. **Any company**: typing a company we have never seen must still resolve it when a usable source knows it. The typed-name fallback is a last resort, not the discovery mechanism: the build must chain the free sources (Wikidata, then GLEIF, then Wikipedia ranking) and only fall back to a `companySuggestions`-style typed-name record when every source misses. "We only found it because the user typed it" is not discovery and must not be presented as such.
 3. **Free sources only** (founder money rule): no paid provider. Grounded candidates as of Oct 25 2026:
    - **Wikidata** (primary): free, CC0. Entity search via `https://www.wikidata.org/w/api.php` (`wbsearchentities`) and the SPARQL endpoint `https://query.wikidata.org/sparql`; carries official website, logo and ticker for large companies. Respect its rate limits and User-Agent policy.
+   - **GLEIF** (long-tail supplement): the free, keyless LEI registry API `https://api.gleif.org/api/v1/lei-records` (verified live Oct 25: legal-name filter returns real entities, e.g. HDFC Bank). Covers registered legal entities worldwide, including many private companies Wikidata lacks - this is the main answer for the long tail.
    - **Wikipedia OpenSearch** as a fallback for spelling/ranking.
+   - Optional jurisdiction registries for verification, not primary search: SEC EDGAR company_tickers (US-listed, free), Companies House (UK, free key).
    - Clearbit Autocomplete is **not usable**: Clearbit's own FAQ (April 2025) marks it a legacy, unsupported, existing-customers-only product.
    - Commercial freemium lookups (logo.dev, Clearout, Apify actors) exist but are not the default; any paid tier is out of scope.
 4. **Identity disambiguation**: prefer the official-website domain from the source; when sources disagree or confidence is low, show the user the candidate (name + domain) to confirm, never silently guess a domain. No coverage promise the sources cannot keep: the UI must not claim "every company" - it claims "search any company".
