@@ -13,11 +13,11 @@ Owner question and correction, iMessage Oct 25 ~17:30 IST (phonemsg-01M5SEXKKF8Q
 
 - **Level-based pricing**: frozen in instructions (D-110, D-132 "Now freeze", D-135 sync), code merged behind flags OFF (#381, #410, #415), go-live gated on D-132-audit. NOT live: /api/plans/catalog serves the previous family with all plan terms unavailable.
 - **Seeker plans, Entry/Mid/Senior**: FROZEN - D-152 owner verbatim "Entry level Referrers, Mid level Referrers, Senior level Referrers"; contents from D-132/D-148 behind flag.
-- **Referrer plans, Entry/Mid/Senior level Candidates**: SHAPE SETTLED by D-196 (Oct 24, owner verbatim): basic referring stays free; an opt-in plan's benefit is level-matched FIRST ACCESS to referral requests, then the free pool; the benefit is shown on the plan card. OPEN only: the plans' prices, contents and the first-access window length. Today's message confirms the plans exist on both sides; it supplies no prices.
+- **Referrer plans, Entry/Mid/Senior level Candidates**: SHAPE SETTLED by D-196 (Oct 24). Owner verbatim, Oct 24 12:56-12:57 IST: "Basic referring is free. If they take a plan they get priority referrals first then to the free pool guys" (phonemsg-01M5PCTYNS691PYJJ4DGJRG4QY, 12:56:07); "If they take senior plan they get senior referrals first over free" (phonemsg-01M5PCVJPYDBTH963Q4T1NVF8Q, 12:56:28); "This should be shown in plan / Feature" (phonemsg-01M5PCWF2FH1XBBZ6C6WJA2CRY, 12:56:57/12:57:00). Settled: basic referring stays free; the opt-in plan benefit is level-matched FIRST ACCESS to referral requests, then the free pool; the benefit shows on the plan card; copy promises first access, never a guaranteed referral. D-156's "shape OPEN" reading is SUPERSEDED by D-196 and must stop being cited as open. Genuinely unresolved, owner-only: the plan PRICES and the first-access WINDOW LENGTH. Today's message confirms the plans exist on both sides; it supplies neither.
 
 ## Open items routed to their lanes
 
-- Referrer-plan prices / contents / first-access window: owner's call (D-196's open items). Nothing may be built or priced until he supplies them.
+- Referrer-plan PRICES and first-access WINDOW LENGTH: owner's call (D-196's only open items; the benefit/shape is settled). Nothing may be built, priced or enabled until he supplies them.
 - Free-allowance implementation reconciliation (3 requests any level vs level-denominated grant): money-core, with D-132-audit.
 - Buyer-facing terminology ("referrals", never "credits"): D-173/D-180 sweep lane, PR #598.
 
