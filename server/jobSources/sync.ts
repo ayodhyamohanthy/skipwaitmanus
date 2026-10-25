@@ -106,7 +106,7 @@ export function createJobCatalogSync(store?: CatalogSyncStore) {
   };
 }
 
-async function createDrizzleCatalogSyncStore(): Promise<CatalogSyncStore> {
+export async function createDrizzleCatalogSyncStore(): Promise<CatalogSyncStore> {
   const db = await getDb();
   return {
     async loadSources() {

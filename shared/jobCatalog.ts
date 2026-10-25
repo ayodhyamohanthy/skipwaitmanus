@@ -77,6 +77,7 @@ export type CatalogFacets = z.infer<typeof catalogFacetsSchema>;
 export const companyJobsResponseSchema = z
   .object({
     jobs: z.array(catalogJobSchema).max(JOB_CATALOG_PAGE_SIZE),
+    nextCursor: z.string().nullable().optional(),
     facets: catalogFacetsSchema,
     source: companyJobSourceSchema.nullable(),
     syncedAt: z.string().datetime().nullable(),
