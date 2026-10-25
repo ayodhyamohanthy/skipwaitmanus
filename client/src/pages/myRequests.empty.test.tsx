@@ -35,7 +35,7 @@ function stubRequests(requests: unknown[]) {
 beforeEach(() => stubRequests([]));
 afterEach(() => { cleanup(); go.mockClear(); vi.unstubAllGlobals(); });
 
-describe("My asks empty state", () => {
+describe("My referrals empty state", () => {
   it("draws one honest zero state with a real next step, never a fabricated preview", async () => {
     renderPage();
     await waitFor(() => expect(screen.getByTestId("goal-empty-state")).toBeTruthy());

@@ -41,7 +41,7 @@ function stubMine(payload: Record<string, unknown>) {
 
 const oneRequest = { id: 12, title: "Product Designer", targetRoleUrl: null, companyDomain: "acme.com", companyName: null, companyInitials: null, status: "pending", referrerId: 77, queueStatus: "available_for_review", referrerMessage: null, unreadMessageCount: 0, createdAt: "2026-09-01T09:41:00.000Z", updatedAt: "2026-09-02T14:05:00.000Z", attachmentCount: 1 };
 
-describe("My asks sample empty state", () => {
+describe("My referrals sample empty state", () => {
   it("renders marked, inert sample rows for a first-timer with an empty list - and real counts stay zero", async () => {
     stubMine({ requests: [], hasEverAsked: false, slots: SLOTS });
     renderPage();

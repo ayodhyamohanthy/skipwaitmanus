@@ -77,7 +77,7 @@ describe("Skippy page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send it" }));
     await screen.findByText("Your ask is in.");
     expect(created).toEqual([{ kind: "confirm_send", send: true }]);
-    await screen.findByText("Track it under My asks");
+    await screen.findByText("Track it under My referrals");
   });
 
   it("surfaces a server error instead of failing silently", async () => {

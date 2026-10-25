@@ -153,7 +153,7 @@ export default function MyRequests() {
   const loading = isSignedIn && (requestsQuery.isPending || (requestsQuery.isError && requestsQuery.isFetching));
   const { showSkeleton, isSlow } = useSlowLoad(loading);
 
-  const shell = (body: ReactNode) => <GoalAppShell active="asks" pageTitle="My asks">{body}</GoalAppShell>;
+  const shell = (body: ReactNode) => <GoalAppShell active="asks" pageTitle="My referrals">{body}</GoalAppShell>;
 
   if (!isLoaded) {
     return shell(

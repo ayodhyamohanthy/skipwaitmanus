@@ -51,7 +51,7 @@ function stub(requests: unknown[], slotBody: unknown, credits: unknown = { summa
 
 afterEach(() => { cleanup(); go.mockClear(); auth.openSignIn.mockClear(); vi.unstubAllGlobals(); auth.isLoaded = true; auth.isSignedIn = true; access.status = "unverified"; });
 
-describe("My asks on the goal shell", () => {
+describe("My referrals on the goal shell", () => {
   it("keeps closed asks out of the next-step route and offers discovery instead", async () => {
     stub([{ ...openAsk(42), status: "closed" }], slots(0));
     renderPage();
@@ -110,8 +110,8 @@ describe("My asks on the goal shell", () => {
     await waitFor(() => expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toBe("4 credits"));
     const pill = screen.getAllByTestId("goal-credits-pill");
     expect(pill[0].getAttribute("href")).toBe("/plans");
-    // My asks is the current destination; the avatar identifies the account.
-    expect(screen.getAllByRole("link", { name: "My asks" }).some(link => link.getAttribute("aria-current") === "page")).toBe(true);
+    // My referrals is the current destination; the avatar identifies the account.
+    expect(screen.getAllByRole("link", { name: "My referrals" }).some(link => link.getAttribute("aria-current") === "page")).toBe(true);
     expect(screen.getAllByTestId("goal-avatar")[0].textContent).toBe("AB");
     // The list comes from one endpoint; the balance from the credits summary. Nothing else is fetched.
     const urls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.map(([url]) => String(url));
