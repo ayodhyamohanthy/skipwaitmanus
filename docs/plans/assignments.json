@@ -1413,7 +1413,7 @@
     "client/src/pages/onboardingGoal.test.tsx",
     "design/goal-ui/captures/onboarding/**"
    ],
-   "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+   "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. D-208 (2026-10-25): PR #571 is green but remains draft because the main-relative scope check finds 14 inherited inbox/start violations. Keep todo; do not widen owns. After the parent stack is resolved and the branch is restacked/split to only these paths, rerun scope-check and required CI on the exact head. Tier 2 follows D-200: green required CI and branch protection; no extra Tier 1 review."
   },
   {
    "row": "D-048",
