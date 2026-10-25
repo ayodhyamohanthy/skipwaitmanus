@@ -2033,15 +2033,90 @@
    "id": "D-048-P-public",
    "title": "D-048 phase 3 public lane packet: its cluster rows from the split, with owned paths",
    "row": "D-048",
-   "packet": null,
+   "packet": "docs/plans/D-048-public.md",
    "tier": 3,
    "lane": "d048-packets",
    "branch": "agent/queue/d048-p-public",
-   "status": "architect",
+   "status": "done",
    "dependsOn": [
     "D-048-phase-3"
    ],
-   "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+   "note": "Packet-only (D-134): packet prepared at docs/plans/D-048-public.md (AYO-11 design lane); the child rows below were added exactly from the packet and the split. Coordinator landing; the empty claim marker branch agent/architect/d048-p-public (Claude Code · e11c) is preserved.",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-policy",
+   "title": "W7 policy group through PolicyPageShell keyed by route (never /pricing); legal text untouched, identical both flags",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-public.md",
+   "tier": 2,
+   "lane": "d048-policy",
+   "branch": "agent/queue/d048-p3-policy",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-static-frame",
+    "D-048-P-public",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/components/PolicyPageShell.tsx",
+    "client/src/pages/GuidePage.tsx",
+    "client/src/pages/goal/policy/**",
+    "client/src/pages/goal/policy/policyText.goal.test.tsx",
+    "design/goal-ui/captures/policy/**"
+   ],
+   "note": "Implementation row from the D-048-public.md packet (AYO-11 design lane). flag: goalSurfaceOn('policy') (prerendered, fetch-free).",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-system",
+   "title": "W7 404, /offline, /emails, /app-states",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-public.md",
+   "tier": 2,
+   "lane": "d048-system",
+   "branch": "agent/queue/d048-p3-system",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-static-frame",
+    "D-048-F-primitives",
+    "D-048-P-public",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/NotFound.tsx",
+    "client/src/pages/Offline.tsx",
+    "client/src/pages/Emails.tsx",
+    "client/src/pages/AppStates.tsx",
+    "client/src/pages/goal/system/**",
+    "design/goal-ui/captures/system/**"
+   ],
+   "note": "Implementation row from the D-048-public.md packet (AYO-11 design lane). flag: goalSurfaceOn('system'); #324 Emails.tsx change ported at release via drift check.",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-links",
+   "title": "W7 /fast/:linkCode, /refer/:companySlug/:vanityAlias, /share-card/:token",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-public.md",
+   "tier": 2,
+   "lane": "d048-links",
+   "branch": "agent/queue/d048-p3-links",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-static-frame",
+    "D-048-F-primitives",
+    "D-048-P-public",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/FastTrackLink.tsx",
+    "client/src/pages/VanityFastTrackLink.tsx",
+    "client/src/pages/ShareCard.tsx",
+    "client/src/pages/goal/links/**",
+    "design/goal-ui/captures/links/**"
+   ],
+   "note": "Implementation row from the D-048-public.md packet (AYO-11 design lane). flag: goalSurfaceOn('links'); intent survives sign-in (D-153).",
    "epic": "D-048-p3"
   },
   {
