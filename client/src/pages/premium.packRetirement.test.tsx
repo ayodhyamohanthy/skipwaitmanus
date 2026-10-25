@@ -44,6 +44,8 @@ describe("/premium while pack sales are paused (Oct 25 2026 freeze; D-036 retire
     expect(await screen.findByText("Credit packs are paused.")).toBeTruthy();
     expect(screen.queryByText("Credit packs replace single credits.")).toBeNull();
     expect(screen.queryByRole("spinbutton")).toBeNull();
+    // No payment CTA on the exact legacy deep link /premium?role=job_seeker (QA Oct 25).
+    expect(screen.queryByText(/Sign in to pay|Continue to pay|Pay ₹|Pay \$/i)).toBeNull();
     expect(fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === "POST")).toEqual([]);
   });
 
