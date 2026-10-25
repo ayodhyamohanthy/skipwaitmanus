@@ -1,8 +1,9 @@
 // Plans v2 ("Choose your referrers.") - FROZEN banded model (owner freeze
 // Oct 25, phonemsg-01M5SNVZEY1P8K169J48T2HGTJ; replacement push
-// phonemsg-01M5SNY88BXE470FEN4Z0K7KWF). Behind VITE_PLAN_FAMILY_V2 (OFF
-// everywhere): NOT live until the payment readiness bars in
-// shared/planFamily.ts clear (USD rail blocked, INR not transaction-verified).
+// phonemsg-01M5SNY88BXE470FEN4Z0K7KWF). Published READ-ONLY by default
+// (client/src/lib/planFamilyFlag.ts): prices display, but no checkout exists
+// here yet - billing switch-on waits for the payment readiness bars in
+// shared/planFamily.ts (USD rail blocked, INR not transaction-verified).
 import { useEffect, useRef, useState } from "react";
 import {
   BAND_LEVELS,
@@ -87,7 +88,7 @@ function PlanCard({ planId, book }: { planId: PlanFamilyId; book: PlanPriceBook 
         <button
           type="button"
           data-g-primary={copy.primary || undefined}
-          onClick={() => setNote("Checkout arrives with the payment switch-on (flag OFF - pricing frozen, billing not enabled yet).")}
+          onClick={() => setNote("Checkout is not switched on yet. These are the frozen founding prices; billing starts soon.")}
           className={copy.primary
             ? "g-hit w-full rounded-[10px] bg-g-ink px-5 text-g-small font-semibold text-g-ink-inverse hover:bg-g-primary-hover"
             : "g-hit w-full rounded-[10px] border border-g-hairline bg-g-surface px-5 text-g-small font-semibold"}

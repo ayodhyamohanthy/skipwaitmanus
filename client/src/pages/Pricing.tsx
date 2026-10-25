@@ -2,13 +2,7 @@ import { Link } from "wouter";
 import { ArrowRight, Tag } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { PolicyPageShell, PolicySection } from "@/components/PolicyPageShell";
-import { ASK_COST_SENTENCE, CREDIT_RULE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
-import { firstPackClaim } from "@shared/planCatalog";
-
-// POSTMERGE-oct22 #534: the first-pack claim comes from the catalog the server sells, never from copy here.
-const FIRST_PACK_INR = firstPackClaim("INR") ?? "our smallest pack";
-const FIRST_PACK_USD = firstPackClaim("USD") ?? "our smallest pack";
-
+import { ASK_COST_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 /** /pricing — public price list. Mirrors the checkout prices; no sign-in. */
 export default function Pricing() {
   return <PolicyPageShell
@@ -23,10 +17,10 @@ export default function Pricing() {
     <PolicySection number="01" title="Free">
       <p><strong>{ASK_COST_SENTENCE}</strong> The free credits reset each month. {REFERRER_MONEY_SENTENCE}</p>
     </PolicySection>
-    <PolicySection number="02" title="Extra credits (one-time)">
+    <PolicySection number="02" title="Plans (frozen October 25, 2026)">
       <ul>
-        <li>Credits are sold in one-time packs: from <strong>{FIRST_PACK_INR}</strong> (India) or <strong>{FIRST_PACK_USD}</strong> (rest of the world). Larger packs cost less per credit.</li>
-        <li>Purchased credits never expire. {CREDIT_RULE}</li>
+        <li>Three plans, each a band of referrer levels: Early to Mid, Mid to Senior, and Senior to Executive. Every plan includes monthly referrals inside its band; extra referrals are priced per level with volume discounts.</li>
+        <li>The full banded price list is on the plans page. Checkout is being switched on; the old credit packs are paused, and credits already bought still work.</li>
       </ul>
     </PolicySection>
     <PolicySection number="03" title="Payment">
