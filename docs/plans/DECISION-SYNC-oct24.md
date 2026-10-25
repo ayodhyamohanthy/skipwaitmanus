@@ -58,4 +58,4 @@
 Report it with `--report blocked`, naming the IDs and files.
 
 ## Status
-- `DECISION-SYNC-oct24`: registered by #637; waits for `REGISTER-oct24`.
+- `DECISION-SYNC-oct24`: `REGISTER-oct24` (#637) is on `main`; picker takeover by OpenAI · 4e51 on 2026-10-25. The task branch `agent/queue/decision-sync-oct24` includes current `origin/main` `216066dd` (merge commit `299462d0`); the docs sync audit is in progress.
