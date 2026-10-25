@@ -183,8 +183,8 @@
    "packet": "docs/plans/LAUNCH-oct25.md",
    "tier": 2,
    "lane": "launch-ci",
-   "branch": "agent/queue/launch-marker-ci-skip",
-   "status": "todo",
+    "branch": "agent/queue/launch-marker-ci-skip",
+    "status": "done",
    "dependsOn": [],
    "owns": [
     ".github/workflows/ci.yml",
