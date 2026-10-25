@@ -6,26 +6,6 @@
  "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks, except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
  "tasks": [
   {
-   "id": "FIX-device-signin",
-   "title": "Sign-in on a returning device: prefill the last email, ready the emailed code for autofill (owner report, Oct 25)",
-   "row": "D-019",
-   "packet": "docs/plans/FIX-device-signin.md",
-   "tier": 1,
-   "lane": "auth-device",
-   "branch": "agent/queue/fix-device-signin",
-   "status": "todo",
-   "dependsOn": [],
-   "note": "Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168); next is one independent review by a model other than Claude (D-200), then landing on green required CI. Face ID, passkeys and Sign in with Apple are not in this row: they change the login rule and wait for the owner.",
-   "owns": [
-    "client/src/lib/rememberedSignInEmail.ts",
-    "client/src/components/SeekerSignIn.tsx",
-    "client/src/components/ReferrerOtpSignIn.tsx",
-    "client/src/components/deviceSignIn.test.tsx",
-    "server/workEmailOtp.ts",
-    "server/workEmailOtp.test.ts"
-   ]
-  },
-  {
    "id": "P0-ask-link-signin",
    "title": "P0: a personal-link ask from a signed-out seeker keeps its referrer across sign-in on /ask (live since #431)",
    "row": "LIVE-OCT22",
@@ -88,6 +68,26 @@
     "pnpm-lock.yaml"
    ],
    "note": "D-191: pnpm audit --prod on main 02a8a028 - dompurify 3.4.16 (critical+high, via mermaid), zod 4.1.12, body-parser 1.20.6 (override), undici 7.29.1 (high, DoS). Version bumps and lockfile only; stop and report if a bump breaks a type or test."
+  },
+  {
+   "id": "FIX-device-signin",
+   "title": "Sign-in on a returning device: prefill the last email, ready the emailed code for autofill (owner report, Oct 25)",
+   "row": "D-019",
+   "packet": "docs/plans/FIX-device-signin.md",
+   "tier": 1,
+   "lane": "auth-device",
+   "branch": "agent/queue/fix-device-signin",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168); next is one independent review by a model other than Claude (D-200), then landing on green required CI. Face ID, passkeys and Sign in with Apple are not in this row: they change the login rule and wait for the owner.",
+   "owns": [
+    "client/src/lib/rememberedSignInEmail.ts",
+    "client/src/components/SeekerSignIn.tsx",
+    "client/src/components/ReferrerOtpSignIn.tsx",
+    "client/src/components/deviceSignIn.test.tsx",
+    "server/workEmailOtp.ts",
+    "server/workEmailOtp.test.ts"
+   ]
   },
   {
    "id": "D-174-sample-job-removal",
