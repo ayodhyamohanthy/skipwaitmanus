@@ -86,8 +86,8 @@
    "lane": "skippy-seeker",
    "branch": "agent/queue/skippy-fix",
    "status": "todo",
-   "dependsOn": [],
-   "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. All flags are off in production and stay off until this lands with its proof. The owner asked to work on Skippy (Oct 23), so it sits right after the live regressions and the two picker fixes."
+   "dependsOn": ["D-132-item3"],
+   "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. S-3 reuses D-132-item3's shared expectedCost/AskPriceChangedError guard; this task waits for that row rather than duplicating or overlapping its transaction work. All flags stay off until SKIPPY-fix lands with its proof. The owner asked to work on Skippy (Oct 23), so it remains ordered after the live regressions and the two picker fixes."
   },
   {
    "id": "BRANCH-HYGIENE-1",
