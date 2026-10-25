@@ -1773,15 +1773,156 @@
    "id": "D-048-P-admin",
    "title": "D-048 phase 3 admin lane packet: its cluster rows from the split, with owned paths",
    "row": "D-048",
-   "packet": null,
+   "packet": "docs/plans/D-048-admin.md",
    "tier": 3,
    "lane": "d048-packets",
    "branch": "agent/queue/d048-p-admin",
-   "status": "architect",
+   "status": "done",
    "dependsOn": [
     "D-048-phase-3"
    ],
-   "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+   "note": "Packet-only (D-134): packet prepared at docs/plans/D-048-admin.md (AYO-11 design lane); the child rows below were added exactly from the packet and the split. Coordinator landing; the empty claim marker branch agent/architect/d048-p-admin (Claude Code · e11c) is preserved.",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-admin",
+   "title": "W6 /admin and /admin-review plus the admin goal frame",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-admin.md",
+   "tier": 2,
+   "lane": "d048-admin",
+   "branch": "agent/queue/d048-p3-admin",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-harness",
+    "D-048-F-primitives",
+    "D-048-P-admin",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/AdminOverview.tsx",
+    "client/src/pages/AdminReview.tsx",
+    "client/src/pages/goal/admin/**",
+    "scripts/kit-screens/fixtures/*__goal-admin-*.json",
+    "design/goal-ui/captures/admin/**"
+   ],
+   "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin'); read-only: components/admin/adminApi.ts.",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-admin-money",
+   "title": "W6 /admin/payments, /admin/catalog-sync, /admin/token-recovery",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-admin.md",
+   "tier": 1,
+   "lane": "d048-admin-money",
+   "branch": "agent/queue/d048-p3-admin-money",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-p3-admin",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/AdminPaymentsReview.tsx",
+    "client/src/pages/AdminCatalogSync.tsx",
+    "client/src/pages/AdminTokenRecovery.tsx",
+    "client/src/pages/goal/admin-money/**",
+    "design/goal-ui/captures/admin-money/**"
+   ],
+   "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin-money'); read-only: components/admin/paymentReviewCopy.ts; also covers /admin/money-check styling (packet §10).",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-admin-people",
+   "title": "W6 /admin/users (suspension, identity) and /admin/privacy-requests",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-admin.md",
+   "tier": 1,
+   "lane": "d048-admin-people",
+   "branch": "agent/queue/d048-p3-admin-people",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-p3-admin",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/AdminUsers.tsx",
+    "client/src/pages/AdminPrivacyRequests.tsx",
+    "client/src/pages/goal/admin-people/**",
+    "design/goal-ui/captures/admin-people/**"
+   ],
+   "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin-people').",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-admin-approvals",
+   "title": "W6 /admin/approvals and /admin/approvals/:kind/:id (re-tier to 1 if identity or money decisions found)",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-admin.md",
+   "tier": 2,
+   "lane": "d048-admin-approvals",
+   "branch": "agent/queue/d048-p3-admin-approvals",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-p3-admin",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/AdminApprovalQueue.tsx",
+    "client/src/pages/AdminApprovalRecord.tsx",
+    "client/src/pages/goal/admin-approvals/**",
+    "design/goal-ui/captures/admin-approvals/**"
+   ],
+   "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin-approvals'); read-only: lib/adminApproval.ts; money-cost lines Tier 1 (F-flags amendment).",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-admin-ops",
+   "title": "W6 /admin/activity, /admin/flow-health, /admin/schema, /admin/smoke, /admin/partners",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-admin.md",
+   "tier": 2,
+   "lane": "d048-admin-ops",
+   "branch": "agent/queue/d048-p3-admin-ops",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-p3-admin",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/AdminActivity.tsx",
+    "client/src/pages/AdminFlowHealth.tsx",
+    "client/src/pages/AdminSchema.tsx",
+    "client/src/pages/AdminSmoke.tsx",
+    "client/src/pages/AdminPartners.tsx",
+    "client/src/pages/goal/admin-ops/**",
+    "design/goal-ui/captures/admin-ops/**"
+   ],
+   "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin-ops'); also covers /admin/skippie styling (packet §10).",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-dev",
+   "title": "W6 /developers and /developer-console (app registration; Tier 1 until no-secret proof)",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-admin.md",
+   "tier": 1,
+   "lane": "d048-dev",
+   "branch": "agent/queue/d048-p3-dev",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-static-frame",
+    "D-048-F-primitives",
+    "D-048-P-admin",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/Developers.tsx",
+    "client/src/pages/DeveloperConsole.tsx",
+    "client/src/pages/goal/developers/**",
+    "design/goal-ui/captures/developers/**"
+   ],
+   "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('developers').",
    "epic": "D-048-p3"
   },
   {
@@ -1972,14 +2113,15 @@
    "branch": "agent/claude/d099-bonus-pages",
    "status": "todo",
    "dependsOn": [
-    "D-174-held-ask-reconfirm",
-    "D-174-sample-job-removal",
-    "D-174-job-catalog",
     "D-090-BYOR",
     "D-089-request-inbox",
     "D-086-demand-list",
     "D-048-F-flags",
     "D-048-F-routes",
+    "D-048-p3-admin",
+    "D-174-held-ask-reconfirm",
+    "D-174-sample-job-removal",
+    "D-174-job-catalog",
     "D-132-audit"
    ],
    "owns": [
@@ -2016,7 +2158,7 @@
     "docs/DECISIONS.md",
     "docs/KIT_V4_BUILD_PLAN.md"
    ],
-   "note": "D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing). It also waits for D-048-F-flags and D-048-F-routes, which own App.tsx and .env.example first (CEO, Oct 23)."
+   "note": "Oct 23 owns reconciliation (coordinator): this row and D-048-p3-admin both switch client/src/pages/AdminOverview.tsx; the goal redesign lands first (whole-app mandate) and this row reconciles its bonus sections on top of the goal switch at activation (D-167 one-owner-per-file). D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing). It also waits for D-048-F-flags and D-048-F-routes, which own App.tsx and .env.example first (CEO, Oct 23)."
   },
   {
    "id": "D-099-bonus-line",
