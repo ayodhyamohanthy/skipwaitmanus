@@ -94,16 +94,18 @@
    "title": "Remove the fabricated acme.com 'Test role for loop verification' listing from production /jobs, the sitemap and JobPosting markup",
    "row": "D-193",
    "packet": "docs/plans/D-193-journey-foundations.md",
-   "tier": 1,
+   "tier": 2,
    "lane": "d174-data",
    "branch": "agent/queue/d174-sample-job-removal",
    "status": "todo",
    "dependsOn": [],
-   "note": "D-193 packet section 5.2. Data migration 0121 (reserved in plan section 5), one guarded DELETE: never deletes a row a referral request references (referralRequests.jobId cascades). Breaks D-001's lasting no-sample-data rule today.",
+   "note": "Amended Oct 25 by the #649 ruling (D-200 (2)): a non-destructive read filter, not data migration 0121, because scripts/lint-deploy-migrations.sh rejects every DELETE FROM and stays as it is. Port #104's isTestCatalogJob into server/testCatalogJobs.ts and wrap every public job list (/api/jobs, sitemap, searchJobs, tRPC jobs.list) in publicCatalogJobs, wired in server/_core/index.ts and server/routers.ts; no migration, no edit to server/db.ts or server/privateReferralRoutes.ts. D-193 packet section 5.2. Earlier note: D-193 packet section 5.2. Data migration 0121 (reserved in plan section 5), one guarded DELETE: never deletes a row a referral request references (referralRequests.jobId cascades). Breaks D-001's lasting no-sample-data rule today.",
    "epic": "D-174",
    "owns": [
-    "drizzle/deploy/0121_remove_sample_job.sql",
-    "server/sampleJobRemoval.test.ts"
+    "server/testCatalogJobs.ts",
+    "server/testCatalogJobs.test.ts",
+    "server/_core/index.ts (switch only)",
+    "server/routers.ts (switch only)"
    ]
   },
   {
@@ -790,9 +792,10 @@
    "branch": "agent/instinct/v2-checkout-port",
    "status": "todo",
    "dependsOn": [
-    "D-132-item3"
+    "D-132-item3",
+    "D-132-audit"
    ],
-   "note": "D-165: fix stage first - merge main, renumber its two migrations (main already has 0108), implement D-165 (3) red-first (no refusal for a Free wallet with unused credits; they move to a carry-over grant expiring at their own month end). Tier 1 review by a model other than Instinct, including the line-by-line deletion review of the three-way port. #416 is superseded and closes when this lands. D-185: also carries D-132 item 4's grant half - paid rung credits are granted where they never expire (PAID_CREDITS_NEVER_EXPIRE), keyed once per term."
+   "note": "D-165: fix stage first - merge main, renumber its two migrations (main already has 0108), implement D-165 (3) red-first (no refusal for a Free wallet with unused credits; they move to a carry-over grant expiring at their own month end). Tier 1 review by a model other than Instinct, including the line-by-line deletion review of the three-way port. #416 is superseded and closes when this lands. D-185: also carries D-132 item 4's grant half - paid rung credits are granted where they never expire (PAID_CREDITS_NEVER_EXPIRE), keyed once per term. D-165 and D-197 (5): lands only after D-132-audit; the edge is in dependsOn since Oct 25, so the picker never offers the landing first."
   },
   {
    "id": "PICKER-landing-slot",
