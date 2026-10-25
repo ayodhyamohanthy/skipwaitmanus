@@ -160,6 +160,23 @@
    "note": "Rule 8 proof before any seeker is invited: the last signed-in QA is Oct 14-16, before /ask, /explore, /queue, /requests and /conversation were rebuilt in place. Needs a headed browser (a Claude Code session; Manus sessions have no Chromium) and one owner-forwarded work-email code. Never pay or pass the hosted payment form (D-065). Defects found become their own rows."
   },
   {
+   "id": "SHELL-focus-clearance",
+   "title": "On a phone, a focused field is never hidden behind the goal shell's bottom bar (#642)",
+   "row": "D-048",
+   "packet": "docs/plans/SHELL-focus-clearance.md",
+   "tier": 2,
+   "lane": "design-shell",
+   "branch": "agent/queue/shell-focus-clearance",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "Issue #642 (Instinct, 390x844 DPR2 QA): the /ask reason field and the conversation composer sit under the sticky 56px bottom bar on focus. Fix: data-goal-bottom-bar on the phone nav plus one scroll-padding-bottom rule in index.css (switch only). Desktop unchanged. Real-viewport proof on the PR; a session with no browser uses --avoid, never blocked.",
+   "owns": [
+    "client/src/components/goal/GoalShell.tsx",
+    "client/src/index.css (switch only)",
+    "client/src/components/goal/goalShell.focusClearance.test.tsx"
+   ]
+  },
+  {
    "id": "LAUNCH-marker-ci-skip",
    "title": "CI skips marker-branch pull requests (reports, review, heartbeat, architect locks, landing slot), which never merge",
    "row": "LAUNCH",
@@ -684,6 +701,30 @@
    ]
   },
   {
+   "id": "D-048-dark-mode",
+   "title": "Light and dark mode across the goal UI: dark tokens, a per-device toggle, light unchanged and the default (#646)",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-dark-mode.md",
+   "tier": 2,
+   "lane": "design-theme",
+   "branch": "agent/queue/d048-dark-mode",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them.",
+   "owns": [
+    "client/src/styles/goalDark.css",
+    "client/src/contexts/themeContext.test.tsx",
+    "client/src/components/goal/goalTheme.test.tsx",
+    "client/src/index.css (switch only)",
+    "client/src/contexts/ThemeContext.tsx",
+    "client/src/App.tsx (switch only)",
+    "client/src/components/goal/GoalMoreMenu.tsx",
+    "client/src/components/goal/goalMoreMenu.test.tsx",
+    "client/index.html (switch only)",
+    "DESIGN.md"
+   ]
+  },
+  {
    "id": "D-065-C",
    "title": "The daily money check finds delivery spends by their real key (<id>#1), so ask_spent_while_waiting can fire",
    "row": "D-065-B",
@@ -734,7 +775,7 @@
     "D-065-C",
     "POSTMERGE-oct22-fixes"
    ],
-   "note": "D-146 (founder, Oct 23): the D-132 audit is next, so it no longer waits on D-035, which D-147 holds for the founder. D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. First-pass findings are in docs/plans/D-132-audit-findings.md (#481) and items 2 (the stored level and cost, migration 0106, #482) and 6 (the money check against the stored cost, #487) are on main; the remaining items land one pull request each. It runs after the live review (which moved the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends). The D-048 rows that redesign the compose screens and the seeker conversation (D-048-p3-live-review-find, D-048-p3-live-review-conversation) wait for it, because it edits their cost lines first. D-197 (Oct 24, CEO): these owns are declared on main, and the audit branch carries no edit of its own row (only Claude Code changes rows). The audit waits for POSTMERGE-oct22-fixes (#635; both edit server/db.ts) and merges main once that lands; D-132-audit-item5-correction and D-099-bonus-pages wait for the audit.",
+   "note": "D-146 (founder, Oct 23): the D-132 audit is next, so it no longer waits on D-035, which D-147 holds for the founder. D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. First-pass findings are in docs/plans/D-132-audit-findings.md (#481) and items 2 (the stored level and cost, migration 0106, #482) and 6 (the money check against the stored cost, #487) are on main; the remaining items land one pull request each. It runs after the live review (which moved the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends). The D-048 rows that redesign the compose screens and the seeker conversation (D-048-p3-live-review-find, D-048-p3-live-review-conversation) wait for it, because it edits their cost lines first. D-197 (Oct 24, CEO): these owns are declared on main, and the audit branch carries no edit of its own row (only Claude Code changes rows). The audit waits for POSTMERGE-oct22-fixes (#635; both edit server/db.ts) and merges main once that lands; D-132-audit-item5-correction and D-099-bonus-pages wait for the audit. Oct 25 (#644): ASK_LEVEL_COST also stays off until ASSIST-approval-cost lands, so an approved assistant ask is never charged more than the owner saw.",
    "owns": [
     "client/src/hooks/useAskQuote.ts",
     "client/src/pages/Ask.tsx",
@@ -754,6 +795,28 @@
     "shared/moneyCopy.test.ts",
     "shared/moneyCopy.ts",
     "shared/openAskSlots.ts"
+   ]
+  },
+  {
+   "id": "ASSIST-approval-cost",
+   "title": "An approved assistant ask is charged exactly the cost the owner saw, or not at all: 409 cost_changed (#644)",
+   "row": "D-132",
+   "packet": "docs/plans/ASSIST-approval-cost.md",
+   "tier": 1,
+   "lane": "money-assist",
+   "branch": "agent/queue/assist-approval-cost",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-p3-assistants"
+   ],
+   "note": "Issue #644: decideAssistantApproval never re-reads the approved creditCount, so with ASK_LEVEL_COST on an owner who saw 1 credit could pay up to 10. Latent today (flag off; only the unsold land plan grants assistants), so ASK_LEVEL_COST and any land sale stay off until this is done. Contract: the decision body carries expectedCreditCount; the route re-derives the cost with the quote route's own functions and answers 409 cost_changed before any charge on a mismatch. No edit to server/db.ts or privateReferralRoutes.ts. Waits for D-048-p3-assistants (both edit Approve.tsx).",
+   "owns": [
+    "server/assistantApprovalCost.ts",
+    "server/assistantApprovalCost.test.ts",
+    "server/assistantRoutes.ts",
+    "server/assistantRoutes.test.ts",
+    "client/src/pages/Approve.tsx",
+    "client/src/pages/approve.test.tsx"
    ]
   },
   {
