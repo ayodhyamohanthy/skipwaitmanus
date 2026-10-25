@@ -113,6 +113,12 @@ Recorded:
 - The $1-for-3 exploration is superseded as a launch offer by this direction: free 3 ANY level stands for launch; $1 starter remains only a possible later experiment.
 - NEW OPEN EXPLORATION (Oct 25 ~19:00, phonemsg-01M5SM31QRFWBSQ9PKFYRG2K2J, "what do you say" - NOT adopted): replace the early/mid/senior ladder with three bands - early-to-mid, mid-to-senior, senior-to-executive - for BOTH seekers and referrers. Naming corrected by him Oct 25 ~19:10 (phonemsg-01M5SMNMN1041B9W7M8WJN2KYH: "Make it as senior to executive remove the plus") - the band is "Senior to Executive", never "Senior+ to Executive"; a name edit only, not approval of pending prices/counts/access mapping. If adopted this remaps plan access axes, included quantities and top-up gating (it is not a rename); the confirmed any-level free-3 grant and the current access schema stand until he decides. Awaiting his decision; pricing impact analysis in progress.
 
+BANDED PROPOSAL DELIVERED (Oct 25 ~19:15, pricing File gen 9, PRIVATE https://files.instinct.com/ndpk6adodk6k-skipwait-pricing-recommended-plans - ALL NUMBERS PROPOSED, NOT ADOPTED):
+- Seeker bands: Early-to-Mid Rs229/$4.49 incl 3E+1M; Mid-to-Senior Rs899/$17.99 incl 3M+2S; Senior-to-Executive Rs1,299/$25.99 incl 3S+1Exec.
+- Top-ups: Rs49/$1, Rs199/$4, Rs399/$8, Rs799/$16. Referrer priority plans: Rs99/$1.99, Rs199/$3.99, Rs349/$6.99 (same bands). Company/caps/lock terms unchanged from the prior proposal.
+- Structure: bands bounded and NON-cumulative with deliberate overlap (proposal only, not his choice yet); free-3 ANY level stays separate; proposed spending order = included per-level, then free, then bought.
+- Unknowns disclosed: level classification, payment cost, tax, demand. Nothing implemented; canonical state unchanged until he decides.
+
 What STAYS confirmed regardless: free 3 referrals/month ANY level with verified card, no carry-forward; basic referring free; subscription access axes (seeker plan = referrer level, referrer plan = seeker-level priority); poster-first 24h matching; "referrals" terminology; the final tagline.
 
 
