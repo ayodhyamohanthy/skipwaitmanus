@@ -1637,15 +1637,136 @@
    "id": "D-048-P-account",
    "title": "D-048 phase 3 account lane packet: its cluster rows from the split, with owned paths",
    "row": "D-048",
-   "packet": null,
+   "packet": "docs/plans/D-048-account.md",
    "tier": 3,
    "lane": "d048-packets",
    "branch": "agent/queue/d048-p-account",
-   "status": "architect",
+   "status": "done",
    "dependsOn": [
     "D-048-phase-3"
    ],
-   "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+   "note": "Packet-only (D-134): packet prepared at docs/plans/D-048-account.md (AYO-11 design lane); the child rows below were added exactly from the packet and the split. Coordinator landing; the empty claim marker branch agent/architect/d048-p-account (Claude Code · e11c) is preserved.",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-settings",
+   "title": "W5 /settings: section order kept; destructive actions keep confirm; privacy/blocked/talent-consent/export/login-linking (D-057)",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-account.md",
+   "tier": 1,
+   "lane": "d048-settings",
+   "branch": "agent/queue/d048-p3-settings",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-harness",
+    "D-048-F-primitives",
+    "D-048-P-account",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/Settings.tsx",
+    "client/src/pages/goal/settings/**",
+    "client/src/pages/settingsGoal.test.tsx",
+    "design/goal-ui/captures/settings/**"
+   ],
+   "note": "Implementation row from the D-048-account.md packet (AYO-11 design lane). flag: goalSurfaceOn('settings'); read-only: components/settings/settingsApi.ts, settingsQueries.ts.",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-profile",
+   "title": "W5 /profile and /work (visibility controls are privacy)",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-account.md",
+   "tier": 1,
+   "lane": "d048-profile",
+   "branch": "agent/queue/d048-p3-profile",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-harness",
+    "D-048-F-primitives",
+    "D-048-P-account",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/Profile.tsx",
+    "client/src/pages/Work.tsx",
+    "client/src/pages/goal/profile/**",
+    "client/src/pages/profileGoal.test.tsx",
+    "design/goal-ui/captures/profile/**"
+   ],
+   "note": "Implementation row from the D-048-account.md packet (AYO-11 design lane). flag: goalSurfaceOn('profile').",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-alerts",
+   "title": "W5 /alerts notifications and saved alerts",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-account.md",
+   "tier": 2,
+   "lane": "d048-alerts",
+   "branch": "agent/queue/d048-alerts",
+   "status": "in-review",
+   "dependsOn": [
+    "D-048-F-harness",
+    "D-048-F-primitives",
+    "D-048-P-account",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/Alerts.tsx",
+    "client/src/pages/goal/alerts/**",
+    "client/src/pages/alertsGoal.test.tsx",
+    "design/goal-ui/captures/alerts/**"
+   ],
+   "note": "Implementation row from the D-048-account.md packet (AYO-11 design lane). flag: goalSurfaceOn('alerts'); QA live pixels Oct 23 show kit styling (blue pill/underline/lavender cards) - hierarchy rebuild, not recolor. Controlled-test expectations (Main, Oct 23): a partial-fail mark-all-read posts only the remaining unread with a re-entry block; add controlled offline/retry with a sanitized error and in-flight payload assertions. In flight as #573 (draft, dark); row registered by the account packet per the split; branch corrected to the worker PR's actual head.",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-messages",
+   "title": "W5 /messages: no message box for a referrer before acceptance; server 403s rendered as they are",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-account.md",
+   "tier": 1,
+   "lane": "d048-messages",
+   "branch": "agent/queue/d048-p3-messages",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-harness",
+    "D-048-F-primitives",
+    "D-048-P-account",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/Messages.tsx",
+    "client/src/pages/goal/messages/**",
+    "design/goal-ui/captures/messages/**"
+   ],
+   "note": "Implementation row from the D-048-account.md packet (AYO-11 design lane). flag: goalSurfaceOn('messages'); read-only: lib/idempotentSend.ts.",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-support",
+   "title": "W5 /help, /report and /safety ('Help & safety' serves both sides)",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-account.md",
+   "tier": 2,
+   "lane": "d048-support",
+   "branch": "agent/queue/d048-p3-support",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-harness",
+    "D-048-F-primitives",
+    "D-048-P-account",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/Help.tsx",
+    "client/src/pages/Report.tsx",
+    "client/src/pages/Safety.tsx",
+    "client/src/pages/goal/support/**",
+    "design/goal-ui/captures/support/**"
+   ],
+   "note": "Implementation row from the D-048-account.md packet (AYO-11 design lane). flag: goalSurfaceOn('support').",
    "epic": "D-048-p3"
   },
   {
