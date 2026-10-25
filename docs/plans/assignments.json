@@ -2815,6 +2815,7 @@
     "server/_core/reviewerIsolation.test.ts",
     "server/privateReferralRoutes.ts",
     "server/dmRoutes.ts",
+    "server/dmRoutes.test.ts",
     "server/followRoutes.ts",
     "server/blocksRoutes.ts",
     "server/safetyRoutes.ts",
@@ -2823,10 +2824,19 @@
     "server/companyDirectoryRoutes.ts",
     "server/adminCatalogSyncRoutes.ts",
     "server/chargebeeRoutes.ts",
+    "server/chargebeeEnvironment.ts",
+    "server/chargebeeEnvironment.test.ts",
     "server/companyClaimRoutes.ts",
-    "server/employerRoutes.ts"
+    "server/employerRoutes.ts",
+    "server/db.ts",
+    "server/db.paymentReview.test.ts",
+    "server/db.subscriptionActivation.test.ts",
+    "server/errorAlerting.ts",
+    "server/reviewerIsolationRoutes.test.ts",
+    "shared/reviewerAccounts.ts",
+    "scripts/reviewer-binding-check.mjs"
    ],
-   "note": "Razorpay credential handover blocker (Main, Oct 25 8:56): demo review sessions are ordinary sessions, so refuse them on every route that reaches real members, external services, admin surfaces, or real-money actions beyond hosted-cart creation. Checkout + subscription-checkout cart creation stays open for merchant review; recovery/card-validation/gift-claim/cancel are guarded. Browse and pricing preview stay open."
+   "note": "Razorpay credential handover blocker (Main, Oct 25). Route layer: reviewer_* openIds 403 on every effectful route. Entitlement layer: reviewer payments park requires_review + owner alert; subscriptions grant nothing. Checkout layer: reviewer checkouts resolve to the Chargebee TEST site (CHARGEBEE_TEST_SITE/API_KEY), fail closed when unset; test events cannot authenticate on live. Deploy needs the two CHARGEBEE_TEST_* vars (vault: 'Chargebee skipwait-test site API key (TEST site only)') + scripts/reviewer-binding-check.mjs run before credential handover."
   }
  ]
 }
