@@ -2864,9 +2864,12 @@
         "client/src/components/app-states/SystemStates.tsx",
         "client/src/components/PolicyPageShell.tsx",
         "client/src/components/employer/EmployerFrame.tsx",
-        "client/src/components/goal/GoalStaticFrame.tsx"
+        "client/src/components/goal/GoalStaticFrame.tsx",
+        "client/src/components/goal/GoalShell.tsx",
+        "client/src/pages/GoalLandingV9.tsx",
+        "client/src/pages/ReviewerSignIn.tsx"
       ],
-      "note": "Replaces superseded Oct-20 yellow-arc OG image with current V6-B/W1 lockup + frozen line 'Rule #1: Never cold-apply.'; repoints all UI references off legacy lockup assets. Legacy files kept (zero code refs after). Mandate: Main 2026-10-25 21:26 brand-consistency task."
+      "note": "Replaces superseded Oct-20 yellow-arc OG image with current V6-B/W1 lockup + frozen line 'Rule #1: Never cold-apply.'; repoints all UI references off legacy lockup assets. Legacy files kept (zero code refs after). Mandate: Main 2026-10-25 21:26 brand-consistency task. Follow-up: W1 casing fixed in 3 brand-slot text wordmarks (GoalShell rail, V9 footer bar, ReviewerSignIn masthead) per founder rule; BRIEF.md specifies style not casing."
     }
   ]
 }
