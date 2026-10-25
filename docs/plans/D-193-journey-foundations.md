@@ -56,12 +56,22 @@ Every row: claim through the picker, red tests first, one commit per step, `pnpm
 - **Done when:** the tests pass, every existing explore and ask test stays green, captures at 1280 and 390 show the read-only link state, and the independent review passes.
 - **Stop if:** keeping the post across sign-in needs a server change.
 
-### 5.2 `D-174-sample-job-removal` (Tier 1, S; data migration 0121)
-- **Do:** first `GET https://skipwait.me/api/jobs` and copy the fabricated row's exact `title`, `company` and `description`. Write `drizzle/deploy/0121_remove_sample_job.sql` as one statement: `DELETE FROM jobs WHERE title = … AND company = … AND description = … AND NOT EXISTS (SELECT 1 FROM referralRequests r WHERE r.jobId = jobs.id);` (backtick-quoted identifiers as the other migrations use). The guard matters: `referralRequests.jobId` cascades, so a plain delete could destroy a request. A saved-role row for the fake listing may cascade away; that is intended. The number 0121 is already reserved in `docs/KIT_V4_BUILD_PLAN.md` §5; you do not edit that file.
-- **Tests (red first):** `server/sampleJobRemoval.test.ts` reads the SQL file and asserts: a single `DELETE FROM` on `jobs`; all three exact values; the `NOT EXISTS` guard on `referralRequests`; no other table written. `scripts/lint-deploy-migrations.sh` passes.
-- **Owns:** `drizzle/deploy/0121_remove_sample_job.sql`, `server/sampleJobRemoval.test.ts`.
-- **Done when:** after the deploy, `https://skipwait.me/api/jobs`, `/sitemap.xml` and `/jobs` no longer show the row (paste the three responses in the report).
-- **Stop if:** the row is still live after the deploy (a request references it): report blocked with the evidence and do not write a second migration.
+### 5.2 `D-174-sample-job-removal` (Tier 2, S; no migration; amended Oct 25 by the #649 ruling)
+- **Why amended:** the original mechanism, a guarded `DELETE FROM jobs` in data migration 0121, can never deploy. `scripts/lint-deploy-migrations.sh` rejects every `DELETE FROM` as destructive, and it runs in CI and in `scripts/apply-deploy-migrations.sh`. The lint protects production data on every deploy and stays as it is (#649, CEO ruling under D-200 (2)). The 0121 reservation is no longer needed.
+- **Do:**
+  - Port #104's read filter into a new module, `server/testCatalogJobs.ts`. It exports:
+    - `isTestCatalogJob(row)`, true for a `company` or `targetRoleUrl` host in `acme.com`, `example.com`, `example.net` or `example.org` (or a subdomain), or in the `.test`, `.example`, `.invalid` or `.localhost` TLDs, and for a description that starts with "Test role";
+    - `publicCatalogJobs(listJobs)`, which returns a `listJobs` that drops those rows.
+  - Wrap every public job list in `publicCatalogJobs`:
+    - in `server/_core/index.ts`, the private referral routes' `listJobs` (`/api/jobs`), the sitemap's `listJobs` and `searchJobs`;
+    - in `server/routers.ts`, the tRPC `jobs.list` resolver.
+  - Nothing is deleted. The filter also hides any future fixture, and removing the wrapper reverses it.
+- **Tests (red first):** `server/testCatalogJobs.test.ts` covers:
+  - #104's three cases: the live acme.com row is dropped, reserved and test hosts are dropped, real roles are kept (including "Acme Logistics" and a non-URL `targetRoleUrl`);
+  - `publicCatalogJobs` dropping `{id:1, company:"acme.com", description:"Test role for loop verification"}` from a stubbed `listJobs` while keeping a real row.
+- **Owns:** `server/testCatalogJobs.ts`, `server/testCatalogJobs.test.ts`, `server/_core/index.ts (switch only)`, `server/routers.ts (switch only)`. The two wiring files take at most 12 changed lines each, and the scope check enforces that. `D-174-job-catalog` also holds `server/_core/index.ts (switch only)`; two switch-only claims on one file no longer wait for each other. The row does not touch `server/db.ts` or `server/privateReferralRoutes.ts`.
+- **Done when:** after the API deploy, `https://skipwait.me/api/jobs` and `/jobs` no longer show the row. Paste both responses in the report.
+- **Stop if:** a wired list still returns the row after the deploy. Report it blocked with the response, and do not write a migration.
 
 ### 5.3 `D-174-held-ask-reconfirm` (Tier 1, M; money path)
 - **Waits for:** `D-048-fix-post-copy`, `POSTMERGE-oct22-fixes` (the #619 money-path fixes) and `D-132-audit` (D-197). All three edit `server/db.ts`; the audit also owns `server/privateReferralRoutes.ts` and `shared/moneyCopy.ts`. Build on the audit's `deliverWaitingAskTx`: the reconfirm check sits before the spend and never changes the amount.
