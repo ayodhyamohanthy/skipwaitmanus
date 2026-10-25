@@ -537,6 +537,7 @@
    "epic": "D-048-p3",
    "owns": [
     "client/src/pages/MyCompanyInbox.tsx",
+    "client/src/pages/myCompanyInbox*.test.tsx",
     "design/goal-ui/captures/queue/**"
    ]
   },
