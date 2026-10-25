@@ -1929,15 +1929,104 @@
    "id": "D-048-P-employer",
    "title": "D-048 phase 3 employer lane packet: its cluster rows from the split, with owned paths",
    "row": "D-048",
-   "packet": null,
+   "packet": "docs/plans/D-048-employer.md",
    "tier": 3,
    "lane": "d048-packets",
    "branch": "agent/queue/d048-p-employer",
-   "status": "architect",
+   "status": "done",
    "dependsOn": [
     "D-048-phase-3"
    ],
-   "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+   "note": "Packet-only (D-134): packet prepared at docs/plans/D-048-employer.md (AYO-11 design lane); the child rows below were added exactly from the packet and the split. Coordinator landing; the empty claim marker branch agent/architect/d048-p-employer (Claude Code · e11c) is preserved.",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-employer",
+   "title": "W6 /employer and /employer/opportunities plus the employer goal frame",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-employer.md",
+   "tier": 2,
+   "lane": "d048-employer",
+   "branch": "agent/queue/d048-p3-employer",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-harness",
+    "D-048-F-primitives",
+    "D-048-P-employer",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/EmployerDashboard.tsx",
+    "client/src/pages/EmployerOpportunities.tsx",
+    "client/src/pages/goal/employer/**",
+    "scripts/kit-screens/fixtures/*__goal-employer-*.json",
+    "design/goal-ui/captures/employer/**"
+   ],
+   "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('employer').",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-employer-talent",
+   "title": "W6 /employer/talent (seeker data shown to employers under consent)",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-employer.md",
+   "tier": 1,
+   "lane": "d048-employer",
+   "branch": "agent/queue/d048-p3-employer-talent",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-p3-employer",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/TalentDiscovery.tsx",
+    "client/src/pages/goal/employer-talent/**",
+    "design/goal-ui/captures/employer-talent/**"
+   ],
+   "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('employer-talent').",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-employer-billing",
+   "title": "W6 /employer/billing",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-employer.md",
+   "tier": 1,
+   "lane": "d048-employer",
+   "branch": "agent/queue/d048-p3-employer-billing",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-p3-employer",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/EmployerBilling.tsx",
+    "client/src/pages/goal/employer-billing/**",
+    "design/goal-ui/captures/employer-billing/**"
+   ],
+   "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('employer-billing'); money lines from shared sources only.",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-for-companies",
+   "title": "W6 /for-companies: employer price claims, D-040 fairness, no unbuilt programme promises",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-employer.md",
+   "tier": 1,
+   "lane": "d048-employer",
+   "branch": "agent/queue/d048-p3-for-companies",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-p3-employer",
+    "D-107-claim-company",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/ForCompanies.tsx",
+    "client/src/pages/goal/for-companies/**",
+    "design/goal-ui/captures/for-companies/**"
+   ],
+   "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('for-companies'); read-only: components/employer/employerPlans.ts. Coverage D-167 also assigns /company/claim and /company/dashboard/:slug to this row; they are already goal-built under D-107 (done), so this row owns no paths for them - the builder verifies that at build and stops and reports if wrong.",
    "epic": "D-048-p3"
   },
   {
