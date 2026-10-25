@@ -78,6 +78,18 @@ Exactly open (NO source settles these; do not present arithmetic that presumes a
 3. **Plan included counts**: inclusion is SETTLED - each plan gives certain referrals (owner today; consistent with D-173's allowance + in-plan purchase wording). OPEN: the included COUNT per seeker plan (early/mid/senior) - asked of the owner Oct 25 ~17:54, reply pending. The v2 config on main carries no allowances yet ("allowances land with the pricing build"). How included referrals interact with the separately priced dropdown is part of the same count answer; no fee-plus-separate-only model is encoded.
 4. **Axes**: recorded rules denominate cost by JOB level only; today's plan axis is target REFERRER career level. No recorded rule prices by referrer career level; whether it should is a new decision, not an assumption.
 
+
+## Pricing-page value communication (owner, Oct 25 ~17:58 IST, phonemsg-01M5SGJ2YR4JC775A9H14HQKBQ)
+
+Verbatim: "We should somehow convince them a single referral will buy out the entire years plan amount. So we should elevate this communication in pricing page. A single referrer got in through will get you the full years amount break eve, for job seeker a single job's first salary will break even ."
+
+Recorded intent with guardrails (so copy stays truthful):
+- The pricing page SHOULD carry a prominent value comparison: annual plan cost vs what ONE success is worth - for a referrer, one successful employer referral bonus; for a seeker, the first salary from one landed job.
+- It is a COMPARISON, never a promise: no "a referral WILL pay for your year", no guaranteed bonus, hire, salary or outcome (D-006/D-040 stand; copy promises first access and matching, never results).
+- The employer referral bonus is paid by the EMPLOYER under its own policy (eligibility, amount, tenure conditions), not by skipwait; copy must say so.
+- Any numbers shown must come from real sourced examples or be labeled hypothetical arithmetic; the annualized cost must match the actual proposed billing cadence (no invented annual discount).
+- Exact pricing-page words follow the owner's price decision; nothing here approves publication or live prices.
+
 ## Anchors
 
 
