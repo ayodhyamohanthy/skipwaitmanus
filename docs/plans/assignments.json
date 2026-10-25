@@ -2406,18 +2406,6 @@
     "server/agedOutCoverageGap.evidence.test.ts"
    ],
    "note": "Evidence-only test (local 2/2 PASS, Oct 24 5:36 IST): a paid checkout older than PENDING_MAX_AGE_MS is invisible to the reconcile job, so no alert fires. Grounds the repair proposal for todo-01M5K14ZT8K9BS7QPZ7WFQMVC1. Test file only, no runtime change. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact."
-  },
-  {
-   "id": "D-048-fix-signin-click-loading",
-   "title": "Let an explicit sign-in click start the server flow while client auth loads",
-   "row": "D-048",
-   "packet": null,
-   "tier": 1,
-   "lane": "d048-foundation",
-   "branch": "agent/ayo7/signin-loading-click",
-   "status": "in-review",
-   "dependsOn": [],
-   "note": "Coordinator-imported AYO-7 bounded fix (Main, Oct 23; user report phonemsg-01M5MXF1C8DQ86C6Y7TXJQY01X): openSignIn no-op'ed whenever isLoaded was false, so a visible Sign in button swallowed clicks while auth.me/SDK were pending; only a second click after settle navigated. Scope: client/src/_core/auth.tsx + authCompat.test.ts only - the signed-in no-op and same-origin returnTo guard are unchanged and the server still owns authentication; no session is granted client-side. Tier 1 (auth surface): merge needs the standing Tier-1 qualification route. Fixture evidence only (mocked auth boundary, no real provider login); the user's exact failing URL is still pending, so the reported case stays open until reproduced."
   }
  ]
 }
