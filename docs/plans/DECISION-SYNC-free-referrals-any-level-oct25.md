@@ -111,6 +111,8 @@ Recorded:
 - Launch offer format decided: "Founding-member launch price" with a limited NUMBER of memberships ("limited number of memberships. Is fine uner Founding-member launch price", phonemsg-01M5SKCDRY6PQP7J5G9933AF9C). Exact cap, prices, and renewal terms NOT chosen - pending his decision on the recommendation.
 - Discount display guardrail: no fabricated percentage off (his "90% discounted or somting" idea, phonemsg-01M5SK8P8CTC8ZSNDDPV94HW9P, was answered with honest founding-price labeling; he accepted the honest format). No invented regular price, no fake spots-left count.
 - The $1-for-3 exploration is superseded as a launch offer by this direction: free 3 ANY level stands for launch; $1 starter remains only a possible later experiment.
+- NEW OPEN EXPLORATION (Oct 25 ~19:00, phonemsg-01M5SM31QRFWBSQ9PKFYRG2K2J, "what do you say" - NOT adopted): replace the early/mid/senior ladder with three bands - early-to-mid, mid-to-senior, senior+-to-executive - for BOTH seekers and referrers. If adopted this remaps plan access axes, included quantities and top-up gating (it is not a rename); the confirmed any-level free-3 grant and the current access schema stand until he decides. Awaiting his decision; pricing impact analysis in progress.
+
 What STAYS confirmed regardless: free 3 referrals/month ANY level with verified card, no carry-forward; basic referring free; subscription access axes (seeker plan = referrer level, referrer plan = seeker-level priority); poster-first 24h matching; "referrals" terminology; the final tagline.
 
 
