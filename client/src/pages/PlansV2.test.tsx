@@ -3,7 +3,7 @@
 // phonemsg-01M5SNVZEY1P8K169J48T2HGTJ). Number-to-config pins live in
 // plansV2.config-guard.test.tsx; this file pins the page structure and the
 // read-only checkout state.
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { BAND_LEVELS, LEVEL_DISPLAY_NAME, PLAN_FAMILY } from "@shared/planFamily";
 import PlansV2 from "./PlansV2";
@@ -51,12 +51,13 @@ describe("PlansV2 frozen banded render", () => {
     expect(terms.textContent).toContain("the lock ends");
   });
 
-  it("read-only: a plan button never opens checkout, it explains billing is not switched on", () => {
+  it("read-only: every card shows a disabled non-transactional checkout state inline, no purchase CTA", () => {
     render(<PlansV2 book="INR" />);
-    const buttons = screen.getAllByRole("button");
-    expect(buttons.length).toBe(PLAN_FAMILY.length);
-    fireEvent.click(buttons[0]);
-    expect(screen.getByRole("status").textContent).toContain("Checkout is not switched on yet");
+    const off = screen.getAllByText("Checkout not switched on yet");
+    expect(off.length).toBe(PLAN_FAMILY.length);
+    for (const el of off) expect(el.getAttribute("aria-disabled")).toBe("true");
+    expect(screen.queryAllByRole("button").length).toBe(0);
     expect(document.body.textContent).not.toContain("checkoutUrl");
+    expect(document.body.textContent).not.toMatch(/Start Early|Start Mid|Apply for/);
   });
 });

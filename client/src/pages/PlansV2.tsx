@@ -22,23 +22,24 @@ import {
 } from "@shared/planFamily";
 import { money } from "@/components/plans/format";
 
-const CARD_COPY: Record<PlanFamilyId, { tagline: string; cta: string; primary: boolean }> = {
+const CARD_COPY: Record<PlanFamilyId, { tagline: string; primary: boolean }> = {
   early_to_mid: {
     tagline: "Start your search with early and mid-career referrers.",
-    cta: "Start Early to Mid",
     primary: false,
   },
   mid_to_senior: {
     tagline: "Reach mid and senior professionals who can refer you.",
-    cta: "Start Mid to Senior",
     primary: true,
   },
   senior_to_executive: {
     tagline: "Senior and executive referrers, by application.",
-    cta: "Apply for Senior to Executive",
     primary: false,
   },
 };
+
+// Read-only state (billing not switched on): the same non-transactional label
+// on every card, disabled, with the reason inline - never a purchase-looking CTA.
+const CHECKOUT_OFF_LABEL = "Checkout not switched on yet";
 
 function IncludedList({ planId, book }: { planId: PlanFamilyId; book: PlanPriceBook }) {
   void book;
@@ -59,7 +60,7 @@ function BandRow({ planId }: { planId: PlanFamilyId }) {
   const names = BAND_LEVELS[planId].map(level => LEVEL_DISPLAY_NAME[level]).join(" + ");
   return (
     <div className="mt-4 border-t border-g-hairline pt-4" data-testid={`band-${planId}`}>
-      <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Who you can ask</p>
+      <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Referrers you can reach</p>
       <p className="mt-1 text-g-small">{names}</p>
     </div>
   );
@@ -68,7 +69,6 @@ function BandRow({ planId }: { planId: PlanFamilyId }) {
 function PlanCard({ planId, book }: { planId: PlanFamilyId; book: PlanPriceBook }) {
   const entry = PLAN_FAMILY.find(p => p.id === planId)!;
   const copy = CARD_COPY[planId];
-  const [note, setNote] = useState("");
   const fee = planFeeMinor(planId, book);
   return (
     <section aria-label={entry.label} className="flex flex-col rounded-2xl border border-g-hairline bg-g-surface p-5 gdesk:p-6">
@@ -82,20 +82,17 @@ function PlanCard({ planId, book }: { planId: PlanFamilyId; book: PlanPriceBook 
       <ul className="mt-4 space-y-1.5 border-t border-g-hairline pt-4">
         <li className="flex items-start gap-2 text-g-small text-g-ink-2"><span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 rounded-full bg-g-ink" />Founding member {entry.foundingCap} spots - price locked while your membership stays active</li>
         <li className="flex items-start gap-2 text-g-small text-g-ink-2"><span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 rounded-full bg-g-ink" />Extra referrals only inside your band - buying never unlocks another level</li>
-        <li className="flex items-start gap-2 text-g-small text-g-ink-2"><span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 rounded-full bg-g-ink" />Cost shown before every ask - included first, then your free allowance, then bought</li>
+        <li className="flex items-start gap-2 text-g-small text-g-ink-2"><span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 rounded-full bg-g-ink" />Cost shown before every referral - included first, then your free allowance, then bought</li>
       </ul>
       <div className="mt-auto pt-5">
-        <button
-          type="button"
+        <p
           data-g-primary={copy.primary || undefined}
-          onClick={() => setNote("Checkout is not switched on yet. These are the frozen founding prices; billing starts soon.")}
-          className={copy.primary
-            ? "g-hit w-full rounded-[10px] bg-g-ink px-5 text-g-small font-semibold text-g-ink-inverse hover:bg-g-primary-hover"
-            : "g-hit w-full rounded-[10px] border border-g-hairline bg-g-surface px-5 text-g-small font-semibold"}
+          aria-disabled="true"
+          className="g-hit flex w-full items-center justify-center rounded-[10px] border border-g-hairline bg-g-surface px-5 text-g-small font-semibold text-g-ink-3"
         >
-          {copy.cta}
-        </button>
-        {note ? <p role="status" className="mt-2 text-g-badge text-g-ink-3">{note}</p> : null}
+          {CHECKOUT_OFF_LABEL}
+        </p>
+        <p className="mt-2 text-g-badge text-g-ink-3">These are the frozen founding prices; billing starts soon.</p>
       </div>
     </section>
   );
