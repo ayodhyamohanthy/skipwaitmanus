@@ -1,5 +1,31 @@
 # DECISION-SYNC: free 3 referrals at any level + plan-freeze status (Oct 25, 2026)
 
+## FROZEN PRICING (owner freeze Oct 25, 2026 ~19:31 IST)
+
+Frozen by owner instruction "Freeze and push immediately update our pricing plans" (phonemsg-01M5SNVZEY1P8K169J48T2HGTJ), approving the banded proposal delivered 19:17 in reply to his "Now show me final plans, prices, extra referral prices, logics etc" (phonemsg-01M5SMSX1TT758PTX4S53MMW4X). This SUPERSEDES every earlier unapproved draft (v1 rejected, v2, cumulative-ladder numbers). All monthly, founding-member prices; India Rs / global USD.
+
+SEEKER PLANS (bands = which referrer levels the seeker can reach; bounded, non-cumulative, overlapping at Mid and Senior):
+- Early to Mid: Rs229 / $4.49 - includes 3 Early + 1 Mid referral per month.
+- Mid to Senior: Rs899 / $17.99 - includes 3 Mid + 2 Senior referrals per month.
+- Senior to Executive: Rs1,299 / $25.99 - includes 3 Senior + 1 Executive referral per month; by application while senior/executive supply is uncertain.
+
+FREE ALLOWANCE (unchanged controlling rule): 3 referrals/month at ANY level including Executive, verified card required, no carry-forward. Additional to paid bundles. $1 starter pack NOT adopted.
+
+TOP-UPS (one price per level, same in every plan; buy only within your band; buying never unlocks another level):
+- Early Rs49 / $1; Mid Rs199 / $4; Senior Rs399 / $8; Executive Rs799 / $16.
+- Volume discounts on mixed cart: 2% at 5+, 4% at 10+, 8% at 25+, 12% at 50+, 16% at 100+, 20% at 200+ (quantities count actual requests).
+
+SPENDING ORDER: included referral for that level first, then the free allowance, then a purchased referral. Outside your band only the free allowance applies. Show balance and charge before sending; spend only when a verified employee can see the request.
+
+REFERRER PLANS (optional priority by band, same bands both audiences; overlap members share the same priority stage, no paying precedence over each other): Early to Mid Rs99 / $1.99; Mid to Senior Rs199 / $3.99; Senior to Executive Rs349 / $6.99. Basic referring stays free and unlimited. READINESS CAVEAT SURVIVES: do not charge until verified matching flow exists to make priority genuinely useful; no guaranteed requests or bonuses.
+
+COMPANY PLANS: Team Rs4,999 / $99 (3 seats, 10 active openings or drives); Growth Rs9,999 / $199 (10 seats, 50 active, domain onboarding, export); Scale by quote. Companies cannot buy referrals, rank or hires; no fee depends on a hire; free posting and the 24h poster first-look stay free. READINESS CAVEAT SURVIVES: features proposed-not-built; NO CHARGE until built and tested.
+
+FOUNDING-MEMBER FORMAT: caps counted cumulatively issued, never recycled (Seeker 500 / 250 / 100 by band; Referrer 100 per plan; Company 25 Team / 10 Growth, opened only after tooling built and tested). Base plan price locked while membership stays continuously active; lapse ends the lock. Prospective regular prices (~+50%) apply only to new customers after the cap fills. No fabricated discount percentages; spots-left shown only from the real count.
+
+BILLING CAVEAT SURVIVES: USD monthly subscriptions remain blocked pending PayPal Reference Transactions approval (reserved owner step) and a real out-of-India USD test (D-065). USD prices are frozen in the catalog but must not be presented as a working checkout until the rail is verified. INR rail (Razorpay) configured, not transaction-verified at scale.
+
+
 Owner question and correction, iMessage Oct 25 ~17:30 IST (phonemsg-01M5SEXKKF8QTNV1T46DK3GTN1):
 "And is our level based pricing freezed? We are giving free 3 job referrals to everyone (any level) and we have early mid senior plans both for seekers and referrers have you pushed to repo and updated the instructions?"
 
