@@ -10,7 +10,7 @@
 
 Why they are queued: a decision on an open pull request with no queue row is never handed to anyone, so it never lands, and agents keep building from the older entry on `main` (D-163 (4)). Decision IDs and migration numbers are fixed **at landing**: take the highest ID on `main` and every open branch + 1, renumbering every reference in the diff (`docs/DECISIONS.md` ID rule).
 
-## REGISTER-520: land PR #520 (CEO rulings D-156 to D-161 on its branch)
+## REGISTER-520: land PR #520 (CEO rulings D-201 to D-206 on its branch)
 
 - **What it holds.** Docs, decisions and the queue only, no product code: Skippy's missing Tier 1 reviews with six findings (S-1, an SSRF in Skippy's job-page reader, is high), the packets `SKIPPY-fix.md` and `SKIPPY-next.md`, newest-decision sync (`PICKER-decision-sync.md`), the CEO mandate, the startup-credits toolbox, branch hygiene (`BRANCH-HYGIENE.md`) and decision re-rating (`DECISION-REVIEW.md`). It adds nine queue rows: `PICKER-decision-sync`, `SKIPPY-fix`, `BRANCH-HYGIENE-1`, `BRANCH-HYGIENE-2`, `SKIPPY-redteam`, `SKIPPY-3`, `SKIPPY-stepup`, `SKIPPY-6` and `SKIPPY-7`.
 - **Who.** A Claude Code session wrote it, so the review and the landing go to a model other than Claude (D-151). Its Tier 1 here buys exactly that. A Claude Code session handed this row's review or landing posts no verdict and reports it blocked (the D-151 interim rule).
@@ -83,7 +83,7 @@ Instinct built these, so every review and landing goes to a model other than Ins
 
 ## Status
 These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines go here (D-134).
-- REGISTER-520: todo; the Oct 24 block on inherited D-035/D-090 text is answered by D-183.
+- REGISTER-520: done — 691c871b (landed on `main`; docs only, no deploy due. Independent review PASS by Qoder · bbc5 at 891c2756; merge-up and row-done delta reviewed; required CI green on 691c871b; closes #520).
 - D-155-share-paid-gate: done — 4dfeb6ba (merged `main`, renumbered to D-194 with migration 0114; delta review pass by DeepSeek V4.1 Flash Free · 3ecf, owner's go Oct 24).
 - D-132-catalog-record: done — 166fe5ff (docs only; landed on `main` by the status commit). Independent delta review passed: the audit names no secret, customer data or account/site id (D-059), and the `docs/PRICING.md` line matches the audit and `shared/planFamily.ts`. Focused checks 219/219 and `pnpm check` green; exact-head CI required before landing.
 - D-132-item3: todo; waits for D-132-audit.
