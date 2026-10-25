@@ -70,6 +70,26 @@
    "note": "D-191: pnpm audit --prod on main 02a8a028 - dompurify 3.4.16 (critical+high, via mermaid), zod 4.1.12, body-parser 1.20.6 (override), undici 7.29.1 (high, DoS). Version bumps and lockfile only; stop and report if a bump breaks a type or test."
   },
   {
+   "id": "FIX-device-signin",
+   "title": "Sign-in on a returning device: prefill the last email, ready the emailed code for autofill (owner report, Oct 25)",
+   "row": "D-019",
+   "packet": "docs/plans/FIX-device-signin.md",
+   "tier": 1,
+   "lane": "auth-device",
+   "branch": "agent/queue/fix-device-signin",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168); next is one independent review by a model other than Claude (D-200), then landing on green required CI. Face ID, passkeys and Sign in with Apple are not in this row: they change the login rule and wait for the owner.",
+   "owns": [
+    "client/src/lib/rememberedSignInEmail.ts",
+    "client/src/components/SeekerSignIn.tsx",
+    "client/src/components/ReferrerOtpSignIn.tsx",
+    "client/src/components/deviceSignIn.test.tsx",
+    "server/workEmailOtp.ts",
+    "server/workEmailOtp.test.ts"
+   ]
+  },
+  {
    "id": "D-174-sample-job-removal",
    "title": "Remove the fabricated acme.com 'Test role for loop verification' listing from production /jobs, the sitemap and JobPosting markup",
    "row": "D-193",
