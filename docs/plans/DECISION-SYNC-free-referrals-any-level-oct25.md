@@ -97,7 +97,7 @@ Verbatim: "Job hunting? never cold-apply. Check if you can get referred first.th
 
 Recorded:
 - The founder's EXACT words are the canonical tagline: **"Job hunting? never cold-apply. Check if you can get referred first."** Referral-first positioning goes across the website and all marketing ("left right and center").
-- Working tagline: **"Job hunting? Before you cold-apply, check if you can get referred first."** - the safer variant, presented to the owner in the same iMessage thread (Oct 25 ~18:01) and received with explicit approval by positive reception ("Lovely", phonemsg-01M5SGQKS7B403E4YSJ1YQ74FM). The founder's original verbatim ("never cold-apply") is preserved above as the source; the variant now carries the working wording.
+- Working tagline: **"Job hunting? Before you cold-apply, check if you can get referred first."** - the safer variant, presented to the owner in the same iMessage thread (Oct 25 ~18:01) and received with explicit approval by positive reception ("Lovely", phonemsg-01M5SGQKS7B403E4YSJ1YQ74FM; then "Like it", phonemsg-01M5SGQPWC5PJ224N6JS6KZTY7). The founder's original verbatim ("never cold-apply") is preserved above as the source; the variant now carries the working wording.
 - Guardrails: the positioning never claims a guaranteed referral, job, or better success rate, and never tells users not to apply elsewhere; it presents referral-first as the smarter first step.
 - Channel permissions are unchanged: website and product copy go through the normal queue/review lanes; external posting in the owner's name (LinkedIn/X/email) needs its own per-channel approval - this directive is not a blanket posting grant.
 
