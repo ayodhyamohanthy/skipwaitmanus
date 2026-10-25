@@ -43,6 +43,27 @@
    ]
   },
   {
+   "id": "first-look-24h-oct25",
+   "title": "Poster first look 48h -> 24h (founder rule Oct 25 17:48, phonemsg-01M5SFYFY54D3VAEDAEA3591SS)",
+   "row": "BACKLOG-OCT25-1",
+   "packet": "docs/IMPLEMENTATION-BACKLOG-oct25.md",
+   "tier": 1,
+   "lane": "matching",
+   "branch": "agent/queue/first-look-24h-oct25",
+   "status": "in-review",
+   "dependsOn": [],
+   "note": "Founder's explicit 24h rule makes the shipped 48h constant stale. Constant, comments, notification body, Ask composer copy and test pins repaired; the separate 48-hour claim lapse (shared/referral.ts, server/referralTimers.ts) is a different rule and unchanged. Built by an Instinct session; PR #672; 96/96 affected tests green. Needs green required CI on exact head + non-Instinct review (D-151) before merge.",
+   "owns": [
+    "shared/companyOpportunities.ts",
+    "server/firstLookRelease.ts",
+    "server/db.ts",
+    "client/src/pages/Ask.tsx",
+    "client/src/pages/ask.test.tsx",
+    "server/companyOpportunities.contract.test.ts",
+    "server/db.opportunityFirstLook.test.ts"
+   ]
+  },
+  {
    "id": "device-signin-requirements-oct25",
    "title": "Device-saved sign-in: canonical requirements record before implementation (owner report Oct 25)",
    "row": "BACKLOG-OCT25-5",
