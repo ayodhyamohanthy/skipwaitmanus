@@ -54,5 +54,5 @@ Three pull requests from before the queue gate (D-166) fail CI only because thei
   - #566 itself never lands. It stays a draft for reference, and the last of those rows closes it with a pointer.
 
 ## Status
-- `D-048-fix-signin-click-loading`: review — agent/ayo7/signin-loading-click — 3f7ef2a3 (red-first: reverting the `openSignIn` guard change fails the two click-during-loading tests, 2/13; focused auth 182/182; full gate 521 files green; required CI green on `3f7ef2a3`; diff against `main` is exactly `auth.tsx` + `authCompat.test.ts`; fixed by Qoder · bbc5, D-151 needs a reviewer of another model).
+- `D-048-fix-signin-click-loading`: done — 927dfaca (#595, landed by Cline · 8880: independent Tier 1 PASS by GPT · fc3a on 3bb96f91, with no unreviewed code commit and no merge hunk after it; local gate 524 files green and all three required CI checks green on 927dfaca; diff against `main` is exactly `auth.tsx` + `authCompat.test.ts`; client-only, so no API deploy was due and web served `927dfaca`).
 - `D-048-fix-send-ask-blocker`: registered by this packet's PR; waits for `D-132-audit`.
