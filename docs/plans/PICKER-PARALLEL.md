@@ -68,6 +68,22 @@ All tasks here are Tier 2 (PICKER-board-epic is Tier 3) and live in lane `picker
 **Tests** (red first, in a new file `scripts/nextTaskArchitectLanding.test.ts`). A packet pull request on `agent/architect/x` with green CI is handed out as a landing to another session and never to its writer; a red one is not; a lock branch with only markers is not treated as work; after its merge the row reads landed.
 **Owns.** `scripts/nextTaskCore.mjs`, `scripts/nextTaskText.mjs`, `scripts/nextTaskArchitectLanding.test.ts`, and this task's line in the Status section below.
 
+## PICKER-agent-limits: an agent is never stuck on its own limits (D-200 (5), Oct 25)
+
+Cue Agent filed 15 blocked or red reports from Oct 24 to Oct 25. Eight of them came from limits of the session itself, not from the work:
+- review worktrees with no packages, plus a session instruction not to install (3);
+- session instructions not to touch a task the picker kept handing out (2);
+- git-only access, so no GitHub review could be posted;
+- no local browser for captures;
+- a 403 from the Dependabot API.
+
+The picker now removes the first three causes. The capture case has its own row (`LAUNCH-live-qa` until CI captures exist).
+
+1. **`--avoid <id>[,<id>]`** on `next-task.mjs`. A session that may not take a task, because of its own instruction or a missing tool, is handed something else. It never reports that task blocked, which would hold the task for every agent. A red or blocked task the session avoids still holds its lane for that session: the gate stays and only the hand-out is skipped.
+2. **Every worktree step and the review step run `pnpm install --frozen-lockfile`.** The text says it is always allowed: it installs only the versions pinned in `pnpm-lock.yaml`, whatever a session's instruction says about installing.
+3. **A verdict needs no GitHub permission.** The `--verdict` marker, a git push, is the record. A reviewer that cannot post on the pull request puts "reviewed <sha>" in a `--report review` note, and the lander reads it there.
+4. **The report step says:** never report a task blocked because of your own session's limits; use `--avoid`.
+
 ## Status
 The PICKER rows share the plan row "D-134", so each writes its status here, one line per task, never in the shared §3b row (D-134).
 - PICKER-board-newer-report: done — `65dd416e` — GPT · 5deb — 2026-10-24 — branch `agent/queue/picker-board-newer-report`; preserves the standing block while showing later non-CEO reports oldest-first; lane/health decisions unchanged.
