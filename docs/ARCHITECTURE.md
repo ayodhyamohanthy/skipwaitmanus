@@ -178,7 +178,7 @@ A new job needs its name in both registries and a contract test (`server/schedul
   - `deploy-api.yml` (path-filtered to server, shared, drizzle, worker and build files): `migrate-db` applies `drizzle/deploy`, then tsc, build, a two-phase `wrangler deploy`, a readiness poll, and a check that workers.dev is 404.
   - `deploy-pages.yml` (path-filtered to client, shared, functions and prerender files): build, `wrangler pages deploy`, then a check that the live `git-commit` meta matches.
 - **CI.** `ci.yml` runs on pull requests and on pushes to `main`: typecheck + token audit + deploy-trigger check; full vitest; build.
-- **Drift and rollback.** `drift-watch.yml` checks on a schedule that live serves the newest runtime commit. `rollback.yml` is manual.
+- **Drift and rollback.** `drift-watch.yml` checks on a schedule that live serves the newest runtime commit on main's first-parent chain: the merge commit main deployed, never the pull request's commit inside it (#475). `rollback.yml` is manual.
 - **Release truth.** A green deploy step is not proof. `EXPECTED_SHA=<sha> bash scripts/verify-live-release.sh` must print CONVERGED; for web, `https://skipwait.me` must serve `<meta name="git-commit">` with your SHA.
 
 ## 9. Tests and the gate

@@ -61,13 +61,13 @@
    "tier": 2,
    "lane": "deps",
    "branch": "agent/queue/sec-deps-oct24",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
    "owns": [
     "package.json",
     "pnpm-lock.yaml"
    ],
-   "note": "D-191: pnpm audit --prod on main 02a8a028 - dompurify 3.4.16 (critical+high, via mermaid), zod 4.1.12, body-parser 1.20.6 (override), undici 7.29.1 (high, DoS). Version bumps and lockfile only; stop and report if a bump breaks a type or test."
+   "note": "D-191: pnpm audit --prod on main 02a8a028 - dompurify 3.4.16 (critical+high, via mermaid), zod 4.1.12, body-parser 1.20.6 (override), undici 7.29.1 (high, DoS). Version bumps and lockfile only; stop and report if a bump breaks a type or test. Done - 1e97d6ea (#663): pnpm audit --prod reports no known vulnerabilities; zod 4.6.7, undici 7.30.1, body-parser 1.20.9, dompurify 3.4.17."
   },
   {
    "id": "FIX-device-signin",
@@ -94,16 +94,18 @@
    "title": "Remove the fabricated acme.com 'Test role for loop verification' listing from production /jobs, the sitemap and JobPosting markup",
    "row": "D-193",
    "packet": "docs/plans/D-193-journey-foundations.md",
-   "tier": 1,
+   "tier": 2,
    "lane": "d174-data",
    "branch": "agent/queue/d174-sample-job-removal",
    "status": "todo",
    "dependsOn": [],
-   "note": "D-193 packet section 5.2. Data migration 0121 (reserved in plan section 5), one guarded DELETE: never deletes a row a referral request references (referralRequests.jobId cascades). Breaks D-001's lasting no-sample-data rule today.",
+   "note": "Amended Oct 25 by the #649 ruling (D-200 (2)): a non-destructive read filter, not data migration 0121, because scripts/lint-deploy-migrations.sh rejects every DELETE FROM and stays as it is. Port #104's isTestCatalogJob into server/testCatalogJobs.ts and wrap every public job list (/api/jobs, sitemap, searchJobs, tRPC jobs.list) in publicCatalogJobs, wired in server/_core/index.ts and server/routers.ts; no migration, no edit to server/db.ts or server/privateReferralRoutes.ts. D-193 packet section 5.2. Earlier note: D-193 packet section 5.2. Data migration 0121 (reserved in plan section 5), one guarded DELETE: never deletes a row a referral request references (referralRequests.jobId cascades). Breaks D-001's lasting no-sample-data rule today.",
    "epic": "D-174",
    "owns": [
-    "drizzle/deploy/0121_remove_sample_job.sql",
-    "server/sampleJobRemoval.test.ts"
+    "server/testCatalogJobs.ts",
+    "server/testCatalogJobs.test.ts",
+    "server/_core/index.ts (switch only)",
+    "server/routers.ts (switch only)"
    ]
   },
   {
@@ -114,7 +116,7 @@
    "tier": 1,
    "lane": "d048-fix-signin",
    "branch": "agent/ayo7/signin-loading-click",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
    "note": "D-199 registers legacy PR #595 (built by Instinct Agent; user report phonemsg-01M5MXF1C8DQ86C6Y7TXJQY01X) under its existing branch: no rename, no gate bypass. Scope: client/src/_core/auth.tsx and authCompat.test.ts only; the signed-in no-op, the same-origin returnTo guard and server-owned authentication stay unchanged. The branch drops its own copy of this row at its next merge-up. Review: Tier 1, by a model other than Instinct (builder) or the fixer's (D-151, D-200). Lands with an independent PASS and fresh green CI on the exact head. Fixture evidence only: the user's exact failing URL stays open. Packet section 2.",
    "owns": [
@@ -130,7 +132,7 @@
    "tier": 2,
    "lane": "launch-legal",
    "branch": "agent/queue/launch-legal-copy",
-   "status": "todo",
+   "status": "owner",
    "dependsOn": [],
    "owns": [
     "client/src/pages/Terms.tsx",
@@ -139,7 +141,7 @@
     "client/src/pages/policyPages.test.tsx",
     "client/src/pages/trustPrivacy.test.tsx"
    ],
-   "note": "Launch audit Oct 25: Terms.tsx:23 says 'Referrals are always free' and CancellationPolicy.tsx:25 omits the ended-month exception, while packs sell for money; the privacy page names no sign-in, email, error or hosting processor. Agents draft; the owner's approval comment on the pull request comes before landing (legal text is the owner's)."
+   "note": "Launch audit Oct 25: Terms.tsx:23 says 'Referrals are always free' and CancellationPolicy.tsx:25 omits the ended-month exception, while packs sell for money; the privacy page names no sign-in, email, error or hosting processor. Agents draft; the owner's approval comment on the pull request comes before landing (legal text is the owner's). Unblock ruling Oct 25 (Qoder · bbc5, D-200 (2)): the checks half of Cue GPT · 5588's block is stale - typecheck, tests, build and Workers Builds are all green on c8ecc53a. The owner-approval half stands and only the owner can clear it (D-200 (6)). Before approving, CancellationPolicy bullet 3 needs one correction: 'the referral comes back if you withdraw it then' is false - a claimed-then-passed request withdraws with no refund (withdrawCompanyReferralRequest sets creditRefunded false; D-147), so the packet's own wording applies: 'After a verified employee claims or declines the request, the referral stays used.' The owner approves or amends the exact wording in a comment on PR #659; after that a session applies it, runs the gate, adds 1280/390 captures and lands."
   },
   {
    "id": "LAUNCH-live-qa",
@@ -158,14 +160,31 @@
    "note": "Rule 8 proof before any seeker is invited: the last signed-in QA is Oct 14-16, before /ask, /explore, /queue, /requests and /conversation were rebuilt in place. Needs a headed browser (a Claude Code session; Manus sessions have no Chromium) and one owner-forwarded work-email code. Never pay or pass the hosted payment form (D-065). Defects found become their own rows."
   },
   {
+   "id": "SHELL-focus-clearance",
+   "title": "On a phone, a focused field is never hidden behind the goal shell's bottom bar (#642)",
+   "row": "D-048",
+   "packet": "docs/plans/SHELL-focus-clearance.md",
+   "tier": 2,
+   "lane": "design-shell",
+   "branch": "agent/queue/shell-focus-clearance",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "Issue #642 (Instinct, 390x844 DPR2 QA): the /ask reason field and the conversation composer sit under the sticky 56px bottom bar on focus. Fix: data-goal-bottom-bar on the phone nav plus one scroll-padding-bottom rule in index.css (switch only). Desktop unchanged. Real-viewport proof on the PR; a session with no browser uses --avoid, never blocked.",
+   "owns": [
+    "client/src/components/goal/GoalShell.tsx",
+    "client/src/index.css (switch only)",
+    "client/src/components/goal/goalShell.focusClearance.test.tsx"
+   ]
+  },
+  {
    "id": "LAUNCH-marker-ci-skip",
    "title": "CI skips marker-branch pull requests (reports, review, heartbeat, architect locks, landing slot), which never merge",
    "row": "LAUNCH",
    "packet": "docs/plans/LAUNCH-oct25.md",
    "tier": 2,
    "lane": "launch-ci",
-   "branch": "agent/queue/launch-marker-ci-skip",
-   "status": "todo",
+    "branch": "agent/queue/launch-marker-ci-skip",
+    "status": "done",
    "dependsOn": [],
    "owns": [
     ".github/workflows/ci.yml",
@@ -184,6 +203,126 @@
    "status": "todo",
    "dependsOn": [],
    "note": "D-151: did() compares exact session names, so on Oct 22 the picker handed #382's re-review to Qoder · a236 right after Qoder · 31dd fixed it. Compare models, count Fixed markers as fixes, and print the rule in the review step. Every Tier 1 review the queue hands out, P0-ask-link-signin's and P1-queue-attestation's included, goes through this check."
+  },
+  {
+   "id": "PICKER-decision-sync",
+   "title": "Every agent works from the newest decision: tasks record syncedTo, decisions name the tasks they change, the picker withholds out-of-sync work and prints the newest decisions first (D-202)",
+   "row": "D-202",
+   "packet": "docs/plans/PICKER-decision-sync.md",
+   "tier": 2,
+   "lane": "picker",
+   "branch": "agent/queue/picker-decision-sync",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "The owner, Oct 23: agents must always work on the most recent decision, never on old work. Builders are told to read only the brief and their packet (scripts/nextTaskText.mjs:42), so a packet older than a decision can be built as written (D-147, D-148 then D-152). Until this lands, the interim rule in the packet binds every agent."
+  },
+  {
+   "id": "SKIPPY-fix",
+   "title": "Skippy post-landing review (#442, #451, #453, #454): fix S-1 SSRF, S-2 credit copy, S-3 price drift, S-4 agent allow-list, S-5 company at link time, S-6 ask log; live proof on skipwait_qa",
+   "row": "D-201",
+   "packet": "docs/plans/SKIPPY-fix.md",
+   "tier": 1,
+   "lane": "skippy-seeker",
+   "branch": "agent/queue/skippy-fix",
+   "status": "todo",
+   "dependsOn": ["D-132-item3"],
+   "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. S-3 reuses D-132-item3's shared expectedCost/AskPriceChangedError guard; this task waits for that row rather than duplicating or overlapping its transaction work. All flags stay off until SKIPPY-fix lands with its proof. The owner asked to work on Skippy (Oct 23), so it remains ordered after the live regressions and the two picker fixes."
+  },
+  {
+   "id": "BRANCH-HYGIENE-1",
+   "title": "Branch cleanup script (dry run first) and the backlog: delete branches that are done and merged, online and offline (D-205)",
+   "row": "D-205",
+   "packet": "docs/plans/BRANCH-HYGIENE.md",
+   "tier": 2,
+   "lane": "repo-hygiene",
+   "branch": "agent/queue/branch-hygiene",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "The owner, Oct 23. On ecdbc227, origin had 345 branches besides main; 69 tips are already in main, and squash-merged heads need the merged-PR check. Never delete main, agent/reports/log, the landing slot, unmerged work or any branch of a task that is not done. Paste the dry run in the PR; the lander pastes the --apply output after landing."
+  },
+  {
+   "id": "BRANCH-HYGIENE-2",
+   "title": "The picker deletes merged local branches on every run, and its landing step deletes the task's branches after the live check (D-205)",
+   "row": "D-205",
+   "packet": "docs/plans/BRANCH-HYGIENE.md",
+   "tier": 2,
+   "lane": "picker",
+   "branch": "agent/queue/branch-hygiene-picker",
+   "status": "todo",
+   "dependsOn": [
+    "BRANCH-HYGIENE-1"
+   ],
+   "note": "Uses BRANCH-HYGIENE-1's pure classifier. Safe delete only (git branch -d); never the checked-out branch, another worktree's branch or a dirty worktree. Notes, never blocking."
+  },
+  {
+   "id": "SKIPPY-redteam",
+   "title": "Skippy prompt-injection red-team suite in CI: resume, job page, note, admin tool output, agent drafts (pre-launch checklist, D-140)",
+   "row": "D-201",
+   "packet": "docs/plans/SKIPPY-fix.md",
+   "tier": 2,
+   "lane": "skippy-redteam",
+   "branch": "agent/queue/skippy-redteam",
+   "status": "todo",
+   "dependsOn": [
+    "SKIPPY-fix"
+   ],
+   "note": "A permanent deterministic suite with a model fake that obeys the injection, so the guarantees are proved by the code around the model. A failing case is reported to the CEO with its string; never weaken the case."
+  },
+  {
+   "id": "SKIPPY-3",
+   "title": "Skippy step 3: buy a credit pack in the chat with a one-use money card and the shared kit-pack checkout (test site only, flag off)",
+   "row": "D-201",
+   "packet": "docs/plans/SKIPPY-next.md",
+   "tier": 1,
+   "lane": "skippy-seeker",
+   "branch": "agent/queue/skippy-purchase",
+   "status": "todo",
+   "dependsOn": [
+    "SKIPPY-fix"
+   ],
+   "note": "Packs only (D-146). Extract the kit-pack arm of POST /api/chargebee/checkout so Skippy and /plans run one function. SKIPPIE_PURCHASE_ENABLED stays off in production until SKIPPY-stepup lands (D-140 fresh re-login). Never a real payment."
+  },
+  {
+   "id": "SKIPPY-stepup",
+   "title": "Fresh sign-in before a Skippy money card: an interactive sign-in no older than 15 minutes, both auth planes, free methods only (D-140)",
+   "row": "D-201",
+   "packet": null,
+   "tier": 1,
+   "lane": "auth-stepup",
+   "branch": "agent/queue/skippy-stepup",
+   "status": "architect",
+   "dependsOn": [
+    "SKIPPY-fix"
+   ],
+   "note": "Write the packet first (D-109) from the ruling in docs/plans/SKIPPY-next.md: how the interactive sign-in time is carried for the cookie JWT and the WorkOS bearer token and survives renewal, how WorkOS re-prompts, and the tests. Login-rule pins stay green; referrer sign-in is untouched."
+  },
+  {
+   "id": "SKIPPY-6",
+   "title": "Skippy step 6: agents request a send, the seeker approves each one; limits under a grant lock; 'Sent via the seeker's assistant' for referrers (flag off)",
+   "row": "D-201",
+   "packet": "docs/plans/SKIPPY-next.md",
+   "tier": 1,
+   "lane": "skippy-agents",
+   "branch": "agent/queue/skippy-agent-send",
+   "status": "todo",
+   "dependsOn": [
+    "SKIPPY-fix"
+   ],
+   "note": "D-141, D-142. One additive migration at the next free number at landing (0108 is reserved for ROW20-CD), recorded in plan §5. The ask goes through db.createCompanyReferralRequest with selectedCompany and idempotency key agent-draft-<id>."
+  },
+  {
+   "id": "SKIPPY-7",
+   "title": "Skippy step 7: opt-in auto-send within the grant's limits, through the step 6 approve function (flag off)",
+   "row": "D-201",
+   "packet": null,
+   "tier": 1,
+   "lane": "skippy-agents",
+   "branch": "agent/queue/skippy-auto-send",
+   "status": "architect",
+   "dependsOn": [
+    "SKIPPY-6"
+   ],
+   "note": "Write the packet after SKIPPY-6 lands, from the rulings in docs/plans/SKIPPY-next.md: off by default, turned on only by the seeker in session, the same transaction and limits as an approved send, revoke and pause stop the next call, never buys credits, a daily digest."
   },
   {
    "id": "PICKER-board-newer-report",
@@ -253,7 +392,7 @@
    "tier": 1,
    "lane": "register",
    "branch": "agent/queue/register-520",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
    "note": "D-163 (4): owner words and CEO rulings on open PR #520 never reached main, so no agent follows them and its nine rows (SKIPPY-fix and the rest) are invisible. Build = cut agent/queue/register-520 from #520's head, merge main, renumber every entry to the next free IDs (main already has a different D-156). Review and landing by a model other than Claude, which wrote it (D-151). Docs only."
   },
@@ -562,6 +701,30 @@
    ]
   },
   {
+   "id": "D-048-dark-mode",
+   "title": "Light and dark mode across the goal UI: dark tokens, a per-device toggle, light unchanged and the default (#646)",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-dark-mode.md",
+   "tier": 2,
+   "lane": "design-theme",
+   "branch": "agent/queue/d048-dark-mode",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them.",
+   "owns": [
+    "client/src/styles/goalDark.css",
+    "client/src/contexts/themeContext.test.tsx",
+    "client/src/components/goal/goalTheme.test.tsx",
+    "client/src/index.css (switch only)",
+    "client/src/contexts/ThemeContext.tsx",
+    "client/src/App.tsx (switch only)",
+    "client/src/components/goal/GoalMoreMenu.tsx",
+    "client/src/components/goal/goalMoreMenu.test.tsx",
+    "client/index.html (switch only)",
+    "DESIGN.md"
+   ]
+  },
+  {
    "id": "D-065-C",
    "title": "The daily money check finds delivery spends by their real key (<id>#1), so ask_spent_while_waiting can fire",
    "row": "D-065-B",
@@ -612,7 +775,7 @@
     "D-065-C",
     "POSTMERGE-oct22-fixes"
    ],
-   "note": "D-146 (founder, Oct 23): the D-132 audit is next, so it no longer waits on D-035, which D-147 holds for the founder. D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. First-pass findings are in docs/plans/D-132-audit-findings.md (#481) and items 2 (the stored level and cost, migration 0106, #482) and 6 (the money check against the stored cost, #487) are on main; the remaining items land one pull request each. It runs after the live review (which moved the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends). The D-048 rows that redesign the compose screens and the seeker conversation (D-048-p3-live-review-find, D-048-p3-live-review-conversation) wait for it, because it edits their cost lines first. D-197 (Oct 24, CEO): these owns are declared on main, and the audit branch carries no edit of its own row (only Claude Code changes rows). The audit waits for POSTMERGE-oct22-fixes (#635; both edit server/db.ts) and merges main once that lands; D-132-audit-item5-correction and D-099-bonus-pages wait for the audit.",
+   "note": "D-146 (founder, Oct 23): the D-132 audit is next, so it no longer waits on D-035, which D-147 holds for the founder. D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. First-pass findings are in docs/plans/D-132-audit-findings.md (#481) and items 2 (the stored level and cost, migration 0106, #482) and 6 (the money check against the stored cost, #487) are on main; the remaining items land one pull request each. It runs after the live review (which moved the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends). The D-048 rows that redesign the compose screens and the seeker conversation (D-048-p3-live-review-find, D-048-p3-live-review-conversation) wait for it, because it edits their cost lines first. D-197 (Oct 24, CEO): these owns are declared on main, and the audit branch carries no edit of its own row (only Claude Code changes rows). The audit waits for POSTMERGE-oct22-fixes (#635; both edit server/db.ts) and merges main once that lands; D-132-audit-item5-correction and D-099-bonus-pages wait for the audit. Oct 25 (#644): ASK_LEVEL_COST also stays off until ASSIST-approval-cost lands, so an approved assistant ask is never charged more than the owner saw.",
    "owns": [
     "client/src/hooks/useAskQuote.ts",
     "client/src/pages/Ask.tsx",
@@ -632,6 +795,28 @@
     "shared/moneyCopy.test.ts",
     "shared/moneyCopy.ts",
     "shared/openAskSlots.ts"
+   ]
+  },
+  {
+   "id": "ASSIST-approval-cost",
+   "title": "An approved assistant ask is charged exactly the cost the owner saw, or not at all: 409 cost_changed (#644)",
+   "row": "D-132",
+   "packet": "docs/plans/ASSIST-approval-cost.md",
+   "tier": 1,
+   "lane": "money-assist",
+   "branch": "agent/queue/assist-approval-cost",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-p3-assistants"
+   ],
+   "note": "Issue #644: decideAssistantApproval never re-reads the approved creditCount, so with ASK_LEVEL_COST on an owner who saw 1 credit could pay up to 10. Latent today (flag off; only the unsold land plan grants assistants), so ASK_LEVEL_COST and any land sale stay off until this is done. Contract: the decision body carries expectedCreditCount; the route re-derives the cost with the quote route's own functions and answers 409 cost_changed before any charge on a mismatch. No edit to server/db.ts or privateReferralRoutes.ts. Waits for D-048-p3-assistants (both edit Approve.tsx).",
+   "owns": [
+    "server/assistantApprovalCost.ts",
+    "server/assistantApprovalCost.test.ts",
+    "server/assistantRoutes.ts",
+    "server/assistantRoutes.test.ts",
+    "client/src/pages/Approve.tsx",
+    "client/src/pages/approve.test.tsx"
    ]
   },
   {
@@ -670,9 +855,10 @@
    "branch": "agent/instinct/v2-checkout-port",
    "status": "todo",
    "dependsOn": [
-    "D-132-item3"
+    "D-132-item3",
+    "D-132-audit"
    ],
-   "note": "D-165: fix stage first - merge main, renumber its two migrations (main already has 0108), implement D-165 (3) red-first (no refusal for a Free wallet with unused credits; they move to a carry-over grant expiring at their own month end). Tier 1 review by a model other than Instinct, including the line-by-line deletion review of the three-way port. #416 is superseded and closes when this lands. D-185: also carries D-132 item 4's grant half - paid rung credits are granted where they never expire (PAID_CREDITS_NEVER_EXPIRE), keyed once per term."
+   "note": "D-165: fix stage first - merge main, renumber its two migrations (main already has 0108), implement D-165 (3) red-first (no refusal for a Free wallet with unused credits; they move to a carry-over grant expiring at their own month end). Tier 1 review by a model other than Instinct, including the line-by-line deletion review of the three-way port. #416 is superseded and closes when this lands. D-185: also carries D-132 item 4's grant half - paid rung credits are granted where they never expire (PAID_CREDITS_NEVER_EXPIRE), keyed once per term. D-165 and D-197 (5): lands only after D-132-audit; the edge is in dependsOn since Oct 25, so the picker never offers the landing first."
   },
   {
    "id": "PICKER-landing-slot",
