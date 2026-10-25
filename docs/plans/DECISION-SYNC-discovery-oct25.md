@@ -6,6 +6,18 @@
 
 Company discovery is **automatic as the user types**, the way LinkedIn's company field works. It is not the manually maintained directory, and it is not an admin-registered list. This was decided before Oct 25 and was re-frozen today; it supersedes any plan that treats the fixed 39-company directory as the company source for seekers.
 
+## The full chain (founder clarification, phonemsg-01M5SEJS8A37W54H4QPDPMA9FQ, Oct 25 ~17:24 IST)
+
+Discovery does not stop at the company name. The frozen chain is: **company selection -> verified official careers source -> current job links -> referral request.** Manually registering an ATS board per company is a fallback, not the mechanism.
+
+Requirements for the careers-source stage:
+
+1. **Automatic careers-site discovery**: from the resolved official domain, find the company's own careers page without human registration - homepage and well-known paths (/careers, /jobs), the site's own links, its sitemap, and known ATS hosts (boards.greenhouse.io, jobs.lever.co, jobs.ashbyhq.com, apply.workable.com, jobs.smartrecruiters.com and custom-domain boards) linked from the company domain.
+2. **Current jobs from the discovered source**: when the careers page sits on a known ATS, read its public postings API/feed; otherwise parse the careers page itself, preferring structured data (`schema.org/JobPosting` markup) over page scraping.
+3. **Truthful states, never conflated**: "jobs found (N)", "careers site found but we cannot read its listings" and "careers site lists no open roles" are three different answers. A failed fetch must not erase existing jobs or present as "no openings" (same rule as the catalog sync).
+4. **Verification**: the careers source must belong to the resolved company domain (or be linked from it); a board that cannot be tied back to the official domain stays unverified and serves nothing - same rule as admin registration today.
+5. **Manual registration stays** as the escape hatch for companies whose careers site defies every automatic path - it is the exception path, never the default flow.
+
 ## What this means for existing work
 
 - The fixed directory stays only as seed data and coverage display, never as the boundary of what a user can pick.
