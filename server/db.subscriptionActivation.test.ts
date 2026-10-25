@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { billingReviewOutbox, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, promoCreditGrants, tokenTransactions, notifications } from "../drizzle/schema";
+import { billingReviewOutbox, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, promoCreditGrants, tokenTransactions, notifications, users } from "../drizzle/schema";
 import { FREE_MONTHLY_ALLOWANCE } from "../shared/subscriptionPlans";
 import { planEntitlementsFor } from "../shared/planEntitlements";
 import { applyChargebeeSubscriptionEvent } from "./db";
@@ -49,6 +49,8 @@ function fixtureDatabase() {
     if (table === promoCreditGrants) return promoGrants;
     if (table === tokenTransactions) return promoTxns;
     if (table === notifications) return promoNotes;
+    // REVIEWER-ISOLATION-1: the subscription guard looks up the subscriber's openId.
+    if (table === users) return [{ id: 7, openId: "workos_member_7" }];
     throw new Error("Unexpected table");
   };
   const tx = {
