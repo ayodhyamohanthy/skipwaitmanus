@@ -51,13 +51,13 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
     ]);
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
     // P0-ask-link-signin and P1-queue-attestation are both done (each landed after its
-    // review; P1 as merge 2be41b2d), and both owner follow-ups are done, so
-    // PICKER-review-independence is next.
-    expect(first).toMatchObject({ kind: "build", task: { id: "PICKER-review-independence" } });
+    // review; P1 as merge 2be41b2d), and both owner follow-ups are done. The launch batch
+    // (LAUNCH-oct25, D-200 (2)) comes next, starting with the security advisories.
+    expect(first).toMatchObject({ kind: "build", task: { id: "SEC-deps-oct24" } });
     // Both owner follow-ups (PREMIUM-total-label and D-067-outbox-fixture-repair) are done,
-    // so slicing off the live regressions leaves PICKER-review-independence as next.
+    // so slicing off the live regressions still leaves the launch batch first.
     const followUps = pickNextTask({ tasks: real.tasks.slice(2), mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    expect(followUps).toMatchObject({ kind: "build", task: { id: "PICKER-review-independence" } });
+    expect(followUps).toMatchObject({ kind: "build", task: { id: "SEC-deps-oct24" } });
   });
 
   it("rejects unknown keys, duplicates, bad branches, missing packets, unknown dependencies and cycles", () => {
