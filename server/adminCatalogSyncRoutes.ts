@@ -2,6 +2,7 @@
 // apply of the reviewed plan. Signed-out and non-admin callers get nothing and
 // no provider call is made; the apply body must be JSON and confirm the site.
 import type { Express, Request, Response } from "express";
+import { isReviewerOpenId } from "./_core/reviewerLogin";
 import { catalogSyncApplyRequestSchema } from "../shared/catalogSync";
 import { clearPriceAvailabilityCache } from "./billingAvailability";
 import { currentChargebeeSite, isChargebeeNotConfiguredError, type ChargebeeSite } from "./chargebeeApi";
@@ -27,6 +28,7 @@ export function registerAdminCatalogSyncRoutes(app: Express, deps: AdminCatalogS
 
   const adminIdentity = async (req: Request) => {
     const identity = await deps.resolveIdentity(req);
+    if (identity && isReviewerOpenId((identity.account as { openId?: string }).openId)) return undefined;
     return identity && identity.account.role === "admin" ? identity : undefined;
   };
 

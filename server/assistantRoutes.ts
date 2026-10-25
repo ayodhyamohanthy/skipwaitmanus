@@ -1,4 +1,5 @@
 import express, { type Express, type Request } from "express";
+import { refuseReviewerExternalAction } from "./_core/reviewerLogin";
 import {
   connectAssistant,
   createAssistantApproval,
@@ -105,6 +106,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   app.post("/api/assistants/connections", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to connect an assistant" });
       const connection = await doConnect(identity.account.id, { provider: req.body?.provider, appName: req.body?.appName, scopes: req.body?.scopes });
       record({ actorUserId: identity.account.id, action: "assistant.connected", outcome: "success", resourceType: "assistant_connection", resourceId: connection?.id, metadata: { provider: connection?.provider } });
@@ -118,6 +120,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   app.delete("/api/assistants/connections/:connectionId", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to disconnect assistants" });
       const connectionId = parseId(req.params.connectionId);
       if (!connectionId) return res.status(400).json({ error: "Invalid assistant" });
@@ -142,6 +145,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   app.post("/api/assistants/tokens", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to create a token" });
       const token = await doCreateToken(identity.account.id, { name: req.body?.name });
       record({ actorUserId: identity.account.id, action: "assistant.token_created", outcome: "success", resourceType: "assistant_token", resourceId: token.id, metadata: { prefix: token.prefix } });
@@ -155,6 +159,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   app.delete("/api/assistants/tokens/:tokenId", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to revoke tokens" });
       const tokenId = parseId(req.params.tokenId);
       if (!tokenId) return res.status(400).json({ error: "Invalid token" });
@@ -179,6 +184,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   app.post("/api/assistants/approvals", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to create an approval" });
       const approval = await doCreateApproval(identity.account.id, {
         kind: req.body?.kind, provider: req.body?.provider, connectionId: req.body?.connectionId,
@@ -196,6 +202,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   app.patch("/api/assistants/approvals/:approvalId", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to edit this approval" });
       const approvalId = parseId(req.params.approvalId);
       if (!approvalId) return res.status(400).json({ error: "Invalid approval" });
@@ -210,6 +217,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   app.post("/api/assistants/approvals/:approvalId/decision", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to decide this approval" });
       const approvalId = parseId(req.params.approvalId);
       if (!approvalId) return res.status(400).json({ error: "Invalid approval" });
@@ -247,6 +255,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   app.post("/api/developer-apps", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to register an app" });
       const appRow = await doCreateApp(identity.account.id, {
         name: req.body?.name, kind: req.body?.kind, description: req.body?.description,
@@ -279,6 +288,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   app.put("/api/developer-apps/:appId/webhook", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to change this app" });
       const appId = parseId(req.params.appId);
       if (!appId) return res.status(400).json({ error: "Invalid app" });
@@ -294,6 +304,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   app.post("/api/developer-apps/:appId/submit", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to submit this app" });
       const appId = parseId(req.params.appId);
       if (!appId) return res.status(400).json({ error: "Invalid app" });

@@ -1,4 +1,5 @@
 import type { Express, Request } from "express";
+import { isReviewerOpenId, REVIEWER_EXTERNAL_ACTION_REFUSAL } from "./_core/reviewerLogin";
 import { findRazorpayOrdersByReceipt, razorpayConfigured, razorpayOrderInPaise, type ActivityInput } from "./payments";
 import { UNLOCK_CREDIT_PACKS, type UnlockCreditPackId } from "./db";
 
@@ -60,6 +61,7 @@ export function registerEmployerRoutes(app: Express, deps: EmployerRouteDeps) {
   const requireIdentity = async (req: Request): Promise<Gate> => {
     const identity = await deps.resolveIdentity(req);
     if (!identity) return { error: { status: 401, body: { error: "Sign in to use the employer tools" } } };
+    if (req.method !== "GET" && req.method !== "HEAD" && isReviewerOpenId(identity.account.openId)) return { error: { status: 403, body: { error: REVIEWER_EXTERNAL_ACTION_REFUSAL } } };
     return { identity };
   };
   // Employer access is keyed on profiles.accountType === "employer" (self-serve

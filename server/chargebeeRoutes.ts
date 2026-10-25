@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import { refuseReviewerExternalAction } from "./_core/reviewerLogin";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
 import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parsePaymentSourceEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole, VerifiedChargebeeHostedPage } from "./chargebee";
@@ -13,7 +14,7 @@ import { anyPackAvailableForCurrency, refusalBody, startKitPackCheckout, startKi
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
 import type { RetiredPlanAlertInput } from "./errorAlerting";
 
-export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
+export type ChargebeeIdentity = { account: { id: number; openId?: string; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
 
 type SubscriptionCheckoutIntentRow = { hostedPageId: string; checkoutIntentId: string; userId: number; role: "job_seeker" | "referrer"; plan: string; itemPriceId: string; currency: string; status: string; failureReason?: string | null };
 
@@ -216,6 +217,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   app.post("/api/chargebee/gifts/claim", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to claim your gift" });
       const parsed = giftClaimRequestSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "That gift reference is not valid" });
@@ -240,6 +242,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   app.post("/api/chargebee/subscription-cancel", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to manage your plan" });
       const role = roleFromBody(req.body?.role);
       const subscription = await deps.getUserSubscription?.(identity.account.id, role);
@@ -260,6 +263,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   app.post("/api/chargebee/credit-recovery", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to confirm your referral credits" });
       const role = roleFromBody(req.body?.role);
       const hostedPageId = typeof req.body?.hostedPageId === "string" ? req.body.hostedPageId.trim() : "";
@@ -321,6 +325,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   app.post("/api/chargebee/subscription-recovery", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to confirm your pass" });
       const role = roleFromBody(req.body?.role);
       if (recoveryThrottled(identity.account.id, role)) return res.status(429).json({ error: "Too many confirmation tries. Give it a minute and try again." });
@@ -389,6 +394,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   // voids automatically) is the whole check.
   app.post("/api/chargebee/card-validation", async (req, res) => {
     const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
     if (!identity) return res.status(401).json({ error: "Sign in to validate your card. Nothing has been charged." });
     // QA review (D-079): gated on the flag so a flag-off deploy is byte-for-byte today.
     if (!freeCreditsRequireCardValidation() || !deps.createCardValidationPage) return res.status(503).json({ error: "Card validation is not available. Nothing has been charged." });

@@ -93,3 +93,25 @@ export function registerReviewerLoginRoutes(app: Express) {
     }
   });
 }
+
+export const REVIEWER_OPENID_PREFIX = "reviewer_";
+
+/** Demo review accounts (Razorpay/app-review sign-ins) are provisioned with openIds under this prefix. */
+export function isReviewerOpenId(openId: string | null | undefined): boolean {
+  return typeof openId === "string" && openId.startsWith(REVIEWER_OPENID_PREFIX);
+}
+
+export const REVIEWER_EXTERNAL_ACTION_REFUSAL =
+  "Demo review accounts can browse the product but cannot take actions that reach real members.";
+
+/**
+ * Least-privilege guard for the shared demo review accounts: their sessions are ordinary, so
+ * routes that fan out to real members or external services refuse them here. Returns true when
+ * the response was sent. Browse/checkout-preview paths stay open on purpose - a hosted checkout
+ * cart with no payment behind it reaches no one.
+ */
+export function refuseReviewerExternalAction(res: Response, openId: string | null | undefined): boolean {
+  if (!isReviewerOpenId(openId)) return false;
+  res.status(403).json({ error: REVIEWER_EXTERNAL_ACTION_REFUSAL });
+  return true;
+}

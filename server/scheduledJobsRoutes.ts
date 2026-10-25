@@ -7,6 +7,7 @@
 //   GET  /api/admin/jobs          admin: last run, last success and overdue flag per job.
 // Contracts live in shared/scheduledJobs.ts; services are injectable for tests.
 import { sendAdminAlertEmail } from "./errorAlerting";
+import { refuseReviewerExternalAction } from "./_core/reviewerLogin";
 import type { Express, Request, Response } from "express";
 import { JOBS_CRON, JOBS_TICK_HEADER, JOBS_TICK_PATH } from "../shared/jobsTick";
 import { adminScheduledJobsResponseSchema, jobsTickResponseSchema, type AdminScheduledJob, type JobRunSummary } from "../shared/scheduledJobs";
@@ -101,6 +102,7 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
   app.get("/api/admin/jobs", async (req: Request, res: Response) => {
     res.set("Cache-Control", "private, no-store");
     const identity = await deps.resolveIdentity(req);
+    if (refuseReviewerExternalAction(res, (identity?.account as { openId?: string } | undefined)?.openId)) return;
     if (!identity) return res.status(401).json({ error: "Sign in to continue" });
     if (identity.account.role !== "admin") {
       record({ actorUserId: identity.account.id, action: "admin.jobs_denied", outcome: "denied", resourceType: "scheduled_job" });
@@ -133,6 +135,7 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
   app.post("/api/admin/money-check/close-abandoned", async (req: Request, res: Response) => {
     res.set("Cache-Control", "private, no-store");
     const identity = await deps.resolveIdentity(req);
+    if (refuseReviewerExternalAction(res, (identity?.account as { openId?: string } | undefined)?.openId)) return;
     if (!identity) return res.status(401).json({ error: "Sign in to continue" });
     if (identity.account.role !== "admin") {
       record({ actorUserId: identity.account.id, action: "admin.abandoned_checkouts_denied", outcome: "denied", resourceType: "payment", resourceId: "abandoned-checkouts" });
@@ -153,6 +156,7 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
   app.get("/api/admin/money-check/status", async (req: Request, res: Response) => {
     res.set("Cache-Control", "private, no-store");
     const identity = await deps.resolveIdentity(req);
+    if (refuseReviewerExternalAction(res, (identity?.account as { openId?: string } | undefined)?.openId)) return;
     if (!identity) return res.status(401).json({ error: "Sign in to continue" });
     if (identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
     try {
@@ -169,6 +173,7 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
   app.post("/api/admin/alerts/test", async (req: Request, res: Response) => {
     res.set("Cache-Control", "private, no-store");
     const identity = await deps.resolveIdentity(req);
+    if (refuseReviewerExternalAction(res, (identity?.account as { openId?: string } | undefined)?.openId)) return;
     if (!identity) return res.status(401).json({ error: "Sign in to continue" });
     if (identity.account.role !== "admin") {
       record({ actorUserId: identity.account.id, action: "admin.test_alert_denied", outcome: "denied", resourceType: "alert", resourceId: "test-alert" });
@@ -195,6 +200,7 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
   app.post("/api/admin/money-check/run", async (req: Request, res: Response) => {
     res.set("Cache-Control", "private, no-store");
     const identity = await deps.resolveIdentity(req);
+    if (refuseReviewerExternalAction(res, (identity?.account as { openId?: string } | undefined)?.openId)) return;
     if (!identity) return res.status(401).json({ error: "Sign in to continue" });
     if (identity.account.role !== "admin") {
       record({ actorUserId: identity.account.id, action: "admin.money_check_denied", outcome: "denied", resourceType: "scheduled_job", resourceId: "daily-money-check" });
@@ -230,6 +236,7 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
     res.set("Cache-Control", "private, no-store");
     if (!deps.skippie?.enabled()) return res.status(404).json({ error: "Not found" });
     const identity = await deps.resolveIdentity(req);
+    if (refuseReviewerExternalAction(res, (identity?.account as { openId?: string } | undefined)?.openId)) return;
     if (!identity) return res.status(401).json({ error: "Sign in to continue" });
     if (identity.account.role !== "admin") {
       record({ actorUserId: identity.account.id, action: "admin.skippie_denied", outcome: "denied", resourceType: "skippie" });
@@ -260,6 +267,7 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
     res.set("Cache-Control", "private, no-store");
     if (!deps.skippie?.enabled()) return res.status(404).json({ error: "Not found" });
     const identity = await deps.resolveIdentity(req);
+    if (refuseReviewerExternalAction(res, (identity?.account as { openId?: string } | undefined)?.openId)) return;
     if (!identity) return res.status(401).json({ error: "Sign in to continue" });
     if (identity.account.role !== "admin") {
       record({ actorUserId: identity.account.id, action: "admin.skippie_card_denied_access", outcome: "denied", resourceType: "skippie_card" });

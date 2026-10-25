@@ -1,4 +1,6 @@
 import express, { type Express, type Request } from "express";
+import { isReviewerOpenId } from "./_core/reviewerLogin";
+import { refuseReviewerExternalAction } from "./_core/reviewerLogin";
 import { createCompanySuggestion, createSafetyReport, listCompanySuggestionsAdmin, listMyCompanySuggestions, listMySafetyReports, listSafetyReportsAdmin, reviewCompanySuggestion, reviewSafetyReport, SAFETY_REPORT_REASONS } from "./db";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
@@ -32,6 +34,7 @@ export function registerSafetyRoutes(app: Express, deps: SafetyRouteDeps) {
   app.post("/api/safety-reports", express.json(), async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to file a report" });
       const body = (req.body ?? {}) as Record<string, unknown>;
       const report = await fileReport(identity.account.id, {
@@ -61,6 +64,7 @@ export function registerSafetyRoutes(app: Express, deps: SafetyRouteDeps) {
   app.post("/api/company-suggestions", express.json(), async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to suggest a company" });
       const body = (req.body ?? {}) as Record<string, unknown>;
       const suggestion = await suggestCompany(identity.account.id, { companyName: body.companyName, website: body.website, role: body.role, jobFunction: body.jobFunction });
@@ -84,6 +88,7 @@ export function registerSafetyRoutes(app: Express, deps: SafetyRouteDeps) {
   const requireAdmin = async (req: { headers?: unknown } & Request) => {
     const identity = await deps.resolveIdentity(req);
     if (!identity) return "anonymous" as const;
+    if (isReviewerOpenId((identity.account as { openId?: string }).openId)) return undefined;
     if ((identity.account as { role?: string }).role !== "admin") return undefined;
     return identity;
   };
