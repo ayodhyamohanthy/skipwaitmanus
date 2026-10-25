@@ -92,7 +92,7 @@ function PlanCard({ planId, book }: { planId: PlanFamilyId; book: PlanPriceBook 
         >
           {CHECKOUT_OFF_LABEL}
         </p>
-        <p className="mt-2 text-g-badge text-g-ink-3">These are the frozen founding prices; billing starts soon.</p>
+        <p className="mt-2 text-g-badge text-g-ink-3">These are the frozen founding prices. Billing is not switched on yet.</p>
       </div>
     </section>
   );

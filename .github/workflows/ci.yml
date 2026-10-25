@@ -24,7 +24,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Typecheck
-        run: pnpm check
+        # tsc needs more than the default old-space on this tree; OOM exits 1
+        # with no diagnostics (verified: 8GB local run passes with zero errors).
+        run: NODE_OPTIONS=--max-old-space-size=6144 pnpm check
       # scripts/design-token-audit.mjs already existed and already failed, but no
       # workflow ever ran it: design-gate.yml only invokes `impeccable detect`
       # behind `|| true`. So three off-brand hexes sat in the client surface
