@@ -3,6 +3,8 @@ import { ArrowRight, Tag } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { PolicyPageShell, PolicySection } from "@/components/PolicyPageShell";
 import { ASK_COST_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { PLAN_FAMILY, planFeeMinor } from "@shared/planFamily";
+import { money } from "@/components/plans/format";
 /** /pricing — public price list. Mirrors the checkout prices; no sign-in. */
 export default function Pricing() {
   return <PolicyPageShell
@@ -19,8 +21,10 @@ export default function Pricing() {
     </PolicySection>
     <PolicySection number="02" title="Plans (frozen October 25, 2026)">
       <ul>
-        <li>Three plans, each a band of referrer levels: Early to Mid, Mid to Senior, and Senior to Executive. Every plan includes monthly referrals inside its band; extra referrals are priced per level with volume discounts.</li>
-        <li>The full banded price list is on the plans page. Checkout is being switched on; the old credit packs are paused, and credits already bought still work.</li>
+        {PLAN_FAMILY.map(plan => (
+          <li key={plan.id}><strong>{plan.label}</strong>: founding price <strong>{money(planFeeMinor(plan.id, "INR"), "INR")}</strong> a month in India, <strong>{money(planFeeMinor(plan.id, "USD"), "USD")}</strong> a month everywhere else. Includes monthly referrals inside its band.</li>
+        ))}
+        <li>Extra referrals are priced per referrer level with volume discounts; the full list is on the plans page. Checkout is not switched on yet; the old credit packs are paused, and credits already bought still work.</li>
       </ul>
     </PolicySection>
     <PolicySection number="03" title="Payment">

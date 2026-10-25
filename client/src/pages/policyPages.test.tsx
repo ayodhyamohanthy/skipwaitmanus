@@ -12,7 +12,8 @@ import Pricing from "./Pricing";
 import Support from "./Support";
 import Settings from "./Settings";
 import NotFound from "./NotFound";
-import { firstPackClaim } from "@shared/planCatalog";
+import { PLAN_FAMILY, planFeeMinor } from "@shared/planFamily";
+import { money } from "@/components/plans/format";
 
 const { getToken } = vi.hoisted(() => ({ getToken: vi.fn().mockResolvedValue("test-token") }));
 vi.mock("@/_core/auth", () => ({
@@ -124,13 +125,15 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getAllByRole("link", { name: "support@skipwait.me" })[0].getAttribute("href")).toBe("mailto:support@skipwait.me");
     cleanup();
     render(<Pricing />);
-    // D-067 removed the Pro/Max plans: /pricing lists only what can be bought today.
-    // POSTMERGE-oct22 #534: assert the rendered values against the catalog source, not literals,
-    // so a pack-price change in shared/planCatalog.ts fails here instead of silently going stale.
-    expect(screen.getByText(firstPackClaim("INR")!)).toBeTruthy();
-    expect(screen.getByText(firstPackClaim("USD")!)).toBeTruthy();
+    // Oct 25 2026 freeze: /pricing lists the frozen banded founding prices from
+    // shared/planFamily.ts (config-sourced, not literals, so a price change fails here).
+    for (const plan of PLAN_FAMILY) {
+      expect(screen.getByText(money(planFeeMinor(plan.id, "INR"), "INR"))).toBeTruthy();
+      expect(screen.getByText(money(planFeeMinor(plan.id, "USD"), "USD"))).toBeTruthy();
+    }
     const text = document.body.textContent ?? "";
-    for (const retired of ["₹599", "$7/month", "₹1,299", "$15/month", "Pro", "Max"]) expect(text).not.toContain(retired);
+    // "₹1,299" was the old Max price and now equals the frozen Senior to Executive INR price - dropped from the retired list.
+    for (const retired of ["₹599", "$7/month", "$15/month", "Pro", "Max"]) expect(text).not.toContain(retired);
   });
 
   it("Support offers one primary email action plus self-serve routes to existing screens", () => {
