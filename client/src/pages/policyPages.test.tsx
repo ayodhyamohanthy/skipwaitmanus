@@ -59,7 +59,11 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     // LAUNCH-legal-copy: the old "Referrals are always free" bullet was untrue
     // while asks cost referrals and packs sell for money. It must never return.
     expect(screen.queryByText(/Referrals are always free/)).toBeNull();
-    expect(screen.getByText(/Each ask uses one referral from your balance, taken only when a verified employee can see it/)).toBeTruthy();
+    expect(screen.getByText(/A request spends referral balance only when a verified employee can see it/)).toBeTruthy();
+    // Section 4 must not contradict itself: the note is visible to verified
+    // employees while open; the resume only to the claiming employee.
+    expect(screen.getByText(/Your resume is visible only to you and the single verified employee who claims your request/)).toBeTruthy();
+    expect(screen.queryByText(/resume and note are visible only to you and verified employees of the target company/)).toBeNull();
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
     // The kit's design-only banner never ships.
     expect(document.body.textContent).not.toMatch(/DRAFT FOR DESIGN|placeholder address/i);
@@ -177,7 +181,9 @@ describe("decline keeps the credit spent (founder decision, Oct 14 2026)", () =>
     // monthly referral from a month that has already ended; after a verified
     // employee claims or declines, the referral stays used.
     expect(text).toMatch(/month that has already ended/);
-    expect(text).toMatch(/claims or declines the request, the referral stays used/);
+    expect(text).toMatch(/request reopens to other employees at the company/);
+    expect(text).toMatch(/comes back if you withdraw it then/);
+    expect(text).not.toMatch(/claimed or accepted the request, it can no longer be cancelled/);
     expect(text).not.toMatch(/No money is charged for a request, so there is nothing to refund/);
   });
   it("Refund policy lists withdraw and expiry as returns, and a decline as spent", () => {

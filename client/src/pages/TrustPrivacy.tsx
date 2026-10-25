@@ -52,7 +52,7 @@ export default function TrustPrivacy() {
 
     <PolicySection number="05" title="What we collect">
       <p>Account details (name, email), referral content you submit (job links, notes, resumes), and transaction records (provider references, amounts, timestamps). Referrers additionally verify a company email address by one-time code.</p>
-      <p>A small set of processors runs the service, and each receives only what its job needs: WorkOS runs sign-in (your name, email and sign-in session), ZeptoMail delivers verification and notification emails (your address and the message), Sentry records error reports (technical failure details, with single-use links redacted), Cloudflare hosts the site (it serves every page and sees each connection), and Chargebee with Razorpay and PayPal handle payments as section 06 describes.</p>
+      <p>A small set of processors runs the service, and each receives only what its job needs: WorkOS runs sign-in (your name, email and sign-in session), ZeptoMail delivers verification and notification emails (your address and the message), Sentry records error reports (technical failure details; links carrying single-use sign-in or share tokens are redacted before sending), Cloudflare hosts the site (it serves every page and sees each connection), and Chargebee with Razorpay and PayPal handle payments as section 06 describes.</p>
     </PolicySection>
 
     <PolicySection number="06" title="Payments">
