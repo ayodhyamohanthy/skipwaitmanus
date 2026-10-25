@@ -3,7 +3,7 @@ import { refuseReviewerExternalAction } from "./_core/reviewerLogin";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
 import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parsePaymentSourceEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole, VerifiedChargebeeHostedPage } from "./chargebee";
-import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
+import { resolveChargebeeRuntime, resolveChargebeeRuntimeForAccount, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 import { retrieveCheckoutSubscription, subscriptionEventFromCheckoutPage, type RetrievedCheckoutSubscription } from "./chargebeeSubscriptionApi";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { giftClaimRequestSchema } from "../shared/giftSubscriptions";
@@ -109,7 +109,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
           request: kitPack.data,
           customer: { email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined, firstName: identity.account.name?.split(" ")[0], lastName: identity.account.name?.split(" ").slice(1).join(" "), billingCountry: kitPack.data.billingCountry },
           urls: { redirectUrl: `${origin}/plans?role=${kitPack.data.role}&payment=pending`, cancelUrl: `${origin}/plans?role=${kitPack.data.role}&payment=cancelled` },
-          deps: deps.kitCheckout,
+          deps: { ...deps.kitCheckout, credentials: () => { try { return resolveChargebeeRuntimeForAccount(req.hostname, identity.account.openId); } catch { return null; } }, },
         });
         if (!started.ok) return res.status(started.status).json(refusalBody(started));
         await deps.createPaymentIntent({ hostedPageId: started.checkout.hostedPageId, checkoutIntentId: started.checkoutIntentId, userId: identity.account.id, role: kitPack.data.role, tokenCount: started.price.credits, amount: started.price.amount, currency: started.price.currency });
@@ -136,7 +136,11 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         return res.status(410).json({ error: SINGLE_CREDIT_RETIRED_ERROR, code: SINGLE_CREDIT_RETIRED_CODE });
       }
       const origin = publicOutboundOrigin(req);
-      const runtime = deps.createCheckout ? undefined : resolveChargebeeRuntime(req.hostname);
+      let runtime: ReturnType<typeof resolveChargebeeRuntime> | undefined;
+      if (!deps.createCheckout) {
+        try { runtime = resolveChargebeeRuntimeForAccount(req.hostname, identity.account.openId); }
+        catch { return res.status(503).json({ error: "Payments are not available right now. Please try again in a moment." }); }
+      }
       const checkout = await (deps.createCheckout ?? createChargebeeCheckout)({
         itemPriceId,
         quantity,
@@ -174,7 +178,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
           request: kitPlan.data,
           customer: { email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined, firstName: identity.account.name?.split(" ")[0], lastName: identity.account.name?.split(" ").slice(1).join(" "), billingCountry: kitPlan.data.billingCountry },
           urls: { redirectUrl: `${origin}/plans?role=${kitPlan.data.role}&payment=pending`, cancelUrl: `${origin}/plans?role=${kitPlan.data.role}&payment=cancelled` },
-          deps: deps.kitCheckout,
+          deps: { ...deps.kitCheckout, credentials: () => { try { return resolveChargebeeRuntimeForAccount(req.hostname, identity.account.openId); } catch { return null; } }, },
         });
         if (!started.ok) return res.status(started.status).json(refusalBody(started));
         await deps.createSubscriptionIntent({ hostedPageId: started.checkout.hostedPageId, checkoutIntentId: started.checkoutIntentId, userId: identity.account.id, role: kitPlan.data.role, plan: started.price.plan, itemPriceId: started.price.itemPriceId, amount: started.price.amount, currency: started.price.currency, billingPeriod: started.price.interval, kind: "new" });

@@ -94,12 +94,10 @@ export function registerReviewerLoginRoutes(app: Express) {
   });
 }
 
-export const REVIEWER_OPENID_PREFIX = "reviewer_";
-
-/** Demo review accounts (Razorpay/app-review sign-ins) are provisioned with openIds under this prefix. */
-export function isReviewerOpenId(openId: string | null | undefined): boolean {
-  return typeof openId === "string" && openId.startsWith(REVIEWER_OPENID_PREFIX);
-}
+// The marker lives in shared/reviewerAccounts.ts (leaf) so billing/environment
+// code can use it without importing this route (circular through db).
+export { REVIEWER_OPENID_PREFIX, isReviewerOpenId } from "../../shared/reviewerAccounts";
+import { isReviewerOpenId } from "../../shared/reviewerAccounts";
 
 export const REVIEWER_EXTERNAL_ACTION_REFUSAL =
   "Demo review accounts can browse the product but cannot take actions that reach real members.";
