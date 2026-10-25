@@ -104,7 +104,8 @@ export function runQueueGate() {
     }
 
     const branch = process.env.GITHUB_HEAD_REF || git(["rev-parse", "--abbrev-ref", "HEAD"]);
-    const changed = git(["diff", "--name-only", "origin/main...HEAD"]).split("\n").filter(Boolean);
+    // --no-renames: a file moved into docs/ must still count its old path, or it would pass as docs-only.
+    const changed = git(["diff", "--name-only", "--no-renames", "origin/main...HEAD"]).split("\n").filter(Boolean);
     const { labels, pullRequestNumber } = readPullRequestEvent();
     const violation = queueGateViolation({ tasks, branch, changed, labels });
 
