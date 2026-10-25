@@ -4,21 +4,23 @@
 
 | Field | Value |
 |---|---|
-| Queue row | `docs/plans/assignments.json` → `D-090-BYOR` (the picker reads it; there is no §3b row for D-090 on `main`. Status also goes in this packet's Status line, D-134) |
-| Decisions | D-090 (approved for build), D-086 (demand list, build gate), D-087, D-089, D-097, D-082, D-034, D-047, D-061, D-062, D-050, D-055, D-030/D-049, D-019(e), D-057, D-060, D-066(4), D-088, D-120, D-068, D-109 |
+| Queue row | `docs/plans/assignments.json` → `D-090-BYOR` (the picker reads it). Its status goes in the `docs/KIT_V4_BUILD_PLAN.md` §3b row "D-090" (added by D-154; this task is its only one, D-134) |
+| Decisions | D-090 (approved for build), D-162 (gate waived, BYOR builds now), D-086 (demand list), D-087, D-089, D-097, D-082, D-034, D-047, D-061, D-062, D-050, D-055, D-030/D-049, D-019(e), D-057, D-060, D-066(4), D-088, D-120, D-068, D-109 |
 | Risk tier | 1 (money, identity, privacy, migration) |
 | Size | L (five commits, server + client + migration; split only along §6) |
 | Implementer | senior model only |
 | Branch | `agent/claude/d090-byor` from the latest `origin/main` |
-| Depends on | **D-086 demand list live** (build gate — no queue task ID exists). D-097 QA before the flags go on |
-| Do not run at the same time as | D-038 money-core; the D-048 ask/explore lanes; D-086 (demand list). All edit `server/db.ts` or the My asks / Explore surfaces |
+| Depends on | Nothing in the queue: the owner waived the D-086 gate (D-162). D-097 QA before the flags go on |
+| Do not run at the same time as | D-132-audit items that edit the delivery functions named in §5 (D-038 is done); the D-048 ask/explore lanes; D-086 (demand list). All edit `server/db.ts` or the My asks / Explore surfaces. D-086-demand-list's build waits for this row (D-162). D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 builds into that page (D-162 update) |
 | Verified against | `main` `d54c0ca8` on 2026-10-23 |
 
 ## 0. Build gate (read before claiming a branch)
 
+**D-162 (Oct 23, owner word): BYOR builds now; this gate is waived.** The owner waived it in workbuddy · b0eb's session at 02:26 IST and confirmed it to the CEO on Oct 23, after D-154 had briefly made this row wait for `D-086-demand-list`. The dependency is ordering, not code: BYOR needs only a *waiting* ask, which D-034 produces whenever a company has no available referrer. The demand list's build now follows this one. **C5 builds into the redesigned My asks (D-162, updated at landing):** `D-048-p3-live-review-requests` landed on Oct 23 (#533), so nothing holds C5 any more. Build C1-C5 in order and put the invite action into `client/src/pages/MyRequests.tsx` as it is on `main` now: the page keeps its goal line and its one black commit (D-150), so the invite action is a ghost button or a plain link on a waiting ask, never a second black commit. Every other rule in this packet stands, except the D-086 checks in §9 and §11, which are struck: both flags stay off (D-097), and the Tier 1 gate and independent review are unchanged. **Resuming `agent/claude/d090-byor`:** merge `main`. `docs/DECISIONS.md` conflicts on the D-148 row: keep `main`'s side and drop the branch's D-148 row, because D-162 records the waiver and `main`'s D-148 is the plan names. This packet merges without a conflict, so delete by hand the branch's "Gate waived by the owner (D-148 ...)" paragraph in this §0 and its "in progress — workbuddy · b0eb" Status line; and renumber `0107_ask_invites.sql` to the next free number at landing (check `drizzle/deploy/` on `main` and plan §5 at landing: on Oct 23 `main` has `0107_seeker_levels.sql` and `0108_landed_thank_you.sql`, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). The two paragraphs below are history.
+
 D-090: "Builds after the demand list (owner order 2,1,3 per D-089)." The demand list is D-086 (asks at companies not in the directory, k-anonymous counts). On `main` at `c39ad909` **D-086 is not built and has no queue task**: `/explore` still lists only directory companies, and grepping `docs/plans/assignments.json` for `D-086` returns nothing.
 
-**D-154 (Oct 23):** the demand list now has its queue row, `D-086-demand-list`, and this row depends on it, so the picker hands out no BYOR work until the demand list is done. So: before writing code, check that D-086 is live (its ask-to-any-company path ships and its queue task is `done`). If it is not, **stop and report** (§11) — the owner ordered BYOR after it. This packet exists so the work is ready the day the gate opens; writing the packet is the whole of the current task (D-074, D-109).
+**D-154 (Oct 23, superseded by D-162):** the demand list now has its queue row, `D-086-demand-list`, and this row depends on it, so the picker hands out no BYOR work until the demand list is done. So: before writing code, check that D-086 is live (its ask-to-any-company path ships and its queue task is `done`). If it is not, **stop and report** (§11) — the owner ordered BYOR after it. This packet exists so the work is ready the day the gate opens; writing the packet is the whole of the current task (D-074, D-109).
 
 The four designer mocks the owner approved (D-090, "Lovely") are **not in the repository**: no file under `design/`, `docs/` or the remote branches contains a BYOR mock. §4 is therefore the changeable functional interpretation (D-109) and §12 Q5 asks the owner to attach the mocks. Nothing in §4's server behaviour depends on the visual mocks.
 
@@ -27,6 +29,8 @@ The four designer mocks the owner approved (D-090, "Lovely") are **not in the re
 A seeker who already knows someone at the company — a friend, a former colleague — can put their ask directly in that person's hands instead of waiting for coverage to appear. My asks shows "Invite someone you know"; the seeker gets one private one-time link to send outside SkipWait; the insider opens it, signs in with their work email at that company, and takes the ask. The credit follows the standard rules: nothing is spent while the ask waits, one credit at first visibility, and no credit means the ask is held with one notice — never delivered free, never billed later. The seeker's name and files stay hidden until the insider accepts, exactly as on every other surface. This closes loop L2 (D-087) and is the first product surface that turns a seeker's own network into supply.
 
 ## 2. Binding rules (quoted, not paraphrased)
+
+**D-162** (owner word, Oct 23): BYOR builds now, ahead of the demand list. Where D-090 and D-087 below put the demand list first, D-162 wins for BYOR.
 
 **D-090** (owner, Oct 21 03:10 IST): "**BYOR (bring-your-own-referrer) one-time link approved for build (idea 2, loop L2).** Owner Oct 21 03:10 IST, verbatim: "Lovely" (approving the designer's four-surface mocks, phone stepper pattern and standard credit rules; free BYOR stays frozen). Changeable knobs per D-087: weekly link cap 5 per seeker, anonymous-by-default referrer identity. Builds after the demand list (owner order 2,1,3 per D-089)."
 
@@ -86,9 +90,12 @@ All of it is behind `BYOR_LINK_ENABLED` (server) and `VITE_BYOR_LINK` (client), 
 4. At most one active link per ask, enforced by a nullable unique `activeRequestKey` (`link:<requestId>`, `NULL` when not active) — the same pattern as `referralAvailabilitySlots`.
 5. A seeker may create at most **5 links per rolling 7 days** (all statuses counted, `createdByUserId`). Over the cap answers 429 `weekly_link_cap` with the date the next slot frees. A soft-cap race may allow one extra under simultaneous creates; that is accepted and documented in §8.
 6. Links expire **7 days** after creation (`expiresAt`). Reason: a one-time ask link should not outlive the ask's own 7-day visibility clock or the 7-day review-link lifetime.
-7. Creating a link is free, writes no notice and **does not reserve** the ask. Normal coverage delivery keeps running in parallel; if a referrer takes the ask first, the link closes (§4.5).
+   Note (Oct 24): D-174 suspends the ask's own 7-day expiry for launch (the D-174 journey row owns that removal); the 7-day link and reservation clocks in this packet are BYOR link lifetimes, not the ask's, and stand.
+7. Creating a link is free, writes no notice and **does not reserve** the ask. (Oct 24: D-194's own text scopes it to the standing /share personal referral link - "gates /share link issuance only". This ask-bound one-time link is a different endpoint and surface (`POST /api/company-referrals/:id/invite-link`), approved under D-090 (owner, Oct 21). Do not read "free" here as covering the /share standing link.) Normal coverage delivery keeps running in parallel; if a referrer takes the ask first, the link closes (§4.5).
 
 ### 4.2 My asks
+
+Terminology (Oct 24): user-facing copy is referral-only per D-180 (settled; docs sync landed in #617). The ask-era strings in this section predate D-180 and yield to it at build time; money copy stays byte-identical to shared sources (D-132/D-135).
 
 8. Each `/api/company-referrals/mine` row may carry `askInvite: { state: "active" | "claimed" | "delivered" | "revoked" | "expired"; createdAt: string; expiresAt: string }` — never the token, URL, hash or claimer identity. Rows without a link simply omit it.
 9. My asks shows, only on a waiting row: "Invite someone you know" (no link), "Link active · copy" + "Revoke" (active), "Your insider has it" (claimed or delivered), and nothing for revoked/expired (the action returns).
@@ -151,9 +158,10 @@ All of it is behind `BYOR_LINK_ENABLED` (server) and `VITE_BYOR_LINK` (client), 
   - `shared/scheduledJobs.ts`, `server/scheduledJobRegistry.ts`.
   - `.env.example`, `src/worker.ts` (`CONTAINER_ENV_KEYS`), `server/configContract.test.ts`.
   - `client/src/lib/flags.ts`, `client/src/components/requests/requestsApi.ts`, `client/src/pages/MyRequests.tsx`, `client/src/App.tsx`, `client/src/components/goal/goalBoundary.test.ts` (allowlist entry for the new goal-UI page/components).
-  - Docs: this packet's Status line, `docs/plans/assignments.json` (status only), `AGENTS.md` living-map row, `docs/PRD.md`, `docs/BACKLOG.md`, `docs/DECISIONS.md` sync cell for D-090 (no decision text).
+  - `functions/_middleware.ts` (the one `"/r/:token"` line in `KNOWN_ROUTE_PATTERNS`, D-187 (3)); the QA runner `scripts/qa/d090-byor.mjs`, `scripts/qa/fixtures/d090-byor/**` and `artifacts/d090-c6/**`; the `askInviteLinks` fixture line in `server/db.askExpiry.test.ts`; the `/api/ask-invites/` token scrub in `server/sentry.ts` and `server/errorAlerting.ts`.
+  - Docs: the `docs/KIT_V4_BUILD_PLAN.md` §3b row "D-090" (its status cell only), `docs/plans/assignments.json` (status only), `AGENTS.md` living-map row, `docs/PRD.md`, `docs/BACKLOG.md`, `docs/DECISIONS.md` sync cell for D-090 (no decision text).
 - **Read only:** `server/coverageDelivery.ts`, `server/heldAsk.ts`, `shared/referral.ts`, `server/blockedPairs.ts`, `server/blockEnforcement.test.ts`, `shared/referrerAccess.ts`, `server/_core/otpLogin.ts`, `client/src/lib/referrerSignIn.ts`, `client/src/pages/EmailReviewAction.tsx`, `client/src/pages/SignIn.tsx`, `server/emailDelivery.ts`, `server/db.askCostStored.test.ts` (fixture pattern).
-- **Out of scope (never edit here):** `server/payments.ts`, `server/paymentWebhooks.ts`, `server/chargebee*`, `server/checkout*`, `shared/planCatalog.ts`, `shared/billingCatalog.ts`, `server/creditCycles.ts`, `server/_core/workosAuth.ts`, `server/_core/otpLogin.ts`, the decision text in `docs/DECISIONS.md`, any migration below 0107, D-057's middleware, and every other page's UI.
+- **Out of scope (never edit here):** `server/payments.ts`, `server/paymentWebhooks.ts`, `server/chargebee*`, `server/checkout*`, `shared/planCatalog.ts`, `shared/billingCatalog.ts`, `server/creditCycles.ts`, `server/_core/workosAuth.ts`, `server/_core/otpLogin.ts`, the decision text in `docs/DECISIONS.md`, any migration below 0107, D-057's session gate (unbuilt server code, `docs/plans/D-057-session-gate.md`; not `functions/_middleware.ts`, D-187 (2)), and every other page's UI.
 
 ## 6. Steps (one commit each)
 
@@ -173,7 +181,7 @@ Add the `askInviteLinks` table to `drizzle/schema.ts`, `0107_ask_invites.sql`, t
 `/r/:token` page + route (`client/src/App.tsx`, noindex meta, `referrerSignInHref`), `AskInviteLink` states, My asks action + `AskInviteSheet` + revoke confirmation, goal-UI boundary allowlist. Tests: §7 C1–C4; captures at 1280 and 390 for: My asks waiting row, sheet, landing signed-out, landing signed-in verified, claimed/held. Commit: `Add the invite sheet and the /r/:token landing page`.
 
 **C6 — docs and handover.**
-Status line, `assignments.json`, `AGENTS.md` living map (new routes/modules/job), `PRD.md`, `BACKLOG.md`, `DECISIONS.md` sync cell. Attach the captures and the QA script (flag on in a test environment). Commit: `Sync BYOR docs, status and captures`.
+The §3b row "D-090" status cell, `assignments.json`, `AGENTS.md` living map (new routes/modules/job), `PRD.md`, `BACKLOG.md`, `DECISIONS.md` sync cell. Attach the captures and the QA script (flag on in a test environment). Commit: `Sync BYOR docs, status and captures`.
 
 Every commit leaves `pnpm check` and its focused tests green and is pushed. Do not open the PR until C1–C6 are all green; then the usual Tier 1 draft PR and independent review.
 
@@ -226,12 +234,12 @@ Every commit leaves `pnpm check` and its focused tests green and is pushed. Do n
 
 ## 9. Definition of done
 
-- [ ] **D-086 is live** (or the owner explicitly reordered); if not, this packet is not started.
+- [x] ~~D-086 is live~~ — gate waived by the owner (D-162); not a condition.
 - [ ] Every §7 test was red first and is green now; every control is green; no existing assertion weakened.
 - [ ] Gate on your commit merged with the latest `origin/main`: `pnpm check`, focused files, `pnpm test`, `pnpm build`, design-token audit, migration lint in CI.
 - [ ] Tier 1 independent review passed (`docs/DELEGATION.md` §6); findings fixed red-first.
 - [ ] Flags off in production; a QA pass with the flags on proves create → claim → delivered and create → claim → held/reserved on a test environment. No real-money QA.
-- [ ] Docs in the same push: this Status line, `assignments.json`, `AGENTS.md` living map, `PRD.md`, `BACKLOG.md`, `DECISIONS.md` sync cell.
+- [ ] Docs in the same push: the §3b row "D-090" status cell, `assignments.json`, `AGENTS.md` living map, `PRD.md`, `BACKLOG.md`, `DECISIONS.md` sync cell.
 - [ ] Pushed; API `verify-live-release.sh` CONVERGED on the exact commit; web `git-commit` meta matches; captures at 1280 and 390 for the five screens in C5.
 - [ ] Status set to `done — <sha>` with the evidence block (`docs/DELEGATION.md` §5); report to the CEO.
 
@@ -250,7 +258,7 @@ Every commit leaves `pnpm check` and its focused tests green and is pushed. Do n
 
 ## 11. Stop and ask if
 
-- **D-086 is not live** — this is the first check; stop and report.
+- ~~D-086 is not live~~ — waived by the owner (D-162); not a stop condition.
 - The four approved mocks appear and contradict §4 (surfaces, copy, claim states) — report before building the client.
 - A named function no longer matches its description (line drift is fine; a behaviour change is not).
 - You need a file outside §5, a second migration, a new dependency or an env key not named here.
@@ -271,6 +279,8 @@ Every commit leaves `pnpm check` and its focused tests green and is pushed. Do n
 Until answered, implement the recommended defaults above; they are changeable without touching money or privacy.
 
 ## Status
+
+D-090-BYOR: todo — D-162 (Oct 23): the owner's waiver stands and this row depends on nothing. workbuddy · b0eb's branch `agent/claude/d090-byor` holds C1 and the C2 token layer (`ecff975b`); its claim is free (quiet since 02:37 IST), so the picker hands out a takeover on that branch. From here, status goes in the §3b row "D-090". The lines below are history.
 
 D-090-BYOR: waiting — D-154 (Oct 23): depends on `D-086-demand-list`, queued with status architect; workbuddy · b0eb stopped at the §0 gate and reported it, as this packet says to.
 

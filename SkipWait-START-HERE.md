@@ -16,7 +16,7 @@ SkipWait is already running in production. You are **updating an existing app**,
    - Database changes are additive migrations only (add columns/tables; backfill; never drop or rename columns that hold live data without a migration + backup).
    - Keep existing URLs working; add redirects for any renamed route (e.g. `/wallet` → `/plans`).
    - Keep existing sign-ins working; the login rule is founder-locked (`AGENTS.md`, D-030 as amended by D-049/D-057).
-4. **Ship each verified group to `main`** in small batches, only after the gate in `docs/KIT_V4_BUILD_PLAN.md` §3 passes and GitHub CI is green on that exact commit (D-003, D-082), then verify it live (D-019). Each batch must pass build, tests and a phone + desktop visual check (against the live app until the owner approves new designs, D-048).
+4. **Ship each verified group to `main`** in small batches, only after the gate in `docs/KIT_V4_BUILD_PLAN.md` §3 passes and GitHub CI is green on that exact commit (D-003, D-082), then verify it live (D-019). Each batch must pass build, tests and a phone + desktop visual check (against the approved goal comps and the doctrine, D-071, D-150).
 5. **Replace demo data with real data.** Everything labelled `DESIGN PREVIEW`, sample names, messages, prices and counts in `app/src/lib/*-data.ts` is illustrative. Never ship fake activity, counts, testimonials or outcomes.
 6. When the owner sends a newer kit or approves new designs, record the decision in `docs/DECISIONS.md` first, then repeat steps 2–4 (`CHANGELOG.md` shows what changed in a kit).
 
@@ -27,7 +27,7 @@ SkipWait is already running in production. You are **updating an existing app**,
 | `FOR_AI_BUILDERS.md` | Master spec: product rules, approved stack, backend, security, PWA, accessibility, placeholders | Follow; `docs/DECISIONS.md` wins on any conflict |
 | `LLM_HANDOFF.md` | Product overview, design system, navigation | Context |
 | `SCREENS.md` | Every route, what it does, its states | Screen checklist |
-| `PRICING.md` | Plans Start/Momentum/Land/Concierge, credits, rollover, packs | Billing logic (Chargebee) |
+| `docs/PRICING.md` | The one pricing source (D-146): credit packs on sale; D-132 plans (Entry, Mid and Senior level Referrers, D-152) behind off flags; passes not sold. Root `PRICING.md` is the old pass spec | Billing logic (Chargebee) |
 | `UPGRADE_NUDGES.md` | When and how to show upgrade prompts using real usage only | Growth logic |
 | `AGENT_ACCESS.md` | MCP server, API, third-party apps, developer console, approval rules | Integrations |
 | `CHECKLIST.md` | Phased build checklist | Track progress |

@@ -247,6 +247,40 @@ describe("shared composer quote (D-132 item 3)", () => {
     expect(quoteCalls(fetchMock)).toHaveLength(0);
   });
 
+  // Review F2 (55e5aa3a): expectedCoverage belongs to the by-level contract.
+  // Flag off, the live composer shows today's flat line and must send today's
+  // body, so a coverage flip at commit keeps today's create-and-charge.
+  it("flag off, company not open: the send body carries no expectedCoverage (F2)", async () => {
+    vi.stubEnv("VITE_ASK_LEVEL_COST", "false");
+    const WIPRO_CLOSED = directoryOf(LAUNCH_COMPANY_SEED.map(seed => company(seed.slug, seed.slug !== "wipro")));
+    const fetchMock = stub({
+      directory: WIPRO_CLOSED,
+      send: { status: 201, body: { requestId: 888, companyDomain: "wipro.com", coverageStatus: "waiting_for_company_coverage", fastTrack: false, slots: { plan: "free", planLabel: "Free", open: 1, cap: 3, full: false, nextPlan: null } } },
+    });
+    renderPage(<Ask />);
+    await typeLink();
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("No credit used until a verified employee can see it"));
+    fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+    fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
+    fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
+    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([u, i]) => String(u) === "/api/company-referrals" && (i as RequestInit | undefined)?.method === "POST")).toBe(true));
+    const post = fetchMock.mock.calls.find(([u, i]) => String(u) === "/api/company-referrals" && (i as RequestInit | undefined)?.method === "POST");
+    expect(JSON.parse(String((post![1] as RequestInit).body))).not.toHaveProperty("expectedCoverage");
+  });
+
+  // Review F3 (55e5aa3a): only the by-level quote needs the pack catalog; the
+  // live flags-off composer makes no billing read at all.
+  it("flag off, signed in: the composer never fetches the plans catalog (F3)", async () => {
+    vi.stubEnv("VITE_ASK_LEVEL_COST", "false");
+    const fetchMock = stub();
+    renderPage(<Ask />);
+    await typeLink();
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 of your 3 credits"));
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(fetchMock.mock.calls.filter(([u]) => String(u).startsWith("/api/plans/catalog"))).toHaveLength(0);
+  });
+
   it("flag on, invalid link: no quote fetch", async () => {
     vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
     const fetchMock = stub({ quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } } });

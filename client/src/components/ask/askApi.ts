@@ -12,6 +12,9 @@ const sendAskResponseSchema = z.object({
   coverageStatus: z.string().nullish(),
   // A personal-link ask (D-017) goes to the link's owner alone; anything but true reads as an ordinary ask.
   fastTrack: z.boolean().nullish().catch(null),
+  // A post-bound ask (D-022/D-174) gives the posting employee the first look
+  // before the company pool; anything but true reads as an ordinary pool ask.
+  firstLook: z.boolean().nullish().catch(null),
   // Informational: a missing or malformed count hides the line, never fakes one.
   slots: openAskSlotsSchema.nullish().catch(null),
 });
@@ -22,13 +25,13 @@ const companyConfirmationSchema = z.object({ canonicalUrl: z.string(), confirmed
 export const ASK_NETWORK_ERROR = "We couldn't reach skipwait.me. Check your connection and try again.";
 
 /** The created (or idempotently replayed) ask, or null when the payload is not a send result. */
-export type SentAsk = { readonly requestId: number; readonly companyDomain: string | null; readonly waitingForCoverage: boolean; readonly fastTrack: boolean; readonly slots: OpenAskSlots | null };
+export type SentAsk = { readonly requestId: number; readonly companyDomain: string | null; readonly waitingForCoverage: boolean; readonly fastTrack: boolean; readonly firstLook: boolean; readonly slots: OpenAskSlots | null };
 
 export function parseSentAsk(payload: Record<string, unknown>): SentAsk | null {
   const parsed = sendAskResponseSchema.safeParse(payload);
   if (!parsed.success) return null;
   const companyDomain = parsed.data.companyDomain?.trim() || null;
-  return { requestId: parsed.data.requestId, companyDomain, waitingForCoverage: parsed.data.coverageStatus === "waiting_for_company_coverage", fastTrack: parsed.data.fastTrack === true, slots: parsed.data.slots ?? null };
+  return { requestId: parsed.data.requestId, companyDomain, waitingForCoverage: parsed.data.coverageStatus === "waiting_for_company_coverage", fastTrack: parsed.data.fastTrack === true, firstLook: parsed.data.firstLook === true, slots: parsed.data.slots ?? null };
 }
 
 /** The server's 409 "all open slots in use" refusal, or null for any other response. */

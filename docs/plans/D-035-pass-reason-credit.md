@@ -1,6 +1,6 @@
 # Packet D-035: the referrer's pass reason decides the credit, and every pass surface uses the seven shared reasons
 
-> Read `docs/BRIEF.md` first, then this packet. D-038-B must be live: this packet extends the release set it finished.
+> Read `docs/BRIEF.md` first. **REJECTED by founder Ayu, Oct 23, 2026 (D-147); NOT APPROVED.** This packet is historical, not implementation authority. Any employee decline keeps the credit spent, whatever the reason (closed role, wrong team included). No release; retain the #486 refund-behavior revert. Anonymous reason display may be considered separately only without credit release, and is not approved here. D-038 timer releases are unchanged.
 
 | Field | Value |
 |---|---|

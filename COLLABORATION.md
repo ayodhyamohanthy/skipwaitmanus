@@ -57,10 +57,10 @@ Next: <next action or requested coordination>
 - Before committing, inspect status, the full diff, recent history, and the staged diff. Stage explicit owned paths; never use `git add .` or `git add -A` to sweep up shared changes.
 - Before merging, fetch again and review the entire branch diff against current main, not only the latest commit.
 - Update only your clean, isolated branch. Resolve conflicts by reading both changes and preserving their intent; never blindly select ours/theirs or delete conflict markers to make tests pass.
-- Ask the owners to resolve ambiguous behavior conflicts. Rerun validation on the integrated result; earlier passing tests do not certify a later merge.
+- Ask the owners to resolve ambiguous behavior conflicts. Rerun validation on the integrated result; earlier passing tests do not certify a later merge (required CI on the merge result; a docs/registry-only PR needs focused checks and an independent delta review, Oct 23 merge-policy amendment).
 - Run `git diff --check`, `pnpm check`, affected Vitest files, and `pnpm build` for runtime/dependency changes. Report exact commands and outcomes, including failures outside the task. Do not weaken tests to conceal conflicts.
 - Use one designated integrator or the repository merge queue to serialize integration. Never force-push main. A rejected push means fetch, inspect, coordinate, and revalidate, not force.
-- Where repository settings permit, maintainers should protect main with required CI checks (verified groups ship without a PR review, D-003). Documentation alone does not enable branch protection; since Oct 20 the GitHub ruleset `main: green CI only (D-082)` refuses any push to main whose exact commit has not passed typecheck, tests and build, for everyone.
+- Where repository settings permit, maintainers should protect main with required CI checks (Tier 1 work needs an independent review before landing by a model that neither built nor fixed it, D-074, D-151; Tier 2 and 3 groups ship on green CI, D-003). Documentation alone does not enable branch protection; since Oct 20 the GitHub ruleset `main: green CI only (D-082)` refuses any push to main whose exact commit has not passed typecheck, tests and build, for everyone.
 
 ## 6. Leave a usable handoff
 

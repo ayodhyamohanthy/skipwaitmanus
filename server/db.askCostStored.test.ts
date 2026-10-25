@@ -13,9 +13,10 @@ import { CATALOG_PLAN_IDS } from "../shared/planCatalog";
 import { planEntitlementsFor } from "../shared/planEntitlements";
 import {
   companyReferralFingerprint, createCompanyReferralRequest, getUnclaimedCompanyReferralPreview,
+  tryDeliverWaitingAsk,
   type CreateCompanyReferralInput,
 } from "./db";
-import { PlanLimitError } from "./planGates";
+import { PlanLimitError, CoverageOpenedUpError } from "./planGates";
 
 /*
  * Task 13 slice A (0105): the showcase pieces a seeker pins to an ask travel as
@@ -354,5 +355,52 @@ describe("the ask stores the level and cost it was priced at", () => {
     await send({ idempotencyKey: "pinned-key-0002" }).catch(() => undefined);
     expect(rows.askCosts[0]).toMatchObject({ referralRequestId: first.referralRequestId, creditCost: first.creditCost, jobLevel: first.jobLevel });
     expect(rows.askCosts).toHaveLength(1);
+  });
+
+  /**
+   * Review F2 (55e5aa3a): expectedCoverage is the by-level quote's contract.
+   * With ASK_LEVEL_COST off no composer promises free waiting, so a body that
+   * still carries the field creates and charges exactly like today's send.
+   */
+  it("flag off: an ask carrying expectedCoverage at a covered company is created and spends 1 credit (no 409)", async () => {
+    vi.stubEnv("ASK_LEVEL_COST", "false");
+    const result = await send({ expectedCoverage: "waiting_for_company_coverage" });
+    expect(result).toMatchObject({ replayed: false });
+    expect(rows.referralRequests).toHaveLength(1);
+    expect(rows.referralRequests[0].waitingForCoverage).toBe(false);
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+  });
+
+  /** The flag-on counterpart: the free-waiting promise is held - nothing created, nothing spent. */
+  it("flag on: expectedCoverage at a covered company refuses before any write", async () => {
+    vi.stubEnv("ASK_LEVEL_COST", "true");
+    await expect(send({ expectedCoverage: "waiting_for_company_coverage" })).rejects.toBeInstanceOf(CoverageOpenedUpError);
+    expect(rows.referralRequests).toEqual([]);
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(3);
+  });
+
+  /**
+   * POSTMERGE-oct22 P1 (#482): an ask that waits across an ASK_LEVEL_COST
+   * activation keeps the flat price it was quoted. A waiting ask writes no
+   * askCosts row while the flag is off, so the missing row IS the snapshot:
+   * delivery must not classify the job again against the current flag.
+   */
+  it("a waiting ask created with the flag off is delivered at 1 credit after the flag turns on", async () => {
+    vi.stubEnv("ASK_LEVEL_COST", "false");
+    rows.profiles = []; // no verified referrer yet, so the ask waits for coverage
+    await send();
+    expect(rows.referralRequests[0].waitingForCoverage).toBe(true);
+    expect(rows.askCosts).toEqual([]);
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(3);
+    // The fixture writes only the columns the create path names; MySQL stores NULL for debitTransactionId.
+    rows.referralRequests[0].debitTransactionId = null;
+
+    // Activation between creation and first delivery: the ask must not be repriced.
+    vi.stubEnv("ASK_LEVEL_COST", "true");
+    rows.profiles = [referrerProfile(REFERRER)];
+    const outcome = await tryDeliverWaitingAsk(Number(rows.referralRequests[0].id), NOW);
+
+    expect(outcome.outcome).toBe("delivered");
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
   });
 });

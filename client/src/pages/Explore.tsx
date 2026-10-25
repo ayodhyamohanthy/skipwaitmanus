@@ -2,7 +2,7 @@
 // the company directory with search and filter chips, and the ask drawer
 // (desktop: docked 480px column, no scrim; phone: full-height sheet). Every
 // number comes from GET /api/companies, /api/credits/summary and the live send
-// response; availability is the server's openToReferrals fact, never a guess.
+// response; D-176: availability never appears in the directory - it only routes the sent ask.
 // The composer machinery is useAskComposer, shared with the company page.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
@@ -37,12 +37,11 @@ export default function Explore() {
   const formCompany = useRef<string | null>(selectedSlug);
   // Pre-filter from the landing search bar (QA fix, #407, kept in this wave): /explore?q=...
   const [query, setQuery] = useState(() => new URLSearchParams(search).get("q") ?? "");
-  const [openOnly, setOpenOnly] = useState(false);
   const [fn, setFn] = useState<(typeof FILTER_FUNCTIONS)[number] | null>(null);
 
   const company = selectedSlug ? companies?.find(item => item.slug === selectedSlug) ?? null : null;
   const composer = useAskComposer(company);
-  const shown = useMemo(() => filterCompanies(companies ?? [], { query, openOnly, fn }), [companies, query, openOnly, fn]);
+  const shown = useMemo(() => filterCompanies(companies ?? [], { query, fn }), [companies, query, fn]);
   const summary = directorySummary(shown);
 
   useEffect(() => { applySeo({ title: "Find a referral", description: exploreDescription(companies ?? []) ?? publicRoute("/explore")?.description, path: "/explore" }); }, [companies]);
@@ -85,7 +84,7 @@ export default function Explore() {
     });
   };
 
-  const clearFilters = () => { setQuery(""); setOpenOnly(false); setFn(null); };
+  const clearFilters = () => { setQuery(""); setFn(null); };
 
   let directoryBody: ReactNode;
   if (directory.isError) {
@@ -104,8 +103,6 @@ export default function Explore() {
       <>
         <p data-testid="goal-directory-summary" className="mt-7 text-g-meta text-g-ink-3 max-gdesk:mt-6">
           <GoalNum className="text-g-ink-2">{summary.total}</GoalNum> {summary.total === 1 ? "company" : "companies"}
-          <span aria-hidden="true" className="px-1.5">·</span>
-          <GoalNum className="text-g-ink-2">{summary.open}</GoalNum> open to requests
         </p>
         <ul aria-label="Companies" className="-mx-2 mt-2 grid max-gdesk:mx-0">
           {shown.map(item => (
@@ -115,14 +112,13 @@ export default function Explore() {
               name={item.name}
               initials={item.initials}
               functions={item.functions}
-              open={item.openToReferrals}
               selected={company?.slug === item.slug}
               href={`/explore/${item.slug}`}
               onSelect={() => selectCompany(item.slug)}
             />
           ))}
         </ul>
-        <p className="mt-4 text-g-meta text-g-ink-3">Availability can change. No referral is guaranteed.</p>
+        <p className="mt-4 text-g-meta text-g-ink-3">No referral is guaranteed.</p>
       </>
     );
   }
@@ -173,8 +169,7 @@ export default function Explore() {
           <GoalSearchInput label="Search companies" placeholder="Company, function or industry…" value={query} onChange={setQuery} />
         </div>
         <div role="group" aria-label="Filter companies" className="mt-4 flex flex-wrap gap-2 max-gdesk:gap-y-3">
-          <GoalFilterChip label="All companies" pressed={!openOnly && fn === null} onPressedChange={() => { setOpenOnly(false); setFn(null); }} />
-          <GoalFilterChip label="Open to requests" pressed={openOnly} onPressedChange={setOpenOnly} />
+          <GoalFilterChip label="All companies" pressed={fn === null} onPressedChange={() => { setFn(null); }} />
           {FILTER_FUNCTIONS.map(item => (
             <GoalFilterChip key={item} label={item} pressed={fn === item} onPressedChange={pressed => setFn(pressed ? item : null)} />
           ))}
