@@ -90,9 +90,12 @@ All of it is behind `BYOR_LINK_ENABLED` (server) and `VITE_BYOR_LINK` (client), 
 4. At most one active link per ask, enforced by a nullable unique `activeRequestKey` (`link:<requestId>`, `NULL` when not active) — the same pattern as `referralAvailabilitySlots`.
 5. A seeker may create at most **5 links per rolling 7 days** (all statuses counted, `createdByUserId`). Over the cap answers 429 `weekly_link_cap` with the date the next slot frees. A soft-cap race may allow one extra under simultaneous creates; that is accepted and documented in §8.
 6. Links expire **7 days** after creation (`expiresAt`). Reason: a one-time ask link should not outlive the ask's own 7-day visibility clock or the 7-day review-link lifetime.
-7. Creating a link is free, writes no notice and **does not reserve** the ask. Normal coverage delivery keeps running in parallel; if a referrer takes the ask first, the link closes (§4.5).
+   Note (Oct 24): D-174 suspends the ask's own 7-day expiry for launch (the D-174 journey row owns that removal); the 7-day link and reservation clocks in this packet are BYOR link lifetimes, not the ask's, and stand.
+7. Creating a link is free, writes no notice and **does not reserve** the ask. (Oct 24: D-194's own text scopes it to the standing /share personal referral link - "gates /share link issuance only". This ask-bound one-time link is a different endpoint and surface (`POST /api/company-referrals/:id/invite-link`), approved under D-090 (owner, Oct 21). Do not read "free" here as covering the /share standing link.) Normal coverage delivery keeps running in parallel; if a referrer takes the ask first, the link closes (§4.5).
 
 ### 4.2 My asks
+
+Terminology (Oct 24): user-facing copy is referral-only per D-180 (settled; docs sync landed in #617). The ask-era strings in this section predate D-180 and yield to it at build time; money copy stays byte-identical to shared sources (D-132/D-135).
 
 8. Each `/api/company-referrals/mine` row may carry `askInvite: { state: "active" | "claimed" | "delivered" | "revoked" | "expired"; createdAt: string; expiresAt: string }` — never the token, URL, hash or claimer identity. Rows without a link simply omit it.
 9. My asks shows, only on a waiting row: "Invite someone you know" (no link), "Link active · copy" + "Revoke" (active), "Your insider has it" (claimed or delivered), and nothing for revoked/expired (the action returns).
@@ -155,9 +158,10 @@ All of it is behind `BYOR_LINK_ENABLED` (server) and `VITE_BYOR_LINK` (client), 
   - `shared/scheduledJobs.ts`, `server/scheduledJobRegistry.ts`.
   - `.env.example`, `src/worker.ts` (`CONTAINER_ENV_KEYS`), `server/configContract.test.ts`.
   - `client/src/lib/flags.ts`, `client/src/components/requests/requestsApi.ts`, `client/src/pages/MyRequests.tsx`, `client/src/App.tsx`, `client/src/components/goal/goalBoundary.test.ts` (allowlist entry for the new goal-UI page/components).
+  - `functions/_middleware.ts` (the one `"/r/:token"` line in `KNOWN_ROUTE_PATTERNS`, D-187 (3)); the QA runner `scripts/qa/d090-byor.mjs`, `scripts/qa/fixtures/d090-byor/**` and `artifacts/d090-c6/**`; the `askInviteLinks` fixture line in `server/db.askExpiry.test.ts`; the `/api/ask-invites/` token scrub in `server/sentry.ts` and `server/errorAlerting.ts`.
   - Docs: the `docs/KIT_V4_BUILD_PLAN.md` §3b row "D-090" (its status cell only), `docs/plans/assignments.json` (status only), `AGENTS.md` living-map row, `docs/PRD.md`, `docs/BACKLOG.md`, `docs/DECISIONS.md` sync cell for D-090 (no decision text).
 - **Read only:** `server/coverageDelivery.ts`, `server/heldAsk.ts`, `shared/referral.ts`, `server/blockedPairs.ts`, `server/blockEnforcement.test.ts`, `shared/referrerAccess.ts`, `server/_core/otpLogin.ts`, `client/src/lib/referrerSignIn.ts`, `client/src/pages/EmailReviewAction.tsx`, `client/src/pages/SignIn.tsx`, `server/emailDelivery.ts`, `server/db.askCostStored.test.ts` (fixture pattern).
-- **Out of scope (never edit here):** `server/payments.ts`, `server/paymentWebhooks.ts`, `server/chargebee*`, `server/checkout*`, `shared/planCatalog.ts`, `shared/billingCatalog.ts`, `server/creditCycles.ts`, `server/_core/workosAuth.ts`, `server/_core/otpLogin.ts`, the decision text in `docs/DECISIONS.md`, any migration below 0107, D-057's middleware, and every other page's UI.
+- **Out of scope (never edit here):** `server/payments.ts`, `server/paymentWebhooks.ts`, `server/chargebee*`, `server/checkout*`, `shared/planCatalog.ts`, `shared/billingCatalog.ts`, `server/creditCycles.ts`, `server/_core/workosAuth.ts`, `server/_core/otpLogin.ts`, the decision text in `docs/DECISIONS.md`, any migration below 0107, D-057's session gate (unbuilt server code, `docs/plans/D-057-session-gate.md`; not `functions/_middleware.ts`, D-187 (2)), and every other page's UI.
 
 ## 6. Steps (one commit each)
 
