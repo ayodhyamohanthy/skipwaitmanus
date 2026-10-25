@@ -19,7 +19,7 @@ const worktree = branch => `Work in your own worktree, never by switching branch
 const keepAlive = who => `Push your branch after every commit. Before any step that may take over an hour without a commit (the full gate, a long test run), run \`${CMD} --heartbeat --as "${who}"\`: a claim nobody has pushed to for 2 hours is handed to the next agent (D-085). Before you stop for any reason, commit (a WIP commit is fine) and push.`;
 const unclear = "If anything is unclear, a test fails for a reason the packet does not give, or the call is the owner's: stop, write the question in your status line (your §3b row, or your line in the packet's Status section when the row is shared), push the branch and ask the owner. Never guess about money, sign-in, identity or privacy.";
 /** D-085: the team reports every priority's status to the CEO (Claude Code), green or not. */
-const report = (task, who) => `When you stop, land, open a pull request or get blocked, report to the CEO: \`${CMD} --report <green|red|blocked|review|landed> --task ${task.id} --as "${who}" --note "<one line: what is green, what is not, what you need; no secrets or personal data>"\` (D-085). A red or blocked report holds every lower priority until a newer report on the task (or a newer green CI run on its pull request) clears it.`;
+const report = (task, who) => `When you stop, land, open a pull request or get blocked, report to the CEO: \`${CMD} --report <green|red|blocked|review|landed> --task ${task.id} --as "${who}" --note "<one line: what is green, what is not, what you need; no secrets or personal data>"\` (D-085). A red report holds every lower priority until a newer report on the task (or a newer green CI run on its pull request) clears it; a blocked one stands until a green or landed report, or any report from a session that neither raised the block nor holds the task, clears it (D-200).`;
 const yours = who => `This is already yours (${who}): nothing new was claimed, and no other agent will be given it. Finish it before anything else (queue rule 2).`;
 /** D-085: pending work ranked above your own comes first; your own claim stays yours, pushed. */
 /** D-134: where a task's status goes: its own §3b row, or, when several tasks share that row, its line in its packet's Status section. */
@@ -121,19 +121,30 @@ const fixMainSteps = (pick, who) => steps([
   "Tell the owner what broke, which commit, and how you fixed it.",
 ]);
 
-const unblockSteps = (pick, who) => steps([
-  `Read the row "${pick.task.row}", its branch and pull request, and every decision it names.`,
-  "Decide it under D-200 (any session but the one that reported the block may: the best evidence wins, D-032) and record the ruling in docs/DECISIONS.md, or, if the call changes an owner decision (prices, plan contents, legal text, live money, the login rule, referrer fairness), set the task's status to \"owner\" in docs/plans/assignments.json and put the question to the owner. A missing permission, tool or setting (a GitHub review you cannot post, an API that answers 403, missing node_modules) is not a ruling: record the verdict with --verdict, run pnpm install, or name the exact owner click needed, and move on.",
-  `Run \`${CMD} --heartbeat --as "${who}"\` before any long step: an unblock lock nobody has pushed to for 2 hours goes to the next session (D-085, D-200).`,
-  `Answer the team where it will see it (the row and the pull request), then report: \`${CMD} --report review --task ${pick.task.id} --as "${who}" --note "<the ruling>"\`. That newer report releases every priority below it.`,
-]);
+const unblockSteps = (pick, who) => {
+  const newer = pick.report.newer ?? [];
+  const newerLines = newer.map(entry => {
+    const at = Number.isFinite(entry.at) ? ` (${new Date(entry.at).toISOString()})` : "";
+    return `- ${entry.status} — ${entry.who}${at}${entry.note ? `: ${entry.note}` : ""}`;
+  });
+  return steps([
+    ...(newerLines.length ? [
+      `Newer reports after the standing block (oldest first):\n${newerLines.join("\n")}\nRead these newer reports before ruling; a builder may have recorded an owner's word.`,
+    ] : []),
+    `Read the row "${pick.task.row}", its branch and pull request, and every decision it names.`,
+    "Decide it under D-200 (any session that neither raised the block nor holds the task may: the best evidence wins, D-032) and record the ruling in docs/DECISIONS.md, or, if the call changes an owner decision (prices, plan contents, legal text, live money, the login rule, referrer fairness), set the task's status to \"owner\" in docs/plans/assignments.json and put the question to the owner. A missing permission, tool or setting (a GitHub review you cannot post, an API that answers 403, missing node_modules) is not a ruling: record the verdict with --verdict, run pnpm install, or name the exact owner click needed, and move on.",
+    `Run \`${CMD} --heartbeat --as "${who}"\` before any long step: an unblock lock nobody has pushed to for 2 hours goes to the next session (D-085, D-200).`,
+    `Report before you land the ruling's pull request (once it lands from the unblock lock, the lock no longer names you): \`${CMD} --report review --task ${pick.task.id} --as "${who}" --note "<the ruling>"\`. That newer report releases every priority below it. Then answer the team where it will see it (the row and the pull request) and land the ruling.`,
+    `If you cannot decide it either, report it \`blocked\` with the question: your unblock lock then stops holding anyone off, and the next session that did not raise the block takes it.`,
+  ]);
+};
 
 const ceoSteps = () => steps([
-  `Read the board above: every priority, top down, green or not, and the latest report from its team. A red or blocked priority comes first: unblock it (decide it under D-074, or move the task to "owner" in docs/plans/assignments.json and ask the owner) before anything lower moves.`,
+  `Read the board above: every priority, top down, green or not, and the latest report from its team. A red or blocked priority comes first: unblock any block you neither raised nor hold the task of (decide it under D-200, or move the task to "owner" in docs/plans/assignments.json and ask the owner) before anything lower moves.`,
   "Session-start sync (AGENTS.md §0): fetch main, read the newest entries in docs/DECISIONS.md, the queue (docs/plans/assignments.json, plan §3b) and plan §6; show the owner every decision since your last session.",
   "Re-analyse the business against the goal (the go-to global site for referrals, getting people referred faster, D-010/D-026): what is live, what the money and funnel numbers say (D-018 panel, D-054 analytics, D-065 money check), supply (D-064), and what users hit that we have not fixed. Find the highest-leverage gap.",
   "Turn it into decisions for the owner (rate each 1-10, give the strongest counter-argument, D-023), packets (docs/plans/, D-074) and the queue order in docs/plans/assignments.json (any session may add or reorder rows through a docs pull request that says why, D-200).",
-  "Land those docs through a pull request with every check green (D-082). Then build: Claude Code sessions take builds like any other session (D-200).",
+  "Land those docs through a pull request with every check green (D-082). Then run the picker again: Claude Code sessions take builds like any other session once rows are open (D-200).",
 ]);
 
 /** WAIT: for red main, for a red priority above you, or for your own blocked one, which another session or the owner clears (D-200). */
@@ -156,7 +167,14 @@ export function renderBoard(rows) {
     if (r.quietHours !== null && r.quietHours !== undefined) bits.push(`quiet ${r.quietHours}h`);
     if (r.pr) bits.push(r.pr);
     if (r.pr && r.state !== "done") bits.push(`behind main ${Number.isSafeInteger(r.behindMain) && r.behindMain >= 0 ? r.behindMain : "unknown"}`);
-    if (r.report) bits.push(`report: ${r.report.status} — ${r.report.who}${r.report.note ? `: ${r.report.note}` : ""}`);
+    if (r.report) {
+      bits.push(`report: ${r.report.status} — ${r.report.who}${r.report.note ? `: ${r.report.note}` : ""}`);
+      const newer = r.report.newer ?? [];
+      for (const entry of newer.slice(0, 3)) {
+        bits.push(`then: ${entry.status} — ${entry.who}${entry.note ? `: ${entry.note}` : ""}`);
+      }
+      if (newer.length > 3) bits.push(`+${newer.length - 3} more`);
+    }
     return bits.join(" · ");
   });
   const summaries = epicSummaries(rows).map(s => `${s.epic}: ${s.done}/${s.total} done, ${s.prs} PR, ${s.red} red, released: ${s.released.join(", ") || "none"}`);
@@ -181,7 +199,7 @@ export function renderPick(pick, { who, date, claimed }) {
     ]) + take;
     case "ceo": return head("CEO REVIEW (D-085)", [
       ...(pick.board ? [renderBoard(pick.board)] : []),
-      "Nothing at your level waits: no red main, nothing of yours open, nothing blocked, no packet to write, no Tier 1 review or landing. The queue for the builders:",
+      "Nothing is left for you: no red main, nothing of yours open, no block you may clear, no packet, review, landing or build. The queue:",
       ...pick.skipped.map(s => `- ${s.id}: ${s.reason}`),
       ceoSteps(),
     ]);
