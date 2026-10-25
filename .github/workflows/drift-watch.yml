@@ -30,8 +30,9 @@ jobs:
           # Live must serve the newest main commit that touches runtime paths
           # (mirror the Deploy API path filter: test-only server/** changes
           # still trigger runtime deploys). Docs-only HEADs correctly resolve
-          # to the older runtime commit.
-          expected=$(git log -1 --format=%H origin/main -- server shared drizzle src/worker.ts Dockerfile .dockerignore package.json pnpm-lock.yaml patches wrangler.jsonc tsconfig.json vite.config.ts)
+          # to the older runtime commit. --first-parent picks the merge commit
+          # main deployed, never the PR commit inside it (#475).
+          expected=$(git log -1 --first-parent --format=%H origin/main -- server shared drizzle src/worker.ts Dockerfile .dockerignore package.json pnpm-lock.yaml patches wrangler.jsonc tsconfig.json vite.config.ts)
           echo "expected=$expected" >> "$GITHUB_OUTPUT"
           if EXPECTED_SHA="$expected" bash scripts/verify-live-release.sh; then
             echo "drifted=false" >> "$GITHUB_OUTPUT"
