@@ -144,15 +144,15 @@ export const COMPANY_PLANS = {
  * issued and are never recycled (a cancelled membership does not reopen its
  * spot; a spot returns only if payment fails or is fully refunded before the
  * membership starts). The base plan price is LOCKED while the membership
- * stays continuously active; a lapse ends the lock. Prospective regular
- * prices (~+50%) apply only to new customers after the cap fills. No
- * fabricated discount percentages; spots-left shown only from the real count.
+ * stays continuously active; a lapse ends the lock. Any regular price for
+ * new customers after the cap fills is NOT set: the owner decides it before
+ * anything changes (the unapproved +50% multiplier was removed Oct 25 2026).
+ * No fabricated discount percentages; spots-left shown only from the real count.
  */
 export const FOUNDING_TERMS = {
   capsCumulative: true,
   capsRecycle: false,
   basePriceLock: "continuously_active",
-  prospectiveRegularMultiplier: 1.5,
 } as const;
 
 /** Server-side gate for every reader of the new family. Default off. */
