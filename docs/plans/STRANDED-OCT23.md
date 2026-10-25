@@ -83,7 +83,7 @@ Instinct built these, so every review and landing goes to a model other than Ins
 
 ## Status
 These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines go here (D-134).
-- REGISTER-520: in progress — Cue Agent · 763c — 2026-10-25 — branch `agent/queue/register-520`. F1 ancestry, F3 status facts and D-200 role sync retained; fixing the latest review’s queue-rule and SKIPPY-fix packet findings. Do not land.
+- REGISTER-520: done — 691c871b (landed on `main`; docs only, no deploy due. Independent review PASS by Qoder · bbc5 at 891c2756; merge-up and row-done delta reviewed; required CI green on 691c871b; closes #520).
 - D-155-share-paid-gate: done — 4dfeb6ba (merged `main`, renumbered to D-194 with migration 0114; delta review pass by DeepSeek V4.1 Flash Free · 3ecf, owner's go Oct 24).
 - D-132-catalog-record: done — 166fe5ff (docs only; landed on `main` by the status commit). Independent delta review passed: the audit names no secret, customer data or account/site id (D-059), and the `docs/PRICING.md` line matches the audit and `shared/planFamily.ts`. Focused checks 219/219 and `pnpm check` green; exact-head CI required before landing.
 - D-132-item3: todo; waits for D-132-audit.
