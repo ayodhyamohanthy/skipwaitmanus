@@ -19,16 +19,15 @@ for (const [key, value] of Object.entries({ DB_HOST, DB_USER, DB_PASSWORD, DB_NA
 }
 
 const checks = [
-  ["referral requests (as seeker)", "SELECT COUNT(*) n FROM referral_requests r JOIN users u ON u.id = r.seekerId WHERE u.openId LIKE 'reviewer_%'"],
-  ["referral requests (as referrer)", "SELECT COUNT(*) n FROM referral_requests r JOIN users u ON u.id = r.referrerId WHERE u.openId LIKE 'reviewer_%'"],
-  ["dm thread memberships", "SELECT COUNT(*) n FROM dm_thread_participants p JOIN users u ON u.id = p.userId WHERE u.openId LIKE 'reviewer_%'"],
-  ["direct messages sent", "SELECT COUNT(*) n FROM direct_messages m JOIN users u ON u.id = m.senderId WHERE u.openId LIKE 'reviewer_%'"],
-  ["opportunities posted", "SELECT COUNT(*) n FROM opportunities o JOIN users u ON u.id = o.userId WHERE u.openId LIKE 'reviewer_%'"],
-  ["follows (either direction)", "SELECT COUNT(*) n FROM follows f JOIN users u ON u.id = f.followerId OR u.id = f.followedId WHERE u.openId LIKE 'reviewer_%'"],
-  ["blocks (either direction)", "SELECT COUNT(*) n FROM blocks b JOIN users u ON u.id = b.blockerId OR u.id = b.blockedId WHERE u.openId LIKE 'reviewer_%'"],
-  ["safety reports filed", "SELECT COUNT(*) n FROM safety_reports s JOIN users u ON u.id = s.reporterId WHERE u.openId LIKE 'reviewer_%'"],
-  ["payment fulfillments", "SELECT COUNT(*) n FROM payment_fulfillments p JOIN users u ON u.id = p.userId WHERE u.openId LIKE 'reviewer_%'"],
-  ["subscription events / wallets", "SELECT COUNT(*) n FROM token_balances t JOIN users u ON u.id = t.userId WHERE u.openId LIKE 'reviewer_%' AND t.plan <> 'free'"],
+  ["asks as seeker", "SELECT COUNT(*) n FROM referralRequests r JOIN users u ON u.id = r.jobSeekerId WHERE u.openId LIKE 'reviewer_%'"],
+  ["asks as referrer", "SELECT COUNT(*) n FROM referralRequests r JOIN users u ON u.id = r.referrerId WHERE u.openId LIKE 'reviewer_%'"],
+  ["direct messages sent", "SELECT COUNT(*) n FROM messages m JOIN users u ON u.id = m.senderId WHERE u.openId LIKE 'reviewer_%'"],
+  ["opportunities posted", "SELECT COUNT(*) n FROM companyOpportunities o JOIN users u ON u.id = o.ownerId WHERE u.openId LIKE 'reviewer_%'"],
+  ["follows (either direction)", "SELECT COUNT(*) n FROM userFollows f JOIN users u ON u.id = f.followerUserId OR u.id = f.followingUserId WHERE u.openId LIKE 'reviewer_%'"],
+  ["blocks (either direction)", "SELECT COUNT(*) n FROM userBlocks b JOIN users u ON u.id = b.blockerUserId OR u.id = b.blockedUserId WHERE u.openId LIKE 'reviewer_%'"],
+  ["safety reports filed", "SELECT COUNT(*) n FROM safetyReports s JOIN users u ON u.id = s.reporterUserId WHERE u.openId LIKE 'reviewer_%'"],
+  ["payment fulfillments", "SELECT COUNT(*) n FROM paymentFulfillments p JOIN users u ON u.id = p.userId WHERE u.openId LIKE 'reviewer_%'"],
+  ["paid wallets", "SELECT COUNT(*) n FROM tokenBalances t JOIN users u ON u.id = t.userId WHERE u.openId LIKE 'reviewer_%' AND t.plan <> 'free'"],
 ];
 
 const connection = await mysql.createConnection({ host: DB_HOST, port: Number(DB_PORT), user: DB_USER, password: DB_PASSWORD, database: DB_NAME, ssl: { rejectUnauthorized: true } });
