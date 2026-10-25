@@ -66,12 +66,17 @@ Referrer side, grounded in the referrer's own economics (D-119 owner: referrers 
 - Neither the poster window nor any future paid-priority window is a request expiry (D-174: asks do not expire).
 
 
-### E. Units vs requests (clarified so the shop does not mislead)
+### E. Units vs requests - what is recorded, and the exact open classification gaps
 
-- The customer-facing unit is ONE REFERRAL REQUEST (D-173 owner: "When buying show 10 senior referrals, 1 junior referrals. Users will buy as they like"). The ledger/balance stays denominated in underlying units; the customer never sees "credits" (D-180).
-- Recorded spend contract (D-110, retained by today's clarification): a request consumes units equal to the JOB's level, L1=1 ... L10=10. The buy ladder prices are UNIT prices (single $1 / Rs49; rungs 5-200 at save 2-20%).
-- Worked owner example priced under the recorded rules: "10 senior + 1 mid" - if senior = L10 jobs, 10 senior requests = 100 units = $84 / Rs4,100 (rung 100); 1 mid (L5) request = 5 units = $4.90 / Rs240 (rung 5). Units are fungible across levels; the shop PRESENTS them as level-typed request counts.
-- PRECISE UNRESOLVED CLASSIFICATION (owner's call only if he wants it changed): recorded rules denominate cost by JOB level (L1-L10) only. Today's plan axis is the target REFERRER's career level (early/mid/senior). No recorded rule prices a request by the target referrer's career level; the grounded reading is that the plan axis is access-only and cost stays job-level-denominated. If he intends referrer-career-level pricing, that is a new decision.
+Recorded (anchored):
+- The customer-facing unit is ONE REFERRAL REQUEST (D-173 owner: "When buying show 10 senior referrals, 1 junior referrals. Users will buy as they like, dont use word credits"). The ledger stays denominated in underlying units; the customer never sees "credits" (D-180).
+- Spend contract (D-110, retained by today's clarification): a request consumes units equal to the JOB's level, L1=1 ... L10=10. The buy ladder prices are UNIT prices (single $1 / Rs49; rungs 5/10/25/50/100/200 at save 2-20%).
+
+Exactly open (NO source settles these; do not present arithmetic that presumes answers):
+1. **Label mapping**: no source maps the shop's senior/mid/junior REQUEST labels to L-numbers (L1-L10) or to the new referrer-career axes. Any "10 senior = 100 units" style math is unsupported until the owner maps the labels.
+2. **Mixed-quantity checkout**: how a combined pick (e.g. 10 of one level + 1 of another) prices against the fixed rungs is not defined in the catalog or any decision - per-rung, combined-units, or per-request pricing is undecided.
+3. **Plan inclusion**: the owner today says "Each plan gives certain referrals" and D-173 says plans carry an allowance with in-plan purchases on top; the D-132 build shape is plan fee + a SEPARATELY PRICED monthly dropdown, and the v2 config on main carries no allowances yet ("allowances land with the pricing build"). Whether the plan fee INCLUDES referrals, and how many per plan, is undecided.
+4. **Axes**: recorded rules denominate cost by JOB level only; today's plan axis is target REFERRER career level. No recorded rule prices by referrer career level; whether it should is a new decision, not an assumption.
 
 ## Anchors
 
