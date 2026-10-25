@@ -1,5 +1,3 @@
-> Historical record (2026-08-21). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
-
 # SkipWait.me: Product-Launch Platform Research
 
 ## Scope

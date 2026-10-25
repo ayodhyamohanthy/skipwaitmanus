@@ -1,5 +1,3 @@
-> Historical record (2026-09-03). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
-
 # QA Test Report — skipwait.me (whole app)
 
 _Date: 2026-09-03 · Commit tested: `f9dfeb4` (post-fix) · App live: skipwait.me_

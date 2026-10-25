@@ -1,4 +1,4 @@
-> Historical record (Oct 9 2026). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-046, D-048, D-049, D-067; D-120 (Oct 21) retires Kit v4 outright - the PNGs below are history, not a spec).
 
 # Kit v4 screen coverage
 

@@ -1,5 +1,3 @@
-> Historical record (2026-08-22). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
-
 # Isolated Vibecode Sandbox: Core Workflow Evidence
 
 **Workspace:** `SkipWait Sandbox` (`01a02963-df6f-71ef-a505-935bcc253b61`)  

@@ -1,4 +1,4 @@
-> Historical record (2026-08-19). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-036, D-046, D-058, D-067).
 
 # skipwait.me — VibeCodingApp Build Handoff
 

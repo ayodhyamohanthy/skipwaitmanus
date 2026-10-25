@@ -1,5 +1,3 @@
-> Historical record (2026-08-20). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
-
 # skipwait.me Full Migration to VibecodeApp
 
 **Decision.** VibecodeApp can be the intended production host for the full skipwait.me application, including the public site and its deployed backend. This is **not** a DNS-only switch. The current application is a React/TypeScript + Express/tRPC + Drizzle/MySQL system using a hosted auth provider, private S3 document storage, Chargebee, Resend, and server-side authorization. Vibecode deploys its own Hono backend, SQLite/Prisma database, Better Auth sessions, cloud storage, environment-variable manager, and custom-domain routing. The backend therefore needs a controlled **replatform and data migration**, not an unsafe file copy. [1] [2] [3]

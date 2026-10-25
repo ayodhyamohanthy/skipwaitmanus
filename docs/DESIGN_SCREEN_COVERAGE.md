@@ -1,4 +1,4 @@
-> Historical record (Sep 3 2026). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-048, D-055, D-120 (goal-focused UI is the one design; older design sources are history)).
 
 # Design Screen Coverage — skipwait.me
 

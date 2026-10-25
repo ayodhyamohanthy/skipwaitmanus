@@ -1,4 +1,4 @@
-> Historical record (2026-10-14). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-035, D-046, D-053, D-064, D-067).
 
 # Goal-alignment audit and proposal — 2026-10-14 (revision 2, after red-team review)
 

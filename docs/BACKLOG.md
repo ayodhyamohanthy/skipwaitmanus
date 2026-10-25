@@ -1,5 +1,3 @@
-> Historical record (Oct 21 2026). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
-
 # Backlog - every planned feature and idea in one prioritised list
 
 Single source for "what did we plan, and where is it". Read `docs/DECISIONS.md` first (binding decisions); this file is the work list that points at them.

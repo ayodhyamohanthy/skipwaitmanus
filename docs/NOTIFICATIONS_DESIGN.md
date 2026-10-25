@@ -9,7 +9,7 @@ Status (Oct 18 2026): part A (kinds) is live (#238, migration 0087) and the Sett
 
 ## D-060: pending actions are emailed (owner, Oct 18 2026)
 Owner, verbatim: "always email users if any action is pending from their side". Each pending action sends one transactional email with a direct link:
-- Seeker: add a credit to release a held ask (D-047), set a password (D-049). D-174 suspends the D-061 day-30 confirmation of a waiting ask for launch; it was never built, so the runtime sends no such email. There is no "send again" after a pass (D-147 rejected D-035).
+- Seeker: confirm a waiting ask (D-061), add a credit to release a held ask (D-047), set a password (D-049), send again after a fixable pass (D-035/D-052).
 - Referrer: new or expiring asks, a claim about to lapse or an accepted ask to mark as referred (D-038), a new work email to verify (D-057).
 
 Guardrails (changeable): reminders only as the owning decision names them; at most one such email per person per day (a digest beyond that); notification preferences respected (this task); truthful copy with no false urgency; sent from SkipWait's own sender.
@@ -31,7 +31,7 @@ Defaults must preserve today's behaviour: every user keeps exactly the email the
 | New ask arrives (referrer) | yes | yes, today's review email, existing consent gate | yes (existing toggle, kept) |
 | Ask accepted / passed / claimed (seeker) | yes | yes, today's emails | proposal: yes for passed/claimed, NOT for accepted (it spends or returns nothing but is the core outcome) - founder call |
 | New message / DM | yes | no (stays in-app only) | n/a |
-| Ask expiring in 1 day (runtime only, until `D-174-expiry-clock-removal` lands; D-174: asks do not expire) | yes | referrer who can act on it: yes, pending action (D-060); no seeker reminder | yes |
+| Ask expiring in 1 day | yes | referrer who can act on it: yes, pending action (D-060); seeker: NEW email reminder, opt-IN (default off) | yes |
 | Credits added / coverage credit | yes | no | n/a |
 | Safety, account and payment notices | yes | yes | NO, always sent |
 | OTP, sign-in, data export | n/a | transactional, always | NO |
@@ -45,15 +45,17 @@ One `dispatchNotification(userId, kind, payload)` that writes the in-app row and
 
 ## Out of scope / needs other decisions
 - Web push (task 24) needs the owner VAPID keys; not part of 21.
-- Reminder and digest jobs (task 22 notification-reminder-jobs) are sends to real users: a separate design and approval each, except the pending-action reminders and digest D-060 approves, as their owning decisions name them (D-038: the 24 h claim reminder and the day-2 and day-4 "Referred" reminders).
-- Email templates (task 22) and all copy: founder approves before any user-facing ship. Kit v4 is retired (D-120), so its notification copy is history, not a target; any change to server copy is a copy decision and uses referral wording (D-180).
+- Reminder and digest jobs (task 22 notification-reminder-jobs) are sends to real users: a separate design and approval each, except the pending-action reminders and digest D-060 approves, as their owning decisions name them (D-038: the 24 h claim reminder and the day-2 and day-4 "Referred" reminders; D-061: the day-30 confirmation).
+- Email templates (task 22) and all copy: founder approves before any user-facing ship. Kit copy ("Your ask was accepted", "A verified referrer at <company> accepted") differs from current server copy; changing it is a copy decision (the kit is no longer binding, D-048).
 - Unsubscribe link and legal footer for non-transactional email: legal batch.
 
 ## Ship plan
 1. Part A (kinds, in-app only, API-affecting, own deploy).
 2. Part B preferences table + settings tab with ONLY existing behaviours (new-ask email toggle moved/mirrored, always-sent note). No new email.
-3. D-060 pending-action emails and their digest ship with each owning decision's slice.
+3. D-060 pending-action emails and their digest ship with each owning decision's slice; the seeker expiry reminder only after founder approval of copy, schedule, and opt-in default.
 
 ## Questions for the founder
 1. Approve the matrix above, especially: can a seeker turn off the "accepted" email?
-2. Unsubscribe/footer wording for non-transactional email (legal).
+2. Expiry reminder and digest: answered for pending actions by D-060 (emailed, at most one a day with a digest beyond that, preferences respected). Still open: the seeker's expiry reminder — ship now, opt-in default off?
+3. Kit notification copy vs current server copy: switch to kit copy? (The kit is no longer binding, D-048.)
+4. Unsubscribe/footer wording for non-transactional email (legal).

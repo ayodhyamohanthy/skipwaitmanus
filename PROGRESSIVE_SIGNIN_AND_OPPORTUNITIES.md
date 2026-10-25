@@ -1,4 +1,4 @@
-> Historical record (Aug 14 2026). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-022, D-030).
 
 # Progressive Sign-In and Verified Opportunity Sharing
 

@@ -1,5 +1,3 @@
-> Historical record (2026-09-04). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
-
 # Full-stack QA — screens, flows, errors (final report 2026-09-04)
 
 ## 1. Screen design completeness (audited all 27+ screens, 30+ routes)

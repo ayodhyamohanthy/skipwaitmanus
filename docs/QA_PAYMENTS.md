@@ -44,24 +44,19 @@ Notes:
 
 ## 3. Card payment loop (credit pack)
 
-Referrer checkout is refused at runtime (D-055, live since `08d193a0`): a
-checkout with `role: "referrer"` on any route answers 403 ("Referrers never
-pay on SkipWait. Nothing has been charged.") before any provider call or
-intent, behind `REFERRER_PURCHASES_ENABLED = false`
-(`shared/referrerPurchases.ts`), and the referrer pages show no pay button.
-D-196 adds an opt-in paid referrer plan (level-matched first access); it is
-not built, so there is no referrer QA loop yet. QA every purchase as the seeker.
+Referrers never pay (D-055; live since `08d193a0`): a checkout with
+`role: "referrer"` on any route answers 403 ("Referrers never pay on
+SkipWait. Nothing has been charged.") before any provider call or intent, and
+the referrer pages show no pay button. QA every purchase as the seeker.
 
 1. Sign in as QA Seeker, open `/premium?role=job_seeker`.
-2. Start checkout on a credit pack (packs are the only thing sold, D-146; the
-   single credit is not sold while packs are on; see `docs/PRICING.md` for
-   the live packs). Pay on the Chargebee hosted page with a
+2. Start checkout (1 credit; this legacy item retires in each currency once
+   its D-036 packs are buyable, and the first pack — ₹99 for 2 or $5 for 5 —
+   becomes the unit of test, D-046). Pay on the Chargebee hosted page with a
    **test card**: `4111 1111 1111 1111` (Visa, any future expiry/CVC).
    Full test-card list: Chargebee docs → test cards.
 3. Expect redirect to `/premium?role=job_seeker&payment=pending`, then
-   "referral credits are ready" with the balance up by the pack's credit
-   count. (Code and copy still say "credits"; the buyer-facing name becomes
-   "referrals" in the terminology lane, D-173.)
+   "referral credits are ready" with balance +1.
 4. Promo grants are off until the #35 rebuild (`PROMO_GRANTS_ENABLED=false`,
    `.env.example`): expect no promo credits. Only with the flag on does the
    first verified payment grant **5 promo credits** (30-day expiry):
@@ -77,24 +72,28 @@ Chargebee cannot reach localhost. Options, easiest first:
   `localhost:3000/api/chargebee/webhook` with header
   `Authorization: Basic <base64("skipwait:<CHARGEBEE_WEBHOOK_SECRET>")>`
   and the `hostedPageId`/`passThruContent` of a pending intent created in
-  step 3. Expect `{"received": true}` and exactly one fulfillment of the pack (replay the
+  step 3. Expect `{"received": true}` and exactly one credit (replay the
   same `eventId` twice: second answer must be `duplicate`).
 - **Recovery path**: return from checkout with an empty session (clear
   `sessionStorage`) and confirm `/premium` re-checks via
   `/api/chargebee/credit-recovery`.
 
-## 5. Plans and passes
+## 5. Subscriptions
 
-No plan or pass is sold, so there is no subscription QA loop today.
-- Passes and Keep warm are not sold (D-146; `PASS_SALES_ENABLED` stays false,
-  D-084). `POST /api/chargebee/subscription-checkout` (`server/kitCheckout.ts`)
-  answers `409 not_available_yet` for them and opens no page.
-- The D-132 plans (Entry level / Mid level / Senior level Referrers, D-152)
-  are built and stay off behind their flags (D-135). Their test-site QA comes
-  with the enable path in `docs/PRICING.md`.
-- A legacy Pro/Max body (`{plan: "pro" | "max"}`) is refused with 410
-  `plan_retired` ("Nothing has been charged") before any provider call or
-  intent (D-067, live in `08d193a0`).
+A pass (Start, Momentum, Land Focus or Land Sprint, 30 or 90 days) or Keep
+warm yearly (D-046; Land Concierge is by application) with a test card → the
+pass becomes real only from the verified webhook. The server path exists:
+`POST /api/chargebee/subscription-checkout` with a kit body (`planId`,
+`interval`, `currency`, `billingCountry`, `role`; `server/kitCheckout.ts`). A
+plan whose Chargebee item price does not exist yet answers
+`409 not_available_yet` and opens no page. The `/plans` buttons for passes
+come with queue task 1 (D-046, D-053). Since D-067 (live in `08d193a0`),
+`/plans` sends no plan checkout at all, and a legacy Pro/Max body
+(`{plan: "pro" | "max"}`) is refused with 410 `plan_retired` ("Nothing has
+been charged") before any provider call or intent. It is not QA'd.
+Cancel schedules end-of-term. With
+`PROMO_GRANTS_ENABLED=true` only, first activation also earns the 5 promo
+credits (same rule as packs, granted once per account).
 
 ## 5b. Gift subscriptions (retired)
 

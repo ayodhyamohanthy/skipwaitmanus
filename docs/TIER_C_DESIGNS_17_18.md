@@ -1,4 +1,4 @@
-> Historical record (2026-10-15). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-034, D-038, D-061, D-062).
 
 # Designs for queue tasks 17 and 18 (DESIGN ONLY, nothing built)
 

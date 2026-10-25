@@ -32,7 +32,7 @@ If no held request is eligible, the Referrer sees an honest empty state and no J
 | Event | Recipient | Private copy | Action | Delivery controls |
 | --- | --- | --- | --- | --- |
 | Slot allocated | Affected Job Seeker only | “A verified employee at **{company}** can now review your request.” | View your request | In-app notification immediately; one delivery per allocation ID. |
-| Ask held for a credit (D-047, live in `66801d2b`; today in-app only) | Affected Job Seeker only | “A verified employee at **{company}** can now see asks. Add a credit to send yours.” | Add a credit | In-app now; the email follows when D-060 is built. The ask is delivered as soon as a credit exists. The runtime copy says "asks" and "credit"; public wording becomes "referral request" and "referral" in the terminology lane (D-173, D-180). |
+| Ask held for a credit (D-047; code pending) | Affected Job Seeker only | “A verified employee at **{company}** can now see asks. Add a credit to send yours.” | Add a credit | In-app and email (D-060); the ask is delivered as soon as a credit exists. |
 | Review starts | Affected Job Seeker only | “Your request is being reviewed at **{company}**.” | View your request | Only after the Referrer actually opens the packet/review state. |
 | Slot released | Affected Job Seeker only | “Your request is still waiting for a verified employee at **{company}**.” | Invite one trusted employee | Return to truthful held status; no blame or hidden queue rank. |
 

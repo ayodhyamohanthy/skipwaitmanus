@@ -1,4 +1,4 @@
-> Historical record (2026-10-07). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-040, D-048, D-049, D-067).
 
 # SkipWait Kit v4 → Live Update Plan
 

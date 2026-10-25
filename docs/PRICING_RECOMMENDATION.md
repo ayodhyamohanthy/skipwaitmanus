@@ -1,5 +1,4 @@
-> Historical record (Oct 14 2026). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
-> Pricing today: `docs/PRICING.md` is the one source (D-146).
+> Status (Oct 18 2026): the owner decisions directly below govern as amended by later entries in docs/DECISIONS.md; the recommendation after them is the Oct 14 historical record. Where either conflicts with the register, the register wins (notably D-007, D-036, D-039, D-041, D-046, D-051, D-053, D-056, D-063, D-067).
 
 # Pricing recommendation and owner decisions (Oct 14 2026)
 

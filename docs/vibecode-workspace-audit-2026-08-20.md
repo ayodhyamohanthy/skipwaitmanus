@@ -1,5 +1,3 @@
-> Historical record (2026-08-20). Not current guidance; docs/DECISIONS.md and docs/plans/assignments.json win.
-
 # VibecodeApp Workspace Audit — 20 August 2026
 
 The existing **SkipWait.me** VibecodeApp workspace was reachable and active during the non-destructive audit. Its visible workspace balance was **$229.80**, so the earlier zero-balance build-agent block is no longer present.
