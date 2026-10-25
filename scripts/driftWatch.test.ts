@@ -105,3 +105,19 @@ describe("drift watch tolerates reverse-direction landings (#687)", () => {
     git("diff", "--quiet", live, "origin/main", "--", ...paths.split(" "));
   });
 });
+
+describe("drift watch content fallback fails closed (#687)", () => {
+  it("requires the live sha from the health endpoint, rejects null/empty, and requires the commit locally", () => {
+    expect(workflow).toContain('https://skipwait.me/api/health/ready');
+    expect(workflow).toContain('"$live_sha" != "null"');
+    expect(workflow).toContain('git cat-file -e "$live_sha^{commit}"');
+  });
+
+  it("treats only an empty diff as converged: diff findings or errors exit non-zero and flag drift", () => {
+    expect(workflow).toMatch(/git diff --quiet "\$live_sha" origin\/main -- \$PATHS/);
+    // --quiet semantics: 0 = no diff (converged), 1 = differences, >1 = error;
+    // the workflow accepts equivalence only inside the && chain, so any
+    // non-zero exit (including object errors) falls through to drifted=true.
+    expect(workflow).toContain('echo "drifted=true" >> "$GITHUB_OUTPUT"');
+  });
+});
