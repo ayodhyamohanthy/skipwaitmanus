@@ -3,6 +3,7 @@ import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Terms from "./Terms";
+import CancellationPolicy from "./CancellationPolicy";
 import Guidelines from "./Guidelines";
 import RefundPolicy from "./RefundPolicy";
 import ShippingPolicy from "./ShippingPolicy";
@@ -55,7 +56,10 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getByText(/We do not promise an interview, an offer, or any hiring outcome/)).toBeTruthy();
     expect(screen.getByText(/3 free referral credits each month/)).toBeTruthy();
     expect(screen.getByRole("heading", { name: "The short version" })).toBeTruthy();
-    expect(screen.getByText(/Referrals are always free/)).toBeTruthy();
+    // LAUNCH-legal-copy: the old "Referrals are always free" bullet was untrue
+    // while asks cost referrals and packs sell for money. It must never return.
+    expect(screen.queryByText(/Referrals are always free/)).toBeNull();
+    expect(screen.getByText(/Each ask uses one referral from your balance, taken only when a verified employee can see it/)).toBeTruthy();
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
     // The kit's design-only banner never ships.
     expect(document.body.textContent).not.toMatch(/DRAFT FOR DESIGN|placeholder address/i);
@@ -164,6 +168,17 @@ describe("decline keeps the credit spent (founder decision, Oct 14 2026)", () =>
     expect(text).toContain("the credit stays spent, even if they pass");
     expect(text).not.toMatch(/reserved when a request is sent/);
     expect(text).not.toMatch(/Momentum|Keep warm/);
+  });
+  it("Cancellation policy names the ended-month exception and the used-after-pickup rule", () => {
+    const { container } = render(<CancellationPolicy />);
+    const text = container.textContent ?? "";
+    // Actual ledger behaviour (shared/moneyCopy CREDIT_RULE + server/db.ts):
+    // a withdraw before pickup returns the referral at once, except a free
+    // monthly referral from a month that has already ended; after a verified
+    // employee claims or declines, the referral stays used.
+    expect(text).toMatch(/month that has already ended/);
+    expect(text).toMatch(/claims or declines the request, the referral stays used/);
+    expect(text).not.toMatch(/No money is charged for a request, so there is nothing to refund/);
   });
   it("Refund policy lists withdraw and expiry as returns, and a decline as spent", () => {
     const { container } = render(<RefundPolicy />);

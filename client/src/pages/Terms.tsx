@@ -20,7 +20,7 @@ export default function Terms() {
     updated="15 Oct 2026"
     status="published"
     summary={[
-      "Referrals are always free. Plans and credit packs buy preparation tools and monthly allowances — never priority or outcomes.",
+      "Each ask uses one referral from your balance, taken only when a verified employee can see it. Free accounts get 3 referrals a month; referral packs add more. Plans and packs never buy priority or outcomes.",
       "Referrers decide each ask. A referral is an introduction, never a promise of an interview or a job.",
       "Private by default. Resumes and referrer identities stay hidden until a referrer accepts.",
       "Be honest. Misuse — bulk asks, misrepresentation, harassment — can limit or close an account.",

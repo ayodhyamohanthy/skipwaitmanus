@@ -22,7 +22,7 @@ export default function CancellationPolicy() {
     <PolicySection number="01" title="Cancelling a referral request">
       <ul>
         <li>You can cancel (withdraw) a referral request from <Link href="/requests" className="font-semibold text-black">My requests</Link> <strong>at any time before a verified employee claims it</strong>.</li>
-        <li>The reserved credit is <strong>returned to your balance immediately</strong>. No money is charged for a request, so there is nothing to refund.</li>
+        <li>The referral is <strong>returned to your balance immediately</strong>, except a free monthly referral from a month that has already ended. After a verified employee claims or declines the request, the referral stays used.</li>
         <li>Once a Referrer has claimed or accepted the request, it can no longer be cancelled.</li>
       </ul>
     </PolicySection>
