@@ -12,7 +12,7 @@ export const JOB_SOURCE_TIMEOUT_MS = 20_000;
 export const JOB_SOURCE_MAX_BYTES = 25 * 1024 * 1024;
 
 export type GuardedFetchFailure =
-  | { ok: false; reason: "refused_host" | "redirect_refused" | "http_error" | "over_cap" | "invalid_json" | "network_error"; status?: number }
+  | { ok: false; reason: "refused_host" | "redirect_refused" | "http_error" | "over_cap" | "invalid_json" | "network_error" | "unsafe_destination"; status?: number }
   | { ok: false; reason: "invalid_input" };
 export type GuardedFetchResult = { ok: true; payload: unknown; bytes: number } | GuardedFetchFailure;
 
@@ -30,15 +30,22 @@ export async function fetchGuardedJson(
     return { ok: false, reason: "refused_host" };
   }
   let response;
+  let dispatcher;
   try {
-    const dispatcher = opts.fetchImpl ? undefined : await pinnedDispatcher(parsed.hostname);
+    dispatcher = opts.fetchImpl ? undefined : await pinnedDispatcher(parsed.hostname);
+  } catch {
+    // The DNS pin refused the destination (unresolvable or private address):
+    // a distinct failure reason from a network error - no request was made.
+    return { ok: false, reason: "unsafe_destination" };
+  }
+  try {
     const doFetch = opts.fetchImpl ?? undiciFetch;
     response = await doFetch(url, {
       dispatcher,
       redirect: "manual",
       signal: AbortSignal.timeout(JOB_SOURCE_TIMEOUT_MS),
       headers: { accept: "application/json", "user-agent": "skipwait.me job catalog" },
-    } as never);
+    });
   } catch {
     return { ok: false, reason: "network_error" };
   }

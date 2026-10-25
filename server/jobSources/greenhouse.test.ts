@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { catalogJobSchema } from "../../shared/jobCatalog";
 import {
   GREENHOUSE_API_HOST,
   fetchJobBoard,
@@ -120,5 +121,38 @@ describe("greenhouse job payload parsing", () => {
     expect(jobs[0].snippet).toBe("Build payments.");
     expect(jobs[0].applyUrl).toBe("https://boards.greenhouse.io/stripe/jobs/123");
     expect(jobs[0].department).toBe("Engineering");
+  });
+});
+
+describe("greenhouse real-board hardening (PR #650 review findings)", () => {
+  it("normalizes an offset updated_at to the Z-only shared contract", () => {
+    const [job] = parseGreenhouseJobs({
+      jobs: [{ id: 9, title: "Software Engineer", absolute_url: "https://boards.greenhouse.io/stripe/jobs/9", updated_at: "2026-10-22T09:17:09-04:00", location: { name: "Seattle" }, content: "" }],
+    });
+    expect(job.publishedAt).toBe("2026-10-22T13:17:09.000Z");
+    expect(catalogJobSchema.safeParse({ ...job, companyId: 1, sourceId: 1, jobFunction: null, level: 5 }).success).toBe(true);
+  });
+
+  it("splits comma-joined multi-city labels", () => {
+    expect(parseGreenhouseLocation("Seattle, San Francisco, New York City")).toEqual({
+      locations: ["Seattle", "San Francisco", "New York"],
+      workMode: "onsite",
+    });
+  });
+
+  it("keeps a single-comma city-country label whole", () => {
+    expect(parseGreenhouseLocation("London, UK")).toEqual({ locations: ["London, UK"], workMode: "onsite" });
+  });
+
+  it("drops the 'from the' qualifier after Remote", () => {
+    expect(parseGreenhouseLocation("Remote from the US")).toEqual({ locations: ["US"], workMode: "remote" });
+  });
+
+  it("uses office cities when the location label is only a work-mode word", () => {
+    const [job] = parseGreenhouseJobs({
+      jobs: [{ id: 10, title: "Software Engineer", absolute_url: "https://boards.greenhouse.io/cloudflare/jobs/10", location: { name: "Hybrid" }, offices: [{ name: "Austin" }, { name: "London" }], content: "" }],
+    });
+    expect(job.workMode).toBe("hybrid");
+    expect(job.locations).toEqual(["Austin", "London"]);
   });
 });

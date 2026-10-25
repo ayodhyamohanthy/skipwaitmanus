@@ -13,6 +13,7 @@ import { JOB_CATALOG_ENABLED, JOB_CATALOG_PAGE_SIZE, companyJobsResponseSchema, 
 import { catalogJobs, companies, companyJobSources } from "../drizzle/schema";
 import { getDb } from "./db";
 import { createDrizzleCatalogSyncStore, syncOneSource, type CatalogSourceRow } from "./jobSources/sync";
+import { captureServerError } from "./sentry";
 
 export type StoredCatalogJob = {
   id: number;
@@ -134,7 +135,8 @@ export function registerJobCatalogRoutes(app: Express, deps: JobCatalogRouteDeps
       companyJobsResponseSchema.parse(body);
       res.set("Cache-Control", "public, max-age=60");
       res.json(body);
-    } catch {
+    } catch (error) {
+      captureServerError(error, { route: "/api/companies/:slug/jobs" });
       res.status(500).json({ error: "We could not load the job catalog right now" });
     }
   });
@@ -192,7 +194,7 @@ export async function createDrizzleJobCatalogStore(): Promise<JobCatalogStore> {
       }));
     },
     async createJobSource(input) {
-      const result = await db.insert(companyJobSources).values({ ...input, status: "unverified" } as never);
+      const result = await db.insert(companyJobSources).values({ ...input, status: "unverified" });
       const id = Number((result as Array<{ insertId?: number }>)[0]?.insertId ?? 0);
       return { id, status: "unverified" };
     },
@@ -205,7 +207,7 @@ export function createJobCatalogRefresher(): (source: CatalogSourceRow) => void 
     void (async () => {
       const store = await createDrizzleCatalogSyncStore();
       await syncOneSource(source, store, new Date());
-    })().catch(() => undefined);
+    })().catch((error) => captureServerError(error, { lane: "job-catalog-refresh", sourceId: source.id }));
   };
 }
 

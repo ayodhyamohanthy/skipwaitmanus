@@ -5,6 +5,9 @@ import { JOB_CATALOG_ENABLED, companyJobsResponseSchema } from "../shared/jobCat
 import { assignJobLevel } from "../shared/jobLevel";
 import { registerJobCatalogRoutes, type JobCatalogRouteDeps, type StoredCatalogJob } from "./jobCatalogRoutes";
 import { registerPrivateReferralRoutes } from "./privateReferralRoutes";
+import { captureServerError } from "./sentry";
+
+vi.mock("./sentry", () => ({ captureServerError: vi.fn() }));
 
 const admin = { account: { id: 1, role: "admin" } };
 const member = { account: { id: 2, role: "user" } };
@@ -164,5 +167,16 @@ describe("POST /api/admin/job-sources (D-174-job-catalog)", () => {
     const { app } = appWith();
     const res = await request(app).post("/api/admin/job-sources").send({ companySlug: "acme", provider: "greenhouse", boardToken: "acme", evidenceUrl: "https://acme.example/careers", surprise: true });
     expect(res.status).toBe(400);
+  });
+});
+
+describe("job catalog error reporting (PR #650 review finding)", () => {
+  it("a store failure answers 500 and reports to Sentry", async () => {
+    const { app, store } = appWith();
+    store.listCatalogJobs.mockRejectedValueOnce(new Error("db down"));
+    const res = await request(app).get("/api/companies/acme/jobs");
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("We could not load the job catalog right now");
+    expect(captureServerError).toHaveBeenCalled();
   });
 });

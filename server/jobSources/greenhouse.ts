@@ -19,6 +19,7 @@ const greenhouseBoardResponseSchema = z.object({
       content: z.string().optional(),
       updated_at: z.string().optional(),
       departments: z.array(z.object({ name: z.string() })).optional(),
+      offices: z.array(z.object({ name: z.string() })).optional(),
     })
   ),
 });
@@ -79,10 +80,12 @@ export function parseGreenhouseLocation(raw: string | null | undefined): {
       return { locations: ["Remote"], workMode: workMode === "hybrid" ? "hybrid" : "remote" };
     }
     if (workMode !== "hybrid") workMode = "remote";
-    text = rest;
+    text = rest.replace(/^from\s+/i, "").replace(/^the\s+(?=(?:US|USA|United States)\b)/i, "");
   }
+  // Real boards join multi-city labels with commas ("Seattle, San Francisco,
+  // New York City"). Split only on 2+ commas so "London, UK" stays one label.
   const parts = text
-    .split(/\s*;\s*|\s+\/\s+|\s+or\s+/i)
+    .split(text.split(",").length >= 3 ? /\s*,\s*/ : /\s*;\s*|\s+\/\s+|\s+or\s+/i)
     .map((p) => p.trim().replace(/^[–-]\s*/, "").replace(/\s*[–-]$/, ""))
     .filter(Boolean)
     .map((p) => LOCATION_ALIASES[p.toLowerCase()] ?? p);
@@ -106,7 +109,12 @@ export function parseGreenhouseJobs(payload: unknown): NormalizedCatalogJob[] {
   const parsed = greenhouseBoardResponseSchema.parse(payload);
   return parsed.jobs.map((job) => {
     const rawLocation = job.location?.name ?? null;
-    const { locations, workMode } = parseGreenhouseLocation(rawLocation);
+    const parsed = parseGreenhouseLocation(rawLocation);
+    // Boards that label the location with only a work-mode word ("Hybrid")
+    // carry the real cities in the offices list (Cloudflare: 346/454 jobs).
+    const locations = parsed.locations.length === 0 && job.offices?.length ? job.offices.map((o) => o.name) : parsed.locations;
+    const workMode = parsed.workMode;
+    const updatedAt = job.updated_at ? new Date(job.updated_at) : null;
     return {
       externalId: String(job.id),
       title: job.title,
@@ -116,7 +124,7 @@ export function parseGreenhouseJobs(payload: unknown): NormalizedCatalogJob[] {
       department: job.departments?.[0]?.name ?? null,
       applyUrl: job.absolute_url,
       snippet: stripHtml(job.content ?? "").slice(0, 400),
-      publishedAt: job.updated_at ?? null,
+      publishedAt: updatedAt && !Number.isNaN(updatedAt.getTime()) ? updatedAt.toISOString() : null,
     };
   });
 }

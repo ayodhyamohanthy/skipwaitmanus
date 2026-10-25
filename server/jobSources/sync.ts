@@ -13,6 +13,7 @@ import { assignJobLevel } from "../../shared/jobLevel";
 import { classifyJobFunction } from "../../shared/jobFunctionClassifier";
 import { catalogJobs, companyJobSources } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { captureServerError } from "../sentry";
 import type { JobRunContext, JobRunOutput } from "../scheduledJobRunner";
 import { fetchJobBoard, type NormalizedCatalogJob } from "./greenhouse";
 
@@ -98,8 +99,9 @@ export function createJobCatalogSync(store?: CatalogSyncStore) {
         const outcome = await syncOneSource(source, resolved, now);
         processed += 1;
         if (!outcome.ok) failed += 1;
-      } catch {
+      } catch (error) {
         failed += 1;
+        captureServerError(error, { lane: "job-catalog-sync", sourceId: source.id, provider: source.provider });
       }
     }
     return { processed, failed };
@@ -119,7 +121,11 @@ export async function createDrizzleCatalogSyncStore(): Promise<CatalogSyncStore>
           boardToken: companyJobSources.boardToken,
           status: companyJobSources.status,
         })
-        .from(companyJobSources);
+        // The daily batch fetches verified boards only (scheduledJobRegistry);
+        // a just-created unverified source still gets its one-shot probe via
+        // the refresher, pinned by "a 404 on an unverified board".
+        .from(companyJobSources)
+        .where(eq(companyJobSources.status, "verified"));
       return rows;
     },
     async upsertJobs(jobs, now) {
@@ -128,11 +134,11 @@ export async function createDrizzleCatalogSyncStore(): Promise<CatalogSyncStore>
           .insert(catalogJobs)
           .values({
             ...job,
-            locations: JSON.stringify(job.locations) as never,
+            locations: JSON.stringify(job.locations),
             publishedAt: job.publishedAt ? new Date(job.publishedAt) : null,
             level: job.level,
             lastSeenAt: now,
-          } as never)
+          })
           .onDuplicateKeyUpdate({
             set: {
               title: job.title,
@@ -147,7 +153,7 @@ export async function createDrizzleCatalogSyncStore(): Promise<CatalogSyncStore>
               publishedAt: job.publishedAt ? new Date(job.publishedAt) : null,
               lastSeenAt: now,
               closedAt: null,
-            } as never,
+            },
           });
       }
     },
