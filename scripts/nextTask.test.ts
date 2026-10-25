@@ -630,7 +630,7 @@ describe("markers and printed steps", () => {
     expect(land1).toContain("git log --merges --cc");
     const review = renderPick({ kind: "review", task: task("M", { tier: 1 }), work: "agent/queue/m", pr: "https://github.com/o/r/pull/9", lock: "agent/review/m", lockExists: true, builder: "Qwen · s1" }, ctx);
     expect(review).toContain("Before reading any code, record the head you review");
-    expect(review).toContain("naming <reviewed>, never a fresh rev-parse");
+    expect(review).toContain("Name <reviewed> with your verdict, never a fresh rev-parse");
     expect(review).not.toContain("goes back to review");
     const arch = renderPick({ kind: "architect", task: task("P", { status: "architect", packet: null }), lock: "agent/architect/p", lockExists: false }, { ...ctx, who: "Claude Code · s9" });
     expect(arch).toContain("WRITE THE PACKET FOR P");
@@ -1581,5 +1581,48 @@ describe("D-200 block rule: nobody clears a block they raised or a task they hol
     const text = renderPick({ kind: "unblock", task: task("A"), report: rep("Qwen · s1", "blocked", 1), lock: "agent/architect/a", lockExists: false }, { who: "Kimi · s2", date: "d", claimed: true });
     expect(text).toContain("Report before you land the ruling's pull request");
     expect(text).toContain("report it `blocked`");
+  });
+});
+
+// Cue's blocks, Oct 24-25: a session that may not take a task, a review worktree with no packages, git-only access.
+describe("an agent is never stuck on its own limits (D-200 (5))", () => {
+  it("--avoid hands a session something else, without a blocked report and without lifting a red task's hold", () => {
+    expect(pick([task("A"), task("B")], { claimant: "Cue Agent · c1" })).toMatchObject({ kind: "build", task: { id: "A" } });
+    expect(pickNextTask({ tasks: [task("A"), task("B")], mainCi: { state: "green" }, branches: new Map(), openPrs: new Map(), now: NOW, claimant: "Cue Agent · c1", avoid: new Set(["A"]) })).toMatchObject({ kind: "build", task: { id: "B" } });
+    const busyA: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 1)];
+    const redA = { id: "A", status: "red", who: "Qwen · s1", at: NOW - HOUR, note: "x" };
+    expect(pickNextTask({ tasks: [task("A"), task("B", { lane: "A" })], mainCi: { state: "green" }, branches: new Map([busyA]), openPrs: new Map(), reports: [redA], now: NOW, claimant: "Cue Agent · c1", avoid: new Set(["A"]) })).toMatchObject({ kind: "wait", gate: "A" });
+  });
+
+  it("every worktree step and the review step install the pinned packages, and a verdict needs no GitHub permission", () => {
+    const ctx = { who: "Cue Agent · c1", date: "2026-10-25", claimed: true };
+    const review = renderPick({ kind: "review", task: task("M", { tier: 1 }), work: "agent/queue/m", pr: "https://github.com/o/r/pull/9", lock: "agent/review/m", lockExists: true, builder: "Qwen · s1" }, ctx);
+    expect(review).toContain("pnpm install --frozen-lockfile");
+    expect(review).toContain("always allowed");
+    expect(review).toContain("a GitHub review is never required");
+    expect(review).toContain("--avoid M");
+    const build = renderPick({ kind: "build", task: task("A") }, ctx);
+    expect(build).toContain("pnpm install --frozen-lockfile");
+    expect(build).not.toContain("report it blocked to avoid");
+  });
+});
+
+// D-200: two switch-only claims on one wiring file never make two tasks wait for each other (#649).
+describe("switch-only claims share a file", () => {
+  it("two switch-only claims on the same file do not overlap; a full claim still overlaps a switch-only one", () => {
+    expect(core.ownsOverlap(["server/_core/index.ts (switch only)"], ["server/_core/index.ts (switch only)"])).toBe(false);
+    expect(core.ownsOverlap(["server/_core/index.ts (switch only)"], ["server/_core/index.ts"])).toBe(true);
+    expect(core.ownsOverlap(["server/_core/index.ts"], ["server/_core/"])).toBe(true);
+    expect(core.ownsOverlap(["server/_core/index.ts (switch only)"], ["server/_core/"])).toBe(true);
+  });
+
+  it("the registry accepts two open tasks that each hold a switch-only claim on one file", () => {
+    const doc = { version: 1, repo: "o/r", tasks: [
+      { ...task("A"), packet: "docs/plans/p.md", owns: ["server/a.ts", "server/_core/index.ts (switch only)"] },
+      { ...task("B"), packet: "docs/plans/p.md", owns: ["server/b.ts", "server/_core/index.ts (switch only)"] },
+    ] };
+    expect(validateAssignments(doc, () => true).filter(e => e.includes("overlapping"))).toEqual([]);
+    const full = { ...doc, tasks: [doc.tasks[0], { ...doc.tasks[1], owns: ["server/b.ts", "server/_core/index.ts"] }] };
+    expect(validateAssignments(full, () => true).filter(e => e.includes("overlapping"))).toHaveLength(1);
   });
 });
