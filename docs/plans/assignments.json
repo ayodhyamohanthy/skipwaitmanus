@@ -6,6 +6,169 @@
  "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks, except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
  "tasks": [
   {
+   "id": "pricing-banded-plans-oct25",
+   "title": "Frozen banded pricing replaces fee+credits (owner freeze Oct 25): canonical plan family, legacy pack sales paused, read-only plan display, /pricing truth",
+   "row": "BACKLOG-OCT25-1",
+   "packet": "docs/IMPLEMENTATION-BACKLOG-oct25.md",
+   "tier": 1,
+   "lane": "pricing",
+   "branch": "agent/pricing/banded-plans-oct25",
+   "status": "in-review",
+   "dependsOn": [],
+   "note": "Owner freeze Oct 25 19:31 (anchors in packet section 1). Built by Instinct sessions; PR #666. Next: green required CI on exact head, then one independent review by a non-Instinct model (D-151), then merge and deploy verification. Billing switch-on is separately gated and is NOT this row. Registered by an Instinct session under the capable-session clause (docs/DELEGATION.md) with Main's explicit authorization, registrar quiet.",
+   "owns": [
+    ".github/workflows/ci.yml",
+    "client/src/components/AppShell.tsx",
+    "client/src/components/seekerCreditsCard.test.tsx",
+    "client/src/lib/planFamilyFlag.ts",
+    "client/src/pages/PlansV2.test.tsx",
+    "client/src/pages/PlansV2.tsx",
+    "client/src/pages/Premium.tsx",
+    "client/src/pages/Pricing.tsx",
+    "client/src/pages/creditPacksOnSale.test.tsx",
+    "client/src/pages/plans.paymentRecovery.test.tsx",
+    "client/src/pages/plans.paymentRoute.test.tsx",
+    "client/src/pages/plansV2.config-guard.test.ts",
+    "client/src/pages/policyPages.test.tsx",
+    "client/src/pages/premium.packRetirement.test.tsx",
+    "client/src/planFamilyFlagsOff.test.ts",
+    "server/chargebeeReferrerPurchase.test.ts",
+    "server/kitCheckout.test.ts",
+    "server/kitCheckout.ts",
+    "server/passSalesSwitch.test.ts",
+    "shared/planCatalog.ts",
+    "shared/planFamily.test.ts",
+    "shared/planFamily.ts",
+    "shared/planReach.test.ts"
+   ]
+  },
+  {
+   "id": "device-signin-requirements-oct25",
+   "title": "Device-saved sign-in: canonical requirements record before implementation (owner report Oct 25)",
+   "row": "BACKLOG-OCT25-5",
+   "packet": "docs/DEVICE-SIGNIN-REQUIREMENTS.md",
+   "tier": 1,
+   "lane": "auth-device",
+   "branch": "agent/signin/device-requirements-oct25",
+   "status": "in-review",
+   "dependsOn": [],
+   "note": "PR #667 adds the requirements record (behavior, constraints, shipped truth, open questions). Review it against the owner anchors in the file; implementation is a separate row after the WorkOS headless-passkey capability is re-verified against current docs.",
+   "owns": [
+    "docs/DEVICE-SIGNIN-REQUIREMENTS.md"
+   ]
+  },
+  {
+   "id": "implementation-backlog-oct25",
+   "title": "Canonical instruction record: the 9 owner-decision items awaiting implementation (Oct 25)",
+   "row": "BACKLOG-OCT25",
+   "packet": "docs/IMPLEMENTATION-BACKLOG-oct25.md",
+   "tier": 3,
+   "lane": "docs",
+   "branch": "agent/backlog/implementation-instructions-oct25",
+   "status": "in-review",
+   "dependsOn": [],
+   "note": "PR #668. Docs-only instruction record the backlog rows below point at; creates no work by itself.",
+   "owns": [
+    "docs/IMPLEMENTATION-BACKLOG-oct25.md"
+   ]
+  },
+  {
+   "id": "backlog-oct25-provider-plans",
+   "title": "Change Razorpay / PayPal / Chargebee plan objects to the frozen spec (owner: 'Change the plans in Razorpay, PayPal, and chargebee too')",
+   "row": "BACKLOG-OCT25-2",
+   "packet": "docs/IMPLEMENTATION-BACKLOG-oct25.md",
+   "tier": 1,
+   "lane": "billing",
+   "branch": "agent/queue/backlog-oct25-provider-plans",
+   "status": "architect",
+   "dependsOn": [],
+   "note": "Billing-catalog lane (todo-01M5SPG19HQMANZC0D43C66GPE) grounds which provider owns each plan object live, then retires/updates to the frozen spec; no charges, no USD renewal activation, history preserved. Packet first (D-109). Registered by an Instinct session under the capable-session clause with Main's explicit authorization, registrar quiet."
+  },
+  {
+   "id": "backlog-oct25-marketing-line",
+   "title": "Marketing line: 'Rule #1: Never cold-apply. Check if you can get referred first.' across public marketing pages",
+   "row": "BACKLOG-OCT25-3",
+   "packet": "docs/IMPLEMENTATION-BACKLOG-oct25.md",
+   "tier": 3,
+   "lane": "marketing",
+   "branch": "agent/queue/backlog-oct25-marketing-line",
+   "status": "architect",
+   "dependsOn": [],
+   "note": "Decision recorded in PR #661. Apply the line across public marketing pages with pixel proof after #661 lands. Packet first (D-109). Registered by an Instinct session under the capable-session clause with Main's explicit authorization, registrar quiet."
+  },
+  {
+   "id": "backlog-oct25-company-discovery",
+   "title": "Automatic company discovery + jobs from career sites with our referral action",
+   "row": "BACKLOG-OCT25-4",
+   "packet": "docs/IMPLEMENTATION-BACKLOG-oct25.md",
+   "tier": 2,
+   "lane": "discovery",
+   "branch": "agent/queue/backlog-oct25-company-discovery",
+   "status": "architect",
+   "dependsOn": [],
+   "note": "Frozen instructions in PR #660 (awaiting review). The narrower job-catalog work (#650, flag OFF) does NOT fulfil this; full feature (discovery + referral action) needs implementation after #660 lands. Packet first (D-109). Registered by an Instinct session under the capable-session clause with Main's explicit authorization, registrar quiet."
+  },
+  {
+   "id": "backlog-oct25-device-signin-impl",
+   "title": "Device-saved sign-in implementation: session-restore-first, automatic offers, provider prompts",
+   "row": "BACKLOG-OCT25-5",
+   "packet": "docs/IMPLEMENTATION-BACKLOG-oct25.md",
+   "tier": 1,
+   "lane": "auth-device",
+   "branch": "agent/queue/backlog-oct25-device-signin-impl",
+   "status": "architect",
+   "dependsOn": [],
+   "note": "Implement after the requirements record (#667) lands and WorkOS headless-passkey capability is re-verified against current docs. Packet first (D-109). Registered by an Instinct session under the capable-session clause with Main's explicit authorization, registrar quiet."
+  },
+  {
+   "id": "backlog-oct25-universal-search",
+   "title": "Universal search (job keywords, companies, location) + updated user journey",
+   "row": "BACKLOG-OCT25-6",
+   "packet": "docs/IMPLEMENTATION-BACKLOG-oct25.md",
+   "tier": 2,
+   "lane": "search",
+   "branch": "agent/queue/backlog-oct25-universal-search",
+   "status": "architect",
+   "dependsOn": [],
+   "note": "Journey document in PR #645 (review branch, not main). Review #645, then implement against it. Packet first (D-109). Registered by an Instinct session under the capable-session clause with Main's explicit authorization, registrar quiet."
+  },
+  {
+   "id": "backlog-oct25-light-dark-mode",
+   "title": "Finish the light/dark mode switch across the platform",
+   "row": "BACKLOG-OCT25-7",
+   "packet": "docs/IMPLEMENTATION-BACKLOG-oct25.md",
+   "tier": 2,
+   "lane": "theming",
+   "branch": "agent/queue/backlog-oct25-light-dark-mode",
+   "status": "architect",
+   "dependsOn": [],
+   "note": "D-048 dark-mode packet exists on main; the user-facing switch is unfinished. Finish with pixel proof in both modes. Registered by an Instinct session under the capable-session clause with Main's explicit authorization, registrar quiet."
+  },
+  {
+   "id": "backlog-oct25-referral-wording",
+   "title": "Referral-only wording sweep: global nav 'My asks' and remaining platform copy",
+   "row": "BACKLOG-OCT25-8",
+   "packet": "docs/IMPLEMENTATION-BACKLOG-oct25.md",
+   "tier": 3,
+   "lane": "copy",
+   "branch": "agent/queue/backlog-oct25-referral-wording",
+   "status": "architect",
+   "dependsOn": [],
+   "note": "Anchor phonemsg-01M5NCM1K63RW8RRWFCQ4PBT05 (todo-01M5NCMH2VW9Y39X61PRH5AD13). Pricing copy aligned in PR #666; remaining: global nav and wider sweep. Focused copy PRs only, no structural changes. Registered by an Instinct session under the capable-session clause with Main's explicit authorization, registrar quiet."
+  },
+  {
+   "id": "backlog-oct25-other-product-work",
+   "title": "Recorded product work not yet delivered: recruiter/HR job posts, referral validation via hiring-system evidence, assistant capabilities, paid referrer plans, Skippy",
+   "row": "BACKLOG-OCT25-9",
+   "packet": "docs/IMPLEMENTATION-BACKLOG-oct25.md",
+   "tier": 2,
+   "lane": "product",
+   "branch": "agent/queue/backlog-oct25-other-product-work",
+   "status": "architect",
+   "dependsOn": [],
+   "note": "Decisions recorded on main are NOT delivery; each item needs its own packet and proof before a row moves past architect. Registered by an Instinct session under the capable-session clause with Main's explicit authorization, registrar quiet."
+  },
+  {
    "id": "P0-ask-link-signin",
    "title": "P0: a personal-link ask from a signed-out seeker keeps its referrer across sign-in on /ask (live since #431)",
    "row": "LIVE-OCT22",
@@ -225,7 +388,9 @@
    "lane": "skippy-seeker",
    "branch": "agent/queue/skippy-fix",
    "status": "todo",
-   "dependsOn": ["D-132-item3"],
+   "dependsOn": [
+    "D-132-item3"
+   ],
    "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. S-3 reuses D-132-item3's shared expectedCost/AskPriceChangedError guard; this task waits for that row rather than duplicating or overlapping its transaction work. All flags stay off until SKIPPY-fix lands with its proof. The owner asked to work on Skippy (Oct 23), so it remains ordered after the live regressions and the two picker fixes."
   },
   {
