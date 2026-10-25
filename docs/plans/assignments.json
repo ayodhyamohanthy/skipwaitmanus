@@ -54,6 +54,106 @@
    "note": "Landed as PR #514 (merge commit on main; independent review passed by Gemini 3.8 Flash · 8f37). Stale test fixture paths updated to 0100_billing_review_outbox.sql, schemaReconcile table match targeted, and MySQL 8.0.46 FK errno 1452 assertion aligned. Migration digest unchanged; 0 runtime or SQL changes."
   },
   {
+   "id": "SEC-deps-oct24",
+   "title": "Patch dompurify, zod, body-parser and undici to their fixed versions (1 critical, 4 high advisories)",
+   "row": "D-191",
+   "packet": "docs/plans/SEC-deps-oct24.md",
+   "tier": 2,
+   "lane": "deps",
+   "branch": "agent/queue/sec-deps-oct24",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    "package.json",
+    "pnpm-lock.yaml"
+   ],
+   "note": "D-191: pnpm audit --prod on main 02a8a028 - dompurify 3.4.16 (critical+high, via mermaid), zod 4.1.12, body-parser 1.20.6 (override), undici 7.29.1 (high, DoS). Version bumps and lockfile only; stop and report if a bump breaks a type or test."
+  },
+  {
+   "id": "D-174-sample-job-removal",
+   "title": "Remove the fabricated acme.com 'Test role for loop verification' listing from production /jobs, the sitemap and JobPosting markup",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-data",
+   "branch": "agent/queue/d174-sample-job-removal",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "D-193 packet section 5.2. Data migration 0121 (reserved in plan section 5), one guarded DELETE: never deletes a row a referral request references (referralRequests.jobId cascades). Breaks D-001's lasting no-sample-data rule today.",
+   "epic": "D-174",
+   "owns": [
+    "drizzle/deploy/0121_remove_sample_job.sql",
+    "server/sampleJobRemoval.test.ts"
+   ]
+  },
+  {
+   "id": "D-048-fix-signin-click-loading",
+   "title": "Let an explicit sign-in click start the server flow while client auth loads (#595)",
+   "row": "D-199",
+   "packet": "docs/plans/LEGACY-BRANCHES-oct24.md",
+   "tier": 1,
+   "lane": "d048-fix-signin",
+   "branch": "agent/ayo7/signin-loading-click",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "D-199 registers legacy PR #595 (built by Instinct Agent; user report phonemsg-01M5MXF1C8DQ86C6Y7TXJQY01X) under its existing branch: no rename, no gate bypass. Scope: client/src/_core/auth.tsx and authCompat.test.ts only; the signed-in no-op, the same-origin returnTo guard and server-owned authentication stay unchanged. The branch drops its own copy of this row at its next merge-up. Review: Tier 1, by a model other than Instinct (builder) or the fixer's (D-151, D-200). Lands with an independent PASS and fresh green CI on the exact head. Fixture evidence only: the user's exact failing URL stays open. Packet section 2.",
+   "owns": [
+    "client/src/_core/auth.tsx",
+    "client/src/_core/authCompat.test.ts"
+   ]
+  },
+  {
+   "id": "LAUNCH-legal-copy",
+   "title": "Terms, Cancellation and Privacy say what is true while referral packs are sold (owner approves the wording)",
+   "row": "LAUNCH",
+   "packet": "docs/plans/LAUNCH-oct25.md",
+   "tier": 2,
+   "lane": "launch-legal",
+   "branch": "agent/queue/launch-legal-copy",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    "client/src/pages/Terms.tsx",
+    "client/src/pages/CancellationPolicy.tsx",
+    "client/src/pages/TrustPrivacy.tsx",
+    "client/src/pages/policyPages.test.tsx",
+    "client/src/pages/trustPrivacy.test.tsx"
+   ],
+   "note": "Launch audit Oct 25: Terms.tsx:23 says 'Referrals are always free' and CancellationPolicy.tsx:25 omits the ended-month exception, while packs sell for money; the privacy page names no sign-in, email, error or hosting processor. Agents draft; the owner's approval comment on the pull request comes before landing (legal text is the owner's)."
+  },
+  {
+   "id": "LAUNCH-live-qa",
+   "title": "Signed-in, no-money live QA of the current release, captures at 1280 and 390, BUGFREE_GATE sections 1-4 updated",
+   "row": "LAUNCH",
+   "packet": "docs/plans/LAUNCH-oct25.md",
+   "tier": 2,
+   "lane": "launch-qa",
+   "branch": "agent/queue/launch-live-qa",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    "docs/BUGFREE_GATE.md",
+    "docs/qa/"
+   ],
+   "note": "Rule 8 proof before any seeker is invited: the last signed-in QA is Oct 14-16, before /ask, /explore, /queue, /requests and /conversation were rebuilt in place. Needs a headed browser (a Claude Code session; Manus sessions have no Chromium) and one owner-forwarded work-email code. Never pay or pass the hosted payment form (D-065). Defects found become their own rows."
+  },
+  {
+   "id": "LAUNCH-marker-ci-skip",
+   "title": "CI skips marker-branch pull requests (reports, review, heartbeat, architect locks, landing slot), which never merge",
+   "row": "LAUNCH",
+   "packet": "docs/plans/LAUNCH-oct25.md",
+   "tier": 2,
+   "lane": "launch-ci",
+   "branch": "agent/queue/launch-marker-ci-skip",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    ".github/workflows/ci.yml",
+    "scripts/ciMarkerSkip.test.ts"
+   ],
+   "note": "About 40 of the newest 100 CI runs are marker PRs (#455 agent/reports/log and the lock branches); the picker reads CI from the newest 100 runs, so real pull requests show 'unknown'. Job-level skip on those head refs only; never on push to main or on task branches."
+  },
+  {
    "id": "PICKER-review-independence",
    "title": "A Tier 1 review or landing never goes to a session of the model that built or fixed the work (D-151)",
    "row": "D-134",
@@ -73,9 +173,57 @@
    "tier": 2,
    "lane": "picker",
    "branch": "agent/queue/picker-board-newer-report",
+   "status": "done",
+   "dependsOn": [],
+   "note": "D-162: on Oct 23 the board kept workbuddy · b0eb's 02:14 blocked report on D-090-BYOR and hid the three green reports after it; the first (a2fdbc3e) named the owner's waiver, the next two reported build progress. The CEO ruled from the stale report (D-154) and the owner had to restate his word. latestReports keeps D-200's clearing rule and returns every report after a standing blocked one in newer; the board line and the printed unblock step show them. Display only: no hand-out decision changes."
+  },
+  {
+   "id": "PICKER-review-wording",
+   "title": "The review step says your own model's review comment does not bar the re-review; only a build, takeover or fix does (D-184)",
+   "row": "D-134",
+   "packet": "docs/plans/PICKER-PARALLEL.md",
+   "tier": 2,
+   "lane": "picker",
+   "branch": "agent/queue/picker-review-wording",
    "status": "todo",
    "dependsOn": [],
-   "note": "D-162: on Oct 23 the board kept workbuddy · b0eb's 02:14 blocked report on D-090-BYOR and hid the three green reports after it; the first (a2fdbc3e) named the owner's waiver, the next two reported build progress. The CEO ruled from the stale report (D-154) and the owner had to restate his word. latestReports keeps the blocked report standing (unchanged) and also returns every non-CEO report after it; the board line and the printed unblock step show them."
+   "owns": [
+    "scripts/nextTaskText.mjs",
+    "scripts/nextTaskReviewWording.test.ts"
+   ],
+   "note": "D-184: on Oct 23 GPT · 5deb stopped the re-reviews of #547 and #527 because the review step says to look for 'your model' in the comments, without 'as builder or fixer'. One sentence in case \"review\" of scripts/nextTaskText.mjs plus a new test file (scripts/nextTaskReviewWording.test.ts, so it shares no owned file with PROCESS-review-gate); hand-outs unchanged."
+  },
+  {
+   "id": "PICKER-architect-landing",
+   "title": "A packet's pull request on its agent/architect lock branch can be landed through the picker, never by its writer (D-190)",
+   "row": "D-134",
+   "packet": "docs/plans/PICKER-PARALLEL.md",
+   "tier": 2,
+   "lane": "picker",
+   "branch": "agent/queue/picker-architect-landing",
+   "status": "todo",
+   "dependsOn": [
+    "PICKER-review-wording",
+    "PROCESS-review-gate"
+   ],
+   "owns": [
+    "scripts/nextTaskCore.mjs",
+    "scripts/nextTaskText.mjs",
+    "scripts/nextTaskArchitectLanding.test.ts"
+   ],
+   "note": "D-190: workBranchOf skips reserved agent/architect/ branches, so #557 and #585 sat green with no landing hand-out on Oct 23. Use the lock branch as the work branch for architect rows that carry file changes; hand the landing to anyone but the writer. Waits for the two rows that own files it edits."
+  },
+  {
+   "id": "REGISTER-oct24",
+   "title": "Land the Oct 24 CEO rulings as one reviewed docs change: #621 (D-186, D-187), #620 (D-182 to D-185, D-188 to D-191) and #624 (D-193, the journey rows)",
+   "row": "D-163",
+   "packet": "docs/plans/STRANDED-OCT23.md",
+   "tier": 2,
+   "lane": "register-ceo",
+   "branch": "agent/queue/register-oct24",
+   "status": "done",
+   "dependsOn": [],
+   "note": "Landed the Oct 24 CEO rulings as one docs pull request, #637: #621 (D-186, D-187), #620 (D-182 to D-185, D-188 to D-191) and #624 (D-193), plus D-197 and the D-199-era queue edges. #636's commits ride inside it. D-198 was withdrawn by D-200 before landing. Under D-200, a docs-only pull request passes the queue gate from any branch and lands on green required CI."
   },
   {
    "id": "REGISTER-520",
@@ -88,6 +236,32 @@
    "status": "todo",
    "dependsOn": [],
    "note": "D-163 (4): owner words and CEO rulings on open PR #520 never reached main, so no agent follows them and its nine rows (SKIPPY-fix and the rest) are invisible. Build = cut agent/queue/register-520 from #520's head, merge main, renumber every entry to the next free IDs (main already has a different D-156). Review and landing by a model other than Claude, which wrote it (D-151). Docs only."
+  },
+  {
+   "id": "DECISION-SYNC-oct24",
+   "title": "Every doc states the current decisions and none presents a superseded one as current (owner, Oct 24)",
+   "row": "D-068",
+   "packet": "docs/plans/DECISION-SYNC-oct24.md",
+   "tier": 2,
+   "lane": "docs-sync",
+   "branch": "agent/queue/decision-sync-oct24",
+   "status": "todo",
+   "dependsOn": [
+    "REGISTER-oct24"
+   ],
+   "note": "Owner, Oct 24: make sure all up-to-date decisions are everywhere and old decisions are nowhere. Markdown only. The register keeps every entry and fixes only its status column; every other doc states the current rule, deletes superseded guidance, and keeps runtime caveats true. Inventory table, required searches, tests and stop rules are in the packet. Tier 2: lands on green required CI with no separate review (D-200)."
+  },
+  {
+   "id": "D-200-instructions-sync",
+   "title": "Instruction files say what D-200 and the picker already do: Claude Code builds too, nothing waits for one model or session",
+   "row": "D-200",
+   "packet": "docs/plans/D-200-instructions-sync.md",
+   "tier": 3,
+   "lane": "d200-docs",
+   "branch": "agent/queue/d200-instructions-sync",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "D-200 (7): CLAUDE.md, AGENTS.md, docs/BRIEF.md and docs/DELEGATION.md still say Claude Code never builds. Docs only, five exact edits in the packet. Any model except a Claude Code session builds it (its safety check refuses edits to its own instruction files)."
   },
   {
    "id": "POSTMERGE-oct22-review",
@@ -112,24 +286,24 @@
    "tier": 1,
    "lane": "audit",
    "branch": "agent/queue/postmerge-oct22-fixes",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [
-      "D-048-fix-post-copy",
-      "D-048-fix-landing-flash-snapshot-v2"
+    "D-048-fix-post-copy",
+    "D-048-fix-landing-flash-snapshot-v2"
    ],
    "note": "Findings from docs/plans/POSTMERGE-oct22-findings.md (#619): P1 #482 preserve creation-time flat price for waiting asks created flag-off (server/db.ts + regression test); P2 #506 add the 7-day lower bound to the stale-checkout sample query (server/dailyMoneyCheck.ts + test); P2 #478 rendered-page tests asserting catalog-derived prices (3 plans test files); P2 #534 compose pack copy from shared/planCatalog.ts (Pricing.tsx, landingContent.ts, policyPages.test.tsx). Fix before any ASK_LEVEL_COST activation. No flags, no workflow edits.",
    "owns": [
-      "server/db.ts",
-      "server/db.askCostStored.test.ts",
-      "server/dailyMoneyCheck.ts",
-      "server/dailyMoneyCheck.test.ts",
-      "client/src/pages/plans.kit.test.tsx",
-      "client/src/pages/plans.paymentRecovery.test.tsx",
-      "client/src/pages/plans.paymentRoute.test.tsx",
-      "client/src/pages/Pricing.tsx",
-      "shared/landingContent.ts",
-      "shared/planCatalog.ts",
-      "client/src/pages/policyPages.test.tsx"
+    "server/db.ts",
+    "server/db.askCostStored.test.ts",
+    "server/dailyMoneyCheck.ts",
+    "server/dailyMoneyCheck.test.ts",
+    "client/src/pages/plans.kit.test.tsx",
+    "client/src/pages/plans.paymentRecovery.test.tsx",
+    "client/src/pages/plans.paymentRoute.test.tsx",
+    "client/src/pages/Pricing.tsx",
+    "shared/landingContent.ts",
+    "shared/planCatalog.ts",
+    "client/src/pages/policyPages.test.tsx"
    ]
   },
   {
@@ -287,12 +461,16 @@
    "branch": "agent/queue/d048-live-review-find",
    "status": "todo",
    "dependsOn": [
+    "D-048-fix-send-ask-blocker",
     "P0-ask-link-signin",
     "D-132-audit",
     "D-048-F-goal-check",
-    "D-048-fix-start-ask-handoff"
+    "D-048-fix-start-ask-handoff",
+    "D-174-seeker-journey-build",
+    "D-174-fix-post-binding",
+    "D-176-public-claims"
    ],
-   "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row’s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete.",
+   "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row’s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
    "epic": "D-048-p3",
    "owns": [
     "client/src/pages/Explore.tsx",
@@ -336,7 +514,7 @@
     "ROW20-CD",
     "D-048-F-goal-check"
    ],
-   "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first.",
+   "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
    "epic": "D-048-p3",
    "owns": [
     "client/src/pages/conversation/SeekerConversation.tsx"
@@ -355,10 +533,11 @@
     "P1-queue-attestation",
     "D-048-F-goal-check"
    ],
-   "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the referral queue against its kit version (pass codes, pre-acceptance privacy, verified-referrer check, lost test pins). After P1-queue-attestation, which edits the same page.",
+   "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the referral queue against its kit version (pass codes, pre-acceptance privacy, verified-referrer check, lost test pins). After P1-queue-attestation, which edits the same page. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
    "epic": "D-048-p3",
    "owns": [
     "client/src/pages/MyCompanyInbox.tsx",
+    "client/src/pages/myCompanyInbox*.test.tsx",
     "design/goal-ui/captures/queue/**"
    ]
   },
@@ -410,9 +589,30 @@
    "dependsOn": [
     "D-048-p3-live-review",
     "TASK13-pinned-work",
-    "D-065-C"
+    "D-065-C",
+    "POSTMERGE-oct22-fixes"
    ],
-   "note": "D-146 (founder, Oct 23): the D-132 audit is next, so it no longer waits on D-035, which D-147 holds for the founder. D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. First-pass findings are in docs/plans/D-132-audit-findings.md (#481) and items 2 (the stored level and cost, migration 0106, #482) and 6 (the money check against the stored cost, #487) are on main; the remaining items land one pull request each. It runs after the live review (which moved the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends). The D-048 rows that redesign the compose screens and the seeker conversation (D-048-p3-live-review-find, D-048-p3-live-review-conversation) wait for it, because it edits their cost lines first."
+   "note": "D-146 (founder, Oct 23): the D-132 audit is next, so it no longer waits on D-035, which D-147 holds for the founder. D-135 (5): checks the landed pricing code item by item against D-135 (1)-(4), fixes what fails red-first behind the flags, and passes an independent review. First-pass findings are in docs/plans/D-132-audit-findings.md (#481) and items 2 (the stored level and cost, migration 0106, #482) and 6 (the money check against the stored cost, #487) are on main; the remaining items land one pull request each. It runs after the live review (which moved the explore cost line into shared/moneyCopy.ts), TASK13-pinned-work (same ask-creation transaction, compose screen and migration numbering) and D-065-C (the money check item 6 extends). The D-048 rows that redesign the compose screens and the seeker conversation (D-048-p3-live-review-find, D-048-p3-live-review-conversation) wait for it, because it edits their cost lines first. D-197 (Oct 24, CEO): these owns are declared on main, and the audit branch carries no edit of its own row (only Claude Code changes rows). The audit waits for POSTMERGE-oct22-fixes (#635; both edit server/db.ts) and merges main once that lands; D-132-audit-item5-correction and D-099-bonus-pages wait for the audit.",
+   "owns": [
+    "client/src/hooks/useAskQuote.ts",
+    "client/src/pages/Ask.tsx",
+    "client/src/pages/Explore.tsx",
+    "client/src/pages/ExploreCompany.tsx",
+    "client/src/pages/explore/AskDrawer.tsx",
+    "client/src/pages/explore/ask.costQuote.test.tsx",
+    "client/src/pages/explore/askSend.ts",
+    "client/src/pages/explore/findModel.ts",
+    "client/src/pages/explore/useAskComposer.tsx",
+    "docs/plans/D-132-audit-findings.md",
+    "server/db.askCreditRefund.test.ts",
+    "server/db.ts",
+    "server/planGates.ts",
+    "server/privateReferralRoutes.integration.test.ts",
+    "server/privateReferralRoutes.ts",
+    "shared/moneyCopy.test.ts",
+    "shared/moneyCopy.ts",
+    "shared/openAskSlots.ts"
+   ]
   },
   {
    "id": "D-132-catalog-record",
@@ -424,7 +624,7 @@
    "branch": "agent/instinct/v2-live-catalog-audit",
    "status": "done",
    "dependsOn": [],
-   "note": "D-165: the v2 plan and credit items were created on the LIVE Chargebee site on Oct 23 (create-only, zero subscriptions) on the founder's instruction, but main's PRICING.md does not say so. Merge main, check D-059 (no secrets, customer data or account ids), required CI, land. Reviewer or lander: a model other than Instinct."
+   "note": "D-165: the v2 plan and credit items were created on the LIVE Chargebee site on Oct 23 (create-only, zero subscriptions) on the founder's instruction, but main's PRICING.md does not say so. Merge main, check D-059 (no secrets, customer data or account ids), required CI, land. Reviewer or lander: a model other than Instinct. D-186: the Workers Builds hold is lifted (D-182); first replace the live invoice and payment-source counts in the audit and in PRICING.md step 3 with what the apply touched (exact lines in D-186 (3)), then focused checks, a separate delta review, required CI on the exact head, land."
   },
   {
    "id": "D-132-item3",
@@ -452,7 +652,7 @@
    "dependsOn": [
     "D-132-item3"
    ],
-   "note": "D-165: fix stage first - merge main, renumber its two migrations (main already has 0108), implement D-165 (3) red-first (no refusal for a Free wallet with unused credits; they move to a carry-over grant expiring at their own month end). Tier 1 review by a model other than Instinct, including the line-by-line deletion review of the three-way port. #416 is superseded and closes when this lands."
+   "note": "D-165: fix stage first - merge main, renumber its two migrations (main already has 0108), implement D-165 (3) red-first (no refusal for a Free wallet with unused credits; they move to a carry-over grant expiring at their own month end). Tier 1 review by a model other than Instinct, including the line-by-line deletion review of the three-way port. #416 is superseded and closes when this lands. D-185: also carries D-132 item 4's grant half - paid rung credits are granted where they never expire (PAID_CREDITS_NEVER_EXPIRE), keyed once per term."
   },
   {
    "id": "PICKER-landing-slot",
@@ -670,7 +870,7 @@
    "tier": 2,
    "lane": "design-core",
    "branch": "agent/queue/d048-f-primitives",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [
     "D-048-F-flags"
    ],
@@ -682,7 +882,7 @@
     "client/src/components/goal/goalAtoms.test.tsx",
     "client/src/components/goal/goalComposites.test.tsx"
    ],
-   "note": " Audit outcome (Oct 23, accepted by Main): the barrel (20+ exports) covers every built surface; AYO-7 composed in-place pages with zero new primitives. The only cross-surface gap, the \"Your next step\" block, is D-048-F-goal-check's GoalNextStep per D-167 (local copies to migrate later: MyRequests.tsx, goal/inbox/GoalInbox.tsx, goal/assistants/AssistantLayout.tsx, inline markups on the AYO-7 pages). AYO-9's Section/Message/AccessStatus/NetworkButton stay single-consumer (promote on a second consumer). Name-collisions MyRequests.NextStep/ReferralRequest.NextStep/AdminCatalogSync.Section are different semantics - do not unify. No code to promote: audit-only row, no manufactured code."
+   "note": "done - e90e0671 (audit-only outcome on main: no code to promote; GoalNextStep belongs to D-048-F-goal-check). Flipped by D-200 (Oct 24): the stale in-review status held 15 rows. Earlier note: Audit outcome (Oct 23, accepted by Main): the barrel (20+ exports) covers every built surface; AYO-7 composed in-place pages with zero new primitives. The only cross-surface gap, the \"Your next step\" block, is D-048-F-goal-check's GoalNextStep per D-167 (local copies to migrate later: MyRequests.tsx, goal/inbox/GoalInbox.tsx, goal/assistants/AssistantLayout.tsx, inline markups on the AYO-7 pages). AYO-9's Section/Message/AccessStatus/NetworkButton stay single-consumer (promote on a second consumer). Name-collisions MyRequests.NextStep/ReferralRequest.NextStep/AdminCatalogSync.Section are different semantics - do not unify. No code to promote: audit-only row, no manufactured code."
   },
   {
    "id": "D-048-F-harness",
@@ -734,7 +934,7 @@
    "tier": 2,
    "lane": "design-core",
    "branch": "agent/queue/d048-f-static-frame",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [
     "D-048-p3-w0-shell"
    ],
@@ -743,7 +943,7 @@
     "client/src/components/goal/goalStaticFrame.test.tsx",
     "scripts/prerenderPublicPages.test.ts"
    ],
-   "note": "implemented in PR (this branch), pending CI and merge; flips to done with its merge SHA"
+   "note": "done - e62ab474 (PR #561 merged the static frame; refined by #600, 26a35834). Flipped by D-200 (Oct 24): the row stayed in-review after its merge. Earlier note: implemented in PR (this branch), pending CI and merge; flips to done with its merge SHA"
   },
   {
    "id": "D-048-F-routes",
@@ -773,7 +973,7 @@
    "tier": 2,
    "lane": "design-check",
    "branch": "agent/queue/d048-f-goal-check",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [
     "D-048-F-primitives"
    ],
@@ -785,7 +985,7 @@
     "client/src/test/goalPageContract.test.tsx",
     "client/src/test/goalPagesBoundary.test.ts"
    ],
-   "note": "D-167: a page counts as moved only when its test calls assertGoalPage (one h1 goal line, exactly one data-g-primary inside the GoalNextStep block, no kit.css classes) and the boundary test finds no kit or ui import. Every surface row depends on this one. Built by the coordinator lane (Main, Oct 23 - it blocks 14 surface rows): PR #567, stacked on #560."
+   "note": "done - 5c8ae021 (GoalNextStep, client/src/test/goalPageContract.ts assertGoalPage and the moved-page boundary are on main; delivered through the coordinator lane's PR #567, never on this row's branch, so the picker could not see it land). Flipped by D-200 (Oct 24): the stale in-review status held 18 rows. Earlier note: D-167: a page counts as moved only when its test calls assertGoalPage (one h1 goal line, exactly one data-g-primary inside the GoalNextStep block, no kit.css classes) and the boundary test finds no kit or ui import. Every surface row depends on this one. Built by the coordinator lane (Main, Oct 23 - it blocks 14 surface rows): PR #567, stacked on #560."
   },
   {
    "id": "D-048-F-shell-parts",
@@ -1144,7 +1344,7 @@
     "client/src/pages/referralConversation.test.tsx",
     "design/goal-ui/captures/conversation/**"
    ],
-   "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23).",
+   "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
    "epic": "D-048-p3"
   },
   {
@@ -1527,7 +1727,7 @@
    "branch": "agent/claude/d090-byor",
    "status": "todo",
    "dependsOn": [],
-   "note": "D-162: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main (docs/DECISIONS.md conflicts on the D-148 row: keep main's side and drop the branch's row, since D-162 records the waiver; the packet merges cleanly, so delete by hand its 'Gate waived by the owner (D-148 ...)' paragraph in §0 and its 'in progress — workbuddy · b0eb' Status line), and renumber 0107_ask_invites.sql to the next free number at landing (check drizzle/deploy/ on main and plan §5 at landing: on Oct 23 main has 0107_seeker_levels.sql and 0108_landed_thank_you.sql, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). Build C1-C5 in order: D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 puts the invite action into MyRequests.tsx as it is on main, as a ghost button or plain link (one black commit per page, D-150). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5)."
+   "note": "D-162: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main (docs/DECISIONS.md conflicts on the D-148 row: keep main's side and drop the branch's row, since D-162 records the waiver; the packet merges cleanly, so delete by hand its 'Gate waived by the owner (D-148 ...)' paragraph in §0 and its 'in progress — workbuddy · b0eb' Status line), and renumber 0107_ask_invites.sql to the next free number at landing (check drizzle/deploy/ on main and plan §5 at landing: on Oct 23 main has 0107_seeker_levels.sql and 0108_landed_thank_you.sql, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). Build C1-C5 in order: D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 puts the invite action into MyRequests.tsx as it is on main, as a ghost button or plain link (one black commit per page, D-150). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5). D-187 (Oct 24): C1-C6 are built; resume there: add \"/r/:token\" to KNOWN_ROUTE_PATTERNS in functions/_middleware.ts (not D-057's gate); the local '[auth] VITE_WORKOS_CLIENT_ID is not set' line is listed, not counted; user-facing 'ask' copy becomes D-180's referral vocabulary (money lines keep 'credit'); full gate, renumber 0111 at landing, Tier 1 draft PR. Review: not workbuddy, not GPT (D-151)."
   },
   {
    "id": "D-057-session-gate",
@@ -1598,11 +1798,15 @@
    "branch": "agent/claude/d099-bonus-pages",
    "status": "todo",
    "dependsOn": [
+    "D-174-held-ask-reconfirm",
+    "D-174-sample-job-removal",
+    "D-174-job-catalog",
     "D-090-BYOR",
     "D-089-request-inbox",
     "D-086-demand-list",
     "D-048-F-flags",
-    "D-048-F-routes"
+    "D-048-F-routes",
+    "D-132-audit"
    ],
    "owns": [
     "drizzle/deploy/*_company_referral_bonuses.sql",
@@ -1855,9 +2059,10 @@
    "branch": "agent/coordinator/expiry-clock-removal",
    "status": "todo",
    "dependsOn": [
-    "D-166-journey-decisions-sync"
+    "D-166-journey-decisions-sync",
+    "D-174-held-ask-reconfirm"
    ],
-   "note": "Builds D-174 (merged in #601): asks never expire at launch. Scope: remove the 7-day unclaimed expiry, the 90-day waiting cap and the day-30 closure (D-021/D-034/D-050/D-061/D-076(3)) from runtime and sweeps, including the ASK_TTL_DAYS copy sweep - copy changes land only with the runtime change (Main, Oct 24 00:14 IST). Untouched: referrer action timers, security/session/payment bounds, credit and refund rules; no new debit behavior. QA and any expiry-sweep workers must be informed before this merges. Intent is recorded; live expiry behavior is unchanged until this row lands."
+   "note": "Builds D-174 (merged in #601): asks never expire at launch. Scope: remove the 7-day unclaimed expiry, the 90-day waiting cap and the day-30 closure (D-021/D-034/D-050/D-061/D-076(3)) from runtime and sweeps, including the ASK_TTL_DAYS copy sweep - copy changes land only with the runtime change (Main, Oct 24 00:14 IST). Untouched: referrer action timers, security/session/payment bounds, credit and refund rules; no new debit behavior. QA and any expiry-sweep workers must be informed before this merges. Intent is recorded; live expiry behavior is unchanged until this row lands. D-193 (5): waits for D-174-held-ask-reconfirm and goes live only with ASK_RECONFIRM_ENABLED on, so removing the 90-day cap never lets the hourly sweep charge a months-old held request; its runtime list also covers reconcileExpiredPendingReferrals and the client countdowns (getAskExpiresAtMs)."
   },
   {
    "id": "D-176-availability-framing-removal",
@@ -1867,25 +2072,238 @@
    "tier": 2,
    "lane": "d048-find",
    "branch": "agent/coordinator/availability-framing-removal",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [
     "D-166-journey-decisions-sync"
    ],
-   "note": "Builds D-176 (merged in #601; user instruction phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST): availability framing does not map to the seeker's mental model. Remove the labels, chips and open-first grouping; availability becomes backend routing only, with an honest delivered-vs-waiting status after save and no false immediate-referral claim. Supersedes the shipped D-048-fix-explore-open-first grouping (#594 stands as completed history - removal is this row, not a rollback). Preserves verified company-employee access and privacy rules."
+   "note": "Builds D-176 (merged in #601; user instruction phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST): availability framing does not map to the seeker's mental model. Remove the labels, chips and open-first grouping; availability becomes backend routing only, with an honest delivered-vs-waiting status after save and no false immediate-referral claim. Supersedes the shipped D-048-fix-explore-open-first grouping (#594 stands as completed history - removal is this row, not a rollback). Preserves verified company-employee access and privacy rules. D-189: done by #609 (labels, chips and open-first grouping removed)."
+  },
+  {
+   "id": "D-174-fix-post-binding",
+   "title": "Keep a picked posted role through sign-in, and never carry a stale one into a later request (#612 regressions)",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-fix",
+   "branch": "agent/queue/d174-fix-post-binding",
+   "status": "todo",
+   "dependsOn": [
+    "D-132-audit",
+    "D-048-fix-send-ask-blocker"
+   ],
+   "note": "D-193 packet section 5.1. Latent today: production has zero posted roles at all 39 companies. Waits for D-132-audit, which edits the same composer files (#547).",
+   "epic": "D-174",
+   "owns": [
+    "client/src/lib/askPrefill.ts",
+    "client/src/lib/askPrefill.test.ts",
+    "client/src/pages/explore/signInHandoff.ts",
+    "client/src/pages/explore/useAskComposer.tsx",
+    "client/src/pages/explore/AskDrawer.tsx",
+    "client/src/pages/ExploreCompany.tsx",
+    "client/src/pages/explore.test.tsx",
+    "client/src/pages/exploreDrawer.test.tsx"
+   ]
+  },
+  {
+   "id": "D-174-held-ask-reconfirm",
+   "title": "A waiting or held request older than 30 days needs the seeker's one-tap reconfirm before its credit is spent; it never closes (switch off)",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-pool",
+   "branch": "agent/queue/d174-held-ask-reconfirm",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-fix-post-copy",
+    "POSTMERGE-oct22-fixes",
+    "D-132-audit"
+   ],
+   "note": "D-193 packet section 5.3 and ruling (5): builds D-061's never-built reconfirm-before-spend without its closure, in deliverWaitingAskTx (every delivery path). Transition events, no migration; in-app notice only (no D-060 email exists yet). ASK_RECONFIRM_ENABLED stays false until QA; D-174-expiry-clock-removal waits for this row. D-197: also waits for D-132-audit (both own server/db.ts, server/privateReferralRoutes.ts and shared/moneyCopy.ts; the money-core audit goes first, D-146).",
+   "epic": "D-174",
+   "owns": [
+    "shared/askReconfirm.ts",
+    "server/db.ts",
+    "server/coverageDelivery.ts",
+    "server/privateReferralRoutes.ts",
+    "shared/moneyCopy.ts",
+    "server/askReconfirm.test.ts",
+    "client/src/pages/MyRequests.tsx",
+    "client/src/pages/myRequests.reconfirm.test.tsx"
+   ]
+  },
+  {
+   "id": "D-174-company-search",
+   "title": "Server company search with name aliases and accent-folding: GET /api/companies/search (at most 10, name only)",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 2,
+   "lane": "d174-search",
+   "branch": "agent/queue/d174-company-search",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "D-193 packet section 5.4. Feeds the journey's 'companies pop up as you type' step. Static alias map, no migration. Does not touch normalizedEmployerKey (routing). Register before /api/companies/:slug.",
+   "epic": "D-174",
+   "owns": [
+    "server/companySearch.ts",
+    "server/companySearch.test.ts",
+    "shared/companyNameAliases.ts",
+    "shared/companies.ts",
+    "server/companyDirectoryRoutes.ts",
+    "server/companyDirectoryRoutes.test.ts"
+   ]
+  },
+  {
+   "id": "D-174-job-catalog",
+   "title": "Company jobs from verified Greenhouse boards: contracts, migration 0120, adapter, refresh and GET /api/companies/:slug/jobs with filters (switch off)",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-jobs",
+   "branch": "agent/queue/d174-job-catalog",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "D-193 packet section 5.5. No code anywhere fetches a company's jobs today; the D-174 journey's jobs step needs this. Level = assignJobLevel on (title, snippet, applyUrl), the same fields that price the request. JOB_CATALOG_ENABLED stays false until QA.",
+   "epic": "D-174",
+   "owns": [
+    "shared/jobCatalog.ts",
+    "shared/jobCatalog.test.ts",
+    "server/jobSources/**",
+    "server/jobCatalogRoutes.ts",
+    "server/jobCatalogRoutes.test.ts",
+    "drizzle/deploy/0120_job_catalog.sql",
+    "drizzle/schema.ts",
+    "server/schemaReconcile.ts",
+    "shared/scheduledJobs.ts",
+    "server/scheduledJobRegistry.ts",
+    "server/scheduledJobsContract.test.ts",
+    "server/jobLinkPreview.ts",
+    "server/_core/index.ts (switch only)"
+   ]
+  },
+  {
+   "id": "D-176-public-claims",
+   "title": "Stop claiming availability on the signed-in Home and in the /explore description",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 2,
+   "lane": "d176-claims",
+   "branch": "agent/queue/d176-public-claims",
+   "status": "todo",
+   "dependsOn": [
+    "D-176-availability-framing-removal",
+    "D-048-fix-landing-flash-snapshot-v2",
+    "D-048-F-static-frame",
+    "D-174-fix-post-binding"
+   ],
+   "note": "D-193 packet section 5.6. Production marks only skipwait and go-neutrinos open, while Home and the /explore description claim Wipro and TCS too. Copy only; dropping openToReferrals/openCount from the public payload waits for the D-189 journey packet (D-193 (6)).",
+   "epic": "D-174",
+   "owns": [
+    "client/src/pages/Home.tsx",
+    "shared/publicRoutes.ts",
+    "client/src/lib/companyDirectory.ts",
+    "client/src/pages/explore.test.tsx",
+    "scripts/prerenderPublicPages.test.ts"
+   ]
+  },
+  {
+   "id": "D-174-job-sources-more",
+   "title": "Ashby and Lever job sources behind the catalog contract",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-jobs",
+   "branch": "agent/queue/d174-job-sources-more",
+   "status": "todo",
+   "dependsOn": [
+    "D-174-job-catalog"
+   ],
+   "note": "D-193 packet section 5.7. provider is a varchar: no migration. Respect Lever's Crawl-delay.",
+   "epic": "D-174",
+   "owns": [
+    "server/jobSources/**",
+    "shared/jobCatalog.ts",
+    "shared/jobCatalog.test.ts"
+   ]
+  },
+  {
+   "id": "D-174-ask-from-job",
+   "title": "A referral request can carry a picked catalog job or posted role: one Zod body schema, company bound from the job's source, quote equals charge",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-ask",
+   "branch": "agent/queue/d174-ask-from-job",
+   "status": "todo",
+   "dependsOn": [
+    "D-174-job-catalog",
+    "D-048-fix-post-copy",
+    "D-132-audit",
+    "D-174-held-ask-reconfirm"
+   ],
+   "note": "D-193 packet section 5.8. The quote and the charge build the job row with one helper, so they price the same fields (D-132). With ASK_LEVEL_COST off every request still costs 1 credit.",
+   "epic": "D-174",
+   "owns": [
+    "shared/companyReferralRequest.ts",
+    "shared/companyReferralRequest.test.ts",
+    "server/privateReferralRoutes.ts",
+    "server/db.ts",
+    "server/askFromJob.test.ts"
+   ]
+  },
+  {
+   "id": "D-174-pool-nudges",
+   "title": "Waiting-pool nudges: review email on pool delivery (one a day, D-060), colleague notice on a lapse or pass, waiting count for the referrer's own company (switch off)",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 1,
+   "lane": "d174-pool",
+   "branch": "agent/queue/d174-pool-nudges",
+   "status": "todo",
+   "dependsOn": [
+    "D-174-ask-from-job"
+   ],
+   "note": "D-193 packet section 5.9 and ruling (4): keeps the D-062 one-at-a-time hand-off. Tier 1: it reads the delivery spend path and sends to referrers; blocked pairs are never notified. POOL_NUDGES_ENABLED stays false until QA.",
+   "epic": "D-174",
+   "owns": [
+    "server/poolNudges.ts",
+    "server/poolNudges.test.ts",
+    "server/db.ts",
+    "server/privateReferralRoutes.ts",
+    "server/referralTimers.ts",
+    "shared/scheduledJobs.ts",
+    "server/scheduledJobRegistry.ts",
+    "server/scheduledJobsContract.test.ts"
+   ]
+  },
+  {
+   "id": "D-175-coverage-study",
+   "title": "D-175 coverage study: per-company job source table, Indian employers, Wikidata seeding proposal, owner questions with evidence",
+   "row": "D-193",
+   "packet": "docs/plans/D-193-journey-foundations.md",
+   "tier": 3,
+   "lane": "d175-research",
+   "branch": "agent/queue/d175-coverage-study",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "D-193 packet section 5.10; starts from the packet's appendix (live GETs, Oct 24). Docs only, no paid or account-based access. The CEO decides the Wikidata seed from it (D-123).",
+   "epic": "D-174",
+   "owns": [
+    "docs/research/D-175-coverage.md"
+   ]
   },
   {
    "id": "D-174-seeker-journey-build",
    "title": "Build the replacement seeker journey per D-174: company search, jobs, ask, pool routing",
    "row": "D-174",
-   "packet": "docs/plans/D-048-seeker.md",
+   "packet": null,
    "tier": 2,
    "lane": "d048-foundation",
-   "branch": "agent/coordinator/seeker-journey-build",
-   "status": "todo",
+   "branch": "agent/queue/d174-seeker-journey",
+   "status": "architect",
    "dependsOn": [
     "D-166-journey-decisions-sync"
    ],
-   "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately."
+   "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-189: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176."
   },
   {
    "id": "D-166-founder-decisions-sync",
@@ -1933,12 +2351,34 @@
    "note": "Coordinator-imported AYO-10 bounded repair under the whole-app goal-UI request (Main, Oct 23; QA flag-on finding on 79b0c337), extended by coordinator first-name repair 8753c2a9 (QA PASS Oct 24). Two reviewed repairs: (1) post-opportunity copy state-aware - hiring-now required the job link server-side while the label said \"(optional)\", and the footer's absolute \"your name never appears\" contradicted the first-name opt-in; copy now follows mode and opt-in. (2) Opted-in poster first name reaches the public wall feed: db feed joins the poster, /api/opportunities projects an explicit public card shape so owner name/email/flag never leave the route unless opted in; anonymous and address-shaped names stay hidden; the wall renders \"Posted by <first name>\" else \"Identity hidden\". Server response contract changes only by that explicit public projection. Reviewed net diff is exactly the 7 owns files plus this registry row; QA inspected named/anonymous 390 pixels and the fixture API privacy gates PASS on 8753c2a9. QA still owes the walk-in / View-Opportunity-Wall / first-name-opt-in-out legs on the final head before any D-097 release step. RATIFIED: this row's registration and the D-048-p3-post dependsOn edge (landed in #616, merge 636644fb, Oct 24 02:56 IST) are approved under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact. LANDED: PR #597 merged Oct 24 (merge commit 196103f6); row flip verified against the GitHub API Oct 24."
   },
   {
+   "id": "D-048-fix-send-ask-blocker",
+   "title": "Show the actual blocker and a recovery link on the Send ask CTA (#596)",
+   "row": "D-199",
+   "packet": "docs/plans/LEGACY-BRANCHES-oct24.md",
+   "tier": 2,
+   "lane": "d048-fix-sendask",
+   "branch": "agent/ayo9/send-ask-blocker-ux",
+   "status": "todo",
+   "dependsOn": [
+    "D-132-audit"
+   ],
+   "note": "D-199 registers legacy PR #596 (built by Instinct Agent; user report phonemsg-01M5MXNSDQ0VJMG8M3MVQWT8JF) under its existing branch. Scope: six files (packet section 3). No validation, eligibility, price, quote or send-contract change; new strings use D-180 vocabulary. Waits for D-132-audit (same composer files; money core first, D-146/D-197), then merges main. The branch drops its own copy of this row at merge-up. Tier 2: lands on green required CI (D-200).",
+   "owns": [
+    "client/src/pages/Ask.tsx",
+    "client/src/pages/Explore.tsx",
+    "client/src/pages/ExploreCompany.tsx",
+    "client/src/pages/explore/AskDrawer.tsx",
+    "client/src/pages/explore/useAskComposer.tsx",
+    "client/src/pages/askCta.test.tsx"
+   ]
+  },
+  {
    "id": "D-177-recruiter-posts-referral-drives",
    "title": "Recruiter/HR job posts (public + internal) and employee-published referral drives feeding the company -> job -> ask journey",
-   "status": "todo",
+   "status": "architect",
    "lane": "employer",
-   "branch": "agent/coordinator/recruiter-posts-referral-drives",
-   "packet": "docs/plans/D-177-recruiter-posts-referral-drives.md",
+   "branch": "agent/queue/d177-recruiter-drives",
+   "packet": null,
    "owns": [
     "docs/plans/D-177-recruiter-posts-referral-drives.md"
    ],
@@ -1946,7 +2386,7 @@
     "D-048-p3-post",
     "D-174-seeker-journey-build"
    ],
-   "note": "Founder direction Oct 24 00:57 IST (phonemsg-01M5N3Q94QHYJK0VEHA3WBERS0). Audience model must hold before build: public vs internal-restricted (never public) vs referral-drive (shareable by design). 'Internal' meaning unresolved - open questions in the packet. No money fields (D-132/D-152 frozen).",
+   "note": "Founder direction Oct 24 00:57 IST (phonemsg-01M5N3Q94QHYJK0VEHA3WBERS0). Audience model must hold before build: public vs internal-restricted (never public) vs referral-drive (shareable by design). 'Internal' meaning unresolved - open questions in the packet. No money fields (D-132/D-152 frozen). D-189: the old branch name carried #605 (the direction record), which made the picker read this row done. The build packet comes first: answer or route the open questions in docs/plans/D-177-recruiter-posts-referral-drives.md, then owned paths, tests and tiers.",
    "row": "D-177",
    "tier": 2
   },
@@ -1954,11 +2394,11 @@
    "id": "D-178-agent-portal-access",
    "title": "External agents using the portal: user-scoped sign-in, approved payment, apply-for-referral (protocol TBD)",
    "row": "D-178",
-   "packet": "docs/plans/D-178-agent-portal-access.md",
+   "packet": null,
    "tier": 2,
    "lane": "d048-foundation",
-   "branch": "agent/coordinator/agent-portal-direction",
-   "status": "todo",
+   "branch": "agent/queue/d178-agent-portal",
+   "status": "architect",
    "owns": [
     "docs/plans/D-178-agent-portal-access.md"
    ],
@@ -1966,7 +2406,7 @@
     "D-048-p3-assistants",
     "D-048-p3-agents"
    ],
-   "note": "Founder direction Oct 24 00:58 IST (phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M). Direction not authority: no charges, no auth bypass, no invented protocol. Delegated identity rides existing assistant-grant work; payment needs explicit user approval per the money rules; retry-safe apply/pay required."
+   "note": "Founder direction Oct 24 00:58 IST (phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M). Direction not authority: no charges, no auth bypass, no invented protocol. Delegated identity rides existing assistant-grant work; payment needs explicit user approval per the money rules; retry-safe apply/pay required. D-189: the old branch name carried #606 (the direction record), which made the picker read this row done. The build packet comes first: the contract design the direction record asks for (docs/plans/D-178-agent-portal-access.md), with D-181's free-allowance eligibility, owned paths, tests and tiers."
   },
   {
    "id": "D-180-terminology-docs-sync",
@@ -2023,11 +2463,13 @@
    "lane": "money-core",
    "branch": "agent/queue/d132-item5-correction",
    "status": "todo",
-   "dependsOn": [],
+   "dependsOn": [
+    "D-132-audit"
+   ],
    "owns": [
     "docs/plans/D-132-audit-findings.md"
    ],
-   "note": "Item 5's 'no path re-prices an existing ask' holds only when a stored askCosts row exists; flag-off-created waiting asks fall back to the CURRENT flag cost at delivery (server/db.ts:2718-2719 -> 4073-4076), per #619's P1 finding. Docs-only correction to docs/plans/D-132-audit-findings.md; any runtime repair still needs the cross-flag real-DB regression before ASK_LEVEL_COST activation. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact."
+   "note": "Item 5's 'no path re-prices an existing ask' holds only when a stored askCosts row exists; flag-off-created waiting asks fall back to the CURRENT flag cost at delivery (server/db.ts:2718-2719 -> 4073-4076), per #619's P1 finding. Docs-only correction to docs/plans/D-132-audit-findings.md; any runtime repair still needs the cross-flag real-DB regression before ASK_LEVEL_COST activation. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact. D-197: waits for D-132-audit, which rewrites the same findings doc. Write the correction against the code as it stands after #635, which charges a waiting ask with no stored cost the flat price."
   },
   {
    "id": "GO-LIVE-1b-agedout-evidence",

@@ -12,8 +12,9 @@
 // picker. Red main comes first. Then an agent's own unfinished work, unless
 // pending work ranked above it has nobody on it; then pending work (a review,
 // findings to fix, a red pull request, a landing, a half-built claim nobody has
-// pushed to for 2 hours, a blocked priority for the CEO), top down; then new
+// pushed to for 2 hours, a blocked priority any other session clears), top down; then new
 // work, top down. A red or blocked priority holds its own lane and the tasks that depend on it; red `main` holds everything (D-109).
+// D-200 (owner, Oct 24): no step waits for one model or session; Claude Code sessions build too.
 
 export const IDLE_MS = 2 * 60 * 60 * 1000;
 /** A holder whose claim has been quiet this long re-takes it on the takeover ref instead of a side heartbeat. */
@@ -103,7 +104,7 @@ export const architectLockOf = task => `agent/architect/${slugOf(task.branch)}`;
 export const heartbeatOf = slug => `agent/heartbeat/${slug}`;
 export const fixMainLockOf = sha => `agent/queue/fix-main-${sha.slice(0, 8)}`;
 export const fixMainIdOf = sha => `fix-main-${sha.slice(0, 8)}`;
-/** Claude Code sessions are the CEO and architect (D-074, D-085), known by the "Claude" name prefix. */
+/** Claude Code sessions take the CEO review when nothing else waits (D-085), known by the "Claude" name prefix; D-200: no other step is theirs alone. */
 export const isArchitect = who => /^claude/i.test((who ?? "").trim());
 const modelOf = who => (who ?? "").split(" · ")[0];
 
@@ -289,24 +290,48 @@ export function reviewStateOf(lock, id) {
 /** Who holds a review lock's current stage (the reviewer, fixer or lander), or null. */
 export const stageHolderOf = (lock, id) => stageMarkers(lock, id).at(-1)?.who ?? null;
 
-/**
- * The report that stands for each task: the newest (reports arrive newest first, log order, never
- * sorted by an agent's clock), except that a blocked report stands until the CEO reports on the task.
- */
-const latestReports = reports => {
-  const latest = new Map(), settled = new Set();
+/** One task's reports, newest first as they arrive (log order, never sorted by an agent's clock). */
+const reportsByTask = reports => {
+  const byTask = new Map();
   for (const r of reports) {
-    if (settled.has(r.id)) continue;
-    if (!latest.has(r.id)) latest.set(r.id, r);
-    if (isArchitect(r.who)) settled.add(r.id);
-    else if (r.status === "blocked") { latest.set(r.id, r); settled.add(r.id); }
+    if (!byTask.has(r.id)) byTask.set(r.id, []);
+    byTask.get(r.id).push(r);
   }
-  return latest;
+  return byTask;
+};
+
+/**
+ * The report that stands for one task: the newest, except that a block stands until a newer report clears
+ * it (D-200). A green or landed report clears it from anyone; any other report clears it only from a session
+ * that neither raised a block still open on the task nor holds the task, so nobody rules on their own
+ * question or their own work. A standing block carries `blockers` (every session whose block is still open)
+ * and `newer`: the reports after it that did not clear it, oldest first, for the board and the unblock step (D-162).
+ */
+const standingReport = (reports, holder) => {
+  let latest = null, block = null, blockers = [], newer = [];
+  for (let i = reports.length - 1; i >= 0; i--) {
+    const r = reports[i];
+    if (r.status === "blocked") {
+      block = r;
+      newer = [];
+      if (!blockers.includes(r.who)) blockers.push(r.who);
+      continue;
+    }
+    if (block && r.status !== "green" && r.status !== "landed" && (blockers.includes(r.who) || r.who === holder)) {
+      newer.push(r);
+      continue;
+    }
+    block = null;
+    blockers = [];
+    newer = [];
+    latest = r;
+  }
+  return block ? { ...block, blockers, newer } : latest && { ...latest, newer: [] };
 };
 
 /** One row per task with everything every decision reads. */
 function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports }) {
-  const latest = latestReports(reports);
+  const byTask = reportsByTask(reports);
   return tasks.map((task, at) => {
     const id = task.id;
     const work = workBranchOf(task, branches);
@@ -319,14 +344,15 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports }) {
     const ci = pr ? prCi.get(work) ?? { state: "unknown" } : { state: "unknown" };
     // A squash merge leaves the branch unmerged in git; GitHub's merged pull request says it landed.
     const landed = info ? Boolean(info.merged) || Boolean(info.tipSha && mergedHeads.get(work)?.has(info.tipSha)) : mergedHeads.has(task.branch);
-    let said = latest.get(id) ?? null;
+    const owner = holderOf(info, id);
+    let said = standingReport(byTask.get(id) ?? [], owner);
     // A red report older than a green CI run on the pull request no longer holds anything.
     if (said?.status === "red" && pr && ci.state === "green" && ci.at && ci.at > said.at) said = null;
     const lockMarkers = stageMarkers(lock, id);
     const archMarkers = stageMarkers(arch, id);
     return {
       task, at, work, info, lockName, lock, archName, arch: arch && !arch.merged ? arch : null,
-      slug: slugOf(task.branch), owner: holderOf(info, id), pr, ci: ci.state, said,
+      slug: slugOf(task.branch), owner, pr, ci: ci.state, said,
       builders: everyone(stageMarkers(info, id), ["Claim", "Takeover"]),
       reviewers: everyone(lockMarkers, ["Review claim"]), fixers: everyone(lockMarkers, ["Fix claim", "Fixed"]),
       reviewer: lastBy(lockMarkers, ["Review claim"])?.who ?? null, fixer: lastBy(lockMarkers, ["Fix claim"])?.who ?? null,
@@ -355,7 +381,6 @@ function clock(branches, now) {
 }
 
 const PENDING_KINDS = new Set(["review", "fix", "green", "land", "takeover", "unblock"]);
-const DEV_KINDS = new Set(["build", "takeover", "green", "fix"]);
 
 /** D-085: the one thing the next agent should do (D-083). */
 export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], now, claimant }) {
@@ -452,8 +477,11 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     if (v.open) {
       const said = v.said;
       if (said?.status === "blocked") {
-        if (!ceo) return gate(`${v.task.id} is blocked (${reportWhy(said)}); only the CEO (a Claude Code session) or the owner can clear it`, { blocked: true });
-        if (v.unblocker && v.unblocker !== claimant && !quiet(archAt(v))) return gate(`${v.unblocker} is unblocking ${v.task.id}`);
+        // D-200: a session that raised the block, or holds the task, never clears it; any other session may.
+        const blockers = said.blockers ?? [said.who];
+        if (claimant && (blockers.includes(claimant) || v.owner === claimant)) return gate(`${v.task.id} is blocked (${reportWhy(said)}); a session that neither raised the block nor holds the task, or the owner, clears it`, { blocked: true });
+        // An unblocker that reported the block itself has handed it on: its lock no longer holds anyone off.
+        if (v.unblocker && v.unblocker !== claimant && !blockers.includes(v.unblocker) && !quiet(archAt(v))) return gate(`${v.unblocker} is unblocking ${v.task.id}`);
         return { kind: "unblock", task: v.task, report: said, lock: v.archName, lockExists: Boolean(v.arch), from: v.unblocker };
       }
       // D-109: one pull request whose CI cannot be read is skipped, never a stop for everyone (GitHub refuses a red landing anyway, D-082).
@@ -495,9 +523,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   const sharedRows = new Set(view.map(v => v.task.row).filter((r, k, all) => all.indexOf(r) !== k));
   const withHold = pick => (pick?.task && sharedRows.has(pick.task.row) ? { ...pick, task: { ...pick.task, sharedRow: true } } : pick);
 
-  // Claude Code is the CEO: never development work. Pass 1: pending work top down,
-  // stopping at your own work; pass 2: new work. A red or blocked priority holds
-  // only its lane and its dependents (D-109).
+  // Pass 1: pending work top down, stopping at your own work; pass 2: new work. A red or
+  // blocked priority holds only its lane and its dependents (D-109). D-200: Claude Code builds too.
   const actions = [];
   let gateAt = -1, gateAction = null;
   const heldLanes = new Map(), heldIds = new Map();
@@ -518,7 +545,6 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     }
     if (action.kind === "wait") return action;
     if (!PENDING_KINDS.has(action.kind)) continue;
-    if (ceo && (DEV_KINDS.has(action.kind) || (action.kind === "land" && !action.tier1))) { skip(view[i], "development work: the open models build it (D-085)"); continue; }
     // D-085: pending work ranked above your own comes first; your own claim waits, pushed.
     return withHold(mine ? { ...action, holds: { id: mine.task.id, branch: mine.work ?? mine.lock } } : action);
   }
@@ -531,10 +557,10 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   for (let i = 0; i < view.length; i++) {
     const action = actions[i];
     if (!action || action.kind === "gate" || PENDING_KINDS.has(action.kind)) continue;
-    if (ceo && action.kind !== "architect") { skip(view[i], "development work: the open models build it (D-085)"); continue; }
     return withHold(action);
   }
-  if (gateAt >= 0 && !ceo) return { kind: "wait", gate: view[gateAt].task.id, blocked: Boolean(gateAction.blocked), reason: gateAction.reason };
+  // A Claude Code session that raised a block waits like anyone else; it never gets the CEO review telling it to clear its own block.
+  if (gateAt >= 0 && (!ceo || gateAction.blocked)) return { kind: "wait", gate: view[gateAt].task.id, blocked: Boolean(gateAction.blocked), reason: gateAction.reason };
   return ceo ? { kind: "ceo", skipped } : { kind: "none", skipped };
 }
 
@@ -551,14 +577,14 @@ function ownStage(v, claimant) {
     }
   }
   if (v.open && v.owner === claimant) {
-    // A blocked task waits for the CEO or the owner; its holder keeps going on anything else it holds (D-085 (3)).
-    if (v.said?.status === "blocked") return { kind: "wait", gate: v.task.id, blocked: true, own: true, at: v.at, task: v.task, work: v.work, reason: `your task ${v.task.id} is blocked (${v.said.who} reported it blocked${v.said.note ? `: ${v.said.note}` : ""}); only the CEO (a Claude Code session) or the owner can clear it` };
+    // A blocked task waits for another session or the owner; its holder keeps going on anything else it holds (D-085 (3), D-200).
+    if (v.said?.status === "blocked") return { kind: "wait", gate: v.task.id, blocked: true, own: true, at: v.at, task: v.task, work: v.work, reason: `your task ${v.task.id} is blocked (${v.said.who} reported it blocked${v.said.note ? `: ${v.said.note}` : ""}); a session that neither raised the block nor holds the task, or the owner, clears it (D-200)` };
     // The builder side holds a Tier 1 pull request only while its CI is red before any review passed or any fix stage owns it.
     if (v.pr && v.task.tier === 1 && !(v.ci === "red" && ["needs-review", "in-review"].includes(v.review))) return null;
     return { kind: "continue", of: v.pr ? (v.ci === "red" ? "green" : "land") : "build", task: v.task, work: v.work, pr: v.pr, tier1: v.task.tier === 1, at: v.at };
   }
   if (v.task.status === "architect" && v.arch && holderOf(v.arch, v.task.id) === claimant) return { kind: "continue", of: "architect", task: v.task, lock: v.archName, at: v.at };
-  if (v.open && v.said?.status === "blocked" && v.unblocker === claimant) return { kind: "continue", of: "unblock", task: v.task, report: v.said, lock: v.archName, at: v.at };
+  if (v.open && v.said?.status === "blocked" && v.unblocker === claimant && !(v.said.blockers ?? [v.said.who]).includes(claimant)) return { kind: "continue", of: "unblock", task: v.task, report: v.said, lock: v.archName, at: v.at };
   return null;
 }
 
@@ -712,7 +738,7 @@ export function localSyncIssues({ local, branches, claimant, mainBehind = 0, tas
   return { blocking, notes, unpushed };
 }
 
-/** D-085: who may report on a task: anyone who holds it or one of its stages, and the CEO. */
+/** D-085: who may report on a task: anyone who holds it or one of its stages, and a Claude Code session. */
 export function mayReport({ task, branches, claimant }) {
   if (!claimant) return false;
   if (isArchitect(claimant)) return true;
@@ -733,7 +759,7 @@ export function mayReport({ task, branches, claimant }) {
 export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehind = new Map(), mergedHeads = new Map(), reports = [], now }) {
   const HOUR = 60 * 60 * 1000;
   const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports });
-  const latest = latestReports(reports);
+  const byTask = reportsByTask(reports);
   const { workAt, archAt } = clock(branches, now);
   const doneIds = new Set(view.filter(v => v.done).map(v => v.task.id));
   return view.map(v => {
@@ -769,7 +795,7 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehi
       ...(pr && state !== "done" ? { behindMain: Number.isSafeInteger(behind) && behind >= 0 ? behind : null } : {}),
       holder: archHeld ? holderOf(v.arch, task.id) : v.open ? v.owner : null,
       quietHours: activeAt === null || state === "done" ? null : Math.floor((now - activeAt) / HOUR),
-      pr, review, report: state === "done" ? null : latest.get(task.id) ?? null,
+      pr, review, report: state === "done" ? null : standingReport(byTask.get(task.id) ?? [], v.owner),
       // Who holds the current review stage (reviewer, fixer or lander) or the unblock: a restarted session reads its name here.
       stage: review ? v.stageHolder : v.open && v.unblocker ? v.unblocker : null,
     };
