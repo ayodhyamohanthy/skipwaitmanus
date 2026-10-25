@@ -403,6 +403,20 @@ describe("the webhook's pack credit", () => {
     expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
   });
 
+  it("REVIEWER-ISOLATION-1: a paid invoice on a demo review checkout parks for the owner and grants nothing", async () => {
+    fixture.reset({ users: [{ id: SEEKER, canonicalPersonId: 1, openId: "reviewer_seeker" }], wallets: [wallet(2)], payments: [pending()], txns: [taggedPurchase(1, 40, 2)] });
+    expect(await paid()).toMatchObject({ status: "requires_review", reason: "reviewer_account", paymentId: PAYMENT });
+    expect(paymentRow()).toMatchObject({ status: "requires_review", reconciliationReason: "reviewer_account", creditedAt: null });
+    expect(db.wallets[0].balance).toBe(2);
+    expect(paymentTxns("purchase")).toHaveLength(0);
+  });
+
+  it("REVIEWER-ISOLATION-1: a real member's identical payment still credits normally", async () => {
+    fresh();
+    expect(await paid()).toMatchObject({ status: "credited", tokenCount: PACK, userId: SEEKER });
+    expect(db.wallets[0].balance).toBe(2 + PACK);
+  });
+
   it("a webhook arriving after credit recovery settled the checkout is a duplicate, not an unmatched payment", async () => {
     fresh();
     expect(await paid({ eventId: "hosted_page:hp_41" })).toMatchObject({ status: "credited" });
