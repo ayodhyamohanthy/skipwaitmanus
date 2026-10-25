@@ -1797,7 +1797,8 @@
     "D-048-F-harness",
     "D-048-F-primitives",
     "D-048-P-admin",
-    "D-048-F-goal-check"
+    "D-048-F-goal-check",
+    "D-048-p3-employer"
    ],
    "owns": [
     "client/src/pages/AdminOverview.tsx",
@@ -1806,7 +1807,7 @@
     "scripts/kit-screens/fixtures/*__goal-admin-*.json",
     "design/goal-ui/captures/admin/**"
    ],
-   "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin'); read-only: components/admin/adminApi.ts.",
+   "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin'); read-only: components/admin/adminApi.ts. Waits for D-048-p3-employer: same fixture-glob overlap; the internal admin surface goes last (landing of the lane packets, Oct 25).",
    "epic": "D-048-p3"
   },
   {
@@ -1953,7 +1954,8 @@
     "D-048-F-harness",
     "D-048-F-primitives",
     "D-048-P-employer",
-    "D-048-F-goal-check"
+    "D-048-F-goal-check",
+    "D-048-p3-discovery"
    ],
    "owns": [
     "client/src/pages/EmployerDashboard.tsx",
@@ -1962,7 +1964,7 @@
     "scripts/kit-screens/fixtures/*__goal-employer-*.json",
     "design/goal-ui/captures/employer/**"
    ],
-   "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('employer').",
+   "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('employer'). Waits for D-048-p3-discovery: both own a goal fixture glob under scripts/kit-screens/fixtures/, and the seeker-facing discovery surface goes first (landing of the lane packets, Oct 25).",
    "epic": "D-048-p3"
   },
   {
@@ -2148,7 +2150,8 @@
     "D-048-F-static-frame",
     "D-048-P-marketing",
     "D-048-F-flags",
-    "D-048-F-goal-check"
+    "D-048-F-goal-check",
+    "D-176-public-claims"
    ],
    "owns": [
     "client/src/pages/Home.tsx",
@@ -2156,7 +2159,7 @@
     "client/src/pages/homeSignedIn.goal.test.tsx",
     "design/goal-ui/captures/home/**"
    ],
-   "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-flags dependency - both rows edit client/src/pages/Home.tsx; the foundation row lands first and this row adds its switch on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('home-signed-in').",
+   "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-flags dependency - both rows edit client/src/pages/Home.tsx; the foundation row lands first and this row adds its switch on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('home-signed-in'). Waits for D-176-public-claims: both own client/src/pages/Home.tsx, and the small live D-176 fix goes first (landing of the lane packets, Oct 25).",
    "epic": "D-048-p3"
   },
   {
