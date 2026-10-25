@@ -6,6 +6,7 @@
 //
 //   node scripts/next-task.mjs                                  # show the next task
 //   node scripts/next-task.mjs --claim "<your model name>"      # take it (or get your own back); prints your session name
+//   node scripts/next-task.mjs --claim "<session name>" --avoid <id>[,<id>]   # never hand me these tasks (my own instruction or a missing tool)
 //   node scripts/next-task.mjs --heartbeat --as "<session name>"       # keep your claim alive
 //   node scripts/next-task.mjs --report green|red|blocked|review|landed --task <id> --as "<session name>" --note "<one line>"
 //   node scripts/next-task.mjs --status                                # the board: every priority, green or not
@@ -55,7 +56,7 @@ function argsOf(argv) {
     else if (a === "--heartbeat") out.heartbeat = true;
     else if (a === "--status") out.status = true;
     else if (a === "--landed") out.landed = true;
-    else if (["--claim", "--verdict", "--task", "--as", "--report", "--note"].includes(a)) {
+    else if (["--claim", "--verdict", "--task", "--as", "--report", "--note", "--avoid"].includes(a)) {
       const v = argv[++i];
       if (!v || v.startsWith("--")) fail(`${a} needs a value`);
       out[a.slice(2)] = v;
@@ -369,7 +370,8 @@ async function main() {
   for (let attempt = 1; attempt <= 3; attempt++) {
     const { doc, mainCi, openPrs, mergedHeads, prCi, prBehind, branches, reports } = await state();
     const now = Date.now();
-    const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, prCi, reports, now, claimant: who });
+    const avoid = new Set((args.avoid ?? "").split(",").map(id => id.trim()).filter(Boolean));
+    const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, prCi, reports, now, claimant: who, avoid });
     // D-085: every agent starts from the same picture — the priorities top down, green or not.
     const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, prBehind, reports, now });
     if (pick.kind === "ceo") pick.board = board;

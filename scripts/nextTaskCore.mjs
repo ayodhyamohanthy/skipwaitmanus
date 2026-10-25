@@ -383,7 +383,7 @@ function clock(branches, now) {
 const PENDING_KINDS = new Set(["review", "fix", "green", "land", "takeover", "unblock"]);
 
 /** D-085: the one thing the next agent should do (D-083). */
-export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], now, claimant }) {
+export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], now, claimant, avoid = new Set() }) {
   if (mainCi.state === "unknown") return { kind: "stop", reason: "cannot read main's CI runs from GitHub; nothing may be picked or pushed until it is known (D-082)" };
   if (mainCi.state === "running-after-red") return { kind: "wait", mainRed: true, reason: "main's CI is running again after a failure; run this again when it finishes" };
   if (mainCi.state === "red") {
@@ -535,7 +535,11 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     if (mine && i >= mine.at) break;
     const holder = heldBy(view[i]);
     if (holder && !view[i].done) { heldIds.set(view[i].task.id, holder); skip(view[i], `waits for red or blocked ${holder} (same lane or depends on it)`); continue; }
-    const action = actions[i] = actionFor(view[i]);
+    // --avoid: a session that may not take a task (its own instruction or a missing tool) is handed something else;
+    // the task is never reported blocked for that reason, and a red or blocked one still holds its lane (gate).
+    let action = actionFor(view[i]);
+    if (action && action.kind !== "gate" && avoid.has(view[i].task.id)) action = skip(view[i], "you asked to avoid it (--avoid)");
+    actions[i] = action;
     if (!action) continue;
     if (action.kind === "gate") {
       if (gateAt < 0) { gateAt = i; gateAction = action; }
