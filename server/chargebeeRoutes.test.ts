@@ -80,7 +80,7 @@ describe("Chargebee webhook route", () => {
     const response = await request(app).post("/api/chargebee/webhook").set("Host", "untrusted.example").set("Authorization", auth(`${environment}-secret`)).send(payload);
     expect(response.status).toBe(200);
     expect(resolveHostedPage).toHaveBeenCalledExactlyOnceWith({ invoiceId: "inv_runtime", amount: 9900, currency: "INR", site: environment === "live" ? "fixture-live" : "fixture-test", apiKey: environment === "live" ? "live-key" : "fixture-key" });
-    expect(fulfillPayment).toHaveBeenCalledExactlyOnceWith({ eventId: "ev_runtime", invoiceId: "inv_runtime", amount: 9900, currency: "INR", hostedPageId: "hp_runtime", passThruContent: "intent_runtime" });
+    expect(fulfillPayment).toHaveBeenCalledExactlyOnceWith({ eventId: "ev_runtime", invoiceId: "inv_runtime", amount: 9900, currency: "INR", hostedPageId: "hp_runtime", passThruContent: "intent_runtime", customerId: undefined, occurredAt: undefined, subscriptionId: undefined, subscriptionIdentityConflict: false });
   });
 
   it("retries without test credential fallback when the configured live key is missing", async () => {

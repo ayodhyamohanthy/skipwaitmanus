@@ -2712,12 +2712,13 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
     if (!lockedWallet) return { outcome: "held", requestId: input.requestId, seekerUserId: request.jobSeekerId, companyDomain };
     const reconciled = await reconcileWalletTx(tx, lockedWallet, now);
     const promo = await promoStateForTx(tx, request.jobSeekerId, "job_seeker", now);
-    // D-110/D-132: the waiting ask pays the same level cost the covered ask
-    // paid at creation, classified from the same stored job row.
-    const deliveryJob = (await tx.select({ title: jobs.title, description: jobs.description, url: jobs.targetRoleUrl }).from(jobs).where(eq(jobs.id, request.jobId)).limit(1))[0];
-    // D-132 audit item 2: read the cost stored at creation; only an ask with no stored row (made with the flag off) is priced again.
+    // D-110/D-132 + POSTMERGE-oct22 P1 (#482): the waiting ask pays the price it was quoted at creation.
+    // D-132 audit item 2: a stored row is that price. A missing row means the ask was created while level
+    // pricing was off (rows are written only while the flag is on), so it keeps the flat one-credit price:
+    // delivery must never reclassify it against the flag as it stands now, or an ask that waited across the
+    // activation would be repriced higher than the seeker was ever told.
     const storedCost = (await tx.select({ creditCost: askCosts.creditCost }).from(askCosts).where(eq(askCosts.referralRequestId, input.requestId)).limit(1))[0];
-    const deliveryCost = storedCost ? storedCost.creditCost : askCreditCost({ title: deliveryJob?.title, description: deliveryJob?.description, url: deliveryJob?.url });
+    const deliveryCost = storedCost ? storedCost.creditCost : FLAT_ASK_COST;
     try {
       await spendCreditsTx(tx, { wallet: reconciled.wallet, grants: reconciled.grants, promo: promoGrantsEnabled() ? promoHolding(promo.grant) : null, credits: deliveryCost, meta: { idempotencyKey: askDeliveryKey(input.requestId), referenceType: "referral_request", referenceId: String(input.requestId) }, now });
     } catch (error) {
@@ -3898,6 +3899,99 @@ async function addPersonalReferralRewardCredit(tx: any, userId: number) {
   else await tx.insert(tokenBalances).values({ userId, role: "job_seeker", balance: PERSONAL_REFERRAL_REWARD_TOKENS, ...freshWalletCycle("job_seeker") });
 }
 
+/**
+ * Referral-link unlock (D-155): source-backed, provider-verified evidence of
+ * a successful nonzero payment on the account. Two evidence paths:
+ *
+ * 1. A one-time checkout whose fulfillment reached "credited" - written only
+ *    from a payment_succeeded webhook with a nonzero INR/USD amount after
+ *    the amount check (mismatches park as requires_review and never count;
+ *    pending / rejected fulfillments and mere checkout-or-page creation
+ *    never count). A fulfillment later marked "refunded" does NOT unlock:
+ *    refunded-first-payment policy is OPEN (D-155), no founder ruling exists,
+ *    and the refunded-only case is surfaced for his decision rather than
+ *    admitted or revoked silently (production today has no gate at all).
+ * 2. A subscription payment stamped onto the wallet by
+ *    recordSubscriptionPaymentEvidence from a payment_succeeded webhook tied
+ *    to the wallet's subscriptionId. Activation alone (wallet
+ *    subscriptionId) is NOT evidence: it can precede settlement or be
+ *    created by hand in the Chargebee dashboard, and subscription payments
+ *    never create a paymentFulfillments row.
+ *
+ * The promoCreditGrants first_paid_invoice row is not usable here: promo
+ * grants are disabled (grantPromoCreditsTx returns early).
+ */
+export function personalInviteUnlockedFromEvidence(evidence: { paidPayments: number; subscriptionPayments: number }): boolean {
+  return evidence.paidPayments > 0 || evidence.subscriptionPayments > 0;
+}
+
+/**
+ * D-155: record provider-verified paid evidence for a subscription. The
+ * caller passes an already-validated nonzero payment_succeeded event; the
+ * subscriptionEvents row makes redeliveries duplicates and lets a payment
+ * that arrived before the wallet's activation be backfilled by
+ * hasUserMadePayment. The stamp keeps the earliest payment time - a renewal
+ * or redelivery never moves it. Wallets are matched by provider
+ * subscriptionId, so the evidence is tied to the subscription's owner, not
+ * to an email guess.
+ */
+export async function recordSubscriptionPaymentEvidence(input: { eventId: string; subscriptionId: string; occurredAt?: Date }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const duplicate = await tx.select().from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee_paid"), eq(subscriptionEvents.providerEventId, input.eventId))).limit(1);
+    if (duplicate[0]) return { status: "duplicate" as const };
+    await tx.insert(subscriptionEvents).values({ provider: "chargebee_paid", providerEventId: input.eventId, subscriptionId: input.subscriptionId, eventType: "paid_evidence" });
+    const wallet = (await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update"))[0];
+    if (!wallet) return { status: "recorded" as const, reason: "wallet_not_linked_yet" as const };
+    const paidAt = input.occurredAt ?? new Date();
+    if (!wallet.lastPaidAt || wallet.lastPaidAt > paidAt) await tx.update(tokenBalances).set({ lastPaidAt: paidAt }).where(eq(tokenBalances.id, wallet.id));
+    return { status: "recorded" as const, reason: "stamped" as const };
+  });
+}
+
+export async function hasUserMadePayment(userId: number): Promise<boolean> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const wallets = await db.select({ id: tokenBalances.id, role: tokenBalances.role, subscriptionId: tokenBalances.subscriptionId, lastPaidAt: tokenBalances.lastPaidAt }).from(tokenBalances).where(eq(tokenBalances.userId, userId));
+  if (wallets.some(w => Boolean(w.lastPaidAt))) return personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 1 });
+
+  const payments = await db.select({ id: paymentFulfillments.id, role: paymentFulfillments.role, creditedAt: paymentFulfillments.creditedAt, createdAt: paymentFulfillments.createdAt }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), eq(paymentFulfillments.status, "credited"))).limit(1);
+  if (payments.length > 0) {
+    const targetWallet = wallets.find(w => w.role === payments[0].role) ?? wallets[0];
+    const paidAt = payments[0].creditedAt ?? payments[0].createdAt ?? new Date();
+    if (targetWallet && !targetWallet.lastPaidAt) {
+      await db.update(tokenBalances).set({ lastPaidAt: paidAt }).where(eq(tokenBalances.id, targetWallet.id));
+      targetWallet.lastPaidAt = paidAt;
+    }
+    return personalInviteUnlockedFromEvidence({ paidPayments: 1, subscriptionPayments: 0 });
+  }
+
+  for (const wallet of wallets) {
+    if (!wallet.subscriptionId) continue;
+    // Out-of-order delivery: the paid_evidence event can be recorded
+    // before the activation that links the wallet. A recorded payment event
+    // for the now linked subscription backfills the stamp.
+    const paidEvent = (await db.select({ id: subscriptionEvents.id }).from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee_paid"), eq(subscriptionEvents.subscriptionId, wallet.subscriptionId), eq(subscriptionEvents.eventType, "paid_evidence"))).limit(1))[0];
+    if (paidEvent) {
+      await db.update(tokenBalances).set({ lastPaidAt: new Date() }).where(eq(tokenBalances.id, wallet.id));
+      return personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 1 });
+    }
+  }
+  return personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 0 });
+}
+
+export type PersonalReferralInviteState = { status: "locked" } | { status: "unlocked"; inviteCode: string };
+
+/**
+ * The /share personal invite link (D-155): locked until the account's first
+ * paid invoice; no invite row is created while locked. Once unlocked, the
+ * existing get-or-create behaviour applies unchanged.
+ */
+export async function getPersonalReferralInviteState(userId: number): Promise<PersonalReferralInviteState> {
+  if (!(await hasUserMadePayment(userId))) return { status: "locked" };
+  const invite = await getOrCreatePersonalReferralInvite(userId);
+  return { status: "unlocked", inviteCode: invite.inviteCode };
+}
+
 export async function getOrCreatePersonalReferralInvite(userId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const existing = (await db.select().from(personalReferralInvites).where(eq(personalReferralInvites.inviterUserId, userId)).limit(1))[0];
@@ -4066,12 +4160,14 @@ export function promoGrantsEnabled(): boolean { return process.env.PROMO_GRANTS_
  * equal to its job's classified level (L1=1 ... L10=10); off keeps the flat
  * 1-credit cost. Changeable default per the owner. */
 export function askLevelCostEnabled(): boolean { return process.env.ASK_LEVEL_COST === "true"; }
+/** The flat one-credit price used while ASK_LEVEL_COST is off (D-110/D-132). */
+export const FLAT_ASK_COST = 1;
 /** Cost of one ask in credits. The create spend and the waiting-ask delivery
  * spend both classify the same stored job fields, and the pre-send quote
  * (/api/company-referrals/quote) classifies the same normalized link, so all
  * three always agree. */
 export function askCreditCost(job: { title?: string | null; description?: string | null; url?: string | null }): number {
-  if (!askLevelCostEnabled()) return 1;
+  if (!askLevelCostEnabled()) return FLAT_ASK_COST;
   return creditsForLevel(assignJobLevel({ title: job.title, description: job.description, url: job.url }).level);
 }
 /** D-132 audit item 2: the level and cost an ask is priced at, for the one row stored at creation. */
@@ -4494,8 +4590,13 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
       return { status: "ignored" as const, reason: "payment_already_reconciled" };
     }
     const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, intent[0].userId), eq(tokenBalances.role, intent[0].role))).limit(1);
-    if (wallet[0]) await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} + ${intent[0].tokenCount}` }).where(eq(tokenBalances.id, wallet[0].id));
-    else await tx.insert(tokenBalances).values({ userId: intent[0].userId, role: intent[0].role, balance: intent[0].tokenCount, ...freshWalletCycle(intent[0].role) });
+    if (wallet[0]) {
+      const setFields: Record<string, unknown> = { balance: sql`${tokenBalances.balance} + ${intent[0].tokenCount}` };
+      if (!wallet[0].lastPaidAt) setFields.lastPaidAt = creditedAt;
+      await tx.update(tokenBalances).set(setFields).where(eq(tokenBalances.id, wallet[0].id));
+    } else {
+      await tx.insert(tokenBalances).values({ userId: intent[0].userId, role: intent[0].role, balance: intent[0].tokenCount, lastPaidAt: creditedAt, ...freshWalletCycle(intent[0].role) });
+    }
     // Tagged with its payment, the shape the admin credit writes: the unique ledger
     // keys then refuse any second purchase row for this payment (P0-refund-review).
     await tx.insert(tokenTransactions).values({ userId: intent[0].userId, role: intent[0].role, tokenCount: intent[0].tokenCount, kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: String(intent[0].id), idempotencyKey: `payment-credit-${intent[0].id}` });
@@ -5389,11 +5490,13 @@ export function orderOpportunitiesOrganicFirst<T extends { createdAt?: Date | st
 export async function listPublicCompanyOpportunitiesWithSponsorship() {
   const db = await getDb(); if (!db) return [];
   const base = { id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt };
-  const attempt = async () => db.select({ ...base, compensation: companyOpportunities.compensation, sponsoredUntil: companyOpportunities.sponsoredUntil, sponsoredTier: companyOpportunities.sponsoredTier }).from(companyOpportunities).where(liveOpportunityCondition()).orderBy(desc(companyOpportunities.createdAt)).limit(24);
+  // The poster join feeds ONLY the opt-in-gated first-name projection; owner
+  // name/email never leave this function on a public row.
+  const attempt = async () => db.select({ ...base, compensation: companyOpportunities.compensation, sponsoredUntil: companyOpportunities.sponsoredUntil, sponsoredTier: companyOpportunities.sponsoredTier, showPosterFirstName: companyOpportunities.showPosterFirstName, ownerName: users.name, ownerEmail: users.email }).from(companyOpportunities).innerJoin(users, eq(users.id, companyOpportunities.ownerId)).where(liveOpportunityCondition()).orderBy(desc(companyOpportunities.createdAt)).limit(24);
   try {
     const rows = await attempt();
     const now = Date.now();
-    return orderOpportunitiesOrganicFirst(rows).map(row => ({ ...row, isSponsored: Boolean(row.sponsoredUntil && new Date(row.sponsoredUntil).getTime() > now) }));
+    return orderOpportunitiesOrganicFirst(rows).map(row => ({ id: row.id, companyDomain: row.companyDomain, kind: row.kind, roleTitle: row.roleTitle, targetRoleUrl: row.targetRoleUrl, location: row.location, compensation: row.compensation, walkInAt: row.walkInAt, walkInEndsAt: row.walkInEndsAt, createdAt: row.createdAt, isSponsored: Boolean(row.sponsoredUntil && new Date(row.sponsoredUntil).getTime() > now), poster: opportunityPosterOf(row) }));
   } catch {
     // Pre-migration fallback mirrors the organic list with sponsor flags off.
     return (await listPublicCompanyOpportunities()).map(row => ({ ...row, sponsoredUntil: null as Date | null, sponsoredTier: null as "featured" | "spotlight" | null, isSponsored: false }));

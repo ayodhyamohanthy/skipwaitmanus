@@ -140,6 +140,49 @@ describe("Goal /post-opportunity wizard", () => {
     expect(String(post?.[1]?.body)).not.toContain('"compensation"');
   });
 
+  it("labels the job link as required for hiring-now and optional for walk-in", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === ACCESS_PATH) return ok(verified);
+      return ok({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPost();
+    fireEvent.change(await screen.findByLabelText("Role or job title"), { target: { value: "Designer" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    await screen.findByText("Add useful details.");
+    expect(screen.getByText("Public job link", { exact: true })).toBeTruthy();
+    expect(screen.queryByText("Public job link (optional)")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Back/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Walk-in/ }));
+    fireEvent.change(screen.getByLabelText("Role or job title"), { target: { value: "Designer" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    await screen.findByText("Add useful details.");
+    expect(screen.getByText("Public job link (optional)", { exact: true })).toBeTruthy();
+    expect(screen.getByText("Location", { exact: true })).toBeTruthy();
+    expect(screen.queryByText("Location (optional)")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Starts at"), { target: { value: "2026-11-02T09:00" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    await screen.findByText("Ends at", { exact: true });
+    expect(screen.queryByText("Ends at (optional)")).toBeNull();
+  });
+
+  it("switches the privacy line when the first-name opt-in is ticked", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === ACCESS_PATH) return ok(verified);
+      return ok({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPost();
+    fireEvent.change(await screen.findByLabelText("Role or job title"), { target: { value: "Designer" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    await screen.findByText("Add useful details.");
+    expect(screen.getByText(/Your name and work email never appear on the card/)).toBeTruthy();
+    expect(screen.queryByText(/Your first name appears on the card/)).toBeNull();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Show my first name/ }));
+    expect(await screen.findByText(/Your first name appears on the card/)).toBeTruthy();
+    expect(screen.queryByText(/Your name and work email never appear on the card/)).toBeNull();
+  });
+
   it("requires a start time before a walk-in can reach timing", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string) => (url === ACCESS_PATH ? ok(verified) : ok({}))));
     renderPost();

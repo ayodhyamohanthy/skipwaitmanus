@@ -2,7 +2,7 @@
  "version": 1,
  "repo": "ayodhyamohanthy/skipwaitmanus",
  "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
- "updated": "2026-10-23",
+ "updated": "2026-10-24",
  "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks, except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
  "tasks": [
   {
@@ -73,9 +73,9 @@
    "tier": 2,
    "lane": "picker",
    "branch": "agent/queue/picker-board-newer-report",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
-   "note": "D-162: on Oct 23 the board kept workbuddy · b0eb's 02:14 blocked report on D-090-BYOR and hid the three green reports after it; the first (a2fdbc3e) named the owner's waiver, the next two reported build progress. The CEO ruled from the stale report (D-154) and the owner had to restate his word. latestReports keeps the blocked report standing (unchanged) and also returns every non-CEO report after it; the board line and the printed unblock step show them."
+   "note": "D-162: on Oct 23 the board kept workbuddy · b0eb's 02:14 blocked report on D-090-BYOR and hid the three green reports after it; the first (a2fdbc3e) named the owner's waiver, the next two reported build progress. The CEO ruled from the stale report (D-154) and the owner had to restate his word. latestReports keeps D-200's clearing rule and returns every report after a standing blocked one in newer; the board line and the printed unblock step show them. Display only: no hand-out decision changes."
   },
   {
    "id": "PICKER-architect-slot",
@@ -102,6 +102,18 @@
    "note": "D-163 (4): owner words and CEO rulings on open PR #520 never reached main, so no agent follows them and its nine rows (SKIPPY-fix and the rest) are invisible. Build = cut agent/queue/register-520 from #520's head, merge main, renumber every entry to the next free IDs (main already has a different D-156). Review and landing by a model other than Claude, which wrote it (D-151). Docs only."
   },
   {
+   "id": "D-200-instructions-sync",
+   "title": "Instruction files say what D-200 and the picker already do: Claude Code builds too, nothing waits for one model or session",
+   "row": "D-200",
+   "packet": "docs/plans/D-200-instructions-sync.md",
+   "tier": 3,
+   "lane": "d200-docs",
+   "branch": "agent/queue/d200-instructions-sync",
+   "status": "todo",
+   "dependsOn": [],
+   "note": "D-200 (7): CLAUDE.md, AGENTS.md, docs/BRIEF.md and docs/DELEGATION.md still say Claude Code never builds. Docs only, five exact edits in the packet. Any model except a Claude Code session builds it (its safety check refuses edits to its own instruction files)."
+  },
+  {
    "id": "POSTMERGE-oct22-review",
    "title": "Post-merge Tier 1 review of the live money and migration PRs merged without review on Oct 22-23 (D-166)",
    "row": "D-166",
@@ -114,6 +126,34 @@
    "note": "D-166 (2): #465, #478, #482 (migration 0106), #490 (migration 0107), #506, #517, #534, #535, #479, #510 merged with only a failed Copilot bot review. Review them as they are on main by a model other than Instinct; findings go to docs/plans/POSTMERGE-oct22-findings.md and become fix rows. No code change in this row.",
    "owns": [
     "docs/plans/POSTMERGE-oct22-findings.md"
+   ]
+  },
+  {
+   "id": "POSTMERGE-oct22-fixes",
+   "title": "Fix the four Oct 22 post-merge findings: held-ask repricing guard, stale-sample window, catalog-price tests, catalog-composed pack copy (D-166)",
+   "row": "D-166",
+   "packet": "docs/plans/POSTMERGE-oct22-fixes.md",
+   "tier": 1,
+   "lane": "audit",
+   "branch": "agent/queue/postmerge-oct22-fixes",
+   "status": "done",
+   "dependsOn": [
+      "D-048-fix-post-copy",
+      "D-048-fix-landing-flash-snapshot-v2"
+   ],
+   "note": "Findings from docs/plans/POSTMERGE-oct22-findings.md (#619): P1 #482 preserve creation-time flat price for waiting asks created flag-off (server/db.ts + regression test); P2 #506 add the 7-day lower bound to the stale-checkout sample query (server/dailyMoneyCheck.ts + test); P2 #478 rendered-page tests asserting catalog-derived prices (3 plans test files); P2 #534 compose pack copy from shared/planCatalog.ts (Pricing.tsx, landingContent.ts, policyPages.test.tsx). Fix before any ASK_LEVEL_COST activation. No flags, no workflow edits.",
+   "owns": [
+      "server/db.ts",
+      "server/db.askCostStored.test.ts",
+      "server/dailyMoneyCheck.ts",
+      "server/dailyMoneyCheck.test.ts",
+      "client/src/pages/plans.kit.test.tsx",
+      "client/src/pages/plans.paymentRecovery.test.tsx",
+      "client/src/pages/plans.paymentRoute.test.tsx",
+      "client/src/pages/Pricing.tsx",
+      "shared/landingContent.ts",
+      "shared/planCatalog.ts",
+      "client/src/pages/policyPages.test.tsx"
    ]
   },
   {
@@ -406,7 +446,7 @@
    "tier": 2,
    "lane": "pricing-docs",
    "branch": "agent/instinct/v2-live-catalog-audit",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
    "note": "D-165: the v2 plan and credit items were created on the LIVE Chargebee site on Oct 23 (create-only, zero subscriptions) on the founder's instruction, but main's PRICING.md does not say so. Merge main, check D-059 (no secrets, customer data or account ids), required CI, land. Reviewer or lander: a model other than Instinct."
   },
@@ -574,9 +614,9 @@
    "tier": 1,
    "lane": "share-link",
    "branch": "agent/instinct/referral-link-paid-gate",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
-   "note": "D-163 (4): PR #527 carries the owner's D-155 and a migration (0110) with no queue row. Independent Tier 1 review by a model other than Instinct (D-151) with the packet's checklist; at landing merge main and renumber the decision and the migration to the next free numbers."
+   "note": "D-163 (4): PR #527 carries the owner's D-155 and a migration (0110) with no queue row. Independent Tier 1 review by a model other than Instinct (D-151) with the packet's checklist; at landing merge main and renumber the decision and the migration to the next free numbers. Landed Oct 24 as D-194 with migration 0114: code reviewed at 17ab8732 (pass, Claude Code · 61d2), then merged with main and renumbered by the lander (DeepSeek V4.1 Flash Free · 3ecf)."
   },
   {
    "id": "D-048-F-typescale",
@@ -654,7 +694,7 @@
    "tier": 2,
    "lane": "design-core",
    "branch": "agent/queue/d048-f-primitives",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [
     "D-048-F-flags"
    ],
@@ -666,7 +706,7 @@
     "client/src/components/goal/goalAtoms.test.tsx",
     "client/src/components/goal/goalComposites.test.tsx"
    ],
-   "note": " Audit outcome (Oct 23, accepted by Main): the barrel (20+ exports) covers every built surface; AYO-7 composed in-place pages with zero new primitives. The only cross-surface gap, the \"Your next step\" block, is D-048-F-goal-check's GoalNextStep per D-167 (local copies to migrate later: MyRequests.tsx, goal/inbox/GoalInbox.tsx, goal/assistants/AssistantLayout.tsx, inline markups on the AYO-7 pages). AYO-9's Section/Message/AccessStatus/NetworkButton stay single-consumer (promote on a second consumer). Name-collisions MyRequests.NextStep/ReferralRequest.NextStep/AdminCatalogSync.Section are different semantics - do not unify. No code to promote: audit-only row, no manufactured code."
+   "note": "done - e90e0671 (audit-only outcome on main: no code to promote; GoalNextStep belongs to D-048-F-goal-check). Flipped by D-200 (Oct 24): the stale in-review status held 15 rows. Earlier note: Audit outcome (Oct 23, accepted by Main): the barrel (20+ exports) covers every built surface; AYO-7 composed in-place pages with zero new primitives. The only cross-surface gap, the \"Your next step\" block, is D-048-F-goal-check's GoalNextStep per D-167 (local copies to migrate later: MyRequests.tsx, goal/inbox/GoalInbox.tsx, goal/assistants/AssistantLayout.tsx, inline markups on the AYO-7 pages). AYO-9's Section/Message/AccessStatus/NetworkButton stay single-consumer (promote on a second consumer). Name-collisions MyRequests.NextStep/ReferralRequest.NextStep/AdminCatalogSync.Section are different semantics - do not unify. No code to promote: audit-only row, no manufactured code."
   },
   {
    "id": "D-048-F-harness",
@@ -718,7 +758,7 @@
    "tier": 2,
    "lane": "design-core",
    "branch": "agent/queue/d048-f-static-frame",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [
     "D-048-p3-w0-shell"
    ],
@@ -727,7 +767,7 @@
     "client/src/components/goal/goalStaticFrame.test.tsx",
     "scripts/prerenderPublicPages.test.ts"
    ],
-   "note": "implemented in PR (this branch), pending CI and merge; flips to done with its merge SHA"
+   "note": "done - e62ab474 (PR #561 merged the static frame; refined by #600, 26a35834). Flipped by D-200 (Oct 24): the row stayed in-review after its merge. Earlier note: implemented in PR (this branch), pending CI and merge; flips to done with its merge SHA"
   },
   {
    "id": "D-048-F-routes",
@@ -737,7 +777,7 @@
    "tier": 2,
    "lane": "d048-routes",
    "branch": "agent/queue/d048-f-routes",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [
     "D-048-F-flags"
    ],
@@ -746,7 +786,8 @@
     "client/src/metadataAndRouteLoading.test.ts",
     "client/src/appSessionContinuity.test.ts",
     "scripts/seoRouteCoverage.test.ts"
-   ]
+   ],
+   "note": "PR #633: Router() reformatted to one <Route> per line (95 route elements, same paths/components/order; JSX body whitespace-identical before and after). The /notifications redirect stays inline so server/notificationCenterUi.test.ts (not an owned path, D-134 byte-identical rule) is untouched; metadataAndRouteLoading.test.ts's Suspense pin follows the reformat. Full quality gate green on 17cab0c4 merged with main; focused 16/16 green on the final head."
   },
   {
    "id": "D-048-F-goal-check",
@@ -756,7 +797,7 @@
    "tier": 2,
    "lane": "design-check",
    "branch": "agent/queue/d048-f-goal-check",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [
     "D-048-F-primitives"
    ],
@@ -768,7 +809,7 @@
     "client/src/test/goalPageContract.test.tsx",
     "client/src/test/goalPagesBoundary.test.ts"
    ],
-   "note": "D-167: a page counts as moved only when its test calls assertGoalPage (one h1 goal line, exactly one data-g-primary inside the GoalNextStep block, no kit.css classes) and the boundary test finds no kit or ui import. Every surface row depends on this one. Built by the coordinator lane (Main, Oct 23 - it blocks 14 surface rows): PR #567, stacked on #560."
+   "note": "done - 5c8ae021 (GoalNextStep, client/src/test/goalPageContract.ts assertGoalPage and the moved-page boundary are on main; delivered through the coordinator lane's PR #567, never on this row's branch, so the picker could not see it land). Flipped by D-200 (Oct 24): the stale in-review status held 18 rows. Earlier note: D-167: a page counts as moved only when its test calls assertGoalPage (one h1 goal line, exactly one data-g-primary inside the GoalNextStep block, no kit.css classes) and the boundary test finds no kit or ui import. Every surface row depends on this one. Built by the coordinator lane (Main, Oct 23 - it blocks 14 surface rows): PR #567, stacked on #560."
   },
   {
    "id": "D-048-F-shell-parts",
@@ -1221,7 +1262,8 @@
     "D-048-F-primitives",
     "D-048-P-referrer",
     "D-048-F-goal-check",
-    "D-048-fix-post-copy"
+    "D-048-fix-post-copy",
+    "D-048-postopp-copy-v2"
    ],
    "owns": [
     "client/src/pages/PostOpportunity.tsx",
@@ -1779,7 +1821,7 @@
    "tier": 2,
    "lane": "d048-foundation",
    "branch": "agent/coordinator/landing-flash-snapshot-v2",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [
     "D-048-fix-landing-load-flash"
    ],
@@ -1789,7 +1831,7 @@
     "client/src/pages/GoalLanding.tsx",
     "client/src/pages/home.snapshotParity.test.tsx"
    ],
-   "note": "Coordinator bounded fix, second approach (Main, Oct 24; user report phonemsg-01M5MX4KWB09PKKC7E6XP3BN5V + phonemsg-01M5MX5BFXQ060R444J7GKX3W2). The v1 row gated the reveal timing; the designer gate (Main, Oct 23 23:59 IST) rejected the copy-only snapshot as a fix: on a slow or blocked bundle the failsafe painted raw unstyled text that jumped into the styled goal page. This row mirrors GoalLandingV9's DOM section by section in scripts/prerender-public-pages.tsx with the same goal utility classes (all verified present in the compiled stylesheet, which loads in the shell head before the bundle), so the pre-mount frame and the mounted page are visually identical. The hero search becomes a real no-JS GET form to /explore?q=. Explore/guides/employer/policy links stay crawler-readable as screen-reader-only nav (V9 does not render them visually). FOOTER_COLS moved to shared/landingContent.ts as GOAL_FOOTER_COLS (single source, re-exported by GoalLanding.tsx). Pixel proof: playwright fixture serving dist/public with the bundle delayed 25s - snapshot painted and stable at 3s/6s on 390x844 and 1280x900, visually identical to post-mount captures except the client-only cookie banner. 25/25 prerender + snapshot-parity tests. scripts/prerenderPublicPages.test.ts is also touched (one h1 assertion now that the h1 carries display classes); that file sits in D-048-F-static-frame's owns (in-review) - same reconciliation pattern as D-048-fix-explore-open-first: that row reconciles on its next rebase."
+   "note": "Coordinator bounded fix, second approach (Main, Oct 24; user report phonemsg-01M5MX4KWB09PKKC7E6XP3BN5V + phonemsg-01M5MX5BFXQ060R444J7GKX3W2). The v1 row gated the reveal timing; the designer gate (Main, Oct 23 23:59 IST) rejected the copy-only snapshot as a fix: on a slow or blocked bundle the failsafe painted raw unstyled text that jumped into the styled goal page. This row mirrors GoalLandingV9's DOM section by section in scripts/prerender-public-pages.tsx with the same goal utility classes (all verified present in the compiled stylesheet, which loads in the shell head before the bundle), so the pre-mount frame and the mounted page are visually identical. The hero search becomes a real no-JS GET form to /explore?q=. Explore/guides/employer/policy links stay crawler-readable as screen-reader-only nav (V9 does not render them visually). FOOTER_COLS moved to shared/landingContent.ts as GOAL_FOOTER_COLS (single source, re-exported by GoalLanding.tsx). Pixel proof: playwright fixture serving dist/public with the bundle delayed 25s - snapshot painted and stable at 3s/6s on 390x844 and 1280x900, visually identical to post-mount captures except the client-only cookie banner. 25/25 prerender + snapshot-parity tests. scripts/prerenderPublicPages.test.ts is also touched (one h1 assertion now that the h1 carries display classes); that file sits in D-048-F-static-frame's owns (in-review) - same reconciliation pattern as D-048-fix-explore-open-first: that row reconciles on its next rebase. LANDED: PR #600 merged Oct 23 (merge commit 26a35834); row flip verified against the GitHub API Oct 24."
   },
   {
    "id": "D-174-expiry-clock-removal",
@@ -1853,7 +1895,7 @@
    "tier": 2,
    "lane": "process",
    "branch": "agent/coordinator/journey-decisions-sync",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [],
    "note": "Owner instruction (iMessage phonemsg-01M5N07FQX1Q4Y0GXPDW5WPPTQ 'Update in repo' on phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2's journey + no-expiry rule and phonemsg-01M5N06NBY8DC123RMAPV44NYR's all-companies coverage goal). Scope: docs/DECISIONS.md only. D-174 suspends ask death clocks for launch (7-day unclaimed expiry, 90-day waiting cap, day-30 closure) and records the maintained-directory journey with the company pool; referrer action timers, security/session/payment bounds and credit rules untouched, no new debit/refund behavior. D-175 records the coverage goal as a goal with an open free/legal feasibility study; no fake jobs, no coverage claims without proof, no paid data or account-risk scraping. IDs checked against main (D-169..D-173 landed in #599) and agent/claude/ceo-oct23-release-rows (D-168); D-174/D-175 free. Builds inside these decisions stay pending under their own rows; QA and any expiry-sweep workers must be informed before expiry behavior merges. Amended before merge: D-176 (phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST) supersedes D-169's availability framing and open-first grouping - availability is backend routing only, honest delivered-vs-waiting status after save, no false immediate-referral claim; #594 stands as completed history. IDs D-174..D-176 free on main (D-169..D-173 via #599) and checked against agent/claude/ceo-oct23-release-rows."
   },
@@ -1865,7 +1907,7 @@
    "tier": 2,
    "lane": "d048-foundation",
    "branch": "agent/ayo10/post-copy-fix",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [],
    "owns": [
     "client/src/pages/OpportunityWall.tsx",
@@ -1876,7 +1918,7 @@
     "server/opportunityRoutes.test.ts",
     "server/privateReferralRoutes.ts"
    ],
-   "note": "Coordinator-imported AYO-10 bounded repair under the whole-app goal-UI request (Main, Oct 23; QA flag-on finding on 79b0c337), extended by coordinator first-name repair 8753c2a9 (QA PASS Oct 24). Two reviewed repairs: (1) post-opportunity copy state-aware - hiring-now required the job link server-side while the label said \"(optional)\", and the footer's absolute \"your name never appears\" contradicted the first-name opt-in; copy now follows mode and opt-in. (2) Opted-in poster first name reaches the public wall feed: db feed joins the poster, /api/opportunities projects an explicit public card shape so owner name/email/flag never leave the route unless opted in; anonymous and address-shaped names stay hidden; the wall renders \"Posted by <first name>\" else \"Identity hidden\". Server response contract changes only by that explicit public projection. Reviewed net diff is exactly the 7 owns files plus this registry row; QA inspected named/anonymous 390 pixels and the fixture API privacy gates PASS on 8753c2a9. QA still owes the walk-in / View-Opportunity-Wall / first-name-opt-in-out legs on the final head before any D-097 release step."
+   "note": "Coordinator-imported AYO-10 bounded repair under the whole-app goal-UI request (Main, Oct 23; QA flag-on finding on 79b0c337), extended by coordinator first-name repair 8753c2a9 (QA PASS Oct 24). Two reviewed repairs: (1) post-opportunity copy state-aware - hiring-now required the job link server-side while the label said \"(optional)\", and the footer's absolute \"your name never appears\" contradicted the first-name opt-in; copy now follows mode and opt-in. (2) Opted-in poster first name reaches the public wall feed: db feed joins the poster, /api/opportunities projects an explicit public card shape so owner name/email/flag never leave the route unless opted in; anonymous and address-shaped names stay hidden; the wall renders \"Posted by <first name>\" else \"Identity hidden\". Server response contract changes only by that explicit public projection. Reviewed net diff is exactly the 7 owns files plus this registry row; QA inspected named/anonymous 390 pixels and the fixture API privacy gates PASS on 8753c2a9. QA still owes the walk-in / View-Opportunity-Wall / first-name-opt-in-out legs on the final head before any D-097 release step. RATIFIED: this row's registration and the D-048-p3-post dependsOn edge (landed in #616, merge 636644fb, Oct 24 02:56 IST) are approved under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact. LANDED: PR #597 merged Oct 24 (merge commit 196103f6); row flip verified against the GitHub API Oct 24."
   },
   {
    "id": "D-177-recruiter-posts-referral-drives",
@@ -1929,6 +1971,66 @@
     "docs/BRIEF.md"
    ],
    "note": "Owner-approved single queue add: the founder's yes (iMessage phonemsg-01M5ND47BAKG2S9TKG8RNE797X, Oct 24 3:41 IST) to Main's narrow question authorizes this one documentation-sync task despite the D-083 reservation, which otherwise stands. Scope: docs only - records D-180 (owner Oct 24 3:33 + 3:35, phonemsg-01M5NCM1K63RW8RRWFCQ4PBT05 / phonemsg-01M5NCR5GJNK9NT0YN0C9559TX) and appends supersession pointers to D-021, D-034, D-050, D-061, D-076, D-148, D-169, D-052, D-059, D-063 plus a BRIEF.md currency note, under the 3:37 full-reconciliation word (phonemsg-01M5NCWCEBVYKGZ6292Z3XBVPZ). No product behavior, pricing, metric or identifier change. Landed on the admitted carrier agent/coordinator/seeker-journey-build; this row's own branch serves future syncs."
+  },
+  {
+   "id": "D-179-ats-validation",
+   "title": "Record founder direction D-179: ATS connections technically validate completed referrals",
+   "row": "D-179",
+   "packet": null,
+   "tier": 2,
+   "lane": "process",
+   "branch": "agent/coordinator/ats-referral-validation",
+   "status": "in-review",
+   "dependsOn": [],
+   "note": "Docs-only direction record in PR #608 (owner iMessage Oct 24 1:09 IST, phonemsg-01M5N4DC140W9347XWW34NAWX1); the DECISIONS.md D-179 entry is already on main via #610. Packet doc lives on the #608 branch and arrives with it. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact."
+  },
+  {
+   "id": "D-048-postopp-copy-v2",
+   "title": "PostOpportunity composer copy v2: state-aware privacy footer + hiring-now required-link label (temporary until D-177)",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-referrer.md",
+   "tier": 2,
+   "lane": "d048-foundation",
+   "branch": "agent/queue/postopp-copy-v2",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-fix-post-copy"
+   ],
+   "owns": [
+    "client/src/pages/PostOpportunity.tsx",
+    "client/src/pages/postOpportunity.test.tsx"
+   ],
+   "note": "Two live-proven copy defects, patch preserved verbatim at #616 comment 6376317006 (13/13 local vitest PASS): the footer contradicts the first-name opt-in, and the hiring-now job-link field says (optional) while the server requires it. The (required) label is TEMPORARY until the D-177 email-only build; no backend policy change. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact."
+  },
+  {
+   "id": "D-132-audit-item5-correction",
+   "title": "Correct D-132-audit findings item 5: legacy waiting asks without a stored cost ARE re-priced at delivery (#619 P1)",
+   "row": "D-132",
+   "packet": "docs/plans/D-132-pricing-v2.md",
+   "tier": 2,
+   "lane": "money-core",
+   "branch": "agent/queue/d132-item5-correction",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    "docs/plans/D-132-audit-findings.md"
+   ],
+   "note": "Item 5's 'no path re-prices an existing ask' holds only when a stored askCosts row exists; flag-off-created waiting asks fall back to the CURRENT flag cost at delivery (server/db.ts:2718-2719 -> 4073-4076), per #619's P1 finding. Docs-only correction to docs/plans/D-132-audit-findings.md; any runtime repair still needs the cross-flag real-DB regression before ASK_LEVEL_COST activation. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact."
+  },
+  {
+   "id": "GO-LIVE-1b-agedout-evidence",
+   "title": "Land the aged-out reconciliation coverage-gap evidence test",
+   "row": "D-084",
+   "packet": "docs/plans/GO-LIVE-1b-pass-activation.md",
+   "tier": 2,
+   "lane": "payments",
+   "branch": "agent/queue/agedout-evidence-test",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    "server/agedOutCoverageGap.evidence.test.ts"
+   ],
+   "note": "Evidence-only test (local 2/2 PASS, Oct 24 5:36 IST): a paid checkout older than PENDING_MAX_AGE_MS is invisible to the reconcile job, so no alert fires. Grounds the repair proposal for todo-01M5K14ZT8K9BS7QPZ7WFQMVC1. Test file only, no runtime change. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact."
   }
  ]
 }

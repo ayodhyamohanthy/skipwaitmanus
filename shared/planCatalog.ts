@@ -164,6 +164,22 @@ export function catalogPackById(id: unknown): CreditPack | undefined {
   return CREDIT_PACKS.find(pack => pack.id === id);
 }
 
+/**
+ * The first-pack claim the public copy quotes ("₹99 for 2 credits", "$5 for 5 credits"), composed from
+ * CREDIT_PACKS so /pricing and the landing FAQ can never drift from the catalog the server sells
+ * (docs/PRICING.md:37). null when that currency has no first pack: callers say something honest instead.
+ */
+export function firstPackClaim(currency: CatalogCurrency): string | null {
+  const pack = CREDIT_PACKS.find(candidate => candidate.firstPack && candidate.prices[currency] !== undefined);
+  const minor = pack?.prices[currency];
+  if (!pack || minor === undefined) return null;
+  const whole = minor % 100 === 0;
+  try {
+    const amount = new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 }).format(minor / 100);
+    return `${amount} for ${pack.credits} credit${pack.credits === 1 ? "" : "s"}`;
+  } catch { return null; }
+}
+
 // ---- Human sessions: one-time, sold only once reviewers are staffed ----
 
 export const HUMAN_SESSION_IDS = ["written_review", "live_session"] as const;
