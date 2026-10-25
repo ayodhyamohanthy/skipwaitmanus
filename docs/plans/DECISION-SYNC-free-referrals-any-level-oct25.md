@@ -40,6 +40,36 @@ Explicit reconciliation of older rows against this controlling spec:
 - **D-196**: confirmed and extended by point 3. Still open from D-196, owner-only: the plan PRICES and the paid-priority WINDOW LENGTH (the 24-hour rule in point 4 is the poster window, not this one).
 - **Matching/allocation behavior** (current code): poster-first matching with the 24-hour handoff is NEW scope to reconcile in the allocation implementation; it does not alter ask expiry (D-174 launch rule: asks do not expire) or the D-034/D-047 spend rules.
 
+
+## RECOMMENDATION package (NOT a decision - owner rules; prepared Oct 25 for the narrow open items)
+
+### A. Old fees vs new level-access model - reconciliation status
+
+The frozen v2 family (shared/planFamily.ts on main, frozen Oct 21 under D-132) has TWO paid tiers with RELATIVE reach: Fast Track $9.99 / Rs499 monthly (up to 2 levels above the seeker's level) and Insider $59 / Rs1,299 monthly, by application (up to 4 levels). The controlling spec has THREE paid levels with ABSOLUTE career-level access (early / mid / senior career referrers). There is no 1:1 mapping: 2 tiers vs 3 levels, relative-reach vs absolute-category semantics. D-148/D-152's "fees unchanged" covered renames of the same SKUs, not this re-cut - a lead, not proof. No fee is asserted settled for the new tiers.
+
+### B. Actual unresolved contradictions (not "everything settled")
+
+1. **Free "3 referrals any level" vs paid level access.** If a free request can reach senior referrers, the subscription's core benefit collapses. Grounded reading (ASSUMPTION, needs owner confirmation): "any level" applies to the JOB level of the ask (no level-based debit of the free grant), while the subscription governs which REFERRER pool the request reaches - free requests go to the general/free referrer pool; plans unlock the level-matched pools. This preserves both of the owner's statements.
+2. **Subscription contents.** Per D-173 (owner): each plan carries an included referral allowance and extras are bought inside the plan. Not unlimited use; no per-request debit (superseded). The included allowance counts are NOT decided.
+
+### C. Price recommendation (owner decides; two price books per D-122; no GST per D-007)
+
+Seeker side, anchored to the frozen v2 price points and the Oct 14 market research (Naukri Pro Rs999/mo, comparable tools $24-29):
+- Early career referrers plan: **$9.99 / Rs499 per month** (the frozen Fast Track entry point).
+- Mid career referrers plan: **$24 / Rs999 per month** (market midpoint; matches Naukri Pro).
+- Senior level referrers plan: **$59 / Rs1,299 per month** (the frozen Insider point; whether "by application" carries over is UNKNOWN).
+- Included monthly allowances (ASSUMPTION, matching the frozen ladder rungs): Early 5 / Mid 10 / Senior 25 included referrals; in-plan extras at the frozen ladder (single $1 / Rs49; 5-200 rungs at save 2-20%).
+
+Referrer side, grounded in the referrer's own economics (D-119 owner: referrers monetise "because more senior greater the referral bonus" - employer referral bonuses run roughly Rs10k-Rs1L / $1k-5k per successful referral, so a monthly fee for priority access to convertible requests has clear ROI) plus D-096's win-win rule:
+- Same three price points by level: **$9.99 / $24 / $59 per month (Rs499 / Rs999 / Rs1,299)** for early / mid / senior seeker-request priority.
+- UNKNOWN (owner's call): referrers are the scarce supply side - a launch discount or free-launch window for referrer plans is defensible; not assumed.
+
+### D. Priority timing recommendation (respecting the frozen poster-first 24h)
+
+- A request matching a posted internal job: the poster holds first match for the frozen 24 HOURS; on non-acceptance it moves to paid-priority referrers of the matching level, then the free pool.
+- A request with no posted-job match: paid-priority referrers of the matching level get **12 HOURS** first access (RECOMMENDATION - half the poster window, keeps the free pool viable per D-096), then the free pool.
+- The 12h paid-priority window and the 24h poster window are distinct clocks; neither is a request expiry (D-174: asks do not expire).
+
 ## Anchors
 
 
