@@ -2799,6 +2799,34 @@
     "server/agedOutCoverageGap.evidence.test.ts"
    ],
    "note": "Evidence-only test (local 2/2 PASS, Oct 24 5:36 IST): a paid checkout older than PENDING_MAX_AGE_MS is invisible to the reconcile job, so no alert fires. Grounds the repair proposal for todo-01M5K14ZT8K9BS7QPZ7WFQMVC1. Test file only, no runtime change. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact."
+  },
+  {
+   "id": "REVIEWER-ISOLATION-1",
+   "title": "Least-privilege isolation for shared demo review accounts",
+   "row": "D-167",
+   "packet": "docs/plans/REVIEWER-ISOLATION-1.md",
+   "tier": 1,
+   "lane": "security",
+   "branch": "agent/queue/reviewer-isolation-oct25",
+   "status": "todo",
+   "dependsOn": [],
+   "owns": [
+    "server/_core/reviewerLogin.ts",
+    "server/_core/reviewerIsolation.test.ts",
+    "server/privateReferralRoutes.ts",
+    "server/dmRoutes.ts",
+    "server/followRoutes.ts",
+    "server/blocksRoutes.ts",
+    "server/safetyRoutes.ts",
+    "server/assistantRoutes.ts",
+    "server/scheduledJobsRoutes.ts",
+    "server/companyDirectoryRoutes.ts",
+    "server/adminCatalogSyncRoutes.ts",
+    "server/chargebeeRoutes.ts",
+    "server/companyClaimRoutes.ts",
+    "server/employerRoutes.ts"
+   ],
+   "note": "Razorpay credential handover blocker (Main, Oct 25 8:56): demo review sessions are ordinary sessions, so refuse them on every route that reaches real members, external services, admin surfaces, or real-money actions beyond hosted-cart creation. Checkout + subscription-checkout cart creation stays open for merchant review; recovery/card-validation/gift-claim/cancel are guarded. Browse and pricing preview stay open."
   }
  ]
 }
