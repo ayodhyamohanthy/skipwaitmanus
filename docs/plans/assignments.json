@@ -373,7 +373,7 @@
    "tier": 1,
    "lane": "register",
    "branch": "agent/queue/register-520",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
    "note": "D-163 (4): owner words and CEO rulings on open PR #520 never reached main, so no agent follows them and its nine rows (SKIPPY-fix and the rest) are invisible. Build = cut agent/queue/register-520 from #520's head, merge main, renumber every entry to the next free IDs (main already has a different D-156). Review and landing by a model other than Claude, which wrote it (D-151). Docs only."
   },
