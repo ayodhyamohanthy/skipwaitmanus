@@ -1606,3 +1606,23 @@ describe("an agent is never stuck on its own limits (D-200 (5))", () => {
     expect(build).not.toContain("report it blocked to avoid");
   });
 });
+
+// D-200: two switch-only claims on one wiring file never make two tasks wait for each other (#649).
+describe("switch-only claims share a file", () => {
+  it("two switch-only claims on the same file do not overlap; a full claim still overlaps a switch-only one", () => {
+    expect(core.ownsOverlap(["server/_core/index.ts (switch only)"], ["server/_core/index.ts (switch only)"])).toBe(false);
+    expect(core.ownsOverlap(["server/_core/index.ts (switch only)"], ["server/_core/index.ts"])).toBe(true);
+    expect(core.ownsOverlap(["server/_core/index.ts"], ["server/_core/"])).toBe(true);
+    expect(core.ownsOverlap(["server/_core/index.ts (switch only)"], ["server/_core/"])).toBe(true);
+  });
+
+  it("the registry accepts two open tasks that each hold a switch-only claim on one file", () => {
+    const doc = { version: 1, repo: "o/r", tasks: [
+      { ...task("A"), packet: "docs/plans/p.md", owns: ["server/a.ts", "server/_core/index.ts (switch only)"] },
+      { ...task("B"), packet: "docs/plans/p.md", owns: ["server/b.ts", "server/_core/index.ts (switch only)"] },
+    ] };
+    expect(validateAssignments(doc, () => true).filter(e => e.includes("overlapping"))).toEqual([]);
+    const full = { ...doc, tasks: [doc.tasks[0], { ...doc.tasks[1], owns: ["server/b.ts", "server/_core/index.ts"] }] };
+    expect(validateAssignments(full, () => true).filter(e => e.includes("overlapping"))).toHaveLength(1);
+  });
+});

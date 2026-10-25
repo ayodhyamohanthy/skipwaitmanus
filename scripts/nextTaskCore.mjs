@@ -81,7 +81,10 @@ const under = (child, parent) => !parent || child === parent || child.startsWith
 export function ownsOverlap(a, b) {
   const left = Array.isArray(a) ? a : [];
   const right = Array.isArray(b) ? b : [];
-  return left.some(x => right.some(y => under(ownsPrefix(x), ownsPrefix(y)) || under(ownsPrefix(y), ownsPrefix(x))));
+  // Two switch-only claims on one file are a few wiring lines each (scope-check caps every
+  // switch-only change at SWITCH_ONLY_LINE_LIMIT lines), which git merges, so neither waits (D-200).
+  const bothSwitches = (x, y) => ownsEntry(x).switchOnly && ownsEntry(y).switchOnly;
+  return left.some(x => right.some(y => !bothSwitches(x, y) && (under(ownsPrefix(x), ownsPrefix(y)) || under(ownsPrefix(y), ownsPrefix(x)))));
 }
 
 const DOC_KEYS = ["version", "repo", "decidedBy", "updated", "rules", "tasks"];
