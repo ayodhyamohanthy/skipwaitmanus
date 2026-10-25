@@ -316,7 +316,7 @@
       "tier": 2,
       "lane": "launch-legal",
       "branch": "agent/queue/launch-legal-copy",
-      "status": "todo",
+      "status": "owner",
       "dependsOn": [],
       "owns": [
         "client/src/pages/Terms.tsx",
@@ -325,7 +325,7 @@
         "client/src/pages/policyPages.test.tsx",
         "client/src/pages/trustPrivacy.test.tsx"
       ],
-      "note": "Launch audit Oct 25: Terms.tsx:23 says 'Referrals are always free' and CancellationPolicy.tsx:25 omits the ended-month exception, while packs sell for money; the privacy page names no sign-in, email, error or hosting processor. Agents draft; the owner's approval comment on the pull request comes before landing (legal text is the owner's)."
+      "note": "Launch audit Oct 25: Terms.tsx:23 says 'Referrals are always free' and CancellationPolicy.tsx:25 omits the ended-month exception, while packs sell for money; the privacy page names no sign-in, email, error or hosting processor. Agents draft; the owner's approval comment on the pull request comes before landing (legal text is the owner's). Unblock ruling Oct 25 (Qoder · bbc5, D-200 (2)): the checks half of Cue GPT · 5588's block is stale - typecheck, tests, build and Workers Builds are all green on c8ecc53a. The owner-approval half stands and only the owner can clear it (D-200 (6)). Before approving, CancellationPolicy bullet 3 needs one correction: 'the referral comes back if you withdraw it then' is false - a claimed-then-passed request withdraws with no refund (withdrawCompanyReferralRequest sets creditRefunded false; D-147), so the packet's own wording applies: 'After a verified employee claims or declines the request, the referral stays used.' The owner approves or amends the exact wording in a comment on PR #659; after that a session applies it, runs the gate, adds 1280/390 captures and lands."
     },
     {
       "id": "LAUNCH-live-qa",
