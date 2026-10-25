@@ -2123,16 +2123,88 @@
    "id": "D-048-P-marketing",
    "title": "D-048 phase 3 marketing packet (landing, wall, jobs, public profile)",
    "row": "D-048",
-   "packet": null,
+   "packet": "docs/plans/D-048-marketing.md",
    "tier": 3,
    "lane": "d048-packets",
    "branch": "agent/queue/d048-p-marketing",
-   "status": "architect",
+   "status": "done",
    "dependsOn": [
     "D-048-phase-3",
     "D-048-P-account"
    ],
-   "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md and the landing contract in docs/plans/GOAL_UI_MIGRATION.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+   "note": "Packet-only (D-134): packet prepared at docs/plans/D-048-marketing.md (AYO-11 design lane); the child rows below were added exactly from the packet and the split. Coordinator landing; the empty claim marker branch agent/architect/d048-p-marketing (Claude Code · e11c) is preserved.",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-home-signed-in",
+   "title": "W7 home (/) signed-in: seeker -> /explore, verified referrer -> /referrer-home (server verdict); fetch-free loading frame",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-marketing.md",
+   "tier": 2,
+   "lane": "d048-home",
+   "branch": "agent/queue/d048-p3-home-signed-in",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-static-frame",
+    "D-048-P-marketing",
+    "D-048-F-flags",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/Home.tsx",
+    "client/src/pages/goal/home/**",
+    "client/src/pages/homeSignedIn.goal.test.tsx",
+    "design/goal-ui/captures/home/**"
+   ],
+   "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-flags dependency - both rows edit client/src/pages/Home.tsx; the foundation row lands first and this row adds its switch on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('home-signed-in').",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-discovery",
+   "title": "W7 /wall and /jobs (featured stays labelled, D-040)",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-marketing.md",
+   "tier": 2,
+   "lane": "d048-discovery",
+   "branch": "agent/queue/d048-p3-discovery",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-static-frame",
+    "D-048-P-marketing",
+    "D-048-F-harness",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/OpportunityWall.tsx",
+    "client/src/pages/JobExplorer.tsx",
+    "client/src/pages/goal/discovery/**",
+    "scripts/kit-screens/fixtures/*__goal-discovery-*.json",
+    "design/goal-ui/captures/discovery/**"
+   ],
+   "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-harness dependency - fixture globs share the kit-screens/fixtures folder; the harness row lands first and this row adds its fixtures on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('discovery').",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-public-profile",
+   "title": "W7 /p/:handle; reuses profile lane goal parts; shows only what visibility allows",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-marketing.md",
+   "tier": 1,
+   "lane": "d048-profile",
+   "branch": "agent/queue/d048-p3-public-profile",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-static-frame",
+    "D-048-p3-profile",
+    "D-048-P-marketing",
+    "D-048-F-goal-check"
+   ],
+   "owns": [
+    "client/src/pages/PublicProfile.tsx",
+    "client/src/pages/goal/public-profile/**",
+    "design/goal-ui/captures/public-profile/**"
+   ],
+   "note": "Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('public-profile').",
    "epic": "D-048-p3"
   },
   {
