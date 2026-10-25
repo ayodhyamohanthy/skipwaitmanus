@@ -54,5 +54,5 @@ Three pull requests from before the queue gate (D-166) fail CI only because thei
   - #566 itself never lands. It stays a draft for reference, and the last of those rows closes it with a pointer.
 
 ## Status
-- `D-048-fix-signin-click-loading`: registered by this packet's PR; waiting for that PR to reach `main`.
+- `D-048-fix-signin-click-loading`: D-207 UNBLOCK ruling recorded. The independent Tier 1 PASS is recorded by the picker; all four checks are green on PR #595 head `3bb96f91`, and main CI is green on `30a3834b`. PR #595 remains a draft. Status is `owner`, not done: the owner must mark it ready and merge under D-200; no agent merges or bypasses it. The exact failing URL remains a non-blocking open evidence item.
 - `D-048-fix-send-ask-blocker`: registered by this packet's PR; waits for `D-132-audit`.
