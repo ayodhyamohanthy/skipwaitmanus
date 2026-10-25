@@ -1569,15 +1569,68 @@
    "id": "D-048-P-auth",
    "title": "D-048 phase 3 auth lane packet: its cluster rows from the split, with owned paths",
    "row": "D-048",
-   "packet": null,
+   "packet": "docs/plans/D-048-auth.md",
    "tier": 3,
    "lane": "d048-packets",
    "branch": "agent/queue/d048-p-auth",
-   "status": "architect",
+   "status": "done",
    "dependsOn": [
     "D-048-phase-3"
    ],
-   "note": "Packet-only (D-134): any agent writes it (D-109) from docs/plans/D-048-phase-3-split.md; its pull request adds exactly the rows the split's \"Rows each packet adds\" list gives it and sets this row to done. Open design questions are decided in the split under D-123.",
+   "note": "Packet-only (D-134): packet prepared at docs/plans/D-048-auth.md; the two child rows below were added exactly from docs/plans/D-048-phase-3-split.md.",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-verify",
+   "title": "W2 /verify work-email code: the referrer login on the goal surface",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-auth.md",
+   "tier": 1,
+   "lane": "d048-verify",
+   "branch": "agent/queue/d048-p3-verify",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-harness",
+    "D-048-F-primitives",
+    "D-048-F-goal-check",
+    "D-048-P-auth"
+   ],
+   "owns": [
+    "client/src/pages/Verify.tsx (switch only)",
+    "client/src/pages/goal/verify/**",
+    "client/src/pages/verifyGoal.test.tsx",
+    "client/src/components/verify/VerifyPanels.tsx",
+    "design/goal-ui/captures/verify/**"
+   ],
+   "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('verify'); verify.test.tsx and loginRule.test.tsx stay unedited and green with it on; D-048-F-goal-check per D-167; owns verify/VerifyPanels.tsx per GOAL_UI_COVERAGE §4.",
+   "epic": "D-048-p3"
+  },
+  {
+   "id": "D-048-p3-signin",
+   "title": "W2 /sign-in, /forgot-password, /reset-password and /reviewer-sign-in on the goal surface",
+   "row": "D-048",
+   "packet": "docs/plans/D-048-auth.md",
+   "tier": 1,
+   "lane": "d048-auth",
+   "branch": "agent/queue/d048-p3-signin",
+   "status": "todo",
+   "dependsOn": [
+    "D-048-F-static-frame",
+    "D-048-F-primitives",
+    "D-048-F-goal-check",
+    "D-048-P-auth",
+    "seeker-passwords"
+   ],
+   "owns": [
+    "client/src/pages/SignIn.tsx (switch only)",
+    "client/src/pages/ForgotPassword.tsx (switch only)",
+    "client/src/pages/ResetPassword.tsx (switch only)",
+    "client/src/pages/ReviewerSignIn.tsx (switch only)",
+    "client/src/pages/goal/sign-in/**",
+    "client/src/pages/signInGoal.test.tsx",
+    "design/goal-ui/captures/sign-in/**"
+   ],
+   "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on; D-048-F-goal-check per D-167; /reviewer-sign-in stays behind REVIEWER_LOGIN_ENABLED, fixed demo accounts only (D-167).",
    "epic": "D-048-p3"
   },
   {
