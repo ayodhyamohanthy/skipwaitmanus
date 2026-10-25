@@ -446,6 +446,11 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         record({ action: "billing.unlinked_subscription", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType, reason: applied.reason ?? "unknown", itemPriceId: subscription.itemPriceId } });
         void deps.alertRetiredPlanEvent?.({ eventId: subscription.eventId, eventType: subscription.eventType, reason: "unlinked_subscription", subscriptionId: subscription.subscriptionId, itemPriceId: subscription.itemPriceId }).catch(() => undefined);
       }
+      if (applied?.status !== "duplicate" && applied?.reason === "reviewer_account") {
+        console.error("[Chargebee] payment on a demo review account needs owner review", { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId });
+        record({ action: "billing.reviewer_account_event", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType, itemPriceId: subscription.itemPriceId } });
+        void deps.alertRetiredPlanEvent?.({ eventId: subscription.eventId, eventType: subscription.eventType, reason: "reviewer_account", subscriptionId: subscription.subscriptionId, itemPriceId: subscription.itemPriceId }).catch(() => undefined);
+      }
       if (applied?.status !== "duplicate" && (retired || unsupported)) {
         const reason = retired ? PLAN_RETIRED_CODE : "unsupported_plan";
         console.error(`[Chargebee] ${retired ? "retired" : "unrecognised"} plan event needs review`, { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId, reason });

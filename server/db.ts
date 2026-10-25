@@ -1,4 +1,5 @@
 import { enqueueBillingReviewTx } from "./billingReviewOutbox";
+import { isReviewerOpenId } from "./_core/reviewerLogin";
 import { buildReferrerHome, monthStartUtc } from "./referrerHome";
 import { enrichInboxRow } from "./inboxEnrichment";
 import { transitionNotificationKind } from "./notificationKinds";
@@ -4571,6 +4572,16 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
       await keepHeldPaymentEvidenceTx(tx, intent[0], input);
       return { status: "ignored" as const, reason: "payment_already_reconciled" };
     }
+    // REVIEWER-ISOLATION-1: a real payment on a demo review checkout grants nothing.
+    // Park it for the owner like an amount mismatch so it is cancelled/refunded by hand.
+    const reviewerBuyer = (await tx.select({ openId: users.openId }).from(users).where(eq(users.id, intent[0].userId)).limit(1))[0];
+    if (reviewerBuyer && isReviewerOpenId(reviewerBuyer.openId)) {
+      const reviewedAt = new Date();
+      const parked = await tx.update(paymentFulfillments).set({ providerEventId: input.eventId, providerInvoiceId: input.invoiceId ?? null, status: "requires_review", reconciliationReason: "reviewer_account", lastCheckedAt: reviewedAt }).where(and(eq(paymentFulfillments.id, intent[0].id), eq(paymentFulfillments.status, "pending")));
+      if (Number(parked[0]?.affectedRows ?? 0) !== 1) return { status: "ignored" as const, reason: "payment_already_reconciled" };
+      await tx.insert(operationalActivityLogs).values({ actorUserId: intent[0].userId, action: "billing.reviewer_account_payment", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(intent[0].id), metadata: JSON.stringify({ role: intent[0].role, amount: input.amount, currency: input.currency, invoiceId: input.invoiceId ?? null }) });
+      return { status: "requires_review" as const, reason: "reviewer_account" as const, paymentId: intent[0].id, userId: intent[0].userId, role: intent[0].role, expectedAmount: intent[0].amount, expectedCurrency: intent[0].currency, paidAmount: input.amount, paidCurrency: input.currency };
+    }
     if (intent[0].amount !== input.amount || intent[0].currency !== input.currency) {
       // A paid invoice that disagrees with the checkout (tax, coupon, rounding,
       // catalog drift) must never be dropped quietly: the user has paid. Park
@@ -4887,6 +4898,15 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     const startsNewTerm = !currentSubscription?.subscriptionCurrentTermStart || (input.currentTermStart && currentSubscription.subscriptionCurrentTermStart.getTime() !== input.currentTermStart.getTime());
     const userId = wallet?.userId ?? intent!.userId;
     const role = wallet?.role ?? intent!.role;
+    // REVIEWER-ISOLATION-1: a real subscription on a demo review account grants nothing.
+    // The event is recorded (redelivery is a duplicate) and logged for the owner to
+    // cancel and refund in Chargebee; the webhook route alerts on this reason.
+    const reviewerSubscriber = (await tx.select({ openId: users.openId }).from(users).where(eq(users.id, userId)).limit(1))[0];
+    if (reviewerSubscriber && isReviewerOpenId(reviewerSubscriber.openId)) {
+      await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+      await tx.insert(operationalActivityLogs).values({ actorUserId: userId, action: "billing.reviewer_account_subscription", outcome: "failure", resourceType: "chargebee_subscription", resourceId: input.subscriptionId, metadata: JSON.stringify({ eventId: input.eventId, eventType: input.eventType, itemPriceId: input.itemPriceId ?? null }) });
+      return { status: "ignored" as const, reason: "reviewer_account" };
+    }
     const now = new Date();
     // Credit ledger: a webhook-confirmed new term opens a plan cycle (plan_grant row) after the
     // previous cycle's leftover is carried or expired; an update inside the term keeps the cycle.
