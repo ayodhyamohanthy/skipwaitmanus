@@ -1100,7 +1100,7 @@
       "tier": 2,
       "lane": "design-core",
       "branch": "agent/queue/d048-f-harness",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-p3-w0-shell"
       ],
@@ -1111,7 +1111,8 @@
         "scripts/kit-screens/fixtures/00_goal-*.json",
         "scripts/kitScreenFixtures.test.ts",
         "docs/plans/D-048-capture-checklist.md"
-      ]
+      ],
+      "note": "Done - 4f8a50e3 and 4517d119 (Instinct Agent, Oct 23): renderGoalSurface harness and its no-network test, capture.mjs --goal, six synthetic 00_goal fixtures, docs/plans/D-048-capture-checklist.md. Status flipped on Oct 26 after checking every owned path on main and running goalShellHarness.test.tsx and kitScreenFixtures.test.ts (239 passed). It had held 11 page rows."
     },
     {
       "id": "D-048-F-credits",
