@@ -20,7 +20,9 @@ vi.mock("./cookies", () => ({ getSessionCookieOptions: () => ({ httpOnly: true, 
 import { registerGoogleOneTapRoutes } from "./googleOneTap";
 
 function app() { const a = express(); a.use(express.json()); registerGoogleOneTapRoutes(a); return a; }
-const VALID_PAYLOAD = { sub: "goog-123", email: "priya@example.com", email_verified: true, name: "Priya" };
+const NONCE = "nonce-1";
+const VALID_PAYLOAD = { sub: "goog-123", email: "priya@example.com", email_verified: true, name: "Priya", nonce: NONCE };
+const withNonce = (r: request.Test) => r.set("Cookie", `google_one_tap_nonce=${NONCE}`);
 
 describe("google one tap verify route", () => {
   beforeEach(() => {
@@ -35,12 +37,12 @@ describe("google one tap verify route", () => {
 
   it("404s while the flag is off", async () => {
     delete process.env.GOOGLE_ONE_TAP_ENABLED;
-    const res = await request(app()).post("/api/auth/google-one-tap/verify").send({ credential: "x" });
+    const res = await withNonce(request(app()).post("/api/auth/google-one-tap/verify")).send({ credential: "x" });
     expect(res.status).toBe(404);
     expect(mocks.jwtVerify).not.toHaveBeenCalled();
   });
   it("verifies the token against Google JWKS with the configured audience and issuers", async () => {
-    await request(app()).post("/api/auth/google-one-tap/verify").send({ credential: "tok" });
+    await withNonce(request(app()).post("/api/auth/google-one-tap/verify")).send({ credential: "tok" });
     expect(mocks.jwtVerify).toHaveBeenCalledWith("tok", "jwks", {
       issuer: ["https://accounts.google.com", "accounts.google.com"],
       audience: "test-client.apps.googleusercontent.com",
@@ -48,24 +50,24 @@ describe("google one tap verify route", () => {
   });
   it("rejects when the token fails verification", async () => {
     mocks.jwtVerify.mockRejectedValue(new Error("bad signature"));
-    const res = await request(app()).post("/api/auth/google-one-tap/verify").send({ credential: "tok" });
+    const res = await withNonce(request(app()).post("/api/auth/google-one-tap/verify")).send({ credential: "tok" });
     expect(res.status).toBe(400);
     expect(mocks.resolveLoginIdentity).not.toHaveBeenCalled();
   });
   it("rejects a token whose email Google has not verified", async () => {
     mocks.jwtVerify.mockResolvedValue({ payload: { ...VALID_PAYLOAD, email_verified: false } });
-    const res = await request(app()).post("/api/auth/google-one-tap/verify").send({ credential: "tok" });
+    const res = await withNonce(request(app()).post("/api/auth/google-one-tap/verify")).send({ credential: "tok" });
     expect(res.status).toBe(400);
     expect(mocks.resolveLoginIdentity).not.toHaveBeenCalled();
   });
   it("links identity via the canonical-person mechanism with the Google-verified email", async () => {
-    await request(app()).post("/api/auth/google-one-tap/verify").send({ credential: "tok" });
+    await withNonce(request(app()).post("/api/auth/google-one-tap/verify")).send({ credential: "tok" });
     expect(mocks.resolveLoginIdentity).toHaveBeenCalledWith(expect.objectContaining({
       provider: "google_one_tap", subject: "goog-123", email: "priya@example.com", emailVerified: true, loginMethod: "google_one_tap",
     }));
   });
   it("mints the session with the RESOLVED account openId and sets the same cookie as OTP", async () => {
-    const res = await request(app()).post("/api/auth/google-one-tap/verify").send({ credential: "tok" });
+    const res = await withNonce(request(app()).post("/api/auth/google-one-tap/verify")).send({ credential: "tok" });
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ signedIn: true, email: "priya@example.com" });
     expect(mocks.createSessionToken).toHaveBeenCalledWith("user_canonical1", expect.anything());
@@ -73,19 +75,36 @@ describe("google one tap verify route", () => {
   });
   it("never signs in a work-email (referrer) account through the chooser", async () => {
     mocks.resolveLoginIdentity.mockResolvedValue({ id: 9, openId: "workemail_emp@acme.com", name: "Emp", role: "user", suspended: false });
-    const res = await request(app()).post("/api/auth/google-one-tap/verify").send({ credential: "tok" });
+    const res = await withNonce(request(app()).post("/api/auth/google-one-tap/verify")).send({ credential: "tok" });
     expect(res.status).toBe(403);
     expect(mocks.createSessionToken).not.toHaveBeenCalled();
   });
   it("refuses suspended identities and identity-review cases without a session", async () => {
     mocks.resolveLoginIdentity.mockRejectedValue(new Error("ACCOUNT_NOT_ACTIVE"));
-    const res = await request(app()).post("/api/auth/google-one-tap/verify").send({ credential: "tok" });
+    const res = await withNonce(request(app()).post("/api/auth/google-one-tap/verify")).send({ credential: "tok" });
     expect(res.status).toBe(403);
     expect(mocks.createSessionToken).not.toHaveBeenCalled();
   });
+  it("nonce endpoint issues an httpOnly cookie + body nonce; 404 while the flag is off", async () => {
+    const on = await request(app()).get("/api/auth/google-one-tap/nonce");
+    expect(on.status).toBe(200);
+    expect(typeof on.body.nonce).toBe("string");
+    expect(on.headers["set-cookie"]?.join(";")).toContain("google_one_tap_nonce=");
+    delete process.env.GOOGLE_ONE_TAP_ENABLED;
+    const off = await request(app()).get("/api/auth/google-one-tap/nonce");
+    expect(off.status).toBe(404);
+  });
+  it("rejects when the token nonce does not match the httpOnly cookie (login CSRF)", async () => {
+    const noCookie = await request(app()).post("/api/auth/google-one-tap/verify").send({ credential: "tok" });
+    expect(noCookie.status).toBe(400);
+    mocks.jwtVerify.mockResolvedValue({ payload: { ...VALID_PAYLOAD, nonce: "other" } });
+    const mismatch = await withNonce(request(app()).post("/api/auth/google-one-tap/verify")).send({ credential: "tok" });
+    expect(mismatch.status).toBe(400);
+    expect(mocks.resolveLoginIdentity).not.toHaveBeenCalled();
+  });
   it("503s when the client id is not configured", async () => {
     delete process.env.GOOGLE_ONE_TAP_CLIENT_ID;
-    const res = await request(app()).post("/api/auth/google-one-tap/verify").send({ credential: "tok" });
+    const res = await withNonce(request(app()).post("/api/auth/google-one-tap/verify")).send({ credential: "tok" });
     expect(res.status).toBe(503);
   });
 });

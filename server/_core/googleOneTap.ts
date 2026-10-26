@@ -13,6 +13,7 @@
  * Flag: in-code constant, off until QA (D-097). Production needs the OAuth
  * client's consent/origin config settled - the route 404s until then.
  */
+import { randomBytes } from "node:crypto";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Express, Request, Response } from "express";
 import { COOKIE_NAME } from "@shared/const";
@@ -32,7 +33,22 @@ function oneTapOn() {
 const GOOGLE_JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
 const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
 
+const NONCE_COOKIE = "google_one_tap_nonce";
+const NONCE_TTL_MS = 10 * 60 * 1000;
+
 export function registerGoogleOneTapRoutes(app: Express) {
+  // Login-CSRF binding: the page fetches a nonce, the server sets it as an
+  // httpOnly cookie, the GIS prompt embeds it in the ID token, and verify
+  // requires token-nonce == cookie. A token harvested elsewhere never matches
+  // the victim's cookie, so an attacker cannot log a victim into the
+  // attacker's account.
+  app.get("/api/auth/google-one-tap/nonce", (req: Request, res: Response) => {
+    if (!oneTapOn()) return res.status(404).json({ error: "Not found" });
+    const nonce = randomBytes(24).toString("base64url");
+    res.cookie(NONCE_COOKIE, nonce, { ...getSessionCookieOptions(req), maxAge: NONCE_TTL_MS });
+    res.json({ nonce });
+  });
+
   app.post("/api/auth/google-one-tap/verify", async (req: Request, res: Response) => {
     if (!oneTapOn()) return res.status(404).json({ error: "Not found" });
     try {
@@ -42,7 +58,11 @@ export function registerGoogleOneTapRoutes(app: Express) {
       if (typeof credential !== "string" || credential.length > 8192) {
         return res.status(400).json({ error: "That Google sign-in could not be verified. Try again." });
       }
+      const cookieNonce = req.headers.cookie?.match(/(?:^|;\s*)google_one_tap_nonce=([^;]+)/)?.[1];
       const { payload } = await jwtVerify(credential, GOOGLE_JWKS, { issuer: GOOGLE_ISSUERS, audience: clientId });
+      if (!cookieNonce || String(payload.nonce ?? "") !== cookieNonce) {
+        return res.status(400).json({ error: "That Google sign-in could not be verified. Try again." });
+      }
       const sub = String(payload.sub ?? "");
       const email = String(payload.email ?? "").trim().toLowerCase();
       const emailVerified = payload.email_verified === true || payload.email_verified === "true";

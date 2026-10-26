@@ -15,7 +15,7 @@ import { useEffect } from "react";
 declare global {
   interface Window {
     google?: { accounts?: { id?: {
-      initialize: (config: { client_id: string; callback: (response: { credential: string }) => void }) => void;
+      initialize: (config: { client_id: string; callback: (response: { credential: string }) => void; nonce?: string }) => void;
       prompt: () => void;
     } } };
   }
@@ -44,10 +44,18 @@ export function GoogleOneTap({ returnTo }: { returnTo: string }) {
   useEffect(() => {
     if (!clientId) return; // not configured: no chooser, ordinary sign-in stands
     let cancelled = false;
-    loadGis().then(() => {
+    loadGis().then(async () => {
       if (cancelled || !window.google?.accounts?.id) return;
+      // Login-CSRF binding: the server sets this nonce as an httpOnly cookie
+      // and requires it back inside the ID token. A 404 here (flag off) also
+      // means no prompt at all.
+      const nonceRes = await fetch("/api/auth/google-one-tap/nonce", { credentials: "same-origin" });
+      if (!nonceRes.ok) return;
+      const { nonce } = await nonceRes.json();
+      if (cancelled || !nonce) return;
       window.google.accounts.id.initialize({
         client_id: clientId,
+        nonce,
         callback: async ({ credential }) => {
           try {
             const res = await fetch("/api/auth/google-one-tap/verify", {
