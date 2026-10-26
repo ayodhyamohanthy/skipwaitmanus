@@ -2665,7 +2665,8 @@
       "status": "todo",
       "dependsOn": [
         "D-174-held-ask-reconfirm",
-        "D-048-F-credits"
+        "D-048-F-credits",
+        "D-099-bonus-pages"
       ],
       "owns": [
         "shared/moneyCopy.ts",
@@ -2679,7 +2680,7 @@
         "client/src/components/AppShell.tsx",
         "client/src/pages/MyRequests.tsx"
       ],
-      "note": "Frozen referral-only terminology (user originals Oct 23 23:16-23:24 + Oct 24 03:33-03:37; docs PR 617): user-facing wording says referrals only - My asks->My referrals, Send ask->Request referral, Ask sent->Referral requested (never completed), no user-facing credits. Presentation only: no behavior, charge, card-eligibility or spend-order change; requested/accepted/submitted stages unchanged; internal identifiers and API routes unchanged. moneyCopy wording matches the plan model in force at build time (D-042). Covers server/planGates.ts:60. SeekerConversation back label belongs to D-048-p3-live-review-conversation (routed); goal shell pill is PR 598; assistants labels are D-180-money-label. Waits on D-174 and D-048-F-credits for shared file ownership."
+      "note": "Frozen referral-only terminology (user originals Oct 23 23:16-23:24 + Oct 24 03:33-03:37; docs PR 617): user-facing wording says referrals only - My asks->My referrals, Send ask->Request referral, Ask sent->Referral requested (never completed), no user-facing credits. Presentation only: no behavior, charge, card-eligibility or spend-order change; requested/accepted/submitted stages unchanged; internal identifiers and API routes unchanged. moneyCopy wording matches the plan model in force at build time (D-042). Covers server/planGates.ts:60. SeekerConversation back label belongs to D-048-p3-live-review-conversation (routed); goal shell pill is PR 598; assistants labels are D-180-money-label. Waits on D-174, D-048-F-credits and D-099-bonus-pages for shared file ownership (D-099 holds moneyCopy.ts switch-only)."
     }
   ]
 }
