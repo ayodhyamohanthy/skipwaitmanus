@@ -5,7 +5,7 @@
 import { and, eq, gt, isNotNull, isNull, or, type SQL } from "drizzle-orm";
 import { referralRequests } from "../drizzle/schema";
 import { ASSISTANT_PLAN_REQUIRED_MESSAGE } from "../shared/assistant";
-import { COMPANY_CAP_REACHED, SLOT_CAP_REACHED, companyCapCopy, slotsFullCopy, type OpenAskSlots } from "../shared/openAskSlots";
+import { COMPANY_CAP_REACHED, COMPANY_COVERAGE_CHANGED, SLOT_CAP_REACHED, companyCapCopy, slotsFullCopy, type OpenAskSlots } from "../shared/openAskSlots";
 import { SHOWCASE_HARD_CAP, type PlanEntitlements } from "../shared/planEntitlements";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
 import { ASK_TTL_MS } from "../shared/referral";
@@ -49,6 +49,17 @@ export class CompanyCapReachedError extends Error {
     this.name = "CompanyCapReachedError";
     this.companyDomain = companyDomain;
     this.open = open;
+  }
+}
+
+/** Thrown before any side effect when an ask composed as free-waiting meets a company that has since opened up: committing it would charge immediately after a no-spend representation. */
+export class CoverageOpenedUpError extends Error {
+  readonly code = COMPANY_COVERAGE_CHANGED;
+  readonly companyDomain: string;
+  constructor(companyDomain: string) {
+    super("This company just opened up to referrals, so sending now uses its cost in credits. Nothing was sent and nothing was charged - check the live price and send again if it works for you.");
+    this.name = "CoverageOpenedUpError";
+    this.companyDomain = companyDomain;
   }
 }
 
