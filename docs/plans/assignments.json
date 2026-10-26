@@ -2665,7 +2665,7 @@
       "lane": "terminology",
       "branch": "agent/copy/free-asks-chip-terminology",
       "status": "in-review",
-      "dependsOn": ["D-174-held-ask-reconfirm", "LAUNCH-legal-copy", "D-048-p3-live-review-find", "D-174-fix-post-binding", "D-176-public-claims"],
+      "dependsOn": ["D-174-held-ask-reconfirm", "LAUNCH-legal-copy", "D-048-p3-live-review-find", "D-174-fix-post-binding", "D-176-public-claims", "D-048-dark-mode", "D-099-bonus-pages"],
       "owns": [
         "shared/moneyCopy.ts",
         "client/index.html",
