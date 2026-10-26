@@ -2722,11 +2722,12 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
   const request = locked?.request;
   if (!locked || !request || request.status !== "pending" || !request.waitingForCoverage) return { outcome: "settled", requestId: input.requestId };
   if (request.jobSeekerId === input.referrerId) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
-  // Ask → invite → profile is the BYOR lock order. A live reservation is a
-  // hard delivery target, not a hint: another employee must leave it waiting.
-  const invite = (await tx.select({ id: askInviteLinks.id, status: askInviteLinks.status, claimedByUserId: askInviteLinks.claimedByUserId, reservationExpiresAt: askInviteLinks.reservationExpiresAt })
-    .from(askInviteLinks).where(and(eq(askInviteLinks.referralRequestId, input.requestId), inArray(askInviteLinks.status, ["active", "claimed"])))
-    .orderBy(desc(askInviteLinks.id)).limit(1).for("update"))[0];
+  // Ask → invite → profile is the BYOR lock order; keep this reservation check off when BYOR is disabled.
+  const invite = process.env.BYOR_LINK_ENABLED === "true"
+    ? (await tx.select({ id: askInviteLinks.id, status: askInviteLinks.status, claimedByUserId: askInviteLinks.claimedByUserId, reservationExpiresAt: askInviteLinks.reservationExpiresAt })
+      .from(askInviteLinks).where(and(eq(askInviteLinks.referralRequestId, input.requestId), inArray(askInviteLinks.status, ["active", "claimed"])))
+      .orderBy(desc(askInviteLinks.id)).limit(1).for("update"))[0]
+    : undefined;
   const hasLiveReservation = invite?.status === "claimed" && invite.reservationExpiresAt !== null && new Date(invite.reservationExpiresAt).getTime() > input.nowMs;
   if (hasLiveReservation && invite.claimedByUserId !== input.referrerId) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
   const companyDomain = locked.companyDomain;
@@ -2790,9 +2791,11 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
 
 /** The company's waiting and held asks a hand-off may deliver, oldest queue position first. */
 async function listDeliverableWaitingAsksTx(tx: LedgerTx, input: { companyDomain: string; limit: number; nowMs: number }): Promise<Array<{ id: number; jobSeekerId: number }>> {
-  const reserved = await tx.select({ requestId: askInviteLinks.referralRequestId }).from(askInviteLinks)
-    .innerJoin(referralRequests, eq(referralRequests.id, askInviteLinks.referralRequestId)).innerJoin(jobs, eq(jobs.id, referralRequests.jobId))
-    .where(and(eq(jobs.company, input.companyDomain), eq(askInviteLinks.status, "claimed"), gt(askInviteLinks.reservationExpiresAt, new Date(input.nowMs))));
+  const reserved = process.env.BYOR_LINK_ENABLED === "true"
+    ? await tx.select({ requestId: askInviteLinks.referralRequestId }).from(askInviteLinks)
+      .innerJoin(referralRequests, eq(referralRequests.id, askInviteLinks.referralRequestId)).innerJoin(jobs, eq(jobs.id, referralRequests.jobId))
+      .where(and(eq(jobs.company, input.companyDomain), eq(askInviteLinks.status, "claimed"), gt(askInviteLinks.reservationExpiresAt, new Date(input.nowMs))))
+    : [];
   const excluded = Array.from(new Set(reserved.map(row => row.requestId))).map(id => ne(referralRequests.id, id));
   return tx.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId })
     .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id))
@@ -2867,9 +2870,11 @@ export async function tryDeliverWaitingAsk(requestId: number, nowMs: number = Da
     const current = (await tx.select({ request: referralRequests, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, requestId)).limit(1).for("update"))[0];
     if (!current || current.request.status !== "pending" || !current.request.waitingForCoverage) return { outcome: "settled", requestId };
     const wasHeld = current.request.coverageHeldAt !== null;
-    const reservation = (await tx.select({ claimedByUserId: askInviteLinks.claimedByUserId }).from(askInviteLinks)
-      .where(and(eq(askInviteLinks.referralRequestId, requestId), eq(askInviteLinks.status, "claimed"), gt(askInviteLinks.reservationExpiresAt, new Date(nowMs))))
-      .limit(1).for("update"))[0];
+    const reservation = process.env.BYOR_LINK_ENABLED === "true"
+      ? (await tx.select({ claimedByUserId: askInviteLinks.claimedByUserId }).from(askInviteLinks)
+        .where(and(eq(askInviteLinks.referralRequestId, requestId), eq(askInviteLinks.status, "claimed"), gt(askInviteLinks.reservationExpiresAt, new Date(nowMs))))
+        .limit(1).for("update"))[0]
+      : undefined;
     if (reservation?.claimedByUserId !== null && reservation?.claimedByUserId !== undefined) {
       return deliverWaitingAskTx(tx, { requestId, referrerId: reservation.claimedByUserId, nowMs });
     }

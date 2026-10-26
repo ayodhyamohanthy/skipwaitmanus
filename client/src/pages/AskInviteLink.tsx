@@ -8,7 +8,7 @@ import { BYOR_LINK } from "@/lib/flags";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { useRoute } from "wouter";
 
-const FAILURE_COPY = "We couldn’t open this invite link. Try again in a moment.";
+const FAILURE_COPY = "We couldn’t open this referral request link. Try again in a moment.";
 
 function useNoIndex(): void {
   useEffect(() => {
@@ -29,9 +29,9 @@ function useNoIndex(): void {
 }
 
 function claimOutcomeCopy(outcome: AskInviteClaimOutcome): string {
-  if (outcome === "delivered") return "You have this ask. It is now in your company inbox.";
-  if (outcome === "held") return "This ask is held for you. No credit was available, so it has not been delivered yet.";
-  return "This ask is reserved for you and will be delivered when you have room.";
+  if (outcome === "delivered") return "You have this referral request. It is now in your company inbox.";
+  if (outcome === "held") return "This referral request is held for you. No credit was available, so it has not been delivered yet.";
+  return "This referral request is reserved for you and will be delivered when you have room.";
 }
 
 function stateFromClaimError(error: AskInviteApiError): AskInviteLandingState | null {
@@ -59,7 +59,7 @@ function PageFrame({ children }: { children: React.ReactNode }) {
 function SignInAction({ token, companyName }: { token: string; companyName: string }) {
   return (
     <div className="grid gap-2">
-      <p className="text-g-meta text-g-ink-2">Sign in with a verified work email at {companyName || "this company"} to take this ask.</p>
+      <p className="text-g-meta text-g-ink-2">Sign in with a verified work email at {companyName || "this company"} to take this referral request.</p>
       <GoalButton asChild variant="primary"><a href={referrerSignInHref(`/r/${token}`)}>Use your company email</a></GoalButton>
     </div>
   );
@@ -145,22 +145,22 @@ export default function AskInviteLink() {
   };
 
   if (!BYOR_LINK || unavailable) {
-    return <PageFrame><section className="mx-auto max-w-xl rounded-g-tile border border-g-hairline bg-g-surface p-5 gdesk:p-7"><h1 className="text-g-heading text-g-ink">Invite link unavailable</h1><p role="status" className="mt-2 text-g-body text-g-ink-2">{ASK_INVITE_STATE_COPY.unavailable}</p></section></PageFrame>;
+    return <PageFrame><section className="mx-auto max-w-xl rounded-g-tile border border-g-hairline bg-g-surface p-5 gdesk:p-7"><h1 className="text-g-heading text-g-ink">Referral request unavailable</h1><p role="status" className="mt-2 text-g-body text-g-ink-2">{ASK_INVITE_STATE_COPY.unavailable}</p></section></PageFrame>;
   }
   if (!isLoaded || loading) {
-    return <PageFrame><section role="status" aria-busy="true" className="mx-auto max-w-xl rounded-g-tile border border-g-hairline bg-g-surface p-5 gdesk:p-7"><h1 className="text-g-heading text-g-ink">Opening this ask…</h1><p className="mt-2 text-g-body text-g-ink-2">Checking that the private invite is still available.</p></section></PageFrame>;
+    return <PageFrame><section role="status" aria-busy="true" className="mx-auto max-w-xl rounded-g-tile border border-g-hairline bg-g-surface p-5 gdesk:p-7"><h1 className="text-g-heading text-g-ink">Opening this referral request…</h1><p className="mt-2 text-g-body text-g-ink-2">Checking that this referral request link is still available.</p></section></PageFrame>;
   }
   if (loadError || !invite) {
-    return <PageFrame><section className="mx-auto max-w-xl rounded-g-tile border border-g-hairline bg-g-surface p-5 gdesk:p-7"><h1 className="text-g-heading text-g-ink">Invite link unavailable</h1><p role="alert" className="mt-2 text-g-body text-g-ink-2">{FAILURE_COPY}</p><GoalButton variant="ghost" className="mt-3" onClick={() => window.location.reload()}>Try again</GoalButton></section></PageFrame>;
+    return <PageFrame><section className="mx-auto max-w-xl rounded-g-tile border border-g-hairline bg-g-surface p-5 gdesk:p-7"><h1 className="text-g-heading text-g-ink">Referral request unavailable</h1><p role="alert" className="mt-2 text-g-body text-g-ink-2">{FAILURE_COPY}</p><GoalButton variant="ghost" className="mt-3" onClick={() => window.location.reload()}>Try again</GoalButton></section></PageFrame>;
   }
 
   if (claimOutcome) {
-    return <PageFrame><section className="mx-auto max-w-xl rounded-g-tile border border-g-hairline bg-g-surface p-5 gdesk:p-7"><p className="text-g-meta text-g-ink-3">Company referral ask</p><h1 className="mt-2 text-g-heading text-g-ink">You have a next step.</h1><p role="status" className="mt-3 text-g-body text-g-ink-2">{claimOutcomeCopy(claimOutcome)}</p></section></PageFrame>;
+    return <PageFrame><section className="mx-auto max-w-xl rounded-g-tile border border-g-hairline bg-g-surface p-5 gdesk:p-7"><p className="text-g-meta text-g-ink-3">Referral request</p><h1 className="mt-2 text-g-heading text-g-ink">You have a next step.</h1><p role="status" className="mt-3 text-g-body text-g-ink-2">{claimOutcomeCopy(claimOutcome)}</p></section></PageFrame>;
   }
 
   const terminal = invite.state !== "open" && invite.state !== "claimed_by_you";
   if (terminal) {
-    return <PageFrame><section className="mx-auto max-w-xl rounded-g-tile border border-g-hairline bg-g-surface p-5 gdesk:p-7"><h1 className="text-g-heading text-g-ink">Invite link status</h1><p role="status" className="mt-3 text-g-body text-g-ink-2">{ASK_INVITE_STATE_COPY[invite.state]}</p></section></PageFrame>;
+    return <PageFrame><section className="mx-auto max-w-xl rounded-g-tile border border-g-hairline bg-g-surface p-5 gdesk:p-7"><h1 className="text-g-heading text-g-ink">Referral request link status</h1><p role="status" className="mt-3 text-g-body text-g-ink-2">{ASK_INVITE_STATE_COPY[invite.state]}</p></section></PageFrame>;
   }
 
   const canClaim = isSignedIn && invite.lockedFileCount !== null;
@@ -168,25 +168,23 @@ export default function AskInviteLink() {
   return (
     <PageFrame>
       <section className="mx-auto max-w-xl rounded-g-tile border border-g-hairline bg-g-surface p-5 gdesk:p-7">
-        <p className="text-g-meta text-g-ink-3">A private ask shared with you</p>
+        <p className="text-g-meta text-g-ink-3">A private referral request shared with you</p>
         <p className="mt-2 text-g-body text-g-ink-2">{invite.companyName || "A company"}</p>
         <h1 className="mt-1 text-g-display text-g-ink">{invite.roleTitle || "Referral request"}</h1>
         {publicFacts.length ? <p className="mt-2 text-g-meta text-g-ink-2">{publicFacts.join(" · ")}</p> : null}
-        <p className="mt-4 text-g-body text-g-ink-2">{ASK_INVITE_STATE_COPY[invite.state]}</p>
+        <p role={invite.state === "claimed_by_you" ? "status" : undefined} className="mt-4 text-g-body text-g-ink-2">{ASK_INVITE_STATE_COPY[invite.state]}</p>
 
         {invite.note ? <div className="mt-5 border-t border-g-hairline pt-4"><h2 className="text-g-label text-g-ink">Why this role</h2><p className="mt-2 whitespace-pre-wrap text-g-body text-g-ink-2">{invite.note}</p></div> : null}
         {invite.lockedFileCount !== null ? <p className="mt-3 text-g-meta text-g-ink-2">{invite.lockedFileCount === 0 ? "No files are attached." : `${invite.lockedFileCount} ${invite.lockedFileCount === 1 ? "file stays" : "files stay"} locked until you accept.`} The seeker’s name and files remain hidden until acceptance.</p> : null}
 
-        {invite.state === "claimed_by_you" ? (
-          <p role="status" className="mt-5 rounded-g-tile bg-g-surface-sunken px-3 py-3 text-g-meta text-g-ink-2">You have this ask. Finish it when you are ready.</p>
-        ) : (
+        {invite.state === "open" ? (
           <div className="mt-6 grid gap-3">
-            {canClaim ? <GoalButton variant="primary" busy={claiming} busyLabel="Taking this ask…" onClick={() => { void claim(); }}>Take this ask</GoalButton> : claimError === "work_email" ? null : <SignInAction token={token} companyName={invite.companyName ?? ""} />}
-            {claimError === "work_email" ? <><p role="status" className="text-g-meta text-g-ink-2">Use a verified work email at {invite.companyName || "this company"} to take this ask.</p><GoalButton asChild variant="ghost"><a href={signInHref}>Sign in with your work email</a></GoalButton></> : null}
-            {claimError === "account_unavailable" ? <p role="status" className="text-g-meta text-g-ink-2">This account can’t take this ask right now.</p> : null}
-            {claimError === "retry" ? <p role="alert" className="text-g-meta text-g-ink-2">We couldn’t take this ask. It has not been changed; try again.</p> : null}
+            {canClaim ? <GoalButton variant="primary" busy={claiming} busyLabel="Taking this referral request…" onClick={() => { void claim(); }}>Take this referral request</GoalButton> : <SignInAction token={token} companyName={invite.companyName ?? ""} />}
+            {claimError === "work_email" ? <><p role="status" className="text-g-meta text-g-ink-2">Use a verified work email at {invite.companyName || "this company"} to take this referral request.</p><GoalButton asChild variant="ghost"><a href={signInHref}>Sign in with your work email</a></GoalButton></> : null}
+            {claimError === "account_unavailable" ? <p role="status" className="text-g-meta text-g-ink-2">This account can’t take this referral request right now.</p> : null}
+            {claimError === "retry" ? <p role="alert" className="text-g-meta text-g-ink-2">We couldn’t take this referral request. It has not been changed; try again.</p> : null}
           </div>
-        )}
+        ) : null}
       </section>
     </PageFrame>
   );

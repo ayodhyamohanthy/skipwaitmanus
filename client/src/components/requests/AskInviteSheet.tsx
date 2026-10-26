@@ -18,9 +18,9 @@ type AskInviteSheetProps = {
 
 function createErrorCopy(error: unknown): string {
   if (error instanceof AskInviteApiError && error.code === "weekly_link_cap") return "You’ve reached the weekly invite-link limit. Try again after a link leaves the seven-day window.";
-  if (error instanceof AskInviteApiError && error.code === "ask_not_waiting") return "This ask is no longer waiting, so it can’t hold a new invite link.";
-  if (error instanceof AskInviteApiError && error.code === "link_active") return "This ask already has an active link. Refresh your asks to see its status.";
-  return "We couldn’t create the invite link. Your ask is unchanged; try again.";
+  if (error instanceof AskInviteApiError && error.code === "ask_not_waiting") return "This referral request is no longer waiting, so it can’t have a new invite link.";
+  if (error instanceof AskInviteApiError && error.code === "link_active") return "This referral request already has an active link. Refresh your requests to see its status.";
+  return "We couldn’t create the invite link. Your referral request is unchanged; try again.";
 }
 
 export function AskInviteSheet({ requestId, companyName, roleTitle, waitingForInvite, invite, getToken, onChanged }: AskInviteSheetProps) {
@@ -77,8 +77,8 @@ export function AskInviteSheet({ requestId, companyName, roleTitle, waitingForIn
     if (!linkToShare || !canNativeShare) return;
     try {
       await navigator.share({
-        title: `Invite someone to review your ask at ${companyName}`,
-        text: `Could you take a look at my ${roleTitle || "job referral"} ask at ${companyName}?`,
+        title: `Invite someone to review your referral request at ${companyName}`,
+        text: `Could you take a look at my ${roleTitle || "referral request"} at ${companyName}?`,
         url: linkToShare,
       });
     } catch {
@@ -96,13 +96,13 @@ export function AskInviteSheet({ requestId, companyName, roleTitle, waitingForIn
       setOpen(false);
       await onChanged();
     } catch {
-      setError("We couldn’t revoke the invite link. It is unchanged; try again.");
+      setError("We couldn’t revoke the invite link. Your referral request is unchanged; try again.");
     } finally {
       setRevoking(false);
     }
   };
 
-  if (finished) return <p role="status" className="px-3 pb-2 text-g-meta text-g-ink-2">Your insider has it</p>;
+  if (finished) return <p role="status" className="px-3 pb-2 text-g-meta text-g-ink-2">Your insider has your referral request.</p>;
   if (!waitingForInvite) return null;
 
   return (
@@ -125,7 +125,7 @@ export function AskInviteSheet({ requestId, companyName, roleTitle, waitingForIn
             <header className="flex items-start gap-3 border-b border-g-hairline px-5 py-4">
               <div className="min-w-0 flex-1">
                 <Dialog.Title className="text-g-heading text-g-ink">Invite someone you know</Dialog.Title>
-                <Dialog.Description className="mt-1 text-g-meta text-g-ink-2">A private link for your waiting ask at {companyName}.</Dialog.Description>
+                <Dialog.Description className="mt-1 text-g-meta text-g-ink-2">A private link for your waiting referral request at {companyName}.</Dialog.Description>
               </div>
               <Dialog.Close asChild><GoalIconButton icon={X} aria-label="Close invite sheet" /></Dialog.Close>
             </header>
@@ -135,7 +135,7 @@ export function AskInviteSheet({ requestId, companyName, roleTitle, waitingForIn
                 <section role="alertdialog" aria-labelledby={`ask-invite-revoke-title-${requestId}`} className="grid content-start gap-4 rounded-g-tile border border-g-hairline p-4">
                   <div className="grid gap-2">
                     <h2 id={`ask-invite-revoke-title-${requestId}`} className="text-g-label text-g-ink">Revoke this invite link?</h2>
-                    <p className="text-g-meta text-g-ink-2">The link stops working right away. Your ask stays open, and you can create a new link to share instead.</p>
+                    <p className="text-g-meta text-g-ink-2">The link stops working right away. Your referral request stays open, and you can create a new link to share instead.</p>
                   </div>
                   {error ? <p role="alert" className="text-g-meta text-g-ink">{error}</p> : null}
                   <div className="flex flex-wrap gap-2">
@@ -148,8 +148,8 @@ export function AskInviteSheet({ requestId, companyName, roleTitle, waitingForIn
                   <ul className="grid gap-2 text-g-meta text-g-ink-2">
                     <li>This link works once and expires in seven days.</li>
                     <li>Your insider must sign in with a verified work email at {companyName}.</li>
-                    <li>Your name and files stay hidden until the insider accepts the ask.</li>
-                    <li>No credit is used until someone can see the ask.</li>
+                    <li>Your name and files stay hidden until the insider accepts your referral request.</li>
+                    <li>No credit is used until someone can see your referral request.</li>
                   </ul>
 
                   {error ? <p role="alert" className="rounded-g-tile border border-g-hairline px-3 py-2 text-g-meta text-g-ink">{error}</p> : null}
@@ -165,10 +165,10 @@ export function AskInviteSheet({ requestId, companyName, roleTitle, waitingForIn
                       </div>
                     </div>
                   ) : active ? (
-                    <p role="status" className="rounded-g-tile bg-g-surface-sunken px-3 py-3 text-g-meta text-g-ink-2">This link is already active, but its one-time URL is not saved in this browser. Revoke it and create a new link if you need another copy.</p>
+                    <p role="status" className="rounded-g-tile bg-g-surface-sunken px-3 py-3 text-g-meta text-g-ink-2">This referral request link is already active, but its one-time URL is not saved in this browser. Revoke it and create a new link if you need another copy.</p>
                   ) : (
                     <div className="grid gap-2">
-                      <p className="text-g-meta text-g-ink-2">Only create a link when you’re ready to share it. The ask continues to wait for normal coverage until your insider claims it.</p>
+                      <p className="text-g-meta text-g-ink-2">Only create a link when you’re ready to share it. Your referral request continues to wait for normal coverage until your insider claims it.</p>
                       <GoalButton variant="primary" busy={creating} busyLabel="Creating link…" onClick={() => { void create(); }}>Create one-time link</GoalButton>
                     </div>
                   )}
@@ -176,7 +176,7 @@ export function AskInviteSheet({ requestId, companyName, roleTitle, waitingForIn
               )}
             </div>
 
-            {active ? (
+            {active && !revokeConfirmation ? (
               <footer className="border-t border-g-hairline px-5 py-3">
                 <GoalButton variant="ghost" size="sm" onClick={openForRevoke}>Revoke this link</GoalButton>
               </footer>

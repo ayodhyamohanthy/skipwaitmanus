@@ -106,7 +106,9 @@ describe("My asks BYOR invite action", () => {
     expect(await screen.findByText("This link works once and expires in seven days.")).toBeTruthy();
     expect(screen.getByText(/verified work email at Acme/)).toBeTruthy();
     expect(screen.getByText(/name and files stay hidden until the insider accepts/)).toBeTruthy();
-    expect(screen.getByText(/No credit is used until someone can see the ask/)).toBeTruthy();
+    expect(screen.getByText("No credit is used until someone can see your referral request.")).toBeTruthy();
+    expect(screen.getByRole("dialog").textContent).toMatch(/referral request/i);
+    expect(screen.getByRole("dialog").textContent).not.toMatch(/\bask\b/i);
     fireEvent.click(screen.getByRole("button", { name: "Create one-time link" }));
     const linkInput = await screen.findByRole("textbox", { name: "One-time invite link" }) as HTMLInputElement;
     await waitFor(() => expect(linkInput.value).toBe(URL));
@@ -131,6 +133,9 @@ describe("My asks BYOR invite action", () => {
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: "Revoke" }));
     expect(await screen.findByRole("heading", { name: "Revoke this invite link?" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Revoke this link" })).toBeNull();
+    expect(screen.getByRole("dialog").textContent).toMatch(/referral request/i);
+    expect(screen.getByRole("dialog").textContent).not.toMatch(/\bask\b/i);
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/invite-link/revoke"))).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Revoke link" }));
     expect(await screen.findByRole("button", { name: "Invite someone you know" })).toBeTruthy();
@@ -140,7 +145,7 @@ describe("My asks BYOR invite action", () => {
   it.each(["claimed", "delivered"] as const)("shows neutral status copy for a %s link without exposing a name", async state => {
     stubPage([openAsk(42, { waitingForCoverage: false, referrerId: 503, askInvite: { state, createdAt: iso(Date.now()), expiresAt: iso(Date.now() + 7 * day) } })]);
     renderPage();
-    expect(await screen.findByText("Your insider has it")).toBeTruthy();
+    expect(await screen.findByText("Your insider has your referral request.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Invite someone|Link active|Revoke/ })).toBeNull();
     expect(document.querySelector("main")?.textContent).not.toContain("503");
   });

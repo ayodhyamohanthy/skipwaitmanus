@@ -47,6 +47,8 @@ describe("/r/:token BYOR landing", () => {
     expect(screen.getByText("Acme")).toBeTruthy();
     expect(screen.queryByText(/private note/i)).toBeNull();
     expect(document.body.textContent).not.toContain(TOKEN);
+    expect(document.body.textContent).toMatch(/referral/i);
+    expect(document.body.textContent).not.toMatch(/\bask\b/i);
     const signIn = screen.getByRole("link", { name: "Use your company email" });
     expect(signIn.getAttribute("href")).toBe(referrerSignInHref(`/r/${TOKEN}`));
     expect(signIn.getAttribute("href")).toContain("intent=referrer");
@@ -58,7 +60,7 @@ describe("/r/:token BYOR landing", () => {
     renderPage();
     expect(await screen.findByText("I have shipped design systems at scale.")).toBeTruthy();
     expect(screen.getByText(/2 files stay locked until you accept/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Take this ask" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Take this referral request" })).toBeTruthy();
   });
 
   it("sets and cleans up runtime noindex metadata", async () => {
@@ -84,19 +86,23 @@ describe("/r/:token BYOR landing", () => {
     expect((await screen.findByRole("status")).textContent).toContain(ASK_INVITE_STATE_COPY[state]);
     expect(screen.queryByText("Acme")).toBeNull();
     expect(screen.queryByText("Do not show me")).toBeNull();
+    expect(document.body.textContent).toMatch(/referral/i);
+    expect(document.body.textContent).not.toMatch(/\bask\b/i);
   });
 
   it.each([
-    ["delivered", "You have this ask. It is now in your company inbox."],
-    ["held", "This ask is held for you. No credit was available, so it has not been delivered yet."],
-    ["reserved", "This ask is reserved for you and will be delivered when you have room."],
+    ["delivered", "You have this referral request. It is now in your company inbox."],
+    ["held", "This referral request is held for you. No credit was available, so it has not been delivered yet."],
+    ["reserved", "This referral request is reserved for you and will be delivered when you have room."],
   ] as const)("reports the real %s claim outcome", async (outcome, copy) => {
     api.fetch.mockResolvedValue({ ...openLanding, note: null, lockedFileCount: 0 });
     api.claim.mockResolvedValue(outcome);
     auth.isSignedIn = true;
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Take this ask" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Take this referral request" }));
     expect((await screen.findByRole("status")).textContent).toContain(copy);
+    expect(document.body.textContent).toMatch(/referral/i);
+    expect(document.body.textContent).not.toMatch(/\bask\b/i);
     expect(api.claim).toHaveBeenCalledWith(TOKEN, expect.any(Function));
   });
 
@@ -105,8 +111,10 @@ describe("/r/:token BYOR landing", () => {
     api.claim.mockRejectedValue(new AskInviteApiError(403, "company_email_required"));
     auth.isSignedIn = true;
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Take this ask" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Take this referral request" }));
     expect(await screen.findByText(/Use a verified work email at Acme/)).toBeTruthy();
+    expect(document.body.textContent).toMatch(/referral/i);
+    expect(document.body.textContent).not.toMatch(/\bask\b/i);
     expect(screen.getByRole("link", { name: "Sign in with your work email" }).getAttribute("href")).toBe(referrerSignInHref(`/r/${TOKEN}`));
   });
 
@@ -118,8 +126,10 @@ describe("/r/:token BYOR landing", () => {
     api.claim.mockRejectedValue(new AskInviteApiError(status, code));
     auth.isSignedIn = true;
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Take this ask" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Take this referral request" }));
     expect((await screen.findByRole("status")).textContent).toContain(ASK_INVITE_STATE_COPY[state]);
+    expect(document.body.textContent).toMatch(/referral/i);
+    expect(document.body.textContent).not.toMatch(/\bask\b/i);
     expect(document.body.textContent).not.toContain(TOKEN);
   });
 
@@ -127,7 +137,9 @@ describe("/r/:token BYOR landing", () => {
     api.fetch.mockResolvedValue({ ...openLanding, state: "claimed_by_you", note: null, lockedFileCount: 1 });
     auth.isSignedIn = true;
     renderPage();
-    expect((await screen.findByRole("status")).textContent).toContain("You have this ask. Finish it when you are ready.");
-    expect(screen.queryByRole("button", { name: "Take this ask" })).toBeNull();
+    expect(await screen.findAllByText("You have this referral request. Finish it when you are ready.")).toHaveLength(1);
+    expect(document.body.textContent).toMatch(/referral/i);
+    expect(document.body.textContent).not.toMatch(/\bask\b/i);
+    expect(screen.queryByRole("button", { name: "Take this referral request" })).toBeNull();
   });
 });

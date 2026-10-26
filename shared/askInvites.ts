@@ -82,11 +82,11 @@ export type AskInviteClaimOutcome = (typeof ASK_INVITE_CLAIM_OUTCOMES)[number];
 
 /** One neutral sentence per landing state; the client renders exactly these. */
 export const ASK_INVITE_STATE_COPY: Record<AskInviteLandingState, string> = {
-  open: "You can take this ask.",
-  claimed_by_you: "You have this ask. Finish it when you are ready.",
-  used: "This link has already been used.",
-  expired: "This link has expired.",
-  revoked: "The person who sent this link cancelled it.",
-  closed: "This ask is no longer open.",
-  unavailable: "This link is not available.",
+  open: "You can take this referral request.",
+  claimed_by_you: "You have this referral request. Finish it when you are ready.",
+  used: "This referral request link has already been used.",
+  expired: "The link for this referral request has expired.",
+  revoked: "The person who shared this referral request cancelled its link.",
+  closed: "This referral request is no longer open.",
+  unavailable: "This referral request is not available.",
 };

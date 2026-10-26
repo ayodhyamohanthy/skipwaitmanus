@@ -69,6 +69,7 @@ const callClaim = (token: string, userId: number, nowMs = NOW.getTime()) => {
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+  vi.stubEnv("BYOR_LINK_ENABLED", "true");
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(store.db);
   vi.spyOn(console, "warn").mockImplementation(() => undefined);

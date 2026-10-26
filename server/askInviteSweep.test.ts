@@ -44,6 +44,7 @@ function seed() {
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+  vi.stubEnv("BYOR_LINK_ENABLED", "true");
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(store.db);
 });
@@ -69,6 +70,14 @@ describe("D-090 ask-invite expiry sweep", () => {
     expect(listDue).toHaveBeenCalledWith(NOW, 200);
     expect(expireOne.mock.calls.map(([candidate]) => candidate.id)).toEqual([1, 2, 3]);
     expect(output).toEqual({ processed: 1, failed: 1, firstError: cause });
+  });
+
+  it("returns immediately without reading invite rows when the BYOR flag is off", async () => {
+    seed();
+    vi.stubEnv("BYOR_LINK_ENABLED", "false");
+    store.failReads(askInviteLinks);
+
+    expect(await createAskInviteSweep()(context)).toEqual({ processed: 0, failed: 0 });
   });
 
   it("expires TTLs and reservations, closes links for closed asks, notifies once, and leaves delivered links untouched", async () => {

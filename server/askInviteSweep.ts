@@ -97,6 +97,7 @@ export async function expireAskInviteLink(candidate: AskInviteSweepCandidate, no
 
 export function createAskInviteSweep(deps: AskInviteSweepDeps = { listDue: listDueAskInviteLinks, expireOne: expireAskInviteLink }) {
   return async ({ nowMs }: JobRunContext): Promise<JobRunOutput> => {
+    if (process.env.BYOR_LINK_ENABLED !== "true") return { processed: 0, failed: 0 };
     const candidates = (await deps.listDue(nowMs, ASK_INVITE_SWEEP_BATCH)).slice(0, ASK_INVITE_SWEEP_BATCH).sort((a, b) => (validDateMs(a.createdAt) ?? 0) - (validDateMs(b.createdAt) ?? 0) || a.id - b.id);
     const output: JobRunOutput = { processed: 0, failed: 0 };
     for (const candidate of candidates) {
