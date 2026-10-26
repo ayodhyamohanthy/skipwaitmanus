@@ -77,9 +77,9 @@
    "tier": 1,
    "lane": "auth-device",
    "branch": "agent/queue/fix-device-signin",
-   "status": "todo",
+   "status": "in-review",
    "dependsOn": [],
-   "note": "Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168); next is one independent review by a model other than Claude (D-200), then landing on green required CI. Face ID, passkeys and Sign in with Apple are not in this row: they change the login rule and wait for the owner.",
+   "note": "Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168). D-209 (Oct 26) records the UNBLOCK ruling on Cue GPT · 8176's scope question: the row stays limited to the two causes the owner measured, its six changed files stay inside this row's owns, referrer sign-in stays the work-email code on every visit (D-030, D-049, D-057), and Face ID, passkeys, biometrics and Sign in with Apple stay out because each adds a sign-in method and changes the login rule - the five offered providers are google, microsoft, github, linkedin and slack (server/_core/workosAuth.ts:212), so the wider question stays owner-reserved. PR #655 is open and mergeable with all four required checks green on head 9237ac4e; the branch is behind main, so the landing runs on the merge result. Next: one independent Tier 1 review by a model other than Claude Code · 6029 (D-151, D-200), then a landing by a session that neither built nor fixed it.",
    "owns": [
     "client/src/lib/rememberedSignInEmail.ts",
     "client/src/components/SeekerSignIn.tsx",

@@ -31,5 +31,14 @@
 - One independent review by a model other than Claude.
 - After deploy: on a phone, sign in once, then reopen `/sign-in`; the email is prefilled. The next code email shows the code in its subject.
 
+## Scope ruling (D-209, Oct 26)
+- Cue GPT · 8176 held this row on one question: does #655 stop at the remembered email and the emailed code's autofill, or expand into Face ID, passkeys and Google's device prompts; and does the work-email code stay the referrer's sign-in, and is Sign in with Apple excluded?
+- D-209 answers it from the frozen login rule, so nothing here changes an owner decision:
+  - #655 does not expand. Its six changed files are exactly the ones section "Change" lists, all inside the row's `owns`.
+  - Referrer sign-in stays the work-email code on every visit (D-030, D-049, D-057); the `ReferrerOtpSignIn.tsx` change is +6/-2, an address prefill and a focused code field.
+  - Sign in with Apple is excluded, and passkeys, biometrics and Google's device prompts are out of scope, because each adds a sign-in method. `SOCIAL_PROVIDERS` (`server/_core/workosAuth.ts:212`) offers google, microsoft, github, linkedin and slack, and the comment above it records that Apple is not enabled in the WorkOS dashboard (404).
+  - The owner's third cause (a Face ID, passkey or Apple option) therefore stays a separate, owner-reserved question (D-123); this row does not carry it.
+- Nothing else blocks the row: PR #655 is open, not a draft and mergeable; head `9237ac4e` has typecheck, unit + component + route tests, production build and Workers Builds green; `main` CI is green on `927dfaca`. The branch is behind `main`, so the landing runs on the merge result (D-082).
+
 ## Status
-- `FIX-device-signin`: built on `agent/queue/fix-device-signin` (`ef08e168`); waiting for its review.
+- `FIX-device-signin`: built on `agent/queue/fix-device-signin` (`ef08e168`); D-209 cleared the scope question, so the row is `in-review`: one independent Tier 1 review by a model other than Claude Code · 6029 (the builder), then a landing by a session that neither built nor fixed it.
