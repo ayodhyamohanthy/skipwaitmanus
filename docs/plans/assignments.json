@@ -304,7 +304,7 @@
       "tier": 1,
       "lane": "d048-fix-signin",
       "branch": "agent/ayo7/signin-loading-click",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "D-199 registers legacy PR #595 (built by Instinct Agent; user report phonemsg-01M5MXF1C8DQ86C6Y7TXJQY01X) under its existing branch: no rename, no gate bypass. Scope: client/src/_core/auth.tsx and authCompat.test.ts only; the signed-in no-op, the same-origin returnTo guard and server-owned authentication stay unchanged. The branch drops its own copy of this row at its next merge-up. Review: Tier 1, by a model other than Instinct (builder) or the fixer's (D-151, D-200). Lands with an independent PASS and fresh green CI on the exact head. Fixture evidence only: the user's exact failing URL stays open. Packet section 2.",
       "owns": [
@@ -376,7 +376,7 @@
       "tier": 2,
       "lane": "launch-ci",
       "branch": "agent/queue/launch-marker-ci-skip",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "pricing-banded-plans-oct25"
       ],
