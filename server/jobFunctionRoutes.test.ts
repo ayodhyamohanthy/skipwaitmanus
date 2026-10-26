@@ -44,7 +44,7 @@ function setup() {
 }
 
 const send = (app: express.Express, body: Record<string, unknown>, user = "11") =>
-  request(app).post("/api/company-referrals").set("x-test-user", user).set("Idempotency-Key", "ask-key-0123456789abcdef").send({ targetRoleUrl: "https://careers.wipro.com/job/product-designer-123", attachmentIds: [5], candidateMessage: "A specific note about the role.", ...body });
+  request(app).post("/api/company-referrals").set("x-test-user", user).set("Idempotency-Key", "ask-key-0123456789abcdef").send({ expectedCost: 1, targetRoleUrl: "https://careers.wipro.com/job/product-designer-123", attachmentIds: [5], candidateMessage: "A specific note about the role.", ...body });
 
 describe("ask creation takes an optional job function", () => {
   it("passes the seeker's listed choice through and returns the stored function", async () => {

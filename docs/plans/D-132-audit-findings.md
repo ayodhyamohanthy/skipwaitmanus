@@ -21,7 +21,9 @@ Items refer to the 11 numbered checks in `docs/plans/D-132-pricing-v2.md`.
 
 Order of work: 2 (migration, red tests first) then 5, 6, 3, 7, 4, 8, 9, 11, 1, 10. Each lands as its own PR with CI green, flags off. Remaining (Oct 23): item 3's composer quote/top-up/cost lines in the shared composer (`useAskComposer`, `askSend`) - that work follows P0-ask-link-signin (#529, routing hold) and overlaps the held enable PR #416 (`useAskQuote`, Ask/Explore); not started here to avoid duplicating held work.
 
-## Item 3 remainder: shared-composer quote/top-up spec (prepared Oct 23, not started)
+## Item 3 remainder: shared-composer quote/top-up spec (prepared Oct 23; implemented below the line)
+
+Status (Oct 23, option (a) chosen): implemented as one shared composer quote - PR branch `agent/d132-item3-composer-quote`, held for review, flags off, not merged. What changed versus the spec below: #529 landed at 499db9bc so the `useAskComposer.tsx` conflict is gone; `useAskQuote` was adopted byte-verbatim from #416 into `client/src/hooks/useAskQuote.ts` (the verified contract) instead of waiting for #416 to land; `AskCostQuote` was added to `findModel.ts` exactly as #416 carries it, while #416's separate `costLine()` was NOT ported - `askCostLine` (item 7) stays the one copy owner. At the enable rebase, #416 drops its `Ask.tsx` inline quote fetch and page-level footer sentence, its `findModel` `costLine()` duplicate, and its now-identical copies of the hook and the type, and reads the quote from the composer's `costQuote`. The bridge page (`ReferralRequest.tsx`) keeps its own tested inline quote for its separate surface; converging it to the shared hook is a later, optional cleanup.
 
 Dependency analysis - real code/contract dependencies, not assignments.json sequencing:
 

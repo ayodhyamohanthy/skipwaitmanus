@@ -117,6 +117,29 @@ export function slotCapNudgeCopy(slots: OpenAskSlots): { title: string; body: st
 
 export const COMPANY_CAP_REACHED = "company_cap_reached" as const;
 
+/**
+ * POST /api/company-referrals when the seeker composed under a known-uncovered
+ * "waits free, nothing spent" representation (expectedCoverage) but coverage
+ * opened up by commit: 409, the ask was NOT created and nothing was charged.
+ * The client re-prices and the seeker sends again seeing the covered cost.
+ */
+export const COMPANY_COVERAGE_CHANGED = "company_coverage_changed" as const;
+
+/**
+ * POST /api/company-referrals when the commit-time cost no longer equals the
+ * price the seeker accepted (flag or classification moved mid-send): 409, the
+ * ask was NOT created and nothing was charged. Same re-confirm flow as
+ * COMPANY_COVERAGE_CHANGED.
+ */
+export const ASK_PRICE_CHANGED = "ask_price_changed" as const;
+
+/**
+ * POST /api/company-referrals without a usable accepted price (missing or
+ * malformed expectedCost): 400 before any work. Supported clients always send
+ * the accepted price; a silent drop would bypass the accepted-price boundary.
+ */
+export const ASK_PRICE_UNCONFIRMED = "ask_price_unconfirmed" as const;
+
 /** POST /api/company-referrals (and an assistant-approved ask) with 2 asks already open at that company: 409 with this body. */
 export const companyCapReachedSchema = z.strictObject({
   error: z.string().min(1),

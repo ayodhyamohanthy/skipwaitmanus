@@ -52,7 +52,9 @@ describe("Approve page", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<Approve />);
     expect(await screen.findByText("Send this ask to wipro.com?")).toBeTruthy();
-    expect(screen.getByText("Senior Product Designer · uses 1 of your 3 open slots")).toBeTruthy();
+    expect(screen.getByText("Senior Product Designer")).toBeTruthy();
+    // No classified cost: no price promise and no unconditional slot claim (D-132 item 3).
+    expect(screen.queryByText(/open slot/)).toBeNull();
     expect(screen.getByText("Hi — I'd love a referral for the Senior Product Designer role.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Done")).toBeTruthy();
@@ -76,7 +78,9 @@ describe("Approve page", () => {
     const proposed = { ...ASK_APPROVAL, provider: "assistant", role: null, note: null, creditCount: 1, slotCount: null };
     stubFetch(url => (String(url).includes("/api/assistants/approvals") ? { ok: true, json: async () => ({ approvals: [proposed] }) } : { ok: true, json: async () => CREDITS }));
     render(<Approve />);
-    expect(await screen.findByText("uses 1 of your open slots · 1 credit")).toBeTruthy();
+    expect(await screen.findByText("1 credit")).toBeTruthy();
+    // The deferred-charge truth: credits and a slot are used only when the ask reaches a referrer.
+    expect(screen.getByText(/1 credit and 1 open slot are used only when the ask reaches a referrer/)).toBeTruthy();
     // Kit source line is who and when only; the 24-hour expiry is stated once, in the footnote.
     expect(screen.getByText("Your assistant · 1 minute ago")).toBeTruthy();
     expect(screen.queryByText(/h left/)).toBeNull();

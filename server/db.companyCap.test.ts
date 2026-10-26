@@ -6,7 +6,7 @@ import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { companyReferralFingerprint, createCompanyReferralRequest, getOpenAskSlots, resolveEmployerDomainFromTargetUrl } from "./db";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
 import { planEntitlementsFor } from "../shared/planEntitlements";
-import { CompanyCapReachedError, OpenAskSlotCapError } from "./planGates";
+import { AskPriceChangedError, CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError } from "./planGates";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
@@ -110,7 +110,7 @@ let nextId = 1;
 const ask = (patch: Row = {}): Row => ({ id: nextId++, jobSeekerId: SEEKER, status: "pending", referrerId: null, createdAt: new Date(Date.now() - DAY), idempotencyKey: `key-${nextId}`, requestFingerprint: "fp", waitingForCoverage: false, coverageVisibleAt: null, coverageHeldAt: null, company: "acme.com", jobFunction: null, ...patch });
 /** A verified, unpaused acme.com employee under capacity: coverage exists, so a new ask is covered. */
 const eligibleReferrer = (): Row => ({ id: 91, userId: 501, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: new Date(), paused: false, referralCapacity: 3 });
-const send = (idempotencyKey = "new-ask-key-0001") => createCompanyReferralRequest(SEEKER, { targetRoleUrl: URL_, personalPitch: "I shipped the approvals redesign this role describes.", attachmentIds: [41], idempotencyKey });
+const send = (idempotencyKey = "new-ask-key-0001", extra: Record<string, unknown> = {}) => createCompanyReferralRequest(SEEKER, { targetRoleUrl: URL_, personalPitch: "I shipped the approvals redesign this role describes.", attachmentIds: [41], idempotencyKey, ...extra });
 const PAST_CAP = /resume documents are unavailable/;
 
 beforeEach(() => {
@@ -170,6 +170,25 @@ describe("per-company fairness cap at ask creation (D-006)", () => {
     const error = await send().catch((reason: unknown) => reason);
     expect(error).toBeInstanceOf(CompanyCapReachedError);
     expect((error as CompanyCapReachedError).cap).toBe(2);
+  });
+
+  it("refuses a covered commit that claimed waiting coverage, before any side effect (D-132 item 3)", async () => {
+    // The transaction-boundary race: coverage opened between the seeker's read and the
+    // commit - the precondition throws inside the transaction and no row is written.
+    await expect(send("cov-race-0001", { expectedCoverage: "waiting_for_company_coverage" })).rejects.toBeInstanceOf(CoverageOpenedUpError);
+    expect(sideEffects).toEqual([]);
+  });
+
+  it("charges exactly the accepted price and refuses a moved price, before the spend (D-132 item 3)", async () => {
+    // Flag off means the flat cost 1 (same classification the live spend uses).
+    // The matching accepted price sails past the precondition (the fixture's
+    // attachment table is empty, so the later attachment check is what stops it).
+    await expect(send("price-ok-0001", { expectedCost: 1 })).rejects.toThrow(/resume documents are unavailable/);
+    expect(sideEffects).toEqual([]);
+    // A moved price refuses at the precondition itself - before the request row
+    // and before any wallet write: no silent debit at a price the seeker never accepted.
+    await expect(send("price-race-0001", { expectedCost: 6 })).rejects.toBeInstanceOf(AskPriceChangedError);
+    expect(sideEffects).toEqual([]);
   });
 
   it("replays an already-created ask instead of refusing it", async () => {

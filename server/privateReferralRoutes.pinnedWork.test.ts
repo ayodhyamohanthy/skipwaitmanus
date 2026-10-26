@@ -52,7 +52,7 @@ function setup(overrides: Partial<Deps> = {}) {
 
 const sendAsk = (app: express.Express, body: Record<string, unknown>) =>
   request(app).post("/api/company-referrals").set("Idempotency-Key", IDEMPOTENCY_KEY).set("x-test-user", "seeker")
-    .send({ targetRoleUrl: JOB_URL, attachmentIds: [77], ...body });
+    .send({ expectedCost: 1, targetRoleUrl: JOB_URL, attachmentIds: [77], ...body });
 
 describe("POST /api/company-referrals pinned work", () => {
   it("forwards the pinned ids in the order the seeker tapped and records how many travel", async () => {
@@ -127,7 +127,7 @@ describe("POST /api/company-referrals pinned work", () => {
   it("sends no ask for a pinned work list when the seeker is not signed in", async () => {
     const { app, createCompanyReferralRequest } = setup();
     const response = await request(app).post("/api/company-referrals").set("Idempotency-Key", IDEMPOTENCY_KEY)
-      .send({ targetRoleUrl: JOB_URL, attachmentIds: [77], workItemIds: [12] });
+      .send({ expectedCost: 1, targetRoleUrl: JOB_URL, attachmentIds: [77], workItemIds: [12] });
     expect(response.status).toBe(401);
     expect(createCompanyReferralRequest).not.toHaveBeenCalled();
   });

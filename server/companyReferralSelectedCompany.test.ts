@@ -27,7 +27,7 @@ describe("POST /api/company-referrals companySlug", () => {
     } as unknown as PrivateReferralRouteDeps);
     return { app, create };
   }
-  const send = (app: express.Express, extra: object) => request(app).post("/api/company-referrals").set("Idempotency-Key", "0123456789abcdef0123").send({ targetRoleUrl: "https://careers.acme.com/jobs/1", attachmentIds: [1], ...extra });
+  const send = (app: express.Express, extra: object) => request(app).post("/api/company-referrals").set("Idempotency-Key", "0123456789abcdef0123").send({ expectedCost: 1, targetRoleUrl: "https://careers.acme.com/jobs/1", attachmentIds: [1], ...extra });
   it("passes the directory domains of the selected company", async () => {
     const { app, create } = setup();
     expect((await send(app, { companySlug: "acme" })).status).toBe(201);
