@@ -25,7 +25,7 @@ const NEVER = [
   "Accept, pass or refer on anyone's behalf",
   "See referrers' work emails or other people's data",
   "Skip the queue or go past your open-request limit",
-  "Buy plans or pay a referrer",
+  "Buy plans or make payments",
 ] as const;
 
 type Stage = "consent" | "approved" | "declined" | "expired" | "unverified" | "not-on-land" | "signed-out";
