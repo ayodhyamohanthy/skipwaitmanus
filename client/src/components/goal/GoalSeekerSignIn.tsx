@@ -10,12 +10,10 @@
 import { ArrowLeft, Mail } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { GoalButton } from "@/components/goal/GoalButton";
-import { GoalField } from "@/components/goal/GoalField";
+import { GoalField, GoalTextInput } from "@/components/goal/GoalField";
 import { PasskeyAutofill, PasskeyEnrollmentOffer, PasskeySignInButton } from "@/components/goal/GoalPasskeySignIn";
 import { SEEKER_SOCIAL, seekerSocialUrl } from "@/components/SeekerSignIn";
 import { forgetSignInEmail, rememberedSignInEmail, rememberSignInEmail } from "@/lib/rememberedSignInEmail";
-
-const inputClass = "h-(--g-control-h) w-full rounded-full border border-g-control-edge bg-white px-3 text-g-body text-g-ink placeholder:text-g-ink-3 focus:border-g-ink focus:outline-none";
 
 export function GoalSeekerSignIn({ returnTo = "/explore" }: { returnTo?: string }) {
   const [stage, setStage] = useState<"choose" | "email" | "code" | "enroll">("choose");
@@ -74,7 +72,7 @@ export function GoalSeekerSignIn({ returnTo = "/explore" }: { returnTo?: string 
       <form data-testid="seeker-sign-in" className="grid gap-3" onSubmit={send}>
         <PasskeyAutofill returnTo={returnTo} />
         <GoalField label="Email address" htmlFor="seeker-email" help="We'll email you a six-digit code. New here? That creates your account." error={error || undefined}>
-          <input id="seeker-email" name="email" type="email" placeholder="you@example.com" autoComplete="username webauthn" required value={email} onChange={e => { setEmail(e.target.value); setError(""); }} className={inputClass} />
+          <GoalTextInput id="seeker-email" name="email" type="email" placeholder="you@example.com" autoComplete="username webauthn" required value={email} onChange={e => { setEmail(e.target.value); setError(""); }} className="rounded-full!" />
         </GoalField>
         {remembered && <button type="button" className="self-start text-g-meta font-semibold text-g-ink-2 underline underline-offset-2 hover:text-g-ink" onClick={() => { forgetSignInEmail("seeker"); setRemembered(false); setEmail(""); document.getElementById("seeker-email")?.focus(); }}>Not you? Forget this email</button>}
         <GoalButton type="submit" variant="primary" className="w-full rounded-full!" busy={busy} busyLabel="Sending code…" disabledReason={!email.trim() ? "Enter your email" : undefined}>Send sign-in code</GoalButton>
@@ -87,7 +85,7 @@ export function GoalSeekerSignIn({ returnTo = "/explore" }: { returnTo?: string 
     <form data-testid="seeker-sign-in" className="grid gap-3" onSubmit={verify}>
       <p className="text-g-small font-semibold text-g-ink">Code sent to {email.trim().toLowerCase()}</p>
       <GoalField label="Six-digit code" htmlFor="seeker-code" error={error || undefined}>
-        <input id="seeker-code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={6} autoFocus placeholder="123456" value={code} onChange={e => { setCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }} className={inputClass} />
+        <GoalTextInput id="seeker-code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={6} autoFocus placeholder="123456" value={code} onChange={e => { setCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }} className="rounded-full!" />
       </GoalField>
       <GoalButton type="submit" variant="primary" className="w-full rounded-full!" busy={busy} busyLabel="Checking…" disabledReason={code.length !== 6 ? "Enter the six-digit code" : undefined}>Sign in</GoalButton>
       <GoalButton type="button" flush onClick={() => { setStage("email"); setCode(""); setError(""); }}>Use a different email</GoalButton>
