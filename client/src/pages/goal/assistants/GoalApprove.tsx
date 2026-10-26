@@ -34,8 +34,8 @@ export default function GoalApprove() {
     return token ? { Authorization: `Bearer ${token}` } : undefined;
   }, [fetchToken]);
 
-  const load = useCallback(async () => {
-    if (!isSignedIn || !isLoaded) return;
+  const load = useCallback(async (): Promise<AssistantApproval[] | null> => {
+    if (!isSignedIn || !isLoaded) return null;
     setLoading(true); setLoadError("");
     try {
       const [approvalsResponse, creditsResponse] = await Promise.all([
@@ -44,14 +44,17 @@ export default function GoalApprove() {
       ]);
       const approvalsPayload = await readApiJson<{ approvals?: AssistantApproval[]; error?: string }>(approvalsResponse, "We could not load your approvals");
       if (!approvalsResponse.ok) throw new Error(approvalsPayload.error || "We could not load your approvals");
-      setApprovals(Array.isArray(approvalsPayload.approvals) ? approvalsPayload.approvals : []);
+      const list = Array.isArray(approvalsPayload.approvals) ? approvalsPayload.approvals : [];
+      setApprovals(list);
       if (creditsResponse.ok) {
         const creditsPayload = await readApiJson<{ summary?: CreditsSummary }>(creditsResponse, "");
         if (creditsPayload.summary) setCredits(creditsPayload.summary);
       }
       setLoaded(true);
+      return list;
     } catch (reason) {
       setLoadError(reason instanceof Error ? reason.message : "We could not load your approvals");
+      return null;
     } finally {
       setLoading(false);
     }
@@ -76,6 +79,19 @@ export default function GoalApprove() {
       await load();
     } catch (reason) {
       setActionError({ id: approval.id, message: reason instanceof Error ? reason.message : "We could not record that decision" });
+      try {
+        const fresh = await load();
+        const updated = fresh?.find(a => a.id === approval.id);
+        if (!updated || updated.status !== "pending") {
+          setEditingId(null);
+          setActionError(null);
+          if (updated?.status === "approved" || updated?.status === "declined") {
+            setResult({ approval: updated, decision: updated.status });
+          }
+        }
+      } catch {
+        // network or server error on load: actionError remains visible for retry
+      }
     } finally {
       setWorkingId(null);
     }

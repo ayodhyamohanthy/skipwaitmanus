@@ -52,4 +52,44 @@ describe("goal assistant flows",()=>{
    fireEvent.click(btn);
    expect(auth.openSignIn).toHaveBeenCalled();
  });
+ it("keeps the token list visible when a revoke fails and renders activity events",async()=>{
+   const token = { id: 42, name: "Notion tracker", prefix: "sw_AbCdEfGhIj", createdAt: new Date().toISOString(), lastUsedAt: null };
+   const event = { action: "assistant.connected", outcome: "success", resourceType: "assistant_connection", metadata: { provider: "chatgpt" }, createdAt: new Date().toISOString() };
+   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+     if (init?.method === "DELETE") return response({ error: "Server revoke error" }, 500);
+     if (url.includes("access")) return response({ hasAccess: true });
+     if (url.includes("connections")) return response({ connections: [] });
+     if (url.includes("tokens")) return response({ tokens: [token] });
+     if (url.includes("activity")) return response({ activity: [event] });
+     return response({});
+   });
+   vi.stubGlobal("fetch", fetch);
+   render(<GoalAssistants />);
+   fireEvent.click(await screen.findByRole("tab", { name: "API tokens" }));
+   expect(await screen.findByText(/Notion tracker/)).toBeTruthy();
+   fireEvent.click(screen.getByRole("button", { name: "Revoke" }));
+   expect(await screen.findByText("Server revoke error")).toBeTruthy();
+   expect(screen.getByText(/Notion tracker/)).toBeTruthy();
+   fireEvent.click(screen.getByRole("tab", { name: "Activity" }));
+   expect(await screen.findByText("Connected ChatGPT")).toBeTruthy();
+ });
+ it("re-reads approvals when decision submission fails so an already-decided approval leaves pending",async()=>{
+   const approval = { id: 11, kind: "ask_send", status: "pending", provider: "custom", companyDomain: "fictional.invalid", role: "Fictional role", note: "Confirmed skill", creditCount: 1, slotCount: 1, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86400000).toISOString() };
+   let postAttempted = false;
+   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+     if (init?.method === "POST") {
+       postAttempted = true;
+       throw new TypeError("Failed to fetch (network lost)");
+     }
+     if (url.includes("summary")) return response({ summary: { totalAvailable: 8 } });
+     return response({ approvals: postAttempted ? [{ ...approval, status: "approved" }] : [approval] });
+   });
+   vi.stubGlobal("fetch", fetch);
+   render(<GoalApprove />);
+   const sendBtn = await screen.findByRole("button", { name: "Send ask" });
+   fireEvent.click(sendBtn);
+   await waitFor(() => {
+     expect(screen.queryByRole("button", { name: "Send ask" })).toBeNull();
+   });
+ });
 });
