@@ -29,6 +29,17 @@ export function isClarityActive(): boolean {
   return initialized;
 }
 
+// Best-effort product-moment event (share/copy). No-op until init succeeds, so
+// consent and the sensitive-path guard still gate every event.
+export function trackClarityEvent(eventName: string): void {
+  if (!initialized) return;
+  try {
+    Clarity.event(eventName);
+  } catch {
+    /* analytics is best-effort */
+  }
+}
+
 // Clarity hashes the id client-side before upload; pass the internal person
 // id, never raw emails. No-op until init succeeds.
 export function identifyClarity(userId: string | null | undefined): void {

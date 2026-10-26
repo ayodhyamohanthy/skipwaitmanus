@@ -106,6 +106,8 @@ function CompanyPage({ company }: { company: PublicCompany }) {
           work={composer.work}
           watch={composer.watch}
           cost={composer.cost}
+          topUp={composer.topUp}
+          onTopUp={composer.onTopUp}
           sendLabel={composer.sendLabel}
           sendBusyLabel={composer.sendBusyLabel}
           sending={composer.sending}
@@ -160,7 +162,19 @@ function CompanyPage({ company }: { company: PublicCompany }) {
         </p>
 
         <Responsiveness slug={company.slug} />
-        <CompanyOpenings slug={company.slug} companyName={company.name} />
+        <CompanyOpenings
+          slug={company.slug}
+          companyName={company.name}
+          onAsk={post => {
+            // D-174: pick a job, then ask - in place on the door. The pick
+            // replaces the whole composer selection: the role's verified link
+            // prefills when the post has one, and a linkless post clears any
+            // stale link from an earlier pick. The post id travels with the
+            // send so the poster sees the ask first (D-022).
+            composer.selectPost({ opportunityId: post.id, jobUrl: post.targetRoleUrl });
+            setDrawerOpen(true);
+          }}
+        />
 
         <section className="mt-10" aria-label="Before you ask">
           <h2 className={EYEBROW}>Before you ask</h2>
@@ -234,9 +248,14 @@ function ShownSignal({ data }: { data: CompanyResponseSignal }) {
 // D-022: roles posted by verified employees of this company, between the hero
 // and "Before you ask". Rows, not cards; an empty read invites employees to
 // post, and a failed one never blocks the page (keep).
-function CompanyOpenings({ slug, companyName }: { slug: string; companyName: string }) {
+function CompanyOpenings({ slug, companyName, onAsk }: { slug: string; companyName: string; onAsk: (post: PublicOpportunityPost) => void }) {
   const openings = useCompanyOpportunities(slug);
+  const [filter, setFilter] = useState("");
   const posts = openings.data ?? [];
+  // D-174: the seeker filters the company's roles (location/seniority words
+  // live in the title/location text today - no invented seniority field).
+  const needle = filter.trim().toLowerCase();
+  const shown = needle ? posts.filter(post => post.roleTitle.toLowerCase().includes(needle) || (post.location ?? "").toLowerCase().includes(needle)) : posts;
   let body: ReactNode;
   if (openings.isPending) {
     body = <GoalSkeletonRows density="company" count={2} className="mt-3 px-0" />;
@@ -248,6 +267,13 @@ function CompanyOpenings({ slug, companyName }: { slug: string; companyName: str
         <GoalButton className="mt-2" flush size="sm" variant="ghost" onClick={() => { void openings.refetch(); }}>Try again</GoalButton>
       </div>
     );
+  } else if (posts.length > 0 && shown.length === 0) {
+    body = (
+      <p className="mt-3 text-g-meta text-g-ink-3">
+        No roles match that filter.{" "}
+        <button type="button" className="text-g-ink-2 underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink" onClick={() => setFilter("")}>Clear filter</button>
+      </p>
+    );
   } else if (posts.length === 0) {
     body = (
       <p className="mt-3 text-g-meta text-g-ink-3">
@@ -256,11 +282,26 @@ function CompanyOpenings({ slug, companyName }: { slug: string; companyName: str
       </p>
     );
   } else {
-    body = <ul className="mt-2 divide-y divide-g-hairline border-t border-g-hairline">{posts.map(post => <OpenRoleRow key={post.id} post={post} />)}</ul>;
+    body = <ul className="mt-2 divide-y divide-g-hairline border-t border-g-hairline">{shown.map(post => <OpenRoleRow key={post.id} post={post} onAsk={onAsk} />)}</ul>;
   }
   return (
     <section className="mt-10" aria-label={`Open roles from verified employees at ${companyName}`}>
       <h2 className={EYEBROW}>Open roles from verified employees</h2>
+      {posts.length > 1 ? (
+        <div className="mt-3">
+          <label className="sr-only" htmlFor="goal-role-filter">Filter roles</label>
+          <input
+            id="goal-role-filter"
+            type="search"
+            role="searchbox"
+            aria-label="Filter roles"
+            value={filter}
+            onChange={event => setFilter(event.target.value)}
+            placeholder="Filter by role or location"
+            className="w-full rounded-g-tile border border-g-control-edge bg-transparent px-3 py-2 text-g-meta text-g-ink placeholder:text-g-ink-3"
+          />
+        </div>
+      ) : null}
       {body}
     </section>
   );
@@ -276,12 +317,9 @@ function metaSegments(post: PublicOpportunityPost, posted: string | null): React
   return segments;
 }
 
-function OpenRoleRow({ post }: { post: PublicOpportunityPost }) {
+function OpenRoleRow({ post, onAsk }: { post: PublicOpportunityPost; onAsk: (post: PublicOpportunityPost) => void }) {
   const posted = formatDay(post.postedAt);
   const walkIn = post.kind === "walk_in" && post.walkInAt ? formatDayTime(post.walkInAt) : null;
-  // A walk-in (or a post whose link the poster left out) still opens the ask
-  // composer with the post attached; the seeker adds the job link they mean.
-  const askHref = post.targetRoleUrl ? `/ask?post=${post.id}&job=${encodeURIComponent(post.targetRoleUrl)}` : `/ask?post=${post.id}`;
   return (
     <li className="flex items-center gap-3 py-4 max-gdesk:flex-col max-gdesk:items-stretch">
       <div className="min-w-0 flex-1">
@@ -295,8 +333,8 @@ function OpenRoleRow({ post }: { post: PublicOpportunityPost }) {
           <p className="mt-0.5 flex items-center gap-1 font-g-mono uppercase tracking-wide text-g-meta text-g-ink-3"><CalendarDays aria-hidden="true" className="size-3.5" /> Walk-in · {walkIn}</p>
         ) : null}
       </div>
-      <GoalButton asChild variant="outline" className="shrink-0 max-gdesk:w-full">
-        <Link href={askHref}>Ask for a referral <ArrowRight aria-hidden="true" className="size-4" /></Link>
+      <GoalButton variant="outline" className="shrink-0 max-gdesk:w-full" onClick={() => onAsk(post)}>
+        Ask for a referral <ArrowRight aria-hidden="true" className="size-4" />
       </GoalButton>
     </li>
   );
