@@ -1,9 +1,11 @@
 # LAUNCH-live-qa - live QA, Oct 26 2026 (public/signed-out pass)
 
-**Verdict: the public release passes; the signed-in launch proof is NOT done.** This run proves the
-signed-out surface and the release identity. It proves no signed-in flow, because approved QA access was
-not available (the owner directed coordination with Instinct first, issue #709). It also found one
-launch-blocking live contradiction: every INR credit pack reports unavailable on the live catalog.
+**Verdict: the public release passes; the signed-in launch proof is still NOT done.** This run proves the
+signed-out surface and the release identity. This session ran no signed-in flow; the coordinator's
+authorized QA route separately verified two read-only signed-in sessions (issue #709, reconciled below),
+and that evidence covers no transactional flow. It also found one launch-blocking live contradiction:
+every INR credit pack reports unavailable on the live catalog, and the LIVE catalog read shows the pack
+items were archived on Oct 25.
 
 ## Release under test
 
@@ -79,7 +81,7 @@ Live `GET https://skipwait.me/api/plans/catalog` on API `40e160e2` returned `reg
 
 | Pack | Credits | Amount | `available` | Polls |
 |---|---|---|---|---|
-| `pack_2` | 2 | Rs99 | false | 13:28:52Z, 13:29:06Z, 13:36:03Z, 13:37:11Z, 13:38Z |
+| `pack_2` | 2 | Rs99 | false | 13:28:52Z, 13:29:06Z, 13:36:03Z, 13:37:11Z, 13:38Z, 14:48:04Z |
 | `pack_25` | 25 | Rs1,199 | false | same |
 | `pack_60` | 60 | Rs2,599 | false | same |
 | `pack_150` | 150 | Rs5,999 | false | same |
@@ -99,10 +101,31 @@ What the response tells us:
   amount or currency no longer matches `shared/planCatalog.ts`, or the configured site is not the site
   that holds them.
 
-The root cause is **not established**; it needs a Chargebee LIVE admin read and container env inspection,
-neither of which is in the repo (D-059). No payment was attempted. Filed as its own registry row
-`LAUNCH-packs-unavailable` and in issue #709 for Instinct's provider read. USD is unverified: this run's
-region was IN and `pack_5` is USD-only, so it is absent from this response.
+**Root cause established at the provider catalog level** by the coordinator's read-only Chargebee console
+access (issue #709, Oct 26 19:42 IST): the LIVE site `skipwait.chargebee.com` is the only site on the
+account, and the consumer pack items `pack_2`, `pack_5`, `pack_25`, `pack_60` and `pack_150` (with
+`token_1/5/10` and `live_session`) were **ARCHIVED on Oct 25, 20:06-20:08 IST**. The app resolves only
+`skipwait_<pack>-<currency>` ids, so `available:false` is the true provider state - not a missing-config
+fallback.
+
+The repo side of that reading was re-verified here: deployed revision `40e160e2` is an ancestor of
+`origin/main`, and `src/worker.ts`, `Dockerfile`, `wrangler.jsonc`, `shared/planCatalog.ts`,
+`server/kitCheckout.ts`, `server/plansCatalogRoutes.ts` and `server/chargebeeEnvironment.ts` are
+byte-identical between `40e160e2` and `origin/main` (zero diff). `PASS_SALES_ENABLED` is hard-coded
+false (`shared/planCatalog.ts:101`), and `catalogPackItemPriceId` builds exactly
+`skipwait_<pack>-<currency>` (`shared/planCatalog.ts:269`). Container billing env is settled too
+(coordinator read of the Worker's runtime vars: `BILLING_ENV=live`, `CHARGEBEE_LIVE_SITE=skipwait`,
+live key/secret present; the deployed `src/worker.ts` passes them through explicitly).
+
+Still open, and kept open (no conclusion drawn):
+
+1. **Intent of the archival** - who archived the pack prices on Oct 25 and whether re-enabling or
+   recreating them for launch, or correcting `docs/PRICING.md`, is the right call. Owner decision.
+2. **Per-price read for the packs** - item-level archival is established; an item-price-level read of
+   the four INR pack ids and `pack_5` (USD) would pin exact status, amount and currency.
+3. **Runtime checkout refusal** - no checkout POST has been or may be issued without separate
+   authorization, so provider/app refusal behavior remains unverified. USD is also unverified: this
+   run's region was IN and `pack_5` is USD-only.
 
 ## Finding 2: empty states are real, not failures
 
@@ -111,30 +134,59 @@ region was IN and `pack_5` is USD-only, so it is absent from this response.
   shareable and in the sitemap), not re-filed here.
 - `/referrer`, `/ask` and `/plans` render their signed-out states.
 
-## Not run: blocked on approved access (issue #709)
+## Reconciliation: authenticated read-only evidence (issue #709)
 
-Exact access still missing:
+The coordinator's authorized QA route signed in the two approved alias accounts on Oct 26 18:59 IST,
+reading each email code from the alias inbox itself (no owner relay; both sign-ins ran under the
+owner-approved scope of up to 4 sign-in emails, 2 used). **This session did not sign in and does not
+share those sessions**; the following is reported on issue #709 and recorded here as such, not as
+independent proof.
 
-1. **qa-sweep-1 (seeker)** - an approved production sign-in route that does not make the owner relay a
-   code: an Instinct-controlled inbox for the WorkOS code, a short-lived `app_session_id` cookie handed
-   over privately, or the founder-approved reviewer login with its password supplied privately (reviewer
-   login auto-provisions a demo account, so it needs explicit approval; the QA session was told not to
-   create accounts without it).
-2. **qa-sweep-2 (verified referrer)** - who reads its work-email inbox, how one fresh code reaches the QA
-   session privately, and approval for the paid code email. Do not ask the owner to relay codes.
-3. **No-money boundary** - confirmation that the QA session may open the INR `pack_2` and USD `pack_5`
-   Chargebee hosted pages and stop at the payment form, never submitting (D-065).
-4. **Chargebee LIVE read** - the four INR item prices' status/amount/currency and confirmation that the
-   container runs `BILLING_ENV=live` with the `CHARGEBEE_LIVE_*` values present (no secret values here).
+| Check (coordinator-reported) | Result | What it proves |
+|---|---|---|
+| Seeker alias sign-in via email code | Session verified; plan free, 3 credits/month, 2 remaining | A WorkOS email-code sign-in produces a valid seeker session, and the wallet reads |
+| Seeker `GET /api/jobs`, `/api/saved-roles`, `/api/opportunities/mine` | All 200 | Authenticated seeker read paths answer |
+| Referrer alias sign-in via email code | Session verified | The work-email code path produces a valid referrer session |
+| Referrer `GET /api/referrer/home-bundle` | 200, `verifiedCompanyAccess: true` (workEmailDomain skipwait.me) | The verified-referrer gate resolves on a real session |
+| Referrer `GET /api/admin/billing/ledger` | 403 | Admin gating holds for a non-admin session |
 
-Consequently these BUGFREE_GATE items are **not verified for this release**: 1.1, 1.4, 1.5 completion,
-2.2-2.6, 3.1-3.4, 4.1-4.4 and 4.9-4.18. Gate 3.1's Oct 15 re-run debt also still stands.
+**What this does NOT prove, and must not be read as passed:** the authenticated screens were empty
+states ("No asks right now"; packs "Not on sale yet"). No populated inbox or conversation, no ask
+creation, no send, no upload, no withdraw, no cross-user read and no payment flow was exercised. An
+empty inbox is not proof of a populated one. Gate items 2.2-2.6, 3.1-3.4 and 4.1-4.4, 4.11 stay
+**BLOCKED/unverified**; 1.1 is partial (email-code session + wallet read; silent-SSO leg not run) and
+1.4 is verified for today's sign-in code path (delivery timing, From line and subject were not
+re-measured).
+
+Route correction recorded on the issue: the qa-sweep-1/2 work-email aliases are stale and excluded;
+the approved identities are the two alias accounts used since Oct 23. No codes, cookies, sessions or
+secrets change hands through this repo.
+
+## Access: available route and open requests
+
+Further authenticated checks are **requested through Instinct on GitHub** (issue #709), scoped to
+read-only GETs; sessions are never shared, and no passwords, codes or sessions are requested from the
+founder. The reads that would close specific gate rows: seeker `GET /api/credits/summary` and
+`GET /api/company-referrals/mine`; referrer `GET /api/company-referrals/inbox` and
+`GET /api/blocks/mine`. Everything that needs a write (ask creation, withdraw, upload, claim/accept,
+checkout) stays blocked until it has its own explicit authorization.
+
+Still open on the money lane (kept open deliberately): runtime checkout refusal behavior (needs an
+explicitly authorized no-wallet-risk path, not a live checkout POST), the item-price-level read for the
+four INR pack ids and `pack_5`, and the owner's decision on the Oct 25 pack archival.
+
+Consequently these BUGFREE_GATE items are **not verified for this release**: 1.1 (partial), 1.5
+completion, 2.2-2.6, 3.1-3.4, 4.1-4.4, 4.9-4.18. Gate 3.1's Oct 15 re-run debt also still stands.
 
 ## Limits
 
 - This is not a signed-in QA and not launch proof; AGENTS.md rule 8 remains unmet for the signed-in flows.
-- No hosted payment page was opened; there is no wallet, credit, ask, referrer, queue or conversation evidence.
-- The pack finding's root cause, USD availability and the Chargebee page amounts are unverified.
+- The authenticated session results are coordinator-reported on issue #709 and were not re-run by this
+  session; they cover sessions and reads only, never a transaction.
+- No hosted payment page was opened; there is no wallet, credit, ask, referrer, queue or conversation
+  evidence. Runtime checkout refusal stays unverified.
+- The pack finding's root cause is established at the provider catalog level (items archived Oct 25); the
+  intent of that archival, the item-price-level read and USD availability remain unverified.
 - Full-page captures depend on client-side reveal; the script scrolls each page before capturing. Surfaces
   that exist only after sign-in are not reachable in this run.
 - `/wall` being empty is a known open issue (#98), not a new finding.
@@ -144,4 +196,7 @@ Consequently these BUGFREE_GATE items are **not verified for this release**: 1.1
 - 26 full-page captures in `docs/qa/launch-live-qa-oct26/`, named `<route>-<width>.png` (1280 or 390).
 - `sweep-results.json`: raw per-view status, title, H1, char count, console/page/network errors, button
   texts and the sign-in provider counts.
+- Issue #709: the coordinator's Oct 26 updates (authorized-alias read-only sessions, LIVE Chargebee
+  console snapshot, container billing-env read); state re-read at 2026-10-26T14:48:04Z (same release,
+  packs still `available:false`).
 - The sweep script is a local temp file and is deliberately not committed.
