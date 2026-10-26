@@ -86,7 +86,8 @@ export default function Ask() {
         ) : (
           <>
             <header className="mt-6">
-              <h1 className="text-g-display text-g-ink">Ask for a referral</h1>
+              <h1 className="text-g-display text-g-ink">Make your experience easy to refer.</h1>
+              <h2 className="mt-2 text-g-meta text-g-ink-2">Ask for a referral</h2>
               {composer.context ? <p className="mt-1 truncate text-g-meta text-g-ink-3">{composer.context}</p> : null}
             </header>
 
@@ -100,7 +101,8 @@ export default function Ask() {
               <AskFields composer={composer} company={company} />
             </div>
 
-            <div className="mt-8 border-t border-g-hairline pt-5">
+            <section aria-label="Your next step" className="mt-8 border border-g-control-edge p-5">
+              <h2 className="mb-3 text-g-label text-g-ink">Your next step</h2>
               <p data-testid="goal-ask-cost" className="text-g-label text-g-ink">{composer.cost.line}</p>
               <p className="mt-1 text-pretty text-g-meta text-g-ink-2">{composer.cost.detail}</p>
               {composer.sendError ? <div role="alert" className="mt-2 text-pretty text-g-meta text-g-ink">{composer.sendError}</div> : null}
@@ -114,7 +116,7 @@ export default function Ask() {
                   {composer.sendLabel}
                 </GoalButton>
               </div>
-            </div>
+            </section>
           </>
         )}
       </div>

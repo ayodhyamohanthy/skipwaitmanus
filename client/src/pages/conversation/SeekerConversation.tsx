@@ -113,7 +113,8 @@ export function SeekerConversation(props: Props) {
         {failure ? (
           <p role="alert" className="mt-2 flex flex-wrap items-center gap-2 text-g-meta text-g-ink-2">{failure}<GoalButton size="xs" variant="ghost" onClick={onReload}>Try again</GoalButton></p>
         ) : null}
-        <h1 className="mt-2 text-g-display text-g-ink">{unknown ? (request.title ?? "Your ask") : company}</h1>
+        <h1 className="mt-2 text-g-display text-g-ink">{closedFor ? "Open another door." : stage === "Hired" ? "Thank the person who helped." : "Keep your referral moving."}</h1>
+        <h2 className="mt-3 text-g-heading text-g-ink">{unknown ? (request.title ?? "Your ask") : company}</h2>
         <p className="mt-1 text-g-meta text-g-ink-2">
           {unknown ? null : (request.title ?? "Referral request")}{sent ? <>{unknown ? null : " · "}<span className="uppercase"><GoalNum>SENT {sent}</GoalNum></span></> : null}
         </p>
@@ -122,7 +123,29 @@ export function SeekerConversation(props: Props) {
           <GoalStatus status={view.status} label={view.label} className="text-g-label" />
           {view.stepper ? <GoalMiniStepper stage={view.stepper.stage} terminal={view.stepper.terminal} label={`Stage ${view.stepper.stage + 1} of 4: ${view.label}`} /> : null}
         </div>
-        {line ? <p className="mt-2 text-pretty text-g-meta text-g-ink-2">{line}</p> : null}
+        <section aria-label="Your next step" className="mt-5 border border-g-control-edge p-4">
+          <h2 className="text-g-label text-g-ink">Your next step</h2>
+          <p className="mt-2 text-pretty text-g-meta text-g-ink-2">{line ?? (stage === "Hired" ? "Thank the person who opened this door." : "Keep this thread up to date as your application moves forward.")}</p>
+          {props.canMessage && stage !== "Hired" ? <p className="mt-2 text-g-meta text-g-ink-2">Need to coordinate? Send a private message here. Your ask and earlier messages are below.</p> : null}
+        {closedFor ? <GoalButton className="mt-3" variant="primary" asChild><Link href="/explore">Find another referrer</Link></GoalButton> : null}
+        {stage === "Hired" ? <GoalButton className="mt-3" variant="primary" asChild><Link href={`/landed?request=${request.id}`}>Thank {referrerGreeting(props.referrerName ?? request.referrerName)}</Link></GoalButton> : null}
+          {props.canMessage ? (
+            <form className="mt-4" onSubmit={event => { event.preventDefault(); props.onSend(); }}>
+              <div className="flex items-center gap-2 rounded-g-control border border-g-control-edge px-3 py-2 max-gdesk:flex-wrap">
+                <input
+                  value={props.draft}
+                  onChange={event => props.setDraft(event.target.value)}
+                  placeholder="Write a reply…"
+                  aria-label="Message"
+                  maxLength={3000}
+                  className="h-10 min-w-0 flex-1 bg-transparent text-g-body text-g-ink outline-none placeholder:text-g-ink-3 max-gdesk:min-w-[10rem]"
+                />
+                <GoalButton variant={closedFor || stage === "Hired" ? "outline" : "primary"} size="sm" type="submit" busy={props.sending} busyLabel="Sending…">Send</GoalButton>
+              </div>
+              {props.messageError ? <p role="alert" className="mt-2 text-g-meta text-g-ink font-semibold">{props.messageError}</p> : null}
+            </form>
+          ) : null}
+        </section>
         {props.referrerName ? <p className="mt-1 text-g-meta text-g-ink-2">Your referrer <span className="text-g-ink">{props.referrerName}</span></p> : null}
         {request.status === "approved" && request.referredDueAt ? (
           <p className="mt-1 text-g-meta text-g-ink-3">The referrer’s deadline to mark Referred is {formatDay(request.referredDueAt)}.</p>
@@ -132,8 +155,6 @@ export function SeekerConversation(props: Props) {
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {canWithdraw && confirm !== "withdraw" ? <GoalButton variant="ghost" flush size="sm" onClick={() => { setActionError(""); setConfirm("withdraw"); }}>Withdraw ask</GoalButton> : null}
           {request.status === "approved" && REFERRED_DEADLINE_ENABLED && confirm !== "email" ? <GoalButton variant="outline" size="sm" onClick={() => { setActionError(""); setConfirm("email"); }}>I got the referral email</GoalButton> : null}
-          {closedFor ? <GoalButton variant="outline" size="sm" asChild><Link href="/explore">Find another referrer</Link></GoalButton> : null}
-          {stage === "Hired" ? <Link href={`/landed?request=${request.id}`} className="text-g-meta text-g-ink-2 underline underline-offset-2">Thank {referrerGreeting(props.referrerName ?? request.referrerName)}</Link> : null}
           {nextMilestones.map(m => (
             <GoalButton key={m.status} variant="outline" size="sm" busy={busy} onClick={() => { void run(() => props.onProgress(m.status), "We could not record this milestone"); }}>Mark {m.stage}</GoalButton>
           ))}
@@ -179,22 +200,7 @@ export function SeekerConversation(props: Props) {
               );
             })}
           </ul>
-          {props.canMessage ? (
-            <form className="mt-4" onSubmit={event => { event.preventDefault(); props.onSend(); }}>
-              <div className="flex items-center gap-2 rounded-g-control border border-g-control-edge px-3 py-2 max-gdesk:flex-wrap">
-                <input
-                  value={props.draft}
-                  onChange={event => props.setDraft(event.target.value)}
-                  placeholder="Write a reply…"
-                  aria-label="Message"
-                  maxLength={3000}
-                  className="h-10 min-w-0 flex-1 bg-transparent text-g-body text-g-ink outline-none placeholder:text-g-ink-3 max-gdesk:min-w-[10rem]"
-                />
-                <GoalButton variant="primary" size="sm" type="submit" busy={props.sending} busyLabel="Sending…">Send</GoalButton>
-              </div>
-              {props.messageError ? <p role="alert" className="mt-2 text-g-meta text-g-ink font-semibold">{props.messageError}</p> : null}
-            </form>
-          ) : null}
+
         </div>
 
         <p className="mt-6 border-t border-g-hairline pt-4 text-pretty text-g-meta text-g-ink-2">{HONESTY}</p>

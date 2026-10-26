@@ -141,16 +141,20 @@ function CompanyPage({ company }: { company: PublicCompany }) {
               {company.initials}
             </span>
             <div className="min-w-0">
-              <h1 className="truncate text-g-display text-g-ink">{company.name}</h1>
+              <h1 className="text-g-display text-g-ink">Get referred at {company.name}.</h1>
+              <h2 className="mt-2 text-g-meta text-g-ink-2">{company.name}</h2>
               <p className="truncate text-g-meta text-g-ink-3">{company.functions.join(" · ")}</p>
             </div>
           </div>
         </header>
 
         <p className="mt-6 text-pretty text-g-body text-g-ink-2">Ask a verified employee. Your name and resume stay private until they accept.</p>
+        <section aria-label="Your next step" className="mt-6 border border-g-control-edge p-5">
+          <h2 className="text-g-label text-g-ink">Your next step</h2>
+          <p className="mt-2 text-g-meta text-g-ink-2">Bring the exact job link and show why your experience fits. Prepare your ask here.</p>
         <div className="mt-5 max-gdesk:grid">
           {open ? (
-            <GoalButton variant="primary" touch="large" className="gdesk:min-w-[280px]" onClick={() => setDrawerOpen(true)}>Ask for a referral</GoalButton>
+            <GoalButton variant={drawerOpen ? "ghost" : "primary"} touch="large" className="gdesk:min-w-[280px]" onClick={() => setDrawerOpen(true)}>Ask for a referral</GoalButton>
           ) : (
             <GoalButton variant="outline" touch="large" className="gdesk:min-w-[280px]" onClick={() => setDrawerOpen(true)}>Ask anyway</GoalButton>
           )}
@@ -158,6 +162,7 @@ function CompanyPage({ company }: { company: PublicCompany }) {
         <p className="mt-3 text-g-meta text-g-ink-3">
           {open ? ASK_COST_SENTENCE : `No verified employee can see asks yet. Yours waits free until one can - up to ${COVERAGE_WAIT_DAYS} days - and no credit is used until then.`}
         </p>
+        </section>
 
         <Responsiveness slug={company.slug} />
         <CompanyOpenings

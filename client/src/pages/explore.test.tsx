@@ -99,6 +99,7 @@ describe("Find a referral directory", () => {
     const fetchMock = stubDirectory();
     renderWithQuery(<Explore />);
     expect(await screen.findByText("Where do you want a referral?")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Your next step" })).toBeTruthy();
     expect(screen.getByTestId("goal-directory-summary").textContent).toMatch(/^5 companies$/);
     const list = screen.getByRole("list", { name: "Companies" });
     expect(within(list).getAllByRole("link").map(row => row.getAttribute("aria-label"))).toEqual(rowNames);

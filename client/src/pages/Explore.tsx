@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import {
   GoalAppShell,
+  GoalButton,
   GoalCompanyRow,
   GoalEmptyState,
   GoalErrorState,
@@ -163,7 +164,10 @@ export default function Explore() {
       <div data-skipwait-screen="find-a-referral" className="max-w-[696px] px-8 pt-10 pb-8 max-gdesk:px-4 max-gdesk:pt-6 max-gdesk:pb-6">
         <h1 className="text-balance text-g-display text-g-ink">Where do you want a referral?</h1>
         <p className="mt-2 text-pretty text-g-body text-g-ink-2">Ask a verified employee. Your name and resume stay private until they accept.</p>
-        <div className="mt-6 max-gdesk:mt-5">
+        <section aria-label="Your next step" className="mt-6 border border-g-control-edge p-4">
+          <h2 className="text-g-label text-g-ink">Your next step</h2>
+          <p className="mt-2 text-g-meta text-g-ink-2">Find the company hiring for your role. Open a company to prepare one focused ask.</p>
+        <div className="mt-4">
           <GoalSearchInput label="Search companies" placeholder="Company, function or industry…" value={query} onChange={setQuery} />
         </div>
         <div role="group" aria-label="Filter companies" className="mt-4 flex flex-wrap gap-2 max-gdesk:gap-y-3">
@@ -172,6 +176,8 @@ export default function Explore() {
             <GoalFilterChip key={item} label={item} pressed={fn === item} onPressedChange={pressed => setFn(pressed ? item : null)} />
           ))}
         </div>
+          {!drawerOpen ? <GoalButton className="mt-4" variant="primary" onClick={() => { document.querySelector('[data-testid="goal-directory-summary"]')?.scrollIntoView({behavior:"smooth",block:"start"}); }}>See matching companies</GoalButton> : null}
+        </section>
         {directoryBody}
       </div>
     </GoalAppShell>
