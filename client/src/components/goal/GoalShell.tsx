@@ -171,7 +171,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
 
       {/* Phone bottom bar */}
       {!hideBottomBar ? (
-        <nav aria-label="Primary" className="gdesk:hidden max-gdesk:sticky max-gdesk:bottom-0 max-gdesk:z-20 max-gdesk:col-start-1 max-gdesk:row-start-2 max-gdesk:row-end-[-1] max-gdesk:self-end flex h-14 items-stretch border-t border-g-hairline bg-g-surface">
+        <nav data-goal-bottom-bar="" aria-label="Primary" className="gdesk:hidden max-gdesk:sticky max-gdesk:bottom-0 max-gdesk:z-20 max-gdesk:col-start-1 max-gdesk:row-start-2 max-gdesk:row-end-[-1] max-gdesk:self-end flex h-14 items-stretch border-t border-g-hairline bg-g-surface">
           {items.map(item => (
             <a
               key={item.id}

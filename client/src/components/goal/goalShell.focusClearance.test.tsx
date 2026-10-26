@@ -5,6 +5,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { afterEach, describe, expect, it } from "vitest";
@@ -39,7 +40,7 @@ describe("GoalShell focus clearance (#642)", () => {
   });
 
   it("scopes a scroll-padding-bottom rule to html:has([data-goal-bottom-bar]) in the phone media query", () => {
-    const css = readFileSync(new URL("../../index.css", import.meta.url), "utf8");
+    const css = readFileSync(join(__dirname, "..", "..", "index.css"), "utf8");
     const media = css.match(/@media\s*\(width\s*<\s*40\.0625rem\)\s*\{([\s\S]*?)\n\}/);
     expect(media, "a (width < 40.0625rem) media query").toBeTruthy();
     expect(media![1]).toMatch(/html:has\(\[data-goal-bottom-bar\]\)\s*\{[^}]*scroll-padding-bottom:/);
