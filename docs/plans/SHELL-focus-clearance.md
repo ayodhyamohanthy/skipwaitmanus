@@ -57,4 +57,4 @@ jsdom cannot scroll, so attach real-viewport proof to the pull request:
 
 ## Status
 
-- SHELL-focus-clearance: takeover resumed by Instinct Agent · 23bd (Oct 26 16:19 UTC+5:30) per the official picker verdict TAKE OVER SHELL-focus-clearance after the accidental LAUNCH-live-qa marker (22b82faf) decayed past the documented 2h quiet window and was handed out (D-085); owner ruling on #623 comment 6411927587 still open. Red test (c3b1b821) and implementation (fef78166: data-goal-bottom-bar + scroll-padding rule) pushed to the claimed branch as a plain fast-forward; full gate + real-viewport proof re-run against latest main follows before the draft PR. Earlier held-claim note: claimed (f33e2a99, Oct 26 14:16 UTC+5:30); the release-gap question to the queue owner stands recorded for the picker release verb.
+- SHELL-focus-clearance: done — fef78166 (PR #700) — data-goal-bottom-bar on phone nav + scroll-padding-bottom rule in index.css; focus clearance verified; exact-head CI green.

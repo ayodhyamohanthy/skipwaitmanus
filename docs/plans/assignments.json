@@ -167,7 +167,7 @@
       "tier": 2,
       "lane": "design-shell",
       "branch": "agent/queue/shell-focus-clearance",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "Issue #642 (Instinct, 390x844 DPR2 QA): the /ask reason field and the conversation composer sit under the sticky 56px bottom bar on focus. Fix: data-goal-bottom-bar on the phone nav plus one scroll-padding-bottom rule in index.css (switch only). Desktop unchanged. Real-viewport proof on the PR; a session with no browser uses --avoid, never blocked.",
       "owns": [
