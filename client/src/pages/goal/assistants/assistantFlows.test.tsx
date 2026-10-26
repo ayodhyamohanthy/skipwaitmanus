@@ -6,8 +6,8 @@ import GoalAssistants from "./GoalAssistants";
 import GoalSeekerAgents from "./GoalSeekerAgents";
 import GoalApprove from "./GoalApprove";
 import GoalConnectAssistant from "./GoalConnectAssistant";
-const {auth} = vi.hoisted(() => ({auth:{isSignedIn:true,isLoaded:true,getToken:vi.fn().mockResolvedValue("fixture-token"),signOut:vi.fn()}}));
-vi.mock("@/_core/auth",()=>({useAuth:()=>auth,useUser:()=>({user:{primaryEmailAddress:{emailAddress:"fictional@example.invalid"}}}),SignInButton:({children}:{children:React.ReactNode})=><>{children}</>}));
+const {auth} = vi.hoisted(() => ({auth:{isSignedIn:true,isLoaded:true,getToken:vi.fn().mockResolvedValue("fixture-token"),signOut:vi.fn(),openSignIn:vi.fn()}}));
+vi.mock("@/_core/auth",()=>({useAuth:()=>auth,useUser:()=>({user:{primaryEmailAddress:{emailAddress:"fictional@example.invalid"}}})}));
 vi.mock("wouter",()=>({useSearch:()=>"",Link:({href,children}:{href:string;children:React.ReactNode})=><a href={href}>{children}</a>}));
 const response = (body:object,status=200) => ({ok:status<400,status,json:async()=>body});
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
@@ -43,6 +43,13 @@ describe("goal assistant flows",()=>{
  });
  it("honors the server plan gate on connection and offers no approve action",async()=>{
    vi.stubGlobal("fetch",vi.fn(async()=>response({hasAccess:false})));
-   render(<GoalConnectAssistant/>);expect(await screen.findByText("Assistants need Land")).toBeTruthy();expect(screen.queryByRole("button",{name:"Approve"})).toBeNull();
+   render(<GoalConnectAssistant/>);expect(await screen.findByText("Assistant access is not available")).toBeTruthy();expect(screen.queryByRole("button",{name:"Approve"})).toBeNull();
+ });
+ it("triggers openSignIn on sign-in button click when signed out",async()=>{
+   auth.isSignedIn=false;auth.isLoaded=true;auth.openSignIn.mockClear();
+   render(<GoalAssistants/>);
+   const btn = await screen.findByRole("button",{name:"Sign in"});
+   fireEvent.click(btn);
+   expect(auth.openSignIn).toHaveBeenCalled();
  });
 });

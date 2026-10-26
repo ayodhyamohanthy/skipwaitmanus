@@ -1,7 +1,7 @@
 
 
 import { useCallback, useEffect, useState } from "react";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { GoalButton as Button, useOnlineStatus } from "@/components/goal";
@@ -15,7 +15,7 @@ const TABS = [{ id: "assistants", label: "Assistants" }, { id: "tokens", label: 
 type Tab = (typeof TABS)[number]["id"];
 
 export default function GoalAssistants() {
-  const { isSignedIn, isLoaded, getToken } = useAuth();
+  const { isSignedIn, isLoaded, getToken, openSignIn } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const online = useOnlineStatus();
   const [tab, setTab] = useState<Tab>("assistants");
@@ -126,7 +126,7 @@ export default function GoalAssistants() {
 
           <h2 className="mt-2 font-semibold">Sign in to manage assistants</h2>
           <p className="mt-1 text-sm text-g-ink-2">Connections, tokens and approvals live on your account.</p>
-          <SignInButton><button type="button" className="mt-4 min-h-11 bg-g-primary px-4 text-g-on-primary">Sign in</button></SignInButton>
+          <Button variant="primary" className="mt-4" onClick={() => openSignIn()}>Sign in</Button>
         </Panel>
       </AssistantLayout>
     );

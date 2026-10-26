@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { GoalButton, GoalField, GoalTextInput, GoalNum, GoalStatus, useOnlineStatus } from "@/components/goal";
@@ -21,7 +21,7 @@ const DEFAULT_LIMITS: Limits = { creditsPerAsk: 10, creditsPerDay: 20, creditsPe
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "never");
 
 export default function GoalSeekerAgents() {
-  const { isSignedIn, isLoaded, getToken } = useAuth();
+  const { isSignedIn, isLoaded, getToken, openSignIn } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const online = useOnlineStatus();
   const [detailError, setDetailError] = useState("");
@@ -98,7 +98,7 @@ export default function GoalSeekerAgents() {
     } catch { setDetailError("Activity did not load. Close and reopen it to try again."); }
     finally { setDetailLoading(false); }
   };
-  const content = !isLoaded ? <p role="status">Checking sign-in...</p> : !isSignedIn ? <NextStep><p className="mb-3 text-g-body">Sign in to let your agent prepare asks. It cannot send or buy credits.</p><SignInButton><GoalButton variant="primary">Sign in</GoalButton></SignInButton></NextStep> : <>
+  const content = !isLoaded ? <p role="status">Checking sign-in...</p> : !isSignedIn ? <NextStep><p className="mb-3 text-g-body">Sign in to let your agent prepare asks. It cannot send or buy credits.</p><GoalButton variant="primary" onClick={() => openSignIn()}>Sign in</GoalButton></NextStep> : <>
     {onceKey ? <Section title="Save your agent key now"><p className="text-g-body text-g-ink-2">Shown once. We store only a hash, so we cannot show it again. Keep it private.</p><code data-testid="agent-key" className="mt-3 block break-all border border-g-control-edge p-3 font-g-mono text-g-mono">{onceKey}</code><GoalButton className="mt-2" onClick={() => { void navigator.clipboard?.writeText(onceKey).catch(() => setActionError("Select and copy your key. Clipboard access did not work.")); }}>Copy key</GoalButton><GoalButton onClick={() => setOnceKey(null)}>I saved it</GoalButton></Section> : null}
     {loading ? <p role="status" className="mb-5 text-g-body">Checking agent access...</p> : null}
     {loadError ? <NextStep><GoalStatus status="queue_new" label="Agent access unavailable" /><p role="alert" className="mt-3 text-g-body">{loadError}</p><p className="mt-2 text-g-meta text-g-ink-2">No key can be created until access is available. You can still find a referral yourself.</p><NetworkButton className="mt-3" onClick={() => void load()} busy={loading}>Check access again</NetworkButton><a className="g-hit ml-3 inline-block underline" href="/explore">Find a referral</a></NextStep> : null}

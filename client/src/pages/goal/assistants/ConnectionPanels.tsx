@@ -1,11 +1,17 @@
 import { useState } from "react";
 import { GoalButton, GoalField, GoalTextInput } from "@/components/goal";
-import { LAND_NOT_ON_SALE_LINE } from "@shared/assistant";
 import { createdLabel, describeEvent, scopeSummary, providerLabel, timeAgo, type AssistantConnection, type AssistantEvent, type AssistantToken } from "@/components/assistants/format";
 import { AccessStatus, NetworkButton, NextStep, Section } from "./AssistantLayout";
 
 export function PlanGate() {
-  return <NextStep><AccessStatus>Assistants are not available on your plan</AccessStatus><h2 className="mt-3 text-g-heading">Assistants and API tokens come with Land</h2><p className="mt-2 text-g-body text-g-ink-2">Land and Concierge members can sign in, connect and apply from ChatGPT, Claude, bots and their own tools.</p><p className="mt-3 text-g-meta">{LAND_NOT_ON_SALE_LINE}</p><GoalButton asChild variant="outline" className="mt-4"><a href="/explore">Find a referral yourself</a></GoalButton></NextStep>;
+  return (
+    <NextStep>
+      <AccessStatus>Assistants are not available on your plan</AccessStatus>
+      <h2 className="mt-3 text-g-heading">Assistant access is not available yet</h2>
+      <p className="mt-2 text-g-body text-g-ink-2">Connecting and applying from ChatGPT, Claude, bots and custom tools will be available with assistant access.</p>
+      <GoalButton asChild variant="primary" className="mt-4"><a href="/explore">Find a referral yourself</a></GoalButton>
+    </NextStep>
+  );
 }
 export function AssistantsPanel({ connections, workingId, onDisconnect }: { connections: readonly AssistantConnection[]; workingId: number | null; onDisconnect(connection: AssistantConnection): void }) {
   return <>

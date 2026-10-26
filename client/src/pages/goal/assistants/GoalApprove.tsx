@@ -1,7 +1,7 @@
 
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { GoalButton as Button, useOnlineStatus } from "@/components/goal";
@@ -14,7 +14,7 @@ type CreditsSummary = { plan?: string; totalAvailable?: number; monthlyCreditsRe
 const FOOTNOTE = "Unanswered approvals expire after 24 hours.";
 
 export default function GoalApprove() {
-  const { isSignedIn, isLoaded, getToken } = useAuth();
+  const { isSignedIn, isLoaded, getToken, openSignIn } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const online = useOnlineStatus();
   const [approvals, setApprovals] = useState<AssistantApproval[]>([]);
@@ -116,7 +116,7 @@ export default function GoalApprove() {
 
         <h1 className="mt-3 text-g-heading">Sign in to review approvals</h1>
         <p className="mt-1 text-sm text-g-ink-2">Assistant actions wait for your decision.</p>
-        <SignInButton><button type="button" className="min-h-11 bg-g-primary px-4 text-g-on-primary">Sign in</button></SignInButton>
+        <Button variant="primary" className="mt-4" onClick={() => openSignIn()}>Sign in</Button>
       </Sheet>,
     );
   }

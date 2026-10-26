@@ -1,13 +1,12 @@
 import { ArrowRight, Bot, Check, CircleAlert, Clock, Lock, ShieldAlert, ShieldCheck, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { SignInButton, useAuth, useUser } from "@/_core/auth";
+import { useAuth, useUser } from "@/_core/auth";
 import { Link, useSearch } from "wouter";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { GoalButton as Button, useOnlineStatus } from "@/components/goal";
 import { AssistantLayout, NetworkButton, NextStep } from "./AssistantLayout";
 import { Section as Panel } from "./AssistantLayout";
-import { LAND_NOT_ON_SALE_LINE } from "@shared/assistant";
 
 const PROVIDERS = ["chatgpt", "claude", "custom"] as const;
 type Provider = (typeof PROVIDERS)[number];
@@ -48,7 +47,7 @@ function callbackHost(redirectUri: string): string | null {
 export default function GoalConnectAssistant() {
   // wouter's location is the path only; the OAuth request and state flags live in the query string.
   const queryString = useSearch();
-  const { isSignedIn, isLoaded, getToken, signOut } = useAuth();
+  const { isSignedIn, isLoaded, getToken, signOut, openSignIn } = useAuth();
   const { user } = useUser();
   const fetchToken = usePersistFn(getToken);
   const online = useOnlineStatus();
@@ -197,12 +196,16 @@ export default function GoalConnectAssistant() {
           <Bot className="mx-auto size-8" />
           <h2 className="mt-3 text-g-heading">Sign in to connect {label}</h2>
           <p className="mt-2 text-sm text-g-ink-2">You'll come straight back here after signing in.</p>
-          <SignInButton><button type="button" className="mt-5 min-h-11 bg-g-primary px-4 text-g-on-primary">Sign in to skipwait.me</button></SignInButton>
+          <Button variant="primary" className="mt-5" onClick={() => openSignIn()}>Sign in to skipwait.me</Button>
         </Panel>
       ) : null}
 
       {stage === "not-on-land" ? (
-        <NextStep><h2 className="text-g-heading">Assistants need Land</h2><p className="mt-3 max-w-2xl text-g-body text-g-ink-2">Signing in, connecting and applying through ChatGPT, Claude, bots or your own tools is part of Land and Concierge.</p><p className="mt-3 text-g-meta">{LAND_NOT_ON_SALE_LINE}</p><Button asChild variant="outline" className="mt-4"><Link href="/explore">Keep using skipwait.me yourself</Link></Button></NextStep>
+        <NextStep>
+          <h2 className="text-g-heading">Assistant access is not available</h2>
+          <p className="mt-3 max-w-2xl text-g-body text-g-ink-2">Connecting and applying through ChatGPT, Claude, bots or custom tools is currently not active on this account.</p>
+          <Button asChild variant="primary" className="mt-4"><Link href="/explore">Find a referral yourself</Link></Button>
+        </NextStep>
       ) : null}
 
       {stage === "expired" ? (
