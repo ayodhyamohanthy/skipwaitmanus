@@ -29,7 +29,7 @@ import { attachCompanyIdentities, getCompanyDirectoryEntry as defaultCompanyDire
 import { askJobFunctionInputSchema, withParsedJobFunction, type JobFunction } from "../shared/jobFunctions";
 import { companyCapReachedSchema, type OpenAskSlots } from "../shared/openAskSlots";
 import { askWorkItemIdsSchema, dedupeAskWorkItemIds } from "../shared/askWorkItems";
-import { CompanyCapReachedError, OpenAskSlotCapError, PlanLimitError } from "./planGates";
+import { CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, PlanLimitError } from "./planGates";
 import { BlockedPersonalLinkError } from "./blockedPairs";
 import { creditLedgerQuerySchema, creditLedgerResponseSchema, type CreditLedgerEntry } from "../shared/creditLedger";
 import type { ReferrerAccessResponse } from "../shared/referrerAccess";
@@ -746,7 +746,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before sending a private company request" });
       actorUserId = identity.account.id;
-      const { targetRoleUrl, attachmentIds, confirmedCompanyDomain, compensation, fastTrackCode, fastTrackCompanySlug, fastTrackAlias, companySlug } = req.body as { companySlug?: string; targetRoleUrl?: string; attachmentIds?: number[]; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string };
+      const { targetRoleUrl, attachmentIds, confirmedCompanyDomain, compensation, fastTrackCode, fastTrackCompanySlug, fastTrackAlias, companySlug, expectedCoverage } = req.body as { companySlug?: string; targetRoleUrl?: string; attachmentIds?: number[]; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; expectedCoverage?: string };
       // Optional seeker-confirmed function; absent means the server infers it from the job link.
       const chosenFunction = askJobFunctionInputSchema.safeParse(req.body?.jobFunction);
       if (!chosenFunction.success) return res.status(400).json({ error: "Choose a function from the list" });
@@ -787,7 +787,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const pinnedWork = askWorkItemIdsSchema.safeParse(req.body?.workItemIds ?? []);
       if (!pinnedWork.success) return res.status(400).json({ error: "Pin work from your showcase, or send the ask without it." });
       const pinnedWorkIds = dedupeAskWorkItemIds(pinnedWork.data);
-      const result = await deps.createCompanyReferralRequest(identity.account.id, { ...(selectedCompany ? { selectedCompany: { name: selectedCompany.name, domains: selectedCompany.domains } } : {}), ...(opportunitySelection?.success ? { opportunityId: opportunitySelection.data.opportunityId } : {}), targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias, submittedTargetRoleUrl: targetRoleUrl.trim(), ...(chosenFunction.data ? { jobFunction: chosenFunction.data } : {}), ...(pinnedWorkIds.length ? { workItemIds: pinnedWorkIds } : {}) });
+      const result = await deps.createCompanyReferralRequest(identity.account.id, { ...(selectedCompany ? { selectedCompany: { name: selectedCompany.name, domains: selectedCompany.domains } } : {}), ...(opportunitySelection?.success ? { opportunityId: opportunitySelection.data.opportunityId } : {}), targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias, submittedTargetRoleUrl: targetRoleUrl.trim(), ...(chosenFunction.data ? { jobFunction: chosenFunction.data } : {}), ...(pinnedWorkIds.length ? { workItemIds: pinnedWorkIds } : {}), ...(expectedCoverage === "waiting_for_company_coverage" ? { expectedCoverage } : {}) });
       // Referrer email + Slack delivery runs after the response (shared dispatcher, D-137):
       // the ask is already committed, each send has a durable claim/lease row, and every
       // outcome (with elapsedMs) goes to the audit log, so a slow or dead send never holds
@@ -810,6 +810,12 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (error instanceof CompanyCapReachedError) {
         record({ actorUserId, action: "company_referral.company_cap_reached", outcome: "denied", resourceType: "referral_request", companyDomain: error.companyDomain, metadata: { open: error.open, cap: error.cap } });
         return res.status(409).json(companyCapReachedSchema.parse({ error: error.message, code: error.code, companyDomain: error.companyDomain, open: error.open, cap: error.cap }));
+      }
+      // D-132 item 3: composed as free-waiting but coverage opened up - nothing
+      // was created or charged; the composer re-prices and the seeker re-sends.
+      if (error instanceof CoverageOpenedUpError) {
+        record({ actorUserId, action: "company_referral.coverage_changed", outcome: "denied", resourceType: "referral_request", companyDomain: error.companyDomain });
+        return res.status(409).json({ error: error.message, code: error.code, companyDomain: error.companyDomain });
       }
       // P0-block-delivery: a personal link whose owner is blocked with the seeker answers exactly like an inactive link
       // (same 400 and words, so the block is not revealed); the denial is recorded like every other blocked request.

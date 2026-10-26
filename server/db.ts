@@ -49,7 +49,7 @@ import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegr
 import { isPaidPlanActive, resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { askWorkItemIdsSchema, dedupeAskWorkItemIds, type AskWorkItem } from "../shared/askWorkItems";
-import { AssistantPlanRequiredError, CompanyCapReachedError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
+import { AssistantPlanRequiredError, CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskWindow, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks, type UnclaimedAssignmentKind, type UnclaimedAssignments } from "./heldAsk";
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
@@ -63,6 +63,7 @@ import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, fr
 import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { grantFreeCycleOnValidationTx, openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
+import { PAID_CREDITS_NEVER_EXPIRE } from "../shared/planFamily";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
 import { bucketOfLedgerRow } from "../shared/creditSpend";
 import { fetchPublicJobLink } from "./jobLinkPreview";
@@ -1848,7 +1849,7 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   return { id: requestId };
 }
 
-export type CreateCompanyReferralInput = { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; workItemIds?: number[] };
+export type CreateCompanyReferralInput = { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; workItemIds?: number[]; /** Set when the composer showed the free-waiting (uncovered) representation: the commit must not charge because coverage flipped - it refuses instead, and the seeker re-confirms at the live price (D-132 item 3). */ expectedCoverage?: "waiting_for_company_coverage" };
 /**
  * The private `jobs` row behind a company ask. Its function is the seeker's
  * explicit choice ("seeker") or the shared classifier's guess from the job
@@ -1915,6 +1916,8 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const allocatedByReferrer=fastTrackLink?new Map<number,number>():await readAllocatedSlotCountsTx(tx,eligible.map(profile=>profile.userId));
     const available=fastTrackLink?eligible:eligible.filter(profile=>isOpenReferrer(profile,companyDomain,allocatedByReferrer.get(profile.userId)??0));
     const coverageStatus=companyCoverageStatus(available.length);const isWaiting=coverageStatus==="waiting_for_company_coverage";
+    // D-132 item 3: a composer that promised free waiting never commits a charge because coverage flipped. Thrown before the slot-cap check, the spend and every write; the retry after re-pricing carries no expectation. Guarded by the same server flag as the quote: review F2 (55e5aa3a) - with ASK_LEVEL_COST off the promise does not exist, so today's create-and-charge is unchanged even if a body carries the field.
+    if(askLevelCostEnabled()&&input.expectedCoverage==="waiting_for_company_coverage"&&!isWaiting)throw new CoverageOpenedUpError(companyDomain);
     // D-061: a waiting ask uses no open slot and bypasses the cap until it can reach a referrer.
     // The cap refusal stays ahead of the attachment read, as before, so it needs no document lock.
     if(!isWaiting&&entitlements.openRequests!==null&&openAsks>=entitlements.openRequests)throw new OpenAskSlotCapError(openAskSlots(entitlements,openAsks));
@@ -2393,6 +2396,7 @@ export async function refundLedgerSpendTx(tx: any, input: { userId: number; requ
     if (spend.source === BUCKET_SOURCES.purchased) { balance += credits; restored = credits; }
     else if (spend.source === BUCKET_SOURCES.cycle) {
       if (spend.sourceCycleKey === input.wallet.monthlyCycleKey) { const next = Math.min(input.wallet.monthlyAllowance, monthly + credits); restored = next - monthly; monthly = next; }
+      else if (askLevelCostEnabled() && PAID_CREDITS_NEVER_EXPIRE && input.wallet.plan !== "free" && input.wallet.subscriptionId !== null) { balance += credits; restored = credits; }
     } else if (spend.source === BUCKET_SOURCES.promo) {
       const promo = (await tx.select().from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, userId), eq(promoCreditGrants.role, "job_seeker"))).limit(1).for("update"))[0];
       if (promo && (promo.status === "active" || promo.status === "exhausted") && promo.expiresAt.getTime() > now.getTime() && promo.creditsRemaining + credits <= promo.tokenCount) {
@@ -2739,12 +2743,13 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
     if (!lockedWallet) return { outcome: "held", requestId: input.requestId, seekerUserId: request.jobSeekerId, companyDomain };
     const reconciled = await reconcileWalletTx(tx, lockedWallet, now);
     const promo = await promoStateForTx(tx, request.jobSeekerId, "job_seeker", now);
-    // D-110/D-132: the waiting ask pays the same level cost the covered ask
-    // paid at creation, classified from the same stored job row.
-    const deliveryJob = (await tx.select({ title: jobs.title, description: jobs.description, url: jobs.targetRoleUrl }).from(jobs).where(eq(jobs.id, request.jobId)).limit(1))[0];
-    // D-132 audit item 2: read the cost stored at creation; only an ask with no stored row (made with the flag off) is priced again.
+    // D-110/D-132 + POSTMERGE-oct22 P1 (#482): the waiting ask pays the price it was quoted at creation.
+    // D-132 audit item 2: a stored row is that price. A missing row means the ask was created while level
+    // pricing was off (rows are written only while the flag is on), so it keeps the flat one-credit price:
+    // delivery must never reclassify it against the flag as it stands now, or an ask that waited across the
+    // activation would be repriced higher than the seeker was ever told.
     const storedCost = (await tx.select({ creditCost: askCosts.creditCost }).from(askCosts).where(eq(askCosts.referralRequestId, input.requestId)).limit(1))[0];
-    const deliveryCost = storedCost ? storedCost.creditCost : askCreditCost({ title: deliveryJob?.title, description: deliveryJob?.description, url: deliveryJob?.url });
+    const deliveryCost = storedCost ? storedCost.creditCost : FLAT_ASK_COST;
     try {
       await spendCreditsTx(tx, { wallet: reconciled.wallet, grants: reconciled.grants, promo: promoGrantsEnabled() ? promoHolding(promo.grant) : null, credits: deliveryCost, meta: { idempotencyKey: askDeliveryKey(input.requestId), referenceType: "referral_request", referenceId: String(input.requestId) }, now });
     } catch (error) {
@@ -4215,12 +4220,14 @@ export function promoGrantsEnabled(): boolean { return process.env.PROMO_GRANTS_
  * equal to its job's classified level (L1=1 ... L10=10); off keeps the flat
  * 1-credit cost. Changeable default per the owner. */
 export function askLevelCostEnabled(): boolean { return process.env.ASK_LEVEL_COST === "true"; }
+/** The flat one-credit price used while ASK_LEVEL_COST is off (D-110/D-132). */
+export const FLAT_ASK_COST = 1;
 /** Cost of one ask in credits. The create spend and the waiting-ask delivery
  * spend both classify the same stored job fields, and the pre-send quote
  * (/api/company-referrals/quote) classifies the same normalized link, so all
  * three always agree. */
 export function askCreditCost(job: { title?: string | null; description?: string | null; url?: string | null }): number {
-  if (!askLevelCostEnabled()) return 1;
+  if (!askLevelCostEnabled()) return FLAT_ASK_COST;
   return creditsForLevel(assignJobLevel({ title: job.title, description: job.description, url: job.url }).level);
 }
 /** D-132 audit item 2: the level and cost an ask is priced at, for the one row stored at creation. */
