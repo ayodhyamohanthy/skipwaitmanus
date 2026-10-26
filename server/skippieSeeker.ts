@@ -20,7 +20,12 @@ export const SKIPPIE_JOB_TEXT_MAX = 20000;
 export const SKIPPIE_RESUME_TEXT_MAX = 40000;
 export const SKIPPIE_NOTE_MAX = 1400;
 
-export type SkippieQuote = { level: number; cost: number; totalAvailable: number; shortfall: number };
+// covered mirrors createAsk's coverage decision (verified + available referrer at the
+// resolved employer domain): true = the level cost is charged at send, false = the ask
+// waits for company coverage with NO debit. null = the domain could not be resolved,
+// so coverage is unknown and no free-waiting claim is made; the send-time re-quote and
+// createAsk remain the backstop either way.
+export type SkippieQuote = { level: number; cost: number; totalAvailable: number; shortfall: number; covered: boolean | null };
 export type OwnedResume = { id: number; fileName: string; fileKey?: string; mimeType?: string };
 export type ResumeFact = { id: string; text: string; source: string };
 export type FitDraft = {
@@ -31,7 +36,7 @@ export type FitDraft = {
   suggestedNote: string;
   noteFactIds: string[];
 };
-export type CreateAskInput = { targetRoleUrl: string; attachmentIds: number[]; personalPitch: string; idempotencyKey: string };
+export type CreateAskInput = { targetRoleUrl: string; attachmentIds: number[]; personalPitch: string; idempotencyKey: string; /** Binding accepted representation (D-132 item 3): free-waiting shown, and the numeric cost the seeker confirmed. */ expectedCoverage?: "waiting_for_company_coverage"; expectedCost?: number };
 export type CreateAskResult = { requestId: number; companyDomain: string; coverageStatus?: "covered" | "waiting_for_company_coverage"; replayed?: boolean };
 
 export type SkippieSeekerDeps = {
@@ -203,8 +208,16 @@ function sha256(text: string): string {
 type Out = { session: SkippieSession; replies: string[] };
 
 function quoteLine(quote: SkippieQuote): string {
-  return quote.shortfall > 0
-    ? `This ask costs ${quote.cost} credit${quote.cost === 1 ? "" : "s"}. You have ${quote.totalAvailable}. Add ${quote.shortfall} more on /plans first - Skippy never takes a payment.`
+  // A known-uncovered company waits free by contract (createAsk accepts with no
+  // debit), so a short wallet is never pushed to top-up for it - and the
+  // deferred charge is named with the quote's own grounded cost, never "1".
+  if (quote.covered === false)
+    return `No employee at this company is open on skipwait.me yet, so your ask waits - free - until one is. It uses ${quote.cost} credit${quote.cost === 1 ? "" : "s"} only at that moment. Send it?`;
+  // Unknown coverage (the employer domain did not resolve) claims nothing free
+  // and pushes no purchase: the send-time createAsk decides - charge, free
+  // wait, or its own nothing-charged refusal.
+  return quote.shortfall > 0 && quote.covered === true
+    ? `This ask costs ${quote.cost} credit${quote.cost === 1 ? "" : "s"}. You have ${quote.totalAvailable}. Add credits on /plans first - Skippy never takes a payment.`
     : `This ask costs ${quote.cost} credit${quote.cost === 1 ? "" : "s"}. You have ${quote.totalAvailable}. Send it?`;
 }
 
@@ -388,16 +401,33 @@ export async function advanceSkippieSeeker(userId: number, current: SkippieSessi
         session.step = "fit";
         return say("No problem - nothing was sent and nothing was spent. You can keep editing your note.");
       }
-      if (input.kind !== "confirm_send") return say(session.quote?.shortfall ? "Add credits on /plans first - Skippy never takes a payment." : 'Say "Send it" to send your ask, or "not yet" to keep editing.');
+      if (input.kind !== "confirm_send") return say(session.quote?.shortfall && session.quote.covered === true ? "Add credits on /plans first - Skippy never takes a payment." : 'Say "Send it" to send your ask, or "not yet" to keep editing.');
       if (!session.note) return say("Write your note to the referrer first - the final words are yours.");
       if (!session.noteSha256 || session.noteSha256 !== sha256(session.note)) return say("Your note changed since you confirmed it. Confirm the final words again before sending.");
       // Price is live, never hardcoded: quote again at send time and refuse drift.
+      const shown = session.quote;
       const fresh = await deps.getQuote(userId, session.targetRoleUrl!);
       session.quote = fresh;
-      if (fresh.shortfall > 0) return say(`This ask costs ${fresh.cost} credit${fresh.cost === 1 ? "" : "s"} and you have ${fresh.totalAvailable}. Nothing was sent and nothing was charged. Add credits on /plans first.`);
+      // The confirmed quote is the representation the seeker said yes to. If
+      // coverage or price moved since (a company opened up, the flag changed),
+      // a funded wallet must not be charged against the old words: show the
+      // fresh numbers and ask for a new confirmation. The fresh quote is
+      // already stored, so the next "Send it" confirms the new price.
+      if (shown && (shown.covered !== fresh.covered || shown.cost !== fresh.cost)) {
+        return say(`The price or coverage for this ask changed since you confirmed. ${quoteLine(fresh)} Nothing was sent and nothing was charged.`);
+      }
+      // The short-wallet refusal applies only when coverage is KNOWN to mean a
+      // charge is coming (covered === true). Known-uncovered waits free by
+      // contract; unknown coverage claims nothing free and pushes no purchase -
+      // createAsk then decides: charge, free wait, or its own nothing-charged
+      // refusal, and the catch below reports it.
+      if (fresh.shortfall > 0 && fresh.covered === true) return say(`This ask costs ${fresh.cost} credit${fresh.cost === 1 ? "" : "s"} and you have ${fresh.totalAvailable}. Nothing was sent and nothing was charged. Add credits on /plans first.`);
       let result: CreateAskResult;
       try {
-        result = await deps.createAsk(userId, { targetRoleUrl: session.targetRoleUrl!, attachmentIds: [session.attachmentId!], personalPitch: session.note, idempotencyKey: session.idempotencyKey });
+        // The accepted representation is binding inside the commit transaction
+        // too: a company that opened up since the re-quote, or a cost that
+        // moved, refuses with nothing charged instead of a silent funded debit.
+        result = await deps.createAsk(userId, { targetRoleUrl: session.targetRoleUrl!, attachmentIds: [session.attachmentId!], personalPitch: session.note, idempotencyKey: session.idempotencyKey, expectedCoverage: fresh.covered === false ? "waiting_for_company_coverage" : undefined, expectedCost: fresh.cost });
       } catch (error) {
         return say(`The ask could not be sent: ${error instanceof Error ? error.message : "please try again"}. Nothing was charged.`);
       }
@@ -407,9 +437,14 @@ export async function advanceSkippieSeeker(userId: number, current: SkippieSessi
       session.replayed = Boolean(result.replayed);
       session.step = "done";
       if (session.coverageStatus === "waiting_for_company_coverage") {
-        return say(`Your ask is saved for ${result.companyDomain}. No employee there is open on skipwait.me yet, so it cost you nothing: it's held (never shown, never charged) until a verified employee can see it - your credit is only used at that moment. We'll tell you when that happens. Track it under My asks.`);
+        return say(`Your ask is saved for ${result.companyDomain}. No employee there is open on skipwait.me yet, so it cost you nothing: it's held (never shown) and nothing is charged while it waits. When a verified employee can see it, ${fresh.cost} credit${fresh.cost === 1 ? "" : "s"} are used and it goes live; if you don't have enough then, we hold it until you add more. We'll tell you when that happens. Track it under My asks.`);
       }
-      return say(`Asked - your request is with verified employees at ${result.companyDomain}. One credit was used, exactly the cost you confirmed. If nobody picks it up you can withdraw it for the credit back. Track it under My asks.`);
+      if (session.replayed) {
+        return say(`Asked - this is the same request you already sent to ${result.companyDomain}, so nothing was charged again. Track it under My asks.`);
+      }
+      // The number is the fresh send-time quote, which the seeker confirmed
+      // (any drift forced a re-confirmation above), so the words match the charge.
+      return say(`Asked - your request is with verified employees at ${result.companyDomain}. ${fresh.cost} credit${fresh.cost === 1 ? " was" : "s were"} used, exactly the cost you confirmed. If nobody picks it up you can withdraw it for the credit back. Track it under My asks.`);
     }
 
     case "done": {

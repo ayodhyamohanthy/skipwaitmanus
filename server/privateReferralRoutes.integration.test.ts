@@ -2,6 +2,7 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
+import { AskPriceChangedError, CoverageOpenedUpError } from "./planGates";
 import { publicAskRef } from "./askRef";
 
 describe("authenticated work email OTP routes", () => {
@@ -80,9 +81,9 @@ describe("private referral HTTP routes", () => {
 
     const upload = await request(app).post("/api/documents").set("x-test-user", "seeker").send({ fileName: "resume.pdf", mimeType: "application/pdf", dataUrl: "data:application/pdf;base64,cGRm" });
     expect(upload.status).toBe(201); expect(upload.body.url).toBe("/api/documents/77");
-    const malformed = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "acme product designer", attachmentIds: [77] });
+    const malformed = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ expectedCost: 1, targetRoleUrl: "acme product designer", attachmentIds: [77] });
     expect(malformed.status).toBe(400); expect(malformed.body.error).toMatch(/complete job link/i);
-    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch.", compensation: "₹12–18 LPA" });
+    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ expectedCost: 1, targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch.", compensation: "₹12–18 LPA" });
     expect(created.status).toBe(201); expect(created.body.companyDomain).toBe("acme.com"); expect(created.body.lifetimeRequestCount).toBe(3);
     expect(submittedCandidateMessage).toBe("I led a measurable product design launch.");
     expect(submittedCompensation).toBe("₹12–18 LPA");
@@ -109,6 +110,79 @@ describe("private referral HTTP routes", () => {
     expect(activity.map(item => item.action)).toEqual(expect.arrayContaining(["document.uploaded", "company_referral.created", "company_referral.claimed", "document.accessed"]));
     expect(activity.some(item => item.action === "workflow.request_completed" && item.metadata?.route === "/api/company-referrals" && item.metadata?.method === "POST" && item.metadata?.statusCode === 201)).toBe(true);
     expect(JSON.stringify(activity)).not.toContain("resume.pdf");
+  });
+
+  it("D-132 item 3: expectedCoverage waits-free ask refuses a charge when coverage opened up - 409, nothing created", async () => {
+    const app = express();
+    app.use(express.json());
+    let seenExpected: unknown = "unset";
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => String(req.header("x-test-user")) === "seeker" ? { account: { id: 1, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("%PDF-test"), sanitizeDocumentName: value => value,
+      createCompanyReferralRequest: async (_userId, input) => {
+        seenExpected = (input as { expectedCoverage?: string }).expectedCoverage;
+        if ((input as { expectedCoverage?: string }).expectedCoverage === "waiting_for_company_coverage") throw new CoverageOpenedUpError("acme.com");
+        return { requestId: 501, companyDomain: "acme.com", notifiedEmployees: 1 };
+      },
+      recordActivity: async () => {},
+    });
+    const flipped = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000002").set("x-test-user", "seeker").send({ expectedCost: 1, targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch.", expectedCoverage: "waiting_for_company_coverage" });
+    expect(flipped.status).toBe(409);
+    expect(flipped.body.code).toBe("company_coverage_changed");
+    expect(flipped.body.companyDomain).toBe("acme.com");
+    expect(flipped.body.error).toContain("Nothing was sent and nothing was charged");
+    expect(seenExpected).toBe("waiting_for_company_coverage");
+    const confirmed = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000002").set("x-test-user", "seeker").send({ expectedCost: 1, targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch." });
+    expect(confirmed.status).toBe(201);
+    expect(seenExpected).toBeUndefined();
+  });
+
+  it("D-132 item 3: expectedCost binds the accepted price - forwarded when sane, dropped when garbage, 409 when the price moved", async () => {
+    const app = express();
+    app.use(express.json());
+    let seenExpectedCost: unknown = "unset";
+    let forcePriceChange = false;
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => String(req.header("x-test-user")) === "seeker" ? { account: { id: 1, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("%PDF-test"), sanitizeDocumentName: value => value,
+      createCompanyReferralRequest: async (_userId, input) => {
+        seenExpectedCost = (input as { expectedCost?: number }).expectedCost;
+        if (forcePriceChange) throw new AskPriceChangedError(1, 3);
+        return { requestId: 501, companyDomain: "acme.com", notifiedEmployees: 1 };
+      },
+      recordActivity: async () => {},
+    });
+    const base = { targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch." };
+    const ok = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000003").set("x-test-user", "seeker").send({ ...base, expectedCost: 3 });
+    expect(ok.status).toBe(201);
+    expect(seenExpectedCost).toBe(3);
+    // Malformed is refused, not silently dropped: a silent drop would bypass the accepted-price boundary.
+    seenExpectedCost = "unset";
+    const garbage = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000004").set("x-test-user", "seeker").send({ ...base, expectedCost: -2 });
+    expect(garbage.status).toBe(400);
+    expect(garbage.body.code).toBe("ask_price_unconfirmed");
+    expect(seenExpectedCost).toBe("unset");
+    // Flag off: a missing field is the legacy client - allowed, the flat 1 it shows is what commits.
+    seenExpectedCost = "unset";
+    const legacy = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000006").set("x-test-user", "seeker").send({ ...base });
+    expect(legacy.status).toBe(201);
+    expect(seenExpectedCost).toBeUndefined();
+    // Flag on: missing refuses fail-closed - a stale client gets a reload path, never a mis-priced debit.
+    vi.stubEnv("ASK_LEVEL_COST", "true");
+    try {
+      const missing = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000007").set("x-test-user", "seeker").send({ ...base });
+      expect(missing.status).toBe(400);
+      expect(missing.body.code).toBe("ask_price_unconfirmed");
+      expect(missing.body.error).toContain("nothing was sent and nothing was charged");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    // A moved price refuses with 409 and nothing charged.
+    forcePriceChange = true;
+    const moved = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000005").set("x-test-user", "seeker").send({ ...base, expectedCost: 1 });
+    expect(moved.status).toBe(409);
+    expect(moved.body.code).toBe("ask_price_changed");
+    expect(moved.body.error).toContain("Nothing was sent and nothing was charged");
   });
 
   it("loads each matching employee's unclaimed request on inbox launch, then removes it after the first claim", async () => {
@@ -185,7 +259,7 @@ describe("private referral HTTP routes", () => {
       listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }), recordActivity: async entry => { activity.push(entry); },
     });
 
-    const response = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [88] });
+    const response = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ expectedCost: 1, targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [88] });
     expect(response.status).toBe(201);
     expect(response.body).toMatchObject({ requestId: 880, notifiedEmployees: 0, coverageStatus: "waiting_for_company_coverage", remainingTokens: 2 });
     // D-034: the credit is spent at first visibility, not at create, so nothing is reserved yet.
@@ -335,14 +409,14 @@ describe("private referral HTTP routes", () => {
     const publicLink = await request(app).get(`/api/referrer-fast-track/${"a".repeat(32)}`);
     expect(publicLink.status).toBe(200); expect(publicLink.body).toEqual({ link: { companyDomain: "acme-corp.com", isActive: true } }); expect(JSON.stringify(publicLink.body)).not.toContain("referrerId");
     expect((await request(app).get("/api/referrer-fast-track/inactive-link")).status).toBe(404);
-    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme-corp.com/jobs/design", attachmentIds: [1], fastTrackCode: "a".repeat(32) });
+    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ expectedCost: 1, targetRoleUrl: "https://careers.acme-corp.com/jobs/design", attachmentIds: [1], fastTrackCode: "a".repeat(32) });
     expect(created.status).toBe(201); expect(created.body).toMatchObject({ requestId: 802, companyDomain: "acme-corp.com", fastTrack: true }); expect(receivedFastTrackCode).toBe("a".repeat(32)); expect(JSON.stringify(created.body)).not.toContain("workos-acme");
     const vanity = await request(app).get("/api/referrer-fast-track/vanity/acme-corp/ref-a1b2c3d4e5");
     expect(vanity.status).toBe(200); expect(vanity.body).toEqual({ link: { companyDomain: "acme-corp.com", isActive: true } }); expect(JSON.stringify(vanity.body)).not.toContain("referrerId");
     expect((await request(app).get("/api/referrer-fast-track/vanity/google/ref-a1b2c3d4e5")).status).toBe(404);
-    const vanityCreated = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme-corp.com/jobs/design", attachmentIds: [1], fastTrackCompanySlug: "acme-corp", fastTrackAlias: "ref-a1b2c3d4e5" });
+    const vanityCreated = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ expectedCost: 1, targetRoleUrl: "https://careers.acme-corp.com/jobs/design", attachmentIds: [1], fastTrackCompanySlug: "acme-corp", fastTrackAlias: "ref-a1b2c3d4e5" });
     expect(vanityCreated.status).toBe(201); expect(receivedVanity).toEqual({ companySlug: "acme-corp", alias: "ref-a1b2c3d4e5" });
-    expect((await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme-corp.com/jobs/design", attachmentIds: [1], fastTrackCompanySlug: "acme-corp" })).status).toBe(400);
+    expect((await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ expectedCost: 1, targetRoleUrl: "https://careers.acme-corp.com/jobs/design", attachmentIds: [1], fastTrackCompanySlug: "acme-corp" })).status).toBe(400);
     expect(activity).toContainEqual(expect.objectContaining({ action: "referrer_fast_track.link_accessed", companyDomain: "acme-corp.com" }));
   });
 
@@ -355,7 +429,7 @@ describe("private referral HTTP routes", () => {
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async (_userId, input) => { receivedTargetRoleUrl = input.targetRoleUrl; return { requestId: 1, companyDomain: "chatfin.ai", notifiedEmployees: 0 }; }, listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
       listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
     });
-    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").send({ targetRoleUrl: "https://www.wellfound.com/jobs/3971835-account-executive/?source=mobile#details", attachmentIds: [1] });
+    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").send({ expectedCost: 1, targetRoleUrl: "https://www.wellfound.com/jobs/3971835-account-executive/?source=mobile#details", attachmentIds: [1] });
     expect(created.status).toBe(201); expect(receivedTargetRoleUrl).toBe("https://wellfound.com/jobs/3971835-account-executive");
   });
 

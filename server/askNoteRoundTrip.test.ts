@@ -81,7 +81,7 @@ function setup() {
   const send = (body: object, options: { user?: number; key?: string } = {}) => request(app).post("/api/company-referrals")
     .set("x-test-user", String(options.user ?? SEEKER))
     .set("Idempotency-Key", options.key ?? `ask-note-key-${String(++keyCounter).padStart(8, "0")}`)
-    .send({ targetRoleUrl: ROLE_URL, attachmentIds: [77], ...body });
+    .send({ expectedCost: 1, targetRoleUrl: ROLE_URL, attachmentIds: [77], ...body });
   const mine = async (user = SEEKER) => {
     const response = await request(app).get("/api/company-referrals/mine").set("x-test-user", String(user));
     expect(response.status).toBe(200);

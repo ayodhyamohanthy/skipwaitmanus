@@ -5,6 +5,7 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
+import { readFileSync } from "node:fs";
 import { AppShell } from "./AppShell";
 
 const { state } = vi.hoisted(() => ({
@@ -88,6 +89,15 @@ describe("AppShell on GoalShell (W0)", () => {
     state.signedIn = false;
     render(<AppShell><p>page</p></AppShell>);
     expect(screen.getAllByRole("link", { name: "Sign in" })[0].getAttribute("href")).toBe("/sign-in");
+  });
+
+  it("keeps focused fields above the sticky phone bar: html scroll-padding at the phone breakpoint", () => {
+    // Regression for the 390px defect where the focused third reason field
+    // scrolled under the fixed bottom nav. jsdom cannot evaluate the media
+    // query, so this guards the rule's presence and breakpoint exactly.
+    const css = readFileSync("client/src/index.css", "utf8");
+    const block = css.match(/@media \(width < 40\.0625rem\) \{[^}]*html \{ scroll-padding-bottom: 3\.5rem; \}/);
+    expect(block, "index.css must keep scroll-padding-bottom: 3.5rem on html below the gdesk breakpoint").toBeTruthy();
   });
 
   it("pins the phone bottom bar sticky in view, and drops bar plus track on an opened request", () => {
