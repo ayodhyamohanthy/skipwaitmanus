@@ -30,13 +30,15 @@ vi.mock("@simplewebauthn/server", () => ({
   generateAuthenticationOptions: mocks.generateAuthenticationOptions,
   verifyAuthenticationResponse: mocks.verifyAuthenticationResponse,
 }));
-vi.mock("../db", () => ({
+vi.mock("./passkeyStore", () => ({
   listPasskeyCredentials: mocks.listPasskeyCredentials,
   savePasskeyChallenge: mocks.savePasskeyChallenge,
   consumePasskeyChallenge: mocks.consumePasskeyChallenge,
   insertPasskeyCredential: mocks.insertPasskeyCredential,
   getPasskeyCredentialByCredentialId: mocks.getPasskeyCredentialByCredentialId,
   bumpPasskeyCounter: mocks.bumpPasskeyCounter,
+}));
+vi.mock("../db", () => ({
   getUserByOpenId: mocks.getUserByOpenId,
 }));
 vi.mock("./sdk", () => ({ SESSION_ACCESS_TTL_MS: 30 * 24 * 60 * 60_000, sdk: { createSessionToken: mocks.createSessionToken } }));

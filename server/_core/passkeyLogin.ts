@@ -21,6 +21,7 @@ import {
 import type { Express, Request, Response } from "express";
 import { COOKIE_NAME } from "@shared/const";
 import * as db from "../db";
+import * as store from "./passkeyStore";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk, SESSION_ACCESS_TTL_MS } from "./sdk";
 import { resolveTrustedClientIp } from "./trustedClientIp";
@@ -59,7 +60,7 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
     try {
       const me = await opts.resolveIdentity(req);
       if (!me?.account?.openId || isReferrerOpenId(me.account.openId)) return res.status(403).json({ error: "Sign in first to add a passkey." });
-      const existing = await db.listPasskeyCredentials(me.account.openId);
+      const existing = await store.listPasskeyCredentials(me.account.openId);
       const options = await generateRegistrationOptions({
         rpName: RP_NAME,
         rpID: rpID(),
@@ -69,7 +70,7 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
         excludeCredentials: existing.map(c => ({ id: c.credentialId, transports: c.transports ?? undefined })),
         authenticatorSelection: { residentKey: "preferred", userVerification: "preferred" },
       });
-      await db.savePasskeyChallenge(me.account.openId, options.challenge, "registration", new Date(Date.now() + CHALLENGE_TTL_MS));
+      await store.savePasskeyChallenge(me.account.openId, options.challenge, "registration", new Date(Date.now() + CHALLENGE_TTL_MS));
       res.json(options);
     } catch {
       res.status(500).json({ error: "We could not start passkey setup" });
@@ -80,7 +81,7 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
     try {
       const me = await opts.resolveIdentity(req);
       if (!me?.account?.openId || isReferrerOpenId(me.account.openId)) return res.status(403).json({ error: "Sign in first to add a passkey." });
-      const challenge = await db.consumePasskeyChallenge(me.account.openId, "registration");
+      const challenge = await store.consumePasskeyChallenge(me.account.openId, "registration");
       if (!challenge) return res.status(400).json({ error: "Passkey setup expired. Try again." });
       const verification = await verifyRegistrationResponse({
         response: req.body,
@@ -92,7 +93,7 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
         return res.status(400).json({ error: "That passkey could not be verified. Try again." });
       }
       const { credential } = verification.registrationInfo;
-      await db.insertPasskeyCredential({
+      await store.insertPasskeyCredential({
         openId: me.account.openId,
         credentialId: credential.id,
         publicKey: Buffer.from(credential.publicKey).toString("base64url"),
@@ -118,7 +119,7 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
         userVerification: "preferred",
         allowCredentials: [],
       });
-      await db.savePasskeyChallenge(null, options.challenge, "login", new Date(Date.now() + CHALLENGE_TTL_MS));
+      await store.savePasskeyChallenge(null, options.challenge, "login", new Date(Date.now() + CHALLENGE_TTL_MS));
       res.json(options);
     } catch {
       res.status(500).json({ error: "We could not start passkey sign-in" });
@@ -129,9 +130,9 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
     try {
       const credentialId = req.body?.id;
       if (typeof credentialId !== "string" || !credentialId) return res.status(400).json({ error: "That sign-in could not be verified. Try again." });
-      const stored = await db.getPasskeyCredentialByCredentialId(credentialId);
+      const stored = await store.getPasskeyCredentialByCredentialId(credentialId);
       if (!stored || isReferrerOpenId(stored.openId)) return res.status(400).json({ error: "That sign-in could not be verified. Try again." });
-      const challenge = await db.consumePasskeyChallenge(null, "login");
+      const challenge = await store.consumePasskeyChallenge(null, "login");
       if (!challenge) return res.status(400).json({ error: "Sign-in expired. Try again." });
       const verification = await verifyAuthenticationResponse({
         response: req.body,
@@ -146,7 +147,7 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
         },
       });
       if (!verification.verified) return res.status(400).json({ error: "That sign-in could not be verified. Try again." });
-      await db.bumpPasskeyCounter(stored.id, verification.authenticationInfo.newCounter);
+      await store.bumpPasskeyCounter(stored.id, verification.authenticationInfo.newCounter);
       // The credential is bound to an existing account at registration, so
       // sign-in only resolves that account - no identity provisioning.
       const account = await db.getUserByOpenId(stored.openId);
