@@ -244,3 +244,4 @@ The D-189 packet also rules the pre-send per-company state against D-176 and add
 - Not feasible by script today: TCS (403), Infosys (403), Cognizant (403), Meta (robots prohibit automated collection), Microsoft (Eightfold, 403), Flipkart (TurboHire robots allow only Googlebot), PhonePe (Greenhouse board inactive).
 
 ## Status
+D-174-sample-job-removal: done — PR #688 (unblocked by D-210)
