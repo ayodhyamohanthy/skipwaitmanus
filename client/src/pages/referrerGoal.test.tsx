@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 // D-048-p3-referrer: flag-off parity and flag-on goal rebuild for /referrer
-// (workspace, OTP sign-in dialog, setup & capacity) and /referrer/impact.
+// (workspace, goal-email OTP dialog, setup & capacity) and /referrer/impact.
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Referrer from "./Referrer";
 import ReferrerImpact from "./ReferrerImpact";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
 
-const { authState, userState, go, search, surfaces, otpControl } = vi.hoisted(() => ({
-  otpControl: { useReal: false },
+const { authState, userState, go, search, surfaces } = vi.hoisted(() => ({
   authState: { isLoaded: true, isSignedIn: true, userId: "12", getToken: vi.fn().mockResolvedValue("test-token") },
   userState: { user: null as null | { primaryEmailAddress?: { emailAddress?: string } } },
   go: vi.fn(),
@@ -18,10 +18,8 @@ const { authState, userState, go, search, surfaces, otpControl } = vi.hoisted(()
 }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => authState, useUser: () => userState, SignInButton: ({ children }: { children?: React.ReactNode }) => <button type="button">{children ?? "Sign in"}</button> }));
 vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
-vi.mock("@/components/ReferrerOtpSignIn", async () => {
-  const actual = await vi.importActual<typeof import("@/components/ReferrerOtpSignIn")>("@/components/ReferrerOtpSignIn");
-  return { ReferrerOtpSignIn: () => (otpControl.useReal ? <actual.ReferrerOtpSignIn /> : <div data-testid="referrer-otp-sign-in" />) };
-});
+// The kit sign-in dialog still hosts the kit form; the goal dialog renders its own.
+vi.mock("@/components/ReferrerOtpSignIn", () => ({ ReferrerOtpSignIn: () => <div data-testid="referrer-otp-sign-in" /> }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/referrer", go],
@@ -31,6 +29,7 @@ vi.mock("wouter", () => ({
 const ok = (json: unknown) => ({ ok: true, status: 200, json: async () => json });
 const fail = (status: number, json: unknown) => ({ ok: false, status, json: async () => json });
 const ACCESS = { verifiedCompanyAccess: true, workEmailDomain: "acme.com", companyName: "Acme", companyInitials: "A" };
+const UNVERIFIED = { verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null };
 const PREFS = { preferences: { referralCapacity: 3, preferAreas: ["Design"], referrerVisibility: "anon", notifyNewAsk: true, paused: false } };
 const renderWithQuery = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>{ui}</QueryClientProvider>);
 function stubWorkspace(impactSummary?: unknown) {
@@ -51,11 +50,10 @@ beforeEach(() => {
   authState.isLoaded = true; authState.isSignedIn = true; userState.user = null;
   search.value = ""; surfaces.on = new Set(["referrer"]);
   window.sessionStorage.clear();
-  otpControl.useReal = false;
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); go.mockClear(); });
 
-describe("Goal /referrer flag gate", () => {
+describe("Goal flag gate", () => {
   it("renders the kit workspace untouched when the flag is off", () => {
     surfaces.on = new Set();
     authState.isSignedIn = false;
@@ -64,16 +62,26 @@ describe("Goal /referrer flag gate", () => {
     expect(document.querySelector(".referrer-workspace")).toBeTruthy();
     expect(screen.queryByText("YOUR NEXT STEP")).toBeNull();
   });
+
+  it("renders the kit impact page untouched when the flag is off", () => {
+    surfaces.on = new Set();
+    authState.isSignedIn = false;
+    stubWorkspace();
+    renderWithQuery(<ReferrerImpact />);
+    expect(document.querySelector(".impact-zero")).toBeTruthy();
+    expect(screen.queryAllByTestId("goal-button")).toHaveLength(0);
+  });
 });
 
 describe("Goal /referrer workspace", () => {
-  it("opens the work-email OTP dialog first for signed-out visitors", async () => {
+  it("opens the goal work-email OTP dialog first for signed-out visitors", async () => {
     authState.isSignedIn = false;
     stubWorkspace();
     renderWithQuery(<Referrer />);
     expect(await screen.findByRole("dialog")).toBeTruthy();
     expect(screen.getByText("Verify work email.")).toBeTruthy();
-    expect(screen.getByTestId("referrer-otp-sign-in")).toBeTruthy();
+    expect(screen.getByLabelText("Company email")).toBeTruthy();
+    expect(screen.getAllByTestId("goal-field").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Close setup" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByText("Help when the fit feels right.")).toBeTruthy();
@@ -100,7 +108,7 @@ describe("Goal /referrer workspace", () => {
     stubWorkspace();
     const { unmount } = renderWithQuery(<Referrer />);
     expect(await screen.findByRole("dialog")).toBeTruthy();
-    expect(screen.getByTestId("referrer-otp-sign-in")).toBeTruthy();
+    expect(screen.getByLabelText("Company email")).toBeTruthy();
     unmount();
     authState.isSignedIn = true;
     stubWorkspace();
@@ -112,7 +120,7 @@ describe("Goal /referrer workspace", () => {
   it("sends a signed-in account without a verified domain to /verify from the setup dialog", async () => {
     const fetchMock = vi.fn(async (url: string) => {
       const path = String(url);
-      if (path.endsWith("/access")) return ok({ verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null });
+      if (path.endsWith("/access")) return ok(UNVERIFIED);
       if (path.endsWith("/referrer-preferences")) return ok(PREFS);
       return ok({});
     });
@@ -125,8 +133,7 @@ describe("Goal /referrer workspace", () => {
     expect(fetchMock.mock.calls.some(call => String(call[0]).endsWith("/verify-work-email"))).toBe(false);
   });
 
-  it("surfaces the server rejection of a personal email through the real OTP form", async () => {
-    otpControl.useReal = true;
+  it("surfaces the server rejection of a personal email through the goal OTP form", async () => {
     authState.isSignedIn = false;
     stubWorkspace();
     renderWithQuery(<Referrer />);
@@ -153,15 +160,53 @@ describe("Goal /referrer workspace", () => {
     expect(fetchMock.mock.calls.some(call => String(call[0]).endsWith("/referrer-preferences") && call[1]?.method === "PUT" && String(call[1]?.body).includes('"preferAreas"'))).toBeTruthy();
   });
 
-  it("shows the goal overview with the next-step commit for signed-in visitors", async () => {
+  it("shows the goal overview with one black commit and a quiet impact link for signed-in visitors", async () => {
     stubWorkspace();
     renderWithQuery(<Referrer />);
     expect(await screen.findByText("Help when the fit feels right.")).toBeTruthy();
-    expect(document.querySelector(".referrer-workspace")).toBeNull();
+    expect(screen.getByText("Your next step")).toBeTruthy();
+    expect(document.querySelectorAll("[data-g-primary]")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: /Set up as a referrer/ }).hasAttribute("data-g-primary")).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: /Preview incoming referral requests/ }));
     expect(go).toHaveBeenCalledWith("/queue");
-    fireEvent.click(screen.getByRole("tab", { name: "Impact" }));
-    expect(go).toHaveBeenCalledWith("/referrer/impact");
+    expect(screen.getByRole("link", { name: /private impact/i }).getAttribute("href")).toBe("/referrer/impact");
+    expect(screen.queryByRole("tab", { name: /impact/i })).toBeNull();
+    expect(screen.queryByRole("tablist")).toBeNull();
+  });
+
+  it("keeps a company-domain session behind the server verdict and never reads the inbox", async () => {
+    userState.user = { primaryEmailAddress: { emailAddress: "rahul@acme.com" } };
+    const fetchMock = vi.fn(async (url: string) => (String(url).endsWith("/access") ? ok(UNVERIFIED) : ok({})));
+    vi.stubGlobal("fetch", fetchMock);
+    renderWithQuery(<Referrer />);
+    const link = await screen.findByRole("link", { name: /Verify your work email/ });
+    expect(link.getAttribute("href")).toBe("/verify");
+    expect(screen.queryByText("Help when the fit feels right.")).toBeNull();
+    expect(fetchMock.mock.calls.every(call => !String(call[0]).includes("/api/company-referrals/inbox"))).toBe(true);
+  });
+
+  it("admits a personal-email session on the server verdict alone", async () => {
+    userState.user = { primaryEmailAddress: { emailAddress: "rahul@gmail.com" } };
+    const fetchMock = stubWorkspace();
+    renderWithQuery(<Referrer />);
+    expect(await screen.findByText("Help when the fit feels right.")).toBeTruthy();
+    expect(fetchMock.mock.calls.some(call => String(call[0]).includes("/api/company-referrals/inbox"))).toBe(true);
+  });
+
+  it("tells an invited referrer what the inviter earns in referral words only", async () => {
+    window.sessionStorage.setItem("skipwait:employee-sign-in-email", "new@acme.com");
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      const path = String(url);
+      if (path.endsWith("/access")) return ok(ACCESS);
+      if (path.endsWith("/verify-work-email") && init?.method === "POST") return ok({ verified: true, workEmailDomain: "acme.com", reward: { rewarded: true } });
+      if (path.includes("/api/company-referrals/inbox")) return fail(403, { error: "Verify your work email to view private company requests." });
+      return ok({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderWithQuery(<Referrer />);
+    expect(await screen.findByText(/one referral after their next referral request reaches a referrer/)).toBeTruthy();
+    expect(screen.queryByText(/credit/i)).toBeNull();
+    expect(screen.queryByText(/\bask\b/i)).toBeNull();
   });
 
   it("saves capacity settings through the real preferences write on the setup view", async () => {
@@ -182,8 +227,18 @@ describe("Goal /referrer/impact", () => {
     stubWorkspace();
     renderWithQuery(<ReferrerImpact />);
     expect(await screen.findByText("Sign in with your work email to see your referral impact.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Sign in with work email" }));
-    expect(go).toHaveBeenCalledWith("/referrer?setup=work-email");
+    const link = screen.getByRole("link", { name: "Sign in with work email" });
+    expect(link.getAttribute("href")).toBe(referrerSignInHref("/referrer/impact"));
+    expect(document.querySelectorAll("[data-g-primary]")).toHaveLength(1);
+  });
+
+  it("sends a signed-in unverified referrer to the work-email door with the Impact return path", async () => {
+    const fetchMock = vi.fn(async (url: string) => (String(url).endsWith("/access") ? ok(UNVERIFIED) : ok({})));
+    vi.stubGlobal("fetch", fetchMock);
+    renderWithQuery(<ReferrerImpact />);
+    const link = await screen.findByRole("link", { name: /Add work email/ });
+    expect(link.getAttribute("href")).toBe(referrerSignInHref("/referrer/impact"));
+    expect(fetchMock.mock.calls.some(call => String(call[0]).includes("/api/referrer/impact-summary"))).toBe(false);
   });
 
   it("shows the private stats and never-paid line for a verified referrer", async () => {
@@ -196,6 +251,7 @@ describe("Goal /referrer/impact", () => {
     expect(screen.getByText("acme.com")).toBeTruthy();
     expect(screen.getByText(/Accepted yesterday/)).toBeTruthy();
     expect(screen.queryByText(/credit/i)).toBeNull();
+    expect(document.querySelectorAll("[data-g-primary]")).toHaveLength(1);
   });
 
   it("shows the zero state without an invented scoreboard", async () => {

@@ -1,66 +1,67 @@
 // Goal /referrer (D-048-p3-referrer; packet docs/plans/D-048-referrer.md).
 // Goal-first rebuild of the kit referrer workspace: one goal (open doors on
-// your terms), one commit per panel, identity private until acceptance.
-// Sign-in stays work-email OTP only: the dialog hosts the kit's real
-// ReferrerOtpSignIn, and other doors link through /referrer?setup=work-email.
-// Orchestration (OTP enrollment, post-sign-in landing, claimed review) mirrors
-// the kit page effect-for-effect; the claimed-request review reuses the kit's
-// privacy-pinned ClaimedReview/DecisionRecorded read-only (D-019).
+// your terms), one black commit, identity private until acceptance.
+// Sign-in stays work-email OTP only: the dialog hosts the goal GoalOtpSignIn,
+// and other doors verify through /verify. The server's verified-referrer
+// verdict (useReferrerAccess) gates every private read - never the sign-in
+// account's email domain, which misses a Google session that verified a work
+// email by code. Orchestration (OTP enrollment, post-sign-in landing, claimed
+// review) mirrors the kit page effect-for-effect; the claimed-request review
+// reuses the kit's privacy-pinned ClaimedReview/DecisionRecorded read-only
+// (D-019).
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { useAuth, useUser } from "@/_core/auth";
-import { ArrowLeft, ArrowRight, BadgeCheck, BriefcaseBusiness, Check, ChevronDown, EyeOff, Gauge, HeartHandshake, MailCheck, Pause, Settings2, ShieldCheck, UserRound, X } from "lucide-react";
+import { useAuth } from "@/_core/auth";
+import { ArrowLeft, ArrowRight, BadgeCheck, BriefcaseBusiness, Check, ChevronDown, EyeOff, MailCheck, Pause, Settings2, ShieldCheck, UserRound, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { GoalButton, GoalErrorState, GoalSkeletonRows } from "@/components/goal";
+import { GoalButton, GoalErrorState, GoalNextStep, GoalSkeletonRows } from "@/components/goal";
 import { coverageInviteSessionKey } from "@/components/WorkEmailSignIn";
-import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
 import { ReferralCoverageInviteBanner } from "@/components/referrer/CoverageInviteBanner";
 import { consumeReferrerOtpLanding, markReferrerOtpLanding } from "@/components/referrer/ReferrerSignInDialog";
 import { ClaimedReview, DecisionRecorded, ReviewFrame, type ClaimedCompanyRequest } from "@/components/referrer/ClaimedReview";
 import { CAPACITY_MAX, CAPACITY_MIN, WORK_FUNCTIONS, capacitySettingsKey, fetchCapacitySettings, orderAreas, saveCapacitySettings, type CapacitySettings, type TokenSource } from "@/components/referrer/capacitySettingsData";
 import { saveReferrerPreferences } from "@/components/referrer-home/referrerData";
 import { usePersistFn } from "@/hooks/usePersistFn";
+import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { readApiJson } from "@/lib/apiResponse";
 import { applySeo } from "@/lib/seo";
-import { isCompanyEmail } from "@/lib/workEmail";
+import { GoalOtpSignIn } from "./GoalOtpSignIn";
 
 type CompanyResponse = { error?: string; reward?: { rewarded?: boolean }; request?: ClaimedCompanyRequest };
 type View = "overview" | "setup";
-/** The work-email sign-in door for views that cannot open the OTP dialog themselves. */
-const REFERRER_SIGN_IN_HREF = "/referrer?setup=work-email";
 const alertClass = "rounded-[10px] border border-g-hairline p-3 text-g-small text-g-ink";
 
 function Kicker({ children }: { children: string }) {
   return <p className="flex items-center gap-2 font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3"><span className="h-1.5 w-1.5 rounded-full bg-g-ink" aria-hidden="true" />{children}</p>;
 }
 
-const WORKSPACE_TABS: ReadonlyArray<{ id: "overview" | "queue" | "setup" | "impact"; label: string; href: string }> = [
+const WORKSPACE_LINKS: ReadonlyArray<{ id: View | "queue"; label: string; href: string }> = [
   { id: "overview", label: "Overview", href: "/referrer" },
   { id: "queue", label: "Request queue", href: "/queue" },
   { id: "setup", label: "Setup & capacity", href: "/referrer?view=setup" },
-  { id: "impact", label: "Impact", href: "/referrer/impact" },
-];
+] as const;
 
-export function GoalWorkspaceTabs({ view }: { view: "overview" | "queue" | "setup" | "impact" }) {
-  const [, go] = useLocation();
+/** Workspace navigation is links, not tabs: each view is a real page. */
+export function GoalWorkspaceNav({ view }: { view?: View }) {
   return (
-    <div className="mt-5 flex flex-wrap gap-2" role="tablist" aria-label="Referrer workspace views">
-      {WORKSPACE_TABS.map(item => (
-        <button key={item.id} type="button" role="tab" aria-selected={view === item.id} onClick={() => { if (view !== item.id) go(item.href); }} className={`h-9 rounded-g-control border px-3 text-g-label transition-colors ${view === item.id ? "border-g-ink font-semibold text-g-ink" : "border-g-hairline text-g-ink-2 hover:border-g-control-edge hover:text-g-ink"}`}>{item.label}</button>
+    <nav aria-label="Referrer workspace" className="flex flex-wrap gap-2">
+      {WORKSPACE_LINKS.map(item => (
+        <Link key={item.id} href={item.href} aria-current={view === item.id ? "page" : undefined} className={`inline-flex h-9 items-center rounded-g-control border px-3 text-g-label transition-colors ${view === item.id ? "border-g-ink font-semibold text-g-ink" : "border-g-hairline text-g-ink-2 hover:border-g-control-edge hover:text-g-ink"}`}>{item.label}</Link>
       ))}
-    </div>
+    </nav>
   );
 }
 
 function GoalOverview({ onPreviewAsks }: { onPreviewAsks: () => void }) {
   return (
     <section className="mt-6 grid gap-4">
-      <div className="max-w-[640px] rounded-[10px] border border-g-hairline p-5 gdesk:p-6">
-        <Kicker>YOUR NEXT STEP</Kicker>
-        <h2 className="mt-3 text-[22px] font-semibold leading-[1.15] tracking-[-0.02em]">Help when the fit feels right.</h2>
-        <p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">You decide your pace, your criteria, and every introduction. Passing is private and always okay.</p>
-        <div className="mt-5"><GoalButton variant="primary" onClick={onPreviewAsks}>Preview incoming referral requests<ArrowRight className="h-4 w-4" aria-hidden="true" /></GoalButton></div>
+      <div className="max-w-[640px]">
+        <GoalNextStep>
+          <p className="mt-2 text-g-body font-semibold text-g-ink">Help when the fit feels right.</p>
+          <p className="mt-1 text-g-small leading-[1.6] text-g-ink-2">You decide your pace, your criteria, and every introduction. Passing is private and always okay.</p>
+          <div className="mt-4"><GoalButton variant="primary" onClick={onPreviewAsks}>Preview incoming referral requests<ArrowRight className="h-4 w-4" aria-hidden="true" /></GoalButton></div>
+        </GoalNextStep>
       </div>
       <ul className="grid max-w-[640px] gap-2">
         {([[ShieldCheck, "Your identity stays private", "Revealed only after you accept."], [Settings2, "Set a real capacity", "Pause or change it at any time."], [EyeOff, "No public ratings", "Kindness is not a performance metric."]] as const).map(([Icon, title, sub]) => (
@@ -70,6 +71,17 @@ function GoalOverview({ onPreviewAsks }: { onPreviewAsks: () => void }) {
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+/** The one commit for a signed-in account the server has not verified yet. */
+function GoalVerifyGate() {
+  return (
+    <section className="mt-6 max-w-[640px]">
+      <GoalNextStep reason="Confirm a company email with a one-time code to see the request, resume, and forwardable note. Your identity stays private until you accept.">
+        <div className="mt-4"><GoalButton variant="primary" asChild><Link href="/verify">Verify your work email<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link></GoalButton></div>
+      </GoalNextStep>
     </section>
   );
 }
@@ -106,8 +118,8 @@ function GoalSignInDialog({ inviteCompany, inviteCode, onClose }: { inviteCompan
   }, []);
   const close = () => { markReferrerOtpLanding(false); onClose(); };
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-g-ink/40 p-5" onClick={close}>
-      <section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="goal-referrer-sign-in-title" onClick={event => event.stopPropagation()} className="relative max-h-[calc(100dvh-40px)] w-full max-w-[440px] overflow-y-auto rounded-[10px] border border-g-hairline bg-white p-6 outline-none gdesk:p-8">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-g-scrim p-5" onClick={close}>
+      <section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="goal-referrer-sign-in-title" onClick={event => event.stopPropagation()} className="relative max-h-[calc(100dvh-40px)] w-full max-w-[440px] overflow-y-auto rounded-[10px] border border-g-hairline bg-g-surface p-6 outline-none gdesk:p-8">
         <button type="button" aria-label="Close setup" onClick={close} className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-g-control text-g-ink-2 hover:bg-g-surface-hover hover:text-g-ink"><X className="h-4 w-4" aria-hidden="true" /></button>
         <Kicker>REFERRER SETUP</Kicker>
         {inviteCompany ? <div className="mt-4"><ReferralCoverageInviteBanner companyDomain={inviteCompany} inviteCode={inviteCode} /></div> : null}
@@ -116,7 +128,7 @@ function GoalSignInDialog({ inviteCompany, inviteCode, onClose }: { inviteCompan
           <h2 id="goal-referrer-sign-in-title" className="mt-3 text-[24px] font-semibold leading-[1.15] tracking-[-0.02em]">Verify work email.</h2>
           <p className="mb-3 mt-2 text-g-small leading-[1.6] text-g-ink-2">This confirms access to a company email address - not employment or employer endorsement.</p>
         </div>
-        <ReferrerOtpSignIn />
+        <GoalOtpSignIn />
       </section>
     </div>
   );
@@ -157,8 +169,8 @@ function GoalSetupDialog({ initialStep = 0, onClose }: { initialStep?: number; o
     save.mutate(settings.data.areas);
   };
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-g-ink/40 p-5" onClick={onClose}>
-      <section ref={dialogRef} tabIndex={-1} className="relative max-h-[calc(100dvh-40px)] w-full max-w-[440px] overflow-y-auto rounded-[10px] border border-g-hairline bg-white p-6 outline-none gdesk:p-8" role="dialog" aria-modal="true" aria-labelledby="goal-setup-title" onClick={event => event.stopPropagation()}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-g-scrim p-5" onClick={onClose}>
+      <section ref={dialogRef} tabIndex={-1} className="relative max-h-[calc(100dvh-40px)] w-full max-w-[440px] overflow-y-auto rounded-[10px] border border-g-hairline bg-g-surface p-6 outline-none gdesk:p-8" role="dialog" aria-modal="true" aria-labelledby="goal-setup-title" onClick={event => event.stopPropagation()}>
         <button type="button" aria-label="Close setup" onClick={onClose} className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-g-control text-g-ink-2 hover:bg-g-surface-hover hover:text-g-ink"><X className="h-4 w-4" aria-hidden="true" /></button>
         <Kicker>{`REFERRER SETUP · ${step + 1} OF 3`}</Kicker>
         <div className="mt-3 flex gap-1.5" aria-hidden="true">{[0, 1, 2].map(index => <span key={index} className={`h-0.5 flex-1 rounded-full ${index <= step ? "bg-g-ink" : "bg-g-hairline"}`} />)}</div>
@@ -190,7 +202,7 @@ function GoalSetupDialog({ initialStep = 0, onClose }: { initialStep?: number; o
             <h2 id="goal-setup-title" className="mt-3 text-[24px] font-semibold leading-[1.15] tracking-[-0.02em]">Choose your lane.</h2>
             <p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">Pick the kinds of roles you can assess and how many referral requests you want to receive.</p>
             <label className="mt-4 block text-g-label text-g-ink">Function
-              <span className="relative mt-2 block"><select className="h-(--g-control-h) w-full appearance-none rounded-g-control border border-g-control-edge bg-white px-3 text-g-body text-g-ink outline-none focus:border-g-ink" value={area} onChange={event => { setPicked(event.target.value); if (save.isError) save.reset(); }}>{WORK_FUNCTIONS.map(item => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-g-ink-3" aria-hidden="true" /></span>
+              <span className="relative mt-2 block"><select className="h-(--g-control-h) w-full appearance-none rounded-g-control border border-g-control-edge bg-g-surface px-3 text-g-body text-g-ink outline-none focus:border-g-ink" value={area} onChange={event => { setPicked(event.target.value); if (save.isError) save.reset(); }}>{WORK_FUNCTIONS.map(item => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-g-ink-3" aria-hidden="true" /></span>
             </label>
             {settings.isError ? <p role="alert" className={`mt-3 ${alertClass}`}>{settings.error.message || "We could not load your referrer settings."} Finish tries again.</p> : null}
             {save.isError ? <p role="alert" className={`mt-3 ${alertClass}`}>{save.error.message || "We could not save your referrer settings."}</p> : null}
@@ -227,7 +239,7 @@ function GoalCapacityForm({ initial, getToken }: { initial: CapacitySettings; ge
     },
   });
   const edit = <T,>(setter: (value: T) => void) => (value: T) => { setSaved(false); setter(value); };
-  const selectClass = "h-(--g-control-h) w-full rounded-g-control border border-g-control-edge bg-white px-3 text-g-body text-g-ink outline-none focus:border-g-ink";
+  const selectClass = "h-(--g-control-h) w-full rounded-g-control border border-g-control-edge bg-g-surface px-3 text-g-body text-g-ink outline-none focus:border-g-ink";
   return (
     <form className="grid gap-4 rounded-[10px] border border-g-hairline p-5" onSubmit={event => { event.preventDefault(); setSaved(false); save.mutate(); }}>
       <label className="grid gap-2 text-g-label text-g-ink">Company
@@ -248,7 +260,7 @@ function GoalCapacityForm({ initial, getToken }: { initial: CapacitySettings; ge
       </label>
       <button type="button" aria-pressed={paused} onClick={() => edit(setPaused)(!paused)} className="flex items-center justify-between gap-3 rounded-[10px] border border-g-hairline p-4 text-left">
         <span className="flex items-center gap-3"><Pause className="h-4 w-4 text-g-ink-2" aria-hidden="true" /><span><strong className="block text-g-label text-g-ink">Pause new requests</strong><span className="block text-g-meta text-g-ink-3">Existing conversations stay available.</span></span></span>
-        <span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${paused ? "bg-g-ink" : "bg-g-hairline"}`}><i className={`absolute top-0.5 block h-4 w-4 rounded-full bg-white transition-all ${paused ? "left-[18px]" : "left-0.5"}`} /></span>
+        <span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${paused ? "bg-g-ink" : "bg-g-hairline"}`}><i className={`absolute top-0.5 block h-4 w-4 rounded-full bg-g-on-primary transition-all ${paused ? "left-[18px]" : "left-0.5"}`} /></span>
       </button>
       {save.isError ? <p role="alert" className={alertClass}>{save.error.message}</p> : null}
       <div><GoalButton variant="primary" type="submit" busy={save.isPending} busyLabel="Saving…">Save settings<Check className="h-4 w-4" aria-hidden="true" /></GoalButton></div>
@@ -287,7 +299,9 @@ export default function GoalReferrer() {
   const [, go] = useLocation();
   const params = new URLSearchParams(useSearch());
   const { isLoaded, isSignedIn, getToken } = useAuth();
-  const { user } = useUser();
+  const queryClient = useQueryClient();
+  const access = useReferrerAccess();
+  const verified = access.status === "verified";
   const inviteCompany = params.get("company")?.trim().toLowerCase() || "";
   const inviteCode = params.get("invite")?.trim() || "";
   const claimedRequestId = Number(params.get("request"));
@@ -296,8 +310,6 @@ export default function GoalReferrer() {
   const safeReturnTo = params.get("returnTo") === "/post-opportunity" ? "/post-opportunity" : "";
   const wantsSignIn = Boolean(inviteCompany || params.get("setup") === "work-email" || safeReturnTo || hasClaimedRequestId);
   const employeeSignInEmail = typeof window === "undefined" ? "" : window.sessionStorage.getItem("skipwait:employee-sign-in-email")?.trim().toLowerCase() || "";
-  const sessionEmail = user?.primaryEmailAddress?.emailAddress?.trim().toLowerCase() || "";
-  const sessionEmailIsCompany = Boolean(sessionEmail) && isCompanyEmail(sessionEmail);
   const [signInOpen, setSignInOpen] = useState(wantsSignIn);
   const [signInDismissed, setSignInDismissed] = useState(false);
   const [setupStep, setSetupStep] = useState<number | null>(null);
@@ -311,7 +323,6 @@ export default function GoalReferrer() {
   const [workEmailError, setWorkEmailError] = useState("");
   const [coverageRewardMessage, setCoverageRewardMessage] = useState("");
   const [employeeEnrollmentReady, setEmployeeEnrollmentReady] = useState(false);
-  const [showWorkEmailEnrollment, setShowWorkEmailEnrollment] = useState(true);
 
   useEffect(() => {
     applySeo({ title: "Verify a work email to review private referrals", description: "Verify a company email once, then review private referral requests for your own company and choose whether to help. Reviewing never costs you anything.", path: "/referrer" });
@@ -331,26 +342,24 @@ export default function GoalReferrer() {
 
   useEffect(() => {
     if (!isSignedIn) { setEmployeeEnrollmentReady(false); return; }
-    if (!employeeSignInEmail) {
-      setEmployeeEnrollmentReady(true);
-      if (sessionEmailIsCompany) { setShowWorkEmailEnrollment(false); setWorkEmailError(""); }
-      return;
-    }
+    if (!employeeSignInEmail) { setEmployeeEnrollmentReady(true); return; }
     let active = true;
     const savedInviteCode = typeof window === "undefined" ? "" : window.sessionStorage.getItem(coverageInviteSessionKey) || "";
     setEmployeeEnrollmentReady(false);
     void companyFetch("/api/company-referrals/verify-work-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: employeeSignInEmail, inviteCode: savedInviteCode || undefined }) }).then(payload => {
       if (!active) return;
       // D-055: a completed coverage invite rewards the inviting job seeker only; skipwait.me never pays referrers.
-      if (payload.reward?.rewarded) setCoverageRewardMessage("You joined from an invite. The person who invited you gets one referral credit after their next ask. skipwait.me never pays referrers.");
+      if (payload.reward?.rewarded) setCoverageRewardMessage("You joined from an invite. The person who invited you gets one referral after their next referral request reaches a referrer. skipwait.me never pays referrers.");
       if (savedInviteCode) window.sessionStorage.removeItem(coverageInviteSessionKey);
-      setShowWorkEmailEnrollment(false); setWorkEmailError("");
+      setWorkEmailError("");
+      // The enrollment is what makes this person verified: re-read the server verdict.
+      void queryClient.invalidateQueries({ queryKey: ["referrer-access"] });
     }).catch(error => { if (active) setWorkEmailError(error instanceof Error ? error.message : "We could not confirm this company email for private referral access."); }).finally(() => { if (active) setEmployeeEnrollmentReady(true); });
     return () => { active = false; };
-  }, [isSignedIn, employeeSignInEmail, sessionEmailIsCompany]);
+  }, [isSignedIn, employeeSignInEmail, queryClient]);
 
   useEffect(() => {
-    if (!isSignedIn || claimedRequest || !employeeEnrollmentReady || (view === "setup" && !hasClaimedRequestId)) return;
+    if (!isSignedIn || !verified || claimedRequest || !employeeEnrollmentReady || (view === "setup" && !hasClaimedRequestId)) return;
     let active = true;
     const path = hasClaimedRequestId ? `/api/company-referrals/${claimedRequestId}` : "/api/company-referrals/inbox";
     void companyFetch(path).then(payload => {
@@ -359,16 +368,15 @@ export default function GoalReferrer() {
     }).catch((error: unknown) => {
       if (!active) return;
       if (hasClaimedRequestId) setInboxError("This private request is not available to your verified employee account.");
-      else if (sessionEmailIsCompany) setInboxError(error instanceof Error ? error.message : "We could not load private company requests.");
-      else setInboxError("Verify your work email to view private company requests.");
+      else setInboxError(error instanceof Error ? error.message : "We could not load private company requests.");
     }).finally(() => { if (active) setInboxReady(true); });
     return () => { active = false; };
-  }, [isSignedIn, claimedRequest, claimedRequestId, employeeEnrollmentReady, sessionEmailIsCompany, view]);
+  }, [isSignedIn, verified, claimedRequest, claimedRequestId, employeeEnrollmentReady, hasClaimedRequestId, view]);
 
   useEffect(() => {
-    if (!isSignedIn || !inboxReady || claimedRequest || showWorkEmailEnrollment || hasClaimedRequestId || inboxError || view !== "overview") return;
+    if (!isSignedIn || !verified || !inboxReady || claimedRequest || hasClaimedRequestId || inboxError || view !== "overview") return;
     if (employeeSignInEmail || safeReturnTo || consumeReferrerOtpLanding()) go(safeReturnTo || "/inbox");
-  }, [claimedRequest, employeeSignInEmail, go, hasClaimedRequestId, inboxError, inboxReady, isSignedIn, safeReturnTo, showWorkEmailEnrollment, view]);
+  }, [claimedRequest, employeeSignInEmail, go, hasClaimedRequestId, inboxError, inboxReady, isSignedIn, safeReturnTo, verified, view]);
 
   const decide = async (approved: boolean) => {
     if (!claimedRequest || deciding) return;
@@ -382,7 +390,7 @@ export default function GoalReferrer() {
 
   if (decision) return <DecisionRecorded decision={decision} request={claimedRequest} onMessage={requestId => go(`/conversation/${requestId}?from=inbox`)} />;
 
-  if (isSignedIn && hasClaimedRequestId) {
+  if (isSignedIn && verified && hasClaimedRequestId) {
     if (claimedRequest) return <ClaimedReview request={claimedRequest} activeDocument={activeDocument} setActiveDocument={setActiveDocument} message={message} setMessage={setMessage} deciding={deciding} error={inboxError} onDecide={approved => { void decide(approved); }} />;
     return (
       <ReviewFrame screen={inboxReady ? "referrer-review-unavailable" : "referrer-loading"} eyebrow="PRIVATE REVIEW" title="Private request" backHref="/inbox">
@@ -395,22 +403,31 @@ export default function GoalReferrer() {
     );
   }
 
-  const overviewAlert = isSignedIn && view === "overview" ? workEmailError || (showWorkEmailEnrollment ? "" : inboxError) : "";
+  const overviewAlert = isSignedIn && view === "overview" ? workEmailError || inboxError : "";
+
+  const workspace = (() => {
+    if (!isSignedIn) return view === "setup" ? <GoalCapacityPanel isSignedIn={false} getToken={getToken} onSignIn={() => setSignInOpen(true)} /> : <GoalOverview onPreviewAsks={() => go("/queue")} />;
+    if (access.status === "checking") return <div className="mt-6 max-w-[640px]"><GoalSkeletonRows density="company" count={3} /></div>;
+    if (access.status === "error") return <div className="mt-6 max-w-[640px]"><GoalErrorState title="We could not check your verification." body={access.error.message || "Check your connection and try again."} retry={{ label: access.retrying ? "Trying again…" : "Try again", onClick: access.retry }} /></div>;
+    if (access.status === "unverified") return <GoalVerifyGate />;
+    return view === "setup" ? <GoalCapacityPanel isSignedIn getToken={getToken} onSignIn={() => setSignInOpen(true)} /> : <GoalOverview onPreviewAsks={() => go("/queue")} />;
+  })();
 
   return (
-    <main data-skipwait-screen={isSignedIn ? `referrer-${view}` : "referrer-sign-in"} className="page-content bg-white font-g-sans text-g-ink">
+    <main data-skipwait-screen={isSignedIn ? `referrer-${view}` : "referrer-sign-in"} className="page-content bg-g-canvas font-g-sans text-g-ink">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <Kicker>REFERRER WORKSPACE</Kicker>
           <h1 className="mt-3 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em]">Open doors. On your terms.</h1>
           <p className="mt-2 text-g-body leading-[1.6] text-g-ink-2">Choose the requests you believe in. Keep your identity private until you accept.</p>
         </div>
-        <GoalButton variant="primary" onClick={() => { if (isSignedIn) setSetupStep(0); else setSignInOpen(true); }}>Set up as a referrer<ArrowRight className="h-4 w-4" aria-hidden="true" /></GoalButton>
+        <GoalButton variant="outline" onClick={() => { if (isSignedIn) setSetupStep(0); else setSignInOpen(true); }}>Set up as a referrer<ArrowRight className="h-4 w-4" aria-hidden="true" /></GoalButton>
       </div>
-      <GoalWorkspaceTabs view={view} />
-      {view === "setup"
-        ? <GoalCapacityPanel isSignedIn={Boolean(isSignedIn)} getToken={getToken} onSignIn={() => setSignInOpen(true)} />
-        : <GoalOverview onPreviewAsks={() => go("/queue")} />}
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
+        <GoalWorkspaceNav view={view} />
+        <Link href="/referrer/impact" className="inline-flex items-center gap-1 text-g-meta text-g-ink-2 underline underline-offset-2 hover:text-g-ink">Your private impact<ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Link>
+      </div>
+      {workspace}
       {coverageRewardMessage && view === "overview" ? <p role="status" className="mt-6 max-w-[640px] rounded-[10px] border border-g-hairline p-3 text-g-small text-g-ink-2">{coverageRewardMessage}</p> : null}
       {overviewAlert ? <p role="alert" className={`mt-6 max-w-[640px] ${alertClass}`}>{overviewAlert}</p> : null}
       {signInOpen && !isSignedIn && isLoaded !== false ? <GoalSignInDialog inviteCompany={inviteCompany || undefined} inviteCode={inviteCode || undefined} onClose={() => { setSignInOpen(false); setSignInDismissed(true); }} /> : null}

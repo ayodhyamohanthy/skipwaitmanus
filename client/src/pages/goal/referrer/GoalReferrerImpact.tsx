@@ -3,13 +3,14 @@
 // scoreboard (D-055: no credits, no ranking). The server's verified-referrer
 // verdict gates; a failed check is a retryable error, never the verify gate.
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
-import { ArrowRight, Check, HeartHandshake, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowRight, Check, ShieldCheck } from "lucide-react";
 import { GoalButton, GoalErrorState, GoalSkeletonRows } from "@/components/goal";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { readApiJson } from "@/lib/apiResponse";
-import { GoalWorkspaceTabs } from "./GoalReferrer";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
+import { GoalWorkspaceNav } from "./GoalReferrer";
 
 type ReferrerImpactSummary = { acceptedReferrals: number; introductions: number; activeConversations: number; outcomesShared: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> };
 
@@ -31,17 +32,16 @@ function Stat({ value, label }: { value: number; label: string }) {
 
 function Frame({ screen, children }: { screen: string; children: React.ReactNode }) {
   return (
-    <main data-skipwait-screen={screen} className="page-content bg-white font-g-sans text-g-ink">
+    <main data-skipwait-screen={screen} className="page-content bg-g-canvas font-g-sans text-g-ink">
       <Kicker>REFERRER WORKSPACE</Kicker>
       <h1 className="mt-3 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em]">Open doors. On your terms.</h1>
-      <GoalWorkspaceTabs view="impact" />
+      <div className="mt-5"><GoalWorkspaceNav /></div>
       <div className="mt-6 max-w-[640px]">{children}</div>
     </main>
   );
 }
 
 export default function GoalReferrerImpact() {
-  const [, go] = useLocation();
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const [summary, setSummary] = useState<ReferrerImpactSummary | null>(null);
   const [loading, setLoading] = useState(false);
@@ -71,7 +71,7 @@ export default function GoalReferrerImpact() {
           <Kicker>PRIVATE BY DEFAULT</Kicker>
           <h2 className="mt-3 text-[22px] font-semibold leading-[1.15] tracking-[-0.02em]">Sign in with your work email to see your referral impact.</h2>
           <p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">Accepted referrals, pending decisions, and private messages - all in one private view.</p>
-          <div className="mt-5"><GoalButton variant="primary" onClick={() => go("/referrer?setup=work-email")}>Sign in with work email</GoalButton></div>
+          <div className="mt-5"><GoalButton variant="primary" asChild><Link href={referrerSignInHref("/referrer/impact")}>Sign in with work email<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link></GoalButton></div>
         </div>
       </Frame>
     );
@@ -86,7 +86,7 @@ export default function GoalReferrerImpact() {
           <Kicker>PRIVATE BY DEFAULT</Kicker>
           <h2 className="mt-3 text-[22px] font-semibold leading-[1.15] tracking-[-0.02em]">Verify your work email.</h2>
           <p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">Confirm a company email with a one-time code to unlock your private referral impact.</p>
-          <div className="mt-5"><GoalButton variant="primary" asChild><Link href="/referrer?setup=work-email">Add work email<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link></GoalButton></div>
+          <div className="mt-5"><GoalButton variant="primary" asChild><Link href={referrerSignInHref("/referrer/impact")}>Add work email<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link></GoalButton></div>
         </div>
       </Frame>
     );

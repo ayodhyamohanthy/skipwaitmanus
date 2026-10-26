@@ -87,3 +87,5 @@ None. The split's open design questions are already decided under D-123 in `D-04
 `D-048-P-referrer`: prepared PR pending landing — GPT · d492 — 2026-10-23 — branch `agent/architect/d048-p-referrer`
 
 `D-048-p3-invite`: done — `fb420761` (#577) — goal `/invite` behind `goalSurfaceOn('invite')`: company request and personal invite-link panels, flag-off parity, canonical referrer OTP href, exact-head CI green (D-085)
+
+`D-048-p3-referrer`: review fixing — Qoder · 4f4e — 2026-10-26 — all findings fixed red-first: server-verdict gate (no email-domain inference), one black commit, quiet Impact link instead of a tab, goal-native work-email OTP dialog, referral-only reward copy, dark-mode frame tokens; focused 18/18; captures 1280/390 for signed-out, overview and impact — branch `agent/queue/d048-p3-referrer` (PR #575)
