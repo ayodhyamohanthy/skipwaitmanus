@@ -410,7 +410,7 @@
    "dependsOn": [
     "REGISTER-oct24"
    ],
-   "note": "Owner, Oct 24: make sure all up-to-date decisions are everywhere and old decisions are nowhere. Markdown only. The register keeps every entry and fixes only its status column; every other doc states the current rule, deletes superseded guidance, and keeps runtime caveats true. Inventory table, required searches, tests and stop rules are in the packet. Tier 2: lands on green required CI with no separate review (D-200)."
+   "note": "Owner, Oct 24: make sure all up-to-date decisions are everywhere and old decisions are nowhere. Markdown only. The register keeps every entry and fixes only its status column; every other doc states the current rule, deletes superseded guidance, and keeps runtime caveats true. Inventory table, required searches, tests and stop rules are in the packet. Tier 2: lands on green required CI with no separate review (D-200). Unblocked Oct 26 by D-211: the three root product docs are in scope, and declared history may stay when the inventory names its bucket and file."
   },
   {
    "id": "D-200-instructions-sync",
