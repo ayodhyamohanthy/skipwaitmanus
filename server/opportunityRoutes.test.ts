@@ -67,6 +67,18 @@ describe("the opportunity wall hides lapsed posts", () => {
     ]);
   });
 
+  it("carries the poster projection and never leaks owner identity fields", async () => {
+    const rows = [{ id: 91, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", location: null, compensation: null, walkInAt: null, walkInEndsAt: null, createdAt: new Date(), isSponsored: false, poster: { kind: "firstName", firstName: "Ravi" }, ownerName: "Ravi Kumar", ownerEmail: "ravi@acme.com", showPosterFirstName: true }];
+    const { app } = opportunityApp({ listPublicCompanyOpportunities: async () => rows });
+    const response = await request(app).get("/api/opportunities");
+    expect(response.status).toBe(200);
+    const [row] = response.body.opportunities;
+    expect(row.poster).toEqual({ kind: "firstName", firstName: "Ravi" });
+    expect(row.ownerName).toBeUndefined();
+    expect(row.ownerEmail).toBeUndefined();
+    expect(row.showPosterFirstName).toBeUndefined();
+  });
+
   it("records nothing while every post is live", async () => {
     const { app, activity } = opportunityApp({ listPublicCompanyOpportunities: async () => [{ id: 91, expiresAt: new Date(Date.now() + day) }] });
     expect((await request(app).get("/api/opportunities")).status).toBe(200);

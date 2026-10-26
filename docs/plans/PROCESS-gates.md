@@ -100,9 +100,16 @@ Red-first tests; the gate on the merged result; required CI green; the row's Sta
 - An open row's branch fails the queue gate: its row is wrong. Report it; do not widen the rules.
 - A Tier 1 PR that already passed review fails the review gate only because its verdict predates the `reviewed <sha>` body. That is expected: the reviewer re-records the verdict on the current head (`--verdict pass`), and nothing is waived.
 
+## Operating notes (Oct 24; added by the instruction sync - not part of any row's build spec)
+
+- **Availability is not a gate (D-195).** Claude Code's CEO seat is decision support; no queue step halts solely because one model or session is down. Read D-195 before treating "wait for the CEO session" as binding.
+- **Review-identity preflight.** Branch protection requires an approval and one GitHub identity cannot approve its own submission, so a single-operator merge stays blocked until a second identity reviews. Check the review route BEFORE planning a merge, never after (surfaced Oct 24 during the post-merge review sequence).
+- **Blocked-task recovery, Oct 24.** (a) PROVEN end to end: landing the row's real deliverable stops a blocked row from gating with no CEO session - the picker counts a todo row done once its branch lands; the report itself stays in the report log (POSTMERGE-oct22-review via #619, verified through the actual picker output). Other recovery shapes are untested. (b) ROOT CAUSE REPRODUCED, not a proven end-to-end recovery: TS2688/TS5101 in a fresh worktree means dependencies were never installed - run `pnpm install` before `pnpm check` (REGISTER-520). The full typecheck was never re-run to green in the investigation sandbox (resource cap), and the affected session's worktree install/rebase/green stay unverified.
+- **Takeover path (D-195's first application, Oct 24).** With the CEO session down, the owner authorized a one-time bounded exception (owner like-reaction Oct 24, 14:28:21 IST to the explicit question phonemsg-01M5PJ2SJFC6SWWD7M56WANVPH naming the four PRs): #619, #628, #629 and #631, each at an exact head with an independent pass and green CI, landed under that exception. It expired when consumed - a reference for how a takeover is scoped, not a standing route.
+
 ## Status
 - PROCESS-queue-gate: done — PR #603 head `f5e23174` (latest main `5747cc87` merged); full local gate and all 4 PR checks passed.
 - PROCESS-review-gate: todo; waits for PROCESS-queue-gate.
 - PROCESS-id-check: todo; waits for PROCESS-review-gate.
 - PROCESS-scorecard: todo; waits for PROCESS-id-check.
-- POSTMERGE-oct22-review: todo.
+- POSTMERGE-oct22-review: review — agent/queue/postmerge-oct22-review — 71052376b04145ea6eaad3f9508bfdd8c23e4e68.
