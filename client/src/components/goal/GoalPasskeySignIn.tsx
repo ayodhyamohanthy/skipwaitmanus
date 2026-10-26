@@ -112,9 +112,12 @@ export function PasskeyEnrollmentOffer({ email, returnTo }: { email: string; ret
       <p className="text-g-small font-semibold text-g-ink">Save this device for faster sign-in?</p>
       <p className="mt-1 text-[13px] leading-[1.5] text-g-ink-3">Next time, {email} can sign in with this device's fingerprint, face or screen lock - no code needed.</p>
       <div className="mt-3 flex gap-2">
-        <button
+        <GoalButton
           type="button"
-          disabled={busy}
+          variant="primary"
+          className="flex-1 rounded-full!"
+          busy={busy}
+          busyLabel="Waiting for your device…"
           onClick={async () => {
             setBusy(true); setError("");
             const optionsRes = await postJSON("/api/auth/passkey/register/options", {});
@@ -127,11 +130,8 @@ export function PasskeyEnrollmentOffer({ email, returnTo }: { email: string; ret
             } catch { setError("Passkey setup was dismissed. You can add it later."); }
             setBusy(false);
           }}
-          className="flex-1 rounded-[10px] bg-g-ink px-4 py-2.5 text-g-small font-semibold text-g-ink-inverse disabled:opacity-60"
-        >
-          {busy ? "Waiting for your device…" : "Save passkey"}
-        </button>
-        <button type="button" onClick={finish} className="rounded-[10px] px-4 py-2.5 text-g-small font-semibold text-g-ink-2 hover:text-g-ink">Not now</button>
+        >Save passkey</GoalButton>
+        <GoalButton type="button" variant="ghost" onClick={finish}>Not now</GoalButton>
       </div>
       {error && <p role="alert" className="mt-2 text-[13px] leading-[1.5] text-g-ink-3">{error}</p>}
     </div>
