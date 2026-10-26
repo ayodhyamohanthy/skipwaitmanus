@@ -44,19 +44,29 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
   });
 
   it("hands a fresh agent the first pickable task in order", () => {
-    // D-149 keeps the two live regressions first. Owner-registered follow-ups
-    // remain together immediately afterward; all existing rows keep their order.
-    expect(real.tasks.slice(0, 4).map(t => t.id)).toEqual([
+    // The Oct-25 owner freeze supersedes D-149's first-four pin: the freeze rows were
+    // registered ahead of the existing list per the owner's Oct 25 direction
+    // (phonemsg-01M5SQ45KZCVGASZZ5K4BJX6H2, "push all these to repo") under the
+    // capable-session clause (docs/DELEGATION.md section 1); the D-149 four keep their
+    // relative order immediately after the freeze rows. Pin repaired by an Instinct
+    // session under DELEGATION.md section 1 (registrar quiet since Oct 25 23:22 IST);
+    // independent non-Instinct review is still required before this lands (D-151).
+    expect(real.tasks.slice(0, 12).map(t => t.id)).toEqual([
+      "pricing-banded-plans-oct25", "first-look-24h-oct25", "device-signin-requirements-oct25", "implementation-backlog-oct25",
+      "backlog-oct25-provider-plans", "backlog-oct25-marketing-line", "backlog-oct25-company-discovery", "backlog-oct25-device-signin-impl",
+      "backlog-oct25-universal-search", "backlog-oct25-light-dark-mode", "backlog-oct25-referral-wording", "backlog-oct25-other-product-work",
+    ]);
+    expect(real.tasks.slice(12, 16).map(t => t.id)).toEqual([
       "P0-ask-link-signin", "P1-queue-attestation", "PREMIUM-total-label", "D-067-outbox-fixture-repair",
     ]);
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    // P0-ask-link-signin and P1-queue-attestation are both done (each landed after its
-    // review; P1 as merge 2be41b2d), both owner follow-ups are done, and SEC-deps-oct24
-    // landed as 1e97d6ea (#663). The owner's device sign-in report comes next.
-    expect(first).toMatchObject({ kind: "build", task: { id: "FIX-device-signin" } });
-    // Both owner follow-ups (PREMIUM-total-label and D-067-outbox-fixture-repair) are done,
-    // so slicing off the live regressions still leaves the launch batch first.
-    const followUps = pickNextTask({ tasks: real.tasks.slice(2), mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
+    // Freeze order: the four in-review freeze rows are being landed by their reviewers,
+    // so the first pickable work is writing the provider-plans packet (architect).
+    expect(first).toMatchObject({ kind: "architect", task: { id: "backlog-oct25-provider-plans" } });
+    // Slicing off the freeze rows leaves the launch batch's order intact: the D-149
+    // four and SEC-deps-oct24 (landed as 1e97d6ea, #663) are done, so the owner's
+    // device sign-in report comes next.
+    const followUps = pickNextTask({ tasks: real.tasks.slice(12), mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
     expect(followUps).toMatchObject({ kind: "build", task: { id: "FIX-device-signin" } });
   });
 
