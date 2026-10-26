@@ -107,7 +107,7 @@ export default function PublicProfile() {
   return (
     <div data-skipwait-screen="public-profile" className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4">
-        <Link href="/" className="wordmark" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
+        <Link href="/" className="wordmark" aria-label="skipwait.me home"><img src="/brand/lockup.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
         {ownsPage ? (
           <div className="flex rounded-full bg-muted p-1 text-sm" role="tablist" aria-label="View as">
             {(["you", "visitor"] as const).map(option => (

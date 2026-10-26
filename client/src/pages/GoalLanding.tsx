@@ -5,7 +5,7 @@
 // company"), one blue (#1D4ED8, the trust-strip verified check), no kit
 // yellow/blue, no pills, no invented numbers. Every claim traces to a
 // moneyCopy constant or doctrine line. Beta badge/line from betaNotice.ts
-// (owner, verified). Logo slot = ONE asset (/brand/lockup-horizontal-mono.svg)
+// (owner, verified). Logo slot = ONE asset (/brand/lockup.svg)
 // pending the owner's final model pick - swap = one file.
 // Motion: one-time arc draw + section fade-up; prefers-reduced-motion renders
 // everything fully with no animation.

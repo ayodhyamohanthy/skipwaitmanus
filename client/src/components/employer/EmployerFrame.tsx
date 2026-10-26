@@ -15,7 +15,7 @@ export const EMPLOYER_VIEWS = [
 export function EmployerFrame({ companyName, withNav, children }: { companyName?: string; withNav: boolean; children: ReactNode }) {
   return <div data-skipwait-screen="employer-dashboard" className="min-h-screen bg-muted">
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background px-5 py-3">
-      <div className="flex min-w-0 items-center gap-3"><Link href="/" className="wordmark shrink-0"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link><span className="min-w-0 truncate rounded-full bg-muted px-3 py-1 text-xs font-semibold">{companyName ? `EMPLOYER · ${companyName.toUpperCase()}` : "EMPLOYER"}</span></div>
+      <div className="flex min-w-0 items-center gap-3"><Link href="/" className="wordmark shrink-0"><img src="/brand/lockup.svg" alt="skipwait.me" className="wordmark-logo" /></Link><span className="min-w-0 truncate rounded-full bg-muted px-3 py-1 text-xs font-semibold">{companyName ? `EMPLOYER · ${companyName.toUpperCase()}` : "EMPLOYER"}</span></div>
       <Button variant="ghost" size="sm" asChild><Link href="/for-companies"><ArrowLeft />For companies</Link></Button>
     </header>
     <div className={`mx-auto grid max-w-6xl gap-4 p-5 ${withNav ? "md:grid-cols-[200px_minmax(0,1fr)]" : ""}`}>

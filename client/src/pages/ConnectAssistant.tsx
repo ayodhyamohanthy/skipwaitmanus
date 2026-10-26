@@ -159,7 +159,7 @@ export default function ConnectAssistant() {
 
   return (
     <main data-skipwait-screen="connect-assistant" className="mx-auto min-h-screen max-w-lg px-4 py-8 sm:py-14">
-      <Link href="/" className="wordmark mb-6 inline-block text-xl"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
+      <Link href="/" className="wordmark mb-6 inline-block text-xl"><img src="/brand/lockup.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
 
       {stage === "consent" ? (
         <>

@@ -54,7 +54,7 @@ export function ErrorScreen({ screen, onRetry }: { screen: string; onRetry: () =
   return (
     <main data-skipwait-screen={screen} className="flex min-h-dvh items-center justify-center bg-background px-5">
       <div className="max-w-md text-center">
-        <p className="wordmark text-2xl"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></p>
+        <p className="wordmark text-2xl"><img src="/brand/lockup.svg" alt="skipwait.me" className="wordmark-logo" /></p>
         <h1 className="mt-8 text-3xl font-semibold text-foreground">Something went wrong on our side.</h1>
         <p className="mt-3 text-muted-foreground">Nothing you did. Your asks and messages are safe.</p>
         <div className="mt-8 flex flex-wrap justify-center gap-2">

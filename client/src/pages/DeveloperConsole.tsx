@@ -15,7 +15,7 @@ import { consoleHref, readConsoleView, type ConsoleView } from "@/components/dev
 function ConsoleHeader({ signedIn, email }: { signedIn: boolean; email: string | null }) {
   return (
     <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-5">
-      <Link href="/developers" className="wordmark text-xl"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /> <small className="font-mono text-xs text-muted-foreground">developers</small></Link>
+      <Link href="/developers" className="wordmark text-xl"><img src="/brand/lockup.svg" alt="skipwait.me" className="wordmark-logo" /> <small className="font-mono text-xs text-muted-foreground">developers</small></Link>
       {signedIn ? <Link href="/settings" className="min-w-0 truncate text-sm text-muted-foreground">{email ?? "Account"}</Link> : null}
     </header>
   );
