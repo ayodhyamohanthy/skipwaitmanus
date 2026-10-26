@@ -1,6 +1,6 @@
-# Enterprise pipeline at startup speed: every role is a gate, every gate is a machine check (D-210)
+# Enterprise pipeline at startup speed: every role is a gate, every gate is a machine check (D-212)
 
-> Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code as CEO (D-085, D-210) on Oct 26 2026 against `main` `927dfaca` (register through D-206). This file is the operating model. The tasks that build it live in two packets: [`REL-production-watch.md`](REL-production-watch.md) (the systems know before a user does, and fix what they can) and [`GATE-delivery.md`](GATE-delivery.md) (nothing broken reaches `main`). D-166 already turned the queue and review rules into CI checks ([`PROCESS-gates.md`](PROCESS-gates.md)); D-210 adds the roles D-166 does not cover: tester, QA, release manager, reliability engineer. D-200 sets the pace: nothing waits for one session, and no gate adds a second approval. The picker hands out the tasks one at a time. The register wins any conflict.
+> Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code as CEO (D-085, D-212) on Oct 26 2026 against `main` `927dfaca` (register through D-206). This file is the operating model. The tasks that build it live in two packets: [`REL-production-watch.md`](REL-production-watch.md) (the systems know before a user does, and fix what they can) and [`GATE-delivery.md`](GATE-delivery.md) (nothing broken reaches `main`). D-166 already turned the queue and review rules into CI checks ([`PROCESS-gates.md`](PROCESS-gates.md)); D-212 adds the roles D-166 does not cover: tester, QA, release manager, reliability engineer. D-200 sets the pace: nothing waits for one session, and no gate adds a second approval. The picker hands out the tasks one at a time. The register wins any conflict.
 
 ## 1. What the owner asked for
 "our platfrom should have enterprise like organisation with startup speed ... have testers, have qa, have integrators, have reliability enginners, have devops, someone to see all lights are green or not fullstack then only something will be pushed ... so nothing breaks in production and user have a bad user experience. if something is not working our systems should know and has to be worked fixed not untill user faces an error and drops off" (owner, Oct 23).
@@ -31,7 +31,7 @@
 ## 3. The roles, and what does each job here
 All work is done by AI agents and machine checks. A role is either a picker stage (a session that is not the builder) or a check (a machine). Nobody's word is a gate (AGENTS.md rule 8).
 
-| Role | Enterprise duty | Here, before D-210 | Here, from D-210 (the task that builds it) |
+| Role | Enterprise duty | Here, before D-212 | Here, from D-212 (the task that builds it) |
 |---|---|---|---|
 | Product owner | Decides what and why | The owner, through the register; any session turns his instruction into a decision and a queue row (D-200 (2)) | Unchanged. `PROCESS-queue-gate` (D-166, live): nothing merges without a queue row |
 | Architect | Design, contracts, splitting work | Packets (D-109) | Packets also list the contracts the change must keep, each with a pin test, and the user journeys it touches |

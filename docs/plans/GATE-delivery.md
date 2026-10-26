@@ -1,17 +1,17 @@
-# Packet GATE: nothing broken reaches `main` (D-210)
+# Packet GATE: nothing broken reaches `main` (D-212)
 
-> Read [`docs/BRIEF.md`](../BRIEF.md), [`ENTERPRISE-PIPELINE.md`](ENTERPRISE-PIPELINE.md) and [`PROCESS-gates.md`](PROCESS-gates.md) first. Written by Claude Code as CEO (D-085, D-210) on Oct 26 2026. D-166 already enforces one door to `main` (`PROCESS-queue-gate`, live) and an independent Tier 1 pass on the exact head (`PROCESS-review-gate`); this packet adds the tester, QA and status-board roles on top. Several tasks share this packet (D-134): the picker hands out one at a time; do only the task it prints, and write your status line in the Status section at the end. Line numbers drift: find each function by name first. The register wins any conflict.
+> Read [`docs/BRIEF.md`](../BRIEF.md), [`ENTERPRISE-PIPELINE.md`](ENTERPRISE-PIPELINE.md) and [`PROCESS-gates.md`](PROCESS-gates.md) first. Written by Claude Code as CEO (D-085, D-212) on Oct 26 2026. D-166 already enforces one door to `main` (`PROCESS-queue-gate`, live) and an independent Tier 1 pass on the exact head (`PROCESS-review-gate`); this packet adds the tester, QA and status-board roles on top. Several tasks share this packet (D-134): the picker hands out one at a time; do only the task it prints, and write your status line in the Status section at the end. Line numbers drift: find each function by name first. The register wins any conflict.
 
 | Field | Value |
 |---|---|
 | Verified against | `main` `927dfaca`, register through D-206, on 2026-10-26; every fact below was re-checked by an independent read-only review that day |
-| Decisions | D-210 (this packet), D-200, D-205, D-166, D-151, D-134, D-082 |
+| Decisions | D-212 (this packet), D-200, D-205, D-166, D-151, D-134, D-082 |
 
 ## Rules for every task here
 1. **A gate is a machine check.** It reads git, the PR or a marker. It never trusts a sentence in a PR body, except the one this packet names (the "Ported assertions" table).
 2. **Fast.** Each new check finishes in under a minute, except the e2e job, which runs in parallel with the others and takes under 10 minutes. A docs-only PR passes each check at once. Never put a workflow `paths:` filter on a check that may become required: a filtered required check stays pending forever.
 3. **Fail closed on a definite breach, open on a broken tool**, as `scripts/scope-check.mjs` does. A check that cannot run warns and passes; a check that finds a breach fails.
-4. **Required checks need the owner's word** (D-210 (6)). Each task lands its check as a CI step or job; once it has been green on `main` for 3 days, any session asks the owner to add it to ruleset 25433342.
+4. **Required checks need the owner's word** (D-212 (6)). Each task lands its check as a CI step or job; once it has been green on `main` for 3 days, any session asks the owner to add it to ruleset 25433342.
 5. **Speed first** (D-200 (4)). Tier 2 and 3 land on green required CI with no separate review. Tier 1 keeps one independent review by a model that neither built nor fixed the work (D-151). Nothing in this packet adds a second pre-landing approval.
 6. **Landing.** Red-first tests; the gate on your commit merged with `origin/main`; CI green on the exact head.
    - Land with GitHub's merge-commit button (`gh pr merge <number> --merge`; never `--admin`, `--squash` or `--rebase`, D-134 (6), D-200), even though the picker's printed step still says `git push origin <sha>:main` until BRANCH-HYGIENE-2 rewrites it.
@@ -105,7 +105,7 @@
      - `server/db.ts`, when any added or removed line, or the name of the function a hunk sits in, matches `/credit|spend|refund|ledger|payment|wallet|grant|chargebee|tokenBalances|tokenTransactions|coverage|withdraw|referrerReviewEmailLinks|blocked/i`. A name-only rule misses `createCompanyReferralRequest` and `deliverWaitingAskTx`, which spend through `spendCreditsTx` (defined in `server/creditLedger.ts`).
    - **Tier 2:** everything else under `server/`, `shared/`, `client/src/`, `functions/` and `.github/workflows/`.
    - **Tier 3:** docs and packets alone.
-2. **`scripts/review-gate.mjs`** uses the higher of the row's declared tier and the computed tier. Its failure message says which paths made the change Tier 1: "This change touches <paths>, which are Tier 1 (D-210). It needs an independent pass on its head; correct the row's tier in docs/plans/assignments.json (any session, D-200 (2))."
+2. **`scripts/review-gate.mjs`** uses the higher of the row's declared tier and the computed tier. Its failure message says which paths made the change Tier 1: "This change touches <paths>, which are Tier 1 (D-212). It needs an independent pass on its head; correct the row's tier in docs/plans/assignments.json (any session, D-200 (2))."
 
 **Tests** (red first):
 - The classifier on each listed path.

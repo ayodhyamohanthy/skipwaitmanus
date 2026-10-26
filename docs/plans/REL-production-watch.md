@@ -1,11 +1,11 @@
-# Packet REL: the systems know before a user does, and fix what they can (D-210)
+# Packet REL: the systems know before a user does, and fix what they can (D-212)
 
-> Read [`docs/BRIEF.md`](../BRIEF.md) and [`ENTERPRISE-PIPELINE.md`](ENTERPRISE-PIPELINE.md) first. Written by Claude Code as CEO (D-085, D-210) on Oct 26 2026. Several tasks share this packet (D-134): the picker hands out one at a time; do only the task it prints, and write your status line in the Status section at the end. Line numbers drift: find each function by name before you trust a number. The register wins any conflict.
+> Read [`docs/BRIEF.md`](../BRIEF.md) and [`ENTERPRISE-PIPELINE.md`](ENTERPRISE-PIPELINE.md) first. Written by Claude Code as CEO (D-085, D-212) on Oct 26 2026. Several tasks share this packet (D-134): the picker hands out one at a time; do only the task it prints, and write your status line in the Status section at the end. Line numbers drift: find each function by name before you trust a number. The register wins any conflict.
 
 | Field | Value |
 |---|---|
 | Verified against | `main` `927dfaca`, register through D-206, on 2026-10-26; every fact below was re-checked by an independent read-only review that day |
-| Decisions | D-210 (this packet), D-200, D-205, D-204, D-174, D-166, D-151, D-100, D-082 |
+| Decisions | D-212 (this packet), D-200, D-205, D-204, D-174, D-166, D-151, D-100, D-082 |
 
 ## Rules for every task here
 1. **Free only** (D-031, D-204). Cloudflare cron triggers and KV on the existing Workers plan, GitHub Actions on this public repo, the Sentry free tier, the existing ZeptoMail sender. No new paid service and no new npm dependency.
