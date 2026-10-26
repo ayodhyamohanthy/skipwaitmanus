@@ -1948,7 +1948,8 @@
         "D-086-demand-list",
         "D-048-F-flags",
         "D-048-F-routes",
-        "D-132-audit"
+        "D-132-audit",
+        "DEVICE-SIGNIN-passkeys"
       ],
       "owns": [
         "drizzle/deploy/*_company_referral_bonuses.sql",
@@ -1984,7 +1985,7 @@
         "docs/DECISIONS.md",
         "docs/KIT_V4_BUILD_PLAN.md"
       ],
-      "note": "D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing). It also waits for D-048-F-flags and D-048-F-routes, which own App.tsx and .env.example first (CEO, Oct 23)."
+      "note": "D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing). It also waits for D-048-F-flags and D-048-F-routes, which own App.tsx and .env.example first (CEO, Oct 23). Schema chain: also waits for DEVICE-SIGNIN-passkeys (Oct 26) - schema rows run as one chain."
     },
     {
       "id": "D-099-bonus-line",
@@ -2303,8 +2304,10 @@
       "lane": "d174-jobs",
       "branch": "agent/queue/d174-job-catalog",
       "status": "todo",
-      "dependsOn": [],
-      "note": "D-193 packet section 5.5. No code anywhere fetches a company's jobs today; the D-174 journey's jobs step needs this. Level = assignJobLevel on (title, snippet, applyUrl), the same fields that price the request. JOB_CATALOG_ENABLED stays false until QA.",
+      "dependsOn": [
+        "DEVICE-SIGNIN-passkeys"
+      ],
+      "note": "D-193 packet section 5.5. No code anywhere fetches a company's jobs today; the D-174 journey's jobs step needs this. Level = assignJobLevel on (title, snippet, applyUrl), the same fields that price the request. JOB_CATALOG_ENABLED stays false until QA. Schema chain: also waits for DEVICE-SIGNIN-passkeys (Oct 26) - schema rows run as one chain.",
       "epic": "D-174",
       "owns": [
         "shared/jobCatalog.ts",
@@ -2636,22 +2639,51 @@
       "tier": 1,
       "lane": "auth-device",
       "branch": "agent/queue/device-signin-passkeys",
-      "status": "owner",
+      "status": "todo",
       "dependsOn": [
         "FIX-device-signin"
       ],
       "owns": [
-        "client/src/components/SeekerSignIn.tsx",
-        "client/src/pages/SignIn.tsx",
+        "client/src/components/goal/GoalSeekerSignIn.tsx",
+        "client/src/components/goal/GoalPasskeySignIn.tsx",
+        "client/src/components/goal/GoalPasskeySignIn.test.tsx",
+        "client/src/components/passkeyGoalGate.test.tsx",
         "client/src/pages/GoalSignIn.tsx",
-        "client/src/lib/passkeys.ts",
-        "client/src/lib/passkeys.test.ts",
-        "server/passkeys.ts",
-        "server/passkeys.test.ts",
-        "server/passkeyRoutes.ts",
-        "server/passkeyRoutes.test.ts"
+        "server/_core/passkeyLogin.ts",
+        "server/_core/passkeyLogin.test.ts",
+        "server/_core/passkeyStore.ts",
+        "server/_core/index.ts (switch only)",
+        "drizzle/schema.ts",
+        "drizzle/deploy/0115_passkey_credentials.sql",
+        ".env.example (switch only)",
+        "package.json",
+        "pnpm-lock.yaml",
+        "src/worker.ts (switch only)"
       ],
-      "note": "D-209 (1): the device-saved sign-in the owner asked for (D-172, docs/DEVICE-SIGNIN-REQUIREMENTS.md) never rides a sign-in fix's branch. Mechanism approved by the owner Oct 25 (SimpleWebAuthn, MIT, native passkey sign-in on skipwait.me; no authkit.app, no paid provider, no forced prompt). Waits in owner status for D-209 (4): may a referrer add a passkey (default no, D-057), and is Sign in with Apple in (default no, D-030). Packet phases A-C only after those answers; phase D is blocked. Build extends owns in its own PR as D-200 (2) allows."
+      "note": "D-209 (1): the device-saved sign-in the owner asked for (D-172, docs/DEVICE-SIGNIN-REQUIREMENTS.md) never rides a sign-in fix's branch. Mechanism approved by the owner Oct 25 (SimpleWebAuthn, MIT, native passkey sign-in on skipwait.me; no authkit.app, no paid provider, no forced prompt). Oct 26: owner directed the browser/device saved-account chooser for returning users (anchors phonemsg-01M5VG0DPC6QSD5VQGPTGW9AH7, phonemsg-01M5VG10HEQJ3B82QM7MH8KP1Q, phonemsg-01M5VG20ZVC76Q21AS6Q2TC90S) - phases A-C released for build; phase D (referrer passkey, Sign in with Apple) stays blocked on D-209 (4), defaults no/no. Build extends owns in its own PR as D-200 (2) allows. Oct 26 registry repair: owns corrected to the actual phase-B build paths (the registered list was pre-build placeholder paths); the credential/challenge store lives in server/_core/passkeyStore.ts so server/db.ts stays untouched (owned by D-132-audit and the D-174 rows)."
+    },
+    {
+      "id": "DEVICE-SIGNIN-google-chooser",
+      "title": "Device-saved sign-in: Google One Tap / FedCM automatic prompt behind the same trigger (phase C, D-172, D-209)",
+      "row": "D-172",
+      "packet": "docs/plans/DEVICE-SIGNIN-google-chooser.md",
+      "tier": 1,
+      "lane": "auth-device",
+      "branch": "agent/queue/device-signin-google-chooser",
+      "status": "todo",
+      "dependsOn": [
+        "DEVICE-SIGNIN-passkeys"
+      ],
+      "owns": [
+        "client/src/components/GoogleOneTap.tsx",
+        "server/_core/googleOneTap.ts",
+        "server/_core/googleOneTap.test.ts",
+        "client/src/pages/GoalSignIn.tsx",
+        "server/_core/index.ts (switch only)",
+        "src/worker.ts (switch only)",
+        ".env.example (switch only)"
+      ],
+      "note": "Phase C of the DEVICE-SIGNIN packet (D-209). Registered Oct 26 after the build branch already existed: the branch matched no queue row, which failed its scope gate. Stacked on the passkeys row's branch; owns the overlap via the dependency. Flag GOOGLE_ONE_TAP_ENABLED stays off until QA; only https://skipwait.me is an authorized JS origin; publishing the consent screen is the owner's call."
     }
   ]
 }
