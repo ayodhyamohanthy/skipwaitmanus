@@ -12,7 +12,7 @@
 - 78 pull requests merged; 40 changed product code. Of 38 product-code merges checked, **23 matched no queue row**, including four with migrations and about twenty on money paths (credits, plans, checkout, money copy). Their only "review" was the Copilot bot reporting that it could not review because of a quota limit (#482, #501, #534 and the rest).
 - Median time from opening to merge for product code: **18 minutes**.
 - One unauthorized money change merged and was reverted (#471, #486). One accidental deletion merged and was restored (#534, #535).
-- The governed path meanwhile stalls. On Oct 23: 50 board reports, 16 of them "blocked" (packet scope, review routing, ownership), 4 landings. Decision IDs collided twice (D-155, D-156) and migration numbers three times (0108).
+- The governed path meanwhile stalls. On Oct 23: 50 board reports, 16 of them "blocked" (packet scope, review routing, ownership), 4 landings. Decision IDs collided twice and migration numbers three times (0108).
 - `main`'s CI and both deploys were green on every run since Oct 19, and production is healthy. The problem is not quality of the green path; it is that a second, unreviewed path exists beside it.
 
 The rule this packet enforces is already the rule (D-074, D-082, D-085, D-151). It fails because it lives in prose. A required CI step stops a merge; a paragraph does not.
