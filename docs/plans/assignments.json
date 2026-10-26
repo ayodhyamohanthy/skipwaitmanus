@@ -2652,6 +2652,47 @@
         "server/passkeyRoutes.test.ts"
       ],
       "note": "D-209 (1): the device-saved sign-in the owner asked for (D-172, docs/DEVICE-SIGNIN-REQUIREMENTS.md) never rides a sign-in fix's branch. Mechanism approved by the owner Oct 25 (SimpleWebAuthn, MIT, native passkey sign-in on skipwait.me; no authkit.app, no paid provider, no forced prompt). Waits in owner status for D-209 (4): may a referrer add a passkey (default no, D-057), and is Sign in with Apple in (default no, D-030). Packet phases A-C only after those answers; phase D is blocked. Build extends owns in its own PR as D-200 (2) allows."
+    },
+    {
+      "row": "D-180",
+      "packet": "docs/plans/D-180-referral-words.md",
+      "epic": "D-180",
+      "id": "D-180-referral-words",
+      "title": "Referral-only wording sweep: shared money copy, plan-gate errors, goal nav and requests labels",
+      "tier": 1,
+      "lane": "referral-words",
+      "branch": "agent/queue/referral-words-sweep",
+      "status": "todo",
+      "dependsOn": [
+        "D-174-held-ask-reconfirm",
+        "D-048-F-credits",
+        "D-099-bonus-pages"
+      ],
+      "owns": [
+        "shared/moneyCopy.ts",
+        "shared/moneyCopy.test.ts",
+        "shared/moneyCopy.item7.test.ts",
+        "server/moneyCopy.test.ts",
+        "server/planGates.ts",
+        "server/planGates.test.ts",
+        "client/src/components/goal/nav.ts",
+        "client/src/pages/goal/onboarding/GoalOnboarding.tsx",
+        "client/src/components/AppShell.tsx",
+        "client/src/pages/MyRequests.tsx"
+      ],
+      "note": "Frozen referral-only terminology (user originals Oct 23 23:16-23:24 + Oct 24 03:33-03:37; docs PR 617): user-facing wording says referrals only - My asks->My referrals, Send ask->Request referral, Ask sent->Referral requested (never completed), no user-facing credits. Presentation only: no behavior, charge, card-eligibility or spend-order change; requested/accepted/submitted stages unchanged; internal identifiers and API routes unchanged. moneyCopy wording matches the plan model in force at build time (D-042). Covers server/planGates.ts:60. SeekerConversation back label belongs to D-048-p3-live-review-conversation (routed); goal shell pill is PR 598; assistants labels are D-180-money-label. Waits on D-174, D-048-F-credits and D-099-bonus-pages for shared file ownership (D-099 holds moneyCopy.ts switch-only)."
+    },
+    {
+      "id": "D-173-referral-words-goal-ui",
+      "title": "Buyer-facing 'referral' wording across the goal UI (PR #598): asks deliver to verified employees, no outcome promise",
+      "row": "D-173",
+      "packet": "docs/plans/D-173-referral-words-goal-ui.md",
+      "tier": 2,
+      "lane": "d048-foundation",
+      "branch": "agent/queue/ayo-referral-words",
+      "status": "in-review",
+      "dependsOn": [],
+      "note": "Catch-up registration (Oct 26): the row lived only on its own branch since Oct 24, so the picker never routed anyone. PR #598 head fb4b6374 is 427 commits behind main with stale green CI and zero reviews; original builder quiet since Oct 24 (D-085: nobody is on it). Takeover route in the packet: forward-merge main, fresh green CI, independent review by a session that is neither builder nor fixer (non-Instinct, D-151)."
     }
   ]
 }
