@@ -3,7 +3,7 @@ import { resolveMx } from "node:dns/promises";
 import { drizzle } from "drizzle-orm/mysql2";
 import type { Pool } from "mysql2/promise";
 import { getDb } from "./db";
-import { OTP_RESEND_COOLDOWN_SECONDS, OtpLockedError, createWorkEmailOtpService, hashCode, isValidOtpLoginEmail, isValidWorkEmailOtpEmail } from "./workEmailOtp";
+import { OTP_RESEND_COOLDOWN_SECONDS, OtpLockedError, createWorkEmailOtpService, hashCode, isValidOtpLoginEmail, isValidWorkEmailOtpEmail, otpEmailMessage } from "./workEmailOtp";
 
 vi.mock("./db", async () => {
   const { isCorporateEmailDomain } = await import("../shared/const");
@@ -51,6 +51,16 @@ describe("work email OTP validation", () => {
   it("hashes codes with the email salt so identical codes differ per address", () => {
     expect(hashCode("a@acme.com", "123456")).not.toBe(hashCode("b@acme.com", "123456"));
     expect(hashCode("a@acme.com", "123456")).toHaveLength(64);
+  });
+});
+
+describe("work email OTP message", () => {
+  it("leads the subject with the code so the phone can offer it without opening the email", () => {
+    const message = otpEmailMessage("482913");
+    expect(message.subject).toBe("482913 is your skipwait.me verification code");
+    expect(message.subject.startsWith("482913")).toBe(true);
+    expect(message.text).toContain("Your skipwait.me verification code is 482913.");
+    expect(message.text).toContain("expires in 10 minutes");
   });
 });
 
