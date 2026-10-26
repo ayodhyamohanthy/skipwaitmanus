@@ -12,7 +12,7 @@ import { CREDIT_ENDED_CAVEAT } from "../shared/moneyCopy";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { accountPreferences, askCosts, seekerLevels, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, userBlocks, users } from "../drizzle/schema";
+import { passkeyCredentials, passkeyChallenges, accountPreferences, askCosts, seekerLevels, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, userBlocks, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
@@ -5702,4 +5702,42 @@ export async function saveAccountPreferences(userId: number, patch: { timeZone?:
   if (patch.dateFormat !== undefined) set.dateFormat = patch.dateFormat;
   await db.insert(accountPreferences).values({ userId, timeZone: set.timeZone ?? null, dateFormat: set.dateFormat ?? null }).onDuplicateKeyUpdate({ set });
   return getAccountPreferences(userId);
+}
+
+// DEVICE-SIGNIN-passkeys: credential + challenge store (owner, Oct 26).
+export async function listPasskeyCredentials(openId: string) {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select().from(passkeyCredentials).where(eq(passkeyCredentials.openId, openId));
+  return rows.map(r => ({ ...r, transports: r.transports ? (r.transports.split(",").filter(Boolean) as string[]) : null }));
+}
+export async function getPasskeyCredentialByCredentialId(credentialId: string) {
+  const db = await getDb(); if (!db) return null;
+  const rows = await db.select().from(passkeyCredentials).where(eq(passkeyCredentials.credentialId, credentialId)).limit(1);
+  const r = rows[0]; if (!r) return null;
+  return { ...r, transports: r.transports ? (r.transports.split(",").filter(Boolean) as string[]) : null };
+}
+export async function insertPasskeyCredential(input: { openId: string; credentialId: string; publicKey: string; counter: number; transports: string | null; deviceName: string | null }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.insert(passkeyCredentials).values(input);
+}
+export async function bumpPasskeyCounter(id: number, counter: number) {
+  const db = await getDb(); if (!db) return;
+  await db.update(passkeyCredentials).set({ counter, lastUsedAt: new Date() }).where(eq(passkeyCredentials.id, id));
+}
+export async function savePasskeyChallenge(openId: string | null, challenge: string, kind: "registration" | "login", expiresAt: Date) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.delete(passkeyChallenges).where(lt(passkeyChallenges.expiresAt, new Date()));
+  if (openId) await db.delete(passkeyChallenges).where(and(eq(passkeyChallenges.openId, openId), eq(passkeyChallenges.kind, kind)));
+  await db.insert(passkeyChallenges).values({ openId, challenge, kind, expiresAt });
+}
+export async function consumePasskeyChallenge(openId: string | null, kind: "registration" | "login"): Promise<string | null> {
+  const db = await getDb(); if (!db) return null;
+  const where = openId
+    ? and(eq(passkeyChallenges.openId, openId), eq(passkeyChallenges.kind, kind))
+    : and(isNull(passkeyChallenges.openId), eq(passkeyChallenges.kind, kind));
+  const rows = await db.select().from(passkeyChallenges).where(where).orderBy(desc(passkeyChallenges.id)).limit(1);
+  const row = rows[0]; if (!row) return null;
+  await db.delete(passkeyChallenges).where(eq(passkeyChallenges.id, row.id));
+  if (row.expiresAt < new Date()) return null;
+  return row.challenge;
 }
