@@ -169,7 +169,9 @@ async function main() {
   // Keep the local screenshot-only app on the deliberate server-session
   // fallback. A dummy WorkOS ID triggers real SDK network requests, so do not
   // add one here.
-  const vite = spawn(path.join(ROOT, "node_modules/.bin/vite"), ["--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
+  // The QA config extends Vite's fs allow list so this runner also works from a
+  // git worktree whose node_modules symlinks to the main checkout (fonts 403).
+  const vite = spawn(path.join(ROOT, "node_modules/.bin/vite"), ["--config", "scripts/qa/d090-vite.config.mjs", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
     cwd: ROOT,
     env: viteEnv,
     stdio: ["ignore", "pipe", "pipe"],
