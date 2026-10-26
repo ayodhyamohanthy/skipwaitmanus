@@ -319,6 +319,18 @@ input, textarea { caret-color: var(--primary); }
 .g-hit { position: relative; }
 .g-hit::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, var(--g-touch)); height: max(100%, var(--g-touch)); transform: translate(-50%, -50%); }
 
+/* Referrer impact card (slice C, flag off). Structure follows the approved
+   captures design/goal-ui/captures/share-impact/impact-1280.png and
+   impact-390.png (the source mock is not in the repo); tokens mapped to the kit. */
+.sharecard { border: 1px solid var(--border); border-radius: 16px; padding: 22px 22px 16px; margin: 18px 0 14px; background: var(--background); }
+.sharecard__status { font: 11px var(--font-label); color: var(--foreground); display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
+.sharecard__big { font-family: var(--font-label); font-size: 44px; font-weight: 600; letter-spacing: -0.03em; color: var(--foreground); line-height: 1.05; }
+.sharecard__line { font-size: 14px; color: var(--muted-foreground); margin-top: 8px; }
+.sharecard__stats { display: flex; gap: 22px; margin-top: 12px; }
+.sharecard__stat b { font-family: var(--font-label); font-size: 20px; font-weight: 600; color: var(--foreground); display: block; }
+.sharecard__stat span { font: 11px var(--font-label); color: var(--muted-foreground); }
+.sharecard__brand { font: 11px var(--font-label); color: var(--muted-foreground); margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--border); }
+
 /* Claim company: isolated single-column layout, aggregate-only. */
 .company-claim-site{min-height:100vh;background:var(--g-surface);color:var(--g-ink);font-family:"Instrument Sans",sans-serif}
 .company-claim-header{display:flex;justify-content:space-between;padding:20px 28px;border-bottom:1px solid var(--g-hairline)}
