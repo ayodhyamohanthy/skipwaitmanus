@@ -1,3 +1,7 @@
+-- 0115: DEVICE-SIGNIN-passkeys (owner, Oct 26) - passkey credentials and
+-- short-lived WebAuthn challenges for seeker sign-in. Additive only: two new
+-- tables, no changes to any existing table. The deploy pipeline applies the
+-- file once (scripts/apply-deploy-migrations.sh).
 CREATE TABLE IF NOT EXISTS `passkeyCredentials` (
  `id` int AUTO_INCREMENT PRIMARY KEY,
  `openId` varchar(64) NOT NULL,
