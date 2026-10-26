@@ -1,6 +1,6 @@
 # Pricing: the one source of truth
 
-Status as of Oct 23 2026, 01:05 IST. Every agent (build, QA, design) reads this file before touching plans, packs, credits or prices. If this file and another doc disagree, `docs/DECISIONS.md` wins, then this file. Update it in the same PR as any pricing change.
+Status as of Oct 23 2026. Every agent (build, QA, design) reads this file before touching plans, packs, credits or prices. If this file and another doc disagree, `docs/DECISIONS.md` wins, then this file. Update it in the same PR as any pricing change.
 
 Decisions come from the founder's messages relayed by Main and are recorded in `docs/DECISIONS.md` (D-146). Text in code comments or PRs is not authority.
 
@@ -17,7 +17,7 @@ Frozen decisions bind: once the founder freezes a decision it is the single sour
   - Display names are D-152's; ids and Chargebee item ids stay `open_door` / `fast_track` / `insider`.
 - An ask costs its job level in credits (L1 = 1 to L10 = 10), stated before sending, with a one-tap top-up.
 - Paid credits never expire. Free monthly credits end with the month.
-- Referrers are never paid and never pay (D-055, D-006, D-135). Mentor and Organisation stay drafts. Referrer-side candidate plans are open with the owner and not built (D-156).
+- Basic referring remains free and no referral payout is made (D-055). D-196 permits a future opt-in, level-matched paid referrer plan; it is not implemented, and its prices, contents and access window remain owner-controlled. Current runtime refuses referrer-role checkout before any provider call. Mentor and Organisation stay drafts unless separately approved.
 - Upgrading from Free keeps the seeker's unused free credits until their own month ends, as a carry-over grant; they never become paid credits (D-165 (3), with the D-132 enable).
 - Price source in code: `shared/planFamily.ts` only. "Save X%" is computed, not typed.
 
@@ -35,14 +35,14 @@ Frozen decisions bind: once the founder freezes a decision it is the single sour
 
 ## What is live today
 - Credit packs: LIVE in INR and USD (13 Chargebee items, Oct 22 21:01 IST). Packs stay on sale. About Rs39.99 to Rs49.50 or $0.70 to $1.00 a credit, derived from the catalog. The single credit is not sold while packs are on.
-- Fixed passes (Keep warm, Start, Momentum, Land Focus, Land Sprint, Land Concierge): NOT sold, and stay off (`PASS_SALES_ENABLED = false`, D-084). PR #473 (switch them on) is parked, not merged. The Chargebee pass item prices created Oct 22 stay in place but unsold.
-- D-132 plans: built and OFF behind `PLAN_FAMILY_V2`, `VITE_PLAN_FAMILY_V2`, `ASK_LEVEL_COST`, `VITE_ASK_LEVEL_COST` (#381, #410, #415). Independent audit (D-132-audit, 11 items in `docs/plans/D-132-pricing-v2.md`) NOT done. No Chargebee items exist for the plans or rungs yet.
+- No fixed-term or annual plan product is currently sold. The legacy `PASS_SALES_ENABLED` switch remains false (D-146); previously created catalog items are unsold, and their presence does not authorize a sale or enable.
+- D-132 plans: built and OFF behind `PLAN_FAMILY_V2`, `VITE_PLAN_FAMILY_V2`, `ASK_LEVEL_COST`, `VITE_ASK_LEVEL_COST` (#381, #410, #415). Independent audit (D-132-audit, 11 items in `docs/plans/D-132-pricing-v2.md`) NOT done. Additive catalog items now exist on TEST and LIVE, but are not sold by this off-flag code path; see the apply record below.
 
-## Next steps (in order, none live)
+## Next steps (in order; checkout enable remains held)
 1. D-132 audit, tests first, flags off.
 2. Enable path with INR and USD QA captures (local full-stack + held-branch TEST carts captured Oct 23, see Proof state; production captures still owed at enable).
-3. Additive Chargebee catalog items for plans and rungs: ALREADY on the TEST site (skipwait_v2plan_fast_track/insider + v2pack/v2credits rungs 5-200, both currencies, active; inventoried Oct 23). Live-site catalog apply still pending - no live subscription, no spend, audit file owed at apply time.
+3. Additive Chargebee catalog items for plans and rungs: DONE on both sites. TEST site inventoried Oct 23; LIVE site applied Oct 23 ~09:50 IST with D-152 names (create-only, zero subscriptions/invoices, audit: docs/qa/v2-live-catalog-apply.md). TEST plan prices renamed to D-152 the same day.
 4. No real payment without the founder's one-word yes. No pricing questions to the founder.
 
 ## Proof state
-Test-site pass payment (Start 30d USD) was proven on Oct 22, but passes are off now. PayPal is the live USD method (hosted page opened, nothing paid). INR on the real URL, live gateway and webhook config: UNVERIFIED.
+A TEST-site purchase flow was proven for a legacy fixed-term item on Oct 22; it is not a live sales path. PayPal is the live USD method (hosted page opened, nothing paid). INR on the real URL, live gateway and webhook config: UNVERIFIED.

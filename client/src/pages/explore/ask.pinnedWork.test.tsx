@@ -238,7 +238,7 @@ describe("pinned work on the ask (task 13)", () => {
     // Then the drawer, opened from the company row, with the same inputs.
     const drawerFetch = stub();
     renderPage(<Explore />);
-    fireEvent.click(await screen.findByRole("link", { name: "Wipro, open to requests" }));
+    fireEvent.click(await screen.findByRole("link", { name: "Wipro" }));
     const drawer = await screen.findByTestId("goal-drawer");
     await waitFor(() => expect(chips(drawer)).toHaveLength(2));
     expect(pressed(drawer)).toEqual(["Checkout redesign · Case study"]);
