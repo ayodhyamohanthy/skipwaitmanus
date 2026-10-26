@@ -28,6 +28,12 @@ import { resolveTrustedClientIp } from "./trustedClientIp";
 // D-097-style switch: off until QA passes on a non-production deploy.
 const PASSKEY_SIGNIN_ENABLED = false;
 
+function passkeySignInOn() {
+  // Test-mode rule (same as goalSurfaces): tests may enable via env; the
+  // production gate is only the in-code constant above, flipped after QA.
+  return PASSKEY_SIGNIN_ENABLED || (process.env.NODE_ENV === "test" && process.env.PASSKEY_SIGNIN_ENABLED === "true");
+}
+
 const RP_NAME = "skipwait.me";
 const rpID = () => process.env.PASSKEY_RP_ID ?? "skipwait.me";
 const expectedOrigin = () => process.env.PASSKEY_ORIGIN ?? "https://skipwait.me";
@@ -41,7 +47,7 @@ function isReferrerOpenId(openId: string) {
 
 export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity: ResolveIdentity }) {
   const disabled = (_req: Request, res: Response) => res.status(404).json({ error: "Not found" });
-  if (!PASSKEY_SIGNIN_ENABLED) {
+  if (!passkeySignInOn()) {
     app.post("/api/auth/passkey/register/options", disabled);
     app.post("/api/auth/passkey/register/verify", disabled);
     app.post("/api/auth/passkey/login/options", disabled);
