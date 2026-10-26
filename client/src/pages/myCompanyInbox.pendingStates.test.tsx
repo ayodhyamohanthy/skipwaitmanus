@@ -230,6 +230,7 @@ describe("queue empty state follows routing state", () => {
       fireEvent.click(await screen.findByRole("button", { name: /Private ask/ }));
       await screen.findByRole("button", { name: /Accept & connect/ });
 
+      await waitFor(() => expect(screen.getByRole("button", { name: /Accept & connect/ }).getAttribute("aria-disabled")).not.toBe("true"));
       fireEvent.keyDown(window, { key: "a" });
       await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
         "/api/company-referrals/7/one-click-review",
@@ -260,6 +261,7 @@ describe("queue empty state follows routing state", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
       expect(screen.queryByTestId("goal-sheet")).toBeNull();
+      await waitFor(() => expect(screen.getByRole("button", { name: /Accept & connect/ }).getAttribute("aria-disabled")).not.toBe("true"));
       fireEvent.keyDown(window, { key: "a" });
       await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
         "/api/company-referrals/7/one-click-review",

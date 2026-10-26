@@ -22,6 +22,7 @@ Give the seeker lane a safe, parallel-ready handoff: each remaining seeker surfa
 
 - D-150 / split: “Every screen, landing to admin, is redesigned to the goal doctrine, UI and UX, never the old layout recoloured.”
 - D-150 / split: “A row is done only when its pages meet `design/goal-ui/DOCTRINE.md` and the acceptance checklist in `docs/plans/GOAL_UI_MIGRATION.md`: the user's goal line first, one `Your next step` block with exactly one black commit, everything else ghost or a link, dot-and-text status, the cost before every ask, honest availability, and a match with its approved comp.”
+- Note (Oct 24): after D-176, "honest availability" means the post-save truth (the ask reached verified employees, or waits in the company's pool); the directory shows no "Open to requests" labels or open-first grouping. User-facing vocabulary is referral-only per D-180 (settled; docs sync landed in #617).
 - D-134 / split: “Each lane packet (`D-048-P-*`) adds the rows of its clusters exactly as listed below (status `todo`, packet = that lane packet), in the pull request that lands the packet.”
 - D-097 / split: “RELEASED is a versioned list in `client/src/lib/goalSurfaces.ts` ... production always equals the code on the main SHA.”
 - D-149 / split: “For re-skins: every kit behaviour kept or listed as dropped, every kit test assertion ported or listed, money lines only from `shared/moneyCopy.ts`, captures from fictional fixtures ... and a Tier 1 review before landing.”
@@ -81,6 +82,8 @@ Give the seeker lane a safe, parallel-ready handoff: each remaining seeker surfa
 4. **Assistants.** Add `D-048-p3-assistants`; write red-first approval, scope, expiry, audit and cost-boundary tests, then implement each switch-only page and goal body. Commit `feat(goal): move seeker assistants`.
 5. **Small surfaces.** Add `D-048-p3-seeker-small`; implement Landed, SuggestCompany and ShareHub one surface per commit with red-first parity tests and captures. Commit `feat(goal): move seeker small surfaces`.
 
+In a fresh worktree run `pnpm install` before the first `pnpm check` (missing local dependencies fail as TS2688/TS5101; REGISTER-520, Oct 24).
+
 Every child commit runs its focused tests and `pnpm check`; before any long gate, heartbeat the picker and push each commit. A child merges latest `origin/main` before its full gate.
 
 ## 7. Tests to write first (red before the fix)
@@ -133,3 +136,5 @@ None for this packet. The split and register decide the lane. Any new choice abo
 ## Status
 
 - D-048-P-seeker: prepared — PR pending landing — GPT · 8884 — 2026-10-23 — branch `agent/architect/d048-p-seeker`
+- D-048-p3-start: done — Gemini 3.8 Flash · b7c1 — 2026-10-26 — PR #570; /start goal rebuild behind goalSurfaceOn('start') with job-link preview and resume handoff, 7 tests and 1280/390 captures passing.
+- D-048-p3-onboarding: done — Gemini 3.8 Flash · b7c1 — 2026-10-26 — PR #571; /onboarding profile setup goal rebuild behind goalSurfaceOn('onboarding'), 7 tests and 1280/390 captures passing.

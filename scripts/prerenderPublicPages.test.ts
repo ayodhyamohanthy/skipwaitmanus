@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { landingSnapshot, PUBLIC_PAGES, publicSnapshots } from "./prerender-public-pages";
-import { breadcrumbsHtml, faqJsonLd, homeLinks, renderPublicPage } from "./prerenderSeo";
-import { LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_H1, LANDING_HERO_LEAD, LANDING_SUMMARY } from "../shared/landingContent";
+import { breadcrumbsHtml, homeLinks, renderPublicPage } from "./prerenderSeo";
+import { GOAL_LANDING_H1, GOAL_LANDING_HERO_LEAD, LANDING_EXPLORE, LANDING_SUMMARY } from "../shared/landingContent";
 import { breadcrumbsFor, canonicalUrl, PUBLIC_ROUTES, publicRoute } from "../shared/publicRoutes";
 import { LAUNCH_COMPANY_SEED } from "../shared/companyDirectorySeed";
 
@@ -80,18 +80,15 @@ describe("structured data reaches crawlers that never run JavaScript", () => {
   });
 
   it("leaves the home page without a pointless one-item breadcrumb", () => {
-    const html = renderPublicPage(template, route("/"), landingSnapshot(policyLinks), { extraJsonLd: [faqJsonLd(LANDING_FAQ)] });
+    const html = renderPublicPage(template, route("/"), landingSnapshot(policyLinks));
     expect(html).not.toContain('"@type":"BreadcrumbList"');
   });
 
-  it("marks up only FAQ entries that are printed on the page", () => {
-    const html = renderPublicPage(template, route("/"), landingSnapshot(policyLinks), { extraJsonLd: [faqJsonLd(LANDING_FAQ)] });
+  it("prints no FAQ on the goal landing and marks none up (D-048-fix-landing-load-flash)", () => {
     const body = landingSnapshot(policyLinks);
-    expect(html).toContain('"@type":"FAQPage"');
-    for (const entry of LANDING_FAQ) {
-      expect(body).toContain(`<dt>${entry.question}</dt>`);
-      expect(html).toContain(JSON.stringify(entry.question).slice(1, -1));
-    }
+    expect(body).not.toContain("<dt>");
+    const html = renderPublicPage(template, route("/"), body);
+    expect(html).not.toContain('"@type":"FAQPage"');
   });
 });
 
@@ -118,27 +115,20 @@ describe("breadcrumbs point at real pages", () => {
 });
 
 describe("crawlable landing and public snapshots", () => {
-  it("writes the landing heading, summary, both role entry points, and every explore link", () => {
+  it("writes the goal landing's headline, hero, role entry points, and every explore link", () => {
     const html = landingSnapshot(policyLinks);
-    expect(html).toContain(`<h1>${LANDING_H1}</h1>`);
-    expect(html).toContain(LANDING_HERO_LEAD);
-    expect(html).toContain('href="/start"');
+    // The h1 carries the goal page's display classes; pin the text, not the bare tag.
+    expect(html).toContain(`>${GOAL_LANDING_H1}</h1>`);
+    expect(html).toContain(GOAL_LANDING_HERO_LEAD);
+    expect(html).toContain('href="/explore"');
+    expect(html).toContain('href="/sign-in?intent=referrer"');
     expect(html).toContain('href="/referrer"');
-    for (const link of ["/jobs", "/wall", "/referrer", "/premium", "/pricing", "/about", "/contact", "/support"]) expect(html).toContain(`href="${link}"`);
+    for (const link of ["/jobs", "/wall", "/premium", "/pricing", "/plans", "/about", "/contact", "/support"]) expect(html).toContain(`href="${link}"`);
     expect(html).toContain(homeLinks(policyLinks));
   });
 
-  it("prints the same questions the landing page shows, so FAQ markup has visible answers", () => {
-    const html = landingSnapshot(policyLinks);
-    expect(html).toContain(`<h2>${LANDING_FAQ_HEADING}</h2>`);
-    for (const entry of LANDING_FAQ) {
-      expect(html).toContain(`<dt>${entry.question}</dt>`);
-      expect(html).toContain(`<dd>${entry.answer}</dd>`);
-    }
-  });
-
   it("keeps the landing title, description, and canonical honest in the shell it rewrites", () => {
-    const html = renderPublicPage(template, route("/"), landingSnapshot(policyLinks), { extraJsonLd: [faqJsonLd(LANDING_FAQ)] });
+    const html = renderPublicPage(template, route("/"), landingSnapshot(policyLinks));
     expect(html).toContain(`<title>${route("/").title} — skipwait.me</title>`);
     expect(html).toContain(`<meta name="description" content="${LANDING_SUMMARY}" />`);
     expect(html).toContain('<meta property="og:description" content="' + LANDING_SUMMARY + '" />');
