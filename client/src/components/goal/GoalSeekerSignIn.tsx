@@ -15,7 +15,7 @@ import { PasskeyAutofill, PasskeyEnrollmentOffer, PasskeySignInButton } from "@/
 import { SEEKER_SOCIAL, seekerSocialUrl } from "@/components/SeekerSignIn";
 import { forgetSignInEmail, rememberedSignInEmail, rememberSignInEmail } from "@/lib/rememberedSignInEmail";
 
-const inputClass = "h-(--g-control-h) w-full rounded-[10px] border border-g-control-edge bg-white px-3 text-g-body text-g-ink placeholder:text-g-ink-3 focus:border-g-ink focus:outline-none";
+const inputClass = "h-(--g-control-h) w-full rounded-full border border-g-control-edge bg-white px-3 text-g-body text-g-ink placeholder:text-g-ink-3 focus:border-g-ink focus:outline-none";
 
 export function GoalSeekerSignIn({ returnTo = "/explore" }: { returnTo?: string }) {
   const [stage, setStage] = useState<"choose" | "email" | "code" | "enroll">("choose");
