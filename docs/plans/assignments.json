@@ -99,7 +99,7 @@
    "branch": "agent/queue/d174-sample-job-removal",
    "status": "todo",
    "dependsOn": [],
-   "note": "Amended Oct 25 by the #649 ruling (D-200 (2)): a non-destructive read filter, not data migration 0121, because scripts/lint-deploy-migrations.sh rejects every DELETE FROM and stays as it is. Port #104's isTestCatalogJob into server/testCatalogJobs.ts and wrap every public job list (/api/jobs, sitemap, searchJobs, tRPC jobs.list) in publicCatalogJobs, wired in server/_core/index.ts and server/routers.ts; no migration, no edit to server/db.ts or server/privateReferralRoutes.ts. D-193 packet section 5.2. Earlier note: D-193 packet section 5.2. Data migration 0121 (reserved in plan section 5), one guarded DELETE: never deletes a row a referral request references (referralRequests.jobId cascades). Breaks D-001's lasting no-sample-data rule today.",
+   "note": "Amended Oct 25 by the #649 ruling (D-200 (2)): a non-destructive read filter, not data migration 0121, because scripts/lint-deploy-migrations.sh rejects every DELETE FROM and stays as it is. Port #104's isTestCatalogJob into server/testCatalogJobs.ts and wrap every public job list (/api/jobs, sitemap, searchJobs, tRPC jobs.list) in publicCatalogJobs, wired in server/_core/index.ts and server/routers.ts; no migration, no edit to server/db.ts or server/privateReferralRoutes.ts. D-193 packet section 5.2. Earlier note: D-193 packet section 5.2. Data migration 0121 (reserved in plan section 5), one guarded DELETE: never deletes a row a referral request references (referralRequests.jobId cascades). Breaks D-001's lasting no-sample-data rule today. Unblocked Oct 26 by D-210: PR #688 lands first; line-adjacency conflict in server/_core/index.ts with #650 (priority 139) does not hold priority 7, and #650 merges main post-landing.",
    "epic": "D-174",
    "owns": [
     "server/testCatalogJobs.ts",
@@ -183,8 +183,8 @@
    "packet": "docs/plans/LAUNCH-oct25.md",
    "tier": 2,
    "lane": "launch-ci",
-    "branch": "agent/queue/launch-marker-ci-skip",
-    "status": "done",
+   "branch": "agent/queue/launch-marker-ci-skip",
+   "status": "done",
    "dependsOn": [],
    "owns": [
     ".github/workflows/ci.yml",
@@ -225,7 +225,9 @@
    "lane": "skippy-seeker",
    "branch": "agent/queue/skippy-fix",
    "status": "todo",
-   "dependsOn": ["D-132-item3"],
+   "dependsOn": [
+    "D-132-item3"
+   ],
    "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. S-3 reuses D-132-item3's shared expectedCost/AskPriceChangedError guard; this task waits for that row rather than duplicating or overlapping its transaction work. All flags stay off until SKIPPY-fix lands with its proof. The owner asked to work on Skippy (Oct 23), so it remains ordered after the live regressions and the two picker fixes."
   },
   {
