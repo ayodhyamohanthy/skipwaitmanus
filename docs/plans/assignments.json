@@ -689,7 +689,7 @@
    "tier": 1,
    "lane": "d048-workspace",
    "branch": "agent/queue/d048-live-review-queue",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [
     "P1-queue-attestation",
     "D-048-F-goal-check"
