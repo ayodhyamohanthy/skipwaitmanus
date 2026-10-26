@@ -10,26 +10,27 @@ afterEach(cleanup);
 describe("goal approval boundary", () => {
   it("shows the exact cost and balance before the only commit", () => {
     const h = handlers(); const {container} = render(<GoalApprovalCard approval={base} balance={8} primary handlers={h} />);
-    expect(screen.getByText("3 credits")).toBeTruthy();
+    expect(screen.getByText("3 referrals")).toBeTruthy();
     expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "8 available · 5 after this")).toBeTruthy();
     expect(container.querySelectorAll('[data-g-primary]')).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Use 3 credits" })); expect(h.onDecide).toHaveBeenCalledWith("approved");
+    fireEvent.click(screen.getByRole("button", { name: "Use 3 referrals" })); expect(h.onDecide).toHaveBeenCalledWith("approved");
   });
   it("cannot approve an expired, declined, or offline request", () => {
     const h = handlers(); const {rerender} = render(<GoalApprovalCard approval={{...base, expiresAt: "2000-01-01T00:00:00Z"}} balance={8} primary handlers={h} />);
-    fireEvent.click(screen.getByRole("button", {name: "Use 3 credits"})); expect(h.onDecide).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", {name: "Use 3 referrals"})); expect(h.onDecide).not.toHaveBeenCalled();
     rerender(<GoalApprovalCard approval={{...base, status: "declined"}} balance={8} primary handlers={h} />);
-    fireEvent.click(screen.getByRole("button", {name: "Use 3 credits"})); expect(h.onDecide).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", {name: "Use 3 referrals"})); expect(h.onDecide).not.toHaveBeenCalled();
   });
   it("blocks network approval while offline", () => {
     Object.defineProperty(navigator,"onLine",{configurable:true,value:false});
     const h=handlers(); render(<GoalApprovalCard approval={base} balance={8} primary handlers={h}/>);
-    fireEvent.click(screen.getByRole("button",{name:"Use 3 credits"}));expect(h.onDecide).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button",{name:"Use 3 referrals"}));expect(h.onDecide).not.toHaveBeenCalled();
     Object.defineProperty(navigator,"onLine",{configurable:true,value:true});
   });
   it("never invents a missing cost and fails closed: the spend cannot be approved", () => {
     const h = handlers(); render(<GoalApprovalCard approval={{...base, creditCount: null}} balance={8} primary handlers={h} />);
     expect(screen.queryByText("1 credit")).toBeNull();
+    expect(screen.queryByText("1 referral")).toBeNull();
     expect(screen.queryByText(/after this/)).toBeNull();
     expect(screen.getAllByText(/Cost unavailable/).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Approve spend" }));
@@ -37,7 +38,7 @@ describe("goal approval boundary", () => {
   });
   it("keeps a known-cost spend approvable with its exact figure", () => {
     const h = handlers(); render(<GoalApprovalCard approval={base} balance={8} primary handlers={h} />);
-    fireEvent.click(screen.getByRole("button", { name: "Use 3 credits" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use 3 referrals" }));
     expect(h.onDecide).toHaveBeenCalledWith("approved");
   });
   it("does not send unsaved edits and never offers send when slots are full", () => {

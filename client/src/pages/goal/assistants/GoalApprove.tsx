@@ -119,7 +119,7 @@ export default function GoalApprove() {
   };
 
   const shell = (content: ReactNode) => (
-    <AssistantLayout screen="approve" title="Decide what your assistant can do" description="Review each ask or paid tool before anything is sent or credits are used.">
+    <AssistantLayout screen="approve" title="Decide what your assistant can do" description="Review each ask or paid tool before anything is sent or referrals are used.">
       {content}<p className="mt-6 text-g-meta text-g-ink-3">{FOOTNOTE}</p>
     </AssistantLayout>
   );

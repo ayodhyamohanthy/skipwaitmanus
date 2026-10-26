@@ -10,7 +10,7 @@ import { AssistantLayout, NextStep, Section as Panel } from "./AssistantLayout";
 import { ActivityPanel, AssistantsPanel, PlanGate, TokensPanel } from "./ConnectionPanels";
 import type { AssistantConnection, AssistantEvent, AssistantToken } from "@/components/assistants/format";
 
-const HEADING = { eyebrow: "Settings", title: "Connected assistants", text: "Use skipwait.me from ChatGPT, Claude and your own tools. You stay in control of every ask and every credit." } as const;
+const HEADING = { eyebrow: "Settings", title: "Connected assistants", text: "Use skipwait.me from ChatGPT, Claude and your own tools. You stay in control of every ask and every referral." } as const;
 const TABS = [{ id: "assistants", label: "Assistants" }, { id: "tokens", label: "API tokens" }, { id: "activity", label: "Activity" }] as const;
 type Tab = (typeof TABS)[number]["id"];
 
