@@ -85,3 +85,5 @@ None. The split's open design questions are already decided under D-123 in `D-04
 ## Status
 
 `D-048-P-referrer`: prepared PR pending landing — GPT · d492 — 2026-10-23 — branch `agent/architect/d048-p-referrer`
+
+`D-048-p3-invite`: done — `fb420761` (#577) — goal `/invite` behind `goalSurfaceOn('invite')`: company request and personal invite-link panels, flag-off parity, canonical referrer OTP href, exact-head CI green (D-085)
