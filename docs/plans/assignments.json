@@ -2652,6 +2652,27 @@
         "server/passkeyRoutes.test.ts"
       ],
       "note": "D-209 (1): the device-saved sign-in the owner asked for (D-172, docs/DEVICE-SIGNIN-REQUIREMENTS.md) never rides a sign-in fix's branch. Mechanism approved by the owner Oct 25 (SimpleWebAuthn, MIT, native passkey sign-in on skipwait.me; no authkit.app, no paid provider, no forced prompt). Waits in owner status for D-209 (4): may a referrer add a passkey (default no, D-057), and is Sign in with Apple in (default no, D-030). Packet phases A-C only after those answers; phase D is blocked. Build extends owns in its own PR as D-200 (2) allows."
+    },
+    {
+      "id": "D-180-money-label",
+      "title": "Shared assistant money label and MCP tool wording say referrals, not credits (D-180)",
+      "row": "D-180",
+      "packet": "docs/plans/D-180-money-label.md",
+      "tier": 1,
+      "lane": "money-assist",
+      "branch": "agent/queue/d180-money-label",
+      "status": "todo",
+      "dependsOn": [
+        "ASSIST-approval-cost"
+      ],
+      "note": "PR 563 review (DeepSeek): the goal approval card forked creditsLabel because the shared source still says credits. D-180 (owner, Oct 23-24: public terminology is referral-only) is the app-wide call; this row does the shared-source half, behavior-preserving: format.ts creditsLabel renders 'N referral(s)', the kit ApprovalSheet inherits it (kit page files stay byte-identical), the pinned kit assertion in approve.test.tsx moves with it, and the assistant-facing MCP descriptions (server/mcpServer.ts) and the client-side Developers gallery copy (mcpTools.ts: 'where the credit cost is shown') say 'referral cost'. Internal identifiers stay: creditCount/creditCost fields, tool names, /api/credits/* routes, MCP protocol fields. shared/moneyCopy.ts is explicitly OUT - it serves released surfaces (home), so its sweep is a separate launch-gated owner decision. After this lands, GoalApprovalCard drops its documented fork and imports the shared label (#563 follow-up).",
+      "owns": [
+        "client/src/components/assistants/format.ts",
+        "client/src/components/developers/mcpTools.ts",
+        "server/mcpServer.ts",
+        "server/mcpRoutes.test.ts",
+        "client/src/pages/approve.test.tsx"
+      ]
     }
   ]
 }
