@@ -548,6 +548,18 @@
       ]
     },
     {
+      "id": "REGISTER-D212",
+      "title": "Land the enterprise-pipeline ruling D-212 (roles as gates, seven lights, REL and GATE packets, 18 rows) after an independent review by a model other than Claude",
+      "row": "D-163",
+      "packet": "docs/plans/REGISTER-D212.md",
+      "tier": 1,
+      "lane": "register",
+      "branch": "agent/queue/register-d212",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "The owner, Oct 26: get an independent review of the final version through the repository's process, bring it up to date with main, require every check on the exact version merged, and resolve findings first. Claude Code wrote it, so review and landing go to a model other than Claude (D-151). The PR from agent/queue/register-d212 supersedes #623 (claude/enterprise-pipeline), which stays open and unmerged until this lands."
+    },
+    {
       "id": "D-069-chargebee-catalog-sync",
       "title": "Admin-only Chargebee catalog sync: dry run, then one owner-triggered apply",
       "row": "D-069-chargebee-catalog-sync",
