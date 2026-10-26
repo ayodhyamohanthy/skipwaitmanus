@@ -64,7 +64,7 @@ export function GoalSeekerSignIn({ returnTo = "/explore" }: { returnTo?: string 
           </GoalButton>
         ))}
         <div className="flex items-center gap-3 text-g-meta text-g-ink-3" aria-hidden="true"><span className="h-px flex-1 bg-g-hairline" />or<span className="h-px flex-1 bg-g-hairline" /></div>
-        <GoalButton type="button" variant="primary" className="w-full rounded-full!" leadingIcon={Mail} onClick={() => setStage("email")}>Continue with email</GoalButton>
+        <GoalButton type="button" variant="primary" className="w-full rounded-full! bg-g-ink" leadingIcon={Mail} onClick={() => setStage("email")}>Continue with email</GoalButton>
       </div>
     );
   }
