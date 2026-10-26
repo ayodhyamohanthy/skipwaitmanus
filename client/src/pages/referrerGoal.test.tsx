@@ -18,7 +18,7 @@ const { authState, userState, go, search, surfaces } = vi.hoisted(() => ({
 }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => authState, useUser: () => userState, SignInButton: ({ children }: { children?: React.ReactNode }) => <button type="button">{children ?? "Sign in"}</button> }));
 vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
-// The kit sign-in dialog still hosts the kit form; the goal dialog renders its own.
+// The flag-off kit page still imports the kit form; the goal dialog renders its own.
 vi.mock("@/components/ReferrerOtpSignIn", () => ({ ReferrerOtpSignIn: () => <div data-testid="referrer-otp-sign-in" /> }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
@@ -207,6 +207,22 @@ describe("Goal /referrer workspace", () => {
     expect(await screen.findByText(/one referral after their next referral request reaches a referrer/)).toBeTruthy();
     expect(screen.queryByText(/credit/i)).toBeNull();
     expect(screen.queryByText(/\bask\b/i)).toBeNull();
+  });
+
+  it("shows a checking skeleton, never the verify gate, while the server verdict is in flight", async () => {
+    vi.stubGlobal("fetch", vi.fn((url: string) => (String(url).endsWith("/access") ? new Promise(() => {}) : Promise.resolve(ok({})))));
+    renderWithQuery(<Referrer />);
+    expect(await screen.findByTestId("goal-skeleton-rows")).toBeTruthy();
+    expect(screen.queryByText("Help when the fit feels right.")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Verify your work email/ })).toBeNull();
+  });
+
+  it("offers a retry, never the verify gate, when the verdict check fails offline", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
+    renderWithQuery(<Referrer />);
+    expect(await screen.findByText("We could not check your verification.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Verify your work email/ })).toBeNull();
   });
 
   it("saves capacity settings through the real preferences write on the setup view", async () => {
