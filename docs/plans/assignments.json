@@ -1628,7 +1628,7 @@
       "tier": 2,
       "lane": "d048-referrer-home",
       "branch": "agent/queue/d048-p3-invite",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
