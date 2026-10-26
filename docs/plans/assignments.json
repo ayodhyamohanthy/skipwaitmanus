@@ -406,7 +406,7 @@
    "tier": 2,
    "lane": "docs-sync",
    "branch": "agent/queue/decision-sync-oct24",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [
     "REGISTER-oct24"
    ],
