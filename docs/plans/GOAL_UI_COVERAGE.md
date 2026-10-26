@@ -242,6 +242,6 @@ The split's row text now names them, so their lane packet writer adds them:
 ## Status
 - D-048-F-goal-check: todo; waits for D-048-F-primitives.
 - D-048-F-shell-parts: todo; waits for D-048-F-credits and D-048-F-goal-check.
-- D-048-F-coverage: todo; waits for D-048-F-goal-check.
+- D-048-F-coverage: done — landed `f9ee7ef8` (test) with the catalogue line it found missing (`referrer-home/ShareImpactCard.tsx` on the `pages/ReferrerHome.tsx` row); CI green, no deploy due (scripts + docs only).
 - D-048-p3-skippy: todo; waits for the foundation rows and REGISTER-520.
 - D-048-p3-agents: todo; waits for the foundation rows.

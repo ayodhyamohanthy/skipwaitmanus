@@ -1226,7 +1226,7 @@
    "tier": 3,
    "lane": "design-check",
    "branch": "agent/queue/d048-f-coverage",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [
     "D-048-F-goal-check"
    ],
