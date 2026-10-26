@@ -15,6 +15,7 @@
  */
 import { startAuthentication, startRegistration, browserSupportsWebAuthn, browserSupportsWebAuthnAutofill } from "@simplewebauthn/browser";
 import { KeyRound } from "lucide-react";
+import { GoalButton } from "@/components/goal/GoalButton";
 import { useEffect, useState } from "react";
 
 async function postJSON(url: string, body: unknown) {
@@ -73,20 +74,20 @@ export function PasskeySignInButton({ returnTo }: { returnTo: string }) {
   if (!browserSupportsWebAuthn()) return null;
   return (
     <div>
-      <button
+      <GoalButton
         type="button"
-        disabled={busy}
+        variant="outline"
+        className="w-full rounded-full!"
+        leadingIcon={KeyRound}
+        busy={busy}
+        busyLabel="Waiting for your device…"
         onClick={async () => {
           setBusy(true); setError("");
           const result = await authenticateWithPasskey(returnTo);
           if (!result.signedIn && result.error) setError(result.error);
           setBusy(false);
         }}
-        className="flex w-full items-center justify-center gap-2 rounded-[10px] border border-g-control-edge bg-white px-4 py-3 text-g-small font-semibold text-g-ink transition-colors hover:border-g-ink disabled:opacity-60"
-      >
-        <KeyRound className="h-4 w-4" aria-hidden="true" />
-        {busy ? "Waiting for your device…" : "Use a saved passkey"}
-      </button>
+      >Use a saved passkey</GoalButton>
       {error && <p role="alert" className="mt-2 text-[13px] leading-[1.5] text-g-ink-3">{error}</p>}
     </div>
   );
