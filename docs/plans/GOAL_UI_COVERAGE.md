@@ -174,7 +174,7 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - `pages/ReferralConversation.tsx`: `thread/ShareWinCard.tsx`, `thread/ThreadMain.tsx`
 - `pages/ReferralRequest.tsx`: `SeekerCreditsCard.tsx`
 - `pages/Referrer.tsx`: `referrer/CapacitySettingsPanel.tsx`, `referrer/ClaimedReview.tsx`, `referrer/CoverageInviteBanner.tsx`, `referrer/ReferrerOverview.tsx`, `referrer/ReferrerSignInDialog.tsx`
-- `pages/ReferrerHome.tsx`: `referrer-home/HomeAside.tsx`, `referrer-home/ReferrerSampleRows.tsx`, `referrer-home/WaitingAsks.tsx`
+- `pages/ReferrerHome.tsx`: `referrer-home/HomeAside.tsx`, `referrer-home/ReferrerSampleRows.tsx`, `referrer-home/ShareImpactCard.tsx`, `referrer-home/WaitingAsks.tsx`
 - `pages/ReferrerSetup.tsx`: `referrer-home/SetupWizard.tsx`
 - `pages/Settings.tsx`: `settings/AccountPanels.tsx`, `settings/AppPanel.tsx`, `settings/BlockedPeople.tsx`, `settings/NewAskEmailRow.tsx`, `settings/NotificationPanels.tsx`, `settings/PrivacyPanels.tsx`, `settings/RegionPanel.tsx`, `settings/SettingsNav.tsx`, `settings/SlackReviewAlerts.tsx`, `settings/TalentConsentPanel.tsx`, `settings/settingsUi.tsx`
 - `pages/UnifiedInbox.tsx`: `inbox/InboxThreadList.tsx`
@@ -242,6 +242,6 @@ The split's row text now names them, so their lane packet writer adds them:
 ## Status
 - D-048-F-goal-check: todo; waits for D-048-F-primitives.
 - D-048-F-shell-parts: todo; waits for D-048-F-credits and D-048-F-goal-check.
-- D-048-F-coverage: todo; waits for D-048-F-goal-check.
+- D-048-F-coverage: done — landed `f9ee7ef8` (test) with the catalogue line it found missing (`referrer-home/ShareImpactCard.tsx` on the `pages/ReferrerHome.tsx` row); CI green, no deploy due (scripts + docs only).
 - D-048-p3-skippy: todo; waits for the foundation rows and REGISTER-520.
 - D-048-p3-agents: todo; waits for the foundation rows.
