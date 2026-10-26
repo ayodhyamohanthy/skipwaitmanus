@@ -39,9 +39,9 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/request` | — | none: redirect to /ask | — |
 | `/requests` | `pages/MyRequests` | `D-048-p3-live-review-requests` | D-048-p3-live-review-requests: done |
 | `/verify` | `pages/Verify` | `D-048-p3-verify` | D-048-p3-verify: to be added by its lane packet |
-| `/ask` | `pages/Ask` | `D-048-p3-live-review-find` | D-048-p3-live-review-find: todo |
-| `/explore` | `pages/Explore` | `D-048-p3-live-review-find` | D-048-p3-live-review-find: todo |
-| `/explore/:slug` | `pages/ExploreCompany` | `D-048-p3-live-review-find` | D-048-p3-live-review-find: todo |
+| `/ask` | `pages/Ask` | `D-174-seeker-journey-build`, `D-048-p3-live-review-find` | D-174-seeker-journey-build builds the journey (D-189 packet), then D-048-p3-live-review-find does the doctrine acceptance (D-193 (5)) |
+| `/explore` | `pages/Explore` | `D-174-seeker-journey-build`, `D-048-p3-live-review-find` | D-174-seeker-journey-build builds the journey (D-189 packet), then D-048-p3-live-review-find does the doctrine acceptance (D-193 (5)) |
+| `/explore/:slug` | `pages/ExploreCompany` | `D-174-seeker-journey-build`, `D-048-p3-live-review-find` | D-174-seeker-journey-build builds the journey (D-189 packet), then D-048-p3-live-review-find does the doctrine acceptance (D-193 (5)) |
 | `/alerts` | `pages/Alerts` | `D-048-p3-alerts` | D-048-p3-alerts: to be added by its lane packet |
 | `/notifications` | — | none: redirect to /alerts | — |
 | `/onboarding` | `pages/ProfileSetup` | `D-048-p3-onboarding` | D-048-p3-onboarding: todo |
