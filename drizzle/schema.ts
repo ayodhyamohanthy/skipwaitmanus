@@ -707,6 +707,11 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   // D-079: when the provider (Chargebee) confirmed a card for this wallet's
   // owner. Written only from the verified webhook or a provider-truth re-read.
   cardValidatedAt: timestamp("cardValidatedAt"),
+  // D-155: when the provider (Chargebee) first reported a successful nonzero
+  // payment for this wallet's subscription. Written only from a verified
+  // payment_succeeded webhook tied to this wallet's subscriptionId - never
+  // from subscription activation alone.
+  lastPaidAt: timestamp("lastPaidAt"),
   // Order pinned to shared/billingCatalog.ts WALLET_PLAN_IDS (server/subscriptionManagementContract.test.ts); 0090 added the kit plans,
   // 0091 the Oct 14 2026 plans (land_100/200/500 are reserved, never written).
   plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).default("free").notNull(),

@@ -27,6 +27,7 @@ type Deps = {
   /** Kit checkout (a 30/90-day pass, Keep warm yearly, a credit pack): availability and provider calls. */
   kitCheckout?: KitCheckoutDeps;
   applySubscriptionEvent?: (input: NonNullable<ReturnType<typeof parseSubscriptionEvent>>) => Promise<unknown>;
+  recordSubscriptionPaymentEvidence?: (input: { eventId: string; subscriptionId: string; occurredAt?: Date }) => Promise<unknown>;
   getUserSubscription?: (userId: number, role: TokenRole) => Promise<{ subscriptionId: string; status: string; currentTermEnd?: Date } | undefined>;
   markSubscriptionNonRenewing?: (userId: number, role: TokenRole, subscriptionId: string, currentTermEnd?: Date) => Promise<unknown>;
   cancelSubscription?: typeof scheduleChargebeeSubscriptionCancellation;
@@ -462,6 +463,27 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         console.error("[Chargebee] card-validation event needs review", { eventId: cardEvent.eventId, customerId: cardEvent.customerId, reason: appliedCard.reason });
         record({ action: "billing.card_validation_event", outcome: "failure", resourceType: "chargebee_payment_source", resourceId: cardEvent.paymentSourceId, metadata: { eventId: cardEvent.eventId, eventType: cardEvent.eventType, reason: appliedCard.reason ?? appliedCard.status } });
         void deps.alertCardValidationEvent?.({ eventId: cardEvent.eventId, eventType: cardEvent.eventType, customerId: cardEvent.customerId, paymentSourceId: cardEvent.paymentSourceId, reason: appliedCard.reason ?? appliedCard.status ?? "unknown" }).catch(() => undefined);
+      }
+    }
+
+    // D-155: a paid event tied to a subscription is provider-verified paid
+    // evidence for that wallet, independent of token-pack fulfillment. The
+    // parser already enforced a positive integer INR/USD amount and event id;
+    // the subscription id it returns comes from the settled invoice, never
+    // from a bare or conflicting subscription object. This arm runs for
+    // every paid event with such an id, including plan invoices whose
+    // amounts are not pack multiples.
+    if (payment?.subscriptionIdentityConflict) {
+      console.error("[Chargebee] paid event subscription identity conflict", { eventId: payment.eventId, invoiceId: payment.invoiceId });
+      record({ action: "billing.paid_evidence_identity_conflict", outcome: "failure", resourceType: "chargebee_invoice", resourceId: payment.invoiceId, metadata: { eventId: payment.eventId } });
+    }
+    if (payment?.subscriptionId && deps.recordSubscriptionPaymentEvidence) {
+      handled = true;
+      try {
+        obligations.paidEvidence = await deps.recordSubscriptionPaymentEvidence({ eventId: payment.eventId, subscriptionId: payment.subscriptionId, occurredAt: payment.occurredAt });
+      } catch (error) {
+        console.error("[Chargebee] paid-evidence error", error);
+        return res.status(500).json({ error: "Paid evidence synchronization retry required" });
       }
     }
 

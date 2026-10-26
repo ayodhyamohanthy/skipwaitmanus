@@ -19,7 +19,8 @@ import { BetaBadge, BetaNoticeLine } from "@/components/BetaNotice";
 import { GoalBrandBannerArt, GoalBrandMark } from "@/components/goal/GoalBrandMark";
 import { GoalVerifiedMark } from "@/components/goal/GoalVerifiedMark";
 import { BETA_NOTICE_LINE } from "@/lib/betaNotice";
-import { askCostLanding, REFERRING_FREE_LINE } from "@shared/moneyCopy";
+import { askCostLanding } from "@shared/moneyCopy";
+import { goalLandingFairRules, GOAL_FOOTER_COLS } from "@shared/landingContent";
 
 // D-132 item 7: level-aware ask cost wording behind the same flag as the cost itself.
 export const COST_COPY = askCostLanding(import.meta.env.VITE_ASK_LEVEL_COST === "true");
@@ -36,18 +37,9 @@ export const TRUST: Array<{ title: string; body: string; blue: boolean }> = [
   { title: "Nothing spent while it waits", body: COST_COPY.waitBody, blue: false },
 ];
 
-export const FAIR_RULES = [
-  REFERRING_FREE_LINE,
-  COST_COPY.fairRule,
-  "No outcome promises: a referral is an introduction, not an interview or a job.",
-  "Private by default: your name stays hidden until a referrer accepts.",
-];
+export const FAIR_RULES = goalLandingFairRules(COST_COPY);
 
-export const FOOTER_COLS: Array<{ title: string; links: Array<[string, string]> }> = [
-  { title: "Product", links: [["/explore", "Explore companies"], ["/jobs", "Browse roles"], ["/pricing", "Pricing"], ["/plans", "Plans"]] },
-  { title: "People", links: [["/referrer", "Join as a referrer"], ["/help", "Help"], ["/contact", "Contact"]] },
-  { title: "Legal", links: [["/terms", "Terms"], ["/privacy", "Privacy"], ["/refunds", "Refunds"], ["/cancellations", "Cancellation"]] },
-];
+export const FOOTER_COLS = GOAL_FOOTER_COLS;
 
 function reducedMotion(): boolean {
   return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;

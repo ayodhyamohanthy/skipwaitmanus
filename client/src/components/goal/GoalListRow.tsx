@@ -61,18 +61,19 @@ export function GoalListRow({ href, onSelect, selected = false, selectable = tru
 }
 
 /**
- * The directory's inline company row (find-a-referral.css:29-39): mark, name,
- * functions and availability on one 52px line; the phone stacks name/function
- * beside the mark at 64px (find-a-referral.css:119-125). When href is given
- * the row is a real anchor to the company page (crawlable, openable in a new
- * tab); a plain click is intercepted and progressively enhanced into the ask
- * drawer via onSelect. Without href it stays a button, never a fake link.
+ * The directory's inline company row (find-a-referral.css:29-39): mark, name
+ * and functions on one 52px line; the phone stacks name/function beside the
+ * mark at 64px (find-a-referral.css:119-125). D-176 (owner, Oct 24): no
+ * availability label, chip or status - availability only routes the sent ask.
+ * When href is given the row is a real anchor to the company page (crawlable,
+ * openable in a new tab); a plain click is intercepted and progressively
+ * enhanced into the ask drawer via onSelect. Without href it stays a button,
+ * never a fake link.
  */
-export function GoalCompanyRow({ name, initials, functions, open, selected = false, onSelect, href, testId }: {
+export function GoalCompanyRow({ name, initials, functions, selected = false, onSelect, href, testId }: {
   name: string;
   initials: string;
   functions: readonly string[];
-  open: boolean;
   selected?: boolean;
   onSelect?(): void;
   href?: string;
@@ -80,8 +81,8 @@ export function GoalCompanyRow({ name, initials, functions, open, selected = fal
 }) {
   const className = cn(
     "relative grid w-full items-center gap-x-3 rounded-g-tile px-3 pl-2.5 text-left transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover",
-    "h-[52px] grid-cols-[28px_auto_minmax(0,1fr)_auto] [grid-template-areas:'mark_name_fn_avail']",
-    "max-gdesk:h-auto max-gdesk:min-h-16 max-gdesk:grid-cols-[32px_minmax(0,1fr)_auto] max-gdesk:gap-y-0 max-gdesk:py-2.5 max-gdesk:[grid-template-areas:'mark_name_avail'_'mark_fn_fn']",
+    "h-[52px] grid-cols-[28px_auto_minmax(0,1fr)] [grid-template-areas:'mark_name_fn']",
+    "max-gdesk:h-auto max-gdesk:min-h-16 max-gdesk:grid-cols-[32px_minmax(0,1fr)] max-gdesk:gap-y-0 max-gdesk:py-2.5 max-gdesk:[grid-template-areas:'mark_name'_'mark_fn']",
     selected && "bg-g-surface-selected",
   );
   const body = (
@@ -90,7 +91,6 @@ export function GoalCompanyRow({ name, initials, functions, open, selected = fal
       <span className="[grid-area:mark] inline-flex"><GoalCompanyMark initials={initials} /></span>
       <span className="[grid-area:name] truncate text-g-label text-g-ink">{name}</span>
       <span className="[grid-area:fn] truncate text-g-meta text-g-ink-3">{functions.join(" · ")}</span>
-      <span className="[grid-area:avail] justify-self-end"><GoalAvailability open={open} label={open ? "Open to requests" : "Not open yet"} /></span>
     </>
   );
   return (
@@ -99,7 +99,7 @@ export function GoalCompanyRow({ name, initials, functions, open, selected = fal
         <Link
           href={href}
           aria-current={selected ? "true" : undefined}
-          aria-label={`${name}, ${open ? "open to requests" : "not open yet"}`}
+          aria-label={name}
           onClick={onSelect ? event => { event.preventDefault(); onSelect(); } : undefined}
           className={className}
         >
@@ -109,7 +109,7 @@ export function GoalCompanyRow({ name, initials, functions, open, selected = fal
         <button
           type="button"
           aria-current={selected ? "true" : undefined}
-          aria-label={`${name}, ${open ? "open to requests" : "not open yet"}`}
+          aria-label={name}
           onClick={onSelect}
           className={className}
         >

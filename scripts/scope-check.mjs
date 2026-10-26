@@ -16,6 +16,7 @@
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { ownsEntry, ownsMatches, slugOf } from "./nextTaskCore.mjs";
+import { runQueueGate } from "./queue-gate.mjs";
 
 const ASSIGNMENTS = "docs/plans/assignments.json";
 const SWITCH_ONLY_LINE_LIMIT = 12;
@@ -60,7 +61,7 @@ export function checkBranch(taskId) {
   if (!task) throw new Error(taskId === "--branch" ? `no task in origin/main uses the branch ${branch}` : `task ${taskId} is not in origin/main's task list`);
   const owns = Array.isArray(task.owns) ? task.owns : [];
   if (!owns.length) return { owns, violations: [], skipped: `task ${task.id} declares no owns` };
-  const changed = git(["diff", "--name-only", "origin/main...HEAD"]).split("\n").filter(Boolean);
+  const changed = git(["diff", "--name-only", "--no-renames", "origin/main...HEAD"]).split("\n").filter(Boolean);
   const lineCounts = new Map();
   for (const entry of owns) {
     const { pattern, switchOnly } = ownsEntry(entry);
@@ -72,6 +73,9 @@ export function checkBranch(taskId) {
 }
 
 function main() {
+  const queueGateExit = runQueueGate();
+  if (queueGateExit !== 0) return queueGateExit;
+
   const taskId = process.argv[2];
   if (!taskId) {
     console.error("usage: node scripts/scope-check.mjs <task-id>");

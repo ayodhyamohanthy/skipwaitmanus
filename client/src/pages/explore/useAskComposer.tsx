@@ -24,6 +24,7 @@ import { useSeekerSetup } from "@/lib/useSeekerSetup";
 import { countWords } from "@shared/askQuality";
 import type { PublicCompany } from "@shared/companies";
 import { askCostLine, CREDIT_ENDED_CAVEAT, creditUsedPhrase, type AskCostLine } from "@shared/moneyCopy";
+import { OPPORTUNITY_FIRST_LOOK_HOURS } from "@shared/companyOpportunities";
 import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
 import { COMPANY_CAP_REACHED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
@@ -109,6 +110,9 @@ export type AskComposer = {
   work: PinnedWorkState;
   /** D-022: the posted role this ask opened from, while it still applies. */
   postSelection: OpportunityAskSearch | null;
+  /** D-174: pick a posted role in place. Replaces the whole selection - a
+   * linkless pick clears any stale link and identity from an earlier pick. */
+  selectPost(selection: OpportunityAskSearch | null): void;
   /** Fresh form for a new company; the resume carries unless clearResume is set. */
   resetForm(options?: { clearResume?: boolean }): void;
   /** Clear the terminal send view and error after the drawer has closed. */
@@ -174,6 +178,15 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     if (postSelection?.jobUrl) setUrl(current => current || postSelection.jobUrl!);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // D-174 in-place pick from a door: the selection is REPLACED, never merged -
+  // a linkless post clears the previous post's link so no stale link, pass
+  // check or opportunity id can leak into the next ask.
+  const selectPost = (selection: OpportunityAskSearch | null) => {
+    setPostSelection(selection);
+    setUrl(selection?.jobUrl ?? "");
+    setDraftState("idle");
+  };
 
   // A saved draft fills only what is still empty for the company it was written for.
   useEffect(() => {
@@ -327,7 +340,9 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
           ? `Only the ${where}employee whose link you used will see it. If they don’t pick it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}.`
           : created.waitingForCoverage
             ? `No verified employee there can see it yet, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, ${creditUsedPhrase(ASK_LEVEL_COST_CLIENT)} and it goes live; ${ASK_LEVEL_COST_CLIENT ? "if you do not have enough then, we hold it until you add more." : "if you have no credit then, we hold it until you add one."}`
-            : `Verified ${where}employees can see it now. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`,
+            : created.firstLook
+              ? `The employee who posted this role sees your ask first. If they pass, or don’t accept within ${OPPORTUNITY_FIRST_LOOK_HOURS} hours, other verified ${where}employees can see it. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`
+              : `Verified ${where}employees can see it now. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`,
         slots: created.slots ? (created.slots.cap === null ? `Open asks ${created.slots.open}` : `Open asks ${created.slots.open} of ${created.slots.cap}`) : null,
         trackHref: `/conversation/${created.requestId}`,
       });
@@ -412,6 +427,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       toggle: toggleWork,
     },
     postSelection,
+    selectPost,
     resetForm,
     clearAfterClose,
   };

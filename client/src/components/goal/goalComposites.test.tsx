@@ -212,29 +212,29 @@ describe("GoalDrawer and GoalSheet", () => {
 });
 
 describe("GoalCompanyRow", () => {
-  it("is a 52px selectable row named by company and availability, never a fake link", async () => {
+  it("is a 52px selectable row named by company, with no availability framing (D-176), never a fake link", async () => {
     const onSelect = vi.fn();
-    render(<GoalCompanyRow name="Wipro" initials="W" functions={["Engineering", "Data"]} open onSelect={onSelect} />);
-    const row = screen.getByRole("button", { name: "Wipro, open to requests" });
+    render(<GoalCompanyRow name="Wipro" initials="W" functions={["Engineering", "Data"]} onSelect={onSelect} />);
+    const row = screen.getByRole("button", { name: "Wipro" });
     expect(row.className).toContain("h-[52px]");
     expect(row.getAttribute("href")).toBeNull();
-    expect(screen.getByTestId("goal-availability").textContent).toBe("Open to requests");
+    expect(screen.queryByTestId("goal-availability")).toBeNull();
     await userEvent.click(row);
     expect(onSelect).toHaveBeenCalled();
   });
 
   it("with href is a real anchor to the company page; a plain click is enhanced into the drawer", async () => {
     const onSelect = vi.fn();
-    render(<GoalCompanyRow name="Wipro" initials="W" functions={["Engineering"]} open href="/explore/wipro" onSelect={onSelect} />);
-    const row = screen.getByRole("link", { name: "Wipro, open to requests" });
+    render(<GoalCompanyRow name="Wipro" initials="W" functions={["Engineering"]} href="/explore/wipro" onSelect={onSelect} />);
+    const row = screen.getByRole("link", { name: "Wipro" });
     expect(row.getAttribute("href")).toBe("/explore/wipro");
     await userEvent.click(row);
     expect(onSelect).toHaveBeenCalled();
   });
 
   it("marks the selected row with the ink bar and aria-current", () => {
-    render(<GoalCompanyRow name="Merkle" initials="M" functions={["Design"]} open={false} selected />);
-    const row = screen.getByRole("button", { name: "Merkle, not open yet" });
+    render(<GoalCompanyRow name="Merkle" initials="M" functions={["Design"]} selected />);
+    const row = screen.getByRole("button", { name: "Merkle" });
     expect(row.getAttribute("aria-current")).toBe("true");
     expect(row.className).toContain("bg-g-surface-selected");
   });
