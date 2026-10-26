@@ -200,9 +200,9 @@
    "tier": 2,
    "lane": "picker",
    "branch": "agent/queue/picker-review-independence",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
-   "note": "D-151: did() compares exact session names, so on Oct 22 the picker handed #382's re-review to Qoder · a236 right after Qoder · 31dd fixed it. Compare models, count Fixed markers as fixes, and print the rule in the review step. Every Tier 1 review the queue hands out, P0-ask-link-signin's and P1-queue-attestation's included, goes through this check."
+   "note": "D-151: did() compares exact session names, so on Oct 22 the picker handed #382's re-review to Qoder · a236 right after Qoder · 31dd fixed it. Compare models, count Fixed markers as fixes, and print the rule in the review step. Every Tier 1 review the queue hands out, P0-ask-link-signin's and P1-queue-attestation's included, goes through this check. Done: #530, merged 2026-10-23; set by D-210 (8) because the picker no longer saw the landing and handed the row out again."
   },
   {
    "id": "PICKER-decision-sync",
@@ -432,9 +432,9 @@
    "tier": 1,
    "lane": "audit",
    "branch": "agent/queue/postmerge-oct22-review",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
-   "note": "D-166 (2): #465, #478, #482 (migration 0106), #490 (migration 0107), #506, #517, #534, #535, #479, #510 merged with only a failed Copilot bot review. Review them as they are on main by a model other than Instinct; findings go to docs/plans/POSTMERGE-oct22-findings.md and become fix rows. No code change in this row.",
+   "note": "D-166 (2): #465, #478, #482 (migration 0106), #490 (migration 0107), #506, #517, #534, #535, #479, #510 merged with only a failed Copilot bot review. Review them as they are on main by a model other than Instinct; findings go to docs/plans/POSTMERGE-oct22-findings.md and become fix rows. No code change in this row. Done: #619, merged 2026-10-24; set by D-210 (8) because the picker no longer saw the landing and handed the row out again.",
    "owns": [
     "docs/plans/POSTMERGE-oct22-findings.md"
    ]
@@ -475,9 +475,9 @@
    "tier": 2,
    "lane": "process",
    "branch": "agent/queue/process-queue-gate",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [],
-   "note": "D-166 (2): 23 of 38 product-code merges Oct 19-23 had no row. New scripts/queue-gate.mjs called from scripts/scope-check.mjs, already in the required typecheck job, so no workflow edit; five pass rules in the packet; fails open only on its own error.",
+   "note": "D-166 (2): 23 of 38 product-code merges Oct 19-23 had no row. New scripts/queue-gate.mjs called from scripts/scope-check.mjs, already in the required typecheck job, so no workflow edit; five pass rules in the packet; fails open only on its own error. Done: #603, merged 2026-10-23; set by D-210 (8) because the picker no longer saw the landing and handed the row out again.",
    "owns": [
     "scripts/queue-gate.mjs",
     "scripts/queueGate.test.ts",
@@ -549,99 +549,115 @@
   },
   {
    "id": "REL-watchdog",
-   "title": "External watchdog: a Cloudflare Worker probes the site every 5 minutes and emails the owner after two failed rounds (D-192, D-100)",
-   "row": "D-192",
+   "title": "External watchdog: a Cloudflare Worker probes the site every 5 minutes and emails the owner after two failed rounds (D-210, D-100)",
+   "row": "D-210",
    "packet": "docs/plans/REL-production-watch.md",
    "tier": 2,
    "lane": "watchdog",
    "branch": "agent/queue/rel-watchdog",
    "status": "todo",
    "dependsOn": [],
-   "note": "D-192: the GitHub 5-minute watch ran 10 times in 32 hours. Owner action at landing: wrangler secret put ZEPTOMAIL_API_KEY --name skipwait-watchdog.",
-   "epic": "D-192",
+   "note": "D-210: the GitHub 5-minute watch ran 24 times in 79 hours. Owner actions at landing: wrangler secret put ZEPTOMAIL_API_KEY --name skipwait-watchdog (required) and GITHUB_ISSUES_TOKEN (optional).",
+   "epic": "D-210",
    "owns": [
     "watchdog/",
     "scripts/watchdogCore.test.ts",
     ".github/workflows/deploy-watchdog.yml",
-    "scripts/check-deploy-triggers.mjs (switch only)",
-    "tsconfig.json (switch only)"
+    "scripts/check-deploy-triggers.mjs (switch only)"
+   ]
+  },
+  {
+   "id": "REL-review-email-retry",
+   "title": "A referrer's review email that failed or never went out is sent again, up to 5 attempts, then the owner is told (D-210)",
+   "row": "D-210",
+   "packet": "docs/plans/REL-production-watch.md",
+   "tier": 1,
+   "lane": "notifications",
+   "branch": "agent/queue/rel-review-email-retry",
+   "status": "todo",
+   "dependsOn": [
+    "D-174-job-catalog"
+   ],
+   "epic": "D-210",
+   "owns": [
+    "server/reviewDeliveryRetry.ts",
+    "server/reviewDeliveryRetry.test.ts",
+    "server/scheduledJobRegistry.ts (switch only)",
+    "shared/scheduledJobs.ts (switch only)",
+    "server/scheduledJobsContract.test.ts (switch only)",
+    "server/emailDelivery.ts",
+    "server/emailDelivery*.test.ts"
    ]
   },
   {
    "id": "REL-5xx-capture",
-   "title": "Every server 5xx reaches Sentry and the owner, sign-in and webhooks included; admin alerts get a second channel (D-192)",
-   "row": "D-192",
+   "title": "Every server 5xx reaches Sentry and the owner, sign-in and webhooks included; admin alerts get a second channel (D-210)",
+   "row": "D-210",
    "packet": "docs/plans/REL-production-watch.md",
    "tier": 2,
    "lane": "observability",
    "branch": "agent/queue/rel-5xx-capture",
    "status": "todo",
-   "dependsOn": [
-    "D-174-sample-job-removal"
-   ],
-   "epic": "D-192",
+   "dependsOn": [],
+   "epic": "D-210",
    "owns": [
     "server/httpErrorCapture.ts",
     "server/httpErrorCapture.test.ts",
-    "server/_core/index.ts",
+    "server/_core/index.ts (switch only)",
     "server/errorAlerting.ts",
     "server/errorAlerting.test.ts"
    ]
   },
   {
-   "id": "REL-release-verify",
-   "title": "After every deploy a workflow checks the live release and sets release/verified; failures open one incident; web waits for its API; rollback works; drift-watch retired (D-192)",
-   "row": "D-192",
-   "packet": "docs/plans/REL-production-watch.md",
-   "tier": 2,
-   "lane": "deploy-workflows",
-   "branch": "agent/queue/rel-release-verify",
-   "status": "todo",
-   "dependsOn": [],
-   "epic": "D-192",
-   "owns": [
-    "scripts/release-smoke.mjs",
-    "scripts/releaseSmokeCore.mjs",
-    "scripts/releaseSmoke.test.ts",
-    ".github/workflows/release-verify.yml",
-    ".github/workflows/deploy-api.yml",
-    ".github/workflows/deploy-pages.yml",
-    ".github/workflows/rollback.yml",
-    ".github/workflows/drift-watch.yml"
-   ]
-  },
-  {
    "id": "GATE-test-integrity",
-   "title": "CI fails on a deleted or loosened test, .only or a new .skip; pinned login and money tests cannot lose assertions (D-192)",
-   "row": "D-192",
+   "title": "CI fails on a deleted or loosened test, .only or a new .skip; pinned login and money tests cannot lose assertions (D-210)",
+   "row": "D-210",
    "packet": "docs/plans/GATE-delivery.md",
    "tier": 2,
    "lane": "ci-checks",
    "branch": "agent/queue/gate-test-integrity",
    "status": "todo",
    "dependsOn": [],
-   "epic": "D-192",
+   "epic": "D-210",
    "owns": [
     "scripts/test-integrity.mjs",
     "scripts/testIntegrityCore.mjs",
     "scripts/testIntegrity.test.ts",
-    ".github/workflows/ci.yml",
+    "scripts/scope-check.mjs (switch only)",
     ".github/pull_request_template.md"
    ]
   },
   {
+   "id": "REL-release-verify",
+   "title": "After every deploy a workflow checks the live release and sets release/verified; failures open one incident; deploy notices stop landing on random issues (D-210)",
+   "row": "D-210",
+   "packet": "docs/plans/REL-production-watch.md",
+   "tier": 2,
+   "lane": "deploy-workflows",
+   "branch": "agent/queue/rel-release-verify",
+   "status": "todo",
+   "dependsOn": [],
+   "epic": "D-210",
+   "owns": [
+    "scripts/release-smoke.mjs",
+    "scripts/releaseSmokeCore.mjs",
+    "scripts/releaseSmoke.test.ts",
+    ".github/workflows/release-verify.yml",
+    ".github/workflows/deploy-api.yml",
+    ".github/workflows/deploy-pages.yml"
+   ]
+  },
+  {
    "id": "GATE-e2e-journeys",
-   "title": "Six core journeys run in a real browser on every PR, the two Oct 22 regressions first (D-192)",
-   "row": "D-192",
+   "title": "Six core journeys run in a real browser against MySQL on every PR, the two Oct 22 regressions first; the deploy migrations apply twice (D-210)",
+   "row": "D-210",
    "packet": "docs/plans/GATE-delivery.md",
    "tier": 2,
    "lane": "e2e",
    "branch": "agent/queue/gate-e2e-journeys",
    "status": "todo",
-   "dependsOn": [
-    "GATE-test-integrity"
-   ],
-   "epic": "D-192",
+   "dependsOn": [],
+   "epic": "D-210",
    "owns": [
     "e2e/",
     "scripts/e2e-server.mjs",
@@ -650,39 +666,18 @@
    ]
   },
   {
-   "id": "REL-review-email-retry",
-   "title": "A referrer's review email that failed is retried hourly, up to 5 attempts, then the owner is told (D-192)",
-   "row": "D-192",
-   "packet": "docs/plans/REL-production-watch.md",
-   "tier": 1,
-   "lane": "notifications",
-   "branch": "agent/queue/rel-review-email-retry",
-   "status": "todo",
-   "dependsOn": [],
-   "epic": "D-192",
-   "owns": [
-    "server/reviewDeliveryRetry.ts",
-    "server/reviewDeliveryRetry.test.ts",
-    "server/scheduledJobRegistry.ts (switch only)",
-    "shared/scheduledJobs.ts (switch only)",
-    "server/emailDelivery.ts",
-    "server/emailDelivery*.test.ts"
-   ]
-  },
-  {
    "id": "REL-heartbeats",
-   "title": "Public no-data /api/health/jobs and /api/health/deps, probed by the watchdog: a stopped scheduler or broken dependency alerts (D-192)",
-   "row": "D-192",
+   "title": "Public no-data /api/health/jobs with one overdue rule, probed by the watchdog: a stopped scheduler alerts (D-210)",
+   "row": "D-210",
    "packet": "docs/plans/REL-production-watch.md",
    "tier": 2,
    "lane": "jobs",
    "branch": "agent/queue/rel-heartbeats",
    "status": "todo",
    "dependsOn": [
-    "REL-watchdog",
-    "REL-5xx-capture"
+    "REL-watchdog"
    ],
-   "epic": "D-192",
+   "epic": "D-210",
    "owns": [
     "server/healthRoutes.ts",
     "server/healthRoutes*.test.ts",
@@ -694,29 +689,70 @@
    ]
   },
   {
-   "id": "GATE-tier-floor",
-   "title": "The review gate uses the tier computed from the paths, so a money or sign-in change filed as Tier 2 still needs an independent pass (D-192)",
-   "row": "D-192",
-   "packet": "docs/plans/GATE-delivery.md",
+   "id": "REL-webhook-auth-alarm",
+   "title": "A Chargebee webhook refused for its secret is recorded, sent to Sentry and flagged by the daily money check (D-210)",
+   "row": "D-210",
+   "packet": "docs/plans/REL-production-watch.md",
+   "tier": 1,
+   "lane": "payments-ops",
+   "branch": "agent/queue/rel-webhook-auth-alarm",
+   "status": "todo",
+   "dependsOn": [],
+   "epic": "D-210",
+   "owns": [
+    "server/webhookAuthAlarm.ts",
+    "server/webhookAuthAlarm.test.ts",
+    "server/chargebeeRoutes.ts (switch only)",
+    "server/chargebeeRoutes*.test.ts",
+    "server/dailyMoneyCheck.ts",
+    "server/dailyMoneyCheck*.test.ts"
+   ]
+  },
+  {
+   "id": "REL-rollback-skew",
+   "title": "The web never runs ahead of its API, and rollback works for web and API (D-210)",
+   "row": "D-210",
+   "packet": "docs/plans/REL-production-watch.md",
    "tier": 2,
-   "lane": "process",
-   "branch": "agent/queue/gate-tier-floor",
+   "lane": "deploy-workflows",
+   "branch": "agent/queue/rel-rollback-skew",
    "status": "todo",
    "dependsOn": [
-    "PROCESS-review-gate"
+    "REL-release-verify"
    ],
-   "epic": "D-192",
+   "epic": "D-210",
    "owns": [
-    "scripts/tierClassifyCore.mjs",
-    "scripts/tierClassify.test.ts",
-    "scripts/review-gate.mjs",
-    "scripts/reviewGate.test.ts"
+    ".github/workflows/deploy-pages.yml",
+    ".github/workflows/rollback.yml",
+    "scripts/rollbackTarget.mjs",
+    "scripts/rollbackTarget.test.ts"
+   ]
+  },
+  {
+   "id": "REL-self-heal",
+   "title": "When the API container is dead, the watchdog redeploys the live release once and tells the owner (D-210)",
+   "row": "D-210",
+   "packet": "docs/plans/REL-production-watch.md",
+   "tier": 2,
+   "lane": "watchdog",
+   "branch": "agent/queue/rel-self-heal",
+   "status": "todo",
+   "dependsOn": [
+    "REL-watchdog",
+    "REL-rollback-skew",
+    "REL-heartbeats"
+   ],
+   "epic": "D-210",
+   "owns": [
+    "watchdog/src/index.ts",
+    "watchdog/src/core.ts",
+    "scripts/watchdogCore.test.ts"
    ]
   },
   {
    "id": "REL-client-capture",
-   "title": "Failed calls in the browser (5xx, HTML instead of JSON, network) reach Sentry, sign-in and checkout return first (D-192)",
-   "row": "D-192",
+   "title": "Failed calls in the browser (5xx, HTML instead of JSON, network) reach Sentry, sign-in and checkout return first (D-210)",
+   "row": "D-210",
    "packet": "docs/plans/REL-production-watch.md",
    "tier": 1,
    "lane": "observability-client",
@@ -725,7 +761,7 @@
    "dependsOn": [
     "FIX-device-signin"
    ],
-   "epic": "D-192",
+   "epic": "D-210",
    "owns": [
     "client/src/lib/apiFetch.ts",
     "client/src/lib/apiFetch.test.ts",
@@ -737,27 +773,29 @@
    ]
   },
   {
-   "id": "REL-webhook-auth-alarm",
-   "title": "A Chargebee webhook refused for its secret is recorded, sent to Sentry and flagged by the daily money check (D-192)",
-   "row": "D-192",
-   "packet": "docs/plans/REL-production-watch.md",
-   "tier": 1,
-   "lane": "payments-ops",
-   "branch": "agent/queue/rel-webhook-auth-alarm",
+   "id": "GATE-tier-floor",
+   "title": "The review gate uses the tier computed from the paths, so a money or sign-in change filed as Tier 2 still needs an independent pass (D-210)",
+   "row": "D-210",
+   "packet": "docs/plans/GATE-delivery.md",
+   "tier": 2,
+   "lane": "process",
+   "branch": "agent/queue/gate-tier-floor",
    "status": "todo",
-   "dependsOn": [],
-   "epic": "D-192",
+   "dependsOn": [
+    "PROCESS-review-gate"
+   ],
+   "epic": "D-210",
    "owns": [
-    "server/chargebeeRoutes.ts (switch only)",
-    "server/chargebeeRoutes*.test.ts",
-    "server/dailyMoneyCheck.ts",
-    "server/dailyMoneyCheck*.test.ts"
+    "scripts/tierClassifyCore.mjs",
+    "scripts/tierClassify.test.ts",
+    "scripts/review-gate.mjs",
+    "scripts/reviewGate.test.ts"
    ]
   },
   {
    "id": "REL-ops-invariants",
-   "title": "A daily read-only ops check finds logic bugs that still answer 200: personal-link leaks, stuck review emails, request drought, exhausted jobs (D-192)",
-   "row": "D-192",
+   "title": "A daily read-only ops check finds failures that still answer 200: stuck review emails, request drought, exhausted jobs, work-email codes never used (D-210)",
+   "row": "D-210",
    "packet": "docs/plans/REL-production-watch.md",
    "tier": 1,
    "lane": "ops-check",
@@ -765,106 +803,17 @@
    "status": "todo",
    "dependsOn": [
     "REL-review-email-retry",
-    "D-174-pool-nudges",
     "D-174-job-catalog"
    ],
-   "epic": "D-192",
+   "epic": "D-210",
    "owns": [
     "server/dailyOpsCheck.ts",
     "server/dailyOpsCheck.test.ts",
     "server/scheduledJobRegistry.ts (switch only)",
-    "shared/scheduledJobs.ts (switch only)"
+    "shared/scheduledJobs.ts (switch only)",
+    "server/scheduledJobsContract.test.ts (switch only)",
+    "server/workEmailOtpPurge.ts (switch only)"
    ]
-  },
-  {
-   "id": "PICKER-qa-stage",
-   "title": "A QA stage: a session that did not build a UI change checks it at 1280 and 390 and records a QA pass the review gate requires (D-192)",
-   "row": "D-192",
-   "packet": "docs/plans/GATE-delivery.md",
-   "tier": 2,
-   "lane": "process",
-   "branch": "agent/queue/picker-qa-stage",
-   "status": "todo",
-   "dependsOn": [
-    "GATE-e2e-journeys",
-    "GATE-tier-floor",
-    "D-048-F-harness",
-    "PROCESS-scorecard",
-    "PICKER-fullstack-lights",
-    "PICKER-review-wording",
-    "PICKER-architect-landing"
-   ],
-   "epic": "D-192",
-   "owns": [
-    "scripts/nextTaskCore.mjs",
-    "scripts/nextTaskText.mjs",
-    "scripts/nextTask.test.ts",
-    "scripts/review-gate.mjs",
-    "scripts/reviewGate.test.ts",
-    "docs/DELEGATION.md"
-   ]
-  },
-  {
-   "id": "PICKER-fullstack-lights",
-   "title": "--status prints all seven lights for the live release, and a red live release makes main red for the picker (D-192)",
-   "row": "D-192",
-   "packet": "docs/plans/GATE-delivery.md",
-   "tier": 2,
-   "lane": "process",
-   "branch": "agent/queue/picker-fullstack-lights",
-   "status": "todo",
-   "dependsOn": [
-    "REL-release-verify",
-    "PROCESS-review-gate",
-    "PICKER-review-wording",
-    "PICKER-architect-landing"
-   ],
-   "epic": "D-192",
-   "owns": [
-    "scripts/next-task.mjs",
-    "scripts/nextTaskCore.mjs",
-    "scripts/nextTaskText.mjs",
-    "scripts/nextTask.test.ts"
-   ]
-  },
-  {
-   "id": "GATE-migration-apply",
-   "title": "CI applies deploy migrations to MySQL twice before production (D-192)",
-   "row": "D-192",
-   "packet": "docs/plans/GATE-delivery.md",
-   "tier": 2,
-   "lane": "ci-checks",
-   "branch": "agent/queue/gate-migration-apply",
-   "status": "architect",
-   "dependsOn": [],
-   "note": "Any agent writes the packet first (D-109); it first establishes whether migrations apply from an empty database or need a baseline (D-100).",
-   "epic": "D-192"
-  },
-  {
-   "id": "REL-synthetic-journeys",
-   "title": "Signed-in synthetic journeys checked in production with tagged test accounts, Chargebee test site only (D-192)",
-   "row": "D-192",
-   "packet": "docs/plans/REL-production-watch.md",
-   "tier": 1,
-   "lane": "synthetic",
-   "branch": "agent/queue/rel-synthetic-journeys",
-   "status": "architect",
-   "dependsOn": [],
-   "note": "Any agent writes the packet first (D-109); it lists the rules for test accounts in production for the CEO before any build.",
-   "epic": "D-192"
-  },
-  {
-   "id": "OPS-github-settings",
-   "title": "Owner settings: squash and rebase merges off; secret scanning, push protection and CodeQL on; new checks added to the ruleset after 3 green days; Sentry alert rule (D-192 (6))",
-   "row": "D-192",
-   "packet": "docs/plans/ENTERPRISE-PIPELINE.md",
-   "tier": 3,
-   "lane": "settings",
-   "branch": "agent/queue/ops-github-settings",
-   "status": "owner",
-   "dependsOn": [],
-   "note": "Owner's word needed for each (account settings). Nothing to build.",
-   "epic": "D-192"
   },
   {
    "id": "D-069-chargebee-catalog-sync",
@@ -1959,7 +1908,7 @@
    "tier": 2,
    "lane": "d048-post",
    "branch": "agent/queue/d048-p3-post",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [
     "D-048-F-harness",
     "D-048-F-primitives",
@@ -1968,13 +1917,13 @@
     "D-048-fix-post-copy",
     "D-048-postopp-copy-v2"
    ],
+   "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('post-opportunity'). Done: #578, merged 2026-10-23; set by D-210 (8) because the picker no longer saw the landing and handed the row out again.",
+   "epic": "D-048-p3",
    "owns": [
     "client/src/pages/PostOpportunity.tsx",
     "client/src/pages/goal/post-opportunity/**",
     "design/goal-ui/captures/post-opportunity/**"
-   ],
-   "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('post-opportunity').",
-   "epic": "D-048-p3"
+   ]
   },
   {
    "id": "D-048-p3-email-review",
@@ -2255,9 +2204,7 @@
     "D-086-demand-list",
     "D-048-F-flags",
     "D-048-F-routes",
-    "D-132-audit",
-    "REL-5xx-capture",
-    "REL-heartbeats"
+    "D-132-audit"
    ],
    "owns": [
     "drizzle/deploy/*_company_referral_bonuses.sql",
@@ -2442,7 +2389,7 @@
    "branch": "agent/claude/sync-log-off-main",
    "status": "architect",
    "dependsOn": [],
-   "note": "Any agent writes the packet (D-109): write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected."
+   "note": "Any agent writes the packet (D-109): write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected. It also retires sync-guard.yml (only echoes) and design-gate.yml (`|| true`), D-210 (7)."
   },
   {
    "id": "D-048-fix-start-ask-handoff",
@@ -2452,9 +2399,9 @@
    "tier": 2,
    "lane": "d048-foundation",
    "branch": "agent/instinct/d048-fix-start-ask-handoff",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [],
-   "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top."
+   "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top. Done: #586, merged 2026-10-23; set by D-210 (8) because the picker no longer saw the landing and handed the row out again."
   },
   {
    "id": "D-048-fix-explore-open-first",
@@ -2612,10 +2559,7 @@
    "lane": "d174-jobs",
    "branch": "agent/queue/d174-job-catalog",
    "status": "todo",
-   "dependsOn": [
-    "REL-5xx-capture",
-    "REL-review-email-retry"
-   ],
+   "dependsOn": [],
    "note": "D-193 packet section 5.5. No code anywhere fetches a company's jobs today; the D-174 journey's jobs step needs this. Level = assignJobLevel on (title, snippet, applyUrl), the same fields that price the request. JOB_CATALOG_ENABLED stays false until QA.",
    "epic": "D-174",
    "owns": [
@@ -2714,8 +2658,7 @@
    "branch": "agent/queue/d174-pool-nudges",
    "status": "todo",
    "dependsOn": [
-    "D-174-ask-from-job",
-    "REL-review-email-retry"
+    "D-174-ask-from-job"
    ],
    "note": "D-193 packet section 5.9 and ruling (4): keeps the D-062 one-at-a-time hand-off. Tier 1: it reads the delivery spend path and sends to referrers; blocked pairs are never notified. POOL_NUDGES_ENABLED stays false until QA.",
    "epic": "D-174",
@@ -2725,9 +2668,9 @@
     "server/db.ts",
     "server/privateReferralRoutes.ts",
     "server/referralTimers.ts",
-    "shared/scheduledJobs.ts",
-    "server/scheduledJobRegistry.ts",
-    "server/scheduledJobsContract.test.ts"
+    "shared/scheduledJobs.ts (switch only)",
+    "server/scheduledJobRegistry.ts (switch only)",
+    "server/scheduledJobsContract.test.ts (switch only)"
    ]
   },
   {
@@ -2745,6 +2688,97 @@
    "owns": [
     "docs/research/D-175-coverage.md"
    ]
+  },
+  {
+   "id": "PICKER-fullstack-lights",
+   "title": "--status prints the seven lights for the live release, and a red live release holds every landing but its fix (D-210)",
+   "row": "D-210",
+   "packet": "docs/plans/GATE-delivery.md",
+   "tier": 2,
+   "lane": "picker",
+   "branch": "agent/queue/picker-fullstack-lights",
+   "status": "todo",
+   "dependsOn": [
+    "REL-release-verify",
+    "REL-watchdog",
+    "PROCESS-review-gate",
+    "PICKER-review-wording",
+    "PICKER-architect-landing",
+    "PICKER-decision-sync",
+    "BRANCH-HYGIENE-2"
+   ],
+   "epic": "D-210",
+   "owns": [
+    "scripts/next-task.mjs",
+    "scripts/nextTaskCore.mjs",
+    "scripts/nextTaskText.mjs",
+    "scripts/nextTask.test.ts"
+   ]
+  },
+  {
+   "id": "PICKER-qa-stage",
+   "title": "QA: the checklist runs inside the one Tier 1 review, and a session that did not build it checks Tier 2/3 UI changes within 24 hours after landing (D-210)",
+   "row": "D-210",
+   "packet": "docs/plans/GATE-delivery.md",
+   "tier": 2,
+   "lane": "picker",
+   "branch": "agent/queue/picker-qa-stage",
+   "status": "todo",
+   "dependsOn": [
+    "GATE-e2e-journeys",
+    "GATE-tier-floor",
+    "D-048-F-harness",
+    "PICKER-fullstack-lights"
+   ],
+   "epic": "D-210",
+   "owns": [
+    "scripts/next-task.mjs",
+    "scripts/nextTaskCore.mjs",
+    "scripts/nextTaskText.mjs",
+    "scripts/nextTask.test.ts",
+    "docs/QA-CHECKLIST.md"
+   ]
+  },
+  {
+   "id": "REL-synthetic-journeys",
+   "title": "Signed-in synthetic journeys checked in production with tagged test accounts, Chargebee test site only (D-210)",
+   "row": "D-210",
+   "packet": "docs/plans/REL-production-watch.md",
+   "tier": 1,
+   "lane": "synthetic",
+   "branch": "agent/queue/rel-synthetic-journeys",
+   "status": "architect",
+   "dependsOn": [],
+   "note": "D-210: targets the QA preview (#383), never production; needs the owner's hard-stop confirmation on the Cloudflare credits (D-204) and #383 brought up to date before any build.",
+   "epic": "D-210"
+  },
+  {
+   "id": "GATE-migration-apply",
+   "title": "CI applies deploy migrations to MySQL twice before production (D-210)",
+   "row": "D-210",
+   "packet": "docs/plans/GATE-delivery.md",
+   "tier": 2,
+   "lane": "ci-checks",
+   "branch": "agent/queue/gate-migration-apply",
+   "status": "architect",
+   "dependsOn": [
+    "GATE-e2e-journeys"
+   ],
+   "note": "D-210: GATE-e2e-journeys applies the deploy migrations twice to MySQL; this row stays open only if they cannot apply from an empty database, and then any agent writes its packet from that finding.",
+   "epic": "D-210"
+  },
+  {
+   "id": "OPS-github-settings",
+   "title": "Owner settings: main-protection admin bypass limited to pull requests; merge queue on; squash and rebase off; secret scanning, push protection and CodeQL on; new checks into the ruleset after 3 green days; watchdog secrets; Sentry alert rule (D-210 (6))",
+   "row": "D-210",
+   "packet": "docs/plans/ENTERPRISE-PIPELINE.md",
+   "tier": 3,
+   "lane": "settings",
+   "branch": "agent/queue/ops-github-settings",
+   "status": "owner",
+   "dependsOn": [],
+   "note": "Owner's word needed for each (account settings). Nothing to build.",
+   "epic": "D-210"
   },
   {
    "id": "D-174-seeker-journey-build",
@@ -2768,9 +2802,9 @@
    "tier": 2,
    "lane": "process",
    "branch": "agent/coordinator/founder-decisions-sync",
-   "status": "in-review",
+   "status": "done",
    "dependsOn": [],
-   "note": "Owner instruction (iMessage phonemsg-01M5MYS5WDHAMNZ7TF602GTK65 'Push the decisions as instructions' + phonemsg-01M5MYSQVDTXCYGCPBR001P7Q9 'So old decisions are updated' + phonemsg-01M5MZ7J6YYH3ZRBJNKT6TCZJS 'Push then'). Scope: docs/DECISIONS.md + the AGENTS.md compass amendment line only. Adds D-169 (open-first directory), D-170 (keyword job search), D-171 (cross-company verified switch preserving the draft), D-172 (automatic device-saved sign-in prompt with native-flow guardrails), D-173 (buyer-facing 'referrals' terminology + plan allowance/extras structure). Supersession limited to the 'credits' name (wording only); no price, count, SKU, security or auth-mechanism content decided; unresolved allowances/prices/level-cost stay open. D-168 is claimed on agent/claude/ceo-oct23-release-rows, so numbering starts at D-169."
+   "note": "Owner instruction (iMessage phonemsg-01M5MYS5WDHAMNZ7TF602GTK65 'Push the decisions as instructions' + phonemsg-01M5MYSQVDTXCYGCPBR001P7Q9 'So old decisions are updated' + phonemsg-01M5MZ7J6YYH3ZRBJNKT6TCZJS 'Push then'). Scope: docs/DECISIONS.md + the AGENTS.md compass amendment line only. Adds D-169 (open-first directory), D-170 (keyword job search), D-171 (cross-company verified switch preserving the draft), D-172 (automatic device-saved sign-in prompt with native-flow guardrails), D-173 (buyer-facing 'referrals' terminology + plan allowance/extras structure). Supersession limited to the 'credits' name (wording only); no price, count, SKU, security or auth-mechanism content decided; unresolved allowances/prices/level-cost stay open. D-168 is claimed on agent/claude/ceo-oct23-release-rows, so numbering starts at D-169. Done: #599, merged 2026-10-23; set by D-210 (8) because the picker no longer saw the landing and handed the row out again."
   },
   {
    "id": "D-166-journey-decisions-sync",
@@ -2885,7 +2919,7 @@
    "row": "D-179",
    "packet": null,
    "tier": 2,
-   "lane": "process",
+   "lane": "d179-docs",
    "branch": "agent/coordinator/ats-referral-validation",
    "status": "in-review",
    "dependsOn": [],

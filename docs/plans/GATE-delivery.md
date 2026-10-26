@@ -1,83 +1,185 @@
-# Packet GATE: nothing broken reaches `main` (D-192)
+# Packet GATE: nothing broken reaches `main` (D-210)
 
-> Read [`docs/BRIEF.md`](../BRIEF.md), [`ENTERPRISE-PIPELINE.md`](ENTERPRISE-PIPELINE.md) and [`PROCESS-gates.md`](PROCESS-gates.md) first. Written by Claude Code as CEO (D-085, D-192) on Oct 24 2026 against `main` `02a8a028`. D-166 already enforces one door to `main` (`PROCESS-queue-gate`) and an independent Tier 1 pass on the exact head (`PROCESS-review-gate`); this packet adds the tester, QA and status-board roles on top. Several tasks share this packet (D-134): the picker hands out one at a time; do only the task it prints, and write your status line in the Status section at the end. Line numbers drift: find each function by name first. The register wins any conflict.
+> Read [`docs/BRIEF.md`](../BRIEF.md), [`ENTERPRISE-PIPELINE.md`](ENTERPRISE-PIPELINE.md) and [`PROCESS-gates.md`](PROCESS-gates.md) first. Written by Claude Code as CEO (D-085, D-210) on Oct 26 2026. D-166 already enforces one door to `main` (`PROCESS-queue-gate`, live) and an independent Tier 1 pass on the exact head (`PROCESS-review-gate`); this packet adds the tester, QA and status-board roles on top. Several tasks share this packet (D-134): the picker hands out one at a time; do only the task it prints, and write your status line in the Status section at the end. Line numbers drift: find each function by name first. The register wins any conflict.
+
+| Field | Value |
+|---|---|
+| Verified against | `main` `927dfaca`, register through D-206, on 2026-10-26; every fact below was re-checked by an independent read-only review that day |
+| Decisions | D-210 (this packet), D-200, D-205, D-166, D-151, D-134, D-082 |
 
 ## Rules for every task here
 1. **A gate is a machine check.** It reads git, the PR or a marker. It never trusts a sentence in a PR body, except the one this packet names (the "Ported assertions" table).
-2. **Fast.** Each new check finishes in under a minute, except the e2e job (under 8 minutes, in parallel with the others). A docs-only PR passes each check at once. Never put a workflow `paths:` filter on a check that may become required: a filtered required check stays pending forever.
-3. **Fail closed on a definite breach, open on a broken tool**, as `scripts/scope-check.mjs` does: a check that cannot run warns and passes; a check that finds a breach fails.
-4. **Required checks need the owner's word** (D-192 (6)). Each task lands its check as a CI step or job; the CEO asks the owner to add it to ruleset 25433342 once it has been green on `main` for 3 days.
-5. Red-first tests; the gate on your commit merged with `origin/main`; CI green on the exact head; land through the merge-commit button (`main-protection` requires a pull request; never squash or rebase; no admin bypass, D-200), which deletes the head branch; delete your marker branches after landing (D-205, D-192 (5)).
+2. **Fast.** Each new check finishes in under a minute, except the e2e job, which runs in parallel with the others and takes under 10 minutes. A docs-only PR passes each check at once. Never put a workflow `paths:` filter on a check that may become required: a filtered required check stays pending forever.
+3. **Fail closed on a definite breach, open on a broken tool**, as `scripts/scope-check.mjs` does. A check that cannot run warns and passes; a check that finds a breach fails.
+4. **Required checks need the owner's word** (D-210 (6)). Each task lands its check as a CI step or job; once it has been green on `main` for 3 days, any session asks the owner to add it to ruleset 25433342.
+5. **Speed first** (D-200 (4)). Tier 2 and 3 land on green required CI with no separate review. Tier 1 keeps one independent review by a model that neither built nor fixed the work (D-151). Nothing in this packet adds a second pre-landing approval.
+6. **Landing.** Red-first tests; the gate on your commit merged with `origin/main`; CI green on the exact head.
+   - Land with GitHub's merge-commit button (`gh pr merge <number> --merge`; never `--admin`, `--squash` or `--rebase`, D-134 (6), D-200), even though the picker's printed step still says `git push origin <sha>:main` until BRANCH-HYGIENE-2 rewrites it.
+   - In the landing pull request, set this row's `status` to `done` in `docs/plans/assignments.json`: the merge button deletes the branch, and the picker sees only the newest 100 closed pull requests.
+   - After the live check, delete your review lock and heartbeat (D-205 rule 3).
+7. **Nothing waits for one session** (D-200 (2)). Where a step says "report", push your branch and `--report blocked`; any other session may amend this packet, widen a row's `owns` or correct its tier.
 
 ## GATE-test-integrity: tests can be added, not quietly removed (lane `ci-checks`, Tier 2)
-**Why.** #431 removed 107 `expect(` lines from `client/src/pages/ask.test.tsx` and added 49 (`git diff d3da2497^1 d3da2497`); #426 deleted the test that pinned the `/queue` attestation. Both PRs went green and shipped live regressions (`LIVE-OCT22-regressions.md`). No check counts assertions.
+**Why.** #431 removed 107 `expect(` lines from `client/src/pages/ask.test.tsx` and added 49 (`git diff d3da2497^1 d3da2497`). #426 deleted the assertions that pinned the `/queue` attestation. Both PRs went green and shipped live regressions (`LIVE-OCT22-regressions.md`). No check counts assertions.
 
-**What.** `scripts/test-integrity.mjs` (I/O) and `scripts/testIntegrityCore.mjs` (pure), run as a new step "Test integrity" in the `typecheck` job of `.github/workflows/ci.yml`, on `pull_request` events only. It diffs the PR head against its merge base with `origin/main` and fails when:
+**What.** `scripts/test-integrity.mjs` (I/O) and `scripts/testIntegrityCore.mjs` (pure). It runs from `scripts/scope-check.mjs` next to `runQueueGate()`, so the required `typecheck` job runs it with no workflow edit (D-166 (2)), and only for a pull request: it reads `GITHUB_EVENT_PATH`, and with no `pull_request` in the event it passes at once. It fetches `origin/main` itself, as `scripts/scope-check.mjs` does, diffs the PR head against its merge base, and fails when:
 1. a `*.test.ts` or `*.test.tsx` file is deleted or renamed away, unless the task's `owns` names it (the scope check's retirement rule);
 2. a changed test file adds `.only(`;
 3. a changed test file adds `.skip(`, `.todo(`, `it.skip`, `test.skip`, `describe.skip` or `xit(`;
-4. a changed test file ends with fewer assertion lines than it started with (lines matching `expect(` or `assert`), unless the PR body has a table under the heading `Ported assertions` with a row naming that file and where each removed assertion now lives (D-136 (2)(b));
-5. a **pinned** test file loses any assertion line at all, table or not, unless a commit on the branch carries `test-integrity: <file> — D-<n>` naming the decision that changed the rule. The pinned files are one exported list in `scripts/testIntegrityCore.mjs`: `client/src/pages/loginRule.test.tsx`, `client/src/pages/signIn.test.tsx`, and every `server/*.test.ts` whose name contains `creditLedger`, `dailyMoneyCheck`, `payment`, `refund` or `chargebee`.
+4. a changed test file ends with fewer assertion lines than it started with (lines matching `expect(` or `assert`), unless the PR body has a table under the heading `Ported assertions` with a row that names the file and says where each removed assertion now lives (D-136 (2)(b));
+5. a **pinned** test file loses any assertion line at all, table or not, unless a commit on the branch carries `test-integrity: <file> — D-<n>`, naming the decision that changed the rule. The pinned files are one exported list in `scripts/testIntegrityCore.mjs`:
+   - `client/src/pages/loginRule.test.tsx`;
+   - `client/src/pages/signIn.test.tsx`;
+   - every `server/*.test.ts` whose name contains `creditLedger`, `dailyMoneyCheck`, `payment`, `refund` or `chargebee`.
 
-The PR body reaches the script through the event file at `GITHUB_EVENT_PATH` (`pull_request.body`); never interpolate the body into a shell line. Add the `Ported assertions` heading to `.github/pull_request_template.md` with one sentence on when to fill it.
+**The PR body.** The script reads it from the event file at `GITHUB_EVENT_PATH` (`pull_request.body`). A re-run replays the original event, so a table added after a red run takes effect with the next push; an empty commit is fine. Never interpolate the body into a shell line. Add the `Ported assertions` heading to `.github/pull_request_template.md`, with one sentence on when to fill it and the note about pushing again.
 
-**Tests** (red first, `scripts/testIntegrity.test.ts`, on diff-text fixtures): each of rules 1-5 fails on its case and passes on its control; a PR that only adds tests passes; a moved assertion with a table row passes rule 4 but not rule 5; a docs-only diff passes at once.
+**Tests** (red first, `scripts/testIntegrity.test.ts`, on diff-text fixtures):
+- Each of rules 1-5 fails on its case and passes on its control.
+- A PR that only adds tests passes.
+- A moved assertion with a table row passes rule 4 but not rule 5.
+- A docs-only diff passes at once.
+- A push to `main` (no `pull_request` in the event) passes at once.
 
-**Owned paths.** `scripts/test-integrity.mjs`, `scripts/testIntegrityCore.mjs`, `scripts/testIntegrity.test.ts` (new), `.github/workflows/ci.yml` (one step), `.github/pull_request_template.md` (one heading). **Done:** tests, CI green with the new step running on this very PR, landed.
+**Owned paths.** `scripts/test-integrity.mjs`, `scripts/testIntegrityCore.mjs`, `scripts/testIntegrity.test.ts` (new), `scripts/scope-check.mjs (switch only)`, `.github/pull_request_template.md` (one heading).
 
-## GATE-e2e-journeys: the core journeys run in a real browser on every PR (lane `e2e`, Tier 2, after GATE-test-integrity, which also edits `ci.yml`)
-**Why.** CI runs Vitest only. Both Oct 22 regressions crossed pages and sign-in, which unit tests did not see. Playwright 1.62.1 is already a devDependency (`package.json`); only `scripts/kit-screens/capture.mjs` and `scripts/live-flow-audit.mjs` use it, and no workflow runs either.
+**Done:**
+- Tests pass, and CI is green with the check running on this very PR.
+- Landed.
+
+## GATE-e2e-journeys: the core journeys run in a real browser on every PR (lane `e2e`, Tier 2)
+**Why.**
+- **Unit tests did not see them.** CI runs Vitest only, and both Oct 22 regressions crossed pages and sign-in.
+- **Nothing runs Playwright.** Playwright 1.62.1 is already a devDependency (`package.json`), and its test runner ships inside it (`playwright/test`). Five scripts use it (`scripts/kit-screens/capture.mjs`, `scripts/live-flow-audit.mjs`, `design/goal-ui/tools/render.mjs`, `design/goal-ui/tools/capture-live.mjs`, `design/goal-ui/pick/src/gate.mjs`), and no workflow runs any of them.
+- **No migration check before production.** The first time a deploy migration runs against MySQL is `migrate-db` in the production deploy.
 
 **What.**
-1. `e2e/` (new): `e2e/playwright.config.ts` with `testMatch: "*.e2e.ts"` (Vitest's include list is explicit, so it never collects them), one `e2e/<journey>.e2e.ts` per journey, and `scripts/e2e-server.mjs`. CI runs `pnpm build`; the script then starts the server on a free port with no `DATABASE_URL` (the in-memory store), no WorkOS keys (the dev sign-in plane, `registerDevAuthRoutes`), and test values for `JWT_SECRET` and `VITE_APP_ID=skipwait`, and seeds the data the journeys need through the app's own seed or API, never by writing rows by hand. If the production build cannot run with the dev sign-in plane, run the dev server instead and say why in the PR.
-2. **Journeys** (each also fails on any console error or any 5xx response during the run):
+1. **A real database.** There is no in-memory store at runtime: `getDb()` in `server/db.ts` returns null without `DATABASE_URL`, its functions then throw "Database unavailable", and `/api/dev-auth/login` answers 503. The job runs a `mysql:8.0` service container, free on GitHub Actions. It builds the schema the way production has it:
+   - `pnpm exec drizzle-kit migrate` for `drizzle/*.sql`;
+   - then `scripts/apply-deploy-migrations.sh` with `DB_HOST=127.0.0.1`, `DB_USER=root`, `DB_NAME=skipwait` and `MYSQL_PWD` set to the service password, run **twice**. The second run must apply nothing, which proves the deploy migrations are safe to repeat; this replaces the separate migration-apply row.
+   - If the migrations do not apply from an empty database, use `pnpm exec drizzle-kit push`, say so in the PR, and leave `GATE-migration-apply` open.
+2. **The server.**
+   - Run `pnpm build`, then start `node dist/index.js` with:
+     - `NODE_ENV=test` (under `NODE_ENV=production` with no WorkOS keys, `workosConfigured()` throws at boot);
+     - `DATABASE_URL` pointing at the service;
+     - no WorkOS keys, so the dev sign-in plane `registerDevAuthRoutes` is on;
+     - test values for `JWT_SECRET`, and `VITE_APP_ID=skipwait`.
+   - Seed with `scripts/seed-test-accounts.ts`, which creates a seeker, a verified referrer and an admin, and with the app's own API. Never write rows by hand.
+   - Journeys sign in by POSTing to `/api/dev-auth/login` or with the seeded sessions.
+3. **The specs.** `e2e/playwright.config.ts` with `testMatch: "*.e2e.ts"` (Vitest's include list is explicit, so it never collects them), one `e2e/<journey>.e2e.ts` per journey, and `scripts/e2e-server.mjs` for steps 1 and 2. Import `{ test, expect }` from `playwright/test`, never from `@playwright/test`, which is not a dependency.
+4. **Journeys.** Each also fails on any page error or any 5xx response during the run.
    - **A personal link survives sign-in.** Open a referrer's personal link signed out, write the request, press Send, sign in on the dev plane, and assert the request's POST carries `fastTrackCode` (P0-ask-link-signin).
-   - **The attestation is shown before Accept.** As a verified referrer on `/queue`, select a request: the line "By accepting, you confirm you'll refer only through {company}'s official process." is visible, and Accept posts `ethicsConfirmed: true`; Pass never does (P1-queue-attestation). Mark this spec `test.fixme("P1-queue-attestation")` until that row lands, and switch it on in that row's PR or the one after.
+   - **The attestation is shown before Accept.** As a verified referrer on `/queue`, select a request. The line "By accepting, you confirm you'll refer only through {company}'s official process." is visible, Accept posts `ethicsConfirmed: true`, and Pass never does. P1-queue-attestation is live (`client/src/pages/MyCompanyInbox.tsx`), so this journey runs from the first PR.
    - **The cost is shown before every request.** The compose screen shows the cost line before Send.
-   - **Withdraw returns the credit.** Send a request, withdraw it before pickup, and the balance goes back up by one.
+   - **Withdraw returns the referral.** Send a request and withdraw it before pickup. The balance, read as the screen labels it ("referrals", D-180), goes back up by the cost the compose screen quoted.
    - **Referrers sign in with a work email only.** `/sign-in` with "Give a referral" offers the work-email code and no social or personal-email option (the login rule, D-030).
    - **Plans read the server catalog.** `/plans` shows the prices `/api/plans/catalog` returns.
-3. A job `e2e journeys` in `.github/workflows/ci.yml` (`pnpm exec playwright install --with-deps chromium`, browser cached), on `pull_request` and on `push` to `main`. On failure it uploads the Playwright trace and screenshots as an artifact.
-4. `package.json`: one script line `"e2e": "playwright test -c e2e/playwright.config.ts"`. No new dependency.
+5. **CI.** A job `e2e journeys` in `.github/workflows/ci.yml` runs on `pull_request` and on `push` to `main`.
+   - It runs `pnpm exec playwright install --with-deps chromium`, with the browser cached.
+   - Its first step exits green when the diff touches only `docs/**` or `*.md` (rule 2; no `paths:` filter).
+   - On failure it uploads the Playwright trace and screenshots as an artifact.
+6. **`package.json`:** one script line, `"e2e": "playwright test -c e2e/playwright.config.ts"`. No new dependency.
 
 **Tests.** The journeys are the tests. Prove each catches its bug: in the PR, link a CI run where the personal-link journey fails against a throwaway branch that reverts the P0 fix (never pushed to `main`), next to the green run.
 
-**Owned paths.** `e2e/`, `scripts/e2e-server.mjs`, `.github/workflows/ci.yml` (the new job only), `package.json` (one script line). The `AGENTS.md` "Validation commands" text goes at the end of your done line here (`— map: ...`); the CEO folds it in. **Done:** six journeys green on `main` (the attestation one after P1-queue-attestation), the red run linked, the job under 8 minutes.
+**Owned paths.** `e2e/`, `scripts/e2e-server.mjs`, `.github/workflows/ci.yml` (the new job only), `package.json` (one script line). The `AGENTS.md` "Validation commands" text goes at the end of your done line here (`— map: ...`); any session folds it in.
+
+**Done:**
+- Six journeys green on `main`, with the red run linked.
+- The deploy migrations applied twice.
+- The job under 10 minutes.
 
 ## GATE-tier-floor: the tier is computed from the paths, not only declared (lane `process`, Tier 2, after PROCESS-review-gate)
-**Why.** `PROCESS-review-gate` (D-166) asks for an independent pass when a row is declared Tier 1. The tier is written by hand, and a money or sign-in change can sit in a row declared Tier 2. #415 (refund keys), #437 (password sign-in for reviewer accounts) and #439 (migration 0101) are Tier 1 by `docs/DELEGATION.md` §3 and merged within 13 minutes with no review.
+**Why.** `PROCESS-review-gate` (D-166) asks for an independent pass when a row is declared Tier 1, but the tier is written by hand. A money or sign-in change can sit in a row declared Tier 2. #415 (refund keys), #437 (password sign-in for reviewer accounts) and #439 (migration 0101) are Tier 1 by `docs/DELEGATION.md` §3, and each merged 5 to 13 minutes after opening, with no review.
 
 **What.**
-1. `scripts/tierClassifyCore.mjs` (pure): maps changed paths to a tier. Tier 1: `drizzle/**`, `server/creditLedger.ts`, `server/payments.ts`, `server/paymentWebhooks.ts`, `server/chargebee*.ts`, `server/paymentRefund*.ts`, `server/cardValidation.ts`, `server/dailyMoneyCheck.ts`, `server/coverageDelivery.ts`, `server/heldAsk.ts`, `server/_core/workosAuth.ts`, `server/_core/sdk.ts`, `server/_core/otpLogin.ts`, `server/_core/seekerEmailCode.ts`, `server/_core/context.ts`, `server/workEmailOtp.ts`, `server/referrerDocumentAccess.ts`, `server/blockedPairs.ts`, `shared/creditLedger.ts`, `shared/planCatalog.ts`, `shared/planFamily.ts`, `shared/moneyCopy.ts`, `shared/referrerPurchases.ts`, and the client sign-in and money surfaces (`client/src/components/*SignIn*.tsx`, `client/src/pages/Ask.tsx`, `client/src/pages/MyCompanyInbox.tsx`, `client/src/pages/Plans*.tsx`, `client/src/components/plans/**`). `server/db.ts` counts as Tier 1 when the diff touches a function whose name contains `credit`, `spend`, `refund`, `ledger`, `payment`, `wallet` or `grant`. Test files alone never raise the tier. Everything else under `server/`, `shared/` and `client/src/` is Tier 2; docs and packets alone are Tier 3. One exported constant, one comment per entry, so the CEO can amend it.
-2. `scripts/review-gate.mjs` uses the higher of the row's declared tier and the computed tier, and its failure message says which paths made the change Tier 1: "This change touches <paths>, which are Tier 1 (D-192). It needs an independent pass on its head; ask the CEO to correct the row's tier."
+1. **`scripts/tierClassifyCore.mjs`** (pure) maps changed paths to a tier, in one exported constant with a comment per entry, so any session can amend it. Test files alone never raise the tier.
+   - **Tier 1:**
+     - Database migrations: `drizzle/**`.
+     - Money and payments: `server/creditLedger.ts`, `server/payments.ts`, `server/paymentWebhooks.ts`, `server/chargebee*.ts`, `server/paymentRefund*.ts`, `server/cardValidation.ts`, `server/dailyMoneyCheck.ts`, `server/coverageDelivery.ts`, `server/heldAsk.ts`.
+     - Sign-in, sessions and identity: `server/_core/workosAuth.ts`, `server/_core/sdk.ts`, `server/_core/otpLogin.ts`, `server/_core/seekerEmailCode.ts`, `server/_core/context.ts`, `server/_core/reviewerLogin.ts`, `server/_core/devAuth.ts`, `server/_core/sessionRenewal.ts`, `server/passwordResetRoutes.ts`, `server/workosWebhooks.ts`, `server/workEmailOtp.ts`.
+     - Privacy: `server/referrerDocumentAccess.ts`, `server/referrerAskView.ts`, `shared/referrerAskView.ts`, `server/blockedPairs.ts`.
+     - Secrets: `src/worker.ts`, which forwards every secret.
+     - Shared money rules: `shared/creditLedger.ts`, `shared/planCatalog.ts`, `shared/planFamily.ts`, `shared/moneyCopy.ts`, `shared/referrerPurchases.ts`.
+     - Client sign-in and money surfaces: `client/src/components/*SignIn*.tsx`, `client/src/pages/*SignIn*.tsx`, `client/src/pages/Ask.tsx`, `client/src/pages/MyCompanyInbox.tsx`, `client/src/pages/Plans*.tsx`, `client/src/components/plans/**`.
+     - `server/db.ts`, when any added or removed line, or the name of the function a hunk sits in, matches `/credit|spend|refund|ledger|payment|wallet|grant|chargebee|tokenBalances|tokenTransactions|coverage|withdraw|referrerReviewEmailLinks|blocked/i`. A name-only rule misses `createCompanyReferralRequest` and `deliverWaitingAskTx`, which spend through `spendCreditsTx` (defined in `server/creditLedger.ts`).
+   - **Tier 2:** everything else under `server/`, `shared/`, `client/src/`, `functions/` and `.github/workflows/`.
+   - **Tier 3:** docs and packets alone.
+2. **`scripts/review-gate.mjs`** uses the higher of the row's declared tier and the computed tier. Its failure message says which paths made the change Tier 1: "This change touches <paths>, which are Tier 1 (D-210). It needs an independent pass on its head; correct the row's tier in docs/plans/assignments.json (any session, D-200 (2))."
 
-**Tests** (red first): the classifier on each listed path; a `server/db.ts` diff that touches `spendCreditsTx` (Tier 1) and one that does not (Tier 2); a tests-only diff; a docs-only diff (Tier 3); the review gate failing a declared Tier 2 row whose diff is Tier 1 by path, and passing it once an independent pass on the head exists.
+**Tests** (red first):
+- The classifier on each listed path.
+- #437's file list classifies as Tier 1.
+- A `server/db.ts` diff that changes a `spendCreditsTx(` call inside `createCompanyReferralRequest` is Tier 1, and one in an unrelated function is Tier 2.
+- A tests-only diff and a docs-only diff (Tier 3).
+- The review gate fails a declared Tier 2 row whose diff is Tier 1 by path, and passes it once an independent pass on the head exists.
 
-**Owned paths.** `scripts/tierClassifyCore.mjs`, `scripts/tierClassify.test.ts` (new), `scripts/review-gate.mjs`, `scripts/reviewGate.test.ts`. **Done:** tests, CI green, landed, and one real PR showing the message.
+**Owned paths.** `scripts/tierClassifyCore.mjs`, `scripts/tierClassify.test.ts` (new), `scripts/review-gate.mjs`, `scripts/reviewGate.test.ts`.
 
-## PICKER-qa-stage: a session that did not build it uses the change like a user (lane `process`, Tier 2, after GATE-e2e-journeys, GATE-tier-floor, D-048-F-harness, PROCESS-scorecard, PICKER-review-wording, PICKER-architect-landing and PICKER-fullstack-lights, which edit the same files)
-**Why.** Nobody checks a UI change at 1280 and 390, through its loading, empty and error states, against its approved comp, except the builder itself (AGENTS.md rule 8). The picker has no QA stage.
+**Done:**
+- Tests pass and CI is green.
+- Landed.
+- One real PR showing the message.
 
-**What.** A new pending kind `qa` in `scripts/nextTaskCore.mjs`, ranked with `review`, for a task whose open PR changes `client/src/pages/**` or `client/src/components/**`. It never goes to a model that built or fixed the work (D-151) and runs side by side with the review. The QA steps (`scripts/nextTaskText.mjs`): check out the PR head; run `pnpm e2e`; take captures at 1280 and 390 of every changed screen with the goal harness (`node scripts/kit-screens/capture.mjs --goal <ids> --viewport both`, fixtures only, never production data); walk the loading, empty, error and offline states, keyboard use and 390 overflow; compare with the approved comp in `design/goal-ui/` and the money lines with `shared/moneyCopy.ts`; post the captures and findings as one PR comment; push the marker `QA <id>: pass — <who>` or `QA <id>: findings — <who>` on `agent/review/<slug>`, with the body `reviewed <sha>` exactly as `PROCESS-review-gate` records verdicts. Findings become a `fix` like review findings. Speed first (D-200 (4)): `scripts/review-gate.mjs` requires a QA pass on the head only for a Tier 1 PR (the computed tier, GATE-tier-floor) that changes those paths. A Tier 2 or 3 UI PR lands on green CI; its QA stage is handed out after landing, within 24 hours, against the landed commit, and findings become fix rows the CEO queues.
+## PICKER-fullstack-lights: the board shows the lights, and a red live release holds every landing but its fix (lane `picker`, Tier 2, after REL-release-verify, REL-watchdog, PROCESS-review-gate, PICKER-review-wording, PICKER-architect-landing, PICKER-decision-sync and BRANCH-HYGIENE-2, which edit the same files)
+**Why.** The picker reads only `main`'s CI (`scripts/next-task.mjs`). A failed deploy, an unverified release, an outage or an overdue job never shows on the board, so agents keep landing features on top of a broken production. `PROCESS-scorecard` reports weekly; this is the live view.
 
-**Tests** (red first, `scripts/nextTask.test.ts` and `scripts/reviewGate.test.ts`): a UI PR gets a `qa` stage and a server-only PR does not; the builder's and fixer's models never get it; a QA pass on an older head does not count; QA and review go to two different sessions at once; the review gate fails a Tier 1 UI PR with a review pass but no QA pass, and does not hold a Tier 2 UI PR; a landed Tier 2 UI PR gets its post-landing QA stage.
+**What.**
+1. **`--status` prints**, for the live release, lights 1 to 7 of `ENTERPRISE-PIPELINE.md` §4:
+   - `main` CI;
+   - the newest Deploy API and Deploy Web runs on `main`;
+   - the API and web SHAs live (`/api/health` and the `git-commit` meta);
+   - `release/verified` on the web SHA;
+   - light 6: open issues titled `SkipWait DOWN` (REL-watchdog), plus `/api/health/jobs` (`ok`) once REL-heartbeats is live;
+   - light 7: open issues labelled `incident`.
+2. **A red light holds landings only.** Any red among lights 4 to 7 on the live SHA withholds every `land` hand-out except fix-main and the rows that fix that incident. Builds, reviews, fixes and packets continue (D-109, D-200). The fix is handed out first, as fix-main is today, and its steps tell the agent to revert the landed commit first when that release is code-only and the commit caused it.
+3. **An unreadable light** prints `unknown` and never holds anything by itself.
 
-**Owned paths.** `scripts/nextTaskCore.mjs`, `scripts/nextTaskText.mjs`, `scripts/nextTask.test.ts`, `scripts/review-gate.mjs`, `scripts/reviewGate.test.ts`, `docs/DELEGATION.md` (a QA checklist in §6). **Done:** tests, CI green, landed, and the first real QA marker on a UI PR.
+**Tests** (red first):
+- Each light's red, green and unknown state from fixture data.
+- A red light 5 withholds `land` but still hands out a build.
+- An unknown light holds nothing.
 
-## PICKER-fullstack-lights: the board shows all seven lights, and a red live release stops feature landings (lane `process`, Tier 2, after REL-release-verify, PROCESS-review-gate, PICKER-review-wording and PICKER-architect-landing, which edit the same files)
-**Why.** The picker reads only `main`'s CI (`scripts/next-task.mjs`). A failed deploy, an unverified release, an open outage or an overdue job never turns the board red, so agents keep landing features on top of a broken production. `PROCESS-scorecard` reports weekly; this is the live view.
+**Owned paths.** `scripts/next-task.mjs`, `scripts/nextTaskCore.mjs`, `scripts/nextTaskText.mjs`, `scripts/nextTask.test.ts`. The `AGENTS.md` rule 6 and "Agent work queue" text goes at the end of your done line here; any session folds it in.
 
-**What.** `--status` prints, for the live release, lights 1 to 7 of `ENTERPRISE-PIPELINE.md` §4: `main` CI; the newest Deploy API and Deploy Web runs on `main`; the API and web SHAs live (`/api/health`, the `git-commit` meta); `release/verified` on that SHA; open issues labelled `incident` or titled `API DOWN`; `/api/health/jobs` (`ok`, once REL-heartbeats is live). Any red among lights 4 to 7 makes `main` red for the picker exactly as red CI does today: only fix-main work is handed out, and its steps tell the agent to revert the landed commit first when that release is code-only and the commit caused it. A light the picker cannot read prints `unknown` and never turns `main` red by itself.
+**Done:**
+- Tests pass and CI is green.
+- Landed.
+- A `--status` print in the PR.
 
-**Tests** (red first): each light's red, green and unknown state from fixture data; a red light 5 hands out only fix-main; an unknown light hands out normal work.
+## PICKER-qa-stage: someone who did not build it uses the change like a user (lane `picker`, Tier 2, after GATE-e2e-journeys, GATE-tier-floor, D-048-F-harness and PICKER-fullstack-lights)
+**Why.** Nobody checks a UI change at 1280 and 390, through its loading, empty and error states, against its approved comp, except the builder itself (AGENTS.md rule 8).
 
-**Owned paths.** `scripts/next-task.mjs`, `scripts/nextTaskCore.mjs`, `scripts/nextTaskText.mjs`, `scripts/nextTask.test.ts`. The `AGENTS.md` rule 6 and "Agent work queue" text goes at the end of your done line here; the CEO folds it in. **Done:** tests, CI green, landed, and a `--status` print in the PR.
+**What.** The QA steps are written once, in `docs/QA-CHECKLIST.md` (new):
+- check out the head;
+- run `pnpm e2e`;
+- capture every changed screen at 1280 and 390 with the goal harness (`node scripts/kit-screens/capture.mjs --goal <ids> --viewport both`, fixtures only, never production data);
+- walk the loading, empty, error and offline states, keyboard use and 390 overflow;
+- compare with the approved comp in `design/goal-ui/` and the money lines with `shared/moneyCopy.ts`;
+- post the captures and findings as one PR comment.
 
-## GATE-migration-apply (architect, Tier 2): a migration runs against MySQL before production
-Today the first real run of a `drizzle/deploy/*.sql` file is `migrate-db` in the production deploy. Any agent writes the packet first (D-109): a CI job with a MySQL 8 service container that applies the deploy migrations to a database built from the current production schema, twice (the second run proves they are safe to repeat), and passes at once when `drizzle/**` did not change. The packet first establishes whether the migrations apply from an empty database or need a baseline snapshot (D-100 mentions a production schema baseline).
+They are used two ways, and neither adds a second approval (D-200 (4)):
+1. **A Tier 1 change** (the computed tier, GATE-tier-floor) that touches `client/src/pages/**` or `client/src/components/**`. The one independent review runs the QA steps. `scripts/nextTaskText.mjs`'s review step prints them, and the reviewer records the result in the same `Verdict` marker, so `scripts/review-gate.mjs` needs no separate QA marker.
+2. **A Tier 2 or 3 change** that touches those paths lands on green CI. A new kind `qa` is handed out after landing, within 24 hours, against the landed commit, never to a model that built or fixed the work (D-151).
+   - The QA session pushes `QA <id>: pass — <who>` or `QA <id>: findings — <who>` on `agent/review/<slug>`, with the body `reviewed <sha>` (the format `PROCESS-review-gate` uses).
+   - `scripts/next-task.mjs` gets a `--qa pass|findings` flag that pushes the marker, and reads each landed PR's changed files to decide whether it touched those paths.
+   - Findings become fix rows that any session queues.
 
-## Stop and ask
-A cited function no longer matches; a check would block a PR that follows every rule; a task needs a file outside its owned paths, a dependency or a paid service; a test you were given fails for another reason. Push your branch, `--report blocked` with the evidence, and end the session.
+**Tests** (red first, `scripts/nextTask.test.ts`):
+- A landed Tier 2 UI PR gets a `qa` stage; a server-only PR does not, and neither does a Tier 1 PR (its review covers it).
+- The builder's and fixer's models never get it.
+- A QA pass on an older commit does not count.
+- The Tier 1 review step prints the QA steps.
+
+**Owned paths.** `scripts/next-task.mjs` (the `--qa` flag, the `qa` claim and the PR file read), `scripts/nextTaskCore.mjs`, `scripts/nextTaskText.mjs`, `scripts/nextTask.test.ts`, `docs/QA-CHECKLIST.md` (new). A one-line link from `docs/DELEGATION.md` §6 is added by the next registry pull request.
+
+**Done:**
+- Tests pass and CI is green.
+- Landed.
+- The first real QA marker on a landed UI PR.
+
+## GATE-migration-apply (architect, Tier 2): only if the e2e job cannot apply the migrations from empty
+GATE-e2e-journeys applies the deploy migrations twice to MySQL. This row stays open only if that PR finds the migrations cannot apply from an empty database. In that case, any agent writes the packet from that PR's finding (a baseline snapshot of the production schema, D-100); otherwise the row is closed as done by GATE-e2e-journeys.
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
