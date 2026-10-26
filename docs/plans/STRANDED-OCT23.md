@@ -2,6 +2,8 @@
 
 > Read `docs/BRIEF.md` first, then this packet. Each section is one queue row. Every pull request here is already written: this packet is its review, fix-stage and landing brief, not a fresh build.
 
+> **D-216, D-218 (Oct 26):** the Oct 25 banded freeze supersedes the D-132 model, so the `D-132-item3` and `D-132-v2-checkout` sections below are history until each row's packet is rewritten (both rows are `architect`). Keep only the invariants that survive: an ask is charged exactly the accepted quote or answers 409 with nothing charged, and free referrals survive an upgrade (D-165 (3)) unless the banded review rules otherwise.
+
 | Field | Value |
 |---|---|
 | Decisions | D-163 (4), D-074, D-151, the Oct 23 merge-policy amendment (`docs/DECISIONS.md`) |
