@@ -56,3 +56,5 @@ jsdom cannot scroll, so attach real-viewport proof to the pull request:
 - [ ] Required CI is green on the exact head, and the row is set to `done`.
 
 ## Status
+
+- SHELL-focus-clearance: claimed (f33e2a99, Instinct Agent · 23bd, Oct 26 14:16 UTC+5:30) - but the claim needs owner disposition, work held: the picker's first claim run in this session pushed an accidental claim marker for LAUNCH-live-qa (22b82faf on agent/queue/launch-live-qa, Oct 26 14:14) before `--avoid` was added, and the picker has no release verb for build claims, so this session now holds two claims and its own picks are wedged behind LAUNCH-live-qa until that marker decays or the owner clears it. LAUNCH-live-qa is untouched (its branch carries only the marker commit on top of main). Owner question: what is the correct recovery - owner-side clear of the accidental marker, let it go quiet, or a picker release verb? Release-gap recorded for the queue owner; no rules changed. Red test and implementation are prepared locally and stay unpushed until the claim state is settled.
