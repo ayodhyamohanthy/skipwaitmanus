@@ -2,7 +2,7 @@
   "version": 1,
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
-  "updated": "2026-10-24",
+  "updated": "2026-10-26",
   "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks, except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
@@ -14,7 +14,9 @@
       "lane": "pricing",
       "branch": "agent/pricing/banded-plans-oct25",
       "status": "in-review",
-      "dependsOn": [],
+      "dependsOn": [
+        "D-048-F-credits"
+      ],
       "note": "Owner freeze Oct 25 19:31 (anchors in packet section 1). Built by Instinct sessions; PR #666. Next: green required CI on exact head, then one independent review by a non-Instinct model (D-151), then merge and deploy verification. Billing switch-on is separately gated and is NOT this row. Registered by an Instinct session under the capable-session clause (docs/DELEGATION.md) with Main's explicit authorization, registrar quiet.",
       "owns": [
         ".github/workflows/ci.yml",
@@ -51,7 +53,9 @@
       "lane": "matching",
       "branch": "agent/queue/first-look-24h-oct25",
       "status": "in-review",
-      "dependsOn": [],
+      "dependsOn": [
+        "D-132-audit"
+      ],
       "note": "Founder's explicit 24h rule makes the shipped 48h constant stale. Constant, comments, notification body, Ask composer copy and test pins repaired; the separate 48-hour claim lapse (shared/referral.ts, server/referralTimers.ts) is a different rule and unchanged. Built by an Instinct session; PR #672; 96/96 affected tests green. Needs green required CI on exact head + non-Instinct review (D-151) before merge.",
       "owns": [
         "shared/companyOpportunities.ts",
@@ -317,7 +321,9 @@
       "lane": "launch-legal",
       "branch": "agent/queue/launch-legal-copy",
       "status": "owner",
-      "dependsOn": [],
+      "dependsOn": [
+        "pricing-banded-plans-oct25"
+      ],
       "owns": [
         "client/src/pages/Terms.tsx",
         "client/src/pages/CancellationPolicy.tsx",
@@ -352,7 +358,9 @@
       "lane": "design-shell",
       "branch": "agent/queue/shell-focus-clearance",
       "status": "todo",
-      "dependsOn": [],
+      "dependsOn": [
+        "BRAND-OG-1"
+      ],
       "note": "Issue #642 (Instinct, 390x844 DPR2 QA): the /ask reason field and the conversation composer sit under the sticky 56px bottom bar on focus. Fix: data-goal-bottom-bar on the phone nav plus one scroll-padding-bottom rule in index.css (switch only). Desktop unchanged. Real-viewport proof on the PR; a session with no browser uses --avoid, never blocked.",
       "owns": [
         "client/src/components/goal/GoalShell.tsx",
@@ -369,7 +377,9 @@
       "lane": "launch-ci",
       "branch": "agent/queue/launch-marker-ci-skip",
       "status": "todo",
-      "dependsOn": [],
+      "dependsOn": [
+        "pricing-banded-plans-oct25"
+      ],
       "owns": [
         ".github/workflows/ci.yml",
         "scripts/ciMarkerSkip.test.ts"
@@ -813,7 +823,8 @@
         "D-048-fix-start-ask-handoff",
         "D-174-seeker-journey-build",
         "D-174-fix-post-binding",
-        "D-176-public-claims"
+        "D-176-public-claims",
+        "first-look-24h-oct25"
       ],
       "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row’s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
       "epic": "D-048-p3",
@@ -895,7 +906,9 @@
       "lane": "design-theme",
       "branch": "agent/queue/d048-dark-mode",
       "status": "todo",
-      "dependsOn": [],
+      "dependsOn": [
+        "BRAND-OG-1"
+      ],
       "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them.",
       "owns": [
         "client/src/styles/goalDark.css",
@@ -1411,7 +1424,7 @@
       "tier": 3,
       "lane": "design-check",
       "branch": "agent/queue/d048-f-coverage",
-      "status": "in-progress",
+      "status": "todo",
       "dependsOn": [
         "D-048-F-goal-check"
       ],
@@ -1419,8 +1432,7 @@
       "owns": [
         "scripts/goalUiCoverage.test.ts"
       ],
-      "note": "D-167 §6.3: fails on an unowned route or component, prints how many pages still import the kit. Owner assigned Oct 25 22:04 via Main: coverage worker on the bounded one-file lane (scripts/goalUiCoverage.test.ts only).",
-      "owner": "agent-01M5SYHV19PHDSSBATT9WFKFQV"
+      "note": "D-167 §6.3: fails on an unowned route or component, prints how many pages still import the kit. Owner assigned Oct 25 22:04 via Main: coverage worker on the bounded one-file lane (scripts/goalUiCoverage.test.ts only)."
     },
     {
       "id": "D-048-p3-w0-shell",
@@ -1617,7 +1629,8 @@
         "D-048-F-harness",
         "D-048-F-primitives",
         "D-048-P-seeker",
-        "D-048-F-goal-check"
+        "D-048-F-goal-check",
+        "BRAND-OG-1"
       ],
       "owns": [
         "client/src/pages/Assistants.tsx",
@@ -2432,7 +2445,8 @@
       "dependsOn": [
         "D-048-fix-post-copy",
         "POSTMERGE-oct22-fixes",
-        "D-132-audit"
+        "D-132-audit",
+        "first-look-24h-oct25"
       ],
       "note": "D-193 packet section 5.3 and ruling (5): builds D-061's never-built reconfirm-before-spend without its closure, in deliverWaitingAskTx (every delivery path). Transition events, no migration; in-app notice only (no D-060 email exists yet). ASK_RECONFIRM_ENABLED stays false until QA; D-174-expiry-clock-removal waits for this row. D-197: also waits for D-132-audit (both own server/db.ts, server/privateReferralRoutes.ts and shared/moneyCopy.ts; the money-core audit goes first, D-146).",
       "epic": "D-174",
@@ -2509,7 +2523,8 @@
         "D-176-availability-framing-removal",
         "D-048-fix-landing-flash-snapshot-v2",
         "D-048-F-static-frame",
-        "D-174-fix-post-binding"
+        "D-174-fix-post-binding",
+        "BRAND-OG-1"
       ],
       "note": "D-193 packet section 5.6. Production marks only skipwait and go-neutrinos open, while Home and the /explore description claim Wipro and TCS too. Copy only; dropping openToReferrals/openCount from the public payload waits for the D-189 journey packet (D-193 (6)).",
       "epic": "D-174",
@@ -2676,7 +2691,8 @@
       "branch": "agent/ayo9/send-ask-blocker-ux",
       "status": "todo",
       "dependsOn": [
-        "D-132-audit"
+        "D-132-audit",
+        "first-look-24h-oct25"
       ],
       "note": "D-199 registers legacy PR #596 (built by Instinct Agent; user report phonemsg-01M5MXNSDQ0VJMG8M3MVQWT8JF) under its existing branch. Scope: six files (packet section 3). No validation, eligibility, price, quote or send-contract change; new strings use D-180 vocabulary. Waits for D-132-audit (same composer files; money core first, D-146/D-197), then merges main. The branch drops its own copy of this row at merge-up. Tier 2: lands on green required CI (D-200).",
       "owns": [
@@ -2811,7 +2827,11 @@
       "lane": "security",
       "branch": "agent/queue/reviewer-isolation-oct25",
       "status": "todo",
-      "dependsOn": [],
+      "dependsOn": [
+        "D-174-pool-nudges",
+        "D-174-company-search",
+        "ASSIST-approval-cost"
+      ],
       "owns": [
         "server/_core/reviewerLogin.ts",
         "server/_core/reviewerIsolation.test.ts",
@@ -2842,11 +2862,14 @@
     },
     {
       "id": "BRAND-OG-1",
-      "branch": "agent/brand/og-refresh-oct25",
       "title": "Brand consistency: current V6-B/W1 OG image + repoint legacy lockup references",
-      "owner": "skipwait build and decision follow-through",
-      "status": "in-review",
+      "row": "LAUNCH",
+      "packet": null,
+      "tier": 2,
       "lane": "marketing",
+      "branch": "agent/brand/og-refresh-oct25",
+      "status": "in-review",
+      "dependsOn": [],
       "owns": [
         "client/index.html",
         "client/public/brand/og.png",
@@ -2871,8 +2894,7 @@
         "client/src/pages/GoalLandingV9.tsx",
         "client/src/pages/ReviewerSignIn.tsx"
       ],
-      "note": "Replaces superseded Oct-20 yellow-arc OG image with current V6-B/W1 lockup + frozen line 'Rule #1: Never cold-apply.'; repoints all UI references off legacy lockup assets. Legacy files kept (zero code refs after). Mandate: Main 2026-10-25 21:26 brand-consistency task. Follow-up: W1 casing fixed in 3 brand-slot text wordmarks (GoalShell rail, V9 footer bar, ReviewerSignIn masthead) per founder rule; BRIEF.md specifies style not casing.",
-      "packet": null
+      "note": "Replaces superseded Oct-20 yellow-arc OG image with current V6-B/W1 lockup + frozen line 'Rule #1: Never cold-apply.'; repoints all UI references off legacy lockup assets. Legacy files kept (zero code refs after). Mandate: Main 2026-10-25 21:26 brand-consistency task. Follow-up: W1 casing fixed in 3 brand-slot text wordmarks (GoalShell rail, V9 footer bar, ReviewerSignIn masthead) per founder rule; BRIEF.md specifies style not casing."
     }
   ]
 }
