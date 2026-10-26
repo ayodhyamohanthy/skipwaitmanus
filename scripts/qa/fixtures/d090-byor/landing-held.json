@@ -60,7 +60,7 @@
   ],
   "actionsWeb": [
     {
-      "click": "button:has-text(\"Take this ask\")"
+      "click": "button:has-text(\"Take this referral request\")"
     },
     {
       "wait": 500
@@ -68,7 +68,7 @@
   ],
   "actionsMobile": [
     {
-      "click": "button:has-text(\"Take this ask\")"
+      "click": "button:has-text(\"Take this referral request\")"
     },
     {
       "wait": 500
