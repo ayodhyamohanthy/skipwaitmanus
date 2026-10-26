@@ -80,7 +80,7 @@ A seeker who already knows someone at the company — a friend, a former colleag
 
 ## 4. Target behaviour (testable)
 
-All of it is behind `BYOR_LINK_ENABLED` (server) and `VITE_BYOR_LINK` (client), both off. With the flag off every new API answers **404** before any database read, no action renders, and `/r/:token` shows the unavailable state without a request. Every invite read, lock and write on a delivery path is flag-gated too (Oct 24 CEO handoff item (c), D-097; supersedes this section's earlier "not flag-gated" sentence): with the flag off, hand-off and the retry sweep issue no query or lock on `askInviteLinks`, and the `ask-invite-expiry` job returns at once. A reservation therefore exists only while the flag has been on; flipping it off releases the hold and the ask continues under ordinary delivery, while the link row itself is left for the sweep once the flag returns.
+All of it is behind `BYOR_LINK_ENABLED` (server) and `VITE_BYOR_LINK` (client), both off. With the flag off every new API answers **404** before any database read, no action renders, and `/r/:token` shows the unavailable state without a request. Every invite read, lock and write on a delivery path is flag-gated too (Oct 24 CEO handoff item (c), D-097; supersedes this section's earlier "not flag-gated" sentence): with the flag off, hand-off and the retry sweep issue no query or lock on `askInviteLinks`, and the `ask-invite-expiry` job returns at once. A reservation therefore exists only while the flag has been on; flipping it off releases the hold and the ask continues under ordinary delivery, while a withdrawal or a runtime expiry still closes any active link inside its own transaction.
 
 ### 4.1 The link
 
