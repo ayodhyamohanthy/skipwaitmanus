@@ -16,6 +16,9 @@ source (PR 563 review, P2).
   ("uses 1 of your open slots · 1 credit") moves to the referral wording.
 - `server/mcpServer.ts`: assistant-facing descriptions and the server
   `instructions` string say "referral cost" instead of "credit cost".
+- `client/src/components/developers/mcpTools.ts`: the Developers gallery
+  description for `propose_ask` says "where the referral cost is shown"
+  (client-visible copy; its test has no pin on this string).
 - `server/mcpRoutes.test.ts`: alignment only if a pin disagrees; tool names
   and the no-payment-verbs pin (:79) stay.
 - Internal identifiers never change: `creditCount`, `creditCost`,

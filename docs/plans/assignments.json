@@ -2665,9 +2665,10 @@
    "dependsOn": [
     "ASSIST-approval-cost"
    ],
-   "note": "PR 563 review (DeepSeek): the goal approval card forked creditsLabel because the shared source still says credits. D-180 (owner, Oct 23-24: public terminology is referral-only) is the app-wide call; this row does the shared-source half, behavior-preserving: format.ts creditsLabel renders 'N referral(s)', the kit ApprovalSheet inherits it (kit page files stay byte-identical), the pinned kit assertion in approve.test.tsx moves with it, and the assistant-facing MCP descriptions say 'referral cost'. Internal identifiers stay: creditCount/creditCost fields, tool names, /api/credits/* routes, MCP protocol fields. shared/moneyCopy.ts is explicitly OUT - it serves released surfaces (home), so its sweep is a separate launch-gated owner decision. After this lands, GoalApprovalCard drops its documented fork and imports the shared label (#563 follow-up).",
+   "note": "PR 563 review (DeepSeek): the goal approval card forked creditsLabel because the shared source still says credits. D-180 (owner, Oct 23-24: public terminology is referral-only) is the app-wide call; this row does the shared-source half, behavior-preserving: format.ts creditsLabel renders 'N referral(s)', the kit ApprovalSheet inherits it (kit page files stay byte-identical), the pinned kit assertion in approve.test.tsx moves with it, and the assistant-facing MCP descriptions (server/mcpServer.ts) and the client-side Developers gallery copy (mcpTools.ts: 'where the credit cost is shown') say 'referral cost'. Internal identifiers stay: creditCount/creditCost fields, tool names, /api/credits/* routes, MCP protocol fields. shared/moneyCopy.ts is explicitly OUT - it serves released surfaces (home), so its sweep is a separate launch-gated owner decision. After this lands, GoalApprovalCard drops its documented fork and imports the shared label (#563 follow-up).",
    "owns": [
     "client/src/components/assistants/format.ts",
+    "client/src/components/developers/mcpTools.ts",
     "server/mcpServer.ts",
     "server/mcpRoutes.test.ts",
     "client/src/pages/approve.test.tsx"
