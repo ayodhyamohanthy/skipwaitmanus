@@ -2,8 +2,8 @@
  "version": 1,
  "repo": "ayodhyamohanthy/skipwaitmanus",
  "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
- "updated": "2026-10-24",
- "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks, except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
+ "updated": "2026-10-26",
+ "rules": "Order is priority. Any capable session adds, removes or reorders tasks (D-200 (2): say why in the pull request), except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
  "tasks": [
   {
    "id": "P0-ask-link-signin",
@@ -762,11 +762,11 @@
     "FIX-device-signin"
    ],
    "epic": "D-210",
+   "note": "D-210: SeekerSignIn.tsx is left to DEVICE-SIGNIN-passkeys, which rewrites that form and adopts apiFetch there.",
    "owns": [
     "client/src/lib/apiFetch.ts",
     "client/src/lib/apiFetch.test.ts",
     "client/src/main.tsx",
-    "client/src/components/SeekerSignIn.tsx (switch only)",
     "client/src/components/WorkEmailSignIn.tsx (switch only)",
     "client/src/components/ReferrerOtpSignIn.tsx (switch only)",
     "client/src/components/plans/PendingCheckoutReturn.tsx (switch only)"
@@ -2974,6 +2974,31 @@
     "server/agedOutCoverageGap.evidence.test.ts"
    ],
    "note": "Evidence-only test (local 2/2 PASS, Oct 24 5:36 IST): a paid checkout older than PENDING_MAX_AGE_MS is invisible to the reconcile job, so no alert fires. Grounds the repair proposal for todo-01M5K14ZT8K9BS7QPZ7WFQMVC1. Test file only, no runtime change. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact."
+  },
+  {
+   "id": "DEVICE-SIGNIN-passkeys",
+   "title": "Device-saved sign-in: passkeys on skipwait.me and the automatic device prompt (D-172, D-209)",
+   "row": "D-172",
+   "packet": "docs/plans/DEVICE-SIGNIN-passkeys.md",
+   "tier": 1,
+   "lane": "auth-device",
+   "branch": "agent/queue/device-signin-passkeys",
+   "status": "owner",
+   "dependsOn": [
+    "FIX-device-signin"
+   ],
+   "owns": [
+    "client/src/components/SeekerSignIn.tsx",
+    "client/src/pages/SignIn.tsx",
+    "client/src/pages/GoalSignIn.tsx",
+    "client/src/lib/passkeys.ts",
+    "client/src/lib/passkeys.test.ts",
+    "server/passkeys.ts",
+    "server/passkeys.test.ts",
+    "server/passkeyRoutes.ts",
+    "server/passkeyRoutes.test.ts"
+   ],
+   "note": "D-209 (1): the device-saved sign-in the owner asked for (D-172, docs/DEVICE-SIGNIN-REQUIREMENTS.md) never rides a sign-in fix's branch. Mechanism approved by the owner Oct 25 (SimpleWebAuthn, MIT, native passkey sign-in on skipwait.me; no authkit.app, no paid provider, no forced prompt). Waits in owner status for D-209 (4): may a referrer add a passkey (default no, D-057), and is Sign in with Apple in (default no, D-030). Packet phases A-C only after those answers; phase D is blocked. Build extends owns in its own PR as D-200 (2) allows."
   }
  ]
 }

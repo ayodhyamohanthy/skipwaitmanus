@@ -312,7 +312,7 @@
 **Why.**
 - **Query and mutation errors.** React Query and mutation errors reach only `console.error` (`client/src/main.tsx`).
 - **HTML instead of JSON.** Errors containing "Unexpected token '<'" are dropped even there. That is the API answering HTML, which is what an outage looks like.
-- **Sign-in and checkout calls.** Many components call `fetch` without `readApiJson` (`client/src/lib/apiResponse.ts`), the sign-in forms and the checkout return among them (`client/src/components/SeekerSignIn.tsx`, `WorkEmailSignIn.tsx`, `ReferrerOtpSignIn.tsx`, `client/src/components/plans/PendingCheckoutReturn.tsx`).
+- **Sign-in and checkout calls.** Many components call `fetch` without `readApiJson` (`client/src/lib/apiResponse.ts`), the sign-in forms and the checkout return among them (`client/src/components/SeekerSignIn.tsx`, `WorkEmailSignIn.tsx`, `ReferrerOtpSignIn.tsx`, `client/src/components/plans/PendingCheckoutReturn.tsx`). `SeekerSignIn.tsx` is left to DEVICE-SIGNIN-passkeys, which rewrites that form and adopts `apiFetch` there.
 - **The result.** A seeker whose code send fails sees an error and leaves, and nothing is recorded. The row waits for FIX-device-signin, which edits the same sign-in forms.
 
 **What.**
@@ -320,7 +320,7 @@
    - It reports to `captureClientError` a 5xx, an HTML body where JSON was expected, and a network failure, at most once per route per page load.
    - It tags each report with a route template that `apiFetch` builds itself: the query is dropped, and every path segment that is all digits, or 16 or more characters of `[A-Za-z0-9_-]`, becomes `:id`. The existing `scrubSentryUrl` only redacts four page-link prefixes, not API paths.
 2. **`client/src/main.tsx`:** send React Query and mutation errors that are not a 4xx to `captureClientError`, and report the "Unexpected token '<'" case as `api_html_response` instead of dropping it.
-3. **Four components:** use `apiFetch` in the four components above.
+3. **Three components:** use `apiFetch` in `WorkEmailSignIn.tsx`, `ReferrerOtpSignIn.tsx` and `PendingCheckoutReturn.tsx`.
    - Their requests, bodies, responses and screens stay exactly the same.
    - The login-rule pins (`client/src/pages/loginRule.test.tsx`, `client/src/pages/signIn.test.tsx`) stay green untouched.
 
@@ -329,9 +329,9 @@
 - It returns or throws exactly what `fetch` did.
 - A 400 is not reported.
 - The route tag carries no token or id.
-- The four components' existing tests pass unchanged.
+- The three components' existing tests pass unchanged.
 
-**Owned paths.** `client/src/lib/apiFetch.ts` and its test (new), `client/src/main.tsx` (the error handlers only), and the four components (the `fetch` call only, switch only).
+**Owned paths.** `client/src/lib/apiFetch.ts` and its test (new), `client/src/main.tsx` (the error handlers only), and the three components (the `fetch` call only, switch only).
 
 **Done:**
 - Red-first tests pass and CI is green.
