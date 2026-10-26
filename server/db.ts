@@ -2806,6 +2806,8 @@ async function listDeliverableWaitingAsksTx(tx: LedgerTx, input: { companyDomain
 
 /** Live asks reserved for this employee go ahead of the ordinary oldest-first queue. */
 async function listReservedWaitingAsksForReferrerTx(tx: LedgerTx, input: { referrerId: number; companyDomain: string; nowMs: number; limit: number }): Promise<Array<{ id: number; jobSeekerId: number }>> {
+  // D-097: with BYOR off, ordinary hand-off must not read or lock invite rows (D-090 review, Oct 24).
+  if (process.env.BYOR_LINK_ENABLED !== "true") return [];
   return tx.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId }).from(askInviteLinks)
     .innerJoin(referralRequests, eq(referralRequests.id, askInviteLinks.referralRequestId)).innerJoin(jobs, eq(jobs.id, referralRequests.jobId))
     .where(and(eq(jobs.company, input.companyDomain), eq(askInviteLinks.status, "claimed"), eq(askInviteLinks.claimedByUserId, input.referrerId), gt(askInviteLinks.reservationExpiresAt, new Date(input.nowMs)), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, true), isNull(referralRequests.referrerId)))

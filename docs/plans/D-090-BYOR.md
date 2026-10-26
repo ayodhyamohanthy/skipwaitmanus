@@ -80,7 +80,7 @@ A seeker who already knows someone at the company — a friend, a former colleag
 
 ## 4. Target behaviour (testable)
 
-All of it is behind `BYOR_LINK_ENABLED` (server) and `VITE_BYOR_LINK` (client), both off. With the flag off every new API answers **404** before any database read, no action renders, and `/r/:token` shows the unavailable state without a request. The reservation guard in §4.6 is **not** flag-gated: a reservation already made must keep holding the ask if the kill switch is flipped off.
+All of it is behind `BYOR_LINK_ENABLED` (server) and `VITE_BYOR_LINK` (client), both off. With the flag off every new API answers **404** before any database read, no action renders, and `/r/:token` shows the unavailable state without a request. Every invite read, lock and write on a delivery path is flag-gated too (Oct 24 CEO handoff item (c), D-097; supersedes this section's earlier "not flag-gated" sentence): with the flag off, hand-off and the retry sweep issue no query or lock on `askInviteLinks`, and the `ask-invite-expiry` job returns at once. A reservation therefore exists only while the flag has been on; flipping it off releases the hold and the ask continues under ordinary delivery, while the link row itself is left for the sweep once the flag returns.
 
 ### 4.1 The link
 
@@ -152,7 +152,7 @@ Terminology (Oct 24): user-facing copy is referral-only per D-180 (settled; docs
 - **In scope (edit only these):**
   - New: `drizzle/deploy/0111_ask_invites.sql`, `shared/askInvites.ts`, `server/askInvites.ts`, `server/askInviteRoutes.ts`, `server/askInviteSweep.ts`, `client/src/components/requests/AskInviteSheet.tsx`, `client/src/components/requests/askInviteApi.ts`, `client/src/pages/AskInviteLink.tsx`, and their tests.
   - `drizzle/schema.ts` (new table only), `server/schemaReconcile.ts` (table, unique indexes, FK).
-  - `server/db.ts` (**surgical only**): `deliverWaitingAskTx`, `listDeliverableWaitingAsksTx`, `tryDeliverWaitingAsk`, the close hooks in `withdrawCompanyReferralRequest` and `expireStalePendingReferralRequest`, and the assignment hook at the end of `deliverWaitingAskTx`. No other function body.
+  - `server/db.ts` (**surgical only**): `deliverWaitingAskTx`, `listDeliverableWaitingAsksTx`, `listReservedWaitingAsksForReferrerTx` (the reserved-first helper this packet adds), `tryDeliverWaitingAsk`, the close hooks in `withdrawCompanyReferralRequest` and `expireStalePendingReferralRequest`, and the assignment hook at the end of `deliverWaitingAskTx`. No other function body.
   - `server/coverageDeliverySweep.ts` only if the reserved-ask routing needs it (preferred: keep it in `tryDeliverWaitingAsk`).
   - `server/privateReferralRoutes.ts` (**mine payload only**, line ~1070 block); `server/_core/index.ts` (one registration line).
   - `shared/scheduledJobs.ts`, `server/scheduledJobRegistry.ts`.
@@ -279,6 +279,8 @@ Every commit leaves `pnpm check` and its focused tests green and is pushed. Do n
 Until answered, implement the recommended defaults above; they are changeable without touching money or privacy.
 
 ## Status
+
+D-090-BYOR: fix round (Qoder · 329f, Oct 26) — all four Oct 24 review items are fixed on `agent/claude/d090-byor`: D-180 referral vocabulary across the landing and sheet, with tests that reject the word "ask" on those surfaces; the money line "No credit is used until someone can see your referral request."; exactly one `claimed_by_you` message and the revoke footer hidden while its confirmation is open; and every invite read/lock on a delivery path plus the `ask-invite-expiry` job gated on `BYOR_LINK_ENABLED`, with flag-off hand-off and retry tests that fail if `askInviteLinks` is read. Not landed; flags off; awaiting the independent re-review named on PR #632. Status stays in the §3b row "D-090".
 
 D-090-BYOR: todo — D-162 (Oct 23): the owner's waiver stands and this row depends on nothing. workbuddy · b0eb's branch `agent/claude/d090-byor` holds C1 and the C2 token layer (`ecff975b`); its claim is free (quiet since 02:37 IST), so the picker hands out a takeover on that branch. From here, status goes in the §3b row "D-090". The lines below are history.
 
