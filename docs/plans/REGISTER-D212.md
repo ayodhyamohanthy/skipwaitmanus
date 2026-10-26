@@ -1,0 +1,65 @@
+# Packet REGISTER-D212: land the enterprise-pipeline ruling (D-212) after an independent review
+
+> Read `docs/BRIEF.md` first, then this packet. The pull request is already written: this packet is its build (merge-up), review and landing brief, not a fresh build. The REGISTER-520 pattern (`docs/plans/STRANDED-OCT23.md`) is the precedent.
+
+| Field | Value |
+|---|---|
+| Decisions | D-212 (on the branch), D-151, D-163 (4), D-199, D-200, the Oct 23 merge-policy amendment |
+| Row | `REGISTER-D212` (Tier 1, lane `register`) |
+| Pull request | draft PR from `agent/queue/register-d212` (cut from #623's head `a1303cd8`); #623 (`claude/enterprise-pipeline`) stays open and unmerged until this one lands |
+| Verified against | `main` `65674501` on 2026-10-26 |
+
+## What it holds
+Docs, decisions and the queue only, no product code:
+- **The ruling.** D-212 (enterprise discipline at startup speed: every role a picker stage or a machine check, the seven lights, a red live release holds every landing but its fix).
+- **The operating model.** `docs/plans/ENTERPRISE-PIPELINE.md`.
+- **Two packets.** `docs/plans/REL-production-watch.md` and `docs/plans/GATE-delivery.md`.
+- **18 queue rows.** REL-*, GATE-*, PICKER-fullstack-lights, PICKER-qa-stage and OPS-github-settings.
+- **Registry hygiene (D-212 (8)).**
+  - Six landed rows set to done: #530, #603, #619, #599, #586, #578.
+  - D-179-ats-validation moved to its own lane.
+  - Dependency edits on D-099-bonus-pages, D-174-pool-nudges and REL-client-capture.
+- **Doc updates.** Additions to the BRANCH-HYGIENE-2 packet, the first D-205 backlog-pass record, one sentence in `AGENTS.md` rule 5, a §3b row and a `docs/plans/README.md` section.
+
+## Who
+A Claude Code session wrote it, so the review goes to a model other than Claude and other than the builder of the merge-up (D-151, D-200 (4)). A Claude Code session handed this row's review posts no verdict and reports it blocked.
+
+## Build stage (merge-up only; nothing else)
+1. `git fetch origin`, check out `agent/queue/register-d212` in a worktree, `pnpm install`, then `git merge origin/main`. Never rebase or force-push.
+2. **`docs/DECISIONS.md`.** Keep every row `main` has, unchanged. If `main` now holds a D-212, give this branch's entry the next free ID across `main` and every open branch. Then replace every reference to D-212 in this branch's diff:
+   - the entry itself, `AGENTS.md` and the §3b row;
+   - `docs/plans/README.md`, the three packets and `docs/plans/BRANCH-HYGIENE.md`;
+   - the `row`, `epic`, `title` and `note` fields of this branch's rows in `docs/plans/assignments.json`.
+   Never change a reference that belongs to `main`'s own entry with that number.
+3. **`docs/plans/assignments.json`.** Keep `main`'s rows and edits. Re-apply this branch's rows and field edits where `main` did not change the same field; if `main` changed the same field, keep `main`'s value and say so in the PR. Keep `main`'s JSON formatting. Then run `validateAssignments` (it must print `[]`) and `node_modules/.bin/vitest run scripts/` (all pass).
+4. **`docs/BRIEF.md`.** It is untouched here; if the merge fails its size test, the fault is `main`'s, so report it.
+5. Push, make sure the draft pull request's required checks are green on the new head, and report `review`.
+
+## Review stage
+A model other than Claude and other than the merge-up builder reviews the pull request's exact head against current `main`. Packets are built exactly as written, so a wrong fact becomes wrong code. Check:
+1. **The resolved merge** on its own (the merge-policy amendment): nothing of `main` lost, no ID collision, `main`'s formatting kept.
+2. **Every factual claim** in D-212 and the three new docs, against the code, with file:line or command output. In particular:
+   - the workflow names and the expected-SHA rule in REL-release-verify (the web's newest successful deploy and `refs/tags/api-runtime`);
+   - the e2e server setup (a MySQL service, `NODE_ENV=test`, `scripts/seed-test-accounts.ts`, `scripts/apply-deploy-migrations.sh`);
+   - the watchdog probes (a malformed email answers 400 before any provider call);
+   - the 5xx capture wiring (`markErrorReported`, the tRPC `onError` flag, the `/api/health/*` skip);
+   - `isJobOverdue`, the review-email due rows (`pending`, `leased`, `failed` or `unknown`) and the link reuse;
+   - the Tier 1 path list.
+3. **Consistency with every newer decision**, D-200 to the newest. No second pre-landing approval. A red light holds only landings. Free tools only (D-204). Nothing waits for one session.
+4. **The queue.**
+   - `validateAssignments` prints `[]`.
+   - Each new row's `owns` covers every file its packet tells the builder to edit.
+   - No row waits for one that cannot finish.
+   - The six rows set to done really landed (`gh pr view <n>`).
+5. **Proof.** The numbers quoted carry their source.
+
+A finding is a claim the code or `main` does not support, or a rule a builder could not follow as written. Post findings on the pull request and push `--verdict findings`. The fix stage goes to any session other than the reviewer, and fixes carry their evidence. A pass is `--verdict pass` on the exact head.
+
+## Landing
+Docs only. The independent pass is on the exact head, the branch is up to date with `main`, and every required check is green on that exact commit. Land with the merge-commit button (`gh pr merge <number> --merge`; never `--admin`, `--squash` or `--rebase`). If `main` moved after the pass, merge `main` again: a clean merge of `main` keeps the pass (D-166 (2)), and any hand edit needs a new review. Set this row's `status` to `done` in the landing PR. After landing, comment on #623 that it was superseded by this pull request and leave closing it to the owner.
+
+## Stop and ask
+If a decision on the branch contradicts a newer one on `main`, report it blocked with both IDs; do not pick one. If the review finds that a packet's design needs an owner-reserved choice (D-200 (6): settings, tokens, accounts, the ruleset), report it blocked, naming the choice.
+
+## Status
+`REGISTER-D212: todo — the pull request exists; build stage = merge-up and checks`.

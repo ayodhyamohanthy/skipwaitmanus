@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ownerDirectWarning, queueGateViolation } from "./queue-gate.mjs";
 
-const NO_ROW = "This branch matches no queue row. Nothing merges to main outside the queue (D-166). Ask the CEO for a row in docs/plans/assignments.json, or work on the row's own branch.";
+const NO_ROW = "This branch matches no queue row. Nothing merges to main outside the queue (D-166). Register a row in docs/plans/assignments.json with a docs-only pull request (any session may, D-200), or work on the row's own branch.";
 const tasks = [{ id: "PROCESS-queue-gate", branch: "agent/queue/process-queue-gate" }];
 const check = (branch: string, changed: string[] = [], labels: string[] = [], rows = tasks) =>
   queueGateViolation({ tasks: rows, branch, changed, labels });
@@ -16,8 +16,8 @@ describe("PROCESS-queue-gate", () => {
     expect(check(`agent/${role}/process-queue-gate`)).toBeNull();
   });
 
-  it("passes a claude decision branch only when every changed path is a document", () => {
-    expect(check("claude/decision-sync", [
+  it.each(["claude/decision-sync", "agent/instinct/register-rows", "agent/cue/ruling"])("passes %s only when every changed path is a document (D-200: any session)", branch => {
+    expect(check(branch, [
       "docs/DECISIONS.md",
       "docs/plans/assignments.json",
       "README.md",
@@ -27,9 +27,13 @@ describe("PROCESS-queue-gate", () => {
     ])).toBeNull();
   });
 
-  it("rejects a claude branch that also changes product code or a nested .github file", () => {
-    expect(check("claude/decision-sync", ["docs/DECISIONS.md", "server/db.ts"])).toBe(NO_ROW);
-    expect(check("claude/decision-sync", [".github/nested/policy.md"])).toBe(NO_ROW);
+  it.each(["claude/decision-sync", "agent/instinct/register-rows"])("rejects %s when it also changes product code or a nested .github file", branch => {
+    expect(check(branch, ["docs/DECISIONS.md", "server/db.ts"])).toBe(NO_ROW);
+    expect(check(branch, [".github/nested/policy.md"])).toBe(NO_ROW);
+  });
+
+  it("does not pass an unregistered branch on an empty diff", () => {
+    expect(check("agent/instinct/register-rows", [])).toBe(NO_ROW);
   });
 
   it("passes a dependabot branch", () => {
