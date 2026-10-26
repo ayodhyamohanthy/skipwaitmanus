@@ -175,9 +175,9 @@ describe("passkey routes with the flag on (test env)", () => {
   });
 });
 
-describe("migration 0063 matches the schema it ships", () => {
+describe("deploy migration 0115 matches the schema it ships", () => {
   it("creates both tables with the credential-unique and lookup indexes", () => {
-    const sql = readFileSync(new URL("../../drizzle/0063_passkey_credentials.sql", import.meta.url), "utf8");
+    const sql = readFileSync(new URL("../../drizzle/deploy/0115_passkey_credentials.sql", import.meta.url), "utf8");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS `passkeyCredentials`");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS `passkeyChallenges`");
     expect(sql).toContain("UNIQUE INDEX `passkey_credential_id_unique` (`credentialId`)");
