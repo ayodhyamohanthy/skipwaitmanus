@@ -151,13 +151,13 @@
       "tier": 2,
       "lane": "launch-qa",
       "branch": "agent/queue/launch-live-qa",
-      "status": "todo",
+      "status": "owner",
       "dependsOn": [],
       "owns": [
         "docs/BUGFREE_GATE.md",
         "docs/qa/"
       ],
-      "note": "Rule 8 proof before any seeker is invited: the last signed-in QA is Oct 14-16, before /ask, /explore, /queue, /requests and /conversation were rebuilt in place. Needs a headed browser (a Claude Code session; Manus sessions have no Chromium) and one owner-forwarded work-email code. Never pay or pass the hosted payment form (D-065). Defects found become their own rows."
+      "note": "Rule 8 proof before any seeker is invited: the last signed-in QA is Oct 14-16, before /ask, /explore, /queue, /requests and /conversation were rebuilt in place. Needs a headed browser (a Claude Code session; Manus sessions have no Chromium) and one owner-forwarded work-email code. Never pay or pass the hosted payment form (D-065). Defects found become their own rows. D-213 (Oct 26): the browser half is cleared - this host has Playwright Chromium and Google Chrome - so the row waits only on the owner: forward one work-email code for qa-sweep-2 and state how qa-sweep-1 signs in. The INR catalog unavailability reproduced in #710 needs its own money row."
     },
     {
       "id": "SHELL-focus-clearance",
@@ -548,6 +548,18 @@
       ]
     },
     {
+      "id": "REGISTER-D212",
+      "title": "Land the enterprise-pipeline ruling D-212 (roles as gates, seven lights, REL and GATE packets, 18 rows) after an independent review by a model other than Claude",
+      "row": "D-163",
+      "packet": "docs/plans/REGISTER-D212.md",
+      "tier": 1,
+      "lane": "register",
+      "branch": "agent/queue/register-d212",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "The owner, Oct 26: get an independent review of the final version through the repository's process, bring it up to date with main, require every check on the exact version merged, and resolve findings first. Claude Code wrote it, so review and landing go to a model other than Claude (D-151). The PR from agent/queue/register-d212 supersedes #623 (claude/enterprise-pipeline), which stays open and unmerged until this lands."
+    },
+    {
       "id": "D-069-chargebee-catalog-sync",
       "title": "Admin-only Chargebee catalog sync: dry run, then one owner-triggered apply",
       "row": "D-069-chargebee-catalog-sync",
@@ -711,7 +723,9 @@
       "lane": "design-theme",
       "branch": "agent/queue/d048-dark-mode",
       "status": "todo",
-      "dependsOn": [],
+      "dependsOn": [
+        "SHELL-focus-clearance"
+      ],
       "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them.",
       "owns": [
         "client/src/styles/goalDark.css",
@@ -1616,7 +1630,7 @@
       "tier": 2,
       "lane": "d048-referrer-home",
       "branch": "agent/queue/d048-p3-invite",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1936,7 +1950,8 @@
         "D-086-demand-list",
         "D-048-F-flags",
         "D-048-F-routes",
-        "D-132-audit"
+        "D-132-audit",
+        "D-048-dark-mode"
       ],
       "owns": [
         "drizzle/deploy/*_company_referral_bonuses.sql",

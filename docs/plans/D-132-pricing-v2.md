@@ -45,4 +45,4 @@ Switching the flags on needs, in this order: D-132-audit landed; the D-132 plans
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 - JOB-LEVELS: done — `0e1ccba4` (#381, flag off)
 - D-132-plans-v2: done — `f2b8fd05` (#410, flag off)
-- D-132-audit: review — agent/queue/d132-audit — Gemini 3.8 Flash · 704c — 2026-10-25 — merged origin/main; review round 2 fixed red-first: F2 (the coverage-flip refusal and the `expectedCoverage` field are flags-on only, client and server) and F3 (no plans-catalog read with the flag off); F4 corrects item 4 to refund-half-done, grant half in `D-132-v2-checkout`; F1 owned-path edges carried by main (D-197 (2)), no branch task edits; gate green; ready for re-review
+- D-132-audit: done — `40e160e2` (#547, flags off; independent review passed on 32811bb7, landed after merging the latest main and green exact-head CI)
