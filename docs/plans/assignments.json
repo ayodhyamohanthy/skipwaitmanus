@@ -723,7 +723,9 @@
       "lane": "design-theme",
       "branch": "agent/queue/d048-dark-mode",
       "status": "todo",
-      "dependsOn": [],
+      "dependsOn": [
+        "SHELL-focus-clearance"
+      ],
       "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them.",
       "owns": [
         "client/src/styles/goalDark.css",
@@ -1948,7 +1950,8 @@
         "D-086-demand-list",
         "D-048-F-flags",
         "D-048-F-routes",
-        "D-132-audit"
+        "D-132-audit",
+        "D-048-dark-mode"
       ],
       "owns": [
         "drizzle/deploy/*_company_referral_bonuses.sql",
