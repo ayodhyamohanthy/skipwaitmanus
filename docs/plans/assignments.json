@@ -770,7 +770,7 @@
    "tier": 1,
    "lane": "money-core",
    "branch": "agent/queue/d132-audit",
-   "status": "todo",
+   "status": "done",
    "dependsOn": [
     "D-048-p3-live-review",
     "TASK13-pinned-work",
