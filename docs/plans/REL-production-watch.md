@@ -357,7 +357,7 @@ It also sends one short "all clear" line every Monday, so a check that stopped r
 - The job writes nothing but the purge's count row.
 - The email holds counts and ids only.
 
-**Owned paths.** `server/dailyOpsCheck.ts` and its test (new), `server/scheduledJobRegistry.ts (switch only)`, `shared/scheduledJobs.ts (switch only)`, `server/scheduledJobsContract.test.ts (switch only)`, `server/workEmailOtpPurge.ts (switch only)`. Map line: "Scheduled jobs".
+**Owned paths.** `server/dailyOpsCheck.ts` and its test (new), `server/scheduledJobRegistry.ts (switch only)`, `shared/scheduledJobs.ts (switch only)`, `server/scheduledJobsContract.test.ts (switch only)`, `server/workEmailOtpPurge.ts`. Map line: "Scheduled jobs".
 
 **Done:**
 - Red-first tests pass and CI is green.

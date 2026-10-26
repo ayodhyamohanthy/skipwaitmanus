@@ -812,7 +812,7 @@
         "server/scheduledJobRegistry.ts (switch only)",
         "shared/scheduledJobs.ts (switch only)",
         "server/scheduledJobsContract.test.ts (switch only)",
-        "server/workEmailOtpPurge.ts (switch only)"
+        "server/workEmailOtpPurge.ts"
       ]
     },
     {

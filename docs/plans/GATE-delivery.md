@@ -56,7 +56,7 @@
 **What.**
 1. **A real database.** There is no in-memory store at runtime: `getDb()` in `server/db.ts` returns null without `DATABASE_URL`, its functions then throw "Database unavailable", and `/api/dev-auth/login` answers 503. The job runs a `mysql:8.0` service container, free on GitHub Actions. It builds the schema the way production has it:
    - `pnpm exec drizzle-kit migrate` for `drizzle/*.sql`;
-   - then `scripts/apply-deploy-migrations.sh` with `DB_HOST=127.0.0.1`, `DB_USER=root`, `DB_NAME=skipwait` and `MYSQL_PWD` set to the service password, run **twice**. The second run must apply nothing, which proves the deploy migrations are safe to repeat; this replaces the separate migration-apply row.
+   - then `scripts/apply-deploy-migrations.sh` with `DB_HOST=127.0.0.1`, `DB_USER=root`, `DB_NAME=skipwait` and `MYSQL_PWD` set to the service password, run **twice**. The second run must apply nothing, which proves runner and ledger idempotence (already-recorded migrations are skipped without error); this replaces the separate migration-apply row.
    - If the migrations do not apply from an empty database, use `pnpm exec drizzle-kit push`, say so in the PR, and leave `GATE-migration-apply` open.
 2. **The server.**
    - Run `pnpm build`, then start `node dist/index.js` with:
@@ -98,7 +98,7 @@
      - Database migrations: `drizzle/**`.
      - Money and payments: `server/creditLedger.ts`, `server/payments.ts`, `server/paymentWebhooks.ts`, `server/chargebee*.ts`, `server/paymentRefund*.ts`, `server/cardValidation.ts`, `server/dailyMoneyCheck.ts`, `server/coverageDelivery.ts`, `server/heldAsk.ts`.
      - Sign-in, sessions and identity: `server/_core/workosAuth.ts`, `server/_core/sdk.ts`, `server/_core/otpLogin.ts`, `server/_core/seekerEmailCode.ts`, `server/_core/context.ts`, `server/_core/reviewerLogin.ts`, `server/_core/devAuth.ts`, `server/_core/sessionRenewal.ts`, `server/passwordResetRoutes.ts`, `server/workosWebhooks.ts`, `server/workEmailOtp.ts`.
-     - Privacy: `server/referrerDocumentAccess.ts`, `server/referrerAskView.ts`, `shared/referrerAskView.ts`, `server/blockedPairs.ts`.
+     - Privacy: `server/referrerDocumentAccess.ts`, `server/referrerAskView.ts`, `shared/referrerAskView.ts`, `server/blockedPairs.ts`, `server/privateReferralRoutes.ts`.
      - Secrets: `src/worker.ts`, which forwards every secret.
      - Shared money rules: `shared/creditLedger.ts`, `shared/planCatalog.ts`, `shared/planFamily.ts`, `shared/moneyCopy.ts`, `shared/referrerPurchases.ts`.
      - Client sign-in and money surfaces: `client/src/components/*SignIn*.tsx`, `client/src/pages/*SignIn*.tsx`, `client/src/pages/Ask.tsx`, `client/src/pages/MyCompanyInbox.tsx`, `client/src/pages/Plans*.tsx`, `client/src/components/plans/**`.
