@@ -366,3 +366,4 @@ input, textarea { caret-color: var(--primary); }
 .share-win-ghost{background:transparent;color:var(--foreground);border:1px solid var(--border)}
 .share-win-primary:focus-visible,.share-win-ghost:focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
 .share-win-card .sharecard__status{display:flex;align-items:center;gap:7px;color:var(--foreground);font-family:var(--font-label)}
+
