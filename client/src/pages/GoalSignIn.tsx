@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { BetaNoticeLine } from "@/components/BetaNotice";
 import { GoalBrandMark } from "@/components/goal/GoalBrandMark";
+import { GoogleOneTap } from "@/components/GoogleOneTap";
 import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
 import { GoalSeekerSignIn } from "@/components/goal/GoalSeekerSignIn";
 import { safeReturnTo } from "@/lib/referrerSignIn";
@@ -54,6 +55,7 @@ export default function GoalSignIn() {
             </button>
           ))}
         </div>
+        {intent === "seeker" && <GoogleOneTap returnTo={seekerReturnTo} />}
         <div className="mt-6 rounded-[10px] border border-g-hairline p-5 gdesk:p-6">
           {intent === "referrer"
             ? <div data-testid="referrer-work-email-otp"><ReferrerOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
