@@ -1,7 +1,6 @@
 import { ArrowRight, Mail } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/kit/button";
-import { PasskeyEnrollmentOffer, PasskeySignInButton } from "@/components/PasskeySignIn";
 import { forgetSignInEmail, rememberedSignInEmail, rememberSignInEmail } from "@/lib/rememberedSignInEmail";
 
 /**
@@ -33,7 +32,7 @@ export function seekerSocialUrl(provider: string, returnTo: string): string {
 // buttons); the kit sign-in keeps the kit default look.
 export function SeekerSignIn({ returnTo = "/explore", goal = false }: { returnTo?: string; goal?: boolean }) {
   const commit = goal ? "bg-g-ink text-g-ink-inverse hover:bg-g-ink" : undefined;
-  const [stage, setStage] = useState<"email" | "code" | "enroll">("email");
+  const [stage, setStage] = useState<"email" | "code">("email");
   const [email, setEmail] = useState(() => rememberedSignInEmail("seeker"));
   const [remembered, setRemembered] = useState(() => rememberedSignInEmail("seeker") !== "");
   const [code, setCode] = useState("");
@@ -62,7 +61,6 @@ export function SeekerSignIn({ returnTo = "/explore", goal = false }: { returnTo
       const { ok, data } = await post("/api/auth/workos/email-code/verify", { email: email.trim().toLowerCase(), code: code.trim() });
       if (!ok || !data.signedIn) { setError(String(data.error || "That code could not be verified.")); return; }
       rememberSignInEmail("seeker", email);
-      if (goal && window.PublicKeyCredential) { setStage("enroll"); return; }
       window.location.assign(returnTo);
     } catch { setError("That code could not be verified."); } finally { setBusy(false); }
   }
@@ -70,7 +68,7 @@ export function SeekerSignIn({ returnTo = "/explore", goal = false }: { returnTo
   if (stage === "email") {
     return <form className="auth-form" data-testid="seeker-sign-in" onSubmit={send}>
       <label htmlFor="seeker-email">Email address</label>
-      <div className="auth-input"><Mail /><input id="seeker-email" name="email" type="email" placeholder="you@example.com" autoComplete={goal ? "username webauthn" : "email"} required value={email} onChange={e => { setEmail(e.target.value); setError(""); }} /></div>
+      <div className="auth-input"><Mail /><input id="seeker-email" name="email" type="email" placeholder="you@example.com" autoComplete="email" required value={email} onChange={e => { setEmail(e.target.value); setError(""); }} /></div>
       {remembered && <button type="button" className="self-start text-xs font-semibold underline underline-offset-2" onClick={() => { forgetSignInEmail("seeker"); setRemembered(false); setEmail(""); document.getElementById("seeker-email")?.focus(); }}>Not you? Forget this email</button>}
       <p className="text-xs leading-relaxed text-muted-foreground">We’ll email you a six-digit code. New here? That creates your account.</p>
       {error && <p role="alert" className="text-sm text-[#B91C1C]">{error}</p>}
@@ -78,7 +76,6 @@ export function SeekerSignIn({ returnTo = "/explore", goal = false }: { returnTo
       <Button type="button" variant="ghost" className={commit ? `sr-only ${commit}` : "sr-only"} onClick={() => document.getElementById("seeker-email")?.focus()}>Continue with email</Button>
       <div className="auth-divider"><span>or</span></div>
       <div className="auth-options">
-        {goal && <PasskeySignInButton returnTo={returnTo} />}
         {SEEKER_SOCIAL.map(item => <Button key={item.id} type="button" variant="outline" className="google-button" onClick={() => window.location.assign(seekerSocialUrl(item.id, returnTo))}><span className="google-g" aria-hidden="true">{item.mark}</span>Continue with {item.label}</Button>)}
       </div>
     </form>;

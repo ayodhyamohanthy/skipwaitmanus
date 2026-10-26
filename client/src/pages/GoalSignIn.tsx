@@ -5,7 +5,7 @@ import { BetaNoticeLine } from "@/components/BetaNotice";
 import { GoalBrandMark } from "@/components/goal/GoalBrandMark";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
 import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
-import { SeekerSignIn } from "@/components/SeekerSignIn";
+import { GoalSeekerSignIn } from "@/components/goal/GoalSeekerSignIn";
 import { safeReturnTo } from "@/lib/referrerSignIn";
 import { ONE_TAP_PAY_SIGNIN } from "@/lib/oneTap";
 import { cn } from "@/lib/utils";
@@ -59,7 +59,7 @@ export default function GoalSignIn() {
         <div className="mt-6 rounded-[10px] border border-g-hairline p-5 gdesk:p-6">
           {intent === "referrer"
             ? <div data-testid="referrer-work-email-otp"><ReferrerOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
-            : <SeekerSignIn goal returnTo={seekerReturnTo} />}
+            : <GoalSeekerSignIn returnTo={seekerReturnTo} />}
         </div>
         <p className="mt-5 text-[13px] leading-[1.6] text-g-ink-3">
           {intent === "referrer" ? "Work email only. We never use personal email or social logins for referrers." : "New to skipwait.me? Enter your email and we will create your account."}

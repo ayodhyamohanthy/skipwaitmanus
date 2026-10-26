@@ -44,12 +44,11 @@ async function authenticateWithPasskey(returnTo: string): Promise<{ signedIn: bo
   return { signedIn: true };
 }
 
-export function PasskeySignInButton({ returnTo }: { returnTo: string }) {
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+/** Headless conditional-UI listener: mount on the stage whose email input
+ *  carries autocomplete="username webauthn". Saved passkeys appear in that
+ *  field's autofill; choosing one signs in. Renders nothing. */
+export function PasskeyAutofill({ returnTo }: { returnTo: string }) {
   useEffect(() => {
-    // Conditional UI: saved passkeys appear in the email field's autofill.
-    // The input carries autocomplete="username webauthn" (goal sign-in only).
     if (!browserSupportsWebAuthn()) return;
     let cancelled = false;
     (async () => {
@@ -65,7 +64,12 @@ export function PasskeySignInButton({ returnTo }: { returnTo: string }) {
     })();
     return () => { cancelled = true; };
   }, [returnTo]);
+  return null;
+}
 
+export function PasskeySignInButton({ returnTo }: { returnTo: string }) {
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   if (!browserSupportsWebAuthn()) return null;
   return (
     <div>
