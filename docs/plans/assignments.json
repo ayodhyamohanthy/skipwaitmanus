@@ -160,6 +160,22 @@
       "note": "Rule 8 proof before any seeker is invited: the last signed-in QA is Oct 14-16, before /ask, /explore, /queue, /requests and /conversation were rebuilt in place. Needs a headed browser (a Claude Code session; Manus sessions have no Chromium) and one owner-forwarded work-email code. Never pay or pass the hosted payment form (D-065). Defects found become their own rows."
     },
     {
+      "id": "LAUNCH-packs-unavailable",
+      "title": "Every INR credit pack reports available:false while PRICING.md says packs are live",
+      "row": "LAUNCH",
+      "packet": "docs/plans/LAUNCH-oct25.md",
+      "tier": 1,
+      "lane": "payments",
+      "branch": "agent/queue/launch-packs-unavailable",
+      "status": "owner",
+      "dependsOn": [],
+      "owns": [
+        "docs/PRICING.md",
+        "docs/qa/"
+      ],
+      "note": "Found by LAUNCH-live-qa (Qoder · 6e99, Oct 26) on API 40e160e2 / web fb420761: live GET /api/plans/catalog answers 200 with every INR credit pack available:false on five polls 13:28-13:38Z (pack_2 Rs99, pack_25 Rs1199, pack_60 Rs2599, pack_150 Rs5999), and /plans shows 'Not on sale yet' at 1280 and 390, while docs/PRICING.md line 37 says credit packs are LIVE in INR and USD and the launch packet opens from 'the product deployed and current, with packs on sale'. Not the all-unknown 503 path, so billing is configured and at least one verdict was definite; the remaining explanations are provider-side (item prices archived or inactive, amount or currency mismatch, or the configured site is not the site holding them) and need the Chargebee LIVE item reads plus the container's BILLING_ENV and CHARGEBEE_LIVE_* presence - neither is in the repo (D-059). No payment was attempted (D-065). USD is unverified: this run's region was IN. Evidence: docs/qa/launch-live-qa-oct26.md, issue #709. Root cause is owner-side first; any code fix follows Tier 1 independent review."
+    },
+    {
       "id": "SHELL-focus-clearance",
       "title": "On a phone, a focused field is never hidden behind the goal shell's bottom bar (#642)",
       "row": "D-048",
