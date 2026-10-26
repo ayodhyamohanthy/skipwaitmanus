@@ -43,10 +43,10 @@ describe("goal approval boundary", () => {
   });
   it("does not send unsaved edits and never offers send when slots are full", () => {
     const h = handlers(); const {rerender,container} = render(<GoalApprovalCard approval={{...base,kind:"ask_send"}} balance={8} primary handlers={{...h,editing:true,draftNote:"New note"}} />);
-    expect(screen.queryByRole("button",{name:"Send ask"})).toBeNull();
+    expect(screen.queryByRole("button",{name:"Send referral"})).toBeNull();
     fireEvent.click(screen.getByRole("button", {name:"Save note"})); expect(h.onSaveEdit).toHaveBeenCalledOnce();
     rerender(<GoalApprovalCard approval={{...base,kind:"ask_send",slotCount:0}} balance={8} primary handlers={h} />);
-    expect(screen.queryByRole("button",{name:"Send ask"})).toBeNull();
+    expect(screen.queryByRole("button",{name:"Send referral"})).toBeNull();
     expect(container.querySelectorAll('[data-g-primary]')).toHaveLength(0);
   });
 });

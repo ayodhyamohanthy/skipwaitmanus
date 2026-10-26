@@ -16,8 +16,8 @@ const isProvider = (value: string | null): value is Provider => PROVIDERS.some(p
 const CAN = [
   { label: "Search companies open to referrals", key: "read", locked: true },
   { label: "See your requests, alerts and replies", key: "read", locked: true },
-  { label: "Draft asks for you to review", key: "draft", locked: false },
-  { label: "Send an ask — only after you approve each one", key: "send", locked: false },
+  { label: "Draft referrals for you to review", key: "draft", locked: false },
+  { label: "Send a referral — only after you approve each one", key: "send", locked: false },
   { label: "Run paid tools — shows the referral cost, you approve first", key: "credits", locked: false },
 ] as const;
 
@@ -25,7 +25,7 @@ const NEVER = [
   "Accept, pass or refer on anyone's behalf",
   "See referrers' work emails or other people's data",
   "Skip the queue or go past your open-request limit",
-  "Buy plans or referrals",
+  "Buy plans or pay a referrer",
 ] as const;
 
 type Stage = "consent" | "approved" | "declined" | "expired" | "unverified" | "not-on-land" | "signed-out";

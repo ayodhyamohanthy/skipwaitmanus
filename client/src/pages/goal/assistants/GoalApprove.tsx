@@ -119,7 +119,7 @@ export default function GoalApprove() {
   };
 
   const shell = (content: ReactNode) => (
-    <AssistantLayout screen="approve" title="Decide what your assistant can do" description="Review each ask or paid tool before anything is sent or referrals are used.">
+    <AssistantLayout screen="approve" title="Decide what your assistant can do" description="Review each referral or paid tool before anything is sent or spent.">
       {content}<p className="mt-6 text-g-meta text-g-ink-3">{FOOTNOTE}</p>
     </AssistantLayout>
   );
@@ -140,7 +140,7 @@ export default function GoalApprove() {
   const pending = approvals.filter(approval => approval.status === "pending");
 
   if (result) {
-    return shell(<NextStep><h2 className="text-g-heading">{result.decision === "approved" ? "Decision recorded" : "Declined"}</h2><p className="mt-2 text-g-body">{result.decision === "approved" ? "Your approval was recorded. Check your asks for the latest status." : "This action was declined."}</p><Button className="mt-3" onClick={() => setResult(null)}>Back to approvals</Button><a className="ml-4 underline" href="/requests">Open requests</a></NextStep>);
+    return shell(<NextStep><h2 className="text-g-heading">{result.decision === "approved" ? "Decision recorded" : "Declined"}</h2><p className="mt-2 text-g-body">{result.decision === "approved" ? "Your approval was recorded. Check your referrals for the latest status." : "This action was declined."}</p><Button className="mt-3" onClick={() => setResult(null)}>Back to approvals</Button><a className="ml-4 underline" href="/requests">Open requests</a></NextStep>);
   }
 
   if (!loaded && loading) {
@@ -167,7 +167,7 @@ export default function GoalApprove() {
         <Sheet className="text-center">
 
           <h1 className="mt-3 text-g-heading">Nothing waiting for you</h1>
-          <p className="mt-1 text-sm text-g-ink-2">When an assistant prepares an ask or a paid tool, it shows up here first.</p>
+          <p className="mt-1 text-sm text-g-ink-2">When an assistant prepares a referral or a paid tool, it shows up here first.</p>
         </Sheet>
       ) : (
         <div className="space-y-4">

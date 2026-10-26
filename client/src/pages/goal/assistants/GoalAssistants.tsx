@@ -10,7 +10,7 @@ import { AssistantLayout, NextStep, Section as Panel } from "./AssistantLayout";
 import { ActivityPanel, AssistantsPanel, PlanGate, TokensPanel } from "./ConnectionPanels";
 import type { AssistantConnection, AssistantEvent, AssistantToken } from "@/components/assistants/format";
 
-const HEADING = { eyebrow: "Settings", title: "Connected assistants", text: "Use skipwait.me from ChatGPT, Claude and your own tools. You stay in control of every ask and every referral." } as const;
+const HEADING = { eyebrow: "Settings", title: "Connected assistants", text: "Use skipwait.me from ChatGPT, Claude and your own tools. You stay in control of every referral." } as const;
 const TABS = [{ id: "assistants", label: "Assistants" }, { id: "tokens", label: "API tokens" }, { id: "activity", label: "Activity" }] as const;
 type Tab = (typeof TABS)[number]["id"];
 
@@ -117,11 +117,11 @@ export default function GoalAssistants() {
     }
   };
 
-  if (!isLoaded) return <AssistantLayout title="Let your assistant prepare your next ask" description="Checking sign-in..."><p role="status">Please wait.</p></AssistantLayout>;
+  if (!isLoaded) return <AssistantLayout title="Let your assistant prepare your next referral" description="Checking sign-in..."><p role="status">Please wait.</p></AssistantLayout>;
 
   if (!isSignedIn) {
     return (
-      <AssistantLayout title="Let your assistant prepare your next ask" description={HEADING.text}>
+      <AssistantLayout title="Let your assistant prepare your next referral" description={HEADING.text}>
         <Panel className="text-center">
 
           <h2 className="mt-2 font-semibold">Sign in to manage assistants</h2>
@@ -133,14 +133,14 @@ export default function GoalAssistants() {
   }
 
   return (
-    <AssistantLayout title="Let your assistant prepare your next ask" description={HEADING.text}>
+    <AssistantLayout title="Let your assistant prepare your next referral" description={HEADING.text}>
 
       {!loaded && loading ? <p role="status">Loading your assistants...</p> : null}
 
       {loadError && !loaded ? (
         <Panel className="mb-4 text-center">
           <h2 className="font-semibold">We could not load your assistant settings.</h2>
-          <p role="alert" className="mx-auto mt-1 max-w-md text-sm text-g-ink-2">{loadError}</p>
+          <p role="alert" className="mx-auto mt-1 max-w-md text-sm text-g-ink-2">Check your connection, then try again. Nothing was changed.</p>
           <Button className="mt-4" disabledReason={loading ? "Loading assistants" : undefined} onClick={() => { void load(); }}>{loading ? "Trying again…" : "Try again"}</Button>
         </Panel>
       ) : null}

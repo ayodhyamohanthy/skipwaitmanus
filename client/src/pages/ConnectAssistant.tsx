@@ -1,5 +1,6 @@
 import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import GoalConnectAssistant from "./goal/assistants/GoalConnectAssistant";
+import { GoalAppShell } from "@/components/goal";
 import { ArrowRight, Bot, Check, CircleAlert, Clock, Lock, ShieldAlert, ShieldCheck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SignInButton, useAuth, useUser } from "@/_core/auth";
@@ -238,5 +239,7 @@ function LegacyConnectAssistant() {
 }
 
 export default function ConnectAssistant() {
-  return goalSurfaceOn("assistants") ? <GoalConnectAssistant /> : <LegacyConnectAssistant />;
+  // The route is not wrapped in AppShell, so the goal surface carries its own
+  // GoalAppShell frame (the /post-opportunity pattern); the kit page keeps the bare route.
+  return goalSurfaceOn("assistants") ? <GoalAppShell active="find" pageTitle="Connect assistant"><GoalConnectAssistant /></GoalAppShell> : <LegacyConnectAssistant />;
 }

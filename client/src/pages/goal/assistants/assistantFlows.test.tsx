@@ -39,7 +39,7 @@ describe("goal assistant flows",()=>{
  it("presents one approval at a time and records no success on rejected decision",async()=>{
    const approval={id:7,kind:"ask_send",status:"pending",provider:"custom",companyDomain:"fictional.invalid",role:"Fictional role",note:"Confirmed skill",creditCount:2,slotCount:2,createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+86400000).toISOString()};
    const fetch=vi.fn(async(url:string,init?:RequestInit)=>init?.method==="POST"?response({error:"Approval changed"},409):response(url.includes("summary")?{summary:{totalAvailable:8}}:{approvals:[approval,{...approval,id:8,role:"Second role"}]}));vi.stubGlobal("fetch",fetch);
-   const {container}=render(<GoalApprove/>);await screen.findByRole("button",{name:"Send ask"});expect(container.querySelectorAll('[data-g-primary]')).toHaveLength(1);fireEvent.click(screen.getByRole("button",{name:"Send ask"}));expect(await screen.findByText("Approval changed")).toBeTruthy();expect(screen.queryByText("Decision recorded")).toBeNull();
+   const {container}=render(<GoalApprove/>);await screen.findByRole("button",{name:"Send referral"});expect(container.querySelectorAll('[data-g-primary]')).toHaveLength(1);fireEvent.click(screen.getByRole("button",{name:"Send referral"}));expect(await screen.findByText("Approval changed")).toBeTruthy();expect(screen.queryByText("Decision recorded")).toBeNull();
  });
  it("honors the server plan gate on connection and offers no approve action",async()=>{
    vi.stubGlobal("fetch",vi.fn(async()=>response({hasAccess:false})));
@@ -86,10 +86,10 @@ describe("goal assistant flows",()=>{
    });
    vi.stubGlobal("fetch", fetch);
    render(<GoalApprove />);
-   const sendBtn = await screen.findByRole("button", { name: "Send ask" });
+   const sendBtn = await screen.findByRole("button", { name: "Send referral" });
    fireEvent.click(sendBtn);
    await waitFor(() => {
-     expect(screen.queryByRole("button", { name: "Send ask" })).toBeNull();
+     expect(screen.queryByRole("button", { name: "Send referral" })).toBeNull();
    });
  });
 });
