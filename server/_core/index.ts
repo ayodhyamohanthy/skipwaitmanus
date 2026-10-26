@@ -39,6 +39,7 @@ const storagePut = r2Configured() ? r2StoragePut : process.env.BUILT_IN_FORGE_AP
 // Forge presigned GET, or DB blobs — matching the storagePut selection above.
 const storageGetBytes = r2Configured() ? r2StorageGetBytes : process.env.BUILT_IN_FORGE_API_URL && process.env.BUILT_IN_FORGE_API_KEY ? forgeStorageGetBytes : dbStorageGetBytes;
 import * as db from "../db";
+import { runBillingReviewOutbox } from "../billingReviewOutbox";
 import { getReferralFlowBaseline } from "../flowBaseline";
 import { sql } from "drizzle-orm";
 import { createContext } from "./context";
@@ -313,6 +314,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     recordActivity: db.recordOperationalActivity,
     createPaymentIntent: db.createChargebeePaymentIntent,
     fulfillPayment: db.fulfillChargebeePayment,
+    grantV2Credits: db.grantV2PaidCredits,
     createSubscriptionIntent: db.createChargebeeSubscriptionIntent,
     applySubscriptionEvent: db.applyChargebeeSubscriptionEvent,
     recordSubscriptionPaymentEvidence: db.recordSubscriptionPaymentEvidence,
@@ -333,6 +335,9 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     alertPaymentRefund: createPaymentRefundAlerter(),
     alertUnmatchedPayment: createUnmatchedPaymentAlerter(),
     alertRetiredPlanEvent: createRetiredPlanAlerter(),
+    recordWebhookEventReceipt: db.recordChargebeeWebhookEventReceipt,
+    runAlertOutbox: () => runBillingReviewOutbox(),
+    getWalletSnapshot: db.getWalletPlanSnapshot,
     applyCardValidationEvent: db.applyCardValidationEvent,
     alertCardValidationEvent: createCardValidationAlerter(),
     createCardValidationPage: createCardValidationPageForUser,

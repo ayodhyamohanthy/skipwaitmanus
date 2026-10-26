@@ -18,7 +18,7 @@ import { BUCKET_SOURCES, type CreditsLedger, type LedgerGrant, type PromoBucket 
 import { REVERSE_TRIAL } from "../shared/planCatalog";
 import { allocateSpend, buildCreditsLedger, spendableBuckets, usedInCycle, type SpendAllocation } from "../shared/creditSpend";
 import type { Carryover } from "../shared/planCatalog";
-import { planEntitlementsFor } from "../shared/planEntitlements";
+import { isPlanFamilyPaidPlan, planEntitlementsFor } from "../shared/planEntitlements";
 import { FREE_MONTHLY_ALLOWANCE, currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 
 /** The transaction db.ts opens (drizzle(pool) without a relational schema). */
@@ -53,6 +53,11 @@ export class InsufficientCreditsError extends Error {
  */
 export function cycleRulesFor(plan: string, role: WalletRole): CycleRules {
   if (role === "job_seeker") {
+    // A D-132 paid family plan grants its credits per paid invoice
+    // (grantV2PaidCredits), never from a monthly cycle allowance. Without this
+    // guard the kit catalog reads a family id as Free (D-067) and opens a
+    // 3-credit cycle every paid month (review P1).
+    if (isPlanFamilyPaidPlan(plan)) return { creditsPerMonth: 0, carryover: 0 };
     const entitlements = planEntitlementsFor(plan);
     return { creditsPerMonth: entitlements.creditsPerMonth, carryover: entitlements.carryover };
   }

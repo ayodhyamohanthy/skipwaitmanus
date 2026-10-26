@@ -64,7 +64,9 @@ describe("plan entitlement resolver (Oct 14 2026 pricing decision, 19_plans comp
   });
 
   it("no longer lists or grandfathers the retired plans", () => {
-    expect(ENTITLED_PLAN_IDS).toEqual(["free", ...CATALOG_PLAN_IDS]);
+    // The D-132 family plans entitle through their own family path; the
+    // retired Pro/Max and reserved Land ids stay unlisted.
+    expect(ENTITLED_PLAN_IDS).toEqual(["free", ...CATALOG_PLAN_IDS, "fast_track", "insider"]);
     expect(planEntitlements).not.toHaveProperty("LEGACY_SHOWCASE_PIECES");
     for (const plan of ENTITLED_PLAN_IDS) expect(planEntitlementsFor(plan).legacy).toBe(false);
   });
@@ -123,5 +125,59 @@ describe("reverse trial (one-time, 14 days, Momentum's open asks)", () => {
     const end = new Date(NOW.getTime() + 3 * DAY);
     expect(resolve(paid("start", { trialEndsAt: end }))).toMatchObject({ plan: "start", openRequests: 15, creditsPerMonth: 10, trialEndsAt: end.toISOString() });
     expect(resolve(paid("land_focus", { trialEndsAt: end }))).toMatchObject({ plan: "land_focus", openRequests: 30, trialEndsAt: null });
+  });
+});
+
+describe("D-132 enable item 8: PLAN_FAMILY_V2 free-tier label from the planFamily source", () => {
+  it("flag on: the free tier reads Open Door with Free's numbers unchanged", () => {
+    const resolved = resolvePlanEntitlements(null, NOW, { planFamilyV2: true });
+    expect(resolved.plan).toBe("free");
+    expect(resolved.planLabel).toBe("Open Door");
+    expect(resolved.openRequests).toBe(3);
+    expect(resolved.creditsPerMonth).toBe(3);
+  });
+
+  it("flag off or absent: the free tier keeps the legacy catalog label", () => {
+    expect(resolvePlanEntitlements(null, NOW, { planFamilyV2: false }).planLabel).toBe("Free");
+    expect(resolvePlanEntitlements(null, NOW).planLabel).toBe("Free");
+  });
+
+  it("flag on: a paid catalog plan keeps its own label", () => {
+    expect(resolvePlanEntitlements(paid("momentum"), NOW, { planFamilyV2: true }).planLabel).toBe("Momentum");
+  });
+
+  it("flag on: the reverse-trial label still wins while the trial runs", () => {
+    const trialing: EntitlementWallet = { plan: "free", subscriptionStatus: null, subscriptionCurrentTermEnd: null, trialEndsAt: new Date(NOW.getTime() + 5 * DAY) };
+    expect(resolvePlanEntitlements(trialing, NOW, { planFamilyV2: true }).planLabel).toBe("Momentum trial");
+  });
+});
+
+describe("D-132 family plan wallets (QA go-live blocker: fast_track reverted on first read)", () => {
+  const v2Wallet = (plan: "fast_track" | "insider"): EntitlementWallet => ({
+    plan,
+    subscriptionStatus: "active",
+    subscriptionCurrentTermEnd: new Date("2027-01-01T00:00:00Z"),
+  });
+
+  it("an active family plan reads active, never reverted, with its family label and open-ask cap", () => {
+    const fastTrack = resolvePlanEntitlements(v2Wallet("fast_track"), new Date("2026-10-22T00:00:00Z"), { planFamilyV2: true });
+    expect(fastTrack.plan).toBe("fast_track");
+    expect(fastTrack.planLabel).toBe("Fast Track");
+    expect(fastTrack.openRequests).toBe(4);
+    expect(fastTrack.creditsPerMonth).toBe(0);
+    expect(fastTrack.paidThrough).toBe("2027-01-01T00:00:00.000Z");
+    const insider = resolvePlanEntitlements(v2Wallet("insider"), new Date("2026-10-22T00:00:00Z"), { planFamilyV2: true });
+    expect(insider.plan).toBe("insider");
+    expect(insider.planLabel).toBe("Insider");
+    expect(insider.openRequests).toBe(6);
+  });
+
+  it("a family plan past its term reads as the free tier again", () => {
+    const lapsed = resolvePlanEntitlements({ plan: "fast_track", subscriptionStatus: "non_renewing", subscriptionCurrentTermEnd: new Date("2026-10-01T00:00:00Z") }, new Date("2026-10-22T00:00:00Z"), { planFamilyV2: true });
+    expect(lapsed.plan).toBe("free");
+  });
+
+  it("a cancelled family subscription is never active", () => {
+    expect(isPaidPlanActive({ plan: "fast_track", subscriptionStatus: "cancelled", subscriptionCurrentTermEnd: new Date("2027-01-01T00:00:00Z") }, new Date("2026-10-22T00:00:00Z"))).toBe(false);
   });
 });

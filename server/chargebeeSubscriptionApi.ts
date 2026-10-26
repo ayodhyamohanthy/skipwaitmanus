@@ -3,6 +3,7 @@
 // server picked from the catalog; nothing here reads a client price. Each call
 // is mocked in tests: real payment execution is prohibited in engineering/QA.
 import { z } from "zod";
+import { classifyV2SubscriptionItems } from "../shared/planFamilyBilling";
 import { resolvePlanItemPrice } from "../shared/billingCatalog";
 import { ChargebeeApiError, chargebeeRequest, idPath, providerDate, toProviderSeconds, type ChargebeeCredentials } from "./chargebeeApi";
 
@@ -50,6 +51,22 @@ export function createPlanCheckout(credentials: ChargebeeCredentials, input: Che
   // billing_cycles the subscription renews on the item price's default term; a pass
   // must never renew unless the seeker opted in (opt-in is GO-LIVE-2).
   form.set("subscription_items[billing_cycles][0]", "1");
+  setCustomer(form, input);
+  form.set("redirect_url", input.redirectUrl);
+  form.set("cancel_url", input.cancelUrl);
+  form.set("pass_thru_content", input.checkoutIntentId);
+  return hostedPage(credentials, "/hosted_pages/checkout_new_for_items", form);
+}
+
+/** A D-132 bundle: the plan fee plus the in-plan monthly credits rung as one renewing monthly subscription ("change or cancel any time" - unlike the kit passes there is no single-term cap). */
+export function createBundleCheckout(credentials: ChargebeeCredentials, input: CheckoutCustomer & ReturnUrls & { planItemPriceId: string; creditsItemPriceId?: string; checkoutIntentId: string }): Promise<HostedPageResult> {
+  const form = new URLSearchParams();
+  form.set("subscription_items[item_price_id][0]", input.planItemPriceId);
+  form.set("subscription_items[quantity][0]", "1");
+  if (input.creditsItemPriceId) {
+    form.set("subscription_items[item_price_id][1]", input.creditsItemPriceId);
+    form.set("subscription_items[quantity][1]", "1");
+  }
   setCustomer(form, input);
   form.set("redirect_url", input.redirectUrl);
   form.set("cancel_url", input.cancelUrl);
@@ -177,6 +194,7 @@ export type CheckoutPageSubscription = {
   status: string;
   currency?: "INR" | "USD";
   itemPriceId?: string;
+  itemPriceIds?: string[];
   currentTermStart?: Date;
   currentTermEnd?: Date;
   resourceVersion?: number;
@@ -203,6 +221,7 @@ export async function retrieveCheckoutSubscription(credentials: ChargebeeCredent
         status: (subscription.status ?? "unknown").toLowerCase(),
         currency: subscription.currency_code === "INR" || subscription.currency_code === "USD" ? subscription.currency_code : undefined,
         itemPriceId: subscription.subscription_items?.find(item => typeof item.item_price_id === "string")?.item_price_id,
+        itemPriceIds: Array.isArray(subscription.subscription_items) ? subscription.subscription_items.map(item => item.item_price_id).filter((id): id is string => typeof id === "string") : undefined,
         currentTermStart: typeof subscription.current_term_start === "number" ? new Date(subscription.current_term_start * 1000) : undefined,
         currentTermEnd: typeof subscription.current_term_end === "number" ? new Date(subscription.current_term_end * 1000) : undefined,
         resourceVersion: Number.isSafeInteger(subscription.resource_version) && (subscription.resource_version ?? 0) > 0 ? subscription.resource_version : undefined,
@@ -222,6 +241,7 @@ export function subscriptionEventFromCheckoutPage(page: RetrievedCheckoutSubscri
   const subscription = page.subscription;
   if (!subscription) return null;
   const resolvedPrice = resolvePlanItemPrice(subscription.itemPriceId);
+  const v2 = classifyV2SubscriptionItems(subscription.itemPriceIds ?? (subscription.itemPriceId ? [subscription.itemPriceId] : []));
   return {
     eventId: `hosted_page:${page.hostedPageId}`,
     eventType: "subscription_created",
@@ -229,6 +249,8 @@ export function subscriptionEventFromCheckoutPage(page: RetrievedCheckoutSubscri
     passThruContent: page.passThruContent ?? undefined,
     subscriptionId: subscription.id,
     plan: resolvedPrice?.plan,
+    planFamily: v2.plan?.planId,
+    planFamilyRung: v2.credits?.rung,
     interval: resolvedPrice?.interval,
     itemPriceId: subscription.itemPriceId,
     status: subscription.status,

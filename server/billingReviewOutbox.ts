@@ -4,13 +4,14 @@ import { z } from "zod";
 import { billingReviewOutbox } from "../drizzle/schema";
 import { getDb } from "./db";
 import { resolveBillingEnvironment } from "./chargebeeEnvironment";
-import type { RetiredPlanAlertInput } from "./errorAlerting";
+
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
-const inputSchema = z.object({ reason: z.enum(["plan_retired", "unsupported_plan", "gift_claimed", "gift_claim_refused"]), eventId: z.string().min(1).max(255).optional(), eventType: z.string().min(1).max(100).optional(), subscriptionId: z.string().min(1).max(255).optional(), giftId: z.string().min(1).max(255).optional(), itemPriceId: z.string().min(1).max(255).optional() }).strict();
+const inputSchema = z.object({ reason: z.enum(["plan_retired", "unsupported_plan", "gift_claimed", "gift_claim_refused", "payment_failed", "upgrade_leftover_blocked"]), eventId: z.string().min(1).max(255).optional(), eventType: z.string().min(1).max(100).optional(), subscriptionId: z.string().min(1).max(255).optional(), giftId: z.string().min(1).max(255).optional(), itemPriceId: z.string().min(1).max(255).optional(), invoiceId: z.string().min(1).max(255).optional(), customerId: z.string().min(1).max(255).optional(), amount: z.number().nonnegative().optional(), currency: z.string().min(1).max(8).optional() }).strict();
+export type BillingReviewInput = z.infer<typeof inputSchema>;
 const envelopeSchema = z.object({ from: z.string().email().max(320), to: z.tuple([z.literal("ayodhya@skipwait.me")]), subject: z.string().max(512), text: z.string().max(8192) }).strict();
-const payloadSchema = z.object({ version: z.literal(1), classification: z.enum(["retired", "unsupported"]), trigger: z.enum(["subscription", "gift"]), evidence: inputSchema }).strict();
+const payloadSchema = z.object({ version: z.literal(1), classification: z.enum(["retired", "unsupported", "payment_failed", "upgrade_blocked"]), trigger: z.enum(["subscription", "gift", "payment"]), evidence: inputSchema }).strict();
 const frozenEnvelopeSchema = z.object({ version: z.literal(1), bytes: z.string().max(16384) }).strict();
 export const reviewStateSchema = z.object({
   obligationKey: z.string().regex(/^[0-9a-f]{64}$/),
@@ -42,16 +43,22 @@ function parseReceipt(body: unknown): { id: string } {
   if (resend.success) return resend.data;
   return { id: z.object({ request_id: z.string().min(1).max(255) }).parse(body).request_id };
 }
-export function billingReviewKey(input: RetiredPlanAlertInput) {
+export function billingReviewKey(input: BillingReviewInput) {
   const environment = resolveBillingEnvironment();
   const site = environment === "live" ? process.env.CHARGEBEE_LIVE_SITE : process.env.CHARGEBEE_SITE;
   if (!site?.trim()) throw new Error("Review site missing");
   if (!input.giftId && !input.eventId) throw new Error("Review identity missing");
-  return createHash("sha256").update(JSON.stringify(["billing-review-v1", "chargebee", environment, site, input.giftId ? "gift" : "event", input.giftId ?? input.eventId])).digest("hex");
+  // payment_failed / upgrade_leftover_blocked key by event + reason: a provider
+  // event id is unique, and the reason keeps distinct obligations of one event
+  // apart. Retired/unsupported keep the original v1 key shape (existing rows).
+  const scoped = input.reason === "payment_failed" || input.reason === "upgrade_leftover_blocked";
+  return createHash("sha256").update(JSON.stringify(["billing-review-v1", "chargebee", environment, site, input.giftId ? "gift" : "event", input.giftId ?? input.eventId, ...(scoped ? [input.reason] : [])])).digest("hex");
 }
-export async function enqueueBillingReviewTx(tx: Tx, value: RetiredPlanAlertInput) {
+export async function enqueueBillingReviewTx(tx: Tx, value: BillingReviewInput) {
   const input = inputSchema.parse(value);
-  const payload = payloadSchema.parse({ version: 1, classification: input.reason === "unsupported_plan" ? "unsupported" : "retired", trigger: input.giftId ? "gift" : "subscription", evidence: input });
+  const classification = input.reason === "unsupported_plan" ? "unsupported" : input.reason === "payment_failed" ? "payment_failed" : input.reason === "upgrade_leftover_blocked" ? "upgrade_blocked" : "retired";
+  const trigger = input.reason === "payment_failed" ? "payment" : input.giftId ? "gift" : "subscription";
+  const payload = payloadSchema.parse({ version: 1, classification, trigger, evidence: input });
   const serialized = JSON.stringify(payload);
   const conflictDigest = createHash("sha256").update(JSON.stringify(["review-conflict-v1", payload.classification, input.itemPriceId ?? null, input.subscriptionId ?? null, input.giftId ? null : input.eventType ?? null])).digest("hex");
   if (Buffer.byteLength(serialized) > 4096) throw new Error("Review payload too large");
@@ -70,7 +77,15 @@ export async function enqueueBillingReviewTx(tx: Tx, value: RetiredPlanAlertInpu
     console.error("[BillingReview] operator reconciliation required", { obligationKey: key, code: "classification_conflict" });
   }
 }
-export function reviewEnvelope(input: RetiredPlanAlertInput, sender: string) {
+export function reviewEnvelope(input: BillingReviewInput, sender: string) {
+  if (input.reason === "payment_failed") {
+    const ref = input.invoiceId ?? input.eventId ?? "unknown";
+    return { from: sender, to: ["ayodhya@skipwait.me"], subject: `skipwait.me payment failed needs review · ${ref}`, text: JSON.stringify(input) + "\n" + "Chargebee reported a FAILED payment. No money settled and no credits moved. If this was a renewal, dunning may retry; check the subscription in Chargebee and, if the customer expects to have paid, tell them it did not go through." };
+  }
+  if (input.reason === "upgrade_leftover_blocked") {
+    const ref = input.subscriptionId ?? input.eventId ?? "unknown";
+    return { from: sender, to: ["ayodhya@skipwait.me"], subject: `skipwait.me upgrade parked pending decision · ${ref}`, text: JSON.stringify(input) + "\n" + "A Free wallet with unused credits reached a paid family-plan upgrade while the leftover-credit rule is undecided. The event is recorded and the transition parked as blocked: the wallet keeps plan free with its credits, the intent stays pending. RECOVERY: decide the leftover rule, then complete the activation for this subscription (or refund in Chargebee per that decision). Nothing was granted automatically." };
+  }
   const unsupported = input.reason === "unsupported_plan";
   return { from: sender, to: ["ayodhya@skipwait.me"], subject: `SkipWait billing review ${input.giftId ?? input.eventId}`, text: JSON.stringify(input) + "\n" + (unsupported ? "Unrecognised item price. Review the subscription; do not cancel or refund until classified." : "Retired plan. In Chargebee, cancel the subscription and refund any payment taken.") };
 }

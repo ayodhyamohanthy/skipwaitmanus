@@ -76,6 +76,15 @@ export const CREDIT_RULE_V2 = `An ask at a company where no verified employee is
 
 export const CREDIT_ENDED_CAVEAT_V2 = "paid credits never expire; free monthly credits end with the month";
 
+/**
+ * D-165 (3), verbatim: the checkout says what happens to unused Free credits
+ * before payment. Day-first in UTC, the same shape as the plan dates.
+ */
+export function freeCreditsStayUntilLine(credits: number, until: Date): string {
+  const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(until);
+  return `Your ${credits} free ${credits === 1 ? "credit stays" : "credits stay"} until ${date}.`;
+}
+
 /** A credit goes back to the bucket it came from, so one whose month or plan cycle ended cannot come back (refundLedgerSpendTx logs 0). */
 export const CREDIT_ENDED_CAVEAT = "unless its month or plan has ended by then";
 

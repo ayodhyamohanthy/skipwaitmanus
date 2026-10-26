@@ -118,6 +118,14 @@ export function planFamilyV2Enabled(env: NodeJS.ProcessEnv = process.env): boole
 // hosted payment form) and the owner's enable word is relayed by main.
 // ---------------------------------------------------------------------------
 
+/**
+ * What happens to a Free seeker's unspent monthly credits when a paid family
+ * plan activates. NOTE (instinct port, Oct 23): the source branch comment
+ * claims an "owner call, Oct 22" - that claim is UNVERIFIED repo text, not a
+ * founder message relayed by Main. The value below is the held branch's
+ * behavior ported for TEST-only verification, not a confirmed founder decision.
+ */
+
 /** Dropdown rungs inside every plan (credits per month). */
 export const PLAN_CREDIT_RUNGS = [5, 10, 25, 50, 100, 200] as const;
 export type PlanCreditRung = (typeof PLAN_CREDIT_RUNGS)[number];

@@ -10,6 +10,8 @@ import { z } from "zod";
 import { BILLING_REGIONS, indiaPriceNote, currencyForRegion, type BillingRegion } from "./billingRegion";
 import { CATALOG_CURRENCIES, CATALOG_INTERVALS, CATALOG_PACK_IDS, CATALOG_PLAN_IDS, CATALOG_PLANS, CREDIT_PACKS, CREDIT_TOOLS, CREDIT_TOOL_IDS, FREE_PLAN, HUMAN_SESSIONS, HUMAN_SESSION_IDS, MAX_OPEN_ASKS_PER_COMPANY, PASS_DAYS, PASS_SALES_ENABLED, REVERSE_TRIAL, REVERSE_TRIAL_ON_OFFER, catalogItemPriceId, catalogPackById, catalogPackItemPriceId, catalogPlanById, catalogSessionItemPriceId, humanSessionById, planDisplayName, planIntervals, tierRank, type CatalogCurrency, type CatalogInterval, type CatalogPackId, type CatalogPlanId, type HumanSessionId, type PaidCatalogPlan } from "./planCatalog";
 import { planEntitlementsFor } from "./planEntitlements";
+import { PLAN_CREDIT_LADDER, PLAN_FAMILY, type PlanCreditRung, type PlanFamilyId } from "./planFamily";
+import { packItemPriceId as v2PackItemPriceId, planCreditsItemPriceId as v2CreditsItemPriceId, planItemPriceId as v2PlanItemPriceId } from "./planFamilyBilling";
 
 export const BILLING_INTERVALS = CATALOG_INTERVALS;
 export const BILLING_CURRENCIES = CATALOG_CURRENCIES;
@@ -55,11 +57,11 @@ export const RESERVED_PLAN_IDS = ["land_100", "land_200", "land_500"] as const;
 /** Every plan a subscription can bill: the kit catalog plans only (D-067). */
 export const BILLABLE_PLAN_IDS = CATALOG_PLAN_IDS;
 export type BillablePlanId = (typeof BILLABLE_PLAN_IDS)[number];
-/** tokenBalances.plan: existing values first and in order (0090, then 0091). */
-export const WALLET_PLAN_IDS = ["free", ...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
+/** tokenBalances.plan: existing values first and in order (0090, then 0091, then 0112 and 0113 the D-132 families). */
+export const WALLET_PLAN_IDS = ["free", ...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge", "fast_track", "insider"] as const;
 export type WalletPlanId = (typeof WALLET_PLAN_IDS)[number];
 /** subscriptionCheckoutIntents.plan, same ordering rule. */
-export const INTENT_PLAN_IDS = [...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
+export const INTENT_PLAN_IDS = [...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge", "fast_track", "insider"] as const;
 
 export function isBillablePlanId(value: unknown): value is BillablePlanId {
   return typeof value === "string" && (BILLABLE_PLAN_IDS as readonly string[]).includes(value);
@@ -82,7 +84,14 @@ export function planSellsInterval(planId: CatalogPlanId, interval: CatalogInterv
 export type PlanPrice = { kind: "plan"; plan: BillablePlanId; interval: BillingPeriod; currency: CatalogCurrency; amount: number; itemPriceId: string };
 export type PackPrice = { kind: "pack"; packId: CatalogPackId; credits: number; currency: CatalogCurrency; amount: number; itemPriceId: string };
 export type SessionPrice = { kind: "session"; sessionId: HumanSessionId; currency: CatalogCurrency; amount: number; itemPriceId: string };
-export type CatalogPrice = PlanPrice | PackPrice | SessionPrice;
+// D-132 v2 bundle catalog: the monthly plan fee (a plan item), its in-plan
+// monthly credits rung (an ADDON item - a subscription holds one plan plus
+// addons, never two plans), and the one-time top-up pack (a charge item).
+export type V2PlanPrice = { kind: "v2plan"; planFamily: PlanFamilyId; currency: CatalogCurrency; amount: number; itemPriceId: string };
+export type V2CreditsPrice = { kind: "v2credits"; rung: PlanCreditRung; currency: CatalogCurrency; amount: number; itemPriceId: string };
+export type V2PackPrice = { kind: "v2pack"; rung: PlanCreditRung; currency: CatalogCurrency; amount: number; itemPriceId: string };
+export type V2Price = V2PlanPrice | V2CreditsPrice | V2PackPrice;
+export type CatalogPrice = PlanPrice | PackPrice | SessionPrice | V2Price;
 
 /** The price the server charges for a plan term: kit plans for the terms they list; no plan sells "monthly". */
 export function planPrice(plan: BillablePlanId, interval: BillingPeriod, currency: CatalogCurrency): PlanPrice | undefined {
@@ -105,10 +114,30 @@ export function sessionPrice(sessionId: HumanSessionId, currency: CatalogCurrenc
   return { kind: "session", sessionId: session.id, currency, amount: session.prices[currency], itemPriceId: catalogSessionItemPriceId(session.id, currency) };
 }
 
+/** Every v2 price the bundle sells: 2 plan fees + 6 monthly rungs + 6 top-up packs, per currency (28). Open Door is free and lists nothing. */
+function v2CatalogPrices(): V2Price[] {
+  const prices: V2Price[] = [];
+  for (const currency of BILLING_CURRENCIES) {
+    for (const plan of PLAN_FAMILY) {
+      if (plan.id === "open_door") continue;
+      const amount = currency === "INR" ? plan.monthlyInrPaise : plan.monthlyUsdCents;
+      prices.push({ kind: "v2plan", planFamily: plan.id, currency, amount, itemPriceId: v2PlanItemPriceId(plan.id, currency) });
+    }
+    for (const rung of PLAN_CREDIT_LADDER) {
+      const amount = currency === "INR" ? rung.inrPaise : rung.usdCents;
+      prices.push({ kind: "v2credits", rung: rung.credits, currency, amount, itemPriceId: v2CreditsItemPriceId(rung.credits, currency) });
+      prices.push({ kind: "v2pack", rung: rung.credits, currency, amount, itemPriceId: v2PackItemPriceId(rung.credits, currency) });
+    }
+  }
+  return prices;
+}
+
 const ALL_PRICES: readonly CatalogPrice[] = [
   ...BILLABLE_PLAN_IDS.flatMap(plan => BILLING_PERIODS.flatMap(interval => BILLING_CURRENCIES.map(currency => planPrice(plan, interval, currency)))),
   ...CATALOG_PACK_IDS.flatMap(packId => BILLING_CURRENCIES.map(currency => packPrice(packId, currency))),
   ...HUMAN_SESSION_IDS.flatMap(sessionId => BILLING_CURRENCIES.map(currency => sessionPrice(sessionId, currency))),
+  // D-132 v2 bundle book: plan fees, monthly credits rungs and top-up packs.
+  ...v2CatalogPrices(),
 ].flatMap(price => (price ? [price] : []));
 const ITEM_PRICES: ReadonlyMap<string, CatalogPrice> = new Map(ALL_PRICES.map(price => [price.itemPriceId, price] as const));
 

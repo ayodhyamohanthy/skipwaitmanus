@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "./referral";
-import { askCostLanding, askCostLine, CREDIT_RULE, CREDIT_RULE_V2 } from "./moneyCopy";
+import { askCostLanding, askCostLine, CREDIT_RULE, CREDIT_RULE_V2, freeCreditsStayUntilLine } from "./moneyCopy";
 
 /*
  * D-038-reconcile F3 (R-2, D-042): the credit rule may promise the reopen path
@@ -94,6 +94,18 @@ describe("level-aware ask cost (D-132 item 7)", () => {
     const on = askCostLanding(true);
     for (const text of [on.stepBody, on.waitBody, on.fairRule]) { expect(text).not.toMatch(/costs the same|\b1 credit only\b/); }
     expect(on.fairRule).toContain("its job level");
+  });
+});
+
+// D-165 (3): the checkout says what happens to unused Free credits before
+// payment, in the shared copy, day-first like every plan date.
+describe("freeCreditsStayUntilLine", () => {
+  it("states the count and the day the free credits end", () => {
+    expect(freeCreditsStayUntilLine(3, new Date("2026-11-01T00:00:00.000Z"))).toBe("Your 3 free credits stay until 1 Nov 2026.");
+    expect(freeCreditsStayUntilLine(2, new Date("2026-10-01T00:00:00.000Z"))).toBe("Your 2 free credits stay until 1 Oct 2026.");
+  });
+  it("reads correctly for one credit", () => {
+    expect(freeCreditsStayUntilLine(1, new Date("2026-12-01T00:00:00.000Z"))).toBe("Your 1 free credit stays until 1 Dec 2026.");
   });
 });
 

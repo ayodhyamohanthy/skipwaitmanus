@@ -1,3 +1,5 @@
+import { expectedBundleAmount, v2CreditIdempotencyKey } from "./v2Crediting";
+import type { PlanCreditRung, PlanFamilyId } from "../shared/planFamily";
 import { enqueueBillingReviewTx } from "./billingReviewOutbox";
 import { buildReferrerHome, monthStartUtc } from "./referrerHome";
 import { enrichInboxRow } from "./inboxEnrichment";
@@ -47,6 +49,7 @@ import { PAY_FORWARD_CHOICES, THANK_YOU_MAX_LENGTH, type LandedJourneyRequest, t
 import { resolveAskJobFunction } from "../shared/jobFunctionClassifier";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { isPaidPlanActive, resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
+import { planFamilyV2Enabled } from "../shared/planFamily";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { askWorkItemIdsSchema, dedupeAskWorkItemIds, type AskWorkItem } from "../shared/askWorkItems";
 import { AssistantPlanRequiredError, CompanyCapReachedError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
@@ -58,10 +61,10 @@ import { COVERAGE_ATTEMPTS_PER_SLOT, COVERAGE_TARGET_SCAN_LIMIT, COVERAGE_WITHDR
 // Re-exported for every existing caller (tests and companyDirectory.ts import
 // these from ./db); the definitions live in server/referrerAvailability.ts.
 export { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
-import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
+import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, writeLedgerRow, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
 import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
-import { grantFreeCycleOnValidationTx, openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
+import { carryFreeCreditsOnUpgradeTx, grantFreeCycleOnValidationTx, openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
 import { bucketOfLedgerRow } from "../shared/creditSpend";
 import { fetchPublicJobLink } from "./jobLinkPreview";
@@ -521,9 +524,9 @@ function parseJsonArray(raw: string | null): string[] {
  * wallet. A missing wallet or database reads as Free, so every gate fails closed.
  */
 export async function getSeekerEntitlements(userId: number, now: Date = new Date()): Promise<PlanEntitlements> {
-  const db = await getDb(); if (!db) return resolvePlanEntitlements(null, now);
+  const db = await getDb(); if (!db) return resolvePlanEntitlements(null, now, { planFamilyV2: planFamilyV2Enabled() });
   const wallet = (await db.select({ plan: tokenBalances.plan, subscriptionStatus: tokenBalances.subscriptionStatus, subscriptionCurrentTermEnd: tokenBalances.subscriptionCurrentTermEnd, trialEndsAt: tokenBalances.trialEndsAt }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1))[0];
-  return resolvePlanEntitlements(wallet ?? null, now);
+  return resolvePlanEntitlements(wallet ?? null, now, { planFamilyV2: planFamilyV2Enabled() });
 }
 
 /** GET /api/assistants/access: the Land tier only (a wallet still marked max reads as Free, D-067). */
@@ -1894,7 +1897,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     // first statement, so this plain read's snapshot starts after it and sees every ask a
     // previous lock holder committed. It is deliberately not a locking read: withdraw and
     // expiry lock the ask row before the wallet, and the reverse order here could deadlock.
-    const nowMs=Date.now();const entitlements=resolvePlanEntitlements(lockedWallet,new Date(nowMs));
+    const nowMs=Date.now();const entitlements=resolvePlanEntitlements(lockedWallet,new Date(nowMs),{ planFamilyV2: planFamilyV2Enabled() });
     const openAsks=Number((await tx.select({open:count()}).from(referralRequests).where(openAskCondition(userId,nowMs)))[0]?.open??0);
     const duplicate=await tx.select({id:referralRequests.id,fingerprint:referralRequests.requestFingerprint,companyDomain:jobs.company,jobFunction:jobs.jobFunction,waiting:referralRequests.waitingForCoverage,referrerId:referralRequests.referrerId,opportunityId:referralRequests.opportunityId,firstLookReferrerId:referralRequests.firstLookReferrerId}).from(referralRequests).innerJoin(jobs,eq(jobs.id,referralRequests.jobId)).where(and(eq(referralRequests.jobSeekerId,userId),eq(referralRequests.idempotencyKey,input.idempotencyKey))).limit(1).for("update");
     if(duplicate[0]){if(duplicate[0].fingerprint!==fingerprint)throw new ReferralIdempotencyConflictError();const wallet=lockedWallet;const invite=(await tx.select({inviteCode:companyCoverageInvitations.inviteCode}).from(companyCoverageInvitations).where(eq(companyCoverageInvitations.referralRequestId,duplicate[0].id)).limit(1))[0];return{requestId:duplicate[0].id,companyDomain:duplicate[0].companyDomain,jobFunction:parseJobFunction(duplicate[0].jobFunction),coverageStatus:duplicate[0].waiting?"waiting_for_company_coverage" as const:"covered" as const,coverageInviteCode:invite?.inviteCode,notifiedEmployees:0,remainingTokens:wallet?creditSummaryFromWallet(wallet).totalAvailable:0,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined,slots:openAskSlots(entitlements,openAsks),fastTrack:Boolean(duplicate[0].referrerId),fromPost:duplicate[0].opportunityId!==null,firstLook:duplicate[0].firstLookReferrerId!==null,replayed:true as const};}
@@ -4489,7 +4492,25 @@ export async function createChargebeePaymentIntent(input: { hostedPageId: string
 export async function listPendingChargebeePaymentIntents(limit = 25) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  return db.select({ hostedPageId: paymentFulfillments.providerHostedPageId }).from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.status, "pending"), like(paymentFulfillments.providerEventId, "pending:%"))).orderBy(desc(paymentFulfillments.createdAt)).limit(Math.max(1, Math.min(limit, 25)));
+  const bounded = Math.max(1, Math.min(limit, 25));
+  // Both checkout kinds leave a hosted page open until their subscription or
+  // pack lands: pending pack/pass intents and pending subscription intents
+  // (the D-132 bundle's first month is the latter). A webhook without a hosted
+  // page re-reads these provider pages to tie the invoice to our signed intent
+  // (review F2) - never to a free-typed email.
+  const [payments, subscriptions] = await Promise.all([
+    db.select({ hostedPageId: paymentFulfillments.providerHostedPageId, createdAt: paymentFulfillments.createdAt }).from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.status, "pending"), like(paymentFulfillments.providerEventId, "pending:%"))).orderBy(desc(paymentFulfillments.createdAt)).limit(bounded),
+    db.select({ hostedPageId: subscriptionCheckoutIntents.hostedPageId, createdAt: subscriptionCheckoutIntents.createdAt }).from(subscriptionCheckoutIntents).where(eq(subscriptionCheckoutIntents.status, "pending")).orderBy(desc(subscriptionCheckoutIntents.createdAt)).limit(bounded),
+  ]);
+  const seen = new Set<string>();
+  return [...payments, ...subscriptions]
+    .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+    .flatMap(row => {
+      if (!row.hostedPageId || seen.has(row.hostedPageId)) return [];
+      seen.add(row.hostedPageId);
+      return [{ hostedPageId: row.hostedPageId }];
+    })
+    .slice(0, bounded);
 }
 
 export async function getChargebeePaymentRecovery(userId: number, role: WalletRole, hostedPageId: string) {
@@ -4614,6 +4635,130 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
     }
     return { status: "credited" as const, tokenCount: intent[0].tokenCount, userId: intent[0].userId, role: intent[0].role };
   });
+}
+
+/**
+ * D-132 bundle crediting (flag PLAN_FAMILY_V2): a paid v2 invoice = plan fee +
+ * the picked monthly rung in one total (provider truth, parsed from the
+ * invoice's own line items). The rung credits are PAID: they never expire
+ * (D-132), so they land in the purchased balance like a pack, once per
+ * invoice, for the first month and every renewal alike. Plan entitlements
+ * arrive via the subscription events, never here. An amount that disagrees
+ * with the frozen ladder is parked for admin review; a subscription nobody
+ * knows is logged for the webhook's unmatched-payment alert. Nothing drops
+ * silently.
+ */
+type GrantV2PaidCreditsInput = { eventId: string; invoiceId?: string; subscriptionId?: string; hostedPageId?: string; passThruContent?: string; customerId?: string; planFamily: PlanFamilyId; rung: PlanCreditRung; amount: number; currency: string };
+
+export async function grantV2PaidCredits(input: GrantV2PaidCreditsInput) {
+  const invoiceId = input.invoiceId;
+  if (!invoiceId) return { status: "ignored" as const, reason: "missing_invoice" };
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => grantV2PaidCreditsTx(tx, { ...input, invoiceId }));
+}
+
+async function grantV2PaidCreditsTx(tx: LedgerTx, input: GrantV2PaidCreditsInput & { invoiceId: string }) {
+  {
+    const invoiceId = input.invoiceId;
+    const currency = input.currency;
+    // A currency the frozen ladder does not price cannot be verified: it parks
+    // for the same human review as an untrusted amount, never credits blind.
+    const expected = currency === "INR" || currency === "USD" ? expectedBundleAmount(input.planFamily, input.rung, currency) : undefined;
+    const duplicate = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, input.eventId))).limit(1);
+    if (duplicate[0]) return { status: "duplicate" as const, tokenCount: duplicate[0].tokenCount };
+    // Renewal: the wallet already carries the subscription. First month: the
+    // bundle checkout intent names the buyer. Both are locked for the grant.
+    const walletBySubscription = input.subscriptionId
+      ? (await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update"))[0]
+      : undefined;
+    const intent = input.hostedPageId && input.passThruContent
+      ? (await tx.select().from(subscriptionCheckoutIntents).where(and(eq(subscriptionCheckoutIntents.hostedPageId, input.hostedPageId), eq(subscriptionCheckoutIntents.checkoutIntentId, input.passThruContent))).limit(1).for("update"))[0]
+      : undefined;
+    if (intent && walletBySubscription && (walletBySubscription.userId !== intent.userId || walletBySubscription.role !== intent.role)) return { status: "ignored" as const, reason: "subscription_owner_mismatch" };
+    // First invoice before the subscription event has bound anything: only a
+    // binding the provider itself set may name the seeker. The invoice email is
+    // free-typed at the provider's page and users.email is nullable and not
+    // unique, so a matching address is never proof of identity (review F2);
+    // the signed checkout intent or a unique provider customer binding is.
+    // Anything else waits as unknown for the human replay path below.
+    const boundByCustomer = !walletBySubscription && !intent && input.customerId
+      ? await tx.select({ id: users.id }).from(users).where(eq(users.chargebeeCustomerId, input.customerId)).limit(2).for("update")
+      : [];
+    const userByCustomer = boundByCustomer.length === 1 ? boundByCustomer[0] : undefined;
+    const userId = walletBySubscription?.userId ?? intent?.userId ?? userByCustomer?.id;
+    const role = walletBySubscription?.role ?? intent?.role ?? (userByCustomer ? ("job_seeker" as const) : undefined);
+    if (userId === undefined || !role) {
+      // No wallet, checkout intent or unique provider customer names this
+      // subscriber: the webhook's #77 unmatched-payment alert carries it to a
+      // human. Logged so it is never silent; no receipt row exists
+      // (paymentFulfillments needs a user), so a redelivery re-enters and
+      // alerts again until a human maps it.
+      await tx.insert(operationalActivityLogs).values({ actorUserId: null, action: "billing.v2_grant_unknown_subscription", outcome: "failure", resourceType: "chargebee_invoice", resourceId: invoiceId, metadata: JSON.stringify({ eventId: input.eventId, subscriptionId: input.subscriptionId ?? null, customerId: input.customerId ?? null, ambiguousCustomerBinding: boundByCustomer.length > 1, planFamily: input.planFamily, rung: input.rung, amount: input.amount, currency: input.currency }) });
+      return { status: "ignored" as const, reason: "unknown_v2_subscription" };
+    }
+    if (expected === undefined || input.amount !== expected) {
+      // Tax, coupon, rounding or catalog drift: the user has paid but the
+      // amount is untrusted. Park it where the admin review list already
+      // looks; the route raises the payment-review alert.
+      const parked = await tx.insert(paymentFulfillments).values({ provider: "chargebee", providerEventId: input.eventId, providerInvoiceId: invoiceId, providerHostedPageId: input.hostedPageId ?? null, checkoutIntentId: input.passThruContent ?? null, userId, role, tokenCount: input.rung, amount: input.amount, currency: input.currency, status: "requires_review", reconciliationReason: "checkout_amount_mismatch", lastCheckedAt: new Date() });
+      const paymentId = Number(parked[0]?.insertId ?? 0);
+      await tx.insert(operationalActivityLogs).values({ actorUserId: userId, action: "billing.payment_amount_mismatch", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify({ role, planFamily: input.planFamily, rung: input.rung, expectedAmount: expected ?? null, expectedCurrency: input.currency, paidAmount: input.amount, paidCurrency: input.currency, invoiceId }) });
+      return { status: "requires_review" as const, reason: "checkout_amount_mismatch" as const, paymentId, userId, role, expectedAmount: expected ?? null, expectedCurrency: input.currency, paidAmount: input.amount, paidCurrency: input.currency };
+    }
+    const creditedAt = new Date();
+    await tx.insert(paymentFulfillments).values({ provider: "chargebee", providerEventId: input.eventId, providerInvoiceId: invoiceId, providerHostedPageId: input.hostedPageId ?? null, checkoutIntentId: input.passThruContent ?? null, userId, role, tokenCount: input.rung, amount: input.amount, currency: input.currency, status: "credited", creditedAt, lastCheckedAt: creditedAt });
+    if (walletBySubscription) {
+      await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} + ${input.rung}` }).where(eq(tokenBalances.id, walletBySubscription.id));
+    } else {
+      // First month, and the subscription event has not landed yet: credit the
+      // buyer's wallet anyway (create it when absent) and attach the
+      // subscription only when the slot is free, never overwriting another.
+      const existing = (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1).for("update"))[0];
+      if (existing) await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} + ${input.rung}`, ...(input.subscriptionId && !existing.subscriptionId ? { subscriptionId: input.subscriptionId } : {}) }).where(eq(tokenBalances.id, existing.id));
+      else await tx.insert(tokenBalances).values({ userId, role, balance: input.rung, subscriptionId: input.subscriptionId ?? null, ...freshWalletCycle(role) });
+    }
+    // One purchase row per invoice: the idempotency key refuses a second grant
+    // for the same invoice however often the event is redelivered.
+    await tx.insert(tokenTransactions).values({ userId, role, tokenCount: input.rung, kind: "purchase", source: "purchased_balance", referenceType: "chargebee_invoice", referenceId: invoiceId, idempotencyKey: v2CreditIdempotencyKey(invoiceId) });
+    // The frozen copy: "First verified payment earns 5 bonus credits" - a
+    // bundle's first paid invoice earns the same promo as a kit pack or
+    // subscription. Idempotent by the unique (userId, role) grant row; a
+    // pending schema migration degrades loudly without blocking paid credits.
+    try {
+      await grantPromoCreditsTx(tx, { userId, role, source: "first_paid_invoice", providerRef: invoiceId, now: creditedAt });
+    } catch (error) {
+      if (!isSchemaMissingError(error)) throw error;
+      captureServerError(error, { source: "promo-grant-skipped", userId, role });
+      await tx.insert(operationalActivityLogs).values({ actorUserId: userId, action: "promo.grant_skipped_schema_pending", outcome: "failure", resourceType: "promo_credit_grant", metadata: JSON.stringify({ role, providerRef: invoiceId }) });
+    }
+    return { status: "credited" as const, tokenCount: input.rung, userId, role };
+  }
+}
+
+/**
+ * D-132 first-invoice recovery: a payment_succeeded that arrived before the
+ * subscription could name its seeker parked as billing.v2_grant_unknown_subscription
+ * (metadata carries the whole receipt). When the subscription event then binds
+ * the wallet, replay each parked grant for it inside the same transaction.
+ * Idempotent: the fulfillment row's unique providerEventId and the ledger's
+ * per-invoice key refuse any second grant.
+ */
+async function replayParkedV2GrantsTx(tx: LedgerTx, subscriptionId: string) {
+  const parked = await tx.select({ id: operationalActivityLogs.id, resourceId: operationalActivityLogs.resourceId, metadata: operationalActivityLogs.metadata }).from(operationalActivityLogs)
+    .where(and(eq(operationalActivityLogs.action, "billing.v2_grant_unknown_subscription"), like(operationalActivityLogs.metadata, `%"subscriptionId":"${subscriptionId}"%`)))
+    .limit(25);
+  for (const row of parked) {
+    let receipt: { eventId?: string; subscriptionId?: string | null; planFamily?: PlanFamilyId; rung?: PlanCreditRung; amount?: number; currency?: string } = {};
+    try { receipt = JSON.parse(row.metadata ?? "{}") ?? {}; } catch { continue; }
+    if (receipt.subscriptionId !== subscriptionId || !receipt.eventId || !receipt.planFamily || !receipt.rung || typeof receipt.amount !== "number" || !receipt.currency) continue;
+    if (!row.resourceId) continue;
+    const invoiceId = row.resourceId;
+    const result = await grantV2PaidCreditsTx(tx, { eventId: receipt.eventId, invoiceId, subscriptionId, planFamily: receipt.planFamily, rung: receipt.rung, amount: receipt.amount, currency: receipt.currency });
+    if (result.status === "credited") {
+      await tx.insert(operationalActivityLogs).values({ actorUserId: result.userId, action: "billing.v2_grant_replayed", outcome: "success", resourceType: "chargebee_invoice", resourceId: invoiceId, metadata: JSON.stringify({ eventId: receipt.eventId, subscriptionId, tokenCount: result.tokenCount }) });
+    }
+  }
 }
 
 export async function listRequiresReviewPayments(limit = 100) {
@@ -4768,7 +4913,7 @@ export async function applyChargebeePaymentRefund(input: { eventId: string; invo
   });
 }
 
-export async function createChargebeeSubscriptionIntent(input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: WalletRole; plan: BillablePlanId; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) {
+export async function createChargebeeSubscriptionIntent(input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: WalletRole; plan: BillablePlanId | "fast_track" | "insider"; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   // A kit pass names its term (30d/90d, yearly for Keep warm) so the webhook can
@@ -4811,7 +4956,40 @@ export async function markSubscriptionCheckoutIntentCancelled(hostedPageId: stri
   await db.update(subscriptionCheckoutIntents).set({ status: "cancelled", failureReason }).where(and(eq(subscriptionCheckoutIntents.hostedPageId, hostedPageId), eq(subscriptionCheckoutIntents.status, "pending")));
 }
 
-export async function applyChargebeeSubscriptionEvent(input: { eventId: string; eventType: string; hostedPageId?: string; passThruContent?: string; subscriptionId: string; plan?: BillablePlanId; itemPriceId?: string; interval?: BillingPeriod; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number }) {
+/** Cheap wallet read for pre-commitment checkout checks: no creation, no reconciliation. */
+export async function getWalletPlanSnapshot(userId: number, role: WalletRole): Promise<{ plan: string; monthlyCreditsRemaining: number; monthlyCycleKey: string } | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const row = (await db.select({ plan: tokenBalances.plan, monthlyCreditsRemaining: tokenBalances.monthlyCreditsRemaining, monthlyCycleKey: tokenBalances.monthlyCycleKey }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1))[0];
+  return row ?? null;
+}
+
+/**
+ * Durable receipt for a provider webhook event, keyed by provider + event id
+ * (subscriptionEvents unique index). Distinct events each record once;
+ * redelivery of the same provider event reports duplicate so callers do not
+ * re-alert. Used for events that have no natural receipt of their own (today:
+ * payment_failed - a failed payment creates no fulfillment row).
+ */
+export async function recordChargebeeWebhookEventReceipt(input: { eventId: string; eventType: string; subscriptionId?: string; invoiceId?: string; customerId?: string; amount?: number; currency?: string }): Promise<{ duplicate: boolean }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.transaction(async (tx) => {
+    const existing = await tx.select({ id: subscriptionEvents.id }).from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee"), eq(subscriptionEvents.providerEventId, input.eventId))).limit(1);
+    if (existing[0]) return { duplicate: true as const };
+    await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId ?? null });
+    // Atomic with the receipt: a crash after this commit can never leave the
+    // failure unalerted - the durable outbox row is retried by the
+    // billing-review-retry sweep until the provider accepts the email, and the
+    // obligation key dedupes successful sends of this same provider event.
+    if (input.eventType === "payment_failed") {
+      await enqueueBillingReviewTx(tx, { reason: "payment_failed", eventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId, invoiceId: input.invoiceId, customerId: input.customerId, amount: input.amount, currency: input.currency });
+    }
+    return { duplicate: false as const };
+  });
+}
+
+export async function applyChargebeeSubscriptionEvent(input: { eventId: string; eventType: string; hostedPageId?: string; passThruContent?: string; subscriptionId: string; plan?: BillablePlanId; planFamily?: PlanFamilyId; planFamilyRung?: PlanCreditRung; itemPriceId?: string; interval?: BillingPeriod; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
@@ -4826,7 +5004,9 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       const receiptWallet = (await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update"))[0];
       if (duplicate[0].subscriptionId !== input.subscriptionId) throw new Error("Duplicate receipt identity conflict");
       const receiptPlan = receiptIntent?.plan ?? input.plan ?? (receiptWallet?.plan !== "free" ? receiptWallet?.plan : undefined);
-      if ((receiptWallet || receiptIntent) && (!receiptPlan || !isBillablePlanId(receiptPlan))) {
+      // A v2 family event is never parked: fast_track/insider are deliberately
+      // not BillablePlanIds (D-132), and its first delivery already reconciled.
+      if (!input.planFamily && (receiptWallet || receiptIntent) && (!receiptPlan || !isBillablePlanId(receiptPlan))) {
         await enqueueBillingReviewTx(tx, { eventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId, itemPriceId: input.itemPriceId, reason: isRetiredPlanId(receiptPlan) ? "plan_retired" : "unsupported_plan" });
       }
       return { status: "duplicate" as const };
@@ -4846,13 +5026,72 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     const walletBySubscription = await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update");
     if ((input.hostedPageId || input.passThruContent) && !intent) return { status: "ignored" as const, reason: "checkout_intent_mismatch" };
     if (intent && walletBySubscription[0] && (walletBySubscription[0].userId !== intent.userId || walletBySubscription[0].role !== intent.role)) return { status: "ignored" as const, reason: "subscription_owner_mismatch" };
-    const wallet = walletBySubscription[0] ?? (intent
+    let wallet = walletBySubscription[0] ?? (intent
       ? (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, intent.userId), eq(tokenBalances.role, intent.role))).limit(1).for("update"))[0]
       : undefined);
     const sameSubscription = wallet?.subscriptionId === input.subscriptionId;
     if (!sameSubscription && intent && intent.status !== "pending") return { status: "ignored" as const, reason: "checkout_already_reconciled" };
     if (wallet && !sameSubscription && (wallet.plan !== "free" || wallet.subscriptionStatus === "active" || wallet.subscriptionStatus === "non_renewing")) return { status: "ignored" as const, reason: "subscription_conflict" };
     if (intent && input.currency && input.currency !== intent.currency) return { status: "ignored" as const, reason: "currency_mismatch" };
+    // D-132 v2 plan family (flag PLAN_FAMILY_V2): the bundle's monthly credits
+    // arrive per paid invoice through grantV2PaidCredits (paid credits never
+    // expire), never from a kit plan cycle, so this branch only moves the
+    // wallet onto the family plan with its subscription and term. It diverts
+    // before the catalog checks: a v2 family is not a BillablePlanId and must
+    // never park as unsupported_plan, and the event's first item price is not
+    // matched against the intent (Chargebee owns the subscription item order);
+    // the family itself is the plan match.
+    if (input.planFamily) {
+      const recordV2Event = () => tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+      // Open Door is free: it has no subscription and no wallet plan row.
+      if (input.planFamily === "open_door") {
+        await recordV2Event();
+        return { status: "ignored" as const, reason: "open_door_is_free" };
+      }
+      if (intent && intent.plan !== input.planFamily) {
+        await recordV2Event();
+        return { status: "ignored" as const, reason: "plan_mismatch" };
+      }
+      const currentV2 = sameSubscription ? wallet : undefined;
+      if (currentV2?.subscriptionResourceVersion && input.resourceVersion && input.resourceVersion <= currentV2.subscriptionResourceVersion) {
+        await recordV2Event();
+        return { status: "stale" as const };
+      }
+      const owner = wallet ?? intent;
+      if (!owner) {
+        await recordV2Event();
+        return { status: "ignored" as const, reason: "unknown_subscription" };
+      }
+      const v2UserId = owner.userId;
+      const v2Role = owner.role;
+      const retainsAccess = input.status === "active" || input.status === "non_renewing";
+      // D-165 (3): the upgrade proceeds. The open month's unused free credits
+      // move into a carry-over grant that ends when their own free month would
+      // have - they never become paid or open-ended credits - and the checkout
+      // said so before payment (chargebeeRoutes, shared moneyCopy).
+      const freeCarry = retainsAccess && wallet && wallet.plan === "free"
+        ? await carryFreeCreditsOnUpgradeTx(tx, { wallet, freeCycleKey: wallet.monthlyCycleKey, subscriptionId: input.subscriptionId, now: new Date() })
+        : undefined;
+      const v2Patch = {
+        ...(freeCarry ?? {}),
+        plan: retainsAccess ? input.planFamily : ("free" as const),
+        subscriptionId: input.subscriptionId,
+        subscriptionStatus: input.status,
+        subscriptionCurrency: input.currency ?? wallet?.subscriptionCurrency ?? null,
+        subscriptionCurrentTermStart: input.currentTermStart ?? wallet?.subscriptionCurrentTermStart ?? null,
+        subscriptionCurrentTermEnd: input.currentTermEnd ?? wallet?.subscriptionCurrentTermEnd ?? null,
+        subscriptionResourceVersion: input.resourceVersion ?? wallet?.subscriptionResourceVersion ?? null,
+      };
+      if (wallet) await tx.update(tokenBalances).set(v2Patch).where(eq(tokenBalances.id, wallet.id));
+      else await tx.insert(tokenBalances).values({ userId: v2UserId, role: v2Role, balance: 0, ...freshWalletCycle(v2Role), ...v2Patch });
+      if (intent) await tx.update(subscriptionCheckoutIntents).set({ status: retainsAccess ? "activated" : "cancelled" }).where(and(eq(subscriptionCheckoutIntents.id, intent.id), eq(subscriptionCheckoutIntents.status, "pending")));
+      await recordV2Event();
+      // A first-invoice payment_succeeded that landed before this binding was
+      // parked (billing.v2_grant_unknown_subscription); now that the wallet
+      // names the subscription, its credits replay automatically.
+      if (retainsAccess) await replayParkedV2GrantsTx(tx, input.subscriptionId);
+      return { status: "applied" as const, plan: input.planFamily };
+    }
     // A pass's term is part of what was bought: a 90-day delivery must never
     // activate the 30-day intent that started it (each term has its own item price).
     if (intent && input.itemPriceId && input.itemPriceId !== intent.itemPriceId) return { status: "ignored" as const, reason: "item_price_mismatch" };
