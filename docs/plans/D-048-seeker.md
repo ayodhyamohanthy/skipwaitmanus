@@ -137,3 +137,4 @@ None for this packet. The split and register decide the lane. Any new choice abo
 
 - D-048-P-seeker: prepared — PR pending landing — GPT · 8884 — 2026-10-23 — branch `agent/architect/d048-p-seeker`
 - D-048-p3-start: done — Gemini 3.8 Flash · b7c1 — 2026-10-26 — PR #570; /start goal rebuild behind goalSurfaceOn('start') with job-link preview and resume handoff, 7 tests and 1280/390 captures passing.
+- D-048-p3-onboarding: done — Gemini 3.8 Flash · b7c1 — 2026-10-26 — PR #571; /onboarding profile setup goal rebuild behind goalSurfaceOn('onboarding'), 7 tests and 1280/390 captures passing.
