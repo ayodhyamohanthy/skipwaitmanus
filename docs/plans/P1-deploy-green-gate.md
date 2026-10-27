@@ -38,12 +38,12 @@ CI main cancellation is a distinct fail-closed liveness concern observed by PR75
 
 ## Status
 
-- P1-deploy-green-gate: in progress — Claude Code · da74 — 2026-10-27 — branch agent/queue/p1-deploy-green-gate — recovery amendment (#751) being built on the existing builder claim; the evidence block below covers the pre-amendment head 6d3db876 only
+- P1-deploy-green-gate: review — agent/queue/p1-deploy-green-gate — 69dc58bc (Claude Code · da74; includes the #751 recovery amendment; independent non-Claude Tier 1 review required, builder does not review or land)
 
 Evidence — P1-deploy-green-gate — Claude Code · da74 — 2026-10-27
-Branch agent/queue/p1-deploy-green-gate @ 6d3db876, contains origin/main 67544748
-Red first: 7 workflow-structure tests failing before the wiring in scripts/requireGreenRelease.test.ts (37 total)
-Gate: check 0 · token audit OK · migration lint OK · deploy triggers OK · scope-check OK · vitest 549 files passed / 4851 passed / 18 skipped / 0 failed · build 0 · actionlint clean
-Real API (read-only): 2dcea864 REFUSED (CI failure); 67544748 PASS api+web; stale 3e0894ff REFUSED api+web (superseded); eebbe568 REFUSED (not on main); non-main dispatch and pull_request REFUSED; 9d1b2a35 REFUSED after waiting (no main CI run)
-Live: pending landing (first gated Deploy API and Deploy Web runs on main must be observed)
-Left out / follow-ups (outside owns, need registration): docs sync of the deploy flow in AGENTS.md, docs/DEPLOY.md, docs/ARCHITECTURE.md, docs/BRIEF.md (D-068); ci.yml cancel-in-progress on main; gate rollback.yml; api-runtime currently points at 2dcea864 (observation only)
+Branch agent/queue/p1-deploy-green-gate @ 69dc58bc, contains origin/main 53155fde
+Red first: 7 workflow pins before wiring; 11 of 49 for recovery against the old rollback.yml (one was inputs.commit interpolated into a run line); 2 of 53 for token hardening
+Gate: check 0 · token audit OK · migration lint OK · deploy triggers OK · scope-check OK (5 owned paths) · actionlint clean · vitest 549 files passed / 4867 passed / 18 skipped / 0 failed · build 0
+Real API (read-only): ordinary 2dcea864 REFUSED, 67544748 PASS, stale 3e0894ff REFUSED, off-main/non-main/no-CI REFUSED; recovery b5299cfd PASS, 2dcea864 REFUSED (CI), 215b3a7a REFUSED (schema contract differs: 0120 migration, schema.ts, schemaReconcile.ts), bad confirm/system/ref/event REFUSED
+Live: pending landing (first gated Deploy API and Deploy Web runs on main must be observed); no rollback.yml dispatch was made or is authorized
+Left out / follow-ups: deploy and recovery docs are DEPLOY-gate-docs-sync; ci.yml main cancellation liveness (not granted by #751); test file ~495 lines because owns names one test file
