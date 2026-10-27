@@ -9,3 +9,7 @@ Evidence: independent750review https://github.com/ayodhyamohanthy/skipwaitmanus/
 3. Fix validation narrowly for API and Web supersession paths and main membership comparison. Preserve deliberate older-target recovery semantics and exacttargetCI checks. Test real normal positive/negative cases read-only; no workflow dispatch or production write.
 4. Separate --once latency issue: either align documentation with its bounded API-error retry and add a test, or enforce the intended explicit latency contract with evidence. Do not silently change retry behavior while presenting it as a parser-only fix.
 5. Independent nonbuilder/nonfixer Tier1 exacthead semantic review, honest red-first output, all required exactcandidate and latestmain checks green, normal protected merge commit. No test weakening or false incident closure; observe subsequent normal gated run and identities after landing. Do not waive malformed-input failure because current live responses happen to be well formed.
+
+## Status
+
+- P1-release-gate-strict-compare: in progress — Claude Code · da74 — 2026-10-27 — branch agent/queue/p1-release-gate-strict-compare
