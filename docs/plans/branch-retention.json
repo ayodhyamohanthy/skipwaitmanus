@@ -47,6 +47,16 @@
       "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/758#issuecomment-6446386246"
     },
     {
+      "branch": "agent/review/d048-p3-email-review",
+      "reason": "Preserve PR579 review head and audit741 evidence; explicit retention hold, not released by task done.",
+      "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/issues/741#issuecomment-6443666780"
+    },
+    {
+      "branch": "agent/review/d174-job-catalog",
+      "reason": "Preserve PR650 review head and audit741 evidence; explicit retention hold, not released by task done.",
+      "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/issues/741#issuecomment-6443666780"
+    },
+    {
       "branch": "agent/review/p1-deploy-green-gate",
       "reason": "Preserve incident 748, audit 741, cleanup review or active assignment evidence until explicit scoped retention release. A done row is insufficient.",
       "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/758#issuecomment-6446386246"

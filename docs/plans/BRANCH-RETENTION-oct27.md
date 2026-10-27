@@ -4,7 +4,7 @@ This record preserves evidence and active handoffs. It does not approve cleanup,
 
 `branch-retention.json` is the version 1 contract consumed by the proposed BRANCH-HYGIENE-1 implementation. Each hold is an exact branch name with a reason and source ref. Holds are branch-wide, not tied to a tip: an updated tip remains retained. Existing incident, audit and cleanup handoffs remain held even when their queue row says done. The landing slot and report log remain independently protected by the cleanup code.
 
-The holds cover the observed #750 review record, strict comparison correction, branch-hygiene review and its heartbeat, the audit's existing #703 claim, and the red-main repair/evidence branches. They also cover matching incident/audit handoff branches present when this record was prepared. A missing branch in this list is not approval to delete it. New evidence or handoff refs need a retained record before cleanup is considered.
+The holds cover the observed #750, #579 and #650 review records, strict comparison correction, branch-hygiene review and its heartbeat, the audit's existing #703 claim, and the red-main repair/evidence branches. They also cover matching incident/audit handoff branches present when this record was prepared. A missing branch in this list is not approval to delete it. New evidence or handoff refs need a retained record before cleanup is considered.
 
 Source: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/758#issuecomment-6446386246
 
