@@ -157,7 +157,7 @@
         "docs/BUGFREE_GATE.md",
         "docs/qa/"
       ],
-      "note": "Rule 8 proof before any seeker is invited: the last signed-in QA is Oct 14-16, before /ask, /explore, /queue, /requests and /conversation were rebuilt in place. Needs a headed browser (a Claude Code session; Manus sessions have no Chromium) and one owner-forwarded work-email code. Never pay or pass the hosted payment form (D-065). Defects found become their own rows."
+      "note": "Rule 8 proof before any seeker is invited: BUGFREE_GATE sections 1-4 stay BLOCKED until the signed-in legs are re-run. D-214 (Oct 26): the signed-in route is the authorized alias QA executor - both alias identities (seeker + verified referrer) signed in Oct 26 18:59 IST with codes read by the executor itself (no owner relay; 2 of 4 approved sign-in emails used), and read-only results are landing on issue 709 with account-state-only limits. qa-sweep-1/2 are excluded (no authority; deletion intent recorded, execution unverified) and no owner code forward is needed. Remaining: populated-UI legs at 1280/390 and the runtime checkout refusal (held - no checkout POST without an explicit no-wallet-risk authorization). Never pay or pass the hosted payment form (D-065). The stale packs-stay-on-sale text in docs/PRICING.md reconciles to the Oct 25 frozen banded model alongside PR 666. Defects found become their own rows."
     },
     {
       "id": "SHELL-focus-clearance",
@@ -167,7 +167,7 @@
       "tier": 2,
       "lane": "design-shell",
       "branch": "agent/queue/shell-focus-clearance",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "Issue #642 (Instinct, 390x844 DPR2 QA): the /ask reason field and the conversation composer sit under the sticky 56px bottom bar on focus. Fix: data-goal-bottom-bar on the phone nav plus one scroll-padding-bottom rule in index.css (switch only). Desktop unchanged. Real-viewport proof on the PR; a session with no browser uses --avoid, never blocked.",
       "owns": [
@@ -723,7 +723,9 @@
       "lane": "design-theme",
       "branch": "agent/queue/d048-dark-mode",
       "status": "todo",
-      "dependsOn": [],
+      "dependsOn": [
+        "SHELL-focus-clearance"
+      ],
       "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them.",
       "owns": [
         "client/src/styles/goalDark.css",
@@ -1480,7 +1482,7 @@
         "client/src/pages/goal/seeker-small/**",
         "design/goal-ui/captures/seeker-small/**"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. D-215 (Oct 26): the block clears as a build problem with this work list - move client/src/pages/{landedGoal,shareHubGoal,suggestCompanyGoal}.test.tsx into client/src/pages/goal/seeker-small/ and the six captures from design/goal-ui/captures/{landed,share,suggest-company}/ into design/goal-ui/captures/seeker-small/; owns is correct and must not be widened. pnpm check is clean at 21547caa - the failing CI job is named typecheck but its Typecheck step passes; the step that fails is the scope check. D-129 holds go-live only (owner's word plus a legal check), and this row stays dark."
     },
     {
       "id": "D-048-p3-skippy",
@@ -1949,7 +1951,8 @@
         "D-086-demand-list",
         "D-048-F-flags",
         "D-048-F-routes",
-        "D-132-audit"
+        "D-132-audit",
+        "D-048-dark-mode"
       ],
       "owns": [
         "drizzle/deploy/*_company_referral_bonuses.sql",
