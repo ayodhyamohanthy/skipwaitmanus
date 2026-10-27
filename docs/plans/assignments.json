@@ -1465,7 +1465,7 @@
       "tier": 2,
       "lane": "d048-small",
       "branch": "agent/queue/d048-seeker-small",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
