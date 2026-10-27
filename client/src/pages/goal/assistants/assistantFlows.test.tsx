@@ -73,6 +73,17 @@ describe("goal assistant flows",()=>{
    fireEvent.click(screen.getByRole("tab", { name: "Activity" }));
    expect(await screen.findByText("Connected ChatGPT")).toBeTruthy();
  });
+  it("uses referral-only wording for an agent draft cost",async()=>{
+    const agent={id:7,name:"Fictional helper",keyPrefix:"sw_fictional",scopes:["lookup","draft"],limits:{creditsPerAsk:1,creditsPerDay:2,creditsPerWeek:3,asksPerDay:1},status:"active",expiresAt:new Date(Date.now()+86400000).toISOString(),lastUsedAt:null,createdAt:new Date().toISOString()};
+    const draft={id:3,companySlug:"fictional",targetRoleUrl:"https://jobs.fictional.invalid/role",note:"Fictional draft",jobLevel:1,creditCost:1,status:"draft",createdAt:new Date().toISOString()};
+    const fetch=vi.fn(async(url:string)=>url.includes("/drafts")?response({drafts:[draft]}):url.includes("/events")?response({events:[]}):response({agents:[agent],paused:false}));
+    vi.stubGlobal("fetch",fetch);
+    const {container}=render(<GoalSeekerAgents/>);
+    fireEvent.click(await screen.findByRole("button",{name:"Activity"}));
+    await waitFor(()=>expect(container.textContent).toContain("1 referral"));
+    expect(container.textContent).not.toContain("credits");
+  });
+
  it("re-reads approvals when decision submission fails so an already-decided approval leaves pending",async()=>{
    const approval = { id: 11, kind: "ask_send", status: "pending", provider: "custom", companyDomain: "fictional.invalid", role: "Fictional role", note: "Confirmed skill", creditCount: 1, slotCount: 1, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86400000).toISOString() };
    let postAttempted = false;
