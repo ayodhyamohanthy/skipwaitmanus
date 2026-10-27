@@ -17,7 +17,8 @@ export function scrubSentryUrl(value: string, origin: string): string {
       .replace(/^\/email-review\/[^/]+/, "/email-review/[redacted]")
       .replace(/^\/share-card\/[^/]+/, "/share-card/[redacted]")
       .replace(/^\/fast\/[^/]+/, "/fast/[redacted]")
-      .replace(/^\/refer\/[^/]+\/[^/]+/, "/refer/[redacted]");
+      .replace(/^\/refer\/[^/]+\/[^/]+/, "/refer/[redacted]")
+      .replace(/^\/r\/[^/]+/, "/r/[redacted]");
     url.search = "";
     url.hash = "";
     return url.pathname;

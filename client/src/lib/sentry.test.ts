@@ -12,6 +12,8 @@ describe("client Sentry wiring", () => {
     expect(scrubSentryUrl("https://skipwait.me/email-review/abc123", "https://skipwait.me")).toBe("/email-review/[redacted]");
     expect(scrubSentryUrl("https://skipwait.me/share-card/xyz?x=1#y", "https://skipwait.me")).toBe("/share-card/[redacted]");
     expect(scrubSentryUrl("https://skipwait.me/fast/r12-34abcdef", "https://skipwait.me")).toBe("/fast/[redacted]");
+    // D-090 BYOR: the one-time bring-your-own-referrer token must never reach Sentry.
+    expect(scrubSentryUrl("https://skipwait.me/r/abc123?x=1", "https://skipwait.me")).toBe("/r/[redacted]");
     expect(scrubSentryUrl("https://skipwait.me/premium?role=job_seeker", "https://skipwait.me")).toBe("/premium");
   });
 });

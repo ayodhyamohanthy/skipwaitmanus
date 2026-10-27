@@ -4,7 +4,7 @@ import Clarity from "@microsoft/clarity";
 // cards, fast-track codes). Clarity records page URLs alongside its replays,
 // so tracking stays off those routes entirely. Mirrors the scrub lists in
 // client/src/lib/sentry.ts and server/sentry.ts.
-const SENSITIVE_PATHS = [/^\/company\/claim/, /^\/company\/dashboard\//,/^\/email-review\//, /^\/share-card\//, /^\/fast\//, /^\/refer\//];
+const SENSITIVE_PATHS = [/^\/company\/claim/, /^\/company\/dashboard\//,/^\/email-review\//, /^\/share-card\//, /^\/fast\//, /^\/refer\//, /^\/r\//];
 
 export function shouldTrackClarityPath(pathname: string): boolean {
   return !SENSITIVE_PATHS.some((pattern) => pattern.test(pathname));
