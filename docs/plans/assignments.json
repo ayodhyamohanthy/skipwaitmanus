@@ -3445,6 +3445,22 @@
       ]
     },
     {
+      "id": "FIX-share-hub-link-ready",
+      "title": "Goal /share hub: never show the link as ready before it exists (flaky main CI test)",
+      "row": "D-048",
+      "packet": "docs/plans/FIX-share-hub-link-ready.md",
+      "tier": 1,
+      "lane": "d048-foundation",
+      "branch": "agent/queue/fix-main-eb0fd8cd",
+      "status": "in-review",
+      "dependsOn": [],
+      "note": "Main CI flake: shareHubGoal.test.tsx 'opens on the goal with the copy commit once the link is ready' failed on eb0fd8cd (run 40467542914) and dc7f71a8; GoalShareHub started with loading=false so the link could render as ready before it existed. PR #734 by a new Claude session (head 5149e8af, two files). Registered post-hoc by the coordinator: the D-166 queue gate refused the unregistered branch; the owner-direct label was NOT used and no gate bypass was granted. Tier 1: one independent D-151 review of the exact head by a model other than Claude (builder is Claude family), then landing on green required CI. Owns overlaps D-048-copy-goal-twins-trigger-fix, which now waits on this row and merges main forward after it lands.",
+      "owns": [
+        "client/src/pages/goal/seeker-small/GoalShareHub.tsx",
+        "client/src/pages/goal/seeker-small/shareHubGoal.test.tsx"
+      ]
+    },
+    {
       "id": "D-048-copy-goal-twins-trigger-fix",
       "title": "Fix #727 review findings: per-party reward trigger wording on the goal share/landed twins",
       "row": "D-048",
@@ -3453,8 +3469,10 @@
       "lane": "d048-foundation",
       "branch": "agent/deepseek/d048-goal-twins-trigger-fix",
       "status": "todo",
-      "dependsOn": [],
-      "note": "Post-merge review 6435626730 on #727: FINDINGS. Fix on a new branch off current main: (1) blocking - friend mailto/X message implies one trigger unlocks both rewards; state each person's own trigger (inviter next, joiner first; server/db.ts:4041-4045, 4437-4450, 4047-4048). (2) inviter status line same single-trigger construction. (3) '1 extra referral' -> '1 extra referral request' (reward is a request, not a completed referral). (4) tests: assert rendered mailto body + X strings per-party, signed-out copy, load-error text, close-others button; extend noun-ask guard to all rendered states. Refresh affected 390/1280 captures. Frozen naming, no unit semantics, no flag/RELEASED/pricing/billing change. Tier 1: independent D-151 review (seat-1 offered) before merge; reviewer never merges.",
+      "dependsOn": [
+        "FIX-share-hub-link-ready"
+      ],
+      "note": "Post-merge review 6435626730 on #727: FINDINGS. Fix on a new branch off current main: (1) blocking - friend mailto/X message implies one trigger unlocks both rewards; state each person's own trigger (inviter next, joiner first; server/db.ts:4041-4045, 4437-4450, 4047-4048). (2) inviter status line same single-trigger construction. (3) '1 extra referral' -> '1 extra referral request' (reward is a request, not a completed referral). (4) tests: assert rendered mailto body + X strings per-party, signed-out copy, load-error text, close-others button; extend noun-ask guard to all rendered states. Refresh affected 390/1280 captures. Frozen naming, no unit semantics, no flag/RELEASED/pricing/billing change. Tier 1: independent D-151 review (seat-1 offered) before merge; reviewer never merges. Owns overlaps FIX-share-hub-link-ready; this row waits for it and merges main forward after it lands.",
       "owns": [
         "client/src/pages/goal/seeker-small/GoalLanded.tsx",
         "client/src/pages/goal/seeker-small/GoalShareHub.tsx",
