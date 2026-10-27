@@ -21,7 +21,7 @@ const TEXT_SURFACES = [
 
 function declarations(source: string): Map<string, string[]> {
   const out = new Map<string, string[]>();
-  for (const match of source.matchAll(/(--g-[a-z0-9-]+)\s*:\s*([^;]+);/g)) {
+  for (const match of Array.from(source.matchAll(/(--g-[a-z0-9-]+)\s*:\s*([^;]+);/g))) {
     const name = match[1] ?? "";
     const value = (match[2] ?? "").trim().replace(/\s+/g, " ");
     if (!name || !COLOUR.test(value)) continue;
@@ -71,10 +71,10 @@ describe("goalDark.css covers the light colour table exactly", () => {
   });
 
   it("redefines each of the 27 light colour tokens exactly once", () => {
-    const lightNames = [...lightColours.keys()].sort();
+    const lightNames = Array.from(lightColours.keys()).sort();
     expect(lightNames).toHaveLength(27);
     for (const name of lightNames) expect(lightColours.get(name), name).toHaveLength(1);
-    expect([...darkColours.keys()].sort()).toEqual(lightNames);
+    expect(Array.from(darkColours.keys()).sort()).toEqual(lightNames);
     for (const name of lightNames) expect(darkColours.get(name), name).toHaveLength(1);
   });
 

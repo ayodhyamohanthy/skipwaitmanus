@@ -1,0 +1,34 @@
+/* D-048-dark-mode (owner, Oct 25 2026; D-224): the dark counterpart of the
+   goal colour tokens. One scoped block only; R9 admits this exact path.
+   index.css stays the light source of truth. The warm hero band keeps its
+   light values because the signed-out landing is forced light (packet §3.3). */
+.dark .g-scope {
+  color-scheme: dark;
+  --g-canvas: #0b0b0c;
+  --g-surface: #121214;
+  --g-surface-sunken: #0e0e10;
+  --g-surface-hover: #1c1c20;
+  --g-surface-selected: #242429;
+  --g-scrim: rgb(0 0 0 / 0.6);
+  --g-ink: #f4f4f5;
+  --g-ink-2: #a1a1aa;
+  --g-ink-3: #8f8f99;
+  --g-ink-inverse: #0a0a0a;
+  --g-hairline: #27272a;
+  --g-control-edge: #8a8a8a;
+  --g-primary: #fafafa;
+  --g-primary-hover: #e4e4e7;
+  --g-primary-pressed: #d4d4d8;
+  --g-on-primary: #0a0a0a;
+  --g-on-primary-edge: rgb(10 10 10 / 0.4);
+  --g-trust: #60a5fa;
+  --g-emerald: #34d399;
+  --g-amber: #fbbf24;
+  --g-crimson: #f87171;
+  --g-warm-1: #fce9da;
+  --g-warm-2: #f6cfdd;
+  --g-warm-3: #e7d6f4;
+  --g-mark-1: #3f3f46;
+  --g-mark-2: #71717a;
+  --g-mark-3: #f4f4f5;
+}
