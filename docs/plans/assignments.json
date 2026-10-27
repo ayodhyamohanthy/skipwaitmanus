@@ -159,7 +159,8 @@
         "shared/planCatalog.ts",
         "shared/planFamily.test.ts",
         "shared/planFamily.ts",
-        "shared/planReach.test.ts"
+        "shared/planReach.test.ts",
+        "client/src/components/goal/useGoalShellMeta.ts"
       ],
       "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first. Oct 27 queue sync (Claude Code, D-219; changeable): moved up to sit just above LAUNCH-legal-copy and no longer waits on it; LAUNCH-legal-copy now waits for this row instead, because it is owner-held (legal text), shares only policyPages.test.tsx, and its Terms and Cancellation text must describe the pricing this row lands. The owner's freeze said 'push it immediately', and the live app could still open an archived legacy pack cart on Oct 25 (PR #666 comment 6399494075). It still waits for D-048-F-credits (shared AppShell.tsx line), which D-217 unparked to land first through its Tier 1 path."
     },
@@ -1177,7 +1178,7 @@
       "tier": 1,
       "lane": "design-core",
       "branch": "agent/instinct/d048-f-credits",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness"
       ],
