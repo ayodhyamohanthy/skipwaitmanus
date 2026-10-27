@@ -80,11 +80,13 @@ jobs:
         with:
           path: trusted
           persist-credentials: false
+      # No stored credentials: the target's install and build scripts never see the token.
       - name: Check out the recovery target
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.commit }}
           path: target
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: target/package.json
@@ -139,13 +141,12 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: bash ../trusted/scripts/verify-cloudflare-container-release.sh
+      # The same lightweight tag Deploy API moves, set through the API so only this step holds the token.
       - name: Move the runtime marker to the target
-        working-directory: target
         env:
           EXPECTED_SHA: ${{ inputs.commit }}
-        run: |
-          git tag -f api-runtime "$EXPECTED_SHA"
-          git push -f origin refs/tags/api-runtime
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/api-runtime" -f sha="$EXPECTED_SHA" -F force=true
       - name: Record the recovery result
         if: always()
         env:

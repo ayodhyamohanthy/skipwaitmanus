@@ -454,11 +454,19 @@ describe("rollback.yml: deliberate API recovery", () => {
     for (const s of recover) if (has(s, /require-green-release|deploy-cloudflare-two-phase|verify-cloudflare-container-release/)) expect(has(s, /trusted\/scripts\//)).toBe(true);
   });
 
+  it("never lets the older target's install or build reach the GitHub token", () => {
+    const all = [...wf.jobs.keys()].flatMap(job => wf.steps(job));
+    for (const s of all) if (has(s, /actions\/checkout@/)) expect(has(s, /persist-credentials: false/)).toBe(true);
+    const tokened = all.filter(s => has(s, /secrets\.GITHUB_TOKEN/)).map(s => s.name);
+    expect(tokened).toEqual(["Require a deliberate request and green CI on the recovery target", "Re-check the recovery target", "Move the runtime marker to the target"]);
+    expect(wf.text).not.toMatch(/git push/);
+  });
+
   it("re-checks before the first production write, deploys and verifies the target SHA, then moves the marker, with no migrations", () => {
     const recheck = at(/node trusted\/scripts\/require-green-release\.mjs --target api --recovery --once/);
     const deploy = at(/deploy-cloudflare-two-phase\.sh/);
     const verify = at(/verify-cloudflare-container-release\.sh/);
-    const marker = at(/git push -f origin refs\/tags\/api-runtime/);
+    const marker = at(/git\/refs\/tags\/api-runtime/);
     expect(recheck).toBeGreaterThanOrEqual(0);
     expect([recheck < deploy, deploy < verify, verify < marker]).toEqual([true, true, true]);
     for (const i of [deploy, verify, marker]) {
