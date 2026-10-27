@@ -245,3 +245,7 @@ The split's row text now names them, so their lane packet writer adds them:
 - D-048-F-coverage: done — landed `f9ee7ef8` (test) with the catalogue line it found missing (`referrer-home/ShareImpactCard.tsx` on the `pages/ReferrerHome.tsx` row); CI green, no deploy due (scripts + docs only).
 - D-048-p3-skippy: todo; waits for the foundation rows and REGISTER-520.
 - D-048-p3-agents: todo; waits for the foundation rows.
+
+## Integrated shell notification follow-through (Oct 27)
+
+`D-048-F-shell-parts` remains the owner of AccountMenu/NotificationBell goal-token cleanup and standalone behavior parity. The missing integrated duplicate-bell acceptance belongs to `SHELL-single-notification-entry`, packet `docs/plans/SHELL-single-notification-entry.md`, after shell-parts and D222's shared shell paths. Preserve unread/auth/account behavior and the existing `/notifications` -> `/alerts` redirect, verify one visible signed-in shell control at both widths, and keep #743/#575 recovery unchanged. Current source/fixture evidence is not live-header acceptance.
