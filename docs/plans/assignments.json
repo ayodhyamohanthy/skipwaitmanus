@@ -108,6 +108,18 @@
       ]
     },
     {
+      "id": "CI-architect-real-checks",
+      "title": "Close substantive architect PR CI skip through explicit workflow ownership handoff (#748/#752)",
+      "row": "D-082",
+      "packet": "docs/plans/CI-architect-real-checks.md",
+      "tier": 1,
+      "lane": "ci-gate",
+      "branch": "agent/queue/ci-architect-real-checks",
+      "status": "architect",
+      "dependsOn": [],
+      "note": "Packet/ownership reconciliation only, NOT ready for implementation. ci.yml remains owned by PRICING-banded-oct25 until explicit handoff and protected scope amendment. No dependency on pricing feature or disjoint P1 deployment repair; no concurrent workflow edits. Proposed full scope and evidence are in packet. Architect may resolve handoff/registration only; do not mutate runtime workflow while unresolved."
+    },
+    {
       "id": "D-174-sample-job-removal",
       "title": "Remove the fabricated acme.com 'Test role for loop verification' listing from production /jobs, the sitemap and JobPosting markup",
       "row": "D-193",
