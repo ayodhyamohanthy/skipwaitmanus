@@ -90,6 +90,23 @@
       ]
     },
     {
+      "id": "P1-deploy-green-gate",
+      "title": "Block Web/API migrations and deploys until exact-SHA required CI succeeds (#748)",
+      "row": "D-082",
+      "packet": "docs/plans/P1-deploy-green-gate.md",
+      "tier": 1,
+      "lane": "deploy",
+      "branch": "agent/queue/p1-deploy-green-gate",
+      "status": "todo",
+      "dependsOn": [],
+      "owns": [
+        ".github/workflows/deploy-api.yml",
+        ".github/workflows/deploy-pages.yml",
+        "scripts/require-green-release.mjs",
+        "scripts/requireGreenRelease.test.ts"
+      ]
+    },
+    {
       "id": "D-174-sample-job-removal",
       "title": "Remove the fabricated acme.com 'Test role for loop verification' listing from production /jobs, the sitemap and JobPosting markup",
       "row": "D-193",
