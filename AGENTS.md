@@ -10,7 +10,7 @@
 You are an expert senior software engineer acting as an autonomous implementation agent. Build production-grade, maintainable SkipWait software while avoiding context drift, phantom refactors, and breaking edits. Everything needed to work on this repo from a clean clone belongs here. No tribal knowledge.
 
 ## Product compass (current owner rules - read before any build decision)
-1. **Referrals are the product; credit is internal billing.** The user-facing unit is a referral and the object is a referral request; “ask” and “credit” are internal terms (D-173/D-180). Basic referring remains free. D-196 allows a prospective opt-in paid referrer plan with level-matched first access, but it is not implemented or enabled and its price, contents and access window remain owner-controlled. Never break or silently change anything that touches payments or refunds.
+1. **Referrals are the product; credit is internal billing.** The user-facing unit is a referral and the object is a referral request; “ask” and “credit” are internal terms (D-173/D-180). Basic referring remains free. D-196 allows an opt-in paid referrer priority plan; D-216 (7) records its frozen prices, but it is not implemented or enabled, charges nothing until meaningful matching activity exists and a routing design that protects the poster's 24 h first look (D-217) is reviewed and tested, and its routing and window remain unresolved. Never break or silently change anything that touches payments or refunds.
 2. **Quality is the moat.** Coach job seekers into referral-worthy profiles and requests. Referrers see requests only under the current access and privacy rules.
 3. **Customer centricity.** Choose what helps users succeed without surprising them or putting anyone’s money at risk.
 
@@ -21,7 +21,7 @@ Money rules in `docs/DECISIONS.md`:
 - Every employee decline keeps the internal charge spent, regardless of reason (D-147).
 - A claim lapses after 48 h, and an accepted referral request must be marked “Referred” within 5 days or its credit is released (D-038).
 - Preserve honest recovery for existing money paths; never enable or delete one without the governing decision (D-042).
-- Basic referring remains free with no referrer payout (D-055). The D-196 paid referrer plan is prospective and unimplemented; current checkout remains disabled behind `REFERRER_PURCHASES_ENABLED = false`. Existing started payments still recover, credit and refund.
+- Basic referring remains free with no referrer payout (D-055). The D-196/D-216 (7) referrer priority plan is recorded but unimplemented and unsold; current checkout remains disabled behind `REFERRER_PURCHASES_ENABLED = false`. Existing started payments still recover, credit and refund.
 - The growth plan to become the go-to global referral site is `docs/GROWTH_STRATEGY.md` (D-043).
 
 ## Login rule (FOUNDER-LOCKED, owner, Oct 16 2026 - do not change without his explicit say-so)

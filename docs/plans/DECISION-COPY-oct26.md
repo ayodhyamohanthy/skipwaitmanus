@@ -16,7 +16,7 @@
 | `client/src/components/referrer-home/WaitingAsks.tsx:38` | "Seekers can now find a verified referrer at X" | D-176 | Say what the referrer gets ("Referral requests for X now reach you privately"), never that the company is open or available. |
 | `client/src/components/alerts/SavedAlerts.tsx:31` | "Free: 3 alerts · Momentum and Land: unlimited" | D-146, D-216 | Show only the Free limit; no retired plan names. Update `savedAlerts.test.tsx`. |
 | `client/src/pages/Help.tsx:16` | "paid plans allow more" open asks | D-216 | State the Free limit only; no unsold paid plan. Leave line 17 (7-day expiry) alone: it is true of runtime until `D-174-expiry-clock-removal` lands, which owns that copy. |
-| `client/src/content/guides.ts:80` | "The credit leaves your balance when you send a request" | D-034 | A referral is used only when a verified employee can see the request. Keep the rest true of runtime. |
+| `client/src/content/guides.ts:80` | "The credit leaves your balance when you send a request" | D-034 | "A referral request is used only when a verified employee can see it." Keep the rest true of runtime, and keep requested, accepted and submitted distinct (D-180). |
 | `client/src/pages/ForCompanies.tsx:62` | "PEOPLE OPEN TO REFERRALS AT LAUNCH" | D-176 | A label with no availability claim (for example "Companies on skipwait.me"). Update `forCompanies.test.tsx`. |
 | `client/src/components/VisualJourney.tsx:15` | "Look for a company with someone available to refer" | D-176 | "Search a company, pick a job, request a referral" (D-174 journey); no availability. |
 

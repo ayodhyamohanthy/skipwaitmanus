@@ -33,3 +33,9 @@
   - Added rows DECISION-COPY-oct26 and DECISION-SYNC-oct26.
 - **Owner questions:** the six in section 8 of the audit. Evidence for (a) the D-147 scope, (b) the invite-reward scope and (c) the first-look timing is pending from Instinct on PR #666.
 - **Cursor:** next session rates D-001 to D-020 (oldest first; none of them was rated here), then every entry newer than D-218.
+
+### Oct 27 (Claude Code, finishing the Oct 26 sync; no new audit)
+- **Corrected before landing:** D-216 now carries the frozen proposal's conditions as Instinct recovered them on PR #666 (comment 6423014846): "Founding-member launch price" framing only; referrer plans with no guaranteed requests, a shared priority stage for overlapping bands, and no charge until meaningful matching activity exists *and* a reviewed, tested routing design; the pre-launch checklist (level classification, paid-priority routing and window, taxes, gateway fees). Every included, free or bought count is a number of referral requests, never a promise of an accepted or submitted referral (D-179, D-180).
+- **Not settled, routed to Instinct:** the regular price after a founding cap fills. PR #666's description says about +50%, but its code removed that multiplier as unapproved. Nothing is priced after a cap until the owner's word.
+- **Superseded instructions marked:** the D-132 packet banner and the KIT_V4 §3b D-132 row; BRIEF and AGENTS now give the referral-only wording rule and the recorded-but-unsold referrer and company plans.
+- **Unchanged:** every done row, the D-147 refund questions (behaviour unchanged), and every flag, price and sale state.
