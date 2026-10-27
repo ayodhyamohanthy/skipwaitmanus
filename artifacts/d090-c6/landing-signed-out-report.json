@@ -24,7 +24,7 @@
   "metadata": {
     "persona": "signed-out synthetic viewer",
     "fixture": "landing-signed-out.json",
-    "sourceCommit": "63602786",
+    "sourceCommit": "f179f882",
     "flags": {
       "BILLING_ENV": "test",
       "BYOR_LINK_ENABLED": "true",
@@ -32,7 +32,7 @@
     },
     "build": {
       "VITE_GOAL_SURFACES": "not used by D-090 captures",
-      "sourceCommit": "63602786"
+      "sourceCommit": "f179f882"
     },
     "evidenceMode": "local Vite only; fixture-intercepted API; no database, provider, production backend, or real account"
   },

@@ -1,7 +1,7 @@
 {
   "task": "D-090-BYOR C6 local synthetic QA",
-  "sourceCommit": "63602786",
-  "capturedAt": "2026-10-26T18:52:13.666Z",
+  "sourceCommit": "f179f882",
+  "capturedAt": "2026-10-27T03:51:33.294Z",
   "flags": {
     "BILLING_ENV": "test",
     "BYOR_LINK_ENABLED": "true",
@@ -9,7 +9,7 @@
   },
   "build": {
     "VITE_GOAL_SURFACES": "not used by D-090 captures",
-    "sourceCommit": "63602786"
+    "sourceCommit": "f179f882"
   },
   "environment": "local Vite only; fixture-intercepted API; no database, provider, production backend, or real account",
   "personas": [
