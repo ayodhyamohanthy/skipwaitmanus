@@ -9,11 +9,15 @@ import {
   completionPercent, emptyOnboarding, readiness, toSetupPatch, type LinkKind, type OnboardingState,
 } from "@/components/onboarding/onboardingState";
 import { uploadResume, validateResumeFile } from "@/lib/resumeUpload";
+import { lazy, Suspense } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalOnboarding = lazy(() => import("./goal/onboarding/GoalOnboarding"));
 
 const LINK_ICONS: Readonly<Record<LinkKind, typeof Globe>> = { LinkedIn: Linkedin, GitHub: Github, "Portfolio site": Globe, "Behance / Dribbble": Globe2 };
 const RESUME_HINT = "PDF, Word, PNG, JPEG · up to 10 MB";
 
 export default function Onboarding() {
+  if (goalSurfaceOn("onboarding")) return <Suspense fallback={null}><GoalOnboarding /></Suspense>;
   const { isSignedIn, getToken, openSignIn } = useAuth();
   const [s, setS] = useState(0);
   const [state, setState] = useState<OnboardingState>(emptyOnboarding);

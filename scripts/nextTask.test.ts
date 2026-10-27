@@ -51,13 +51,13 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
     ]);
     const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
     // P0-ask-link-signin and P1-queue-attestation are both done (each landed after its
-    // review; P1 as merge 2be41b2d), and both owner follow-ups are done, so
-    // PICKER-review-independence is next.
-    expect(first).toMatchObject({ kind: "build", task: { id: "PICKER-review-independence" } });
+    // review; P1 as merge 2be41b2d), both owner follow-ups are done, and SEC-deps-oct24
+    // landed as 1e97d6ea (#663). The owner's device sign-in report comes next.
+    expect(first).toMatchObject({ kind: "build", task: { id: "FIX-device-signin" } });
     // Both owner follow-ups (PREMIUM-total-label and D-067-outbox-fixture-repair) are done,
-    // so slicing off the live regressions leaves PICKER-review-independence as next.
+    // so slicing off the live regressions still leaves the launch batch first.
     const followUps = pickNextTask({ tasks: real.tasks.slice(2), mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    expect(followUps).toMatchObject({ kind: "build", task: { id: "PICKER-review-independence" } });
+    expect(followUps).toMatchObject({ kind: "build", task: { id: "FIX-device-signin" } });
   });
 
   it("rejects unknown keys, duplicates, bad branches, missing packets, unknown dependencies and cycles", () => {
@@ -630,7 +630,7 @@ describe("markers and printed steps", () => {
     expect(land1).toContain("git log --merges --cc");
     const review = renderPick({ kind: "review", task: task("M", { tier: 1 }), work: "agent/queue/m", pr: "https://github.com/o/r/pull/9", lock: "agent/review/m", lockExists: true, builder: "Qwen · s1" }, ctx);
     expect(review).toContain("Before reading any code, record the head you review");
-    expect(review).toContain("naming <reviewed>, never a fresh rev-parse");
+    expect(review).toContain("Name <reviewed> with your verdict, never a fresh rev-parse");
     expect(review).not.toContain("goes back to review");
     const arch = renderPick({ kind: "architect", task: task("P", { status: "architect", packet: null }), lock: "agent/architect/p", lockExists: false }, { ...ctx, who: "Claude Code · s9" });
     expect(arch).toContain("WRITE THE PACKET FOR P");
@@ -959,7 +959,7 @@ describe("hardening from the D-085 review", () => {
     const busyA: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 1)];
     const own = pick([task("A"), task("B")], { branches: [busyA], reports: [blocked], claimant: "Qwen · s1" });
     expect(own).toMatchObject({ kind: "wait", gate: "A", blocked: true, own: true });
-    expect(renderPick(own, { who: "Qwen · s1", date: "2026-10-20", claimed: true })).toContain("another session or the owner");
+    expect(renderPick(own, { who: "Qwen · s1", date: "2026-10-20", claimed: true })).toContain("neither raised the block nor holds the task, or the owner");
     const ctx = { who: "Kimi · s2", date: "2026-10-20", claimed: false };
     const other = pick([task("A"), task("B", { lane: "A" })], { branches: [busyA], reports: [blocked], claimant: "Kimi · s2" });
     expect(other).toMatchObject({ kind: "unblock", task: { id: "A" } });
@@ -1530,5 +1530,99 @@ describe("PICKER-lane-busy", () => {
   it("does not bypass an architect's unfinished explicit dependency", () => {
     const tasks = [task("A", { lane: "cluster" }), task("B", { lane: "cluster", status: "architect", dependsOn: ["A"] })];
     expect(pick(tasks, { ...waiting(), claimant: "Kimi · architect", reports: [{ id: "A", status: "blocked", who: builder, at: NOW, note: "needs CEO" }] }).kind).not.toBe("architect");
+  });
+});
+
+// Findings from the independent review of #640 (D-200): one block rule for the picker, the board and the reports.
+describe("D-200 block rule: nobody clears a block they raised or a task they hold", () => {
+  const busyA: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 1)];
+  const at = (h: number) => NOW - h * HOUR;
+  const rep = (who: string, status: string, hoursAgo: number) => ({ id: "A", status, who, at: at(hoursAgo), note: "" });
+  const unblockLock = (who: string, hoursAgo = 0.5): [string, Branch] => ["agent/architect/a", { tipMs: at(hoursAgo), merged: false, markers: [{ verb: "Unblock", id: "A", who }] }];
+
+  it("an unblocker that reports the block itself hands it on: it waits, its lock holds nobody off, and its own review does not clear it", () => {
+    const tasks = [task("A"), task("B", { lane: "A" })];
+    const branches = [busyA, unblockLock("Mistral · u1")];
+    const reports = [rep("Mistral · u1", "blocked", 0.2), rep("Qwen · s1", "blocked", 2)];
+    expect(pick(tasks, { branches, reports, claimant: "Mistral · u1" })).toMatchObject({ kind: "wait", gate: "A", blocked: true });
+    expect(pick(tasks, { branches, reports, claimant: "Kimi · s2" })).toMatchObject({ kind: "unblock", task: { id: "A" }, from: "Mistral · u1" });
+    const after = [rep("Mistral · u1", "review", 0.1), ...reports];
+    expect(pick(tasks, { branches, reports: after, claimant: "Kimi · s2" })).toMatchObject({ kind: "unblock", task: { id: "A" } });
+    expect(core.heldBy({ tasks, branches: new Map(branches), openPrs: new Map(), reports, claimant: "Mistral · u1", now: NOW })).toBeNull();
+  });
+
+  it("a second block does not let the first blocker clear its own question", () => {
+    const reports = [rep("Cue · c1", "review", 0.1), rep("Kimi · s2", "blocked", 0.5), rep("Cue · c1", "blocked", 1)];
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports, claimant: "Mistral · s3" })).toMatchObject({ kind: "unblock", task: { id: "A" } });
+    expect(pick([task("A"), task("B", { lane: "A" })], { branches: [busyA], reports, claimant: "Cue · c1" })).toMatchObject({ kind: "wait", gate: "A", blocked: true });
+  });
+
+  it("the holder of a task someone else blocked is not offered the unblock, and only its green or landed report clears it", () => {
+    const blocked = [rep("Mistral · r1", "blocked", 1)];
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: blocked, claimant: "Qwen · s1" })).toMatchObject({ kind: "wait", gate: "A", own: true });
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: [rep("Qwen · s1", "review", 0.5), ...blocked], claimant: "Kimi · s2" })).toMatchObject({ kind: "unblock", task: { id: "A" } });
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: [rep("Qwen · s1", "green", 0.5), ...blocked], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "B" } });
+    const rows = statusBoard({ tasks: [task("A")], branches: new Map([busyA]), openPrs: new Map(), reports: [rep("Qwen · s1", "review", 0.5), ...blocked], now: NOW });
+    expect(rows[0]).toMatchObject({ health: "red", report: { status: "blocked", who: "Mistral · r1" } });
+  });
+
+  it("a holder with other work keeps building it instead of being handed the unblock of its own blocked task", () => {
+    const ceo = "Claude Code · s9";
+    const branches: [string, Branch][] = [["agent/queue/a", claimBy(ceo, "A", 1)], ["agent/queue/c", claimBy(ceo, "C", 1)]];
+    expect(pick([task("A"), task("C")], { branches, reports: [rep("Kimi · r2", "blocked", 0.5)], claimant: ceo })).toMatchObject({ kind: "continue", task: { id: "C" } });
+  });
+
+  it("a Claude Code session that raised a block waits; it never gets the CEO review telling it to clear that block", () => {
+    const reports = [rep("Claude Code · s9", "blocked", 0.5)];
+    expect(pick([task("A"), task("B", { lane: "A" })], { branches: [busyA], reports, claimant: "Claude Code · s9" })).toMatchObject({ kind: "wait", gate: "A", blocked: true });
+  });
+
+  it("the unblock steps say to report before landing the ruling, and how to hand on a block you cannot decide", () => {
+    const text = renderPick({ kind: "unblock", task: task("A"), report: rep("Qwen · s1", "blocked", 1), lock: "agent/architect/a", lockExists: false }, { who: "Kimi · s2", date: "d", claimed: true });
+    expect(text).toContain("Report before you land the ruling's pull request");
+    expect(text).toContain("report it `blocked`");
+  });
+});
+
+// Cue's blocks, Oct 24-25: a session that may not take a task, a review worktree with no packages, git-only access.
+describe("an agent is never stuck on its own limits (D-200 (5))", () => {
+  it("--avoid hands a session something else, without a blocked report and without lifting a red task's hold", () => {
+    expect(pick([task("A"), task("B")], { claimant: "Cue Agent · c1" })).toMatchObject({ kind: "build", task: { id: "A" } });
+    expect(pickNextTask({ tasks: [task("A"), task("B")], mainCi: { state: "green" }, branches: new Map(), openPrs: new Map(), now: NOW, claimant: "Cue Agent · c1", avoid: new Set(["A"]) })).toMatchObject({ kind: "build", task: { id: "B" } });
+    const busyA: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 1)];
+    const redA = { id: "A", status: "red", who: "Qwen · s1", at: NOW - HOUR, note: "x" };
+    expect(pickNextTask({ tasks: [task("A"), task("B", { lane: "A" })], mainCi: { state: "green" }, branches: new Map([busyA]), openPrs: new Map(), reports: [redA], now: NOW, claimant: "Cue Agent · c1", avoid: new Set(["A"]) })).toMatchObject({ kind: "wait", gate: "A" });
+  });
+
+  it("every worktree step and the review step install the pinned packages, and a verdict needs no GitHub permission", () => {
+    const ctx = { who: "Cue Agent · c1", date: "2026-10-25", claimed: true };
+    const review = renderPick({ kind: "review", task: task("M", { tier: 1 }), work: "agent/queue/m", pr: "https://github.com/o/r/pull/9", lock: "agent/review/m", lockExists: true, builder: "Qwen · s1" }, ctx);
+    expect(review).toContain("pnpm install --frozen-lockfile");
+    expect(review).toContain("always allowed");
+    expect(review).toContain("a GitHub review is never required");
+    expect(review).toContain("--avoid M");
+    const build = renderPick({ kind: "build", task: task("A") }, ctx);
+    expect(build).toContain("pnpm install --frozen-lockfile");
+    expect(build).not.toContain("report it blocked to avoid");
+  });
+});
+
+// D-200: two switch-only claims on one wiring file never make two tasks wait for each other (#649).
+describe("switch-only claims share a file", () => {
+  it("two switch-only claims on the same file do not overlap; a full claim still overlaps a switch-only one", () => {
+    expect(core.ownsOverlap(["server/_core/index.ts (switch only)"], ["server/_core/index.ts (switch only)"])).toBe(false);
+    expect(core.ownsOverlap(["server/_core/index.ts (switch only)"], ["server/_core/index.ts"])).toBe(true);
+    expect(core.ownsOverlap(["server/_core/index.ts"], ["server/_core/"])).toBe(true);
+    expect(core.ownsOverlap(["server/_core/index.ts (switch only)"], ["server/_core/"])).toBe(true);
+  });
+
+  it("the registry accepts two open tasks that each hold a switch-only claim on one file", () => {
+    const doc = { version: 1, repo: "o/r", tasks: [
+      { ...task("A"), packet: "docs/plans/p.md", owns: ["server/a.ts", "server/_core/index.ts (switch only)"] },
+      { ...task("B"), packet: "docs/plans/p.md", owns: ["server/b.ts", "server/_core/index.ts (switch only)"] },
+    ] };
+    expect(validateAssignments(doc, () => true).filter(e => e.includes("overlapping"))).toEqual([]);
+    const full = { ...doc, tasks: [doc.tasks[0], { ...doc.tasks[1], owns: ["server/b.ts", "server/_core/index.ts"] }] };
+    expect(validateAssignments(full, () => true).filter(e => e.includes("overlapping"))).toHaveLength(1);
   });
 });

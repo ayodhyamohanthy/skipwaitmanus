@@ -2,6 +2,8 @@
 
 > Read `docs/BRIEF.md` first, then this packet. Each section is one queue row. Every pull request here is already written: this packet is its review, fix-stage and landing brief, not a fresh build.
 
+> **D-219, D-221 (Oct 26):** the Oct 25 banded freeze supersedes the D-132 model, so the `D-132-item3` and `D-132-v2-checkout` sections below are history until each row's packet is rewritten (both rows are `architect`). Keep only the invariants that survive: an ask is charged exactly the accepted quote or answers 409 with nothing charged, and free referrals survive an upgrade (D-165 (3)) unless the banded review rules otherwise.
+
 | Field | Value |
 |---|---|
 | Decisions | D-163 (4), D-074, D-151, the Oct 23 merge-policy amendment (`docs/DECISIONS.md`) |
@@ -10,7 +12,7 @@
 
 Why they are queued: a decision on an open pull request with no queue row is never handed to anyone, so it never lands, and agents keep building from the older entry on `main` (D-163 (4)). Decision IDs and migration numbers are fixed **at landing**: take the highest ID on `main` and every open branch + 1, renumbering every reference in the diff (`docs/DECISIONS.md` ID rule).
 
-## REGISTER-520: land PR #520 (CEO rulings D-156 to D-161 on its branch)
+## REGISTER-520: land PR #520 (CEO rulings D-201 to D-206 on its branch)
 
 - **What it holds.** Docs, decisions and the queue only, no product code: Skippy's missing Tier 1 reviews with six findings (S-1, an SSRF in Skippy's job-page reader, is high), the packets `SKIPPY-fix.md` and `SKIPPY-next.md`, newest-decision sync (`PICKER-decision-sync.md`), the CEO mandate, the startup-credits toolbox, branch hygiene (`BRANCH-HYGIENE.md`) and decision re-rating (`DECISION-REVIEW.md`). It adds nine queue rows: `PICKER-decision-sync`, `SKIPPY-fix`, `BRANCH-HYGIENE-1`, `BRANCH-HYGIENE-2`, `SKIPPY-redteam`, `SKIPPY-3`, `SKIPPY-stepup`, `SKIPPY-6` and `SKIPPY-7`.
 - **Who.** A Claude Code session wrote it, so the review and the landing go to a model other than Claude (D-151). Its Tier 1 here buys exactly that. A Claude Code session handed this row's review or landing posts no verdict and reports it blocked (the D-151 interim rule).
@@ -25,10 +27,11 @@ Why they are queued: a decision on an open pull request with no queue row is nev
 - **Review stage.** A model other than Claude and other than the builder reviews the new pull request against current `main`: the resolved merge on its own (the merge-policy amendment), then every claim with file:line, especially the six Skippy findings and the line numbers in `SKIPPY-fix.md`. A finding is a claim that `main` does not support.
 - **Landing.** Docs only: focused checks plus the required CI on the exact head, then the normal landing (D-082, D-134 (6)). Close #520 after the landing.
 - **Stop and ask.** If a decision on the branch contradicts a newer one on `main` (for example D-146, D-147, D-152, D-162 or D-163), report it blocked with both IDs; do not pick one.
+- **D-183 (Oct 24): inherited text is not a conflict.** The stop rule covers decisions the branch makes. Lines #520 never changed take `main`'s version in the merge (the D-035 row stays deleted, `D-090-BYOR` keeps `dependsOn: []`); in `docs/plans/README.md` line 8, which both sides rewrote, keep `main`'s paragraph and add only #520's clauses (PICKER-decision-sync, the Skippy rows, branch hygiene). Renumber after every open branch, #620 included.
 
-## D-155-share-paid-gate: review and land PR #527 (the /share link unlocks after the first paid invoice)
+## /share paid-invoice gate: completed PR #527 (decision D-194; assignment key `D-155-share-paid-gate`)
 
-- **The owner's word (verbatim, D-155 on the branch):** "Referrals should show unavailable and this line / Referrals unlock after your first paid invoice. Once you've made a payment, come back here to get your referral link."
+- **The owner's word (verbatim; adopted as D-194):** "Referrals should show unavailable and this line / Referrals unlock after your first paid invoice. Once you've made a payment, come back here to get your referral link."
 - **What it changes.** `GET /api/personal-invites/me` answers `{ invite: null, locked: true }` and creates no invite row until the account has provider-verified payment evidence (a one-time fulfillment at status `credited`, or a webhook-activated subscription); `/share` shows the locked line; the claim route is unchanged. It adds `drizzle/deploy/0114_referral_paid_evidence.sql` and touches `server/chargebee.ts`, `server/chargebeeRoutes.ts`, `server/db.ts` and `server/privateReferralRoutes.ts`. So it is Tier 1 (money evidence and a migration), not docs.
 - **Who.** Instinct built it, so the review goes to a model other than Instinct (D-151).
 - **Review checklist** (on top of `docs/DELEGATION.md` §6):
@@ -68,18 +71,21 @@ Instinct built these, so every review and landing goes to a model other than Ins
   2. Renumber `0108_v2_plan_family_intents.sql` and `0109_v2_plan_family_wallets.sql` to the next free numbers on `main` and in plan §5 (on Oct 23 `main` ends at `0108_landed_thank_you.sql`), with every reference.
   3. Implement D-165 (3), red first: a Free wallet with unused free credits is no longer refused at checkout. On the webhook-confirmed upgrade, its unused free monthly credits move into a `planCreditGrants` carry-over grant that expires when their free month would have ended. They are spent soonest-expiring first, as today, and never become paid credits. The checkout copy line comes from `shared/moneyCopy.ts`: "Your {N} free credits stay until {date}."
      Tests: the upgrade with 0 and with 3 unused credits; a replayed webhook grants nothing twice; the carried credits expire on their date with an expiry row; the money check's `getCreditLedgerAudit` reconciles.
+  4. D-132 item 4's grant half (D-185), red first: the crediting grants paid rung credits where they never expire (`PAID_CREDITS_NEVER_EXPIRE` in `shared/planFamily.ts`), keyed once per term, so with the flags on no paid credit expires at a cycle roll, spent or unspent. D-132-audit (#547) does the refund half behind `ASK_LEVEL_COST`.
+     Tests: a rung grant survives a cycle roll; a replayed grant writes nothing twice; a refund after the roll returns the credit.
 - **Review checklist:**
   1. The line-by-line deletion review of the three-way port that #523's own description lists as open: no function or test on `main` was lost.
   2. Every money move is idempotent and keyed; a lost webhook has a reconcile path.
   3. Flags off means no new route answers anything but its current refusal.
   4. The migrations are additive and idempotent, with the reconcile arrays in step.
   5. D-165 (3) is implemented as written.
+  6. D-132 item 4's grant half is implemented as written (D-185).
 - **Before any enable,** QA attaches the TEST-site cart proof in INR and USD on this exact wiring. #416's proof was on other wiring.
 - **#416** is superseded by this row: close it with a link when this lands.
 
 ## Status
 These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines go here (D-134).
-- REGISTER-520: todo.
+- REGISTER-520: done — 691c871b (landed on `main`; docs only, no deploy due. Independent review PASS by Qoder · bbc5 at 891c2756; merge-up and row-done delta reviewed; required CI green on 691c871b; closes #520).
 - D-155-share-paid-gate: done — 4dfeb6ba (merged `main`, renumbered to D-194 with migration 0114; delta review pass by DeepSeek V4.1 Flash Free · 3ecf, owner's go Oct 24).
 - D-132-catalog-record: done — 166fe5ff (docs only; landed on `main` by the status commit). Independent delta review passed: the audit names no secret, customer data or account/site id (D-059), and the `docs/PRICING.md` line matches the audit and `shared/planFamily.ts`. Focused checks 219/219 and `pnpm check` green; exact-head CI required before landing.
 - D-132-item3: todo; waits for D-132-audit.

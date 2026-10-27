@@ -2,6 +2,7 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
+import { CoverageOpenedUpError } from "./planGates";
 import { publicAskRef } from "./askRef";
 
 describe("authenticated work email OTP routes", () => {
@@ -109,6 +110,31 @@ describe("private referral HTTP routes", () => {
     expect(activity.map(item => item.action)).toEqual(expect.arrayContaining(["document.uploaded", "company_referral.created", "company_referral.claimed", "document.accessed"]));
     expect(activity.some(item => item.action === "workflow.request_completed" && item.metadata?.route === "/api/company-referrals" && item.metadata?.method === "POST" && item.metadata?.statusCode === 201)).toBe(true);
     expect(JSON.stringify(activity)).not.toContain("resume.pdf");
+  });
+
+  it("D-132 item 3: expectedCoverage waits-free ask refuses a charge when coverage opened up - 409, nothing created", async () => {
+    const app = express();
+    app.use(express.json());
+    let seenExpected: unknown = "unset";
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => String(req.header("x-test-user")) === "seeker" ? { account: { id: 1, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("%PDF-test"), sanitizeDocumentName: value => value,
+      createCompanyReferralRequest: async (_userId, input) => {
+        seenExpected = (input as { expectedCoverage?: string }).expectedCoverage;
+        if ((input as { expectedCoverage?: string }).expectedCoverage === "waiting_for_company_coverage") throw new CoverageOpenedUpError("acme.com");
+        return { requestId: 501, companyDomain: "acme.com", notifiedEmployees: 1 };
+      },
+      recordActivity: async () => {},
+    });
+    const flipped = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000002").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch.", expectedCoverage: "waiting_for_company_coverage" });
+    expect(flipped.status).toBe(409);
+    expect(flipped.body.code).toBe("company_coverage_changed");
+    expect(flipped.body.companyDomain).toBe("acme.com");
+    expect(flipped.body.error).toContain("Nothing was sent and nothing was charged");
+    expect(seenExpected).toBe("waiting_for_company_coverage");
+    const confirmed = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000002").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch." });
+    expect(confirmed.status).toBe(201);
+    expect(seenExpected).toBeUndefined();
   });
 
   it("loads each matching employee's unclaimed request on inbox launch, then removes it after the first claim", async () => {

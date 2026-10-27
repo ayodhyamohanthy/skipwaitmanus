@@ -61,7 +61,7 @@ export function checkBranch(taskId) {
   if (!task) throw new Error(taskId === "--branch" ? `no task in origin/main uses the branch ${branch}` : `task ${taskId} is not in origin/main's task list`);
   const owns = Array.isArray(task.owns) ? task.owns : [];
   if (!owns.length) return { owns, violations: [], skipped: `task ${task.id} declares no owns` };
-  const changed = git(["diff", "--name-only", "origin/main...HEAD"]).split("\n").filter(Boolean);
+  const changed = git(["diff", "--name-only", "--no-renames", "origin/main...HEAD"]).split("\n").filter(Boolean);
   const lineCounts = new Map();
   for (const entry of owns) {
     const { pattern, switchOnly } = ownsEntry(entry);
