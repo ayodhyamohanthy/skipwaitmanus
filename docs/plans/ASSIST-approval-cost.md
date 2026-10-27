@@ -71,3 +71,4 @@ So the owner would see 1 credit and pay up to 10.
 The quote route and `createCompanyReferralRequest` price the same link differently on `main`. That is a D-132-audit finding: report it with both numbers.
 
 ## Status
+- ASSIST-approval-cost: in progress — Claude Code · d2fb — 2026-10-27 — branch agent/queue/assist-approval-cost
