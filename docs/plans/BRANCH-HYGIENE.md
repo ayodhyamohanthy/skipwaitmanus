@@ -29,3 +29,4 @@ The owner, Oct 23: "the online repo and offline should always be in sync and onc
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is on `main` (D-134).
+- BRANCH-HYGIENE-1: in progress — Claude Code · da74 — 2026-10-27 — branch agent/queue/branch-hygiene
