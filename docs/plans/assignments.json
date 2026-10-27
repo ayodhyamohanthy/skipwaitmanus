@@ -151,13 +151,13 @@
       "tier": 2,
       "lane": "launch-qa",
       "branch": "agent/queue/launch-live-qa",
-      "status": "todo",
+      "status": "owner",
       "dependsOn": [],
       "owns": [
         "docs/BUGFREE_GATE.md",
         "docs/qa/"
       ],
-      "note": "Rule 8 proof before any seeker is invited: the last signed-in QA is Oct 14-16, before /ask, /explore, /queue, /requests and /conversation were rebuilt in place. Needs a headed browser (a Claude Code session; Manus sessions have no Chromium) and one owner-forwarded work-email code. Never pay or pass the hosted payment form (D-065). Defects found become their own rows."
+      "note": "Rule 8 proof before any seeker is invited: BUGFREE_GATE sections 1-4 stay BLOCKED until the signed-in legs are re-run. D-214 (Oct 26): the signed-in route is the authorized alias QA executor - both alias identities (seeker + verified referrer) signed in Oct 26 18:59 IST with codes read by the executor itself (no owner relay; 2 of 4 approved sign-in emails used), and read-only results are landing on issue 709 with account-state-only limits. qa-sweep-1/2 are excluded (no authority; deletion intent recorded, execution unverified) and no owner code forward is needed. Remaining: populated-UI legs at 1280/390 and the runtime checkout refusal (held - no checkout POST without an explicit no-wallet-risk authorization). Never pay or pass the hosted payment form (D-065). The stale packs-stay-on-sale text in docs/PRICING.md reconciles to the Oct 25 frozen banded model alongside PR 666. Defects found become their own rows. D-216 (Oct 27): status moved to owner to hold draft PR #710 from premature automated landing until populated-UI execution under issue #709 completes; unblocks the queue."
     },
     {
       "id": "SHELL-focus-clearance",
@@ -167,7 +167,7 @@
       "tier": 2,
       "lane": "design-shell",
       "branch": "agent/queue/shell-focus-clearance",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "Issue #642 (Instinct, 390x844 DPR2 QA): the /ask reason field and the conversation composer sit under the sticky 56px bottom bar on focus. Fix: data-goal-bottom-bar on the phone nav plus one scroll-padding-bottom rule in index.css (switch only). Desktop unchanged. Real-viewport proof on the PR; a session with no browser uses --avoid, never blocked.",
       "owns": [
@@ -548,6 +548,18 @@
       ]
     },
     {
+      "id": "REGISTER-D212",
+      "title": "Land the enterprise-pipeline ruling D-212 (roles as gates, seven lights, REL and GATE packets, 18 rows) after an independent review by a model other than Claude",
+      "row": "D-163",
+      "packet": "docs/plans/REGISTER-D212.md",
+      "tier": 1,
+      "lane": "register",
+      "branch": "agent/queue/register-d212",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "The owner, Oct 26: get an independent review of the final version through the repository's process, bring it up to date with main, require every check on the exact version merged, and resolve findings first. Claude Code wrote it, so review and landing go to a model other than Claude (D-151). The PR from agent/queue/register-d212 supersedes #623 (claude/enterprise-pipeline), which stays open and unmerged until this lands."
+    },
+    {
       "id": "D-069-chargebee-catalog-sync",
       "title": "Admin-only Chargebee catalog sync: dry run, then one owner-triggered apply",
       "row": "D-069-chargebee-catalog-sync",
@@ -711,7 +723,9 @@
       "lane": "design-theme",
       "branch": "agent/queue/d048-dark-mode",
       "status": "todo",
-      "dependsOn": [],
+      "dependsOn": [
+        "SHELL-focus-clearance"
+      ],
       "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them.",
       "owns": [
         "client/src/styles/goalDark.css",
@@ -1467,7 +1481,7 @@
         "client/src/pages/goal/seeker-small/**",
         "design/goal-ui/captures/seeker-small/**"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. D-215 (Oct 26): the block clears as a build problem with this work list - move client/src/pages/{landedGoal,shareHubGoal,suggestCompanyGoal}.test.tsx into client/src/pages/goal/seeker-small/ and the six captures from design/goal-ui/captures/{landed,share,suggest-company}/ into design/goal-ui/captures/seeker-small/; owns is correct and must not be widened. pnpm check is clean at 21547caa - the failing CI job is named typecheck but its Typecheck step passes; the step that fails is the scope check. D-129 holds go-live only (owner's word plus a legal check), and this row stays dark."
     },
     {
       "id": "D-048-p3-skippy",
@@ -1616,7 +1630,7 @@
       "tier": 2,
       "lane": "d048-referrer-home",
       "branch": "agent/queue/d048-p3-invite",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1936,7 +1950,8 @@
         "D-086-demand-list",
         "D-048-F-flags",
         "D-048-F-routes",
-        "D-132-audit"
+        "D-132-audit",
+        "D-048-dark-mode"
       ],
       "owns": [
         "drizzle/deploy/*_company_referral_bonuses.sql",
@@ -2640,6 +2655,43 @@
         "server/passkeyRoutes.test.ts"
       ],
       "note": "D-209 (1): the device-saved sign-in the owner asked for (D-172, docs/DEVICE-SIGNIN-REQUIREMENTS.md) never rides a sign-in fix's branch. Mechanism approved by the owner Oct 25 (SimpleWebAuthn, MIT, native passkey sign-in on skipwait.me; no authkit.app, no paid provider, no forced prompt). Waits in owner status for D-209 (4): may a referrer add a passkey (default no, D-057), and is Sign in with Apple in (default no, D-030). Packet phases A-C only after those answers; phase D is blocked. Build extends owns in its own PR as D-200 (2) allows."
+    },
+    {
+      "id": "PRICING-banded-oct25",
+      "title": "Frozen banded plan family (owner freeze Oct 25) replaces fee+credits model",
+      "row": "PRICING",
+      "packet": "docs/plans/PRICING-banded-oct25.md",
+      "tier": 1,
+      "lane": "pricing",
+      "branch": "agent/pricing/banded-plans-oct25",
+      "status": "in-review",
+      "dependsOn": ["LAUNCH-legal-copy", "D-048-F-credits"],
+      "owns": [
+        ".github/workflows/ci.yml",
+        "client/src/components/AppShell.tsx",
+        "client/src/components/seekerCreditsCard.test.tsx",
+        "client/src/lib/planFamilyFlag.ts",
+        "client/src/pages/PlansV2.test.tsx",
+        "client/src/pages/PlansV2.tsx",
+        "client/src/pages/Premium.tsx",
+        "client/src/pages/Pricing.tsx",
+        "client/src/pages/creditPacksOnSale.test.tsx",
+        "client/src/pages/plans.paymentRecovery.test.tsx",
+        "client/src/pages/plans.paymentRoute.test.tsx",
+        "client/src/pages/plansV2.config-guard.test.tsx",
+        "client/src/pages/policyPages.test.tsx",
+        "client/src/pages/premium.packRetirement.test.tsx",
+        "client/src/planFamilyFlagsOff.test.ts",
+        "server/chargebeeReferrerPurchase.test.ts",
+        "server/kitCheckout.test.ts",
+        "server/kitCheckout.ts",
+        "server/passSalesSwitch.test.ts",
+        "shared/planCatalog.ts",
+        "shared/planFamily.test.ts",
+        "shared/planFamily.ts",
+        "shared/planReach.test.ts"
+      ],
+      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first."
     }
   ]
 }
