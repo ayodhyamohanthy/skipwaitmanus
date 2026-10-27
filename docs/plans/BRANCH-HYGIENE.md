@@ -29,4 +29,4 @@ The owner, Oct 23: "the online repo and offline should always be in sync and onc
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is on `main` (D-134).
-- BRANCH-HYGIENE-1: in progress — Claude Code · da74 — 2026-10-27 — branch agent/queue/branch-hygiene
+- BRANCH-HYGIENE-1: review — agent/queue/branch-hygiene — 8a335c9d (Claude Code · da74; needs a review by another session; the lander runs --apply after landing and pastes its output). Ruling applied: agent/architect/<slug> is kept until its task is done, because the picker reuses it as the unblock lock (ruling 2 over ruling 3). Dry run on 9746ec9a: 26 to delete, 287 to keep. No package.json alias: that file is a deploy path filter, so the line would trigger a production deploy.
