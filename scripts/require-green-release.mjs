@@ -101,7 +101,24 @@ export function ciVerdict({ sha, runs, jobsByRun }) {
   return { state: "green", reason: `${own.map(runName).join(", ")}: ${REQUIRED_JOBS.join(", ")} succeeded on ${sha}` };
 }
 
-// GitHub's compare base...head: "ahead" with behind_by 0 means head strictly descends from base.
+// GitHub's compare base...head, exactly as GitHub reports it: a known status and whole, non-negative
+// counts that agree with it. Anything else is an API error (retried, then refused), never a coerced
+// count: Number() turned a missing behind_by into NaN, which read as "not newer" and let a stale release pass.
+const COMPARE_COUNTS = { identical: (a, b) => a === 0 && b === 0, ahead: (a, b) => a > 0 && b === 0, behind: (a, b) => a === 0 && b > 0, diverged: (a, b) => a > 0 && b > 0 };
+const shown = v => (v === undefined ? "missing" : typeof v === "number" ? String(v) : JSON.stringify(v));
+const count = (v, what) => (Number.isSafeInteger(v) && v >= 0 ? v : bad(`${what} ${shown(v)}`));
+export function parseCompare(c) {
+  if (c === null || typeof c !== "object" || Array.isArray(c)) return bad("compare body");
+  const status = text(c.status, "compare status");
+  if (!Object.hasOwn(COMPARE_COUNTS, status)) return bad(`compare status ${shown(status)}`);
+  const ahead_by = count(c.ahead_by, "compare ahead_by");
+  const behind_by = count(c.behind_by, "compare behind_by");
+  if (!COMPARE_COUNTS[status](ahead_by, behind_by)) return bad(`compare ${status} with ahead_by ${ahead_by} and behind_by ${behind_by}`);
+  return { status, ahead_by, behind_by };
+}
+// Every compare the gate decides on goes through the parser, whichever client supplied it.
+const compare = async (gh, base, head) => parseCompare(await gh.compare(base, head));
+// "ahead" with nothing behind means head strictly descends from base.
 const descends = c => c.status === "ahead" && c.behind_by === 0;
 
 /** Production already runs a commit newer than sha: the reason, or null. */
@@ -109,13 +126,13 @@ async function supersededBy({ gh, sha, target, runId }) {
   if (target === "api") {
     const marker = await gh.apiRuntimeMarker();
     if (!marker || marker === sha) return null;
-    return descends(await gh.compare(sha, marker)) ? `the API already runs ${marker} (refs/tags/api-runtime), which is newer than ${sha}` : null;
+    return descends(await compare(gh, sha, marker)) ? `the API already runs ${marker} (refs/tags/api-runtime), which is newer than ${sha}` : null;
   }
   const deployed = (await gh.pagesRuns())
     .filter(r => r.conclusion === "success" && r.head_branch === RELEASE_BRANCH && String(r.id) !== String(runId) && r.head_sha !== sha)
     .map(r => r.head_sha);
   for (const other of [...new Set(deployed)].slice(0, 10)) {
-    if (descends(await gh.compare(sha, other))) return `the Web already serves ${other}, which is newer than ${sha}`;
+    if (descends(await compare(gh, sha, other))) return `the Web already serves ${other}, which is newer than ${sha}`;
   }
   return null;
 }
@@ -133,7 +150,7 @@ async function schemaDrift(gh, a, b) {
 
 /** One look at GitHub: green only when the commit is on main, CI passed on it and nothing newer is live (or, for a recovery, its schema contract is main's). */
 export async function evaluateRelease({ gh, sha, target, runId, recovery = false, workflowSha = "" }) {
-  const line = await gh.compare(sha, RELEASE_BRANCH);
+  const line = await compare(gh, sha, RELEASE_BRANCH);
   if (!(line.status === "identical" || descends(line))) return { state: "red", reason: `${sha} is not on ${RELEASE_BRANCH} (compare: ${line.status})` };
   const runs = await gh.ciRuns(sha);
   const jobsByRun = new Map();
@@ -207,8 +224,7 @@ export function gitHubClient({ apiUrl, repo, token, fetchImpl = fetch }) {
   };
   return {
     async compare(base, head) {
-      const c = await get(`/compare/${base}...${head}?per_page=1`);
-      return { status: text(c?.status, "compare status"), ahead_by: Number(c.ahead_by), behind_by: Number(c.behind_by) };
+      return parseCompare(await get(`/compare/${base}...${head}?per_page=1`));
     },
     async ciRuns(sha) {
       return list((await get(`/actions/workflows/ci.yml/runs?head_sha=${sha}&per_page=100&exclude_pull_requests=true`))?.workflow_runs, "workflow_runs").map(parseRun);
