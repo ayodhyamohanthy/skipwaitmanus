@@ -9,9 +9,12 @@ import { GoalButton, GoalEmptyState, GoalErrorState, GoalNextStep, GoalNum, Goal
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { companyIdentity, fetchCompanyAccess, fetchProfileHandle, fetchReferrerPreferences, saveReferrerPreferences, type CompanyAccess, type ReferrerPreferences, type TokenSource } from "@/components/referrer-home/referrerData";
-import { minutesForCapacity } from "@/components/referrer-home/SetupWizard";
 import { JOB_LEVELS, REFERRER_AREAS } from "@shared/jobFunctions";
 import { REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+
+// Goal-local copy of the review-time estimate. A goal page stays inside its own tree, so it
+// does not import the kit SetupWizard module for a one-line formula.
+const minutesForCapacity = (capacity: number) => Math.max(1, Math.round(capacity * 5));
 
 export const GOAL_PAGE = { goalLine: "Help people get referred at your company." } as const;
 

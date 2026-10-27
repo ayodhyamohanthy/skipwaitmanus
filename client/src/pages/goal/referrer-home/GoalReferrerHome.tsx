@@ -12,7 +12,6 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { displayJobFunction } from "@shared/jobFunctions";
 import { REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
-import { reverifyCopy } from "../../ReferrerHome";
 
 export const GOAL_PAGE = { goalLine: "Help people get referred at your company." } as const;
 
@@ -115,10 +114,15 @@ function Waiting({ view, nowMs }: { view: ReferrerHomeView; nowMs: number }) {
   );
 }
 
+// Goal-local re-verify sentence. The goal page keeps its own copy instead of importing the
+// kit page's formatter and regex-patching the retired noun out of it afterwards.
+function reverifyCopyGoal(company: string, daysLeft: number | null): string {
+  if (daysLeft === null || daysLeft <= 0) return `Re-verify your ${company} email now to keep receiving referral requests.`;
+  return `Re-verify your ${company} email within ${daysLeft} ${daysLeft === 1 ? "day" : "days"} to keep receiving referral requests.`;
+}
+
 function ReverifyNotice({ companyName, daysLeft }: { companyName: string; daysLeft: number | null }) {
-  const message = daysLeft === null || daysLeft <= 0
-    ? `Re-verify your ${companyName} email now to keep receiving referral requests.`
-    : reverifyCopy(companyName, daysLeft).replace(/\basks\b/g, "referral requests");
+  const message = reverifyCopyGoal(companyName, daysLeft);
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-g-tile border border-g-hairline p-4">
       <span role="status" className="flex items-center gap-2 text-g-meta text-g-ink">
