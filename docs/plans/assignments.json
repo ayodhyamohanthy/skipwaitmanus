@@ -1621,7 +1621,7 @@
       "tier": 1,
       "lane": "d048-workspace",
       "branch": "agent/queue/d048-p3-referrer",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
