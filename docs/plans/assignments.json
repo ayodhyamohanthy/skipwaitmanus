@@ -1136,7 +1136,7 @@
       "tier": 1,
       "lane": "design-core",
       "branch": "agent/queue/d048-f-credits",
-      "status": "in-review",
+      "status": "todo",
       "dependsOn": [
         "D-048-F-harness"
       ],
@@ -1147,7 +1147,7 @@
         "client/src/hooks/useCreditBalance.test.ts",
         "client/src/components/appShell.test.tsx"
       ],
-      "note": " Built by the coordinator lane: PR #568, stacked on #560; needs the D-151 different-model Tier 1 review."
+      "note": "D-217: unparked from `in-review` (no review lock, so the picker could never hand it out). PR #568 is green at `601a2368`: merge current `main`, keep the matcher for `/referrer-home`, `/referrer-setup`, `/verify` and `/post-opportunity` plus its six-route `appShell.test.tsx` test, then land through the Tier 1 path (D-151). Blocks D-048-p3-referrer-home."
     },
     {
       "id": "D-048-F-static-frame",
@@ -1608,6 +1608,7 @@
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
+        "D-048-F-credits",
         "D-048-P-referrer",
         "ROW20-CD",
         "D-106-impact-card",
@@ -1620,7 +1621,7 @@
         "client/src/pages/referrerHomeGoal.test.tsx",
         "design/goal-ui/captures/referrer-home/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('referrer-home').",
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('referrer-home'). D-217: the shell matcher is D-048-F-credits' work, not this row's; waits for it, then fixes its own red CI (two kit imports in the goal pages).",
       "epic": "D-048-p3"
     },
     {
