@@ -20,4 +20,12 @@ Tier1 independent review by a non-builder/non-fixer family on exact integrated h
 
 ## Status
 
-- P1-deploy-green-gate: in progress — Claude Code · da74 — 2026-10-27 — branch agent/queue/p1-deploy-green-gate
+- P1-deploy-green-gate: review — agent/queue/p1-deploy-green-gate — 6d3db876 (Claude Code · da74; independent non-Claude Tier 1 review required, builder does not review or land)
+
+Evidence — P1-deploy-green-gate — Claude Code · da74 — 2026-10-27
+Branch agent/queue/p1-deploy-green-gate @ 6d3db876, contains origin/main 67544748
+Red first: 7 workflow-structure tests failing before the wiring in scripts/requireGreenRelease.test.ts (37 total)
+Gate: check 0 · token audit OK · migration lint OK · deploy triggers OK · scope-check OK · vitest 549 files passed / 4851 passed / 18 skipped / 0 failed · build 0 · actionlint clean
+Real API (read-only): 2dcea864 REFUSED (CI failure); 67544748 PASS api+web; stale 3e0894ff REFUSED api+web (superseded); eebbe568 REFUSED (not on main); non-main dispatch and pull_request REFUSED; 9d1b2a35 REFUSED after waiting (no main CI run)
+Live: pending landing (first gated Deploy API and Deploy Web runs on main must be observed)
+Left out / follow-ups (outside owns, need registration): docs sync of the deploy flow in AGENTS.md, docs/DEPLOY.md, docs/ARCHITECTURE.md, docs/BRIEF.md (D-068); ci.yml cancel-in-progress on main; gate rollback.yml; api-runtime currently points at 2dcea864 (observation only)
