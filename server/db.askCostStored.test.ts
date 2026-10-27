@@ -13,6 +13,7 @@ import { CATALOG_PLAN_IDS } from "../shared/planCatalog";
 import { planEntitlementsFor } from "../shared/planEntitlements";
 import {
   companyReferralFingerprint, createCompanyReferralRequest, getUnclaimedCompanyReferralPreview,
+  tryDeliverWaitingAsk,
   type CreateCompanyReferralInput,
 } from "./db";
 import { PlanLimitError } from "./planGates";
@@ -354,5 +355,30 @@ describe("the ask stores the level and cost it was priced at", () => {
     await send({ idempotencyKey: "pinned-key-0002" }).catch(() => undefined);
     expect(rows.askCosts[0]).toMatchObject({ referralRequestId: first.referralRequestId, creditCost: first.creditCost, jobLevel: first.jobLevel });
     expect(rows.askCosts).toHaveLength(1);
+  });
+
+  /**
+   * POSTMERGE-oct22 P1 (#482): an ask that waits across an ASK_LEVEL_COST
+   * activation keeps the flat price it was quoted. A waiting ask writes no
+   * askCosts row while the flag is off, so the missing row IS the snapshot:
+   * delivery must not classify the job again against the current flag.
+   */
+  it("a waiting ask created with the flag off is delivered at 1 credit after the flag turns on", async () => {
+    vi.stubEnv("ASK_LEVEL_COST", "false");
+    rows.profiles = []; // no verified referrer yet, so the ask waits for coverage
+    await send();
+    expect(rows.referralRequests[0].waitingForCoverage).toBe(true);
+    expect(rows.askCosts).toEqual([]);
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(3);
+    // The fixture writes only the columns the create path names; MySQL stores NULL for debitTransactionId.
+    rows.referralRequests[0].debitTransactionId = null;
+
+    // Activation between creation and first delivery: the ask must not be repriced.
+    vi.stubEnv("ASK_LEVEL_COST", "true");
+    rows.profiles = [referrerProfile(REFERRER)];
+    const outcome = await tryDeliverWaitingAsk(Number(rows.referralRequests[0].id), NOW);
+
+    expect(outcome.outcome).toBe("delivered");
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
   });
 });

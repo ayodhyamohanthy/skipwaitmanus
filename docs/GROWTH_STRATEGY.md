@@ -14,7 +14,7 @@ Supply is 0: live `/api/companies` lists 39 companies (Oct 18) and only skipwait
 
 **The 100x for users:** for an outside company today the wait for a referral is effectively forever. Moving it to about 5 days comes only from move 1.
 
-**Money (D-042):** nothing here deletes a money path. Passes and Keep warm go on sale with no supply gate once D-063, D-067 and D-051 land, with referrer coverage shown before payment (D-046, D-059; the D-037 supply gate is retired). The $199/mo employer plan stays in the code, switched off, and its false copy is fixed by move 3.
+**Money (current, D-146/D-132/D-196):** only credit packs are currently sold; fixed-term and annual plan products are off sale. D-132 plans remain behind off flags. D-196 allows an unimplemented opt-in paid referrer plan with level-matched first access; its prices, contents and access window remain owner-controlled. The $199/mo employer plan stays in the code, switched off, and its false copy is fixed by move 3.
 
 ## The moves, ranked
 
@@ -69,7 +69,7 @@ Supply is 0: live `/api/companies` lists 39 companies (Oct 18) and only skipwait
 - **What:** a copy-only change, with one shared string and a test so the claims cannot drift again.
   - `AskSent.tsx:22` "your credit returns" and the uncovered-ask line "the moment coverage opens" → describe what the code does today.
   - `landingContent.ts:90` FAQ → the D-036 pack ladder and the current rule.
-  - Replace "Referrals are free. Always." (`Home.tsx:52,107`, pinned by home tests; the `AppShell.tsx:77` sidebar on every signed-in page), `SignIn.tsx:48`, `Guidelines.tsx:24/32`, "Candidates never pay" (`ForCompanies.tsx:14/17/52`) and `ReferralConversation.tsx:155` with the one owner-approved line (D-063): *"3 asks free every month; more use credits. Referrers are never paid and never ask you for money."*
+  - D-063's old literal is not current buyer-facing copy: D-173/D-180 require referral-only public vocabulary. Follow the terminology/copy review; the amounts and money rules stay in `docs/PRICING.md` and `docs/DECISIONS.md`, with no replacement wording or price inferred here.
   - Soften the `/for-companies` $199/mo plan claims (D-040 shipped the placement copy on Oct 16; the plan claims are still open).
 - **Why 6:** it is near-certain to be right (false public money claims; D-042; India CCPA dark-pattern rules) but creates no supply, and few people see the copy today. It protects word of mouth before the sprint drives traffic.
 - **Proof:** 93% of Indian job seekers have met fake offers (Indeed via Business Today, Jul 2026). US job-scam losses rose from $90M to $501M between 2020 and 2024 (FTC 2025).
@@ -82,13 +82,13 @@ Supply is 0: live `/api/companies` lists 39 companies (Oct 18) and only skipwait
 - **Build order:**
   1. D-034 first, with its delivery rule D-047 right after (D-053). It is the only rule that matters while supply is 0: shipped Oct 18 (`66801d2b`) — an ask to an uncovered company waits free, is charged once at first visibility, and is held when the seeker has no credit.
   2. Then D-038 (with D-050): the claim lapse and the "Referred" timer.
-  3. Then D-035 (with D-052): decline reasons.
+      3. Every employee decline keeps the credit spent, regardless of reason (D-147). No decline-reason/refund path is authorized.
 - **Each slice:** follows the payments runbook with tests first; uses idempotent ledger keys; computes time in JS (invariant 5); passes `getCreditLedgerAudit` with 0 mismatches.
-- **The promise:** the headline ("a clear answer within 7 days of a verified employee seeing your ask, or your credit back") ships only after 30 or more covered asks keep it at least 90% of the time.
+- **The promise:** no guaranteed 7-day answer or credit-back promise is in force. D-174 suspends the 7-day visible-expiry, 90-day waiting-close and day-30 confirmation clocks as launch direction; D-193's reconfirm-before-first-spend safeguard must land before the runtime expiry-clock-removal row.
 - **Owner questions (answered Oct 18):**
-  - Does the clock start when the ask becomes visible to a referrer? Yes (D-061).
-  - Is "Prefer not to say" a not-fixable reason? Yes: it releases the credit (D-052, D-059).
-  - Should uncovered asks keep waiting past 7 days with a check-in? Yes: up to 90 days, with a day-30 confirmation email (D-060, D-061).
+  - Ask-expiry clocks are suspended as launch direction by D-174. The old runtime clocks remain until `D-174-expiry-clock-removal` lands after `D-174-held-ask-reconfirm` (D-193); describe them only as runtime caveats.
+  - Any employee decline keeps the credit spent, regardless of reason (D-147). Anonymous decline-reason display is a separate possible proposal only if it never releases credit.
+  - There is no 90-day waiting cap or day-30 closure as launch direction (D-174). Before first spend after 30 days, the seeker must reconfirm (D-193); the implementation row is `D-174-held-ask-reconfirm`.
 - **Why 5:** the rules protect seekers' money, and guarantees raise purchase intent (Suwelack, Hogreve & Hoyer, *Journal of Retailing* 2011). But with 0 outside companies the promise almost never fires, and the refund path was repaired only days ago.
 - **Stop rule:** any ledger-audit mismatch after a slice deploys → roll that slice back at once (P0).
 
@@ -127,9 +127,9 @@ Supply is 0: live `/api/companies` lists 39 companies (Oct 18) and only skipwait
 - **Payment-pattern scanner and a "what money can't buy" page:** the page would be a new false claim until D-040 ships (it shipped Oct 16, except D-040b).
 - **Alumni-association corridor:** institutions take months. A shared alma mater did not raise interview invitations (IZA DP 18908, 2026).
 - **Diaspora phase now:** it opens after the India corridor meets the 3×3 gate.
-- **Broad seeker launches** (Product Hunt, Reddit, campus blasts), **AI matching, public response leaderboards, paying referrers, scraping, a paid Chrome extension, bulk credits to bootcamps, auto-post bots:** all rejected while supply is 0, or by D-006/D-031.
+- **Broad seeker launches** (Product Hunt, Reddit, campus blasts), **AI matching, public response leaderboards, referral payouts, scraping, a paid Chrome extension, bulk credits to bootcamps, auto-post bots:** all rejected while supply is 0, or by D-006/D-031.
 
 ## Sequencing
 - **Days 0–30 (Mon Oct 19 to Wed Nov 18, D-064):** P0b merged (Oct 16) and the sprint kit shipped (Oct 18); the D-034 money tier shipped (Oct 18); first D-018 reading; ship move 3 with the approved wording (D-063); rule on free link asks; resolve the referrer-side credit under D-055. From week 1: 25 messages a week, a reading every Monday, concierge emails, free preview baseline. Checkpoints on Mon Nov 2 and Wed Nov 18.
-- **Days 31–60 (to Fri Dec 18, the 3×3 target, D-064), only if a corridor company has 3 or more available outside referrers:** the invite card only if the concierge cleared its bar; repeat the sprint at adjacent companies. No longer gated on supply: D-038 and D-035 sit in the money tier of the queue and D-028 in its supply-tools tier (D-053); D-022 posted roles shipped Oct 17; the D-036 pack prices reach Chargebee through the D-069 catalog sync. If no company has 3 by day 60: narrow to one company, build no supply features, and the owner decides whether the founder time exists.
-- **Days 61–90 (to Sun Jan 17 2027):** if the 3×3 gate is met, open the next corridor (passes and Keep warm no longer wait for this gate, D-046).
+- **Days 31–60 (to Fri Dec 18, the 3×3 target, D-064), only if a corridor company has 3 or more available outside referrers:** the invite card only if the concierge cleared its bar; repeat the sprint at adjacent companies. The 3×3 strategy is not a sales gate under D-146; D-147 rejects decline-refund work. D-038 and D-028 retain separate scope (D-053); D-022 posted roles shipped Oct 17; the D-036 pack prices reach Chargebee through the D-069 catalog sync. If no company has 3 by day 60: narrow to one company, build no supply features, and the owner decides whether the founder time exists.
+- **Days 61–90 (to Sun Jan 17 2027):** if the 3×3 gate is met, open the next corridor; this sequence does not authorize fixed-term or annual sales (D-146).

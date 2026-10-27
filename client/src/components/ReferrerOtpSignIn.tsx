@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { forgetSignInEmail, rememberedSignInEmail, rememberSignInEmail } from "@/lib/rememberedSignInEmail";
 
 /**
  * Referrer sign-in: work-email OTP IS the login. Enter company address,
@@ -6,7 +7,8 @@ import { useState } from "react";
  * company's private referral inbox. No separate provider step.
  */
 export function ReferrerOtpSignIn({ onSignedIn }: { onSignedIn?: () => void } = {}) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => rememberedSignInEmail("referrer"));
+  const [remembered, setRemembered] = useState(() => rememberedSignInEmail("referrer") !== "");
   const [code, setCode] = useState("");
   const [stage, setStage] = useState<"email" | "code">("email");
   const [busy, setBusy] = useState(false);
@@ -30,6 +32,7 @@ export function ReferrerOtpSignIn({ onSignedIn }: { onSignedIn?: () => void } = 
       const res = await fetch("/api/auth/otp/verify", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }) });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.signedIn) { setError(body.error || "That code could not be verified."); return; }
+      rememberSignInEmail("referrer", email);
       if (onSignedIn) onSignedIn(); else window.location.reload();
     } catch { setError("That code could not be verified."); } finally { setBusy(false); }
   };
@@ -43,6 +46,7 @@ export function ReferrerOtpSignIn({ onSignedIn }: { onSignedIn?: () => void } = 
           onChange={event => { setEmail(event.target.value); setError(""); }}
           onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); void send(); } }}
           className="mt-1.5 min-h-12 w-full rounded-lg border border-[#e5e5e5] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#141414]" />
+        {remembered && <button type="button" className="mt-2 text-xs font-semibold text-black underline underline-offset-2" onClick={() => { forgetSignInEmail("referrer"); setRemembered(false); setEmail(""); document.getElementById("otp-referrer-email")?.focus(); }}>Not you? Forget this email</button>}
         {error && <p role="alert" className="mt-3 rounded-lg bg-[#b91c1c]/10 p-3 text-sm text-[#B91C1C]">{error}</p>}
         <button type="button" disabled={busy || !email.trim()} onClick={() => { void send(); }} className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-[#141414] px-5 py-3.5 text-sm font-semibold text-white">
           {busy ? "Sending code…" : "Send sign-in code"}
@@ -55,7 +59,7 @@ export function ReferrerOtpSignIn({ onSignedIn }: { onSignedIn?: () => void } = 
       <p className="text-sm font-semibold text-black">Code sent to {email.trim().toLowerCase()}</p>
       {notice && <p role="status" className="mt-1 text-xs text-[#15803d]">{notice}</p>}
       <label htmlFor="otp-referrer-code" className="mt-3 block text-xs font-semibold text-black">Six-digit code</label>
-      <input id="otp-referrer-code" inputMode="numeric" autoComplete="one-time-code" placeholder="123456" value={code}
+      <input id="otp-referrer-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={6} autoFocus placeholder="123456" value={code}
         onChange={event => { setCode(event.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
         onKeyDown={event => { if (event.key === "Enter" && code.length === 6) { event.preventDefault(); void verify(); } }}
         className="mt-1.5 min-h-12 w-full rounded-lg border border-[#e5e5e5] bg-white px-3 py-2.5 text-sm font-semibold tracking-[.3em] outline-none focus:border-[#141414]" />
