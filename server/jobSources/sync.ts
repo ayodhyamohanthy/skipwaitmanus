@@ -7,7 +7,7 @@
 // The store operations are injectable so the refresh semantics are testable
 // without a database; the drizzle wiring lives at the bottom of the file.
 
-import { and, eq, isNull, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { JOB_CATALOG_ENABLED } from "../../shared/jobCatalog";
 import { assignJobLevel } from "../../shared/jobLevel";
 import { classifyJobFunction } from "../../shared/jobFunctionClassifier";
@@ -45,9 +45,17 @@ export type CatalogSyncStore = {
   loadSources(): Promise<CatalogSourceRow[]>;
   upsertJobs(jobs: CatalogJobUpsert[], now: Date): Promise<void>;
   closeMissing(sourceId: number, seenExternalIds: string[], now: Date): Promise<number>;
-  markFetchOk(sourceId: number, count: number, now: Date): Promise<void>;
+  markFetchOk(source: CatalogSourceRow, count: number, now: Date): Promise<void>;
   markFetchFailed(source: CatalogSourceRow): Promise<void>;
 };
+
+/** A board that failed once is retried by the daily batch until it answers
+ *  again; an unverified one waits for a human (review F3). */
+export const SYNCABLE_SOURCE_STATUSES = ["verified", "failing"] as const;
+
+export function statusAfterSuccessfulFetch(status: CatalogSourceRow["status"]): CatalogSourceRow["status"] {
+  return status === "failing" ? "verified" : status;
+}
 
 export function toUpsert(source: CatalogSourceRow, job: NormalizedCatalogJob): CatalogJobUpsert {
   const level = assignJobLevel({ title: job.title, description: job.snippet, url: job.applyUrl });
@@ -82,7 +90,7 @@ export async function syncOneSource(
   const upserts = result.jobs.map((job) => toUpsert(source, job));
   await store.upsertJobs(upserts, now);
   const closed = await store.closeMissing(source.id, upserts.map((j) => j.externalId), now);
-  await store.markFetchOk(source.id, upserts.length, now);
+  await store.markFetchOk(source, upserts.length, now);
   return { ok: true, closed, count: upserts.length };
 }
 
@@ -121,11 +129,11 @@ export async function createDrizzleCatalogSyncStore(): Promise<CatalogSyncStore>
           boardToken: companyJobSources.boardToken,
           status: companyJobSources.status,
         })
-        // The daily batch fetches verified boards only (scheduledJobRegistry);
-        // a just-created unverified source still gets its one-shot probe via
-        // the refresher, pinned by "a 404 on an unverified board".
+        // The daily batch fetches verified boards plus ones that failed once,
+        // so a single timeout is not permanent; an unverified source still
+        // waits for a human (a 404 board never reads as "0 jobs").
         .from(companyJobSources)
-        .where(eq(companyJobSources.status, "verified"));
+        .where(inArray(companyJobSources.status, [...SYNCABLE_SOURCE_STATUSES]));
       return rows;
     },
     async upsertJobs(jobs, now) {
@@ -169,11 +177,20 @@ export async function createDrizzleCatalogSyncStore(): Promise<CatalogSyncStore>
       }
       return toClose.length;
     },
-    async markFetchOk(sourceId, count, now) {
+    async markFetchOk(source, count, now) {
       await db
         .update(companyJobSources)
         .set({ lastFetchedAt: now, lastCount: count })
-        .where(eq(companyJobSources.id, sourceId));
+        .where(eq(companyJobSources.id, source.id));
+      // Restore a source that failed once, but never promote an unverified
+      // one (review F3).
+      const restored = statusAfterSuccessfulFetch(source.status);
+      if (restored !== source.status) {
+        await db
+          .update(companyJobSources)
+          .set({ status: restored })
+          .where(and(eq(companyJobSources.id, source.id), eq(companyJobSources.status, source.status)));
+      }
     },
     async markFetchFailed(source) {
       // A failed fetch changes no job. A verified source degrades to failing;

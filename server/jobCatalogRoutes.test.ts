@@ -88,6 +88,26 @@ describe("GET /api/companies/:slug/jobs (D-174-job-catalog)", () => {
     expect(res.body.jobs.map((j: { title: string }) => j.title)).toEqual(["Software Engineer"]);
   });
 
+  it("the served job keeps its catalog id so a job-locked request can name it (D-174 §5.8)", async () => {
+    const { app } = appWith({}, [jobRow({ id: 42 })]);
+    const res = await request(app).get("/api/companies/acme/jobs");
+    expect(res.status).toBe(200);
+    expect(res.body.jobs[0].id).toBe(42);
+    companyJobsResponseSchema.parse(res.body);
+  });
+
+  it("serves newest first and puts undated jobs last (D-193 §4.2)", async () => {
+    const rows = [
+      jobRow({ id: 1, externalId: "1", title: "Older", publishedAt: "2026-10-20T10:00:00.000Z" }),
+      jobRow({ id: 2, externalId: "2", title: "Newer", publishedAt: "2026-10-24T10:00:00.000Z" }),
+      jobRow({ id: 4, externalId: "4", title: "Tie newest", publishedAt: "2026-10-24T10:00:00.000Z" }),
+      jobRow({ id: 3, externalId: "3", title: "Undated", publishedAt: null }),
+    ];
+    const { app } = appWith({}, rows);
+    const res = await request(app).get("/api/companies/acme/jobs");
+    expect(res.body.jobs.map((j: { title: string }) => j.title)).toEqual(["Tie newest", "Newer", "Older", "Undated"]);
+  });
+
   it("one company's slug never returns another company's jobs", async () => {
     const rows = [jobRow(), jobRow({ id: 3, companyId: 20, sourceId: 6, externalId: "9", title: "Other Company Role" })];
     const { app } = appWith({}, rows);

@@ -73,6 +73,23 @@ const createSourceBodySchema = z
 
 const EMPTY_FACETS = { locations: {}, levels: {}, functions: {} };
 
+function publishedTime(job: StoredCatalogJob): number | null {
+  if (!job.publishedAt) return null;
+  const time = Date.parse(job.publishedAt);
+  return Number.isNaN(time) ? null : time;
+}
+
+/** D-193 §4.2: careers-site jobs newest first, undated last, id descending as
+ *  the stable tiebreak so the offset cursor never repeats or skips a job. */
+function newestFirst(a: StoredCatalogJob, b: StoredCatalogJob): number {
+  const at = publishedTime(a);
+  const bt = publishedTime(b);
+  if (at !== null && bt !== null && at !== bt) return bt - at;
+  if (at === null && bt !== null) return 1;
+  if (at !== null && bt === null) return -1;
+  return b.id - a.id;
+}
+
 export function registerJobCatalogRoutes(app: Express, deps: JobCatalogRouteDeps) {
   const enabled = deps.enabled ?? JOB_CATALOG_ENABLED;
   const now = deps.now ?? (() => new Date());
@@ -108,7 +125,7 @@ export function registerJobCatalogRoutes(app: Express, deps: JobCatalogRouteDeps
       const fn = typeof req.query.function === "string" ? req.query.function.trim().toLowerCase().slice(0, 60) : "";
       const offset = typeof req.query.cursor === "string" && /^\d+$/.test(req.query.cursor) ? Number(req.query.cursor) : 0;
 
-      const open = (await deps.store.listCatalogJobs(company.id)).filter((job) => !job.closedAt);
+      const open = (await deps.store.listCatalogJobs(company.id)).filter((job) => !job.closedAt).sort(newestFirst);
       const queried = q ? open.filter((job) => job.title.toLowerCase().includes(q) || job.snippet.toLowerCase().includes(q)) : open;
       const filtered = queried.filter(
         (job) =>
@@ -125,7 +142,7 @@ export function registerJobCatalogRoutes(app: Express, deps: JobCatalogRouteDeps
       const page = filtered.slice(offset, offset + JOB_CATALOG_PAGE_SIZE);
       const nextCursor = offset + JOB_CATALOG_PAGE_SIZE < filtered.length ? String(offset + JOB_CATALOG_PAGE_SIZE) : null;
       const body = {
-        jobs: page.map(({ id: _id, closedAt: _c, ...job }) => job),
+        jobs: page.map(({ closedAt: _closed, ...job }) => job),
         nextCursor,
         facets,
         source: { companyId: source.companyId, provider: source.provider, boardToken: source.boardToken, evidenceUrl: source.evidenceUrl, status: source.status },

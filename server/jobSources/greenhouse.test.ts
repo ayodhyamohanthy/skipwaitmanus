@@ -130,7 +130,7 @@ describe("greenhouse real-board hardening (PR #650 review findings)", () => {
       jobs: [{ id: 9, title: "Software Engineer", absolute_url: "https://boards.greenhouse.io/stripe/jobs/9", updated_at: "2026-10-22T09:17:09-04:00", location: { name: "Seattle" }, content: "" }],
     });
     expect(job.publishedAt).toBe("2026-10-22T13:17:09.000Z");
-    expect(catalogJobSchema.safeParse({ ...job, companyId: 1, sourceId: 1, jobFunction: null, level: 5 }).success).toBe(true);
+    expect(catalogJobSchema.safeParse({ ...job, id: 1, companyId: 1, sourceId: 1, jobFunction: null, level: 5 }).success).toBe(true);
   });
 
   it("splits comma-joined multi-city labels", () => {

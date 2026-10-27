@@ -35,6 +35,7 @@ describe("job catalog contracts (D-174-job-catalog)", () => {
 
   it("catalogJobSchema rejects unknown fields and out-of-range levels", () => {
     const base = {
+      id: 7,
       companyId: 1,
       sourceId: 2,
       externalId: "abc",
@@ -53,10 +54,12 @@ describe("job catalog contracts (D-174-job-catalog)", () => {
     expect(() => catalogJobSchema.parse({ ...base, level: 0 })).toThrow();
     expect(() => catalogJobSchema.parse({ ...base, level: 11 })).toThrow();
     expect(() => catalogJobSchema.parse({ ...base, workMode: "flying" })).toThrow();
+    expect(() => catalogJobSchema.parse({ ...base, id: undefined })).toThrow();
   });
 
   it("companyJobsResponseSchema caps a page at 50 jobs and carries honesty fields", () => {
     const job = {
+      id: 7,
       companyId: 1,
       sourceId: 2,
       externalId: "abc",

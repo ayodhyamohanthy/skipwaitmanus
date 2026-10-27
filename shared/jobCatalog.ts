@@ -41,9 +41,11 @@ export const companyJobSourceSchema = z
   .strict();
 export type CompanyJobSource = z.infer<typeof companyJobSourceSchema>;
 
-/** One catalog job row as served by the API. */
+/** One catalog job row as served by the API. `id` is the stable catalogJobs
+ *  handle D-174-ask-from-job takes as `catalogJobId` (D-193 §5.8). */
 export const catalogJobSchema = z
   .object({
+    id: z.number().int().positive(),
     companyId: z.number().int().positive(),
     sourceId: z.number().int().positive(),
     externalId: z.string().min(1).max(190),

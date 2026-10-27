@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { JOB_CATALOG_ENABLED } from "../../shared/jobCatalog";
 import { assignJobLevel } from "../../shared/jobLevel";
-import { createJobCatalogSync, syncOneSource, type CatalogSourceRow, type CatalogSyncStore } from "./sync";
+import {
+  SYNCABLE_SOURCE_STATUSES,
+  createJobCatalogSync,
+  statusAfterSuccessfulFetch,
+  syncOneSource,
+  type CatalogSourceRow,
+  type CatalogSyncStore,
+} from "./sync";
 
 const verified: CatalogSourceRow = { id: 7, companyId: 3, provider: "greenhouse", boardToken: "stripe", status: "verified" };
 const unverified: CatalogSourceRow = { id: 8, companyId: 4, provider: "greenhouse", boardToken: "missing", status: "unverified" };
@@ -49,7 +56,43 @@ describe("catalog refresh (D-174-job-catalog)", () => {
     const [sourceId, seen] = store.calls.closeMissing[0] as [number, string[]];
     expect(sourceId).toBe(7);
     expect(seen.sort()).toEqual(["1", "2"]);
-    expect(store.calls.markFetchOk[0]).toEqual([7, 2, new Date("2026-10-25T11:00:00Z")]);
+    expect(store.calls.markFetchOk[0]).toEqual([verified, 2, new Date("2026-10-25T11:00:00Z")]);
+  });
+
+  it("keeps a failing source in the daily load set - one timeout is not permanent (F3)", () => {
+    expect(SYNCABLE_SOURCE_STATUSES).toContain("verified");
+    expect(SYNCABLE_SOURCE_STATUSES).toContain("failing");
+    expect(SYNCABLE_SOURCE_STATUSES).not.toContain("unverified");
+  });
+
+  it("restores a failing source after the next successful fetch (F3)", async () => {
+    const row: CatalogSourceRow = { ...verified };
+    const okCalls: unknown[][] = [];
+    const store: CatalogSyncStore = {
+      async loadSources() { return [row]; },
+      async upsertJobs() {},
+      async closeMissing() { return 0; },
+      async markFetchOk(...a: unknown[]) {
+        okCalls.push([{ ...(a[0] as CatalogSourceRow) }, a[1], a[2]]);
+        row.status = statusAfterSuccessfulFetch(row.status);
+      },
+      async markFetchFailed(source) { if (source.status === "verified") row.status = "failing"; },
+    };
+    const fail = async () => new Response("nope", { status: 500 });
+    const failed = await syncOneSource(row, store, new Date("2026-10-25T11:00:00Z"), fail as never);
+    expect(failed.ok).toBe(false);
+    expect(row.status).toBe("failing");
+    const recovered = await syncOneSource(row, store, new Date("2026-10-26T11:00:00Z"), okFetch as never);
+    expect(recovered.ok).toBe(true);
+    expect(row.status).toBe("verified");
+    expect(okCalls).toHaveLength(1);
+    expect(okCalls[0][0]).toMatchObject({ id: 7, status: "failing" });
+  });
+
+  it("never promotes an unverified source on a successful fetch (F3)", () => {
+    expect(statusAfterSuccessfulFetch("failing")).toBe("verified");
+    expect(statusAfterSuccessfulFetch("verified")).toBe("verified");
+    expect(statusAfterSuccessfulFetch("unverified")).toBe("unverified");
   });
 
   it("a failed fetch changes no job and only marks the source", async () => {
