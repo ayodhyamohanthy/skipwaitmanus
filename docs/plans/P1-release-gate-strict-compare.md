@@ -12,4 +12,12 @@ Evidence: independent750review https://github.com/ayodhyamohanthy/skipwaitmanus/
 
 ## Status
 
-- P1-release-gate-strict-compare: in progress — Claude Code · da74 — 2026-10-27 — branch agent/queue/p1-release-gate-strict-compare
+- P1-release-gate-strict-compare: review — agent/queue/p1-release-gate-strict-compare — af3a67b5 (Claude Code · da74; independent non-Claude Tier 1 review required, builder does not review or land)
+
+Evidence — P1-release-gate-strict-compare — Claude Code · da74 — 2026-10-27
+Branch agent/queue/p1-release-gate-strict-compare @ af3a67b5, contains origin/main 9746ec9a
+Red first: 20 of 75 failing against the gate on main in scripts/requireGreenRelease.test.ts (c93e3478); a stale API and Web rerun with a compare missing behind_by PASSED, also as a real process. After 45393ee4: 75/75
+Gate: check 0 · token audit OK · migration lint OK · deploy triggers OK · scope-check OK (2 owned paths) · actionlint clean · vitest 549 files passed / 4889 passed / 18 skipped / 0 failed · build 0
+Real API (read-only, strict parser): main bfb8da61 PASS api and web --once; 2dcea864 REFUSED (CI); stale 3e0894ff REFUSED api and web (superseded); eebbe568 REFUSED (not on main, diverged parsed); recovery b5299cfd PASS; recovery 215b3a7a REFUSED (schema contract)
+Live: none (no deploy, dispatch or production change); incident #748 stays open
+Left out / follow-ups: none in this row; --once retry behaviour unchanged, only its documentation (af3a67b5)
