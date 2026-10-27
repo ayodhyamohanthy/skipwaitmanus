@@ -106,7 +106,7 @@ describe("My asks BYOR invite action", () => {
     expect(await screen.findByText("This link works once and expires in seven days.")).toBeTruthy();
     expect(screen.getByText(/verified work email at Acme/)).toBeTruthy();
     expect(screen.getByText(/name and files stay hidden until the insider accepts/)).toBeTruthy();
-    expect(screen.getByText("No credit is used until someone can see your referral request.")).toBeTruthy();
+    expect(screen.getByText("Your referral allowance is only used when someone can see your request.")).toBeTruthy();
     expect(screen.getByRole("dialog").textContent).toMatch(/referral request/i);
     expect(screen.getByRole("dialog").textContent).not.toMatch(/\bask\b/i);
     fireEvent.click(screen.getByRole("button", { name: "Create one-time link" }));

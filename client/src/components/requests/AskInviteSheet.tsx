@@ -149,7 +149,7 @@ export function AskInviteSheet({ requestId, companyName, roleTitle, waitingForIn
                     <li>This link works once and expires in seven days.</li>
                     <li>Your insider must sign in with a verified work email at {companyName}.</li>
                     <li>Your name and files stay hidden until the insider accepts your referral request.</li>
-                    <li>No credit is used until someone can see your referral request.</li>
+                    <li>Your referral allowance is only used when someone can see your request.</li>
                   </ul>
 
                   {error ? <p role="alert" className="rounded-g-tile border border-g-hairline px-3 py-2 text-g-meta text-g-ink">{error}</p> : null}
