@@ -475,3 +475,13 @@ describe("rollback.yml: deliberate API recovery", () => {
     }
   });
 });
+
+describe("workflow YAML", () => {
+  it.each(["deploy-api.yml", "deploy-pages.yml", "rollback.yml"])("%s has no one-line run: command that YAML would misread", file => {
+    // A plain scalar holding ": " or " #" is a YAML error or a silent truncation; the line reader above would not notice.
+    for (const line of workflow(file).text.split("\n")) {
+      const value = /^\s+run: (?![|>])(.*)$/.exec(line)?.[1];
+      if (value && !/^(['"]).*\1$/.test(value)) expect(value).not.toMatch(/: | #/);
+    }
+  });
+});
