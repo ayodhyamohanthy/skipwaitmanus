@@ -56,9 +56,31 @@ function contrast(foreground: string, background: string): number {
   return (light + 0.05) / (dark + 0.05);
 }
 
+function parseColour(value: string): { r: number; g: number; b: number; a: number } {
+  if (value.startsWith("#")) {
+    const raw = value.slice(1);
+    const full = raw.length === 3 ? raw.split("").map(c => c + c).join("") : raw;
+    return { r: parseInt(full.slice(0, 2), 16), g: parseInt(full.slice(2, 4), 16), b: parseInt(full.slice(4, 6), 16), a: 1 };
+  }
+  const parts = (value.match(/rgba?\(([^)]+)\)/)?.[1] ?? "").split(/[ ,/]+/).filter(Boolean).map(Number);
+  return { r: parts[0] ?? 0, g: parts[1] ?? 0, b: parts[2] ?? 0, a: parts[3] ?? 1 };
+}
+
+// The keycap edge is an alpha overlay painted on the commit fill, so its real
+// contrast is the blend, not the raw declaration.
+function blend(overlay: string, base: string): string {
+  const over = parseColour(overlay);
+  const under = parseColour(base);
+  const mix = (top: number, bottom: number) => Math.round(top * over.a + bottom * (1 - over.a));
+  return `#${[mix(over.r, under.r), mix(over.g, under.g), mix(over.b, under.b)]
+    .map(component => component.toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
 const lightColours = declarations(indexCss);
 const darkColours = declarations(darkBlock(darkCss));
 const darkValue = (name: string) => darkColours.get(name)?.[0] ?? "";
+const lightValue = (name: string) => lightColours.get(name)?.[0] ?? "";
 
 describe("goalDark.css covers the light colour table exactly", () => {
   it("exists and is a single .dark .g-scope block", () => {
@@ -117,6 +139,13 @@ describe("dark colours meet the packet's AA bar", () => {
       expect(contrast(darkValue("--g-control-edge"), darkValue(surface)), surface).toBeGreaterThanOrEqual(3);
     }
     expect(contrast(darkValue("--g-mark-2"), darkValue("--g-surface"))).toBeGreaterThanOrEqual(3);
+  });
+
+  it("the blended keycap edge on the commit reaches 3:1 in both modes", () => {
+    const darkEdge = contrast(blend(darkValue("--g-on-primary-edge"), darkValue("--g-primary")), darkValue("--g-primary"));
+    expect(darkEdge, `dark edge ${darkEdge.toFixed(2)}`).toBeGreaterThanOrEqual(3);
+    const lightEdge = contrast(blend(lightValue("--g-on-primary-edge"), lightValue("--g-primary")), lightValue("--g-primary"));
+    expect(lightEdge, `light edge ${lightEdge.toFixed(2)}`).toBeGreaterThanOrEqual(3);
   });
 });
 
