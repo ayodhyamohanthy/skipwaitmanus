@@ -125,6 +125,45 @@
       ]
     },
     {
+      "id": "PRICING-banded-oct25",
+      "title": "Frozen banded plan family (owner freeze Oct 25) replaces fee+credits model",
+      "row": "PRICING",
+      "packet": "docs/plans/PRICING-banded-oct25.md",
+      "tier": 1,
+      "lane": "pricing",
+      "branch": "agent/pricing/banded-plans-oct25",
+      "status": "in-review",
+      "dependsOn": [
+        "D-048-F-credits"
+      ],
+      "owns": [
+        ".github/workflows/ci.yml",
+        "client/src/components/AppShell.tsx",
+        "client/src/components/seekerCreditsCard.test.tsx",
+        "client/src/lib/planFamilyFlag.ts",
+        "client/src/pages/PlansV2.test.tsx",
+        "client/src/pages/PlansV2.tsx",
+        "client/src/pages/Premium.tsx",
+        "client/src/pages/Pricing.tsx",
+        "client/src/pages/creditPacksOnSale.test.tsx",
+        "client/src/pages/plans.paymentRecovery.test.tsx",
+        "client/src/pages/plans.paymentRoute.test.tsx",
+        "client/src/pages/plansV2.config-guard.test.tsx",
+        "client/src/pages/policyPages.test.tsx",
+        "client/src/pages/premium.packRetirement.test.tsx",
+        "client/src/planFamilyFlagsOff.test.ts",
+        "server/chargebeeReferrerPurchase.test.ts",
+        "server/kitCheckout.test.ts",
+        "server/kitCheckout.ts",
+        "server/passSalesSwitch.test.ts",
+        "shared/planCatalog.ts",
+        "shared/planFamily.test.ts",
+        "shared/planFamily.ts",
+        "shared/planReach.test.ts"
+      ],
+      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first. Oct 27 queue sync (Claude Code, D-219; changeable): moved up to sit just above LAUNCH-legal-copy and no longer waits on it; LAUNCH-legal-copy now waits for this row instead, because it is owner-held (legal text), shares only policyPages.test.tsx, and its Terms and Cancellation text must describe the pricing this row lands. The owner's freeze said 'push it immediately', and the live app could still open an archived legacy pack cart on Oct 25 (PR #666 comment 6399494075). It still waits for D-048-F-credits (shared AppShell.tsx line), which D-217 unparked to land first through its Tier 1 path."
+    },
+    {
       "id": "LAUNCH-legal-copy",
       "title": "Terms, Cancellation and Privacy say what is true while referral packs are sold (owner approves the wording)",
       "row": "LAUNCH",
@@ -133,7 +172,9 @@
       "lane": "launch-legal",
       "branch": "agent/queue/launch-legal-copy",
       "status": "owner",
-      "dependsOn": [],
+      "dependsOn": [
+        "PRICING-banded-oct25"
+      ],
       "owns": [
         "client/src/pages/Terms.tsx",
         "client/src/pages/CancellationPolicy.tsx",
@@ -141,7 +182,7 @@
         "client/src/pages/policyPages.test.tsx",
         "client/src/pages/trustPrivacy.test.tsx"
       ],
-      "note": "Launch audit Oct 25: Terms.tsx:23 says 'Referrals are always free' and CancellationPolicy.tsx:25 omits the ended-month exception, while packs sell for money; the privacy page names no sign-in, email, error or hosting processor. Agents draft; the owner's approval comment on the pull request comes before landing (legal text is the owner's). Unblock ruling Oct 25 (Qoder · bbc5, D-200 (2)): the checks half of Cue GPT · 5588's block is stale - typecheck, tests, build and Workers Builds are all green on c8ecc53a. The owner-approval half stands and only the owner can clear it (D-200 (6)). Before approving, CancellationPolicy bullet 3 needs one correction: 'the referral comes back if you withdraw it then' is false - a claimed-then-passed request withdraws with no refund (withdrawCompanyReferralRequest sets creditRefunded false; D-147), so the packet's own wording applies: 'After a verified employee claims or declines the request, the referral stays used.' The owner approves or amends the exact wording in a comment on PR #659; after that a session applies it, runs the gate, adds 1280/390 captures and lands."
+      "note": "Launch audit Oct 25: Terms.tsx:23 says 'Referrals are always free' and CancellationPolicy.tsx:25 omits the ended-month exception, while packs sell for money; the privacy page names no sign-in, email, error or hosting processor. Agents draft; the owner's approval comment on the pull request comes before landing (legal text is the owner's). Unblock ruling Oct 25 (Qoder · bbc5, D-200 (2)): the checks half of Cue GPT · 5588's block is stale - typecheck, tests, build and Workers Builds are all green on c8ecc53a. The owner-approval half stands and only the owner can clear it (D-200 (6)). Before approving, CancellationPolicy bullet 3 needs one correction: 'the referral comes back if you withdraw it then' is false - a claimed-then-passed request withdraws with no refund (withdrawCompanyReferralRequest sets creditRefunded false; D-147), so the packet's own wording applies: 'After a verified employee claims or declines the request, the referral stays used.' The owner approves or amends the exact wording in a comment on PR #659; after that a session applies it, runs the gate, adds 1280/390 captures and lands. D-221 (Oct 26): the wording must match D-219 (legacy packs paused; 3 free referrals a month with a verified card) and must not promise a referral back after any decline. Whether D-147 also covers a pass made without a claim is an open owner question (D-221 (3)), so the cancellation bullet states only what runtime does when this lands. Oct 27 (D-219 queue sync): waits for PRICING-banded-oct25, which owns a shared file and should land first (see that row's note)."
     },
     {
       "id": "LAUNCH-live-qa",
@@ -214,7 +255,7 @@
       "branch": "agent/queue/picker-decision-sync",
       "status": "todo",
       "dependsOn": [],
-      "note": "The owner, Oct 23: agents must always work on the most recent decision, never on old work. Builders are told to read only the brief and their packet (scripts/nextTaskText.mjs:42), so a packet older than a decision can be built as written (D-147, D-148 then D-152). Until this lands, the interim rule in the packet binds every agent."
+      "note": "The owner, Oct 23: agents must always work on the most recent decision, never on old work. Builders are told to read only the brief and their packet (scripts/nextTaskText.mjs:42), so a packet older than a decision can be built as written (D-147, D-148 then D-152). Until this lands, the interim rule in the packet binds every agent. D-221 (Oct 26): the Oct 25 owner decisions are now register entries D-219 and D-220 with their affected tasks, so the syncedTo stamp must not certify rows those entries change until each is re-synced."
     },
     {
       "id": "SKIPPY-fix",
@@ -228,7 +269,7 @@
       "dependsOn": [
         "D-132-item3"
       ],
-      "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. S-3 reuses D-132-item3's shared expectedCost/AskPriceChangedError guard; this task waits for that row rather than duplicating or overlapping its transaction work. All flags stay off until SKIPPY-fix lands with its proof. The owner asked to work on Skippy (Oct 23), so it remains ordered after the live regressions and the two picker fixes."
+      "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. S-3 reuses D-132-item3's shared expectedCost/AskPriceChangedError guard; this task waits for that row rather than duplicating or overlapping its transaction work. All flags stay off until SKIPPY-fix lands with its proof. The owner asked to work on Skippy (Oct 23), so it remains ordered after the live regressions and the two picker fixes. D-221 (Oct 26): keeps its D-132-item3 dependency (S-3 binds to item 3's accepted-price precondition; pinned by scripts/register520Packets.test.ts). D-132-item3's re-scope delivers that model-independent precondition against the D-219 quote first, so the S-1 SSRF fix waits only on that step. S-2 and S-3 state the cost per D-219 (one referral of the request's level, spend source shown); no D-132 level-credit model."
     },
     {
       "id": "BRANCH-HYGIENE-1",
@@ -278,11 +319,11 @@
       "tier": 1,
       "lane": "skippy-seeker",
       "branch": "agent/queue/skippy-purchase",
-      "status": "todo",
+      "status": "architect",
       "dependsOn": [
         "SKIPPY-fix"
       ],
-      "note": "Packs only (D-146). Extract the kit-pack arm of POST /api/chargebee/checkout so Skippy and /plans run one function. SKIPPIE_PURCHASE_ENABLED stays off in production until SKIPPY-stepup lands (D-140 fresh re-login). Never a real payment."
+      "note": "Packs only (D-146). Extract the kit-pack arm of POST /api/chargebee/checkout so Skippy and /plans run one function. SKIPPIE_PURCHASE_ENABLED stays off in production until SKIPPY-stepup lands (D-140 fresh re-login). Never a real payment. D-221 (Oct 26): re-scope before any build. The legacy credit packs this row would sell in the chat are paused (D-219 (6)); the money card is re-specified for per-level extra referrals through the banded checkout once it exists."
     },
     {
       "id": "SKIPPY-stepup",
@@ -310,7 +351,7 @@
       "dependsOn": [
         "SKIPPY-fix"
       ],
-      "note": "D-141, D-142. One additive migration at the next free number at landing (0108 is reserved for ROW20-CD), recorded in plan §5. The ask goes through db.createCompanyReferralRequest with selectedCompany and idempotency key agent-draft-<id>."
+      "note": "D-141, D-142. One additive migration at the next free number at landing (0108 is reserved for ROW20-CD), recorded in plan §5. The ask goes through db.createCompanyReferralRequest with selectedCompany and idempotency key agent-draft-<id>. D-221 (Oct 26): limits, re-quote and the shortfall path are stated in D-219 terms (referral level and spend source; a shortfall links to the banded extra referrals once sold, never to paused packs), with referral wording (D-180)."
     },
     {
       "id": "SKIPPY-7",
@@ -643,7 +684,7 @@
         "D-174-fix-post-binding",
         "D-176-public-claims"
       ],
-      "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row’s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
+      "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row’s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/Explore.tsx",
@@ -687,7 +728,7 @@
         "ROW20-CD",
         "D-048-F-goal-check"
       ],
-      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
+      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/conversation/SeekerConversation.tsx"
@@ -825,7 +866,7 @@
       "dependsOn": [
         "D-048-p3-assistants"
       ],
-      "note": "Issue #644: decideAssistantApproval never re-reads the approved creditCount, so with ASK_LEVEL_COST on an owner who saw 1 credit could pay up to 10. Latent today (flag off; only the unsold land plan grants assistants), so ASK_LEVEL_COST and any land sale stay off until this is done. Contract: the decision body carries expectedCreditCount; the route re-derives the cost with the quote route's own functions and answers 409 cost_changed before any charge on a mismatch. No edit to server/db.ts or privateReferralRoutes.ts. Waits for D-048-p3-assistants (both edit Approve.tsx).",
+      "note": "Issue #644: decideAssistantApproval never re-reads the approved creditCount, so with ASK_LEVEL_COST on an owner who saw 1 credit could pay up to 10. Latent today (flag off; only the unsold land plan grants assistants), so ASK_LEVEL_COST and any land sale stay off until this is done. Contract: the decision body carries expectedCreditCount; the route re-derives the cost with the quote route's own functions and answers 409 cost_changed before any charge on a mismatch. No edit to server/db.ts or privateReferralRoutes.ts. Waits for D-048-p3-assistants (both edit Approve.tsx). D-221 (Oct 26): the shown cost is the quote route's full cost object under D-219 (unit count, level band, spend source), not an integer credit count; the invariant stays: charge exactly what was approved, or 409 cost_changed with nothing charged.",
       "owns": [
         "server/assistantApprovalCost.ts",
         "server/assistantApprovalCost.test.ts",
@@ -855,11 +896,11 @@
       "tier": 1,
       "lane": "money-core",
       "branch": "agent/queue/d132-item3",
-      "status": "todo",
+      "status": "architect",
       "dependsOn": [
         "D-132-audit"
       ],
-      "note": "D-165: cut agent/queue/d132-item3 from #550's head, merge #542 (the only piece #550 lacks), then merge main after D-132-audit lands; keep #547's version of #541's part. Tier 1 review by a model other than Instinct; then close #541-#544 and #550."
+      "note": "D-165: cut agent/queue/d132-item3 from #550's head, merge #542 (the only piece #550 lacks), then merge main after D-132-audit lands; keep #547's version of #541's part. Tier 1 review by a model other than Instinct; then close #541-#544 and #550. D-221 (Oct 26): re-scope before any build. D-219 (owner freeze Oct 25, re-confirmed Oct 26) supersedes the D-132 per-level credit model this row builds, so PRs #541-#544 and #550 are not landed as written. Keep the valid invariant (an ask is charged exactly the quote the seeker accepted, or answers 409 with nothing charged) and restate the quote as the request's level band plus its spend source. First deliverable of the re-scope: the accepted-price precondition (expectedCost, 409 before any debit), which SKIPPY-fix S-3 needs; the D-132 per-level credit quote is not rebuilt."
     },
     {
       "id": "D-132-v2-checkout",
@@ -869,12 +910,12 @@
       "tier": 1,
       "lane": "money-core",
       "branch": "agent/instinct/v2-checkout-port",
-      "status": "todo",
+      "status": "architect",
       "dependsOn": [
         "D-132-item3",
         "D-132-audit"
       ],
-      "note": "D-165: fix stage first - merge main, renumber its two migrations (main already has 0108), implement D-165 (3) red-first (no refusal for a Free wallet with unused credits; they move to a carry-over grant expiring at their own month end). Tier 1 review by a model other than Instinct, including the line-by-line deletion review of the three-way port. #416 is superseded and closes when this lands. D-185: also carries D-132 item 4's grant half - paid rung credits are granted where they never expire (PAID_CREDITS_NEVER_EXPIRE), keyed once per term. D-165 and D-197 (5): lands only after D-132-audit; the edge is in dependsOn since Oct 25, so the picker never offers the landing first."
+      "note": "D-165: fix stage first - merge main, renumber its two migrations (main already has 0108), implement D-165 (3) red-first (no refusal for a Free wallet with unused credits; they move to a carry-over grant expiring at their own month end). Tier 1 review by a model other than Instinct, including the line-by-line deletion review of the three-way port. #416 is superseded and closes when this lands. D-185: also carries D-132 item 4's grant half - paid rung credits are granted where they never expire (PAID_CREDITS_NEVER_EXPIRE), keyed once per term. D-165 and D-197 (5): lands only after D-132-audit; the edge is in dependsOn since Oct 25, so the picker never offers the landing first. D-221 (Oct 26): re-scope before any build. Its D-132 rung SKUs and fee-plan checkout are superseded by D-219; PR #523 is not landed as written. The packet is rewritten for the banded checkout (bands, per-level extra referrals, founding caps) after PRICING-banded-oct25 (#666) lands, or the row is retired."
     },
     {
       "id": "PICKER-landing-slot",
@@ -1498,14 +1539,15 @@
         "D-048-F-harness",
         "D-048-F-primitives",
         "D-048-F-goal-check",
-        "REGISTER-520"
+        "REGISTER-520",
+        "SKIPPY-fix"
       ],
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/Skippy.tsx",
         "client/src/pages/Skippy.test.tsx"
       ],
-      "note": "D-167 §6.4: had no row. Behind SKIPPIE_SEEKER_ENABLED (off); the CEO adds SKIPPY-fix to dependsOn once REGISTER-520 puts it on main."
+      "note": "D-167 §6.4: had no row. Behind SKIPPIE_SEEKER_ENABLED (off); the CEO adds SKIPPY-fix to dependsOn once REGISTER-520 puts it on main. D-221 (Oct 26): waits for SKIPPY-fix as D-201 requires (no Skippy work before it lands). Goal line uses referral wording (D-180)."
     },
     {
       "id": "D-048-p3-agents",
@@ -1568,7 +1610,7 @@
         "client/src/pages/referralConversation.test.tsx",
         "design/goal-ui/captures/conversation/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
+      "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147) (attribution unverified - no recovered owner original; register state and refund behavior unchanged); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
       "epic": "D-048-p3"
     },
     {
@@ -1694,7 +1736,7 @@
         "client/src/pages/goal/email-review/**",
         "design/goal-ui/captures/email-review/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('email-review'). D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23).",
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('email-review'). D-035 dropped from dependsOn: rejected by the founder (D-147) (attribution unverified - no recovered owner original; register state and refund behavior unchanged); the decline panels keep today's rule (CEO, Oct 23).",
       "epic": "D-048-p3"
     },
     {
@@ -1985,7 +2027,8 @@
         "D-048-F-harness",
         "D-048-F-primitives",
         "D-048-P-account",
-        "D-048-F-goal-check"
+        "D-048-F-goal-check",
+        "DECISION-COPY-oct26"
       ],
       "owns": [
         "client/src/pages/Help.tsx",
@@ -1994,7 +2037,7 @@
         "client/src/pages/goal/support/**",
         "design/goal-ui/captures/support/**"
       ],
-      "note": "Implementation row from the D-048-account.md packet (AYO-11 design lane). flag: goalSurfaceOn('support').",
+      "note": "Implementation row from the D-048-account.md packet (AYO-11 design lane). flag: goalSurfaceOn('support'). Oct 27 (D-221 copy sync): waits for DECISION-COPY-oct26, which fixes the Help.tsx free-limit line first (shared file).",
       "epic": "D-048-p3"
     },
     {
@@ -2249,14 +2292,15 @@
       "dependsOn": [
         "D-048-p3-employer",
         "D-107-claim-company",
-        "D-048-F-goal-check"
+        "D-048-F-goal-check",
+        "DECISION-COPY-oct26"
       ],
       "owns": [
         "client/src/pages/ForCompanies.tsx",
         "client/src/pages/goal/for-companies/**",
         "design/goal-ui/captures/for-companies/**"
       ],
-      "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('for-companies'); read-only: components/employer/employerPlans.ts. Coverage D-167 also assigns /company/claim and /company/dashboard/:slug to this row; they are already goal-built under D-107 (done), so this row owns no paths for them - the builder verifies that at build and stops and reports if wrong.",
+      "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('for-companies'); read-only: components/employer/employerPlans.ts. Coverage D-167 also assigns /company/claim and /company/dashboard/:slug to this row; they are already goal-built under D-107 (done), so this row owns no paths for them - the builder verifies that at build and stops and reports if wrong. Oct 27 (D-221 copy sync): waits for DECISION-COPY-oct26, which fixes the ForCompanies.tsx availability label first (shared file).",
       "epic": "D-048-p3"
     },
     {
@@ -2497,7 +2541,7 @@
       "branch": "agent/queue/d086-demand-list",
       "status": "architect",
       "dependsOn": [],
-      "note": "D-154, D-162: queued so the packet can be written now (D-109); its build follows D-090-BYOR (owner word, D-162). The packet pull request adds D-090-BYOR to this row's dependsOn, and also D-048-p3-live-review-find (both edit /explore and /ask) unless the packet's owned paths leave that row's files alone. Scope: public counts per company from 3 up, 'A few people' for 1-2, never 0, no seeker detail (D-086 (2) overrides the PRD copy's old 'singular for 1'); the count is people asking for a referral at that company and is not built yet: ROW20-B (#311) counts suggestions filed on /invite (as a seeker) and /suggest-company (seeker or employee), one per person per company, admin-only, so the packet decides which real rows count (D-102); the ask-to-any-company path (no credit, no slot until a verified referrer exists, then D-034/D-047/D-062, closing at 90 days under D-061); D-102's honest availability lines; the copy in docs/PRD.md; owned paths."
+      "note": "D-154, D-162: queued so the packet can be written now (D-109); its build follows D-090-BYOR (owner word, D-162). The packet pull request adds D-090-BYOR to this row's dependsOn, and also D-048-p3-live-review-find (both edit /explore and /ask) unless the packet's owned paths leave that row's files alone. Scope: public counts per company from 3 up, 'A few people' for 1-2, never 0, no seeker detail (D-086 (2) overrides the PRD copy's old 'singular for 1'); the count is people asking for a referral at that company and is not built yet: ROW20-B (#311) counts suggestions filed on /invite (as a seeker) and /suggest-company (seeker or employee), one per person per company, admin-only, so the packet decides which real rows count (D-102); the ask-to-any-company path (no credit, no slot until a verified referrer exists, then D-034/D-047/D-062, closing at 90 days under D-061); D-102's honest availability lines; the copy in docs/PRD.md; owned paths. D-221 (Oct 26): the packet writer replaces the 90-day closure with D-174 (requests never expire for launch) plus D-193 (4) (reconfirm before spend), and drops the 'not yet open' availability framing (D-176). Whether public per-company demand counts survive D-176 is checked against D-193 (3) before any owner question."
     },
     {
       "id": "D-090-BYOR",
@@ -2626,7 +2670,7 @@
         "docs/DECISIONS.md",
         "docs/KIT_V4_BUILD_PLAN.md"
       ],
-      "note": "Oct 23 owns reconciliation (coordinator): this row and D-048-p3-admin both switch client/src/pages/AdminOverview.tsx; the goal redesign lands first (whole-app mandate) and this row reconciles its bonus sections on top of the goal switch at activation (D-167 one-owner-per-file). D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing). It also waits for D-048-F-flags and D-048-F-routes, which own App.tsx and .env.example first (CEO, Oct 23)."
+      "note": "Oct 23 owns reconciliation (coordinator): this row and D-048-p3-admin both switch client/src/pages/AdminOverview.tsx; the goal redesign lands first (whole-app mandate) and this row reconciles its bonus sections on top of the goal switch at activation (D-167 one-owner-per-file). D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing). It also waits for D-048-F-flags and D-048-F-routes, which own App.tsx and .env.example first (CEO, Oct 23). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost."
     },
     {
       "id": "D-099-bonus-line",
@@ -2875,7 +2919,7 @@
         "D-132-audit",
         "D-048-fix-send-ask-blocker"
       ],
-      "note": "D-193 packet section 5.1. Latent today: production has zero posted roles at all 39 companies. Waits for D-132-audit, which edits the same composer files (#547).",
+      "note": "D-193 packet section 5.1. Latent today: production has zero posted roles at all 39 companies. Waits for D-132-audit, which edits the same composer files (#547). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost.",
       "epic": "D-174",
       "owns": [
         "client/src/lib/askPrefill.ts",
@@ -2902,7 +2946,7 @@
         "POSTMERGE-oct22-fixes",
         "D-132-audit"
       ],
-      "note": "D-193 packet section 5.3 and ruling (5): builds D-061's never-built reconfirm-before-spend without its closure, in deliverWaitingAskTx (every delivery path). Transition events, no migration; in-app notice only (no D-060 email exists yet). ASK_RECONFIRM_ENABLED stays false until QA; D-174-expiry-clock-removal waits for this row. D-197: also waits for D-132-audit (both own server/db.ts, server/privateReferralRoutes.ts and shared/moneyCopy.ts; the money-core audit goes first, D-146).",
+      "note": "D-193 packet section 5.3 and ruling (5): builds D-061's never-built reconfirm-before-spend without its closure, in deliverWaitingAskTx (every delivery path). Transition events, no migration; in-app notice only (no D-060 email exists yet). ASK_RECONFIRM_ENABLED stays false until QA; D-174-expiry-clock-removal waits for this row. D-197: also waits for D-132-audit (both own server/db.ts, server/privateReferralRoutes.ts and shared/moneyCopy.ts; the money-core audit goes first, D-146). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost.",
       "epic": "D-174",
       "owns": [
         "shared/askReconfirm.ts",
@@ -2988,6 +3032,41 @@
         "client/src/pages/explore.test.tsx",
         "scripts/prerenderPublicPages.test.ts"
       ]
+    },
+    {
+      "id": "DECISION-COPY-oct26",
+      "title": "User-facing lines that still state a superseded decision: decline credit (D-147), spend timing (D-034), availability (D-176), retired plans (D-219)",
+      "row": "D-221",
+      "packet": "docs/plans/DECISION-COPY-oct26.md",
+      "tier": 2,
+      "lane": "copy-sync",
+      "branch": "agent/queue/decision-copy-oct26",
+      "status": "todo",
+      "dependsOn": [],
+      "owns": [
+        "client/src/components/referrer-home/WaitingAsks.tsx",
+        "client/src/components/alerts/SavedAlerts.tsx",
+        "client/src/components/alerts/savedAlerts.test.tsx",
+        "client/src/pages/Help.tsx",
+        "client/src/pages/trustCluster.test.tsx",
+        "client/src/content/guides.ts",
+        "client/src/pages/ForCompanies.tsx",
+        "client/src/pages/forCompanies.test.tsx",
+        "client/src/components/VisualJourney.tsx"
+      ],
+      "note": "D-221 (Oct 26 decision audit): seven live strings still state rules that newer decisions replaced. Copy and its pinning tests only; Help.tsx line 17's 7-day expiry stays until D-174-expiry-clock-removal (runtime truth). Tier 2: lands on green required CI (D-200)."
+    },
+    {
+      "id": "DECISION-SYNC-oct26",
+      "title": "Docs that still give a replaced rule as current: legacy pack catalog, design contracts, handoff docs, landing route, fairness lines (D-221 audit section 9)",
+      "row": "D-068",
+      "packet": "docs/plans/DECISION-AUDIT-oct26.md",
+      "tier": 3,
+      "lane": "docs-sync",
+      "branch": "agent/queue/decision-sync-oct26",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-221 (Oct 26): Markdown only. Fix each line in the audit's section 9 to the current rule (D-219 pricing and paused packs, D-176 availability, D-174 expiry as a runtime caveat only, D-147, D-200 landing and who builds, D-196/D-219 referrer-plan exception, D-080/D-163 sign-in order). The register keeps its history; other docs state the current rule. Leave the eight entry-doc banners to D-200-instructions-sync and the landing-route wording to D-212 if it lands first. Tier 3: lands on green required CI (D-200)."
     },
     {
       "id": "D-174-job-sources-more",
@@ -3146,7 +3225,7 @@
       "dependsOn": [
         "D-132-audit"
       ],
-      "note": "D-199 registers legacy PR #596 (built by Instinct Agent; user report phonemsg-01M5MXNSDQ0VJMG8M3MVQWT8JF) under its existing branch. Scope: six files (packet section 3). No validation, eligibility, price, quote or send-contract change; new strings use D-180 vocabulary. Waits for D-132-audit (same composer files; money core first, D-146/D-197), then merges main. The branch drops its own copy of this row at merge-up. Tier 2: lands on green required CI (D-200).",
+      "note": "D-199 registers legacy PR #596 (built by Instinct Agent; user report phonemsg-01M5MXNSDQ0VJMG8M3MVQWT8JF) under its existing branch. Scope: six files (packet section 3). No validation, eligibility, price, quote or send-contract change; new strings use D-180 vocabulary. Waits for D-132-audit (same composer files; money core first, D-146/D-197), then merges main. The branch drops its own copy of this row at merge-up. Tier 2: lands on green required CI (D-200). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost. D-221 (Oct 26): this row owns client/src/pages/explore/useAskComposer.tsx, so it also rewords the coverage-change refusal at line 527 (\"This company just opened up to referrals\", landed with D-132-audit) without an availability claim (D-176), for example \"The cost changed before sending. Nothing was sent or charged.\"",
       "owns": [
         "client/src/pages/Ask.tsx",
         "client/src/pages/Explore.tsx",
@@ -3294,46 +3373,6 @@
         "server/passkeyRoutes.test.ts"
       ],
       "note": "D-209 (1): the device-saved sign-in the owner asked for (D-172, docs/DEVICE-SIGNIN-REQUIREMENTS.md) never rides a sign-in fix's branch. Mechanism approved by the owner Oct 25 (SimpleWebAuthn, MIT, native passkey sign-in on skipwait.me; no authkit.app, no paid provider, no forced prompt). Waits in owner status for D-209 (4): may a referrer add a passkey (default no, D-057), and is Sign in with Apple in (default no, D-030). Packet phases A-C only after those answers; phase D is blocked. Build extends owns in its own PR as D-200 (2) allows."
-    },
-    {
-      "id": "PRICING-banded-oct25",
-      "title": "Frozen banded plan family (owner freeze Oct 25) replaces fee+credits model",
-      "row": "PRICING",
-      "packet": "docs/plans/PRICING-banded-oct25.md",
-      "tier": 1,
-      "lane": "pricing",
-      "branch": "agent/pricing/banded-plans-oct25",
-      "status": "in-review",
-      "dependsOn": [
-        "LAUNCH-legal-copy",
-        "D-048-F-credits"
-      ],
-      "owns": [
-        ".github/workflows/ci.yml",
-        "client/src/components/AppShell.tsx",
-        "client/src/components/seekerCreditsCard.test.tsx",
-        "client/src/lib/planFamilyFlag.ts",
-        "client/src/pages/PlansV2.test.tsx",
-        "client/src/pages/PlansV2.tsx",
-        "client/src/pages/Premium.tsx",
-        "client/src/pages/Pricing.tsx",
-        "client/src/pages/creditPacksOnSale.test.tsx",
-        "client/src/pages/plans.paymentRecovery.test.tsx",
-        "client/src/pages/plans.paymentRoute.test.tsx",
-        "client/src/pages/plansV2.config-guard.test.tsx",
-        "client/src/pages/policyPages.test.tsx",
-        "client/src/pages/premium.packRetirement.test.tsx",
-        "client/src/planFamilyFlagsOff.test.ts",
-        "server/chargebeeReferrerPurchase.test.ts",
-        "server/kitCheckout.test.ts",
-        "server/kitCheckout.ts",
-        "server/passSalesSwitch.test.ts",
-        "shared/planCatalog.ts",
-        "shared/planFamily.test.ts",
-        "shared/planFamily.ts",
-        "shared/planReach.test.ts"
-      ],
-      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first."
     },
     {
       "id": "D-180-a-free-asks-chip",
