@@ -6,6 +6,7 @@
 //
 //   node scripts/require-green-release.mjs --target api|web           # wait for CI, then pass or refuse
 //   node scripts/require-green-release.mjs --target api|web --once    # re-check right before a production step
+//   node scripts/require-green-release.mjs --target api --recovery    # rollback.yml: a deliberate older target
 //
 // It passes only when all of these hold, and refuses (exit 1) on anything else: a red,
 // cancelled, skipped, missing or still-running check, a GitHub error, or a timeout.
@@ -20,6 +21,15 @@
 //     refs/tags/api-runtime for the API, the newest successful Pages deploys for the Web.
 // There is no switch that skips it. A commit that skipped CI ([skip ci]) gets a CI run by
 // dispatching the CI workflow on main; the gate waits for it.
+//
+// --recovery (#751) is the one deliberate exception to the last rule, for rollback.yml run from
+// main: production may move back to an older commit, chosen on purpose. Everything else holds:
+// the request names the API, gives the full target SHA twice (RECOVERY_COMMIT, RECOVERY_CONFIRM)
+// and a reason (RECOVERY_REASON); the target is on main with its own main CI green as above;
+// and its schema contract (SCHEMA_CONTRACT) is byte-identical to the workflow's main commit, the
+// one case where the older code is known to fit the live schema. Anything else is refused. The
+// workflow SHA (GITHUB_SHA) and the target SHA stay distinct, and the actor, both SHAs and the
+// reason go to the run summary.
 //
 // Environment (GitHub Actions sets the first five): GITHUB_SHA, GITHUB_REF, GITHUB_EVENT_NAME,
 // GITHUB_REPOSITORY, GITHUB_RUN_ID, GITHUB_TOKEN, GITHUB_API_URL; optional
@@ -36,13 +46,28 @@ const RELEASE_EVENTS = new Set(["push", "workflow_dispatch"]);
 const TARGETS = new Set(["api", "web"]);
 const FULL_SHA = /^[0-9a-f]{40}$/;
 const MAX_API_ERRORS = 5;
+const MAX_REASON = 500;
+// What the API's code assumes about the database: migrations, the Drizzle schema and the boot-time reconcile.
+export const SCHEMA_CONTRACT = Object.freeze(["drizzle/deploy", "drizzle/schema.ts", "server/schemaReconcile.ts"]);
 
 /** Why this workflow run may not release at all, or null. */
-export function contextProblem({ sha, ref, event, target }) {
+export function contextProblem({ sha, ref, event, target, recovery = false }) {
   if (!TARGETS.has(target)) return `unknown target "${target}" (use --target api or --target web)`;
   if (!FULL_SHA.test(sha ?? "")) return `no full commit SHA to release (got "${sha ?? ""}")`;
+  if (recovery && event !== "workflow_dispatch") return `a recovery runs only from a manual dispatch of ${RELEASE_BRANCH}, never from a ${event} run`;
   if (!RELEASE_EVENTS.has(event)) return `a ${event} run never releases; only a push to ${RELEASE_BRANCH} or a manual dispatch of ${RELEASE_BRANCH} does`;
   if (ref !== `refs/heads/${RELEASE_BRANCH}`) return `releases run from ${RELEASE_BRANCH} only; this run is on ${ref}`;
+  return null;
+}
+
+/** Why a manual recovery request is not a deliberate, well-formed one, or null. */
+export function recoveryProblem({ system, commit, confirm, reason }) {
+  if (system !== "api") return `only the API has a recovery job (got "${system ?? ""}"); to redeploy the Web, dispatch Deploy Web on ${RELEASE_BRANCH}`;
+  if (!FULL_SHA.test(commit ?? "")) return "the recovery commit must be a full 40-character lowercase SHA from main";
+  if (confirm !== commit) return "the confirmation does not repeat the recovery commit exactly";
+  const why = String(reason ?? "").trim();
+  if (!why) return "a recovery needs a reason";
+  if (why.length > MAX_REASON) return `the reason is longer than ${MAX_REASON} characters`;
   return null;
 }
 
@@ -95,8 +120,19 @@ async function supersededBy({ gh, sha, target, runId }) {
   return null;
 }
 
-/** One look at GitHub: green only when the commit is on main, CI passed on it and nothing newer is live. */
-export async function evaluateRelease({ gh, sha, target, runId }) {
+/** The SCHEMA_CONTRACT paths whose content differs between two commits (a missing path counts). */
+async function schemaDrift(gh, a, b) {
+  const files = (p, c) => (c === null ? [] : c.kind === "file" ? [[p, c.sha]] : c.entries.map(e => [`${p}/${e.name}`, e.sha]));
+  const drift = [];
+  for (const p of SCHEMA_CONTRACT) {
+    const [left, right] = [new Map(files(p, await gh.contents(p, a))), new Map(files(p, await gh.contents(p, b)))];
+    for (const name of new Set([...left.keys(), ...right.keys()])) if (left.get(name) !== right.get(name)) drift.push(name);
+  }
+  return drift.sort();
+}
+
+/** One look at GitHub: green only when the commit is on main, CI passed on it and nothing newer is live (or, for a recovery, its schema contract is main's). */
+export async function evaluateRelease({ gh, sha, target, runId, recovery = false, workflowSha = "" }) {
   const line = await gh.compare(sha, RELEASE_BRANCH);
   if (!(line.status === "identical" || descends(line))) return { state: "red", reason: `${sha} is not on ${RELEASE_BRANCH} (compare: ${line.status})` };
   const runs = await gh.ciRuns(sha);
@@ -104,20 +140,30 @@ export async function evaluateRelease({ gh, sha, target, runId }) {
   for (const r of releaseRuns(sha, runs)) if (r.status === "completed" && r.conclusion === "success") jobsByRun.set(r.id, await gh.ciJobs(r.id));
   const ci = ciVerdict({ sha, runs, jobsByRun });
   if (ci.state !== "green") return ci;
+  if (recovery) {
+    const drift = await schemaDrift(gh, sha, workflowSha);
+    if (drift.length) return { state: "red", reason: `the target's schema contract differs from ${RELEASE_BRANCH} ${workflowSha} in ${drift.join(", ")}; whether the older code fits the live schema cannot be established, so this recovery is refused. Choose a target with the same schema contract` };
+    return { state: "green", reason: `${ci.reason}; schema contract identical to ${RELEASE_BRANCH} ${workflowSha}` };
+  }
   const newer = await supersededBy({ gh, sha, target, runId });
   return newer ? { state: "red", reason: `superseded: ${newer}; dispatch this workflow on ${RELEASE_BRANCH} to release the newest commit` } : ci;
 }
 
-/** Wait (or, with once, look once) and return { ok, reason }. Only a green verdict is ok. */
-export async function runGate({ gh, sha, ref, event, target, runId, once = false, timeoutMs, appearMs, intervalMs, now = Date.now, sleep, log = () => {} }) {
-  const problem = contextProblem({ sha, ref, event, target });
+/** Wait (or, with once, look once) and return { ok, reason }. Only a green verdict is ok. A recovery releases intent.commit. */
+export async function runGate({ gh, sha, ref, event, target, runId, recovery = false, intent = null, workflowSha = "", once = false, timeoutMs, appearMs, intervalMs, now = Date.now, sleep, log = () => {} }) {
+  if (recovery) {
+    const problem = recoveryProblem(intent ?? {}) ?? (FULL_SHA.test(workflowSha) ? null : "no workflow commit to compare the target's schema contract with");
+    if (problem) return { ok: false, reason: problem };
+    sha = intent.commit;
+  }
+  const problem = contextProblem({ sha, ref, event, target, recovery });
   if (problem) return { ok: false, reason: problem };
   const start = now();
   let errors = 0;
   for (;;) {
     let verdict;
     try {
-      verdict = await evaluateRelease({ gh, sha, target, runId });
+      verdict = await evaluateRelease({ gh, sha, target, runId, recovery, workflowSha });
       errors = 0;
     } catch (error) {
       errors++;
@@ -148,7 +194,7 @@ const parseRun = r => ({
 });
 const parseJob = j => ({ name: text(j?.name, "job name"), status: text(j.status, "job status"), conclusion: textOrNull(j.conclusion, "job conclusion"), head_sha: text(j.head_sha, "job head_sha") });
 
-/** The five GitHub REST reads the gate makes (no writes). */
+/** The GitHub REST reads the gate makes (no writes). */
 export function gitHubClient({ apiUrl, repo, token, fetchImpl = fetch }) {
   const get = async (path, { missingOk = false } = {}) => {
     const res = await fetchImpl(`${apiUrl.replace(/\/$/, "")}/repos/${repo}${path}`, {
@@ -180,8 +226,19 @@ export function gitHubClient({ apiUrl, repo, token, fetchImpl = fetch }) {
     async pagesRuns() {
       return list((await get(`/actions/workflows/deploy-pages.yml/runs?branch=${RELEASE_BRANCH}&status=success&per_page=20&exclude_pull_requests=true`))?.workflow_runs, "workflow_runs").map(parseRun);
     },
+    // A file is its blob SHA, a folder its entries' SHAs, a missing path null.
+    async contents(path, ref) {
+      const c = await get(`/contents/${path}?ref=${ref}`, { missingOk: true });
+      if (c === null) return null;
+      if (Array.isArray(c)) return { kind: "dir", entries: c.map(e => ({ name: text(e?.name, "entry name"), sha: text(e.sha, "entry sha") })) };
+      if (c?.type === "file") return { kind: "file", sha: text(c.sha, "file sha") };
+      return bad(`contents of ${path}`);
+    },
   };
 }
+
+// The run summary records the request as plain text: no backticks, control characters or line breaks.
+const plain = value => String(value ?? "").replace(/`/g, "'").replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, MAX_REASON);
 
 const minutes = (value, fallback) => (Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback);
 
@@ -190,19 +247,27 @@ async function main() {
   const at = args.indexOf("--target");
   const target = at >= 0 ? args[at + 1] ?? "" : "";
   const once = args.includes("--once");
+  const recovery = args.includes("--recovery");
   const env = process.env;
+  const intent = recovery ? { system: env.RECOVERY_SYSTEM, commit: env.RECOVERY_COMMIT, confirm: env.RECOVERY_CONFIRM, reason: env.RECOVERY_REASON } : null;
+  const sha = (recovery ? env.RECOVERY_COMMIT : env.GITHUB_SHA) || "";
   const result = await runGate({
     gh: gitHubClient({ apiUrl: env.GITHUB_API_URL || "https://api.github.com", repo: env.GITHUB_REPOSITORY ?? "", token: env.GITHUB_TOKEN }),
-    sha: env.GITHUB_SHA ?? "", ref: env.GITHUB_REF ?? "", event: env.GITHUB_EVENT_NAME ?? "", target, runId: env.GITHUB_RUN_ID ?? "", once,
+    sha, ref: env.GITHUB_REF ?? "", event: env.GITHUB_EVENT_NAME ?? "", target, runId: env.GITHUB_RUN_ID ?? "", once,
+    recovery, intent, workflowSha: env.GITHUB_SHA ?? "",
     timeoutMs: minutes(env.RELEASE_GATE_TIMEOUT_MINUTES, 45) * 60_000,
     appearMs: minutes(env.RELEASE_GATE_APPEAR_MINUTES, 10) * 60_000,
     intervalMs: minutes(env.RELEASE_GATE_INTERVAL_SECONDS, 30) * 1000,
     sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
     log: line => console.log(line),
   });
-  const verdict = `RELEASE GATE ${result.ok ? "PASS" : "REFUSED"} (${target}): ${env.GITHUB_SHA || "<no commit>"} — ${result.reason}`;
+  const verdict = `RELEASE GATE ${result.ok ? "PASS" : "REFUSED"} (${recovery ? `${target} recovery` : target}): ${plain(sha) || "<no commit>"} — ${result.reason}`;
+  const record = recovery
+    ? `Recovery requested by ${plain(env.GITHUB_ACTOR)} (this attempt by ${plain(env.GITHUB_TRIGGERING_ACTOR || env.GITHUB_ACTOR)}), run ${plain(env.GITHUB_RUN_ID)} attempt ${plain(env.GITHUB_RUN_ATTEMPT)}: target ${plain(env.RECOVERY_COMMIT)}, workflow commit ${plain(env.GITHUB_SHA)}, reason: ${plain(env.RECOVERY_REASON)}`
+    : null;
+  if (record) console.log(record);
   console.log(result.ok ? verdict : `::error::${verdict}`);
-  if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `### ${verdict}\n`);
+  if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `### ${verdict}\n${record ? `${record}\n` : ""}`);
   process.exit(result.ok ? 0 : 1);
 }
 
