@@ -133,7 +133,9 @@
       "lane": "pricing",
       "branch": "agent/pricing/banded-plans-oct25",
       "status": "in-review",
-      "dependsOn": [],
+      "dependsOn": [
+        "D-048-F-credits"
+      ],
       "owns": [
         ".github/workflows/ci.yml",
         "client/src/components/AppShell.tsx",
@@ -159,7 +161,7 @@
         "shared/planFamily.ts",
         "shared/planReach.test.ts"
       ],
-      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first. Oct 27 queue sync (Claude Code, D-219; changeable): moved up to sit just above LAUNCH-legal-copy and no longer waits on it or on D-048-F-credits. Those two rows now wait for this one: LAUNCH-legal-copy is owner-held (legal text) and shares only policyPages.test.tsx, and its Terms and Cancellation text must describe the pricing this row lands; D-048-F-credits is draft #568, quiet since Oct 23, and shares one AppShell.tsx title line. The owner's freeze said 'push it immediately', and the live app could still open an archived legacy pack cart on Oct 25 (PR #666 comment 6399494075)."
+      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first. Oct 27 queue sync (Claude Code, D-219; changeable): moved up to sit just above LAUNCH-legal-copy and no longer waits on it; LAUNCH-legal-copy now waits for this row instead, because it is owner-held (legal text), shares only policyPages.test.tsx, and its Terms and Cancellation text must describe the pricing this row lands. The owner's freeze said 'push it immediately', and the live app could still open an archived legacy pack cart on Oct 25 (PR #666 comment 6399494075). It still waits for D-048-F-credits (shared AppShell.tsx line), which D-217 unparked to land first through its Tier 1 path."
     },
     {
       "id": "LAUNCH-legal-copy",
@@ -1175,10 +1177,9 @@
       "tier": 1,
       "lane": "design-core",
       "branch": "agent/queue/d048-f-credits",
-      "status": "in-review",
+      "status": "todo",
       "dependsOn": [
-        "D-048-F-harness",
-        "PRICING-banded-oct25"
+        "D-048-F-harness"
       ],
       "owns": [
         "client/src/components/AppShell.tsx",
@@ -1187,7 +1188,7 @@
         "client/src/hooks/useCreditBalance.test.ts",
         "client/src/components/appShell.test.tsx"
       ],
-      "note": " Built by the coordinator lane: PR #568, stacked on #560; needs the D-151 different-model Tier 1 review. Oct 27 (D-219 queue sync): waits for PRICING-banded-oct25, which owns a shared file and should land first (see that row's note)."
+      "note": "D-217: unparked from `in-review` (no review lock, so the picker could never hand it out). PR #568 is green at `601a2368`: merge current `main`, keep the matcher for `/referrer-home`, `/referrer-setup`, `/verify` and `/post-opportunity` plus its six-route `appShell.test.tsx` test, then land through the Tier 1 path (D-151). Blocks D-048-p3-referrer-home."
     },
     {
       "id": "D-048-F-static-frame",
@@ -1493,9 +1494,10 @@
         "client/src/pages/Approve.tsx",
         "client/src/pages/ConnectAssistant.tsx",
         "client/src/pages/goal/assistants/**",
-        "design/goal-ui/captures/assistants/**"
+        "design/goal-ui/captures/assistants/**",
+        "client/src/components/goal/goalBoundary.test.ts"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Scope amendment (Oct 23, whole-app goal-UI program, Linear AYO-9): /agents (SeekerAgents, the seeker agent-keys surface) has no split row; it belongs to the assistants family, so this row owns its switch and goal body too. Amended by the program coordinator with Main's direction; no other row changes."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Scope amendment (Oct 23, whole-app goal-UI program, Linear AYO-9): /agents (SeekerAgents, the seeker agent-keys surface) has no split row; it belongs to the assistants family, so this row owns its switch and goal body too. Amended by the program coordinator with Main's direction; no other row changes. Owns includes the phase-3 boundary guard: W5's /connect-assistant self-wrap of the goal shell requires the MOVED_SURFACES entry, same registration as 161eafc2 (#566)."
     },
     {
       "row": "D-048",
@@ -1506,7 +1508,7 @@
       "tier": 2,
       "lane": "d048-small",
       "branch": "agent/queue/d048-seeker-small",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1608,7 +1610,7 @@
         "client/src/pages/referralConversation.test.tsx",
         "design/goal-ui/captures/conversation/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
+      "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147) (attribution unverified - no recovered owner original; register state and refund behavior unchanged); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
       "epic": "D-048-p3"
     },
     {
@@ -1649,6 +1651,7 @@
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
+        "D-048-F-credits",
         "D-048-P-referrer",
         "ROW20-CD",
         "D-106-impact-card",
@@ -1661,7 +1664,7 @@
         "client/src/pages/referrerHomeGoal.test.tsx",
         "design/goal-ui/captures/referrer-home/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('referrer-home').",
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('referrer-home'). D-217: the shell matcher is D-048-F-credits' work, not this row's; waits for it, then fixes its own red CI (two kit imports in the goal pages).",
       "epic": "D-048-p3"
     },
     {
@@ -1733,7 +1736,7 @@
         "client/src/pages/goal/email-review/**",
         "design/goal-ui/captures/email-review/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('email-review'). D-035 dropped from dependsOn: rejected by the founder (D-147); the decline panels keep today's rule (CEO, Oct 23).",
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('email-review'). D-035 dropped from dependsOn: rejected by the founder (D-147) (attribution unverified - no recovered owner original; register state and refund behavior unchanged); the decline panels keep today's rule (CEO, Oct 23).",
       "epic": "D-048-p3"
     },
     {
@@ -3380,7 +3383,16 @@
       "lane": "terminology",
       "branch": "agent/copy/free-asks-chip-terminology",
       "status": "in-review",
-      "dependsOn": ["PRICING-banded-oct25", "D-174-held-ask-reconfirm", "LAUNCH-legal-copy", "D-048-p3-live-review-find", "D-174-fix-post-binding", "D-176-public-claims", "D-048-dark-mode", "D-099-bonus-pages"],
+      "dependsOn": [
+        "PRICING-banded-oct25",
+        "D-174-held-ask-reconfirm",
+        "LAUNCH-legal-copy",
+        "D-048-p3-live-review-find",
+        "D-174-fix-post-binding",
+        "D-176-public-claims",
+        "D-048-dark-mode",
+        "D-099-bonus-pages"
+      ],
       "owns": [
         "shared/moneyCopy.ts",
         "client/index.html",

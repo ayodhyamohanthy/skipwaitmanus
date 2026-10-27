@@ -132,7 +132,7 @@ Generated from the register's status cells. Where an entry is changed by more th
 ## 4. Old entries edited in place (history check)
 Across 75 versions of the register on `main`, 21 rows changed after they first landed:
 - **Pointer or status notes only (fine):** D-003 (amended by D-082), D-018, D-035 (rejection banner), D-075 and D-083 (amended by D-085), D-134 (the owner's quote and D-149), D-148 (names superseded by D-152).
-- **The owner's own words added to the same row (acceptable, but a new entry is clearer):** D-007 (Oct 15 reconfirmation), D-049 (the owner's same-day clarification), D-079 (the owner chose PayPal-link validation), D-082 (the owner's yes to the ruleset), D-136 (the assistant renamed Reffy, then Doorway, then Skipper, then Skippy, all inside one row, each on the founder's word), D-147 (status flipped from "decision pending" to the founder's rejection).
+- **The owner's own words added to the same row (acceptable, but a new entry is clearer):** D-007 (Oct 15 reconfirmation), D-049 (the owner's same-day clarification), D-079 (the owner chose PayPal-link validation), D-082 (the owner's yes to the ruleset), D-136 (the assistant renamed Reffy, then Doorway, then Skipper, then Skippy, all inside one row, each on the founder's word), D-147 (status flipped from "decision pending" to the founder's rejection (attribution unverified - no recovered owner original; register state and refund behavior unchanged)).
 - **Rewritten in place without a new ID (worth knowing, nothing to revert):** D-043 (v1 growth strategy replaced by v2 the same day; the v1 referrer-bonus pitch was dropped) and D-072 (queue-order sentence updated as work shipped).
 - **Removed:** D-020, D-025 and D-027 (by D-067; listed under Superseded, IDs reserved).
 
