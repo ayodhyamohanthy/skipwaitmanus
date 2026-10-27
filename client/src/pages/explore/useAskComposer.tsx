@@ -526,7 +526,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
           queryClient.invalidateQueries({ queryKey: companyDirectoryKeys.all }),
           queryClient.invalidateQueries({ queryKey: ["ask-quote"] }),
         ]);
-        setSendError(typeof payload.error === "string" ? payload.error : "This company just opened up to referrals. Nothing was sent and nothing was charged - check the live price and send again if it works for you.");
+        setSendError(typeof payload.error === "string" ? payload.error : "The cost changed before sending. Nothing was sent and nothing was charged - check the live price and send again if it works for you.");
         return;
       }
       // Task 13: more pinned work than the plan puts in front of a referrer. The
