@@ -829,7 +829,8 @@
         "client/index.html (switch only)",
         "DESIGN.md",
         "scripts/designTokenAuditCore.mjs",
-        "scripts/designTokenAudit.test.ts"
+        "scripts/designTokenAudit.test.ts",
+        "design/goal-ui/captures/dark-mode/**"
       ]
     },
     {
