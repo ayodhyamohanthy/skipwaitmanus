@@ -113,7 +113,7 @@
 
 ## REL-5xx-capture: every server error reaches Sentry and the owner, sign-in and webhooks included (lane `observability`, Tier 2)
 **Why.**
-- **Most 5xx answers go unreported.** 238 handled `status(500|502|503)` answers sit in 35 server files at `927dfaca`, and 32 of those files never call Sentry. Nothing global reports a 5xx: the `/api` finish hook in `server/_core/index.ts` only logs slow requests.
+- **Most 5xx answers go unreported.** 238 handled `status(500|502|503)` answers sit in 35 server files (`server/**/*.ts` excluding tests; `git grep -E "status\((500|502|503)\)" server/ | grep -v "\.test\."`), and 32 of those files never call Sentry (only `privateReferralRoutes.ts`, `scheduledJobsRoutes.ts` and `workosWebhooks.ts` import `captureServerError`). Nothing global reports a 5xx: the `/api` finish hook in `server/_core/index.ts` only logs slow requests.
 - **The owner's 5xx email misses sign-in and webhooks.** `materialErrorAlertMiddleware` (`server/errorAlerting.ts`) is registered after the payment and WorkOS webhooks and after the sign-in routes, so a broken sign-in code send or webhook emails nobody.
 - **One sender for alerts and codes.** The alert email and users' sign-in codes share one sender, so a ZeptoMail outage silences its own alarm.
 - **4xx noise.** tRPC `onError` sends every error to Sentry, 4xx included, which spends the free quota.

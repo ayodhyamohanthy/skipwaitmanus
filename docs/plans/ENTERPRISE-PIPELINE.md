@@ -20,7 +20,7 @@
   - `drift-watch.yml` derives the live SHA it expects from path filters. That raised false drift for weeks (issues #94 and #475) and again on Oct 25 (#687, still open; PR #689 repairs it).
   - `rollback.yml` has never run, has no web job, and redeploys the current `main` by default.
 - **Errors are caught and dropped.**
-  - 238 handled `status(500|502|503)` answers sit in 35 server files, and 32 of those files never report to Sentry (`git grep` on `927dfaca`).
+  - 238 handled `status(500|502|503)` answers sit in 35 server files (`server/**/*.ts` excluding tests; counting rule: `git grep -E "status\((500|502|503)\)" server/ | grep -v "\.test\."`), and 32 of those files never report to Sentry (only `server/privateReferralRoutes.ts`, `server/scheduledJobsRoutes.ts` and `server/workosWebhooks.ts` import `captureServerError` from `./sentry`).
   - The owner's 5xx email (`materialErrorAlertMiddleware`) is registered after the payment and WorkOS webhooks and the sign-in routes.
   - A review email to a referrer that fails, or that a restart interrupts, is never sent again.
 - **Branches pile up.**

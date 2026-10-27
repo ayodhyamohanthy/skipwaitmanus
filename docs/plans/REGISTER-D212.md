@@ -20,6 +20,7 @@ Docs, decisions and the queue only, no product code:
   - D-179-ats-validation moved to its own lane.
   - Dependency edits on D-099-bonus-pages, D-174-pool-nudges and REL-client-capture.
 - **Doc updates.** Additions to the BRANCH-HYGIENE-2 packet, the first D-205 backlog-pass record, one sentence in `AGENTS.md` rule 5, a §3b row and a `docs/plans/README.md` section.
+- **Scope-check acceptance.** `REGISTER-D212` declares no `owns` so `scripts/scope-check.mjs` skips the row. Adding `owns` for its touched files (`docs/DECISIONS.md`, `assignments.json`, `docs/plans/README.md`, `docs/plans/BRANCH-HYGIENE.md`) triggers `assignments.json`'s unsequenced-overlap rule against `D-099-bonus-pages`. Per the independent review finding 2 recommendation (option c), the scope-check skip is accepted for this docs-only row; teaching `scope-check` shared registry ownership is deferred to a separate row.
 
 ## Who
 A Claude Code session wrote it, so the review goes to a model other than Claude and other than the builder of the merge-up (D-151, D-200 (4)). A Claude Code session handed this row's review posts no verdict and reports it blocked.
