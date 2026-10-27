@@ -1,0 +1,74 @@
+{
+  "before/390/loading": {
+    "file": "share-loading-before-390.png",
+    "statusTrace": [
+      "Your link is ready. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.",
+      "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+    ],
+    "copyAriaDisabled": "true",
+    "pageErrors": []
+  },
+  "before/390/ready": {
+    "file": "share-ready-before-390.png",
+    "statusTrace": [
+      "Your link is ready. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.",
+      "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.",
+      "Your link is ready. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+    ],
+    "copyAriaDisabled": null,
+    "pageErrors": []
+  },
+  "before/1280/loading": {
+    "file": "share-loading-before-1280.png",
+    "statusTrace": [
+      "Your link is ready. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.",
+      "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+    ],
+    "copyAriaDisabled": "true",
+    "pageErrors": []
+  },
+  "before/1280/ready": {
+    "file": "share-ready-before-1280.png",
+    "statusTrace": [
+      "Your link is ready. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.",
+      "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.",
+      "Your link is ready. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+    ],
+    "copyAriaDisabled": null,
+    "pageErrors": []
+  },
+  "after/390/loading": {
+    "file": "share-loading-after-390.png",
+    "statusTrace": [
+      "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+    ],
+    "copyAriaDisabled": "true",
+    "pageErrors": []
+  },
+  "after/390/ready": {
+    "file": "share-ready-after-390.png",
+    "statusTrace": [
+      "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.",
+      "Your link is ready. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+    ],
+    "copyAriaDisabled": null,
+    "pageErrors": []
+  },
+  "after/1280/loading": {
+    "file": "share-loading-after-1280.png",
+    "statusTrace": [
+      "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+    ],
+    "copyAriaDisabled": "true",
+    "pageErrors": []
+  },
+  "after/1280/ready": {
+    "file": "share-ready-after-1280.png",
+    "statusTrace": [
+      "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.",
+      "Your link is ready. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+    ],
+    "copyAriaDisabled": null,
+    "pageErrors": []
+  }
+}
