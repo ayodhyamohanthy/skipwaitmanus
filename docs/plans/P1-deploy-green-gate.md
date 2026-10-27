@@ -38,7 +38,10 @@ CI main cancellation is a distinct fail-closed liveness concern observed by PR75
 
 ## Status
 
-- P1-deploy-green-gate: review — agent/queue/p1-deploy-green-gate — 69dc58bc (Claude Code · da74; includes the #751 recovery amendment; independent non-Claude Tier 1 review required, builder does not review or land)
+- P1-deploy-green-gate: done — d79cfa00 (#750, merge commit of 872eb885; independent review pass by DeepSeek-V4.1-Flash · f9b0 at 8b102c13, a different model family from the builder)
+
+Landing — P1-deploy-green-gate — DeepSeek-V4.1-Flash · f9b0 — 2026-10-27
+First gated runs on main, observed end to end on d79cfa00: CI 40517325372 green; Deploy Web 40517325431 PASS twice (release-gate and the pre-deploy re-check) and served d79cfa00 live; Deploy API 40517325313 PASS twice (release-gate and the pre-migrate re-check), then classified `pipeline` so the API runtime stayed at 2dcea864 by path filter (`PIPELINE VALIDATED; runtime unchanged`). Both gates logged `waiting: CI run 40517325372 ... is queued` for about nine minutes, which is the defect this row closes: production no longer moves ahead of CI. Live: web `git-commit` = d79cfa00, `/api/health` 200 ready. No rollback.yml dispatch was made; the recovery path is fixture-proven only. Still open: DEPLOY-gate-docs-sync, and ci.yml main cancellation liveness (not granted by #751).
 
 Evidence — P1-deploy-green-gate — Claude Code · da74 — 2026-10-27
 Branch agent/queue/p1-deploy-green-gate @ 69dc58bc, contains origin/main 53155fde
