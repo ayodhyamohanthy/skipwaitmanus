@@ -8,7 +8,7 @@ Implements the owner's frozen Oct 25 banded plan family in shared/planFamily.ts 
 ## Authority
 Owner freeze Oct 25 (user iMessages: "Freezer it" phonemsg-01M5SE7ASV2Y7YCRRZ99E23Y63 17:18 IST, "Freeze this and push to repo" phonemsg-01M5SEPSD0B9BWSEAZZY2Q8XN3 17:26, the banded+card-gated model phonemsg-01M5SFYFY54D3VAEDAEA3591SS 17:48, and "in place of credits we are using name referrals" phonemsg-01M5SG36CB2WMTCKY6HFRS4X7A 17:50). This row registers the already-open PR 666 so the origin/main scope check can see it; it decides nothing new. docs/PRICING.md alignment rides with this lane per D-214.
 
-**Register (Oct 27):** the decision this row implements is D-216 (PR #720), whose authority chain is the 19:13 to 19:35 IST messages Instinct cited on PR #666 (comment 6423014846); the 17:18 to 17:50 messages above are the earlier freeze steps. `docs/PRICING.md` is aligned in #720, not on this branch. D-216's conditions bind this build: nothing goes on sale, referrer and company plans stay unchargeable, and the regular price after a founding cap is unsettled (the code must not price it).
+**Register (Oct 27):** the decision this row implements is D-219 (PR #720), whose authority chain is the 19:13 to 19:35 IST messages Instinct cited on PR #666 (comment 6423014846); the 17:18 to 17:50 messages above are the earlier freeze steps. `docs/PRICING.md` is aligned in #720, not on this branch. D-219's conditions bind this build: nothing goes on sale, referrer and company plans stay unchargeable, and the regular price after a founding cap is unsettled (the code must not price it).
 
 ## Gate
 Green required CI + one independent (non-builder) review per D-151 before merge. Flag-off behavior must stay flag-off.
