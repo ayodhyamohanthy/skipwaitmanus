@@ -29,6 +29,9 @@ The post-merge Tier 1 review of the Oct 22-23 merges (#619) found four items nee
 - `client/src/pages/Pricing.tsx:23` and `shared/landingContent.ts:94` hard-code the first-pack claims; `shared/planCatalog.ts:146-160` is the canonical source and `docs/PRICING.md:37` says pack prices derive from it.
 - Fix: compose the copy from the catalog (or a helper backed by it); update `client/src/pages/policyPages.test.tsx:127-128` to assert the rendered values against that source, not the literals. Wording must stay within D-042 (never promise what the product does not do).
 
+## Status
+- POSTMERGE-oct22-fixes: done — 7a41a1b0 (code head; pass review by Qoder · bbc5 on that exact head, landed under D-082 with this status commit on top; full gate green)
+
 ## Validation
 - Required CI green on the PR head (typecheck, unit + component + route tests, production build); Tier 1 independent review on the exact head before landing (D-074, D-151). No workflow edits (`.github/workflows/ci.yml` is owned by `D-048-F-flags`). No flags enabled. Migration: none.
 - Owns: `server/db.ts`, `server/db.askCostStored.test.ts`, `server/dailyMoneyCheck.ts`, `server/dailyMoneyCheck.test.ts`, `client/src/pages/plans.kit.test.tsx`, `client/src/pages/plans.paymentRecovery.test.tsx`, `client/src/pages/plans.paymentRoute.test.tsx`, `client/src/pages/Pricing.tsx`, `shared/landingContent.ts`, `shared/planCatalog.ts`, `client/src/pages/policyPages.test.tsx`.

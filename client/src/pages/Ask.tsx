@@ -25,6 +25,7 @@ import { readAskPrefill } from "@/lib/askPrefill";
 import { useAskDraft } from "@/lib/askDraftApi";
 import { useCompanyDirectory, type PublicCompany } from "@/lib/companyDirectory";
 import { applySeo } from "@/lib/seo";
+import { ADD_CREDITS_HREF, ADD_CREDITS_LABEL } from "@shared/moneyCopy";
 import { jobLinkFitsCompany, isValidTargetRoleUrl } from "@shared/referralUrl";
 import { WHY_ME_MAX } from "@shared/whyMe";
 import { useAskComposer } from "./explore/useAskComposer";
@@ -112,9 +113,15 @@ export default function Ask() {
                     {composer.draftState === "saved" ? "Draft saved" : "Save draft"}
                   </GoalButton>
                 ) : null}
-                <GoalButton variant="primary" touch="large" className="max-gdesk:w-full" busy={composer.sending} busyLabel={composer.sendBusyLabel} disabledReason={composer.sendBlocked} onClick={composer.send}>
-                  {composer.sendLabel}
-                </GoalButton>
+                {composer.topUp ? (
+                  <GoalButton asChild variant="primary" touch="large" className="max-gdesk:w-full">
+                    <Link href={composer.topUp?.href ?? ADD_CREDITS_HREF} onClick={composer.onTopUp}>{ADD_CREDITS_LABEL}</Link>
+                  </GoalButton>
+                ) : (
+                  <GoalButton variant="primary" touch="large" className="max-gdesk:w-full" busy={composer.sending} busyLabel={composer.sendBusyLabel} disabledReason={composer.sendBlocked} onClick={composer.send}>
+                    {composer.sendLabel}
+                  </GoalButton>
+                )}
               </div>
             </div>
           </>
