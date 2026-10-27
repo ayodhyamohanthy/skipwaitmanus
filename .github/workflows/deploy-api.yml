@@ -37,16 +37,43 @@ concurrency:
 permissions:
   contents: write
   issues: write
+  # The release gate reads the CI runs of this commit (P1-deploy-green-gate, #748).
+  actions: read
 
 jobs:
+  # P1-deploy-green-gate (#748): nothing below touches production until CI has
+  # passed on this exact commit. Every job needs this one, directly or through
+  # migrate-db; it waits for CI and refuses on red, cancelled, skipped, missing,
+  # still running at the timeout, a GitHub error, or a commit production has
+  # already moved past. Manual recovery: dispatch this workflow on main once
+  # main's CI is green (dispatch CI on main first if the tip skipped CI).
+  release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require green CI on this exact commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/require-green-release.mjs --target api
+
   # Migration-first gate: pending drizzle/deploy/*.sql must apply to production
   # MySQL before any API image ships, so code can never run ahead of its tables.
   # A failure here fails the run and the deploy job never starts.
   migrate-db:
+    needs: release-gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      # A re-run of this job alone skips release-gate, so it checks again itself.
+      - name: Re-check green CI before migrating
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/require-green-release.mjs --target api --once
       - name: Apply pending production migrations
         env:
           DB_HOST: ${{ vars.SKIPWAIT_NEWDB_HOST }}
@@ -107,6 +134,14 @@ jobs:
       - name: Build bundle
         if: steps.changes.outputs.classification == 'runtime'
         run: pnpm build
+
+      # Last look before the first production write: CI may have been re-run red
+      # since release-gate passed, or this job alone may be a re-run.
+      - name: Re-check green CI before deploying
+        if: steps.changes.outputs.classification == 'runtime'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/require-green-release.mjs --target api --once
 
       - name: Ensure admin smoke signing secret exists
         if: steps.changes.outputs.classification == 'runtime'
@@ -172,7 +207,7 @@ jobs:
         run: bash scripts/verify-cloudflare-container-release.sh
       - name: Validate deploy pipeline fixtures
         if: steps.changes.outputs.classification == 'pipeline'
-        run: pnpm vitest run client/src/pipeline/apiChangeClassification.test.ts server/cloudflareContainerRelease.test.ts
+        run: pnpm vitest run client/src/pipeline/apiChangeClassification.test.ts server/cloudflareContainerRelease.test.ts scripts/requireGreenRelease.test.ts
 
       - name: Report pipeline-only validation
         if: steps.changes.outputs.classification == 'pipeline'

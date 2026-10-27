@@ -35,3 +35,15 @@ Required recovery behavior:
 - Keep packet and PR recovery instructions current. Shared entry/deployment docs are registered separately as DEPLOY-gate-docs-sync, serialized after existing BYOR/bonus owners; do not silently edit their owned files or claim those docs already synced. Do not call all production paths fixed until this recovery path and ordinary migrations/Web/API deploys are independently reviewed and proven; observe normal gated main deployment separately after landing. No real rollback execution is authorized by this packet.
 
 CI main cancellation is a distinct fail-closed liveness concern observed by PR750: a second main push can cancel the first CI, and path filters can leave its deployment deferred. Keep the documented manual green-main recovery available; changing ci.yml is not granted by this amendment.
+
+## Status
+
+- P1-deploy-green-gate: review — agent/queue/p1-deploy-green-gate — 69dc58bc (Claude Code · da74; includes the #751 recovery amendment; independent non-Claude Tier 1 review required, builder does not review or land)
+
+Evidence — P1-deploy-green-gate — Claude Code · da74 — 2026-10-27
+Branch agent/queue/p1-deploy-green-gate @ 69dc58bc, contains origin/main 53155fde
+Red first: 7 workflow pins before wiring; 11 of 49 for recovery against the old rollback.yml (one was inputs.commit interpolated into a run line); 2 of 53 for token hardening
+Gate: check 0 · token audit OK · migration lint OK · deploy triggers OK · scope-check OK (5 owned paths) · actionlint clean · vitest 549 files passed / 4867 passed / 18 skipped / 0 failed · build 0
+Real API (read-only): ordinary 2dcea864 REFUSED, 67544748 PASS, stale 3e0894ff REFUSED, off-main/non-main/no-CI REFUSED; recovery b5299cfd PASS, 2dcea864 REFUSED (CI), 215b3a7a REFUSED (schema contract differs: 0120 migration, schema.ts, schemaReconcile.ts), bad confirm/system/ref/event REFUSED
+Live: pending landing (first gated Deploy API and Deploy Web runs on main must be observed); no rollback.yml dispatch was made or is authorized
+Left out / follow-ups: deploy and recovery docs are DEPLOY-gate-docs-sync; ci.yml main cancellation liveness (not granted by #751); test file ~495 lines because owns names one test file

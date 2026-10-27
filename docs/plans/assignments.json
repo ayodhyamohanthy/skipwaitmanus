@@ -97,7 +97,7 @@
       "tier": 1,
       "lane": "deploy",
       "branch": "agent/queue/p1-deploy-green-gate",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "owns": [
         ".github/workflows/deploy-api.yml",
