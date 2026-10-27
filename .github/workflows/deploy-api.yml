@@ -43,7 +43,7 @@ jobs:
   # MySQL before any API image ships, so code can never run ahead of its tables.
   # A failure here fails the run and the deploy job never starts.
   migrate-db:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, skipwait-mac]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -58,7 +58,7 @@ jobs:
 
   deploy:
     needs: migrate-db
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, skipwait-mac]
     steps:
       - uses: actions/checkout@v4
         with:

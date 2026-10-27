@@ -14,7 +14,7 @@ jobs:
   check:
     if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'agent/reports/') || startsWith(github.head_ref, 'agent/review/') || startsWith(github.head_ref, 'agent/heartbeat/') || startsWith(github.head_ref, 'agent/architect/') || github.head_ref == 'agent/queue/landing')) }}
     name: typecheck
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, skipwait-mac]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -48,7 +48,7 @@ jobs:
   test:
     if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'agent/reports/') || startsWith(github.head_ref, 'agent/review/') || startsWith(github.head_ref, 'agent/heartbeat/') || startsWith(github.head_ref, 'agent/architect/') || github.head_ref == 'agent/queue/landing')) }}
     name: unit + component + route tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, skipwait-mac]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -68,7 +68,7 @@ jobs:
   build:
     if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'agent/reports/') || startsWith(github.head_ref, 'agent/review/') || startsWith(github.head_ref, 'agent/heartbeat/') || startsWith(github.head_ref, 'agent/architect/') || github.head_ref == 'agent/queue/landing')) }}
     name: production build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, skipwait-mac]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
