@@ -7,51 +7,21 @@
 // live seeker summary and hides on referrer surfaces (D-055).
 import { useAuth, useUser } from "@/_core/auth";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
-import { readApiJson } from "@/lib/apiResponse";
-import { failureMessage, parseSummary } from "@/components/plans/billingApi";
 import { AccountMenu } from "./AccountMenu";
-import { GoalShell, type GoalShellCredits } from "@/components/goal/GoalShell";
-import type { GoalNavId } from "@/components/goal/nav";
+import { GoalShell } from "@/components/goal/GoalShell";
+import { useGoalShellMeta } from "@/components/goal/useGoalShellMeta";
 import { GoalButton } from "@/components/goal/GoalButton";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useCreditBalance } from "@/hooks/useCreditBalance";
+import { useMemo, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
-const authHeaders = (token: string | null | undefined): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
-
 // Referrer surfaces never show a credits pill (D-055): referrers are never charged or paid.
-const REFERRER_SURFACE = /^\/(queue|referrer(\/|$))/;
+// F-credits: the pattern now also covers /referrer-home, /referrer-setup, /verify
+// and /post-opportunity - the four routes the old pattern missed.
+const REFERRER_SURFACE = /^\/(queue|referrer(\/|-|$)|verify|post-opportunity)/;
 // DESIGN.md:72 + BRIEF.md §149: no bottom bar on an opened request (conversation, and its
 // /thread alias) or under sheets; sheets arrive with the W1 drawer and wire in there.
 const HIDE_BOTTOM_BAR = /^\/(conversation|messages|thread)\b/;
-
-function activeNav(path: string): GoalNavId {
-  if (path.startsWith("/queue")) return "queue";
-  if (path.startsWith("/requests") || path.startsWith("/ask")) return "asks";
-  if (path.startsWith("/inbox") || path.startsWith("/conversation") || path.startsWith("/messages")) return "inbox";
-  return "find";
-}
-
-const PAGE_TITLES: Array<[RegExp, string]> = [
-  [/^\/explore/, "Find a referral"],
-  [/^\/requests/, "My asks"],
-  [/^\/ask/, "Ask for a referral"],
-  [/^\/queue/, "Referral queue"],
-  [/^\/inbox/, "Inbox"],
-  [/^\/conversation/, "Conversation"],
-  [/^\/alerts/, "Alerts"],
-  [/^\/plans/, "Plans and credits"],
-  [/^\/billing/, "Billing"],
-  [/^\/profile/, "Profile"],
-  [/^\/settings/, "Settings"],
-  [/^\/help/, "Help and safety"],
-  [/^\/referrer-home/, "Refer"],
-];
-
-function pageTitle(path: string): string {
-  for (const [re, title] of PAGE_TITLES) if (re.test(path)) return title;
-  return "skipwait.me";
-}
 
 function initialsFor(name: string | null | undefined, email: string | null | undefined): string {
   const source = (name ?? "").trim();
@@ -65,36 +35,17 @@ function initialsFor(name: string | null | undefined, email: string | null | und
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [path] = useLocation();
-  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
   const access = useReferrerAccess();
   const verifiedReferrer = access.status === "verified";
   const onReferrerSurface = REFERRER_SURFACE.test(path);
 
-  const creditsQuery = useQuery({
-    queryKey: ["app-shell-credits", isSignedIn],
-    enabled: Boolean(isSignedIn) && !onReferrerSurface,
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
-      const response = await fetch("/api/credits/summary?role=job_seeker", { credentials: "include", headers: authHeaders(await getToken()) });
-      if (!response.ok) throw new Error(`Credit summary failed (${response.status})`);
-      const payload = await readApiJson<Record<string, unknown>>(response, "Credit summary failed");
-      const parsed = parseSummary(payload);
-      if (!parsed) throw new Error("Credit summary unreadable");
-      return parsed;
-    },
-  });
-
-  const credits: GoalShellCredits = useMemo(() => {
-    if (!isSignedIn || onReferrerSurface) return null;
-    if (creditsQuery.data) return { state: "ready", count: creditsQuery.data.totalAvailable };
-    if (creditsQuery.isError) return { state: "error", onRetry: () => { void creditsQuery.refetch(); } };
-    return { state: "loading" };
-  }, [isSignedIn, onReferrerSurface, creditsQuery.data, creditsQuery.isError, creditsQuery.refetch]);
-
-  // The pill retries on its own after a failure without the user hunting for it.
-  const _ = creditsQuery.failureCount;
+  // One balance query for the whole app (F-credits): the hook owns the fetch,
+  // the error state and the retry; it returns null while disabled, so the pill
+  // never flashes on a referrer surface. A failed load says so, never 0.
+  const credits = useCreditBalance(Boolean(isSignedIn) && !onReferrerSurface);
+  const { active, pageTitle } = useGoalShellMeta(path);
 
   const account = useMemo(() => {
     if (!isLoaded || !isSignedIn) {
@@ -116,9 +67,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <GoalShell
-      active={activeNav(path)}
+      active={active}
       verifiedReferrer={verifiedReferrer}
-      pageTitle={pageTitle(path)}
+      pageTitle={pageTitle}
       credits={credits}
       account={account}
       alertsHref="/alerts"
