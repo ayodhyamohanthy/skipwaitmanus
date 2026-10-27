@@ -1135,7 +1135,7 @@
       "packet": "docs/plans/D-048-foundation.md",
       "tier": 1,
       "lane": "design-core",
-      "branch": "agent/queue/d048-f-credits",
+      "branch": "agent/instinct/d048-f-credits",
       "status": "todo",
       "dependsOn": [
         "D-048-F-harness"
@@ -1147,7 +1147,7 @@
         "client/src/hooks/useCreditBalance.test.ts",
         "client/src/components/appShell.test.tsx"
       ],
-      "note": "D-217: unparked from `in-review` (no review lock, so the picker could never hand it out). PR #568 is green at `601a2368`: merge current `main`, keep the matcher for `/referrer-home`, `/referrer-setup`, `/verify` and `/post-opportunity` plus its six-route `appShell.test.tsx` test, then land through the Tier 1 path (D-151). Blocks D-048-p3-referrer-home."
+      "note": "D-217: unparked from `in-review` (no review lock, so the picker could never hand it out). PR #568 is green at `601a2368`: merge current `main`, keep the matcher for `/referrer-home`, `/referrer-setup`, `/verify` and `/post-opportunity` plus its six-route `appShell.test.tsx` test, then land through the Tier 1 path (D-151). Blocks D-048-p3-referrer-home. Branch field corrected to the PR's actual branch (D-217 named PR #568 the vehicle; scope-check matches rows by branch)."
     },
     {
       "id": "D-048-F-static-frame",
