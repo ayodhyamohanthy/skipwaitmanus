@@ -816,7 +816,7 @@
       "dependsOn": [
         "SHELL-focus-clearance"
       ],
-      "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them.",
+      "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them. D-224 (Oct 28, unblock ruling): the audit compatibility contract in this packet resolves the R8 conflict; the register entry fixes the goal colour token set at the 27 light colour tokens.",
       "owns": [
         "client/src/styles/goalDark.css",
         "client/src/contexts/themeContext.test.tsx",
@@ -827,7 +827,9 @@
         "client/src/components/goal/GoalMoreMenu.tsx",
         "client/src/components/goal/goalMoreMenu.test.tsx",
         "client/index.html (switch only)",
-        "DESIGN.md"
+        "DESIGN.md",
+        "scripts/designTokenAuditCore.mjs",
+        "scripts/designTokenAudit.test.ts"
       ]
     },
     {
