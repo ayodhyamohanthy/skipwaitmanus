@@ -1483,7 +1483,7 @@
       "tier": 1,
       "lane": "d048-assistants",
       "branch": "agent/queue/d048-assistants",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
