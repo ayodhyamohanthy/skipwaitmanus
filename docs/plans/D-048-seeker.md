@@ -65,14 +65,14 @@ Give the seeker lane a safe, parallel-ready handoff: each remaining seeker surfa
 - `D-048-p3-inbox`: `client/src/pages/UnifiedInbox.tsx` (switch only), `client/src/pages/ThreadAlias.tsx` (switch only), `client/src/pages/goal/inbox/**`, `client/src/pages/inboxGoal.test.tsx`, `design/goal-ui/captures/inbox/**`.
 - `D-048-p3-start`: `client/src/pages/Onboarding.tsx` (switch only), `client/src/pages/goal/start/**`, `client/src/pages/startGoal.test.tsx`, `design/goal-ui/captures/start/**`.
 - `D-048-p3-onboarding`: `client/src/pages/ProfileSetup.tsx` (switch only), `client/src/pages/goal/onboarding/**`, `client/src/pages/onboardingGoal.test.tsx`, `design/goal-ui/captures/onboarding/**`.
-- `D-048-p3-assistants`: `client/src/pages/Assistants.tsx`, `client/src/pages/Approve.tsx`, `client/src/pages/ConnectAssistant.tsx` (switch only), `client/src/pages/goal/assistants/**`, `design/goal-ui/captures/assistants/**`.
+- `D-048-p3-assistants`: `client/src/pages/Assistants.tsx`, `client/src/pages/Approve.tsx`, `client/src/pages/ConnectAssistant.tsx` (switch only), `client/src/pages/goal/assistants/**`, `design/goal-ui/captures/assistants/**`, `client/src/components/goal/goalBoundary.test.ts` (only its one `MOVED_SURFACES` entry for `pages/ConnectAssistant.tsx`; registry amendment PR #706, same registration as 161eafc2).
 - `D-048-p3-seeker-small`: `client/src/pages/Landed.tsx`, `client/src/pages/SuggestCompany.tsx`, `client/src/pages/ShareHub.tsx` (switch only), `client/src/pages/goal/seeker-small/**`, `design/goal-ui/captures/seeker-small/**`.
 
 ### Read only
 `docs/plans/D-048-phase-3-split.md`, `docs/plans/GOAL_UI_MIGRATION.md`, `design/goal-ui/DOCTRINE.md`, approved `design/goal-ui/pick/**`, the existing page modules/tests, `client/src/components/goal/**`, `client/src/lib/goalSurfaces.ts`, `client/src/hooks/**`, `client/src/lib/inbox*`, `client/src/lib/assistant*`, relevant `shared/**` contracts, and existing API modules named by each child.
 
 ### Out of scope
-`server/**`, `drizzle/**`, `shared/**` edits, `client/src/App.tsx`, `client/src/components/AppShell.tsx`, `client/src/components/goal/**`, `client/src/hooks/**`, `client/src/lib/**` edits, `.env*`, workflows, `goalSurfaces.ts` releases, legal copy, pricing flags, and the already-live `/explore`, `/ask`, `/explore/:slug`, `/requests` redesign rows.
+`server/**`, `drizzle/**`, `shared/**` edits, `client/src/App.tsx`, `client/src/components/AppShell.tsx`, `client/src/components/goal/**` (except the assistants row's one `MOVED_SURFACES` entry above), `client/src/hooks/**`, `client/src/lib/**` edits, `.env*`, workflows, `goalSurfaces.ts` releases, legal copy, pricing flags, and the already-live `/explore`, `/ask`, `/explore/:slug`, `/requests` redesign rows.
 
 ## 6. Steps (one commit each for child implementers)
 
