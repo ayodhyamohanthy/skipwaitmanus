@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { approvalCostChangedMessage, approvalCostChangedSchema, approvalCostSchema, sameApprovalCost } from "./assistantApprovalCost";
+import { approvalCostChangedMessage, approvalCostChangedSchema, approvalCostSchema, approvalDecisionBody, sameApprovalCost, withListedCost } from "./assistantApprovalCost";
 
 describe("assistant approval cost contract (#644, D-221)", () => {
   it("accepts the quote's cost object and nothing looser", () => {
@@ -25,6 +25,19 @@ describe("assistant approval cost contract (#644, D-221)", () => {
     expect(approvalCostChangedSchema.parse(body)).toEqual(body);
     expect(approvalCostChangedSchema.safeParse({ ...body, code: "slot_cap_reached" }).success).toBe(false);
     expect(approvalCostChangedSchema.safeParse({ ...body, cost: 4 }).success).toBe(false);
+  });
+
+  it("keeps a listed cost only when it parses", () => {
+    expect(withListedCost({ id: 5, cost: { level: 5, cost: 5 } })).toEqual({ id: 5, cost: { level: 5, cost: 5 } });
+    expect(withListedCost({ id: 5, cost: { level: 5, cost: "5" } })).toEqual({ id: 5 });
+    expect(withListedCost({ id: 5 })).toEqual({ id: 5 });
+  });
+
+  it("puts the shown cost on an approve only", () => {
+    const priced = { kind: "ask_send", cost: { level: 5, cost: 5 } };
+    expect(approvalDecisionBody(priced, "approved")).toEqual({ decision: "approved", kind: "ask_send", expectedCost: { level: 5, cost: 5 } });
+    expect(approvalDecisionBody(priced, "declined")).toEqual({ decision: "declined", kind: "ask_send" });
+    expect(approvalDecisionBody({ kind: "credit_spend" }, "approved")).toEqual({ decision: "approved", kind: "credit_spend" });
   });
 
   it("says the new cost in referral words only (D-180)", () => {

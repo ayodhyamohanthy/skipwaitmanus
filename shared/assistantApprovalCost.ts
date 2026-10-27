@@ -31,3 +31,15 @@ export function sameApprovalCost(shown: ApprovalCost, current: ApprovalCost): bo
 export function approvalCostChangedMessage(current: ApprovalCost): string {
   return `This referral request now costs ${current.cost} ${current.cost === 1 ? "referral" : "referrals"}. Approve again to send it at that cost.`;
 }
+
+/** A listed approval keeps its cost only when it parses: a malformed cost is dropped, never guessed. */
+export function withListedCost<T extends { cost?: unknown }>(approval: T): Omit<T, "cost"> & { cost?: ApprovalCost } {
+  const { cost, ...rest } = approval;
+  const parsed = approvalCostSchema.safeParse(cost);
+  return parsed.success ? { ...rest, cost: parsed.data } : rest;
+}
+
+/** An approve carries the cost the owner saw; a decline never carries one. */
+export function approvalDecisionBody(approval: { kind: string; cost?: ApprovalCost }, decision: "approved" | "declined") {
+  return { decision, kind: approval.kind, ...(decision === "approved" && approval.cost ? { expectedCost: approval.cost } : {}) };
+}
