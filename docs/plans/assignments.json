@@ -1753,9 +1753,10 @@
         "D-048-F-harness",
         "D-048-F-primitives",
         "D-048-P-money",
-        "D-048-F-goal-check"
+        "D-048-F-goal-check",
+        "PRICING-banded-oct25"
       ],
-      "note": "D-134 money cluster. goalSurfaceOn('premium'); land dark, independent Tier 1 review, no pricing/cost flag enable. Existing API/data/payment contracts read-only; all original assertions stay unchanged.",
+      "note": "D-134 money cluster. goalSurfaceOn('premium'); land dark, independent Tier 1 review, no pricing/cost flag enable. Existing API/data/payment contracts read-only; all original assertions stay unchanged. Waits for PRICING-banded-oct25 (PR #666), which also owns Premium.tsx: the goal page is built on the paused-pack state the Oct 25 freeze lands.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/Premium.tsx (switch only)",
@@ -1777,9 +1778,10 @@
         "D-048-F-static-frame",
         "D-048-P-money",
         "D-048-F-goal-check",
-        "POSTMERGE-oct22-fixes"
+        "POSTMERGE-oct22-fixes",
+        "PRICING-banded-oct25"
       ],
-      "note": "D-134 money cluster. goalSurfaceOn('pricing'); land dark, independent Tier 1 review, no pricing/cost flag enable. Existing API/data/payment contracts read-only; all original assertions stay unchanged. Waits for POSTMERGE-oct22-fixes, which owns Pricing.tsx for the catalog-composed pack copy: the copy fix lands before this switch.",
+      "note": "D-134 money cluster. goalSurfaceOn('pricing'); land dark, independent Tier 1 review, no pricing/cost flag enable. Existing API/data/payment contracts read-only; all original assertions stay unchanged. Waits for POSTMERGE-oct22-fixes, which owns Pricing.tsx for the catalog-composed pack copy: the copy fix lands before this switch. Also waits for PRICING-banded-oct25 (PR #666), which also owns Pricing.tsx and replaces its pack claims with the frozen band summary.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/Pricing.tsx (switch only)",
