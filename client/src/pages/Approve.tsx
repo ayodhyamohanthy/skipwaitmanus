@@ -11,7 +11,7 @@ import { ApprovalCard, ApprovalResult, Sheet } from "@/components/assistants/App
 import type { AssistantApproval } from "@/components/assistants/format";
 import { approvalCostChangedSchema, approvalDecisionBody, withListedCost, type ApprovalCost } from "@shared/assistantApprovalCost";
 
-/** #644: a pending ask carries the cost the server will hold the owner to; the card shows it. */
+/** Issue 644: a pending ask carries the cost the server will hold the owner to; the card shows it. */
 type PricedApproval = AssistantApproval & { cost?: ApprovalCost };
 const shownApproval = (approval: PricedApproval): AssistantApproval => (approval.cost ? { ...approval, creditCount: approval.cost.cost } : approval);
 
@@ -74,7 +74,7 @@ function LegacyApprove() {
         body: JSON.stringify(approvalDecisionBody(approval, decision)),
       });
       const payload = await readApiJson<{ error?: string }>(response, "We could not record that decision");
-      // #644: the cost changed and nothing was charged; show the new cost so the owner can approve it.
+      // Issue 644: the cost changed and nothing was charged; show the new cost so the owner can approve it.
       const costChanged = response.status === 409 ? approvalCostChangedSchema.safeParse(payload) : null;
       if (costChanged?.success) setApprovals(list => list.map(item => (item.id === approval.id ? { ...item, cost: costChanged.data.cost } : item)));
       if (!response.ok) throw new Error(payload.error || "We could not record that decision");
