@@ -1,4 +1,4 @@
-# Packet D-048 phase 3: manage credits and understand prices
+# Packet D-048 phase 3: manage your plan and understand referral prices
 
 > Read `docs/BRIEF.md`, then this packet. The register wins. This parent task is **Tier 3, packet-only**; each child is **Tier 1** and needs a draft PR and independent review before landing.
 
@@ -14,7 +14,7 @@
 
 ## 1. Goal
 
-Let a seeker understand their actual credits, receipts and cancellation options, reach the currently available purchase path, and read truthful public prices in the goal-first UI. Rebuild the presentation around one useful next action, not a black recolouring of the kit. Keep every financial, authentication and recovery contract intact. This packet neither sells a new product nor enables frozen pricing.
+Let a seeker understand their actual balance of referral requests (internally: credits), receipts and cancellation options, reach the currently available purchase path, and read truthful public prices in the goal-first UI. Rebuild the presentation around one useful next action, not a black recolouring of the kit. Keep every financial, authentication and recovery contract intact. This packet neither sells a new product nor enables frozen pricing.
 
 **The `plans` surface id means `/billing` here.** `/plans` continues through `D-132-plans-v2` and its audit/enable chain, not a parallel goal re-skin of legacy `Plans.tsx`. The child must not change the `/plans` route, `Plans.tsx`, `PlansV2.tsx`, `PlansV2Connected.tsx`, or any plan-family/cost flag.
 
@@ -27,6 +27,8 @@ These excerpts are binding; read their complete entries and any newer decisions 
 - D-146 / `docs/PRICING.md`: **“D-132 only”**; fixed passes **“NOT sold, and stay off (`PASS_SALES_ENABLED = false`, D-084)”**. A dark goal surface is not authority to enable any pricing flag or sell a pass.
 - D-152: user-facing plan names are **“Entry level Referrers”**, **“Mid level Referrers”**, **“Senior level Referrers”**; IDs and terms do not change. These names are not new access entitlements.
 - D-153: **“intent should reach users faster anywhere”**; wording states the action, outcome and cost plainly and promises only what works today.
+- **User-facing wording is referral-only (D-173, D-180; owner Oct 25: “in place of credits we are using name referrals”).** No goal string, heading, button, empty/error state or caption says “credit”, “credits” or the noun “ask”/“asks”; the verb stays (“Ask for a referral”). The formal noun is “referral request”; a balance is stage-qualified (“referral requests left”, “uses 1 referral request”), and only the headline “3 free referrals” stands unqualified. Keep requested, accepted and submitted distinct: a request, or a bought balance, is never shown as a guaranteed or completed referral. Internal identifiers stay unchanged (`useCreditBalance`, `credit-recovery`, `CREDIT_PACKS_ON_SALE`, ledger and API field names); where this packet says “credit” in prose it means that internal billing unit or legacy behaviour, never display copy. Display strings come from the shared money-copy sources once the terminology lane (`D-180-referral-words`) lands them; a goal surface never retypes a money line.
+- **Oct 25 pricing freeze (owner, being recorded in the register; implementation PR #666 under independent review).** The banded seeker plans replace the D-132 fee-plus-credits ladder as the frozen target, and legacy pack sales are paused there. That freeze authorizes no paid activation: banded checkout, referrer-priority plans and company plans stay unsold behind their own gates. The goal surfaces render whatever the current switches and catalog return; a paused or unavailable sale shows an honest paused state with no pay commit, and nothing here enables a flag or describes legacy behaviour as current.
 - D-156: **“Until the owner answers: nothing is built, no prices or paid entitlements are chosen or inferred, no provider catalog is touched”**. Referrer candidate plans remain out of scope; the existing free/no-billing behavior stands.
 - Split §Landing: **“Data and API modules ... are imported read-only, so money, credit, identity and privacy logic is one code path for both versions.”** Keep kit bodies/components/tests unchanged apart from the small page switch. Goal code never imports kit components.
 - Split §Rulings: the D-063 sentence **“stays on every page that talks about cost ... imported from `shared/moneyCopy.ts`”**. Use the exports for the current model; do not substitute V2 rules while its money gates are off.
@@ -55,9 +57,9 @@ The following are **changeable presentation proposals**, not new product or pric
 
 | Child | Route / id | Goal and contextual next step | Behaviour to retain |
 |---|---|---|---|
-| `D-048-p3-plans` | `/billing`; `goalSurfaceOn('plans')` | “Manage your plan and credits.” Signed out: sign in. Normal state: reach plans/credits; an explicitly opened cancellation confirmation makes its confirm action the single commit. Error: retry. | Summary, actual receipts, payment-method facts, cancellation confirmation, pending/failed/success and current-term-end states. No new purchase, auto-renew, refund or card-management path. |
-| `D-048-p3-premium` | `/premium`; `goalSurfaceOn('premium')` | “Get credits for your next ask.” Packs on sale: go to existing `/plans#packs`; permitted legacy purchase: show selected total and continue to existing checkout; pending return: recover/status, not purchase again. | Role/currency/quantity, one-tap return preservation, auth-loaded guard, exact selected total, single-credit retirement, availability, bounded pending recovery, no referrer sale. |
-| `D-048-p3-pricing` | `/pricing`; `goalSurfaceOn('pricing')` | “Know what your asks cost.” “See plans and prices” goes to `/plans`. | Current approved public price statements, credit rule and provider explanation, D-063 copy; public/fetch-free prerender without auth/query providers. No new transactional pricing, entitlement or paid default. |
+| `D-048-p3-plans` | `/billing`; `goalSurfaceOn('plans')` | “Manage your plan and referral requests.” Signed out: sign in. Normal state: reach plans and the referral-request balance; an explicitly opened cancellation confirmation makes its confirm action the single commit. Error: retry. | Summary, actual receipts, payment-method facts, cancellation confirmation, pending/failed/success and current-term-end states. No new purchase, auto-renew, refund or card-management path. |
+| `D-048-p3-premium` | `/premium`; `goalSurfaceOn('premium')` | “Get more referral requests.” Packs on sale: go to existing `/plans#packs`; permitted legacy purchase: show selected total and continue to existing checkout; sales paused or unavailable: say so plainly with Support as a quiet link and no pay commit; pending return: recover/status, not purchase again. Never word a purchase as buying a referral outcome. | Role/currency/quantity, one-tap return preservation, auth-loaded guard, exact selected total, single-credit retirement, availability, bounded pending recovery, no referrer sale. |
+| `D-048-p3-pricing` | `/pricing`; `goalSurfaceOn('pricing')` | “Know what a referral request costs.” “See plans and prices” goes to `/plans`. | Current approved public price statements, credit rule and provider explanation, D-063 copy; public/fetch-free prerender without auth/query providers. No new transactional pricing, entitlement or paid default. |
 
 ## 5. Exact files, rows and dependencies
 
@@ -112,8 +114,8 @@ For every new test, record the failing command/output before implementation, the
 ### Pricing — `client/src/pages/pricingGoal.test.tsx`
 
 - **Public prerender:** render ON without auth/query providers; no authenticated requests or new price fetch. Static goal frame and existing public route/SEO/prerender contracts hold; OFF preserves `pricing.test.tsx` unchanged.
-- **Copy and navigation parity:** approved baseline pack examples and provider explanation survive, `/plans` is the one commit target, D-063 and the current credit rule are imported from `shared/moneyCopy.ts`, and no disabled-plan checkout/renewal, fabricated discount, entitlement or five-plan exploration appears. UI names follow current decisions only where those plan names are actually rendered.
-- **Money boundary:** guard goal source against retyped money-rule strings, kit imports and changed pricing flags; compare meaningful public price/credit facts with the approved source/baseline, not just screenshot similarity. If existing public examples contradict the live catalog or register, report the exact mismatch instead of silently repricing or labelling a stale price current.
+- **Copy and navigation parity:** approved baseline pack examples and provider explanation survive in referral-only wording (D-173, D-180), `/plans` is the one commit target, D-063 and the current credit rule are imported from `shared/moneyCopy.ts`, and no disabled-plan checkout/renewal, fabricated discount, entitlement or five-plan exploration appears. UI names follow current decisions only where those plan names are actually rendered.
+- **Money boundary:** guard goal source against retyped money-rule strings, kit imports and changed pricing flags; compare meaningful public price and referral-request facts with the approved source/baseline, not just screenshot similarity. If existing public examples contradict the live catalog or register, report the exact mismatch instead of silently repricing or labelling a stale price current.
 - Controls, unchanged: `pricing.test.tsx`, public prerender and SEO-route tests, `client/src/planFamilyFlagsOff.test.ts`, `PlansV2.test.tsx`, `plansV2.config-guard.test.tsx`.
 
 ### Cross-surface controls
@@ -145,7 +147,7 @@ Run existing server checkout/referrer/availability/recovery tests without edits,
 3. Do data/checkout/parsing/money modules remain read-only, kit assertions byte-identical, and goal code free of kit imports?
 4. Do displayed prices/totals match the existing source, referrers remain uncharged, fixed passes stay off, and D-156/unknown reach entitlements remain unbuilt?
 5. Is summary/receipt failure distinguishable from zero/empty, cancellation only confirmed on server success, and existing pending recovery preserved without a second purchase or credit grant?
-6. Are public pricing prerender/fetch-free behavior, truthful shared money copy, one commit action and both viewport captures proven, with the proposed contract recorded by its shared-file owner?
+6. Are public pricing prerender/fetch-free behavior, truthful shared money copy in referral-only wording (no “credit”, “credits” or noun “ask” on screen; requested is never shown as referred), one commit action and both viewport captures proven, with the proposed contract recorded by its shared-file owner?
 7. Is the exact tested/reviewed head green, still dark, and is release explicitly held behind its separate pricing/sign-off gates?
 
 ## 11. Stop and report
@@ -162,3 +164,4 @@ No new owner decision is needed to register these three dark presentation tasks.
 - `D-048-p3-plans`: not started; waiting for the registered foundation dependencies.
 - `D-048-p3-premium`: not started; waiting for the registered foundation dependencies.
 - `D-048-p3-pricing`: not started; waiting for the registered foundation dependencies and `POSTMERGE-oct22-fixes` (the `Pricing.tsx` copy fix lands first).
+- Oct 27 wording correction (Claude Code, PR #656 before landing): the three proposed goal lines and the acceptance checks now use referral-only wording (D-173, D-180), and §2 records the Oct 25 pricing freeze as the target without authorizing any paid activation. Internal identifiers, rows, owns and dependencies are unchanged.

@@ -22,7 +22,7 @@ Move the employer surfaces to the goal system at standard density (D-123 ruling)
 
 - `client/src/pages/EmployerDashboard.tsx` opens "Hire without the noise." (already goal-shaped) with sign-in and load-failure states; `EmployerOpportunities.tsx` is the sponsorship surface with its honest empty state.
 - `client/src/pages/TalentDiscovery.tsx` shows opt-in talent only, anonymized until unlock, with honest empty states ("No opt-in talent matches yet").
-- `client/src/pages/EmployerBilling.tsx` sells credits for talent unlocks and role sponsorships ("credits never expire" line) with spend history.
+- `client/src/pages/EmployerBilling.tsx` (legacy kit page, described as it is today, not design to copy) sells unlock credits for talent unlocks and role sponsorships ("credits never expire" line) with spend history. The goal redesign keeps the behaviour and renames nothing internal, but its display copy follows the wording rule in §4.
 - `client/src/pages/ForCompanies.tsx` is the public employer page with employer price claims under D-040 (`components/employer/employerPlans.ts` read-only).
 - `/company/claim` and `/company/dashboard/:slug` (CompanyClaim) are already goal-built with captures (D-107, done) and need no row.
 - `docs/plans/D-048-phase-3-split.md` rows `D-048-p3-employer*` are the authoritative row contract and owned-path list.
@@ -36,13 +36,14 @@ Move the employer surfaces to the goal system at standard density (D-123 ruling)
 | `D-048-p3-employer-billing` | W6 `/employer/billing` | `d048-employer` | `D-048-p3-employer` | 1 | `goalSurfaceOn('employer-billing')` | `client/src/pages/EmployerBilling.tsx` (switch only); `client/src/pages/goal/employer-billing/**`; `design/goal-ui/captures/employer-billing/**` |
 | `D-048-p3-for-companies` | W6 `/for-companies`: employer price claims, D-040 fairness, no unbuilt programme promises | `d048-employer` | `D-048-p3-employer`, `D-107-claim-company` | 1 | `goalSurfaceOn('for-companies')`; read-only: `components/employer/employerPlans.ts` | `client/src/pages/ForCompanies.tsx` (switch only); `client/src/pages/goal/for-companies/**`; `design/goal-ui/captures/for-companies/**` |
 
-Design acceptance notes (design proposals, executable under the doctrine; not new frozen owner decisions): `/employer` keeps "Hire without the noise." with the next step contextual (review opt-in talent when matches exist, else sponsor a role). `/employer/opportunities` opens "Sponsor a role." `/employer/talent` opens "Meet opt-in talent." with anonymization stated in plain language beside every profile action. `/employer/billing` opens "Control what you spend." with "Buy credits" as the one commit and spend history as the record. `/for-companies` opens with the hiring goal and one contact/claim commit; every price claim stays sourced.
+Design acceptance notes (design proposals, executable under the doctrine; not new frozen owner decisions): `/employer` keeps "Hire without the noise." with the next step contextual (review opt-in talent when matches exist, else sponsor a role). `/employer/opportunities` opens "Sponsor a role." `/employer/talent` opens "Meet opt-in talent." with anonymization stated in plain language beside every profile action. `/employer/billing` opens "Control what you spend." with one commit that names what is actually bought, e.g. "Top up for talent unlocks and sponsored roles", and spend history as the record. Never "Buy credits", and never "Buy referrals": employers buy only labelled job ads and tooling and can never buy a referral (D-006, D-040). `/for-companies` opens with the hiring goal and one contact/claim commit; every price claim stays sourced.
 
 All rows are `status: "todo"`, `packet: "docs/plans/D-048-employer.md"`, `row: "D-048"`, `epic: "D-048-p3"`, and use the lane/tier/dependsOn/flag/owns values above. Each builder must use the exact `branch` value registered for its row in `docs/plans/assignments.json`; do not choose, rename, or derive a branch.
 
 ## 4. Implementation guardrails for builders
 
 1. No employer price, credit, unlock, or access change; employer billing money lines import from shared sources; employerPlans.ts is read-only.
+1a. **Display wording (D-153, D-173, D-180):** no employer-facing string says "credit"/"credits" or the noun "ask"/"asks"; name what the money buys (a talent unlock, a sponsored role) and its cost, plainly. Internal identifiers (`UNLOCK_CREDIT_COST`, `credit_purchase`, `creditsAdded`, `creditsSpent`, API fields) stay unchanged. The Oct 25 company plans (Team, Growth, Scale by quote) are frozen definitions that are not yet built or tested, so no goal surface sells, prices or promises them until they are (owner freeze conditions); `/for-companies` keeps only the price claims the current sourced catalog supports.
 2. Talent privacy is server-ruled: opt-in only, anonymized until unlock; the reskin renders these states, never relaxes them.
 3. D-040 fairness: no outcome promises in any employer copy; "featured" stays labelled where it appears.
 4. Preserve kit assertions; add goal-on assertions for loading/empty/error states, including the honest empty states.
@@ -76,3 +77,5 @@ None. Employer commercials and consent rules are already decided; this packet ma
 `D-048-P-employer`: prepared by design lane (AYO-11) — pending coordinator landing — 2026-10-23 — branch `agent/architect/d048-p-employer`
 
 `D-048-P-employer`: landed by the coordinator — 2026-10-23 — landing branch `agent/instinct/d048-p-employer-packet`. Canonical candidate; the empty claim marker branch `agent/architect/d048-p-employer` (Claude Code · e11c) is preserved and the overlap is announced in the PR.
+
+`D-048-P-employer`: Oct 27 wording correction before landing (Claude Code, PR #656): the `/employer/billing` commit no longer says "Buy credits"; §4 rule 1a states the referral-only display rule (no "credits", no noun "ask", never "Buy referrals" under D-006/D-040) and keeps the unbuilt Oct 25 company plans unsold. Rows, owns and dependencies are unchanged.
