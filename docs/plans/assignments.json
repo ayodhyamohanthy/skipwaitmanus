@@ -3596,7 +3596,7 @@
       "tier": 2,
       "lane": "d048-foundation",
       "branch": "agent/queue/postopp-copy-v2",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-fix-post-copy"
       ],

@@ -92,4 +92,4 @@ None. The split's open design questions are already decided under D-123 in `D-04
 
 `D-048-p3-referrer-home`: block cleared — D-217 — 2026-10-27 — PR #576 stays dark and waits for `D-048-F-credits`; the `AppShell.tsx` matcher is the shell row's work, and `referrer-home` may not enter `RELEASED` before it lands.
 
-`D-048-postopp-copy-v2`: in progress — Claude Code · dc6c (takeover of Cue GPT · 2026-10-25-0212's claim, whose only stop was a missing local browser for the captures) — 2026-10-27 — branch `agent/queue/postopp-copy-v2`
+`D-048-postopp-copy-v2`: done — #756 (fix `a1dfd53f`, test `821801af`) — Claude Code · dc6c, takeover of Cue GPT · 2026-10-25-0212 — 2026-10-27 — the kit `/post-opportunity` composer marks the hiring-now job link "(required)" (temporary until D-177) and its privacy footer follows the first-name opt-in; red first 2 of 13 failing without the fix, 24/24 with it; captures at 1280 and 390 sent to the owner
