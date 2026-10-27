@@ -5,7 +5,7 @@
 // never waited for CI.
 //
 //   node scripts/require-green-release.mjs --target api|web           # wait for CI, then pass or refuse
-//   node scripts/require-green-release.mjs --target api|web --once    # re-check right before a production step
+//   node scripts/require-green-release.mjs --target api|web --once    # re-check right before a production step (never waits for CI)
 //   node scripts/require-green-release.mjs --target api --recovery    # rollback.yml: a deliberate older target
 //
 // It passes only when all of these hold, and refuses (exit 1) on anything else: a red,
@@ -21,6 +21,10 @@
 //     refs/tags/api-runtime for the API, the newest successful Pages deploys for the Web.
 // There is no switch that skips it. A commit that skipped CI ([skip ci]) gets a CI run by
 // dispatching the CI workflow on main; the gate waits for it.
+//
+// --once never waits for CI: anything but green refuses at once. A GitHub API error (including a
+// malformed response) is the one thing it retries, like the waiting gate does: at most 5 attempts in a
+// row, RELEASE_GATE_INTERVAL_SECONDS apart (about 2 minutes at the default), then it refuses.
 //
 // --recovery (#751) is the one deliberate exception to the last rule, for rollback.yml run from
 // main: production may move back to an older commit, chosen on purpose. Everything else holds:
@@ -101,7 +105,24 @@ export function ciVerdict({ sha, runs, jobsByRun }) {
   return { state: "green", reason: `${own.map(runName).join(", ")}: ${REQUIRED_JOBS.join(", ")} succeeded on ${sha}` };
 }
 
-// GitHub's compare base...head: "ahead" with behind_by 0 means head strictly descends from base.
+// GitHub's compare base...head, exactly as GitHub reports it: a known status and whole, non-negative
+// counts that agree with it. Anything else is an API error (retried, then refused), never a coerced
+// count: Number() turned a missing behind_by into NaN, which read as "not newer" and let a stale release pass.
+const COMPARE_COUNTS = { identical: (a, b) => a === 0 && b === 0, ahead: (a, b) => a > 0 && b === 0, behind: (a, b) => a === 0 && b > 0, diverged: (a, b) => a > 0 && b > 0 };
+const shown = v => (v === undefined ? "missing" : typeof v === "number" ? String(v) : JSON.stringify(v));
+const count = (v, what) => (Number.isSafeInteger(v) && v >= 0 ? v : bad(`${what} ${shown(v)}`));
+export function parseCompare(c) {
+  if (c === null || typeof c !== "object" || Array.isArray(c)) return bad("compare body");
+  const status = text(c.status, "compare status");
+  if (!Object.hasOwn(COMPARE_COUNTS, status)) return bad(`compare status ${shown(status)}`);
+  const ahead_by = count(c.ahead_by, "compare ahead_by");
+  const behind_by = count(c.behind_by, "compare behind_by");
+  if (!COMPARE_COUNTS[status](ahead_by, behind_by)) return bad(`compare ${status} with ahead_by ${ahead_by} and behind_by ${behind_by}`);
+  return { status, ahead_by, behind_by };
+}
+// Every compare the gate decides on goes through the parser, whichever client supplied it.
+const compare = async (gh, base, head) => parseCompare(await gh.compare(base, head));
+// "ahead" with nothing behind means head strictly descends from base.
 const descends = c => c.status === "ahead" && c.behind_by === 0;
 
 /** Production already runs a commit newer than sha: the reason, or null. */
@@ -109,13 +130,13 @@ async function supersededBy({ gh, sha, target, runId }) {
   if (target === "api") {
     const marker = await gh.apiRuntimeMarker();
     if (!marker || marker === sha) return null;
-    return descends(await gh.compare(sha, marker)) ? `the API already runs ${marker} (refs/tags/api-runtime), which is newer than ${sha}` : null;
+    return descends(await compare(gh, sha, marker)) ? `the API already runs ${marker} (refs/tags/api-runtime), which is newer than ${sha}` : null;
   }
   const deployed = (await gh.pagesRuns())
     .filter(r => r.conclusion === "success" && r.head_branch === RELEASE_BRANCH && String(r.id) !== String(runId) && r.head_sha !== sha)
     .map(r => r.head_sha);
   for (const other of [...new Set(deployed)].slice(0, 10)) {
-    if (descends(await gh.compare(sha, other))) return `the Web already serves ${other}, which is newer than ${sha}`;
+    if (descends(await compare(gh, sha, other))) return `the Web already serves ${other}, which is newer than ${sha}`;
   }
   return null;
 }
@@ -133,7 +154,7 @@ async function schemaDrift(gh, a, b) {
 
 /** One look at GitHub: green only when the commit is on main, CI passed on it and nothing newer is live (or, for a recovery, its schema contract is main's). */
 export async function evaluateRelease({ gh, sha, target, runId, recovery = false, workflowSha = "" }) {
-  const line = await gh.compare(sha, RELEASE_BRANCH);
+  const line = await compare(gh, sha, RELEASE_BRANCH);
   if (!(line.status === "identical" || descends(line))) return { state: "red", reason: `${sha} is not on ${RELEASE_BRANCH} (compare: ${line.status})` };
   const runs = await gh.ciRuns(sha);
   const jobsByRun = new Map();
@@ -149,7 +170,7 @@ export async function evaluateRelease({ gh, sha, target, runId, recovery = false
   return newer ? { state: "red", reason: `superseded: ${newer}; dispatch this workflow on ${RELEASE_BRANCH} to release the newest commit` } : ci;
 }
 
-/** Wait (or, with once, look once) and return { ok, reason }. Only a green verdict is ok. A recovery releases intent.commit. */
+/** Wait for CI (with once, never: only GitHub errors are retried, MAX_API_ERRORS at most) and return { ok, reason }. Only a green verdict is ok. A recovery releases intent.commit. */
 export async function runGate({ gh, sha, ref, event, target, runId, recovery = false, intent = null, workflowSha = "", once = false, timeoutMs, appearMs, intervalMs, now = Date.now, sleep, log = () => {} }) {
   if (recovery) {
     const problem = recoveryProblem(intent ?? {}) ?? (FULL_SHA.test(workflowSha) ? null : "no workflow commit to compare the target's schema contract with");
@@ -172,7 +193,7 @@ export async function runGate({ gh, sha, ref, event, target, runId, recovery = f
     }
     if (verdict.state === "green") return { ok: true, reason: verdict.reason };
     if (verdict.state === "red") return { ok: false, reason: verdict.reason };
-    if (once && verdict.state !== "error") return { ok: false, reason: `${verdict.reason}; the re-check before a production step never waits` };
+    if (once && verdict.state !== "error") return { ok: false, reason: `${verdict.reason}; the re-check before a production step never waits for CI` };
     const waited = now() - start;
     if (verdict.state === "missing" && waited >= appearMs) {
       return { ok: false, reason: `${verdict.reason} after ${Math.round(waited / 1000)} s. If the commit skipped CI ([skip ci]), dispatch the CI workflow on main, then re-run this workflow` };
@@ -207,8 +228,7 @@ export function gitHubClient({ apiUrl, repo, token, fetchImpl = fetch }) {
   };
   return {
     async compare(base, head) {
-      const c = await get(`/compare/${base}...${head}?per_page=1`);
-      return { status: text(c?.status, "compare status"), ahead_by: Number(c.ahead_by), behind_by: Number(c.behind_by) };
+      return parseCompare(await get(`/compare/${base}...${head}?per_page=1`));
     },
     async ciRuns(sha) {
       return list((await get(`/actions/workflows/ci.yml/runs?head_sha=${sha}&per_page=100&exclude_pull_requests=true`))?.workflow_runs, "workflow_runs").map(parseRun);
