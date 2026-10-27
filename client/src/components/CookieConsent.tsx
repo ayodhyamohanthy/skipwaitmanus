@@ -84,11 +84,15 @@ export default function CookieConsent() {
   return (
     <>
       <div aria-hidden="true" style={{ height: bannerHeight }} data-testid="cookie-consent-spacer" />
-      <div ref={bannerRef} role="dialog" aria-label="Cookie choices" className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[60] mx-auto max-w-xl rounded-2xl border border-g-control-edge bg-g-surface p-5 shadow-xl md:bottom-[max(1.5rem,env(safe-area-inset-bottom))]">
-        <p className="text-sm text-g-ink"><strong>Cookies, honestly.</strong> Essential ones keep you signed in. Optional analytics help us improve - never sold, never ads. <Link href="/privacy" className="underline">Privacy</Link></p>
+      {/* Goal system (D-048-F-shell-parts): a floating dialog, so it follows the
+          popover rules - goal radius and popover shadow, no kit elevation - and
+          it carries .g-scope itself because it renders outside the app shell on
+          the signed-out landing. The words and the two choices are unchanged. */}
+      <div ref={bannerRef} role="dialog" aria-label="Cookie choices" className="g-scope fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[60] mx-auto max-w-xl rounded-g-popover border border-g-control-edge bg-g-surface p-5 shadow-g-popover gdesk:bottom-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <p className="text-g-body text-g-ink"><strong>Cookies, honestly.</strong> Essential ones keep you signed in. Optional analytics help us improve - never sold, never ads. <Link href="/privacy" className="underline">Privacy</Link></p>
         <div className="mt-4 flex flex-wrap justify-end gap-2">
-          <button type="button" onClick={() => save("essential")} className="rounded-full border border-g-control-edge bg-g-surface px-4 py-2 text-sm font-medium text-g-ink transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover">Essential only</button>
-          <button type="button" onClick={() => save("all")} className="rounded-full bg-g-ink px-4 py-2 text-sm font-medium text-g-ink-inverse transition-colors duration-(--g-dur-hover) ease-g-out hover:opacity-90">Accept all</button>
+          <button type="button" onClick={() => save("essential")} className="g-hit inline-flex h-(--g-control-h) items-center justify-center rounded-g-control border border-g-control-edge bg-g-surface px-[14px] text-g-label whitespace-nowrap text-g-ink transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover max-gdesk:h-12">Essential only</button>
+          <button type="button" onClick={() => save("all")} className="g-hit inline-flex h-(--g-control-h) items-center justify-center rounded-g-control bg-g-primary px-[14px] text-g-label whitespace-nowrap text-g-on-primary transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-primary-pressed max-gdesk:h-12">Accept all</button>
         </div>
       </div>
     </>
