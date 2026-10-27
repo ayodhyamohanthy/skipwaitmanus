@@ -88,4 +88,6 @@ None. The split's open design questions are already decided under D-123 in `D-04
 
 `D-048-p3-invite`: done — `fb420761` (#577) — goal `/invite` behind `goalSurfaceOn('invite')`: company request and personal invite-link panels, flag-off parity, canonical referrer OTP href, exact-head CI green (D-085)
 
+`D-048-p3-referrer`: done — Buffy · a8ec — 2026-10-27 — PR #575; /referrer and /referrer/impact goal rebuild behind `goalSurfaceOn('referrer')`: server-verdict gate (no email-domain inference), goal work-email OTP dialog, one black commit, quiet Impact link, referral-only reward copy; 20 focused tests plus 1280/390 captures for signed-out, overview and impact. Independent Tier 1 review pass at `801af659` (nothing after it but merges); full gate 537 files / 4,722 tests green on merge candidate `9f3aa442`, `pnpm check` and `VITE_GOAL_SURFACES=all pnpm build` green.
+
 `D-048-p3-referrer-home`: block cleared — D-217 — 2026-10-27 — PR #576 stays dark and waits for `D-048-F-credits`; the `AppShell.tsx` matcher is the shell row's work, and `referrer-home` may not enter `RELEASED` before it lands.
