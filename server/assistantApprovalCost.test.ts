@@ -49,8 +49,9 @@ describe("quoteApprovalCost: the compose screen's quote, never a second formula 
     it(`charges what the executor charges for the same link (ASK_LEVEL_COST=${flag})`, () => {
       vi.stubEnv("ASK_LEVEL_COST", flag);
       for (const link of LINKS) {
+        // The executor's exact call (server/db.ts createCompanyReferralRequest): the job row's title and description, url = its targetRoleUrl.
         const jobRow = companyAskJobRow({ companyDomain: "acme.com", targetRoleUrl: normalizeTargetRoleUrl(link), compensation: null, publishedAt: new Date() });
-        expect(quoteApprovalCost(link).cost, link).toBe(askCreditCost(jobRow));
+        expect(quoteApprovalCost(link).cost, link).toBe(askCreditCost({ title: jobRow.title, description: jobRow.description, url: jobRow.targetRoleUrl }));
       }
     });
   }
