@@ -3,12 +3,13 @@
 // workflow has passed on the exact commit being released. On Oct 27 main 2dcea864 migrated
 // and deployed while its CI failed; these tests pin every path that must now refuse it.
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { REQUIRED_JOBS, ciVerdict, contextProblem, evaluateRelease, runGate } from "./require-green-release.mjs";
+import { REQUIRED_JOBS, SCHEMA_CONTRACT, ciVerdict, contextProblem, evaluateRelease, recoveryProblem, runGate } from "./require-green-release.mjs";
 
 const root = path.resolve(__dirname, "..");
 const T = "a".repeat(40);
@@ -24,8 +25,12 @@ const jobs = (over: Record<string, Partial<Job>> = {}, sha = T): Job[] =>
   REQUIRED_JOBS.map((name: string) => ({ name, status: "completed", conclusion: "success", head_sha: sha, ...over[name] }));
 const cmp = (status: string): Cmp => ({ status, ahead_by: status === "ahead" ? 3 : 0, behind_by: status === "behind" ? 3 : status === "diverged" ? 2 : 0 });
 
+// The schema contract as GitHub's contents API reports it, the same at every ref unless a test overrides "<path>@<ref>".
+type Contents = { kind: "dir"; entries: { name: string; sha: string }[] } | { kind: "file"; sha: string } | null;
+const sameSchema = (p: string): Contents => (p === "drizzle/deploy" ? { kind: "dir", entries: [{ name: "0120_job_catalog.sql", sha: "m120" }] } : { kind: "file", sha: `blob-${p}` });
+
 // A GitHub stand-in with the same calls the gate makes. `compares` keys are "<base>...<head>".
-function fake({ runs = [run()], jobsOf = { 1: jobs() } as Record<number, Job[]>, compares = {} as Record<string, string>, marker = null as string | null, pages = [] as Partial<Run>[], fail = 0 } = {}) {
+function fake({ runs = [run()], jobsOf = { 1: jobs() } as Record<number, Job[]>, compares = {} as Record<string, string>, marker = null as string | null, pages = [] as Partial<Run>[], fail = 0, schema = {} as Record<string, Contents> } = {}) {
   const calls: string[] = [];
   let failures = fail;
   const gate = (what: string) => { calls.push(what); if (failures > 0) { failures--; throw new Error("HTTP 502 from GitHub"); } };
@@ -36,6 +41,7 @@ function fake({ runs = [run()], jobsOf = { 1: jobs() } as Record<number, Job[]>,
     async ciJobs(id: number) { gate(`jobs ${id}`); return jobsOf[id] ?? []; },
     async apiRuntimeMarker() { gate("marker"); return marker; },
     async pagesRuns() { gate("pages"); return pages.map(p => run({ path: ".github/workflows/deploy-pages.yml", ...p })); },
+    async contents(p: string, ref: string) { gate(`contents ${p}@${ref}`); return `${p}@${ref}` in schema ? schema[`${p}@${ref}`] : sameSchema(p); },
   };
 }
 const verdict = (runs: Run[], jobsOf: Record<number, Job[]> = { 1: jobs() }) => ciVerdict({ sha: T, runs, jobsByRun: new Map(Object.entries(jobsOf).map(([k, v]) => [Number(k), v])) });
@@ -181,6 +187,71 @@ describe("the waiting gate", () => {
   });
 });
 
+// Deliberate manual recovery (rollback.yml, #751): an older known-green main commit, chosen on purpose.
+const MAIN = "d".repeat(40);
+const intent = (extra: Record<string, string> = {}) => ({ system: "api", commit: OLDER, confirm: OLDER, reason: "API errors after the latest release", ...extra });
+
+describe("manual recovery intent", () => {
+  it("needs the API, a full commit typed twice and a reason", () => {
+    expect(recoveryProblem(intent())).toBeNull();
+    for (const system of ["web", "all", ""]) expect(recoveryProblem(intent({ system }))).toMatch(/only the API/);
+    for (const commit of ["", "c0ffee", OLDER.toUpperCase(), `${OLDER} `, `${OLDER}; rm -rf /`]) expect(recoveryProblem(intent({ commit, confirm: commit }))).toMatch(/40-character/);
+    expect(recoveryProblem(intent({ confirm: NEWER }))).toMatch(/confirmation/);
+    for (const reason of ["", "   \n "]) expect(recoveryProblem(intent({ reason }))).toMatch(/reason/);
+    expect(recoveryProblem(intent({ reason: "x".repeat(501) }))).toMatch(/500/);
+  });
+
+  it("runs only from a manual dispatch of main", () => {
+    expect(contextProblem({ sha: OLDER, ref: "refs/heads/main", event: "workflow_dispatch", target: "api", recovery: true })).toBeNull();
+    expect(contextProblem({ sha: OLDER, ref: "refs/heads/main", event: "push", target: "api", recovery: true })).toMatch(/manual dispatch/);
+    expect(contextProblem({ sha: OLDER, ref: "refs/heads/old-release", event: "workflow_dispatch", target: "api", recovery: true })).toMatch(/main/);
+  });
+});
+
+describe("recovery evaluation", () => {
+  const older = (extra: Partial<Run> = {}) => run({ head_sha: OLDER, ...extra });
+  const base = { runs: [older()], jobsOf: { 1: jobs({}, OLDER) }, marker: T, compares: { [`${OLDER}...${T}`]: "ahead" } };
+  const evaluate = (gh: ReturnType<typeof fake>, recovery: boolean) => evaluateRelease({ gh, sha: OLDER, target: "api", runId: "999", recovery, workflowSha: MAIN });
+
+  it("accepts an older known-green main commit that an ordinary deploy would refuse as superseded", async () => {
+    expect((await evaluate(fake(base), false)).state).toBe("red");
+    const gh = fake(base);
+    const result = await evaluate(gh, true);
+    expect(result.state).toBe("green");
+    expect(gh.calls).not.toContain("marker");
+    for (const p of SCHEMA_CONTRACT) expect(gh.calls).toEqual(expect.arrayContaining([`contents ${p}@${OLDER}`, `contents ${p}@${MAIN}`]));
+  });
+
+  it("still refuses a red, running, missing or off-main recovery target", async () => {
+    expect((await evaluate(fake({ ...base, runs: [older({ conclusion: "failure" })] }), true)).state).toBe("red");
+    expect((await evaluate(fake({ ...base, runs: [older({ status: "in_progress", conclusion: null })] }), true)).state).toBe("pending");
+    expect((await evaluate(fake({ ...base, runs: [] }), true)).state).toBe("missing");
+    expect((await evaluate(fake({ ...base, runs: [older({ event: "pull_request" })] }), true)).state).toBe("missing");
+    expect((await evaluate(fake({ ...base, compares: { [`${OLDER}...main`]: "diverged" } }), true)).state).toBe("red");
+  });
+
+  it("refuses a target whose schema contract differs from main, naming what differs", async () => {
+    const newer: Contents = { kind: "dir", entries: [{ name: "0120_job_catalog.sql", sha: "m120" }, { name: "0121_more.sql", sha: "m121" }] };
+    const drift = await evaluate(fake({ ...base, schema: { [`drizzle/deploy@${MAIN}`]: newer } }), true);
+    expect(drift.state).toBe("red");
+    expect(drift.reason).toContain("drizzle/deploy/0121_more.sql");
+    const reconcile = await evaluate(fake({ ...base, schema: { [`server/schemaReconcile.ts@${OLDER}`]: null } }), true);
+    expect(reconcile.state).toBe("red");
+    expect(reconcile.reason).toContain("server/schemaReconcile.ts");
+    expect((await evaluate(fake({ ...base, schema: { [`drizzle/schema.ts@${OLDER}`]: { kind: "file", sha: "older" } } }), true)).state).toBe("red");
+  });
+
+  it("refuses a malformed request before any GitHub call", async () => {
+    const gh = fake(base);
+    const opts = { gh, sha: OLDER, ref: "refs/heads/main", event: "workflow_dispatch", target: "api", runId: "999", recovery: true, workflowSha: MAIN, timeoutMs: 1, appearMs: 1, intervalMs: 1, sleep: async () => {} };
+    expect(await runGate({ ...opts, intent: intent({ confirm: T }) })).toMatchObject({ ok: false });
+    expect(await runGate({ ...opts, intent: intent({ reason: " " }) })).toMatchObject({ ok: false });
+    expect(await runGate({ ...opts, intent: intent(), workflowSha: "" })).toMatchObject({ ok: false });
+    expect(gh.calls).toEqual([]);
+    expect(await runGate({ ...opts, intent: intent() })).toMatchObject({ ok: true });
+  });
+});
+
 // The real script, as a process, against a local HTTP stand-in for the GitHub REST API.
 function serve(handler: (url: URL, req: IncomingMessage) => unknown) {
   const seen: { url: string; auth: string | undefined }[] = [];
@@ -195,13 +266,13 @@ function serve(handler: (url: URL, req: IncomingMessage) => unknown) {
     resolve({ base: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, seen, close: () => server.close() });
   }));
 }
-function cli(base: string, target: string, extra: Record<string, string> = {}) {
+function cli(base: string, target: string, extra: Record<string, string> = {}, flags: string[] = []) {
   const env: Record<string, string> = {
     PATH: process.env.PATH ?? "", GITHUB_API_URL: base, GITHUB_REPOSITORY: "o/r", GITHUB_SHA: T, GITHUB_REF: "refs/heads/main",
     GITHUB_EVENT_NAME: "push", GITHUB_RUN_ID: "999", GITHUB_TOKEN: "test-token-not-printed", RELEASE_GATE_INTERVAL_SECONDS: "0.05", RELEASE_GATE_TIMEOUT_MINUTES: "0.01", RELEASE_GATE_APPEAR_MINUTES: "0.01", ...extra,
   };
   return new Promise<{ code: number | null; out: string }>(resolve => {
-    const child = spawn(process.execPath, ["scripts/require-green-release.mjs", "--target", target], { cwd: root, env });
+    const child = spawn(process.execPath, ["scripts/require-green-release.mjs", "--target", target, ...flags], { cwd: root, env });
     let out = "";
     child.stdout.on("data", d => { out += d; });
     child.stderr.on("data", d => { out += d; });
@@ -213,6 +284,8 @@ const api = (runs: Run[], jobList: Job[]) => (url: URL) => {
   if (/\/actions\/runs\/\d+\/jobs$/.test(url.pathname)) return { total_count: jobList.length, jobs: jobList };
   if (url.pathname.includes("/compare/")) return cmp("identical");
   if (url.pathname.endsWith("/actions/workflows/deploy-pages.yml/runs")) return { total_count: 0, workflow_runs: [] };
+  if (url.pathname.endsWith("/contents/drizzle/deploy")) return [{ name: "0120_job_catalog.sql", path: "drizzle/deploy/0120_job_catalog.sql", sha: "m120", type: "file" }];
+  if (url.pathname.includes("/contents/")) return { type: "file", sha: "same-blob" };
   return undefined; // refs/tags/api-runtime: no marker yet
 };
 
@@ -242,6 +315,25 @@ describe("require-green-release.mjs as a process", () => {
       const c = await cli("http://127.0.0.1:9", "api");
       expect(c.code).toBe(1);
     } finally { red.close(); running.close(); }
+  });
+
+  it("recovers only a deliberate request: records who, what and why, and refuses a mismatch before any request", async () => {
+    const s = await serve(api([run({ head_sha: OLDER, event: "push" })], jobs({}, OLDER)));
+    const summary = path.join(mkdtempSync(path.join(os.tmpdir(), "gate-")), "summary.md");
+    writeFileSync(summary, "");
+    const recovery = { GITHUB_EVENT_NAME: "workflow_dispatch", GITHUB_SHA: MAIN, GITHUB_ACTOR: "owner-login", GITHUB_STEP_SUMMARY: summary, RECOVERY_SYSTEM: "api", RECOVERY_COMMIT: OLDER, RECOVERY_CONFIRM: OLDER, RECOVERY_REASON: "API errors `after` release\nline two" };
+    try {
+      const ok = await cli(s.base, "api", recovery, ["--recovery"]);
+      expect(ok.out).toContain(`RELEASE GATE PASS (api recovery): ${OLDER}`);
+      expect(ok.code).toBe(0);
+      const record = readFileSync(summary, "utf8");
+      for (const part of ["owner-login", OLDER, MAIN, "API errors 'after' release line two"]) expect(record).toContain(part);
+      const before = s.seen.length;
+      const refused = await cli(s.base, "api", { ...recovery, RECOVERY_CONFIRM: T }, ["--recovery"]);
+      expect(refused.code).toBe(1);
+      expect(refused.out).toMatch(/confirmation/);
+      expect(s.seen.length).toBe(before);
+    } finally { s.close(); }
   });
 
   it("exits 1 without a target or a commit", async () => {
@@ -326,5 +418,60 @@ describe("deploy-api.yml migrations", () => {
     const wf = workflow("deploy-api.yml");
     expect(wf.needs("migrate-db")).toEqual(["release-gate"]);
     expect(wf.needs("deploy")).toEqual(["migrate-db"]);
+  });
+});
+
+describe("rollback.yml: deliberate API recovery", () => {
+  const wf = workflow("rollback.yml");
+  const inputs = wf.text.slice(wf.text.indexOf("    inputs:"), wf.text.indexOf("\nconcurrency:"));
+  const recover = wf.steps("recover-api");
+  const at = (pattern: RegExp) => recover.findIndex(s => has(s, pattern));
+
+  it("is dispatch-only and asks for the API target, the full commit twice and a reason", () => {
+    expect(wf.text).toMatch(/^on:\n {2}workflow_dispatch:\n/m);
+    expect(wf.text).not.toMatch(/^ {2}(push|pull_request|pull_request_target|schedule|workflow_run|workflow_call):/m);
+    for (const name of ["target", "commit", "confirm", "reason"]) expect(inputs).toMatch(new RegExp(`\\n {6}${name}:\\n(?: {8}.+\\n)*? {8}required: true\\n`));
+    expect(inputs).toMatch(/ {8}options:\n {10}- api\n(?! {10}-)/);
+  });
+
+  it("waits in the API deploy queue and lets the gate read Actions", () => {
+    expect(wf.text).toMatch(/^concurrency:\n {2}group: deploy-api\n {2}cancel-in-progress: false$/m);
+    expect(wf.text).toMatch(/^permissions:\n(?: {2}.+\n)*? {2}actions: read$/m);
+  });
+
+  it("validates the request with the workflow's own code before the older target is ever checked out", () => {
+    expect([...wf.jobs.keys()]).toEqual(["recovery-gate", "recover-api"]);
+    expect(wf.needs("recovery-gate")).toEqual([]);
+    expect(wf.needs("recover-api")).toEqual(["recovery-gate"]);
+    const gate = wf.steps("recovery-gate");
+    expect(gate.some(s => has(s, /^ {10}ref:/))).toBe(false);
+    expect(gate.some(s => has(s, /run: node scripts\/require-green-release\.mjs --target api --recovery\s*$/))).toBe(true);
+    const trusted = at(/path: trusted/);
+    const target = at(/ref: \$\{\{ inputs\.commit \}\}/);
+    expect(trusted).toBeGreaterThanOrEqual(0);
+    expect(has(recover[trusted], /^ {10}ref:/)).toBe(false);
+    expect(has(recover[target], /path: target/)).toBe(true);
+    for (const s of recover) if (has(s, /require-green-release|deploy-cloudflare-two-phase|verify-cloudflare-container-release/)) expect(has(s, /trusted\/scripts\//)).toBe(true);
+  });
+
+  it("re-checks before the first production write, deploys and verifies the target SHA, then moves the marker, with no migrations", () => {
+    const recheck = at(/node trusted\/scripts\/require-green-release\.mjs --target api --recovery --once/);
+    const deploy = at(/deploy-cloudflare-two-phase\.sh/);
+    const verify = at(/verify-cloudflare-container-release\.sh/);
+    const marker = at(/git push -f origin refs\/tags\/api-runtime/);
+    expect(recheck).toBeGreaterThanOrEqual(0);
+    expect([recheck < deploy, deploy < verify, verify < marker]).toEqual([true, true, true]);
+    for (const i of [deploy, verify, marker]) {
+      expect(recover[i].body.some(l => /^ {8}if:/.test(l))).toBe(false);
+      expect(has(recover[i], /EXPECTED_SHA: \$\{\{ inputs\.commit \}\}/)).toBe(true);
+    }
+    expect(wf.text).not.toMatch(/apply-deploy-migrations|MYSQL_PWD|NEWDB_PASSWORD|npx wrangler deploy/);
+  });
+
+  it("never puts a dispatch input into a shell command", () => {
+    for (const job of wf.jobs.keys()) for (const s of wf.steps(job)) {
+      const runAt = s.body.findIndex(l => /^ {8}run:/.test(l));
+      if (runAt >= 0) expect(s.body.slice(runAt).join("\n")).not.toMatch(/\$\{\{\s*(inputs|github\.event\.inputs)\./);
+    }
   });
 });
