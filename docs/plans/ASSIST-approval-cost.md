@@ -84,4 +84,4 @@ The D-221 row note says the owner approves the quote route's full cost object, n
 The quote route and `createCompanyReferralRequest` price the same link differently on `main`. That is a D-132-audit finding: report it with both numbers.
 
 ## Status
-- ASSIST-approval-cost: in progress — Claude Code · d2fb — 2026-10-27 — branch agent/queue/assist-approval-cost
+- ASSIST-approval-cost: review — agent/queue/assist-approval-cost — 1b88c9c7 (code; main 2194929d merged). Needs #760 (owns) on main before scope-check passes; independent non-Claude Tier 1 review (D-151).
