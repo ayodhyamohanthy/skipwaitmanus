@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "holds": [
+    {
+      "branch": "agent/evidence/fix-main-eb0fd8cd",
+      "reason": "Preserve incident 748, audit 741, cleanup review or active assignment evidence until explicit scoped retention release. A done row is insufficient.",
+      "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/758#issuecomment-6446386246"
+    },
+    {
+      "branch": "agent/heartbeat/branch-hygiene",
+      "reason": "Preserve incident 748, audit 741, cleanup review or active assignment evidence until explicit scoped retention release. A done row is insufficient.",
+      "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/758#issuecomment-6446386246"
+    },
+    {
+      "branch": "agent/heartbeat/fix-main-eb0fd8cd",
+      "reason": "Preserve incident 748, audit 741, cleanup review or active assignment evidence until explicit scoped retention release. A done row is insufficient.",
+      "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/758#issuecomment-6446386246"
+    },
+    {
+      "branch": "agent/queue/branch-hygiene",
+      "reason": "Preserve incident 748, audit 741, cleanup review or active assignment evidence until explicit scoped retention release. A done row is insufficient.",
+      "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/758#issuecomment-6446386246"
+    },
+    {
+      "branch": "agent/queue/fix-main-eb0fd8cd",
+      "reason": "Preserve incident 748, audit 741, cleanup review or active assignment evidence until explicit scoped retention release. A done row is insufficient.",
+      "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/758#issuecomment-6446386246"
+    },
+    {
+      "branch": "agent/queue/landing",
+      "reason": "Preserve incident 748, audit 741, cleanup review or active assignment evidence until explicit scoped retention release. A done row is insufficient.",
+      "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/758#issuecomment-6446386246"
+    },
+    {
+      "branch": "agent/queue/p1-release-gate-strict-compare",
+      "reason": "Preserve incident 748, audit 741, cleanup review or active assignment evidence until explicit scoped retention release. A done row is insufficient.",
+      "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/758#issuecomment-6446386246"
+    },
+    {
+      "branch": "agent/queue/register-d212",
+      "reason": "Preserve incident 748, audit 741, cleanup review or active assignment evidence until explicit scoped retention release. A done row is insufficient.",
+      "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/758#issuecomment-6446386246"
+    },
+    {
+      "branch": "agent/reports/log",
+      "reason": "Preserve incident 748, audit 741, cleanup review or active assignment evidence until explicit scoped retention release. A done row is insufficient.",
+      "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/758#issuecomment-6446386246"
+    },
+    {
+      "branch": "agent/review/p1-deploy-green-gate",
+      "reason": "Preserve incident 748, audit 741, cleanup review or active assignment evidence until explicit scoped retention release. A done row is insufficient.",
+      "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/758#issuecomment-6446386246"
+    },
+    {
+      "branch": "agent/review/register-d212",
+      "reason": "Preserve incident 748, audit 741, cleanup review or active assignment evidence until explicit scoped retention release. A done row is insufficient.",
+      "ref": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/758#issuecomment-6446386246"
+    }
+  ]
+}
