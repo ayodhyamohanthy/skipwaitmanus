@@ -31,9 +31,45 @@ Two supported paths, both wired in this repo:
 - Hyperdrive: create a MySQL Hyperdrive binding against the Aiven URI for
   pooled connections from Containers.
 
-## Expected red check: "Workers Builds: skipwaitmanus" on main
+## Workers Builds integration: DISABLED Oct 27 (do not re-enable)
 
-Cloudflare's own Git-connected build for the `skipwaitmanus` Worker runs `npx wrangler deploy` on every push to main and fails at the Docker step (`COPY commit-sha.txt` - that file is generated only by the Deploy API GitHub workflow). It fails before anything is uploaded, so production is unaffected, and the check is green on PR branches. Do not chase it, and do not make the Dockerfile tolerate the missing file: Cloudflare's build would then succeed and deploy an unversioned container to production, racing the gated Deploy API workflow. Truth for a deploy is the Deploy API run plus /api/health `commitSha`. (Founder-approved to leave the Cloudflare setting as is, Oct 17.)
+Cloudflare's Git-connected "Workers Builds" for the `skipwaitmanus` Worker is
+**disabled** (Workers & Pages -> skipwaitmanus -> Settings -> Builds ->
+"Disable builds", saved Oct 27 IST; the repo connection itself is intact, so
+re-enabling is one toggle). The founder confirmed the keep-OFF decision on
+Oct 27 (affirmative reaction to the keep-OFF question,
+phonemsg-01M5XS9JAG9MY933AWVWJVG8MN). Do not re-enable it.
+
+Verified post-disable behavior (build history, Oct 27): pushes to `main`
+produce **no** build entry at all; branch/PR-preview builds still fire as
+green 0-second skips. Neither is deploy evidence: a green "Workers Builds"
+check on a PR branch is a skip, never a build or deploy, and the required
+merge gates never included it (the rulesets require only typecheck, the
+unit/component/route tests, and the production build, so disabling stranded
+no required check).
+
+Why disabled: every code-carrying push to main made the integration run its own
+`npx wrangler deploy`, which failed deterministically - the actual build log
+(build 83bf990c, Oct 27) shows `The Docker CLI is needed to build the
+configured image before deploying but could not be launched` at the deploy
+step, because the managed builds environment has no Docker and the worker's
+container needs one. It never reached the image build, so the earlier note
+about a `COPY commit-sha.txt` failure was the wrong mechanism. The duplicate
+deploy also risked racing the gated Deploy API workflow; disabling removes the
+race entirely.
+
+Truth for a deploy is unchanged: the **Deploy API GitHub workflow**
+(`deploy-api.yml`, Docker-capable runner, migration-first gate, container
+release acceptance gate) plus `/api/health` `commitSha`, cross-checked with the
+`api-runtime` tag. Deploys, rollbacks (`rollback.yml`) and the container config
+are untouched by the toggle.
+
+This section previously said the red check was "Founder-approved to leave as
+is (Oct 17)": that approval claim is **unverified** - no user-channel original
+recovered. The Oct 27 disable was executed by the coordinator under the
+standing cofounder mandate (free, reversible, no money, no outbound messages)
+and is now the **confirmed owner decision** (keep OFF, Oct 27). Re-enabling
+needs a fresh founder instruction, not the unverified Oct-17 note.
 
 ## Database migrations
 
