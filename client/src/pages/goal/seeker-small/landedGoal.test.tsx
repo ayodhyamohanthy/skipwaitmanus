@@ -18,7 +18,7 @@ vi.mock("@/hooks/usePersistFn", () => ({ usePersistFn: (fn: unknown) => fn }));
 const hire = { id: "r1", status: "closed", referrerId: "ref-1", referrerName: "Asha Rao", title: "Frontend Engineer", companyName: "Quillmint", companyDomain: "quillmint.ai", updatedAt: "2026-10-20T00:00:00Z" };
 const requestsState = { requests: [hire] };
 vi.mock("@/components/requests/requestsApi", () => ({
-  LOAD_ERROR: "We could not load your asks.",
+  LOAD_ERROR: "We could not load your referral requests.",
   fetchMyRequests: vi.fn(async () => ({ requests: requestsState.requests })),
 }));
 const sendState = { delivered: true, fail: false };
@@ -44,6 +44,8 @@ describe("goal landed", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Close the loop on your new role." })).toBeTruthy();
     expect(await screen.findByText(/Frontend Engineer · Quillmint/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Thank your referrer" })).toBeTruthy();
+    // Referral-only copy (D-180): the retired noun "ask"/"asks" never renders here.
+    expect(document.body.textContent ?? "").not.toMatch(/\basks?\b/);
   });
 
   it("sends the thank-you and moves to pay it forward", async () => {
@@ -69,6 +71,8 @@ describe("goal landed", () => {
     requestsState.requests = [];
     renderPage();
     expect(await screen.findByText(/No hires to thank yet/)).toBeTruthy();
+    expect(screen.getByText(/marks your referral request as hired/)).toBeTruthy();
+    expect(document.body.textContent ?? "").not.toMatch(/\basks?\b/);
     expect(screen.getByRole("link", { name: /Explore companies/ })).toBeTruthy();
   });
 

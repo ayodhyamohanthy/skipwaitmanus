@@ -35,6 +35,11 @@ describe("goal share hub", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Help a friend find their next role." })).toBeTruthy();
     expect(await screen.findByText(/Your link is ready/)).toBeTruthy();
     expect(screen.getByText(/invite=PAL-123/)).toBeTruthy();
+    // Referral-only reward copy (D-180/D-055): the unit is a referral, and the
+    // reward is stated as pending until the next private referral request.
+    expect(screen.getByText(/you each get 1 extra referral/)).toBeTruthy();
+    expect(screen.getByText(/unlocks when you send your next private referral request/)).toBeTruthy();
+    expect(document.body.textContent ?? "").not.toMatch(/referral credit/i);
     const commit = screen.getByRole("button", { name: "Copy link" });
     expect(commit.getAttribute("aria-disabled")).not.toBe("true");
   });
