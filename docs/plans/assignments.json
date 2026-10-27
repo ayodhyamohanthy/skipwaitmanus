@@ -91,7 +91,7 @@
     },
     {
       "id": "P1-deploy-green-gate",
-      "title": "Block Web/API migrations and deploys until exact-SHA required CI succeeds (#748)",
+      "title": "Block migrations, Web/API deploys and deliberate manual recovery until exact-target-SHA required CI succeeds (#748)",
       "row": "D-082",
       "packet": "docs/plans/P1-deploy-green-gate.md",
       "tier": 1,
@@ -103,7 +103,8 @@
         ".github/workflows/deploy-api.yml",
         ".github/workflows/deploy-pages.yml",
         "scripts/require-green-release.mjs",
-        "scripts/requireGreenRelease.test.ts"
+        "scripts/requireGreenRelease.test.ts",
+        ".github/workflows/rollback.yml"
       ]
     },
     {
@@ -3658,6 +3659,28 @@
         "scripts/nextTaskCore.mjs",
         "scripts/nextTaskAvoidLand.test.ts"
       ]
+    },
+    {
+      "id": "DEPLOY-gate-docs-sync",
+      "title": "Sync deployment and manual recovery docs to verified green gate behavior (#748)",
+      "row": "D-068",
+      "packet": "docs/plans/DEPLOY-gate-docs-sync.md",
+      "tier": 3,
+      "lane": "deploy-docs",
+      "branch": "agent/queue/deploy-gate-docs-sync",
+      "status": "todo",
+      "dependsOn": [
+        "P1-deploy-green-gate",
+        "D-090-BYOR",
+        "D-099-bonus-pages"
+      ],
+      "owns": [
+        "AGENTS.md",
+        "docs/DEPLOY.md",
+        "docs/ARCHITECTURE.md",
+        "docs/BRIEF.md"
+      ],
+      "note": "Serialized because existing BYOR and bonus rows own shared deploy docs. No runtime change or unsupported completion claims; incident748 remains open until path acceptance independently proven."
     }
   ]
 }
