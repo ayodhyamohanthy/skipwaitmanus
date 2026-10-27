@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0000ff" />
+    <script>
+      // D-048-dark-mode: apply the saved per-device choice before first paint; light is the default.
+      try { if (localStorage.getItem("sw-theme") === "dark") document.documentElement.classList.add("dark"); } catch (e) {}
+    </script>
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/brand/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
