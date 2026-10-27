@@ -30,3 +30,4 @@ Before changing any line, make the existing pins (`savedAlerts.test.tsx`, `forCo
 
 ## Status
 - `DECISION-COPY-oct26`: registered by D-221 (Oct 26 audit); todo.
+- Oct 27: `D-048-p3-support` (owns `Help.tsx`) and `D-048-p3-for-companies` (owns `ForCompanies.tsx`, switch only), added by #656, wait for this row so the copy fix lands before their goal redesigns.
