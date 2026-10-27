@@ -241,7 +241,7 @@ The split's row text now names them, so their lane packet writer adds them:
 
 ## Status
 - D-048-F-goal-check: todo; waits for D-048-F-primitives.
-- D-048-F-shell-parts: in progress — DeepSeek-V4.1-Flash Cline local · 2a19 — 2026-10-28 — branch agent/queue/d048-f-shell-parts
+- D-048-F-shell-parts: review — branch agent/queue/d048-f-shell-parts — 2026-10-28 — DeepSeek-V4.1-Flash Cline local · 2a19: AccountMenu, NotificationBell, BetaNotice and CookieConsent are on goal tokens with behaviour pinned (30 new assertions; every existing suite kept) and no colour literal left; draft PR open, not merged (owner instruction). Two calls are not this row's to make, so they are reported instead of widened: (1) `GoalButton` in the consent banner needs `client/src/components/goal/goalBoundary.test.ts` (MOVED_SURFACES; owned by D-048-F-flags / D-048-p3-assistants / D-090-BYOR) to list this row's four parts, and its `primary` variant would also break `GoalLanding.test.tsx`'s document-wide one-primary count, so the banner's actions carry the GoalButton recipe in tokens; (2) the 390px duplicate chrome (GoalShell.tsx renders its own Alerts bell beside the phone slot's menu bell, and the menu element renders twice) is in GoalShell.tsx / index.css, neither in this row's owns.
 - D-048-F-coverage: done — landed `f9ee7ef8` (test) with the catalogue line it found missing (`referrer-home/ShareImpactCard.tsx` on the `pages/ReferrerHome.tsx` row); CI green, no deploy due (scripts + docs only).
 - D-048-p3-skippy: todo; waits for the foundation rows and REGISTER-520.
 - D-048-p3-agents: todo; waits for the foundation rows.
