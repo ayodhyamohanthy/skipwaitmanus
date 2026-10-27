@@ -1135,7 +1135,7 @@
       "packet": "docs/plans/D-048-foundation.md",
       "tier": 1,
       "lane": "design-core",
-      "branch": "agent/queue/d048-f-credits",
+      "branch": "agent/instinct/d048-f-credits",
       "status": "todo",
       "dependsOn": [
         "D-048-F-harness"
@@ -1147,7 +1147,7 @@
         "client/src/hooks/useCreditBalance.test.ts",
         "client/src/components/appShell.test.tsx"
       ],
-      "note": "D-217: unparked from `in-review` (no review lock, so the picker could never hand it out). PR #568 is green at `601a2368`: merge current `main`, keep the matcher for `/referrer-home`, `/referrer-setup`, `/verify` and `/post-opportunity` plus its six-route `appShell.test.tsx` test, then land through the Tier 1 path (D-151). Blocks D-048-p3-referrer-home."
+      "note": "D-217: unparked from `in-review` (no review lock, so the picker could never hand it out). PR #568 is green at `601a2368`: merge current `main`, keep the matcher for `/referrer-home`, `/referrer-setup`, `/verify` and `/post-opportunity` plus its six-route `appShell.test.tsx` test, then land through the Tier 1 path (D-151). Blocks D-048-p3-referrer-home. Branch field corrected to the PR's actual branch (D-217 named PR #568 the vehicle; scope-check matches rows by branch)."
     },
     {
       "id": "D-048-F-static-frame",
@@ -3373,7 +3373,7 @@
       "title": "Referral-only wording correction on the goal landed/share twins (6 retired-term lines)",
       "row": "D-048",
       "packet": "docs/plans/D-048-seeker.md",
-      "tier": 2,
+      "tier": 1,
       "lane": "d048-foundation",
       "branch": "agent/queue/copy-goal-twins",
       "status": "done",
@@ -3387,7 +3387,7 @@
         "client/src/pages/goal/seeker-small/shareHubGoal.test.tsx",
         "design/goal-ui/captures/seeker-small/**"
       ],
-      "note": "Live legacy wording regressions verified on main Oct 27: GoalLanded.tsx noun-ask x4 (L67 'find the ask', L78 'your asks', L83 'marks an ask as hired', L137 'Close my other asks') and GoalShareHub.tsx 'extra referral credit' x2 (L19, L46). Freeze: referral-only user-facing wording, no noun ask/asks, no user-facing credits. Routed to WorkBuddy DeepSeek V4.1 Flash via #572 comment 6433426504; verify reward wording against the actual pending-reward and next-private-request unlock behavior (D-055). Tests + viewport-true captures (1280x900 / 780x1688) refresh required."
+      "note": "Live legacy wording regressions verified on main Oct 27: GoalLanded.tsx noun-ask x4 (L67 'find the ask', L78 'your asks', L83 'marks an ask as hired', L137 'Close my other asks') and GoalShareHub.tsx 'extra referral credit' x2 (L19, L46). Freeze: referral-only user-facing wording, no noun ask/asks, no user-facing credits. Routed to WorkBuddy DeepSeek V4.1 Flash via #572 comment 6433426504; verify reward wording against the actual pending-reward and next-private-request unlock behavior (D-055). Tests + viewport-true captures (1280x900 / 780x1688) refresh required. Tier 1 per the #632 precedent: referral-credit wording is money-adjacent copy, so the code PR lands only after one independent D-151 review."
     }
   ]
 }
