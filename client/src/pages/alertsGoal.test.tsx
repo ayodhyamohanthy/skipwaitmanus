@@ -79,7 +79,7 @@ describe("goal alerts", () => {
   it("posts one read request per unread alert, then retries only the failure", async () => {
     serverState.items = [
       { id: 2, category: "message", title: "Asha replied", body: "Happy to refer you", readAt: null, createdAt: new Date().toISOString() },
-      { id: 3, category: "status", title: "Referral tokens added", body: "1 referral token was added after a support review.", readAt: null, createdAt: new Date().toISOString() },
+      { id: 3, category: "status", title: "Referral allowance updated", body: "1 referral was added after a support review.", readAt: null, createdAt: new Date().toISOString() },
     ];
     serverState.failOnce = [3];
     renderPage();
@@ -87,7 +87,7 @@ describe("goal alerts", () => {
     await screen.findByText("Some alerts could not be marked read. Try again.");
     expect(serverState.readCalls.map(call => call.url).sort()).toEqual(["/api/notifications/2/read", "/api/notifications/3/read"]);
     for (const call of serverState.readCalls) { expect(call.method).toBe("POST"); expect(call.credentials).toBe("include"); }
-    expect((await screen.findAllByText("Referral tokens added")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Referral allowance updated")).length).toBeGreaterThan(0);
     fireEvent.click(await screen.findByRole("button", { name: "Mark all read" }));
     await waitFor(() => expect(screen.queryByText("Some alerts could not be marked read. Try again.")).toBeNull());
     await waitFor(() => expect(screen.queryByRole("heading", { name: /Needs you/ })).toBeNull());
