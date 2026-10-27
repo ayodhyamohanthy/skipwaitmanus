@@ -3641,6 +3641,28 @@
         "scripts/nextTaskCore.mjs",
         "scripts/nextTaskAvoidLand.test.ts"
       ]
+    },
+    {
+      "id": "SHELL-single-notification-entry",
+      "title": "One visible shell notification control with preserved unread/route behavior",
+      "row": "D-048",
+      "packet": "docs/plans/SHELL-single-notification-entry.md",
+      "tier": 2,
+      "lane": "design-shell",
+      "branch": "agent/queue/shell-single-notification",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-F-shell-parts",
+        "D-222-referral-count-shell"
+      ],
+      "owns": [
+        "client/src/components/AppShell.tsx",
+        "client/src/components/goal/GoalShell.tsx",
+        "client/src/components/AccountMenu.tsx",
+        "client/src/components/NotificationBell.tsx",
+        "client/src/components/singleNotificationEntry.test.tsx",
+        "design/goal-ui/captures/single-notification/**"
+      ]
     }
   ]
 }
