@@ -3406,6 +3406,27 @@
         "server/moneyCopy.test.ts"
       ],
       "note": "Headline-only slice of D-180: free monthly allowance says referrals (owner headline decision Oct 23). Paid-unit credits and the ASK_COST tail stay with D-180-referral-words; no behavior or eligibility change. Depends on the active owners of the touched files so their in-flight edits land first; rebase the test expectations forward on any conflict. Oct 27 (Claude Code, landing review): also waits for PRICING-banded-oct25 (PR #666), which owns PlansV2.tsx, PlansV2.test.tsx and policyPages.test.tsx too; #666 rewrites PlansV2 with referral wording, so this slice drops its PlansV2 hunks when it rebases."
+    },
+    {
+      "id": "D-048-copy-goal-twins",
+      "title": "Referral-only wording correction on the goal landed/share twins (6 retired-term lines)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-seeker.md",
+      "tier": 2,
+      "lane": "d048-foundation",
+      "branch": "agent/queue/copy-goal-twins",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-p3-seeker-small"
+      ],
+      "owns": [
+        "client/src/pages/goal/seeker-small/GoalLanded.tsx",
+        "client/src/pages/goal/seeker-small/GoalShareHub.tsx",
+        "client/src/pages/goal/seeker-small/landedGoal.test.tsx",
+        "client/src/pages/goal/seeker-small/shareHubGoal.test.tsx",
+        "design/goal-ui/captures/seeker-small/**"
+      ],
+      "note": "Live legacy wording regressions verified on main Oct 27: GoalLanded.tsx noun-ask x4 (L67 'find the ask', L78 'your asks', L83 'marks an ask as hired', L137 'Close my other asks') and GoalShareHub.tsx 'extra referral credit' x2 (L19, L46). Freeze: referral-only user-facing wording, no noun ask/asks, no user-facing credits. Routed to WorkBuddy DeepSeek V4.1 Flash via #572 comment 6433426504; verify reward wording against the actual pending-reward and next-private-request unlock behavior (D-055). Tests + viewport-true captures (1280x900 / 780x1688) refresh required."
     }
   ]
 }
