@@ -54,23 +54,6 @@
       "note": "Landed as PR #514 (merge commit on main; independent review passed by Gemini 3.8 Flash · 8f37). Stale test fixture paths updated to 0100_billing_review_outbox.sql, schemaReconcile table match targeted, and MySQL 8.0.46 FK errno 1452 assertion aligned. Migration digest unchanged; 0 runtime or SQL changes."
     },
     {
-      "id": "P1-deploy-green-gate",
-      "title": "Block Web/API migrations and deploys until exact-SHA required CI succeeds (#748)",
-      "row": "D-082",
-      "packet": "docs/plans/P1-deploy-green-gate.md",
-      "tier": 1,
-      "lane": "deploy",
-      "branch": "agent/queue/p1-deploy-green-gate",
-      "status": "todo",
-      "dependsOn": [],
-      "owns": [
-        ".github/workflows/deploy-api.yml",
-        ".github/workflows/deploy-pages.yml",
-        "scripts/require-green-release.mjs",
-        "scripts/requireGreenRelease.test.ts"
-      ]
-    },
-    {
       "id": "SEC-deps-oct24",
       "title": "Patch dompurify, zod, body-parser and undici to their fixed versions (1 critical, 4 high advisories)",
       "row": "D-191",
@@ -104,6 +87,23 @@
         "client/src/components/deviceSignIn.test.tsx",
         "server/workEmailOtp.ts",
         "server/workEmailOtp.test.ts"
+      ]
+    },
+    {
+      "id": "P1-deploy-green-gate",
+      "title": "Block Web/API migrations and deploys until exact-SHA required CI succeeds (#748)",
+      "row": "D-082",
+      "packet": "docs/plans/P1-deploy-green-gate.md",
+      "tier": 1,
+      "lane": "deploy",
+      "branch": "agent/queue/p1-deploy-green-gate",
+      "status": "todo",
+      "dependsOn": [],
+      "owns": [
+        ".github/workflows/deploy-api.yml",
+        ".github/workflows/deploy-pages.yml",
+        "scripts/require-green-release.mjs",
+        "scripts/requireGreenRelease.test.ts"
       ]
     },
     {
