@@ -2713,12 +2713,192 @@
       "id": "D-100-security-audit",
       "title": "Security, availability and payments hardening: read-only audit first, then flagged fixes (D-100)",
       "row": "D-100",
-      "packet": null,
+      "packet": "docs/plans/D-100-security-audit.md",
       "tier": 3,
       "lane": "security",
       "branch": "agent/claude/d100-security-audit",
-      "status": "architect",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Packet-only (D-223): its work is the D-100.* rows that follow, written in docs/plans/D-100-security-audit.md.",
+      "epic": "D-100"
+    },
+    {
+      "id": "D-100.csp-report",
+      "title": "The report-only CSP collects violations: report-uri and a scrubbed /api/csp-report",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-headers",
+      "branch": "agent/queue/d100-csp-report",
+      "status": "todo",
+      "dependsOn": [
+        "FND-4"
+      ],
+      "note": "D-223 subtask of D-100. After FND-4 (reuses its scrubber). Answered inside globalSecurityHeaders, so it never edits server/_core/index.ts.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts",
+        "server/securityHeaders.test.ts",
+        "server/cspReport.ts",
+        "server/cspReport.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.csp-enforce",
+      "title": "An enforcing CSP built behind CSP_ENFORCED = false",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-csp",
+      "branch": "agent/queue/d100-csp-enforce",
+      "status": "todo",
+      "dependsOn": [
+        "D-100.csp-report"
+      ],
+      "note": "D-223 subtask of D-100. Off until D-100.csp-release.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts",
+        "server/securityHeaders.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.csp-release",
+      "title": "Switch CSP_ENFORCED on after 7 days of reports, with captures and the CEO's sign-off",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-csp-release",
+      "branch": "agent/queue/d100-csp-release",
+      "status": "todo",
+      "dependsOn": [
+        "D-100.csp-enforce"
+      ],
+      "note": "D-223 release row of the CSP pieces: one line, opens only 7 days after D-100.csp-report is live.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts"
+      ]
+    },
+    {
+      "id": "D-100.hsts-preload",
+      "title": "HSTS preload built behind HSTS_PRELOAD = false (switching it on is the owner's word)",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-hsts",
+      "branch": "agent/queue/d100-hsts-preload",
+      "status": "todo",
+      "dependsOn": [
+        "D-100.csp-release"
+      ],
+      "note": "D-223 subtask of D-100. Same file as the CSP rows, so after them.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts",
+        "server/securityHeaders.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.otp-hmac",
+      "title": "The work-email code is stored as an HMAC, with a one-TTL read of the old hash",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 1,
+      "lane": "security-otp",
+      "branch": "agent/queue/d100-otp-hmac",
+      "status": "todo",
+      "dependsOn": [
+        "FIX-device-signin"
+      ],
+      "note": "D-223 subtask of D-100. After FIX-device-signin, which edits server/workEmailOtp.ts. Sign-in path: independent review by another model (D-151).",
+      "epic": "D-100",
+      "owns": [
+        "server/workEmailOtp.ts",
+        "server/workEmailOtp.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.provider-recon",
+      "title": "The daily money check compares Chargebee's recent payments with ours (read-only)",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 1,
+      "lane": "security-recon",
+      "branch": "agent/queue/d100-provider-recon",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-223 subtask of D-100. Writes nothing; never adds a gateway key.",
+      "epic": "D-100",
+      "owns": [
+        "server/chargebeeAccountApi.ts",
+        "server/dailyMoneyCheck.ts",
+        "server/dailyMoneyCheck.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.secrets-sweep",
+      "title": "Read-only audit: no secret, token, code or personal data in logs, Sentry, alerts or error bodies",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-secrets",
+      "branch": "agent/queue/d100-secrets-sweep",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-secrets-sweep.md"
+      ]
+    },
+    {
+      "id": "D-100.authz-referral",
+      "title": "Read-only audit: authorization and personal data on the referral, document, block and safety routes",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-referral",
+      "branch": "agent/queue/d100-authz-referral",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-authz-referral.md"
+      ]
+    },
+    {
+      "id": "D-100.authz-account",
+      "title": "Read-only audit: authorization and personal data on the account, messaging, employer, agent and public routes",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-account",
+      "branch": "agent/queue/d100-authz-account",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-authz-account.md"
+      ]
+    },
+    {
+      "id": "D-100.authz-admin-money",
+      "title": "Read-only audit: authorization on the admin, payment, webhook, job and health routes",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-admin",
+      "branch": "agent/queue/d100-authz-admin-money",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-authz-admin-money.md"
+      ]
     },
     {
       "id": "D-099-bonus-pages",
