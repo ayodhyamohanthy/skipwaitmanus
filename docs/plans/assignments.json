@@ -3591,6 +3591,39 @@
         "client/src/components/appShell.test.tsx",
         "design/goal-ui/captures/shell/**"
       ]
+    },
+    {
+      "id": "PICKER-avoid-unblock",
+      "title": "Respect avoid when continuing an existing unblock stage (issue #740)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-avoid-unblock.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-avoid-unblock",
+      "status": "todo",
+      "dependsOn": [
+        "PROCESS-review-gate",
+        "PICKER-architect-landing"
+      ],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskAvoidUnblock.test.ts"
+      ]
+    },
+    {
+      "id": "LANDING-PROCEDURE-AUDIT-oct27",
+      "title": "Independent audit of five squash deviations and premature landing marker (#741)",
+      "row": "D-134",
+      "packet": "docs/plans/LANDING-PROCEDURE-AUDIT-oct27.md",
+      "tier": 2,
+      "lane": "audit",
+      "branch": "agent/queue/procedure-audit-oct27",
+      "status": "todo",
+      "dependsOn": [],
+      "owns": [
+        "docs/plans/LANDING-PROCEDURE-AUDIT-oct27.md"
+      ],
+      "note": "Independent auditor only; Instinct coordinator is the subject and must not self-close. Preserve branches, no history/settings/production mutation. Register separate code remediation if evidence requires it."
     }
   ]
 }
