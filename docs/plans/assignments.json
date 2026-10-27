@@ -1933,7 +1933,7 @@
       "tier": 2,
       "lane": "d048-alerts",
       "branch": "agent/queue/d048-alerts",
-      "status": "in-review",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
