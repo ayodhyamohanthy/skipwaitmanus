@@ -74,6 +74,14 @@ export const FREE_ALLOWANCE_REQUIRES_VERIFIED_CARD = true;
 export const FREE_ALLOWANCE_NO_CARRY_FORWARD = true;
 
 /**
+ * Purchased referrals never expire; free monthly referrals still end with the
+ * month. Kept from the D-132 family because `server/db.ts` reads it on the
+ * cycle-roll refund path (D-132 audit item 4, f2a335c2). The Oct 25 freeze does
+ * not change it, and removing it would change refund behaviour (D-042, D-147).
+ */
+export const PAID_CREDITS_NEVER_EXPIRE = true;
+
+/**
  * TOP-UPS: one price per level, the SAME price in every plan. Buy only within
  * your band's access; buying never unlocks another level.
  */
