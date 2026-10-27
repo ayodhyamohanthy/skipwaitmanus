@@ -47,7 +47,7 @@ A person can switch the product to dark and back, on every goal-UI surface, desk
 
 The existing R8 audit permits only `index.css` and `kit.css` and rejects every `--g-*` occurrence outside `index.css`. That contradicts this packet's required `goalDark.css`. The row owns the audit core and its fixture tests solely to admit that exact dark counterpart while keeping the light source of truth frozen:
 
-- Permit the exact path `client/src/styles/goalDark.css`, not another CSS directory or a wildcard. R8 continues rejecting every other extra stylesheet and every `--g-*` declaration outside the two exact token sources.
+- Permit the exact path `client/src/styles/goalDark.css`, not another CSS directory or a wildcard; the new check is R9 in `scripts/designTokenAuditCore.mjs` (D-224). R8 continues rejecting every other extra stylesheet and every `--g-*` declaration outside the two exact token sources.
 - In that file permit only the `.dark .g-scope` block, `color-scheme: dark` and overrides of existing goal colour tokens. No light selectors, `:root`, unrelated declarations, imports, nested rules, font/layout/motion token overrides, or new token names. Invalid syntax fails closed. Comments must not hide a second rule or bypass a check.
 - Keep the index.css A3 allowlist, R7 exact light token tables, R2 trust-mark-only use and every other existing audit rule unchanged. Do not add the dark blue to the global light allowlist or allow arbitrary hexes everywhere.
 - Test approved dark counterpart coverage separately: every existing goal colour token is covered once, no duplicate overrides or missing tokens, verified-mark blue and commit colours match the source-grounded approved counterpart, and contrast meets this packet's AA bar. The light palette is not inferred from dark fixtures.
@@ -74,3 +74,4 @@ The existing R8 audit permits only `index.css` and `kit.css` and rejects every `
 A value needed to pass AA would visibly change the light palette, or the owner's captures contradict a token here. Ask the owner with the two captures side by side.
 
 ## Status
+- 2026-10-28: blocked on a packet-versus-guard conflict (R8 forbids the new CSS file and `--g-` outside `index.css`; the audit was outside this row's `owns`). Unblocked by the audit compatibility contract above (#763) and recorded as D-224: the file stays, the audit admits it by exact path, and the row owns the audit core and its fixtures. `todo` and startable again.
