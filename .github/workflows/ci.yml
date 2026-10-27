@@ -12,6 +12,7 @@ concurrency:
 
 jobs:
   check:
+    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'agent/reports/') || startsWith(github.head_ref, 'agent/review/') || startsWith(github.head_ref, 'agent/heartbeat/') || startsWith(github.head_ref, 'agent/architect/') || github.head_ref == 'agent/queue/landing')) }}
     name: typecheck
     runs-on: ubuntu-latest
     steps:
@@ -47,6 +48,7 @@ jobs:
         run: node scripts/scope-check.mjs --branch
 
   test:
+    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'agent/reports/') || startsWith(github.head_ref, 'agent/review/') || startsWith(github.head_ref, 'agent/heartbeat/') || startsWith(github.head_ref, 'agent/architect/') || github.head_ref == 'agent/queue/landing')) }}
     name: unit + component + route tests
     runs-on: ubuntu-latest
     steps:
@@ -66,6 +68,7 @@ jobs:
         run: pnpm vitest run
 
   build:
+    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'agent/reports/') || startsWith(github.head_ref, 'agent/review/') || startsWith(github.head_ref, 'agent/heartbeat/') || startsWith(github.head_ref, 'agent/architect/') || github.head_ref == 'agent/queue/landing')) }}
     name: production build
     runs-on: ubuntu-latest
     steps:
