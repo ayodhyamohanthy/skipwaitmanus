@@ -3370,6 +3370,30 @@
         "server/passkeyRoutes.test.ts"
       ],
       "note": "D-209 (1): the device-saved sign-in the owner asked for (D-172, docs/DEVICE-SIGNIN-REQUIREMENTS.md) never rides a sign-in fix's branch. Mechanism approved by the owner Oct 25 (SimpleWebAuthn, MIT, native passkey sign-in on skipwait.me; no authkit.app, no paid provider, no forced prompt). Waits in owner status for D-209 (4): may a referrer add a passkey (default no, D-057), and is Sign in with Apple in (default no, D-030). Packet phases A-C only after those answers; phase D is blocked. Build extends owns in its own PR as D-200 (2) allows."
+    },
+    {
+      "id": "D-180-a-free-asks-chip",
+      "title": "Free monthly allowance chip says referrals (D-180 headline slice)",
+      "row": "COPY",
+      "packet": "docs/plans/D-180-a-free-asks-chip.md",
+      "tier": 1,
+      "lane": "terminology",
+      "branch": "agent/copy/free-asks-chip-terminology",
+      "status": "in-review",
+      "dependsOn": ["PRICING-banded-oct25", "D-174-held-ask-reconfirm", "LAUNCH-legal-copy", "D-048-p3-live-review-find", "D-174-fix-post-binding", "D-176-public-claims", "D-048-dark-mode", "D-099-bonus-pages"],
+      "owns": [
+        "shared/moneyCopy.ts",
+        "client/index.html",
+        "client/src/pages/PlansV2.tsx",
+        "client/src/pages/PlansV2.test.tsx",
+        "client/src/pages/home.world.test.tsx",
+        "client/src/pages/policyPages.test.tsx",
+        "client/src/pages/home.mobileNav.test.tsx",
+        "client/src/pages/explore.test.tsx",
+        "client/src/components/plans/planCatalog.test.ts",
+        "server/moneyCopy.test.ts"
+      ],
+      "note": "Headline-only slice of D-180: free monthly allowance says referrals (owner headline decision Oct 23). Paid-unit credits and the ASK_COST tail stay with D-180-referral-words; no behavior or eligibility change. Depends on the active owners of the touched files so their in-flight edits land first; rebase the test expectations forward on any conflict. Oct 27 (Claude Code, landing review): also waits for PRICING-banded-oct25 (PR #666), which owns PlansV2.tsx, PlansV2.test.tsx and policyPages.test.tsx too; #666 rewrites PlansV2 with referral wording, so this slice drops its PlansV2 hunks when it rebases."
     }
   ]
 }
