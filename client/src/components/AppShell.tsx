@@ -1,7 +1,7 @@
 // AppShell (D-048 phase 3, W0): the app frame moves onto the goal system.
 // Every shell-wrapped route renders inside GoalShell (rail + top bar on
 // desktop, top bar + bottom bar on phones) with the one navigation from
-// goalNavFor (D-070/D-077): Find, My asks, Inbox, plus Referral queue when
+// goalNavFor (D-070/D-077): Find, My referrals, Inbox, plus Referral queue when
 // the server's verdict says verified referrer. The account menu is carried
 // over unchanged (its restyle is a later wave); the credits pill shows the
 // live seeker summary and hides on referrer surfaces (D-055).
@@ -34,7 +34,7 @@ function activeNav(path: string): GoalNavId {
 
 const PAGE_TITLES: Array<[RegExp, string]> = [
   [/^\/explore/, "Find a referral"],
-  [/^\/requests/, "My asks"],
+  [/^\/requests/, "My referrals"],
   [/^\/ask/, "Ask for a referral"],
   [/^\/queue/, "Referral queue"],
   [/^\/inbox/, "Inbox"],

@@ -1,5 +1,5 @@
 // GoalDetailPane (spec §4.6): the reading column next to a list. The queue
-// role is the screen's one display title; My asks uses heading size.
+// role is the screen's one display title; My referrals uses heading size.
 import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";

@@ -217,7 +217,7 @@ export default function Skippy() {
         <section className="mt-4 space-y-2 rounded-md border p-3">
           <p className="text-sm">{session?.coverageStatus === "waiting_for_company_coverage" ? "Your ask is saved and costs nothing until a verified employee can see it." : "Your ask is with verified employees."}</p>
           <div className="flex gap-2">
-            <a href="/requests" className="min-h-11 flex-1 rounded-md bg-black px-4 py-3 text-center text-white">Track it under My asks</a>
+            <a href="/requests" className="min-h-11 flex-1 rounded-md bg-black px-4 py-3 text-center text-white">Track it under My referrals</a>
             <button type="button" className="min-h-11 flex-1 rounded-md border px-4" disabled={busy} onClick={() => { setNote(""); void send({ kind: "restart" }); }}>Ask at another company</button>
           </div>
         </section>

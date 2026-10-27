@@ -1,4 +1,4 @@
-// The shared ask vocabulary (My asks rows and the conversation header): one
+// The shared ask vocabulary (My referrals rows and the conversation header): one
 // dot + word + four-node stepper per status, so both screens read the same.
 import type { GoalStatusValue } from "@/components/goal";
 
