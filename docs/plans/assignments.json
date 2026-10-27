@@ -3624,6 +3624,23 @@
         "docs/plans/LANDING-PROCEDURE-AUDIT-oct27.md"
       ],
       "note": "Independent auditor only; Instinct coordinator is the subject and must not self-close. Preserve branches, no history/settings/production mutation. Register separate code remediation if evidence requires it."
+    },
+    {
+      "id": "PICKER-avoid-land",
+      "title": "Respect avoid for a passing reviewer owned LAND continuation (#744)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-avoid-land.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-avoid-land",
+      "status": "todo",
+      "dependsOn": [
+        "PICKER-avoid-unblock"
+      ],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskAvoidLand.test.ts"
+      ]
     }
   ]
 }
