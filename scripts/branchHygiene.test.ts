@@ -171,7 +171,7 @@ describe("branch-cleanup.mjs as a process", () => {
       const { code, out } = await run(r.runner, s.base);
       expect(code).toBe(0);
       for (const line of ["delete  merged          agent/queue/done-1", "delete  squash-merged   feature/squashed", "delete  done-review     agent/review/done-1", "keep    open-pr         dependabot/npm/x", "keep    task-not-done   agent/queue/open-1", "keep    unmerged        feature/wip", "keep    protected       agent/reports/log"]) expect(out).toContain(line);
-      expect(out).toMatch(/DRY RUN: 3 to delete, 4 to keep/);
+      expect(out).toMatch(/DRY RUN: 3 to delete, 5 to keep/);
       expect(remote(r.origin)).toEqual(before);
     } finally { s.close(); }
   }, 60_000);
