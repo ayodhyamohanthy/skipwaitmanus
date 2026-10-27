@@ -24,7 +24,7 @@ vi.mock("wouter", async (importOriginal) => {
 
 const items = [
   { id: 2, category: "message", title: "Asha replied", body: "Happy to refer you", readAt: null, createdAt: new Date().toISOString() },
-  { id: 1, category: "status", title: "Ask accepted", body: "Quillmint accepted your ask", readAt: "2026-10-20T00:00:00Z", createdAt: "2026-10-20T00:00:00Z" },
+  { id: 1, category: "status", title: "Referral request accepted", body: "Quillmint accepted your referral request", readAt: "2026-10-20T00:00:00Z", createdAt: "2026-10-20T00:00:00Z" },
 ];
 const serverState = { items: items as unknown[], ok: true, failOnce: [] as number[], block: null as null | (() => Promise<void>), readCalls: [] as { url: string; method?: string; credentials?: string; body?: unknown }[] };
 vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -66,7 +66,7 @@ describe("goal alerts", () => {
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: "Open it" }));
     await waitFor(() => expect(goMock).toHaveBeenCalledWith("/inbox"));
-    fireEvent.click(await screen.findByRole("button", { name: /Ask accepted/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Referral request accepted/ }));
     await waitFor(() => expect(goMock).toHaveBeenCalledWith("/requests"));
   });
 

@@ -119,7 +119,7 @@ export default function GoalAlerts() {
     return <main data-skipwait-screen="alerts-sign-in" data-testid="goal-alerts" className="g-scope page-content mx-auto w-full max-w-2xl pb-10">
       <header className="px-4 pt-6 gdesk:px-5 gdesk:pt-7">
         <h1 className="text-g-display text-g-ink">See what needs you.</h1>
-        <p className="mt-2 text-g-meta text-g-ink-2">Replies, accepted asks and credit updates land here once you sign in.</p>
+        <p className="mt-2 text-g-meta text-g-ink-2">Replies, accepted referral requests and allowance updates land here once you sign in.</p>
       </header>
       <section aria-label="Your next step" className="mx-4 my-5 border border-g-hairline p-4 gdesk:mx-5">
         <h2 className="text-g-heading text-g-ink">Your next step</h2>
