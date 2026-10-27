@@ -3463,6 +3463,26 @@
         "design/goal-ui/captures/seeker-small/**",
         "docs/plans/D-048-seeker.md"
       ]
+    },
+    {
+      "id": "D-222-referral-count-shell",
+      "title": "Persistent person-owned remaining-referral count in the shell (D-222)",
+      "row": "D-048",
+      "packet": "docs/plans/D-222-referral-count.md",
+      "tier": 1,
+      "lane": "design-shell",
+      "branch": "agent/queue/d222-referral-count",
+      "status": "todo",
+      "dependsOn": [
+        "PRICING-banded-oct25"
+      ],
+      "note": "Build docs/plans/D-222-referral-count.md exactly: AppShell stops nulling the balance on REFERRER_SURFACE; the count element reads 'N referrals left' with 'referrals' meaning preserved at 390px; plain non-linked text on referrer routes (D-055: no plan/purchase affordance), quiet link allowed on seeker routes; honest loading/error-retry/'0 referrals left' states; hook and ledger semantics unchanged. Proof: viewport-true 1280x900 + 390x844@2x captures of ready, zero, error/retry and the referrer no-purchase boundary. Tier 1: one independent non-builder/non-fixer review; reviewer never merges.",
+      "owns": [
+        "client/src/components/AppShell.tsx",
+        "client/src/components/goal/GoalShell.tsx",
+        "client/src/components/appShell.test.tsx",
+        "design/goal-ui/captures/shell/**"
+      ]
     }
   ]
 }
