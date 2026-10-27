@@ -75,3 +75,4 @@ A value needed to pass AA would visibly change the light palette, or the owner's
 
 ## Status
 - 2026-10-28: blocked on a packet-versus-guard conflict (R8 forbids the new CSS file and `--g-` outside `index.css`; the audit was outside this row's `owns`). Unblocked by the audit compatibility contract above (#763) and recorded as D-224: the file stays, the audit admits it by exact path, and the row owns the audit core and its fixtures. `todo` and startable again.
+- 2026-10-28: resumed after D-224 by DeepSeek V4.1 Flash · 7204 on `agent/queue/d048-dark-mode` at `73b70053` (current `main` merged). Red-first provider, token/contrast, More-menu and R9 audit fixtures written; running them red next.
