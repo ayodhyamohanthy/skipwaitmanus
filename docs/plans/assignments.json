@@ -1483,7 +1483,7 @@
       "tier": 1,
       "lane": "d048-assistants",
       "branch": "agent/queue/d048-assistants",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2554,7 +2554,94 @@
       "branch": "agent/claude/d090-byor",
       "status": "todo",
       "dependsOn": [],
-      "note": "D-162: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main (docs/DECISIONS.md conflicts on the D-148 row: keep main's side and drop the branch's row, since D-162 records the waiver; the packet merges cleanly, so delete by hand its 'Gate waived by the owner (D-148 ...)' paragraph in §0 and its 'in progress — workbuddy · b0eb' Status line), and renumber 0107_ask_invites.sql to the next free number at landing (check drizzle/deploy/ on main and plan §5 at landing: on Oct 23 main has 0107_seeker_levels.sql and 0108_landed_thank_you.sql, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). Build C1-C5 in order: D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 puts the invite action into MyRequests.tsx as it is on main, as a ghost button or plain link (one black commit per page, D-150). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5). D-187 (Oct 24): C1-C6 are built; resume there: add \"/r/:token\" to KNOWN_ROUTE_PATTERNS in functions/_middleware.ts (not D-057's gate); the local '[auth] VITE_WORKOS_CLIENT_ID is not set' line is listed, not counted; user-facing 'ask' copy becomes D-180's referral vocabulary (money lines keep 'credit'); full gate, renumber 0111 at landing, Tier 1 draft PR. Review: not workbuddy, not GPT (D-151)."
+      "note": "D-162: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main (docs/DECISIONS.md conflicts on the D-148 row: keep main's side and drop the branch's row, since D-162 records the waiver; the packet merges cleanly, so delete by hand its 'Gate waived by the owner (D-148 ...)' paragraph in §0 and its 'in progress — workbuddy · b0eb' Status line), and renumber 0107_ask_invites.sql to the next free number at landing (check drizzle/deploy/ on main and plan §5 at landing: on Oct 23 main has 0107_seeker_levels.sql and 0108_landed_thank_you.sql, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). Build C1-C5 in order: D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 puts the invite action into MyRequests.tsx as it is on main, as a ghost button or plain link (one black commit per page, D-150). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5). D-187 (Oct 24): C1-C6 are built; resume there: add \"/r/:token\" to KNOWN_ROUTE_PATTERNS in functions/_middleware.ts (not D-057's gate); the local '[auth] VITE_WORKOS_CLIENT_ID is not set' line is listed, not counted; user-facing 'ask' copy becomes D-180's referral vocabulary (money lines keep 'credit'); full gate, renumber 0111 at landing, Tier 1 draft PR. Review: not workbuddy, not GPT (D-151).",
+      "owns": [
+        ".env.example",
+        "AGENTS.md",
+        "artifacts/d090-c6/README.md",
+        "artifacts/d090-c6/invite-sheet-report.json",
+        "artifacts/d090-c6/invite-sheet/live/mobile/d090_c6_invite-sheet.png",
+        "artifacts/d090-c6/invite-sheet/live/web/d090_c6_invite-sheet.png",
+        "artifacts/d090-c6/landing-claimed-report.json",
+        "artifacts/d090-c6/landing-claimed/live/mobile/d090_c6_landing-claimed.png",
+        "artifacts/d090-c6/landing-claimed/live/web/d090_c6_landing-claimed.png",
+        "artifacts/d090-c6/landing-held-report.json",
+        "artifacts/d090-c6/landing-held/live/mobile/d090_c6_landing-held.png",
+        "artifacts/d090-c6/landing-held/live/web/d090_c6_landing-held.png",
+        "artifacts/d090-c6/landing-signed-out-report.json",
+        "artifacts/d090-c6/landing-signed-out/live/mobile/d090_c6_landing-signed-out.png",
+        "artifacts/d090-c6/landing-signed-out/live/web/d090_c6_landing-signed-out.png",
+        "artifacts/d090-c6/landing-verified-report.json",
+        "artifacts/d090-c6/landing-verified/live/mobile/d090_c6_landing-verified.png",
+        "artifacts/d090-c6/landing-verified/live/web/d090_c6_landing-verified.png",
+        "artifacts/d090-c6/manifest.json",
+        "artifacts/d090-c6/sheet-revoke-confirmation-report.json",
+        "artifacts/d090-c6/sheet-revoke-confirmation/live/mobile/d090_c6_sheet-revoke-confirmation.png",
+        "artifacts/d090-c6/sheet-revoke-confirmation/live/web/d090_c6_sheet-revoke-confirmation.png",
+        "artifacts/d090-c6/waiting-row-report.json",
+        "artifacts/d090-c6/waiting-row/live/mobile/d090_c6_waiting-row.png",
+        "artifacts/d090-c6/waiting-row/live/web/d090_c6_waiting-row.png",
+        "client/src/App.tsx (switch only)",
+        "client/src/components/goal/goalBoundary.test.ts",
+        "client/src/components/requests/AskInviteSheet.tsx",
+        "client/src/components/requests/askInviteApi.test.ts",
+        "client/src/components/requests/askInviteApi.ts",
+        "client/src/components/requests/requestsApi.test.ts",
+        "client/src/components/requests/requestsApi.ts",
+        "client/src/lib/clarity.test.ts",
+        "client/src/lib/clarity.ts",
+        "client/src/lib/flags.ts",
+        "client/src/lib/sentry.test.ts",
+        "client/src/lib/sentry.ts",
+        "client/src/metadataAndRouteLoading.test.ts",
+        "client/src/pages/AskInviteLink.test.tsx",
+        "client/src/pages/AskInviteLink.tsx",
+        "client/src/pages/MyRequests.tsx",
+        "client/src/pages/myRequests.invite.test.tsx",
+        "docs/BACKLOG.md",
+        "docs/KIT_V4_BUILD_PLAN.md",
+        "docs/PRD.md",
+        "docs/plans/D-090-BYOR.md",
+        "docs/plans/GOAL_UI_COVERAGE.md",
+        "drizzle/deploy/0111_ask_invites.sql",
+        "drizzle/schema.ts",
+        "functions/_middleware.ts",
+        "scripts/qa/d090-byor.mjs",
+        "scripts/qa/d090-vite.config.mjs",
+        "scripts/qa/fixtures/d090-byor/invite-sheet.json",
+        "scripts/qa/fixtures/d090-byor/landing-claimed.json",
+        "scripts/qa/fixtures/d090-byor/landing-held.json",
+        "scripts/qa/fixtures/d090-byor/landing-signed-out.json",
+        "scripts/qa/fixtures/d090-byor/landing-verified.json",
+        "scripts/qa/fixtures/d090-byor/sheet-revoke-confirmation.json",
+        "scripts/qa/fixtures/d090-byor/waiting-row.json",
+        "server/_core/index.ts",
+        "server/askInviteClaim.test.ts",
+        "server/askInviteReservation.test.ts",
+        "server/askInviteRoutes.test.ts",
+        "server/askInviteRoutes.ts",
+        "server/askInviteSweep.test.ts",
+        "server/askInviteSweep.ts",
+        "server/askInvites.minePayload.test.ts",
+        "server/askInvites.test.ts",
+        "server/askInvites.token.test.ts",
+        "server/askInvites.ts",
+        "server/db.askExpiry.test.ts",
+        "server/db.coverageDelivery.test.ts",
+        "server/db.ts",
+        "server/errorAlerting.test.ts",
+        "server/errorAlerting.ts",
+        "server/privateReferralRoutes.ts",
+        "server/scheduledJobRegistry.ts",
+        "server/scheduledJobsContract.test.ts",
+        "server/schemaReconcile.ts",
+        "server/sentry.test.ts",
+        "server/sentry.ts",
+        "shared/askInvites.test.ts",
+        "shared/askInvites.ts",
+        "shared/scheduledJobs.ts",
+        "src/worker.ts"
+      ]
     },
     {
       "id": "D-057-session-gate",
@@ -2945,7 +3032,8 @@
       "dependsOn": [
         "D-048-fix-post-copy",
         "POSTMERGE-oct22-fixes",
-        "D-132-audit"
+        "D-132-audit",
+        "D-090-BYOR"
       ],
       "note": "D-193 packet section 5.3 and ruling (5): builds D-061's never-built reconfirm-before-spend without its closure, in deliverWaitingAskTx (every delivery path). Transition events, no migration; in-app notice only (no D-060 email exists yet). ASK_RECONFIRM_ENABLED stays false until QA; D-174-expiry-clock-removal waits for this row. D-197: also waits for D-132-audit (both own server/db.ts, server/privateReferralRoutes.ts and shared/moneyCopy.ts; the money-core audit goes first, D-146). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost.",
       "epic": "D-174",
@@ -2990,7 +3078,9 @@
       "lane": "d174-jobs",
       "branch": "agent/queue/d174-job-catalog",
       "status": "todo",
-      "dependsOn": [],
+      "dependsOn": [
+        "D-090-BYOR"
+      ],
       "note": "D-193 packet section 5.5. No code anywhere fetches a company's jobs today; the D-174 journey's jobs step needs this. Level = assignJobLevel on (title, snippet, applyUrl), the same fields that price the request. JOB_CATALOG_ENABLED stays false until QA.",
       "epic": "D-174",
       "owns": [
@@ -3222,7 +3312,7 @@
       "tier": 2,
       "lane": "d048-fix-sendask",
       "branch": "agent/ayo9/send-ask-blocker-ux",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-132-audit"
       ],
@@ -3445,6 +3535,22 @@
       ]
     },
     {
+      "id": "FIX-share-hub-link-ready",
+      "title": "Goal /share hub: never show the link as ready before it exists (flaky main CI test)",
+      "row": "D-048",
+      "packet": "docs/plans/FIX-share-hub-link-ready.md",
+      "tier": 1,
+      "lane": "d048-foundation",
+      "branch": "agent/queue/fix-main-eb0fd8cd",
+      "status": "in-review",
+      "dependsOn": [],
+      "note": "Main CI flake: shareHubGoal.test.tsx 'opens on the goal with the copy commit once the link is ready' failed on eb0fd8cd (run 40467542914) and dc7f71a8; GoalShareHub started with loading=false so the link could render as ready before it existed. PR #734 by a new Claude session (head 5149e8af, two files). Registered post-hoc by the coordinator: the D-166 queue gate refused the unregistered branch; the owner-direct label was NOT used and no gate bypass was granted. Tier 1: one independent D-151 review of the exact head by a model other than Claude (builder is Claude family), then landing on green required CI. Owns overlaps D-048-copy-goal-twins-trigger-fix, which now waits on this row and merges main forward after it lands.",
+      "owns": [
+        "client/src/pages/goal/seeker-small/GoalShareHub.tsx",
+        "client/src/pages/goal/seeker-small/shareHubGoal.test.tsx"
+      ]
+    },
+    {
       "id": "D-048-copy-goal-twins-trigger-fix",
       "title": "Fix #727 review findings: per-party reward trigger wording on the goal share/landed twins",
       "row": "D-048",
@@ -3453,8 +3559,10 @@
       "lane": "d048-foundation",
       "branch": "agent/deepseek/d048-goal-twins-trigger-fix",
       "status": "todo",
-      "dependsOn": [],
-      "note": "Post-merge review 6435626730 on #727: FINDINGS. Fix on a new branch off current main: (1) blocking - friend mailto/X message implies one trigger unlocks both rewards; state each person's own trigger (inviter next, joiner first; server/db.ts:4041-4045, 4437-4450, 4047-4048). (2) inviter status line same single-trigger construction. (3) '1 extra referral' -> '1 extra referral request' (reward is a request, not a completed referral). (4) tests: assert rendered mailto body + X strings per-party, signed-out copy, load-error text, close-others button; extend noun-ask guard to all rendered states. Refresh affected 390/1280 captures. Frozen naming, no unit semantics, no flag/RELEASED/pricing/billing change. Tier 1: independent D-151 review (seat-1 offered) before merge; reviewer never merges.",
+      "dependsOn": [
+        "FIX-share-hub-link-ready"
+      ],
+      "note": "Post-merge review 6435626730 on #727: FINDINGS. Fix on a new branch off current main: (1) blocking - friend mailto/X message implies one trigger unlocks both rewards; state each person's own trigger (inviter next, joiner first; server/db.ts:4041-4045, 4437-4450, 4047-4048). (2) inviter status line same single-trigger construction. (3) '1 extra referral' -> '1 extra referral request' (reward is a request, not a completed referral). (4) tests: assert rendered mailto body + X strings per-party, signed-out copy, load-error text, close-others button; extend noun-ask guard to all rendered states. Refresh affected 390/1280 captures. Frozen naming, no unit semantics, no flag/RELEASED/pricing/billing change. Tier 1: independent D-151 review (seat-1 offered) before merge; reviewer never merges. Owns overlaps FIX-share-hub-link-ready; this row waits for it and merges main forward after it lands.",
       "owns": [
         "client/src/pages/goal/seeker-small/GoalLanded.tsx",
         "client/src/pages/goal/seeker-small/GoalShareHub.tsx",
@@ -3462,6 +3570,26 @@
         "client/src/pages/goal/seeker-small/shareHubGoal.test.tsx",
         "design/goal-ui/captures/seeker-small/**",
         "docs/plans/D-048-seeker.md"
+      ]
+    },
+    {
+      "id": "D-222-referral-count-shell",
+      "title": "Persistent person-owned remaining-referral count in the shell (D-222)",
+      "row": "D-048",
+      "packet": "docs/plans/D-222-referral-count.md",
+      "tier": 1,
+      "lane": "design-shell",
+      "branch": "agent/queue/d222-referral-count",
+      "status": "todo",
+      "dependsOn": [
+        "PRICING-banded-oct25"
+      ],
+      "note": "Build docs/plans/D-222-referral-count.md exactly: AppShell stops nulling the balance on REFERRER_SURFACE; the count element reads 'N referrals left' with 'referrals' meaning preserved at 390px; plain non-linked text on referrer routes (D-055: no plan/purchase affordance), quiet link allowed on seeker routes; honest loading/error-retry/'0 referrals left' states; hook and ledger semantics unchanged. Proof: viewport-true 1280x900 + 390x844@2x captures of ready, zero, error/retry and the referrer no-purchase boundary. Tier 1: one independent non-builder/non-fixer review; reviewer never merges.",
+      "owns": [
+        "client/src/components/AppShell.tsx",
+        "client/src/components/goal/GoalShell.tsx",
+        "client/src/components/appShell.test.tsx",
+        "design/goal-ui/captures/shell/**"
       ]
     }
   ]
