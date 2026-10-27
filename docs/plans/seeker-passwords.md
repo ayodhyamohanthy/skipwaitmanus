@@ -11,7 +11,7 @@
 | Implementer | any model; independent auth review required |
 | Branch | new `agent/<model>/seeker-signin-finish` = `origin/agent/claude/seeker-signin` + `git merge origin/main` |
 | Depends on | nothing; parallel-safe with P0, D-067 and D-048 phase 2 |
-| Lands after | FND-4 and D-057-session-gate (D-163, Oct 23). At landing, merge `main` and get a focused review of that delta. Once D-057 is live, D-080 (b) is met and the WorkOS takeover test is no longer required |
+| Do not run at the same time as | FND-4 (same Sentry files), D-057-session-gate (next) |
 | Verified against | `main` `e6b87f8`/`681ea79` (merge trial: tsc 0, 259/259 focused tests) and the branch tip `5653b3b` (217/217) |
 
 ## 1. Goal

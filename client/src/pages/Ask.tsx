@@ -25,6 +25,7 @@ import { readAskPrefill } from "@/lib/askPrefill";
 import { useAskDraft } from "@/lib/askDraftApi";
 import { useCompanyDirectory, type PublicCompany } from "@/lib/companyDirectory";
 import { applySeo } from "@/lib/seo";
+import { ADD_CREDITS_HREF, ADD_CREDITS_LABEL } from "@shared/moneyCopy";
 import { jobLinkFitsCompany, isValidTargetRoleUrl } from "@shared/referralUrl";
 import { WHY_ME_MAX } from "@shared/whyMe";
 import { useAskComposer } from "./explore/useAskComposer";
@@ -103,6 +104,8 @@ export default function Ask() {
             <div className="mt-8 border-t border-g-hairline pt-5">
               <p data-testid="goal-ask-cost" className="text-g-label text-g-ink">{composer.cost.line}</p>
               <p className="mt-1 text-pretty text-g-meta text-g-ink-2">{composer.cost.detail}</p>
+              {composer.sendGuidance ? <p data-testid="ask-send-guidance" role="status" className="mt-3 text-pretty text-g-meta text-g-ink">{composer.sendGuidance}</p> : null}
+              {composer.creditRecovery ? <Link href="/plans" className="mt-2 inline-flex min-h-11 items-center text-g-meta text-g-ink underline underline-offset-4">View referral options</Link> : null}
               {composer.sendError ? <div role="alert" className="mt-2 text-pretty text-g-meta text-g-ink">{composer.sendError}</div> : null}
               <div className="mt-4 flex items-center justify-end gap-2 max-gdesk:grid max-gdesk:grid-cols-1">
                 {composer.onSaveDraft ? (
@@ -110,9 +113,15 @@ export default function Ask() {
                     {composer.draftState === "saved" ? "Draft saved" : "Save draft"}
                   </GoalButton>
                 ) : null}
-                <GoalButton variant="primary" touch="large" className="max-gdesk:w-full" busy={composer.sending} busyLabel={composer.sendBusyLabel} disabledReason={composer.sendBlocked} onClick={composer.send}>
-                  {composer.sendLabel}
-                </GoalButton>
+                {composer.topUp ? (
+                  <GoalButton asChild variant="primary" touch="large" className="max-gdesk:w-full">
+                    <Link href={composer.topUp?.href ?? ADD_CREDITS_HREF} onClick={composer.onTopUp}>{ADD_CREDITS_LABEL}</Link>
+                  </GoalButton>
+                ) : (
+                  <GoalButton variant="primary" touch="large" className="max-gdesk:w-full" busy={composer.sending} busyLabel={composer.sendBusyLabel} disabledReason={composer.sendBlocked} onClick={composer.send}>
+                    {composer.sendLabel}
+                  </GoalButton>
+                )}
               </div>
             </div>
           </>

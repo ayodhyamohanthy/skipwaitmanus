@@ -176,4 +176,119 @@ describe("queue empty state follows routing state", () => {
     // One chip, not one per card.
     expect(screen.getAllByText(/Decide within/)).toHaveLength(1);
   });
+
+  describe("P1-queue-attestation: official-process attestation on /queue", () => {
+    it("renders the official-process attestation with the company name directly above Accept and in keyboard help for a", async () => {
+      stubFetch((url) => {
+        if (url.includes("/preview")) return previewPayload;
+        if (url.includes("/inbox?scope=new")) return { requests: [inboxItem] };
+        if (url.includes("/inbox")) return { requests: [] };
+        return {};
+      });
+      render(<Queue />);
+      fireEvent.click(await screen.findByRole("button", { name: /Private ask/ }));
+
+      const acceptBtn = await screen.findByRole("button", { name: /Accept & connect/ });
+      // The exact attestation sentence renders next to / directly above Accept with the company name
+      const attestation = screen.getByText("By accepting, you confirm you'll refer only through Acme's official process.");
+      expect(attestation).toBeTruthy();
+      // In the keyboard help for 'a' (title on the button)
+      expect(acceptBtn.getAttribute("title")).toBe("By accepting, you confirm you'll refer only through Acme's official process.");
+    });
+
+    it("Accept button and 'a' key post ethicsConfirmed: true, while pass path never posts it", async () => {
+      const fetchMock = stubFetch((url) => {
+        if (url.includes("/preview")) return previewPayload;
+        if (url.includes("/inbox?scope=new")) return { requests: [inboxItem] };
+        if (url.includes("/inbox")) return { requests: [] };
+        if (url.includes("/one-click-review")) return { status: "approved" };
+        return {};
+      });
+      render(<Queue />);
+      fireEvent.click(await screen.findByRole("button", { name: /Private ask/ }));
+
+      const acceptBtn = await screen.findByRole("button", { name: /Accept & connect/ });
+      fireEvent.click(acceptBtn);
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+        "/api/company-referrals/7/one-click-review",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ decision: "approved", ethicsConfirmed: true }),
+        })
+      ));
+    });
+
+    it("pressing 'a' key posts ethicsConfirmed: true", async () => {
+      const fetchMock = stubFetch((url) => {
+        if (url.includes("/preview")) return previewPayload;
+        if (url.includes("/inbox?scope=new")) return { requests: [inboxItem] };
+        if (url.includes("/inbox")) return { requests: [] };
+        if (url.includes("/one-click-review")) return { status: "approved" };
+        return {};
+      });
+      render(<Queue />);
+      fireEvent.click(await screen.findByRole("button", { name: /Private ask/ }));
+      await screen.findByRole("button", { name: /Accept & connect/ });
+
+      await waitFor(() => expect(screen.getByRole("button", { name: /Accept & connect/ }).getAttribute("aria-disabled")).not.toBe("true"));
+      fireEvent.keyDown(window, { key: "a" });
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+        "/api/company-referrals/7/one-click-review",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ decision: "approved", ethicsConfirmed: true }),
+        })
+      ));
+    });
+
+    it("does not accept with 'a' while the pass sheet owns the keyboard, and restores the shortcut after Cancel", async () => {
+      const fetchMock = stubFetch((url) => {
+        if (url.includes("/preview")) return previewPayload;
+        if (url.includes("/inbox?scope=new")) return { requests: [inboxItem] };
+        if (url.includes("/inbox")) return { requests: [] };
+        if (url.includes("/one-click-review")) return { status: "approved" };
+        return {};
+      });
+      render(<Queue />);
+      fireEvent.click(await screen.findByRole("button", { name: /Private ask/ }));
+      fireEvent.click(await screen.findByRole("button", { name: /Pass privately/ }));
+      const reason = await screen.findByRole("button", { name: /Not my team or function/ });
+      reason.focus();
+
+      await act(async () => { fireEvent.keyDown(reason, { key: "a" }); });
+      expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/one-click-review"))).toHaveLength(0);
+      expect(screen.getByTestId("goal-sheet")).toBeTruthy();
+
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(screen.queryByTestId("goal-sheet")).toBeNull();
+      await waitFor(() => expect(screen.getByRole("button", { name: /Accept & connect/ }).getAttribute("aria-disabled")).not.toBe("true"));
+      fireEvent.keyDown(window, { key: "a" });
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+        "/api/company-referrals/7/one-click-review",
+        expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "approved", ethicsConfirmed: true }) })
+      ));
+    });
+
+    it("pass path never posts ethicsConfirmed", async () => {
+      const fetchMock = stubFetch((url) => {
+        if (url.includes("/preview")) return previewPayload;
+        if (url.includes("/inbox?scope=new")) return { requests: [inboxItem] };
+        if (url.includes("/inbox")) return { requests: [] };
+        if (url.includes("/one-click-review")) return { status: "declined" };
+        return {};
+      });
+      render(<Queue />);
+      fireEvent.click(await screen.findByRole("button", { name: /Private ask/ }));
+      fireEvent.click(await screen.findByRole("button", { name: /Pass privately/ }));
+      fireEvent.click(await screen.findByRole("button", { name: /Not my team or function/ }));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+        "/api/company-referrals/7/one-click-review",
+        expect.objectContaining({ method: "POST" })
+      ));
+      const postCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/one-click-review"));
+      const body = JSON.parse(String(postCall?.[1]?.body));
+      expect(body.ethicsConfirmed).toBeUndefined();
+    });
+  });
 });

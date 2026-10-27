@@ -22,3 +22,4 @@ export { GoalDecisionBar, type GoalDecisionBarProps } from "./GoalDecisionBar";
 export { GoalPassReasons, type GoalPassReasonsProps } from "./GoalPassReasons";
 export { GoalDrawer, useIsDesktop, type GoalDrawerProps } from "./GoalDrawer";
 export { GoalSheet } from "./GoalSheet";
+export { GoalNextStep } from "./GoalNextStep";

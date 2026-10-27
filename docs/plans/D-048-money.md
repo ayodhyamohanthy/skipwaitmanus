@@ -1,0 +1,168 @@
+# Packet D-048 phase 3: manage your plan and understand referral prices
+
+> Read `docs/BRIEF.md`, then this packet. The register wins. This parent task is **Tier 3, packet-only**; each child is **Tier 1** and needs a draft PR and independent review before landing.
+
+| Field | Value |
+|---|---|
+| Packet task / shared row | `D-048-P-money` / `D-048` (write this packet's Status section, never the shared §3b row) |
+| Architecture branch | `agent/architect/d048-p-money` (picker-created architect lock; the registry's `agent/queue/d048-p-money` slug remains unchanged) |
+| Verified against | `main` `dd849c48`, 2026-10-23; re-find cited functions before implementation |
+| Decisions | D-004, D-006, D-019, D-030, D-031, D-042, D-055, D-063, D-065, D-067, D-079, D-082, D-084, D-111, D-123, D-132, D-134, D-135, D-146, D-151, D-152, D-153, D-156 |
+| Parent dependency | `D-048-phase-3` |
+| Adds, in order | `D-048-p3-plans`, `D-048-p3-premium`, `D-048-p3-pricing` — exactly the split's list; no release or retirement rows |
+| Sources | `docs/plans/D-048-phase-3-split.md`, `docs/PRICING.md`, `docs/PAYMENTS_TEST_RUNBOOK.md`, `design/goal-ui/DOCTRINE.md`, `docs/plans/GOAL_UI_MIGRATION.md` |
+
+## 1. Goal
+
+Let a seeker understand their actual balance of referral requests (internally: credits), receipts and cancellation options, reach the currently available purchase path, and read truthful public prices in the goal-first UI. Rebuild the presentation around one useful next action, not a black recolouring of the kit. Keep every financial, authentication and recovery contract intact. This packet neither sells a new product nor enables frozen pricing.
+
+**The `plans` surface id means `/billing` here.** `/plans` continues through `D-132-plans-v2` and its audit/enable chain, not a parallel goal re-skin of legacy `Plans.tsx`. The child must not change the `/plans` route, `Plans.tsx`, `PlansV2.tsx`, `PlansV2Connected.tsx`, or any plan-family/cost flag.
+
+## 2. Binding rules
+
+These excerpts are binding; read their complete entries and any newer decisions before building:
+
+- D-031 / `AGENTS.md`: **“Never choose money-spending options. Choose free or money-earning options only.”** Use mocked responses and fictional fixtures; no live payment, catalog mutation, subscription or provider-setting change. The payment runbook says **“Agents never make real payments (D-065)”**.
+- D-042 / brief: **“A money path that cannot deliver is switched off, never deleted without the owner's say-so”** and **“nothing is offered that the code does not grant”**. Preserve pending recovery even where a purchase is now refused.
+- D-146 / `docs/PRICING.md`: fixed passes **“NOT sold, and stay off (`PASS_SALES_ENABLED = false`, D-084)”**. A dark goal surface is not authority to enable any pricing flag or sell a pass. D-146's “D-132 only” model is superseded as the target by the Oct 25 freeze below; its code stays behind off flags.
+- D-152's plan names (“Entry level Referrers”, “Mid level Referrers”, “Senior level Referrers”) belong to the superseded D-132 family; render plan names only from the current catalog source, never typed in a goal file. No name is an access entitlement.
+- D-153: **“intent should reach users faster anywhere”**; wording states the action, outcome and cost plainly and promises only what works today.
+- **User-facing wording is referral-only (D-173, D-180; owner Oct 25: “in place of credits we are using name referrals”).** No goal string, heading, button, empty/error state or caption says “credit”, “credits” or the noun “ask”/“asks”; the verb stays (“Ask for a referral”). The formal noun is “referral request”; a balance is stage-qualified (“referral requests left”, “uses 1 referral request”), and only the headline “3 free referrals” stands unqualified. Keep requested, accepted and submitted distinct: a request, or a bought balance, is never shown as a guaranteed or completed referral. Internal identifiers stay unchanged (`useCreditBalance`, `credit-recovery`, `CREDIT_PACKS_ON_SALE`, ledger and API field names); where this packet says “credit” in prose it means that internal billing unit or legacy behaviour, never display copy. Display strings come from the shared money-copy sources once the terminology lane (`D-180-referral-words`) lands them; a goal surface never retypes a money line.
+- **Oct 25 pricing freeze (owner, being recorded in the register; implementation PR #666 under independent review).** The banded seeker plans replace the D-132 fee-plus-credits ladder as the frozen target, and legacy pack sales are paused there. That freeze authorizes no paid activation: banded checkout, referrer-priority plans and company plans stay unsold behind their own gates. The goal surfaces render whatever the current switches and catalog return; a paused or unavailable sale shows an honest paused state with no pay commit, and nothing here enables a flag or describes legacy behaviour as current.
+- D-156: **“Until the owner answers: nothing is built, no prices or paid entitlements are chosen or inferred, no provider catalog is touched”**. Referrer candidate plans remain out of scope; the existing free/no-billing behavior stands.
+- Split §Landing: **“Data and API modules ... are imported read-only, so money, credit, identity and privacy logic is one code path for both versions.”** Keep kit bodies/components/tests unchanged apart from the small page switch. Goal code never imports kit components.
+- Split §Rulings: the D-063 sentence **“stays on every page that talks about cost ... imported from `shared/moneyCopy.ts`”**. Use the exports for the current model; do not substitute V2 rules while its money gates are off.
+- Split §Release: **“A page that shows prices goes live only under the money gates (D-111, D-123: pricing going live needs the owner's word).”** Release requires the independent reviewer and CEO, preview QA and captures; these children land dark.
+
+D-035 is owner-held. This packet changes no decline/refund policy, revives no declined task, adds no invented dependency on D-035, and does not infer permission from older superseded text. Money uncertainty goes to the CEO, never a guessed UI rule.
+
+## 3. Current behaviour, verified in code
+
+Line numbers describe the baseline above; locate the named component/function again when claiming a child.
+
+1. `client/src/App.tsx:121`, `PLAN_FAMILY_V2_CLIENT` route: `/plans` chooses `PlansV2Connected` or legacy `Plans`; `/wallet` redirects to `/plans`. `client/src/lib/goalFlags.ts:8` reads the V2 client flag. F-flags may move that export; this packet never edits either module.
+2. `client/src/pages/PlansV2.tsx:184-199`, plan CTA handling: the dark page currently reports checkout/application availability instead of initiating a paid checkout. `PlansV2Connected.tsx:8-18` supplies currency and seeker-level data. Do not claim its UI proves fulfillment or launch readiness.
+3. `client/src/pages/Billing.tsx:28-53`, `Billing`: authenticated summary and receipts load in parallel with credentials and optional Bearer token; `readApiJson`, `parseSummary` and `parseReceipts` reject failures/malformed data. Loading, error, retry, signed-out and real-receipt states exist. `Billing.tsx:55-65`, `cancelPlan`, posts `{role: "job_seeker"}` to `/api/chargebee/subscription-cancel`, then shows `non_renewing` and the returned term end only on success.
+4. `client/src/components/plans/billingApi.ts:13-53` owns the Zod-parsed billing contract. The corresponding summary/receipts routes at `server/privateReferralRoutes.ts:810-848` are authenticated, owner-scoped and private/no-store. These modules are read-only; this packet introduces no alternate wallet or cancellation API.
+5. `client/src/pages/Premium.tsx:27-54,78-143`, `Premium`: role/currency/quantity, authenticated summary, pending checkout storage and bounded `/api/chargebee/credit-recovery` reconciliation are part of the existing flow. `Premium.tsx:145-163` retires single-credit purchase when packs are on sale and routes to `/plans#packs`; a referrer gets no purchase UI. Do not turn the legacy quantity selector into a new pack catalog or bypass retirement.
+6. `client/src/lib/chargebeeCheckout.ts`, `oneTap.ts`, `paymentRoute.ts` and `tokens.ts` hold the checkout/sign-in/return contracts. `server/chargebeeRoutes.ts:85-115,159-188` refuses referrer purchases before a provider/probe/intent, retires Pro/Max, and preserves the server availability checks. Recovery at `chargebeeRoutes.ts:259-297` requires authenticated ownership, paid evidence and matching intent/amount/currency; a client return alone is not a credit grant.
+7. `client/src/pages/Pricing.tsx:7-38`, `Pricing`, is a public, fetch-free `PolicyPageShell` page with current pack examples, approved credit-rule constants, provider explanation and `/plans` link. A layout task must not silently change those price claims, promise disabled plans or make a second transactional catalog. Its existing text is the parity baseline, not authority to override a newer catalog/decision; a discovered contradiction is reported with evidence.
+8. `shared/moneyCopy.ts:20-35,55-80,147` contains live and V2 money copy and the neutral paid-plans sentence; `shared/referrerPurchases.ts` preserves the switched-off purchase path and recovery. `client/src/components/plans/plansCatalogApi.ts:1-33`, `usePlansCatalog`, validates the live catalog and handles offline/unavailable states without stale prices. All remain read-only.
+
+## 4. Target behaviour and surface contracts
+
+Every child has loading, empty, failed/malformed-load, offline, signed-out/forbidden and successful states applicable to its route. Never show a failed balance as zero, fabricate a receipt, imply payment completion from a URL, or let a return parameter trigger a purchase. Exactly one black commit in the contextual “Your next step” block; secondary actions are ghost controls or links. Status is dot + text; numbers use the goal mono tokens.
+
+The following are **changeable presentation proposals**, not new product or price decisions. Builders must compare them with the approved comps and the doctrine. The shared contract table currently lacks billing/premium/pricing rows: propose the contract with captures in the child PR; ask the design-core/CEO owner to record it in `GOAL_UI_MIGRATION.md`, since this packet grants no shared-file ownership. Do not expand owns silently or claim the surface complete before that contract is recorded.
+
+| Child | Route / id | Goal and contextual next step | Behaviour to retain |
+|---|---|---|---|
+| `D-048-p3-plans` | `/billing`; `goalSurfaceOn('plans')` | “Manage your plan and referral requests.” Signed out: sign in. Normal state: reach plans and the referral-request balance; an explicitly opened cancellation confirmation makes its confirm action the single commit. Error: retry. | Summary, actual receipts, payment-method facts, cancellation confirmation, pending/failed/success and current-term-end states. No new purchase, auto-renew, refund or card-management path. |
+| `D-048-p3-premium` | `/premium`; `goalSurfaceOn('premium')` | “Get more referral requests.” Packs on sale: go to existing `/plans#packs`; permitted legacy purchase: show selected total and continue to existing checkout; sales paused or unavailable: say so plainly with Support as a quiet link and no pay commit; pending return: recover/status, not purchase again. Never word a purchase as buying a referral outcome. | Role/currency/quantity, one-tap return preservation, auth-loaded guard, exact selected total, single-credit retirement, availability, bounded pending recovery, no referrer sale. |
+| `D-048-p3-pricing` | `/pricing`; `goalSurfaceOn('pricing')` | “Know what a referral request costs.” “See plans and prices” goes to `/plans`. | Current approved public price statements, credit rule and provider explanation, D-063 copy; public/fetch-free prerender without auth/query providers. No new transactional pricing, entitlement or paid default. |
+
+## 5. Exact files, rows and dependencies
+
+The parent PR changes only this packet and `docs/plans/assignments.json`: set `D-048-P-money` to `done` in the landing PR and add these three rows immediately after it, in split order. Leave its existing metadata/packet-null convention and every older row unchanged. `done` in that PR is the intended landing transition, not a claim that unmerged work is live.
+
+| ID / branch | Lane / tier | Depends on (exact split order) | Owned implementation paths |
+|---|---|---|---|
+| `D-048-p3-plans` / `agent/queue/d048-p3-plans` | `d048-money` / 1 | `D-048-F-harness`, `D-048-F-primitives`, `D-048-F-credits`, `D-048-P-money`, `GO-LIVE-1b`, `D-132-plans-v2`, `D-048-F-goal-check` | `client/src/pages/Billing.tsx` **switch only**; `client/src/pages/goal/plans/**`; `client/src/pages/plansGoal.test.tsx`; `design/goal-ui/captures/plans/**`; `client/src/components/plans/BillingPanels.tsx`, `client/src/components/plans/CancelPlanDialog.tsx`, `client/src/components/plans/KitDialog.tsx` (D-167 §4) |
+| `D-048-p3-premium` / `agent/queue/d048-p3-premium` | `d048-premium` / 1 | `D-048-F-harness`, `D-048-F-primitives`, `D-048-P-money`, `D-048-F-goal-check`, `PRICING-banded-oct25` | `client/src/pages/Premium.tsx` **switch only**; `client/src/pages/goal/premium/**`; `client/src/pages/premiumGoal.test.tsx`; `design/goal-ui/captures/premium/**` |
+| `D-048-p3-pricing` / `agent/queue/d048-p3-pricing` | `d048-pricing` / 1 | `D-048-F-static-frame`, `D-048-P-money`, `D-048-F-goal-check`, `POSTMERGE-oct22-fixes`, `PRICING-banded-oct25` | `client/src/pages/Pricing.tsx` **switch only**; `client/src/pages/goal/pricing/**`; `client/src/pages/pricingGoal.test.tsx`; `design/goal-ui/captures/pricing/**` |
+
+**D-167 applied at landing (Claude Code · 6029, Oct 24).** D-167 (on `main` since #552) makes every surface row wait for `D-048-F-goal-check` and gives each row the single-page components `docs/plans/GOAL_UI_COVERAGE.md` §4 lists for its page. The three rows above carry that edge. `D-048-p3-plans` owns `Billing.tsx`'s three single-page components and redesigns them in its own pull request, one component per commit (GOAL_UI_COVERAGE.md §4). `Premium.tsx` and `Pricing.tsx` have no single-page components there. `Plans.tsx`'s components stay out of scope, because `/plans` stays on the frozen D-132 path.
+
+**Pricing edge added at landing (Buffy · d162, Oct 24).** `POSTMERGE-oct22-fixes` (#628, the #619 findings) owns `client/src/pages/Pricing.tsx` for the catalog-composed pack copy, so `D-048-p3-pricing` depends on it: the copy fix lands first and the goal switch then wraps the fixed page, which is also what `validateAssignments` requires of two open tasks that own one path.
+
+All children: status `todo`, row `D-048`, epic `D-048-p3`, packet `docs/plans/D-048-money.md`. Flag descriptions belong in the note, not an unsupported registry key. The three child slugs had no remote match at preparation; fetch and check again before publishing. Architecture locks use the picker-created `agent/architect/` branch; this is normal, not a second build claim.
+
+**Read only:** the code/data modules cited in §3; `shared/planFamily.ts`, `shared/moneyCopy.ts`, `shared/referrerPurchases.ts`; existing billing/plans/premium/pricing tests; `client/src/test/goalShellHarness.tsx`; approved goal components and fetch-free `GoalStaticFrame` once foundation dependencies land; doctrine, comps and capture checklist. UI-only state/request wiring stays within the goal surface, consuming the same contracts and endpoints; financial rules are never cloned. Do not import kit presentation components into goal code.
+
+**Out of scope:** `App.tsx`, `AppShell.tsx`, hooks, shared lib/data/API modules, `components/goal/**`, `components/plans/**` (except the three `Billing.tsx` components `D-048-p3-plans` owns under D-167), `server/**`, `shared/**`, CSS/token/kit/ui layers, workflows, migrations, dependencies, env keys, production switches/RELEASED, legal text, decisions, brief, shared §3b row and other tasks. A child may update only its own assignment status and its own Status line in this packet. Any unavailable shared helper/goal primitive goes back to design-core, not a local substitute or owns expansion.
+
+## 6. Implementation steps — each child separately
+
+1. **Claim and sync:** run the picker, use its full session name and claimed branch, fetch main and confirm dependencies actually landed. Re-read pricing decisions and the current kit page/tests; list each existing behaviour and matching new goal assertion in the PR. Set only the child's Status line to in progress. Do not claim by editing this table.
+2. **Tests red first:** write §7 tests in the child's named new test file, using the foundation harness, mocked auth/API responses and goal flag ON. Run to show the new goal body/contract is absent (or the intended assertion fails), not an unrelated setup failure. Never weaken/skip/edit kit tests. A red run is evidence; before committing a step, its focused suite and `pnpm check` must be green.
+3. **Build the goal body and switch:** new code stays in its `pages/goal/<id>/` tree; preserve the old component as `KitX`, lazy-load the new goal body (static import for prerendered pricing), add only the flag switch in the existing page (at most 12 changed lines per scope check). Use approved primitives/frame without editing them. Suggested commit: `feat(goal): add dark <id> money surface with parity tests`.
+4. **Prove parity and captures:** run the unedited controls and goal tests, token audit, flags-on production/prerender build and full gate. Capture fictional-fixture 1280/390 views for normal/error/empty/pending states, compare with the approved comp and record the screen contract through its shared-file owner. Suggested commit: `docs(goal): record <id> parity and capture evidence`.
+5. **Draft PR and review:** merge latest main conflict-free, inspect exact owns and kit-switch line count, push every commit, open a Tier 1 draft PR, report the exact SHA and stop implementation. A different model that neither built nor fixed reviews it (D-151). Do not merge your own money implementation or enable it.
+
+The parent architecture task needs registry/doc validation, not a fabricated runtime red test. Its full local gate, focused picker tests, required exact-head CI and separate packet/registry delta review precede landing. For a later main integration, the source is [`docs/DECISIONS.md`, “Scoped owner merge-policy amendment, Oct 23, 2026”](../DECISIONS.md#scoped-owner-merge-policy-amendment-oct-23-2026), baseline lines 223–225: only a conflict-free docs/registry-only integration with no runtime delta may use focused checks, separate independent delta review and required CI without repeating the full local gate solely for main movement. Conflicts require explicit resolution and renewed review; this adds no exception beyond that recorded amendment.
+
+## 7. Tests first and unchanged controls
+
+For every new test, record the failing command/output before implementation, then its passing output. Goal flag ON is explicit via a mocked `goalSurfaces` module/harness; flag OFF runs all original assertions byte-identical. Tests may live additionally inside the child's owned goal directory, never a shared test file.
+
+### Billing — `client/src/pages/plansGoal.test.tsx`
+
+- **Goal route and rollback:** mount billing with goal enabled; assert goal heading, contextual next-step block, one black commit and no kit body. Disabled: old billing body and existing tests remain unchanged. Confirm this work does not alter `/plans`' V2/legacy route selection or any pricing flag (read-only source/diff control).
+- **Authentication and reads:** signed out makes zero private summary/receipt requests and presents sign-in. Signed in sends the same two GETs with credentials/optional token and `role=job_seeker`. Loading then success displays the parsed real totals, receipt amounts/currencies/links and plan status. Empty receipts are explicitly empty, not invented.
+- **Failures/retry:** summary or receipt non-OK, invalid JSON/schema and network/offline failure show plain failure/retry, never zero balance or fake success. Retry calls the same endpoints and can recover; unmount/sign-out ignores late responses.
+- **Cancellation:** opening/closing confirmation writes nothing. Confirm once POSTs the exact existing role payload, disables repeated confirmation while pending, then shows `non_renewing` and server term end on success. Rejection leaves plan state unchanged and shows an actionable error; no optimistic refund/credit/termination claim.
+- Controls, unchanged: `client/src/pages/billing.test.tsx`, `creditPacksOffSale.test.tsx`, plans payment/recovery tests and shared flag-off guards.
+
+### Premium — `client/src/pages/premiumGoal.test.tsx`
+
+- **Retired/referrer states:** catalog packs on sale removes the legacy single-credit purchase and routes to `/plans#packs`. Referrer role never shows/calls purchase even when catalog is available; a previously started referrer payment can still use recovery. No “free referral” or paid-referrer promise.
+- **Auth, return and selected total:** unloaded auth cannot checkout; signed-out sign-in preserves role, currency and quantity using existing one-tap contracts. For multiple quantities and both INR/USD, callout, CTA/footer and checkout show the selected total consistently, not unit price. No automatic checkout on mount/return.
+- **Checkout bounds:** permitted legacy purchase calls the existing Chargebee helper with exactly the current role/currency/quantity fields; disabled/pending prevents double submit; 403/409/503/network failures show honest no-charge/unavailable copy, not success. Mock providers only.
+- **Recovery:** a pending hosted page invokes only existing credit-recovery with the stored ID/role, observes the existing bounded retry limit, and never grants credits from URL text. Only a confirmed `credited` result updates displayed credits; unpaid, wrong role/account, mismatched or review responses remain pending/review/error without invented credits. Preserve recovery after sale switch-off and stale-response cleanup.
+- Controls, unchanged: `premium.localPrice.test.tsx`, `premium.oneTapSignin.test.tsx`, `premium.packRetirement.test.tsx`, `premium.paymentRecovery.test.tsx`, `premium.promo.test.tsx`, `premium.totalLabel.test.tsx` and `tokenRecovery.routes.test.tsx`. Preserve the already-landed selected-total repair.
+
+### Pricing — `client/src/pages/pricingGoal.test.tsx`
+
+- **Public prerender:** render ON without auth/query providers; no authenticated requests or new price fetch. Static goal frame and existing public route/SEO/prerender contracts hold; OFF preserves `pricing.test.tsx` unchanged.
+- **Copy and navigation parity:** approved baseline pack examples and provider explanation survive in referral-only wording (D-173, D-180), `/plans` is the one commit target, D-063 and the current credit rule are imported from `shared/moneyCopy.ts`, and no disabled-plan checkout/renewal, fabricated discount, entitlement or five-plan exploration appears. UI names follow current decisions only where those plan names are actually rendered.
+- **Money boundary:** guard goal source against retyped money-rule strings, kit imports and changed pricing flags; compare meaningful public price and referral-request facts with the approved source/baseline, not just screenshot similarity. If existing public examples contradict the live catalog or register, report the exact mismatch instead of silently repricing or labelling a stale price current.
+- Controls, unchanged: `pricing.test.tsx`, public prerender and SEO-route tests, `client/src/planFamilyFlagsOff.test.ts`, `PlansV2.test.tsx`, `plansV2.config-guard.test.tsx`.
+
+### Cross-surface controls
+
+Run existing server checkout/referrer/availability/recovery tests without edits, including `server/chargebeeReferrerPurchase.test.ts`. Denied paths stay before provider/intent; Pro/Max remains retired, passes stay off, duplicate recovery cannot credit twice, and no new server/shared diff exists. Test malformed data, late replies, offline→retry and one next action. Client tests simulate evidence, not actual provider money movement; server controls prove its real transactional contract.
+
+## 8. Edge cases and races
+
+- Failed or partial billing reads are not empty accounts. Never display an invented zero or stale amount as current; a cancellation failure never marks the subscription cancelled.
+- Cancellation retry uses the existing server path only; do not add a client ledger write, refund mechanism or new idempotency key. Disable duplicate UI commits while in flight.
+- Pending returns are recovery, never a new purchase. Current switches may refuse a sale while allowing its earlier payment to settle/recover; retain that distinction for referrers as well.
+- Catalog availability can change after render; the existing server remains the authority and its 409/503 is shown plainly. Do not cache or invent transactional prices in the goal body.
+- Goal UI flag and D-132 pricing/cost flags are independent. Previewing any goal id must not enable V2 pricing or per-level costs. A newer money implementation on main must be ported through the release kit-drift check first.
+- Missing card details, provider redirects or sign-in do not justify adding a second checkout or exposing a secret in capture fixtures. Use mocked synthetic data only.
+
+## 9. Definition of done and release gates
+
+- Scope is exactly §5; no existing test assertion is weakened, removed or skipped, and kit switch edits remain within the limit. The three registry rows retain exact dependencies, unique slugs and supported keys; no old row is reordered.
+- Red-first goal tests, unchanged controls, `pnpm check`, token audit, migration lint, deploy-trigger check, full vitest and `pnpm build` pass on the integrated candidate. Also run `VITE_GOAL_SURFACES=all pnpm build` after foundation lands. Use the foundation capture command/checklist with fictional fixtures at both widths; if another synthetic fixture is needed, its harness owner supplies it, not this child.
+- Draft Tier 1 PR receives an independent different-model review on the exact final head, required CI is green, and the picker landing slot serializes landings. Conflicts and later runtime deltas require review again. Report all stops/findings/pushes with the picker's full session name.
+- Implementation lands **dark**; never edit RELEASED here. After the landing, watch applicable CI/deploy checks to completion and verify the production web SHA and unchanged live route. A docs-only packet/registry landing does not warrant a claim that an API or UI deployed.
+- R3 is registered separately only after its surfaces land and its independent/CEO sign-offs, money gates and owner pricing word are met. Kit-drift check, preview QA, 1280/390 captures, live verification and Sentry watch precede release; revert the one-line release to roll back. Retirement is separate after seven clean live days.
+- Fill the child's Status line with exact SHA, reproduced gate counts, capture locations, live/dark proof and explicit remaining limitations. No screenshot is owed for this packet-only change because it changes no screen.
+
+## 10. Independent review questions
+
+1. Is `plans` scoped to `/billing`, leaving `/plans` and every V2/cost flag untouched?
+2. Are all three rows, dependencies, tiers, lanes, supported registry keys and switch-only owns exactly the split contract, with no remote slug collision?
+3. Do data/checkout/parsing/money modules remain read-only, kit assertions byte-identical, and goal code free of kit imports?
+4. Do displayed prices/totals match the existing source, referrers remain uncharged, fixed passes stay off, and D-156/unknown reach entitlements remain unbuilt?
+5. Is summary/receipt failure distinguishable from zero/empty, cancellation only confirmed on server success, and existing pending recovery preserved without a second purchase or credit grant?
+6. Are public pricing prerender/fetch-free behavior, truthful shared money copy in referral-only wording (no “credit”, “credits” or noun “ask” on screen; requested is never shown as referred), one commit action and both viewport captures proven, with the proposed contract recorded by its shared-file owner?
+7. Is the exact tested/reviewed head green, still dark, and is release explicitly held behind its separate pricing/sign-off gates?
+
+## 11. Stop and report
+
+Stop the affected child, push its evidence/status and report to the CEO if a cited function/contract changed, a test fails for an unexplained reason, a necessary helper/fixture/contract-table edit lies outside owns, or a price/copy/refund/reach/referrer-plan choice is undecided. State file:line, expected/current behavior and the minimal owner/design-core action. Never widen scope, enable a flag, weaken a test, merge an unreviewed money delta or guess a financial rule. Other eligible lanes continue through the picker.
+
+## 12. Owner questions
+
+No new owner decision is needed to register these three dark presentation tasks. Existing open pricing/reach/referrer-candidate-plan questions remain open and are not resolved by this packet. The UI goal-line proposals above are changeable presentation assumptions only; a conflict with an approved comp/contract is sent to design-core/CEO before calling the child complete.
+
+## Status
+
+- `D-048-P-money`: done when #557 lands. Written by GPT · 5deb (2026-10-23, branch `agent/architect/d048-p-money`; packet and registry only, no runtime or price activation). On 2026-10-24 Claude Code · 6029 merged `main` and applied D-167 to the three rows: the `D-048-F-goal-check` edge and the `Billing.tsx` components. `validateAssignments` returns `[]`.
+- `D-048-p3-plans`: not started; waiting for the registered foundation dependencies.
+- `D-048-p3-premium`: not started; waiting for the registered foundation dependencies.
+- `D-048-p3-pricing`: not started; waiting for the registered foundation dependencies and `POSTMERGE-oct22-fixes` (the `Pricing.tsx` copy fix lands first).
+- Oct 27 registry (Claude Code, PR #656 before landing): `D-048-p3-premium` and `D-048-p3-pricing` also wait for `PRICING-banded-oct25` (PR #666, registered by #718), which owns `Premium.tsx` and `Pricing.tsx` and lands the Oct 25 pricing state these pages present.
+- Oct 27 wording correction (Claude Code, PR #656 before landing): the three proposed goal lines and the acceptance checks now use referral-only wording (D-173, D-180), and §2 records the Oct 25 pricing freeze as the target without authorizing any paid activation. Internal identifiers, rows, owns and dependencies are unchanged.

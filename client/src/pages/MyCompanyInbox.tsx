@@ -105,6 +105,8 @@ export default function MyCompanyInbox() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+  const [previewAttempt, setPreviewAttempt] = useState(0);
   const [working, setWorking] = useState(false);
   const [passOpen, setPassOpen] = useState(false);
   const [openingCapacity, setOpeningCapacity] = useState(false);
@@ -148,7 +150,11 @@ export default function MyCompanyInbox() {
 
   // /referrer-home rows link here as /queue?request=:id and open that ask directly.
   useEffect(() => {
-    if (verified && Number.isInteger(requestedId) && requestedId > 0 && requests.length && !selectedId) setSelectedId(requestedId);
+    if (!verified || !Number.isInteger(requestedId) || requestedId <= 0 || !requests.length || selectedId) return;
+    const requested = requests.find(item => item.id === requestedId);
+    if (!requested) return;
+    if (requested.status !== "pending" || requested.isClaimedByYou) go(`/conversation/${requested.id}?from=inbox`);
+    else setSelectedId(requested.id);
   }, [verified, requestedId, requests, selectedId]);
 
   // The pitch and document count only exist on the unclaimed preview; claimed
@@ -156,28 +162,31 @@ export default function MyCompanyInbox() {
   useEffect(() => {
     if (!selected || selected.status !== "pending") { setPreview(null); return; }
     let cancelled = false;
-    setPreviewLoading(true); setPreview(null);
+    setPreviewLoading(true); setPreview(null); setPreviewError("");
     void companyFetch<{ request?: Preview }>(`/api/company-referrals/${selected.id}/preview`)
       .then(payload => {
         // Task 13: a preview without the list reads as "no pinned work" instead
         // of crashing the pane — the web bundle can lead the API by one deploy.
         const request = payload.request;
-        if (!cancelled) setPreview(request ? { ...request, workItems: askWorkItemsListSchema.parse(request.workItems) } : null);
+        if (!request) throw new Error("We could not load this private ask.");
+        if (!cancelled) setPreview({ ...request, workItems: askWorkItemsListSchema.parse(request.workItems) });
       })
-      .catch(() => { if (!cancelled) setPreview(null); })
+      .catch(() => { if (!cancelled) { setPreview(null); setPreviewError("We could not load this private ask. Try again before deciding."); } })
       .finally(() => { if (!cancelled) setPreviewLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedId]);
+  }, [selectedId, previewAttempt]);
 
-  const raceError = error.includes("Another employee accepted");
   const review = async (requestId: number, decision: "approved" | "declined", passReason?: PassReasonCode) => {
+    if (working || !verified || !preview || previewLoading || previewError) return;
     setWorking(true); setError("");
     try {
       const option = passReason ? PASS_REASON_OPTIONS.find(entry => entry.code === passReason) : null;
       await companyFetch(`/api/company-referrals/${requestId}/one-click-review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(decision === "approved" ? { decision, ethicsConfirmed: true } : { decision, declineReason: option?.legacy, passReason }) });
       setPassOpen(false); setSelectedId(null); setPreview(null);
       setNotice(decision === "approved" ? "Request accepted. You can now message the job seeker privately." : "Passed privately. The job seeker gets a short private note - never your name.");
-      await loadInbox();
+      // Acceptance hands off at once; a slow inbox refresh must not strand the referrer.
+      if (decision === "approved") { void loadInbox(); go(`/conversation/${requestId}?from=inbox`); }
+      else await loadInbox();
     } catch (reason) { const message = reason instanceof Error ? reason.message : "This private request can no longer be reviewed"; setError(message.includes("no longer available") ? "Accept failed - Another employee accepted this request a moment earlier. Nothing was charged to your credits." : message); }
     finally { setWorking(false); }
   };
@@ -197,23 +206,36 @@ export default function MyCompanyInbox() {
   const openIndex = selected ? requests.findIndex(row => row.id === selected.id) : -1;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || working || passOpen) return;
       const target = event.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable)) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       const key = event.key.toLowerCase();
       if (key === "j" || key === "k") {
         if (!requests.length) return;
         event.preventDefault();
         const next = key === "j" ? Math.min(requests.length - 1, openIndex + 1) : Math.max(0, openIndex < 0 ? 0 : openIndex - 1);
-        setSelectedId(requests[next]?.id ?? null);
-      } else if (key === "p" && selected?.status === "pending") { event.preventDefault(); setPassOpen(true); }
-      else if (key === "a" && selected?.status === "pending" && !working) { event.preventDefault(); void review(selected.id, "approved"); }
+        const nextAsk = requests[next];
+        if (nextAsk && (nextAsk.status !== "pending" || nextAsk.isClaimedByYou)) go(`/conversation/${nextAsk.id}?from=inbox`);
+        else setSelectedId(nextAsk?.id ?? null);
+      } else if (key === "p" && selected?.status === "pending" && preview && !previewLoading && !previewError) { event.preventDefault(); setPassOpen(true); }
+      else if (key === "a" && selected?.status === "pending" && !working && !passOpen) { event.preventDefault(); void review(selected.id, "approved"); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const shell = (body: ReactNode) => <GoalAppShell active="queue" pageTitle="Referral queue">{body}</GoalAppShell>;
+  const shell = (body: ReactNode) => (
+    <GoalAppShell active="queue" pageTitle="Referral queue">
+      <header className="border-b border-g-hairline px-4 py-5 gdesk:px-5">
+        <h1 className="text-g-display text-g-ink">Help the right person get referred.</h1>
+        <p className="mt-2 text-g-meta text-g-ink-2">Read one private ask. Accept only when you can help through your company’s official process.</p>
+      </header>
+      {notice ? <p role="status" className="mx-4 my-3 text-g-meta text-g-ink-2">{notice}</p> : null}
+      {error && requests.length && !loadFailed && !selected ? <p role="alert" className="mx-4 my-3 text-g-meta text-g-ink-2">{error}</p> : null}
+      {body}
+    </GoalAppShell>
+  );
 
   if (!isSignedIn) return shell(<GoalEmptyState title="Give referrals with control." body="Use a company email to see only matching private requests. Your identity stays hidden." action={{ label: "Use company email", onClick: () => go("/sign-in") }} />);
   if (access.status === "checking") return shell(
@@ -231,7 +253,7 @@ export default function MyCompanyInbox() {
   const listHead = (
     <header className="border-b border-g-hairline px-3 pb-3 pt-4 gdesk:px-4">
       <div className="flex items-baseline justify-between gap-3">
-        <h1 className="text-g-heading text-g-ink">Referral queue</h1>
+        <h2 className="text-g-heading text-g-ink">Referral queue</h2>
         <span className="text-g-meta text-g-ink-3"><GoalNum>{requests.length}</GoalNum> waiting</span>
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-3">
@@ -267,12 +289,19 @@ export default function MyCompanyInbox() {
     />
   );
   else body = (
-    <div className="gdesk:grid gdesk:h-full gdesk:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
+    <div className="gdesk:grid gdesk:content-start gdesk:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
+      {!selected ? <section aria-labelledby="queue-next-step" className="m-4 border border-g-hairline p-4 gdesk:col-span-2">
+        <h2 id="queue-next-step" className="text-g-heading text-g-ink">Your next step</h2>
+        <p className="mt-2 text-g-meta text-g-ink-2">Read an ask before deciding. Names and resumes stay private until you accept.</p>
+        <GoalButton variant="primary" className="mt-4" onClick={() => {
+          const next = requests.find(item => item.status === "pending" && !item.isClaimedByYou) ?? requests[0];
+          if (next.status !== "pending" || next.isClaimedByYou) go(`/conversation/${next.id}?from=inbox`);
+          else setSelectedId(next.id);
+        }}>Read next ask</GoalButton>
+      </section> : null}
       <section aria-labelledby="queue-h" className={cn("min-w-0 gdesk:border-r gdesk:border-g-hairline", selected ? "max-gdesk:hidden" : "")}>
         <span id="queue-h" className="sr-only">Referral queue</span>
         {listHead}
-        {notice ? <p role="status" className="mx-3 my-2 rounded-g-tile bg-g-surface-sunken px-3 py-2 text-g-meta text-g-ink-2 gdesk:mx-4">{notice}</p> : null}
-        {error && requests.length ? <p role="alert" className="mx-3 my-2 rounded-g-tile bg-g-surface-sunken px-3 py-2 text-g-meta text-g-ink-2 gdesk:mx-4">{error}</p> : null}
         <ul>
           {requests.map(item => {
             const left = daysLeft(item, nowMs);
@@ -294,6 +323,7 @@ export default function MyCompanyInbox() {
         <p className="px-3 py-3 text-g-meta text-g-ink-3 gdesk:px-4">Referrers are never charged.</p>
       </section>
       <section className={cn("min-w-0", selected ? "" : "max-gdesk:hidden")} aria-label="Ask detail">
+        {error && selected ? <p role="alert" className="mx-4 my-3 text-g-meta text-g-ink-2">{error}</p> : null}
         {selected ? (
           <QueueDetail
             item={selected}
@@ -301,14 +331,20 @@ export default function MyCompanyInbox() {
             count={requests.length}
             preview={preview}
             previewLoading={previewLoading}
+            previewError={previewError}
+            onRetryPreview={() => setPreviewAttempt(value => value + 1)}
             nowMs={nowMs}
             working={working}
             passOpen={passOpen}
             onMove={step => {
               const next = Math.max(0, Math.min(requests.length - 1, openIndex + step));
-              if (requests[next] && requests[next].id !== selected.id) setSelectedId(requests[next].id);
+              const nextAsk = requests[next];
+              if (nextAsk && nextAsk.id !== selected.id) {
+                if (nextAsk.status !== "pending" || nextAsk.isClaimedByYou) go(`/conversation/${nextAsk.id}?from=inbox`);
+                else setSelectedId(nextAsk.id);
+              }
             }}
-            onPassOpen={setPassOpen}
+            onPassOpen={open => { if (!working && !previewLoading && preview) setPassOpen(open); }}
             onAccept={() => { void review(selected.id, "approved"); }}
             onPass={reason => { void review(selected.id, "declined", reason); }}
             onBack={() => setSelectedId(null)}
@@ -322,8 +358,9 @@ export default function MyCompanyInbox() {
   return shell(body);
 }
 
-function QueueDetail({ item, index, count, preview, previewLoading, nowMs, working, passOpen, onMove, onPassOpen, onAccept, onPass, onBack }: {
+function QueueDetail({ item, index, count, preview, previewLoading, previewError, onRetryPreview, nowMs, working, passOpen, onMove, onPassOpen, onAccept, onPass, onBack }: {
   item: QueueItem; index: number; count: number; preview: Preview | null; previewLoading: boolean; nowMs: number;
+  previewError: string; onRetryPreview(): void;
   working: boolean; passOpen: boolean; onMove(step: -1 | 1): void; onPassOpen(open: boolean): void; onAccept(): void; onPass(reason: PassReasonCode): void; onBack(): void;
 }) {
   const left = daysLeft(item, nowMs);
@@ -340,7 +377,7 @@ function QueueDetail({ item, index, count, preview, previewLoading, nowMs, worki
       titleSize="display"
       eyebrow={<>{fn ? `${fn} · ` : ""}{company}</>}
       refId={preview?.publicRef ?? item.publicRef}
-      title={<span id="ask-role">{roleTitle(item)}</span>}
+      title={roleTitle(item)}
       meta={([
         left ? <span key="left"><GoalNum tone={left.soon ? "warn" : undefined}>{left.label}</GoalNum></span> : null,
         closes ? <span key="closes">Closes <GoalNum>{formatDay(closes) ?? ""}</GoalNum></span> : null,
@@ -349,9 +386,11 @@ function QueueDetail({ item, index, count, preview, previewLoading, nowMs, worki
       phoneBack={{ href: "/queue", label: "Referral queue" }}
       phonePosition={<GoalNum>{index + 1} / {count}</GoalNum>}
       dock={item.status === "pending" ? (
-        <div className="border-t border-g-hairline px-3 py-3 gdesk:px-4">
+        <section aria-labelledby="queue-decision-next-step" className="m-3 border border-g-hairline px-3 py-3 gdesk:m-4 gdesk:px-4">
+          <h2 id="queue-decision-next-step" className="mb-3 text-g-heading text-g-ink">Your next step</h2>
           <GoalLockedPanel title="Identity and resume are shared after you accept" documentCount={preview?.attachments.length ?? 0} />
           <p className="mt-2 text-g-meta text-g-ink-3">Accepting shares names both ways and their resume. Referring comes later, through {company}&rsquo;s own process.</p>
+          <p className="mt-1 text-g-meta text-g-ink-3">By accepting, you confirm you&apos;ll refer only through {company}&apos;s official process.</p>
           <div className="mt-3 flex items-center gap-1.5">
             {/* Comp phone rule: position and K/J move to the sub bar (phonePosition
                 above); the two actions split the bar evenly. */}
@@ -361,13 +400,28 @@ function QueueDetail({ item, index, count, preview, previewLoading, nowMs, worki
               <span className="text-g-meta text-g-ink-3"><GoalNum>{index + 1} / {count}</GoalNum></span>
             </span>
             <span className="ml-auto max-gdesk:hidden" />
-            <GoalButton variant="ghost" keys={["P"]} disabledReason={working ? "Working…" : undefined} onClick={() => onPassOpen(true)} className="max-gdesk:flex-1">Pass privately</GoalButton>
-            <GoalButton variant="primary" keys={["A"]} busy={working} busyLabel="Working…" onClick={onAccept} className="max-gdesk:flex-1">Accept &amp; connect</GoalButton>
+            <GoalButton variant="ghost" keys={["P"]} disabledReason={working ? "Working…" : previewLoading || !preview ? "Read the ask first" : undefined} aria-keyshortcuts="p" onClick={() => onPassOpen(true)} className="max-gdesk:flex-1">Pass privately</GoalButton>
+            <GoalButton
+              variant="primary"
+              keys={["A"]}
+              disabledReason={previewLoading || !preview ? "Read the ask first" : undefined}
+              busy={working}
+              busyLabel="Working…"
+              onClick={onAccept}
+              className="max-gdesk:flex-1"
+              title={`By accepting, you confirm you'll refer only through ${company}'s official process.`}
+              aria-keyshortcuts="a"
+            >
+              Accept &amp; connect
+            </GoalButton>
           </div>
-        </div>
+          <p className="mt-2 text-g-meta text-g-ink-3">Keyboard: J next ask, K previous ask, P pass privately, A accept and connect. Shortcuts pause while a dialog is open or a decision is saving.</p>
+        </section>
       ) : undefined}
     >
-      {previewLoading ? <GoalSkeletonRows density="queue" count={3} className="p-3" /> : (
+      {previewLoading ? <GoalSkeletonRows density="queue" count={3} className="p-3" /> : previewError ? (
+        <GoalErrorState title="We could not load this ask" body={previewError} retry={{ label: "Try preview again", onClick: onRetryPreview }} />
+      ) : (
         <div className="px-3 py-3 gdesk:px-4">
           {preview?.targetRoleUrl || item.targetRoleUrl ? (
             <p className="mb-3 text-g-meta text-g-ink-3">Job posting <a className="ml-2 text-g-ink underline underline-offset-2" href={(preview?.targetRoleUrl ?? item.targetRoleUrl) as string} target="_blank" rel="noreferrer">{(preview?.targetRoleUrl ?? item.targetRoleUrl)?.replace(/^https?:\/\//, "")}</a></p>
