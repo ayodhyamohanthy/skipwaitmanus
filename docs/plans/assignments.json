@@ -1725,7 +1725,7 @@
       "tier": 1,
       "lane": "d048-verify",
       "branch": "agent/queue/d048-p3-email-review",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
@@ -3077,7 +3077,7 @@
       "tier": 1,
       "lane": "d174-jobs",
       "branch": "agent/queue/d174-job-catalog",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-090-BYOR"
       ],
