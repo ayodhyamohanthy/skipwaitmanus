@@ -10,7 +10,7 @@ import EmailReviewAction from "../../EmailReviewAction";
 import { GOAL_PAGE } from "./GoalEmailReviewAction";
 
 const { authState, go, surfaces, routeToken, sentryMock } = vi.hoisted(() => ({
-  authState: { isSignedIn: true },
+  authState: { isSignedIn: true, isLoaded: true },
   go: vi.fn(),
   surfaces: { on: new Set<string>() },
   routeToken: { value: "tok-1" },
@@ -18,7 +18,7 @@ const { authState, go, surfaces, routeToken, sentryMock } = vi.hoisted(() => ({
 }));
 
 const getToken = vi.fn().mockResolvedValue("test-token");
-vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: authState.isSignedIn, getToken }) }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: authState.isSignedIn, isLoaded: authState.isLoaded, getToken }) }));
 vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
 vi.mock("@/lib/sentry", async () => {
   const actual = await vi.importActual<typeof import("@/lib/sentry")>("@/lib/sentry");
@@ -48,6 +48,7 @@ afterEach(() => {
   getToken.mockClear();
   go.mockClear();
   authState.isSignedIn = true;
+  authState.isLoaded = true;
 });
 
 describe("Goal /email-review flag gate", () => {
@@ -61,6 +62,14 @@ describe("Goal /email-review flag gate", () => {
 });
 
 describe("Goal /email-review states", () => {
+  it("renders a loading frame while auth is loading without flashing signed-out card", async () => {
+    authState.isSignedIn = false;
+    authState.isLoaded = false;
+    render(<EmailReviewAction />);
+    expect(await screen.findByText("Opening private review…")).toBeTruthy();
+    expect(screen.queryByText("Use your company email.")).toBeNull();
+  });
+
   it("keeps the link behind work-email sign-in with canonical referrerSignInHref", async () => {
     authState.isSignedIn = false;
     const fetchMock = vi.fn();
@@ -103,7 +112,7 @@ describe("Goal /email-review states", () => {
 
   it("records a decline with its reason, referral-only copy, and no unapproved disclosure", async () => {
     const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-      if (String(url).endsWith("/decision")) return ok({ status: "declined" });
+      if (String(url).endsWith("/decision")) return ok({ status: "passed", declineReason: "timing" });
       return ok({ review: { ready: true } });
     });
     vi.stubGlobal("fetch", fetchMock);

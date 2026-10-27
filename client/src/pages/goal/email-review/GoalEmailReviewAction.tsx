@@ -25,7 +25,7 @@ const ReviewReadySchema = z.object({
 });
 
 const ReviewDecisionSchema = z.object({
-  status: z.enum(["approved", "declined"]),
+  status: z.enum(["approved", "passed"]),
   declineReason: z.string().optional().nullable(),
 });
 
@@ -61,7 +61,7 @@ function GoalFrame({ children }: { children: React.ReactNode }) {
 export default function GoalEmailReviewAction() {
   const [, params] = useRoute("/email-review/:linkToken");
   const [, go] = useLocation();
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
   const getTokenRef = useRef(getToken);
   const [state, setState] = useState<"loading" | "review" | "approved" | "passed" | "error">("loading");
   const [error, setError] = useState("");
@@ -84,7 +84,8 @@ export default function GoalEmailReviewAction() {
       const payload = await readApiJson<Record<string, unknown>>(response, "This private review link is unavailable");
       const parsed = ReviewReadySchema.safeParse(payload);
       if (!response.ok || !parsed.success) {
-        throw new Error((payload.error as string) || "This private review link is unavailable");
+        const message = typeof payload.error === "string" ? payload.error : "This private review link is unavailable";
+        throw new Error(message);
       }
       setState("review");
     } catch (reason) {
@@ -106,7 +107,8 @@ export default function GoalEmailReviewAction() {
         const payload = await readApiJson<Record<string, unknown>>(response, "This private review link is unavailable");
         const parsed = ReviewReadySchema.safeParse(payload);
         if (!response.ok || !parsed.success) {
-          throw new Error((payload.error as string) || "This private review link is unavailable");
+          const message = typeof payload.error === "string" ? payload.error : "This private review link is unavailable";
+          throw new Error(message);
         }
         if (active) setState("review");
       } catch (reason) {
@@ -119,10 +121,11 @@ export default function GoalEmailReviewAction() {
   }, [isSignedIn, params?.linkToken, reviewPath]);
 
   const decide = async (decision: Decision, declineReason?: DeclineReason) => {
+    if (!params?.linkToken) return;
     setState("loading");
     try {
       const token = await getTokenRef.current();
-      const response = await fetch(`/api/referrer-review-links/${encodeURIComponent(params!.linkToken)}/decision`, {
+      const response = await fetch(`/api/referrer-review-links/${encodeURIComponent(params.linkToken)}/decision`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -138,7 +141,8 @@ export default function GoalEmailReviewAction() {
       const payload = await readApiJson<Record<string, unknown>>(response, "This private review link is unavailable");
       const parsed = ReviewDecisionSchema.safeParse(payload);
       if (!response.ok || !parsed.success) {
-        throw new Error((payload.error as string) || "This private review action could not be completed");
+        const message = typeof payload.error === "string" ? payload.error : "This private review action could not be completed";
+        throw new Error(message);
       }
       setState(parsed.data.status === "approved" ? "approved" : "passed");
     } catch (reason) {
@@ -148,6 +152,15 @@ export default function GoalEmailReviewAction() {
   };
 
   if (!params?.linkToken) return <GoalFrame><h1 className="text-g-display">Review link unavailable</h1></GoalFrame>;
+
+  if (isLoaded === false) {
+    return (
+      <GoalFrame>
+        <h1 className="text-g-display">Opening private review…</h1>
+        <p className="mt-2 text-g-small leading-[1.6] text-g-ink-2">No decision is recorded until you press a confirmation button.</p>
+      </GoalFrame>
+    );
+  }
 
   if (!isSignedIn) {
     const returnTo = `/email-review/${encodeURIComponent(params.linkToken)}`;
