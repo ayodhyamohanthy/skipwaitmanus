@@ -64,6 +64,25 @@ describe("goal share hub", () => {
     expect(body).not.toMatch(/referral credit/i);
   });
 
+  it("sends the same per-party text through the X share intent", async () => {
+    vi.stubGlobal("fetch", stubInvite());
+    const openSpy = vi.fn();
+    vi.stubGlobal("open", openSpy);
+    render(<ShareHub />);
+    expect(await screen.findByText(/Your link is ready/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "X" }));
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const target = String(openSpy.mock.calls[0][0]);
+    expect(target.startsWith("https://x.com/intent/post?text=")).toBe(true);
+    const text = decodeURIComponent(target.slice("https://x.com/intent/post?text=".length));
+    // Same rule as the mailto body: each side's own request unlocks its own reward.
+    expect(text).toContain("We each get 1 extra referral request");
+    expect(text).toContain("yours unlocks when your first referral request goes out");
+    expect(text).toContain("mine when my next one does");
+    expect(text).not.toContain("it unlocks with your first referral request");
+    expect(text).not.toMatch(/referral credit/i);
+  });
+
   it("offers Try again when the link cannot be created", async () => {
     vi.stubGlobal("fetch", stubInvite("PAL-123", false));
     render(<ShareHub />);
