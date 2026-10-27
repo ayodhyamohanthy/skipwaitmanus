@@ -36,9 +36,17 @@ Two supported paths, both wired in this repo:
 Cloudflare's Git-connected "Workers Builds" for the `skipwaitmanus` Worker is
 **disabled** (Workers & Pages -> skipwaitmanus -> Settings -> Builds ->
 "Disable builds", saved Oct 27 IST; the repo connection itself is intact, so
-re-enabling is one toggle). Do not re-enable it, and do not read a historical
-green "Workers Builds" check on a PR branch as deploy evidence: on branches it
-was a 0-second skip, never a build or deploy.
+re-enabling is one toggle). The founder confirmed the keep-OFF decision on
+Oct 27 (affirmative reaction to the keep-OFF question,
+phonemsg-01M5XS9JAG9MY933AWVWJVG8MN). Do not re-enable it.
+
+Verified post-disable behavior (build history, Oct 27): pushes to `main`
+produce **no** build entry at all; branch/PR-preview builds still fire as
+green 0-second skips. Neither is deploy evidence: a green "Workers Builds"
+check on a PR branch is a skip, never a build or deploy, and the required
+merge gates never included it (the rulesets require only typecheck, the
+unit/component/route tests, and the production build, so disabling stranded
+no required check).
 
 Why disabled: every code-carrying push to main made the integration run its own
 `npx wrangler deploy`, which failed deterministically - the actual build log
@@ -59,8 +67,9 @@ are untouched by the toggle.
 This section previously said the red check was "Founder-approved to leave as
 is (Oct 17)": that approval claim is **unverified** - no user-channel original
 recovered. The Oct 27 disable was executed by the coordinator under the
-standing cofounder mandate (free, reversible, no money, no outbound messages);
-the founder can reverse it with one toggle.
+standing cofounder mandate (free, reversible, no money, no outbound messages)
+and is now the **confirmed owner decision** (keep OFF, Oct 27). Re-enabling
+needs a fresh founder instruction, not the unverified Oct-17 note.
 
 ## Database migrations
 
