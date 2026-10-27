@@ -93,4 +93,52 @@ describe("ledger-spent ask credit refund", () => {
     expect(db.grants[0]).toMatchObject({ creditsRemaining: 0, status: "expired" });
     expect(db.wallets[0]).toMatchObject({ monthlyCreditsRemaining: 0, balance: 0 });
   });
+
+  it("mixed free+paid spend across month rollover: only paid credits return on refund", async () => {
+    Object.assign(db.wallets[0], { monthlyCreditsRemaining: 3, monthlyAllowance: 3, monthlyCycleKey: "2026-10", balance: 2 });
+    db.txns.push({ id: 10, userId: SEEKER, role: "job_seeker", tokenCount: 2, kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: "10", idempotencyKey: "p10", createdAt: at("2026-10-01T00:00:00Z") });
+    await spendCredits(SEEKER, "job_seeker", { credits: 5, idempotencyKey: "ask-509", referenceType: "referral_request", referenceId: "509" });
+    expect(db.wallets[0]).toMatchObject({ monthlyCreditsRemaining: 0, balance: 0 });
+    // Month rolls over
+    Object.assign(db.wallets[0], { monthlyCycleKey: "2026-11", monthlyCreditsRemaining: 3 });
+    const result = await refund(509);
+    // Only the 2 paid credits return to balance; the 3 monthly credits expired with cycle 2026-10
+    expect(result.returned).toBe(2);
+    expect(db.wallets[0]).toMatchObject({ monthlyCreditsRemaining: 3, balance: 2 });
+    const reversals = db.txns.filter(row => row.kind === "withdrawal_refund");
+    expect(reversals).toEqual(expect.arrayContaining([
+      expect.objectContaining({ tokenCount: 0, source: "monthly_allowance" }),
+      expect.objectContaining({ tokenCount: 2, source: "purchased_balance" }),
+    ]));
+  });
+
+  it("a paid rung credit spent on a paid plan returns after cycle roll under PAID_CREDITS_NEVER_EXPIRE only when ASK_LEVEL_COST is on", async () => {
+    Object.assign(db.wallets[0], {
+      plan: "start",
+      subscriptionId: "sub_start",
+      subscriptionStatus: "active",
+      subscriptionCurrentTermStart: at("2026-10-01T00:00:00Z"),
+      subscriptionCurrentTermEnd: at("2026-11-01T00:00:00Z"),
+      monthlyCreditsRemaining: 1,
+      monthlyAllowance: 10,
+      monthlyCycleKey: "2026-10",
+      balance: 0,
+    });
+    await spendCredits(SEEKER, "job_seeker", { credits: 1, idempotencyKey: "ask-510", referenceType: "referral_request", referenceId: "510" });
+    expect(db.wallets[0].monthlyCreditsRemaining).toBe(0);
+    // Cycle rolls over to 2026-11
+    Object.assign(db.wallets[0], { monthlyCycleKey: "2026-11", monthlyCreditsRemaining: 10 });
+
+    // Live flags-off path: cycle credits expire and are not returned
+    const offResult = await refund(510);
+    expect(offResult.returned).toBe(0);
+    expect(db.wallets[0].balance).toBe(0);
+
+    // Flags-on counterpart: paid subscriber cycle credits never expire and return to balance
+    vi.stubEnv("ASK_LEVEL_COST", "true");
+    db.txns = db.txns.filter(t => t.kind !== "withdrawal_refund");
+    const onResult = await refund(510);
+    expect(onResult.returned).toBe(1);
+    expect(db.wallets[0].balance).toBe(1);
+  });
 });

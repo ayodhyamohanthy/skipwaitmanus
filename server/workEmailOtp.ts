@@ -175,4 +175,12 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
 
   };
 }
-export const workEmailOtpService = createWorkEmailOtpService({ sendEmail: async ({ to, code }) => sendTransactionalEmail({ to, subject: "Your skipwait.me verification code", text: `Your skipwait.me verification code is ${code}. It expires in 10 minutes and works once.\n\nIf you did not request it, ignore this email - nothing changes.` }) });
+/** The code email. The code leads the subject so lock-screen previews and the phone's code
+ *  autofill (iOS AutoFill from Mail, Android suggestions) can offer it without opening the email. */
+export function otpEmailMessage(code: string): { subject: string; text: string } {
+  return {
+    subject: `${code} is your skipwait.me verification code`,
+    text: `Your skipwait.me verification code is ${code}. It expires in 10 minutes and works once.\n\nIf you did not request it, ignore this email - nothing changes.`,
+  };
+}
+export const workEmailOtpService = createWorkEmailOtpService({ sendEmail: async ({ to, code }) => sendTransactionalEmail({ to, ...otpEmailMessage(code) }) });

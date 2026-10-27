@@ -18,6 +18,7 @@
 ## 2. Scope
 - **Instruction files:** `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `LLM_HANDOFF.md`, `app/docs/handoff/LLM_HANDOFF.md`, `FOR_AI_BUILDERS.md`, `START_HERE.md`, `SkipWait-START-HERE.md`, `README.md`, `COLLABORATION.md`, `.github/copilot-instructions.md`, `docs/BRIEF.md`, `docs/DELEGATION.md`.
 - **Product docs:** `docs/PRD.md`, `docs/PRICING.md`, `DESIGN.md`, `docs/GROWTH_STRATEGY.md`, `docs/BUGFREE_GATE.md`, `docs/SKIPPY.md`, `docs/plans/README.md`, and `docs/KIT_V4_BUILD_PLAN.md` §0 to §3b and §6.
+- **Root product docs (D-211):** `PRICING.md` (it becomes a pointer to `docs/PRICING.md`; it stops being a second pricing spec), `PRODUCT.md`, `UPGRADE_NUDGES.md`. Instruction files still send builders to them as current, so they state the current rule or say plainly that they are history.
 - **Packets** of every row that is not `done` in `docs/plans/assignments.json`. Leave packets of `done` rows as history.
 - **The register's status column**, as in §1.1.
 
@@ -30,6 +31,7 @@
 | D-173, D-180 | The user-facing unit and object are "referral" and "referral request"; "ask" and "credit" are internal. Describe the copy rule; renaming strings in code is the terminology lane's (#598). |
 | D-174, D-176 | No ask expiry as direction (runtime caveat in §1.3). No availability framing; D-102's visible lines are superseded. |
 | D-146, D-147 | Passes and Keep warm are not sold. D-035 is rejected, and any employee decline keeps the credit spent. |
+| D-146, D-132 | Root `PRICING.md`, `PRODUCT.md` and `UPGRADE_NUDGES.md` still sell 30- and 90-day passes and the retired Start/Momentum/Land family (D-211). `PRICING.md` becomes a pointer to `docs/PRICING.md`. |
 | D-120, D-150 | Kit v4 is retired; goal UI is the one design. |
 | D-182, D-189, D-190, D-193, D-197, D-199 | The Workers Builds check is not a gate; a row's branch carries only its own work; the packet landing order; the journey rows; the queue edges; the legacy registration route. |
 
@@ -42,7 +44,7 @@
   - `rg -n -i "open to referral requests|not open yet" -g '*.md'`
   - `rg -n -i "7-day|90-day|day-30" -g '*.md'`
 
-  Every hit left is history in `DECISIONS.md`, history in a `done` row's packet, or a runtime caveat as in §1.3.
+  A hit may stay only in one of four buckets (D-211): (a) an entry in `DECISIONS.md`; (b) a `done` row's packet; (c) a runtime caveat as in §1.3; (d) a dated historical record — `docs/KIT_V4_BUILD_PLAN.md` outside its §§0-3b and §6, `docs/PRICING_RECOMMENDATION.md`, `docs/plans/OCT21-BUILT-PRS.md`, `docs/plans/STRANDED-OCT23.md`, `CHANGELOG.md`, `app/roadmap.md`, and an `app/docs/handoff/**` file carrying its stale-copy banner. The PR lists every remaining hit with its bucket and file; a hit in an in-scope file that presents a superseded rule as current is a failure, not history.
 - **Tests:**
   - `node -e` with `validateAssignments` returns `[]`;
   - `pnpm vitest run scripts/` is green, including `briefContract` and `registerShape`;
@@ -59,3 +61,5 @@ Report it with `--report blocked`, naming the IDs and files.
 
 ## Status
 - `DECISION-SYNC-oct24`: registered by #637; waits for `REGISTER-oct24`.
+- 2026-10-26: unblocked by D-211 (Qoder · dc00, unblock takeover under D-200 (2)). The scope/acceptance conflict reported on #679 is ruled: the three root product docs are in scope, and declared history (including the build plan's dated records) may stay when the inventory names its bucket and file. The partial work on #679 resumes against this packet.
+- 2026-10-26: completed and verified by Gemini 3.8 Flash · b7c1. Root product docs (PRICING.md, PRODUCT.md, UPGRADE_NUDGES.md) synced per D-211; inventory searches verified against permitted buckets (a)-(d); brief contract and script suites passed.
