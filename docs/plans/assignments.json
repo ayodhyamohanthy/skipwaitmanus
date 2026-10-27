@@ -816,7 +816,7 @@
       "dependsOn": [
         "SHELL-focus-clearance"
       ],
-      "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them.",
+      "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them. D-224 (Oct 28, unblock ruling): the audit compatibility contract in this packet resolves the R8 conflict; the register entry fixes the goal colour token set at the 27 light colour tokens.",
       "owns": [
         "client/src/styles/goalDark.css",
         "client/src/contexts/themeContext.test.tsx",
@@ -827,7 +827,9 @@
         "client/src/components/goal/GoalMoreMenu.tsx",
         "client/src/components/goal/goalMoreMenu.test.tsx",
         "client/index.html (switch only)",
-        "DESIGN.md"
+        "DESIGN.md",
+        "scripts/designTokenAuditCore.mjs",
+        "scripts/designTokenAudit.test.ts"
       ]
     },
     {
@@ -915,14 +917,18 @@
       "dependsOn": [
         "D-048-p3-assistants"
       ],
-      "note": "Issue #644: decideAssistantApproval never re-reads the approved creditCount, so with ASK_LEVEL_COST on an owner who saw 1 credit could pay up to 10. Latent today (flag off; only the unsold land plan grants assistants), so ASK_LEVEL_COST and any land sale stay off until this is done. Contract: the decision body carries expectedCreditCount; the route re-derives the cost with the quote route's own functions and answers 409 cost_changed before any charge on a mismatch. No edit to server/db.ts or privateReferralRoutes.ts. Waits for D-048-p3-assistants (both edit Approve.tsx). D-221 (Oct 26): the shown cost is the quote route's full cost object under D-219 (unit count, level band, spend source), not an integer credit count; the invariant stays: charge exactly what was approved, or 409 cost_changed with nothing charged.",
+      "note": "Issue #644: decideAssistantApproval never re-reads the approved creditCount, so with ASK_LEVEL_COST on an owner who saw 1 credit could pay up to 10. Latent today (flag off; only the unsold land plan grants assistants), so ASK_LEVEL_COST and any land sale stay off until this is done. Contract: the decision body carries expectedCreditCount; the route re-derives the cost with the quote route's own functions and answers 409 cost_changed before any charge on a mismatch. No edit to server/db.ts or privateReferralRoutes.ts. Waits for D-048-p3-assistants (both edit Approve.tsx). D-221 (Oct 26): the shown cost is the quote route's full cost object under D-219 (unit count, level band, spend source), not an integer credit count; the invariant stays: charge exactly what was approved, or 409 cost_changed with nothing charged. Oct 27 (#644): Approve.tsx now only switches to the dark goal GoalApprove.tsx, which also posts { decision, kind }, so the goal page and its flow test join owns (D-048-p3-assistants, their only owner, is done) or it would loop on 409 once released; the cost object is a shared Zod contract (shared/assistantApprovalCost.ts) so the client never imports server code.",
       "owns": [
         "server/assistantApprovalCost.ts",
         "server/assistantApprovalCost.test.ts",
         "server/assistantRoutes.ts",
         "server/assistantRoutes.test.ts",
         "client/src/pages/Approve.tsx",
-        "client/src/pages/approve.test.tsx"
+        "client/src/pages/approve.test.tsx",
+        "shared/assistantApprovalCost.ts",
+        "shared/assistantApprovalCost.test.ts",
+        "client/src/pages/goal/assistants/GoalApprove.tsx",
+        "client/src/pages/goal/assistants/assistantFlows.test.tsx"
       ]
     },
     {
@@ -3626,7 +3632,7 @@
       "tier": 2,
       "lane": "d048-foundation",
       "branch": "agent/queue/postopp-copy-v2",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-fix-post-copy"
       ],
