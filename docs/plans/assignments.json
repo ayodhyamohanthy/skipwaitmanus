@@ -1453,9 +1453,10 @@
         "client/src/pages/Approve.tsx",
         "client/src/pages/ConnectAssistant.tsx",
         "client/src/pages/goal/assistants/**",
-        "design/goal-ui/captures/assistants/**"
+        "design/goal-ui/captures/assistants/**",
+        "client/src/components/goal/goalBoundary.test.ts"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Scope amendment (Oct 23, whole-app goal-UI program, Linear AYO-9): /agents (SeekerAgents, the seeker agent-keys surface) has no split row; it belongs to the assistants family, so this row owns its switch and goal body too. Amended by the program coordinator with Main's direction; no other row changes."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Scope amendment (Oct 23, whole-app goal-UI program, Linear AYO-9): /agents (SeekerAgents, the seeker agent-keys surface) has no split row; it belongs to the assistants family, so this row owns its switch and goal body too. Amended by the program coordinator with Main's direction; no other row changes. Owns includes the phase-3 boundary guard: W5's /connect-assistant self-wrap of the goal shell requires the MOVED_SURFACES entry, same registration as 161eafc2 (#566)."
     },
     {
       "row": "D-048",
