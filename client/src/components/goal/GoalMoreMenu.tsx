@@ -4,7 +4,9 @@
 // opens upward, no colour/pill/black commit style. AccountMenu stays unchanged.
 import { Ellipsis } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useThemeOptional } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
+import { GoalButton } from "./GoalButton";
 
 const MORE_LINKS = [
   { label: "Help & safety", href: "/help" },
@@ -16,6 +18,7 @@ const MORE_LINKS = [
 export function GoalMoreMenu({ variant }: { variant: "rail" | "bar" }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const appearance = useThemeOptional();
 
   useEffect(() => {
     if (!open) return;
@@ -67,6 +70,24 @@ export function GoalMoreMenu({ variant }: { variant: "rail" | "bar" }) {
               {link.label}
             </a>
           ))}
+          {appearance?.switchable ? (
+            <>
+              <div role="separator" className="border-t border-g-hairline" />
+              <GoalButton
+                variant="ghost"
+                role="menuitem"
+                aria-label={`Appearance: ${appearance.theme === "dark" ? "Dark" : "Light"}`}
+                onClick={() => {
+                  appearance.toggleTheme?.();
+                  setOpen(false);
+                }}
+                className="h-11 w-full justify-between rounded-none px-4 text-sm font-normal"
+              >
+                Appearance
+                <span className="text-g-ink-3">{appearance.theme === "dark" ? "Dark" : "Light"}</span>
+              </GoalButton>
+            </>
+          ) : null}
         </div>
       ) : null}
     </div>
