@@ -6,7 +6,7 @@
 // survives on a moved surface. The trigger is the shell's own avatar slot: the
 // circle GoalShell draws for a signed-out visitor (GoalShell.tsx Avatar), with
 // the profile image inside it. The sign-out failure alert is plain ink: the
-// status hues are audited away outside components/goal (R3).
+// status hues are audited away outside the goal primitive tree (R3).
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { BarChart3, Bell, Bookmark, BriefcaseBusiness, Building2, FileText, LogOut, MessageSquare, Settings, Share2, UserRound, type LucideIcon } from "lucide-react";
 import { useState } from "react";

@@ -45,8 +45,8 @@ export function NotificationBell() {
   const countLabel = unreadCount > 9 ? "9+" : String(unreadCount);
   // Goal system (D-048-F-shell-parts): the shell's icon-button geometry, and an
   // ink unread badge - the moved goal surfaces mark "needs you" with ink
-  // (GoalAlerts), while trust blue and the status hues stay reserved inside
-  // components/goal (rules R2/R3 in scripts/designTokenAuditCore.mjs).
+  // (GoalAlerts), while trust blue and the status hues stay reserved inside the
+  // goal primitive tree (rules R2/R3 in scripts/designTokenAuditCore.mjs).
   return (
     <button
       type="button"
