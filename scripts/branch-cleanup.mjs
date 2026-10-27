@@ -161,7 +161,8 @@ async function applyDeletions(doomed, scope) {
     // Read everything again just before each batch: a pull request opened, a task reopened, a hold added or
     // a push since the first read keeps that branch.
     let fresh;
-    try { fresh = await snapshot(); } catch (e) { if (!(e instanceof Stop)) throw e; stopped = e; break; }
+    // Any failure ends the run here, after the count below, so what earlier batches deleted is still reported.
+    try { fresh = await snapshot(); } catch (e) { stopped = e instanceof Stop ? e : new Stop(e?.message ?? String(e), 1); break; }
     if (fresh.retained === null) { stopped = new Stop(`${RETENTION_LIST} is no longer on origin/main`, 2); break; }
     const now = new Map(scope(fresh.rows).map(r => [r.name, r]));
     const batch = [];

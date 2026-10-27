@@ -174,7 +174,7 @@ const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd,
 const LIST_PATH = "docs/plans/branch-retention.json";
 const EMPTY_HOLDS = { version: 1, holds: [] };
 // origin lives at <dir>/o/r.git, so its URL names the registry's repo "o/r" (the identity check).
-function repos(opts: { retention?: unknown; registry?: string } = {}) {
+function repos(opts: { retention?: unknown; registry?: string; merged?: number } = {}) {
   const dir = mkdtempSync(path.join(os.tmpdir(), "branch-hygiene-"));
   mkdirSync(path.join(dir, "o"));
   const origin = path.join(dir, "o", "r.git");
@@ -200,6 +200,9 @@ function repos(opts: { retention?: unknown; registry?: string } = {}) {
   const open = branch("dependabot/npm/x", "main");
   branch("agent/reports/log", "main");
   git(work, "checkout", "-q", "main");
+  // Extra branches at main's tip (delete merged), enough to need more than one batch of 20.
+  const extra = Array.from({ length: opts.merged ?? 0 }, (_, i) => `merged-${String(i).padStart(2, "0")}`);
+  if (extra.length) git(work, "push", "-q", "origin", ...extra.map(name => `main:refs/heads/${name}`));
   const runner = path.join(dir, "runner");
   git(dir, "clone", "-q", origin, runner);
   const mainSha = git(runner, "rev-parse", "origin/main");
@@ -344,6 +347,22 @@ describe("branch-cleanup.mjs as a process", () => {
       expect(out).toMatch(/deleted 2 of 2 \(checked on origin\)/);
       expect(remote(r.origin)).toContain("feature/squashed");
       expect(remote(r.origin)).not.toContain("agent/queue/done-1");
+    } finally { s.close(); }
+  }, 60_000);
+
+  it("stops before the next batch when a re-check cannot read GitHub, and still reports what it deleted", async () => {
+    const r = repos({ retention: EMPTY_HOLDS, merged: 21 });
+    // Reads 1 and 2 (the first snapshot, the re-check before batch 1) are fine; read 3 (before batch 2) is not.
+    const s = await serve(r, { open: n => (n < 3 ? [] : [{ head: null }]) });
+    try {
+      const { code, out } = await run(r.runner, s.base, ["--apply"]);
+      expect(code).toBe(2);
+      expect(out).toMatch(/APPLY: 24 to delete/);
+      expect(out).toMatch(/deleted 20 of 20 \(checked on origin\)/);
+      expect(out).toMatch(/stopped before the remaining batches: cannot read the open pull requests/);
+      const left = remote(r.origin);
+      for (const name of ["merged-17", "merged-18", "merged-19", "merged-20"]) expect(left).toContain(name);
+      for (const name of ["agent/queue/done-1", "agent/review/done-1", "feature/squashed", "merged-00", "merged-16"]) expect(left).not.toContain(name);
     } finally { s.close(); }
   }, 60_000);
 
