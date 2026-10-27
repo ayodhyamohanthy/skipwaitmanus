@@ -1,0 +1,98 @@
+[
+  {
+    "state": "list",
+    "width": 1280,
+    "primaries": 1,
+    "overflow": 0,
+    "pageErrors": [],
+    "path": "/workspace/skipwaitmanus-wt/d048-queue-review/design/goal-ui/captures/queue/goal-review/list-1280.png"
+  },
+  {
+    "state": "selected",
+    "width": 1280,
+    "primaries": 1,
+    "overflow": 0,
+    "pageErrors": [],
+    "path": "/workspace/skipwaitmanus-wt/d048-queue-review/design/goal-ui/captures/queue/goal-review/selected-1280.png"
+  },
+  {
+    "state": "preview-error",
+    "width": 1280,
+    "primaries": 1,
+    "overflow": 0,
+    "pageErrors": [],
+    "path": "/workspace/skipwaitmanus-wt/d048-queue-review/design/goal-ui/captures/queue/goal-review/preview-error-1280.png"
+  },
+  {
+    "state": "decision-error",
+    "width": 1280,
+    "primaries": 1,
+    "overflow": 0,
+    "pageErrors": [],
+    "path": "/workspace/skipwaitmanus-wt/d048-queue-review/design/goal-ui/captures/queue/goal-review/decision-error-1280.png"
+  },
+  {
+    "state": "pass-dialog",
+    "width": 1280,
+    "primaries": 1,
+    "overflow": 0,
+    "pageErrors": [],
+    "path": "/workspace/skipwaitmanus-wt/d048-queue-review/design/goal-ui/captures/queue/goal-review/pass-dialog-1280.png"
+  },
+  {
+    "state": "empty-quiet",
+    "width": 1280,
+    "primaries": 0,
+    "overflow": 0,
+    "pageErrors": [],
+    "path": "/workspace/skipwaitmanus-wt/d048-queue-review/design/goal-ui/captures/queue/goal-review/empty-quiet-1280.png"
+  },
+  {
+    "state": "list",
+    "width": 390,
+    "primaries": 1,
+    "overflow": 0,
+    "pageErrors": [],
+    "path": "/workspace/skipwaitmanus-wt/d048-queue-review/design/goal-ui/captures/queue/goal-review/list-390.png"
+  },
+  {
+    "state": "selected",
+    "width": 390,
+    "primaries": 1,
+    "overflow": 0,
+    "pageErrors": [],
+    "path": "/workspace/skipwaitmanus-wt/d048-queue-review/design/goal-ui/captures/queue/goal-review/selected-390.png"
+  },
+  {
+    "state": "preview-error",
+    "width": 390,
+    "primaries": 1,
+    "overflow": 0,
+    "pageErrors": [],
+    "path": "/workspace/skipwaitmanus-wt/d048-queue-review/design/goal-ui/captures/queue/goal-review/preview-error-390.png"
+  },
+  {
+    "state": "decision-error",
+    "width": 390,
+    "primaries": 1,
+    "overflow": 0,
+    "pageErrors": [],
+    "path": "/workspace/skipwaitmanus-wt/d048-queue-review/design/goal-ui/captures/queue/goal-review/decision-error-390.png"
+  },
+  {
+    "state": "pass-dialog",
+    "width": 390,
+    "primaries": 1,
+    "overflow": 0,
+    "pageErrors": [],
+    "path": "/workspace/skipwaitmanus-wt/d048-queue-review/design/goal-ui/captures/queue/goal-review/pass-dialog-390.png"
+  },
+  {
+    "state": "empty-quiet",
+    "width": 390,
+    "primaries": 0,
+    "overflow": 0,
+    "pageErrors": [],
+    "path": "/workspace/skipwaitmanus-wt/d048-queue-review/design/goal-ui/captures/queue/goal-review/empty-quiet-390.png"
+  }
+]

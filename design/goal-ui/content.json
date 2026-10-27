@@ -1058,6 +1058,23 @@
       "rule": "Never show 0 when the balance failed to load."
     }
   },
+  "shareImpact": {
+    "heading": "Your impact, shareable",
+    "intro": "A card for your bio or your next post. Screen name only - no seeker ever appears.",
+    "verifiedLine": "{screenName} · Verified at {company}",
+    "referredBig": "{count} referrals",
+    "referredBigOne": "{count} referral",
+    "referredBigZero": "No referrals",
+    "referredLine": "into {company} this month.",
+    "medianReplyValue": "{hours}h",
+    "medianReplyLabel": "median first reply, all time",
+    "acceptRateValue": "{pct}%",
+    "acceptRateLabel": "asks accepted, all time",
+    "copyText": "Copy card as text",
+    "copyLinkedIn": "Copy for LinkedIn",
+    "copied": "Copied.",
+    "note": "Your numbers are real and yours. Seeker names never appear, and sharing is always your choice."
+  },
   "shareWin": {
     "heading": "Share the win?",
     "intro": "Your ask was accepted at {company}. Tell people if you want to – it is always your choice.",

@@ -22,6 +22,7 @@ Give the seeker lane a safe, parallel-ready handoff: each remaining seeker surfa
 
 - D-150 / split: “Every screen, landing to admin, is redesigned to the goal doctrine, UI and UX, never the old layout recoloured.”
 - D-150 / split: “A row is done only when its pages meet `design/goal-ui/DOCTRINE.md` and the acceptance checklist in `docs/plans/GOAL_UI_MIGRATION.md`: the user's goal line first, one `Your next step` block with exactly one black commit, everything else ghost or a link, dot-and-text status, the cost before every ask, honest availability, and a match with its approved comp.”
+- Note (Oct 24): after D-176, "honest availability" means the post-save truth (the ask reached verified employees, or waits in the company's pool); the directory shows no "Open to requests" labels or open-first grouping. User-facing vocabulary is referral-only per D-180 (settled; docs sync landed in #617).
 - D-134 / split: “Each lane packet (`D-048-P-*`) adds the rows of its clusters exactly as listed below (status `todo`, packet = that lane packet), in the pull request that lands the packet.”
 - D-097 / split: “RELEASED is a versioned list in `client/src/lib/goalSurfaces.ts` ... production always equals the code on the main SHA.”
 - D-149 / split: “For re-skins: every kit behaviour kept or listed as dropped, every kit test assertion ported or listed, money lines only from `shared/moneyCopy.ts`, captures from fictional fixtures ... and a Tier 1 review before landing.”
@@ -64,14 +65,14 @@ Give the seeker lane a safe, parallel-ready handoff: each remaining seeker surfa
 - `D-048-p3-inbox`: `client/src/pages/UnifiedInbox.tsx` (switch only), `client/src/pages/ThreadAlias.tsx` (switch only), `client/src/pages/goal/inbox/**`, `client/src/pages/inboxGoal.test.tsx`, `design/goal-ui/captures/inbox/**`.
 - `D-048-p3-start`: `client/src/pages/Onboarding.tsx` (switch only), `client/src/pages/goal/start/**`, `client/src/pages/startGoal.test.tsx`, `design/goal-ui/captures/start/**`.
 - `D-048-p3-onboarding`: `client/src/pages/ProfileSetup.tsx` (switch only), `client/src/pages/goal/onboarding/**`, `client/src/pages/onboardingGoal.test.tsx`, `design/goal-ui/captures/onboarding/**`.
-- `D-048-p3-assistants`: `client/src/pages/Assistants.tsx`, `client/src/pages/Approve.tsx`, `client/src/pages/ConnectAssistant.tsx` (switch only), `client/src/pages/goal/assistants/**`, `design/goal-ui/captures/assistants/**`.
+- `D-048-p3-assistants`: `client/src/pages/Assistants.tsx`, `client/src/pages/Approve.tsx`, `client/src/pages/ConnectAssistant.tsx` (switch only), `client/src/pages/goal/assistants/**`, `design/goal-ui/captures/assistants/**`, `client/src/components/goal/goalBoundary.test.ts` (only its one `MOVED_SURFACES` entry for `pages/ConnectAssistant.tsx`; registry amendment PR #706, same registration as 161eafc2).
 - `D-048-p3-seeker-small`: `client/src/pages/Landed.tsx`, `client/src/pages/SuggestCompany.tsx`, `client/src/pages/ShareHub.tsx` (switch only), `client/src/pages/goal/seeker-small/**`, `design/goal-ui/captures/seeker-small/**`.
 
 ### Read only
 `docs/plans/D-048-phase-3-split.md`, `docs/plans/GOAL_UI_MIGRATION.md`, `design/goal-ui/DOCTRINE.md`, approved `design/goal-ui/pick/**`, the existing page modules/tests, `client/src/components/goal/**`, `client/src/lib/goalSurfaces.ts`, `client/src/hooks/**`, `client/src/lib/inbox*`, `client/src/lib/assistant*`, relevant `shared/**` contracts, and existing API modules named by each child.
 
 ### Out of scope
-`server/**`, `drizzle/**`, `shared/**` edits, `client/src/App.tsx`, `client/src/components/AppShell.tsx`, `client/src/components/goal/**`, `client/src/hooks/**`, `client/src/lib/**` edits, `.env*`, workflows, `goalSurfaces.ts` releases, legal copy, pricing flags, and the already-live `/explore`, `/ask`, `/explore/:slug`, `/requests` redesign rows.
+`server/**`, `drizzle/**`, `shared/**` edits, `client/src/App.tsx`, `client/src/components/AppShell.tsx`, `client/src/components/goal/**` (except the assistants row's one `MOVED_SURFACES` entry above), `client/src/hooks/**`, `client/src/lib/**` edits, `.env*`, workflows, `goalSurfaces.ts` releases, legal copy, pricing flags, and the already-live `/explore`, `/ask`, `/explore/:slug`, `/requests` redesign rows.
 
 ## 6. Steps (one commit each for child implementers)
 
@@ -80,6 +81,8 @@ Give the seeker lane a safe, parallel-ready handoff: each remaining seeker surfa
 3. **Onboarding.** Add `D-048-p3-onboarding`; port profile setup validation/save/error tests first, implement the goal surface and captures. Commit `feat(goal): move seeker onboarding`.
 4. **Assistants.** Add `D-048-p3-assistants`; write red-first approval, scope, expiry, audit and cost-boundary tests, then implement each switch-only page and goal body. Commit `feat(goal): move seeker assistants`.
 5. **Small surfaces.** Add `D-048-p3-seeker-small`; implement Landed, SuggestCompany and ShareHub one surface per commit with red-first parity tests and captures. Commit `feat(goal): move seeker small surfaces`.
+
+In a fresh worktree run `pnpm install` before the first `pnpm check` (missing local dependencies fail as TS2688/TS5101; REGISTER-520, Oct 24).
 
 Every child commit runs its focused tests and `pnpm check`; before any long gate, heartbeat the picker and push each commit. A child merges latest `origin/main` before its full gate.
 
@@ -133,3 +136,6 @@ None for this packet. The split and register decide the lane. Any new choice abo
 ## Status
 
 - D-048-P-seeker: prepared — PR pending landing — GPT · 8884 — 2026-10-23 — branch `agent/architect/d048-p-seeker`
+- D-048-p3-start: done — Gemini 3.8 Flash · b7c1 — 2026-10-26 — PR #570; /start goal rebuild behind goalSurfaceOn('start') with job-link preview and resume handoff, 7 tests and 1280/390 captures passing.
+- D-048-p3-onboarding: done — Gemini 3.8 Flash · b7c1 — 2026-10-26 — PR #571; /onboarding profile setup goal rebuild behind goalSurfaceOn('onboarding'), 7 tests and 1280/390 captures passing.
+- D-048-p3-seeker-small: done — DeepSeek V4.1 Flash · 15ed — 2026-10-27 — PR #572; /landed, /suggest-company and /share goal rebuilds behind goalSurfaceOn('landed'|'suggest-company'|'share'), 17 tests and 1280/390 captures, with the tests and captures moved into the owned paths (D-215) so scope-check passes.

@@ -1,0 +1,23 @@
+{
+  "signedIn": { "id": "9", "name": "Rao Verma", "email": "rao.verma@example.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/referrer/home-bundle", "match": "exact", "status": 200, "body": {
+      "access": { "verifiedCompanyAccess": true, "workEmailDomain": "quillmint.com", "companyName": "Quillmint", "companyInitials": "Q" },
+      "preferences": { "referralCapacity": 3, "preferAreas": [], "preferLevels": [], "referrerVisibility": "anon", "notifyNewAsk": true, "paused": false },
+      "inboxNew": { "requests": [], "scope": "new", "hasEverReviewed": true },
+      "inboxCompleted": { "requests": [], "scope": "completed", "hasEverReviewed": true },
+      "profile": { "profile": { "workEmailVerifiedAt": "2026-10-01T00:00:00.000Z", "referralCapacity": 3 } },
+      "impact": { "reviewed": 11, "approved": 7, "introductions": 3, "interviews": 2, "offers": 1, "repliedWithin3DaysPct": 64 },
+      "failed": []
+    } },
+    { "method": "GET", "path": "/api/referrer/impact-card", "match": "exact", "status": 200, "body": {
+      "state": "ready",
+      "screenName": "QuietFalcon",
+      "companyName": "Quillmint",
+      "companySlug": "quillmint",
+      "linkPath": "/refer/quillmint/quietfalcon",
+      "stats": { "referredThisMonth": 3, "medianFirstReplyHours": 3, "acceptRatePct": 64 }
+    } },
+    { "method": "GET", "path": "/api/credits/summary", "match": "prefix", "status": 200, "body": { "summary": { "totalAvailable": 0 } } }
+  ]
+}
