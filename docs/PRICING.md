@@ -9,7 +9,7 @@ Record each new decision in `docs/DECISIONS.md` BEFORE building on it, and sync 
 
 Frozen decisions bind: once the founder freezes a decision it is the single source every agent follows; nobody builds against anything older unless he reopens it (Oct 23, 01:00 IST).
 
-## The model: frozen banded pricing (D-216, owner freeze Oct 25 19:31 IST; re-confirmed Oct 26)
+## The model: frozen banded pricing (D-216, owner freeze Oct 25 19:31 IST)
 All monthly founding-member prices, India Rs / global USD. A band names the referrer levels a seeker reaches (bounded, non-cumulative, overlapping at Mid and Senior).
 - **Seeker plans:**
   - Early to Mid: Rs229 / $4.49, with 3 Early + 1 Mid referral a month.

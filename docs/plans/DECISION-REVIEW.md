@@ -27,7 +27,7 @@
   - **D-176, 8/10.** Matches how seekers search. Seven strings still contradict it; DECISION-COPY-oct26 owns them.
   - **D-196, 7/10.** Paid referrer priority could serve both sides. It now has prices (D-216 (7)) but no reviewed routing.
 - **Actions:**
-  - Recorded D-216 (the Oct 25 pricing freeze, re-confirmed by the owner Oct 26) and D-217 (24 h poster first match), and D-218 for this audit.
+  - Recorded D-216 (the Oct 25 pricing freeze; the Oct 26 session restatement is context, not an anchor) and D-217 (24 h poster first match), and D-218 for this audit.
   - Set 86 status notes and synced PRICING, AGENTS, BRIEF, PRD and plans/README.
   - Moved D-132-item3, D-132-v2-checkout and SKIPPY-3 to architect, made D-132-item3's re-scope deliver the accepted-price check SKIPPY-fix needs first, and made D-048-p3-skippy wait for SKIPPY-fix.
   - Added rows DECISION-COPY-oct26 and DECISION-SYNC-oct26.
@@ -39,3 +39,4 @@
 - **Not settled, routed to Instinct:** the regular price after a founding cap fills. PR #666's description says about +50%, but its code removed that multiplier as unapproved. Nothing is priced after a cap until the owner's word.
 - **Superseded instructions marked:** the D-132 packet banner and the KIT_V4 §3b D-132 row; BRIEF and AGENTS now give the referral-only wording rule and the recorded-but-unsold referrer and company plans.
 - **Unchanged:** every done row, the D-147 refund questions (behaviour unchanged), and every flag, price and sale state.
+- **Oct 27 provenance correction (Instinct's review on #720):** the two verbatim Oct 26 session quotes (D-216's re-confirmation and D-218's request) were removed. Session messages have no iMessage original, so they are paraphrased as context and are not anchors; D-216 rests on the Oct 25 anchors. D-147's attribution and its attestation on `main` are unchanged by this PR, and the decline-credit scope question stays an owner question.

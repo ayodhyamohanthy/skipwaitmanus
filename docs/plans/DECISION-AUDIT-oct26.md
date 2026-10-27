@@ -1,6 +1,6 @@
 # Decision audit, Oct 26 2026 (D-218)
 
-> Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code at the owner's request: "Make sure no old decisions are updated by new decisions and no old decisions are being implemented." This file is the evidence behind register entry D-218. It changes no price, billing, refund, reward or release flag.
+> Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code at the owner's request in the Oct 26 Claude Code session (a session message with no iMessage original, paraphrased): older decisions name the newer ones that changed them, and no task builds a superseded rule. This file is the evidence behind register entry D-218. It changes no price, billing, refund, reward or release flag.
 
 ## How the request was read
 The request has two readings, and the audit covers both:
