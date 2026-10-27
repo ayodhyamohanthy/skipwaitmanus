@@ -5,7 +5,7 @@
 // never waited for CI.
 //
 //   node scripts/require-green-release.mjs --target api|web           # wait for CI, then pass or refuse
-//   node scripts/require-green-release.mjs --target api|web --once    # re-check right before a production step
+//   node scripts/require-green-release.mjs --target api|web --once    # re-check right before a production step (never waits for CI)
 //   node scripts/require-green-release.mjs --target api --recovery    # rollback.yml: a deliberate older target
 //
 // It passes only when all of these hold, and refuses (exit 1) on anything else: a red,
@@ -21,6 +21,10 @@
 //     refs/tags/api-runtime for the API, the newest successful Pages deploys for the Web.
 // There is no switch that skips it. A commit that skipped CI ([skip ci]) gets a CI run by
 // dispatching the CI workflow on main; the gate waits for it.
+//
+// --once never waits for CI: anything but green refuses at once. A GitHub API error (including a
+// malformed response) is the one thing it retries, like the waiting gate does: at most 5 attempts in a
+// row, RELEASE_GATE_INTERVAL_SECONDS apart (about 2 minutes at the default), then it refuses.
 //
 // --recovery (#751) is the one deliberate exception to the last rule, for rollback.yml run from
 // main: production may move back to an older commit, chosen on purpose. Everything else holds:
@@ -166,7 +170,7 @@ export async function evaluateRelease({ gh, sha, target, runId, recovery = false
   return newer ? { state: "red", reason: `superseded: ${newer}; dispatch this workflow on ${RELEASE_BRANCH} to release the newest commit` } : ci;
 }
 
-/** Wait (or, with once, look once) and return { ok, reason }. Only a green verdict is ok. A recovery releases intent.commit. */
+/** Wait for CI (with once, never: only GitHub errors are retried, MAX_API_ERRORS at most) and return { ok, reason }. Only a green verdict is ok. A recovery releases intent.commit. */
 export async function runGate({ gh, sha, ref, event, target, runId, recovery = false, intent = null, workflowSha = "", once = false, timeoutMs, appearMs, intervalMs, now = Date.now, sleep, log = () => {} }) {
   if (recovery) {
     const problem = recoveryProblem(intent ?? {}) ?? (FULL_SHA.test(workflowSha) ? null : "no workflow commit to compare the target's schema contract with");
@@ -189,7 +193,7 @@ export async function runGate({ gh, sha, ref, event, target, runId, recovery = f
     }
     if (verdict.state === "green") return { ok: true, reason: verdict.reason };
     if (verdict.state === "red") return { ok: false, reason: verdict.reason };
-    if (once && verdict.state !== "error") return { ok: false, reason: `${verdict.reason}; the re-check before a production step never waits` };
+    if (once && verdict.state !== "error") return { ok: false, reason: `${verdict.reason}; the re-check before a production step never waits for CI` };
     const waited = now() - start;
     if (verdict.state === "missing" && waited >= appearMs) {
       return { ok: false, reason: `${verdict.reason} after ${Math.round(waited / 1000)} s. If the commit skipped CI ([skip ci]), dispatch the CI workflow on main, then re-run this workflow` };
