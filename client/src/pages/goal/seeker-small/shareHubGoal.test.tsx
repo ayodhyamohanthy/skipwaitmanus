@@ -3,6 +3,7 @@
 // link lifecycle, flags-off kit control.
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const authState = { isSignedIn: true };
@@ -17,6 +18,7 @@ vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => null }));
 vi.mock("@/components/Brand", () => ({ Brand: () => null }));
 
 import ShareHub from "@/pages/ShareHub";
+import GoalShareHub from "@/pages/goal/seeker-small/GoalShareHub";
 
 function stubInvite(code = "PAL-123", ok = true) {
   return vi.fn(async () => ok
@@ -42,6 +44,14 @@ describe("goal share hub", () => {
     expect(document.body.textContent ?? "").not.toMatch(/referral credit/i);
     const commit = screen.getByRole("button", { name: "Copy link" });
     expect(commit.getAttribute("aria-disabled")).not.toBe("true");
+  });
+
+  it("never says the link is ready before it exists (first paint, before any effect runs)", () => {
+    // The lazy goal body can paint once before its load effect starts; that
+    // paint said "Your link is ready." with no link (main red at dc7f71a8, eb0fd8cd).
+    const html = renderToStaticMarkup(<GoalShareHub />);
+    expect(html).toContain("Creating your link…");
+    expect(html).not.toContain("Your link is ready.");
   });
 
   it("offers Try again when the link cannot be created", async () => {

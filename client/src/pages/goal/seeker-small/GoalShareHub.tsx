@@ -12,7 +12,7 @@ export default function GoalShareHub() {
   const { isSignedIn } = useAuth();
   const [inviteCode, setInviteCode] = useState("");
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(isSignedIn);
   const [linkError, setLinkError] = useState("");
   const origin = typeof window === "undefined" ? "https://skipwait.me" : window.location.origin;
   const link = useMemo(() => inviteCode ? `${origin}/start?invite=${encodeURIComponent(inviteCode)}` : "", [inviteCode, origin]);
