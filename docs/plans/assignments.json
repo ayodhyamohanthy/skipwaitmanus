@@ -827,7 +827,9 @@
         "client/src/components/goal/GoalMoreMenu.tsx",
         "client/src/components/goal/goalMoreMenu.test.tsx",
         "client/index.html (switch only)",
-        "DESIGN.md"
+        "DESIGN.md",
+        "scripts/designTokenAuditCore.mjs",
+        "scripts/designTokenAudit.test.ts"
       ]
     },
     {
