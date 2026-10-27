@@ -17,3 +17,7 @@ Inspect actual CI workflow triggers, concurrency cancellation, API job/run schem
 Red-first test fixtures and real output must prove negative paths block every production side effect and positive exact-SHA success permits the intended workflow. Assert migration job cannot begin before gate; preserve path selection, runtime/fixture classification, SHA recording, serialization and health verification. Negative and positive gates, including manual dispatch and concurrent/superseded CI, need independent review. Live deployment acceptance remains separate from fixture tests. No token-bearing live tests or DB writes for verification.
 
 Tier1 independent review by a non-builder/non-fixer family on exact integrated head; latest main and required CI green before normal merge-commit landing. Preserve old workflows/service during development; any manual mitigation requires explicit grounded scope.
+
+## Status
+
+- P1-deploy-green-gate: in progress — Claude Code · da74 — 2026-10-27 — branch agent/queue/p1-deploy-green-gate
