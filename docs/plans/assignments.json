@@ -1481,7 +1481,7 @@
         "client/src/pages/goal/seeker-small/**",
         "design/goal-ui/captures/seeker-small/**"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. D-215 (Oct 26): the block clears as a build problem with this work list - move client/src/pages/{landedGoal,shareHubGoal,suggestCompanyGoal}.test.tsx into client/src/pages/goal/seeker-small/ and the six captures from design/goal-ui/captures/{landed,share,suggest-company}/ into design/goal-ui/captures/seeker-small/; owns is correct and must not be widened. pnpm check is clean at 21547caa - the failing CI job is named typecheck but its Typecheck step passes; the step that fails is the scope check. D-129 holds go-live only (owner's word plus a legal check), and this row stays dark."
     },
     {
       "id": "D-048-p3-skippy",
