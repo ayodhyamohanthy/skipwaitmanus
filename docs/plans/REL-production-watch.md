@@ -30,15 +30,15 @@
    - `GET /` → 200 and the HTML holds `<meta name="git-commit"`.
    - `GET /api/health/ready` → 200 with `"state":"ready"`. A 503 whose JSON says `"state":"validating"` is a rollout, not a failure, until it has lasted 3 runs (15 minutes): `scripts/deploy-cloudflare-two-phase.sh` polls this same route while a new container validates. `"state":"failed"`, any other 5xx, a Cloudflare error page or an HTML body fails at once.
    - `GET /api/health/latency` → 200 and `dbRoundTripMs` is a number. That route answers 200 with `null` when the database fails.
-   - `GET /api/plans/catalog` → 200 and the body parses as JSON (an HTML body is a failure). Also record whether any entry of `packs` has `available: true`. When the previous run saw one and this run sees none, the round fails with the probe name `packs-unavailable`, because then nothing can be bought.
+   - `GET /api/plans/catalog` → 200 and the body parses as JSON (an HTML body is a failure). Also record how many entries of `packs` have `available: true`, for the weekly note only; it never fails a round. D-219 (6) pauses pack sales, so on Oct 27 the live catalog answered `available: false` for every pack by design. The catalog cannot tell a pack switched off on purpose from one whose provider check failed (`server/plansCatalogRoutes.ts` returns the same `false` for both). A drop to none can only become a failing probe once the catalog says which it is, and that is work for whichever row puts packs back on sale, not this one.
    - `GET /api/auth/workos/sign-in?provider=google`, without following redirects → 302 whose `Location` carries a `redirect_uri` with host `skipwait.me` and path `/api/auth/workos/callback`. The route builds the URL locally (`getAuthorizationUrl` in `server/_core/workosAuth.ts`) and calls no provider when the request has no `login_hint` and no `fresh=1`. The probe discards the return cookie. A 502 means seeker social sign-in is broken.
    - `POST /api/auth/otp/send` and `POST /api/auth/workos/email-code/send` with the body `{"email":"watchdog-probe"}` → 400 JSON. Both handlers refuse a malformed email before any provider call, rate counter or database write (`registerReferrerOtpLoginRoutes` in `server/_core/otpLogin.ts`; `server/_core/seekerEmailCode.ts`). No rate limiter, origin check or CSRF guard runs before them. Re-read them first; if that is no longer true, drop the probe and say so in the PR. A 5xx or an HTML answer means sign-in is broken.
 3. **When it alerts.** A round fails when any probe fails. Each run probes; after a failed round it waits 30 s and probes again. Two failed rounds in a row open an outage (D-100's "2 consecutive failures").
-   - **State** lives in KV as `{ state: "up" | "down", since, lastAlertAt, lastWeeklyAt, weekRuns, weekOutages, validatingRuns, lastPacksAvailable, failing: [probe names] }`. It is written once per run, which is 288 writes a day, below even the free tier's 1,000.
+   - **State** lives in KV as `{ state: "up" | "down", since, lastAlertAt, lastWeeklyAt, weekRuns, weekOutages, validatingRuns, packsAvailable, failing: [probe names] }`. It is written once per run, which is 288 writes a day, below even the free tier's 1,000.
    - **Up to down:** one alert "SkipWait DOWN: <probe names> (<status>)".
    - **While down:** a reminder at most every 60 minutes.
    - **Down to up:** one alert "SkipWait recovered after <minutes> min".
-   - **Every Monday at 03:30 UTC (09:00 IST):** one "SkipWait watchdog: all probes green this week (<weekRuns> runs, <weekOutages> outages)" note, so a dead watchdog is noticed by its silence.
+   - **Every Monday at 03:30 UTC (09:00 IST):** one "SkipWait watchdog: all probes green this week (<weekRuns> runs, <weekOutages> outages, <packsAvailable> packs on sale)" note, so a dead watchdog is noticed by its silence.
 4. **How it alerts, on two channels**, so an email outage cannot silence it:
    - **Email** through the ZeptoMail HTTP API, with the request shape `server/emailDelivery.ts` uses (copy the few lines; do not import it), to the two addresses in `server/errorAlerting.ts` (`ADMIN_ERROR_RECIPIENT`, `ADMIN_ALERT_COPY_RECIPIENT`), from `noreply@skipwait.me`. Secret: `ZEPTOMAIL_API_KEY`. This is email only: D-100's iMessage leg has no free API a Worker can call.
    - **GitHub issue**, when the optional secret `GITHUB_ISSUES_TOKEN` is set (a fine-grained token for this repository only, Issues: read and write). The watchdog opens or comments on one issue `SkipWait DOWN: <probe names>` labelled `incident` and closes it on recovery. It creates the label idempotently (POST `/labels`, ignoring 422). GitHub notifies the owner by its own email, and the picker's lights 6 and 7 read it.
@@ -56,7 +56,7 @@
 
 **Tests** (`scripts/watchdogCore.test.ts`, which Vitest already collects, importing `watchdog/src/core.ts`):
 - **Probes:** each probe's pass and fail, including an HTML body on a JSON probe and a 5xx on a sign-in probe.
-- **Rollout and packs:** a `validating` 503 passes for 2 runs and fails on the third. Packs going from available to none fails once.
+- **Rollout and packs:** a `validating` 503 passes for 2 runs and fails on the third. A catalog with no pack available passes, and so does a drop from some to none; the count reaches the weekly note.
 - **Alert rules:** one failed round opens nothing. Two in a row open one outage, with one email and one issue action. A further failed run sends nothing until 60 minutes pass. Recovery sends one email and closes the issue.
 - **Weekly note:** it fires once a week with the counts.
 - **Failed channel:** a failed channel leaves the state unchanged.
@@ -111,7 +111,7 @@
 - Landed.
 - The job's first run shows as succeeded in `/api/admin/jobs`.
 
-## REL-5xx-capture: every server error reaches Sentry and the owner, sign-in and webhooks included (lane `observability`, Tier 2)
+## REL-5xx-capture: every server error reaches Sentry and the owner, sign-in and webhooks included (lane `observability`, Tier 2, after D-090-BYOR, which edits `server/_core/index.ts` and `server/errorAlerting.ts`)
 **Why.**
 - **Most 5xx answers go unreported.** 238 handled `status(500|502|503)` answers sit in 35 server files (`server/**/*.ts` excluding tests; `git grep -E "status\((500|502|503)\)" server/ | grep -v "\.test\."`), and 32 of those files never call Sentry (only `privateReferralRoutes.ts`, `scheduledJobsRoutes.ts` and `workosWebhooks.ts` import `captureServerError`). Nothing global reports a 5xx: the `/api` finish hook in `server/_core/index.ts` only logs slow requests.
 - **The owner's 5xx email misses sign-in and webhooks.** `materialErrorAlertMiddleware` (`server/errorAlerting.ts`) is registered after the payment and WorkOS webhooks and after the sign-in routes, so a broken sign-in code send or webhook emails nobody.
@@ -226,7 +226,7 @@
 - Landed.
 - Both drill links.
 
-## REL-heartbeats: the watchdog sees a stopped scheduler (lane `jobs`, Tier 2, after REL-watchdog)
+## REL-heartbeats: the watchdog sees a stopped scheduler (lane `jobs`, Tier 2, after REL-watchdog and D-090-BYOR, which edits `server/_core/index.ts`)
 **Why.** Several jobs stop together when the hourly cron, the tick or the job store fails: payment reconcile, coverage delivery, the D-038 timers and the money check. Nobody hears about it:
 - The overdue flag (`OVERDUE_WINDOWS` in `server/scheduledJobsRoutes.ts`, an inline rule) is computed only when someone opens `/api/admin/jobs`, and no client calls it.
 - A job that exhausts its attempts is skipped silently.

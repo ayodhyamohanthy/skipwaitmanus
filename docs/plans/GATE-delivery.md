@@ -121,7 +121,7 @@
 - Landed.
 - One real PR showing the message.
 
-## PICKER-fullstack-lights: the board shows the lights, and a red live release holds every landing but its fix (lane `picker`, Tier 2, after REL-release-verify, REL-watchdog, PROCESS-review-gate, PICKER-review-wording, PICKER-architect-landing, PICKER-decision-sync and BRANCH-HYGIENE-2, which edit the same files)
+## PICKER-fullstack-lights: the board shows the lights, and a red live release holds every landing but its fix (lane `picker`, Tier 2, after REL-release-verify, REL-watchdog, PROCESS-review-gate, PICKER-review-wording, PICKER-architect-landing, PICKER-decision-sync, BRANCH-HYGIENE-2, PICKER-avoid-unblock and PICKER-avoid-land, which edit the same files; PICKER-decision-sync and BRANCH-HYGIENE-2 declare no `owns` on `main`, so only these dependency edges keep this row behind them)
 **Why.** The picker reads only `main`'s CI (`scripts/next-task.mjs`). A failed deploy, an unverified release, an outage or an overdue job never shows on the board, so agents keep landing features on top of a broken production. `PROCESS-scorecard` reports weekly; this is the live view.
 
 **What.**

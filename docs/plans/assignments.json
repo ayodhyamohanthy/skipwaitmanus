@@ -688,7 +688,9 @@
       "lane": "observability",
       "branch": "agent/queue/rel-5xx-capture",
       "status": "todo",
-      "dependsOn": [],
+      "dependsOn": [
+        "D-090-BYOR"
+      ],
       "epic": "D-212",
       "owns": [
         "server/httpErrorCapture.ts",
@@ -696,7 +698,8 @@
         "server/_core/index.ts (switch only)",
         "server/errorAlerting.ts",
         "server/errorAlerting.test.ts"
-      ]
+      ],
+      "note": "Oct 27 merge-up: waits for D-090-BYOR (PR #632, built), which also edits server/_core/index.ts, server/errorAlerting.ts and its test."
     },
     {
       "id": "GATE-test-integrity",
@@ -768,7 +771,8 @@
       "branch": "agent/queue/rel-heartbeats",
       "status": "todo",
       "dependsOn": [
-        "REL-watchdog"
+        "REL-watchdog",
+        "D-090-BYOR"
       ],
       "epic": "D-212",
       "owns": [
@@ -779,7 +783,8 @@
         "server/_core/index.ts (switch only)",
         "watchdog/src/core.ts",
         "scripts/watchdogCore.test.ts"
-      ]
+      ],
+      "note": "Oct 27 merge-up: also waits for D-090-BYOR (PR #632, built), which also edits server/_core/index.ts."
     },
     {
       "id": "REL-webhook-auth-alarm",
@@ -3128,8 +3133,10 @@
       "lane": "security-recon",
       "branch": "agent/queue/d100-provider-recon",
       "status": "todo",
-      "dependsOn": [],
-      "note": "D-223 subtask of D-100. Writes nothing; never adds a gateway key.",
+      "dependsOn": [
+        "REL-webhook-auth-alarm"
+      ],
+      "note": "D-223 subtask of D-100. Writes nothing; never adds a gateway key. Oct 27: waits for REL-webhook-auth-alarm, which ranks higher and also edits server/dailyMoneyCheck.ts.",
       "epic": "D-100",
       "owns": [
         "server/chargebeeAccountApi.ts",
@@ -3760,7 +3767,8 @@
         "PICKER-review-wording",
         "PICKER-architect-landing",
         "PICKER-decision-sync",
-        "BRANCH-HYGIENE-2"
+        "BRANCH-HYGIENE-2",
+        "PICKER-avoid-land"
       ],
       "epic": "D-212",
       "owns": [
@@ -3768,7 +3776,8 @@
         "scripts/nextTaskCore.mjs",
         "scripts/nextTaskText.mjs",
         "scripts/nextTask.test.ts"
-      ]
+      ],
+      "note": "Oct 27 merge-up: also waits for PICKER-avoid-land (and so PICKER-avoid-unblock), which edit scripts/nextTaskCore.mjs; PICKER-qa-stage follows through this row."
     },
     {
       "id": "PICKER-qa-stage",
