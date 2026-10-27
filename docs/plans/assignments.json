@@ -777,10 +777,17 @@
         "ROW20-CD",
         "D-048-F-goal-check"
       ],
-      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost.",
+      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost. Oct 27 (owns): the packet's owned paths (OCT21-BUILT-PRS.md: the page, threadModel.ts seeker copy only, their tests, the conversation fixtures and captures) are registered file by file. The seeker cases in referralConversation.test.tsx pin the old h1 and the 7-day closed line this row must change, and the captures folder is shared, so D-048-p3-conversation (unclaimed) now waits for this row instead of both owning those paths at once (D-134, D-167).",
       "epic": "D-048-p3",
       "owns": [
-        "client/src/pages/conversation/SeekerConversation.tsx"
+        "client/src/pages/conversation/SeekerConversation.tsx",
+        "client/src/pages/conversation/SeekerConversation.goal.test.tsx",
+        "client/src/components/thread/threadModel.ts",
+        "client/src/components/thread/threadModel.test.ts",
+        "client/src/pages/referralConversation.test.tsx",
+        "client/src/pages/referralConversation.shareWin.test.tsx",
+        "design/goal-ui/tools/fixtures/conversation__*.json",
+        "design/goal-ui/captures/conversation/**"
       ]
     },
     {
@@ -1650,7 +1657,8 @@
         "D-038-reconcile",
         "D-105-win-card",
         "ROW20-CD",
-        "D-048-F-goal-check"
+        "D-048-F-goal-check",
+        "D-048-p3-live-review-conversation"
       ],
       "owns": [
         "client/src/pages/ReferralConversation.tsx",
@@ -1659,7 +1667,7 @@
         "client/src/pages/referralConversation.test.tsx",
         "design/goal-ui/captures/conversation/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147) (attribution unverified - no recovered owner original; register state and refund behavior unchanged); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
+      "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147) (attribution unverified - no recovered owner original; register state and refund behavior unchanged); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). Oct 27: waits for D-048-p3-live-review-conversation (claimed), which also owns referralConversation.test.tsx (its seeker cases) and the conversation captures folder; this row then builds on the redesigned seeker page.",
       "epic": "D-048-p3"
     },
     {
