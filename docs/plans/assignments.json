@@ -1621,7 +1621,7 @@
       "tier": 1,
       "lane": "d048-workspace",
       "branch": "agent/queue/d048-p3-referrer",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -3427,6 +3427,41 @@
         "design/goal-ui/captures/seeker-small/**"
       ],
       "note": "Live legacy wording regressions verified on main Oct 27: GoalLanded.tsx noun-ask x4 (L67 'find the ask', L78 'your asks', L83 'marks an ask as hired', L137 'Close my other asks') and GoalShareHub.tsx 'extra referral credit' x2 (L19, L46). Freeze: referral-only user-facing wording, no noun ask/asks, no user-facing credits. Routed to WorkBuddy DeepSeek V4.1 Flash via #572 comment 6433426504; verify reward wording against the actual pending-reward and next-private-request unlock behavior (D-055). Tests + viewport-true captures (1280x900 / 780x1688) refresh required. Tier 1 per the #632 precedent: referral-credit wording is money-adjacent copy, so the code PR lands only after one independent D-151 review."
+    },
+    {
+      "id": "D-048-doctrine-benefit-copy",
+      "title": "Design doctrine: record the owner's goal-oriented design + benefit-oriented copy bar (phonemsg-01M5Y1HVMB69M0V3AQR8HJYEAE)",
+      "row": "D-048",
+      "packet": null,
+      "tier": 2,
+      "lane": "design-core",
+      "branch": "agent/instinct/doctrine-benefit-copy-oct27",
+      "status": "in-review",
+      "dependsOn": [],
+      "note": "Amends design/goal-ui/DOCTRINE.md only: owner steering Oct 27 12:12 IST - goal-oriented UI design; benefit-oriented UX copy/microcopy (benefit + next step + failure recovery) across headings/buttons/empty states/errors. Terminology freeze, legal and payment semantics unchanged; noun swaps are the floor, not the bar.",
+      "owns": [
+        "design/goal-ui/DOCTRINE.md"
+      ]
+    },
+    {
+      "id": "D-048-copy-goal-twins-trigger-fix",
+      "title": "Fix #727 review findings: per-party reward trigger wording on the goal share/landed twins",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-seeker.md",
+      "tier": 1,
+      "lane": "d048-foundation",
+      "branch": "agent/deepseek/d048-goal-twins-trigger-fix",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "Post-merge review 6435626730 on #727: FINDINGS. Fix on a new branch off current main: (1) blocking - friend mailto/X message implies one trigger unlocks both rewards; state each person's own trigger (inviter next, joiner first; server/db.ts:4041-4045, 4437-4450, 4047-4048). (2) inviter status line same single-trigger construction. (3) '1 extra referral' -> '1 extra referral request' (reward is a request, not a completed referral). (4) tests: assert rendered mailto body + X strings per-party, signed-out copy, load-error text, close-others button; extend noun-ask guard to all rendered states. Refresh affected 390/1280 captures. Frozen naming, no unit semantics, no flag/RELEASED/pricing/billing change. Tier 1: independent D-151 review (seat-1 offered) before merge; reviewer never merges.",
+      "owns": [
+        "client/src/pages/goal/seeker-small/GoalLanded.tsx",
+        "client/src/pages/goal/seeker-small/GoalShareHub.tsx",
+        "client/src/pages/goal/seeker-small/landedGoal.test.tsx",
+        "client/src/pages/goal/seeker-small/shareHubGoal.test.tsx",
+        "design/goal-ui/captures/seeker-small/**",
+        "docs/plans/D-048-seeker.md"
+      ]
     }
   ]
 }
