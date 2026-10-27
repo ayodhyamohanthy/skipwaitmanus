@@ -20,3 +20,7 @@ Owns: client/src/components/AppShell.tsx, client/src/components/goal/GoalShell.t
 - Verify remaining-referral count from D222 stays visible and no purchase affordance appears on referrer surfaces.
 - Capture and inspect actual pixels at 390 and1280, account-menu closed/open and unread/error states. Check current released home when it actually uses these components; otherwise record non-reachability and a real shell route. Live impact requires live proof, not source inference.
 - Run existing account-menu, notification, shell and goal-boundary tests, typecheck and required CI. Independent functional review and designer pixels before acceptance. No flags, billing/auth rules, production writes, OTP or notification sends.
+
+## Live scope qualification, Oct 27 QA
+
+Main relayed inspected QA pixels: signed-in `/plans` MOBILE has two bells for both tested roles; desktop has one visible bell; released marketing `/` has no bells. Neither bell was clicked, so destination convergence remains source-qualified, not click-tested. Do not describe this as all signed-in surfaces or a released-home duplicate. Prior Oct26 QA reportedly had one bell; introduction has NOT been bisected. Verify responsive visibility rather than counting hidden DOM nodes. These live observations refine the target without expanding #743's recovery scope.
