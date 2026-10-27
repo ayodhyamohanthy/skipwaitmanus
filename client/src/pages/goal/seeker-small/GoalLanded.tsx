@@ -64,7 +64,7 @@ export default function GoalLanded() {
     return <main data-skipwait-screen="landed-sign-in" data-testid="goal-landed" className="g-scope page-content mx-auto w-full max-w-xl pb-10">
       <header className="px-4 pt-6 gdesk:px-5 gdesk:pt-7">
         <h1 className="text-g-display text-g-ink">Close the loop on your new role.</h1>
-        <p className="mt-2 text-g-meta text-g-ink-2">Someone helped you land it. Sign in to find the ask and send your thank-you.</p>
+        <p className="mt-2 text-g-meta text-g-ink-2">Someone helped you land it. Sign in to find the referral request and send your thank-you.</p>
       </header>
       <section aria-label="Your next step" className="mx-4 my-5 border border-g-hairline p-4 gdesk:mx-5">
         <h2 className="text-g-heading text-g-ink">Your next step</h2>
@@ -75,12 +75,12 @@ export default function GoalLanded() {
 
   if (showSkeleton) return shell(<div className="mx-4 my-5 gdesk:mx-5"><RequestsLoading slow={isSlow} /></div>);
   const loadError = requestsQuery.isError && !requestsQuery.isFetching ? requestsQuery.error.message : "";
-  if (loadError) return shell(<div className="mx-4 my-5 gdesk:mx-5"><RequestsAlert title={LOAD_ERROR} detail={loadError} reassurance="Nothing was lost - your asks and this thank-you wait for you." retryLabel="Try again" onRetry={() => { void requestsQuery.refetch(); }} dismissLabel="Back to requests" onDismiss={() => window.location.assign("/requests")} /></div>);
+  if (loadError) return shell(<div className="mx-4 my-5 gdesk:mx-5"><RequestsAlert title={LOAD_ERROR} detail={loadError} reassurance="Nothing was lost - your referral requests and this thank-you wait for you." retryLabel="Try again" onRetry={() => { void requestsQuery.refetch(); }} dismissLabel="Back to requests" onDismiss={() => window.location.assign("/requests")} /></div>);
   if (!hire) {
     return shell(<section aria-label="Your next step" className="mx-4 my-5 border border-g-hairline p-4 gdesk:mx-5">
       <h2 className="text-g-heading text-g-ink">Your next step</h2>
       <p className="mt-2 text-g-label text-g-ink">No hires to thank yet.</p>
-      <p className="mt-1 text-g-meta text-g-ink-2">When the referrer marks an ask as hired, this journey opens with their name on it.</p>
+      <p className="mt-1 text-g-meta text-g-ink-2">When the referrer marks your referral request as hired, this journey opens with their name on it.</p>
       <div className="mt-4 flex flex-wrap items-center gap-4">
         <GoalButton variant="primary" asChild><Link href="/explore">Explore companies</Link></GoalButton>
         <GoalButton variant="ghost" asChild><Link href="/requests">My requests</Link></GoalButton>
@@ -134,7 +134,7 @@ export default function GoalLanded() {
         <span>{payForward === "later" ? "No reminders from us. Verify whenever you are ready." : "Verify your new work email whenever you are ready."}</span></p>
       <div className="mt-4 flex flex-wrap items-center gap-4">
         <GoalButton variant="primary" asChild><Link href="/verify">Verify work email</Link></GoalButton>
-        <GoalButton variant="ghost" asChild><Link href="/requests">Close my other asks</Link></GoalButton>
+        <GoalButton variant="ghost" asChild><Link href="/requests">Close my other referral requests</Link></GoalButton>
       </div>
     </section> : null}
   </>);

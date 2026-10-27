@@ -39,7 +39,12 @@
       // or half-built pieces. A hard timer guarantees the page is never left hidden.
       document.documentElement.classList.add("sw-boot");
       window.__swReveal = function () { document.documentElement.classList.remove("sw-boot"); };
-      setTimeout(window.__swReveal, 2500);
+      // If the app bundle never even parses (blocked or failed script), reveal the static
+      // snapshot after 2.5s so the page still has content. If the bundle IS alive but simply
+      // slow, revealing then would paint the old static snapshot before React commits - the
+      // 12s absolute timer is the last-resort failsafe for a bundle that loaded but never mounted.
+      setTimeout(function () { if (!window.__swBootAlive) window.__swReveal(); }, 2500);
+      setTimeout(window.__swReveal, 12000);
       // Start the referrer home data request now, in parallel with the app and sign-in loading (the session cookie
       // authenticates it). The page uses it once if it is fresh, and otherwise asks again. Only started when this browser loaded the bundle before (hint set by the app), so signed-out visitors do not log a 401.
       try {
