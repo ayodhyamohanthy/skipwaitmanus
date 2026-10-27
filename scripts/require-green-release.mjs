@@ -129,9 +129,9 @@ export async function runGate({ gh, sha, ref, event, target, runId, once = false
     if (once && verdict.state !== "error") return { ok: false, reason: `${verdict.reason}; the re-check before a production step never waits` };
     const waited = now() - start;
     if (verdict.state === "missing" && waited >= appearMs) {
-      return { ok: false, reason: `${verdict.reason} after ${Math.round(waited / 60_000)} min. If the commit skipped CI ([skip ci]), dispatch the CI workflow on main, then re-run this workflow` };
+      return { ok: false, reason: `${verdict.reason} after ${Math.round(waited / 1000)} s. If the commit skipped CI ([skip ci]), dispatch the CI workflow on main, then re-run this workflow` };
     }
-    if (waited >= timeoutMs) return { ok: false, reason: `timed out after ${Math.round(waited / 60_000)} min: ${verdict.reason}` };
+    if (waited >= timeoutMs) return { ok: false, reason: `timed out after ${Math.round(waited / 1000)} s: ${verdict.reason}` };
     log(`waiting: ${verdict.reason}`);
     await sleep(intervalMs);
   }
