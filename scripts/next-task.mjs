@@ -396,10 +396,10 @@ async function main() {
       process.exit(3);
     }
     if (!args.claim || !CLAIMABLE.includes(pick.kind)) {
-      console.log(renderPick(pick, { who: who ?? "<your session name>", date, claimed: false }));
+      console.log(renderPick(pick, { who: who ?? "<your session name>", date, claimed: false, register }));
       process.exit(EXIT[pick.kind] ?? 0);
     }
-    if (claim(pick, who, branches)) { console.log(renderPick(pick, { who, date, claimed: true })); return; }
+    if (claim(pick, who, branches)) { console.log(renderPick(pick, { who, date, claimed: true, register })); return; }
     console.error(`next-task: another agent pushed first (attempt ${attempt}); picking again`);
   }
   fail("three claims in a row were taken by other agents; run again in a minute");
