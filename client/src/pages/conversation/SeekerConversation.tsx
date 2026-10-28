@@ -9,7 +9,7 @@ import { ArrowLeft } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
-import { GoalAppShell, GoalButton, GoalErrorState, GoalMiniStepper, GoalNum, GoalStatus } from "@/components/goal";
+import { GoalAppShell, GoalButton, GoalErrorState, GoalMiniStepper, GoalNextStep, GoalNum, GoalStatus } from "@/components/goal";
 import { referrerGreeting } from "@/components/landed/landedModel";
 import { REFERRED_DEADLINE_ENABLED } from "@shared/referral";
 import { REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
@@ -114,16 +114,27 @@ export function SeekerConversation(props: Props) {
         {failure ? (
           <p role="alert" className="mt-2 flex flex-wrap items-center gap-2 text-g-meta text-g-ink-2">{failure}<GoalButton size="xs" variant="ghost" onClick={onReload}>Try again</GoalButton></p>
         ) : null}
-        <h1 className="mt-2 text-g-display text-g-ink">{unknown ? (request.title ?? "Your ask") : company}</h1>
+        <h1 className="mt-2 text-g-display text-g-ink">{unknown ? "Get referred." : `Get referred at ${company}.`}</h1>
         <p className="mt-1 text-g-meta text-g-ink-2">
-          {unknown ? null : (request.title ?? "Referral request")}{sent ? <>{unknown ? null : " · "}<span className="uppercase"><GoalNum>SENT {sent}</GoalNum></span></> : null}
+          {request.title ?? "Referral request"}{sent ? <>{" · "}<span className="uppercase"><GoalNum>SENT {sent}</GoalNum></span></> : null}
         </p>
 
         <div className="mt-6 flex items-center justify-between gap-3">
           <GoalStatus status={view.status} label={view.label} className="text-g-label" />
           {view.stepper ? <GoalMiniStepper stage={view.stepper.stage} terminal={view.stepper.terminal} label={`Stage ${view.stepper.stage + 1} of 4: ${view.label}`} /> : null}
         </div>
-        {line ? <p className="mt-2 text-pretty text-g-meta text-g-ink-2">{line}</p> : null}
+        {line ? (
+          <div className="mt-4">
+            <GoalNextStep reason={line}>
+              {request.status === "approved" && REFERRED_DEADLINE_ENABLED && confirm !== "email" ? (
+                <GoalButton variant="primary" size="sm" className="mt-3" onClick={() => { setActionError(""); setConfirm("email"); }}>I got the referral email</GoalButton>
+              ) : null}
+              {closedFor ? (
+                <GoalButton variant="primary" size="sm" className="mt-3" asChild><Link href="/explore">Find another referrer</Link></GoalButton>
+              ) : null}
+            </GoalNextStep>
+          </div>
+        ) : null}
         {props.referrerName ? <p className="mt-1 text-g-meta text-g-ink-2">Your referrer <span className="text-g-ink">{props.referrerName}</span></p> : null}
         {request.status === "approved" && REFERRED_DEADLINE_ENABLED && request.referredDueAt ? (
           <p className="mt-1 text-g-meta text-g-ink-3">The referrer’s deadline to mark Referred is {formatDay(request.referredDueAt)}.</p>
@@ -132,8 +143,6 @@ export function SeekerConversation(props: Props) {
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {canWithdraw && confirm !== "withdraw" ? <GoalButton variant="ghost" flush size="sm" onClick={() => { setActionError(""); setConfirm("withdraw"); }}>Withdraw ask</GoalButton> : null}
-          {request.status === "approved" && REFERRED_DEADLINE_ENABLED && confirm !== "email" ? <GoalButton variant="outline" size="sm" onClick={() => { setActionError(""); setConfirm("email"); }}>I got the referral email</GoalButton> : null}
-          {closedFor ? <GoalButton variant="outline" size="sm" asChild><Link href="/explore">Find another referrer</Link></GoalButton> : null}
           {stage === "Hired" ? <Link href={`/landed?request=${request.id}`} className="text-g-meta text-g-ink-2 underline underline-offset-2">Thank {referrerGreeting(props.referrerName ?? request.referrerName)}</Link> : null}
           {nextMilestones.map(m => (
             <GoalButton key={m.status} variant="outline" size="sm" busy={busy} onClick={() => { void run(() => props.onProgress(m.status), "We could not record this milestone"); }}>Mark {m.stage}</GoalButton>
