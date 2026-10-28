@@ -17,6 +17,10 @@ vi.mock("@/_core/auth", () => ({
   useUser: () => ({ user: { fullName: "Ada Byron", primaryEmailAddress: { emailAddress: "ada@example.com" }, emailAddresses: [] } }),
   SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
+vi.mock("@shared/referral", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@shared/referral")>();
+  return { ...actual, REFERRED_DEADLINE_ENABLED: false };
+});
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/conversation/601", vi.fn()],
@@ -115,7 +119,7 @@ describe("seeker /conversation on the goal doctrine (D-150)", () => {
     expect(line.textContent).not.toMatch(/7 days/);
   });
 
-  it("renders no referred-deadline line while REFERRED_DEADLINE_ENABLED is off", async () => {
+  it("gates the referred-deadline line on REFERRED_DEADLINE_ENABLED (mocked off here; the live flag is on)", async () => {
     renderConversation({ ...base, status: "approved", referrerId: 77, referredDueAt: "2026-10-30T08:00:00.000Z" });
     await screen.findByTestId("goal-status");
     expect(screen.queryByText(/deadline to mark Referred/)).toBeNull();
