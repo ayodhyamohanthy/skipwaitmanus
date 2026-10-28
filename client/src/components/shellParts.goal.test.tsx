@@ -14,13 +14,20 @@
  *
  * The cookie banner is global: it floats over the landing and every page that
  * mounts it, and each of those pages owns the one black commit on its screen
- * (DESIGN.md §1; GoalLanding.test.tsx counts `[data-g-primary="true"]`). So
+ * (DESIGN.md §1: "Exactly one solid black element per screen, and it is the
+ * commit action"; GoalLanding.test.tsx counts `[data-g-primary="true"]`). So
  * neither choice is black. "Essential only" and "Accept all" both wear
  * GoalButton's ink-outline recipe with the large phone height, class for class,
- * so refusing looks exactly as easy as accepting (CEO ruling on #767). The pin
- * renders GoalButton itself and compares, so the banner cannot drift from the
- * primitive while CookieConsent.tsx may not import components/goal
- * (goalBoundary.test.ts, owned by another row).
+ * so refusing looks exactly as easy as accepting. The pin renders GoalButton
+ * itself and compares, so the banner cannot drift from the primitive while
+ * CookieConsent.tsx may not import components/goal (goalBoundary.test.ts,
+ * owned by another row).
+ *
+ * The equal-outline treatment is also the documented independent designer
+ * finding on #767 (owner comment 2026-10-28T12:10:17Z): independent visual
+ * evidence at 5a3b193c showed both choices equal ink-outline and only the
+ * page's own company action black, resolving the signed-out consent contrast
+ * finding. It is recorded in docs/plans/GOAL_UI_COVERAGE.md §6.2.
  *
  * BetaNotice keeps its `kit` tone: /sign-in has not moved yet (D-048-p3-signin)
  * and DESIGN.md forbids goal tokens on an unmoved surface, so only the `goal`
