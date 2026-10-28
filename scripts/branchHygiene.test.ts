@@ -3,7 +3,7 @@
 // The pure rules first, then the script as a process against throwaway git repositories and a
 // local stand-in for the GitHub API, so the dry run and --apply are proven without touching GitHub.
 import { execFileSync, spawn } from "node:child_process";
-import { chmodSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import os from "node:os";
@@ -19,7 +19,7 @@ const TASKS = [task("DONE-1", "done"), task("OPEN-1", "todo"), task("ARCH-1", "a
 // By default every marker branch is marker-only and nothing is retained; the tests below vary both.
 const input = (names: string[], extra: Record<string, unknown> = {}) => ({
   branches: names.map((name, i) => ({ name, sha: sha("0123456789abcdef"[i % 16]) })),
-  mainTipAncestry: new Set<string>(), mergedPrHeads: new Map<string, Set<string>>(), openPrHeads: new Set<string>(), tasks: TASKS, mainRed: null,
+  mainTipAncestry: new Set<string>(), mergedPrHeads: new Map<string, Set<string>>(), openPrHeads: new Set<string>(), openPrBases: new Set<string>(), tasks: TASKS, mainRed: null,
   retained: new Map<string, string>(), markerOnly: new Set(names), ...extra,
 });
 const verdict = (rows: Row[], name: string) => { const r = rows.find(x => x.name === name); return r && `${r.action} ${r.reason}`; };
@@ -63,6 +63,13 @@ describe("classifyBranches (D-205 rulings 1-3)", () => {
     expect(verdict(rows, "feature/open")).toBe("keep open-pr");
   });
 
+  it("keeps a branch an open pull request targets as its base, even when it is merged: deleting it would close that pull request", () => {
+    const names = ["agent/queue/done-1", "feature/squashed"];
+    const base = input(names, { mainTipAncestry: new Set(["agent/queue/done-1"]), openPrBases: new Set(names) });
+    const rows = classifyBranches({ ...base, mergedPrHeads: new Map([["feature/squashed", new Set([base.branches[1].sha])]]) });
+    for (const name of names) expect(verdict(rows, name)).toBe("keep open-pr");
+  });
+
   it("keeps unmerged work, and lists it", () => {
     const rows = classifyBranches(input(["feature/wip", "agent/review/no-such-task"]));
     expect(verdict(rows, "feature/wip")).toBe("keep unmerged");
@@ -88,6 +95,7 @@ describe("classifyBranches (D-205 rulings 1-3)", () => {
     expect(() => classifyBranches({ ...good, mainTipAncestry: ["feature/x"] })).toThrow(/invalid input/);
     expect(() => classifyBranches({ ...good, mergedPrHeads: { "feature/x": [sha("a")] } })).toThrow(/invalid input/);
     expect(() => classifyBranches({ ...good, openPrHeads: null })).toThrow(/invalid input/);
+    expect(() => classifyBranches({ ...good, openPrBases: ["feature/x"] })).toThrow(/invalid input/);
     expect(() => classifyBranches({ ...good, tasks: [{ id: "X" }] })).toThrow(/invalid input/);
     expect(() => classifyBranches({ ...good, mainRed: { sha: "nope" } })).toThrow(/invalid input/);
     expect(() => classifyBranches({ ...good, branches: [{ name: "feature/x", sha: sha("a") }, { name: "feature/x", sha: sha("b") }] })).toThrow(/invalid input/);
@@ -206,12 +214,12 @@ function repos(opts: { retention?: unknown; registry?: string; merged?: number }
   const runner = path.join(dir, "runner");
   git(dir, "clone", "-q", origin, runner);
   const mainSha = git(runner, "rev-parse", "origin/main");
-  return { dir, origin, runner, squashed, open, mainSha };
+  return { dir, origin, work, runner, squashed, open, mainSha };
 }
 type Pull = Record<string, unknown>;
 // The GitHub stand-in. `open(n)` answers the n-th read of the open pull requests (1 = the first snapshot).
 function serve(r: ReturnType<typeof repos>, opts: { open?: (n: number) => Pull[] } = {}) {
-  const dependabot = { head: { ref: "dependabot/npm/x", sha: r.open, repo: { full_name: "o/r" } } };
+  const dependabot = { head: { ref: "dependabot/npm/x", sha: r.open, repo: { full_name: "o/r" } }, base: { ref: "main" } };
   const open = opts.open ?? (() => [dependabot]);
   let reads = 0;
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
@@ -227,9 +235,10 @@ function serve(r: ReturnType<typeof repos>, opts: { open?: (n: number) => Pull[]
   });
   return new Promise<{ base: string; close: () => void }>(resolve => server.listen(0, "127.0.0.1", () => resolve({ base: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, close: () => server.close() })));
 }
-function run(cwd: string, base: string, args: string[] = [], env: Record<string, string> = {}) {
+const SCRIPT = path.join(root, "scripts/branch-cleanup.mjs");
+function run(cwd: string, base: string, args: string[] = [], env: Record<string, string> = {}, script = SCRIPT) {
   return new Promise<{ code: number | null; out: string }>(resolve => {
-    const child = spawn(process.execPath, [path.join(root, "scripts/branch-cleanup.mjs"), ...args], { cwd, env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", GITHUB_API_URL: base, ...env } });
+    const child = spawn(process.execPath, [script, ...args], { cwd, env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", GITHUB_API_URL: base, ...env } });
     let out = "";
     child.stdout.on("data", d => { out += d; });
     child.stderr.on("data", d => { out += d; });
@@ -317,14 +326,15 @@ describe("branch-cleanup.mjs as a process", () => {
 
   it("keeps a branch any open pull request uses, a fork's included, and stops on a pull request it cannot read", async () => {
     const r = repos({ retention: EMPTY_HOLDS });
-    const fork = { head: { ref: "agent/queue/done-1", sha: sha("e"), repo: { full_name: "fork/r" } } };
+    const fork = { head: { ref: "agent/queue/done-1", sha: sha("e"), repo: { full_name: "fork/r" } }, base: { ref: "main" } };
     const s = await serve(r, { open: () => [fork] });
     try {
       const { code, out } = await run(r.runner, s.base);
       expect(code).toBe(0);
       expect(out).toContain("keep    open-pr         agent/queue/done-1");
     } finally { s.close(); }
-    for (const broken of [{ head: null }, { head: { ref: "", sha: sha("e"), repo: null } }, { head: { ref: "x", sha: "nope", repo: null } }]) {
+    const head = { ref: "x", sha: sha("e"), repo: null };
+    for (const broken of [{ head: null }, { head: { ref: "", sha: sha("e"), repo: null } }, { head: { ref: "x", sha: "nope", repo: null } }, { head }, { head, base: { ref: "" } }]) {
       const s2 = await serve(r, { open: () => [broken] });
       try {
         const before = remote(r.origin);
@@ -338,7 +348,7 @@ describe("branch-cleanup.mjs as a process", () => {
 
   it("re-checks every row just before deleting it: a pull request opened since the first read keeps its branch", async () => {
     const r = repos({ retention: EMPTY_HOLDS });
-    const late = { head: { ref: "feature/squashed", sha: r.squashed, repo: { full_name: "o/r" } } };
+    const late = { head: { ref: "feature/squashed", sha: r.squashed, repo: { full_name: "o/r" } }, base: { ref: "main" } };
     const s = await serve(r, { open: n => (n === 1 ? [] : [late]) });
     try {
       const { code, out } = await run(r.runner, s.base, ["--apply"]);
@@ -419,5 +429,140 @@ describe("branch-cleanup.mjs as a process", () => {
     expect(code).not.toBe(0);
     expect(out).toMatch(/cannot read/);
     expect(remote(r.origin)).toContain("feature/squashed");
+  }, 60_000);
+
+  it("runs the same when started through a symlink, never a silent exit 0", async () => {
+    const r = repos({ retention: EMPTY_HOLDS });
+    const links = path.join(r.dir, "links");
+    mkdirSync(links);
+    symlinkSync(SCRIPT, path.join(links, "branch-cleanup.mjs"));
+    symlinkSync(path.join(root, "scripts"), path.join(links, "scripts"));
+    const s = await serve(r);
+    try {
+      for (const entry of [path.join(links, "branch-cleanup.mjs"), path.join(links, "scripts", "branch-cleanup.mjs")]) {
+        const dry = await run(r.runner, s.base, [], {}, entry);
+        expect(dry.code, entry).toBe(0);
+        expect(dry.out, entry).toMatch(/DRY RUN: 3 to delete, 6 to keep/);
+        const failed = await run(r.runner, "http://127.0.0.1:9", [], {}, entry);
+        expect(failed.code, entry).toBe(2);
+        expect(failed.out, entry).toMatch(/cannot read the open pull requests/);
+      }
+    } finally { s.close(); }
+  }, 60_000);
+
+  it("a dry run deletes no branch on origin or in the clone, and says the one thing it changes: this clone's origin/* refs", async () => {
+    const r = repos({ retention: EMPTY_HOLDS });
+    const s = await serve(r);
+    try {
+      // feature/wip goes on origin after the clone fetched it: only the clone's remote-tracking ref still names it.
+      git(r.runner, "branch", "-q", "--track", "wip", "origin/feature/wip");
+      git(r.origin, "update-ref", "-d", "refs/heads/feature/wip");
+      const tracking = () => git(r.runner, "for-each-ref", "--format=%(refname:strip=2)", "refs/remotes/origin").split("\n");
+      const heads = () => git(r.runner, "for-each-ref", "--format=%(refname:strip=2) %(objectname)", "refs/heads");
+      const [originBefore, headsBefore] = [remote(r.origin), heads()];
+      expect(tracking()).toContain("origin/feature/wip");
+      const { code, out } = await run(r.runner, s.base);
+      expect(code).toBe(0);
+      expect(out).toContain("DRY RUN: no branch was deleted on origin or in this clone; git fetch --prune refreshed this clone's remote-tracking refs (origin/*)");
+      expect(remote(r.origin)).toEqual(originBefore);
+      expect(heads()).toEqual(headsBefore);
+      expect(tracking()).not.toContain("origin/feature/wip");
+      // The usage header promises the same, never "writes nothing".
+      const header = readFileSync(SCRIPT, "utf8").split("\n").slice(0, 12).join("\n");
+      expect(header).not.toMatch(/writes nothing/);
+      expect(header).toMatch(/dry run: .*deletes no branch/);
+    } finally { s.close(); }
+  }, 60_000);
+
+  it("keeps a merged branch that an open pull request targets as its base, and stops on a base it cannot read", async () => {
+    const r = repos({ retention: EMPTY_HOLDS });
+    const stacked = { head: { ref: "feature/wip", sha: sha("e"), repo: { full_name: "o/r" } }, base: { ref: "agent/queue/done-1" } };
+    const s = await serve(r, { open: () => [stacked] });
+    try {
+      const { code, out } = await run(r.runner, s.base, ["--apply"]);
+      expect(code).toBe(0);
+      expect(out).toContain("keep    open-pr         agent/queue/done-1");
+      expect(out).toMatch(/APPLY: 2 to delete, 7 to keep/);
+      expect(out).toMatch(/deleted 2 of 2 \(checked on origin\)/);
+      expect(remote(r.origin)).toContain("agent/queue/done-1");
+    } finally { s.close(); }
+  }, 60_000);
+
+  it("deletes only the exact tip it planned: a branch pushed to since the plan is skipped, and one pushed to after the re-check is refused by its lease", async () => {
+    const r = repos({ retention: EMPTY_HOLDS });
+    // A commit on top of a branch's tip, straight on origin, the way another agent's push lands.
+    const pushOnto = (name: string) => {
+      const tip = git(r.origin, "rev-parse", `refs/heads/${name}`);
+      const next = git(r.origin, "commit-tree", `${tip}^{tree}`, "-p", tip, "-m", `pushed to ${name} meanwhile`);
+      git(r.origin, "update-ref", `refs/heads/${name}`, next, tip);
+      return next;
+    };
+    const moved: Record<string, string> = {};
+    // Read 1 belongs to the plan and read 2 to the re-check before the batch, each after its own fetch.
+    const s = await serve(r, { open: n => { if (n === 1) moved.squashed = pushOnto("feature/squashed"); if (n === 2) moved.done = pushOnto("agent/queue/done-1"); return []; } });
+    try {
+      const { code, out } = await run(r.runner, s.base, ["--apply"]);
+      expect(out).toMatch(/APPLY: 3 to delete/);
+      expect(out).toContain(`skipped feature/squashed: now at ${moved.squashed.slice(0, 8)}`);
+      expect(out).toMatch(/deleted 1 of 2 \(checked on origin\)/);
+      expect(out).toMatch(/not deleted: agent\/queue\/done-1/);
+      expect(code).toBe(1);
+      expect(git(r.origin, "rev-parse", "refs/heads/feature/squashed")).toBe(moved.squashed);
+      expect(git(r.origin, "rev-parse", "refs/heads/agent/queue/done-1")).toBe(moved.done);
+      expect(remote(r.origin)).not.toContain("agent/review/done-1");
+    } finally { s.close(); }
+  }, 60_000);
+
+  it("honours a retention hold added after the plan: the re-check before each batch keeps that branch", async () => {
+    const r = repos({ retention: EMPTY_HOLDS });
+    const hold = () => {
+      writeFileSync(path.join(r.work, LIST_PATH), JSON.stringify({ version: 1, holds: [{ branch: "agent/review/done-1", reason: "evidence found after the plan", ref: "#758" }] }));
+      git(r.work, "commit", "-q", "-am", "hold"); git(r.work, "push", "-q", "origin", "HEAD:main");
+    };
+    const s = await serve(r, { open: n => { if (n === 1) hold(); return []; } });
+    try {
+      const { code, out } = await run(r.runner, s.base, ["--apply"]);
+      expect(code).toBe(0);
+      expect(out).toMatch(/APPLY: 3 to delete/);
+      expect(out).toMatch(/skipped agent\/review\/done-1: now keep retained/);
+      expect(out).toMatch(/deleted 2 of 2 \(checked on origin\)/);
+      expect(remote(r.origin)).toContain("agent/review/done-1");
+    } finally { s.close(); }
+  }, 60_000);
+
+  it("refuses more deletions than --max allows, 150 by default, and deletes nothing", async () => {
+    for (const [merged, args, said] of [[0, ["--apply", "--max", "2"], "3 deletions is more than 2"], [148, ["--apply"], "151 deletions is more than 150"]] as const) {
+      const r = repos({ retention: EMPTY_HOLDS, merged });
+      const s = await serve(r);
+      try {
+        const before = remote(r.origin);
+        const { code, out } = await run(r.runner, s.base, [...args]);
+        expect(code, said).toBe(1);
+        expect(out).toContain(`${said}; nothing was deleted`);
+        expect(remote(r.origin)).toEqual(before);
+      } finally { s.close(); }
+    }
+  }, 120_000);
+
+  it("leaves the clone's uncommitted changes and stashes alone, in a dry run and with --local", async () => {
+    const r = repos({ retention: EMPTY_HOLDS });
+    const s = await serve(r);
+    try {
+      git(r.runner, "branch", "-q", "--track", "agent/queue/done-1", "origin/agent/queue/done-1");
+      git(r.origin, "update-ref", "-d", "refs/heads/agent/queue/done-1");
+      const file = path.join(r.runner, "docs/plans/assignments.json");
+      writeFileSync(file, "stashed edit\n");
+      git(r.runner, "stash", "push", "-q", "-m", "keep me");
+      writeFileSync(file, "uncommitted edit\n");
+      writeFileSync(path.join(r.runner, "untracked.txt"), "untracked\n");
+      const state = () => [git(r.runner, "stash", "list"), git(r.runner, "status", "--porcelain"), readFileSync(file, "utf8")];
+      const before = state();
+      expect((await run(r.runner, s.base)).code).toBe(0);
+      expect(state()).toEqual(before);
+      const local = await run(r.runner, s.base, ["--local"]);
+      expect(local.code).toBe(0);
+      expect(local.out).toMatch(/LOCAL: deleted 1 of 1/);
+      expect(state()).toEqual(before);
+    } finally { s.close(); }
   }, 60_000);
 });
