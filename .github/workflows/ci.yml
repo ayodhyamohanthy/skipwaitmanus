@@ -17,27 +17,24 @@ concurrency:
 # with all three jobs skipped, and GitHub counts a skipped required job as
 # passed.
 #
-# The condition below is the whole skip rule now: a pull request may skip only
-# when its own diff is empty, as counted by GitHub at the pinned base and head.
-# `changed_files`, `additions` and `deletions` must all be exactly the number 0.
-# A branch name, title, message or label is never an input, so a runtime or
-# docs/registry change runs the full steps wherever it is pushed.
+# H1 (owner source review, Oct 28): the first correction put the empty-diff test
+# in a job-level `if:` that read the event's own counts. That left the same hole
+# one level up - a wrong count skipped the job, so no classifier step ever ran.
+# The required jobs now always start. Each one classifies its own pinned diff
+# first, and only a verified empty diff lets it skip steps. A count that says
+# empty next to a diff that is not empty fails the job red.
 #
-# `toJSON()` is deliberate: `==` coerces, so `changed_files == 0` would also
-# accept the string "0". `toJSON()` returns `0` for the number and `"0"` for the
-# string, so only a real numeric zero takes the fast path. A missing, null,
-# negative or malformed count fails the comparison and runs the checks.
+# The classifier is the only skip rule: exactly zero changed files between the
+# pinned base and head, read from a real merge base, on a pull request against
+# the default branch (M1). A branch name, title, message or label is never an
+# input, so a runtime or docs/registry change runs the full steps wherever it is
+# pushed. Every unreadable, shallow, truncated or contradictory read runs the
+# full steps.
 #
-# Every other event - a push to main, a dispatch, a re-run - falls through to
-# running, because the condition is gated on `pull_request`. Nothing here uses
-# `needs:`, so no classifier can fail and leave a required job skipped.
-#
-# Each job then re-reads the same pinned pair itself and fails if it is running
-# while that diff is empty (`scripts/classifyCiChange.mjs --expect-substantive`),
-# so a wrong count cannot buy a green job that ran no real step.
+# Nothing here uses `needs:`, so no classifier job can fail and leave a required
+# job skipped.
 jobs:
   check:
-    if: ${{ !(github.event_name == 'pull_request' && toJSON(github.event.pull_request.changed_files) == '0' && toJSON(github.event.pull_request.additions) == '0' && toJSON(github.event.pull_request.deletions) == '0') }}
     name: typecheck
     runs-on: ubuntu-latest
     steps:
@@ -55,12 +52,27 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: git fetch --no-tags --depth=1 origin "$BASE_SHA" "$HEAD_SHA"
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA" "$HEAD_SHA"
+          if ! git merge-base "$BASE_SHA" "$HEAD_SHA" >/dev/null 2>&1; then
+            # L1: a depth-1 pair has no merge base, and an empty pinned pair
+            # cannot prove the pull request is empty. Deepen until one resolves;
+            # if it still does not, the classifier treats the read as substantive.
+            git fetch --no-tags --deepen=100 origin "$BASE_SHA" "$HEAD_SHA" || true
+          fi
       - name: Classify the change from the pinned diff
+        id: classify
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node scripts/classifyCiChange.mjs --expect-substantive >> "$GITHUB_OUTPUT"
+          # H1: the event's own counts, evaluated here so `toJSON()` still tells
+          # the number 0 from the string "0". The job always starts; this value
+          # only lets the classifier fail red when the counts contradict the
+          # pinned diff.
+          EVENT_CLAIMED_EMPTY: ${{ github.event_name == 'pull_request' && toJSON(github.event.pull_request.changed_files) == '0' && toJSON(github.event.pull_request.additions) == '0' && toJSON(github.event.pull_request.deletions) == '0' }}
+          # M1: only a pull request against the default branch may fast-path.
+          BASE_IS_DEFAULT_BRANCH: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref == github.event.repository.default_branch }}
+        run: node scripts/classifyCiChange.mjs >> "$GITHUB_OUTPUT"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Typecheck
@@ -82,12 +94,14 @@ jobs:
       # PICKER-owns-scope (docs/plans/PICKER-PARALLEL.md): judge what this branch changed
       # against the files its task declared it would touch. It reads the task from the
       # branch name, and fails open (with a warning) only when it cannot run at all, so a
-      # broken tool never blocks a real fix — but a definite change outside `owns` fails.
+      # broken tool never blocks a real fix - but a definite change outside `owns` fails.
+      # A verified empty diff has no files to judge and no queue row to read (marker
+      # branches never merge), so the classifier is the only thing that may skip it.
       - name: Scope check (declared file ownership)
+        if: ${{ steps.classify.outputs.marker_only != 'true' }}
         run: node scripts/scope-check.mjs --branch
 
   test:
-    if: ${{ !(github.event_name == 'pull_request' && toJSON(github.event.pull_request.changed_files) == '0' && toJSON(github.event.pull_request.additions) == '0' && toJSON(github.event.pull_request.deletions) == '0') }}
     name: unit + component + route tests
     runs-on: ubuntu-latest
     steps:
@@ -103,23 +117,31 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: git fetch --no-tags --depth=1 origin "$BASE_SHA" "$HEAD_SHA"
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA" "$HEAD_SHA"
+          if ! git merge-base "$BASE_SHA" "$HEAD_SHA" >/dev/null 2>&1; then
+            git fetch --no-tags --deepen=100 origin "$BASE_SHA" "$HEAD_SHA" || true
+          fi
       - name: Classify the change from the pinned diff
+        id: classify
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node scripts/classifyCiChange.mjs --expect-substantive >> "$GITHUB_OUTPUT"
+          EVENT_CLAIMED_EMPTY: ${{ github.event_name == 'pull_request' && toJSON(github.event.pull_request.changed_files) == '0' && toJSON(github.event.pull_request.additions) == '0' && toJSON(github.event.pull_request.deletions) == '0' }}
+          BASE_IS_DEFAULT_BRANCH: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref == github.event.repository.default_branch }}
+        run: node scripts/classifyCiChange.mjs >> "$GITHUB_OUTPUT"
       - name: Install dependencies
+        if: ${{ steps.classify.outputs.marker_only != 'true' }}
         run: pnpm install --frozen-lockfile
       - name: Vitest
         # The full suite runs here with no exclusions. The three suites that
         # used to be excluded for the missing tRPC mock harness now pass
         # (settings.workEmail, settings.slackTriage) or never needed excluding
         # (policyPages). Re-adding an --exclude here hides a red main.
+        if: ${{ steps.classify.outputs.marker_only != 'true' }}
         run: pnpm vitest run
 
   build:
-    if: ${{ !(github.event_name == 'pull_request' && toJSON(github.event.pull_request.changed_files) == '0' && toJSON(github.event.pull_request.additions) == '0' && toJSON(github.event.pull_request.deletions) == '0') }}
     name: production build
     runs-on: ubuntu-latest
     steps:
@@ -135,17 +157,27 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: git fetch --no-tags --depth=1 origin "$BASE_SHA" "$HEAD_SHA"
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA" "$HEAD_SHA"
+          if ! git merge-base "$BASE_SHA" "$HEAD_SHA" >/dev/null 2>&1; then
+            git fetch --no-tags --deepen=100 origin "$BASE_SHA" "$HEAD_SHA" || true
+          fi
       - name: Classify the change from the pinned diff
+        id: classify
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node scripts/classifyCiChange.mjs --expect-substantive >> "$GITHUB_OUTPUT"
+          EVENT_CLAIMED_EMPTY: ${{ github.event_name == 'pull_request' && toJSON(github.event.pull_request.changed_files) == '0' && toJSON(github.event.pull_request.additions) == '0' && toJSON(github.event.pull_request.deletions) == '0' }}
+          BASE_IS_DEFAULT_BRANCH: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref == github.event.repository.default_branch }}
+        run: node scripts/classifyCiChange.mjs >> "$GITHUB_OUTPUT"
       - name: Install dependencies
+        if: ${{ steps.classify.outputs.marker_only != 'true' }}
         run: pnpm install --frozen-lockfile
       - name: Build
+        if: ${{ steps.classify.outputs.marker_only != 'true' }}
         run: pnpm build
       - name: Build with all goal surfaces on
+        if: ${{ steps.classify.outputs.marker_only != 'true' }}
         run: pnpm build
         env:
           VITE_GOAL_SURFACES: all

@@ -5,15 +5,19 @@
 // too: PR #752 and PR #764 merged with all three required jobs skipped, which
 // GitHub counts as passed.
 //
-// The contract pinned here is the replacement. A required job may skip only
-// when the pull request's own diff is empty, as counted by GitHub at the pinned
-// base and head: `changed_files`, `additions` and `deletions` all exactly the
-// number 0. A branch name, title, message or label is never an input. Every
-// other case, including a missing or malformed count, runs the full steps.
+// H1 (owner source review, Oct 28): the first correction replaced that with a
+// job-level `if:` reading the event's changed-file counts, which left the same
+// hole one level up - a wrong count meant the job never started and no
+// classifier step ran. The contract pinned here is the correction:
 //
-// `toJSON()` is deliberate: it is the only way a GitHub expression can tell the
-// number 0 from the string "0", because `==` coerces. A string count must never
-// reach the fast path (packet E3).
+// 1. No required job carries a job-level `if:`. Every one of them starts on
+//    every event, so a skipped job can never hide a change again.
+// 2. Each job classifies its own pinned diff first (`id: classify`), and only
+//    `marker_only == 'true'` lets it skip steps.
+// 3. The event counts survive only as `EVENT_CLAIMED_EMPTY`, an input the
+//    classifier uses to fail the job red when the counts contradict the diff.
+//    `toJSON()` is deliberate: it is the only way a GitHub expression can tell
+//    the number 0 from the string "0" (packet E3).
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
@@ -21,9 +25,13 @@ import path from "node:path";
 const ci = fs.readFileSync(path.join(__dirname, "..", ".github", "workflows", "ci.yml"), "utf8");
 
 const REQUIRED_JOBS = ["typecheck", "unit + component + route tests", "production build"] as const;
-/** The one condition all three required jobs carry, byte for byte. */
-const FAST_PATH_IF =
-  "${{ !(github.event_name == 'pull_request' && toJSON(github.event.pull_request.changed_files) == '0' && toJSON(github.event.pull_request.additions) == '0' && toJSON(github.event.pull_request.deletions) == '0') }}";
+/** The one gate every skippable step carries, byte for byte. */
+const FAST_PATH_GATE = "${{ steps.classify.outputs.marker_only != 'true' }}";
+/** The event-count claim, byte for byte: only ever an input to the classifier. */
+const CLAIMED_EMPTY =
+  "${{ github.event_name == 'pull_request' && toJSON(github.event.pull_request.changed_files) == '0' && toJSON(github.event.pull_request.additions) == '0' && toJSON(github.event.pull_request.deletions) == '0' }}";
+const BASE_IS_DEFAULT =
+  "${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref == github.event.repository.default_branch }}";
 
 // Extract one job's block: from its key line (two-space indent under `jobs:`)
 // up to the next key at the same indent or end of file.
@@ -37,47 +45,78 @@ function jobBlock(jobName: string): string {
   return block!;
 }
 
-function jobIfLine(jobName: string): string {
-  const line = jobBlock(jobName).split("\n").find((l) => /^\s{4}if:\s/.test(l));
-  expect(line, `${jobName} needs a job-level if:`).toBeTruthy();
-  return line!.replace(/^\s{4}if:\s*/, "");
+/** The steps of one job, each as its own text block, in file order. */
+function steps(jobName: string): string[] {
+  return jobBlock(jobName)
+    .split(/\n(?=      - )/)
+    .filter((s) => s.trimStart().startsWith("- "));
 }
 
-describe("CI-architect-real-checks: the required jobs skip only an empty diff", () => {
+function stepNamed(jobName: string, name: string): string {
+  const step = steps(jobName).find((s) => s.includes(`- name: ${name}\n`));
+  expect(step, `job "${jobName}" needs a step named "${name}"`).toBeTruthy();
+  return step!;
+}
+
+describe("H1: every required job starts, and only its own classifier may skip steps", () => {
   for (const job of REQUIRED_JOBS) {
     it(`${job} keeps its required name`, () => {
       expect(ci).toContain(`name: ${job}\n`);
     });
 
-    it(`${job} carries the shared empty-diff condition, byte for byte`, () => {
-      expect(jobIfLine(job)).toBe(FAST_PATH_IF);
+    it(`${job} has no job-level if: - it always starts`, () => {
+      const lines = jobBlock(job).split("\n");
+      const jobIf = lines.find((l) => /^\s{4}if:\s/.test(l));
+      expect(jobIf, `${job} must not skip itself on the event's counts`).toBeUndefined();
+    });
+
+    it(`${job} classifies its own pinned diff first`, () => {
+      const block = jobBlock(job);
+      const classify = stepNamed(job, "Classify the change from the pinned diff");
+      expect(classify).toContain("id: classify");
+      expect(classify).toContain("node scripts/classifyCiChange.mjs >> \"$GITHUB_OUTPUT\"");
+      expect(classify).toContain("BASE_SHA: ${{ github.event.pull_request.base.sha }}");
+      expect(classify).toContain("HEAD_SHA: ${{ github.event.pull_request.head.sha }}");
+      expect(classify).toContain(`EVENT_CLAIMED_EMPTY: ${CLAIMED_EMPTY}`);
+      expect(classify).toContain(`BASE_IS_DEFAULT_BRANCH: ${BASE_IS_DEFAULT}`);
+      // The classify step is the first step that can fail the job; nothing
+      // expensive runs before it.
+      expect(block.indexOf("id: classify")).toBeLessThan(block.indexOf("pnpm install"));
+    });
+
+    it(`${job} reads a merge base before it trusts an empty diff`, () => {
+      // L1: a depth-1 pair has no merge base, and an empty pinned pair cannot
+      // prove the pull request is empty. The fetch deepens instead.
+      const fetch = stepNamed(job, "Fetch the pinned base and head");
+      expect(fetch).toContain("git merge-base");
+      expect(fetch).toContain("--deepen=100");
+      expect(fetch).toContain("continue-on-error: true");
     });
 
     it(`${job} never decides from a branch, a prefix, a label or another job`, () => {
-      const condition = jobIfLine(job);
-      for (const banned of ["startsWith", "head_ref", "base_ref", "ref_name", "github.ref", "needs.", "agent/", "label"]) {
-        expect(condition, `${job} if: must not mention ${banned}`).not.toContain(banned);
+      const runnable = jobBlock(job)
+        .split("\n")
+        .filter((line) => !line.trim().startsWith("#"))
+        .join("\n");
+      for (const banned of ["startsWith", "head_ref", "ref_name", "needs.", "agent/reports/", "agent/review/", "agent/heartbeat/", "agent/architect/", "agent/queue/landing"]) {
+        expect(runnable, `${job} must not read ${banned}`).not.toContain(banned);
       }
-    });
-
-    it(`${job} still runs on a push to main and on a dispatch`, () => {
-      // The condition is gated on `pull_request`, so both other events fall through to running.
-      expect(jobIfLine(job)).toContain("github.event_name == 'pull_request'");
-      expect(jobIfLine(job)).not.toContain("main");
-      expect(jobIfLine(job)).not.toContain("push");
-    });
-
-    it(`${job} classifies the pinned diff inside its own job`, () => {
-      const block = jobBlock(job);
-      expect(block).toContain("scripts/classifyCiChange.mjs --expect-substantive");
-      expect(block).toContain("BASE_SHA: ${{ github.event.pull_request.base.sha }}");
-      expect(block).toContain("HEAD_SHA: ${{ github.event.pull_request.head.sha }}");
-      expect(block).toContain('>> "$GITHUB_OUTPUT"');
     });
   }
 
   it("no required job needs another job (packet F1)", () => {
     expect(ci).not.toMatch(/^\s+needs:/m);
+  });
+
+  it("the event counts are an input to the classifier, never a skip rule", () => {
+    const countLines = ci
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("#"))
+      .filter((line) => line.includes("changed_files") || line.includes("additions") || line.includes("deletions"));
+    expect(countLines.length).toBe(REQUIRED_JOBS.length);
+    for (const line of countLines) {
+      expect(line.trim().startsWith("EVENT_CLAIMED_EMPTY:"), `counts used outside the classifier input: ${line}`).toBe(true);
+    }
   });
 
   it("no aggregate job hides a skipped required job", () => {
@@ -87,7 +126,6 @@ describe("CI-architect-real-checks: the required jobs skip only an empty diff", 
   });
 
   it("no branch prefix survives in any workflow instruction", () => {
-    // Comments may still explain the retired rule; no runnable line may use it.
     const instructions = ci
       .split("\n")
       .filter((line) => !line.trim().startsWith("#"))
@@ -99,10 +137,32 @@ describe("CI-architect-real-checks: the required jobs skip only an empty diff", 
 
   it("the count comparison cannot accept the string \"0\"", () => {
     for (const field of ["changed_files", "additions", "deletions"]) {
-      expect(FAST_PATH_IF).toContain(`toJSON(github.event.pull_request.${field}) == '0'`);
+      expect(CLAIMED_EMPTY).toContain(`toJSON(github.event.pull_request.${field}) == '0'`);
     }
-    // A bare `== 0` would coerce "0" to 0 and skip a real change.
-    expect(FAST_PATH_IF).not.toMatch(/github\.event\.pull_request\.\w+ == 0/);
+    expect(CLAIMED_EMPTY).not.toMatch(/github\.event\.pull_request\.\w+ == 0/);
+  });
+});
+
+describe("H1: the steps each job may skip on a verified empty diff", () => {
+  it("the tests and build jobs skip only their expensive steps", () => {
+    for (const [job, names] of [
+      ["unit + component + route tests", ["Install dependencies", "Vitest"]],
+      ["production build", ["Install dependencies", "Build", "Build with all goal surfaces on"]],
+    ] as const) {
+      for (const name of names) {
+        expect(stepNamed(job, name), `${job} / ${name}`).toContain(`if: ${FAST_PATH_GATE}`);
+      }
+    }
+  });
+
+  it("the typecheck job always runs install and tsc, and skips only the scope check", () => {
+    // #666's heap hunk occupies the only safe insertion point in the Typecheck
+    // step (packet G2), so this job cannot fast-path its own typecheck. It runs
+    // it, and the classifier still decides whether the scope check applies.
+    for (const name of ["Install dependencies", "Typecheck", "Design tokens", "Deploy trigger coverage"]) {
+      expect(stepNamed("typecheck", name), `typecheck / ${name} must always run`).not.toContain("if:");
+    }
+    expect(stepNamed("typecheck", "Scope check (declared file ownership)")).toContain(`if: ${FAST_PATH_GATE}`);
   });
 });
 
