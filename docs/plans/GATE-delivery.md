@@ -47,7 +47,7 @@
 - Tests pass, and CI is green with the check running on this very PR.
 - Landed.
 
-## GATE-e2e-journeys: the core journeys run in a real browser on every PR (lane `e2e`, Tier 2)
+## GATE-e2e-journeys: the core journeys run in a real browser on every PR (lane `e2e`, Tier 2, after CI-architect-real-checks, which owns `.github/workflows/ci.yml`)
 **Why.**
 - **Unit tests did not see them.** CI runs Vitest only, and both Oct 22 regressions crossed pages and sign-in.
 - **Nothing runs Playwright.** Playwright 1.62.1 is already a devDependency (`package.json`), and its test runner ships inside it (`playwright/test`). Five scripts use it (`scripts/kit-screens/capture.mjs`, `scripts/live-flow-audit.mjs`, `design/goal-ui/tools/render.mjs`, `design/goal-ui/tools/capture-live.mjs`, `design/goal-ui/pick/src/gate.mjs`), and no workflow runs any of them.
