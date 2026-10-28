@@ -90,6 +90,54 @@
       ]
     },
     {
+      "id": "P1-deploy-green-gate",
+      "title": "Block migrations, Web/API deploys and deliberate manual recovery until exact-target-SHA required CI succeeds (#748)",
+      "row": "D-082",
+      "packet": "docs/plans/P1-deploy-green-gate.md",
+      "tier": 1,
+      "lane": "deploy",
+      "branch": "agent/queue/p1-deploy-green-gate",
+      "status": "done",
+      "dependsOn": [],
+      "owns": [
+        ".github/workflows/deploy-api.yml",
+        ".github/workflows/deploy-pages.yml",
+        "scripts/require-green-release.mjs",
+        "scripts/requireGreenRelease.test.ts",
+        ".github/workflows/rollback.yml"
+      ]
+    },
+    {
+      "id": "P1-release-gate-strict-compare",
+      "title": "Fail closed on malformed compare responses before superseded release (#748)",
+      "row": "D-082",
+      "packet": "docs/plans/P1-release-gate-strict-compare.md",
+      "tier": 1,
+      "lane": "deploy",
+      "branch": "agent/queue/p1-release-gate-strict-compare",
+      "status": "in-review",
+      "dependsOn": [
+        "P1-deploy-green-gate"
+      ],
+      "owns": [
+        "scripts/require-green-release.mjs",
+        "scripts/requireGreenRelease.test.ts"
+      ],
+      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 acceptance (observe a subsequent normal gated release and its identities) is still pending, so the row is not done. No live rollback/DB/settings tests."
+    },
+    {
+      "id": "CI-architect-real-checks",
+      "title": "Close substantive architect PR CI skip through explicit workflow ownership handoff (#748/#752)",
+      "row": "D-082",
+      "packet": "docs/plans/CI-architect-real-checks.md",
+      "tier": 1,
+      "lane": "ci-gate",
+      "branch": "agent/queue/ci-architect-real-checks",
+      "status": "architect",
+      "dependsOn": [],
+      "note": "Packet/ownership reconciliation only, NOT ready for implementation. ci.yml remains owned by PRICING-banded-oct25 until explicit handoff and protected scope amendment. No dependency on pricing feature or disjoint P1 deployment repair; no concurrent workflow edits. Proposed full scope and evidence are in packet. Architect may resolve handoff/registration only; do not mutate runtime workflow while unresolved."
+    },
+    {
       "id": "D-174-sample-job-removal",
       "title": "Remove the fabricated acme.com 'Test role for loop verification' listing from production /jobs, the sitemap and JobPosting markup",
       "row": "D-193",
@@ -242,9 +290,9 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-review-independence",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "D-151: did() compares exact session names, so on Oct 22 the picker handed #382's re-review to Qoder · a236 right after Qoder · 31dd fixed it. Compare models, count Fixed markers as fixes, and print the rule in the review step. Every Tier 1 review the queue hands out, P0-ask-link-signin's and P1-queue-attestation's included, goes through this check."
+      "note": "D-151: implemented on main by PR #530 (`ff4e0546`) — `did()` compares models at the review and landing hand-outs, `fixers` counts `Fixed` markers as well as `Fix claim`, and the printed review step names the model and outside-picker checks, with red-first tests in `scripts/nextTask.test.ts` (\"D-151 model-independent reviews and landings\"). Takeover (DeepSeek V4.1 Flash Free · a54e) found no packet item left to build and closed the row without a code change; focused picker tests 159 passed on main `d27959aa`."
     },
     {
       "id": "PICKER-decision-sync",
@@ -768,7 +816,7 @@
       "dependsOn": [
         "SHELL-focus-clearance"
       ],
-      "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them.",
+      "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them. D-224 (Oct 28, unblock ruling): the audit compatibility contract in this packet resolves the R8 conflict; the register entry fixes the goal colour token set at the 27 light colour tokens.",
       "owns": [
         "client/src/styles/goalDark.css",
         "client/src/contexts/themeContext.test.tsx",
@@ -779,7 +827,10 @@
         "client/src/components/goal/GoalMoreMenu.tsx",
         "client/src/components/goal/goalMoreMenu.test.tsx",
         "client/index.html (switch only)",
-        "DESIGN.md"
+        "DESIGN.md",
+        "scripts/designTokenAuditCore.mjs",
+        "scripts/designTokenAudit.test.ts",
+        "design/goal-ui/captures/dark-mode/**"
       ]
     },
     {
@@ -867,14 +918,18 @@
       "dependsOn": [
         "D-048-p3-assistants"
       ],
-      "note": "Issue #644: decideAssistantApproval never re-reads the approved creditCount, so with ASK_LEVEL_COST on an owner who saw 1 credit could pay up to 10. Latent today (flag off; only the unsold land plan grants assistants), so ASK_LEVEL_COST and any land sale stay off until this is done. Contract: the decision body carries expectedCreditCount; the route re-derives the cost with the quote route's own functions and answers 409 cost_changed before any charge on a mismatch. No edit to server/db.ts or privateReferralRoutes.ts. Waits for D-048-p3-assistants (both edit Approve.tsx). D-221 (Oct 26): the shown cost is the quote route's full cost object under D-219 (unit count, level band, spend source), not an integer credit count; the invariant stays: charge exactly what was approved, or 409 cost_changed with nothing charged.",
+      "note": "Issue #644: decideAssistantApproval never re-reads the approved creditCount, so with ASK_LEVEL_COST on an owner who saw 1 credit could pay up to 10. Latent today (flag off; only the unsold land plan grants assistants), so ASK_LEVEL_COST and any land sale stay off until this is done. Contract: the decision body carries expectedCreditCount; the route re-derives the cost with the quote route's own functions and answers 409 cost_changed before any charge on a mismatch. No edit to server/db.ts or privateReferralRoutes.ts. Waits for D-048-p3-assistants (both edit Approve.tsx). D-221 (Oct 26): the shown cost is the quote route's full cost object under D-219 (unit count, level band, spend source), not an integer credit count; the invariant stays: charge exactly what was approved, or 409 cost_changed with nothing charged. Oct 27 (#644): Approve.tsx now only switches to the dark goal GoalApprove.tsx, which also posts { decision, kind }, so the goal page and its flow test join owns (D-048-p3-assistants, their only owner, is done) or it would loop on 409 once released; the cost object is a shared Zod contract (shared/assistantApprovalCost.ts) so the client never imports server code.",
       "owns": [
         "server/assistantApprovalCost.ts",
         "server/assistantApprovalCost.test.ts",
         "server/assistantRoutes.ts",
         "server/assistantRoutes.test.ts",
         "client/src/pages/Approve.tsx",
-        "client/src/pages/approve.test.tsx"
+        "client/src/pages/approve.test.tsx",
+        "shared/assistantApprovalCost.ts",
+        "shared/assistantApprovalCost.test.ts",
+        "client/src/pages/goal/assistants/GoalApprove.tsx",
+        "client/src/pages/goal/assistants/assistantFlows.test.tsx"
       ]
     },
     {
@@ -1483,7 +1538,7 @@
       "tier": 1,
       "lane": "d048-assistants",
       "branch": "agent/queue/d048-assistants",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1725,7 +1780,7 @@
       "tier": 1,
       "lane": "d048-verify",
       "branch": "agent/queue/d048-p3-email-review",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
@@ -2554,7 +2609,94 @@
       "branch": "agent/claude/d090-byor",
       "status": "todo",
       "dependsOn": [],
-      "note": "D-162: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main (docs/DECISIONS.md conflicts on the D-148 row: keep main's side and drop the branch's row, since D-162 records the waiver; the packet merges cleanly, so delete by hand its 'Gate waived by the owner (D-148 ...)' paragraph in §0 and its 'in progress — workbuddy · b0eb' Status line), and renumber 0107_ask_invites.sql to the next free number at landing (check drizzle/deploy/ on main and plan §5 at landing: on Oct 23 main has 0107_seeker_levels.sql and 0108_landed_thank_you.sql, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). Build C1-C5 in order: D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 puts the invite action into MyRequests.tsx as it is on main, as a ghost button or plain link (one black commit per page, D-150). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5). D-187 (Oct 24): C1-C6 are built; resume there: add \"/r/:token\" to KNOWN_ROUTE_PATTERNS in functions/_middleware.ts (not D-057's gate); the local '[auth] VITE_WORKOS_CLIENT_ID is not set' line is listed, not counted; user-facing 'ask' copy becomes D-180's referral vocabulary (money lines keep 'credit'); full gate, renumber 0111 at landing, Tier 1 draft PR. Review: not workbuddy, not GPT (D-151)."
+      "note": "D-162: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main (docs/DECISIONS.md conflicts on the D-148 row: keep main's side and drop the branch's row, since D-162 records the waiver; the packet merges cleanly, so delete by hand its 'Gate waived by the owner (D-148 ...)' paragraph in §0 and its 'in progress — workbuddy · b0eb' Status line), and renumber 0107_ask_invites.sql to the next free number at landing (check drizzle/deploy/ on main and plan §5 at landing: on Oct 23 main has 0107_seeker_levels.sql and 0108_landed_thank_you.sql, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). Build C1-C5 in order: D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 puts the invite action into MyRequests.tsx as it is on main, as a ghost button or plain link (one black commit per page, D-150). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5). D-187 (Oct 24): C1-C6 are built; resume there: add \"/r/:token\" to KNOWN_ROUTE_PATTERNS in functions/_middleware.ts (not D-057's gate); the local '[auth] VITE_WORKOS_CLIENT_ID is not set' line is listed, not counted; user-facing 'ask' copy becomes D-180's referral vocabulary (money lines keep 'credit'); full gate, renumber 0111 at landing, Tier 1 draft PR. Review: not workbuddy, not GPT (D-151).",
+      "owns": [
+        ".env.example",
+        "AGENTS.md",
+        "artifacts/d090-c6/README.md",
+        "artifacts/d090-c6/invite-sheet-report.json",
+        "artifacts/d090-c6/invite-sheet/live/mobile/d090_c6_invite-sheet.png",
+        "artifacts/d090-c6/invite-sheet/live/web/d090_c6_invite-sheet.png",
+        "artifacts/d090-c6/landing-claimed-report.json",
+        "artifacts/d090-c6/landing-claimed/live/mobile/d090_c6_landing-claimed.png",
+        "artifacts/d090-c6/landing-claimed/live/web/d090_c6_landing-claimed.png",
+        "artifacts/d090-c6/landing-held-report.json",
+        "artifacts/d090-c6/landing-held/live/mobile/d090_c6_landing-held.png",
+        "artifacts/d090-c6/landing-held/live/web/d090_c6_landing-held.png",
+        "artifacts/d090-c6/landing-signed-out-report.json",
+        "artifacts/d090-c6/landing-signed-out/live/mobile/d090_c6_landing-signed-out.png",
+        "artifacts/d090-c6/landing-signed-out/live/web/d090_c6_landing-signed-out.png",
+        "artifacts/d090-c6/landing-verified-report.json",
+        "artifacts/d090-c6/landing-verified/live/mobile/d090_c6_landing-verified.png",
+        "artifacts/d090-c6/landing-verified/live/web/d090_c6_landing-verified.png",
+        "artifacts/d090-c6/manifest.json",
+        "artifacts/d090-c6/sheet-revoke-confirmation-report.json",
+        "artifacts/d090-c6/sheet-revoke-confirmation/live/mobile/d090_c6_sheet-revoke-confirmation.png",
+        "artifacts/d090-c6/sheet-revoke-confirmation/live/web/d090_c6_sheet-revoke-confirmation.png",
+        "artifacts/d090-c6/waiting-row-report.json",
+        "artifacts/d090-c6/waiting-row/live/mobile/d090_c6_waiting-row.png",
+        "artifacts/d090-c6/waiting-row/live/web/d090_c6_waiting-row.png",
+        "client/src/App.tsx (switch only)",
+        "client/src/components/goal/goalBoundary.test.ts",
+        "client/src/components/requests/AskInviteSheet.tsx",
+        "client/src/components/requests/askInviteApi.test.ts",
+        "client/src/components/requests/askInviteApi.ts",
+        "client/src/components/requests/requestsApi.test.ts",
+        "client/src/components/requests/requestsApi.ts",
+        "client/src/lib/clarity.test.ts",
+        "client/src/lib/clarity.ts",
+        "client/src/lib/flags.ts",
+        "client/src/lib/sentry.test.ts",
+        "client/src/lib/sentry.ts",
+        "client/src/metadataAndRouteLoading.test.ts",
+        "client/src/pages/AskInviteLink.test.tsx",
+        "client/src/pages/AskInviteLink.tsx",
+        "client/src/pages/MyRequests.tsx",
+        "client/src/pages/myRequests.invite.test.tsx",
+        "docs/BACKLOG.md",
+        "docs/KIT_V4_BUILD_PLAN.md",
+        "docs/PRD.md",
+        "docs/plans/D-090-BYOR.md",
+        "docs/plans/GOAL_UI_COVERAGE.md",
+        "drizzle/deploy/0111_ask_invites.sql",
+        "drizzle/schema.ts",
+        "functions/_middleware.ts",
+        "scripts/qa/d090-byor.mjs",
+        "scripts/qa/d090-vite.config.mjs",
+        "scripts/qa/fixtures/d090-byor/invite-sheet.json",
+        "scripts/qa/fixtures/d090-byor/landing-claimed.json",
+        "scripts/qa/fixtures/d090-byor/landing-held.json",
+        "scripts/qa/fixtures/d090-byor/landing-signed-out.json",
+        "scripts/qa/fixtures/d090-byor/landing-verified.json",
+        "scripts/qa/fixtures/d090-byor/sheet-revoke-confirmation.json",
+        "scripts/qa/fixtures/d090-byor/waiting-row.json",
+        "server/_core/index.ts",
+        "server/askInviteClaim.test.ts",
+        "server/askInviteReservation.test.ts",
+        "server/askInviteRoutes.test.ts",
+        "server/askInviteRoutes.ts",
+        "server/askInviteSweep.test.ts",
+        "server/askInviteSweep.ts",
+        "server/askInvites.minePayload.test.ts",
+        "server/askInvites.test.ts",
+        "server/askInvites.token.test.ts",
+        "server/askInvites.ts",
+        "server/db.askExpiry.test.ts",
+        "server/db.coverageDelivery.test.ts",
+        "server/db.ts",
+        "server/errorAlerting.test.ts",
+        "server/errorAlerting.ts",
+        "server/privateReferralRoutes.ts",
+        "server/scheduledJobRegistry.ts",
+        "server/scheduledJobsContract.test.ts",
+        "server/schemaReconcile.ts",
+        "server/sentry.test.ts",
+        "server/sentry.ts",
+        "shared/askInvites.test.ts",
+        "shared/askInvites.ts",
+        "shared/scheduledJobs.ts",
+        "src/worker.ts"
+      ]
     },
     {
       "id": "D-057-session-gate",
@@ -2608,12 +2750,192 @@
       "id": "D-100-security-audit",
       "title": "Security, availability and payments hardening: read-only audit first, then flagged fixes (D-100)",
       "row": "D-100",
-      "packet": null,
+      "packet": "docs/plans/D-100-security-audit.md",
       "tier": 3,
       "lane": "security",
       "branch": "agent/claude/d100-security-audit",
-      "status": "architect",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Packet-only (D-223): its work is the D-100.* rows that follow, written in docs/plans/D-100-security-audit.md.",
+      "epic": "D-100"
+    },
+    {
+      "id": "D-100.csp-report",
+      "title": "The report-only CSP collects violations: report-uri and a scrubbed /api/csp-report",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-headers",
+      "branch": "agent/queue/d100-csp-report",
+      "status": "todo",
+      "dependsOn": [
+        "FND-4"
+      ],
+      "note": "D-223 subtask of D-100. After FND-4 (reuses its scrubber). Answered inside globalSecurityHeaders, so it never edits server/_core/index.ts.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts",
+        "server/securityHeaders.test.ts",
+        "server/cspReport.ts",
+        "server/cspReport.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.csp-enforce",
+      "title": "An enforcing CSP built behind CSP_ENFORCED = false",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-csp",
+      "branch": "agent/queue/d100-csp-enforce",
+      "status": "todo",
+      "dependsOn": [
+        "D-100.csp-report"
+      ],
+      "note": "D-223 subtask of D-100. Off until D-100.csp-release.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts",
+        "server/securityHeaders.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.csp-release",
+      "title": "Switch CSP_ENFORCED on after 7 days of reports, with captures and the CEO's sign-off",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-csp-release",
+      "branch": "agent/queue/d100-csp-release",
+      "status": "todo",
+      "dependsOn": [
+        "D-100.csp-enforce"
+      ],
+      "note": "D-223 release row of the CSP pieces: one line, opens only 7 days after D-100.csp-report is live.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts"
+      ]
+    },
+    {
+      "id": "D-100.hsts-preload",
+      "title": "HSTS preload built behind HSTS_PRELOAD = false (switching it on is the owner's word)",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-hsts",
+      "branch": "agent/queue/d100-hsts-preload",
+      "status": "todo",
+      "dependsOn": [
+        "D-100.csp-release"
+      ],
+      "note": "D-223 subtask of D-100. Same file as the CSP rows, so after them.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts",
+        "server/securityHeaders.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.otp-hmac",
+      "title": "The work-email code is stored as an HMAC, with a one-TTL read of the old hash",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 1,
+      "lane": "security-otp",
+      "branch": "agent/queue/d100-otp-hmac",
+      "status": "todo",
+      "dependsOn": [
+        "FIX-device-signin"
+      ],
+      "note": "D-223 subtask of D-100. After FIX-device-signin, which edits server/workEmailOtp.ts. Sign-in path: independent review by another model (D-151).",
+      "epic": "D-100",
+      "owns": [
+        "server/workEmailOtp.ts",
+        "server/workEmailOtp.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.provider-recon",
+      "title": "The daily money check compares Chargebee's recent payments with ours (read-only)",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 1,
+      "lane": "security-recon",
+      "branch": "agent/queue/d100-provider-recon",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-223 subtask of D-100. Writes nothing; never adds a gateway key.",
+      "epic": "D-100",
+      "owns": [
+        "server/chargebeeAccountApi.ts",
+        "server/dailyMoneyCheck.ts",
+        "server/dailyMoneyCheck.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.secrets-sweep",
+      "title": "Read-only audit: no secret, token, code or personal data in logs, Sentry, alerts or error bodies",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-secrets",
+      "branch": "agent/queue/d100-secrets-sweep",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-secrets-sweep.md"
+      ]
+    },
+    {
+      "id": "D-100.authz-referral",
+      "title": "Read-only audit: authorization and personal data on the referral, document, block and safety routes",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-referral",
+      "branch": "agent/queue/d100-authz-referral",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-authz-referral.md"
+      ]
+    },
+    {
+      "id": "D-100.authz-account",
+      "title": "Read-only audit: authorization and personal data on the account, messaging, employer, agent and public routes",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-account",
+      "branch": "agent/queue/d100-authz-account",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-authz-account.md"
+      ]
+    },
+    {
+      "id": "D-100.authz-admin-money",
+      "title": "Read-only audit: authorization on the admin, payment, webhook, job and health routes",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-admin",
+      "branch": "agent/queue/d100-authz-admin-money",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-authz-admin-money.md"
+      ]
     },
     {
       "id": "D-099-bonus-pages",
@@ -2945,7 +3267,8 @@
       "dependsOn": [
         "D-048-fix-post-copy",
         "POSTMERGE-oct22-fixes",
-        "D-132-audit"
+        "D-132-audit",
+        "D-090-BYOR"
       ],
       "note": "D-193 packet section 5.3 and ruling (5): builds D-061's never-built reconfirm-before-spend without its closure, in deliverWaitingAskTx (every delivery path). Transition events, no migration; in-app notice only (no D-060 email exists yet). ASK_RECONFIRM_ENABLED stays false until QA; D-174-expiry-clock-removal waits for this row. D-197: also waits for D-132-audit (both own server/db.ts, server/privateReferralRoutes.ts and shared/moneyCopy.ts; the money-core audit goes first, D-146). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost.",
       "epic": "D-174",
@@ -2989,8 +3312,10 @@
       "tier": 1,
       "lane": "d174-jobs",
       "branch": "agent/queue/d174-job-catalog",
-      "status": "todo",
-      "dependsOn": [],
+      "status": "done",
+      "dependsOn": [
+        "D-090-BYOR"
+      ],
       "note": "D-193 packet section 5.5. No code anywhere fetches a company's jobs today; the D-174 journey's jobs step needs this. Level = assignJobLevel on (title, snippet, applyUrl), the same fields that price the request. JOB_CATALOG_ENABLED stays false until QA.",
       "epic": "D-174",
       "owns": [
@@ -3222,7 +3547,7 @@
       "tier": 2,
       "lane": "d048-fix-sendask",
       "branch": "agent/ayo9/send-ask-blocker-ux",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-132-audit"
       ],
@@ -3308,7 +3633,7 @@
       "tier": 2,
       "lane": "d048-foundation",
       "branch": "agent/queue/postopp-copy-v2",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-fix-post-copy"
       ],
@@ -3501,6 +3826,134 @@
         "client/src/components/appShell.test.tsx",
         "design/goal-ui/captures/shell/**"
       ]
+    },
+    {
+      "id": "PICKER-avoid-unblock",
+      "title": "Respect avoid when continuing an existing unblock stage (issue #740)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-avoid-unblock.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-avoid-unblock",
+      "status": "todo",
+      "dependsOn": [
+        "PROCESS-review-gate",
+        "PICKER-architect-landing"
+      ],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskAvoidUnblock.test.ts"
+      ]
+    },
+    {
+      "id": "LANDING-PROCEDURE-AUDIT-oct27",
+      "title": "Independent audit of five squash deviations and premature landing marker (#741)",
+      "row": "D-134",
+      "packet": "docs/plans/LANDING-PROCEDURE-AUDIT-oct27.md",
+      "tier": 2,
+      "lane": "audit",
+      "branch": "agent/queue/procedure-audit-oct27",
+      "status": "todo",
+      "dependsOn": [],
+      "owns": [
+        "docs/plans/LANDING-PROCEDURE-AUDIT-oct27.md"
+      ],
+      "note": "Independent auditor only; Instinct coordinator is the subject and must not self-close. Preserve branches, no history/settings/production mutation. Register separate code remediation if evidence requires it."
+    },
+    {
+      "id": "PICKER-avoid-land",
+      "title": "Respect avoid for a passing reviewer owned LAND continuation (#744)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-avoid-land.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-avoid-land",
+      "status": "todo",
+      "dependsOn": [
+        "PICKER-avoid-unblock"
+      ],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskAvoidLand.test.ts"
+      ]
+    },
+    {
+      "id": "DEPLOY-gate-docs-sync",
+      "title": "Sync deployment and manual recovery docs to verified green gate behavior (#748)",
+      "row": "D-068",
+      "packet": "docs/plans/DEPLOY-gate-docs-sync.md",
+      "tier": 3,
+      "lane": "deploy-docs",
+      "branch": "agent/queue/deploy-gate-docs-sync",
+      "status": "todo",
+      "dependsOn": [
+        "P1-deploy-green-gate",
+        "D-090-BYOR",
+        "D-099-bonus-pages"
+      ],
+      "owns": [
+        "AGENTS.md",
+        "docs/DEPLOY.md",
+        "docs/ARCHITECTURE.md",
+        "docs/BRIEF.md"
+      ],
+      "note": "Serialized because existing BYOR and bonus rows own shared deploy docs. No runtime change or unsupported completion claims; incident748 remains open until path acceptance independently proven."
+    },
+    {
+      "id": "PICKER-heartbeat-slot-safety",
+      "title": "Renew an owned landing lease without taking another fresh landing slot",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-heartbeat-slot-safety.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-heartbeat-slot-safety",
+      "status": "todo",
+      "dependsOn": [
+        "PROCESS-review-gate"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskHeartbeatSlot.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
+    },
+    {
+      "id": "PICKER-landed-marker-continuity",
+      "title": "Keep merged work landed through marker-only branch recreation",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-landed-marker-continuity.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-landed-marker-continuity",
+      "status": "todo",
+      "dependsOn": [
+        "PICKER-heartbeat-slot-safety",
+        "PICKER-avoid-land"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskLandedMarkerContinuity.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
+    },
+    {
+      "id": "PICKER-landing-wait-fallthrough",
+      "title": "Offer eligible disjoint work before returning a landing-slot wait",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-landing-wait-fallthrough.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-landing-wait-fallthrough",
+      "status": "todo",
+      "dependsOn": [
+        "PICKER-landed-marker-continuity"
+      ],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskLandingWaitFallthrough.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
     }
   ]
 }

@@ -1,39 +1,156 @@
 name: Rollback (manual)
 
+# P1-deploy-green-gate (#748, scope amendment #751): deliberate recovery of the API to
+# an older known-green commit. Dispatch it from main only. It runs the same release gate
+# as Deploy API, from this workflow's own (trusted) commit, before the older target is
+# ever checked out; the gate's recovery mode drops only the "production already runs a
+# newer commit" refusal, because moving back is the point. The target must:
+#   - be a full 40-character SHA on main, typed twice, with a reason (recorded with the
+#     actor in the run summary);
+#   - have its own main CI run (push or dispatch) green in its newest attempt, with
+#     typecheck, unit + component + route tests and production build all successful;
+#   - have the same schema contract as main (drizzle/deploy, drizzle/schema.ts,
+#     server/schemaReconcile.ts byte for byte), since only then is the older code known
+#     to fit the live database. No migration and no database change runs here.
+# It waits in the deploy-api queue, deploys and verifies the target SHA with the same
+# scripts as Deploy API, then moves refs/tags/api-runtime to it. Any refusal changes
+# nothing in production; fix the input or the target's CI and dispatch again. To
+# redeploy the Web, dispatch Deploy Web on main (also gated).
 on:
   workflow_dispatch:
     inputs:
       target:
-        description: 'Which system to rollback (api / web / all)'
+        description: 'System to recover (only the API has a recovery job)'
+        type: choice
+        options:
+          - api
+        default: api
         required: true
-        default: 'all'
       commit:
-        description: 'Commit SHA to rollback to (e.g. 734b45b; blank = previous deploy)'
-        required: false
-        default: ''
+        description: 'Full 40-character SHA of the known-green main commit to run again'
+        type: string
+        required: true
+      confirm:
+        description: 'The same SHA again, to confirm'
+        type: string
+        required: true
+      reason:
+        description: 'Why production must run this commit (recorded in the run summary)'
+        type: string
+        required: true
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+permissions:
+  # Moves refs/tags/api-runtime after a verified recovery, as Deploy API does.
+  contents: write
+  # The release gate reads the CI runs of the target.
+  actions: read
 
 jobs:
-  rollback-api:
-    if: inputs.target == 'api' || inputs.target == 'all'
+  recovery-gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      actions: read
+      contents: read
     steps:
+      # This workflow's own commit on main, never the recovery target.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit || github.sha }}
+          persist-credentials: false
+      - name: Require a deliberate request and green CI on the recovery target
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RECOVERY_SYSTEM: ${{ inputs.target }}
+          RECOVERY_COMMIT: ${{ inputs.commit }}
+          RECOVERY_CONFIRM: ${{ inputs.confirm }}
+          RECOVERY_REASON: ${{ inputs.reason }}
+        run: node scripts/require-green-release.mjs --target api --recovery
+
+  recover-api:
+    needs: recovery-gate
+    runs-on: ubuntu-latest
+    steps:
+      # Control scripts run from the trusted checkout; the target only supplies the artifact.
+      - name: Check out the trusted workflow code
+        uses: actions/checkout@v4
+        with:
+          path: trusted
+          persist-credentials: false
+      # No stored credentials: the target's install and build scripts never see the token.
+      - name: Check out the recovery target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+          path: target
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: target/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-      - name: Install deps
-        run: pnpm install --frozen-lockfile
-      - name: Build
-        run: pnpm build
-      - name: Deploy previous build
-        run: npx wrangler deploy
+          cache-dependency-path: target/pnpm-lock.yaml
+      - name: Check the target can report its release identity
+        working-directory: target
+        run: |
+          grep -q '"API_RELEASE"' wrangler.jsonc || { echo "::error::The target's wrangler.jsonc has no API_RELEASE, so its release could not be verified; recovery refused"; exit 1; }
+          grep -q 'COPY commit-sha.txt' Dockerfile || { echo "::error::The target's image does not carry commit-sha.txt, so its release could not be verified; recovery refused"; exit 1; }
+      - name: Record the target commit SHA
+        working-directory: target
         env:
+          EXPECTED_SHA: ${{ inputs.commit }}
+        run: printf '%s\n' "$EXPECTED_SHA" > commit-sha.txt
+      - name: Install the target's dependencies
+        working-directory: target
+        run: pnpm install --frozen-lockfile
+      - name: Build the target
+        working-directory: target
+        run: pnpm build
+      # Last look before the first production write: a CI re-run of the target may have
+      # turned red, or this job alone may be a re-run.
+      - name: Re-check the recovery target
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RECOVERY_SYSTEM: ${{ inputs.target }}
+          RECOVERY_COMMIT: ${{ inputs.commit }}
+          RECOVERY_CONFIRM: ${{ inputs.confirm }}
+          RECOVERY_REASON: ${{ inputs.reason }}
+        run: node trusted/scripts/require-green-release.mjs --target api --recovery --once
+      - name: Stamp the target's release identity
+        working-directory: target
+        env:
+          EXPECTED_SHA: ${{ inputs.commit }}
+        run: |
+          node -e 'const fs=require("fs");const p="wrangler.jsonc";let s=fs.readFileSync(p,"utf8");s=s.replace(/"API_RELEASE":\s*"[^"]+"/, `"API_RELEASE": "${process.env.EXPECTED_SHA}"`);fs.writeFileSync(p,s)'
+      - name: Deploy the target (container image + worker)
+        working-directory: target
+        env:
+          EXPECTED_SHA: ${{ inputs.commit }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      - name: Append sync log
+        run: bash ../trusted/scripts/deploy-cloudflare-two-phase.sh
+      - name: Verify the active release is the target
+        working-directory: target
+        env:
+          EXPECTED_SHA: ${{ inputs.commit }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: bash ../trusted/scripts/verify-cloudflare-container-release.sh
+      # The same lightweight tag Deploy API moves, set through the API so only this step holds the token.
+      - name: Move the runtime marker to the target
+        env:
+          EXPECTED_SHA: ${{ inputs.commit }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/api-runtime" -f sha="$EXPECTED_SHA" -F force=true
+      - name: Record the recovery result
         if: always()
-        run: bash scripts/append-sync-log.sh "rollback-api" "${{ inputs.commit || 'prev' }}" "${{ job.status }}"
+        env:
+          RESULT: ${{ job.status }}
+          EXPECTED_SHA: ${{ inputs.commit }}
+        run: |
+          printf '### Recovery %s: target %s, workflow commit %s\n' "$RESULT" "$EXPECTED_SHA" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
