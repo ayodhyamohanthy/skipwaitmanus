@@ -5,7 +5,7 @@
 > - The registry delta (§9) and the register entry (§10) are text for the coordinator's own reviewed pull request.
 > - Nothing below is built or live, and none of it is owner-approved beyond what §2 quotes. No builder takes a row from this file before adoption.
 >
-> **Revision 2** (same task, bounded, docs only) answers the coordinator's independent review of `5c1a4448` (PR #776). It has four findings. The dispositions and their source proofs are in §12.
+> **Revision 3** (same task, bounded, docs only). Revision 2 answered the coordinator's four findings on `5c1a4448` (PR #776). Revision 3 corrects one factual handoff gap found in the review of `ec0761a2`: there is no client company-create form, so `D-086.admit` is read-only and listing goes through the authenticated admin API. The dispositions are in §12.
 
 > Read `docs/BRIEF.md` first, then this packet. Each row in §5 is its own task: claim it with the picker, build only that row, and edit only the paths in its `owns` (scope-check fails anything else). Write your status line in the Status section at the end; rows that share plan row D-086 never edit the §3b row (D-134).
 
@@ -13,12 +13,12 @@
 |---|---|
 | Queue rows (proposed) | `D-086.count` (Tier 1), `D-086.ui` (Tier 2), `D-086.mount` (Tier 2), `D-086.admit` (Tier 2, admin only); the parent `D-086-demand-list` becomes the release row (Tier 1, D-223 (3)) |
 | Decisions | D-086, D-176, D-174, D-193 (3) and (4), D-162 (3), D-223; also D-006, D-019(e), D-028, D-030/D-057 (login rule), D-034, D-040, D-047, D-055, D-059, D-060, D-061, D-062, D-087, D-088, D-097, D-101, D-102, D-153, D-167, D-173/D-180, D-221 |
-| Verified against | `origin/main` `6cbee199` (Oct 28 2026). All heads were fetched for the first draft and again for revision 2, when main was still `6cbee199` and the lock was at `5c1a4448`. No production query, API or provider call was made. |
+| Verified against | `origin/main` `6cbee199` (Oct 28 2026). All heads were fetched for each revision; at revision 3 main was still `6cbee199` and the lock was at `ec0761a2`. No production query, API or provider call was made. |
 | Migrations, env keys, dependencies | None. The two switches are in-code constants (D-193 pattern, §4.7). |
 | Writer | Claude Opus 5.5 · fdae, architect lock `agent/architect/d086-demand-list`. This is a takeover from Claude Code · 4b71 (quiet 119 h), whose lock held only claim and heartbeat markers and no packet. |
 
 ## 0. Read receipt (D-225)
-- **Main:** `6cbee199` (merge of #771), confirmed after `git fetch origin "+refs/heads/*:refs/remotes/origin/*"`, once for the draft and again for revision 2. D-225 (#772, `7a264327`) and D-226 (#773, `ee7386f6`) are ancestors of it. The highest register ID on `main` and every fetched head is D-226.
+- **Main:** `6cbee199` (merge of #771), confirmed after `git fetch origin "+refs/heads/*:refs/remotes/origin/*"`, for each revision. D-225 (#772, `7a264327`) and D-226 (#773, `ee7386f6`) are ancestors of it. The highest register ID on `main` and every fetched head is D-226.
 - **Read in full:**
   - `docs/BRIEF.md`, `AGENTS.md` (§0, team rules 0-9, the system map), `docs/BUILD_CONTINUITY.md` and `docs/DELEGATION.md` §§1-8.
   - Register entries D-028, D-034, D-047, D-059, D-061, D-062, D-086, D-087, D-101, D-102, D-154, D-162, D-174, D-176, D-193, D-221, D-223, D-224, D-225 and D-226.
@@ -30,7 +30,7 @@
 ## 1. Goal
 Three outcomes:
 - **Public demand.** On `/explore` and each company page, show how many people are asking for a referral at that company. Use real live rows only, k-anonymous, with no identity. Invite the company's employees to verify and help, and state honestly that any referral bonus is the employer's own.
-- **The owner's unlisted-company outcome.** People can already request referrals at companies outside the directory (§3.6). Give that demand a moderated path to public display: admins see unlisted company domains ranked by people asking, verify the company, and list it with the existing admin action. The public pages invite seekers and employees at unlisted companies to act.
+- **The owner's unlisted-company outcome.** People can already request referrals at companies outside the directory (§3.6). Give that demand a moderated path to public display: admins see unlisted company domains ranked by people asking, verify the company, and list it through the existing authenticated admin API (a manual request; there is no client form). The public pages invite seekers and employees at unlisted companies to act.
 - **No new core code.** This packet adds no request, money, expiry or pool code.
 
 ## 2. Binding rules (quoted)
@@ -75,6 +75,7 @@ Three outcomes:
     - `POST /api/admin/companies` (`server/companyDirectoryRoutes.ts:135`, admin only) takes `adminCompanyCreateSchema`, a strict object (`shared/companies.ts:72-85`).
     - `companyDomainSchema` (`shared/companies.ts:21-24`) refuses malformed and personal-mail domains (`isCorporateEmailDomain`, `shared/const.ts:18`).
     - D-101's admin list of verified work domains that no company owns is `/api/admin/companies/unmatched-domains` (`server/companyDirectoryRoutes.ts:126-133`): `requireAdmin` first, then 404 while `UNMATCHED_DOMAINS_ENABLED` is not `true`.
+    - **There is no client create form.** The client only reads `GET /api/admin/companies` (`client/src/pages/AdminOverview.tsx:21`), and `CompaniesView` (`client/src/components/admin/AdminSectionViews.tsx:20-21`) is read-only. No client code POSTs to `/api/admin/companies`. Listing a company today is an authenticated admin JSON request to that route.
 13. **Liveness is the runtime's own.** A request is live while `status = "pending"`. The runtime ends requests only through its clocks:
     - **Shelf life:** `isAskExpired` (`shared/referral.ts:193`) and `getAskShelfLifeEndsAtMs` give 7 days after first visibility, or 90 days while waiting (`ASK_TTL_DAYS`, `COVERAGE_WAIT_DAYS`, `:76-80`).
     - **Unclaimed assignments:** `selectStaleHeldAsks` (`server/heldAsk.ts:95`) finds them past their window.
@@ -107,13 +108,13 @@ Three outcomes:
 5. **Moderated admission of unlisted companies (F1): the owner's outcome, kept safe.** The public list never prints a seeker-supplied domain. An unlisted company reaches public display through a moderated path:
    - **(a) Request.** A seeker requests with the company's job link (exists, §3.6).
    - **(b) Admin queue.** `GET /api/admin/company-demand/unlisted` (new, in `D-086.count`) is admin only and `private, no-store`, behind `COMPANY_DEMAND_ADMIN_ENABLED`. It lists live-request domains that no company owns, with the number of distinct people. Personal-mail domains are excluded and there are at most 200 rows. It carries no ids, names, emails, URLs or request text.
-   - **(c) Admin check and listing.** An admin checks the domain belongs to a real company and lists it with the existing `POST /api/admin/companies` (§3.12, D-101's manual edit).
+   - **(c) Admin check and listing.** An admin checks the domain belongs to a real company, then lists it with an authenticated `POST /api/admin/companies` request: a manual JSON body matching `adminCompanyCreateSchema`, the D-101 manual edit (§3.12). No client form exists on `main`, and this packet builds none. Nothing is ever listed automatically.
    - **(d) Public display.** The public count appears with no code change (§4.3).
 
    The steps that already run today:
    - **Employees can already help.** Employees at an unlisted company receive its waiting requests the moment they verify (§3.11).
    - **The public pages say so.** The list invites seekers and employees at unlisted companies (§4.8). It never says that suggesting or submitting a company creates public demand, and never that the public list is all demand.
-   - **The admin display is `D-086.admit`**, which waits for `D-048-p3-admin` (§5.5). Until it lands, the queue is readable only as admin JSON. `/admin/flow-health` `coverageGaps` stays the partial view (§3.3). This gap is named in §11.
+   - **The admin display is `D-086.admit`**, a read-only view that waits for `D-048-p3-admin` (§5.5). Until it lands, the queue is readable only as admin JSON. `/admin/flow-health` `coverageGaps` stays the partial view (§3.3). This gap is named in §11.
 6. **The ask-to-any-company path is done.** D-086 (1) is §3.6-§3.7 and §3.11. The 90-day closure is replaced by D-174 plus D-193 (4) in `D-174-held-ask-reconfirm` and `D-174-expiry-clock-removal` (§3.8). The "not yet open" framing is dropped (D-176), and the plan §3b row and the queue title are reworded (§9).
 7. **Switches.** `shared/companyDemand.ts` exports `COMPANY_DEMAND_PUBLIC_ENABLED = false` (the two public routes and the client hooks) and `COMPANY_DEMAND_ADMIN_ENABLED = false` (the admin queue). Each is one reviewed line. There is no env key, so `.env.example`, `src/worker.ts` and `client/src/lib/flags.ts` stay untouched.
 8. **Copy (proposed; it replaces the PRD's demand-list section at release):**
@@ -253,19 +254,19 @@ General **Stop if** for every row: a cited function or contract changed on `main
 - **Done when:** after the deploy, `GET https://skipwait.me/api/company-demand` returns only slugs, names and demand states, with no number below 3, no total and no domain (paste the response). Screens at 1280 and 390.
 - **Owns:** `shared/companyDemand.ts (switch only)`, `AGENTS.md`, `docs/PRD.md`, `docs/KIT_V4_BUILD_PLAN.md`.
 
-### 5.5 `D-086.admit` (Tier 2: admin-only view of the admission queue; S)
+### 5.5 `D-086.admit` (Tier 2: read-only admin view of the admission queue; S)
 - **Waits for:**
   - `D-086.count` (the admin read);
   - `D-086.ui` (both own `docs/plans/GOAL_UI_COVERAGE.md`);
   - `D-048-p3-admin`, which owns `client/src/pages/AdminOverview.tsx`. `D-099-bonus-pages`'s claim there is switch-only, like this one, so the two do not conflict.
 - **Do:**
-  - New `client/src/components/admin/UnlistedDemandView.tsx`: a table of `{ domain, people }` from `/api/admin/company-demand/unlisted`, each with a link that opens the existing company-create form with the domain prefilled. It gives no automatic listing.
+  - New `client/src/components/admin/UnlistedDemandView.tsx`: a **read-only** table of `{ domain, people }` from `/api/admin/company-demand/unlisted`. It has no create, list or prefill control, and no link to a form, because none exists (§3.12). One line of plain text under the table says how listing works: "To list a company, an admin sends an authenticated POST to /api/admin/companies."
   - It handles its states explicitly: loading; 404 shows "Not switched on yet"; error shows "Couldn't load the queue" and a retry; empty shows "No unlisted companies with requests".
   - Mount it in `AdminOverview.tsx` next to `CompaniesView` (switch only). Add its `GOAL_UI_COVERAGE.md` line.
 - **Tests (red first), `client/src/components/admin/unlistedDemandView.test.tsx`:**
   - each state renders as described;
-  - domains render as text, never as links to the domain;
-  - the create link carries the domain as data only, and nothing is created without the admin submitting the existing form;
+  - domains render as text, never as links;
+  - it renders no `form`, no input and no button or link that creates or lists a company, and it sends no request but the one GET (no POST, PATCH or DELETE);
   - no id, name or email field is read.
 - **Owns:** `client/src/components/admin/UnlistedDemandView.tsx`, `client/src/components/admin/unlistedDemandView.test.tsx`, `client/src/pages/AdminOverview.tsx (switch only)`, `docs/plans/GOAL_UI_COVERAGE.md`.
 - **Done when:** the tests pass, the token audit and coverage test pass, and there are captures at 1280 and 390. Until this lands, admins read the queue as JSON at the admin endpoint (§11 gap 9).
@@ -318,13 +319,13 @@ New rows, inserted directly above the parent:
   {"id": "D-086.count", "title": "Demand count (D-086): distinct people with a live referral request at each listed company (public, k-anonymous) and the unlisted-domain admission queue (admin only), behind two switches that start false", "row": "D-086", "packet": "docs/plans/D-086-demand-list.md", "tier": 1, "lane": "demand-count", "branch": "agent/queue/d086-count", "status": "todo", "epic": "D-086-demand-list", "dependsOn": ["D-174-company-search"], "owns": ["shared/companyDemand.ts", "shared/companyDemand.test.ts", "server/companyDemand.ts", "server/companyDemand.fixture.test.ts", "server/companyDemandRoutes.ts", "server/companyDemandRoutes.test.ts", "server/companyDirectoryRoutes.ts (switch only)"], "note": "D-086 packet §5.1. Liveness is status pending plus the imported isAskExpired (no age cutoff of its own; follows D-174-expiry-clock-removal with no change; awaiting-reconfirm requests count). Coverage-neutral (reads no referrer or availability table), listed companies only in public, distinct canonical people, never companySuggestions votes. The admin queue lists unowned corporate domains by people, private, no-store. Mounts inside registerCompanyDirectoryRoutes (D-223 (6)), so it waits for D-174-company-search, which owns that file. Both switches stay false."},
   {"id": "D-086.ui", "title": "Demand line and list components (D-086): a count from 3, 'A few people' for 1-2, nothing at zero; employee help links via referrerSignInHref; unlisted-company lines; employer-bonus line; switch off", "row": "D-086", "packet": "docs/plans/D-086-demand-list.md", "tier": 2, "lane": "demand-ui", "branch": "agent/queue/d086-ui", "status": "todo", "epic": "D-086-demand-list", "dependsOn": ["D-086.count", "D-090-BYOR"], "owns": ["client/src/components/demand/CompanyDemandLine.tsx", "client/src/components/demand/CompanyDemandList.tsx", "client/src/components/demand/useCompanyDemand.ts", "client/src/components/demand/companyDemand.test.tsx", "docs/plans/GOAL_UI_COVERAGE.md"], "note": "D-086 packet §5.2. Waits for D-090-BYOR because both own GOAL_UI_COVERAGE.md (D-167 line per new component). No black commit; login rule pinned by its own test."},
   {"id": "D-086.mount", "title": "Mount the demand line on /explore/:slug and the list on /explore (D-086), behind the switch", "row": "D-086", "packet": "docs/plans/D-086-demand-list.md", "tier": 2, "lane": "demand-mount", "branch": "agent/queue/d086-mount", "status": "todo", "epic": "D-086-demand-list", "dependsOn": ["D-086.ui", "D-048-p3-live-review-find"], "owns": ["client/src/pages/Explore.tsx (switch only)", "client/src/pages/ExploreCompany.tsx (switch only)", "client/src/pages/explore.demandMount.test.tsx", "design/goal-ui/captures/demand/**"], "note": "D-086 packet §5.3. Mounts into the pages D-048-p3-live-review-find redesigns, after it lands; captures at 1280 and 390."},
-  {"id": "D-086.admit", "title": "Admin view of the unlisted-company admission queue (D-086): domains by people asking, a prefilled link to the existing company create form", "row": "D-086", "packet": "docs/plans/D-086-demand-list.md", "tier": 2, "lane": "demand-admit", "branch": "agent/queue/d086-admit", "status": "todo", "epic": "D-086-demand-list", "dependsOn": ["D-086.count", "D-086.ui", "D-048-p3-admin"], "owns": ["client/src/components/admin/UnlistedDemandView.tsx", "client/src/components/admin/unlistedDemandView.test.tsx", "client/src/pages/AdminOverview.tsx (switch only)", "docs/plans/GOAL_UI_COVERAGE.md"], "note": "D-086 packet §5.5. Admin only; no automatic listing (D-101: a manual admin edit). Not a dependency of the release row; until it lands admins read the queue as JSON."}
+  {"id": "D-086.admit", "title": "Read-only admin view of the unlisted-company admission queue (D-086): domains by people asking; listing stays the authenticated admin POST /api/admin/companies", "row": "D-086", "packet": "docs/plans/D-086-demand-list.md", "tier": 2, "lane": "demand-admit", "branch": "agent/queue/d086-admit", "status": "todo", "epic": "D-086-demand-list", "dependsOn": ["D-086.count", "D-086.ui", "D-048-p3-admin"], "owns": ["client/src/components/admin/UnlistedDemandView.tsx", "client/src/components/admin/unlistedDemandView.test.tsx", "client/src/pages/AdminOverview.tsx (switch only)", "docs/plans/GOAL_UI_COVERAGE.md"], "note": "D-086 packet §5.5. Admin only and read-only: no create form, prefill or listing control (none exists on main). Listing stays a manual authenticated POST /api/admin/companies (D-101); nothing is listed automatically. Not a dependency of the release row; until it lands admins read the queue as JSON."}
 ]
 ```
 In the same pull request (D-068): `docs/plans/README.md` and plan §3b row D-086 (status: packet written, rows queued). If the coordinator wants them current, also `docs/plans/D-090-BYOR.md` and `docs/plans/D-099-bonus-pages.md`, which still describe D-086 as "asks at companies not yet open" with a 90-day close.
 
-## 10. Proposed register entry (text only; take the next free ID at adoption: D-227 was free on `main` and every fetched head at `6cbee199`, rechecked for revision 2)
-| D-227 | 2026-10-28 | **The D-086 demand list gets its packet: a public, k-anonymous count of people with a live referral request at each listed company, coverage-neutral, kept apart from D-193 (3)'s private waiting count, with a moderated admission path for unlisted companies (decided under D-200 by Claude Opus 5.5 · fdae; revised after the coordinator's review; changeable).** (1) Public demand is distinct canonical people with a live request (status pending and not expired by the runtime's own `isAskExpired`; no age cutoff of its own, so D-174's no-expiry holds and reconfirm never hides a request) at a listed company's domains, excluding suspended and admin accounts and the operator company; never `companySuggestions` votes; it reads no referrer or availability data. (2) A number from 3; "A few people" for 1-2, with no number and an order that cannot reveal 1 versus 2; nothing at 0; no totals. (3) Coverage-neutral demand is the owner's own reading: his request names no coverage condition, and D-176/D-174 send a request whether or not a referrer exists. The register title's "with no verified referrer" followed D-102's open/not-open view, which D-176 superseded, so no owner question remains. (4) Unlisted companies reach public display through admin admission: an admin-only queue of unowned corporate domains by people, then the existing manual listing (D-101). Employees at unlisted companies already receive waiting requests on verifying, and the public list invites them. No seeker-supplied domain is ever published. (5) The ask-to-any-company path already exists; the 90-day closure is replaced by D-174 plus D-193 (4) in their own rows. (6) Rows `D-086.count`, `D-086.ui`, `D-086.mount` and `D-086.admit`; the parent is the release row (D-223); the legal text is unchanged, under normal privacy review. | Packet `docs/plans/D-086-demand-list.md` §§3-4 and §12; `shared/referral.ts:193`; `server/db.ts:1582`, `:1601`, `:1873`, `:1917-1927`, `:2900-2902`; `server/companyDirectoryRoutes.ts:126-135`; `shared/companies.ts:21-24`; `server/planGates.ts:30`; `scripts/nextTaskCore.mjs:194` probe (217 rows, 0 errors). | Applies D-086 within D-176 and D-174; distinguishes D-193 (3); uses D-101's admin edit. Affects tasks: D-086-demand-list, D-086.count, D-086.ui, D-086.mount, D-086.admit. Affects `docs/plans/assignments.json`, plan §3b, `docs/PRD.md` (at release), `AGENTS.md` (at release). | proposed |
+## 10. Proposed register entry (text only; take the next free ID at adoption: D-227 was free on `main` and every fetched head at `6cbee199`, rechecked for revisions 2 and 3)
+| D-227 | 2026-10-28 | **The D-086 demand list gets its packet: a public, k-anonymous count of people with a live referral request at each listed company, coverage-neutral, kept apart from D-193 (3)'s private waiting count, with a moderated admission path for unlisted companies (decided under D-200 by Claude Opus 5.5 · fdae; revised after the coordinator's review; changeable).** (1) Public demand is distinct canonical people with a live request (status pending and not expired by the runtime's own `isAskExpired`; no age cutoff of its own, so D-174's no-expiry holds and reconfirm never hides a request) at a listed company's domains, excluding suspended and admin accounts and the operator company; never `companySuggestions` votes; it reads no referrer or availability data. (2) A number from 3; "A few people" for 1-2, with no number and an order that cannot reveal 1 versus 2; nothing at 0; no totals. (3) Coverage-neutral demand is the owner's own reading: his request names no coverage condition, and D-176/D-174 send a request whether or not a referrer exists. The register title's "with no verified referrer" followed D-102's open/not-open view, which D-176 superseded, so no owner question remains. (4) Unlisted companies reach public display through admin admission: an admin-only queue of unowned corporate domains by people, then a manual authenticated `POST /api/admin/companies` (D-101; no client form exists, none is built, and nothing is listed automatically); `D-086.admit` is a read-only view of the queue. Employees at unlisted companies already receive waiting requests on verifying, and the public list invites them. No seeker-supplied domain is ever published. (5) The ask-to-any-company path already exists; the 90-day closure is replaced by D-174 plus D-193 (4) in their own rows. (6) Rows `D-086.count`, `D-086.ui`, `D-086.mount` and `D-086.admit`; the parent is the release row (D-223); the legal text is unchanged, under normal privacy review. | Packet `docs/plans/D-086-demand-list.md` §§3-4 and §12; `shared/referral.ts:193`; `server/db.ts:1582`, `:1601`, `:1873`, `:1917-1927`, `:2900-2902`; `server/companyDirectoryRoutes.ts:126-135`; `shared/companies.ts:21-24`; `server/planGates.ts:30`; `scripts/nextTaskCore.mjs:194` probe (217 rows, 0 errors). | Applies D-086 within D-176 and D-174; distinguishes D-193 (3); uses D-101's admin edit. Affects tasks: D-086-demand-list, D-086.count, D-086.ui, D-086.mount, D-086.admit. Affects `docs/plans/assignments.json`, plan §3b, `docs/PRD.md` (at release), `AGENTS.md` (at release). | proposed |
 
 ## 11. Gaps and risks (stated, not hidden)
 1. **The owner's original is not on `main`**; only D-086's paraphrase is (`ed8f09e5`). The coordinator verifies the verbatim Oct 21 message before adoption. If it differs from §0, it wins.
@@ -334,28 +335,27 @@ In the same pull request (D-068): `docs/plans/README.md` and plan §3b row D-086
 5. **Sweep lag on unclaimed assignments.** An unclaimed assigned request (personal link or queue allocation) is past its window only by `selectStaleHeldAsks` (§3.13), which `isAskExpired` does not cover. It counts until the hourly `ask-expiry-sweep` (cron `0 * * * *`, `wrangler.jsonc:18`; held asks at `server/askExpirySweep.ts:61`, batch-bounded) or a read closes it. The lag disappears when `D-174-expiry-clock-removal` lands. A claim-event join to close it is not worth its code.
 6. **Adjacent finding, not this packet's.** The D-104 signal (switch off) shows "referrers inside" on the public company page (`client/src/pages/ExploreCompany.tsx:236`), which is coverage data under D-176. Its own switch-on review should check it.
 7. **D-206.** This session rated only the decisions this packet rests on (the appendix). It did not run the full session-start review or append to `docs/plans/DECISION-REVIEW.md`, because the coordinator scoped the session to one packet.
-8. **Avoid-list check.** Every excluded row is a non-Claude build, landing or review under D-225 or D-151, or the held #758 landing, with these exceptions:
-   - `D-132-audit-item5-correction` is docs-only audit work (misclassified). It ranks below this row, so the next task is unchanged.
-   - `REGISTER-D212` and `ASSIST-approval-cost` are excluded correctly, but for review and landing independence (D-151), not a build bar.
-   - `BRANCH-HYGIENE-1` is listed twice.
+8. **Avoid-list check** (reported at revision 1): `D-132-audit-item5-correction` is docs work (misclassified; ranks below this row); `REGISTER-D212` and `ASSIST-approval-cost` are D-151 exclusions, not build bars; `BRANCH-HYGIENE-1` is listed twice.
 9. **The admission display is not built until `D-086.admit`** (named, F1). It waits for `D-048-p3-admin`. Until then:
    - the unlisted-company queue is admin JSON only;
    - `/admin/flow-health` `coverageGaps` stays a partial view (requests, not people; top 12; zero-coverage domains only);
    - D-101's unmatched-domains list covers verified employees at unowned domains.
 
-   The public list is only directory companies, and says so (§4.8).
+   Listing itself stays a manual authenticated JSON `POST /api/admin/companies`. No client form exists, no row here builds one, and nothing is listed automatically. A create form would be its own future row, not proposed here. The public list is only directory companies, and says so (§4.8).
 
-## 12. Review dispositions (coordinator review of `5c1a4448`, PR #776)
-The coordinator's 22 baseline tests show that the existing sources behave as cited. They do not prove the feature: feature proof comes only from each row's red-first tests in §5. The proofs below are contract proofs, from source citations plus one scratch probe run in a worktree of this branch (`pnpm install --frozen-lockfile`, then `pnpm vitest run`, with the probe file deleted afterwards, as the appendix shows).
+## 12. Review dispositions (PR #776)
+**Revision 3, coordinator review of `ec0761a2`: a factual handoff gap. Accepted; option (a) applied.**
+- **The gap:** §5.5 promised a link to an "existing company-create form" with the domain prefilled. On `6cbee199` no such form exists. The client only reads `GET /api/admin/companies` (`client/src/pages/AdminOverview.tsx:21`), `CompaniesView` is read-only (`client/src/components/admin/AdminSectionViews.tsx:20-21`), and no client code POSTs to the route. Listing is the server action `POST /api/admin/companies` (`server/companyDirectoryRoutes.ts:135`).
+- **Changed:** §1, §3.12 (the missing form, with sources), §4.5 (c) (manual authenticated JSON request), §5.5 (strictly read-only; the tests now forbid any form, create control or non-GET request), the §9 `D-086.admit` title and note, §10 (4), and gap 9.
+- **Unchanged:** owned paths, dependencies, no auto-listing, the moderated path and the recruitment outcome.
 
-**Probe run, revision 2:** 4 files, **43 tests passed**:
-- the scratch probe (8);
-- `server/companyReferralSelectedCompany.test.ts` (7);
-- `server/db.coverageDelivery.test.ts` (16);
-- `server/companyDirectoryRoutes.test.ts` (12).
+**The review of `5c1a4448`: four findings.**
+Baseline tests show the cited sources behave as cited; they do not prove the feature, which only each row's red-first tests in §5 do. The proofs below are contract proofs: source citations plus the scratch probe in Appendix A.
+
+**Probe run (revision 2; reproduced by the coordinator):** 4 files, **43 tests passed**: the probe (8), `server/companyReferralSelectedCompany.test.ts` (7), `server/db.coverageDelivery.test.ts` (16) and `server/companyDirectoryRoutes.test.ts` (12).
 
 **F1, the original unlisted-company outcome was dropped. Accepted, fixed.**
-- **Changed:** §1; §3.3, §3.11 and §3.12; §4.5 (moderated admission: an admin queue, then the existing manual listing, then automatic public display) and §4.8 (heading names the directory; two invitation lines for unlisted companies); §5.1 (admin queue in the count row); §5.5 (new `D-086.admit`); §9 (fourth row, 217 rows valid); gap 9 names the missing display.
+- **Changed:** §1; §3.3, §3.11 and §3.12; §4.5 (moderated admission: an admin queue, then a manual authenticated listing request, then automatic public display) and §4.8 (heading names the directory; two invitation lines for unlisted companies); §5.1 (admin queue in the count row); §5.5 (new `D-086.admit`); §9 (fourth row, 217 rows valid); gap 9 names the missing display.
 - **Rules kept:**
   - No arbitrary domain is ever published.
   - No copy says that submitting or suggesting a company makes public demand.
@@ -398,51 +398,19 @@ The coordinator's 22 baseline tests show that the existing sources behave as cit
 - the BYOR alternative for `D-086.count` is removed (gap 4);
 - no self-score appears in the packet or the register text.
 
-## Appendix A: the scratch contract probe (reproducible; not committed)
-Save it as `shared/zz-d086-contract-probe.test.ts` in a worktree of this branch, run `pnpm install --frozen-lockfile`, then `LANG=en_US.UTF-8 pnpm vitest run shared/zz-d086-contract-probe.test.ts`, and delete the file afterwards.
-```ts
-import { describe, expect, it } from "vitest";
-import { isAskExpired, COVERAGE_WAIT_DAYS, ASK_TTL_DAYS } from "./referral";
-import { adminCompanyCreateSchema, companyDomainSchema } from "./companies";
+## Appendix A: the scratch contract probe (not committed; the coordinator reproduced it)
+`shared/zz-d086-contract-probe.test.ts`, run in a worktree of this branch with `LANG=en_US.UTF-8 pnpm vitest run` after `pnpm install --frozen-lockfile`, then deleted. It has 8 assertions, with `NOW = 2026-10-28T12:00:00Z`:
 
-const NOW = Date.parse("2026-10-28T12:00:00Z");
-const DAY = 86_400_000;
-const ago = (days: number) => new Date(NOW - days * DAY);
-
-describe("P2 (F2): the runtime's own liveness predicate, not a 30-day createdAt cutoff", () => {
-  it("legacy clocks today: 7 days after visibility, 90 days while waiting", () => {
-    expect([ASK_TTL_DAYS, COVERAGE_WAIT_DAYS]).toEqual([7, 90]);
-  });
-  it("a waiting request created 40 days ago is still live", () => {
-    expect(isAskExpired({ status: "pending", referrerId: null, createdAt: ago(40), coverageVisibleAt: null, waitingForCoverage: true }, NOW)).toBe(false);
-  });
-  it("a waiting request past the legacy 90-day cap is what the runtime itself closes", () => {
-    expect(isAskExpired({ status: "pending", referrerId: null, createdAt: ago(91), coverageVisibleAt: null, waitingForCoverage: true }, NOW)).toBe(true);
-  });
-  it("a visible unassigned request 8 days after first visibility is what the runtime itself closes", () => {
-    expect(isAskExpired({ status: "pending", referrerId: null, createdAt: ago(9), coverageVisibleAt: ago(8), waitingForCoverage: false }, NOW)).toBe(true);
-  });
-  it("an assigned pending request is never expired by this predicate", () => {
-    expect(isAskExpired({ status: "pending", referrerId: 7, createdAt: ago(200), coverageVisibleAt: ago(199), waitingForCoverage: false }, NOW)).toBe(false);
-  });
-  it("a withdrawn row returns false, so the count also needs the status filter", () => {
-    expect(isAskExpired({ status: "withdrawn", referrerId: null, createdAt: ago(1), coverageVisibleAt: null, waitingForCoverage: true }, NOW)).toBe(false);
-  });
-});
-
-describe("P1 (F1): the admission action already refuses arbitrary or personal domains", () => {
-  it("a company domain must be corporate and well formed", () => {
-    expect(companyDomainSchema.safeParse("acme.com").success).toBe(true);
-    expect(companyDomainSchema.safeParse("gmail.com").success).toBe(false);
-    expect(companyDomainSchema.safeParse("not a domain").success).toBe(false);
-  });
-  it("the admin create body is strict", () => {
-    const ok = { name: "Acme", industry: "Software", location: "Remote", functions: ["Engineering"], blurb: "Builds things.", primaryDomain: "acme.com" };
-    expect(adminCompanyCreateSchema.safeParse(ok).success).toBe(true);
-    expect(adminCompanyCreateSchema.safeParse({ ...ok, demand: 20 }).success).toBe(false);
-  });
-});
-```
+| # | Call | Expected |
+|---|---|---|
+| P2.1 | `[ASK_TTL_DAYS, COVERAGE_WAIT_DAYS]` (`shared/referral.ts`) | `[7, 90]` |
+| P2.2 | `isAskExpired` on a pending, unassigned request, waiting, created 40 days ago | `false` (live) |
+| P2.3 | the same, created 91 days ago | `true` |
+| P2.4 | pending, unassigned, visible 8 days ago, not waiting | `true` |
+| P2.5 | pending, `referrerId: 7`, created 200 days ago | `false` |
+| P2.6 | `status: "withdrawn"`, waiting, created 1 day ago | `false` (so the status filter is needed) |
+| P1.1 | `companyDomainSchema` on `acme.com` / `gmail.com` / `not a domain` | accepted / refused / refused |
+| P1.2 | `adminCompanyCreateSchema` on a minimal valid body, then the same body with `demand: 20` added | accepted / refused (strict) |
 
 ## Appendix B: D-206 ratings of the decisions this packet rests on (scoped; for the coordinator to append)
 | ID | Rating | Status | Note |
@@ -455,4 +423,4 @@ describe("P1 (F1): the admission action already refuses arbitrary or personal do
 | D-223 | 9 | active | Applied: four file-split rows; the parent releases. |
 
 ## Status
-D-086-demand-list: revision 2 proposed, not applied (Claude Opus 5.5 · fdae, 2026-10-28, lock `agent/architect/d086-demand-list`). It answers the coordinator's review of `5c1a4448` (§12) and awaits coordinator validation and adoption.
+D-086-demand-list: revision 3 proposed, not applied (Claude Opus 5.5 · fdae, 2026-10-28, lock `agent/architect/d086-demand-list`). It answers the coordinator's reviews of `5c1a4448` and `ec0761a2` (§12) and awaits coordinator validation and adoption.
