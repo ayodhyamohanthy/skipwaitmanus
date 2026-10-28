@@ -1,13 +1,13 @@
 # Delegating implementation through the picker
 
-> Read [`docs/BRIEF.md`](BRIEF.md) first (D-073). This file is for whoever hands work to a model (the owner or an orchestrating agent) and for the reviewer. An implementer reads only the brief and its packet. The register, `AGENTS.md` and the plan §3b win any conflict with this file (D-074).
+> Read [`docs/BRIEF.md`](BRIEF.md) first (D-073). This file is for whoever hands work to a model (the owner or an orchestrating agent) and for the reviewer. Every session first completes [the current-instruction preflight](BUILD_CONTINUITY.md) (D-225), including latest decisions and the previous repo-only outcome; a packet cannot waive that read. The register, `AGENTS.md` and the plan §3b win any conflict with this file (D-074).
 
 Written Oct 18 2026 at `main` `5ef0626`. On that commit the full suite was green: 394 files passed, 3 skipped; 2,983 tests passed, 16 skipped, 0 failed.
 
 ## 1. Roles
 - **Owner:** decides (register), approves new features and pricing, triggers anything that touches live money or provider settings (catalog apply, the one live payment test, D-065), and answers the questions batched for the weekly review (D-064).
-- **CEO and architect (Claude Code, D-074, D-085):** sets direction and makes the high-stakes calls inside the owner's decisions; keeps the business, the architecture map, this file, the packets and the queue order true; re-analyses what we build toward the goal and brings the owner rated recommendations; writes a packet before a row is delegated (any agent may write one, D-109); writes the red-first tests for Tier 1 packets; reviews Tier 1 work; handles P0 triage and register entries on the owner's say-so. It may also build, fix, take over or land work when the picker assigns it; another capable session may perform authorized CEO work if that session is unavailable, so no task waits for one model. Tier 1 review remains independent of the builder and fixers (D-151), with required CI and protections (D-082).
-- **Implementer (any capable model, including Claude Code when assigned):** executes exactly one packet per session, on its own branch; after it opens a Tier 1 draft pull request or lands, it reports to the CEO and ends the session (D-085).
+- **CEO and architect (Claude Code, D-074, D-085):** sets direction and makes the high-stakes calls inside the owner's decisions; keeps the business, the architecture map, this file, the packets and the queue order true; re-analyses what we build toward the goal and brings the owner rated recommendations; writes a packet before a row is delegated (any agent may write one, D-109); writes the red-first tests for Tier 1 packets; reviews Tier 1 work; handles P0 triage and register entries on the owner's say-so. D-225 supersedes the former Claude implementation role: Claude supplies intelligence/reasoning, while other tools develop; another capable session may perform authorized CEO work if that session is unavailable, so no task waits for one model. Tier 1 review remains independent of the builder and fixers (D-151), with required CI and protections (D-082).
+- **Implementer (development tools other than Claude sessions, D-225):** executes exactly one packet per session, on its own branch; after it opens a Tier 1 draft pull request or lands, it reports to the CEO and ends the session (D-085).
 - **Reviewer (a session of a model that neither built nor fixed the work, D-151):** checks Tier 1 work against the packet and §6 before it reaches `main`.
 
 ## 2. What to do next
@@ -30,8 +30,10 @@ You are implementing one work packet in the SkipWait repository
 (github.com/ayodhyamohanthy/skipwaitmanus). It is a live product that
 handles real money: a mistake reaches real users.
 
-1. Read docs/BRIEF.md, then docs/plans/<PACKET FILE>. Read nothing else
-   unless the packet names it. Never open server/db.ts or
+1. Complete docs/BUILD_CONTINUITY.md before claiming: read current
+   instructions/decisions and the previous repo-only outcome. Read
+   docs/BRIEF.md, then docs/plans/<PACKET FILE>. A packet cannot waive
+   current-decision reading. For implementation details, never open server/db.ts or
    server/privateReferralRoutes.ts whole (they are too large): find a
    function with `grep -n "name" <file>` and read only that line range.
 2. git fetch origin. If a function the packet cites no longer matches
@@ -93,7 +95,7 @@ The script reads the shared order from `docs/plans/assignments.json` on `origin/
 4. **New work, top down:** the next `todo` whose dependencies are done and whose lane is free. A squash-merged pull request counts as done even before its status is set to done.
 5. **A red or blocked priority** (red CI, or a red or blocked report) holds its own lane and the tasks that depend on it for everyone else: nothing there starts, other lanes go on; red `main` holds everything (D-109). An agent already holding work below a red priority whose owner is active keeps going on its own work (its hands cannot help the red one); a red priority with nobody on it is handed out first.
 6. **Quiet** means no push to the task's branch or lock and no heartbeat for 2 hours (D-085; queue rule 2 said 24 hours). Push after every commit, run `--heartbeat --as "<name>"` before a long step (the full gate), and commit and push before you stop. A holder that comes back after 90 minutes or more re-takes its claim on the same branch a takeover would push to, so the first push wins and two agents never both hold it.
-7. **Claude Code (the CEO, D-085)** always claims as `--claim "Claude Code"`: the picker knows the CEO by the "Claude" prefix. The picker may assign it builds, findings fixes, takeovers, make-green work and eligible landings as well as CEO reviews when nothing higher at that level waits. No task waits for the CEO session; another capable session may take authorized work. Tier 1 review remains independent (D-151), and all CI and branch-protection gates apply (D-082).
+7. **Claude Code (intelligence/reasoning, D-225)** retains the historical identity `--claim "Claude Code"`, but must not treat a picker build offer as permission to implement. Follow `BUILD_CONTINUITY.md` and return a bounded decision/handoff for another development tool. The older Claude-build role is superseded. No task waits for the CEO session; another capable session may take authorized work. Tier 1 review remains independent (D-151), and all CI and branch-protection gates apply (D-082).
 8. **Reports:** every agent reports to the CEO with `--report green|red|blocked|review|landed --task <id> --as "<name>" --note "<one line>"` when it stops, lands, opens a pull request or gets blocked (markers on `agent/reports/log`). A note is one line; secrets and email addresses are redacted, and no personal data belongs in it (the repo is public). `--status` and the top of every run print one board: every priority top down, its role (CTO, CDO), health, holder, quiet time, pull request and latest report. Only an agent holding part of the task (its builder, reviewer, fixer, lander or unblocker) or the CEO may report on it, and a blocked report stands until the CEO reports on that task.
 9. **Sync:** while your own claimed work has commits or changes not on origin, the picker refuses new work, `--report` and `--fixed` (exit 3, "SYNC FIRST"); other local-only branches and a stale local `main` are reported.
 10. **One packet per session (D-074):** after you open a Tier 1 draft pull request or land, report to the CEO and end the session. A Tier 1 builder whose pull request waits for review holds nothing; the owner's next `build` starts a new session, which runs the picker.
