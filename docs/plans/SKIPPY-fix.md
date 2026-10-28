@@ -63,3 +63,5 @@ Owned paths: the two new files only. Done: the suite passes in CI, and any case 
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is on `main` (D-134).
+
+SKIPPY-fix.s1-ssrf: in progress - Instinct · 2433 - 2026-10-29 - branch agent/queue/skippy-fix-s1-ssrf
