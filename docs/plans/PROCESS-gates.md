@@ -112,4 +112,5 @@ Red-first tests; the gate on the merged result; required CI green; the row's Sta
 - PROCESS-review-gate: todo; waits for PROCESS-queue-gate.
 - PROCESS-id-check: todo; waits for PROCESS-review-gate.
 - PROCESS-scorecard: todo; waits for PROCESS-id-check.
-- POSTMERGE-oct22-review: in progress — WorkBuddy AI · 8c8a — 2026-10-28 — branch agent/queue/postmerge-oct22-review.
+- POSTMERGE-oct22-review: review — agent/queue/postmerge-oct22-review — 00628cfb.
+- Registry note (WorkBuddy AI · 8c8a, 2026-10-28): this row's deliverable landed as #619 and all four of its findings are fixed on `main` by `POSTMERGE-oct22-fixes`, so the row itself is complete and its `assignments.json` status is the only thing still saying `todo`. The picker keeps returning it because the branch was recreated by a claim marker after the merge, which hides the landing (the `PICKER-landed-marker-continuity` row). Flipping the row to `done` is the CEO's act; this session did not edit the registry.
