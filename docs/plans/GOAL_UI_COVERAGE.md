@@ -67,7 +67,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/developers` | `pages/Developers` | `D-048-p3-dev` | D-048-p3-dev: to be added by its lane packet |
 | `/assistants` | `pages/Assistants` | `D-048-p3-assistants` | D-048-p3-assistants: todo |
 | `/skippy` | `pages/Skippy` | `D-048-p3-skippy` (D-167) | D-048-p3-skippy: to be added by its lane packet |
-| `/agents` | `pages/SeekerAgents` | `D-048-p3-agents` (D-167) | D-048-p3-agents: to be added by its lane packet |
+| `/agents` | `pages/SeekerAgents` | `D-048-p3-agents` (D-167) | D-048-p3-agents: wired behind the assistants surface (flag off); kit body kept |
 | `/approve` | `pages/Approve` | `D-048-p3-assistants` | D-048-p3-assistants: todo |
 | `/connect-assistant` | `pages/ConnectAssistant` | `D-048-p3-assistants` | D-048-p3-assistants: todo |
 | `/developer-console` | `pages/DeveloperConsole` | `D-048-p3-dev` | D-048-p3-dev: to be added by its lane packet |
@@ -219,7 +219,9 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - **Scope:** `/agents`, the seeker's agent grants (`client/src/pages/SeekerAgents.tsx`, 197 lines).
 - **Goal line (proposed):** "Let an assistant help, on your terms." **Next step:** "Grant access". Every limit, expiry, revoke and pause-all control stays visible (D-141); the key is shown once.
 - **Holds:** behind `SKIPPIE_AGENT_ENABLED` (off).
-- **Owns:** `client/src/pages/SeekerAgents.tsx` and a new `client/src/pages/seekerAgents.test.tsx`.
+- **Owns:** `client/src/pages/SeekerAgents.tsx`, a new `client/src/pages/seekerAgents.test.tsx`, and `design/goal-ui/captures/agents/**` (§1.6 requires the row's own PR to carry its 1280/390 captures, as every wired sibling row does; the registry `owns` gains it in a registry-only correction PR, D-226 shape, because `scripts/scope-check.mjs` reads `owns` from `origin/main`).
+- **Delivered (Oct 28):** the goal body already existed as `client/src/pages/goal/assistants/GoalSeekerAgents.tsx` (built and reviewed with `D-048-p3-assistants`, #563). This row wires it on the shared `assistants` surface id — the same id that owns the `/agents` route in `client/src/lib/goalSurfaces.ts` — keeps the kit page as `LegacySeekerAgents` when the flag is off, and pins every D-141 control plus the not-enabled, error/retry, signed-out and offline states in `client/src/pages/seekerAgents.test.tsx` (10 tests; the 7 goal tests fail against the kit page before the switch). Captures live in `design/goal-ui/captures/agents/`; the registry's `owns` gained that path (D-226 shape) because §1.6 requires the row's own PR to carry them.
+- **Goal-line note:** the shipped h1 is "Let your agent prepare a better referral" (#563), not the proposed line above. The body uses `AssistantLayout`'s next-step block like the other assistant surfaces and does not export `GOAL_PAGE`, so this row does not claim §1.7's moved contract; moving all assistant surfaces onto `GoalNextStep`/`GOAL_PAGE` is future work, not this row's.
 
 ### 6.6 Gap pages folded into rows whose lane packets are not written yet
 The split's row text now names them, so their lane packet writer adds them:
@@ -244,4 +246,4 @@ The split's row text now names them, so their lane packet writer adds them:
 - D-048-F-shell-parts: todo; waits for D-048-F-credits and D-048-F-goal-check.
 - D-048-F-coverage: done — landed `f9ee7ef8` (test) with the catalogue line it found missing (`referrer-home/ShareImpactCard.tsx` on the `pages/ReferrerHome.tsx` row); CI green, no deploy due (scripts + docs only).
 - D-048-p3-skippy: todo; waits for the foundation rows and REGISTER-520.
-- D-048-p3-agents: todo; waits for the foundation rows.
+- D-048-p3-agents: wired — the goal body (`pages/goal/assistants/GoalSeekerAgents.tsx`, #563) behind the shared `assistants` surface (flag off), kit page kept as the fallback; `client/src/pages/seekerAgents.test.tsx` pins the switch, every D-141 control and the not-enabled/error/signed-out/offline states; captures in `design/goal-ui/captures/agents/**`.
