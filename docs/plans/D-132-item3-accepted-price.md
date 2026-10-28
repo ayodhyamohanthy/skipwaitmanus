@@ -1,6 +1,6 @@
 # Packet D-132-item3 (re-scoped): the atomic accepted-price precondition
 
-> Read [`docs/BRIEF.md`](../BRIEF.md) and complete [`docs/BUILD_CONTINUITY.md`](../BUILD_CONTINUITY.md) first. Written by Claude Opus 5.5 · 4ef3 as architect (D-109, D-221, D-225) on Oct 28 2026 against `origin/main` `6cbee199`. Revision 2 (same day) answers the coordinator's review of `1997d1e0` (findings F1-F5); `1997d1e0` stays in history. Docs and registry only: this packet authorizes no code until a builder claims the row through the picker. Line anchors are from `6cbee199`. Re-check them with `grep -n` before you edit, and stop if a cited function has changed (§10). The register wins any conflict.
+> Read [`docs/BRIEF.md`](../BRIEF.md) and complete [`docs/BUILD_CONTINUITY.md`](../BUILD_CONTINUITY.md) first. Written by Claude Opus 5.5 · 4ef3 as architect (D-109, D-221, D-225) on Oct 28 2026 against `origin/main` `6cbee199`. Revision 2 (same day) answers the coordinator's review of `1997d1e0` (findings F1-F5); revision 3 answers the round-2 review of `6f7bd77e` (GAP 1 production wiring, GAP 2 rollback harness, GAP 3 the SKIPPY-fix object contract). Earlier commits stay in history. Docs and registry only: this packet authorizes no code until a builder claims the row through the picker. Line anchors are from `6cbee199`. Re-check them with `grep -n` before you edit, and stop if a cited function has changed (§10). The register wins any conflict.
 
 ## 1. Goal
 
@@ -61,7 +61,13 @@ Goal check: a seeker who is never charged a surprise amount trusts the send butt
    - It then calls a new pure `previewSpend(...)` in `server/creditLedger.ts`. That function takes exactly `spendCreditsTx`'s input shape (`wallet`, `grants`, `promo`, `credits`, `now`), and `spendCreditsTx` itself calls it, so the two cannot diverge.
    - The `promo` argument is the same expression as the create path: `promoGrantsEnabled() ? promoHolding(promoState.grant) : null`.
    - `units` is `askCreditCost` over the same fields `companyAskJobRow` sets (its constant title and description and the normalized URL), not the quote route's `assignJobLevel({ url })` copy.
-   - It writes no spend, request or ledger debit. It returns `acceptedCost` (`null` on a shortfall) and is wired into the quote route as an optional dependency; when the dependency is absent, the field is left out.
+   - It writes no spend, request or ledger debit. It returns `acceptedCost` (`null` on a shortfall).
+   - **Production wiring (GAP 1).** The quote route reads it from a new optional dependency, `previewAskCost`, on `PrivateReferralRouteDeps`.
+     - Production passes it in the one existing registration call (`server/_core/index.ts:222`, which today passes only `getCreditSummary: db.getTokenWallet` for pricing): add exactly `previewAskCost: db.previewAskCost` beside it.
+     - That edit is a switch-only owned change (one line of that file, under scope-check's 12-line cap).
+     - A route test cannot see that file, so `server/askQuoteWiring.test.ts` (new) pins it from the source: the `registerPrivateReferralRoutes(` call in `server/_core/index.ts` passes `previewAskCost: db.previewAskCost` and still passes `getCreditSummary: db.getTokenWallet`.
+     - When the dependency is absent (tests that do not inject it), the field is left out.
+     - When it throws, the route answers today's 500 "We could not price this ask". It never returns a silent `null`, because `null` means a shortfall.
 
    The preview is a snapshot, not a hold. The guard in ruling 3 is what makes the charge atomic.
 
@@ -74,7 +80,10 @@ Goal check: a seeker who is never charged a surprise amount trusts the send butt
 - `server/planGates.ts`: only `AskPriceChangedError`
 - `server/db.ts`: only `CreateCompanyReferralInput`, `createCompanyReferralRequest` (covered branch and the replay return) and the new `previewAskCost`
 - `server/privateReferralRoutes.ts`: only the quote route's added field and the `POST /api/company-referrals` body parse plus the 409 map
-- `server/db.askPriceGuard.test.ts` (new, on `server/ledgerFixtureDb`, as `server/db.askOutOfCredits.test.ts` does)
+- `server/_core/index.ts (switch only)`: only the `previewAskCost: db.previewAskCost` key in the `registerPrivateReferralRoutes(` call (GAP 1)
+- `server/askQuoteWiring.test.ts` (new): the source pin for that key (GAP 1)
+- `server/askCreateFixtureDb.ts` (new) and `server/askCreateFixtureDb.test.ts` (new): the rollback-capable create-path fixture (GAP 2, §7a)
+- `server/db.askPriceGuard.test.ts` (new): uses `askCreateFixtureDb` only, never a permissive fixture
 - `server/askQuoteRoute.test.ts`
 - `server/privateReferralRoutes.integration.test.ts`
 - this packet (Status line only)
@@ -90,11 +99,13 @@ Goal check: a seeker who is never charged a surprise amount trusts the send butt
 
 ## 6. Steps (one commit each, focused tests + `pnpm check` after each)
 
+0. Harness: `server/askCreateFixtureDb.ts` and its test (§7a), before any guard test is written.
 1. Contract: `shared/acceptedAskCost.ts` and its test (§7 tests 1-4).
 2. Ledger: `previewSpend` and the `accept` callback on `spendCreditsTx`. With no callback, behaviour is exactly today's.
 3. Guard: the input field, `AskPriceChangedError`, the covered-branch `accept` call, `chargedCost` (fresh and replay) and `previewAskCost`, in `server/db.ts` and `server/planGates.ts`.
 4. Routes:
-   - The quote route adds `acceptedCost`.
+   - The quote route adds `acceptedCost` through the optional `previewAskCost` dependency.
+   - Production wiring: the one `server/_core/index.ts` key, plus `server/askQuoteWiring.test.ts` (§7 test 20).
    - `expectedCost` is parsed with `acceptedAskCostSchema`. A present but malformed value, including a bare number, gets 400 "Confirm the cost again before sending." and `createCompanyReferralRequest` is not called.
    - The 409 map plus its one audit event.
 5. Status line, full gate on the branch merged with `origin/main`, then a draft PR.
@@ -110,7 +121,7 @@ Goal check: a seeker who is never charged a surprise amount trusts the send butt
 3. `sameAcceptedAskCost` is false when any single field differs.
 4. `askBandForLevel(n)` is `null` for n = 1 to 10. This pins that no mapping slipped in.
 
-`server/db.askPriceGuard.test.ts` (fixture DB, flags off unless the test says otherwise):
+`server/db.askPriceGuard.test.ts` (on `server/askCreateFixtureDb.ts`, §7a; flags off unless the test says otherwise; every zero-write assertion below is valid only on that rollback fixture):
 
 5. **Match:** a covered request with `expectedCost` equal to `previewAskCost(...).acceptedCost` creates the request, writes the ledger rows keyed `#1..#n` for the allocations, and returns `chargedCost` deep-equal to the expected cost.
 6. **Bucket drift:** the expected source is `[{cycle,1}]`, but the wallet now pays from `purchased`.
@@ -132,7 +143,7 @@ Goal check: a seeker who is never charged a surprise amount trusts the send butt
 
 `server/askQuoteRoute.test.ts`:
 
-16. The quote response keeps `level`, `cost` (still a number), `totalAvailable` and `shortfall` with their current values and order, and adds only `acceptedCost`. `acceptedCost` comes from the injected `previewAskCost` and is `null` on a shortfall. With no `previewAskCost` dependency, the response has exactly the four current keys (today's `askQuoteRoute.test.ts` cases pass unmodified).
+16. The quote response keeps `level`, `cost` (still a number), `totalAvailable` and `shortfall` with their current values and order, and adds only `acceptedCost`. `acceptedCost` comes from the injected `previewAskCost` and is `null` on a shortfall. With no `previewAskCost` dependency, the response has exactly the four current keys (today's `askQuoteRoute.test.ts` cases pass unmodified). A `previewAskCost` that throws gives today's 500 "We could not price this ask", never `acceptedCost: null`.
 
 `server/privateReferralRoutes.integration.test.ts`:
 
@@ -144,6 +155,30 @@ Goal check: a seeker who is never charged a surprise amount trusts the send butt
     - A valid object is passed through.
     - An absent one passes `undefined`.
 19. A successful create response includes `chargedCost`.
+
+`server/askQuoteWiring.test.ts` (new; GAP 1):
+
+20. It reads `server/_core/index.ts` as text, isolates the `registerPrivateReferralRoutes(` call, and asserts it contains `previewAskCost: db.previewAskCost` and still `getCreditSummary: db.getTokenWallet`. Before step 4 it fails, because production passes no `previewAskCost`.
+
+## 7a. The rollback harness (GAP 2)
+
+**Why a new fixture.**
+- Every existing fixture that runs `createCompanyReferralRequest` runs the transaction body with no rollback (`transaction: cb => cb(api)`): `db.askOutOfCredits`, `db.askCostStored`, `db.askPinnedWork`, `db.companyCap`, `db.openAskSlots` and `db.opportunityFirstLook` (`server/db.askCostStored.test.ts:270`).
+- The rollback-capable `server/ledgerFixtureDb.ts` (snapshot and restore at `:158-160`) models only 11 tables, has no `jobs`, `profiles` or `referralAttachments`, and has no `innerJoin`, so it cannot run the create path.
+- A permissive fixture keeps the rows written before a throw, so it can never prove atomicity.
+
+**The fixture (`server/askCreateFixtureDb.ts`, new).**
+- It is the SQL slice `server/db.askCostStored.test.ts:42-270` already uses to run the real create path (21 tables, inner and left joins, `for("update")`, the predicates, and inserts into any table by name), moved into one module so it can be shared.
+- It differs in one place: its `transaction` takes a `structuredClone` of every table and of the id sequence, and on any throw restores them and rethrows.
+- The existing test files are not edited.
+
+**`server/askCreateFixtureDb.test.ts` (new, red first):**
+- **a.** A transaction that inserts into two tables and then throws leaves every table and the id sequence deep-equal to before.
+- **b.** A transaction that succeeds keeps its writes.
+- **c.** On this fixture, a real `createCompanyReferralRequest` whose spend fails after the `jobs` and `referralRequests` inserts (no credit left) leaves the business tables deep-equal to before.
+- **d.** On this fixture, a real covered create commits one request and one `#1` debit.
+- **e.** On this fixture, a real waiting create commits one request and one `companyCoverageInvitations` row, with no debit.
+- **f.** On the permissive `cb(api)` semantics, the same failure as (c) leaves one orphan `jobs` row and one orphan `referralRequests` row. This test keeps the reason for the fixture visible.
 
 ## 8. Done
 
@@ -161,18 +196,19 @@ No production verification is due, because no caller sends `expectedCost` until 
 ## 9. Review checklist
 
 1. Without `expectedCost`, every send is byte-for-byte today's, proven by the unmodified suites (test 11) and today's `askQuoteRoute.test.ts` (test 16), not by reading the code.
-2. A 409 commits zero business rows (tests 6-8). Its only side effect is the one denied audit event (test 17).
+2. A 409 commits zero business rows (tests 6-8, on the rollback fixture of §7a only). Its only side effect is the one denied audit event (test 17).
 3. The compared allocation is the spent allocation: `spendCreditsTx` calls `previewSpend` and the `accept` callback runs on its result, with no second reconcile.
 4. `expectedCost` is outside the fingerprint, and a replay never reaches the guard.
 5. Numeric `cost` is untouched, and a bare number is never accepted as `expectedCost`.
 6. `askBandForLevel` returns `null` everywhere. There is no rate, mapping, spend-order or flag-default change.
 7. Nothing changes refunds (D-147), waiting-request delivery (D-034/D-047), privacy, the referrer side, `shared/moneyCopy.ts` or any client file.
+8. Production passes `previewAskCost` (test 20); the live quote is not mock-only.
 
 ## 10. Stop and ask (`--report blocked` with the question)
 
 - A cited function no longer matches this packet on the current `origin/main`.
 - The guard cannot run before the first committed write without a second reconcile.
-- `ledgerFixtureDb` cannot model a test above. Report it; do not weaken the test.
+- `askCreateFixtureDb` cannot model a test above. Report it; do not weaken the test, and never fall back to a permissive (`cb(api)`) fixture for a zero-write assertion.
 - Any pressure to fill `askBandForLevel`, follow the D-219 (4) spend order, or change wording in `shared/moneyCopy.ts`: those decisions belong to the owner or to other rows.
 
 ## 11. Rows and ordering (D-223: split by owned files)
@@ -180,6 +216,7 @@ No production verification is due, because no caller sends `expectedCost` until 
 | Row | Owns | dependsOn | Why |
 |---|---|---|---|
 | `D-132-item3` (this packet; the id is kept because `register520Packets.test.ts:40` pins SKIPPY-fix's edge to it) | §5 in-scope list | `D-132-audit` (done), `D-090-BYOR` | `D-090-BYOR` holds open draft PR #632 and owns `server/db.ts` and `server/privateReferralRoutes.ts`. The serialization stays (F5): this row waits unless that row's holder agrees to reorder. A reorder needs the holder's acknowledgment on #632, recorded in both notes; until then this edge stands. |
+| `server/_core/index.ts (switch only)` ordering (GAP 1) | — | — | The other open owners of that file are `D-090-BYOR`, which owns it whole (this row waits for it), and `D-099-bonus-pages`, which owns it switch-only. Two switch-only claims on one file never need ordering (`ownsOverlap`, `scripts/nextTaskCore.mjs:84-87`, D-200: scope-check caps each at 12 lines, which git merges), and `D-099-bonus-pages` also waits for this row transitively through `D-174-held-ask-reconfirm`. No new edge is needed. |
 | `D-174-held-ask-reconfirm` (existing; unclaimed, no branch on origin) | unchanged | adds `D-132-item3` | Its owns overlap this row's. It already waits for `D-090-BYOR`, so the edge adds no wait beyond this small row. `D-174-ask-from-job` and `D-174-pool-nudges` then wait transitively. |
 | `SKIPPY-fix.s1-ssrf` (new; epic `SKIPPY-fix`; packet `docs/plans/SKIPPY-fix.md` §S-1 unchanged) | `server/skippieSeekerDeps.ts`, `server/skippieSeekerDeps.test.ts` | none | See §11a. |
 | `SKIPPY-fix` (existing; no owns, no branch, no claim) | unchanged | `D-132-item3` (pinned) plus `SKIPPY-fix.s1-ssrf` | S-2 to S-6 and the live proof. It edits `skippieSeekerDeps.ts` for S-3 only after S-1 lands. |
