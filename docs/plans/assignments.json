@@ -115,7 +115,7 @@
       "tier": 1,
       "lane": "deploy",
       "branch": "agent/queue/p1-release-gate-strict-compare",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "P1-deploy-green-gate"
       ],
@@ -123,7 +123,7 @@
         "scripts/require-green-release.mjs",
         "scripts/requireGreenRelease.test.ts"
       ],
-      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. No main landing while first750gatedacceptance CI/deploys pending. Independent nonbuilder/nonfixer review and exact green checks; no live rollback/DB/settings tests."
+      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 acceptance (observe a subsequent normal gated release and its identities) is still pending, so the row is not done. No live rollback/DB/settings tests."
     },
     {
       "id": "CI-architect-real-checks",
@@ -133,9 +133,16 @@
       "tier": 1,
       "lane": "ci-gate",
       "branch": "agent/queue/ci-architect-real-checks",
-      "status": "architect",
+      "status": "todo",
       "dependsOn": [],
-      "note": "Packet/ownership reconciliation only, NOT ready for implementation. ci.yml remains owned by PRICING-banded-oct25 until explicit handoff and protected scope amendment. No dependency on pricing feature or disjoint P1 deployment repair; no concurrent workflow edits. Proposed full scope and evidence are in packet. Architect may resolve handoff/registration only; do not mutate runtime workflow while unresolved."
+      "owns": [
+        ".github/workflows/ci.yml",
+        "scripts/ciMarkerSkip.test.ts",
+        "scripts/classifyCiChange.mjs",
+        "scripts/classifyCiChange.test.ts",
+        "docs/plans/CI-architect-real-checks.md"
+      ],
+      "note": "Ownership resolved by handoff from PRICING-banded-oct25 (holder's acknowledgment: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/666#issuecomment-6464335154). Carries #666's typecheck heap line byte for byte (c9572fcf, ci.yml hunk only; never cherry-pick that commit) and adds nothing inside the Typecheck step, so #666 merges main without a ci.yml conflict. No dependency on pricing or on P1 (deploy workflows are disjoint). Keep the three required job names, the ci.yml path, push/dispatch behaviour and P1's release-gate inputs. Build only on this task branch, never on an agent/architect/* branch (its required jobs are skipped until this lands). Tier 1: independent review by a model that neither built nor fixed it, plus the real linked draft-PR runs in the packet."
     },
     {
       "id": "D-174-sample-job-removal",
@@ -185,7 +192,6 @@
         "D-048-F-credits"
       ],
       "owns": [
-        ".github/workflows/ci.yml",
         "client/src/components/AppShell.tsx",
         "client/src/components/seekerCreditsCard.test.tsx",
         "client/src/lib/planFamilyFlag.ts",
@@ -210,7 +216,7 @@
         "shared/planReach.test.ts",
         "client/src/components/goal/useGoalShellMeta.ts"
       ],
-      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first. Oct 27 queue sync (Claude Code, D-219; changeable): moved up to sit just above LAUNCH-legal-copy and no longer waits on it; LAUNCH-legal-copy now waits for this row instead, because it is owner-held (legal text), shares only policyPages.test.tsx, and its Terms and Cancellation text must describe the pricing this row lands. The owner's freeze said 'push it immediately', and the live app could still open an archived legacy pack cart on Oct 25 (PR #666 comment 6399494075). It still waits for D-048-F-credits (shared AppShell.tsx line), which D-217 unparked to land first through its Tier 1 path."
+      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first. Oct 27 queue sync (Claude Code, D-219; changeable): moved up to sit just above LAUNCH-legal-copy and no longer waits on it; LAUNCH-legal-copy now waits for this row instead, because it is owner-held (legal text), shares only policyPages.test.tsx, and its Terms and Cancellation text must describe the pricing this row lands. The owner's freeze said 'push it immediately', and the live app could still open an archived legacy pack cart on Oct 25 (PR #666 comment 6399494075). It still waits for D-048-F-credits (shared AppShell.tsx line), which D-217 unparked to land first through its Tier 1 path. Oct 28 ci.yml handoff (holder's acknowledgment: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/666#issuecomment-6464335154): .github/workflows/ci.yml moved to CI-architect-real-checks, which carries this branch's only ci.yml delta, the typecheck heap line from c9572fcf, byte for byte. #666 lands no ci.yml change: until that row lands it runs no CI carrying the delta, or first restores ci.yml to main's bytes in a forward-only commit; after it lands, #666 merges main and its ci.yml diff must be empty (a conflict resolves to main's version exactly)."
     },
     {
       "id": "LAUNCH-legal-copy",
@@ -290,9 +296,9 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-review-independence",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "D-151: did() compares exact session names, so on Oct 22 the picker handed #382's re-review to Qoder · a236 right after Qoder · 31dd fixed it. Compare models, count Fixed markers as fixes, and print the rule in the review step. Every Tier 1 review the queue hands out, P0-ask-link-signin's and P1-queue-attestation's included, goes through this check."
+      "note": "D-151: implemented on main by PR #530 (`ff4e0546`) — `did()` compares models at the review and landing hand-outs, `fixers` counts `Fixed` markers as well as `Fix claim`, and the printed review step names the model and outside-picker checks, with red-first tests in `scripts/nextTask.test.ts` (\"D-151 model-independent reviews and landings\"). Takeover (DeepSeek V4.1 Flash Free · a54e) found no packet item left to build and closed the row without a code change; focused picker tests 159 passed on main `d27959aa`."
     },
     {
       "id": "PICKER-decision-sync",
@@ -777,10 +783,17 @@
         "ROW20-CD",
         "D-048-F-goal-check"
       ],
-      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost.",
+      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost. Oct 27 (owns): the packet's owned paths (OCT21-BUILT-PRS.md: the page, threadModel.ts seeker copy only, their tests, the conversation fixtures and captures) are registered file by file. The seeker cases in referralConversation.test.tsx pin the old h1 and the 7-day closed line this row must change, and the captures folder is shared, so D-048-p3-conversation (unclaimed) now waits for this row instead of both owning those paths at once (D-134, D-167).",
       "epic": "D-048-p3",
       "owns": [
-        "client/src/pages/conversation/SeekerConversation.tsx"
+        "client/src/pages/conversation/SeekerConversation.tsx",
+        "client/src/pages/conversation/SeekerConversation.goal.test.tsx",
+        "client/src/components/thread/threadModel.ts",
+        "client/src/components/thread/threadModel.test.ts",
+        "client/src/pages/referralConversation.test.tsx",
+        "client/src/pages/referralConversation.shareWin.test.tsx",
+        "design/goal-ui/tools/fixtures/conversation__*.json",
+        "design/goal-ui/captures/conversation/**"
       ]
     },
     {
@@ -816,7 +829,7 @@
       "dependsOn": [
         "SHELL-focus-clearance"
       ],
-      "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them.",
+      "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them. D-224 (Oct 28, unblock ruling): the audit compatibility contract in this packet resolves the R8 conflict; the register entry fixes the goal colour token set at the 27 light colour tokens.",
       "owns": [
         "client/src/styles/goalDark.css",
         "client/src/contexts/themeContext.test.tsx",
@@ -827,7 +840,10 @@
         "client/src/components/goal/GoalMoreMenu.tsx",
         "client/src/components/goal/goalMoreMenu.test.tsx",
         "client/index.html (switch only)",
-        "DESIGN.md"
+        "DESIGN.md",
+        "scripts/designTokenAuditCore.mjs",
+        "scripts/designTokenAudit.test.ts",
+        "design/goal-ui/captures/dark-mode/**"
       ]
     },
     {
@@ -915,14 +931,18 @@
       "dependsOn": [
         "D-048-p3-assistants"
       ],
-      "note": "Issue #644: decideAssistantApproval never re-reads the approved creditCount, so with ASK_LEVEL_COST on an owner who saw 1 credit could pay up to 10. Latent today (flag off; only the unsold land plan grants assistants), so ASK_LEVEL_COST and any land sale stay off until this is done. Contract: the decision body carries expectedCreditCount; the route re-derives the cost with the quote route's own functions and answers 409 cost_changed before any charge on a mismatch. No edit to server/db.ts or privateReferralRoutes.ts. Waits for D-048-p3-assistants (both edit Approve.tsx). D-221 (Oct 26): the shown cost is the quote route's full cost object under D-219 (unit count, level band, spend source), not an integer credit count; the invariant stays: charge exactly what was approved, or 409 cost_changed with nothing charged.",
+      "note": "Issue #644: decideAssistantApproval never re-reads the approved creditCount, so with ASK_LEVEL_COST on an owner who saw 1 credit could pay up to 10. Latent today (flag off; only the unsold land plan grants assistants), so ASK_LEVEL_COST and any land sale stay off until this is done. Contract: the decision body carries expectedCreditCount; the route re-derives the cost with the quote route's own functions and answers 409 cost_changed before any charge on a mismatch. No edit to server/db.ts or privateReferralRoutes.ts. Waits for D-048-p3-assistants (both edit Approve.tsx). D-221 (Oct 26): the shown cost is the quote route's full cost object under D-219 (unit count, level band, spend source), not an integer credit count; the invariant stays: charge exactly what was approved, or 409 cost_changed with nothing charged. Oct 27 (#644): Approve.tsx now only switches to the dark goal GoalApprove.tsx, which also posts { decision, kind }, so the goal page and its flow test join owns (D-048-p3-assistants, their only owner, is done) or it would loop on 409 once released; the cost object is a shared Zod contract (shared/assistantApprovalCost.ts) so the client never imports server code.",
       "owns": [
         "server/assistantApprovalCost.ts",
         "server/assistantApprovalCost.test.ts",
         "server/assistantRoutes.ts",
         "server/assistantRoutes.test.ts",
         "client/src/pages/Approve.tsx",
-        "client/src/pages/approve.test.tsx"
+        "client/src/pages/approve.test.tsx",
+        "shared/assistantApprovalCost.ts",
+        "shared/assistantApprovalCost.test.ts",
+        "client/src/pages/goal/assistants/GoalApprove.tsx",
+        "client/src/pages/goal/assistants/assistantFlows.test.tsx"
       ]
     },
     {
@@ -1650,7 +1670,8 @@
         "D-038-reconcile",
         "D-105-win-card",
         "ROW20-CD",
-        "D-048-F-goal-check"
+        "D-048-F-goal-check",
+        "D-048-p3-live-review-conversation"
       ],
       "owns": [
         "client/src/pages/ReferralConversation.tsx",
@@ -1659,7 +1680,7 @@
         "client/src/pages/referralConversation.test.tsx",
         "design/goal-ui/captures/conversation/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147) (attribution unverified - no recovered owner original; register state and refund behavior unchanged); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
+      "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147) (attribution unverified - no recovered owner original; register state and refund behavior unchanged); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). Oct 27: waits for D-048-p3-live-review-conversation (claimed), which also owns referralConversation.test.tsx (its seeker cases) and the conversation captures folder; this row then builds on the redesigned seeker page.",
       "epic": "D-048-p3"
     },
     {
@@ -1696,7 +1717,7 @@
       "tier": 1,
       "lane": "d048-referrer-home",
       "branch": "agent/queue/d048-p3-referrer-home",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -3891,6 +3912,62 @@
         "docs/BRIEF.md"
       ],
       "note": "Serialized because existing BYOR and bonus rows own shared deploy docs. No runtime change or unsupported completion claims; incident748 remains open until path acceptance independently proven."
+    },
+    {
+      "id": "PICKER-heartbeat-slot-safety",
+      "title": "Renew an owned landing lease without taking another fresh landing slot",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-heartbeat-slot-safety.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-heartbeat-slot-safety",
+      "status": "todo",
+      "dependsOn": [
+        "PROCESS-review-gate"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskHeartbeatSlot.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
+    },
+    {
+      "id": "PICKER-landed-marker-continuity",
+      "title": "Keep merged work landed through marker-only branch recreation",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-landed-marker-continuity.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-landed-marker-continuity",
+      "status": "todo",
+      "dependsOn": [
+        "PICKER-heartbeat-slot-safety",
+        "PICKER-avoid-land"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskLandedMarkerContinuity.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
+    },
+    {
+      "id": "PICKER-landing-wait-fallthrough",
+      "title": "Offer eligible disjoint work before returning a landing-slot wait",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-landing-wait-fallthrough.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-landing-wait-fallthrough",
+      "status": "todo",
+      "dependsOn": [
+        "PICKER-landed-marker-continuity"
+      ],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskLandingWaitFallthrough.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
     }
   ]
 }
