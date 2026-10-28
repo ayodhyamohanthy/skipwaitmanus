@@ -78,6 +78,7 @@
       "lane": "auth-device",
       "branch": "agent/queue/fix-device-signin",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168); next is one independent review by a model other than Claude (D-200), then landing on green required CI. Face ID, passkeys and Sign in with Apple are not in this row: they change the login rule and wait for the owner.",
       "owns": [
@@ -116,6 +117,7 @@
       "lane": "deploy",
       "branch": "agent/queue/p1-release-gate-strict-compare",
       "status": "in-review",
+      "syncedTo": "D-227",
       "dependsOn": [
         "P1-deploy-green-gate"
       ],
@@ -134,6 +136,7 @@
       "lane": "ci-gate",
       "branch": "agent/queue/ci-architect-real-checks",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "owns": [
         ".github/workflows/ci.yml",
@@ -188,6 +191,7 @@
       "lane": "pricing",
       "branch": "agent/pricing/banded-plans-oct25",
       "status": "in-review",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-credits"
       ],
@@ -227,6 +231,7 @@
       "lane": "launch-legal",
       "branch": "agent/queue/launch-legal-copy",
       "status": "owner",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PRICING-banded-oct25"
       ],
@@ -248,6 +253,7 @@
       "lane": "launch-qa",
       "branch": "agent/queue/launch-live-qa",
       "status": "owner",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "owns": [
         "docs/BUGFREE_GATE.md",
@@ -308,7 +314,8 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-decision-sync",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "The owner, Oct 23: agents must always work on the most recent decision, never on old work. Builders are told to read only the brief and their packet (scripts/nextTaskText.mjs:42), so a packet older than a decision can be built as written (D-147, D-148 then D-152). Until this lands, the interim rule in the packet binds every agent. D-221 (Oct 26): the Oct 25 owner decisions are now register entries D-219 and D-220 with their affected tasks, so the syncedTo stamp must not certify rows those entries change until each is re-synced."
     },
@@ -321,6 +328,7 @@
       "lane": "skippy-seeker",
       "branch": "agent/queue/skippy-fix-s1-ssrf",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "Oct 28 (D-132-item3 packet revision 2, section 11a; decided under D-200, changeable): built exactly as SKIPPY-fix.md section S-1 says (red first with an injected fake fetcher, no network). Owner and holder check on main 6cbee199: no open row owns these files, and SKIPPY-fix has no owns, branch or claim, so nothing in flight is taken. Latent: SKIPPIE_SEEKER_ENABLED is off in production; no flag goes on until the parent SKIPPY-fix lands with its proof, including S-1 live item 2 (D-201). Tier 1 (security): independent review.",
       "epic": "SKIPPY-fix",
@@ -338,6 +346,7 @@
       "lane": "skippy-seeker",
       "branch": "agent/queue/skippy-fix",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-132-item3",
         "SKIPPY-fix.s1-ssrf"
@@ -353,6 +362,7 @@
       "lane": "repo-hygiene",
       "branch": "agent/queue/branch-hygiene",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "The owner, Oct 23. On ecdbc227, origin had 345 branches besides main; 69 tips are already in main, and squash-merged heads need the merged-PR check. Never delete main, agent/reports/log, the landing slot, unmerged work or any branch of a task that is not done. Paste the dry run in the PR; the lander pastes the --apply output after landing."
     },
@@ -365,6 +375,7 @@
       "lane": "picker",
       "branch": "agent/queue/branch-hygiene-picker",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "BRANCH-HYGIENE-1"
       ],
@@ -379,6 +390,7 @@
       "lane": "skippy-redteam",
       "branch": "agent/queue/skippy-redteam",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "SKIPPY-fix"
       ],
@@ -393,6 +405,7 @@
       "lane": "skippy-seeker",
       "branch": "agent/queue/skippy-purchase",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": [
         "SKIPPY-fix"
       ],
@@ -407,6 +420,7 @@
       "lane": "auth-stepup",
       "branch": "agent/queue/skippy-stepup",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": [
         "SKIPPY-fix"
       ],
@@ -421,6 +435,7 @@
       "lane": "skippy-agents",
       "branch": "agent/queue/skippy-agent-send",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "SKIPPY-fix"
       ],
@@ -435,6 +450,7 @@
       "lane": "skippy-agents",
       "branch": "agent/queue/skippy-auto-send",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": [
         "SKIPPY-6"
       ],
@@ -461,6 +477,7 @@
       "lane": "picker",
       "branch": "agent/queue/picker-review-wording",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "owns": [
         "scripts/nextTaskText.mjs",
@@ -477,6 +494,7 @@
       "lane": "picker",
       "branch": "agent/queue/picker-architect-landing",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PICKER-review-wording",
         "PROCESS-review-gate"
@@ -528,15 +546,16 @@
     },
     {
       "id": "D-200-instructions-sync",
-      "title": "Instruction files say what D-200 and the picker already do: Claude Code builds too, nothing waits for one model or session",
+      "title": "Instruction files state D-225's role split and D-200's no-step-waits rule: Claude supplies intelligence, other tools develop",
       "row": "D-200",
       "packet": "docs/plans/D-200-instructions-sync.md",
       "tier": 3,
       "lane": "d200-docs",
       "branch": "agent/queue/d200-instructions-sync",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "D-200 (7): CLAUDE.md, AGENTS.md, docs/BRIEF.md and docs/DELEGATION.md still say Claude Code never builds. Docs only, five exact edits in the packet. Any model except a Claude Code session builds it (its safety check refuses edits to its own instruction files)."
+      "note": "D-200 (7), re-synced to D-225 (Oct 28). D-225 superseded the Claude-builds-too half this row was written for, so the remaining work was to remove the one surviving 'Claude Code builds too' sentence (AGENTS.md, the D-058 row) and close D-200 (7). CLAUDE.md, docs/BRIEF.md and docs/DELEGATION.md already state the D-225 split. The re-sync is recorded in the packet because assignments.json allows no syncedTo key until PICKER-decision-sync lands."
     },
     {
       "id": "POSTMERGE-oct22-review",
@@ -546,9 +565,10 @@
       "tier": 1,
       "lane": "audit",
       "branch": "agent/queue/postmerge-oct22-review",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-228",
       "dependsOn": [],
-      "note": "D-166 (2): #465, #478, #482 (migration 0106), #490 (migration 0107), #506, #517, #534, #535, #479, #510 merged with only a failed Copilot bot review. Review them as they are on main by a model other than Instinct; findings go to docs/plans/POSTMERGE-oct22-findings.md and become fix rows. No code change in this row.",
+      "note": "D-166 (2): #465, #478, #482 (migration 0106), #490 (migration 0107), #506, #517, #534, #535, #479, #510 merged with only a failed Copilot bot review. Review them as they are on main by a model other than Instinct; findings go to docs/plans/POSTMERGE-oct22-findings.md and become fix rows. No code change in this row. DONE: the findings doc landed as #619 (all ten PRs covered) and the four follow-ups were fixed by POSTMERGE-oct22-fixes on main (821399d4, 09891b3b, 91e0b6c8, 01928e67 + 5ff7ef2c, 57/57 regression tests verified on main 5fe7f9ee); #775 records each disposition. The OpenAI block was raised against code fixes this row forbids; D-228 clears it.",
       "owns": [
         "docs/plans/POSTMERGE-oct22-findings.md"
       ]
@@ -590,6 +610,7 @@
       "lane": "process",
       "branch": "agent/queue/process-queue-gate",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-166 (2): 23 of 38 product-code merges Oct 19-23 had no row. New scripts/queue-gate.mjs called from scripts/scope-check.mjs, already in the required typecheck job, so no workflow edit; five pass rules in the packet; fails open only on its own error.",
       "owns": [
@@ -609,6 +630,7 @@
       "lane": "process",
       "branch": "agent/queue/process-review-gate",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-queue-gate"
       ],
@@ -632,6 +654,7 @@
       "lane": "process",
       "branch": "agent/queue/process-id-check",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-review-gate"
       ],
@@ -651,6 +674,7 @@
       "lane": "process",
       "branch": "agent/queue/process-scorecard",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-id-check"
       ],
@@ -670,6 +694,7 @@
       "lane": "register",
       "branch": "agent/queue/register-d212",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "The owner, Oct 26: get an independent review of the final version through the repository's process, bring it up to date with main, require every check on the exact version merged, and resolve findings first. Claude Code wrote it, so review and landing go to a model other than Claude (D-151). The PR from agent/queue/register-d212 supersedes #623 (claude/enterprise-pipeline), which stays open and unmerged until this lands."
     },
@@ -747,6 +772,7 @@
       "lane": "d048-find",
       "branch": "agent/queue/d048-live-review-find",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-fix-send-ask-blocker",
         "P0-ask-link-signin",
@@ -787,6 +813,24 @@
       "epic": "D-048-p3"
     },
     {
+      "id": "D-180-conversation-copy",
+      "title": "Seeker conversation terminal and withdraw-confirm lines from one shared helper, fact-only, referral vocabulary (D-180 slice)",
+      "row": "COPY",
+      "packet": "docs/plans/D-180-conversation-copy.md",
+      "tier": 1,
+      "lane": "terminology",
+      "branch": "agent/copy/d180-conversation-copy",
+      "status": "todo",
+      "epic": "D-048-p3",
+      "dependsOn": [],
+      "owns": [
+        "shared/conversationCopy.ts",
+        "shared/conversationCopy.test.ts"
+      ],
+      "note": "Unblocks D-048-p3-live-review-conversation (#786) under the explicit Oct 28 amendment of OCT21-BUILT-PRS.md item 1 (packet section 3), which this registration PR carries. New module only; shared/moneyCopy.ts is not edited, so no holder of it (D-174-held-ask-reconfirm, D-180-a-free-asks-chip, D-099-bonus-pages switch-only) is touched and no ACK is needed. Fact-only lines in D-180 referral vocabulary: no amount, refund, clock, slot or availability claim; the withdraw confirm is keyed on queueStatus only (held_for_credit/waiting_for_coverage vs the rest). No behavior, price, charge, refund, expiry or flag change; proof is a baseline diff (packet 4d), not constant pins. Review: D-151, not the builder's model family.",
+      "syncedTo": "D-227"
+    },
+    {
       "id": "D-048-p3-live-review-conversation",
       "title": "Redesign the live seeker /conversation to the goal doctrine (D-150), then review it (D-149)",
       "row": "D-048",
@@ -795,13 +839,15 @@
       "lane": "d048-seeker-thread",
       "branch": "agent/queue/d048-live-review-conversation",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-038-reconcile",
         "D-132-audit",
         "ROW20-CD",
-        "D-048-F-goal-check"
+        "D-048-F-goal-check",
+        "D-180-conversation-copy"
       ],
-      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost. Oct 27 (owns): the packet's owned paths (OCT21-BUILT-PRS.md: the page, threadModel.ts seeker copy only, their tests, the conversation fixtures and captures) are registered file by file. The seeker cases in referralConversation.test.tsx pin the old h1 and the 7-day closed line this row must change, and the captures folder is shared, so D-048-p3-conversation (unclaimed) now waits for this row instead of both owning those paths at once (D-134, D-167).",
+      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost. Oct 27 (owns): the packet's owned paths (OCT21-BUILT-PRS.md: the page, threadModel.ts seeker copy only, their tests, the conversation fixtures and captures) are registered file by file. The seeker cases in referralConversation.test.tsx pin the old h1 and the 7-day closed line this row must change, and the captures folder is shared, so D-048-p3-conversation (unclaimed) now waits for this row instead of both owning those paths at once (D-134, D-167). Oct28 registration candidate: packet item1 amended to fact-only terminal/withdraw-confirm helper shared/conversationCopy.ts; helper row D-180-conversation-copy must land before adoption. #786 remains draft; no runtime change or completed-feature acceptance.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/conversation/SeekerConversation.tsx",
@@ -844,6 +890,7 @@
       "lane": "design-theme",
       "branch": "agent/queue/d048-dark-mode",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "SHELL-focus-clearance"
       ],
@@ -946,6 +993,7 @@
       "lane": "money-assist",
       "branch": "agent/queue/assist-approval-cost",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-assistants"
       ],
@@ -984,6 +1032,7 @@
       "lane": "money-core",
       "branch": "agent/queue/d132-item3",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-132-audit",
         "D-090-BYOR"
@@ -1014,6 +1063,7 @@
       "lane": "money-core",
       "branch": "agent/instinct/v2-checkout-port",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-132-item3",
         "D-132-audit"
@@ -1363,6 +1413,7 @@
       "lane": "design-shell",
       "branch": "agent/queue/d048-f-shell-parts",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-credits",
         "D-048-F-goal-check"
@@ -1513,6 +1564,7 @@
       "lane": "d048-asks",
       "branch": "agent/queue/d048-inbox",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1638,6 +1690,7 @@
       "lane": "d048-skippy",
       "branch": "agent/queue/d048-skippy",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1661,6 +1714,7 @@
       "lane": "d048-agents",
       "branch": "agent/queue/d048-agents",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1697,6 +1751,7 @@
       "lane": "d048-thread",
       "branch": "agent/queue/d048-p3-conversation",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1804,6 +1859,7 @@
       "lane": "d048-post",
       "branch": "agent/queue/d048-p3-post",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1867,6 +1923,7 @@
       "lane": "d048-money",
       "branch": "agent/queue/d048-p3-plans",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1897,6 +1954,7 @@
       "lane": "d048-premium",
       "branch": "agent/queue/d048-p3-premium",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1922,6 +1980,7 @@
       "lane": "d048-pricing",
       "branch": "agent/queue/d048-p3-pricing",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-money",
@@ -1962,6 +2021,7 @@
       "lane": "d048-verify",
       "branch": "agent/queue/d048-p3-verify",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1987,6 +2047,7 @@
       "lane": "d048-auth",
       "branch": "agent/queue/d048-p3-signin",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
@@ -2031,6 +2092,7 @@
       "lane": "d048-settings",
       "branch": "agent/queue/d048-p3-settings",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2055,6 +2117,7 @@
       "lane": "d048-profile",
       "branch": "agent/queue/d048-p3-profile",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2104,6 +2167,7 @@
       "lane": "d048-messages",
       "branch": "agent/queue/d048-p3-messages",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2127,6 +2191,7 @@
       "lane": "d048-support",
       "branch": "agent/queue/d048-p3-support",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2168,6 +2233,7 @@
       "lane": "d048-admin",
       "branch": "agent/queue/d048-p3-admin",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2194,6 +2260,7 @@
       "lane": "d048-admin-money",
       "branch": "agent/queue/d048-p3-admin-money",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-admin",
         "D-048-F-goal-check"
@@ -2217,6 +2284,7 @@
       "lane": "d048-admin-people",
       "branch": "agent/queue/d048-p3-admin-people",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-admin",
         "D-048-F-goal-check"
@@ -2239,6 +2307,7 @@
       "lane": "d048-admin-approvals",
       "branch": "agent/queue/d048-p3-admin-approvals",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-admin",
         "D-048-F-goal-check"
@@ -2261,6 +2330,7 @@
       "lane": "d048-admin-ops",
       "branch": "agent/queue/d048-p3-admin-ops",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-admin",
         "D-048-F-goal-check"
@@ -2286,6 +2356,7 @@
       "lane": "d048-dev",
       "branch": "agent/queue/d048-p3-dev",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
@@ -2325,6 +2396,7 @@
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2351,6 +2423,7 @@
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer-talent",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-employer",
         "D-048-F-goal-check"
@@ -2372,6 +2445,7 @@
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer-billing",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-employer",
         "D-048-F-goal-check"
@@ -2393,6 +2467,7 @@
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-for-companies",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-employer",
         "D-107-claim-company",
@@ -2431,6 +2506,7 @@
       "lane": "d048-policy",
       "branch": "agent/queue/d048-p3-policy",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-public",
@@ -2455,6 +2531,7 @@
       "lane": "d048-system",
       "branch": "agent/queue/d048-p3-system",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
@@ -2481,6 +2558,7 @@
       "lane": "d048-links",
       "branch": "agent/queue/d048-p3-links",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
@@ -2522,6 +2600,7 @@
       "lane": "d048-home",
       "branch": "agent/queue/d048-p3-home-signed-in",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-marketing",
@@ -2547,6 +2626,7 @@
       "lane": "d048-discovery",
       "branch": "agent/queue/d048-p3-discovery",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-marketing",
@@ -2572,6 +2652,7 @@
       "lane": "d048-profile",
       "branch": "agent/queue/d048-p3-public-profile",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-p3-profile",
@@ -2636,16 +2717,125 @@
       "dependsOn": []
     },
     {
-      "id": "D-086-demand-list",
-      "title": "Demand list (D-086, loop L1): k-anonymous public demand counts per company and asks at companies not yet open",
+      "id": "D-086.count",
+      "title": "Demand count (D-086): distinct people with a live referral request at each listed company (public, k-anonymous) and the unlisted-domain admission queue (admin only), behind two switches that start false",
       "row": "D-086",
-      "packet": null,
+      "packet": "docs/plans/D-086-demand-list.md",
+      "tier": 1,
+      "lane": "demand-count",
+      "branch": "agent/queue/d086-count",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "epic": "D-086-demand-list",
+      "dependsOn": [
+        "D-174-company-search"
+      ],
+      "owns": [
+        "shared/companyDemand.ts",
+        "shared/companyDemand.test.ts",
+        "server/companyDemand.ts",
+        "server/companyDemand.fixture.test.ts",
+        "server/companyDemandRoutes.ts",
+        "server/companyDemandRoutes.test.ts",
+        "server/companyDirectoryRoutes.ts (switch only)"
+      ],
+      "note": "D-086 packet §5.1. Liveness is status pending plus the imported isAskExpired (no age cutoff of its own; follows D-174-expiry-clock-removal with no change; awaiting-reconfirm requests count). Coverage-neutral (reads no referrer or availability table), listed companies only in public, distinct canonical people, never companySuggestions votes. The admin queue lists unowned corporate domains by people, private, no-store. Mounts inside registerCompanyDirectoryRoutes (D-223 (6)), so it waits for D-174-company-search, which owns that file. Both switches stay false."
+    },
+    {
+      "id": "D-086.ui",
+      "title": "Demand line and list components (D-086): a count from 3, 'A few people' for 1-2, nothing at zero; employee help links via referrerSignInHref; unlisted-company lines; employer-bonus line; switch off",
+      "row": "D-086",
+      "packet": "docs/plans/D-086-demand-list.md",
+      "tier": 2,
+      "lane": "demand-ui",
+      "branch": "agent/queue/d086-ui",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "epic": "D-086-demand-list",
+      "dependsOn": [
+        "D-086.count",
+        "D-090-BYOR"
+      ],
+      "owns": [
+        "client/src/components/demand/CompanyDemandLine.tsx",
+        "client/src/components/demand/CompanyDemandList.tsx",
+        "client/src/components/demand/useCompanyDemand.ts",
+        "client/src/components/demand/companyDemand.test.tsx",
+        "docs/plans/GOAL_UI_COVERAGE.md"
+      ],
+      "note": "D-086 packet §5.2. Waits for D-090-BYOR because both own GOAL_UI_COVERAGE.md (D-167 line per new component). No black commit; login rule pinned by its own test."
+    },
+    {
+      "id": "D-086.mount",
+      "title": "Mount the demand line on /explore/:slug and the list on /explore (D-086), behind the switch",
+      "row": "D-086",
+      "packet": "docs/plans/D-086-demand-list.md",
+      "tier": 2,
+      "lane": "demand-mount",
+      "branch": "agent/queue/d086-mount",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "epic": "D-086-demand-list",
+      "dependsOn": [
+        "D-086.ui",
+        "D-048-p3-live-review-find"
+      ],
+      "owns": [
+        "client/src/pages/Explore.tsx (switch only)",
+        "client/src/pages/ExploreCompany.tsx (switch only)",
+        "client/src/pages/explore.demandMount.test.tsx",
+        "design/goal-ui/captures/demand/**"
+      ],
+      "note": "D-086 packet §5.3. Mounts into the pages D-048-p3-live-review-find redesigns, after it lands; captures at 1280 and 390."
+    },
+    {
+      "id": "D-086.admit",
+      "title": "Read-only admin view of the unlisted-company admission queue (D-086): domains by people asking; listing stays the authenticated admin POST /api/admin/companies",
+      "row": "D-086",
+      "packet": "docs/plans/D-086-demand-list.md",
+      "tier": 2,
+      "lane": "demand-admit",
+      "branch": "agent/queue/d086-admit",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "epic": "D-086-demand-list",
+      "dependsOn": [
+        "D-086.count",
+        "D-086.ui",
+        "D-048-p3-admin"
+      ],
+      "owns": [
+        "client/src/components/admin/UnlistedDemandView.tsx",
+        "client/src/components/admin/unlistedDemandView.test.tsx",
+        "client/src/pages/AdminOverview.tsx (switch only)",
+        "docs/plans/GOAL_UI_COVERAGE.md"
+      ],
+      "note": "D-086 packet §5.5. Admin only and read-only: no create form, prefill or listing control (none exists on main). Listing stays a manual authenticated POST /api/admin/companies (D-101); nothing is listed automatically. Not a dependency of the release row; until it lands admins read the queue as JSON."
+    },
+    {
+      "id": "D-086-demand-list",
+      "title": "Demand list (D-086, loop L1): k-anonymous public counts of people asking for a referral at each listed company, with moderated admission of unlisted companies; release row",
+      "row": "D-086",
+      "packet": "docs/plans/D-086-demand-list.md",
       "tier": 1,
       "lane": "demand",
       "branch": "agent/queue/d086-demand-list",
-      "status": "architect",
-      "dependsOn": [],
-      "note": "D-154, D-162: queued so the packet can be written now (D-109); its build follows D-090-BYOR (owner word, D-162). The packet pull request adds D-090-BYOR to this row's dependsOn, and also D-048-p3-live-review-find (both edit /explore and /ask) unless the packet's owned paths leave that row's files alone. Scope: public counts per company from 3 up, 'A few people' for 1-2, never 0, no seeker detail (D-086 (2) overrides the PRD copy's old 'singular for 1'); the count is people asking for a referral at that company and is not built yet: ROW20-B (#311) counts suggestions filed on /invite (as a seeker) and /suggest-company (seeker or employee), one per person per company, admin-only, so the packet decides which real rows count (D-102); the ask-to-any-company path (no credit, no slot until a verified referrer exists, then D-034/D-047/D-062, closing at 90 days under D-061); D-102's honest availability lines; the copy in docs/PRD.md; owned paths. D-221 (Oct 26): the packet writer replaces the 90-day closure with D-174 (requests never expire for launch) plus D-193 (4) (reconfirm before spend), and drops the 'not yet open' availability framing (D-176). Whether public per-company demand counts survive D-176 is checked against D-193 (3) before any owner question."
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "D-086.count",
+        "D-086.ui",
+        "D-086.mount",
+        "D-090-BYOR",
+        "D-048-p3-live-review-find"
+      ],
+      "note": "D-086 packet §5.4 (release row, D-223 (3)): flips COMPANY_DEMAND_ADMIN_ENABLED and COMPANY_DEMAND_PUBLIC_ENABLED after D-086.count, D-086.ui and D-086.mount land, QA with captures, the normal privacy review inside the independent Tier 1 review, and the CEO's sign-off. Public demand counts every live request (the runtime's own isAskExpired, no age cutoff of its own) at every listed company whatever its coverage (D-176/D-174), k-anonymous; it is not D-193 (3)'s private waiting count. Unlisted companies reach public display only through admin admission (packet §4.5); D-086.admit is the admin view and does not hold this row. The ask-to-any-company path already exists (packet §3.6-§3.7, §3.11); the 90-day closure is replaced by D-174 plus D-193 (4) in D-174-held-ask-reconfirm and D-174-expiry-clock-removal. D-099-bonus-pages, D-089-request-inbox (by its note) and DEPLOY-gate-docs-sync keep waiting for this row.",
+      "owns": [
+        "shared/companyDemand.ts (switch only)",
+        "AGENTS.md",
+        "docs/PRD.md",
+        "docs/KIT_V4_BUILD_PLAN.md"
+      ]
     },
     {
       "id": "D-090-BYOR",
@@ -2656,6 +2846,7 @@
       "lane": "supply",
       "branch": "agent/claude/d090-byor",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-162: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main (docs/DECISIONS.md conflicts on the D-148 row: keep main's side and drop the branch's row, since D-162 records the waiver; the packet merges cleanly, so delete by hand its 'Gate waived by the owner (D-148 ...)' paragraph in §0 and its 'in progress — workbuddy · b0eb' Status line), and renumber 0107_ask_invites.sql to the next free number at landing (check drizzle/deploy/ on main and plan §5 at landing: on Oct 23 main has 0107_seeker_levels.sql and 0108_landed_thank_you.sql, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). Build C1-C5 in order: D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 puts the invite action into MyRequests.tsx as it is on main, as a ghost button or plain link (one black commit per page, D-150). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5). D-187 (Oct 24): C1-C6 are built; resume there: add \"/r/:token\" to KNOWN_ROUTE_PATTERNS in functions/_middleware.ts (not D-057's gate); the local '[auth] VITE_WORKOS_CLIENT_ID is not set' line is listed, not counted; user-facing 'ask' copy becomes D-180's referral vocabulary (money lines keep 'credit'); full gate, renumber 0111 at landing, Tier 1 draft PR. Review: not workbuddy, not GPT (D-151).",
       "owns": [
@@ -2755,6 +2946,7 @@
       "lane": "sign-in",
       "branch": "agent/queue/d057-session-gate",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-163: no longer waits for seeker-passwords (D-080 lets #324 land once this gate closes the Bearer path, so waiting on #324 deadlocked the lane). Build against main from the packet's CEO addendum (§0, re-verified on 06323e5c): the amr claim is set only by the work-email code login and the reviewer demo's referrer role; never inferred from the workemail_ subject; the request's own code cookie for the same account passes even when an AuthKit Bearer resolved the identity (no sign-in loop). Every referrer types one code after deploy (D-049)."
     },
@@ -2767,6 +2959,7 @@
       "lane": "observability",
       "branch": "agent/queue/fnd4-token-paths",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-163: no longer waits for seeker-passwords; shared/telemetryScrub.ts is new on main and #324 picks it up when it merges main. Scope per the packet's CEO addendum (§0): adds the vanity alias and /api/documents/by-key/:key; alerts drop the query."
     },
@@ -2779,6 +2972,7 @@
       "lane": "supply-inbox",
       "branch": "agent/queue/d089-request-inbox",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-163: the owner's order puts idea 1 between BYOR and the bonus pages (D-089 (3), D-099), and it had no row, so D-099 could never start. Write the packet now (D-109); its build follows D-090-BYOR, so the packet PR adds D-090-BYOR (and D-086-demand-list, which ideas 1 and 3 still follow) to this row's dependsOn. Start from what is live: the referrer fast-track link already routes asks to one employee (/fast/:linkCode and /refer/:companySlug/:vanityAlias, D-050; client/src/pages/FastTrackLink.tsx, VanityFastTrackLink.tsx, getOrCreateReferrerFastTrackLink). The packet decides what 'with screen name' adds on top, reusing the D-106 screen name if #382 has landed, never the referrer's real name before an accept (D-019(e)), and names its owned paths. Tier 1: referrer identity on a public link."
     },
@@ -2816,6 +3010,7 @@
       "lane": "security-headers",
       "branch": "agent/queue/d100-csp-report",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "FND-4"
       ],
@@ -2837,6 +3032,7 @@
       "lane": "security-csp",
       "branch": "agent/queue/d100-csp-enforce",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-100.csp-report"
       ],
@@ -2856,6 +3052,7 @@
       "lane": "security-csp-release",
       "branch": "agent/queue/d100-csp-release",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-100.csp-enforce"
       ],
@@ -2874,6 +3071,7 @@
       "lane": "security-hsts",
       "branch": "agent/queue/d100-hsts-preload",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-100.csp-release"
       ],
@@ -2893,6 +3091,7 @@
       "lane": "security-otp",
       "branch": "agent/queue/d100-otp-hmac",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "FIX-device-signin"
       ],
@@ -2912,6 +3111,7 @@
       "lane": "security-recon",
       "branch": "agent/queue/d100-provider-recon",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-223 subtask of D-100. Writes nothing; never adds a gateway key.",
       "epic": "D-100",
@@ -2930,6 +3130,7 @@
       "lane": "security-audit-secrets",
       "branch": "agent/queue/d100-secrets-sweep",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
       "epic": "D-100",
@@ -2946,6 +3147,7 @@
       "lane": "security-audit-referral",
       "branch": "agent/queue/d100-authz-referral",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
       "epic": "D-100",
@@ -2962,6 +3164,7 @@
       "lane": "security-audit-account",
       "branch": "agent/queue/d100-authz-account",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
       "epic": "D-100",
@@ -2978,6 +3181,7 @@
       "lane": "security-audit-admin",
       "branch": "agent/queue/d100-authz-admin-money",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
       "epic": "D-100",
@@ -2994,6 +3198,7 @@
       "lane": "seo",
       "branch": "agent/claude/d099-bonus-pages",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-174-held-ask-reconfirm",
         "D-174-sample-job-removal",
@@ -3052,6 +3257,7 @@
       "lane": "seo",
       "branch": "agent/queue/d099-bonus-line",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-099-bonus-pages",
         "D-048-p3-live-review-find",
@@ -3075,6 +3281,7 @@
       "lane": "i18n",
       "branch": "agent/claude/d093-language",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": []
     },
     {
@@ -3086,6 +3293,7 @@
       "lane": "ai",
       "branch": "agent/claude/d094-ai-in-ui",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": []
     },
     {
@@ -3175,6 +3383,7 @@
       "lane": "sign-in",
       "branch": "agent/claude/seeker-signin-finish",
       "status": "owner",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-057-session-gate"
       ],
@@ -3189,6 +3398,7 @@
       "lane": "deploy-workflows",
       "branch": "agent/claude/sync-log-off-main",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "Any agent writes the packet (D-109): write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected."
     },
@@ -3201,6 +3411,7 @@
       "lane": "d048-foundation",
       "branch": "agent/instinct/d048-fix-start-ask-handoff",
       "status": "in-review",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top."
     },
@@ -3257,6 +3468,7 @@
       "lane": "ask-flow",
       "branch": "agent/coordinator/expiry-clock-removal",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-166-journey-decisions-sync",
         "D-174-held-ask-reconfirm"
@@ -3286,6 +3498,7 @@
       "lane": "d174-fix",
       "branch": "agent/queue/d174-fix-post-binding",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-132-audit",
         "D-048-fix-send-ask-blocker"
@@ -3312,6 +3525,7 @@
       "lane": "d174-pool",
       "branch": "agent/queue/d174-held-ask-reconfirm",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-fix-post-copy",
         "POSTMERGE-oct22-fixes",
@@ -3341,6 +3555,7 @@
       "lane": "d174-search",
       "branch": "agent/queue/d174-company-search",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-193 packet section 5.4. Feeds the journey's 'companies pop up as you type' step. Static alias map, no migration. Does not touch normalizedEmployerKey (routing). Register before /api/companies/:slug.",
       "epic": "D-174",
@@ -3392,6 +3607,7 @@
       "lane": "d176-claims",
       "branch": "agent/queue/d176-public-claims",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-176-availability-framing-removal",
         "D-048-fix-landing-flash-snapshot-v2",
@@ -3417,6 +3633,7 @@
       "lane": "copy-sync",
       "branch": "agent/queue/decision-copy-oct26",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "owns": [
         "client/src/components/referrer-home/WaitingAsks.tsx",
@@ -3440,6 +3657,7 @@
       "lane": "docs-sync",
       "branch": "agent/queue/decision-sync-oct26",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-221 (Oct 26): Markdown only. Fix each line in the audit's section 9 to the current rule (D-219 pricing and paused packs, D-176 availability, D-174 expiry as a runtime caveat only, D-147, D-200 landing and who builds, D-196/D-219 referrer-plan exception, D-080/D-163 sign-in order). The register keeps its history; other docs state the current rule. Leave the eight entry-doc banners to D-200-instructions-sync and the landing-route wording to D-212 if it lands first. Tier 3: lands on green required CI (D-200)."
     },
@@ -3452,6 +3670,7 @@
       "lane": "d174-jobs",
       "branch": "agent/queue/d174-job-sources-more",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-174-job-catalog"
       ],
@@ -3472,6 +3691,7 @@
       "lane": "d174-ask",
       "branch": "agent/queue/d174-ask-from-job",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-174-job-catalog",
         "D-048-fix-post-copy",
@@ -3497,6 +3717,7 @@
       "lane": "d174-pool",
       "branch": "agent/queue/d174-pool-nudges",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-174-ask-from-job"
       ],
@@ -3522,6 +3743,7 @@
       "lane": "d175-research",
       "branch": "agent/queue/d175-coverage-study",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-193 packet section 5.10; starts from the packet's appendix (live GETs, Oct 24). Docs only, no paid or account-based access. The CEO decides the Wikidata seed from it (D-123).",
       "epic": "D-174",
@@ -3538,6 +3760,7 @@
       "lane": "d048-foundation",
       "branch": "agent/queue/d174-seeker-journey",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-166-journey-decisions-sync"
       ],
@@ -3552,6 +3775,7 @@
       "lane": "process",
       "branch": "agent/coordinator/founder-decisions-sync",
       "status": "in-review",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "Owner instruction (iMessage phonemsg-01M5MYS5WDHAMNZ7TF602GTK65 'Push the decisions as instructions' + phonemsg-01M5MYSQVDTXCYGCPBR001P7Q9 'So old decisions are updated' + phonemsg-01M5MZ7J6YYH3ZRBJNKT6TCZJS 'Push then'). Scope: docs/DECISIONS.md + the AGENTS.md compass amendment line only. Adds D-169 (open-first directory), D-170 (keyword job search), D-171 (cross-company verified switch preserving the draft), D-172 (automatic device-saved sign-in prompt with native-flow guardrails), D-173 (buyer-facing 'referrals' terminology + plan allowance/extras structure). Supersession limited to the 'credits' name (wording only); no price, count, SKU, security or auth-mechanism content decided; unresolved allowances/prices/level-cost stay open. D-168 is claimed on agent/claude/ceo-oct23-release-rows, so numbering starts at D-169."
     },
@@ -3614,6 +3838,7 @@
       "id": "D-177-recruiter-posts-referral-drives",
       "title": "Recruiter/HR job posts (public + internal) and employee-published referral drives feeding the company -> job -> ask journey",
       "status": "architect",
+      "syncedTo": "D-227",
       "lane": "employer",
       "branch": "agent/queue/d177-recruiter-drives",
       "packet": null,
@@ -3637,6 +3862,7 @@
       "lane": "d048-foundation",
       "branch": "agent/queue/d178-agent-portal",
       "status": "architect",
+      "syncedTo": "D-227",
       "owns": [
         "docs/plans/D-178-agent-portal-access.md"
       ],
@@ -3671,6 +3897,7 @@
       "lane": "process",
       "branch": "agent/coordinator/ats-referral-validation",
       "status": "in-review",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "Docs-only direction record in PR #608 (owner iMessage Oct 24 1:09 IST, phonemsg-01M5N4DC140W9347XWW34NAWX1); the DECISIONS.md D-179 entry is already on main via #610. Packet doc lives on the #608 branch and arrives with it. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact."
     },
@@ -3701,6 +3928,7 @@
       "lane": "money-core",
       "branch": "agent/queue/d132-item5-correction",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-132-audit"
       ],
@@ -3718,6 +3946,7 @@
       "lane": "payments",
       "branch": "agent/queue/agedout-evidence-test",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "owns": [
         "server/agedOutCoverageGap.evidence.test.ts"
@@ -3733,6 +3962,7 @@
       "lane": "auth-device",
       "branch": "agent/queue/device-signin-passkeys",
       "status": "owner",
+      "syncedTo": "D-227",
       "dependsOn": [
         "FIX-device-signin"
       ],
@@ -3758,6 +3988,7 @@
       "lane": "terminology",
       "branch": "agent/copy/free-asks-chip-terminology",
       "status": "in-review",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PRICING-banded-oct25",
         "D-174-held-ask-reconfirm",
@@ -3812,6 +4043,7 @@
       "lane": "design-core",
       "branch": "agent/instinct/doctrine-benefit-copy-oct27",
       "status": "in-review",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "Amends design/goal-ui/DOCTRINE.md only: owner steering Oct 27 12:12 IST - goal-oriented UI design; benefit-oriented UX copy/microcopy (benefit + next step + failure recovery) across headings/buttons/empty states/errors. Terminology freeze, legal and payment semantics unchanged; noun swaps are the floor, not the bar.",
       "owns": [
@@ -3827,6 +4059,7 @@
       "lane": "d048-foundation",
       "branch": "agent/queue/fix-main-eb0fd8cd",
       "status": "in-review",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "Main CI flake: shareHubGoal.test.tsx 'opens on the goal with the copy commit once the link is ready' failed on eb0fd8cd (run 40467542914) and dc7f71a8; GoalShareHub started with loading=false so the link could render as ready before it existed. PR #734 by a new Claude session (head 5149e8af, two files). Registered post-hoc by the coordinator: the D-166 queue gate refused the unregistered branch; the owner-direct label was NOT used and no gate bypass was granted. Tier 1: one independent D-151 review of the exact head by a model other than Claude (builder is Claude family), then landing on green required CI. Owns overlaps D-048-copy-goal-twins-trigger-fix, which now waits on this row and merges main forward after it lands.",
       "owns": [
@@ -3843,6 +4076,7 @@
       "lane": "d048-foundation",
       "branch": "agent/deepseek/d048-goal-twins-trigger-fix",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "FIX-share-hub-link-ready"
       ],
@@ -3865,6 +4099,7 @@
       "lane": "design-shell",
       "branch": "agent/queue/d222-referral-count",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PRICING-banded-oct25"
       ],
@@ -3885,6 +4120,7 @@
       "lane": "picker",
       "branch": "agent/queue/picker-avoid-unblock",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-review-gate",
         "PICKER-architect-landing"
@@ -3903,6 +4139,7 @@
       "lane": "audit",
       "branch": "agent/queue/procedure-audit-oct27",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "owns": [
         "docs/plans/LANDING-PROCEDURE-AUDIT-oct27.md"
@@ -3918,6 +4155,7 @@
       "lane": "picker",
       "branch": "agent/queue/picker-avoid-land",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PICKER-avoid-unblock"
       ],
@@ -3935,6 +4173,7 @@
       "lane": "deploy-docs",
       "branch": "agent/queue/deploy-gate-docs-sync",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "P1-deploy-green-gate",
         "D-090-BYOR",
@@ -3957,6 +4196,7 @@
       "lane": "picker",
       "branch": "agent/queue/picker-heartbeat-slot-safety",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-review-gate"
       ],
@@ -3975,6 +4215,7 @@
       "lane": "picker",
       "branch": "agent/queue/picker-landed-marker-continuity",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PICKER-heartbeat-slot-safety",
         "PICKER-avoid-land"
@@ -3995,6 +4236,7 @@
       "lane": "picker",
       "branch": "agent/queue/picker-landing-wait-fallthrough",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PICKER-landed-marker-continuity"
       ],
