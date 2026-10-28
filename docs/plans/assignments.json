@@ -650,6 +650,18 @@
       "note": "The owner, Oct 26: get an independent review of the final version through the repository's process, bring it up to date with main, require every check on the exact version merged, and resolve findings first. Claude Code wrote it, so review and landing go to a model other than Claude (D-151). The PR from agent/queue/register-d212 supersedes #623 (claude/enterprise-pipeline), which stays open and unmerged until this lands."
     },
     {
+      "id": "REGISTER-oct25",
+      "title": "Record the Oct 25 owner decisions that never reached the register: company discovery (#660), universal search and journey (#645), the marketing line (#661)",
+      "row": "D-146",
+      "packet": "docs/plans/OCT25-STRANDED.md",
+      "tier": 1,
+      "lane": "register",
+      "branch": "agent/queue/register-oct25",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "Oct 27 (Claude Code, D-200 (2)): AGENTS team rule 0 says a frozen decision is recorded in the register first; these three live only in open PRs #660, #645 and #661 and docs/IMPLEMENTATION-BACKLOG-oct25.md. Build = one register entry per decision with the next free ID, owner words and anchors as the sources give them, Affects tasks, and the limits of every newer entry (D-174, D-176, D-193, D-219 and later); a contradiction with no stated winner stops the row. Review by a model other than Instinct (which wrote the sources) and the builder. Docs only."
+    },
+    {
       "id": "D-069-chargebee-catalog-sync",
       "title": "Admin-only Chargebee catalog sync: dry run, then one owner-triggered apply",
       "row": "D-069-chargebee-catalog-sync",
@@ -731,7 +743,8 @@
         "D-048-fix-start-ask-handoff",
         "D-174-seeker-journey-build",
         "D-174-fix-post-binding",
-        "D-176-public-claims"
+        "D-176-public-claims",
+        "first-look-24h-oct25"
       ],
       "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row’s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost.",
       "epic": "D-048-p3",
@@ -2699,6 +2712,29 @@
       ]
     },
     {
+      "id": "first-look-24h-oct25",
+      "title": "Poster first look 48h -> 24h (D-220, owner Oct 25): merge-up, review and land PR #672",
+      "row": "D-220",
+      "packet": "docs/plans/OCT25-STRANDED.md",
+      "tier": 1,
+      "lane": "matching",
+      "branch": "agent/queue/first-look-24h-oct25",
+      "status": "in-review",
+      "dependsOn": [
+        "D-090-BYOR"
+      ],
+      "note": "Oct 27 (Claude Code, D-200 (2)): PR #672 implements D-220 but its row sat in registry PR #669, quiet and conflicting since Oct 26, so its scope step failed and the picker never handed it out. Same id as #669 so a later merge of #669 adds nothing twice. Merge-up first (498 commits behind on Oct 27), then one independent review by a model other than Instinct and the merge-up builder. The D-038 48 h claim lapse is a different rule and stays. Latent today (no posted roles in production). Waits for D-090-BYOR (both edit server/db.ts); D-048-p3-live-review-find and D-174-held-ask-reconfirm wait for this row.",
+      "owns": [
+        "shared/companyOpportunities.ts",
+        "server/firstLookRelease.ts",
+        "server/db.ts",
+        "client/src/pages/Ask.tsx",
+        "client/src/pages/ask.test.tsx",
+        "server/companyOpportunities.contract.test.ts",
+        "server/db.opportunityFirstLook.test.ts"
+      ]
+    },
+    {
       "id": "D-057-session-gate",
       "title": "Reviewing or accepting asks needs a work-email code in that session (D-057, finding S-4)",
       "row": "D-057-session-gate",
@@ -3268,7 +3304,8 @@
         "D-048-fix-post-copy",
         "POSTMERGE-oct22-fixes",
         "D-132-audit",
-        "D-090-BYOR"
+        "D-090-BYOR",
+        "first-look-24h-oct25"
       ],
       "note": "D-193 packet section 5.3 and ruling (5): builds D-061's never-built reconfirm-before-spend without its closure, in deliverWaitingAskTx (every delivery path). Transition events, no migration; in-app notice only (no D-060 email exists yet). ASK_RECONFIRM_ENABLED stays false until QA; D-174-expiry-clock-removal waits for this row. D-197: also waits for D-132-audit (both own server/db.ts, server/privateReferralRoutes.ts and shared/moneyCopy.ts; the money-core audit goes first, D-146). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost.",
       "epic": "D-174",
@@ -3384,7 +3421,7 @@
     },
     {
       "id": "DECISION-SYNC-oct26",
-      "title": "Docs that still give a replaced rule as current: legacy pack catalog, design contracts, handoff docs, landing route, fairness lines (D-221 audit section 9)",
+      "title": "Docs that still give a replaced rule as current: legacy pack catalog, design contracts, handoff docs, landing route, fairness lines, and stale register cells (D-221 audit sections 9 and 11)",
       "row": "D-068",
       "packet": "docs/plans/DECISION-AUDIT-oct26.md",
       "tier": 3,
@@ -3392,7 +3429,7 @@
       "branch": "agent/queue/decision-sync-oct26",
       "status": "todo",
       "dependsOn": [],
-      "note": "D-221 (Oct 26): Markdown only. Fix each line in the audit's section 9 to the current rule (D-219 pricing and paused packs, D-176 availability, D-174 expiry as a runtime caveat only, D-147, D-200 landing and who builds, D-196/D-219 referrer-plan exception, D-080/D-163 sign-in order). The register keeps its history; other docs state the current rule. Leave the eight entry-doc banners to D-200-instructions-sync and the landing-route wording to D-212 if it lands first. Tier 3: lands on green required CI (D-200)."
+      "note": "D-221 (Oct 26): Markdown only. Fix each line in the audit's section 9 to the current rule (D-219 pricing and paused packs, D-176 availability, D-174 expiry as a runtime caveat only, D-147, D-200 landing and who builds, D-196/D-219 referrer-plan exception, D-080/D-163 sign-in order). The register keeps its history; other docs state the current rule. Leave the eight entry-doc banners to D-200-instructions-sync and the landing-route wording to D-212 if it lands first. Tier 3: lands on green required CI (D-200). Oct 27 follow-up (Claude Code, D-200 (2)): also apply section 11 of the same packet, which lists 34 register cells and sections still pointing at a replaced rule after D-219 to D-221, each with exact text. Edit only status cells, Supersedes · affects cells and the named sections; never what an entry decides. The rules and checks are in section 11."
     },
     {
       "id": "D-174-job-sources-more",

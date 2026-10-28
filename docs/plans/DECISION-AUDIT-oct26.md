@@ -200,6 +200,7 @@ Recommendations for each PR's owner. The audit changed no PR; its only PR action
 4. If a first payment is later refunded, does the /share link stay unlocked (D-188) or lock again?
 5. Should every verified employee who joins see a company's waiting requests (D-174's words), or only a count plus one email a day (D-193 (3))?
 6. Should "anything that could upset users" stay on the must-ask list (D-123), now that D-203 and D-206 leave it off?
+7. *(Added Oct 27, section 11.)* D-219 (7) names neither Mentor (priced by D-132, held by D-135 (2)) nor D-132's draft Organisation company tier. Should both stay unbuilt and unsold, or be retired?
 
 ## 9. Docs drift still open
 Recorded for row `DECISION-SYNC-oct26`; this change does not fix them:
@@ -217,3 +218,104 @@ Recorded for row `DECISION-SYNC-oct26`; this change does not fix them:
 - Every register row has 3 or 6 cells; IDs are unique and in order (D-219, D-220, D-221 follow D-215; no branch holds them).
 - `docs/BRIEF.md` is 10,164 bytes (limit 10,240).
 - `git diff --check` is clean. No file outside Markdown and `docs/plans/assignments.json` changed.
+
+## 11. Register cells still stale after this audit (Oct 27 follow-up)
+A second audit ran on `main` `eb0fd8cd` (Oct 27), after D-219 to D-221 landed. It found the register places below that still point at a replaced rule, each checked against the register text. The state claims were re-checked by command on Oct 27:
+- GitHub deletes head branches on merge.
+- `main-protection` requires 0 approvals.
+- `shared/companyOpportunities.ts` still has `OPPORTUNITY_FIRST_LOOK_HOURS = 48`.
+- There is no D-157 row and no `D-057-referrer-continuity` row.
+- D-209 and D-213 to D-220 carry no "Affects tasks:".
+
+These items are recorded for row `DECISION-SYNC-oct26`, together with section 9.
+
+**Rules for the builder.**
+- Edit only the status/sync cell, the "Supersedes · affects" cell, or the named section. Never change what an entry decides.
+- Find each place by the quoted words, not by line number.
+- Skip any fix the register already carries (a newer pull request may get there first), and say which ones in the pull request.
+- If a fix would change what an entry decides, stop and report it blocked, naming the entry.
+
+**Pricing (D-219 replaced the D-132/D-135 model and paused the packs).**
+1. **D-034, D-047, D-076:** in each Oct 26 note, replace "one credit becomes the level cost at D-132 enable (D-135)" (or "per-level cost at D-132 enable (D-135)") with "cost is one referral of the request's level band, spent in the D-219 (4) order (D-132/D-135 superseded by D-219)". **D-063:** append " · Oct 27 audit: the free rule is now D-219 (3) (3 referrals a month at any level, with a verified card once the switch is on); the sentence is rewritten in the terminology lane (D-173, D-180, D-219)."
+2. **D-084:** append " · Oct 27 audit, changed by: D-146 (passes and Keep warm are not sold as a model choice, not pending evidence) and D-219 (6) (legacy packs paused; runtime `CREDIT_PACKS_ON_SALE` stays true until PR #666). The 409 refusal and recovery paths stand." **D-046:** in its Oct 26 note replace "(D-132 plans only, packs on sale)" with "(passes off), then by D-219 (6) (legacy packs paused too)".
+3. **D-146:** append " · Oct 27 audit: its 'do not ask again' answered the Oct 23 model question; the newer owner freeze D-219 leaves its (5) and (8) for the owner's word, and pricing going live always needs it (D-123), so those questions go to him batched (D-064)."
+4. **D-165:** append " · Oct 27 audit, changed by: (3) superseded by D-219 (3)-(4) (the free allowance continues on top of a paid band and is spent after the plan's included referral for that level, not first); (2)'s chain (D-132-item3, D-132-v2-checkout) is re-scoped to architect by D-221." **D-185:** append "; (2) rides D-132-v2-checkout, re-scoped by D-221 against D-219 (8) (purchased-referral expiry undecided; runtime `PAID_CREDITS_NEVER_EXPIRE` stays true)". **D-186:** append " · Oct 27 audit: (4)'s D-132 enable list is moot under D-219; the D-132 v2 items created on the live site (#528) are not sold, and whether to rename or archive them is decided in the D-221 re-scope of D-132-v2-checkout." **D-197:** append "; (5) #523 is not landed as written (D-221 (2))".
+5. **D-132:** append " · Oct 27 audit: its draft Organisation company tier has no counterpart in D-219 (7) (Team, Growth and Scale are employer plans, and companies never buy referrals); it stays unbuilt and unsold. Mentor stays held (D-135 (2)) and is not one of D-219 (7)'s referrer priority plans. Both are owner questions (DECISION-AUDIT-oct26 section 8, question 7)." Do not mark the Organisation tier superseded.
+6. **D-201:** append " · Oct 27 audit, changed by: (4)'s step 3 (credit packs through the kit-pack arm) is overtaken by D-219 (6) (packs paused); SKIPPY-3 is architect for a D-219 re-scope (D-221 (2))." **D-136:** in its Oct 26 note replace "step 3 sells packs only" with "step 3 re-scoped against D-219 by D-221".
+7. **D-173:** append to its note "; its plan names (D-152) are replaced by the D-219 bands and the D-132 amounts by D-219". **D-179, D-180, D-181:** append " · Oct 27 audit: the money freeze it cites is now D-219 (D-132/D-152 superseded)."
+8. **D-055:** append "; referrer priority plan prices recorded by D-219 (7), no charge until a reviewed routing design (Oct 27 audit)". **D-119:** append " · Oct 27 audit, changed by: D-196 and D-219 (7): the opt-in extra is level-matched first access only (priority, no badge), priced but not chargeable." **D-156:** replace its status with "answered by D-196 (basic referring stays free; the plan is level-matched first access) and D-219 (7) (prices; no charge yet); Mentor stays held (D-135 (2))". **D-006, D-040:** replace "D-135 (4) (plan Reach, flagged, at D-132 enable)" with "D-135 (4)'s Reach fell with D-132 (D-219; seeker-side fairness unchanged, and the free allowance reaches every level)".
+9. **D-117:** append "; (1) credit scale and (4) premium reach overtaken by D-219 (one referral per request; bands)". **D-118:** append " · Oct 27 audit: (3)'s level-times-credits planner is overtaken by D-219 (one referral per request; included, free, then purchased per D-219 (4))." **D-122:** append " · Oct 27 audit: the selection rule is not contradicted by D-219; its go-live bar is now D-219 (8) and D-123." **D-125:** append " · Oct 27 audit: gift SKUs, plan months and the x0.52 conversion rest on the superseded D-115/D-124 books; re-derive against D-219 before any build." **D-127:** append " · Oct 27 audit: the pass, trial-end and reach-up moments have no product under D-146, D-051 and D-219; re-map the moments to D-219 before paid prompts are enabled."
+10. **D-059:** append "; frozen items reopened by the owner: D-005, D-039 and D-041 by D-219; D-006 and D-055 narrowed by D-196 and D-219 (7); kept items since changed: D-022's window by D-220, D-035 rejected (D-147), D-046 and the pass sales by D-084, D-146 and D-219 (6) (Oct 27 audit)".
+11. **D-069:** replace its status with "sync tool built (row D-069-chargebee-catalog-sync done); its legacy catalog targets are superseded by D-146 and D-219 and archived at the provider Oct 25 (D-214 (3)); the create-only v2 items are recorded by D-165 (1) / #528". **D-065:** replace its status with "check live since eed80e5f (D-075 (3)); slices B and C done; the owner's live INR test is tracked in BUGFREE_GATE 4.x".
+
+**Expiry, availability and the first look.**
+12. **D-162:** append " · Oct 27 audit, changed by: (3)'s 90-day waiting close and day-30 closure are suspended by D-174; reconfirm before spend is built without closure by D-193 (4)."
+13. **D-174:** in its Oct 26 note replace "gated by D-193 (5)" with "gated by D-193 (4)".
+14. **D-176:** replace its status with "directory framing removed by #609 (D-189 (2)); remaining: D-176-public-claims (copy, todo), the post-save delivered-or-waiting line in D-174-seeker-journey-build (architect, D-189 (2)), and the row that drops openToReferrals/openCount from the public payload, promised by D-193 (5) and not yet registered".
+15. **D-086:** append " · Oct 27 audit: (2)'s public per-company demand counts are unresolved against D-176 (no coverage data or availability status in the directory); the D-086-demand-list packet shows counts without revealing whether a company has a verified employee, or the question goes to the owner rated (D-221 note on that row)."
+16. **D-220:** append to "Supersedes · affects": " Affects tasks: first-look-24h-oct25 (PR #672), D-177-recruiter-posts-referral-drives." Append to its status: " · Runtime caveat (Oct 27): until PR #672 lands, `shared/companyOpportunities.ts` keeps `OPPORTUNITY_FIRST_LOOK_HOURS = 48` and the poster notice says 48 hours."
+
+**Process and roles.**
+17. **"Affects tasks:" (D-202 (2)).** Append to each entry's "Supersedes · affects" cell:
+    - D-209: "Affects tasks: FIX-device-signin, DEVICE-SIGNIN-passkeys."
+    - D-213, D-214 and D-216: "Affects tasks: LAUNCH-live-qa."
+    - D-215: "Affects tasks: D-048-p3-seeker-small."
+    - D-217: "Affects tasks: D-048-F-credits, D-048-p3-referrer-home."
+18. **D-200 and D-203:** append to each sync cell " · Oct 27 audit: 'D-157' here is #520's number for what landed as D-202." **D-200:** also append " · main-protection requires 0 approvals (verified Oct 27), so (1)'s wait for the owner's merge has ended; landing follows (4) on green required CI." (D-200 (7)'s instruction sync stays open: section 9, row `D-200-instructions-sync`.)
+19. **D-197:** append "; (2) 'Only Claude Code changes rows' is also superseded by D-200 (2)". **D-199:** append " · Oct 27 audit, changed by: D-200 (2): any session registers the row, and a docs-only registry PR passes from any branch; the existing-branch and no-bypass rules stand."
+20. **D-205:** replace "owner action open (GitHub auto-delete setting)" with "GitHub auto-delete is on (verified Oct 27)".
+21. **D-213:** append " · Oct 27 audit, changed by: (3) superseded by D-214 (1)-(2) (alias QA route, no owner code forward); (5)'s catalog label corrected by D-214 (3); the row status is now set by D-216." **D-214:** append " · Oct 27 audit, changed by: D-216 (row back to owner until the #709 proof)."
+22. **D-216:** append " · Oct 27 audit: the PR #710 comment quoted as the owner's confirmation is in an agent's voice from the shared account (D-166 (5)(a)), so it is not verified owner wording; the ruling rests on D-200 (2) and AGENTS rule 8."
+23. **D-123:** append " · Oct 27 audit: D-203 (5) and D-206 (3) restate this list without 'anything that could upset users'; until the owner answers (DECISION-AUDIT-oct26 section 8, question 6), D-123's full list binds."
+24. **D-075 (4), D-060, D-043 (4):** append to each " · Oct 27 audit: the D-035 step or send-again item is void (D-035 rejected by D-147; Send again not approved, D-163 (3))."
+25. **D-172:** append " · Oct 27 audit, changed by: D-209 (SimpleWebAuthn approved Oct 25; row DEVICE-SIGNIN-passkeys waits on the owner's D-209 (4) answers)."
+26. **D-057:** append " · Oct 27 audit: row D-057-referrer-continuity is not in docs/plans/assignments.json, so the picker cannot hand it out; it is registered after D-057-session-gate (Tier 1)."
+27. **D-171:** append " · Oct 27 audit: no queue row; D-174-seeker-journey-build (architect) takes it or a row is added." **D-177, D-178:** append " · Oct 27 audit: packet first (D-189 (2)); row architect."
+
+**Sections after the table.**
+28. **Standing constraints line:** replace "Kit v4 visual contract in `DESIGN.md`" with "the goal-UI visual contract in `DESIGN.md` (D-048, D-120; Kit v4 retired)".
+29. **Superseded list.**
+    - In the pass-sales chain line (it starts "- D-014 → D-037 → D-046"), append " → D-219 (6) (legacy credit packs paused too; provider items archived Oct 25, D-214 (3))."
+    - In the 'Credits' line, replace "(wording only - the amounts and rules in D-034, D-036, D-039 and D-063 are unchanged)" with "(wording only; D-173 changed no amount, and the D-036 ladder and the D-039 count were later replaced or amended by D-219)".
+    - After D-030's seeker email-code line, append " The code stays live until seeker-passwords ships after the D-057 session gate (D-078 (1), D-080 (b), D-163 (1))."
+    - Add these lines, leaving out any the list already has:
+      - "D-198 → withdrawn by D-200 (1)."
+      - "The Claude-only steps in D-083 (row order), D-085 (6) and D-109 (d) (never a build, CEO-only unblocks and order), D-109 (c)'s routing of packet rulings to the CEO, D-197 (2), D-199 (1)-(2) and D-203 (3) (never develops) → D-200 (2)-(3); the CEO role in D-085 (6) and D-203 (2) stands."
+      - "D-166's CEO docs-only branch exception → D-200 (2)."
+      - "D-154 (1) → D-162."
+      - "D-102's 'Open: N' and 'Not open yet' lines → D-176, D-193 (6)."
+      - "D-113, D-114 → D-115 → D-132 → D-219."
+      - "D-128's names → D-148 → D-152 → D-219."
+      - "D-130's hero band → D-131."
+      - "D-110's per-ask credit cost, D-117 (1) and D-118 → D-219."
+      - "D-156's open shape → D-196, D-219 (7)."
+      - "D-162 (3)'s 90-day waiting path → D-174, D-193 (4)."
+      - "D-213 (3) and (5) → D-214."
+      - "D-129's program → off and out of launch (Oct 25 owner answer, D-221)."
+30. **Open owner questions.**
+    - Keep each paragraph and append an "Answered by ..." marker:
+      - level pricing → D-173, D-219;
+      - goal-alignment items → D-034, D-040, D-054, D-059;
+      - monetization rethink → D-044 to D-046, D-051, D-055, D-056, D-219;
+      - earlier questions → D-059 (translation: D-093).
+    - Then add a short "Open now" list:
+      - the D-219 (5) and (8) items;
+      - this audit's section 8 (questions 1 to 7);
+      - D-193 (8);
+      - D-166 (5) (b)-(e) ((a) is overtaken by D-200 (1));
+      - D-182 (3);
+      - D-089 (2);
+      - the D-098 vouch control;
+      - D-086 (2) against D-176.
+31. **Reconciliation, 2026-10-24.** Make three replacements and one addition:
+    - Replace "under the D-132/D-152 freeze" with "under the D-219 freeze (D-132/D-152 superseded Oct 25)".
+    - Replace "D-132/D-152 amounts and names stay frozen" with "amounts and names now D-219 (Oct 25)".
+    - Replace "level-based pricing research (D-056 freeze stands)" with "the D-219 (5)/(8) open pricing items (see Open owner questions)".
+    - After its D-168 citation, add "(D-168 is on open PR #592, not on main)".
+32. **Founder D-035 rejection attestation section:** move the two Oct 24 owner notes (the product compass and the LinkedIn-scale vision) under a new heading "## Owner compass notes, Oct 24, 2026", placed before the Reconciliation section. Change nothing else.
+33. **Scoped founder manual-claim exception:** append "**Moot (Oct 27 audit):** the claim lapsed under the 2-hour rule, and D-200 (2) lets any session take PICKER-review-independence." Leave the `CLAUDE.md` and `AGENTS.md` footers alone. In the Oct 23 merge-policy amendment, replace "D-035 founder hold" with "D-035 rejection (D-147)".
+34. **D-144 (proposed section):** add under its heading: "Status (Oct 27 audit): still unregistered. Its cost rule follows D-219 (one referral of the request's level band, spend source shown before sending; the D-132 per-level credit math is superseded), as SKIPPY-fix S-2/S-3 require. The D-114, D-076 and D-022 citations are checked by the next Skippy packet writer (D-142 is the referrer-privacy rule)."
+
+**Left out on purpose.** Some rows have only three cells: D-024, D-101, D-102, D-105 to D-107, D-136 to D-143 and D-146 to D-148. The register-shape test accepts three-cell rows (section 10), so changing that is a test change, not this Markdown row's.
+
+**Checks for this section.** Run the section 10 checks. Then `grep -c 'Oct 27 audit' docs/DECISIONS.md` must be at least the number of items applied, and no entry's decision text may differ from `main` (`git diff` shows changes only in status, "Supersedes · affects" and the named sections).
