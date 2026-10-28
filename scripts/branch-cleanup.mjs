@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // BRANCH-HYGIENE-1 (D-205): delete branches that are done and merged, online and offline.
 //
-//   node scripts/branch-cleanup.mjs                          # dry run: every origin branch's verdict and the counts; writes nothing
-//   node scripts/branch-cleanup.mjs --apply                  # delete the "delete" rows on origin (batches of 20), then prune
+//   node scripts/branch-cleanup.mjs                          # dry run: every origin branch's verdict and the counts; deletes no branch
+//                                                            #   (its git fetch --prune does refresh this clone's origin/* refs)
+//   node scripts/branch-cleanup.mjs --apply                 # delete the "delete" rows on origin (batches of 20), then prune
 //   node scripts/branch-cleanup.mjs --apply --only <task id> # only that task's branches (the landing step, BRANCH-HYGIENE-2)
 //   node scripts/branch-cleanup.mjs --apply --max <n>        # allow more than 150 deletions in one run (default refuses)
 //   node scripts/branch-cleanup.mjs --local                  # ruling 5 for this clone: git branch -d merged branches whose upstream is gone
@@ -13,12 +14,13 @@
 // - --apply refuses unless docs/plans/branch-retention.json (the explicit evidence holds) is on origin/main;
 //   a held branch is never deleted, and without the list the dry run's delete rows are candidates only;
 // - it stops, deleting nothing, when origin is not the repository the task list names, when a task status
-//   is unknown, or when the open or merged pull requests cannot be read exactly;
+//   is unknown, or when the open or merged pull requests (an open one's head and base) cannot be read exactly;
 // - a marker branch carrying anything besides empty picker markers is kept;
 // - before each batch it reads everything again and deletes only the rows still "delete" at the same SHA,
 //   each with a lease on that SHA; batches are atomic and the count comes from origin, not exit codes.
 import { execFileSync, spawnSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { RETENTION_LIST, classifyBranches, classifyLocal, markerOnlyCommits, markerPrefixOf, parseRetention, relatedTo, render, repoOfRemote, summarize } from "./branchHygieneCore.mjs";
 import { ciStateFromRuns } from "./nextTaskCore.mjs";
 
@@ -33,6 +35,7 @@ const tryGit = (...args) => { try { return git(...args); } catch { return null; 
 class Stop extends Error { constructor(message, code = 1) { super(message); this.code = code; } }
 const stop = (message, code = 1) => { throw new Stop(message, code); };
 const NOTHING = "nothing was classified or deleted";
+const DRY_RUN_DID = "DRY RUN: no branch was deleted on origin or in this clone; git fetch --prune refreshed this clone's remote-tracking refs (origin/*), dropping those whose branch is gone on origin.";
 
 function parseArgs(argv) {
   const out = { apply: false, local: false, only: null, max: DEFAULT_MAX };
@@ -80,6 +83,13 @@ function headOf(p) {
   return { ref: h.ref, sha: h.sha, repo: typeof h.repo?.full_name === "string" ? h.repo.full_name : null };
 }
 
+/** The branch an open pull request targets, exactly, or a throw: deleting that branch would close the pull request. */
+function baseOf(p) {
+  const b = p?.base;
+  if (!b || typeof b !== "object" || typeof b.ref !== "string" || b.ref === "") throw new Error(`a pull request has no readable base (${JSON.stringify(b ?? null).slice(0, 160)})`);
+  return b.ref;
+}
+
 /** The marker branches whose commits outside main are all empty picker markers; anything unreadable is left out (kept). */
 function markerOnlyBranches(branches) {
   const out = new Set();
@@ -120,10 +130,12 @@ async function snapshot() {
     .map(line => line.split("\t")).filter(([name]) => name !== "HEAD").map(([name, sha]) => ({ name, sha }));
   const mainTipAncestry = new Set(git("for-each-ref", "--merged", "refs/remotes/origin/main", "--format=%(refname:strip=3)", "refs/remotes/origin").split("\n").filter(Boolean));
   let open, merged;
-  try { open = (await allPulls(doc.repo, "open")).map(headOf); } catch (e) { stop(`cannot read the open pull requests (${e.message}); ${NOTHING}`, 2); }
+  try { open = (await allPulls(doc.repo, "open")).map(p => ({ head: headOf(p), base: baseOf(p) })); } catch (e) { stop(`cannot read the open pull requests (${e.message}); ${NOTHING}`, 2); }
   try { merged = (await allPulls(doc.repo, "closed")).filter(p => p?.merged_at).map(headOf); } catch (e) { stop(`cannot read the merged pull requests (${e.message}); ${NOTHING}`, 2); }
-  // Any open pull request keeps a branch of that name, a fork's included: which one it means is never guessed.
-  const openPrHeads = new Set(open.map(h => h.ref));
+  // Any open pull request keeps a branch of its head's name, a fork's included (which one it means is never
+  // guessed), and the branch it targets.
+  const openPrHeads = new Set(open.map(o => o.head.ref));
+  const openPrBases = new Set(open.map(o => o.base));
   const mergedPrHeads = new Map();
   for (const h of merged.filter(h => h.repo === doc.repo)) {
     if (!mergedPrHeads.has(h.ref)) mergedPrHeads.set(h.ref, new Set());
@@ -137,7 +149,7 @@ async function snapshot() {
     else if (ci.state === "red" || ci.state === "running-after-red") mainRed = { sha: ci.sha };
   } catch (e) { console.error(`branch-cleanup: main CI unknown (${e.message}); every fix-main lock is kept`); }
   try {
-    const rows = classifyBranches({ branches, mainTipAncestry, mergedPrHeads, openPrHeads, tasks: doc.tasks, mainRed, retained: retained ?? new Map(), markerOnly: markerOnlyBranches(branches) });
+    const rows = classifyBranches({ branches, mainTipAncestry, mergedPrHeads, openPrHeads, openPrBases, tasks: doc.tasks, mainRed, retained: retained ?? new Map(), markerOnly: markerOnlyBranches(branches) });
     return { doc, retained, rows };
   } catch (e) { stop(`${e.message}; ${NOTHING}`, 2); }
 }
@@ -236,13 +248,21 @@ async function main() {
   for (const line of render(rows)) console.log(line);
   printCounts(args.apply ? "APPLY" : "DRY RUN", rows);
   if (first.retained === null) console.log(`\nRETENTION LIST MISSING: ${RETENTION_LIST} is not on origin/main, so the evidence holds are unknown. The delete rows above are candidates only, and --apply refuses to run.`);
-  if (!args.apply) return 0;
+  if (!args.apply) {
+    console.log(`\n${DRY_RUN_DID}`);
+    return 0;
+  }
   const doomed = rows.filter(r => r.action === "delete");
   if (doomed.length > args.max) stop(`${doomed.length} deletions is more than ${args.max}; nothing was deleted. Have the CEO read the dry run, then run again with --max ${doomed.length}`);
   return applyDeletions(doomed, scope);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+/** Whether node was started with this file, through a symlinked file or folder too: anything else would be a silent exit 0. */
+function startedAsProgram() {
+  try { return Boolean(process.argv[1]) && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+}
+
+if (startedAsProgram()) {
   // Cloud sandboxes reach GitHub only through HTTPS_PROXY, which Node's fetch ignores unless NODE_USE_ENV_PROXY=1 (as next-task.mjs).
   if ((process.env.HTTPS_PROXY || process.env.https_proxy) && process.env.NODE_USE_ENV_PROXY !== "1") {
     const rerun = spawnSync(process.execPath, ["--disable-warning=UNDICI-EHPA", ...process.argv.slice(1)], { stdio: "inherit", env: { ...process.env, NODE_USE_ENV_PROXY: "1" } });

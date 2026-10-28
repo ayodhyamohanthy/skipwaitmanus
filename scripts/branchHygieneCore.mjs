@@ -6,8 +6,8 @@
 // request's head SHA equals its tip. A done task's marker branches go too (ruling 3), but only when every
 // commit they hold outside main is an empty picker marker; anything else on them is kept as evidence.
 // Never deleted: main, the report log, the landing slot, a branch on the retention list (evidence holds,
-// RETENTION_LIST on main), any open pull request's branch, any branch of a task that is not done (ruling 2),
-// and the fix-main lock of a red main. agent/architect/<slug> is also the picker's unblock lock
+// RETENTION_LIST on main), any open pull request's branch (its head or its base: deleting a base closes the
+// pull request), any branch of a task that is not done (ruling 2), and the fix-main lock of a red main. agent/architect/<slug> is also the picker's unblock lock
 // (scripts/nextTaskCore.mjs, `unblocker` and the unblock stage), which a task of any status can hold, so it
 // is kept until its task is done rather than as soon as the row leaves "architect".
 import { STATUSES, parseMarker } from "./nextTaskCore.mjs";
@@ -94,10 +94,11 @@ function checkSetOfNames(set, what) {
 
 /**
  * One verdict per origin branch: { name, sha, action: "delete" | "keep", reason }. Throws on malformed input.
- * retained: Map of held branch name -> reason (parseRetention); markerOnly: Set of the marker branches whose
- * commits outside main are all empty picker markers (markerOnlyCommits).
+ * openPrHeads / openPrBases: the branch names open pull requests come from and target; retained: Map of held
+ * branch name -> reason (parseRetention); markerOnly: Set of the marker branches whose commits outside main
+ * are all empty picker markers (markerOnlyCommits).
  */
-export function classifyBranches({ branches, mainTipAncestry, mergedPrHeads, openPrHeads, tasks, mainRed, retained, markerOnly }) {
+export function classifyBranches({ branches, mainTipAncestry, mergedPrHeads, openPrHeads, openPrBases, tasks, mainRed, retained, markerOnly }) {
   if (!Array.isArray(branches)) invalid("branches must be an array");
   const seen = new Set();
   for (const b of branches) {
@@ -107,6 +108,7 @@ export function classifyBranches({ branches, mainTipAncestry, mergedPrHeads, ope
   }
   checkSetOfNames(mainTipAncestry, "mainTipAncestry");
   checkSetOfNames(openPrHeads, "openPrHeads");
+  checkSetOfNames(openPrBases, "openPrBases");
   if (!(mergedPrHeads instanceof Map) || [...mergedPrHeads].some(([n, shas]) => !isName(n) || !(shas instanceof Set))) invalid("mergedPrHeads must be a Map of branch name to a Set of SHAs");
   checkTasks(tasks);
   if (!(mainRed === null || mainRed === "unknown" || FULL_SHA.test(mainRed?.sha ?? ""))) invalid('mainRed must be null, "unknown" or { sha }');
@@ -118,7 +120,7 @@ export function classifyBranches({ branches, mainTipAncestry, mergedPrHeads, ope
     const fix = FIX_MAIN.exec(name);
     if (fix && (mainRed === "unknown" || (mainRed && mainRed.sha.startsWith(fix[1])))) return keep("protected");
     if (retained.has(name)) return keep("retained");
-    if (openPrHeads.has(name)) return keep("open-pr");
+    if (openPrHeads.has(name) || openPrBases.has(name)) return keep("open-pr");
     const owners = tasks.filter(t => relatedTo(t, name));
     if (owners.some(t => t.status !== "done")) return keep("task-not-done");
     const marker = owners.length ? markerPrefixOf(name) : undefined;
