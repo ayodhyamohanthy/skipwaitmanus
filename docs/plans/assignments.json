@@ -328,9 +328,9 @@
       "tier": 2,
       "lane": "repo-hygiene",
       "branch": "agent/queue/branch-hygiene",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [],
-      "note": "The owner, Oct 23. On ecdbc227, origin had 345 branches besides main; 69 tips are already in main, and squash-merged heads need the merged-PR check. Never delete main, agent/reports/log, the landing slot, unmerged work or any branch of a task that is not done. Paste the dry run in the PR; the lander pastes the --apply output after landing."
+      "note": "Code landed via #758 (review fixes c8ed44bd). Not done: the backlog cleanup waits for the coordinator or owner to authorize a run under the #758 retention hold (Oct 27, restated Oct 28); docs/plans/branch-retention.json is an interlock, not permission, so nobody runs --apply or --local before that, and BRANCH-HYGIENE-2 waits. Never delete main, agent/reports/log, the landing slot, unmerged work or any branch of a task that is not done."
     },
     {
       "id": "BRANCH-HYGIENE-2",
