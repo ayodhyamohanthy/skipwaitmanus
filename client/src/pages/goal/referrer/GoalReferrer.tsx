@@ -418,7 +418,7 @@ export default function GoalReferrer() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <Kicker>REFERRER WORKSPACE</Kicker>
-          <h1 className="mt-3 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em]">Open doors. On your terms.</h1>
+          <h1 className="mt-3 text-g-display text-g-ink">Open doors. On your terms.</h1>
           <p className="mt-2 text-g-body leading-[1.6] text-g-ink-2">Choose the requests you believe in. Keep your identity private until you accept.</p>
         </div>
         <GoalButton variant="outline" onClick={() => { if (isSignedIn) setSetupStep(0); else setSignInOpen(true); }}>Set up as a referrer<ArrowRight className="h-4 w-4" aria-hidden="true" /></GoalButton>

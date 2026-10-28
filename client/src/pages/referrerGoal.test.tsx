@@ -285,3 +285,31 @@ describe("Goal /referrer/impact", () => {
     expect(screen.queryByText("Verify your work email.")).toBeNull();
   });
 });
+
+// DESIGN.md names one type scale: the page title is the display token
+// (`text-g-display` - 700 28/36, -0.02em), never an ad-hoc size. #575 landed
+// both referrer titles as raw 32px semibold, so each state of this surface is
+// pinned here as well as in the captures.
+describe("Goal page title uses the design type scale", () => {
+  const AD_HOC_TYPE = /(?:^|\s)(?:text-\[[\d.]+px\]|font-(?:bold|semibold|medium|normal)|tracking-\[-?[\d.]+em\]|leading-\[[\d.]+\])/;
+
+  const titles = () => Array.from(document.querySelectorAll("h1"));
+
+  it("renders the /referrer title with text-g-display and no ad-hoc type classes", async () => {
+    stubWorkspace();
+    renderWithQuery(<Referrer />);
+    expect(await screen.findByText("Help when the fit feels right.")).toBeTruthy();
+    expect(titles()).toHaveLength(1);
+    expect(titles()[0].className.split(" ")).toContain("text-g-display");
+    expect(titles()[0].className).not.toMatch(AD_HOC_TYPE);
+  });
+
+  it("renders the /referrer/impact title with text-g-display and no ad-hoc type classes", async () => {
+    stubWorkspace();
+    renderWithQuery(<ReferrerImpact />);
+    expect(await screen.findByText("Your private impact at a glance.")).toBeTruthy();
+    expect(titles()).toHaveLength(1);
+    expect(titles()[0].className.split(" ")).toContain("text-g-display");
+    expect(titles()[0].className).not.toMatch(AD_HOC_TYPE);
+  });
+});

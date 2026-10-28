@@ -34,7 +34,7 @@ function Frame({ screen, children }: { screen: string; children: React.ReactNode
   return (
     <main data-skipwait-screen={screen} className="page-content bg-g-canvas font-g-sans text-g-ink">
       <Kicker>REFERRER WORKSPACE</Kicker>
-      <h1 className="mt-3 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em]">Open doors. On your terms.</h1>
+      <h1 className="mt-3 text-g-display text-g-ink">Open doors. On your terms.</h1>
       <div className="mt-5"><GoalWorkspaceNav /></div>
       <div className="mt-6 max-w-[640px]">{children}</div>
     </main>
