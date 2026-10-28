@@ -112,6 +112,8 @@ function CompanyPage({ company }: { company: PublicCompany }) {
           sendBusyLabel={composer.sendBusyLabel}
           sending={composer.sending}
           sendBlocked={composer.sendBlocked}
+          sendGuidance={composer.sendGuidance}
+          creditRecovery={composer.creditRecovery}
           onSend={composer.send}
           onSaveDraft={composer.onSaveDraft}
           draftState={composer.draftState}

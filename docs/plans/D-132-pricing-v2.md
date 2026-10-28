@@ -1,5 +1,7 @@
 # Packet D-132: the frozen pricing, checked before it goes live (D-132, D-135)
 
+> **Superseded as the build target by D-219 (owner freeze, Oct 25 2026).** The banded seeker plans in [`docs/PRICING.md`](../PRICING.md) replace the fee-plus-credits model below; row `PRICING-banded-oct25` (PR #666) implements them. The D-132 code stays on `main` behind its off flags, and its done audit items stay done. Rows `D-132-item3`, `D-132-v2-checkout` and `SKIPPY-3` are re-scoped to the banded model before anyone builds them (D-221); everything below is history for those re-scopes, not a spec to build. No price, flag or sale changes from this note.
+
 > Read [`docs/BRIEF.md`](../BRIEF.md) first. Written by Claude Code as CEO (D-085, D-135) on Oct 21 2026 and brought up to date on Oct 22. The picker (`node scripts/next-task.mjs --claim "<your model name>"`) hands out one task from this packet at a time; do only the task it prints. The register (`docs/DECISIONS.md`) wins any conflict with this file; D-132 is the model, D-135 how it fits the rest.
 
 The owner froze the bundled pricing on Oct 21 ("Now freeze", 18:42): three plans (Open Door free, Fast Track, Insider by application), each with an in-plan monthly credits dropdown (5/10/25/50/100/200, "Save X%" beside each step), and an ask that costs as many credits as the job's level (L1 = 1 ... L10 = 10, confirmed "Yes" at 19:26).
@@ -45,4 +47,4 @@ Switching the flags on needs, in this order: D-132-audit landed; the D-132 plans
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 - JOB-LEVELS: done — `0e1ccba4` (#381, flag off)
 - D-132-plans-v2: done — `f2b8fd05` (#410, flag off)
-- D-132-audit: review — agent/queue/d132-audit — Gemini 3.8 Flash · 704c — 2026-10-25 — merged origin/main; review round 2 fixed red-first: F2 (the coverage-flip refusal and the `expectedCoverage` field are flags-on only, client and server) and F3 (no plans-catalog read with the flag off); F4 corrects item 4 to refund-half-done, grant half in `D-132-v2-checkout`; F1 owned-path edges carried by main (D-197 (2)), no branch task edits; gate green; ready for re-review
+- D-132-audit: done — `40e160e2` (#547, flags off; independent review passed on 32811bb7, landed after merging the latest main and green exact-head CI)
