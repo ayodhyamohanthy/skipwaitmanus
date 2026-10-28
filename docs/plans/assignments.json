@@ -115,7 +115,7 @@
       "tier": 1,
       "lane": "deploy",
       "branch": "agent/queue/p1-release-gate-strict-compare",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "P1-deploy-green-gate"
       ],
@@ -123,7 +123,7 @@
         "scripts/require-green-release.mjs",
         "scripts/requireGreenRelease.test.ts"
       ],
-      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. No main landing while first750gatedacceptance CI/deploys pending. Independent nonbuilder/nonfixer review and exact green checks; no live rollback/DB/settings tests."
+      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 acceptance (observe a subsequent normal gated release and its identities) is still pending, so the row is not done. No live rollback/DB/settings tests."
     },
     {
       "id": "CI-architect-real-checks",
@@ -290,9 +290,9 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-review-independence",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "D-151: did() compares exact session names, so on Oct 22 the picker handed #382's re-review to Qoder · a236 right after Qoder · 31dd fixed it. Compare models, count Fixed markers as fixes, and print the rule in the review step. Every Tier 1 review the queue hands out, P0-ask-link-signin's and P1-queue-attestation's included, goes through this check."
+      "note": "D-151: implemented on main by PR #530 (`ff4e0546`) — `did()` compares models at the review and landing hand-outs, `fixers` counts `Fixed` markers as well as `Fix claim`, and the printed review step names the model and outside-picker checks, with red-first tests in `scripts/nextTask.test.ts` (\"D-151 model-independent reviews and landings\"). Takeover (DeepSeek V4.1 Flash Free · a54e) found no packet item left to build and closed the row without a code change; focused picker tests 159 passed on main `d27959aa`."
     },
     {
       "id": "PICKER-decision-sync",
@@ -823,7 +823,7 @@
       "dependsOn": [
         "SHELL-focus-clearance"
       ],
-      "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them.",
+      "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them. D-224 (Oct 28, unblock ruling): the audit compatibility contract in this packet resolves the R8 conflict; the register entry fixes the goal colour token set at the 27 light colour tokens.",
       "owns": [
         "client/src/styles/goalDark.css",
         "client/src/contexts/themeContext.test.tsx",
@@ -834,7 +834,10 @@
         "client/src/components/goal/GoalMoreMenu.tsx",
         "client/src/components/goal/goalMoreMenu.test.tsx",
         "client/index.html (switch only)",
-        "DESIGN.md"
+        "DESIGN.md",
+        "scripts/designTokenAuditCore.mjs",
+        "scripts/designTokenAudit.test.ts",
+        "design/goal-ui/captures/dark-mode/**"
       ]
     },
     {
@@ -922,14 +925,18 @@
       "dependsOn": [
         "D-048-p3-assistants"
       ],
-      "note": "Issue #644: decideAssistantApproval never re-reads the approved creditCount, so with ASK_LEVEL_COST on an owner who saw 1 credit could pay up to 10. Latent today (flag off; only the unsold land plan grants assistants), so ASK_LEVEL_COST and any land sale stay off until this is done. Contract: the decision body carries expectedCreditCount; the route re-derives the cost with the quote route's own functions and answers 409 cost_changed before any charge on a mismatch. No edit to server/db.ts or privateReferralRoutes.ts. Waits for D-048-p3-assistants (both edit Approve.tsx). D-221 (Oct 26): the shown cost is the quote route's full cost object under D-219 (unit count, level band, spend source), not an integer credit count; the invariant stays: charge exactly what was approved, or 409 cost_changed with nothing charged.",
+      "note": "Issue #644: decideAssistantApproval never re-reads the approved creditCount, so with ASK_LEVEL_COST on an owner who saw 1 credit could pay up to 10. Latent today (flag off; only the unsold land plan grants assistants), so ASK_LEVEL_COST and any land sale stay off until this is done. Contract: the decision body carries expectedCreditCount; the route re-derives the cost with the quote route's own functions and answers 409 cost_changed before any charge on a mismatch. No edit to server/db.ts or privateReferralRoutes.ts. Waits for D-048-p3-assistants (both edit Approve.tsx). D-221 (Oct 26): the shown cost is the quote route's full cost object under D-219 (unit count, level band, spend source), not an integer credit count; the invariant stays: charge exactly what was approved, or 409 cost_changed with nothing charged. Oct 27 (#644): Approve.tsx now only switches to the dark goal GoalApprove.tsx, which also posts { decision, kind }, so the goal page and its flow test join owns (D-048-p3-assistants, their only owner, is done) or it would loop on 409 once released; the cost object is a shared Zod contract (shared/assistantApprovalCost.ts) so the client never imports server code.",
       "owns": [
         "server/assistantApprovalCost.ts",
         "server/assistantApprovalCost.test.ts",
         "server/assistantRoutes.ts",
         "server/assistantRoutes.test.ts",
         "client/src/pages/Approve.tsx",
-        "client/src/pages/approve.test.tsx"
+        "client/src/pages/approve.test.tsx",
+        "shared/assistantApprovalCost.ts",
+        "shared/assistantApprovalCost.test.ts",
+        "client/src/pages/goal/assistants/GoalApprove.tsx",
+        "client/src/pages/goal/assistants/assistantFlows.test.tsx"
       ]
     },
     {
@@ -3899,6 +3906,62 @@
         "docs/BRIEF.md"
       ],
       "note": "Serialized because existing BYOR and bonus rows own shared deploy docs. No runtime change or unsupported completion claims; incident748 remains open until path acceptance independently proven."
+    },
+    {
+      "id": "PICKER-heartbeat-slot-safety",
+      "title": "Renew an owned landing lease without taking another fresh landing slot",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-heartbeat-slot-safety.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-heartbeat-slot-safety",
+      "status": "todo",
+      "dependsOn": [
+        "PROCESS-review-gate"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskHeartbeatSlot.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
+    },
+    {
+      "id": "PICKER-landed-marker-continuity",
+      "title": "Keep merged work landed through marker-only branch recreation",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-landed-marker-continuity.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-landed-marker-continuity",
+      "status": "todo",
+      "dependsOn": [
+        "PICKER-heartbeat-slot-safety",
+        "PICKER-avoid-land"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskLandedMarkerContinuity.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
+    },
+    {
+      "id": "PICKER-landing-wait-fallthrough",
+      "title": "Offer eligible disjoint work before returning a landing-slot wait",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-landing-wait-fallthrough.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-landing-wait-fallthrough",
+      "status": "todo",
+      "dependsOn": [
+        "PICKER-landed-marker-continuity"
+      ],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskLandingWaitFallthrough.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
     }
   ]
 }
