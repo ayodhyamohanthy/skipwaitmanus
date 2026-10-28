@@ -115,7 +115,7 @@
       "tier": 1,
       "lane": "deploy",
       "branch": "agent/queue/p1-release-gate-strict-compare",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "P1-deploy-green-gate"
       ],

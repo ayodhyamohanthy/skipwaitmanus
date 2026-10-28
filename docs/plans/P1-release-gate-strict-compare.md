@@ -12,7 +12,7 @@ Evidence: independent750review https://github.com/ayodhyamohanthy/skipwaitmanus/
 
 ## Status
 
-- P1-release-gate-strict-compare: review — agent/queue/p1-release-gate-strict-compare — af3a67b5 (Claude Code · da74; independent non-Claude Tier 1 review required, builder does not review or land)
+- P1-release-gate-strict-compare: done — fecf0d3b (#755, merge commit of 3ff72fa2; land marker 634ab8e6; CI 40580698077 success on the merged head; runtime acceptance stays with #748)
 
 Evidence — P1-release-gate-strict-compare — Claude Code · da74 — 2026-10-27
 Branch agent/queue/p1-release-gate-strict-compare @ af3a67b5, contains origin/main 9746ec9a
