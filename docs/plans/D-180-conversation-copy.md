@@ -1,88 +1,127 @@
-# D-180-conversation-copy — ownership contract for the seeker conversation's money-copy and capacity wording (proposal)
+# D-180-conversation-copy — ownership contract for the seeker conversation's fact-only lines (proposal, revision 2)
 
-Status: **proposal only, not registered.** Drafted Oct 28, 2026 by a Claude Code session (reasoning role, D-225) from `main` `e67f7785`. Nothing here changes code, `docs/plans/assignments.json` or any PR. PR #786 stays draft. The registry delta in §3 takes effect only when a session lands it through the protected docs-only path (D-082/D-200, owner merge-policy amendment Oct 23).
+Status: **proposal only, not registered.** Revision 2, Oct 28, 2026, by a Claude Code session (reasoning role, D-225), rechecked on `main` `e67f7785`. It replaces revision 1 (`c333a724`) and answers that revision's five review findings (§6). Nothing here changes code, `docs/plans/assignments.json`, `docs/plans/OCT21-BUILT-PRS.md` or any PR. PR #786 stays draft. §3 and §4 take effect only when a session lands them through the protected docs-only path (D-082/D-200, owner merge-policy amendment Oct 23).
 
-## 0. Why this exists (the block, with evidence)
+## 0. The block
 
-- PR #786 (row `D-048-p3-live-review-conversation`, branch `agent/queue/d048-live-review-conversation`, head `047c7ba0`) reports that it is blocked: "unowned `shared/moneyCopy.ts` has no current-terminology phrase for the withdraw-confirm/withdrawn lines ... no D-180 registration exists; pre-existing declined/withdrawn slot-capacity wording untouched (no verified owner)". Source: `docs/plans/OCT21-BUILT-PRS.md` Status line added at `047c7ba0`, and the picker board (`node scripts/next-task.mjs --status`, entry 49).
-- The row's packet requires every money line to come from `shared/moneyCopy.ts` (`docs/plans/OCT21-BUILT-PRS.md:65`, item 1). Its `owns` cover the page, `threadModel.ts`, their tests, fixtures and captures, but not `shared/` (`docs/plans/assignments.json`, row at line 790).
-- `shared/moneyCopy.ts` holders on `main` `e67f7785`. Each one is a real `owns` entry (`docs/plans/assignments.json`):
+- **What #786 reports.** PR #786 (row `D-048-p3-live-review-conversation`, head `047c7ba0`) says it is blocked. `shared/moneyCopy.ts` is unowned by the row and has "no current-terminology phrase for the withdraw-confirm/withdrawn lines", and the pre-existing declined/withdrawn slot wording has "no verified owner". Sources: the `docs/plans/OCT21-BUILT-PRS.md` Status line added at `047c7ba0`, and `node scripts/next-task.mjs --status` entry 49.
+- **The rule that binds the row.** `docs/plans/OCT21-BUILT-PRS.md:65` (item 1) says "every money line comes from `shared/moneyCopy.ts`". It also says "the withdraw confirm says the credit comes back on a withdrawal before pickup, as `CREDIT_RULE` does".
+- **What the row owns.** The row's `owns` cover the page, `threadModel.ts`, their tests, the fixtures and the captures. They do not cover `shared/` (`docs/plans/assignments.json:790`, registered by `7cc7af47`).
+- **Who holds `shared/moneyCopy.ts`** on `main` `e67f7785`:
 
-| Row (line) | Status on `main` / board | Entry | Holder evidence |
+| Row | Line in `docs/plans/assignments.json` | Status on the board | Holder |
 |---|---|---|---|
-| `D-132-audit` (904) | done | `shared/moneyCopy.ts`, `shared/moneyCopy.test.ts` | finished, so it holds nothing |
-| `D-174-held-ask-reconfirm` (3307) | todo, "not started · waiting" | `shared/moneyCopy.ts` | no branch `agent/queue/d174-held-ask-reconfirm` on origin (`git ls-remote`), no session holder |
-| `D-099-bonus-pages` (2989) | todo | `shared/moneyCopy.ts (switch only)` | no branch `agent/claude/d099-bonus-pages` on origin |
-| `D-180-a-free-asks-chip` (3753) | in-review, PR #716, "behind main 356" | `shared/moneyCopy.ts`, `server/moneyCopy.test.ts` | branch tip `12157a9e` (Oct 26, author "Instinct Agent"); the board shows no session holder |
+| `D-132-audit` | 904 | done | none |
+| `D-174-held-ask-reconfirm` | 3307 | todo | no branch on origin, no session |
+| `D-099-bonus-pages` (switch only) | 2989 | todo | no branch on origin |
+| `D-180-a-free-asks-chip` | 3753 | in-review, PR #716 | branch tip `12157a9e`, Oct 26, author "Instinct Agent"; no session holder on the board |
 
-- The D-180 owners are narrow by their own text. D-180-a is the headline only: "Paid-unit credits and the ASK_COST tail stay with D-180-referral-words" (`docs/plans/assignments.json:3783`, `docs/plans/D-180-a-free-asks-chip.md:6-9`). D-174 owns reconfirm (`assignments.json:3322`) and D-099 owns the bonus switch only. **No `D-180-referral-words` row exists.** It is named only in prose (`D-180-a-free-asks-chip.md:6,9`, `docs/plans/D-048-money.md:30`, `assignments.json:3783`). A scan of the registry `tasks[].id` returns only `D-180-terminology-docs-sync` and `D-180-a-free-asks-chip`.
-- The `shared/moneyCopy.ts` exports cover the never-paid sentence (`REFERRER_MONEY_SENTENCE`, `shared/moneyCopy.ts:29`), the credit rule (`:61`, `:75`), caveats (`:77`, `:80`) and cost phrases (`:122-131`). None of them is a terminal-state (declined/withdrawn/closed) conversation line or a withdraw-confirm line (`grep -n "^export" shared/moneyCopy.ts`).
+- **No row exists for the remaining terminology work.** No `D-180-referral-words` row is registered. Searching `tasks[].id` finds only `D-180-terminology-docs-sync` and `D-180-a-free-asks-chip`.
 
-## 1. Facts the wording must match (runtime, unchanged by this contract)
+## 1. Settled policy this revision applies (not owner questions)
+
+- **The money-line hold has expired.** D-173 says "Money lines stay byte-identical until that audit lands" (`docs/DECISIONS.md:180`), and that audit, `D-132-audit`, is `done` (`assignments.json:904`). So nothing keeps "credit" in new copy.
+- **D-180 is active now.** Public vocabulary is "referral" only, and the formal noun is "referral request" (`docs/DECISIONS.md:187`). The same rule appears for goal surfaces in `docs/plans/D-048-money.md:30`: no display string says "credit"; a request is never shown as a completed referral; a balance is stage-qualified.
+- **D-219 amounts come later** and are out of scope here (`docs/PRICING.md`, D-219). New lines state no amount.
+- **D-176 bars availability status, not navigation.** D-176 bars visible availability status or framing (`docs/DECISIONS.md:183`). A search or navigation action is not barred.
+
+## 2. Facts the wording must match (runtime, unchanged)
 
 | # | Fact | Source |
 |---|---|---|
-| F1 | A slot is counted only for `status = "pending"` and `waitingForCoverage = false`, and only within the 7-day visible window or while assigned and not held. Waiting and held asks never use a slot. | `server/planGates.ts:14-37`, `server/coverageDelivery.ts:76`, `shared/openAskSlots.ts:1-8` |
-| F2 | A withdrawal returns the internal charge only when no pickup happened, and only for what actually came back. `creditRefunded` can be `false` even on the no-pickup path, because a refund is capped by the bucket's month or cycle. | `server/db.ts:2290-2335` (`refundLedgerSpendTx` `returned`, `:2364`), comment `shared/moneyCopy.ts:36-48` |
-| F3 | The seeker's thread payload has no refund, pickup or debit field, so the conversation page cannot know whether a withdrawal refunded anything. | `client/src/lib/threadApi.ts:87-112` (`ThreadRequest`) |
-| F4 | The server already tells the seeker the true refund outcome in the withdrawal notice, including the case where a pickup keeps the charge spent. | `server/db.ts:2310`, `server/coverageDelivery.ts:74` (`COVERAGE_WITHDRAWN_NOTICE`) |
-| F5 | No referrer path writes `declined` any more: a decline is a pass that reopens the ask to the company (`pending`). A `declined` status in the thread is therefore a legacy row. Every employee decline keeps the charge spent. | `server/db.ts:2133-2139`, D-021 (`docs/DECISIONS.md:39`), D-147 (`:161`) |
-| F6 | `closed` with `referrerId === null` comes only from the legacy expiry clocks: the 7-day unclaimed expiry returns the charge subject to F2, and the 90-day coverage close never charged. Whether this close refunded anything is not in the thread payload (F3). | `shared/referral.ts:76,79`, `shared/moneyCopy.ts:61`, AGENTS.md system map (`ask-expiry-sweep`), D-174 (`docs/DECISIONS.md:181`) |
-| F7 | A waiting or held ask has no debit, so withdrawing it uses nothing. | `server/db.ts:2317-2319` (`debitTransactionId === null` branch), D-034/D-047 |
-| F8 | Availability is never framed to users; it only routes the ask. | D-176 (`docs/DECISIONS.md:183`) |
-| F9 | Public vocabulary is "referral request" (formal noun). "Ask" as a noun is internal. Money amounts and rules stay frozen, and the unit-word pass belongs to the terminology lane. | D-180 (`docs/DECISIONS.md:187`), `docs/plans/D-048-money.md:30` |
+| F1 | Only a `pending` ask with `waitingForCoverage = false` (and inside its visible window, or assigned and not an unclaimed assignment) counts toward open requests. A withdrawn ask never counts. | `server/planGates.ts:14-37`, `shared/openAskSlots.ts:1-8` |
+| F2 | The thread's `queueStatus` is server-derived and has three values. `available_for_review` means assigned and pending. `held_for_credit` means `waitingForCoverage` with `coverageHeldAt` set. `waiting_for_coverage` means `waitingForCoverage` without `coverageHeldAt`. Otherwise it is `null`. | `server/db.ts:2604`, client enum `client/src/lib/threadApi.ts:43,114` |
+| F3 | Both `waiting_for_coverage` and `held_for_credit` have `waitingForCoverage = true`, and **nothing has been spent** for them: "never delivered free, never billed later". Spending happens only on the move to visible. | `server/coverageDelivery.ts:10-20`, D-034/D-047 |
+| F4 | **Assigned-held is a different flag**, not a `queueStatus`. `heldForReferrer` marks a personal-link assignment and `unclaimedAssignment` marks a personal link or a queue allocation. These asks are visible, so they were charged at create or at delivery. | `server/db.ts:2604`, `server/heldAsk.ts:37,114`, `server/coverageDelivery.ts:20-21` |
+| F5 | The page shows the "awaiting" confirm only for the two coverage `queueStatus` values (`awaitingCoverage`). Assigned-held asks get the other branch. | `client/src/pages/conversation/SeekerConversation.tsx:105,144` (main); `:106,155` at `047c7ba0` |
+| F6 | Withdrawing a waiting ask moves no money (`debitTransactionId === null` branch). A withdrawal after an earlier pickup keeps the charge spent, even when the ask was reopened (`referrerId` back to `null`), and refunds are capped by the bucket's period. | `server/db.ts:2290-2335`, `:2310`, `:2319`; test `server/db.coverageDelivery.test.ts:186` |
+| F7 | The thread payload carries no refund, pickup or debit field. The page cannot verify a refund outcome, and it cannot tell a reopened ask from one that was never picked up. | `client/src/lib/threadApi.ts:87-114` |
+| F8 | No referrer path writes `declined`. A decline is a pass that reopens the ask, so a `declined` status is a legacy row, and its charge stays spent. | `server/db.ts:2133-2139`, D-021 (`docs/DECISIONS.md:39`), D-147 (`:161`) |
+| F9 | "Find another referrer" is a link to `/explore` on Declined/Expired/Withdrawn stages. `/explore` mounts `Explore`, whose goal line is "Where do you want a referral?". | `SeekerConversation.tsx:106,135` (main); `:107,133-134` at `047c7ba0`; `client/src/App.tsx:140`; `client/src/pages/Explore.tsx:168` |
 
-Runtime boundaries this contract **does not touch**: pricing (`docs/PRICING.md`, D-219), charge at first visibility (D-034), D-147 decline-spent, D-038 timers, the legacy 7-day/90-day clocks (`shared/referral.ts:76,79`) and their removal path (D-193 → `D-174-expiry-clock-removal`), `server/db.ts`, `server/planGates.ts` and every flag.
+## 3. Route chosen: an explicit, narrow contract amendment (not the moneyCopy scope route)
 
-## 2. The proposed contract
+**Why not the moneyCopy route.** Editing `shared/moneyCopy.ts` needs ACKs that do not exist, from the holder of PR #716 (`D-180-a-free-asks-chip`). It also needs a CEO registry change under D-200 for the unheld `D-174-held-ask-reconfirm`, and it would inherit that row's wait chain (`D-132-item3`, `D-090-BYOR`, both todo; `assignments.json:3322`). This packet claims no ACK.
 
-### 2a. Shared helper (new row `D-180-conversation-copy`, Tier 1)
+**The amendment.** Revision 1 did not compose from `shared/moneyCopy.ts`, and this revision does not claim it does. It **amends the source rule explicitly**. The registration PR replaces item 1 of `docs/plans/OCT21-BUILT-PRS.md:65` with:
 
-This adds one new module. It does not edit `shared/moneyCopy.ts`, so it collides with no current holder (§0 table) and needs no ACK. Its money facts are either imported from `shared/moneyCopy.ts` or pinned by test to the server text that states them. It introduces no new money rule, amount or unit, so it satisfies "every money line comes from `shared/moneyCopy.ts`" (`OCT21-BUILT-PRS.md:65`) by composition, not by retyping.
+> 1. **Money lines** (`client/src/pages/conversation/SeekerConversation.tsx`, `client/src/components/thread/threadModel.ts`): every line that states a charge amount, cost or refund rule comes from `shared/moneyCopy.ts` (after D-132-audit the cost lines do; the never-paid line is `REFERRER_MONEY_SENTENCE`). **Amended Oct 28 (D-180-conversation-copy):** the terminal lines (declined, withdrawn, closed-unclaimed) and the two withdraw-confirm lines come from `shared/conversationCopy.ts` instead. They are fact-only: no amount, no refund promise or outcome, no expiry clock, no slot or capacity promise, no availability status, and no restated `shared/moneyCopy.ts` rule. The page cannot verify a refund (thread payload, `client/src/lib/threadApi.ts`); the server's withdrawal notice states the true outcome (`server/db.ts:2310`, `server/coverageDelivery.ts:74`). This replaces the earlier "the withdraw confirm says the credit comes back on a withdrawal before pickup, as `CREDIT_RULE` does", which the page cannot verify for a reopened ask (`server/db.ts:2310`). The closed-unclaimed line does not say "within 7 days" (D-061); remove the referred-deadline line that can never render.
 
-`shared/conversationCopy.ts` exports:
+**Who owns the amendment.**
+- The amendment rides the **registration PR**, not the build. It follows the precedent of `7cc7af47` (one registry commit edits `assignments.json` and `OCT21-BUILT-PRS.md`) and #785 (`e67f7785`: registry plus packet docs). Rows may be changed under D-200 by "any capable session ... explaining why in its pull request" (AGENTS.md team rule 6).
+- `scripts/scope-check.mjs` cannot guard a registration branch, because it fails open when no task uses the branch (`scope-check.mjs:61,96-99`). So the gate is the docs-only path: focused checks, an independent delta review and required CI (owner merge-policy amendment, Oct 23).
+- After registration, `OCT21-BUILT-PRS.md` is still `D-048-p3-live-review-conversation`'s packet, which scope-check lets that row edit (`scope-check.mjs:35`). The new row edits only its own owns and its packet.
+- `docs/plans/D-048-money.md:30` is **not amended**. Its rows are `D-048-p3-plans`, `D-048-p3-premium` and `D-048-p3-pricing` (packet field), and nothing in this contract touches those surfaces.
 
-| Export | Value | Rule it encodes |
+## 4. The contract
+
+### 4a. Helper `shared/conversationCopy.ts` (new row `D-180-conversation-copy`, Tier 1)
+
+| Export | Value | Facts |
 |---|---|---|
-| `CLOSED_UNCLAIMED_LINE` | `"Nobody accepted it. This referral request is closed."` | F6, F3: fact only, with no clock, refund or slot claim |
-| `DECLINED_LINE` | `"It’s not a judgment of you. This referral request was declined and is closed."` | F5, F8: no "slot open again" and no "try another verified referrer at {Company}" availability nudge |
-| `WITHDRAWN_LINE` | `"You withdrew this referral request."` | F2-F4: the page cannot verify a refund, so it states none (the notice F4 does) |
-| `WITHDRAW_CONFIRM_AWAITING` | `"It never reached a verified employee, so no credit was used."` (byte-identical to today, `SeekerConversation.tsx:144` on `main`) | F7. The unit word stays until the terminology lane renames it (F9) |
-| `WITHDRAW_CONFIRM_VISIBLE` | `"It leaves the referrer’s queue and stops counting toward your open referral requests."` | F1. This replaces "frees your slot" with the verified counting fact and no promise of free capacity (plan cap and per-company cap still apply, `shared/openAskSlots.ts:1-8`) |
-| `seekerTerminalLine(status, { claimed })` | `declined` → `DECLINED_LINE`; `withdrawn` → `WITHDRAWN_LINE`; `closed` → `claimed ? null : CLOSED_UNCLAIMED_LINE`; any other status → `null` | keeps today's `closed`+claimed → no line (`SeekerConversation.tsx:34` on `main`) |
-| `TERMINAL_LINE_FORBIDDEN` | `readonly RegExp[]`: `/slot/i`, `/credit/i`, `/refund\|came back\|comes back\|returned/i`, `/\b\d+\s*days?\b/i`, `/try another\|available\|open to/i`, `/\basks?\b/i` | the testable form of "fact-only" (F2-F9) |
+| `CLOSED_UNCLAIMED_LINE` | `"Nobody could take it. This referral request is closed."` (kept byte-identical to the reviewed #786 line, `SeekerConversation.tsx:35` at `047c7ba0`) | F7: no clock, refund or slot claim |
+| `DECLINED_LINE` | `"It’s not a judgment of you. This referral request was declined."` | F8: no slot, availability or refund claim |
+| `WITHDRAWN_LINE` | `"You withdrew this referral request."` | F6, F7 |
+| `WITHDRAW_CONFIRM_AWAITING` | `"It never reached a verified employee, so nothing was used for this referral request."` | F2, F3, F6. Referral vocabulary (D-180), no amount, no completed-referral claim, no unit word |
+| `WITHDRAW_CONFIRM_VISIBLE` | `"It leaves the referrer’s queue and no longer counts toward your open referral requests."` | F1. States the counting fact without promising free capacity: plan and per-company caps still apply (`shared/openAskSlots.ts:1-8`) |
+| `seekerTerminalLine(status, { claimed })` | `declined` → `DECLINED_LINE`; `withdrawn` → `WITHDRAWN_LINE`; `closed` → `claimed ? null : CLOSED_UNCLAIMED_LINE`; anything else → `null` | keeps today's closed+claimed → no line (`SeekerConversation.tsx:34`, main) |
+| `withdrawConfirmLine(queueStatus)` | `"waiting_for_coverage"` or `"held_for_credit"` → `WITHDRAW_CONFIRM_AWAITING`; `"available_for_review"`, `null` or `undefined` → `WITHDRAW_CONFIRM_VISIBLE` | F2-F5. Keyed only on the `queueStatus` contract; `heldForReferrer` and `unclaimedAssignment` never select the awaiting line |
+| `SUPPORTING_COPY_FORBIDDEN` | `readonly RegExp[]`: `/slot/i`, `/credits?\b/i`, `/refund\|came back\|comes back\|returned/i`, `/\b\d+\s*days?\b/i`, `/try another\|available\|open to/i`, `/\basks?\b/i` | applies to **supporting copy only** (§4c) |
 
-What it does **not** own: the pending and waiting lines in `client/src/components/thread/threadModel.ts:60-77` (they stay as they are, under the conversation row), `REFERRER_MONEY_SENTENCE` (imported as-is), and the "Find another referrer" CTA. That CTA is not a money or capacity line; whether its label is an availability claim under D-176 is an open question for the conversation row's D-151 reviewer, not decided here.
+The helper imports nothing from `shared/moneyCopy.ts` and restates none of its rules (§3). It leaves the pending/waiting lines (`client/src/components/thread/threadModel.ts:60-77`) alone, and `REFERRER_MONEY_SENTENCE` stays imported from `shared/moneyCopy.ts` as #786 already does.
 
-### 2b. Helper tests (owned by `D-180-conversation-copy`): `shared/conversationCopy.test.ts`
+### 4b. Helper tests: `shared/conversationCopy.test.ts` (owned by `D-180-conversation-copy`)
 
-1. Each of the five constants equals its string in §2a exactly.
-2. Every terminal line (`CLOSED_UNCLAIMED_LINE`, `DECLINED_LINE`, `WITHDRAWN_LINE`) matches **no** pattern in `TERMINAL_LINE_FORBIDDEN`.
-3. `WITHDRAW_CONFIRM_VISIBLE` matches neither `/slot/i` nor `/available|free again|try another/i`.
-4. `seekerTerminalLine`: `("closed", {claimed:true})` → `null`, `("closed", {claimed:false})` → `CLOSED_UNCLAIMED_LINE`, `"pending"`/`"approved"` → `null`.
-5. Source parity for F7: `COVERAGE_WITHDRAWN_NOTICE.body` contains `"so no credit was used"`, and `WITHDRAW_CONFIRM_AWAITING` ends with the same clause. A shared test may already import a server module this way (`shared/moneyCopy.item7.test.ts:3`).
-6. Boundary pin: the module exports no number, and importing it leaves `ASK_TTL_DAYS === 7` and `COVERAGE_WAIT_DAYS === 90` (`shared/referral.ts:76,79`) unchanged.
+1. Each of the five line constants equals its §4a string exactly.
+2. No line constant matches any `SUPPORTING_COPY_FORBIDDEN` pattern.
+3. `WITHDRAW_CONFIRM_AWAITING` matches neither `/\d/` nor `/\breferral\b(?! request)/i`, so it states no amount and never names a completed referral.
+4. `seekerTerminalLine` maps each case as in §4a: closed+claimed → `null`; `pending`, `approved`, `intro_made`, `interview` and `offer` → `null`.
+5. `withdrawConfirmLine` returns AWAITING for exactly `waiting_for_coverage` and `held_for_credit`, and VISIBLE for `available_for_review`, `null` and `undefined`. Its parameter type is `ThreadRequest["queueStatus"]`, whose union (`client/src/lib/threadApi.ts:114`) makes a fourth value a compile error.
 
-### 2c. Adoption and capacity tests (owned by `D-048-p3-live-review-conversation`, files already in its `owns`)
+The helper tests pin no runtime constant. `ASK_TTL_DAYS` and `COVERAGE_WAIT_DAYS` are not asserted, because a legitimate expiry removal (D-174 → `D-174-expiry-clock-removal`) must stay free to change them.
 
-These files are registered in that row (`assignments.json:790`). No ownership changes.
+### 4c. Adoption tests (owned by `D-048-p3-live-review-conversation`, files already in its `owns`, `assignments.json:790`)
 
-| File | Test | Owner |
-|---|---|---|
-| `client/src/pages/conversation/SeekerConversation.goal.test.tsx` (new at `047c7ba0`) | For `declined`, `withdrawn` and `closed` with `referrerId: null`, the "Your next step" region text equals `seekerTerminalLine(...)`, and none of `TERMINAL_LINE_FORBIDDEN` matches the region. `closed` with a `referrerId` renders no terminal line. The withdraw confirm shows `WITHDRAW_CONFIRM_AWAITING` for `queueStatus` `waiting_for_coverage`/`held_for_credit` and `WITHDRAW_CONFIRM_VISIBLE` otherwise. This replaces the inline string at `047c7ba0`'s "never claims a 7-day clock" case. | D-048-p3-live-review-conversation |
-| `client/src/pages/referralConversation.test.tsx` (lines ~295-305 at `047c7ba0`) | The unclaimed-closed case expects `CLOSED_UNCLAIMED_LINE` (imported), keeps the "no `7 days`" and "no `slot`" negatives and keeps the `/explore` link | D-048-p3-live-review-conversation. Co-owner `D-048-p3-conversation` (`assignments.json:1692`) already `dependsOn` the live-review row, so it is serialized and needs no ACK |
-| `client/src/components/thread/threadModel.test.ts` | unchanged (pending lines are out of scope) | D-048-p3-live-review-conversation |
+**Supporting-copy assertions.** These apply the forbidden patterns to the reason paragraph only: the `<p>` that `GoalNextStep` renders from `reason` (`client/src/components/goal/GoalNextStep.tsx:11-16`). They never apply to the whole region, because the region also holds the action buttons.
 
-Page adoption (same row): `SeekerConversation.tsx` `nextLine` (`case "declined"/"withdrawn"/"closed"`, lines 33-35 at `047c7ba0`) and the confirm paragraph (line 155 at `047c7ba0`) read from `@shared/conversationCopy`, with no retyped string.
+| File | Assertion |
+|---|---|
+| `client/src/pages/conversation/SeekerConversation.goal.test.tsx` | For `declined`, `withdrawn` and `closed` with `referrerId: null`, the reason paragraph text equals `seekerTerminalLine(...)` and matches no `SUPPORTING_COPY_FORBIDDEN` pattern. `closed` with a `referrerId` renders no terminal line. |
+| same file | The withdraw confirm text equals `withdrawConfirmLine(queueStatus)` for `waiting_for_coverage` and `held_for_credit` (AWAITING). It equals VISIBLE for `available_for_review`, for `null`, and for `null` with `heldForReferrer: true` (assigned-held, F4), and for `null` with `unclaimedAssignment: true`. |
+| `client/src/pages/referralConversation.test.tsx` (unclaimed-closed case, ~lines 295-305 at `047c7ba0`) | Expects `CLOSED_UNCLAIMED_LINE` (imported; the same string #786 already pins). Keeps the "no `7 days`" and "no `slot`" negatives. Co-owner `D-048-p3-conversation` (`assignments.json:1692`) already `dependsOn` this row, so no ACK is needed. |
 
-## 3. Registry delta (proposed; not applied)
+**Action-link assertions.** These are a separate test, with no forbidden-pattern check.
 
-**(a) Add one row** to `docs/plans/assignments.json` `tasks`, placed directly above `D-048-p3-live-review-conversation` (line 790) so the picker hands it out first:
+| File | Assertion |
+|---|---|
+| `SeekerConversation.goal.test.tsx` | On Declined, Expired and Withdrawn stages, a link named "Find another referrer" with `href="/explore"` exists (F9), and it is the stage's single `data-g-primary`. On every other stage it is absent. |
+
+**Unchanged:** `client/src/components/thread/threadModel.test.ts`.
+
+The page adopts the helper: `nextLine`'s declined/withdrawn/closed cases and the confirm paragraph call `seekerTerminalLine` and `withdrawConfirmLine`, with no retyped string.
+
+### 4d. Proof that runtime is unchanged (baseline comparison, not invariant pins)
+
+The build PR's evidence includes the commands below, run on the PR head with `BASE=$(git merge-base origin/main HEAD)`. Each prints nothing:
+
+```bash
+git diff --name-only "$BASE" HEAD -- server/ drizzle/ shared/moneyCopy.ts shared/referral.ts shared/openAskSlots.ts client/src/lib/threadApi.ts
+```
+
+```bash
+git diff --name-only "$BASE" HEAD | grep -v -e '^shared/conversationCopy\.ts$' -e '^shared/conversationCopy\.test\.ts$' -e '^docs/plans/D-180-conversation-copy\.md$' -e '^docs/plans/assignments\.json$'
+```
+
+It also includes a green `node scripts/scope-check.mjs D-180-conversation-copy`, which enforces owns plus the packet (`scope-check.mjs:33-50`). This proves no pricing, charge, refund, expiry or flag code moved, against the actual base, and it never fails a later legitimate change.
+
+## 5. Registry delta (proposed; not applied)
+
+**(a) New row**, placed directly above `D-048-p3-live-review-conversation` (`assignments.json:790`):
 
 ```json
 {
   "id": "D-180-conversation-copy",
-  "title": "Seeker conversation terminal and withdraw-confirm lines from one shared helper, fact-only (D-180 slice)",
+  "title": "Seeker conversation terminal and withdraw-confirm lines from one shared helper, fact-only, referral vocabulary (D-180 slice)",
   "row": "COPY",
   "packet": "docs/plans/D-180-conversation-copy.md",
   "tier": 1,
@@ -91,31 +130,30 @@ Page adoption (same row): `SeekerConversation.tsx` `nextLine` (`case "declined"/
   "status": "todo",
   "dependsOn": [],
   "owns": ["shared/conversationCopy.ts", "shared/conversationCopy.test.ts"],
-  "note": "Unblocks D-048-p3-live-review-conversation (#786). New module only; shared/moneyCopy.ts is not edited, so no current holder (D-174-held-ask-reconfirm, D-180-a-free-asks-chip, D-099-bonus-pages switch-only) is touched and no ACK is needed. Fact-only terminal lines: no slot, refund, clock or availability claim (F1-F8 of the packet). No behavior, price, charge, refund, expiry or flag change. The unit word 'credit' in WITHDRAW_CONFIRM_AWAITING stays byte-identical until a registered D-180-referral-words row renames it; that row must own shared/conversationCopy.ts and shared/conversationCopy.test.ts and dependsOn this row. Review: D-151, not the builder's model family."
+  "note": "Unblocks D-048-p3-live-review-conversation (#786) under the explicit Oct 28 amendment of OCT21-BUILT-PRS.md item 1 (packet section 3), which this registration PR carries. New module only; shared/moneyCopy.ts is not edited, so no holder of it (D-174-held-ask-reconfirm, D-180-a-free-asks-chip, D-099-bonus-pages switch-only) is touched and no ACK is needed. Fact-only lines in D-180 referral vocabulary: no amount, refund, clock, slot or availability claim; the withdraw confirm is keyed on queueStatus only (held_for_credit/waiting_for_coverage vs the rest). No behavior, price, charge, refund, expiry or flag change; proof is a baseline diff (packet 4d), not constant pins. Review: D-151, not the builder's model family."
 }
 ```
 
-`dependsOn: []` is correct because no registered row owns either path. `ownsOverlap` (`scripts/nextTaskCore.mjs:81-87`) finds no overlap with any `shared/` entry on `main`, which are all exact paths. Picker serialization comes from `filesBusy` (`nextTaskCore.mjs:423`). Scope is enforced on the PR by `scripts/scope-check.mjs:33-50`.
+`dependsOn: []` is correct because no row owns either path. `ownsOverlap` finds no overlap with the exact-path `shared/` entries on `main` (`scripts/nextTaskCore.mjs:81-87`), and `filesBusy` serializes any later claimant of the same files (`nextTaskCore.mjs:423`).
 
-**(b) Amend `D-048-p3-live-review-conversation`** (line 790):
-- `dependsOn`: append `"D-180-conversation-copy"`. That gives `["D-038-reconcile", "D-132-audit", "ROW20-CD", "D-048-F-goal-check", "D-180-conversation-copy"]`. The first four are already `done`.
-- `note`: append "Oct 28: terminal (declined/withdrawn/closed-unclaimed) and withdraw-confirm lines come from shared/conversationCopy.ts (D-180-conversation-copy); adoption pins in SeekerConversation.goal.test.tsx and referralConversation.test.tsx per that packet §2c. #786 stays draft until that row lands."
+**(b) Amend `D-048-p3-live-review-conversation`** (`assignments.json:790`):
+- `dependsOn`: add `"D-180-conversation-copy"`. The four existing entries are already `done`.
+- `note`: append "Oct 28: item 1 of the packet amended (OCT21-BUILT-PRS.md:65): terminal and withdraw-confirm lines come from shared/conversationCopy.ts (D-180-conversation-copy); adoption and action-link pins per that packet section 4c. #786 stays draft until that row lands."
 - `owns`: unchanged.
 
-**(c) No change** to `D-180-a-free-asks-chip`, `D-174-held-ask-reconfirm`, `D-099-bonus-pages`, `D-048-p3-conversation` or `D-132-audit`.
+**(c) Packet edit in the same registration PR:** `docs/plans/OCT21-BUILT-PRS.md:65`, replaced with the §3 text.
 
-## 4. The rejected alternative and the ACK it would need
+**(d) No change** to `D-180-a-free-asks-chip`, `D-174-held-ask-reconfirm`, `D-099-bonus-pages`, `D-048-p3-conversation`, `D-132-audit` or `docs/plans/D-048-money.md`.
 
-Adding these lines inside `shared/moneyCopy.ts` would collide with:
-- `D-180-a-free-asks-chip` (in-review, PR #716). This needs an ACK from whichever session holds PR #716. The board shows no session holder, and the branch tip `12157a9e` is by "Instinct Agent", Oct 26. Alternatively, a registry reorder by the CEO under D-200.
-- `D-174-held-ask-reconfirm` (todo, unclaimed). With no holder to ACK, only a CEO registry change under D-200 could clear it.
+## 6. What changed from revision 1 (`c333a724`)
 
-**No such ACK exists today, and this packet does not claim one.** The row would also inherit D-174's wait chain (`D-132-item3`, `D-090-BYOR`, both todo), which would hold #786 indefinitely. Rating: 3/10, against 8/10 for §2. The one point against §2 is a second shared copy module. That cost is bounded, because the future D-180-referral-words row must own both files (§3a note).
-
-## 5. Open questions for the owner or CEO (not decided here)
-
-1. Should `WITHDRAW_CONFIRM_AWAITING` drop the word "credit" now ("so nothing was used")? D-180 keeps money wording frozen until the terminology lane runs (F9), so this packet keeps it byte-identical. Rating for changing it now: 5/10.
-2. Is "Find another referrer" (`SeekerConversation.tsx`, closed states) an availability claim under D-176? This is the conversation row's D-151 reviewer's call.
+| Finding | Resolution |
+|---|---|
+| 1. Not composition; the source rule was never amended | Revision 2 drops the composition claim and explicitly amends `OCT21-BUILT-PRS.md:65` in the registration PR (§3, §5c), with the ownership basis cited. The moneyCopy route is rejected for missing ACKs. |
+| 2. "credit" hardcoded on the back of a nonexistent row | The D-173 hold ended with D-132-audit (`DECISIONS.md:180`, `assignments.json:904`), and D-180 applies now. `WITHDRAW_CONFIRM_AWAITING` is in referral vocabulary with no amount; "credit" is banned by test (§4b.2). |
+| 3. "Nobody accepted it" churn | Kept #786's reviewed line byte-identical (§4a). |
+| 4. Forbidden regex hit the CTA | Supporting copy is checked on the reason `<p>` only. The CTA gets its own link-contract test (name, `/explore`, stages, single primary; F9). The D-176 question is withdrawn. |
+| 5. "Held = no debit" and constant pins | The confirm is keyed on the `queueStatus` contract (F2-F5), with assigned-held tested separately. The constant pins are replaced by a baseline diff (§4d). |
 
 ---
-Holder snapshot taken Oct 28, 2026 from `main` `e67f7785`, `git ls-remote origin` and `node scripts/next-task.mjs --status`.
+Rechecked Oct 28, 2026 on `main` `e67f7785`; holder snapshot from `git ls-remote origin` and `node scripts/next-task.mjs --status`.
