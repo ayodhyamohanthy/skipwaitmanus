@@ -246,7 +246,7 @@ function pickText(pick, { who, date, claimed, register = null }) {
     ]) + take;
     case "review": return head(`REVIEW ${pick.task.id} — ${pick.task.title}`, [
       `Tier 1 · pull request ${pick.pr} · branch ${pick.work} · review lock ${pick.lock}`,
-      `No session of your model may have built or fixed this (D-151; built by ${pick.builder ?? "unknown"}). For work built or fixed outside the picker, check pull-request comments and the task reports on the board for your model; if found, post no verdict and report it blocked to the CEO.`,
+      `No session of your model may have built or fixed this (D-151; built by ${pick.builder ?? "unknown"}). For work built or fixed outside the picker, check the pull request's commits and comments and the task's reports on the board for a build, takeover or fix by your model; if you find one, post no verdict and report it blocked to the CEO. A review or findings comment of your own model does not count (D-151 (1)).`,
       ...holding(pick),
       reviewSteps(pick, who),
     ]) + take;
