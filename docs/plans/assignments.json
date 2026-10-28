@@ -313,6 +313,23 @@
       "note": "The owner, Oct 23: agents must always work on the most recent decision, never on old work. Builders are told to read only the brief and their packet (scripts/nextTaskText.mjs:42), so a packet older than a decision can be built as written (D-147, D-148 then D-152). Until this lands, the interim rule in the packet binds every agent. D-221 (Oct 26): the Oct 25 owner decisions are now register entries D-219 and D-220 with their affected tasks, so the syncedTo stamp must not certify rows those entries change until each is re-synced."
     },
     {
+      "id": "SKIPPY-fix.s1-ssrf",
+      "title": "Skippy S-1: the job-page reader uses the safe public fetcher (fetchPublicJobLink); delete isPublicHostname and the hand-written redirect loop (flags stay off)",
+      "row": "D-201",
+      "packet": "docs/plans/SKIPPY-fix.md",
+      "tier": 1,
+      "lane": "skippy-seeker",
+      "branch": "agent/queue/skippy-fix-s1-ssrf",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "Oct 28 (D-132-item3 packet revision 2, section 11a; decided under D-200, changeable): built exactly as SKIPPY-fix.md section S-1 says (red first with an injected fake fetcher, no network). Owner and holder check on main 6cbee199: no open row owns these files, and SKIPPY-fix has no owns, branch or claim, so nothing in flight is taken. Latent: SKIPPIE_SEEKER_ENABLED is off in production; no flag goes on until the parent SKIPPY-fix lands with its proof, including S-1 live item 2 (D-201). Tier 1 (security): independent review.",
+      "epic": "SKIPPY-fix",
+      "owns": [
+        "server/skippieSeekerDeps.ts",
+        "server/skippieSeekerDeps.test.ts"
+      ]
+    },
+    {
       "id": "SKIPPY-fix",
       "title": "Skippy post-landing review (#442, #451, #453, #454): fix S-1 SSRF, S-2 credit copy, S-3 price drift, S-4 agent allow-list, S-5 company at link time, S-6 ask log; live proof on skipwait_qa",
       "row": "D-201",
@@ -322,9 +339,10 @@
       "branch": "agent/queue/skippy-fix",
       "status": "todo",
       "dependsOn": [
-        "D-132-item3"
+        "D-132-item3",
+        "SKIPPY-fix.s1-ssrf"
       ],
-      "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. S-3 reuses D-132-item3's shared expectedCost/AskPriceChangedError guard; this task waits for that row rather than duplicating or overlapping its transaction work. All flags stay off until SKIPPY-fix lands with its proof. The owner asked to work on Skippy (Oct 23), so it remains ordered after the live regressions and the two picker fixes. D-221 (Oct 26): keeps its D-132-item3 dependency (S-3 binds to item 3's accepted-price precondition; pinned by scripts/register520Packets.test.ts). D-132-item3's re-scope delivers that model-independent precondition against the D-219 quote first, so the S-1 SSRF fix waits only on that step. S-2 and S-3 state the cost per D-219 (one referral of the request's level, spend source shown); no D-132 level-credit model."
+      "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. S-3 reuses D-132-item3's shared expectedCost/AskPriceChangedError guard; this task waits for that row rather than duplicating or overlapping its transaction work. All flags stay off until SKIPPY-fix lands with its proof. The owner asked to work on Skippy (Oct 23), so it remains ordered after the live regressions and the two picker fixes. D-221 (Oct 26): keeps its D-132-item3 dependency (S-3 binds to item 3's accepted-price precondition; pinned by scripts/register520Packets.test.ts). D-132-item3's re-scope delivers that model-independent precondition against the D-219 quote first, so the S-1 SSRF fix waits only on that step. S-2 and S-3 state the cost per D-219 (one referral of the request's level, spend source shown); no D-132 level-credit model. Oct 28 (D-132-item3 packet revision 2, decided under D-200; changeable): S-1 (the SSRF fix, server/skippieSeekerDeps.ts only, no DB guard) moves to SKIPPY-fix.s1-ssrf so it is not held behind the guard and its D-090-BYOR wait; this row keeps S-2 to S-6 and the live proof, and waits for both. No flag changes (D-201)."
     },
     {
       "id": "BRANCH-HYGIENE-1",
@@ -970,7 +988,7 @@
         "D-132-audit",
         "D-090-BYOR"
       ],
-      "note": "D-165: cut agent/queue/d132-item3 from #550's head, merge #542 (the only piece #550 lacks), then merge main after D-132-audit lands; keep #547's version of #541's part. Tier 1 review by a model other than Instinct; then close #541-#544 and #550. D-221 (Oct 26): re-scope before any build. D-219 (owner freeze Oct 25, re-confirmed Oct 26) supersedes the D-132 per-level credit model this row builds, so PRs #541-#544 and #550 are not landed as written. Keep the valid invariant (an ask is charged exactly the quote the seeker accepted, or answers 409 with nothing charged) and restate the quote as the request's level band plus its spend source. First deliverable of the re-scope: the accepted-price precondition (expectedCost, 409 before any debit), which SKIPPY-fix S-3 needs; the D-132 per-level credit quote is not rebuilt. Oct 28 re-scope (Claude Opus 5.5 · 4ef3, architect, decided under D-200; changeable): packet docs/plans/D-132-item3-accepted-price.md replaces the STRANDED-OCT23 cut-from-#550 plan. The row builds only the model-independent guard (expectedCost = {units, band, source}; band null until the owner settles D-219 (8)); #541-#544, #550 and #542 are source material, never merged. Waits for D-090-BYOR (open draft #632 owns server/db.ts and server/privateReferralRoutes.ts; D-223 (5) keeps an in-flight PR unheld). Web composer adoption is D-132-item3.composer; Skippy adoption stays SKIPPY-fix S-3.",
+      "note": "D-165: cut agent/queue/d132-item3 from #550's head, merge #542 (the only piece #550 lacks), then merge main after D-132-audit lands; keep #547's version of #541's part. Tier 1 review by a model other than Instinct; then close #541-#544 and #550. D-221 (Oct 26): re-scope before any build. D-219 (owner freeze Oct 25, re-confirmed Oct 26) supersedes the D-132 per-level credit model this row builds, so PRs #541-#544 and #550 are not landed as written. Keep the valid invariant (an ask is charged exactly the quote the seeker accepted, or answers 409 with nothing charged) and restate the quote as the request's level band plus its spend source. First deliverable of the re-scope: the accepted-price precondition (expectedCost, 409 before any debit), which SKIPPY-fix S-3 needs; the D-132 per-level credit quote is not rebuilt. Oct 28 re-scope (Claude Opus 5.5 · 4ef3, architect, decided under D-200; changeable): packet docs/plans/D-132-item3-accepted-price.md replaces the STRANDED-OCT23 cut-from-#550 plan. The row builds only the model-independent guard (expectedCost = {units, band, source}; band null until the owner settles D-219 (8)); #541-#544, #550 and #542 are source material, never merged. Waits for D-090-BYOR (open draft #632 owns server/db.ts and server/privateReferralRoutes.ts; D-223 (5) keeps an in-flight PR unheld). Revision 2 (coordinator review F1-F5): the quote keeps numeric cost and adds acceptedCost; expectedCost carries per-bucket units; the preview is a locked reconcile like getTokenWallet, not read-only; no composer row is registered (packet section 12); the BYOR serialization stands unless #632s holder agrees to reorder. Skippy adoption stays SKIPPY-fix S-3.",
       "owns": [
         "shared/acceptedAskCost.ts",
         "shared/acceptedAskCost.test.ts",
@@ -979,30 +997,8 @@
         "server/db.ts",
         "server/privateReferralRoutes.ts",
         "server/db.askPriceGuard.test.ts",
+        "server/askQuoteRoute.test.ts",
         "server/privateReferralRoutes.integration.test.ts"
-      ]
-    },
-    {
-      "id": "D-132-item3.composer",
-      "title": "The /ask composer sends the accepted cost (expectedCost) and handles 409 ask_price_changed with a two-click re-quote",
-      "row": "D-132",
-      "packet": "docs/plans/D-132-item3-accepted-price.md",
-      "tier": 1,
-      "lane": "ask-composer-cost",
-      "branch": "agent/queue/d132-item3-composer",
-      "status": "todo",
-      "dependsOn": [
-        "D-132-item3",
-        "D-099-bonus-line",
-        "D-174-fix-post-binding"
-      ],
-      "note": "Oct 28 (D-132-item3 re-scope, decided under D-200; changeable): echoes GET /api/company-referrals/quote cost as expectedCost on send; on 409 ask_price_changed shows the returned cost and needs a second confirm; nothing else in the composer changes. Waits for the open owners of its files (D-099-bonus-line waits for D-048-p3-live-review-find).",
-      "epic": "D-132-item3",
-      "owns": [
-        "client/src/hooks/useAskQuote.ts",
-        "client/src/pages/explore/askSend.ts",
-        "client/src/pages/explore/useAskComposer.tsx",
-        "client/src/pages/explore/ask.costQuote.test.tsx"
       ]
     },
     {
