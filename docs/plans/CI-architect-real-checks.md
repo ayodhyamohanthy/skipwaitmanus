@@ -56,7 +56,7 @@ Out of scope: deploy workflows, rollback, production, DB, protection or ruleset 
 
 ## Status
 
-- CI-architect-real-checks: fix — agent/queue/ci-architect-real-checks — c632d7e9
+- CI-architect-real-checks: fix — agent/queue/ci-architect-real-checks — 7846f4d9
 
 Evidence — CI-architect-real-checks — Deepseek-V4.1-Flash · 4352 — 2026-10-28
 
@@ -133,5 +133,7 @@ Branch `agent/queue/ci-architect-real-checks` @ `c632d7e9`, merged with `origin/
 - L1: `readGitDiff` returns `mode`; `decide` refuses `markerOnly` unless `mode === "merge-base"`. The fixture builds the exact case - `main` adds `docs/note.md`, the branch adds the identical file from the common ancestor, `git diff --name-only <base> <head>` is empty while the merge-base read reports `["docs/note.md"]` - and asserts the verdict is substantive with `changedFiles: 1`.
 
 **G2 re-proved after the change.** `git merge-file -p <candidate> <main blob> <#666 blob>` on the new `ci.yml` exits 0 and reproduces the candidate byte for byte; the `Typecheck` step's four lines are unchanged and nothing was added inside them.
+
+**Row status back to `todo`.** The previous session stamped the row `done` at `eecddf33` when Qoder's pass was recorded. That stamp is no longer true: the owner rejected the reviewed head, the fix changes the contract, and the work needs a fresh independent pass before it lands. A row left `done` while its pull request still needs review is invisible to every other session (`v.done` short-circuits `actionFor`), so it is set back to `todo` here; the session that lands it stamps `done` with the landing SHA.
 
 **Left out.** No deploy workflow, ruleset, protection or picker file is touched. The throwaway pull requests from the first round are not re-run: their runs still prove the classifier's behaviour on a real event, and the new contract is proven by the pins above plus the exact-head CI run on this branch. The first push-to-main run after landing is still the one path no pull request can exercise.

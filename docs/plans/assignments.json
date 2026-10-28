@@ -135,7 +135,7 @@
       "tier": 1,
       "lane": "ci-gate",
       "branch": "agent/queue/ci-architect-real-checks",
-      "status": "done",
+      "status": "todo",
       "syncedTo": "D-229",
       "dependsOn": [],
       "owns": [
