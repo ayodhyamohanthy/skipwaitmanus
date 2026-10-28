@@ -565,10 +565,10 @@
       "tier": 1,
       "lane": "audit",
       "branch": "agent/queue/postmerge-oct22-review",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-228",
       "dependsOn": [],
-      "note": "D-166 (2): #465, #478, #482 (migration 0106), #490 (migration 0107), #506, #517, #534, #535, #479, #510 merged with only a failed Copilot bot review. Review them as they are on main by a model other than Instinct; findings go to docs/plans/POSTMERGE-oct22-findings.md and become fix rows. No code change in this row.",
+      "note": "D-166 (2): #465, #478, #482 (migration 0106), #490 (migration 0107), #506, #517, #534, #535, #479, #510 merged with only a failed Copilot bot review. Review them as they are on main by a model other than Instinct; findings go to docs/plans/POSTMERGE-oct22-findings.md and become fix rows. No code change in this row. DONE: the findings doc landed as #619 (all ten PRs covered) and the four follow-ups were fixed by POSTMERGE-oct22-fixes on main (821399d4, 09891b3b, 91e0b6c8, 01928e67 + 5ff7ef2c, 57/57 regression tests verified on main 5fe7f9ee); #775 records each disposition. The OpenAI block was raised against code fixes this row forbids; D-228 clears it.",
       "owns": [
         "docs/plans/POSTMERGE-oct22-findings.md"
       ]
