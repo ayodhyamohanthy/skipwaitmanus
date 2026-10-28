@@ -190,6 +190,85 @@ export function ciStateFromRuns(runs) {
   return { state, sha: done.head_sha, url: done.html_url, ...(Number.isFinite(at) ? { at } : {}) };
 }
 
+// D-202: the decision register is data too. A row is `| D-nnn | date | decision | ...`;
+// its title is the first bold span (or the cell, cut to 160), and `Affects tasks:` names
+// the tasks a decision changes. The last trailer wins: a decision's own prose may quote
+// the rule. Parenthetical glosses and trailing sentences never become ids.
+const REGISTER_ROW = /^\s*\|\s*D-/;
+const REGISTER_DATE = /^\d{4}-\d{2}(?:-\d{2})?$/;
+const AFFECTS_TRAILER = "Affects tasks:";
+const TITLE_MAX = 160;
+
+/** Keep the text outside balanced parentheses; a gloss carries names, never task ids. */
+function withoutGlosses(text) {
+  let depth = 0, out = "";
+  for (const char of text) {
+    if (char === "(") depth += 1;
+    else if (char === ")") depth = Math.max(0, depth - 1);
+    else if (depth === 0) out += char;
+  }
+  return out;
+}
+
+function stripInlineMarkdown(text) {
+  return String(text)
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/`/g, "")
+    .replace(/\*\*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** The ids after the last `Affects tasks:` trailer: null when there is none, [] for "none". */
+function parseAffects(row) {
+  const at = row.lastIndexOf(AFFECTS_TRAILER);
+  if (at < 0) return null;
+  let text = withoutGlosses(row.slice(at + AFFECTS_TRAILER.length)).replace(/`/g, "");
+  if (/^\s*none\b/i.test(text)) return [];
+  // One plain sentence is the trailer; a period followed by a space (or the end) stops it,
+  // while a dot inside an id (D-100.csp-report) does not.
+  const stop = text.search(/\.(?=\s|$)/);
+  if (stop >= 0) text = text.slice(0, stop);
+  const ids = [];
+  for (const segment of text.split(",")) {
+    const token = (segment.trim().split(/\s+/)[0] ?? "").replace(/^[([*\]]+/, "").replace(/[.,;:`)\]]+$/, "");
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(token)) continue;
+    // An id carries an uppercase letter or a digit; a dotted file name never is one.
+    if (!/[A-Z0-9]/.test(token) || /\.(md|markdown|json|ya?ml|ts|tsx|mjs|js|css|sh)$/i.test(token)) continue;
+    ids.push(token);
+  }
+  return ids;
+}
+
+/**
+ * D-202: read `docs/DECISIONS.md` into [{ id, date, title, affects }] in register order.
+ * A malformed row or a duplicate id throws with the line number: the picker must stop,
+ * never guess which entry is real.
+ */
+export function parseDecisionRegister(markdown) {
+  const entries = [], seen = new Set();
+  String(markdown ?? "").split(/\r?\n/).forEach((row, i) => {
+    if (!REGISTER_ROW.test(row)) return;
+    const line = i + 1;
+    const cells = row.split(/(?<!\\)\|/).slice(1).map(c => c.trim());
+    // D-024 is a real row that lost its trailing pipe and some cells; read what is there.
+    if (cells.at(-1) === "") cells.pop();
+    const id = cells[0] ?? "";
+    if (!/^D-\d{3}$/.test(id)) throw new Error(`DECISIONS.md:${line}: row id "${id}" is not D-nnn`);
+    if (seen.has(id)) throw new Error(`DECISIONS.md:${line}: duplicate ${id}`);
+    const date = cells[1] ?? "";
+    if (!REGISTER_DATE.test(date)) throw new Error(`DECISIONS.md:${line}: date "${date}" is not YYYY-MM or YYYY-MM-DD`);
+    const cell = cells[2] ?? "";
+    const bold = /\*\*([\s\S]+?)\*\*/.exec(cell)?.[1];
+    const title = stripInlineMarkdown(bold ?? cell).slice(0, TITLE_MAX);
+    if (!title) throw new Error(`DECISIONS.md:${line}: ${id} has no title`);
+    seen.add(id);
+    entries.push({ id, date, title, affects: parseAffects(row) });
+  });
+  if (!entries.length) throw new Error("DECISIONS.md: no decision rows found");
+  return entries;
+}
+
 /** Every problem with the task list, or [] when it is valid. */
 export function validateAssignments(doc, packetExists) {
   const errors = [];
