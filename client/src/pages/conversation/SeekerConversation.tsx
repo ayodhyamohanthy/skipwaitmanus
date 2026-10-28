@@ -31,7 +31,7 @@ function nextLine(request: ThreadRequest, name: string, unknown: boolean): strin
     case "intro_made": return `Watch your email for ${unknown ? "the company’s" : `${name}’s`} recruiters. Companies decide hiring.`;
     case "declined": return `It’s not a judgment of you. Your slot is open again. Try another verified referrer ${at}.`;
     case "withdrawn": return "You withdrew this ask. Its open slot is free again. The credit came back only if no verified employee had picked it up.";
-    case "closed": return request.referrerId === null ? "Nobody could take it within 7 days. Your slot is free. Refresh your note and ask again." : null;
+    case "closed": return request.referrerId === null ? "Nobody could take it. Your slot is free. Refresh your note and ask again." : null;
     default: return null;
   }
 }
