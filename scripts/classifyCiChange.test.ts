@@ -571,3 +571,103 @@ describe("readGitDiff: the real reader against real repositories", () => {
     expect(fromEvent(pinnedBase, head, pinnedPair([], true)).markerOnly).toBe(false);
   });
 });
+
+// H1 (independent review 5688160581 on c404fe3b): the workflow's own fetch step
+// must reach a merge base for a long-lived marker branch. Open marker pull
+// requests have merge bases 650 to 1700 commits behind main, so `--deepen=100`
+// alone leaves the pinned pair with no merge base and the classifier answers
+// substantive, which sends an empty marker pull request to the queue gate (NO_ROW).
+// These tests run the real `run:` block of the "Fetch the pinned base and head"
+// step against a real shallow clone, then ask the real reader and the real rule.
+describe("H1: the workflow's fetch step resolves a merge base far behind main", () => {
+  const dirs: string[] = [];
+  afterEach(() => {
+    for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** The literal `run:` script of the fetch step, taken from ci.yml's first job that has it. */
+  function fetchStepScript(): string {
+    const text = fs.readFileSync(path.join(__dirname, "..", ".github", "workflows", "ci.yml"), "utf8");
+    const lines = text.split("\n");
+    const start = lines.findIndex((line) => line.includes("- name: Fetch the pinned base and head"));
+    expect(start).toBeGreaterThan(-1);
+    const runAt = lines.findIndex((line, i) => i > start && /^\s+run: \|\s*$/.test(line));
+    expect(runAt).toBeGreaterThan(start);
+    const indent = lines[runAt + 1].match(/^\s*/)![0].length;
+    const body: string[] = [];
+    for (let i = runAt + 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.trim() !== "" && line.match(/^\s*/)![0].length < indent) break;
+      body.push(line.slice(indent));
+    }
+    return body.join("\n");
+  }
+
+  const sh = (cwd: string, args: string[]) =>
+    execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+
+  /**
+   * A remote with `gap` commits on main after the fork point, and a marker
+   * branch holding one empty commit on the fork point. Returns a depth-1 clone
+   * of the marker branch plus the pinned pair, as actions/checkout leaves it.
+   */
+  function longLivedMarker(gap: number, unrelated = false) {
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), "classify-ci-long-"));
+    dirs.push(parent);
+    const remote = path.join(parent, "remote");
+    fs.mkdirSync(remote);
+    sh(remote, ["init", "-b", "main"]);
+    sh(remote, ["config", "user.email", "ci@example.invalid"]);
+    sh(remote, ["config", "user.name", "CI"]);
+    sh(remote, ["config", "commit.gpgsign", "false"]);
+    sh(remote, ["commit", "--allow-empty", "-m", "fork point"]);
+    const forkPoint = sh(remote, ["rev-parse", "HEAD"]);
+    if (unrelated) {
+      sh(remote, ["checkout", "--orphan", "marker"]);
+      sh(remote, ["commit", "--allow-empty", "-m", "unrelated marker"]);
+    } else {
+      sh(remote, ["checkout", "-b", "marker", forkPoint]);
+      sh(remote, ["commit", "--allow-empty", "-m", "marker"]);
+    }
+    const head = sh(remote, ["rev-parse", "HEAD"]);
+    sh(remote, ["checkout", "main"]);
+    for (let i = 0; i < gap; i++) sh(remote, ["commit", "--allow-empty", "-m", `main ${i}`]);
+    const base = sh(remote, ["rev-parse", "HEAD"]);
+    const clone = path.join(parent, "clone");
+    execFileSync("git", ["clone", "--depth=1", "--branch", "marker", "--no-tags", `file://${remote}`, clone], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    return { clone, base, head };
+  }
+
+  function runFetchStep(clone: string, base: string, head: string) {
+    execFileSync("bash", ["-e", "-c", fetchStepScript()], {
+      cwd: clone,
+      env: { ...process.env, BASE_SHA: base, HEAD_SHA: head },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  }
+
+  const git = (clone: string) => (args: string[]) =>
+    execFileSync("git", args, { cwd: clone, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+
+  it("a marker branch forked 400 commits behind main still reads empty from a merge base", () => {
+    const { clone, base, head } = longLivedMarker(400);
+    runFetchStep(clone, base, head);
+    const diff = readGitDiff(base, head, git(clone));
+    expect(diff.ok && diff.mode).toBe("merge-base");
+    expect(diff.ok && diff.files).toEqual([]);
+    const verdict = decide({ eventName: "pull_request", base, head, diff, eventClaimedEmpty: true, baseIsDefaultBranch: true });
+    expect(verdict.markerOnly).toBe(true);
+  });
+
+  it("a merge base that cannot be resolved stays substantive, never a fast path", () => {
+    const { clone, base, head } = longLivedMarker(30, true);
+    runFetchStep(clone, base, head);
+    const diff = readGitDiff(base, head, git(clone));
+    expect(diff.ok && diff.mode).toBe("pinned-pair");
+    const verdict = decide({ eventName: "pull_request", base, head, diff, eventClaimedEmpty: true, baseIsDefaultBranch: true });
+    expect(verdict.markerOnly).toBe(false);
+  });
+});
