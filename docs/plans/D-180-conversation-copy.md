@@ -207,4 +207,4 @@ Built Oct 29: `shared/conversationCopy.ts` and `shared/conversationCopy.test.ts`
 
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is on `main` (D-134).
 
-D-180-conversation-copy: review — agent/copy/d180-conversation-copy — 7d4b9091
+D-180-conversation-copy: done — dfc83f62
