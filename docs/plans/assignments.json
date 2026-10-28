@@ -242,9 +242,9 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-review-independence",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "D-151: did() compares exact session names, so on Oct 22 the picker handed #382's re-review to Qoder · a236 right after Qoder · 31dd fixed it. Compare models, count Fixed markers as fixes, and print the rule in the review step. Every Tier 1 review the queue hands out, P0-ask-link-signin's and P1-queue-attestation's included, goes through this check."
+      "note": "D-151: implemented on main by PR #530 (`ff4e0546`) — `did()` compares models at the review and landing hand-outs, `fixers` counts `Fixed` markers as well as `Fix claim`, and the printed review step names the model and outside-picker checks, with red-first tests in `scripts/nextTask.test.ts` (\"D-151 model-independent reviews and landings\"). Takeover (DeepSeek V4.1 Flash Free · a54e) found no packet item left to build and closed the row without a code change; focused picker tests 159 passed on main `d27959aa`."
     },
     {
       "id": "PICKER-decision-sync",
