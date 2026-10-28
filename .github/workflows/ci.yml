@@ -10,9 +10,34 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# CI-architect-real-checks (#748/#752). These three jobs are the required checks
+# on main (ruleset 25433342). They used to skip every `agent/reports/`,
+# `agent/review/`, `agent/heartbeat/` and `agent/architect/` pull request, which
+# also skipped substantive architect packet pull requests: #752 and #764 merged
+# with all three jobs skipped, and GitHub counts a skipped required job as
+# passed.
+#
+# The condition below is the whole skip rule now: a pull request may skip only
+# when its own diff is empty, as counted by GitHub at the pinned base and head.
+# `changed_files`, `additions` and `deletions` must all be exactly the number 0.
+# A branch name, title, message or label is never an input, so a runtime or
+# docs/registry change runs the full steps wherever it is pushed.
+#
+# `toJSON()` is deliberate: `==` coerces, so `changed_files == 0` would also
+# accept the string "0". `toJSON()` returns `0` for the number and `"0"` for the
+# string, so only a real numeric zero takes the fast path. A missing, null,
+# negative or malformed count fails the comparison and runs the checks.
+#
+# Every other event - a push to main, a dispatch, a re-run - falls through to
+# running, because the condition is gated on `pull_request`. Nothing here uses
+# `needs:`, so no classifier can fail and leave a required job skipped.
+#
+# Each job then re-reads the same pinned pair itself and fails if it is running
+# while that diff is empty (`scripts/classifyCiChange.mjs --expect-substantive`),
+# so a wrong count cannot buy a green job that ran no real step.
 jobs:
   check:
-    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'agent/reports/') || startsWith(github.head_ref, 'agent/review/') || startsWith(github.head_ref, 'agent/heartbeat/') || startsWith(github.head_ref, 'agent/architect/') || github.head_ref == 'agent/queue/landing')) }}
+    if: ${{ !(github.event_name == 'pull_request' && toJSON(github.event.pull_request.changed_files) == '0' && toJSON(github.event.pull_request.additions) == '0' && toJSON(github.event.pull_request.deletions) == '0') }}
     name: typecheck
     runs-on: ubuntu-latest
     steps:
@@ -22,10 +47,26 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # The pinned pair, never a branch name. A failed fetch is not fatal: the
+      # classifier then reports an unreadable diff and the full steps run.
+      - name: Fetch the pinned base and head
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: git fetch --no-tags --depth=1 origin "$BASE_SHA" "$HEAD_SHA"
+      - name: Classify the change from the pinned diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/classifyCiChange.mjs --expect-substantive >> "$GITHUB_OUTPUT"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Typecheck
-        run: pnpm check
+        # tsc needs more than the default old-space on this tree; OOM exits 1
+        # with no diagnostics (verified: 8GB local run passes with zero errors).
+        run: NODE_OPTIONS=--max-old-space-size=6144 pnpm check
       # scripts/design-token-audit.mjs already existed and already failed, but no
       # workflow ever ran it: design-gate.yml only invokes `impeccable detect`
       # behind `|| true`. So three off-brand hexes sat in the client surface
@@ -46,7 +87,7 @@ jobs:
         run: node scripts/scope-check.mjs --branch
 
   test:
-    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'agent/reports/') || startsWith(github.head_ref, 'agent/review/') || startsWith(github.head_ref, 'agent/heartbeat/') || startsWith(github.head_ref, 'agent/architect/') || github.head_ref == 'agent/queue/landing')) }}
+    if: ${{ !(github.event_name == 'pull_request' && toJSON(github.event.pull_request.changed_files) == '0' && toJSON(github.event.pull_request.additions) == '0' && toJSON(github.event.pull_request.deletions) == '0') }}
     name: unit + component + route tests
     runs-on: ubuntu-latest
     steps:
@@ -56,6 +97,18 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - name: Fetch the pinned base and head
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: git fetch --no-tags --depth=1 origin "$BASE_SHA" "$HEAD_SHA"
+      - name: Classify the change from the pinned diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/classifyCiChange.mjs --expect-substantive >> "$GITHUB_OUTPUT"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Vitest
@@ -66,7 +119,7 @@ jobs:
         run: pnpm vitest run
 
   build:
-    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'agent/reports/') || startsWith(github.head_ref, 'agent/review/') || startsWith(github.head_ref, 'agent/heartbeat/') || startsWith(github.head_ref, 'agent/architect/') || github.head_ref == 'agent/queue/landing')) }}
+    if: ${{ !(github.event_name == 'pull_request' && toJSON(github.event.pull_request.changed_files) == '0' && toJSON(github.event.pull_request.additions) == '0' && toJSON(github.event.pull_request.deletions) == '0') }}
     name: production build
     runs-on: ubuntu-latest
     steps:
@@ -76,6 +129,18 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - name: Fetch the pinned base and head
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: git fetch --no-tags --depth=1 origin "$BASE_SHA" "$HEAD_SHA"
+      - name: Classify the change from the pinned diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/classifyCiChange.mjs --expect-substantive >> "$GITHUB_OUTPUT"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build
