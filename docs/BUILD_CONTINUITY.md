@@ -1,0 +1,20 @@
+# Build and continue: current-instruction preflight (D-225)
+
+Owner direction, October 28, 2026: every agent reads the latest instructions and decisions and always works toward the goal. `build`, `continue`, `resume` and `next` mean continuation, not starting an old plan again.
+
+## Before claiming or changing a task
+1. Fetch current `origin/main`. Record its SHA. Read current `docs/BRIEF.md`, `AGENTS.md`, `docs/DECISIONS.md` and the task's current packet, not just the checkout's old copies. Do not reset a shared worktree or discard anyone's work. Reconcile your branch with current main through the normal merge process.
+2. Read the previous session's **repo-only outcome**: its packet status, branch/commit, PR and review/test results. Follow actual artifact links and inspect the content. A chat title, remembered summary or instruction to "read the last chat" is not evidence of a read. Never publish raw private chat/session logs or private sources. If there was no prior session, record that with the current task state; do not invent a handoff.
+3. Check what already landed or is in progress, the live picker board, dependencies and file ownership. Name the unfinished task and explain how it helps SkipWait become the go-to global site for job referrals, getting people referred faster. Never repeat finished work or revive a superseded backlog item. The queue proposes work within current direction; it cannot overrule that direction.
+4. Apply the owner's latest instructions. Frozen decisions remain binding until the owner explicitly reopens them. A newer file timestamp, higher decision ID, agent proposal or older chat does not itself authorize a change. If a newer owner instruction is not yet recorded, record it through the docs/review path before implementing it. Resolve contradictions against the owner's actual decision, not file age.
+5. Write a short repo-safe read receipt in the task/PR handoff: current main SHA; instruction/decision IDs and paths actually read; prior outcome commit/PR and what remains; selected task, goal contribution and owned paths; conflicts or missing evidence. Fetch again before implementation and landing; re-check if relevant instructions, decisions or ownership changed.
+6. Then use `node scripts/next-task.mjs --claim "<your model name>"` and retain its exact session-tagged identity. Reconcile the printed assignment with this preflight. If context is missing, stale or conflicting, do not implement or land the affected task. Report the exact missing source/conflict through the existing process; continue independent authorized preparation or other eligible work. Never halt every lane merely because one task needs re-sync.
+
+## Roles and limits
+Claude sessions provide intelligence/reasoning and bounded decisions/handoffs. Other development tools implement. This supersedes earlier Claude-build wording, including the target in the older `D-200-instructions-sync` packet; do not use that packet to restore the older role. Nothing waits for a particular model. Preserve file ownership, independent review, exact required CI, frozen product decisions, free-only choices, no force-push, and all payment, API, data/deletion and go-live holds. This rule grants no new product or spending authority.
+
+## Publication is not machine enforcement
+This document is a required session-start instruction, not a process running on the owner's computer. Repository prompts cannot prove that every client read them. The existing `PICKER-decision-sync` packet describes runtime decision-sync checks that are not implemented by this docs change. Until real enforcement is built and tested, the actual read receipt and reviewer check are required evidence. Do not report every agent synced without its receipt.
+
+## Carry the next handoff forward
+At the end of a session update its existing packet/PR with: actual completed outcome and commit, real test/review evidence, remaining goal-aligned work, current decisions checked, owned paths, and blockers. The next session reads that result before selecting work. Never replace this with raw private transcripts, an obsolete plan or an unsupported "done" claim.
