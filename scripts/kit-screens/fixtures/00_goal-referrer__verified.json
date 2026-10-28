@@ -1,0 +1,6 @@
+{
+  "signedIn": { "id": 42, "name": "Rahul Kumar", "email": "rahul@example.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/company-referrals/access", "match": "exact", "status": 200, "body": { "verifiedCompanyAccess": true, "workEmailDomain": "example.com", "companyName": "Example Co", "companyInitials": "EX" } }
+  ]
+}

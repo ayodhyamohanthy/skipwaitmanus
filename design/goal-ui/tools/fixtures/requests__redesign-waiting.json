@@ -1,0 +1,70 @@
+{
+  "signedIn": {
+    "id": "7",
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 4
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/mine",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "requests": [
+          {
+            "id": 601,
+            "title": "Product Designer",
+            "targetRoleUrl": "https://careers.alderbeam.example/jobs/601",
+            "companyDomain": "alderbeam.example",
+            "companyName": "Alderbeam Labs",
+            "companyInitials": "AL",
+            "compensation": null,
+            "status": "pending",
+            "referrerId": null,
+            "queueStatus": null,
+            "waitingForCoverage": false,
+            "coverageVisibleAt": null,
+            "heldForReferrer": false,
+            "unclaimedAssignment": false,
+            "referrerMessage": null,
+            "unreadMessageCount": 0,
+            "createdAt": "2026-10-14T08:00:00.000Z",
+            "updatedAt": "2026-10-14T08:00:00.000Z",
+            "attachmentCount": 1,
+            "expiresAt": null
+          }
+        ],
+        "slots": {
+          "plan": "free",
+          "planLabel": "Free",
+          "open": 1,
+          "cap": 3,
+          "full": false,
+          "nextPlan": null
+        }
+      }
+    }
+  ]
+}

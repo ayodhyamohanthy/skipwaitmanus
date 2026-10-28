@@ -1,6 +1,7 @@
 import { ArrowRight, Mail } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/kit/button";
+import { forgetSignInEmail, rememberedSignInEmail, rememberSignInEmail } from "@/lib/rememberedSignInEmail";
 
 /**
  * Job-seeker sign-in, fully on skipwait.me (no authkit.app screen). FOUNDER-LOCKED login rule, Oct 16 2026:
@@ -31,9 +32,9 @@ export function seekerSocialUrl(provider: string, returnTo: string): string {
 // buttons); the kit sign-in keeps the kit default look.
 export function SeekerSignIn({ returnTo = "/explore", goal = false }: { returnTo?: string; goal?: boolean }) {
   const commit = goal ? "bg-g-ink text-g-ink-inverse hover:bg-g-ink" : undefined;
-  const [emailMode, setEmailMode] = useState(false);
   const [stage, setStage] = useState<"email" | "code">("email");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => rememberedSignInEmail("seeker"));
+  const [remembered, setRemembered] = useState(() => rememberedSignInEmail("seeker") !== "");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -59,31 +60,30 @@ export function SeekerSignIn({ returnTo = "/explore", goal = false }: { returnTo
     try {
       const { ok, data } = await post("/api/auth/workos/email-code/verify", { email: email.trim().toLowerCase(), code: code.trim() });
       if (!ok || !data.signedIn) { setError(String(data.error || "That code could not be verified.")); return; }
+      rememberSignInEmail("seeker", email);
       window.location.assign(returnTo);
     } catch { setError("That code could not be verified."); } finally { setBusy(false); }
   }
 
-  if (!emailMode) {
-    return <div className="auth-options" data-testid="seeker-sign-in">
-      {SEEKER_SOCIAL.map(item => <Button key={item.id} type="button" variant="outline" className="google-button" onClick={() => window.location.assign(seekerSocialUrl(item.id, returnTo))}><span className="google-g" aria-hidden="true">{item.mark}</span>Continue with {item.label}</Button>)}
-      <div className="auth-divider"><span>or</span></div>
-      <Button type="button" className={commit} onClick={() => setEmailMode(true)}><Mail />Continue with email</Button>
-    </div>;
-  }
   if (stage === "email") {
     return <form className="auth-form" data-testid="seeker-sign-in" onSubmit={send}>
       <label htmlFor="seeker-email">Email address</label>
       <div className="auth-input"><Mail /><input id="seeker-email" name="email" type="email" placeholder="you@example.com" autoComplete="email" required value={email} onChange={e => { setEmail(e.target.value); setError(""); }} /></div>
+      {remembered && <button type="button" className="self-start text-xs font-semibold underline underline-offset-2" onClick={() => { forgetSignInEmail("seeker"); setRemembered(false); setEmail(""); document.getElementById("seeker-email")?.focus(); }}>Not you? Forget this email</button>}
       <p className="text-xs leading-relaxed text-muted-foreground">We’ll email you a six-digit code. New here? That creates your account.</p>
       {error && <p role="alert" className="text-sm text-[#B91C1C]">{error}</p>}
       <Button type="submit" className={commit} disabled={busy || !email.trim()}>{busy ? "Sending code…" : "Send sign-in code"} <ArrowRight /></Button>
-      <Button type="button" variant="ghost" onClick={() => { setEmailMode(false); setError(""); }}>Use another method</Button>
+      <Button type="button" variant="ghost" className={commit ? `sr-only ${commit}` : "sr-only"} onClick={() => document.getElementById("seeker-email")?.focus()}>Continue with email</Button>
+      <div className="auth-divider"><span>or</span></div>
+      <div className="auth-options">
+        {SEEKER_SOCIAL.map(item => <Button key={item.id} type="button" variant="outline" className="google-button" onClick={() => window.location.assign(seekerSocialUrl(item.id, returnTo))}><span className="google-g" aria-hidden="true">{item.mark}</span>Continue with {item.label}</Button>)}
+      </div>
     </form>;
   }
   return <form className="auth-form" data-testid="seeker-sign-in" onSubmit={verify}>
     <p className="text-sm font-semibold">Code sent to {email.trim().toLowerCase()}</p>
     <label htmlFor="seeker-code">Six-digit code</label>
-    <div className="auth-input"><input id="seeker-code" name="code" inputMode="numeric" autoComplete="one-time-code" placeholder="123456" value={code} onChange={e => { setCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }} /></div>
+    <div className="auth-input"><input id="seeker-code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={6} autoFocus placeholder="123456" value={code} onChange={e => { setCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }} /></div>
     {error && <p role="alert" className="text-sm text-[#B91C1C]">{error}</p>}
     <Button type="submit" className={commit} disabled={busy || code.length !== 6}>{busy ? "Checking…" : "Sign in"} <ArrowRight /></Button>
     <Button type="button" variant="ghost" onClick={() => { setStage("email"); setCode(""); setError(""); }}>Use a different email</Button>

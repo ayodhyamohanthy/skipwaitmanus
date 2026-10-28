@@ -10,7 +10,12 @@
  * Nothing here may state an outcome, count, or identity that the product does
  * not produce itself.
  */
-import { CREDIT_RULE, MONEY_SENTENCE, MONEY_SENTENCE_SHORT, PAID_PLANS_SENTENCE } from "./moneyCopy";
+import { CREDIT_RULE, MONEY_SENTENCE, MONEY_SENTENCE_SHORT, PAID_PLANS_SENTENCE, REFERRING_FREE_LINE } from "./moneyCopy";
+import { firstPackClaim } from "./planCatalog";
+
+/** The first-pack claim, from the catalog the server sells (POSTMERGE-oct22 #534). */
+const FIRST_PACK_INR = firstPackClaim("INR") ?? "our smallest pack";
+const FIRST_PACK_USD = firstPackClaim("USD") ?? "our smallest pack";
 
 export type LandingStep = { title: string; body: string };
 export type LandingLink = { href: string; label: string; summary: string };
@@ -50,7 +55,7 @@ export const LANDING_EXPLORE: readonly LandingLink[] = [
   { href: "/jobs", label: "Browse roles", summary: "Published roles worth a referral." },
   { href: "/wall", label: "Internal openings", summary: "Hiring signals shared privately by verified employees." },
   { href: "/referrer", label: "For employees", summary: "Verify your work email to review private requests at your company." },
-  { href: "/premium", label: "Buy credits", summary: "Extra referral credits cost $1 each and never expire." },
+  { href: "/premium", label: "Buy credits", summary: "Extra referral credits are sold in one-time packs that never expire." },
   { href: "/pricing", label: "Pricing", summary: "The free monthly allowance, extra credits, and what a credit buys." },
   { href: "/plans", label: "Plans and credits", summary: PAID_PLANS_SENTENCE },
   { href: "/about", label: "About us", summary: "Who runs skipwait.me and what it sells." },
@@ -91,6 +96,71 @@ export const LANDING_FAQ_HEADING = "Common questions, answered plainly.";
 export const LANDING_FAQ: readonly { question: string; answer: string }[] = [
   { question: "Is skipwait.me a public job board?", answer: "No. A referral request is visible only to verified employees at the company behind the role link you paste, and your resume stays private." },
   { question: "Who can review my request?", answer: "Only employees who verified a company email at that employer. They see the role, your resume, and your short note — never your contact details." },
-  { question: "What does it cost?", answer: `${MONEY_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire. ${CREDIT_RULE}` },
+  { question: "What does it cost?", answer: `${MONEY_SENTENCE} Extra credits are sold in one-time packs (from ${FIRST_PACK_INR} in India, ${FIRST_PACK_USD} elsewhere) and never expire. ${CREDIT_RULE}` },
   { question: "Does a referral guarantee an interview?", answer: "No. Employees choose whether to help, and a referral never guarantees an interview, an offer, or a job. You can withdraw an unclaimed request at any time." },
+];
+
+/**
+ * Goal landing (V9, D-131/D-150): the copy the released landing renders.
+ * The static public snapshot must show THIS current design, never the pre-goal
+ * landing (D-048-fix-landing-load-flash): on a slow or blocked bundle the
+ * reveal failsafe paints the snapshot, and painting the old design is the bug.
+ */
+export const GOAL_LANDING_H1 = "Nobody reads the pile.";
+export const GOAL_LANDING_HERO_LEAD = "Mass applications meet software, not people. Here, one verified employee at the company you want to join reads your ask - and can open a private conversation. No commissions, no outcome promises.";
+export const GOAL_LANDING_QUOTE_LEAD = "A referral is an introduction,";
+export const GOAL_LANDING_QUOTE_REST = "never a promise of an interview or a job.";
+export const GOAL_LANDING_QUOTE = `${GOAL_LANDING_QUOTE_LEAD} ${GOAL_LANDING_QUOTE_REST}`;
+export const GOAL_LANDING_EMPLOYEE_H2 = "Be the way in for someone good.";
+export const GOAL_LANDING_EMPLOYEE_LEAD = "Review asks when it feels right and open a door you believe in. Referring is always free - and referrers are never paid, so every yes stays genuine.";
+export const GOAL_LANDING_EXPLORE_NOTE = "Explore before signing in.";
+export const GOAL_LANDING_BAND_H2 = "Past the pile, into a conversation.";
+export const GOAL_LANDING_BAND_LEAD = "A verified employee inside the company picks your ask and opens a private conversation - so you arrive as a person, not one more application in the pile.";
+export const GOAL_LANDING_COMPARE_H2 = "Mass applying vs a referral.";
+export const GOAL_LANDING_COMPARE_ROWS: ReadonlyArray<readonly [label: string, mass: string, referral: string]> = [
+  ["Where you land", "One more application in a pile, screened by software before any person.", "One ask, read by a verified employee inside the company."],
+  ["Your effort", "The same form, re-filled for every posting, hearing nothing back.", "One thoughtful ask with your resume and a short note - not another form."],
+  ["Your wait", "39-55 days average hiring time for job-board and career-site candidates.", "About 29 days average hiring time for referred candidates."],
+  ["Your odds", "One of every applicant in the pile.", "Referrals are about 7% of candidates and convert at nearly 40%."],
+];
+export const GOAL_LANDING_FIGURES_TEXT = "Figures: Jobvite, “4 Reasons to Invest in Employee Referrals” - jobvite.com - Employer-side averages, not a promise for any one person.";
+export const GOAL_LANDING_FIGURES_HREF = "https://www.jobvite.com/blog/4-reasons-to-invest-in-employee-referrals/";
+export const GOAL_LANDING_STEPS_H2 = "Three steps. No noise.";
+export const GOAL_LANDING_TRUST_H2_PARTS: readonly [string, string] = ["Real insiders.", "Real rules."];
+export const GOAL_LANDING_TRUST_H2 = GOAL_LANDING_TRUST_H2_PARTS.join(" ");
+export const GOAL_LANDING_FAIR_H2 = "What never changes";
+
+/** The three hero steps the goal landing renders; the cost body follows the D-132 flag. */
+export function goalLandingSteps(costCopy: { stepBody: string }): Array<{ title: string; body: string }> {
+  return [
+    { title: "Pick where you want in", body: "See the companies with verified employees inside, and the roles you can ask about." },
+    { title: "Ask with the cost up front", body: costCopy.stepBody },
+    { title: "A yes opens a conversation", body: "An accepted ask opens a private conversation. A referral is an introduction, never a promise of an interview or a job." },
+  ];
+}
+
+/** The trust cards; the spend wording follows the D-132 flag. */
+export function goalLandingTrust(costCopy: { waitBody: string }): Array<{ title: string; body: string; blue: boolean }> {
+  return [
+    { title: "A real insider reads you", body: "Every referrer proves their company email before they can see a single ask.", blue: true },
+    { title: "Private until it counts", body: "Your name stays private until a referrer chooses to open the conversation.", blue: false },
+    { title: "Nothing spent while it waits", body: costCopy.waitBody, blue: false },
+  ];
+}
+
+/** The "What never changes" list; the cost rule follows the D-132 flag. */
+export function goalLandingFairRules(costCopy: { fairRule: string }): string[] {
+  return [
+    REFERRING_FREE_LINE,
+    costCopy.fairRule,
+    "No outcome promises: a referral is an introduction, not an interview or a job.",
+    "Private by default: your name stays hidden until a referrer accepts.",
+  ];
+}
+
+/** The goal landing's footer columns (V9 and the prerendered snapshot share them). */
+export const GOAL_FOOTER_COLS: Array<{ title: string; links: Array<[string, string]> }> = [
+  { title: "Product", links: [["/explore", "Explore companies"], ["/jobs", "Browse roles"], ["/pricing", "Pricing"], ["/plans", "Plans"]] },
+  { title: "People", links: [["/referrer", "Join as a referrer"], ["/help", "Help"], ["/contact", "Contact"]] },
+  { title: "Legal", links: [["/terms", "Terms"], ["/privacy", "Privacy"], ["/refunds", "Refunds"], ["/cancellations", "Cancellation"]] },
 ];

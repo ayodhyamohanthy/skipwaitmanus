@@ -8,7 +8,7 @@ import { GoalButton } from "./GoalButton";
 import { GoalSearchInput } from "./GoalSearchInput";
 import { GoalFilterChip } from "./GoalFilterChip";
 import { GoalReasonInput } from "./GoalReasonInput";
-import { GoalStatus } from "./GoalStatus";
+import { GoalStatus, GoalMiniStepper } from "./GoalStatus";
 import { GoalVerifiedMark } from "./GoalVerifiedMark";
 
 afterEach(cleanup);
@@ -133,5 +133,29 @@ describe("GoalVerifiedMark", () => {
     expect(mark.className).toContain("text-g-ink-2");
     expect(mark.className).not.toContain("text-g-trust");
     expect(mark.querySelector("svg")?.getAttribute("class")).toContain("text-g-trust");
+  });
+});
+
+
+describe("GoalMiniStepper semantic current node", () => {
+  it("keeps a post-referral interview neutral when its semantic status is accepted", () => {
+    render(<GoalStatus status="accepted" label="Interviewing" stepper={{ stage: 3 }} />);
+    expect(screen.getByTestId("goal-mini-stepper").className).toContain("text-g-ink");
+    expect(screen.getByTestId("goal-mini-stepper").className).not.toContain("text-g-emerald");
+  });
+  it("keeps labelled direct steppers accessible and terminal stages quiet", () => {
+    render(<GoalMiniStepper stage={2} terminal="withdrawn" label="Withdrawn progress" />);
+    expect(screen.getByRole("img", { name: "Withdrawn progress" }).className).toContain("text-g-ink-3");
+    expect(screen.getByRole("img", { name: "Withdrawn progress" }).querySelectorAll(".bg-current")).toHaveLength(1);
+  });
+
+  it.each([
+    ["waiting", 0, "text-g-amber"], ["under_review", 1, "text-g-amber"],
+    ["accepted", 2, "text-g-ink"], ["referred", 3, "text-g-emerald"],
+    ["expired", 1, "text-g-crimson"], ["withdrawn", 2, "text-g-ink-3"],
+  ] as const)("uses %s tone on its current node", (status, stage, tone) => {
+    render(<GoalStatus status={status} label={status} stepper={{ stage }} />);
+    expect(screen.getByTestId("goal-mini-stepper").className).toContain(tone);
+    expect(screen.getByTestId("goal-mini-stepper").querySelector(".bg-current")).toBeTruthy();
   });
 });

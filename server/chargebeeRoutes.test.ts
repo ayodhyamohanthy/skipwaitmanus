@@ -80,7 +80,7 @@ describe("Chargebee webhook route", () => {
     const response = await request(app).post("/api/chargebee/webhook").set("Host", "untrusted.example").set("Authorization", auth(`${environment}-secret`)).send(payload);
     expect(response.status).toBe(200);
     expect(resolveHostedPage).toHaveBeenCalledExactlyOnceWith({ invoiceId: "inv_runtime", amount: 9900, currency: "INR", site: environment === "live" ? "fixture-live" : "fixture-test", apiKey: environment === "live" ? "live-key" : "fixture-key" });
-    expect(fulfillPayment).toHaveBeenCalledExactlyOnceWith({ eventId: "ev_runtime", invoiceId: "inv_runtime", amount: 9900, currency: "INR", hostedPageId: "hp_runtime", passThruContent: "intent_runtime" });
+    expect(fulfillPayment).toHaveBeenCalledExactlyOnceWith({ eventId: "ev_runtime", invoiceId: "inv_runtime", amount: 9900, currency: "INR", hostedPageId: "hp_runtime", passThruContent: "intent_runtime", customerId: undefined, occurredAt: undefined, subscriptionId: undefined, subscriptionIdentityConflict: false });
   });
 
   it("retries without test credential fallback when the configured live key is missing", async () => {
@@ -177,6 +177,8 @@ describe("Chargebee webhook route", () => {
     expect(paymentIntent).toEqual({ tokenCount: 4, amount: 39_600, currency: "INR" });
     expect((await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", quantity: 1.5 })).status).toBe(400);
     expect((await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", quantity: 1001 })).status).toBe(400);
+    expect((await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", quantity: null })).status).toBe(400);
+    expect((await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", role: "admin", quantity: 1 })).status).toBe(400);
   });
 
   it("builds hosted-page return URLs from the configured public origin, never a spoofed request host", async () => {

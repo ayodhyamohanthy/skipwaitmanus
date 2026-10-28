@@ -12,3 +12,17 @@ export function seekerSignInUrl(returnTo: string): string {
 export function goToSeekerSignIn(returnTo: string): void {
   window.location.assign(seekerSignInUrl(returnTo));
 }
+
+// Only /ask owns referral query handoff. Never forward unrelated query values
+// (job links, tokens or a nested returnTo) into the authentication return URL.
+export function askSignInReturnTo(pathname: string, search: string): string {
+  if (pathname !== "/ask") return "/ask";
+  const source = new URLSearchParams(search);
+  const allowed = new URLSearchParams();
+  for (const key of ["fast", "referCompany", "referAlias", "post"]) {
+    const value = source.get(key);
+    if (value !== null) allowed.set(key, value);
+  }
+  const query = allowed.toString();
+  return query ? `/ask?${query}` : "/ask";
+}

@@ -7,7 +7,9 @@ import { z } from "zod";
 import { getAskShelfLifeEndsAtMs, referralStatuses } from "@shared/referral";
 import { companyIdentityOf, type CompanyIdentity } from "@shared/companies";
 import { REFERRER_ACCESS_PATH, isVerifiedReferrer, referrerAccessResponseSchema } from "@shared/referrerAccess";
+import { impactCardPayloadSchema, type ImpactCardPayload } from "@shared/shareImpactCard";
 import { JOB_LEVELS, REFERRER_AREAS, jobFunctionFieldSchema, type JobFunction } from "@shared/jobFunctions";
+import { referrerThankYouWallSchema, type ReferrerThankYouWall } from "@shared/landedJourney";
 import { readApiJson } from "@/lib/apiResponse";
 
 export type TokenSource = () => Promise<string | null | undefined>;
@@ -67,6 +69,8 @@ export type ReferrerHomeData = {
   completed: InboxRow[];
   /** Durable server flag: claimed or passed at least one ask ever. Null when the server predates the field (fail-closed: no samples). */
   hasEverReviewed: boolean | null;
+  /** The seeker-writable private thank-you wall (queue row 20 slice D); null until it loads. */
+  thankYous: ReferrerThankYouWall | null;
 };
 
 function authHeaders(token: string | null | undefined): Record<string, string> {
@@ -112,6 +116,11 @@ export async function saveReferrerPreferences(getToken: TokenSource, patch: Refe
   return (await sendJson("/api/referrer-preferences", "PUT", patch, getToken, preferencesPayloadSchema, "We could not save your referrer settings.")).preferences;
 }
 
+/** The signed-in referrer's own share card, parsed at the edge; 5xx answers reach Sentry via readApiJson. */
+export async function fetchImpactCard(getToken: TokenSource): Promise<ImpactCardPayload> {
+  return getJson("/api/referrer/impact-card", getToken, impactCardPayloadSchema, "We could not load your impact card.");
+}
+
 const bundleSchema = z.object({
   access: referrerAccessResponseSchema,
   preferences: preferencesPayloadSchema.shape.preferences.nullable(),
@@ -119,6 +128,9 @@ const bundleSchema = z.object({
   inboxCompleted: inboxSchema.nullable(),
   profile: profileSchema.nullable(),
   impact: impactSchema.shape.summary.nullable(),
+  // Null when the bundle came from a server that has not shipped the wall yet: the
+  // aside then shows no count rather than inventing one.
+  thankYous: referrerThankYouWallSchema.nullish().transform(value => value ?? null),
   failed: z.array(z.string()),
 });
 
@@ -150,8 +162,8 @@ async function fetchHomeBundle(getToken: TokenSource): Promise<ReferrerHomeData 
     const bundle = (await takePrefetchedBundle()) ?? await getJson("/api/referrer/home-bundle", getToken, bundleSchema, "bundle unavailable");
     setPrefetchHint(true);
     const access: CompanyAccess = (() => { const a = bundle.access; return { verified: isVerifiedReferrer(a), domain: a.workEmailDomain ?? "", companyName: a.companyName, companyInitials: a.companyInitials }; })();
-    if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [], hasEverReviewed: null };
-    // The page needs preferences and both lists; profile and impact are optional extras.
+    if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [], hasEverReviewed: null, thankYous: null };
+    // The page needs preferences and both lists; profile, impact and the wall are optional extras.
     if (!bundle.preferences || !bundle.inboxNew || !bundle.inboxCompleted) return null;
     return {
       access,
@@ -162,6 +174,7 @@ async function fetchHomeBundle(getToken: TokenSource): Promise<ReferrerHomeData 
       fresh: bundle.inboxNew.requests,
       completed: bundle.inboxCompleted.requests,
       hasEverReviewed: bundle.inboxNew.hasEverReviewed ?? null,
+      thankYous: bundle.thankYous ?? null,
     };
   } catch { return null; }
 }
@@ -172,13 +185,14 @@ export async function fetchReferrerHome(getToken: TokenSource): Promise<Referrer
 
 async function fetchReferrerHomeSeparately(getToken: TokenSource): Promise<ReferrerHomeData> {
   const access = await fetchCompanyAccess(getToken);
-  if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [], hasEverReviewed: null };
-  const [preferences, fresh, completed, profile, impact] = await Promise.all([
+  if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [], hasEverReviewed: null, thankYous: null };
+  const [preferences, fresh, completed, profile, impact, thankYous] = await Promise.all([
     fetchReferrerPreferences(getToken),
     getJson("/api/company-referrals/inbox?scope=new", getToken, inboxSchema, "We could not load new asks."),
     getJson("/api/company-referrals/inbox?scope=completed", getToken, inboxSchema, "We could not load your reviews."),
     getOptional("/api/profile/me", getToken, profileSchema),
     getOptional("/api/referrer-impact/me", getToken, impactSchema),
+    getOptional("/api/referrer/thank-yous", getToken, referrerThankYouWallSchema),
   ]);
   return {
     access,
@@ -189,6 +203,7 @@ async function fetchReferrerHomeSeparately(getToken: TokenSource): Promise<Refer
     fresh: fresh.requests,
     completed: completed.requests,
     hasEverReviewed: fresh.hasEverReviewed ?? null,
+    thankYous,
   };
 }
 

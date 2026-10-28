@@ -300,6 +300,17 @@ describe("ReferralConversation thread", () => {
     expect(screen.queryByLabelText("Message")).toBeNull();
   });
 
+  it("shows the Hired thank-you link for the specific referrer on a closed ask (ROW20-CD / D-149)", async () => {
+    stubFetch(async (url: string) => (
+      url.endsWith("/mine")
+        ? ok({ requests: [{ ...seekerApproved, status: "closed", referrerId: 9, referrerName: "Priya Nair", referrerTitle: "Staff Designer" }] })
+        : ok({ messages: [] })
+    ));
+    renderPage();
+    const link = await screen.findByRole("link", { name: "Thank Priya" });
+    expect(link.getAttribute("href")).toBe("/landed?request=601");
+  });
+
   it("hides withdraw once a verified employee has claimed the pending ask", async () => {
     stubFetch(async (url: string) => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerPending, referrerId: 77 }] }) : fail(404, "gone")));
     renderPage();

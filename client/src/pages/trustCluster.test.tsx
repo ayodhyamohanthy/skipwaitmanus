@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Safety from "./Safety";
@@ -10,6 +11,14 @@ import SignIn from "./SignIn";
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/"],
+  useSearch: () => "",
+}));
+// Only Landed reads the session here (Safety, Help and SignIn do not). Signed out is
+// the state this file cares about: the journey must not name anyone before it knows.
+vi.mock("@/_core/auth", () => ({
+  useAuth: () => ({ isLoaded: true, isSignedIn: false, userId: undefined, getToken: async () => null }),
+  useUser: () => ({ user: null }),
+  SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock("../const", () => ({ startLogin: vi.fn() }));
 import { startLogin } from "../const";
@@ -60,15 +69,16 @@ describe("Trust cluster", () => {
     expect(screen.getByRole("link", { name: "Contact support" }).getAttribute("href")).toBe("/support");
   });
 
-  it("walks the landed journey with a copyable thanks and no fabricated outcome", () => {
-    render(<Landed />);
-    expect(screen.getByText("You did it.")).toBeTruthy();
+  it("holds the landed journey until a signed-in seeker names the real hire", () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><Landed /></QueryClientProvider>);
+    expect(screen.getByText("Someone helped you land it.")).toBeTruthy();
     expect(screen.queryByText(/Illustrative outcome|EXAMPLE/i)).toBeNull();
     expect(screen.queryByText(/Product Designer at Wipro/)).toBeNull();
     expect(screen.queryByText(/Rahul/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Thank your referrer/ }));
-    expect(screen.getByText("Say thanks.")).toBeTruthy();
-    expect(screen.queryByText(/thank-you wall/)).toBeNull();
+    // No hire, no celebration: the journey and its thank-you only appear on real data.
+    expect(screen.queryByText("You did it.")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Thank your referrer/ })).toBeNull();
   });
 
   it("offers intent choice on the split design, never a password form", () => {

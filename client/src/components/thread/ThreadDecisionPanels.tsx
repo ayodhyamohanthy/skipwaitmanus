@@ -4,6 +4,7 @@ import { ArrowRight, Check, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
+import { referrerGreeting } from "@/components/landed/landedModel";
 import type { ThreadRequest, ThreadRole } from "@/lib/threadApi";
 import { ModalError, ThreadModal } from "./ThreadModal";
 import { companyName, stageIndex, stageOf } from "./threadModel";
@@ -80,7 +81,7 @@ export function SeekerPanel({ request, onWithdraw, onProgress, onConfirmReferred
     return <Button asChild className="mt-4 w-full"><Link href="/explore">Find another referrer <ArrowRight /></Link></Button>;
   }
   if (stage === "Hired") {
-    return <p className="mt-2 text-sm text-muted-foreground"><Link href="/landed" className="text-link">Open the landed journey <ArrowRight className="size-3.5" /></Link></p>;
+    return <p className="mt-2 text-sm text-muted-foreground"><Link href={`/landed?request=${request.id}`} className="text-link">Thank {referrerGreeting(request.referrerName)} <ArrowRight className="size-3.5" /></Link></p>;
   }
   if (stage === "Accepted") {
     // D-038-B: the seeker can confirm they got the referral email, which stops

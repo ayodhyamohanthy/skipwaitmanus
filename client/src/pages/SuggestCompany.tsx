@@ -7,6 +7,9 @@ import { Heading, Panel, field } from "@/components/kit/preview-kit";
 import { findListedCompanyByName, useCompanyDirectory } from "@/lib/companyDirectory";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
+import { lazy, Suspense } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalSuggestCompany = lazy(() => import("./goal/seeker-small/GoalSuggestCompany"));
 
 // Kit v4 /suggest-company (app/src/routes/suggest-company.tsx) on the live
 // POST /api/company-suggestions intake (auth required, 3 a day, and one vote
@@ -26,6 +29,7 @@ function normalizeCompanyWebsite(input: string): string | undefined {
 }
 
 export default function SuggestCompany() {
+  if (goalSurfaceOn("suggest-company")) return <Suspense fallback={null}><GoalSuggestCompany /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   // Duplicate hint source; signed-out visitors never see the form, so never fetch it.

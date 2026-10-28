@@ -12,6 +12,7 @@ import Pricing from "./Pricing";
 import Support from "./Support";
 import Settings from "./Settings";
 import NotFound from "./NotFound";
+import { firstPackClaim } from "@shared/planCatalog";
 
 const { getToken } = vi.hoisted(() => ({ getToken: vi.fn().mockResolvedValue("test-token") }));
 vi.mock("@/_core/auth", () => ({
@@ -124,8 +125,10 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     cleanup();
     render(<Pricing />);
     // D-067 removed the Pro/Max plans: /pricing lists only what can be bought today.
-    expect(screen.getByText(/₹99 per credit/)).toBeTruthy();
-    expect(screen.getByText(/\$1 per credit/)).toBeTruthy();
+    // POSTMERGE-oct22 #534: assert the rendered values against the catalog source, not literals,
+    // so a pack-price change in shared/planCatalog.ts fails here instead of silently going stale.
+    expect(screen.getByText(firstPackClaim("INR")!)).toBeTruthy();
+    expect(screen.getByText(firstPackClaim("USD")!)).toBeTruthy();
     const text = document.body.textContent ?? "";
     for (const retired of ["₹599", "$7/month", "₹1,299", "$15/month", "Pro", "Max"]) expect(text).not.toContain(retired);
   });

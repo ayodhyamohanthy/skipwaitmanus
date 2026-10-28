@@ -31,9 +31,30 @@ concurrency:
 permissions:
   contents: write
   issues: write
+  # The release gate reads the CI runs of this commit (P1-deploy-green-gate, #748).
+  actions: read
 
 jobs:
+  # P1-deploy-green-gate (#748): nothing deploys until CI has passed on this exact
+  # commit. It waits for CI and refuses on red, cancelled, skipped, missing, still
+  # running at the timeout, a GitHub error, or a commit a newer successful deploy
+  # has already moved past. Manual recovery: dispatch this workflow on main once
+  # main's CI is green (dispatch CI on main first if the tip skipped CI).
+  release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require green CI on this exact commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/require-green-release.mjs --target web
+
   deploy:
+    needs: release-gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,11 +74,16 @@ jobs:
         env:
           VITE_WORKOS_CLIENT_ID: client_01M17TTFJ6784B1CN6MHAHB60Y
           VITE_WORKOS_ENABLED: "true"
-          VITE_GOAL_UI_LANDING: "true"
-          VITE_GOAL_UI_LANDING_V9: "true"
           VITE_GIT_COMMIT_SHA: ${{ github.sha }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_CLARITY_PROJECT_ID: ${{ secrets.VITE_CLARITY_PROJECT_ID }}
+
+      # Last look before the production write: CI may have been re-run red since
+      # release-gate passed, or this job alone may be a re-run.
+      - name: Re-check green CI before deploying
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/require-green-release.mjs --target web --once
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy dist/public --project-name skipwait --branch main --commit-dirty=true

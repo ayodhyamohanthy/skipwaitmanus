@@ -50,6 +50,18 @@ describe("JobExplorer", () => {
     expect(go).toHaveBeenCalledWith("/start");
   });
 
+  it("a signed-out Request referral keeps the job link for /start (D-095 item 3)", async () => {
+    isSignedIn.value = false;
+    const targetRoleUrl = "https://careers.example.com/jobs/designer";
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ jobs: [{ ...jobs[0], targetRoleUrl }], saved: [] }) })));
+    render(<JobExplorer />);
+    await screen.findByText("Senior Product Designer");
+    fireEvent.click(screen.getByRole("button", { name: "Request referral" }));
+    expect(readReferralDraft()).toMatchObject({ targetUrl: targetRoleUrl });
+    expect(localStorage.getItem("bridge-target-url")).toBe(targetRoleUrl);
+    expect(go).toHaveBeenCalledWith("/start");
+  });
+
   it("does not reuse a previous draft for a role without a job link", async () => {
     saveReferralDraft({ name: "Alex", targetUrl: "https://other.example.com/jobs/old" });
     render(<JobExplorer />);

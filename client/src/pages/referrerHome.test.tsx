@@ -30,12 +30,13 @@ const iso = (ms: number) => new Date(ms).toISOString();
 // Server contract: rows and the access check carry the company directory's name and initials.
 const ask = (id: number, createdMs: number, extra: Record<string, unknown> = {}) => ({ id, companyDomain: "wipro.com", companyName: "Wipro", companyInitials: "W", status: "pending", savedAt: null, createdAt: iso(createdMs), updatedAt: iso(createdMs), isClaimedByYou: false, unreadMessageCount: 0, attachmentCount: 1, ...extra });
 
-type HomeStub = { verified?: boolean; capacity?: number; paused?: boolean; verifiedAt?: string; reviewed?: number; replied?: number | null; fresh?: unknown[]; completed?: unknown[] };
+type HomeStub = { verified?: boolean; capacity?: number; paused?: boolean; verifiedAt?: string; reviewed?: number; replied?: number | null; fresh?: unknown[]; completed?: unknown[]; wall?: unknown };
 function stubHome(options: HomeStub = {}) {
   const now = Date.now();
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const path = String(url);
     if (path.endsWith("/access")) return ok(options.verified === false ? { verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null } : { verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
+    if (path.endsWith("/referrer/thank-yous")) return ok(options.wall ?? { thankYous: [], total: 0 });
     if (path.endsWith("/referrer-preferences") && init?.method === "PUT") return ok({ preferences: { referralCapacity: options.capacity ?? 3, paused: JSON.parse(String(init.body)).paused } });
     if (path.endsWith("/referrer-preferences")) return ok({ preferences: { referralCapacity: options.capacity ?? 3, preferAreas: ["Design"], referrerVisibility: "anon", notifyNewAsk: true, paused: options.paused ?? false } });
     if (path.endsWith("/profile/me")) return ok({ profile: { workEmailVerifiedAt: options.verifiedAt ?? iso(now - 20 * DAY), referralCapacity: options.capacity ?? 3 } });
@@ -56,7 +57,10 @@ describe("ReferrerHome", () => {
     expect(screen.getByText("New asks waiting")).toBeTruthy();
     expect(screen.getByText("YOUR RECORD · PRIVATE")).toBeTruthy();
     expect(screen.queryByText(/Asha/)).toBeNull();
-    expect(screen.queryByText(/THANK-YOU WALL/)).toBeNull();
+    // The wall is live now, but it only ever shows notes the server sent: none yet is
+    // the kit's honest empty state, never the prototype's sample note.
+    expect(screen.getByText("YOUR THANK-YOU WALL · PRIVATE")).toBeTruthy();
+    expect(screen.getByText("Notes from people you help will live here. Only you can see them.")).toBeTruthy();
     expect(screen.queryByText(/DESIGN PREVIEW|EXAMPLE ASKS/)).toBeNull();
     expect((await screen.findByRole("link", { name: /Private ask · Ref-1031/ })).getAttribute("href")).toBe("/queue?request=31");
     expect(screen.getByRole("link", { name: "Become a referrer" }).getAttribute("href")).toBe("/verify");
@@ -90,14 +94,43 @@ describe("ReferrerHome", () => {
     expect(urgent.className).toContain("text-destructive");
   });
 
-  it("shows private record metrics without ranking generosity or a thank-you count", async () => {
+  it("shows private record metrics without ranking generosity and counts only server thank-yous", async () => {
     stubHome({ fresh: [], reviewed: 4, replied: 100 });
     renderWithQuery(<ReferrerHome />);
     expect(await screen.findByText("YOUR RECORD · PRIVATE")).toBeTruthy();
     expect(screen.getByText("People helped")).toBeTruthy();
     expect(screen.getByText("100%")).toBeTruthy();
-    expect(screen.queryByText("Thank-yous")).toBeNull();
+    // An empty wall reads 0, and a wall the server did not answer reads "—".
+    expect(screen.getByText("Thank-yous").parentElement?.textContent).toBe("Thank-yous0");
     expect(screen.getByText("No asks right now.")).toBeTruthy();
+  });
+
+  it("shows the notes a seeker let this referrer keep, with no sample people", async () => {
+    stubHome({
+      fresh: [],
+      wall: { thankYous: [{ id: 5, message: "I start on the 3rd, thanks to you.", seekerName: "Kavya Menon", roleTitle: "Data Analyst", createdAt: "2026-10-10T09:00:00.000Z" }], total: 4 },
+    });
+    renderWithQuery(<ReferrerHome />);
+    expect(await screen.findByText(/I start on the 3rd, thanks to you\./)).toBeTruthy();
+    expect(screen.getByText("Kavya Menon · Data Analyst")).toBeTruthy();
+    expect(screen.getByText("Thank-yous").parentElement?.textContent).toBe("Thank-yous4");
+    expect(screen.queryByText(/Asha|Rahul|example/i)).toBeNull();
+  });
+
+  it("shows no thank-you count when the wall did not load", async () => {
+    stubHome({ fresh: [] });
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      const path = String(url);
+      if (path.endsWith("/referrer/thank-yous")) return fail(500, { error: "We could not load your thank-yous" });
+      if (path.endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
+      if (path.endsWith("/referrer-preferences")) return ok({ preferences: { referralCapacity: 3, preferAreas: [], referrerVisibility: "anon", notifyNewAsk: true, paused: false } });
+      if (path.includes("scope=new") || path.includes("scope=completed")) return ok({ requests: [] });
+      return fail(404, {});
+    }));
+    renderWithQuery(<ReferrerHome />);
+    expect(await screen.findByText("YOUR RECORD · PRIVATE")).toBeTruthy();
+    expect(screen.getByText("Thank-yous").parentElement?.textContent).toBe("Thank-yous—");
+    expect(screen.getByText("Notes from people you help will live here. Only you can see them.")).toBeTruthy();
   });
 
   it("greets a brand-new referrer with the honest first-ask empty state", async () => {
@@ -192,6 +225,7 @@ describe("referrer home derivation", () => {
       access: { verified: true, domain: "wipro.com", companyName: "Wipro", companyInitials: "W" },
       preferences: { referralCapacity: 3, preferAreas: [], preferLevels: [], referrerVisibility: "anon", notifyNewAsk: true, paused: false },
       verifiedAt: "2026-09-20T06:00:00.000Z", profileCapacity: 3, impact: null,
+      thankYous: null,
       hasEverReviewed: null,
       fresh: [{ id: 1, companyDomain: "wipro.com", jobFunction: null, status: "pending", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: false, unreadMessageCount: 0 }, { id: 2, companyDomain: "wipro.com", jobFunction: null, status: "approved", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: true, unreadMessageCount: 0 }],
       completed: [{ id: 2, companyDomain: "wipro.com", jobFunction: null, status: "approved", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: true, unreadMessageCount: 0 }, { id: 3, companyDomain: "wipro.com", jobFunction: null, status: "declined", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: true, unreadMessageCount: 0 }],

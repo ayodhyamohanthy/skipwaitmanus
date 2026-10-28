@@ -1,17 +1,17 @@
-# Delegating implementation to open models
+# Delegating implementation through the picker
 
-> Read [`docs/BRIEF.md`](BRIEF.md) first (D-073). This file is for whoever hands work to a model (the owner or an orchestrating agent) and for the reviewer. An implementer reads only the brief and its packet. The register, `AGENTS.md` and the plan §3b win any conflict with this file (D-074).
+> Read [`docs/BRIEF.md`](BRIEF.md) first (D-073). This file is for whoever hands work to a model (the owner or an orchestrating agent) and for the reviewer. Every session first completes [the current-instruction preflight](BUILD_CONTINUITY.md) (D-225), including latest decisions and the previous repo-only outcome; a packet cannot waive that read. The register, `AGENTS.md` and the plan §3b win any conflict with this file (D-074).
 
 Written Oct 18 2026 at `main` `5ef0626`. On that commit the full suite was green: 394 files passed, 3 skipped; 2,983 tests passed, 16 skipped, 0 failed.
 
 ## 1. Roles
 - **Owner:** decides (register), approves new features and pricing, triggers anything that touches live money or provider settings (catalog apply, the one live payment test, D-065), and answers the questions batched for the weekly review (D-064).
-- **CEO and architect (Claude Code, D-074, D-085):** sets direction and makes the high-stakes calls inside the owner's decisions; keeps the business, the architecture map, this file, the packets and the queue order true; re-analyses what we build toward the goal and brings the owner rated recommendations; writes a packet before a row is delegated; writes the red-first tests for Tier 1 packets; reviews Tier 1 work; handles P0 triage and register entries on the owner's say-so. It never builds a packet itself (the picker never offers it one).
-- **Implementer (an open frontier model):** executes exactly one packet per session, on its own branch; after it opens a Tier 1 draft pull request or lands, it reports to the CEO and ends the session (D-085).
+- **CEO and architect (Claude Code, D-074, D-085):** sets direction and makes the high-stakes calls inside the owner's decisions; keeps the business, the architecture map, this file, the packets and the queue order true; re-analyses what we build toward the goal and brings the owner rated recommendations; writes a packet before a row is delegated (any agent may write one, D-109); writes the red-first tests for Tier 1 packets; reviews Tier 1 work; handles P0 triage and register entries on the owner's say-so. D-225 supersedes the former Claude implementation role: Claude supplies intelligence/reasoning, while other tools develop; another capable session may perform authorized CEO work if that session is unavailable, so no task waits for one model. Tier 1 review remains independent of the builder and fixers (D-151), with required CI and protections (D-082).
+- **Implementer (development tools other than Claude sessions, D-225):** executes exactly one packet per session, on its own branch; after it opens a Tier 1 draft pull request or lands, it reports to the CEO and ends the session (D-085).
 - **Reviewer (a session of a model that neither built nor fixed the work, D-151):** checks Tier 1 work against the packet and §6 before it reaches `main`.
 
 ## 2. What to do next
-The binding order is the plan §3b (rules 1–7, D-072, D-053). The execution view with packet links, risk tiers and which lanes can run side by side is [`docs/plans/README.md`](plans/README.md). Only a row whose packet exists there may be handed to a model. A row without a packet goes to the architect first.
+The binding order is the plan §3b (rules 1–7, D-072, D-053). The execution view with packet links, risk tiers and which lanes can run side by side is [`docs/plans/README.md`](plans/README.md). Only a row whose packet exists there may be handed to a model. Any capable session may write a missing packet; do not wait for the architect specifically (D-200).
 
 ## 3. Risk tiers
 | Tier | What | Who may implement | Before `main` |
@@ -30,8 +30,10 @@ You are implementing one work packet in the SkipWait repository
 (github.com/ayodhyamohanthy/skipwaitmanus). It is a live product that
 handles real money: a mistake reaches real users.
 
-1. Read docs/BRIEF.md, then docs/plans/<PACKET FILE>. Read nothing else
-   unless the packet names it. Never open server/db.ts or
+1. Complete docs/BUILD_CONTINUITY.md before claiming: read current
+   instructions/decisions and the previous repo-only outcome. Read
+   docs/BRIEF.md, then docs/plans/<PACKET FILE>. A packet cannot waive
+   current-decision reading. For implementation details, never open server/db.ts or
    server/privateReferralRoutes.ts whole (they are too large): find a
    function with `grep -n "name" <file>` and read only that line range.
 2. git fetch origin. If a function the packet cites no longer matches
@@ -66,8 +68,9 @@ handles real money: a mistake reaches real users.
      (`git push origin <sha>:main`; GitHub's merge-commit button is also
      safe, since only an up-to-date branch can merge; never squash or
      rebase-merge, D-134 (6)). If that push is refused because main moved, merge the
-     latest origin/main, re-run the gate, wait for every check on the new
-     commit and fast-forward again; never force-push. Watch main's CI and
+     latest origin/main, wait for every required check on the new commit
+     (no fresh full local gate just because main moved: the Oct 23
+     merge-policy amendment) and fast-forward again; never force-push. Watch main's CI and
      both deploys to the end, run the live check, set your status line to
      "done — <sha>" with the evidence block.
    - Never push to main while main's CI is red (stop and report), while a
@@ -83,16 +86,16 @@ handles real money: a mistake reaches real users.
 ```
 
 ### 4a. Starting any model: the owner says `build`, `resume`, `continue` or `next` (D-083, D-085)
-Every agent entry doc tells an agent that all four words mean one thing: run `node scripts/next-task.mjs --claim "<your model name>"` and do only what it prints. If the name has no ` · <session>` part, the picker adds a unique session tag (for example `Qwen 3 · k3f9`) and prints it. Use exactly that full name for `--heartbeat`, `--report`, `--fixed`, `--verdict` and when you resume: on resume, read your name from the holder column of the board (`--status`); never invent a new one, or your own half-built work sits idle. Two sessions never share a name, so two sessions of one model count as different people for reviews.
+Every agent entry doc tells an agent that all four words mean one thing: run `node scripts/next-task.mjs --claim "<your model name>"` and do only what it prints. If the name has no ` · <session>` part, the picker adds a unique session tag (for example `Qwen 3 · k3f9`) and prints it. Use exactly that full name for `--heartbeat`, `--report`, `--fixed`, `--verdict` and when you resume: on resume, read your name from the holder column of the board (`--status`); never invent a new one, or your own half-built work sits idle. Two sessions never share a name, but sessions of one model are one model for reviews: a session of a model that built or fixed the work neither reviews nor lands it (D-151).
 
-The script reads Claude Code's order from `docs/plans/assignments.json` on `origin/main`, main's CI and each task pull request's CI from GitHub, and the local clone, then decides (a task whose dependency is not done gets no work at all from any of these passes, D-134: no build, takeover, make-green, review, findings fix, packet or landing; the board shows it as waiting, it never holds its lane, and your claim on it stays yours, kept alive by `--heartbeat`, until the dependency is done):
+The script reads the shared order from `docs/plans/assignments.json` on `origin/main`, main's CI and each task pull request's CI from GitHub, and the local clone, then decides (a task whose dependency is not done gets no work at all from any of these passes, D-134: no build, takeover, make-green, review, findings fix, packet or landing; the board shows it as waiting, it never holds its lane, and your claim on it stays yours, kept alive by `--heartbeat`, until the dependency is done):
 1. **Red `main` first**, fixed by one agent only. The fixer works on the lock branch itself (`agent/queue/fix-main-<sha8>`) and opens the fix pull request from it, so its commits keep the lock alive; its holder gets it back instead of waiting on itself. Because `main` is red, landing the fix is the one push D-082 allows, once every check on that commit is green. One fix-main lock at a time: a newer red commit while someone is on the fix does not open a second one.
 2. **Your own unfinished work** (a build, a review, findings to fix, a landing, a packet). Except: pending work ranked above your own task with nobody on it (a review, findings to fix, a red pull request whose owner is quiet, a landing, a half-built claim quiet for 2 hours, an unblock for the CEO) is handed to you first. You push your own work first (the picker enforces it), and your own claim stays yours for 2 hours.
-3. **Pending work nobody is on, top down** (owner: "completing a pending task is important than taking new one"): a Tier 1 review (never by the agent that built or fixed it), findings to fix (never by its reviewer), a pull request with red CI whose owner is quiet (make it green), a green pull request nobody lands, a passed review whose reviewer went quiet (landed by someone who neither built nor fixed it, `Land claim` on the review lock), a half-built claim quiet for 2 hours (take it over on the same branch), a blocked task (the CEO unblocks it). A Tier 1 pull request built outside the picker (no claim names its builder) is reviewed only once its branch has been quiet for 2 hours, unless a picker fixer pushed last (its Fixed marker came after the last push). A Tier 1 pull request whose CI turns red after its review passed goes to a fix stage and is reviewed again; it is never landed as it is.
+3. **Pending work nobody is on, top down** (owner: "completing a pending task is important than taking new one"): a Tier 1 review (never by a session of a model that built or fixed it, D-151), findings to fix (never by its reviewer), a pull request with red CI whose owner is quiet (make it green), a green pull request nobody lands, a passed review whose reviewer went quiet (landed by a session of a model that neither built nor fixed it, `Land claim` on the review lock), a half-built claim quiet for 2 hours (take it over on the same branch), a blocked task (the CEO unblocks it). A Tier 1 pull request built outside the picker (no claim names its builder) is reviewed only once its branch has been quiet for 2 hours, unless a picker fixer pushed last (its Fixed marker came after the last push). A Tier 1 pull request whose CI turns red after its review passed goes to a fix stage and is reviewed again; it is never landed as it is.
 4. **New work, top down:** the next `todo` whose dependencies are done and whose lane is free. A squash-merged pull request counts as done even before its status is set to done.
 5. **A red or blocked priority** (red CI, or a red or blocked report) holds its own lane and the tasks that depend on it for everyone else: nothing there starts, other lanes go on; red `main` holds everything (D-109). An agent already holding work below a red priority whose owner is active keeps going on its own work (its hands cannot help the red one); a red priority with nobody on it is handed out first.
 6. **Quiet** means no push to the task's branch or lock and no heartbeat for 2 hours (D-085; queue rule 2 said 24 hours). Push after every commit, run `--heartbeat --as "<name>"` before a long step (the full gate), and commit and push before you stop. A holder that comes back after 90 minutes or more re-takes its claim on the same branch a takeover would push to, so the first push wins and two agents never both hold it.
-7. **Claude Code (the CEO, D-085)** always claims as `--claim "Claude Code"`: the picker knows the CEO by the "Claude" prefix. It is offered red `main`, its own work, unblocks of blocked priorities, packets (architect, claimed on `agent/architect/<slug>`), Tier 1 reviews and Tier 1 landings after a passed review, and the CEO review when nothing at that level waits; never a build, takeover, make-green or findings fix.
+7. **Claude Code (intelligence/reasoning, D-225)** retains the historical identity `--claim "Claude Code"`, but must not treat a picker build offer as permission to implement. Follow `BUILD_CONTINUITY.md` and return a bounded decision/handoff for another development tool. The older Claude-build role is superseded. No task waits for the CEO session; another capable session may take authorized work. Tier 1 review remains independent (D-151), and all CI and branch-protection gates apply (D-082).
 8. **Reports:** every agent reports to the CEO with `--report green|red|blocked|review|landed --task <id> --as "<name>" --note "<one line>"` when it stops, lands, opens a pull request or gets blocked (markers on `agent/reports/log`). A note is one line; secrets and email addresses are redacted, and no personal data belongs in it (the repo is public). `--status` and the top of every run print one board: every priority top down, its role (CTO, CDO), health, holder, quiet time, pull request and latest report. Only an agent holding part of the task (its builder, reviewer, fixer, lander or unblocker) or the CEO may report on it, and a blocked report stands until the CEO reports on that task.
 9. **Sync:** while your own claimed work has commits or changes not on origin, the picker refuses new work, `--report` and `--fixed` (exit 3, "SYNC FIRST"); other local-only branches and a stale local `main` are reported.
 10. **One packet per session (D-074):** after you open a Tier 1 draft pull request or land, report to the CEO and end the session. A Tier 1 builder whose pull request waits for review holds nothing; the owner's next `build` starts a new session, which runs the picker.
@@ -120,7 +123,7 @@ STOP, WAIT or NOTHING TO PICK, tell me and stop.
 
 Use this prompt instead of `build` in any folder that is behind `main` (its entry docs do not know `build` yet). It changes nothing in the folder: the picker only reads git and pushes the claim.
 
-Claude Code keeps the list: a task goes in only with a ready packet (or as `architect` until it has one), and an agent changes only its own task's status, to done, in the pull request that lands it.
+Queue ownership is shared under D-200: add a task only with a ready packet (or as `architect` until it has one); any capable session may write its packet and update the register/order, explaining the change in its pull request. An agent changes only its own task's status to done in the pull request that lands it.
 
 ## 5. What the implementer returns (evidence block)
 Paste into your status line, the §3b row or your line in the packet's Status section (keep it under 1,200 characters; details go in commit messages):
@@ -168,6 +171,8 @@ Verdict: `pass` (then the reviewer pushes the merged candidate to the pull reque
 14. Never make a real payment or change live provider settings (D-065, runbook §4); never commit a secret or personal data (the repo is public, D-059); never reword Terms, Privacy, Refund or Cancellation text.
 15. Never refactor, rename or reformat outside the packet; never force-push, rewrite shared history or `git reset --hard` a shared tree.
 16. Never push to `main` with red or unfinished CI, or while `main` is red (D-082): `c53ea471` went straight to `main` with six failing tests and unreviewed Tier 1 money code, and three of its routes crashed live and lacked an ownership check (fixed forward in #330).
+17. Never build on an owner's word that exists only in your session or on your branch. workbuddy · b0eb recorded the owner's BYOR gate waiver only on its task branch, as D-148, an ID that open PR #488 already held (it reached `main` 13 minutes later). The board still showed its blocked report, so four hours later the CEO's D-154 put the gate back, and the owner had to restate his word (D-162). First record the word on `main` in its own docs pull request, under an ID fetched from `main` and every open branch, then report it, then build.
+18. Never merge a pull request from an unregistered branch: the queue gate rejects it before the required CI check can pass (D-166).
 
 ## 8. Working in a small context window
 - Required reading is the brief (under 10 KB) plus one packet. Aim for under 15 KB; a large lane keeps its packet under 60 KB and moves reference tables (verification, token values, specs) to an appendix that the implementer opens by section. The architecture map (`docs/ARCHITECTURE.md`) is also a reference: read only the section the packet names.
@@ -177,7 +182,7 @@ Verdict: `pass` (then the reviewer pushes the merged candidate to the pull reque
 ## 9. Running lanes side by side
 - Two lanes may run at the same time only when `docs/plans/README.md` marks them parallel-safe (different functions and files). Everything else waits.
 - Migrations: one number at a time; take the next free number after `drizzle/deploy/` and the numbers claimed in plan §5 at commit time, and record it there.
-- Pushes to `main` are serialized: fetch, merge, re-run the gate, wait for green CI on that exact commit, push (D-082). A rejected push means merge and re-gate, never force.
+- Pushes to `main` are serialized: fetch, merge, wait for green CI on that exact commit, push (D-082). A rejected push means merge `main` again and wait for CI on the new commit; a fresh full local gate is not needed just because `main` moved (Oct 23 merge-policy amendment). Never force.
 
 ## 10. An environment that works
 - Node 22.12 or newer (`.nvmrc` pins 22; the jsdom test environment loads an ES module with `require()`, which is only unflagged from Node 22.12). CI uses the latest Node 22.

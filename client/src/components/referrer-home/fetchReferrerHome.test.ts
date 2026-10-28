@@ -31,6 +31,16 @@ describe("fetchReferrerHome", () => {
     expect(data.fresh).toEqual([]);
   });
 
+  it("carries the private wall from the bundle, and reads a missing section as no data", async () => {
+    const note = { id: 5, message: "You opened the door.", seekerName: "Kavya Menon", roleTitle: "Data Analyst", createdAt: "2026-10-10T09:00:00.000Z" };
+    vi.stubGlobal("fetch", vi.fn(async () => json(bundle({ thankYous: { thankYous: [note], total: 4 } }))));
+    const withWall = await fetchReferrerHome(async () => null);
+    expect(withWall.thankYous).toEqual({ thankYous: [note], total: 4 });
+    // A server that has not shipped the wall yet leaves the count unloaded, never zeroed.
+    vi.stubGlobal("fetch", vi.fn(async () => json(bundle({ thankYous: null }))));
+    expect((await fetchReferrerHome(async () => null)).thankYous).toBeNull();
+  });
+
   it("falls back to the separate endpoints when the bundle is missing", async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url.includes("home-bundle")) return json({ error: "Not found" }, 404);

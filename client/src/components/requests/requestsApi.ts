@@ -23,6 +23,10 @@ const referralRequestSchema = z.object({
   compensation: z.string().nullish(),
   status: z.enum(referralStatuses),
   referrerId: z.number().int().nullish().transform(value => value ?? null),
+  // Revealed by the server only once a referrer has accepted (queue task 14); the
+  // landed journey uses the given name and nothing here invents one.
+  referrerName: z.string().nullish().transform(value => value ?? null),
+  referrerTitle: z.string().nullish().transform(value => value ?? null),
   queueStatus: z.enum(["available_for_review", "waiting_for_coverage", "held_for_credit"]).nullish(),
   // D-061 window fields: a waiting ask counts 90 days from creation (and shows no countdown),
   // everything else 7 days from first visibility (pre-0095 rows: creation).

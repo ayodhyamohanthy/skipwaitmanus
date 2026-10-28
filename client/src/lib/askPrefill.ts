@@ -13,11 +13,11 @@ export const ASK_NOTE_LIMIT = 600;
 export const ASK_PREFILL_TTL_MS = 60 * 60 * 1000;
 
 export const askPrefillSchema = z.strictObject({
-  companySlug: z.string().min(1).max(64),
-  targetRoleUrl: z.string().min(1).max(2048),
+  companySlug: z.string().min(1).max(64).nullable(),
+  targetRoleUrl: z.string().max(2048),
   note: z.string().max(ASK_NOTE_LIMIT),
   savedAt: z.number().int().nonnegative(),
-});
+}).refine(draft => Boolean(draft.targetRoleUrl.trim() || draft.note.trim()), { message: "A link or note is required" });
 
 export type AskPrefill = z.infer<typeof askPrefillSchema>;
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;

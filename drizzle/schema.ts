@@ -186,6 +186,46 @@ export const companyDomains = mysqlTable("companyDomains", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("company_domains_domain_unique").on(table.domain), index("company_domains_company_idx").on(table.companyId)]);
 
+// Job catalog (0120, D-174-job-catalog packet section 5.5). Sources are
+// registered by an admin with evidence and verified by a human; the sync job
+// fills catalogJobs from verified boards. Launch-gated: see JOB_CATALOG_ENABLED
+// in shared/jobCatalog.ts.
+export const companyJobSources = mysqlTable("companyJobSources", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 20 }).notNull(), // jobCatalogProviderSchema; "greenhouse" in this row
+  boardToken: varchar("boardToken", { length: 120 }).notNull(),
+  evidenceUrl: varchar("evidenceUrl", { length: 2048 }).notNull(),
+  verifiedAt: timestamp("verifiedAt"),
+  lastFetchedAt: timestamp("lastFetchedAt"),
+  lastCount: int("lastCount"),
+  status: mysqlEnum("status", ["verified", "unverified", "failing"]).default("unverified").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, table => [uniqueIndex("company_job_sources_provider_token_unique").on(table.provider, table.boardToken), index("company_job_sources_company_idx").on(table.companyId)]);
+
+export const catalogJobs = mysqlTable("catalogJobs", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  sourceId: int("sourceId").notNull().references(() => companyJobSources.id, { onDelete: "cascade" }),
+  externalId: varchar("externalId", { length: 190 }).notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  rawLocation: varchar("rawLocation", { length: 300 }),
+  locations: text("locations").notNull(), // JSON array of normalized location labels
+  workMode: mysqlEnum("workMode", ["onsite", "hybrid", "remote", "unknown"]).default("unknown").notNull(),
+  department: varchar("department", { length: 200 }),
+  jobFunction: varchar("jobFunction", { length: 60 }), // classifyJobFunction; null when unknown
+  level: int("level").notNull(), // 1-10 per packet section 4.3 (assignJobLevel)
+  applyUrl: varchar("applyUrl", { length: 2048 }).notNull(),
+  snippet: varchar("snippet", { length: 400 }).notNull().default(""),
+  publishedAt: timestamp("publishedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  firstSeenAt: timestamp("firstSeenAt").defaultNow().notNull(),
+  lastSeenAt: timestamp("lastSeenAt").defaultNow().notNull(),
+  closedAt: timestamp("closedAt"),
+}, table => [uniqueIndex("catalog_jobs_source_external_unique").on(table.sourceId, table.externalId), index("catalog_jobs_company_closed_idx").on(table.companyId, table.closedAt), index("catalog_jobs_company_level_idx").on(table.companyId, table.level)]);
+
 // Scheduled job runs (0078). Contract: shared/scheduledJobs.ts. One row per job
 // per window: the unique (jobName, windowKey) key is the single-flight lock and
 // the row is the idempotent run record. The app writes every timestamp from
@@ -707,6 +747,11 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   // D-079: when the provider (Chargebee) confirmed a card for this wallet's
   // owner. Written only from the verified webhook or a provider-truth re-read.
   cardValidatedAt: timestamp("cardValidatedAt"),
+  // D-155: when the provider (Chargebee) first reported a successful nonzero
+  // payment for this wallet's subscription. Written only from a verified
+  // payment_succeeded webhook tied to this wallet's subscriptionId - never
+  // from subscription activation alone.
+  lastPaidAt: timestamp("lastPaidAt"),
   // Order pinned to shared/billingCatalog.ts WALLET_PLAN_IDS (server/subscriptionManagementContract.test.ts); 0090 added the kit plans,
   // 0091 the Oct 14 2026 plans (land_100/200/500 are reserved, never written).
   plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).default("free").notNull(),
@@ -1157,6 +1202,26 @@ export const oauthAuthCodes = mysqlTable("oauthAuthCodes", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("oauth_auth_codes_user_idx").on(table.userId), index("oauth_auth_codes_expiry_idx").on(table.expiresAt)]);
 
+/**
+ * The kit landed journey (queue row 20 slices C/D): one row per ask that ended with
+ * a hire, holding the seeker's thank-you, whether they let the referrer keep it on
+ * their private wall, and the pay-it-forward answer. `deliveredAt` is the claim that
+ * makes the note send-at-most-once, and `conversationMessageId` (plain int, like
+ * `referralRequests.debitTransactionId`) records the thread message it produced.
+ */
+export const landedJourney = mysqlTable("landedJourney", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  seekerUserId: int("seekerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  referrerUserId: int("referrerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  thankYouMessage: text("thankYouMessage"),
+  shareOnWall: boolean("shareOnWall").default(false).notNull(),
+  payForwardChoice: varchar("payForwardChoice", { length: 12 }),
+  deliveredAt: timestamp("deliveredAt"),
+  conversationMessageId: int("conversationMessageId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("landed_journey_request_unique").on(table.referralRequestId), index("landed_journey_referrer_wall_idx").on(table.referrerUserId, table.shareOnWall)]);
 // Aggregate-only company access. Work-mailbox proof grants no employee/admin rights.
 export const companyAggregateAccess = mysqlTable("companyAggregateAccess", {
   id: int("id").autoincrement().primaryKey(),

@@ -30,3 +30,15 @@ This is decided design direction, not a proposal. It supersedes every older scre
 ## Carries over unchanged
 
 GoalShell layout, type scale, one-commit rule, dot+text status, copy re-read before ship, 1280+390 captures on every UI branch.
+
+## Amendment - goal-oriented design + benefit-oriented copy (owner, Oct 27)
+
+Owner direction, verified on his channel:
+- phonemsg-01M5Y1HVMB69M0V3AQR8HJYEAE (Oct 27, 12:12 PM): "Goal oriented ui design & us, benefit oriented ux copy/microcopy" ("& us" preserved verbatim; likely "& UX", unresolved - do not build on the guess)
+
+Read with the doctrine above and frozen D-153 (plain intent first, promise only what works):
+
+1. The screen serves the person's goal; the words sell the benefit, not the feature. Every heading, button, empty state and error says what the person can achieve here, what happens next, and - on failure - what to do about it.
+2. This is beyond terminology: replacing retired nouns ("ask", "credit") is the floor, not the bar. Copy is reviewed for benefit clarity before a screen ships, the same way captures are.
+3. No invented promises and no old-design reskins: benefit wording states only what works today (D-153 honest status), and the retired yellow/blue kit stays retired.
+4. This reopens no frozen decision and changes no legal, pricing or payment semantics.

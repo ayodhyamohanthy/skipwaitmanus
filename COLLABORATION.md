@@ -2,7 +2,7 @@
 
 Applies to every model, IDE, CLI, automation agent, and human working on this repository. Read [`docs/BRIEF.md`](docs/BRIEF.md) first (D-073), then this file and AGENTS.md, before editing. Configure tools that do not discover AGENTS.md automatically to read both files at session start. Instructions are a shared convention, not an enforced lock or a direct communication channel between models.
 
-**Owner says `build`, `resume`, `continue` or `next`?** They all mean one thing: run `node scripts/next-task.mjs --claim "<your model name>"` and do only what it prints, step by step. It adds a session tag and prints your full name (for example `Qwen 3 · k3f9`): use exactly that name for every later flag and when you resume (read it from the holder column of `--status`; never invent a new one), and never share a name with another session. Order, each top down: red `main`; your own unfinished work (pending work ranked above it with nobody on it comes first); pending work nobody is on; new work. A red or blocked priority holds its own lane and the tasks that depend on it (red `main` holds everything), so agents never take the same task and other lanes keep moving (D-109). A claim with no push and no `--heartbeat` for 2 hours is free. Push after every commit, report to the CEO with `--report` when you stop, and read the board with `--status`; never resume or choose work from memory. Claude Code is the CEO, claims as `--claim "Claude Code"` and sets the order in `docs/plans/assignments.json`; the open models (CTO, CDO and the team) build (D-083, D-085).
+**Owner says `build`, `resume`, `continue` or `next`?** Continue current work, never restart an old plan. First follow [the current-instruction preflight](./docs/BUILD_CONTINUITY.md) (D-225): fetch current main, read latest instructions and decisions plus the previous repo-only outcome, check goal alignment and ownership, then use `node scripts/next-task.mjs --claim "<your model name>"`. Read its assignment against those decisions before implementation; stale or conflicting context holds only the affected task. Claude handles intelligence/reasoning; other tools develop. Keep the picker's exact session-tagged name for later flags. The picker is not proof that the preflight was read.
 
 ## 1. Establish the baseline
 
@@ -57,13 +57,16 @@ Next: <next action or requested coordination>
 - Before committing, inspect status, the full diff, recent history, and the staged diff. Stage explicit owned paths; never use `git add .` or `git add -A` to sweep up shared changes.
 - Before merging, fetch again and review the entire branch diff against current main, not only the latest commit.
 - Update only your clean, isolated branch. Resolve conflicts by reading both changes and preserving their intent; never blindly select ours/theirs or delete conflict markers to make tests pass.
-- Ask the owners to resolve ambiguous behavior conflicts. Rerun validation on the integrated result; earlier passing tests do not certify a later merge.
+- Ask the owners to resolve ambiguous behavior conflicts. Rerun validation on the integrated result; earlier passing tests do not certify a later merge (required CI on the merge result; a docs/registry-only PR needs focused checks and an independent delta review, Oct 23 merge-policy amendment).
 - Run `git diff --check`, `pnpm check`, affected Vitest files, and `pnpm build` for runtime/dependency changes. Report exact commands and outcomes, including failures outside the task. Do not weaken tests to conceal conflicts.
 - Use one designated integrator or the repository merge queue to serialize integration. Never force-push main. A rejected push means fetch, inspect, coordinate, and revalidate, not force.
-- Where repository settings permit, maintainers should protect main with required CI checks (verified groups ship without a PR review, D-003). Documentation alone does not enable branch protection; since Oct 20 the GitHub ruleset `main: green CI only (D-082)` refuses any push to main whose exact commit has not passed typecheck, tests and build, for everyone.
+- Where repository settings permit, maintainers should protect main with required CI checks (Tier 1 work needs an independent review before landing by a model that neither built nor fixed it, D-074, D-151; Tier 2 and 3 groups ship on green CI, D-003). Documentation alone does not enable branch protection; since Oct 20 the GitHub ruleset `main: green CI only (D-082)` refuses any push to main whose exact commit has not passed typecheck, tests and build, for everyone.
 
 ## 6. Leave a usable handoff
 
 Update the shared issue/PR with the commit SHA, changed files, design decisions, tests run, known failures, unresolved questions, and remaining work. Release the scope explicitly when finished. Record deployment status separately from push status; a successful push does not prove a successful deployment.
 
 If another model cannot access the shared record, give the user this handoff to relay. Never invent agreement, approval, test results, or completion by another session.
+
+
+Scoped Oct 23 founder exception for one manual claim only: see docs/DECISIONS.md, section "Scoped founder manual-claim exception, Oct 23, 2026". Applies only to PICKER-review-independence by Forge · fd06 after the attestation is committed and published; reviews and every other hold remain unchanged.

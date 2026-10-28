@@ -12,7 +12,7 @@ import { CREDIT_ENDED_CAVEAT } from "../shared/moneyCopy";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { accountPreferences, askCosts, seekerLevels, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { accountPreferences, askCosts, seekerLevels, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, userBlocks, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
@@ -43,12 +43,13 @@ import { firstLookUntilFrom, isOpportunityExpired, ownerOpportunityPostSchema, p
 import { isCorporateEmailDomain } from "../shared/const";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { JOB_LEVELS, REFERRER_AREAS, jobFunctionSchema, parseJobFunction, type JobFunction } from "../shared/jobFunctions";
+import { PAY_FORWARD_CHOICES, THANK_YOU_MAX_LENGTH, type LandedJourneyRequest, type LandedJourneyState, type ReferrerThankYouWall } from "../shared/landedJourney";
 import { resolveAskJobFunction } from "../shared/jobFunctionClassifier";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { isPaidPlanActive, resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { askWorkItemIdsSchema, dedupeAskWorkItemIds, type AskWorkItem } from "../shared/askWorkItems";
-import { AssistantPlanRequiredError, CompanyCapReachedError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
+import { AssistantPlanRequiredError, CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskWindow, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks, type UnclaimedAssignmentKind, type UnclaimedAssignments } from "./heldAsk";
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
@@ -61,6 +62,7 @@ import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, fr
 import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { grantFreeCycleOnValidationTx, openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
+import { PAID_CREDITS_NEVER_EXPIRE } from "../shared/planFamily";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
 import { bucketOfLedgerRow } from "../shared/creditSpend";
 import { fetchPublicJobLink } from "./jobLinkPreview";
@@ -1846,7 +1848,7 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   return { id: requestId };
 }
 
-export type CreateCompanyReferralInput = { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; workItemIds?: number[] };
+export type CreateCompanyReferralInput = { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; workItemIds?: number[]; /** Set when the composer showed the free-waiting (uncovered) representation: the commit must not charge because coverage flipped - it refuses instead, and the seeker re-confirms at the live price (D-132 item 3). */ expectedCoverage?: "waiting_for_company_coverage" };
 /**
  * The private `jobs` row behind a company ask. Its function is the seeker's
  * explicit choice ("seeker") or the shared classifier's guess from the job
@@ -1913,6 +1915,8 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const allocatedByReferrer=fastTrackLink?new Map<number,number>():await readAllocatedSlotCountsTx(tx,eligible.map(profile=>profile.userId));
     const available=fastTrackLink?eligible:eligible.filter(profile=>isOpenReferrer(profile,companyDomain,allocatedByReferrer.get(profile.userId)??0));
     const coverageStatus=companyCoverageStatus(available.length);const isWaiting=coverageStatus==="waiting_for_company_coverage";
+    // D-132 item 3: a composer that promised free waiting never commits a charge because coverage flipped. Thrown before the slot-cap check, the spend and every write; the retry after re-pricing carries no expectation. Guarded by the same server flag as the quote: review F2 (55e5aa3a) - with ASK_LEVEL_COST off the promise does not exist, so today's create-and-charge is unchanged even if a body carries the field.
+    if(askLevelCostEnabled()&&input.expectedCoverage==="waiting_for_company_coverage"&&!isWaiting)throw new CoverageOpenedUpError(companyDomain);
     // D-061: a waiting ask uses no open slot and bypasses the cap until it can reach a referrer.
     // The cap refusal stays ahead of the attachment read, as before, so it needs no document lock.
     if(!isWaiting&&entitlements.openRequests!==null&&openAsks>=entitlements.openRequests)throw new OpenAskSlotCapError(openAskSlots(entitlements,openAsks));
@@ -2373,6 +2377,7 @@ export async function refundLedgerSpendTx(tx: any, input: { userId: number; requ
     if (spend.source === BUCKET_SOURCES.purchased) { balance += credits; restored = credits; }
     else if (spend.source === BUCKET_SOURCES.cycle) {
       if (spend.sourceCycleKey === input.wallet.monthlyCycleKey) { const next = Math.min(input.wallet.monthlyAllowance, monthly + credits); restored = next - monthly; monthly = next; }
+      else if (askLevelCostEnabled() && PAID_CREDITS_NEVER_EXPIRE && input.wallet.plan !== "free" && input.wallet.subscriptionId !== null) { balance += credits; restored = credits; }
     } else if (spend.source === BUCKET_SOURCES.promo) {
       const promo = (await tx.select().from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, userId), eq(promoCreditGrants.role, "job_seeker"))).limit(1).for("update"))[0];
       if (promo && (promo.status === "active" || promo.status === "exhausted") && promo.expiresAt.getTime() > now.getTime() && promo.creditsRemaining + credits <= promo.tokenCount) {
@@ -2711,12 +2716,13 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
     if (!lockedWallet) return { outcome: "held", requestId: input.requestId, seekerUserId: request.jobSeekerId, companyDomain };
     const reconciled = await reconcileWalletTx(tx, lockedWallet, now);
     const promo = await promoStateForTx(tx, request.jobSeekerId, "job_seeker", now);
-    // D-110/D-132: the waiting ask pays the same level cost the covered ask
-    // paid at creation, classified from the same stored job row.
-    const deliveryJob = (await tx.select({ title: jobs.title, description: jobs.description, url: jobs.targetRoleUrl }).from(jobs).where(eq(jobs.id, request.jobId)).limit(1))[0];
-    // D-132 audit item 2: read the cost stored at creation; only an ask with no stored row (made with the flag off) is priced again.
+    // D-110/D-132 + POSTMERGE-oct22 P1 (#482): the waiting ask pays the price it was quoted at creation.
+    // D-132 audit item 2: a stored row is that price. A missing row means the ask was created while level
+    // pricing was off (rows are written only while the flag is on), so it keeps the flat one-credit price:
+    // delivery must never reclassify it against the flag as it stands now, or an ask that waited across the
+    // activation would be repriced higher than the seeker was ever told.
     const storedCost = (await tx.select({ creditCost: askCosts.creditCost }).from(askCosts).where(eq(askCosts.referralRequestId, input.requestId)).limit(1))[0];
-    const deliveryCost = storedCost ? storedCost.creditCost : askCreditCost({ title: deliveryJob?.title, description: deliveryJob?.description, url: deliveryJob?.url });
+    const deliveryCost = storedCost ? storedCost.creditCost : FLAT_ASK_COST;
     try {
       await spendCreditsTx(tx, { wallet: reconciled.wallet, grants: reconciled.grants, promo: promoGrantsEnabled() ? promoHolding(promo.grant) : null, credits: deliveryCost, meta: { idempotencyKey: askDeliveryKey(input.requestId), referenceType: "referral_request", referenceId: String(input.requestId) }, now });
     } catch (error) {
@@ -3539,13 +3545,113 @@ export async function listReferralConversation(userId: number, requestId: number
   return rows.map(row => ({ id: row.id, body: row.body, createdAt: row.createdAt, isMine: row.senderId === userId }));
 }
 
+/**
+ * The message and its notification are one write: a notice that fails after the
+ * message landed must not leave a message the caller could resend.
+ */
+async function sendReferralConversationMessageTx(tx: LedgerTx, userId: number, requestId: number, trimmedBody: string) {
+  const request = await tx.select({ jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1);
+  const { recipientId } = authorizeApprovedReferralConversation(userId, request[0]);
+  const result = await tx.insert(messages).values({ senderId: userId, recipientId, body: trimmedBody.slice(0, 3000), referralRequestId: requestId });
+  await tx.insert(notifications).values({ kind: "message_new", userId: recipientId, category: "message", title: "New private referral message", body: "You have a new message in an accepted referral request." });
+  return { id: Number(result[0].insertId) };
+}
+
 export async function sendReferralConversationMessage(userId: number, requestId: number, body: string) {
   const trimmedBody = body.trim();
   if (!trimmedBody) throw new Error("Write a message before sending");
-  const { db, recipientId } = await getApprovedReferralConversationParticipants(userId, requestId);
-  const result = await db.insert(messages).values({ senderId: userId, recipientId, body: trimmedBody.slice(0, 3000), referralRequestId: requestId });
-  await db.insert(notifications).values({ kind: "message_new", userId: recipientId, category: "message", title: "New private referral message", body: "You have a new message in an accepted referral request." });
-  return { id: Number(result[0].insertId) };
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(tx => sendReferralConversationMessageTx(tx, userId, requestId, trimmedBody));
+}
+
+/**
+ * The kit landed journey (queue row 20 slice C): the seeker whose ask ended with a
+ * hire records their thank-you, whether the referrer may keep it on their private
+ * wall, and their pay-it-forward answer. The note stays editable until it reaches
+ * the referrer, then it is final and reaches them through the existing referral
+ * conversation exactly once — `deliveredAt` is
+ * claimed with a conditional update before the send, so a double click or a retry
+ * after a lost response cannot hand the referrer the same note twice. The claim, the
+ * message and its notification commit together, so a failed send rolls the claim back
+ * with it and the seeker's own next attempt can deliver the note; the response says
+ * truthfully that it has not gone yet.
+ */
+export async function recordLandedJourney(userId: number, input: LandedJourneyRequest): Promise<LandedJourneyState> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const ask = (await db.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.id, input.referralRequestId)).limit(1))[0];
+  if (!ask || ask.jobSeekerId !== userId) throw new Error("This thank-you is not available to you");
+  if (ask.status !== "closed" || !ask.referrerId) throw new Error("A thank-you opens once your referrer marks the ask as hired");
+  const message = input.message?.trim().slice(0, THANK_YOU_MAX_LENGTH);
+  const now = new Date();
+  // Create-if-absent without throwing when a second submit wins the unique index.
+  await db.insert(landedJourney).values({ referralRequestId: ask.id, seekerUserId: userId, referrerUserId: ask.referrerId }).onDuplicateKeyUpdate({ set: { updatedAt: now } });
+  const rows = await db.select({ thankYouMessage: landedJourney.thankYouMessage, shareOnWall: landedJourney.shareOnWall, payForwardChoice: landedJourney.payForwardChoice, deliveredAt: landedJourney.deliveredAt }).from(landedJourney).where(eq(landedJourney.referralRequestId, ask.id)).limit(1);
+  const row = rows[0];
+  if (!row) throw new Error("We could not save that thank-you");
+  let thankYouMessage = row.deliveredAt ? row.thankYouMessage ?? message ?? null : message ?? row.thankYouMessage ?? null;
+  const shareOnWall = input.shareOnWall ?? row.shareOnWall;
+  const payForward = input.payForward ?? PAY_FORWARD_CHOICES.find(choice => choice === row.payForwardChoice) ?? null;
+  await db.update(landedJourney).set({ shareOnWall, payForwardChoice: payForward, updatedAt: now }).where(eq(landedJourney.referralRequestId, ask.id));
+  // A note is final once it reaches the referrer: a submit that read an undelivered
+  // row but lands after the delivery must not rewrite the note the wall shows.
+  if (!row.deliveredAt) await db.update(landedJourney).set({ thankYouMessage, updatedAt: now }).where(and(eq(landedJourney.referralRequestId, ask.id), isNull(landedJourney.deliveredAt)));
+  let delivered = Boolean(row.deliveredAt);
+  if (!delivered && message) {
+    try {
+      // The claim, the message and the link back to it commit together; a send that
+      // dies anywhere leaves no claim and no half-delivered note for a retry to duplicate.
+      const settled: { delivered: boolean; thankYouMessage?: string | null } = await db.transaction(async tx => {
+        const claimed = await tx.update(landedJourney).set({ deliveredAt: now, thankYouMessage: message, updatedAt: now }).where(and(eq(landedJourney.referralRequestId, ask.id), isNull(landedJourney.deliveredAt)));
+        if (Number(claimed[0]?.affectedRows ?? 0) !== 1) {
+          // Another of this seeker's own submits holds the claim; report the note it settled on.
+          const after = (await tx.select({ deliveredAt: landedJourney.deliveredAt, thankYouMessage: landedJourney.thankYouMessage }).from(landedJourney).where(eq(landedJourney.referralRequestId, ask.id)).limit(1))[0];
+          return { delivered: Boolean(after?.deliveredAt), thankYouMessage: after?.thankYouMessage ?? null };
+        }
+        const sent = await sendReferralConversationMessageTx(tx, userId, ask.id, message);
+        await tx.update(landedJourney).set({ conversationMessageId: sent.id }).where(eq(landedJourney.referralRequestId, ask.id));
+        return { delivered: true, thankYouMessage: message };
+      });
+      delivered = settled.delivered;
+      if (settled.thankYouMessage !== undefined) thankYouMessage = settled.thankYouMessage;
+    } catch (error) {
+      captureServerError(error, { area: "landedJourney", referralRequestId: ask.id });
+      delivered = false;
+    }
+  }
+  return { referralRequestId: ask.id, thankYouMessage, shareOnWall, payForward, delivered };
+}
+
+/**
+ * The referrer's private thank-you wall (queue row 20 slice D): the notes they
+ * received, and the newest few the seekers let them keep. Only a delivered note
+ * counts or shows, and the name and role are the ones this referrer already saw on
+ * the ask they worked. Nothing here is public to another user. Blocked pairs
+ * (userBlocks, either direction) are hidden from the wall and the count.
+ */
+export async function listReferrerThankYous(userId: number, limit = 3): Promise<ReferrerThankYouWall> {
+  const db = await getDb(); if (!db) return { thankYous: [], total: 0 };
+  const safeLimit = Math.max(1, Math.min(limit, 10));
+  let blockedUserIds = new Set<number>();
+  try {
+    const blockRows = await db.select({ blockerUserId: userBlocks.blockerUserId, blockedUserId: userBlocks.blockedUserId }).from(userBlocks).where(or(eq(userBlocks.blockerUserId, userId), eq(userBlocks.blockedUserId, userId)));
+    for (const b of blockRows) blockedUserIds.add(b.blockerUserId === userId ? b.blockedUserId : b.blockerUserId);
+  } catch (error) {
+    captureServerError(error, { area: "listReferrerThankYous", userId });
+  }
+
+  const received = and(eq(landedJourney.referrerUserId, userId), isNotNull(landedJourney.deliveredAt));
+  const [wallRows, allReceived] = await Promise.all([
+    db.select({ id: landedJourney.id, seekerUserId: landedJourney.seekerUserId, message: landedJourney.thankYouMessage, seekerName: users.name, roleTitle: jobs.title, createdAt: landedJourney.createdAt }).from(landedJourney).innerJoin(referralRequests, eq(landedJourney.referralRequestId, referralRequests.id)).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(landedJourney.seekerUserId, users.id)).where(and(received, eq(landedJourney.shareOnWall, true), isNotNull(landedJourney.thankYouMessage))).orderBy(desc(landedJourney.createdAt), desc(landedJourney.id)),
+    db.select({ id: landedJourney.id, seekerUserId: landedJourney.seekerUserId }).from(landedJourney).where(received),
+  ]);
+
+  const visibleWall = wallRows.filter(row => !blockedUserIds.has(row.seekerUserId) && Boolean(row.message));
+  const visibleTotal = allReceived.filter(row => !blockedUserIds.has(row.seekerUserId)).length;
+
+  return {
+    thankYous: visibleWall.slice(0, safeLimit).map(row => ({ id: row.id, message: row.message ?? "", seekerName: row.seekerName ?? null, roleTitle: row.roleTitle ?? null, createdAt: new Date(row.createdAt).toISOString() })),
+    total: visibleTotal,
+  };
 }
 
 
@@ -3797,6 +3903,99 @@ async function addPersonalReferralRewardCredit(tx: any, userId: number) {
   else await tx.insert(tokenBalances).values({ userId, role: "job_seeker", balance: PERSONAL_REFERRAL_REWARD_TOKENS, ...freshWalletCycle("job_seeker") });
 }
 
+/**
+ * Referral-link unlock (D-155): source-backed, provider-verified evidence of
+ * a successful nonzero payment on the account. Two evidence paths:
+ *
+ * 1. A one-time checkout whose fulfillment reached "credited" - written only
+ *    from a payment_succeeded webhook with a nonzero INR/USD amount after
+ *    the amount check (mismatches park as requires_review and never count;
+ *    pending / rejected fulfillments and mere checkout-or-page creation
+ *    never count). A fulfillment later marked "refunded" does NOT unlock:
+ *    refunded-first-payment policy is OPEN (D-155), no founder ruling exists,
+ *    and the refunded-only case is surfaced for his decision rather than
+ *    admitted or revoked silently (production today has no gate at all).
+ * 2. A subscription payment stamped onto the wallet by
+ *    recordSubscriptionPaymentEvidence from a payment_succeeded webhook tied
+ *    to the wallet's subscriptionId. Activation alone (wallet
+ *    subscriptionId) is NOT evidence: it can precede settlement or be
+ *    created by hand in the Chargebee dashboard, and subscription payments
+ *    never create a paymentFulfillments row.
+ *
+ * The promoCreditGrants first_paid_invoice row is not usable here: promo
+ * grants are disabled (grantPromoCreditsTx returns early).
+ */
+export function personalInviteUnlockedFromEvidence(evidence: { paidPayments: number; subscriptionPayments: number }): boolean {
+  return evidence.paidPayments > 0 || evidence.subscriptionPayments > 0;
+}
+
+/**
+ * D-155: record provider-verified paid evidence for a subscription. The
+ * caller passes an already-validated nonzero payment_succeeded event; the
+ * subscriptionEvents row makes redeliveries duplicates and lets a payment
+ * that arrived before the wallet's activation be backfilled by
+ * hasUserMadePayment. The stamp keeps the earliest payment time - a renewal
+ * or redelivery never moves it. Wallets are matched by provider
+ * subscriptionId, so the evidence is tied to the subscription's owner, not
+ * to an email guess.
+ */
+export async function recordSubscriptionPaymentEvidence(input: { eventId: string; subscriptionId: string; occurredAt?: Date }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const duplicate = await tx.select().from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee_paid"), eq(subscriptionEvents.providerEventId, input.eventId))).limit(1);
+    if (duplicate[0]) return { status: "duplicate" as const };
+    await tx.insert(subscriptionEvents).values({ provider: "chargebee_paid", providerEventId: input.eventId, subscriptionId: input.subscriptionId, eventType: "paid_evidence" });
+    const wallet = (await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update"))[0];
+    if (!wallet) return { status: "recorded" as const, reason: "wallet_not_linked_yet" as const };
+    const paidAt = input.occurredAt ?? new Date();
+    if (!wallet.lastPaidAt || wallet.lastPaidAt > paidAt) await tx.update(tokenBalances).set({ lastPaidAt: paidAt }).where(eq(tokenBalances.id, wallet.id));
+    return { status: "recorded" as const, reason: "stamped" as const };
+  });
+}
+
+export async function hasUserMadePayment(userId: number): Promise<boolean> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const wallets = await db.select({ id: tokenBalances.id, role: tokenBalances.role, subscriptionId: tokenBalances.subscriptionId, lastPaidAt: tokenBalances.lastPaidAt }).from(tokenBalances).where(eq(tokenBalances.userId, userId));
+  if (wallets.some(w => Boolean(w.lastPaidAt))) return personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 1 });
+
+  const payments = await db.select({ id: paymentFulfillments.id, role: paymentFulfillments.role, creditedAt: paymentFulfillments.creditedAt, createdAt: paymentFulfillments.createdAt }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), eq(paymentFulfillments.status, "credited"))).limit(1);
+  if (payments.length > 0) {
+    const targetWallet = wallets.find(w => w.role === payments[0].role) ?? wallets[0];
+    const paidAt = payments[0].creditedAt ?? payments[0].createdAt ?? new Date();
+    if (targetWallet && !targetWallet.lastPaidAt) {
+      await db.update(tokenBalances).set({ lastPaidAt: paidAt }).where(eq(tokenBalances.id, targetWallet.id));
+      targetWallet.lastPaidAt = paidAt;
+    }
+    return personalInviteUnlockedFromEvidence({ paidPayments: 1, subscriptionPayments: 0 });
+  }
+
+  for (const wallet of wallets) {
+    if (!wallet.subscriptionId) continue;
+    // Out-of-order delivery: the paid_evidence event can be recorded
+    // before the activation that links the wallet. A recorded payment event
+    // for the now linked subscription backfills the stamp.
+    const paidEvent = (await db.select({ id: subscriptionEvents.id }).from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee_paid"), eq(subscriptionEvents.subscriptionId, wallet.subscriptionId), eq(subscriptionEvents.eventType, "paid_evidence"))).limit(1))[0];
+    if (paidEvent) {
+      await db.update(tokenBalances).set({ lastPaidAt: new Date() }).where(eq(tokenBalances.id, wallet.id));
+      return personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 1 });
+    }
+  }
+  return personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 0 });
+}
+
+export type PersonalReferralInviteState = { status: "locked" } | { status: "unlocked"; inviteCode: string };
+
+/**
+ * The /share personal invite link (D-155): locked until the account's first
+ * paid invoice; no invite row is created while locked. Once unlocked, the
+ * existing get-or-create behaviour applies unchanged.
+ */
+export async function getPersonalReferralInviteState(userId: number): Promise<PersonalReferralInviteState> {
+  if (!(await hasUserMadePayment(userId))) return { status: "locked" };
+  const invite = await getOrCreatePersonalReferralInvite(userId);
+  return { status: "unlocked", inviteCode: invite.inviteCode };
+}
+
 export async function getOrCreatePersonalReferralInvite(userId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const existing = (await db.select().from(personalReferralInvites).where(eq(personalReferralInvites.inviterUserId, userId)).limit(1))[0];
@@ -3965,12 +4164,14 @@ export function promoGrantsEnabled(): boolean { return process.env.PROMO_GRANTS_
  * equal to its job's classified level (L1=1 ... L10=10); off keeps the flat
  * 1-credit cost. Changeable default per the owner. */
 export function askLevelCostEnabled(): boolean { return process.env.ASK_LEVEL_COST === "true"; }
+/** The flat one-credit price used while ASK_LEVEL_COST is off (D-110/D-132). */
+export const FLAT_ASK_COST = 1;
 /** Cost of one ask in credits. The create spend and the waiting-ask delivery
  * spend both classify the same stored job fields, and the pre-send quote
  * (/api/company-referrals/quote) classifies the same normalized link, so all
  * three always agree. */
 export function askCreditCost(job: { title?: string | null; description?: string | null; url?: string | null }): number {
-  if (!askLevelCostEnabled()) return 1;
+  if (!askLevelCostEnabled()) return FLAT_ASK_COST;
   return creditsForLevel(assignJobLevel({ title: job.title, description: job.description, url: job.url }).level);
 }
 /** D-132 audit item 2: the level and cost an ask is priced at, for the one row stored at creation. */
@@ -4393,8 +4594,13 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
       return { status: "ignored" as const, reason: "payment_already_reconciled" };
     }
     const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, intent[0].userId), eq(tokenBalances.role, intent[0].role))).limit(1);
-    if (wallet[0]) await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} + ${intent[0].tokenCount}` }).where(eq(tokenBalances.id, wallet[0].id));
-    else await tx.insert(tokenBalances).values({ userId: intent[0].userId, role: intent[0].role, balance: intent[0].tokenCount, ...freshWalletCycle(intent[0].role) });
+    if (wallet[0]) {
+      const setFields: Record<string, unknown> = { balance: sql`${tokenBalances.balance} + ${intent[0].tokenCount}` };
+      if (!wallet[0].lastPaidAt) setFields.lastPaidAt = creditedAt;
+      await tx.update(tokenBalances).set(setFields).where(eq(tokenBalances.id, wallet[0].id));
+    } else {
+      await tx.insert(tokenBalances).values({ userId: intent[0].userId, role: intent[0].role, balance: intent[0].tokenCount, lastPaidAt: creditedAt, ...freshWalletCycle(intent[0].role) });
+    }
     // Tagged with its payment, the shape the admin credit writes: the unique ledger
     // keys then refuse any second purchase row for this payment (P0-refund-review).
     await tx.insert(tokenTransactions).values({ userId: intent[0].userId, role: intent[0].role, tokenCount: intent[0].tokenCount, kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: String(intent[0].id), idempotencyKey: `payment-credit-${intent[0].id}` });
@@ -5288,11 +5494,13 @@ export function orderOpportunitiesOrganicFirst<T extends { createdAt?: Date | st
 export async function listPublicCompanyOpportunitiesWithSponsorship() {
   const db = await getDb(); if (!db) return [];
   const base = { id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt };
-  const attempt = async () => db.select({ ...base, compensation: companyOpportunities.compensation, sponsoredUntil: companyOpportunities.sponsoredUntil, sponsoredTier: companyOpportunities.sponsoredTier }).from(companyOpportunities).where(liveOpportunityCondition()).orderBy(desc(companyOpportunities.createdAt)).limit(24);
+  // The poster join feeds ONLY the opt-in-gated first-name projection; owner
+  // name/email never leave this function on a public row.
+  const attempt = async () => db.select({ ...base, compensation: companyOpportunities.compensation, sponsoredUntil: companyOpportunities.sponsoredUntil, sponsoredTier: companyOpportunities.sponsoredTier, showPosterFirstName: companyOpportunities.showPosterFirstName, ownerName: users.name, ownerEmail: users.email }).from(companyOpportunities).innerJoin(users, eq(users.id, companyOpportunities.ownerId)).where(liveOpportunityCondition()).orderBy(desc(companyOpportunities.createdAt)).limit(24);
   try {
     const rows = await attempt();
     const now = Date.now();
-    return orderOpportunitiesOrganicFirst(rows).map(row => ({ ...row, isSponsored: Boolean(row.sponsoredUntil && new Date(row.sponsoredUntil).getTime() > now) }));
+    return orderOpportunitiesOrganicFirst(rows).map(row => ({ id: row.id, companyDomain: row.companyDomain, kind: row.kind, roleTitle: row.roleTitle, targetRoleUrl: row.targetRoleUrl, location: row.location, compensation: row.compensation, walkInAt: row.walkInAt, walkInEndsAt: row.walkInEndsAt, createdAt: row.createdAt, isSponsored: Boolean(row.sponsoredUntil && new Date(row.sponsoredUntil).getTime() > now), poster: opportunityPosterOf(row) }));
   } catch {
     // Pre-migration fallback mirrors the organic list with sponsor flags off.
     return (await listPublicCompanyOpportunities()).map(row => ({ ...row, sponsoredUntil: null as Date | null, sponsoredTier: null as "featured" | "spotlight" | null, isSponsored: false }));

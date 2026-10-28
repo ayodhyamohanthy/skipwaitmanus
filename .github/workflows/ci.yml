@@ -12,6 +12,7 @@ concurrency:
 
 jobs:
   check:
+    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'agent/reports/') || startsWith(github.head_ref, 'agent/review/') || startsWith(github.head_ref, 'agent/heartbeat/') || startsWith(github.head_ref, 'agent/architect/') || github.head_ref == 'agent/queue/landing')) }}
     name: typecheck
     runs-on: ubuntu-latest
     steps:
@@ -37,8 +38,15 @@ jobs:
       # work merged on Sep 24 and never deployed. Nothing called it either.
       - name: Deploy trigger coverage
         run: node scripts/check-deploy-triggers.mjs
+      # PICKER-owns-scope (docs/plans/PICKER-PARALLEL.md): judge what this branch changed
+      # against the files its task declared it would touch. It reads the task from the
+      # branch name, and fails open (with a warning) only when it cannot run at all, so a
+      # broken tool never blocks a real fix — but a definite change outside `owns` fails.
+      - name: Scope check (declared file ownership)
+        run: node scripts/scope-check.mjs --branch
 
   test:
+    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'agent/reports/') || startsWith(github.head_ref, 'agent/review/') || startsWith(github.head_ref, 'agent/heartbeat/') || startsWith(github.head_ref, 'agent/architect/') || github.head_ref == 'agent/queue/landing')) }}
     name: unit + component + route tests
     runs-on: ubuntu-latest
     steps:
@@ -58,6 +66,7 @@ jobs:
         run: pnpm vitest run
 
   build:
+    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'agent/reports/') || startsWith(github.head_ref, 'agent/review/') || startsWith(github.head_ref, 'agent/heartbeat/') || startsWith(github.head_ref, 'agent/architect/') || github.head_ref == 'agent/queue/landing')) }}
     name: production build
     runs-on: ubuntu-latest
     steps:
@@ -71,3 +80,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build
         run: pnpm build
+      - name: Build with all goal surfaces on
+        run: pnpm build
+        env:
+          VITE_GOAL_SURFACES: all

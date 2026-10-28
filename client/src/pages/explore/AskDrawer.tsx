@@ -16,7 +16,7 @@ import {
   GoalTextInput,
 } from "@/components/goal";
 import type { PublicCompany } from "@shared/companies";
-import { MONEY_SENTENCE, type AskCostLine } from "@shared/moneyCopy";
+import { ADD_CREDITS_HREF, ADD_CREDITS_LABEL, MONEY_SENTENCE, type AskCostLine } from "@shared/moneyCopy";
 import { WHY_ME_MAX } from "@shared/whyMe";
 import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
 import { PinnedWorkPicker } from "@/components/ask/PinnedWorkPicker";
@@ -51,10 +51,15 @@ export type AskDrawerProps = {
   work: PinnedWorkState;
   watch: { state: "idle" | "busy" | "done" | "error"; message: string; onWatch(): void } | null;
   cost: AskCostLine;
+  /** D-132 item 3 (flag VITE_ASK_LEVEL_COST): set when the by-level quote is short; the primary action becomes the top-up. */
+  topUp: { shortfall: number; href?: string } | null;
+  onTopUp?: (event?: React.MouseEvent) => void;
   sendLabel: string;
   sendBusyLabel: string;
   sending: boolean;
   sendBlocked?: string;
+  sendGuidance?: string | null;
+  creditRecovery?: boolean;
   onSend(): void;
   onSaveDraft: (() => void) | null;
   draftState: "idle" | "saving" | "saved";
@@ -83,6 +88,8 @@ export function AskDrawer(props: AskDrawerProps) {
       <p data-testid="goal-ask-cost" className="text-g-label text-g-ink">{props.cost.line}</p>
       <p className="text-pretty text-g-meta text-g-ink-2">{props.cost.detail}</p>
       <p data-testid="goal-money-sentence" className="text-pretty text-g-meta text-g-ink-3">{MONEY_SENTENCE}</p>
+      {props.sendGuidance ? <p data-testid="ask-send-guidance" role="status" className="mt-2 text-pretty text-g-meta text-g-ink">{props.sendGuidance}</p> : null}
+      {props.creditRecovery ? <Link href="/plans" className="inline-flex min-h-11 items-center text-g-meta text-g-ink underline underline-offset-4">View referral options</Link> : null}
       {props.error ? <div role="alert" className="mt-1 text-pretty text-g-meta text-g-ink">{props.error}</div> : null}
       <div className="mt-4 flex items-center justify-end gap-2 max-gdesk:grid max-gdesk:grid-cols-[1fr_2fr]">
         {props.onSaveDraft ? (
@@ -91,9 +98,15 @@ export function AskDrawer(props: AskDrawerProps) {
           </GoalButton>
         ) : <span className="max-gdesk:hidden" />}
         <span aria-hidden="true" className="h-6 w-px bg-g-hairline max-gdesk:hidden" />
-        <GoalButton variant="primary" touch="large" keys={[{ icon: "command" }, { icon: "corner-down-left" }]} busy={props.sending} busyLabel={props.sendBusyLabel} disabledReason={props.sendBlocked} onClick={props.onSend} className={props.onSaveDraft ? undefined : "max-gdesk:col-span-2"}>
-          {props.sendLabel}
-        </GoalButton>
+        {props.topUp ? (
+          <GoalButton asChild variant="primary" touch="large" className={props.onSaveDraft ? undefined : "max-gdesk:col-span-2"}>
+            <Link href={props.topUp?.href ?? ADD_CREDITS_HREF} onClick={props.onTopUp}>{ADD_CREDITS_LABEL}</Link>
+          </GoalButton>
+        ) : (
+          <GoalButton variant="primary" touch="large" keys={[{ icon: "command" }, { icon: "corner-down-left" }]} busy={props.sending} busyLabel={props.sendBusyLabel} disabledReason={props.sendBlocked} onClick={props.onSend} className={props.onSaveDraft ? undefined : "max-gdesk:col-span-2"}>
+            {props.sendLabel}
+          </GoalButton>
+        )}
       </div>
     </>
   );
