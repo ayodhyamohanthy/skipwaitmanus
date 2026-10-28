@@ -889,12 +889,12 @@
       "tier": 2,
       "lane": "design-theme",
       "branch": "agent/queue/d048-dark-mode",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-230",
       "dependsOn": [
         "SHELL-focus-clearance"
       ],
-      "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them. D-224 (Oct 28, unblock ruling): the audit compatibility contract in this packet resolves the R8 conflict; the register entry fixes the goal colour token set at the 27 light colour tokens.",
+      "note": "Owner hold, recorded as D-230 (Oct 28): PR #766 stays draft; do not merge it and do not run --landed on it - a slot claim is not landing authorization, and this CLI's only release path writes a false Landed marker. Built and passing on head fc6072a4 (do not rebuild): the 27-token client/src/styles/goalDark.css, its R9 admission and fixtures in scripts/designTokenAuditCore.mjs, the switchable provider, sw-theme persistence and the pre-paint script; node scripts/design-token-audit.mjs exits 0 there, so D-224's contract is met. Open before the owner accepts: containment (html.dark still restyles the legacy kit surfaces; neither client/index.html:9 nor ThemeContext.tsx tests a route), the reported 1.19-1.67:1 cross-fade dip, and both-mode 1280/390 captures of every rendered state including fictional signed-in fixtures per admitted route. status owner parks the row so the picker stops handing that landing to the next idle session - the D-216 precedent used to hold draft PR #710; the owner's answer to the D-230 question returns it to the queue. Background: owner direction relayed in #645/#646 ('Have light and dark mode', 'In our platform'); the dark colour counterpart was approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light palette pixel-unchanged, no default or system-follow change). Tier 2: visual only.",
       "owns": [
         "client/src/styles/goalDark.css",
         "client/src/contexts/themeContext.test.tsx",
@@ -1414,7 +1414,7 @@
       "lane": "design-shell",
       "branch": "agent/queue/d048-f-shell-parts",
       "status": "owner",
-      "syncedTo": "D-230",
+      "syncedTo": "D-231",
       "dependsOn": [
         "D-048-F-credits",
         "D-048-F-goal-check"
@@ -1427,7 +1427,7 @@
         "client/src/components/CookieConsent.tsx",
         "client/src/components/shellParts.goal.test.tsx"
       ],
-      "note": "D-167 §6.2: shown on every signed-in page and the landing, so they move before the surfaces. Behaviour unchanged, including cookie consent and applyAnalyticsConsent. Oct 23 finding (Main, from the AYO-8 kit/settings 390px capture): the existing AppShell chrome duplicates the bell/profile affordances at mobile width (bell+profile left, bell right); whole-app scope, not any surface worker’s bug. The dedup fix is a candidate for this row’s scope and must not change auth behaviour. D-230 (Oct 28, unblock ruling): status moved to owner. PR #767 is a draft under an explicit owner hold (owner comments on #767: 6454185406, 6463784167, 6465559515, 6468051896, 6468097061, 6468614231, 6472224583) and no session may merge, make ready, revert, edit or mark it Landed, or renew its landing lease. Exact head 7d6d6498 has required CI green, so the pending work is acceptance, not repair. Packet 6.2 asks for goal primitives and tokens, but the four components import no components/goal module and the boundary test admits a moved surface only via MOVED_SURFACES (client/src/components/goal/goalBoundary.test.ts:14), a file owned by the open D-090-BYOR draft #632 together with this row's packet GOAL_UI_COVERAGE.md; the owner requires his own acknowledgment before any boundary change. No dependsOn edge is added: whether this row takes the boundary entries after #632 lands or the owner acknowledges them now is the open question (D-223 (1)). Owner question, one: accept the shell parts at the carrier and acknowledge the MOVED_SURFACES registration so the row returns to todo and lands, or keep the hold, and in that answer say whether the boundary entries land here or after #632. Until he answers the row waits in owner and nothing lands."
+      "note": "D-167 §6.2: shown on every signed-in page and the landing, so they move before the surfaces. Behaviour unchanged, including cookie consent and applyAnalyticsConsent. Oct 23 finding (Main, from the AYO-8 kit/settings 390px capture): the existing AppShell chrome duplicates the bell/profile affordances at mobile width (bell+profile left, bell right); whole-app scope, not any surface worker’s bug. The dedup fix is a candidate for this row’s scope and must not change auth behaviour. D-231 (Oct 28, unblock ruling): status moved to owner. PR #767 is a draft under an explicit owner hold (owner comments on #767: 6454185406, 6463784167, 6465559515, 6468051896, 6468097061, 6468614231, 6472224583) and no session may merge, make ready, revert, edit or mark it Landed, or renew its landing lease. Exact head 7d6d6498 has required CI green, so the pending work is acceptance, not repair. Packet 6.2 asks for goal primitives and tokens, but the four components import no components/goal module and the boundary test admits a moved surface only via MOVED_SURFACES (client/src/components/goal/goalBoundary.test.ts:14), a file owned by the open D-090-BYOR draft #632 together with this row's packet GOAL_UI_COVERAGE.md; the owner requires his own acknowledgment before any boundary change. No dependsOn edge is added: whether this row takes the boundary entries after #632 lands or the owner acknowledges them now is the open question (D-223 (1)). Owner question, one: accept the shell parts at the carrier and acknowledge the MOVED_SURFACES registration so the row returns to todo and lands, or keep the hold, and in that answer say whether the boundary entries land here or after #632. Until he answers the row waits in owner and nothing lands."
     },
     {
       "id": "D-048-F-coverage",
