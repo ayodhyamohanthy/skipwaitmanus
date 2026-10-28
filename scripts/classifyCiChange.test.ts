@@ -611,7 +611,7 @@ describe("H1: the workflow's fetch step resolves a merge base far behind main", 
    * branch holding one empty commit on the fork point. Returns a depth-1 clone
    * of the marker branch plus the pinned pair, as actions/checkout leaves it.
    */
-  function longLivedMarker(gap: number, unrelated = false) {
+  function longLivedMarker(gap: number, unrelated = false, shallow = true) {
     const parent = fs.mkdtempSync(path.join(os.tmpdir(), "classify-ci-long-"));
     dirs.push(parent);
     const remote = path.join(parent, "remote");
@@ -634,7 +634,7 @@ describe("H1: the workflow's fetch step resolves a merge base far behind main", 
     for (let i = 0; i < gap; i++) sh(remote, ["commit", "--allow-empty", "-m", `main ${i}`]);
     const base = sh(remote, ["rev-parse", "HEAD"]);
     const clone = path.join(parent, "clone");
-    execFileSync("git", ["clone", "--depth=1", "--branch", "marker", "--no-tags", `file://${remote}`, clone], {
+    execFileSync("git", ["clone", ...(shallow ? ["--depth=1"] : []), "--branch", "marker", "--no-tags", `file://${remote}`, clone], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -660,6 +660,16 @@ describe("H1: the workflow's fetch step resolves a merge base far behind main", 
     expect(diff.ok && diff.files).toEqual([]);
     const verdict = decide({ eventName: "pull_request", base, head, diff, eventClaimedEmpty: true, baseIsDefaultBranch: true });
     expect(verdict.markerOnly).toBe(true);
+  });
+
+  it("a complete (non-shallow) clone with unrelated histories also stays substantive: --unshallow failing is not fatal and not a fast path", () => {
+    const { clone, base, head } = longLivedMarker(30, true, false);
+    expect(sh(clone, ["rev-parse", "--is-shallow-repository"])).toBe("false");
+    runFetchStep(clone, base, head);
+    const diff = readGitDiff(base, head, git(clone));
+    expect(diff.ok && diff.mode).toBe("pinned-pair");
+    const verdict = decide({ eventName: "pull_request", base, head, diff, eventClaimedEmpty: true, baseIsDefaultBranch: true });
+    expect(verdict.markerOnly).toBe(false);
   });
 
   it("a merge base that cannot be resolved stays substantive, never a fast path", () => {
