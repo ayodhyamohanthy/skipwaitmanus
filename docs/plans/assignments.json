@@ -361,10 +361,10 @@
       "tier": 2,
       "lane": "repo-hygiene",
       "branch": "agent/queue/branch-hygiene",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-231",
       "dependsOn": [],
-      "note": "The owner, Oct 23. On ecdbc227, origin had 345 branches besides main; 69 tips are already in main, and squash-merged heads need the merged-PR check. Never delete main, agent/reports/log, the landing slot, unmerged work or any branch of a task that is not done. Paste the dry run in the PR; the lander pastes the --apply output after landing."
+      "note": "Code lands through #758 (built by Claude Code · da74; review fixes 83119df8, fb344ff8, a46ea06c, c8ed44bd). Landing authorizes no cleanup: under the retention hold on #758 (Oct 27, restated Oct 28) nobody runs --apply or --local and no real-origin dry run is performed; docs/plans/branch-retention.json is an interlock, not permission, so the backlog run stays a separate step for the owner or coordinator, and BRANCH-HYGIENE-2 must not wire --apply into the picker's landing step before that release. Never delete main, agent/reports/log, the landing slot, unmerged work or any branch of a task that is not done."
     },
     {
       "id": "BRANCH-HYGIENE-2",
@@ -476,14 +476,14 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-review-wording",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "owns": [
         "scripts/nextTaskText.mjs",
         "scripts/nextTaskReviewWording.test.ts"
       ],
-      "note": "D-184: on Oct 23 GPT · 5deb stopped the re-reviews of #547 and #527 because the review step says to look for 'your model' in the comments, without 'as builder or fixer'. One sentence in case \"review\" of scripts/nextTaskText.mjs plus a new test file (scripts/nextTaskReviewWording.test.ts, so it shares no owned file with PROCESS-review-gate); hand-outs unchanged."
+      "note": "D-184: on Oct 23 GPT · 5deb stopped the re-reviews of #547 and #527 because the review step says to look for 'your model' in the comments, without 'as builder or fixer'. One sentence in case \"review\" of scripts/nextTaskText.mjs plus a new test file (scripts/nextTaskReviewWording.test.ts, so it shares no owned file with PROCESS-review-gate); hand-outs unchanged. Implemented by PR #801 (`d82e4d04`) — Qoder · f568, Oct 29: the step now checks the pull request's commits and comments and the task's reports for a build, takeover or fix by your model, and states that a review or findings comment of your own model does not count (D-151 (1)); did(), fixers and every hand-out are unchanged."
     },
     {
       "id": "PICKER-architect-landing",
