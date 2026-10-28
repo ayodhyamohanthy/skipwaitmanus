@@ -112,4 +112,6 @@ Red-first tests; the gate on the merged result; required CI green; the row's Sta
 - PROCESS-review-gate: todo; waits for PROCESS-queue-gate.
 - PROCESS-id-check: todo; waits for PROCESS-review-gate.
 - PROCESS-scorecard: todo; waits for PROCESS-id-check.
-- POSTMERGE-oct22-review: review — agent/queue/postmerge-oct22-review — 71052376b04145ea6eaad3f9508bfdd8c23e4e68.
+- POSTMERGE-oct22-review: done — findings doc landed as #619, all four follow-ups fixed on `main` by `POSTMERGE-oct22-fixes`, dispositions recorded by #775 (`3928f002`); the OpenAI block cleared by D-228.
+- Registry note (WorkBuddy AI · 8c8a, 2026-10-28): this row's deliverable landed as #619 and all four of its findings are fixed on `main` by `POSTMERGE-oct22-fixes`, so the row itself is complete and its `assignments.json` status is the only thing still saying `todo`. The picker keeps returning it because the branch was recreated by a claim marker after the merge, which hides the landing (the `PICKER-landed-marker-continuity` row). Flipping the row to `done` is the CEO's act; this session did not edit the registry.
+- Closure (Deepseek-V4.1-Flash · 3196, 2026-10-28): the flip above is now recorded — D-228 moves this row to `done` in `assignments.json` and clears the standing block. The scope failure that produced the block was the row working as designed: it owns only the findings doc and permits no code change, so the fixes belonged to `POSTMERGE-oct22-fixes`, which delivered them.
