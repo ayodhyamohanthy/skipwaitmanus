@@ -3163,6 +3163,23 @@
       ]
     },
     {
+      "id": "P1-client-error-boundary",
+      "title": "Unexpected internal API errors return a neutral safe response",
+      "row": "D-019",
+      "packet": "docs/plans/P1-client-error-boundary.md",
+      "tier": 1,
+      "lane": "api-error-boundary",
+      "branch": "agent/queue/p1-client-error-boundary",
+      "status": "todo",
+      "syncedTo": "D-228",
+      "dependsOn": [],
+      "owns": [
+        "server/_core/trpc.ts",
+        "server/trpcErrorBoundary.test.ts"
+      ],
+      "note": "Standalone existing-privacy reliability correction; no active owned-path overlap at registration. Reviewed private telemetry contract governs red-first synthetic cases. Scope only client response formatting, not Sentry/logging sinks or their acceptance. Separate actual sink remediation remains required. No legal, analytics, money, expiry/refund, feature flag, deployment/API activation or ownership-hold change. Independent Tier1 final implementation review and exact current-main required CI/protected merge remain required."
+    },
+    {
       "id": "D-100.authz-referral",
       "title": "Read-only audit: authorization and personal data on the referral, document, block and safety routes",
       "row": "D-100",
