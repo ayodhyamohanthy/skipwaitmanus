@@ -124,7 +124,7 @@ export function SeekerConversation(props: Props) {
         </div>
         {line ? <p className="mt-2 text-pretty text-g-meta text-g-ink-2">{line}</p> : null}
         {props.referrerName ? <p className="mt-1 text-g-meta text-g-ink-2">Your referrer <span className="text-g-ink">{props.referrerName}</span></p> : null}
-        {request.status === "approved" && request.referredDueAt ? (
+        {request.status === "approved" && REFERRED_DEADLINE_ENABLED && request.referredDueAt ? (
           <p className="mt-1 text-g-meta text-g-ink-3">The referrer’s deadline to mark Referred is {formatDay(request.referredDueAt)}.</p>
         ) : null}
         {props.referenceId ? <p className="mt-2 text-g-meta text-g-ink">Referred. Reference ID <GoalNum>{props.referenceId}</GoalNum></p> : null}
