@@ -53,3 +53,7 @@ Implementation must independently prove the acceptance contract; this registrati
 - G, preservation. G1 job names unchanged (`REQUIRED_JOBS`). G2 the heap line byte-identical, and `git merge-file` of #666's ci.yml against the candidate is clean and yields the candidate. G3 no condition names main or push, and a push to main runs all three jobs. G4 triggers and concurrency unchanged. G5 `scripts/requireGreenRelease.test.ts` and `node scripts/check-deploy-triggers.mjs` green.
 
 Out of scope: deploy workflows, rollback, production, DB, protection or ruleset settings, picker files (`scripts/nextTask*.mjs`), spending, branch or history deletion, and feature activation. Registration is not implementation, review, landing or incident acceptance.
+
+## Status
+
+- CI-architect-real-checks: in progress — Deepseek-V4.1-Flash · 4352 — 2026-10-28 — branch agent/queue/ci-architect-real-checks
