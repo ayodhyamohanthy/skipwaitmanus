@@ -203,13 +203,147 @@ Recommendations for each PR's owner. The audit changed no PR; its only PR action
 
 ## 9. Docs drift still open
 Recorded for row `DECISION-SYNC-oct26`; this change does not fix them:
-- **Legacy pack catalog still the target:** `docs/KIT_V4_BUILD_PLAN.md` §6 (:238, :248), `docs/plans/README.md` row 2.3 and `docs/BUGFREE_GATE.md` 4.1-4.4 still aim at the legacy pack catalog (D-219 paused it).
-- **Design contracts still specify replaced rules:** `design/goal-ui/BRIEF.md`, `design/goal-ui/content.json`, `pick/` and `specs/` specify "Open to requests" chips (D-176), expiry countdowns (D-174), D-035 outcomes (D-147) and light mode only (the dark-mode direction).
-- **Handoff docs give replaced rules as build instructions:** `LLM_HANDOFF.md` and `FOR_AI_BUILDERS.md` give launch companies "open to referrals", "paid unlimited" alerts, the 7-day expiry, the Kit v4 design system and "credits/asks" money wording as current.
-- **Old build banner:** eight entry docs' line-5 banner says only the open models build (D-200), which is row `D-200-instructions-sync`.
-- **Direct-push landing route:** `AGENTS.md`, `docs/BRIEF.md` and `docs/DELEGATION.md` give `git push origin <sha>:main` as the landing route (D-200 (1); D-212 is pending in #703).
-- **Blanket fairness lines:** `docs/BRIEF.md` and `LLM_HANDOFF.md` say "never sell priority" and "referrers never charged" without the D-196/D-219 referrer-plan exception.
-- **Unconditional sign-in step:** `docs/KIT_V4_BUILD_PLAN.md` §6:249 enables Email + Password unconditionally (D-080, D-163).
+
+**Reconciled Oct 28 (row `DECISION-SYNC-oct26`, a reasoning pass under D-225; this file only).** Each item keeps its Oct 26 line, marked *Oct 26 (as written)*, so a reviewer can compare old and new. The block marked **Corrected Oct 28** gives:
+- **Old:** the replaced rule the named doc still states.
+- **Current:** the rule in force, with the register entry that governs it.
+- **State:** what a re-check on `main` `7226511` (Oct 28) found.
+- **Fix:** the edit the doc needs.
+
+Line numbers are from that commit; a builder finds each place by its quoted words. The named docs are unchanged by this pass. Editing them is the row's build, for a tool other than a Claude session (D-225). Stale register cells are not repeated here: they are section 11, on PR #757 (not on `main`).
+
+1. **Legacy pack catalog still the target.**
+   - *Oct 26 (as written):* `docs/KIT_V4_BUILD_PLAN.md` §6 (:238, :248), `docs/plans/README.md` row 2.3 and `docs/BUGFREE_GATE.md` 4.1-4.4 still aim at the legacy pack catalog (D-219 paused it).
+   - **Corrected Oct 28.**
+     - **Old:** D-146's "only credit packs are sold". It came with the owner's next payment steps: the D-069 catalog apply, a `billing_cycles` fix, and one live ₹99 UPI pack buy-and-refund (D-065).
+     - **Current:** D-219 (6).
+       - Legacy credit packs and passes are not sold, and the provider items were archived Oct 25 (D-214 (3)).
+       - Recovery, crediting and refunds of payments already started stay (D-042).
+       - Nothing new goes on sale. Activating any price needs the owner's word (D-219 (8), D-123).
+       - Runtime caveat: `shared/planCatalog.ts:91` keeps `CREDIT_PACKS_ON_SALE = true` until PR #666 lands. #666 is still open (Oct 28).
+     - **State:** still open in all three docs. Also found: `docs/BUGFREE_GATE.md` 4.17 says "only credit packs are currently on sale (D-146), so this stays GREEN as is".
+     - **Fix:**
+       - **Plan §6 :238 and README row 2.3:** state D-219 (6) and its runtime caveat.
+         - The live INR buy-and-refund has nothing on sale to buy, so it moves to the first D-219 price the owner activates (D-219 (8)).
+         - The `billing_cycles` fix concerns pass items, so it is moot while passes stay unsold (D-146).
+         - The pass-refund wording for `/refunds` is legal text. It goes through `LAUNCH-legal-copy`, which has `owner` status and waits for `PRICING-banded-oct25`.
+       - **Plan §6 :248:** the D-069 apply stays owner-only, and its legacy targets are superseded (D-219 (6), D-214 (3)). The next catalog sync runs against the D-219 catalog after #666, as `docs/PRICING.md` next step 3 says.
+       - **BUGFREE 4.1-4.4 and 4.17:** mark them as runtime checks of a paused product while the flag stays true. After #666, replace them with legs for the D-219 extra-referral prices.
+       - This pass ran no live leg. Whether 4.1-4.4 still pass after the Oct 25 archive is unverified.
+2. **Design contracts still specify replaced rules.**
+   - *Oct 26 (as written):* `design/goal-ui/BRIEF.md`, `design/goal-ui/content.json`, `pick/` and `specs/` specify "Open to requests" chips (D-176), expiry countdowns (D-174), D-035 outcomes (D-147) and light mode only (the dark-mode direction).
+   - **Corrected Oct 28.** The comps govern layout and look (D-071, D-120, D-150). Where a comp shows a rule that a newer entry replaced, the newer entry wins (D-202).
+     - **Availability.**
+       - **Old:** "Open to requests" / "Not open yet" chips, "7 companies · 2 open to requests" and the open-count readout.
+       - **Current:** D-176. There is no availability status and no open-first grouping. Availability only routes the request, and no coverage data shows in the directory. D-193 (5) also drops `openToReferrals`/`openCount` from the public payload; that row is not registered yet.
+       - **State:** open in `design/goal-ui/BRIEF.md` :104, :129, :287, :472, :633, :674, in `content.json` :117, :144, :151, :157, :957, :1145-1146, and in `pick/find-a-referral.html` and `pick/my-asks.html`.
+     - **Expiry.**
+       - **Old:** countdowns on referral requests:
+         - the referral queue's `daysLeft`/`timeLeft`/`closes` rows (`content.json` :427-497);
+         - "2 days left" (BRIEF :299) and "6 days left" (BRIEF :674);
+         - `pick/referral-queue.*`;
+         - `specs/w2-spec.md:24` ("nobody picks it up within 7 days").
+       - **Current:** D-174: a referral request never expires. The legacy clocks still run until `D-174-expiry-clock-removal`, which comes after `D-174-held-ask-reconfirm` (D-193 (4)). A comp may name them only as a runtime caveat, never as designed product.
+       - **Not replaced:** day-level clocks for the D-038 48 h claim lapse and 5-day referred deadline, the work-email re-verify countdown (`specs/w4-spec.md:7`), and BRIEF :113's day-level clock style.
+     - **Decline outcome.**
+       - **Old:** `specs/w3-spec.md:9`: "a not-fixable pass releases the credit (D-035/D-052)".
+       - **Current:** D-147. D-035 is rejected, and every employee decline keeps the internal charge spent. A D-038 lapse still releases it.
+       - **Not replaced:** `specs/w2-spec.md:24`'s "once picked up it stays spent, even if they pass" matches D-147 and stays.
+       - **Also found:** `specs/w2-spec.md:21` ("Uses 1 of your N credits", commit "Send ask") breaks the D-173/D-180 public wording and D-219 (4), which shows the balance and charge in referrals before sending.
+     - **Light mode.**
+       - **Old:** "Light mode only" (BRIEF :103, :707).
+       - **Current:** light stays the default, with its pixels and palette unchanged. A dark counterpart is an approved build, row `D-048-dark-mode`, unblocked by D-224. It comes from the owner direction relayed in #645/#646; the row note records the dark counterpart as approved Oct 25 00:52 IST.
+       - **Register gap:** the owner's dark-mode direction has no register entry of its own; D-224 is an unblock ruling that cites the packet. Record it in the register as section 7 recommends for #645 (D-202). This needs registration, not an owner answer.
+     - **Fix:**
+       - Edit the text of BRIEF, `content.json` and `specs/` to the rules above, without changing layout or look.
+       - Recommended for `pick/`: add a note at the top of each affected comp that names the replaced element and the entry that governs it, rather than redrawing the comp. The comp stays the D-071 approval record.
+3. **Handoff docs give replaced rules as build instructions.**
+   - *Oct 26 (as written):* `LLM_HANDOFF.md` and `FOR_AI_BUILDERS.md` give launch companies "open to referrals", "paid unlimited" alerts, the 7-day expiry, the Kit v4 design system and "credits/asks" money wording as current.
+   - **Corrected Oct 28.**
+     - **Corrections to the Oct 26 line:**
+       - Only `FOR_AI_BUILDERS.md` says "paid unlimited".
+       - `FOR_AI_BUILDERS.md:34` already states expiry as a D-174 runtime caveat.
+       - `app/docs/handoff/LLM_HANDOFF.md` opens with "Stale copy (Oct 23, D-163)", so it may stay as declared history (the rule D-211 set for the Oct 24 sweep). It is not a fix target.
+     - **Availability.**
+       - **Old:** "real people open to referrals" (LLM_HANDOFF :15, FOR_AI_BUILDERS :18).
+       - **Current:** D-176. List the launch companies with no availability or coverage claim. The "do not invent people or counts" rule stays.
+     - **Expiry.**
+       - **Old:** LLM_HANDOFF :53: "an ask expires 7 days after ... an uncovered ask waits up to 90 days (D-061)".
+       - **Current:** D-174. The legacy clocks are a runtime caveat until `D-174-expiry-clock-removal` (D-193 (4)), worded as FOR_AI_BUILDERS :34 already is.
+     - **Saved alerts.**
+       - **Old:** FOR_AI_BUILDERS :38: "Free 3 alerts, paid unlimited". "Paid unlimited" was a perk of plans that are no longer sold (D-146) or were replaced (D-219).
+       - **Current:** D-219 (1) lists each band's contents, and an alert allowance is not among them. State the runtime Free cap (`FREE_ALERT_LIMIT = 3`, `shared/alerts.ts:9`) and promise no paid perk.
+       - Adding a paid allowance would be a new plan-content proposal for the owner (D-200 (6)). It is not a gap in a current rule.
+     - **Design.**
+       - **Old:** "Colors: ... electric blue #0000FF, invitation yellow #FFFC52" (LLM_HANDOFF :25, FOR_AI_BUILDERS :55) and the manifest theme `#0000FF` (LLM_HANDOFF :60).
+       - **Current:** D-120: Kit v4 is retired. Colours come from `DESIGN.md`: white canvas, ink `#0a0a0a`, and trust blue `#1d4ed8` on verified marks only.
+       - Each doc's own D-120 line (LLM_HANDOFF :24, FOR_AI_BUILDERS :8 and :52) already says Kit v4 is retired, so the palette lines contradict their own page.
+     - **Money.**
+       - **Old:**
+         - "3 free credits every month; extra asks use credits" (LLM_HANDOFF :13, FOR_AI_BUILDERS :15);
+         - "1 credit = 1 ask" (FOR_AI_BUILDERS :16);
+         - "Only credit packs are currently sold (D-146)", the D-036 pack prices, and "D-132 plans behind off flags" as the plan family (LLM_HANDOFF :77-78, FOR_AI_BUILDERS :39 and :79);
+         - "purchased credits never expire", stated as a rule.
+       - **Current:**
+         - D-173/D-180: the public unit is a referral and the object is a referral request.
+         - D-219 (1) bands, (2) extra referrals within the band, (3) Free 3 a month at any level with a verified card (the switch is off, D-079), (4) spending order, and (6) packs paused, with the `CREDIT_PACKS_ON_SALE` caveat.
+         - D-132 is superseded, and its code stays behind off flags.
+         - Whether purchased referrals expire is undecided (D-219 (8)). Only the runtime keeps `PAID_CREDITS_NEVER_EXPIRE = true` (`shared/planFamily.ts:148`).
+       - **Not here:** the exact user-facing money sentence (D-063 as worded by D-135) is rewritten in the terminology lane (D-173, D-180, D-219), as section 11 item 1 on #757 records.
+     - **Fix:** edit the two root handoff files by the bullets above. Point price detail at `docs/PRICING.md` (D-146, D-219) instead of restating amounts.
+4. **Old build banner.**
+   - *Oct 26 (as written):* eight entry docs' line-5 banner says only the open models build (D-200), which is row `D-200-instructions-sync`.
+   - **Corrected Oct 28.**
+     - **Old:** the role wording from before D-225.
+     - **Current:** D-225: Claude sessions handle intelligence and reasoning, and other tools develop. D-200 (2) stands: no step waits for one model or session. D-200 (7) records that its Claude-builds-too clause no longer governs.
+     - **State: resolved, nothing to fix.**
+       - The banner carries D-225's sentence in `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `COLLABORATION.md`, `README.md`, `LLM_HANDOFF.md`, `FOR_AI_BUILDERS.md`, `.github/copilot-instructions.md`, `START_HERE.md` and `SkipWait-START-HERE.md`.
+       - `docs/BRIEF.md` and `docs/DELEGATION.md` §1 state the split.
+       - Row `D-200-instructions-sync` is `done`.
+5. **Direct-push landing route.**
+   - *Oct 26 (as written):* `AGENTS.md`, `docs/BRIEF.md` and `docs/DELEGATION.md` give `git push origin <sha>:main` as the landing route (D-200 (1); D-212 is pending in #703).
+   - **Corrected Oct 28.**
+     - **Old:** D-134 (6) (Oct 21) printed landing as a fast-forward push, `git push origin <sha>:main`.
+     - **Current:**
+       - D-200 (1): landing goes through the pull request on `main-protection`. That keeps "pull request first" and the three required checks, and no session uses an admin bypass. D-195 (4) says the same, and D-197 (1) notes that every session pushes as the one owner account.
+       - D-134 (6), as amended Oct 22, already calls the merge-commit button safe, because the ruleset now requires an up-to-date branch. Squash and rebase-merge stay banned.
+       - So the route is the pull request's merge commit (the button, or `gh pr merge <n> --merge`) on green required CI (D-082 (3), D-182).
+       - D-229's packet on `main` already says this for its three carriers: "Use only the protected PR merge-commit route ... No admin bypass, direct main push".
+     - **State:**
+       - Still open at `AGENTS.md:237`, `docs/BRIEF.md:41` and `docs/DELEGATION.md:70`.
+       - The picker prints the same step (`scripts/nextTaskText.mjs:10`, :123). That is code, outside this Markdown row; D-212 (5) on #703 assigns it to BRANCH-HYGIENE-2.
+       - D-212 is still pending: #703 is an open draft on Oct 28. It calls the push "an admin bypass, which D-200 bans".
+       - The push route is still in use: the `PICKER-decision-sync` landing at `86559ba` and the follow-up `d349972` reached `main` as fast-forward pushes on Oct 28.
+       - #757 reports `main-protection` at 0 approvals (checked Oct 27), so D-200 (1)'s wait for the owner's merge has ended. That is not on `main` yet.
+     - **Fix:** replace the push with the merge-commit route in the three docs. The row note leaves this wording to D-212 if D-212 lands first.
+     - **No new owner question:** the ruleset's bypass setting is the owner's (D-200 (6)) and is already D-212 (6)'s ask.
+6. **Blanket fairness lines.**
+   - *Oct 26 (as written):* `docs/BRIEF.md` and `LLM_HANDOFF.md` say "never sell priority" and "referrers never charged" without the D-196/D-219 referrer-plan exception.
+   - **Corrected Oct 28.**
+     - **Old:** D-006/D-040 read as a blanket ban on any paid priority and any referrer charge.
+     - **Current:**
+       - D-006/D-040 stand for seekers: nobody buys a referral, a ranking of people, inbox placement or seeker access, and no outcome is guaranteed.
+       - D-196 narrows them only for an opt-in referrer plan's level-matched first access.
+       - D-219 (7) records that plan's prices. It sells priority only. It charges nothing until there is meaningful matching activity and a routing design that protects the poster's 24 h first look (D-220) has been reviewed and tested.
+       - Basic referring stays free, and referrers are never paid (D-055). The runtime refuses referrer checkout (`REFERRER_PURCHASES_ENABLED = false`).
+     - **State:**
+       - `docs/BRIEF.md` is resolved: :14-15 now carry the exception.
+       - Still open: `LLM_HANDOFF.md:13` ("No commissions, no paid priority (D-006)") and :56 ("Never charge for referrals or queue priority").
+       - Also found: `FOR_AI_BUILDERS.md:15` ("Never charge for, or let money influence, queue order, visibility, or a referrer's decision (D-006)"), although its own :39 names D-196.
+       - The phrase "referrers never charged" no longer appears in these files.
+     - **Fix:** keep the seeker-side ban and add the referrer-plan exception with its no-charge condition, as `docs/BRIEF.md:14-15` words it.
+7. **Unconditional sign-in step.**
+   - *Oct 26 (as written):* `docs/KIT_V4_BUILD_PLAN.md` §6:249 enables Email + Password unconditionally (D-080, D-163).
+   - **Corrected Oct 28.**
+     - **Old:** D-049's seeker passwords, switched on in the WorkOS dashboard with no condition.
+     - **Current:**
+       - D-080: Email + Password stays off in production until (a) the staging takeover test passes, or (b) the D-057 session gate closes the Bearer path.
+       - D-163 (1) puts the gate first. On Oct 28, `D-057-session-gate` is `todo` and `seeker-passwords` is `owner`, so neither condition is met.
+       - The login rule stays the owner's (D-030 as amended by D-049 and D-057).
+     - **State:** still open. §6 :249 ("WorkOS dashboard: enable Email + Password; confirm the Google connection") contradicts :239 on the same page, which states D-080 correctly.
+     - **Fix:** make :249's "enable Email + Password" point to :239's condition, or remove it there. Keep "confirm the Google connection", which is not gated.
+
+**Owner questions from this reconciliation: none.** Every fix above follows from an entry already on `main`. The one owner-reserved point it touches, the ruleset's admin bypass, is already D-212 (6)'s ask. The one gap it found, the dark-mode direction (item 2), needs registration, not an owner answer.
 
 ## 10. Checks
 - `pnpm vitest run scripts/`: every script test passes, including `registerShape` and `briefContract`. The output is in the pull request.
