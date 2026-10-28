@@ -1,3 +1,5 @@
+// CI proof (docs/plans/CI-architect-real-checks.md, packet D1): a runtime change on an
+// architect branch must run all three required jobs. This branch is never merged.
 import { enqueueBillingReviewTx } from "./billingReviewOutbox";
 import { buildReferrerHome, monthStartUtc } from "./referrerHome";
 import { enrichInboxRow } from "./inboxEnrichment";
