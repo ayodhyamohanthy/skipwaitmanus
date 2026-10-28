@@ -244,4 +244,7 @@ The D-189 packet also rules the pre-send per-company state against D-176 and add
 - Not feasible by script today: TCS (403), Infosys (403), Cognizant (403), Meta (robots prohibit automated collection), Microsoft (Eightfold, 403), Flipkart (TurboHire robots allow only Googlebot), PhonePe (Greenhouse board inactive).
 
 ## Status
+
 D-174-sample-job-removal: done — PR #688 (unblocked by D-210)
+
+D-174-job-catalog: in progress — Qoder · 329f — 2026-10-27 — branch `agent/queue/d174-job-catalog`. Round-4 fix of the DeepSeek V4.1 Flash · 4745 findings: F1 the served job keeps `catalogJobs.id`, the producer §5.8's `catalogJobId` needs; F2 the route orders newest first with undated last and `id` descending as the tiebreak before the 50-job cursor slice; F3 `markFetchOk` restores a `failing` source (never promotes `unverified`) and the daily load set includes `failing` so one timeout is not permanent. F4 answered: `jobCatalogProviderSchema` allows greenhouse only today, so the multi-source shape waits for `D-174-job-sources-more`; F5 (an admin verification instrument) stays an owner/QA call. `JOB_CATALOG_ENABLED` stays off; awaiting independent re-review.
