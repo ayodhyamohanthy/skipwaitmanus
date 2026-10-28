@@ -285,3 +285,6 @@ D-090-BYOR: todo — D-162 (Oct 23): the owner's waiver stands and this row depe
 D-090-BYOR: waiting — D-154 (Oct 23): depends on `D-086-demand-list`, queued with status architect; workbuddy · b0eb stopped at the §0 gate and reported it, as this packet says to.
 
 D-090-BYOR: packet written — Qoder · db0e — 2026-10-23 — branch `agent/architect/d090-byor` — **not started**: D-086 demand list is the build gate and is not live; the four approved mocks are not in the repo (§12 Q5). Verified against `main` `d54c0ca8`.
+
+### Oct29 client telemetry serialization
+The prior fixer agreed after actual four-file diff review that `CLIENT-TELEMETRY.privacy` may repair current-main telemetry first. This row keeps its id, branch and full owned scope; no claim or verdict changes. Its new dependency is the shared repair output it must integrate before later review/landing, not an ordering-only hold. Preserve all F2/F3 `/r/`, `/api/ask-invites/`, `/claim`, breadcrumb, sign-in return-target and synthetic-envelope tests. Later integration takes the union and reruns the sentry/clarity suites plus the 103-test lib/AskInviteLink slice with output. See `CLIENT-TELEMETRY-privacy.md`. Independent different-model review remains required for both Tier 1 changes. No activation or production-exposure claim.
