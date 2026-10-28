@@ -8,6 +8,11 @@ import { GoalButton as Button, useOnlineStatus } from "@/components/goal";
 import { AssistantLayout, NextStep, Section as Sheet } from "./AssistantLayout";
 import { GoalApprovalCard as ApprovalCard } from "./GoalApprovalCard";
 import type { AssistantApproval } from "@/components/assistants/format";
+import { approvalCostChangedSchema, approvalDecisionBody, withListedCost, type ApprovalCost } from "@shared/assistantApprovalCost";
+
+/** Issue 644: a pending referral carries the cost the server will hold the owner to; the card shows it. */
+type PricedApproval = AssistantApproval & { cost?: ApprovalCost };
+const shownApproval = (approval: PricedApproval): AssistantApproval => (approval.cost ? { ...approval, creditCount: approval.cost.cost } : approval);
 
 type CreditsSummary = { plan?: string; totalAvailable?: number; monthlyCreditsRemaining?: number; monthlyAllowance?: number };
 
@@ -17,7 +22,7 @@ export default function GoalApprove() {
   const { isSignedIn, isLoaded, getToken, openSignIn } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const online = useOnlineStatus();
-  const [approvals, setApprovals] = useState<AssistantApproval[]>([]);
+  const [approvals, setApprovals] = useState<PricedApproval[]>([]);
   const [credits, setCredits] = useState<CreditsSummary | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -34,7 +39,7 @@ export default function GoalApprove() {
     return token ? { Authorization: `Bearer ${token}` } : undefined;
   }, [fetchToken]);
 
-  const load = useCallback(async (): Promise<AssistantApproval[] | null> => {
+  const load = useCallback(async (): Promise<PricedApproval[] | null> => {
     if (!isSignedIn || !isLoaded) return null;
     setLoading(true); setLoadError("");
     try {
@@ -42,9 +47,9 @@ export default function GoalApprove() {
         fetch("/api/assistants/approvals", { credentials: "include", headers: await authHeaders() }),
         fetch("/api/credits/summary?role=job_seeker", { credentials: "include", headers: await authHeaders() }),
       ]);
-      const approvalsPayload = await readApiJson<{ approvals?: AssistantApproval[]; error?: string }>(approvalsResponse, "We could not load your approvals");
+      const approvalsPayload = await readApiJson<{ approvals?: Array<AssistantApproval & { cost?: unknown }>; error?: string }>(approvalsResponse, "We could not load your approvals");
       if (!approvalsResponse.ok) throw new Error(approvalsPayload.error || "We could not load your approvals");
-      const list = Array.isArray(approvalsPayload.approvals) ? approvalsPayload.approvals : [];
+      const list = Array.isArray(approvalsPayload.approvals) ? approvalsPayload.approvals.map(withListedCost) : [];
       setApprovals(list);
       if (creditsResponse.ok) {
         const creditsPayload = await readApiJson<{ summary?: CreditsSummary }>(creditsResponse, "");
@@ -62,7 +67,7 @@ export default function GoalApprove() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const decide = async (approval: AssistantApproval, decision: "approved" | "declined") => {
+  const decide = async (approval: PricedApproval, decision: "approved" | "declined") => {
     if (workingId !== null || !online) return;
     setWorkingId(approval.id); setActionError(null);
     try {
@@ -70,12 +75,15 @@ export default function GoalApprove() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", ...(await authHeaders()) },
-        body: JSON.stringify({ decision, kind: approval.kind }),
+        body: JSON.stringify(approvalDecisionBody(approval, decision)),
       });
       const payload = await readApiJson<{ error?: string }>(response, "We could not record that decision");
+      // Issue 644: the cost changed and nothing was charged; show the new cost so the owner can approve it.
+      const costChanged = response.status === 409 ? approvalCostChangedSchema.safeParse(payload) : null;
+      if (costChanged?.success) setApprovals(list => list.map(item => (item.id === approval.id ? { ...item, cost: costChanged.data.cost } : item)));
       if (!response.ok) throw new Error(payload.error || "We could not record that decision");
       setEditingId(null);
-      setResult({ approval, decision });
+      setResult({ approval: shownApproval(approval), decision });
       await load();
     } catch (reason) {
       setActionError({ id: approval.id, message: reason instanceof Error ? reason.message : "We could not record that decision" });
@@ -175,7 +183,7 @@ export default function GoalApprove() {
           {pending.filter(item => item.id === (selectedId !== null && pending.some(row => row.id === selectedId) ? selectedId : pending[0]?.id)).map((approval) => (
             <ApprovalCard
               key={approval.id}
-              approval={approval}
+              approval={shownApproval(approval)}
               balance={balance}
               primary
               handlers={{

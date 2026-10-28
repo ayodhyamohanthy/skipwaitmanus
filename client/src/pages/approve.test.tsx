@@ -161,4 +161,61 @@ describe("Approve page", () => {
     render(<Approve />);
     expect(screen.getByText("Sign in to review approvals")).toBeTruthy();
   });
+
+  describe("the cost the owner approves is the cost charged (#644)", () => {
+    const PRICED = { ...ASK_APPROVAL, creditCount: 1, cost: { level: 5, cost: 5 } };
+    const decisionBodies = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls
+      .filter(([url, init]) => String(url).includes("/decision") && (init as RequestInit | undefined)?.method === "POST")
+      .map(([, init]) => JSON.parse(String((init as RequestInit).body)));
+
+    it("shows the server's current cost and sends exactly that cost with the approval", async () => {
+      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === "POST") return { ok: true, json: async () => ({ approval: { id: 5, status: "approved" } }) };
+        if (String(url).includes("/api/assistants/approvals")) return { ok: true, json: async () => ({ approvals: [PRICED] }) };
+        return { ok: true, json: async () => CREDITS };
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      render(<Approve />);
+      expect(await screen.findByText("Senior Product Designer · uses 1 of your 3 open slots · 5 credits")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Send" }));
+      expect(await screen.findByText("Done")).toBeTruthy();
+      expect(decisionBodies(fetchMock)).toEqual([{ decision: "approved", kind: "ask_send", expectedCost: { level: 5, cost: 5 } }]);
+    });
+
+    it("on 409 cost_changed shows the new cost, keeps the approval, and re-approves at that cost", async () => {
+      let posts = 0;
+      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          posts += 1;
+          if (posts === 1) return { ok: false, status: 409, json: async () => ({ error: "This referral request now costs 6 referrals. Approve again to send it at that cost.", code: "cost_changed", cost: { level: 6, cost: 6 } }) };
+          return { ok: true, json: async () => ({ approval: { id: 5, status: "approved" } }) };
+        }
+        if (String(url).includes("/api/assistants/approvals")) return { ok: true, json: async () => ({ approvals: [PRICED] }) };
+        return { ok: true, json: async () => CREDITS };
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      render(<Approve />);
+      fireEvent.click(await screen.findByRole("button", { name: "Send" }));
+      expect(await screen.findByText("This referral request now costs 6 referrals. Approve again to send it at that cost.")).toBeTruthy();
+      expect(screen.getByText("Senior Product Designer · uses 1 of your 3 open slots · 6 credits")).toBeTruthy();
+      expect(screen.queryByText("Done")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Send" }));
+      expect(await screen.findByText("Done")).toBeTruthy();
+      expect(decisionBodies(fetchMock).map(body => body.expectedCost)).toEqual([{ level: 5, cost: 5 }, { level: 6, cost: 6 }]);
+    });
+
+    it("never sends a cost with a decline, and ignores a malformed listed cost", async () => {
+      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === "POST") return { ok: true, json: async () => ({ approval: { id: 5, status: "declined" } }) };
+        if (String(url).includes("/api/assistants/approvals")) return { ok: true, json: async () => ({ approvals: [{ ...PRICED, cost: { level: 5, cost: "5" } }] }) };
+        return { ok: true, json: async () => CREDITS };
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      render(<Approve />);
+      expect(await screen.findByText("Senior Product Designer · uses 1 of your 3 open slots · 1 credit")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Decline" }));
+      expect(await screen.findByText("Declined")).toBeTruthy();
+      expect(decisionBodies(fetchMock)).toEqual([{ decision: "declined", kind: "ask_send" }]);
+    });
+  });
 });
