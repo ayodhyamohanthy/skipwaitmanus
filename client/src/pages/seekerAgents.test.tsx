@@ -80,19 +80,32 @@ describe("goal /agents", () => {
     stubServer({ agents: [agent] });
     const { container } = render(<SeekerAgents />);
     await screen.findByText("Granted agents");
-    for (const label of ["Agent name", "Referrals per send", "Referrals per day", "Referrals per week", "Sends per day", "Access expires after (days, max 30)"]) {
-      expect(screen.getByLabelText(label)).toBeTruthy();
+    // The four limits are pinned by control id, never by their label text: the
+    // shipped labels say "sends", which the product never does (review finding
+    // 2, routed to D-048-p3-assistants, which owns the goal body). Pinning the
+    // ids keeps the D-141 parity - every limit control stays visible - without
+    // certifying wording this row knows to be wrong.
+    expect(screen.getByLabelText("Agent name")).toBeTruthy();
+    expect(screen.getByLabelText("Access expires after (days, max 30)")).toBeTruthy();
+    for (const id of ["limit-creditsPerAsk", "limit-creditsPerDay", "limit-creditsPerWeek", "limit-asksPerDay"]) {
+      expect(document.getElementById(id)).toBeTruthy();
     }
     expect(screen.getByLabelText("Look up companies and prices")).toBeTruthy();
     expect(screen.getByLabelText("Draft referrals (never sends)")).toBeTruthy();
+    // The promise the copy must keep, and the one this row can vouch for: the
+    // agent prepares drafts and never sends, buys or applies.
+    expect(container.textContent).toContain("No sends, purchases or automatic applications.");
     expect(screen.getByRole("button", { name: "Pause all agents" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Revoke" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Activity" })).toBeTruthy();
     expect(screen.getByText("Fictional draft helper")).toBeTruthy();
     expect(screen.getByText("active")).toBeTruthy();
     expect(container.textContent).toContain("May: lookup, draft");
-    expect(container.textContent).toContain("10 referrals/send");
-    expect(container.textContent).toContain("3 sends/day");
+    // The granted limits are summarised on the agent row. Only the day and week
+    // figures are pinned here; the per-send and per-day wording is the routed
+    // copy defect above, so this test does not repeat it.
+    expect(container.textContent).toContain("20/day");
+    expect(container.textContent).toContain("50/week");
     expect(container.textContent).toContain("Expires");
   });
 
