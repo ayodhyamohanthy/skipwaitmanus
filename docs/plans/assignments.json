@@ -2636,16 +2636,120 @@
       "dependsOn": []
     },
     {
-      "id": "D-086-demand-list",
-      "title": "Demand list (D-086, loop L1): k-anonymous public demand counts per company and asks at companies not yet open",
+      "id": "D-086.count",
+      "title": "Demand count (D-086): distinct people with a live referral request at each listed company (public, k-anonymous) and the unlisted-domain admission queue (admin only), behind two switches that start false",
       "row": "D-086",
-      "packet": null,
+      "packet": "docs/plans/D-086-demand-list.md",
+      "tier": 1,
+      "lane": "demand-count",
+      "branch": "agent/queue/d086-count",
+      "status": "todo",
+      "epic": "D-086-demand-list",
+      "dependsOn": [
+        "D-174-company-search"
+      ],
+      "owns": [
+        "shared/companyDemand.ts",
+        "shared/companyDemand.test.ts",
+        "server/companyDemand.ts",
+        "server/companyDemand.fixture.test.ts",
+        "server/companyDemandRoutes.ts",
+        "server/companyDemandRoutes.test.ts",
+        "server/companyDirectoryRoutes.ts (switch only)"
+      ],
+      "note": "D-086 packet §5.1. Liveness is status pending plus the imported isAskExpired (no age cutoff of its own; follows D-174-expiry-clock-removal with no change; awaiting-reconfirm requests count). Coverage-neutral (reads no referrer or availability table), listed companies only in public, distinct canonical people, never companySuggestions votes. The admin queue lists unowned corporate domains by people, private, no-store. Mounts inside registerCompanyDirectoryRoutes (D-223 (6)), so it waits for D-174-company-search, which owns that file. Both switches stay false."
+    },
+    {
+      "id": "D-086.ui",
+      "title": "Demand line and list components (D-086): a count from 3, 'A few people' for 1-2, nothing at zero; employee help links via referrerSignInHref; unlisted-company lines; employer-bonus line; switch off",
+      "row": "D-086",
+      "packet": "docs/plans/D-086-demand-list.md",
+      "tier": 2,
+      "lane": "demand-ui",
+      "branch": "agent/queue/d086-ui",
+      "status": "todo",
+      "epic": "D-086-demand-list",
+      "dependsOn": [
+        "D-086.count",
+        "D-090-BYOR"
+      ],
+      "owns": [
+        "client/src/components/demand/CompanyDemandLine.tsx",
+        "client/src/components/demand/CompanyDemandList.tsx",
+        "client/src/components/demand/useCompanyDemand.ts",
+        "client/src/components/demand/companyDemand.test.tsx",
+        "docs/plans/GOAL_UI_COVERAGE.md"
+      ],
+      "note": "D-086 packet §5.2. Waits for D-090-BYOR because both own GOAL_UI_COVERAGE.md (D-167 line per new component). No black commit; login rule pinned by its own test."
+    },
+    {
+      "id": "D-086.mount",
+      "title": "Mount the demand line on /explore/:slug and the list on /explore (D-086), behind the switch",
+      "row": "D-086",
+      "packet": "docs/plans/D-086-demand-list.md",
+      "tier": 2,
+      "lane": "demand-mount",
+      "branch": "agent/queue/d086-mount",
+      "status": "todo",
+      "epic": "D-086-demand-list",
+      "dependsOn": [
+        "D-086.ui",
+        "D-048-p3-live-review-find"
+      ],
+      "owns": [
+        "client/src/pages/Explore.tsx (switch only)",
+        "client/src/pages/ExploreCompany.tsx (switch only)",
+        "client/src/pages/explore.demandMount.test.tsx",
+        "design/goal-ui/captures/demand/**"
+      ],
+      "note": "D-086 packet §5.3. Mounts into the pages D-048-p3-live-review-find redesigns, after it lands; captures at 1280 and 390."
+    },
+    {
+      "id": "D-086.admit",
+      "title": "Read-only admin view of the unlisted-company admission queue (D-086): domains by people asking; listing stays the authenticated admin POST /api/admin/companies",
+      "row": "D-086",
+      "packet": "docs/plans/D-086-demand-list.md",
+      "tier": 2,
+      "lane": "demand-admit",
+      "branch": "agent/queue/d086-admit",
+      "status": "todo",
+      "epic": "D-086-demand-list",
+      "dependsOn": [
+        "D-086.count",
+        "D-086.ui",
+        "D-048-p3-admin"
+      ],
+      "owns": [
+        "client/src/components/admin/UnlistedDemandView.tsx",
+        "client/src/components/admin/unlistedDemandView.test.tsx",
+        "client/src/pages/AdminOverview.tsx (switch only)",
+        "docs/plans/GOAL_UI_COVERAGE.md"
+      ],
+      "note": "D-086 packet §5.5. Admin only and read-only: no create form, prefill or listing control (none exists on main). Listing stays a manual authenticated POST /api/admin/companies (D-101); nothing is listed automatically. Not a dependency of the release row; until it lands admins read the queue as JSON."
+    },
+    {
+      "id": "D-086-demand-list",
+      "title": "Demand list (D-086, loop L1): k-anonymous public counts of people asking for a referral at each listed company, with moderated admission of unlisted companies; release row",
+      "row": "D-086",
+      "packet": "docs/plans/D-086-demand-list.md",
       "tier": 1,
       "lane": "demand",
       "branch": "agent/queue/d086-demand-list",
-      "status": "architect",
-      "dependsOn": [],
-      "note": "D-154, D-162: queued so the packet can be written now (D-109); its build follows D-090-BYOR (owner word, D-162). The packet pull request adds D-090-BYOR to this row's dependsOn, and also D-048-p3-live-review-find (both edit /explore and /ask) unless the packet's owned paths leave that row's files alone. Scope: public counts per company from 3 up, 'A few people' for 1-2, never 0, no seeker detail (D-086 (2) overrides the PRD copy's old 'singular for 1'); the count is people asking for a referral at that company and is not built yet: ROW20-B (#311) counts suggestions filed on /invite (as a seeker) and /suggest-company (seeker or employee), one per person per company, admin-only, so the packet decides which real rows count (D-102); the ask-to-any-company path (no credit, no slot until a verified referrer exists, then D-034/D-047/D-062, closing at 90 days under D-061); D-102's honest availability lines; the copy in docs/PRD.md; owned paths. D-221 (Oct 26): the packet writer replaces the 90-day closure with D-174 (requests never expire for launch) plus D-193 (4) (reconfirm before spend), and drops the 'not yet open' availability framing (D-176). Whether public per-company demand counts survive D-176 is checked against D-193 (3) before any owner question."
+      "status": "todo",
+      "dependsOn": [
+        "D-086.count",
+        "D-086.ui",
+        "D-086.mount",
+        "D-090-BYOR",
+        "D-048-p3-live-review-find"
+      ],
+      "note": "D-086 packet §5.4 (release row, D-223 (3)): flips COMPANY_DEMAND_ADMIN_ENABLED and COMPANY_DEMAND_PUBLIC_ENABLED after D-086.count, D-086.ui and D-086.mount land, QA with captures, the normal privacy review inside the independent Tier 1 review, and the CEO's sign-off. Public demand counts every live request (the runtime's own isAskExpired, no age cutoff of its own) at every listed company whatever its coverage (D-176/D-174), k-anonymous; it is not D-193 (3)'s private waiting count. Unlisted companies reach public display only through admin admission (packet §4.5); D-086.admit is the admin view and does not hold this row. The ask-to-any-company path already exists (packet §3.6-§3.7, §3.11); the 90-day closure is replaced by D-174 plus D-193 (4) in D-174-held-ask-reconfirm and D-174-expiry-clock-removal. D-099-bonus-pages, D-089-request-inbox (by its note) and DEPLOY-gate-docs-sync keep waiting for this row.",
+      "owns": [
+        "shared/companyDemand.ts (switch only)",
+        "AGENTS.md",
+        "docs/PRD.md",
+        "docs/KIT_V4_BUILD_PLAN.md"
+      ]
     },
     {
       "id": "D-090-BYOR",

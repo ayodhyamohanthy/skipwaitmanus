@@ -1,8 +1,8 @@
 # Packet D-086: the demand list (public counts of people asking for a referral, loop L1)
 
-> **PROPOSED, NOT APPLIED.** A reasoning session (D-225) wrote this packet for the coordinator to validate and adopt. Being on this branch changes nothing:
-> - `docs/plans/assignments.json` and `docs/DECISIONS.md` are untouched.
-> - The registry delta (§9) and the register entry (§10) are text for the coordinator's own reviewed pull request.
+> **ADOPTION CANDIDATE, NOT MERGED.** A reasoning session (D-225) wrote this packet for the coordinator to validate and adopt. No runtime behavior changes:
+> - This candidate updates `docs/plans/assignments.json` and `docs/DECISIONS.md` only for the reviewed packet registration.
+> - The registry delta (§9) and register entry (§10) are included in this ordinary docs adoption candidate; they take effect only after protected merge.
 > - Nothing below is built or live, and none of it is owner-approved beyond what §2 quotes. No builder takes a row from this file before adoption.
 >
 > **Revision 3** (same task, bounded, docs only). Revision 2 answered the coordinator's four findings on `5c1a4448` (PR #776). Revision 3 corrects one factual handoff gap found in the review of `ec0761a2`: there is no client company-create form, so `D-086.admit` is read-only and listing goes through the authenticated admin API. The dispositions are in §12.
@@ -412,15 +412,8 @@ Baseline tests show the cited sources behave as cited; they do not prove the fea
 | P1.1 | `companyDomainSchema` on `acme.com` / `gmail.com` / `not a domain` | accepted / refused / refused |
 | P1.2 | `adminCompanyCreateSchema` on a minimal valid body, then the same body with `demand: 20` added | accepted / refused (strict) |
 
-## Appendix B: D-206 ratings of the decisions this packet rests on (scoped; for the coordinator to append)
-| ID | Rating | Status | Note |
-|---|---|---|---|
-| D-086 | 8 | active | Right goal (L1). The title's "with no verified referrer" is narrower than the owner's request; read through D-176/D-174 (§4.2). |
-| D-176 | 9 | active | Matches the seeker's mental model; public demand clarified in §4.1-§4.2. |
-| D-174 | 8 | active | Right for launch; the count follows the runtime's liveness. |
-| D-193 (3) | 8 | active | A sound private count, not public demand (§4.1). |
-| D-162 (3) | 6 | active, CEO remit | An ordering written as a dependency; under D-223 (1) it applies only at the parent and the user-visible rows. |
-| D-223 | 9 | active | Applied: four file-split rows; the parent releases. |
-
 ## Status
 D-086-demand-list: revision 3 proposed, not applied (Claude Opus 5.5 · fdae, 2026-10-28, lock `agent/architect/d086-demand-list`). It answers the coordinator's reviews of `5c1a4448` and `ec0761a2` (§12) and awaits coordinator validation and adoption.
+
+
+Coordinator review: f81236e8 merged with main e67f7785;218registry rows/0errors,35baselinePASS,662scriptPASS. Original owner demand/journey messages recovered. No implementation, deployment or switch activation. Historical43 includes8rev2 disposable contract probes.
