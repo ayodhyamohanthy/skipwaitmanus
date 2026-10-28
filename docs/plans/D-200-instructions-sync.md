@@ -67,4 +67,4 @@ A quoted line no longer exists as written, or `scripts/briefContract.test.ts` pi
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is on `main` (D-134).
-- D-200-instructions-sync: in progress — DeepSeek-V4.1-Flash · 113a — 2026-10-28 — branch agent/queue/d200-instructions-sync (takeover from WorkBuddy AI · 9b71, whose claim added no commit; re-synced to D-225 before implementing, because the packet's original target was the superseded Claude-builds-too wording).
+- D-200-instructions-sync: done — 4a148ef8 (branch agent/queue/d200-instructions-sync; takeover from WorkBuddy AI · 9b71, whose claim added no commit. Re-synced to D-225 before implementing: the packet's original target, "Claude Code builds too", was superseded, so this lands the reverse - the last stale sentence removed from the AGENTS.md D-058 row and D-200 (7) closed. Evidence: controls briefContract + registerShape + queueGate 76/76; check, token audit, migration lint and deploy triggers green; docs only, no deploy path. Left out: the syncedTo field, which waits for PICKER-decision-sync.)
