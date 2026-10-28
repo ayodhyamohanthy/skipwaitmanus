@@ -3,7 +3,7 @@
 ## Goal and scope
 Repair the existing client telemetry path without enabling telemetry, BYOR, payments or any release switch. Privacy is Tier 1. No new dependency or production token test.
 
-Row `CLIENT-TELEMETRY.privacy`, branch `agent/queue/client-telemetry-privacy`, lane `client-telemetry`.
+Row `CLIENT-TELEMETRY.privacy`, branch `agent/queue/client-telemetry-guard-repair`, lane `client-telemetry`.
 Owned code/test paths only:
 - `client/src/lib/sentry.ts`
 - `client/src/lib/sentry.test.ts`
@@ -31,3 +31,5 @@ Later BYOR integration takes the union of this repair and its existing F2/F3 hun
 
 ## Status
 Registration only. Not implemented, reviewed, shipped or verified in production.
+
+Registration isolation: the implementation slug differs from both registration heads, including the retained superseded #802 branch. Preserve all registration history and branches; no deletion is needed for picker isolation.
