@@ -528,15 +528,15 @@
     },
     {
       "id": "D-200-instructions-sync",
-      "title": "Instruction files say what D-200 and the picker already do: Claude Code builds too, nothing waits for one model or session",
+      "title": "Instruction files state D-225's role split and D-200's no-step-waits rule: Claude supplies intelligence, other tools develop",
       "row": "D-200",
       "packet": "docs/plans/D-200-instructions-sync.md",
       "tier": 3,
       "lane": "d200-docs",
       "branch": "agent/queue/d200-instructions-sync",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "D-200 (7): CLAUDE.md, AGENTS.md, docs/BRIEF.md and docs/DELEGATION.md still say Claude Code never builds. Docs only, five exact edits in the packet. Any model except a Claude Code session builds it (its safety check refuses edits to its own instruction files)."
+      "note": "D-200 (7), re-synced to D-225 (Oct 28). D-225 superseded the Claude-builds-too half this row was written for, so the remaining work was to remove the one surviving 'Claude Code builds too' sentence (AGENTS.md, the D-058 row) and close D-200 (7). CLAUDE.md, docs/BRIEF.md and docs/DELEGATION.md already state the D-225 split. The re-sync is recorded in the packet because assignments.json allows no syncedTo key until PICKER-decision-sync lands."
     },
     {
       "id": "POSTMERGE-oct22-review",
