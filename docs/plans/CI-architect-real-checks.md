@@ -57,3 +57,33 @@ Out of scope: deploy workflows, rollback, production, DB, protection or ruleset 
 ## Status
 
 - CI-architect-real-checks: in progress — Deepseek-V4.1-Flash · 4352 — 2026-10-28 — branch agent/queue/ci-architect-real-checks
+
+Evidence — CI-architect-real-checks — Deepseek-V4.1-Flash · 4352 — 2026-10-28
+
+**The rule now.** A required job skips only when the event is a pull request and `toJSON(github.event.pull_request.changed_files)`, `.additions` and `.deletions` are each exactly the number `0`. `toJSON()` is deliberate: `==` coerces, so `changed_files == 0` would also accept the string `"0"`. No branch, title, message or label is an input. Every push, dispatch and re-run falls through to running. Nothing uses `needs:`, so no classifier can fail and leave a required job skipped, and there is no aggregate job to hide one. Each running job re-reads the same pinned pair with `scripts/classifyCiChange.mjs --expect-substantive` and fails if that diff is empty; an unreadable diff never fails, it prints why and lets the full steps run.
+
+**Red first.** `scripts/ciMarkerSkip.test.ts` fails 11 of its 22 pins against main's `ci.yml` (all three "carries the shared empty-diff condition", all three "never decides from a branch", "no branch prefix survives", and the #666 hunk pin), and `scripts/classifyCiChange.test.ts` cannot load before the module exists.
+
+**Live proof.** Throwaway draft pull requests, never merged, every one closed and its branch deleted after the run was recorded; the runs remain.
+
+| Proof | Branch → base | PR | Files | Run | Result |
+| --- | --- | --- | --- | --- | --- |
+| A genuinely empty marker takes only the fast path | `agent/architect/ci-proof-empty` → task branch | #782 | 0 | 40680384978 | run `skipped`; typecheck, unit + component + route tests and production build all `skipped` |
+| #752's shape: architect docs | `agent/architect/ci-proof-docs` → main | #779 | 6 | 40680358368 | all three ran; unit tests and build passed; typecheck red at the queue gate only (see the finding) |
+| #752's shape: architect docs, base = task branch | `agent/architect/ci-proof-docs-pass` → task branch | #783 | 1 | 40681605165 | all three ran; same queue-gate red, nothing else |
+| A runtime change on a marker prefix | `agent/architect/ci-proof-runtime` → main | #781 | 6 | 40680379580 | all three ran; unit tests and build passed; typecheck red at the queue gate only |
+| An invalid `assignments.json` on an architect branch | `agent/architect/ci-proof-invalid` → main | #780 | 6 | 40680373766 | all three ran; **unit + component + route tests failed** (`validateAssignments`); build passed |
+| A retired marker prefix, registered slug: all three run **and pass** | `agent/review/ci-architect-real-checks` → main | #784 | 5 | 40682684632 | **typecheck, unit + component + route tests and production build all `success`** |
+
+The classifier's own log line on the green run: `classify-ci-change: substantive - 5 file(s) changed between the pinned base and head`.
+
+**Finding for the CEO — not fixable inside this row's owns.** An architect-prefixed pull request that carries `ci.yml` cannot pass the typecheck job before this lands. `scripts/scope-check.mjs` runs `scripts/queue-gate.mjs`, which reads `git diff --name-only --no-renames origin/main...HEAD`; a pull request's merge ref always contains its base branch's commits, so any branch carrying `ci.yml` is not docs-only and must match a queue row. The three architect proof branches therefore fail with "This branch matches no queue row" while typecheck, design tokens, deploy triggers, unit tests and build all pass — #784 shows the identical change green once the slug matches a row. Two consequences follow, both outside this row:
+
+1. After this lands, an existing architect packet pull request that changes a file outside its row's `owns` goes red on the scope check, and that is the gate telling the truth. #662 (`agent/architect/signin-loading-click`) changes `docs/DECISIONS.md`, `docs/plans/LEGACY-BRANCHES-oct24.md` and `docs/plans/assignments.json` while `D-048-fix-signin-click-loading` owns two client files. The remedy is a registry `owns` widening or a docs-only allowance, which belongs to another row; nothing here weakens either gate.
+2. The queue gate's docs-only allowance (D-200) and the scope check disagree for a docs-only architect pull request whose slug matches a row: the queue gate admits it and the scope check rejects it for files outside `owns`.
+
+**Window, re-measured 2026-10-28T12:04Z (B4), no claim attached.** The newest 100 `ci.yml` runs span 2026-10-27T17:38Z to 12:04Z: 30 from `agent/reports/log`, 9 architect (5 of them my proofs), 1 review (mine), 14 main, 46 other; 35 concluded `skipped`. Skipping job steps never removed a run from the picker's window: `scripts/next-task.mjs:239` reads `/actions/workflows/ci.yml/runs?per_page=100` repo-wide and `ciStateFromRuns` ignores `skipped` conclusions. The fast path still saves the compute of 30 empty-diff runs in this window; it saves no window slot, and no minutes claim is made for a public repository.
+
+**#666 merge (G2).** `git merge-file` of `agent/pricing/banded-plans-oct25`'s `ci.yml` against this candidate, with main's blob as the base, exits 0 and yields this candidate byte for byte, so #666's `ci.yml` diff is empty after this lands.
+
+**For the reviewer.** Check the six pull-request runs above, the two `if:`-contract pins, and that `scripts/classifyCiChange.mjs` can never return an empty list from a failed, shallow or contradictory read. The `--expect-substantive` guard turns a wrong count into a red job rather than a green job that ran no real step; an unreadable diff stays green and runs the full steps, which is the only direction packet E1 allows.
