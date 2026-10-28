@@ -472,8 +472,29 @@ function clock(branches, now) {
 
 const PENDING_KINDS = new Set(["review", "fix", "green", "land", "takeover", "unblock"]);
 
+/**
+ * D-202: the newest register entry that names this task and sits after its `syncedTo`, or null.
+ * Such a task is out of sync: it is handed as a re-sync, never as a build, takeover, review,
+ * landing or packet, and it holds no lane or file (the work waits, the queue goes on).
+ */
+export function outOfSyncOf(v, register) {
+  if (!register?.length || !v?.task?.syncedTo) return null;
+  const at = register.findIndex(e => e.id === v.task.syncedTo);
+  if (at < 0) return null;
+  for (let i = register.length - 1; i > at; i -= 1) {
+    if (register[i].affects?.includes(v.task.id)) return register[i].id;
+  }
+  return null;
+}
+
+/** The ids of every entry after this task's stamp (all of them when the stamp is unknown). */
+export function decisionsSince(register, syncedTo) {
+  const at = register.findIndex(e => e.id === syncedTo);
+  return (at < 0 ? register : register.slice(at + 1)).map(e => e.id);
+}
+
 /** D-085: the one thing the next agent should do (D-083). */
-export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], now, claimant, avoid = new Set() }) {
+export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], now, claimant, avoid = new Set(), register = null }) {
   if (mainCi.state === "unknown") return { kind: "stop", reason: "cannot read main's CI runs from GitHub; nothing may be picked or pushed until it is known (D-082)" };
   if (mainCi.state === "running-after-red") return { kind: "wait", mainRed: true, reason: "main's CI is running again after a failure; run this again when it finishes" };
   if (mainCi.state === "red") {
@@ -494,6 +515,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   const byId = new Map(view.map(v => [v.task.id, v]));
   // D-134: dependsOn holds every kind of work on a task, not only a new build.
   const unmetOf = v => v.task.dependsOn.filter(d => !byId.get(d)?.done);
+  // D-202: an out-of-sync task is handed as a re-sync and holds no lane or file.
+  const staleOf = v => (v.done ? null : outOfSyncOf(v, register));
   // D-134: a lane-mate that depends on v (directly or through others) cannot land before v, so it never makes v's lane busy;
   // neither does a lane-mate that waits for a dependency: nobody can work on it, so holding its lane could deadlock two lanes.
   const dependsOnTask = (o, id, seen = new Set()) => o.task.dependsOn.some(d => d === id || (!seen.has(d) && seen.add(d) && byId.has(d) && dependsOnTask(byId.get(d), id, seen)));
@@ -503,11 +526,11 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   const disjoint = (a, b) => Boolean(a.task.owns?.length && b.task.owns?.length) && !ownsOverlap(a.task.owns, b.task.owns);
   const building = o => !o.pr || !["green", "red", "running", "running-after-red"].includes(o.ci)
     || (o.ci !== "green" && !quiet(workAt(o)));
-  const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && (building(o) || !disjoint(o, v)));
+  const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && !staleOf(o) && (building(o) || !disjoint(o, v)));
   // PICKER-owns-scope: lanes are labels, so two lanes could edit one file unseen. A build also
   // waits while an open task — being built or waiting for review — owns an overlapping path,
   // unless it waits for that task (a dependent may edit the same file after its dependency lands).
-  const filesBusy = v => Boolean(v.task.owns?.length) && view.some(o => o !== v && Boolean(o.task.owns?.length) && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && ownsOverlap(v.task.owns, o.task.owns));
+  const filesBusy = v => Boolean(v.task.owns?.length) && view.some(o => o !== v && Boolean(o.task.owns?.length) && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && !staleOf(o) && ownsOverlap(v.task.owns, o.task.owns));
   const ceo = isArchitect(claimant);
 
   const skipped = [];
@@ -517,6 +540,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   const gate = (reason, extra = {}) => ({ kind: "gate", reason, ...extra });
   const did = (v, roles) => Boolean(claimant) && roles.some(r => v[r].some(who => modelOf(who) === modelOf(claimant)));
   const green = (v, why) => ({ kind: "green", task: v.task, work: v.work, pr: v.pr, from: v.owner, since: workAt(v), why });
+  // D-202: updating the packet is a docs job on the architect lock; any capable session may take it (D-200).
+  const resync = v => ({ kind: "resync", task: v.task, lock: v.archName, lockExists: Boolean(v.arch), from: v.arch ? holderOf(v.arch, v.task.id) : null, decisions: decisionsSince(register, v.task.syncedTo) });
   const reportWhy = said => `${said.who} reported it ${said.status}${said.note ? `: ${said.note}` : ""}`;
   const slot = landingSlot(branches, now);
   const slotBusyFor = cl => Boolean(slot.holder && slot.holder !== cl && !slot.quiet);
@@ -574,6 +599,9 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
         if (v.unblocker && v.unblocker !== claimant && !blockers.includes(v.unblocker) && !quiet(archAt(v))) return gate(`${v.unblocker} is unblocking ${v.task.id}`);
         return { kind: "unblock", task: v.task, report: said, lock: v.archName, lockExists: Boolean(v.arch), from: v.unblocker };
       }
+      // D-202: a decision newer than the packet's stamp names this task: re-sync the packet first.
+      const stale = staleOf(v);
+      if (stale) return resync(v);
       // D-109: one pull request whose CI cannot be read is skipped, never a stop for everyone (GitHub refuses a red landing anyway, D-082).
       if (v.pr && v.ci === "error") return skip(v, `cannot read CI for ${v.pr}; skipped until it can be read`);
       if (v.pr && v.task.tier === 1) return tier1(v);
@@ -595,6 +623,10 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       if (!idle) return skip(v, `in progress by ${v.owner ?? "another agent"} on ${v.work}`);
       return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v) };
     }
+    // D-202: no packet, review, fix, landing or build until the packet is re-synced; a task
+    // that waits for the owner stays with the owner.
+    const stale = staleOf(v);
+    if (stale && v.task.status !== "owner") return resync(v);
     if (v.task.status === "architect") {
       const writer = holderOf(v.arch, v.task.id);
       if (writer && !quiet(archAt(v))) return skip(v, `${writer} is writing its packet`);
@@ -608,7 +640,13 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     return { kind: "build", task: v.task, ciRunning: mainCi.state === "running" };
   };
 
-  const mine = claimant ? ownWork(view, claimant) : null;
+  let mine = claimant ? ownWork(view, claimant) : null;
+  // D-202: a holder continuing an out-of-sync task is handed the re-sync first, not its build
+  // (a blocked wait still comes first: the block is cleared before the packet moves).
+  if (mine && mine.kind !== "wait" && mine.task) {
+    const own = byId.get(mine.task.id);
+    if (own && staleOf(own)) mine = { ...resync(own), at: mine.at };
+  }
   // D-134: whether a pick's plan row is shared by several tasks (their status then goes in their packet's Status section).
   const sharedRows = new Set(view.map(v => v.task.row).filter((r, k, all) => all.indexOf(r) !== k));
   const withHold = pick => (pick?.task && sharedRows.has(pick.task.row) ? { ...pick, task: { ...pick.task, sharedRow: true } } : pick);
@@ -774,7 +812,7 @@ export function leaseFor(pick, branches, now) {
     case "build": case "green": return workLike(pick.work, slugOf(pick.task.branch), pick.task.id);
     case "land": return pick.tier1 ? onLock : workLike(pick.work, slugOf(pick.task.branch), pick.task.id);
     case "landing-slot": return { ref: LAND_SLOT, verb: "Heartbeat", id: pick.task?.id, reclaim: false, retry: false };
-    case "review": case "fix": case "architect": case "unblock": return onLock;
+    case "review": case "fix": case "architect": case "resync": case "unblock": return onLock;
     default: throw new Error(`no lease for ${pick.of}`);
   }
 }
@@ -850,7 +888,7 @@ export function mayReport({ task, branches, claimant }) {
  * state, holder, quiet time and the latest report its team sent.
  * reports: [{ id, status, who, at, note }] from agent/reports/log, newest first.
  */
-export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehind = new Map(), mergedHeads = new Map(), reports = [], now }) {
+export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehind = new Map(), mergedHeads = new Map(), reports = [], now, register = null }) {
   const HOUR = 60 * 60 * 1000;
   const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports });
   const byTask = reportsByTask(reports);
@@ -862,8 +900,11 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehi
     const activeAt = archHeld ? archAt(v) : v.open ? workAt(v) : null;
     const quiet = activeAt !== null && now - activeAt > IDLE_MS;
     const review = pr && task.tier === 1 ? v.review : null;
+    // D-202: an out-of-sync task shows the decision that holds it, not its old state.
+    const stale = outOfSyncOf(v, register);
     let state;
     if (v.done) state = "done";
+    else if (stale) state = `re-sync (${stale})`;
     else if (task.status === "owner") state = "owner";
     else if (task.status === "in-review") state = "in-review";
     else if (task.dependsOn.some(d => !doneIds.has(d))) state = "waiting";

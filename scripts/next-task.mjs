@@ -41,7 +41,7 @@ if ((process.env.HTTPS_PROXY || process.env.https_proxy) && process.env.NODE_USE
 const LIST = "docs/plans/assignments.json";
 const REGISTER = "docs/DECISIONS.md";
 const LIST_REF = process.env.NEXT_TASK_LIST_REF || "origin/main";
-const CLAIMABLE = ["build", "takeover", "fix-main", "review", "fix", "green", "land", "architect", "unblock", "continue"];
+const CLAIMABLE = ["build", "takeover", "fix-main", "review", "fix", "green", "land", "architect", "resync", "unblock", "continue"];
 const EXIT = { stop: 2, wait: 4, none: 5 };
 const REPORTS = "agent/reports/log";
 const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
@@ -277,7 +277,8 @@ function claim(pick, who, branches) {
       return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who)));
     }
     case "unblock": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Unblock", pick.task.id, who)));
-    case "architect": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who)));
+    case "architect":
+    case "resync": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who)));
     case "fix-main": return Boolean(pushMarker(pick.lock, pick.parent ? tip(pick.parent) : origin(), markerSubject(pick.parent ? "Takeover" : "Claim", fixMainIdOf(pick.sha), who)));
     case "review": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Review claim", pick.task.id, who)));
     case "fix": return branches.has(pick.lock) && Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Fix claim", pick.task.id, who)));
@@ -377,12 +378,12 @@ async function main() {
   const who = args.claim ? sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4)) : args.as ?? null;
   if (args.claim && who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const { doc, mainCi, openPrs, mergedHeads, prCi, prBehind, branches, reports } = await state();
+    const { doc, register, mainCi, openPrs, mergedHeads, prCi, prBehind, branches, reports } = await state();
     const now = Date.now();
     const avoid = new Set((args.avoid ?? "").split(",").map(id => id.trim()).filter(Boolean));
-    const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, prCi, reports, now, claimant: who, avoid });
+    const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, prCi, reports, now, claimant: who, avoid, register });
     // D-085: every agent starts from the same picture — the priorities top down, green or not.
-    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, prBehind, reports, now });
+    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, prBehind, reports, now, register });
     if (pick.kind === "ceo") pick.board = board;
     else console.log(renderBoard(board));
     const { local, mainBehind } = localState();
