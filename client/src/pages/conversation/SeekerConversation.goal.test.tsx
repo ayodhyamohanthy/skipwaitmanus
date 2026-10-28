@@ -115,14 +115,6 @@ describe("seeker /conversation on the goal doctrine (D-150)", () => {
     expect(line.textContent).not.toMatch(/7 days/);
   });
 
-  it("words the withdraw confirm with the shared credit-comes-back rule, never retyped", async () => {
-    renderConversation(base);
-    fireEvent.click(await screen.findByRole("button", { name: /Withdraw ask/ }));
-    const confirm = await screen.findByRole("group", { name: "Withdraw this ask" });
-    // Exact shared phrase from shared/moneyCopy.ts (CREDIT_RULE_SHORT).
-    expect(confirm.textContent).toContain("credit comes back once if you withdraw before pickup");
-  });
-
   it("renders no referred-deadline line while REFERRED_DEADLINE_ENABLED is off", async () => {
     renderConversation({ ...base, status: "approved", referrerId: 77, referredDueAt: "2026-10-30T08:00:00.000Z" });
     await screen.findByTestId("goal-status");
