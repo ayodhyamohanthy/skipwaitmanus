@@ -490,26 +490,31 @@ describe("branch-cleanup.mjs as a process", () => {
 
   it("deletes only the exact tip it planned: a branch pushed to since the plan is skipped, and one pushed to after the re-check is refused by its lease", async () => {
     const r = repos({ retention: EMPTY_HOLDS });
-    // A commit on top of a branch's tip, straight on origin, the way another agent's push lands.
-    const pushOnto = (name: string) => {
+    // An empty commit on top of a branch's tip, straight on origin, the way another agent's marker or push lands.
+    const pushOnto = (name: string, subject: string) => {
       const tip = git(r.origin, "rev-parse", `refs/heads/${name}`);
-      const next = git(r.origin, "commit-tree", `${tip}^{tree}`, "-p", tip, "-m", `pushed to ${name} meanwhile`);
+      const next = git(r.origin, "commit-tree", `${tip}^{tree}`, "-p", tip, "-m", subject);
       git(r.origin, "update-ref", `refs/heads/${name}`, next, tip);
       return next;
     };
     const moved: Record<string, string> = {};
-    // Read 1 belongs to the plan and read 2 to the re-check before the batch, each after its own fetch.
-    const s = await serve(r, { open: n => { if (n === 1) moved.squashed = pushOnto("feature/squashed"); if (n === 2) moved.done = pushOnto("agent/queue/done-1"); return []; } });
+    // Read 1 belongs to the plan and read 2 to the re-check before the batch, each after its own fetch. The review
+    // lock's new tip is still a marker, so only its SHA has changed; agent/queue/done-1 moves after the re-check's fetch.
+    const s = await serve(r, { open: n => {
+      if (n === 1) moved.review = pushOnto("agent/review/done-1", "Verdict DONE-1: pass — Tester · 0002");
+      if (n === 2) moved.done = pushOnto("agent/queue/done-1", "pushed to agent/queue/done-1 meanwhile");
+      return [];
+    } });
     try {
       const { code, out } = await run(r.runner, s.base, ["--apply"]);
       expect(out).toMatch(/APPLY: 3 to delete/);
-      expect(out).toContain(`skipped feature/squashed: now at ${moved.squashed.slice(0, 8)}`);
+      expect(out).toContain(`skipped agent/review/done-1: now at ${moved.review.slice(0, 8)}`);
       expect(out).toMatch(/deleted 1 of 2 \(checked on origin\)/);
       expect(out).toMatch(/not deleted: agent\/queue\/done-1/);
       expect(code).toBe(1);
-      expect(git(r.origin, "rev-parse", "refs/heads/feature/squashed")).toBe(moved.squashed);
+      expect(git(r.origin, "rev-parse", "refs/heads/agent/review/done-1")).toBe(moved.review);
       expect(git(r.origin, "rev-parse", "refs/heads/agent/queue/done-1")).toBe(moved.done);
-      expect(remote(r.origin)).not.toContain("agent/review/done-1");
+      expect(remote(r.origin)).not.toContain("feature/squashed");
     } finally { s.close(); }
   }, 60_000);
 
