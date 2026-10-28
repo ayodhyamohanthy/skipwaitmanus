@@ -199,6 +199,10 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - Redesign `AccountMenu.tsx`, `NotificationBell.tsx`, `BetaNotice.tsx` and `CookieConsent.tsx` with goal primitives and tokens only.
   - Behaviour is unchanged: the same menu entries and links; the bell's count, routing and polling as today; the beta notice's dismissal; and the cookie choices with `applyAnalyticsConsent` exactly as today.
   - Every existing test is kept, and captures are taken on a signed-in page and on the landing.
+- **CEO ruling on the builder's two calls (#767, Oct 28):**
+  - *Primitives.* For these four global parts, goal tokens plus the Radix primitive the goal tree builds on count as goal primitives: `AccountMenu` uses `@radix-ui/react-dropdown-menu` directly, as `GoalDrawer` and `GoalSheet` use theirs. Where a goal primitive exists, the part wears its recipe class for class, and its test renders the primitive and compares, so the two cannot drift. Importing `GoalButton` into a part waits until `goalBoundary.test.ts` lists that part; the file's owning row makes that edit, not this one.
+  - *One black commit.* The cookie banner floats over pages that each own the one black commit on their screen (DESIGN.md §1), so neither choice is black. "Essential only" and "Accept all" both wear `GoalButton variant="outline" touch="large"`, and refusing looks exactly as easy as accepting. The words, the choices, the stored value and `applyAnalyticsConsent` are unchanged.
+  - *Two bells.* Signed in, the shell shows two bells at both widths: the account menu's counted bell and `GoalShell`'s own Alerts link. Both open `/alerts`, because `/notifications` redirects there. Removing one needs `GoalShell.tsx` or `AppShell.tsx` and must keep the unread count, so it belongs to a follow-up row, not this one.
 - **Owns:** the four components and their tests.
 
 ### 6.3 `D-048-F-coverage` (Tier 3, lane `design-check`, after `D-048-F-goal-check`)

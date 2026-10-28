@@ -5,6 +5,14 @@ import { isClarityActive } from "@/lib/clarity";
 
 const STORAGE_KEY = "skipwait:cookie-consent";
 
+// Both choices wear GoalButton's ink-outline recipe at the large phone height
+// (variant="outline" touch="large"), class for class: the page under the banner
+// owns the one black commit on its screen (DESIGN.md §1), and refusing looks
+// exactly as easy as accepting. shellParts.goal.test.tsx compares these classes
+// with GoalButton itself; importing it here waits for goalBoundary.test.ts to
+// list this file.
+const CHOICE_CLASS = "inline-flex items-center justify-center gap-2 rounded-g-control border border-g-ink text-g-label text-g-ink whitespace-nowrap transition-colors duration-(--g-dur-hover) ease-g-out select-none h-(--g-control-h) px-[14px] max-gdesk:h-12";
+
 export type CookieConsentChoice = "essential" | "all";
 
 function parseChoice(value: string | null): CookieConsentChoice | null {
@@ -91,8 +99,8 @@ export default function CookieConsent() {
       <div ref={bannerRef} role="dialog" aria-label="Cookie choices" className="g-scope fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[60] mx-auto max-w-xl rounded-g-popover border border-g-control-edge bg-g-surface p-5 shadow-g-popover gdesk:bottom-[max(1.5rem,env(safe-area-inset-bottom))]">
         <p className="text-g-body text-g-ink"><strong>Cookies, honestly.</strong> Essential ones keep you signed in. Optional analytics help us improve - never sold, never ads. <Link href="/privacy" className="underline">Privacy</Link></p>
         <div className="mt-4 flex flex-wrap justify-end gap-2">
-          <button type="button" onClick={() => save("essential")} className="g-hit inline-flex h-(--g-control-h) items-center justify-center rounded-g-control border border-g-control-edge bg-g-surface px-[14px] text-g-label whitespace-nowrap text-g-ink transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover max-gdesk:h-12">Essential only</button>
-          <button type="button" onClick={() => save("all")} className="g-hit inline-flex h-(--g-control-h) items-center justify-center rounded-g-control bg-g-primary px-[14px] text-g-label whitespace-nowrap text-g-on-primary transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-primary-pressed max-gdesk:h-12">Accept all</button>
+          <button type="button" onClick={() => save("essential")} className={CHOICE_CLASS}>Essential only</button>
+          <button type="button" onClick={() => save("all")} className={CHOICE_CLASS}>Accept all</button>
         </div>
       </div>
     </>

@@ -12,14 +12,15 @@
  *    count, its one-shot load and its routing, the beta words and link, the
  *    cookie choices and applyAnalyticsConsent.
  *
- * The cookie banner keeps plain buttons on goal tokens rather than
- * `GoalButton variant="primary"`: the banner is global, and the landing's own
- * contract (GoalLanding.test.tsx) counts `[data-g-primary="true"]` document-wide
- * and requires exactly one, so a second primary inside the banner would break
- * every surface that mounts it (GoalLanding, GoalSignIn, JobExplorer, ShareHub,
- * the referrer pages). Its two actions follow the GoalButton recipe and
- * hierarchy instead: "Accept all" is the single black fill, "Essential only" is
- * outlined.
+ * The cookie banner is global: it floats over the landing and every page that
+ * mounts it, and each of those pages owns the one black commit on its screen
+ * (DESIGN.md §1; GoalLanding.test.tsx counts `[data-g-primary="true"]`). So
+ * neither choice is black. "Essential only" and "Accept all" both wear
+ * GoalButton's ink-outline recipe with the large phone height, class for class,
+ * so refusing looks exactly as easy as accepting (CEO ruling on #767). The pin
+ * renders GoalButton itself and compares, so the banner cannot drift from the
+ * primitive while CookieConsent.tsx may not import components/goal
+ * (goalBoundary.test.ts, owned by another row).
  *
  * BetaNotice keeps its `kit` tone: /sign-in has not moved yet (D-048-p3-signin)
  * and DESIGN.md forbids goal tokens on an unmoved surface, so only the `goal`
@@ -31,6 +32,7 @@ import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { GoalButton } from "@/components/goal/GoalButton";
 import { AccountMenu } from "./AccountMenu";
 import { BetaBadge, BetaNoticeLine } from "./BetaNotice";
 import CookieConsent, { applyAnalyticsConsent, readCookieConsent } from "./CookieConsent";
@@ -329,19 +331,30 @@ describe("CookieConsent on the goal system", () => {
     setItem.mockRestore();
   });
 
-  it("puts the dialog and both actions on goal tokens, with one black fill", () => {
+  it("puts the dialog on goal tokens and the popover rules", () => {
     window.localStorage.clear();
     render(<CookieConsent />);
     expectGoalClasses(banner().className);
     expect(banner().className).toContain("g-scope");
     expect(banner().className).toContain("rounded-g-popover");
     expect(banner().className).toContain("shadow-g-popover");
+  });
+
+  it("gives both choices GoalButton's ink-outline recipe, the same weight, and no black fill", () => {
+    window.localStorage.clear();
+    render(<><CookieConsent /><GoalButton variant="outline" touch="large">Recipe</GoalButton></>);
+    const classesOf = (element: Element) => Array.from(element.classList).sort();
+    const recipe = classesOf(screen.getByRole("button", { name: "Recipe" }));
     const essential = screen.getByRole("button", { name: "Essential only" });
     const accept = screen.getByRole("button", { name: "Accept all" });
-    expectGoalClasses(essential.className);
-    expectGoalClasses(accept.className);
-    expect(accept.className).toContain("bg-g-primary");
-    expect(essential.className).not.toContain("bg-g-primary");
+    expect(classesOf(essential)).toEqual(recipe);
+    expect(classesOf(accept)).toEqual(recipe);
+    for (const choice of [essential, accept]) {
+      expectGoalClasses(choice.className);
+      expect(choice.className).not.toContain("bg-g-primary");
+      expect(choice.hasAttribute("data-g-primary")).toBe(false);
+    }
+    expect(banner().querySelector('[class*="bg-g-primary"], [data-g-primary]')).toBeNull();
   });
 
   it("applyAnalyticsConsent denies ads always and analytics unless the visitor chose all", () => {
