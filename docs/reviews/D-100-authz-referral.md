@@ -15,7 +15,7 @@
 | P0 | 0 | |
 | P1 | 0 | |
 | P2 | 2 | held privately (AR-1, AR-2) |
-| P3 | 1 private (AR-3) + 6 hygiene (H-1 to H-6) | hygiene below |
+| P3 | 7 hygiene (H-1 to H-7) | below |
 
 The core privacy rule holds: before acceptance, a referrer gets no seeker name and no resume file (D-019(e)). The document byte route, the claimed-detail view, the unclaimed preview and the conversation all check ownership or assignment on the server, and checked state comes from the database, not from the session. The two P2 findings are narrow gaps at the edge of that rule. Neither exposes a resume, and neither exposes a name the way the audit could trace it.
 
@@ -25,12 +25,12 @@ The core privacy rule holds: before acceptance, a referrer gets no seeker name a
 |---|---|---|---|---|---|
 | AR-1 | held privately | An authorization re-check is missing on one referral decision path. Details are with the CEO. | Held | P2 | Held (one Tier 1 fix row, red-first test) |
 | AR-2 | held privately | One route returns an internal identifier that the referral views otherwise withhold before acceptance. Details are with the CEO. | Held | P2 | Held (one fix row, red-first test) |
-| AR-3 | held privately | An admin export cell is not neutralised. Details are with the CEO. | Held | P3 | Held |
 | H-1 | `server/safetyRoutes.ts:48,71,116,145`; `server/privateReferralRoutes.ts:458,891,904,918,942,960,974,1227,1256,1276,1631,1699,1756`; `server/blocksRoutes.ts:170-176` | Many catch blocks send `error.message` to the client, including on 500 and on catch-all 400/409 answers. The `/api` wrapper (`privateReferralRoutes.ts:209-220`) strips only database-driver text, so other internal messages (for example "Database unavailable" or a thrown library error) can still reach the user. This is plain-words hygiene, not a data leak found in practice. | Any signed-in caller who triggers an unexpected error | P3 | Send a fixed message on 500 and log the cause, as `POST /api/admin/payments/review/:paymentId` already does (`:1656-1666`). |
 | H-2 | `server/privateReferralRoutes.ts:490-575`, `:1023`; `server/blocksRoutes.ts:146`; `server/askDraftRoutes.ts:35` | There is no per-user rate limit on document upload sessions or their chunks, legacy uploads, share-card creation, block create/remove or ask-draft saves. Each file is capped at 10 MB, but the number of upload sessions is not, so storage can be filled. Rate limits already exist for referral messages (30/hour, `:1352`), safety reports (20/day, `db.ts`), work-email codes and data exports. | Any signed-in account | P3 (availability/cost) | Add a per-user hourly cap on upload sessions and block writes, plus a sweep for staged chunks that never finish. |
 | H-3 | `server/blocksRoutes.ts:28-29,174`; `server/db.ts` `createSafetyReport` (`reportedUserId`) | The two member-id inputs answer differently for an id that exists and one that does not, so a signed-in member can learn which user ids exist. Ids are sequential, so this reveals little, but the answer should not differ. | Any signed-in account | P3 | Accept or answer the same way whether the id exists or not. |
 | H-4 | `server/privateReferralRoutes.ts:239-254`; `server/blocksRoutes.ts:82-114` | Block enforcement is fail-open by design: if the block lookup fails, threads, previews, documents and claims stay reachable for a blocked pair. This is a recorded choice ("a failed check never hides a thread") and the failure is not reported to Sentry on this path. | Nobody directly; it happens during a database fault | P3 | Keep fail-open if the owner prefers it, but send each swallowed failure to `captureServerError` so it is seen. |
 | H-5 | `server/db.ts` `createSafetyReport`; `server/safetyRoutes.ts:37-43` | `reportedUserId` does not have to be the other person in the cited `referralRequestId`, and it can be any member. A false report can name an unrelated member. An admin reviews every report, so the harm is admin time and a possible wrongful action. | Any signed-in account | P3 | When both are given, require the reported user to be the counterpart, and show the admin when a report names someone outside a shared thread. |
+| H-7 | `server/privateReferralRoutes.ts:1539-1542`; `server/db.ts:3662` `listReferralLedger` | The admin referral-ledger CSV quotes each cell but does not neutralise a leading `=`, `+`, `-` or `@` (spreadsheet formula injection). No user-controlled path was found today: ask job rows use fixed title and location values (`db.ts:1861` `companyAskJobRow`), the company field is a resolved domain, and the email columns are validated addresses. So this is hygiene for future columns. | Nobody today | P3 | Prefix any cell that starts with `= + - @` (or a tab or CR) with `'`. |
 | H-6 | `server/privateReferralRoutes.ts:1013-1017` | Smart-pitch passes a short-lived signed URL of the seeker's own PDF resume to the configured AI provider (`server/_core/modelRouter.ts`). The route is owner-checked (`getOwnedResumeAttachmentForPitch`). Handing resume content to a third party is a privacy disclosure, so the owner should confirm the privacy notice covers it. | Not an attacker; a processing fact | P3 (privacy notice) | Owner item: confirm the notice names AI processing of the resume. Legal text stays owner-controlled. |
 
 ## Route inventory (what was checked)
@@ -86,7 +86,7 @@ Columns: who may call it, the ownership or scope predicate and where it lives, t
 | `/api/admin/safety-reports*`, `/api/admin/company-suggestions*` | `role = admin` (401/403 otherwise) | admin only | reports and evidence | none | integer id, status enum in store |
 
 ### Admin routes inside `privateReferralRoutes.ts`
-Every `/api/admin/*` handler in the file (`:1534-1782`) checks `identity.account.role === "admin"` before any read or write, and GETs get `private, no-store` (`:221`). How the admin role is granted is out of scope here (`D-100.authz-admin-money`). AR-3 is the one admin-path item.
+Every `/api/admin/*` handler in the file (`:1534-1782`) checks `identity.account.role === "admin"` before any read or write, and GETs get `private, no-store` (`:221`). How the admin role is granted is out of scope here (`D-100.authz-admin-money`). H-7 is the one admin-path item.
 
 ## Verified controls (no finding)
 - Before acceptance, the seeker name and the files stay hidden in every referrer view: preview strips `candidateName` and locks files; detail is an allow-list; claim and one-click responses carry no seeker id; documents need the actor's own acceptance event.
@@ -103,4 +103,4 @@ Every `/api/admin/*` handler in the file (`:1534-1782`) checks `identity.account
 - Client code that renders these responses was not reviewed.
 
 ## Next step for the CEO
-Turn AR-1 and AR-2 into fix rows (AR-1 is Tier 1: it touches document access and identity; land it dark or behaviour-preserving with red-first tests, D-223 (3)). H-1 to H-5 can share one Tier 2 hygiene row. H-6 is an owner item.
+Turn AR-1 and AR-2 into fix rows (AR-1 is Tier 1: it touches document access and identity; land it dark or behaviour-preserving with red-first tests, D-223 (3)). H-1 to H-5 and H-7 can share one Tier 2 hygiene row. H-6 is an owner item.
