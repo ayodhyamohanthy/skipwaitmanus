@@ -115,7 +115,7 @@
       "tier": 1,
       "lane": "deploy",
       "branch": "agent/queue/p1-release-gate-strict-compare",
-      "status": "todo",
+      "status": "in-review",
       "dependsOn": [
         "P1-deploy-green-gate"
       ],
@@ -123,7 +123,7 @@
         "scripts/require-green-release.mjs",
         "scripts/requireGreenRelease.test.ts"
       ],
-      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. No main landing while first750gatedacceptance CI/deploys pending. Independent nonbuilder/nonfixer review and exact green checks; no live rollback/DB/settings tests."
+      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 acceptance (observe a subsequent normal gated release and its identities) is still pending, so the row is not done. No live rollback/DB/settings tests."
     },
     {
       "id": "CI-architect-real-checks",
@@ -4269,6 +4269,62 @@
         "docs/BRIEF.md"
       ],
       "note": "Serialized because existing BYOR and bonus rows own shared deploy docs. No runtime change or unsupported completion claims; incident748 remains open until path acceptance independently proven."
+    },
+    {
+      "id": "PICKER-heartbeat-slot-safety",
+      "title": "Renew an owned landing lease without taking another fresh landing slot",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-heartbeat-slot-safety.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-heartbeat-slot-safety",
+      "status": "todo",
+      "dependsOn": [
+        "PROCESS-review-gate"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskHeartbeatSlot.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
+    },
+    {
+      "id": "PICKER-landed-marker-continuity",
+      "title": "Keep merged work landed through marker-only branch recreation",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-landed-marker-continuity.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-landed-marker-continuity",
+      "status": "todo",
+      "dependsOn": [
+        "PICKER-heartbeat-slot-safety",
+        "PICKER-avoid-land"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskLandedMarkerContinuity.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
+    },
+    {
+      "id": "PICKER-landing-wait-fallthrough",
+      "title": "Offer eligible disjoint work before returning a landing-slot wait",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-landing-wait-fallthrough.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-landing-wait-fallthrough",
+      "status": "todo",
+      "dependsOn": [
+        "PICKER-landed-marker-continuity"
+      ],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskLandingWaitFallthrough.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
     }
   ]
 }
