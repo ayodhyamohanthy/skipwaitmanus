@@ -20,7 +20,7 @@ export const IDLE_MS = 2 * 60 * 60 * 1000;
 /** A holder whose claim has been quiet this long re-takes it on the takeover ref instead of a side heartbeat. */
 export const RECLAIM_MS = 90 * 60 * 1000;
 export const STATUSES = ["todo", "in-review", "done", "architect", "owner"];
-const TASK_KEYS = ["id", "title", "row", "packet", "tier", "lane", "branch", "status", "dependsOn", "note", "epic", "owns"];
+const TASK_KEYS = ["id", "title", "row", "packet", "tier", "lane", "branch", "status", "dependsOn", "note", "epic", "owns", "syncedTo"];
 
 /** D-134 / PICKER-owns-scope: a task may declare the files it will touch, so two lanes cannot edit the same file unseen. */
 const SWITCH_ONLY_SUFFIX = " (switch only)";
@@ -269,8 +269,8 @@ export function parseDecisionRegister(markdown) {
   return entries;
 }
 
-/** Every problem with the task list, or [] when it is valid. */
-export function validateAssignments(doc, packetExists) {
+/** Every problem with the task list, or [] when it is valid. register: parseDecisionRegister output. */
+export function validateAssignments(doc, packetExists, register = null) {
   const errors = [];
   if (!doc || typeof doc !== "object") return ["the task list is not a JSON object"];
   for (const k of Object.keys(doc)) if (!DOC_KEYS.includes(k)) errors.push(`unknown top-level key "${k}"`);
@@ -287,6 +287,14 @@ export function validateAssignments(doc, packetExists) {
     for (const k of ["title", "row", "lane"]) if (typeof t[k] !== "string" || !t[k].trim()) errors.push(`${at}: ${k} is required`);
     if (![1, 2, 3].includes(t.tier)) errors.push(`${at}: tier must be 1, 2 or 3`);
     if (!STATUSES.includes(t.status)) errors.push(`${at}: status must be one of ${STATUSES.join(", ")}`);
+    // D-202: every task that is not done names the newest decision its packet was checked against;
+    // done rows keep the stamp they landed under (and may omit it). An unknown entry is a defect.
+    if (t.syncedTo !== undefined && (typeof t.syncedTo !== "string" || !/^D-\d{3}$/.test(t.syncedTo))) errors.push(`${at}: syncedTo must be D-nnn`);
+    else if (register) {
+      if (t.syncedTo === undefined) {
+        if (t.status !== "done") errors.push(`${at}: syncedTo is required (the newest decision its packet was checked against)`);
+      } else if (!register.some(e => e.id === t.syncedTo)) errors.push(`${at}: syncedTo ${t.syncedTo} is not an entry in docs/DECISIONS.md`);
+    }
     if (!/^agent\/[a-z0-9-]+\/[a-z0-9.-]+$/.test(t.branch ?? "")) errors.push(`${at}: branch must be agent/<owner>/<slug>`);
     else {
       const prefix = RESERVED.find(p => t.branch.startsWith(p));
