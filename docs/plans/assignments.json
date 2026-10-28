@@ -133,9 +133,16 @@
       "tier": 1,
       "lane": "ci-gate",
       "branch": "agent/queue/ci-architect-real-checks",
-      "status": "architect",
+      "status": "todo",
       "dependsOn": [],
-      "note": "Packet/ownership reconciliation only, NOT ready for implementation. ci.yml remains owned by PRICING-banded-oct25 until explicit handoff and protected scope amendment. No dependency on pricing feature or disjoint P1 deployment repair; no concurrent workflow edits. Proposed full scope and evidence are in packet. Architect may resolve handoff/registration only; do not mutate runtime workflow while unresolved."
+      "owns": [
+        ".github/workflows/ci.yml",
+        "scripts/ciMarkerSkip.test.ts",
+        "scripts/classifyCiChange.mjs",
+        "scripts/classifyCiChange.test.ts",
+        "docs/plans/CI-architect-real-checks.md"
+      ],
+      "note": "Ownership resolved by handoff from PRICING-banded-oct25 (holder's acknowledgment: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/666#issuecomment-6464335154). Carries #666's typecheck heap line byte for byte (c9572fcf, ci.yml hunk only; never cherry-pick that commit) and adds nothing inside the Typecheck step, so #666 merges main without a ci.yml conflict. No dependency on pricing or on P1 (deploy workflows are disjoint). Keep the three required job names, the ci.yml path, push/dispatch behaviour and P1's release-gate inputs. Build only on this task branch, never on an agent/architect/* branch (its required jobs are skipped until this lands). Tier 1: independent review by a model that neither built nor fixed it, plus the real linked draft-PR runs in the packet."
     },
     {
       "id": "D-174-sample-job-removal",
@@ -185,7 +192,6 @@
         "D-048-F-credits"
       ],
       "owns": [
-        ".github/workflows/ci.yml",
         "client/src/components/AppShell.tsx",
         "client/src/components/seekerCreditsCard.test.tsx",
         "client/src/lib/planFamilyFlag.ts",
@@ -210,7 +216,7 @@
         "shared/planReach.test.ts",
         "client/src/components/goal/useGoalShellMeta.ts"
       ],
-      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first. Oct 27 queue sync (Claude Code, D-219; changeable): moved up to sit just above LAUNCH-legal-copy and no longer waits on it; LAUNCH-legal-copy now waits for this row instead, because it is owner-held (legal text), shares only policyPages.test.tsx, and its Terms and Cancellation text must describe the pricing this row lands. The owner's freeze said 'push it immediately', and the live app could still open an archived legacy pack cart on Oct 25 (PR #666 comment 6399494075). It still waits for D-048-F-credits (shared AppShell.tsx line), which D-217 unparked to land first through its Tier 1 path."
+      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first. Oct 27 queue sync (Claude Code, D-219; changeable): moved up to sit just above LAUNCH-legal-copy and no longer waits on it; LAUNCH-legal-copy now waits for this row instead, because it is owner-held (legal text), shares only policyPages.test.tsx, and its Terms and Cancellation text must describe the pricing this row lands. The owner's freeze said 'push it immediately', and the live app could still open an archived legacy pack cart on Oct 25 (PR #666 comment 6399494075). It still waits for D-048-F-credits (shared AppShell.tsx line), which D-217 unparked to land first through its Tier 1 path. Oct 28 ci.yml handoff (holder's acknowledgment: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/666#issuecomment-6464335154): .github/workflows/ci.yml moved to CI-architect-real-checks, which carries this branch's only ci.yml delta, the typecheck heap line from c9572fcf, byte for byte. #666 lands no ci.yml change: until that row lands it runs no CI carrying the delta, or first restores ci.yml to main's bytes in a forward-only commit; after it lands, #666 merges main and its ci.yml diff must be empty (a conflict resolves to main's version exactly)."
     },
     {
       "id": "LAUNCH-legal-copy",
