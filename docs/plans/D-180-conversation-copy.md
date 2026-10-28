@@ -1,6 +1,6 @@
 # D-180-conversation-copy — ownership contract for the seeker conversation's fact-only lines (proposal, revision 3)
 
-Status: **registration candidate, not effective before protected merge.** The preserved revision3 proposal below supplies the contract; its §3/§5 changes are included in this docs candidate, not active yet. Helper/adoption remain unbuilt and #786 draft.
+Status: **registration landed on `main` (`4dbf6e97`, Oct 28), so the contract below is effective.** The row owns `shared/conversationCopy.ts` and `shared/conversationCopy.test.ts`, and `D-048-p3-live-review-conversation` now depends on it. The helper and its §4b tests are built on `agent/copy/d180-conversation-copy` (see Status); the §4c adoption, action-link and parity pins remain that row's work, and #786 stays draft.
 
 Historical architect revision: Revision 3, Oct 28, 2026, by a Claude Code session (reasoning role, D-225), rechecked on `main` `e67f7785`. It replaces revision 2 (`a3545a61`) and revision 1 (`c333a724`). It answers revision 1's five review findings (§6) and revision 2's two (§7). No ready or adoption flag is set. The architect revision changed no code, registry, shared packet or PR; this coordinator registration candidate includes only the stated docs/registry amendments, no runtime code. PR #786 stays draft. §3 and §4 take effect only when a session lands them through the protected docs-only path (D-082/D-200, owner merge-policy amendment Oct 23).
 
@@ -200,3 +200,11 @@ Rechecked (revision 3) Oct 28, 2026 on `main` `e67f7785`; holder snapshot from `
 
 
 Coordinator registration candidate: source424c4bc3 reviewed against maina4b022a5. Registration/amendment only, not yet protected-merged; helper and conversation adoption remain unbuilt, #786 draft. No runtime, charge/refund, expiry or feature flag changes.
+
+Built Oct 29: `shared/conversationCopy.ts` and `shared/conversationCopy.test.ts` on `agent/copy/d180-conversation-copy`; §4c adoption stays with `D-048-p3-live-review-conversation`.
+
+## Status
+
+One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is on `main` (D-134).
+
+D-180-conversation-copy: review — agent/copy/d180-conversation-copy — 7d4b9091
