@@ -112,4 +112,4 @@ Red-first tests; the gate on the merged result; required CI green; the row's Sta
 - PROCESS-review-gate: todo; waits for PROCESS-queue-gate.
 - PROCESS-id-check: todo; waits for PROCESS-review-gate.
 - PROCESS-scorecard: todo; waits for PROCESS-id-check.
-- POSTMERGE-oct22-review: review — agent/queue/postmerge-oct22-review — 71052376b04145ea6eaad3f9508bfdd8c23e4e68.
+- POSTMERGE-oct22-review: in progress — WorkBuddy AI · 8c8a — 2026-10-28 — branch agent/queue/postmerge-oct22-review.
