@@ -91,3 +91,6 @@ Scoped Oct 23 founder exception for one manual claim only: see docs/DECISIONS.md
 
 ## D-086 demand packet registration (Oct28)
 [`D-086-demand-list.md`](D-086-demand-list.md) is the reviewed packet for distinct-person, coverage-neutral public demand at listed companies plus moderated unlisted-company admission. Count, UI, mount and read-only admin view have separate owned rows; parent releases. Public UI/release preserve BYOR ordering; backend count waits only for its actual mount-file owner. No feature is built or activated by registration. Runtime liveness is imported with no added30day cutoff; no arbitrary seeker domain is published.
+
+## Private access reliability registration (Oct28)
+[`PRIVATE-referral-access-availability.md`](PRIVATE-referral-access-availability.md) preserves existing access rules under unavailable authorization. Tier1; shared route waits for BYOR pending actual limited handoff, later route owners stay serialized. No implementation, consent change or activation is claimed.

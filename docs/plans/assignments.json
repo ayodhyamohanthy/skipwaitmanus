@@ -1035,9 +1035,10 @@
       "syncedTo": "D-227",
       "dependsOn": [
         "D-132-audit",
-        "D-090-BYOR"
+        "D-090-BYOR",
+        "P0-referral-access-availability"
       ],
-      "note": "D-165: cut agent/queue/d132-item3 from #550's head, merge #542 (the only piece #550 lacks), then merge main after D-132-audit lands; keep #547's version of #541's part. Tier 1 review by a model other than Instinct; then close #541-#544 and #550. D-221 (Oct 26): re-scope before any build. D-219 (owner freeze Oct 25, re-confirmed Oct 26) supersedes the D-132 per-level credit model this row builds, so PRs #541-#544 and #550 are not landed as written. Keep the valid invariant (an ask is charged exactly the quote the seeker accepted, or answers 409 with nothing charged) and restate the quote as the request's level band plus its spend source. First deliverable of the re-scope: the accepted-price precondition (expectedCost, 409 before any debit), which SKIPPY-fix S-3 needs; the D-132 per-level credit quote is not rebuilt. Oct 28 re-scope (Claude Opus 5.5 · 4ef3, architect, decided under D-200; changeable): packet docs/plans/D-132-item3-accepted-price.md replaces the STRANDED-OCT23 cut-from-#550 plan. The row builds only the model-independent guard (expectedCost = {units, band, source}; band null until the owner settles D-219 (8)); #541-#544, #550 and #542 are source material, never merged. Waits for D-090-BYOR (open draft #632 owns server/db.ts and server/privateReferralRoutes.ts; D-223 (5) keeps an in-flight PR unheld). Revision 2 (coordinator review F1-F5): the quote keeps numeric cost and adds acceptedCost; expectedCost carries per-bucket units; the preview is a locked reconcile like getTokenWallet, not read-only; no composer row is registered (packet section 12); the BYOR serialization stands unless #632s holder agrees to reorder. Skippy adoption stays SKIPPY-fix S-3. Revision 3 (round-2 review GAP 1-3): owns the one production wiring key in server/_core/index.ts (switch only; D-099-bonus-pages already waits for this row through D-174-held-ask-reconfirm) with a source-pin wiring test, and a new rollback-capable create-path fixture (server/askCreateFixtureDb.ts) because every existing create-path fixture runs transactions without rollback; SKIPPY-fix S-2/S-3 now echo the acceptedCost object and report chargedCost.",
+      "note": "D-165: cut agent/queue/d132-item3 from #550's head, merge #542 (the only piece #550 lacks), then merge main after D-132-audit lands; keep #547's version of #541's part. Tier 1 review by a model other than Instinct; then close #541-#544 and #550. D-221 (Oct 26): re-scope before any build. D-219 (owner freeze Oct 25, re-confirmed Oct 26) supersedes the D-132 per-level credit model this row builds, so PRs #541-#544 and #550 are not landed as written. Keep the valid invariant (an ask is charged exactly the quote the seeker accepted, or answers 409 with nothing charged) and restate the quote as the request's level band plus its spend source. First deliverable of the re-scope: the accepted-price precondition (expectedCost, 409 before any debit), which SKIPPY-fix S-3 needs; the D-132 per-level credit quote is not rebuilt. Oct 28 re-scope (Claude Opus 5.5 · 4ef3, architect, decided under D-200; changeable): packet docs/plans/D-132-item3-accepted-price.md replaces the STRANDED-OCT23 cut-from-#550 plan. The row builds only the model-independent guard (expectedCost = {units, band, source}; band null until the owner settles D-219 (8)); #541-#544, #550 and #542 are source material, never merged. Waits for D-090-BYOR (open draft #632 owns server/db.ts and server/privateReferralRoutes.ts; D-223 (5) keeps an in-flight PR unheld). Revision 2 (coordinator review F1-F5): the quote keeps numeric cost and adds acceptedCost; expectedCost carries per-bucket units; the preview is a locked reconcile like getTokenWallet, not read-only; no composer row is registered (packet section 12); the BYOR serialization stands unless #632s holder agrees to reorder. Skippy adoption stays SKIPPY-fix S-3. Revision 3 (round-2 review GAP 1-3): owns the one production wiring key in server/_core/index.ts (switch only; D-099-bonus-pages already waits for this row through D-174-held-ask-reconfirm) with a source-pin wiring test, and a new rollback-capable create-path fixture (server/askCreateFixtureDb.ts) because every existing create-path fixture runs transactions without rollback; SKIPPY-fix S-2/S-3 now echo the acceptedCost object and report chargedCost. Oct28: also waits for the bounded private access-availability repair, which itself waits for BYOR until an actual limited owner handoff and reviewed reorder; existing BYOR hold is unchanged.",
       "owns": [
         "shared/acceptedAskCost.ts",
         "shared/acceptedAskCost.test.ts",
@@ -2936,6 +2937,29 @@
         "shared/scheduledJobs.ts",
         "src/worker.ts"
       ]
+    },
+    {
+      "id": "P0-referral-access-availability",
+      "title": "Private referral access remains unavailable while authorization cannot be established",
+      "row": "D-019",
+      "packet": "docs/plans/PRIVATE-referral-access-availability.md",
+      "tier": 1,
+      "lane": "referral-access",
+      "branch": "agent/queue/p0-referral-access-availability",
+      "status": "todo",
+      "dependsOn": [
+        "D-090-BYOR"
+      ],
+      "owns": [
+        "server/privateReferralRoutes.ts",
+        "server/blocksRoutes.ts",
+        "server/blocksRoutes.queryCoverage.test.ts",
+        "server/blockEnforcement.test.ts",
+        "server/documentAccessLifecycle.test.ts",
+        "server/referralBlockAvailability.test.ts"
+      ],
+      "note": "Coordinator-scoped existing-access-rule reliability correction; private reviewed contract governs exact cases. Registration is not implementation or acceptance. Shared route is serialized behind active BYOR #632 pending actual holder limited handoff/ACK and reviewed reordering. D-132-item3 waits for this row and BYOR, preserving all existing work and holds. No anonymous-summary/consent redesign, delivery-policy change, pricing/expiry/refund change or activation. Tier1 independent final fix review, exact required CI/current-main integration, protected landing and postmerge verification remain required.",
+      "syncedTo": "D-227"
     },
     {
       "id": "D-057-session-gate",
