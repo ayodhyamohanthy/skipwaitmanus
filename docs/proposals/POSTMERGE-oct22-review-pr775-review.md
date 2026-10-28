@@ -2,8 +2,10 @@
 
 - **Reviewed head:** `0f44302377c996049648ca4021132ba6bfde41c0`. No commits after it on the branch (`git log <reviewed>..origin/agent/queue/postmerge-oct22-review ^origin/main` is empty).
 - **Against main:** `a4b022a5`. The PR's recorded base is `e931ed79` and it is 47 commits behind.
-- **Builder:** WorkBuddy AI · 8c8a (commits `7804c212`, `00628cfb`, `0f443023`, plus claim marker `27f24673`). The reviewer is a Claude session that did not build or fix this row or `POSTMERGE-oct22-fixes` (D-151).
+- **Builder provenance: not proven.** All four head commits are unsigned (`%G?` = `N`). `7804c212`, `00628cfb` and `0f443023` carry the "WorkBuddy AI" author name and a workbuddy address. The claim marker `27f24673` is authored under the repository owner's local account. WorkBuddy is a multi-model client, so the label shows which client routed the work, not which model family wrote it.
+- **Type of review: source level only.** The reviewer is a Claude session that didn't build or fix this row or `POSTMERGE-oct22-fixes`. Because the builder's model family is unproven, **no D-151 independent-review pass is claimed.** A D-151 pass needs a reviewer whose difference from the builder can be shown.
 - **Recommended verdict: findings (two low-severity doc-accuracy items, docs-only fixes).** No money, code, flag or migration risk.
+- **Evidence base:** only the per-claim checks against `a4b022a5` below. #775's body (its test counts and runs, "row complete", its account of #619 and the picker bug) is the builder's claim, not authority. It is used only where a source check below confirms it.
 
 ## 1. Scope
 - Diff against main: `docs/plans/POSTMERGE-oct22-findings.md` (row `owns`) and `docs/plans/PROCESS-gates.md` (the row's `packet`).
@@ -18,7 +20,8 @@
 | P2 #534 fixed by `91e0b6c8` via `firstPackClaim()` | `shared/planCatalog.ts:172` defines it; used at `client/src/pages/Pricing.tsx:9-10`, `shared/landingContent.ts:17-18`; asserted at `client/src/pages/policyPages.test.tsx:130-131` | Correct |
 | P2 #506 fixed by `01928e67` + `5ff7ef2c`; sample takes `agedOutCutoff` | `server/dailyMoneyCheck.ts:469` `listStaleCheckouts(staleCutoff, 3, agedOutCutoff)`; test comment at `server/dailyMoneyCheck.test.ts:569` | Correct |
 | All five fix commits on main | `git merge-base --is-ancestor` for each against `a4b022a5` | Correct |
-| Row's deliverable landed as #619 | #619 merged 2026-10-24T09:18:56Z as `ad57edb4` | Correct (see F2 on how it merged) |
+| Row's deliverable landed as #619 | GitHub API: #619 `merged_at` 2026-10-24T09:18:56Z, head `f9f381e1`; main has `ad57edb4` "…(#619)" with one parent `e2f34457`, so it was a squash merge | The merge itself is confirmed. How it merged is checked separately in §4 and F2 |
+| "the row itself is complete" (PROCESS-gates note, PR body) | `docs/plans/assignments.json` on `a4b022a5`: `POSTMERGE-oct22-review` status `todo`; review lock `agent/review/postmerge-oct22-review` tip is OpenAI · c54e's Oct 24 fix claim and heartbeat (`b8ed1d96`, `288f1dc8`) | **Not adopted.** "Complete" is the builder's judgement. The recorded status is `todo` |
 | `POSTMERGE-oct22-fixes` closed all four | `assignments.json` status `done`; its packet Status: "done — 7a41a1b0 (pass review by Qoder · bbc5 on that exact head)" | Correct as recorded |
 | "each with a regression test that fails without the fix" | commit bodies: `821399d4` "Red first ... spent 2 before the fix"; `01928e67` "Red first"; `09891b3b` is a test-only change; `91e0b6c8` says "The rendered wording is unchanged" | **Overstated: F1** |
 | Picker keeps returning the row because a claim marker recreated the branch (`PICKER-landed-marker-continuity`) | see §4 | **Partly wrong: F2** |
@@ -26,10 +29,11 @@
 ## 3. Builder's green-CI claim
 - Check runs on head `0f443023` (GitHub API, PR #775): `typecheck` success, `unit + component + route tests` success (10:30:45–10:36:55Z), `production build` success, all in CI run `40672692569` (`event: pull_request`, `head_sha: 0f443023…`, conclusion success). `Workers Builds: skipwaitmanus` also succeeded, though it isn't a gate (AGENTS rule 5).
 - The run tested the PR merged with base `e931ed79`, and all five fix commits are ancestors of `e931ed79`. So the full unit suite that passed includes the four regression tests. **Verified.**
-- The builder's "four files, 57 tests" local count against `ee7386f6` isn't reproduced here (no `node_modules` in this session) and remains the builder's claim. The CI result above stands on its own.
+- **Not re-run by this reviewer:** the body's "four files, 57 tests" run (and its serial re-run of two client files) was against the earlier main `ee7386f6`, not the current `a4b022a5`. I didn't independently re-run any test (no `node_modules` in this session), so those numbers remain the builder's claim. The body's focused-check results (scope-check, queue-gate, deploy-triggers, migration-lint, design-token) are also the builder's claims. The only one reproduced here is scope-check (§1). The CI fact above comes from GitHub's check-run record for run `40672692569`, not from the body.
 - The PR is `behind` main by 47. Under the Oct 23 merge-policy amendment, a conflict-free docs-only PR needs required CI on the commit that lands, not a fresh full gate. Landing still needs that CI on the up-to-date commit.
 
 ## 4. Picker-bug claim, checked against picker source
+The body's account (branch "recreated by a claim marker after #619 merged", the row "complete") is not adopted. The facts below come from the picker source, the git history and the GitHub API only.
 - How "landed" is computed: `scripts/next-task.mjs:111` sets `merged` only when the branch **tip** is an ancestor of `origin/main`. `scripts/next-task.mjs:225-230` builds `mergedHeads` from only the newest 100 closed PRs sorted by `updated`. `scripts/nextTaskCore.mjs:349` sets `landed = info.merged || mergedHeads.get(work)?.has(info.tipSha)`.
 - What actually happened:
   1. **#619 was squash-merged.** `ad57edb4` has one parent (`e2f34457`), and #619's head `f9f381e1` isn't in main's history. That broke the ancestry signal before any recreation, and it also conflicts with D-134 (6) ("never squash or rebase-merge"). That conflict is historical and outside #775's scope.
@@ -47,3 +51,4 @@ These steps aren't taken here and are left to a session allowed to do operations
 - `node scripts/next-task.mjs --verdict findings --task POSTMERGE-oct22-review --as "<reviewer>"`. That pushes a marker to the review lock, and the owner limited this session to pushing this doc only. The lock currently shows `Fix claim` by OpenAI · c54e (`b8ed1d96`) on Oct 24, and recording a verdict needs the lock in the `in-review` stage, held by the reviewer.
 - Fixing F1 and F2: the builder or a fixer, not the reviewer (DELEGATION §6).
 - Merging main into the branch, landing #775, setting the row `done`, and any clearing `--report`. These are implementation or operations steps.
+- Any D-151 independent-review pass. It isn't claimed (see provenance above), and this source-level review must not be counted as one.
