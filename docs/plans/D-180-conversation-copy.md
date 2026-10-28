@@ -1,6 +1,6 @@
-# D-180-conversation-copy — ownership contract for the seeker conversation's fact-only lines (proposal, revision 2)
+# D-180-conversation-copy — ownership contract for the seeker conversation's fact-only lines (proposal, revision 3)
 
-Status: **proposal only, not registered.** Revision 2, Oct 28, 2026, by a Claude Code session (reasoning role, D-225), rechecked on `main` `e67f7785`. It replaces revision 1 (`c333a724`) and answers that revision's five review findings (§6). Nothing here changes code, `docs/plans/assignments.json`, `docs/plans/OCT21-BUILT-PRS.md` or any PR. PR #786 stays draft. §3 and §4 take effect only when a session lands them through the protected docs-only path (D-082/D-200, owner merge-policy amendment Oct 23).
+Status: **proposal only, not registered.** Revision 3, Oct 28, 2026, by a Claude Code session (reasoning role, D-225), rechecked on `main` `e67f7785`. It replaces revision 2 (`a3545a61`) and revision 1 (`c333a724`). It answers revision 1's five review findings (§6) and revision 2's two (§7). No ready or adoption flag is set. Nothing here changes code, `docs/plans/assignments.json`, `docs/plans/OCT21-BUILT-PRS.md` or any PR. PR #786 stays draft. §3 and §4 take effect only when a session lands them through the protected docs-only path (D-082/D-200, owner merge-policy amendment Oct 23).
 
 ## 0. The block
 
@@ -32,8 +32,8 @@ Status: **proposal only, not registered.** Revision 2, Oct 28, 2026, by a Claude
 | F1 | Only a `pending` ask with `waitingForCoverage = false` (and inside its visible window, or assigned and not an unclaimed assignment) counts toward open requests. A withdrawn ask never counts. | `server/planGates.ts:14-37`, `shared/openAskSlots.ts:1-8` |
 | F2 | The thread's `queueStatus` is server-derived and has three values. `available_for_review` means assigned and pending. `held_for_credit` means `waitingForCoverage` with `coverageHeldAt` set. `waiting_for_coverage` means `waitingForCoverage` without `coverageHeldAt`. Otherwise it is `null`. | `server/db.ts:2604`, client enum `client/src/lib/threadApi.ts:43,114` |
 | F3 | Both `waiting_for_coverage` and `held_for_credit` have `waitingForCoverage = true`, and **nothing has been spent** for them: "never delivered free, never billed later". Spending happens only on the move to visible. | `server/coverageDelivery.ts:10-20`, D-034/D-047 |
-| F4 | **Assigned-held is a different flag**, not a `queueStatus`. `heldForReferrer` marks a personal-link assignment and `unclaimedAssignment` marks a personal link or a queue allocation. These asks are visible, so they were charged at create or at delivery. | `server/db.ts:2604`, `server/heldAsk.ts:37,114`, `server/coverageDelivery.ts:20-21` |
-| F5 | The page shows the "awaiting" confirm only for the two coverage `queueStatus` values (`awaitingCoverage`). Assigned-held asks get the other branch. | `client/src/pages/conversation/SeekerConversation.tsx:105,144` (main); `:106,155` at `047c7ba0` |
+| F4 | **Assigned-held is a set of flags on an assigned row, not a `queueStatus` of its own.** An assigned row (`referrerId` set, `status = "pending"`) always gets `queueStatus = "available_for_review"`, because that branch is checked first in the ternary, and that includes held rows. On a personal link (`held.personalLink`), `heldForReferrer` and `unclaimedAssignment` are **both** true. On a queue allocation (`held.queueAllocation`), only `unclaimedAssignment` is true. These rows are visible, so they were charged at create or at delivery. `queueStatus = null` is a different case: no `referrerId` and `waitingForCoverage = false`, which is unassigned and visible. | `server/db.ts:2604`, `server/heldAsk.ts:37,114`, `server/coverageDelivery.ts:10-21` |
+| F5 | The withdraw confirm opens only through the "Withdraw ask" button, which renders only when `canWithdraw` is true. `canWithdraw` means `status === "pending"` and (`referrerId === null` or `heldForReferrer === true` or `unclaimedAssignment === true`). The confirm shows the "awaiting" sentence only for the two coverage `queueStatus` values (`awaitingCoverage`), so every assigned-held row gets the other branch. A claimed row (`referrerId` set, both flags false) has no withdraw at all. | `client/src/pages/conversation/SeekerConversation.tsx:104-105,133,141,144` (main); `:105-106,146,152,155` at `047c7ba0` |
 | F6 | Withdrawing a waiting ask moves no money (`debitTransactionId === null` branch). A withdrawal after an earlier pickup keeps the charge spent, even when the ask was reopened (`referrerId` back to `null`), and refunds are capped by the bucket's period. | `server/db.ts:2290-2335`, `:2310`, `:2319`; test `server/db.coverageDelivery.test.ts:186` |
 | F7 | The thread payload carries no refund, pickup or debit field. The page cannot verify a refund outcome, and it cannot tell a reopened ask from one that was never picked up. | `client/src/lib/threadApi.ts:87-114` |
 | F8 | No referrer path writes `declined`. A decline is a pass that reopens the ask, so a `declined` status is a legacy row, and its charge stays spent. | `server/db.ts:2133-2139`, D-021 (`docs/DECISIONS.md:39`), D-147 (`:161`) |
@@ -65,7 +65,8 @@ Status: **proposal only, not registered.** Revision 2, Oct 28, 2026, by a Claude
 | `WITHDRAW_CONFIRM_AWAITING` | `"It never reached a verified employee, so nothing was used for this referral request."` | F2, F3, F6. Referral vocabulary (D-180), no amount, no completed-referral claim, no unit word |
 | `WITHDRAW_CONFIRM_VISIBLE` | `"It leaves the referrer’s queue and no longer counts toward your open referral requests."` | F1. States the counting fact without promising free capacity: plan and per-company caps still apply (`shared/openAskSlots.ts:1-8`) |
 | `seekerTerminalLine(status, { claimed })` | `declined` → `DECLINED_LINE`; `withdrawn` → `WITHDRAWN_LINE`; `closed` → `claimed ? null : CLOSED_UNCLAIMED_LINE`; anything else → `null` | keeps today's closed+claimed → no line (`SeekerConversation.tsx:34`, main) |
-| `withdrawConfirmLine(queueStatus)` | `"waiting_for_coverage"` or `"held_for_credit"` → `WITHDRAW_CONFIRM_AWAITING`; `"available_for_review"`, `null` or `undefined` → `WITHDRAW_CONFIRM_VISIBLE` | F2-F5. Keyed only on the `queueStatus` contract; `heldForReferrer` and `unclaimedAssignment` never select the awaiting line |
+| `ConversationQueueStatus` (type) | `"available_for_review" \| "waiting_for_coverage" \| "held_for_credit" \| null \| undefined` | A local structural union (§4e). It is not imported from `client/`. |
+| `withdrawConfirmLine(queueStatus: ConversationQueueStatus)` | `"waiting_for_coverage"` or `"held_for_credit"` → `WITHDRAW_CONFIRM_AWAITING`; `"available_for_review"`, `null` or `undefined` → `WITHDRAW_CONFIRM_VISIBLE` | F2-F5. It takes only `queueStatus`, so `heldForReferrer` and `unclaimedAssignment` cannot pick a line, and no amount or refund wording can follow from a flag |
 | `SUPPORTING_COPY_FORBIDDEN` | `readonly RegExp[]`: `/slot/i`, `/credits?\b/i`, `/refund\|came back\|comes back\|returned/i`, `/\b\d+\s*days?\b/i`, `/try another\|available\|open to/i`, `/\basks?\b/i` | applies to **supporting copy only** (§4c) |
 
 The helper imports nothing from `shared/moneyCopy.ts` and restates none of its rules (§3). It leaves the pending/waiting lines (`client/src/components/thread/threadModel.ts:60-77`) alone, and `REFERRER_MONEY_SENTENCE` stays imported from `shared/moneyCopy.ts` as #786 already does.
@@ -76,7 +77,7 @@ The helper imports nothing from `shared/moneyCopy.ts` and restates none of its r
 2. No line constant matches any `SUPPORTING_COPY_FORBIDDEN` pattern.
 3. `WITHDRAW_CONFIRM_AWAITING` matches neither `/\d/` nor `/\breferral\b(?! request)/i`, so it states no amount and never names a completed referral.
 4. `seekerTerminalLine` maps each case as in §4a: closed+claimed → `null`; `pending`, `approved`, `intro_made`, `interview` and `offer` → `null`.
-5. `withdrawConfirmLine` returns AWAITING for exactly `waiting_for_coverage` and `held_for_credit`, and VISIBLE for `available_for_review`, `null` and `undefined`. Its parameter type is `ThreadRequest["queueStatus"]`, whose union (`client/src/lib/threadApi.ts:114`) makes a fourth value a compile error.
+5. `withdrawConfirmLine` returns AWAITING for exactly `waiting_for_coverage` and `held_for_credit`, and VISIBLE for `available_for_review`, `null` and `undefined`. Its parameter is the helper's own `ConversationQueueStatus`, so a fourth value is a compile error. Parity with the client type is pinned in §4e.
 
 The helper tests pin no runtime constant. `ASK_TTL_DAYS` and `COVERAGE_WAIT_DAYS` are not asserted, because a legitimate expiry removal (D-174 → `D-174-expiry-clock-removal`) must stay free to change them.
 
@@ -87,8 +88,22 @@ The helper tests pin no runtime constant. `ASK_TTL_DAYS` and `COVERAGE_WAIT_DAYS
 | File | Assertion |
 |---|---|
 | `client/src/pages/conversation/SeekerConversation.goal.test.tsx` | For `declined`, `withdrawn` and `closed` with `referrerId: null`, the reason paragraph text equals `seekerTerminalLine(...)` and matches no `SUPPORTING_COPY_FORBIDDEN` pattern. `closed` with a `referrerId` renders no terminal line. |
-| same file | The withdraw confirm text equals `withdrawConfirmLine(queueStatus)` for `waiting_for_coverage` and `held_for_credit` (AWAITING). It equals VISIBLE for `available_for_review`, for `null`, and for `null` with `heldForReferrer: true` (assigned-held, F4), and for `null` with `unclaimedAssignment: true`. |
+| same file | **Withdraw confirm, by fixture.** Every case below has `status: "pending"`. Each case clicks "Withdraw ask" first, so the confirm is really open (F5), then compares the confirm text with `withdrawConfirmLine(queueStatus)` and checks it against `SUPPORTING_COPY_FORBIDDEN`: no amount, refund or slot wording follows from a flag. The fixtures are listed in the table after this one. |
 | `client/src/pages/referralConversation.test.tsx` (unclaimed-closed case, ~lines 295-305 at `047c7ba0`) | Expects `CLOSED_UNCLAIMED_LINE` (imported; the same string #786 already pins). Keeps the "no `7 days`" and "no `slot`" negatives. Co-owner `D-048-p3-conversation` (`assignments.json:1692`) already `dependsOn` this row, so no ACK is needed. |
+
+**Withdraw-confirm fixtures.** All of these go in `SeekerConversation.goal.test.tsx` and have `status: "pending"`. Each one is shaped as `server/db.ts:2604` emits it.
+
+| # | Case | `referrerId` | `queueStatus` | `heldForReferrer` | `unclaimedAssignment` | Expected |
+|---|---|---|---|---|---|---|
+| W1 | Waiting for coverage | `null` | `"waiting_for_coverage"` | false | false | AWAITING |
+| W2 | Held for credit (D-047) | `null` | `"held_for_credit"` | false | false | AWAITING |
+| W3 | Assigned-held, personal link (F4: both flags, as the server emits them) | `77` | `"available_for_review"` | **true** | **true** | VISIBLE |
+| W4 | Assigned-held, queue allocation (F4) | `77` | `"available_for_review"` | false | **true** | VISIBLE |
+| W5 | Branch-only case for `heldForReferrer` alone. The server never emits this shape (F4); it exists only to show the `canWithdraw` branch on its own (F5). | `77` | `"available_for_review"` | **true** | false | VISIBLE |
+| W6 | Unassigned, visible: a fallback case, not proof of assigned-held | `null` | `null` | false | false | VISIBLE |
+| W7 | Claimed (negative) | `77` | `"available_for_review"` | false | false | no "Withdraw ask" button, so no confirm |
+
+The W3-W5 assertions check only that the confirm uses the visible branch. They say nothing about a refund outcome, because the page cannot know it (F7).
 
 **Action-link assertions.** These are a separate test, with no forbidden-pattern check.
 
@@ -113,6 +128,19 @@ git diff --name-only "$BASE" HEAD | grep -v -e '^shared/conversationCopy\.ts$' -
 ```
 
 It also includes a green `node scripts/scope-check.mjs D-180-conversation-copy`, which enforces owns plus the packet (`scope-check.mjs:33-50`). This proves no pricing, charge, refund, expiry or flag code moved, against the actual base, and it never fails a later legitimate change.
+
+### 4e. Type layering: the helper owns its own union, and an owned client test pins parity
+
+- **The direction is client → shared, never shared → client.** No `shared/*.ts` file imports from `@/` or `client/` (`grep -rn "^import.*from \"@/\|^import.*from \"\.\./client" shared/` returns nothing). AGENTS.md says to "Import client contracts from `shared/`" (Styling and dependency boundary). No shared type for `queueStatus` exists: `grep -rn queueStatus shared/` returns nothing. The only declarations are the client's Zod enum and type (`client/src/lib/threadApi.ts:43,114`) and the server literal (`server/db.ts:2604`).
+- So `shared/conversationCopy.ts` declares `ConversationQueueStatus` as a local structural union (§4a), and imports nothing from `client/`.
+- **Parity pin.** `SeekerConversation.goal.test.tsx` adds a bidirectional compile-time check. That file is already owned by `D-048-p3-live-review-conversation` (`assignments.json:790`), and it already imports `ThreadRequest` from `@/lib/threadApi`. The check:
+
+  ```ts
+  type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
+  const queueStatusParity: Equal<ConversationQueueStatus, ThreadRequest["queueStatus"]> = true;
+  ```
+
+  `Equal` is true only when each type is assignable to the other. If either union gains or loses a member, `pnpm check` fails, because `tsc --noEmit` (`package.json:11`) includes `client/src/**/*` (`tsconfig.json:2-6`). The helper row owns no client file, the conversation row's owns are unchanged, and no type-only boundary waiver is used.
 
 ## 5. Registry delta (proposed; not applied)
 
@@ -155,5 +183,14 @@ It also includes a green `node scripts/scope-check.mjs D-180-conversation-copy`,
 | 4. Forbidden regex hit the CTA | Supporting copy is checked on the reason `<p>` only. The CTA gets its own link-contract test (name, `/explore`, stages, single primary; F9). The D-176 question is withdrawn. |
 | 5. "Held = no debit" and constant pins | The confirm is keyed on the `queueStatus` contract (F2-F5), with assigned-held tested separately. The constant pins are replaced by a baseline diff (§4d). |
 
+## 7. What changed from revision 2 (`a3545a61`)
+
+| Finding | Resolution |
+|---|---|
+| 1. The assigned-held fixture used `queueStatus: null`, which the source never emits for a held row | The fixtures now follow `server/db.ts:2604`. An assigned pending row is always `available_for_review`. A personal link sets both flags; a queue allocation sets `unclaimedAssignment` only (W3, W4). `heldForReferrer` alone is kept as a labelled branch-only case (W5). `null` is a separate unassigned fallback (W6), and the claimed row is a negative (W7). Every case opens the confirm through `canWithdraw` (`SeekerConversation.tsx:104,133,141` on main; `:105,146,152` at `047c7ba0`). The confirm makes no amount or refund claim (F7, §4c). |
+| 2. The shared helper imported a client type | The import is reversed: the helper declares its own `ConversationQueueStatus`. No shared `queueStatus` type exists and no shared file imports from `client/`. A bidirectional `Equal` check in the already-owned `SeekerConversation.goal.test.tsx` pins parity under `pnpm check` (§4e). No new client ownership and no boundary waiver. |
+
+Note on the anchor given in review: `canWithdraw` is at `SeekerConversation.tsx:104` on `main` (`:105` is `awaitingCoverage`). It is at `:105` at #786's head `047c7ba0`.
+
 ---
-Rechecked Oct 28, 2026 on `main` `e67f7785`; holder snapshot from `git ls-remote origin` and `node scripts/next-task.mjs --status`.
+Rechecked (revision 3) Oct 28, 2026 on `main` `e67f7785`; holder snapshot from `git ls-remote origin` and `node scripts/next-task.mjs --status`.
