@@ -3775,7 +3775,10 @@
         "PICKER-architect-landing",
         "PICKER-decision-sync",
         "BRANCH-HYGIENE-2",
-        "PICKER-avoid-land"
+        "PICKER-avoid-land",
+        "PICKER-heartbeat-slot-safety",
+        "PICKER-landed-marker-continuity",
+        "PICKER-landing-wait-fallthrough"
       ],
       "epic": "D-212",
       "owns": [
@@ -3784,7 +3787,7 @@
         "scripts/nextTaskText.mjs",
         "scripts/nextTask.test.ts"
       ],
-      "note": "Oct 27 merge-up: also waits for PICKER-avoid-land (and so PICKER-avoid-unblock), which edit scripts/nextTaskCore.mjs; PICKER-qa-stage follows through this row."
+      "note": "Oct 27 merge-up: also waits for PICKER-avoid-land (and so PICKER-avoid-unblock), which edit scripts/nextTaskCore.mjs; PICKER-qa-stage follows through this row. Oct 28 merge-up: also waits for PICKER-heartbeat-slot-safety, PICKER-landed-marker-continuity and PICKER-landing-wait-fallthrough, the three picker rows main gained after this branch's last merge-up, which own scripts/next-task.mjs and scripts/nextTaskCore.mjs. New rows wait for the older queued owning stage (no cycle: all three reach PROCESS-review-gate, none reaches this row), and PICKER-qa-stage follows through here, so the six merged-registry owns overlaps become none."
     },
     {
       "id": "PICKER-qa-stage",
