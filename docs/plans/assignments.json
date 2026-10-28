@@ -314,7 +314,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-decision-sync",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "note": "The owner, Oct 23: agents must always work on the most recent decision, never on old work. Builders are told to read only the brief and their packet (scripts/nextTaskText.mjs:42), so a packet older than a decision can be built as written (D-147, D-148 then D-152). Until this lands, the interim rule in the packet binds every agent. D-221 (Oct 26): the Oct 25 owner decisions are now register entries D-219 and D-220 with their affected tasks, so the syncedTo stamp must not certify rows those entries change until each is re-synced."
