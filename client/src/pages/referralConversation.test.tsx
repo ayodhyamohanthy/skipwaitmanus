@@ -295,8 +295,9 @@ describe("ReferralConversation thread", () => {
   it("treats an unclaimed closed ask as expired, never hired, with no composer", async () => {
     stubFetch(async (url: string) => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerPending, status: "closed", referrerId: null }] }) : fail(404, "gone")));
     renderPage();
-    expect(await screen.findByText(/Nobody could take it\. Your slot is free\./)).toBeTruthy();
+    expect(await screen.findByText("Nobody could take it. This referral request is closed.")).toBeTruthy();
     expect(screen.queryByText(/7 days/)).toBeNull();
+    expect(screen.queryByText(/slot is free/i)).toBeNull();
     expect(screen.queryByText("Hired. Congratulations.")).toBeNull();
     expect(screen.getByRole("link", { name: /Find another referrer/ }).getAttribute("href")).toBe("/explore");
     expect(screen.queryByLabelText("Message")).toBeNull();

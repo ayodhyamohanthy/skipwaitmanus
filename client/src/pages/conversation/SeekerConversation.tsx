@@ -32,7 +32,7 @@ function nextLine(request: ThreadRequest, name: string, unknown: boolean): strin
     case "intro_made": return `Watch your email for ${unknown ? "the company’s" : `${name}’s`} recruiters. Companies decide hiring.`;
     case "declined": return `It’s not a judgment of you. Your slot is open again. Try another verified referrer ${at}.`;
     case "withdrawn": return "You withdrew this ask. Its open slot is free again. The credit came back only if no verified employee had picked it up.";
-    case "closed": return request.referrerId === null ? "Nobody could take it. Your slot is free. Refresh your note and ask again." : null;
+    case "closed": return request.referrerId === null ? "Nobody could take it. This referral request is closed." : null;
     default: return null;
   }
 }
@@ -105,6 +105,7 @@ export function SeekerConversation(props: Props) {
   const canWithdraw = request.status === "pending" && (request.referrerId === null || request.heldForReferrer === true || request.unclaimedAssignment === true);
   const awaitingCoverage = request.queueStatus === "waiting_for_coverage" || request.queueStatus === "held_for_credit";
   const closedFor = ["Declined", "Expired", "Withdrawn"].includes(stage);
+  const confirmEmailPending = request.status === "approved" && REFERRED_DEADLINE_ENABLED && confirm !== "email";
   const nextMilestones = request.status === "intro_made" || request.status === "interview" || request.status === "offer" ? SEEKER_MILESTONES.filter(m => stageIndex(m.stage) > idx) : [];
 
   return (
@@ -126,7 +127,7 @@ export function SeekerConversation(props: Props) {
         {line ? (
           <div className="mt-4">
             <GoalNextStep reason={line}>
-              {request.status === "approved" && REFERRED_DEADLINE_ENABLED && confirm !== "email" ? (
+              {confirmEmailPending ? (
                 <GoalButton variant="primary" size="sm" className="mt-3" onClick={() => { setActionError(""); setConfirm("email"); }}>I got the referral email</GoalButton>
               ) : null}
               {closedFor ? (
@@ -200,7 +201,7 @@ export function SeekerConversation(props: Props) {
                   maxLength={3000}
                   className="h-10 min-w-0 flex-1 bg-transparent text-g-body text-g-ink outline-none placeholder:text-g-ink-3 max-gdesk:min-w-[10rem]"
                 />
-                <GoalButton variant="primary" size="sm" type="submit" busy={props.sending} busyLabel="Sending…">Send</GoalButton>
+                <GoalButton variant={confirmEmailPending ? "outline" : "primary"} size="sm" type="submit" busy={props.sending} busyLabel="Sending…">Send</GoalButton>
               </div>
               {props.messageError ? <p role="alert" className="mt-2 text-g-meta text-g-ink font-semibold">{props.messageError}</p> : null}
             </form>

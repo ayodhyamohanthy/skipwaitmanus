@@ -17,9 +17,11 @@ vi.mock("@/_core/auth", () => ({
   useUser: () => ({ user: { fullName: "Ada Byron", primaryEmailAddress: { emailAddress: "ada@example.com" }, emailAddresses: [] } }),
   SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
+const deadlineFlag = vi.hoisted(() => ({ enabled: true }));
 vi.mock("@shared/referral", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@shared/referral")>();
-  return { ...actual, REFERRED_DEADLINE_ENABLED: false };
+  // Mutable flag: default matches the live runtime value (true at shared/referral.ts:91); individual cases flip it.
+  return { ...actual, get REFERRED_DEADLINE_ENABLED() { return deadlineFlag.enabled; } };
 });
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
@@ -72,6 +74,7 @@ function renderConversation(request: ThreadRequest, extra: Record<string, unknow
 }
 
 beforeEach(() => {
+  deadlineFlag.enabled = true;
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ summary: { totalAvailable: 4 } }) })));
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
@@ -106,23 +109,36 @@ describe("seeker /conversation on the goal doctrine (D-150)", () => {
     expect(screen.queryByRole("button", { name: "Send" })).toBeNull();
   });
 
-  it("gives an accepted seeker the composer as the screen's single black commit", async () => {
+  it("with the referred-deadline flag ON (the live runtime state), an accepted seeker's one primary is the email confirmation; Send stays available but secondary", async () => {
     renderConversation({ ...base, status: "approved", referrerId: 77 }, { canMessage: true });
-    const send = await screen.findByRole("button", { name: "Send" });
-    expect(send.getAttribute("data-g-primary")).toBe("true");
+    const confirmButton = await screen.findByRole("button", { name: "I got the referral email" });
+    expect(confirmButton.getAttribute("data-g-primary")).toBe("true");
+    const send = screen.getByRole("button", { name: "Send" });
+    expect(send.getAttribute("data-g-primary")).not.toBe("true");
     expect(document.querySelectorAll("main [data-g-primary]")).toHaveLength(1);
   });
 
-  it("never claims a 7-day clock on an unclaimed closed ask (D-061 coverage close)", async () => {
+  it("never claims a 7-day clock or a freed slot on an unclaimed closed ask (D-061 coverage close; capacity not guaranteed)", async () => {
     renderConversation({ ...base, status: "closed", referrerId: null });
     const line = await screen.findByText(/Nobody could take it/);
+    expect(line.textContent).toBe("Nobody could take it. This referral request is closed.");
     expect(line.textContent).not.toMatch(/7 days/);
+    expect(line.textContent).not.toMatch(/slot/i);
   });
 
-  it("gates the referred-deadline line on REFERRED_DEADLINE_ENABLED (mocked off here; the live flag is on)", async () => {
-    renderConversation({ ...base, status: "approved", referrerId: 77, referredDueAt: "2026-10-30T08:00:00.000Z" });
-    await screen.findByTestId("goal-status");
+  it("with the referred-deadline flag OFF, an accepted seeker's single primary is Send; no deadline line or confirm button renders", async () => {
+    deadlineFlag.enabled = false;
+    renderConversation({ ...base, status: "approved", referrerId: 77, referredDueAt: "2026-10-30T08:00:00.000Z" }, { canMessage: true });
+    const send = await screen.findByRole("button", { name: "Send" });
+    expect(send.getAttribute("data-g-primary")).toBe("true");
+    expect(document.querySelectorAll("main [data-g-primary]")).toHaveLength(1);
     expect(screen.queryByText(/deadline to mark Referred/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "I got the referral email" })).toBeNull();
+  });
+
+  it("with the referred-deadline flag ON, an approved ask shows the referrer's deadline line when referredDueAt is set", async () => {
+    renderConversation({ ...base, status: "approved", referrerId: 77, referredDueAt: "2026-10-30T08:00:00.000Z" }, { canMessage: true });
+    expect(await screen.findByText(/deadline to mark Referred/)).toBeTruthy();
   });
 
   it("uses the shared never-paid sentence verbatim in the footer", async () => {
