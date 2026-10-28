@@ -992,7 +992,7 @@
       "tier": 1,
       "lane": "money-assist",
       "branch": "agent/queue/assist-approval-cost",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-assistants"
