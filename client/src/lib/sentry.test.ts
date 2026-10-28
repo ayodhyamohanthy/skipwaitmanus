@@ -17,10 +17,10 @@ describe("client Sentry wiring", () => {
     expect(scrubSentryUrl("https://skipwait.me/r/abc123?x=1", "https://skipwait.me")).toBe("/r/[redacted]");
     expect(scrubSentryUrl("https://skipwait.me/premium?role=job_seeker", "https://skipwait.me")).toBe("/premium");
   });
-  it("redacts the one-time invite API path, with or without a suffix", () => {
+  it("redacts the one-time invite API token and keeps the action suffix", () => {
     const token = "Q".repeat(43);
     expect(scrubSentryUrl(`https://skipwait.me/api/ask-invites/${token}`, "https://skipwait.me")).toBe("/api/ask-invites/[redacted]");
-    expect(scrubSentryUrl(`https://skipwait.me/api/ask-invites/${token}/claim?x=1`, "https://skipwait.me")).toBe("/api/ask-invites/[redacted]");
+    expect(scrubSentryUrl(`https://skipwait.me/api/ask-invites/${token}/claim?x=1`, "https://skipwait.me")).toBe("/api/ask-invites/[redacted]/claim");
   });
 });
 

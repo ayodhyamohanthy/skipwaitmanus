@@ -18,13 +18,27 @@ export function scrubSentryUrl(value: string, origin: string): string {
       .replace(/^\/share-card\/[^/]+/, "/share-card/[redacted]")
       .replace(/^\/fast\/[^/]+/, "/fast/[redacted]")
       .replace(/^\/refer\/[^/]+\/[^/]+/, "/refer/[redacted]")
-      .replace(/^\/r\/[^/]+/, "/r/[redacted]");
+      .replace(/^\/r\/[^/]+/, "/r/[redacted]")
+      .replace(/^\/api\/ask-invites\/[^/]+/, "/api/ask-invites/[redacted]");
     url.search = "";
     url.hash = "";
     return url.pathname;
   } catch {
     return "[redacted]";
   }
+}
+
+// Breadcrumbs (navigation from/to, fetch/xhr url) record the same paths as the
+// event URL, so each one goes through the same scrub (D-090 re-review F2).
+const BREADCRUMB_URL_KEYS = ["url", "from", "to"] as const;
+export function scrubBreadcrumb<T extends { data?: Record<string, unknown> }>(breadcrumb: T, origin: string): T {
+  const data = breadcrumb.data;
+  if (!data) return breadcrumb;
+  const scrubbed: Record<string, unknown> = { ...data };
+  for (const key of BREADCRUMB_URL_KEYS) {
+    if (typeof scrubbed[key] === "string") scrubbed[key] = scrubSentryUrl(scrubbed[key] as string, origin);
+  }
+  return { ...breadcrumb, data: scrubbed };
 }
 
 export function initClientSentry(): boolean {
@@ -37,8 +51,11 @@ export function initClientSentry(): boolean {
     release: (import.meta.env.VITE_GIT_COMMIT_SHA as string | undefined) || undefined,
     environment: window.location.hostname === "localhost" ? "development" : "production",
     tracesSampleRate: 0.1,
+    beforeBreadcrumb: breadcrumb => scrubBreadcrumb(breadcrumb, origin),
     beforeSend(event) {
       if (event.request?.url) event.request.url = scrubSentryUrl(event.request.url, origin);
+      // Backstop: anything that reached the event without passing beforeBreadcrumb.
+      if (event.breadcrumbs) event.breadcrumbs = event.breadcrumbs.map(crumb => scrubBreadcrumb(crumb, origin));
       return event;
     },
   });
