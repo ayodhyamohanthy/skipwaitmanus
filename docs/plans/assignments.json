@@ -813,6 +813,24 @@
       "epic": "D-048-p3"
     },
     {
+      "id": "D-180-conversation-copy",
+      "title": "Seeker conversation terminal and withdraw-confirm lines from one shared helper, fact-only, referral vocabulary (D-180 slice)",
+      "row": "COPY",
+      "packet": "docs/plans/D-180-conversation-copy.md",
+      "tier": 1,
+      "lane": "terminology",
+      "branch": "agent/copy/d180-conversation-copy",
+      "status": "todo",
+      "epic": "D-048-p3",
+      "dependsOn": [],
+      "owns": [
+        "shared/conversationCopy.ts",
+        "shared/conversationCopy.test.ts"
+      ],
+      "note": "Unblocks D-048-p3-live-review-conversation (#786) under the explicit Oct 28 amendment of OCT21-BUILT-PRS.md item 1 (packet section 3), which this registration PR carries. New module only; shared/moneyCopy.ts is not edited, so no holder of it (D-174-held-ask-reconfirm, D-180-a-free-asks-chip, D-099-bonus-pages switch-only) is touched and no ACK is needed. Fact-only lines in D-180 referral vocabulary: no amount, refund, clock, slot or availability claim; the withdraw confirm is keyed on queueStatus only (held_for_credit/waiting_for_coverage vs the rest). No behavior, price, charge, refund, expiry or flag change; proof is a baseline diff (packet 4d), not constant pins. Review: D-151, not the builder's model family.",
+      "syncedTo": "D-227"
+    },
+    {
       "id": "D-048-p3-live-review-conversation",
       "title": "Redesign the live seeker /conversation to the goal doctrine (D-150), then review it (D-149)",
       "row": "D-048",
@@ -826,9 +844,10 @@
         "D-038-reconcile",
         "D-132-audit",
         "ROW20-CD",
-        "D-048-F-goal-check"
+        "D-048-F-goal-check",
+        "D-180-conversation-copy"
       ],
-      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost. Oct 27 (owns): the packet's owned paths (OCT21-BUILT-PRS.md: the page, threadModel.ts seeker copy only, their tests, the conversation fixtures and captures) are registered file by file. The seeker cases in referralConversation.test.tsx pin the old h1 and the 7-day closed line this row must change, and the captures folder is shared, so D-048-p3-conversation (unclaimed) now waits for this row instead of both owning those paths at once (D-134, D-167).",
+      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost. Oct 27 (owns): the packet's owned paths (OCT21-BUILT-PRS.md: the page, threadModel.ts seeker copy only, their tests, the conversation fixtures and captures) are registered file by file. The seeker cases in referralConversation.test.tsx pin the old h1 and the 7-day closed line this row must change, and the captures folder is shared, so D-048-p3-conversation (unclaimed) now waits for this row instead of both owning those paths at once (D-134, D-167). Oct28 registration candidate: packet item1 amended to fact-only terminal/withdraw-confirm helper shared/conversationCopy.ts; helper row D-180-conversation-copy must land before adoption. #786 remains draft; no runtime change or completed-feature acceptance.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/conversation/SeekerConversation.tsx",
