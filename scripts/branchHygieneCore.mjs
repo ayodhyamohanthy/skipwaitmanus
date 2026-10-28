@@ -7,9 +7,10 @@
 // commit they hold outside main is an empty picker marker; anything else on them is kept as evidence.
 // Never deleted: main, the report log, the landing slot, a branch on the retention list (evidence holds,
 // RETENTION_LIST on main), any open pull request's branch (its head or its base: deleting a base closes the
-// pull request), any branch of a task that is not done (ruling 2), and the fix-main lock of a red main. agent/architect/<slug> is also the picker's unblock lock
-// (scripts/nextTaskCore.mjs, `unblocker` and the unblock stage), which a task of any status can hold, so it
-// is kept until its task is done rather than as soon as the row leaves "architect".
+// pull request), any branch of a task that is not done (ruling 2), and the fix-main lock of a red main.
+// agent/architect/<slug> is also the picker's unblock lock (scripts/nextTaskCore.mjs, `unblocker` and the
+// unblock stage), which a task of any status can hold, so it is kept until its task is done rather than as
+// soon as the row leaves "architect".
 import { STATUSES, parseMarker } from "./nextTaskCore.mjs";
 
 export const PROTECTED = Object.freeze(["main", "agent/reports/log", "agent/queue/landing"]);

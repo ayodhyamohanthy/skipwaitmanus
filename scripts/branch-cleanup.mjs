@@ -3,7 +3,7 @@
 //
 //   node scripts/branch-cleanup.mjs                          # dry run: every origin branch's verdict and the counts; deletes no branch
 //                                                            #   (its git fetch --prune does refresh this clone's origin/* refs)
-//   node scripts/branch-cleanup.mjs --apply                 # delete the "delete" rows on origin (batches of 20), then prune
+//   node scripts/branch-cleanup.mjs --apply                  # delete the "delete" rows on origin (batches of 20), then prune
 //   node scripts/branch-cleanup.mjs --apply --only <task id> # only that task's branches (the landing step, BRANCH-HYGIENE-2)
 //   node scripts/branch-cleanup.mjs --apply --max <n>        # allow more than 150 deletions in one run (default refuses)
 //   node scripts/branch-cleanup.mjs --local                  # ruling 5 for this clone: git branch -d merged branches whose upstream is gone
