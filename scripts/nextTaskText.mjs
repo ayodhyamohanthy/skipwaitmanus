@@ -173,7 +173,7 @@ function decisionsBlock(pick, register) {
   return [
     "Newest decisions (read before you work):",
     ...shown.map(e => `- ${e.id} · ${e.date} · ${e.title}`),
-    `If any of these changes what your task says, stop and run --report blocked "${pick.task?.id ?? "<task id>"}: conflicts with D-nnn" (D-032). A newer decision always beats an older packet, note or chat message.`,
+    `If any of these changes what your task says, stop and run \`${CMD} --report blocked "${pick.task?.id ?? "<task id>"}: conflicts with D-nnn"\` (D-032). A newer decision always beats an older packet, note or chat message.`,
   ].join("\n");
 }
 

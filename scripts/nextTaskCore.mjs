@@ -241,7 +241,7 @@ function parseAffects(row) {
 }
 
 /**
- * D-202: read `docs/DECISIONS.md` into [{ id, date, title, affects }] in register order.
+ * D-202: read `docs/DECISIONS.md` into [{ id, number, date, title, affects }] in register order.
  * A malformed row or a duplicate id throws with the line number: the picker must stop,
  * never guess which entry is real.
  */
@@ -263,7 +263,7 @@ export function parseDecisionRegister(markdown) {
     const title = stripInlineMarkdown(bold ?? cell).slice(0, TITLE_MAX);
     if (!title) throw new Error(`DECISIONS.md:${line}: ${id} has no title`);
     seen.add(id);
-    entries.push({ id, date, title, affects: parseAffects(row) });
+    entries.push({ id, number: Number(id.slice(2)), date, title, affects: parseAffects(row) });
   });
   if (!entries.length) throw new Error("DECISIONS.md: no decision rows found");
   return entries;
