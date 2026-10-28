@@ -135,8 +135,8 @@
       "tier": 1,
       "lane": "ci-gate",
       "branch": "agent/queue/ci-architect-real-checks",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-229",
       "dependsOn": [],
       "owns": [
         ".github/workflows/ci.yml",
