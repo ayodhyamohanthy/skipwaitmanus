@@ -64,7 +64,7 @@ Owned paths: the two new files only. Done: the suite passes in CI, and any case 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is on `main` (D-134).
 
-SKIPPY-fix.s1-ssrf: in progress - Instinct · 2433 - 2026-10-29 - branch agent/queue/skippy-fix-s1-ssrf
+SKIPPY-fix.s1-ssrf: review - agent/queue/skippy-fix-s1-ssrf - fbc1d8d0ca6e9d8e96279b54c452b384d5cf79cf - draft PR #800; full gate and independent review pending
 
 S1 implementation evidence (Instinct · 2433, 2026-10-29; local, not final acceptance):
 - Synthetic red control: exporting the old function without changing behavior gives 8 failed / 3 passed; the safe-reader seam is absent and the old global fetch bypasses it. New tests alone before any source export give 11 failed.
