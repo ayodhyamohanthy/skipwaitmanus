@@ -9,3 +9,15 @@ Evidence: independent750review https://github.com/ayodhyamohanthy/skipwaitmanus/
 3. Fix validation narrowly for API and Web supersession paths and main membership comparison. Preserve deliberate older-target recovery semantics and exacttargetCI checks. Test real normal positive/negative cases read-only; no workflow dispatch or production write.
 4. Separate --once latency issue: either align documentation with its bounded API-error retry and add a test, or enforce the intended explicit latency contract with evidence. Do not silently change retry behavior while presenting it as a parser-only fix.
 5. Independent nonbuilder/nonfixer Tier1 exacthead semantic review, honest red-first output, all required exactcandidate and latestmain checks green, normal protected merge commit. No test weakening or false incident closure; observe subsequent normal gated run and identities after landing. Do not waive malformed-input failure because current live responses happen to be well formed.
+
+## Status
+
+- P1-release-gate-strict-compare: review — agent/queue/p1-release-gate-strict-compare — af3a67b5 (Claude Code · da74; independent non-Claude Tier 1 review required, builder does not review or land)
+
+Evidence — P1-release-gate-strict-compare — Claude Code · da74 — 2026-10-27
+Branch agent/queue/p1-release-gate-strict-compare @ af3a67b5, contains origin/main 9746ec9a
+Red first: 20 of 75 failing against the gate on main in scripts/requireGreenRelease.test.ts (c93e3478); a stale API and Web rerun with a compare missing behind_by PASSED, also as a real process. After 45393ee4: 75/75
+Gate: check 0 · token audit OK · migration lint OK · deploy triggers OK · scope-check OK (2 owned paths) · actionlint clean · vitest 549 files passed / 4889 passed / 18 skipped / 0 failed · build 0
+Real API (read-only, strict parser): main bfb8da61 PASS api and web --once; 2dcea864 REFUSED (CI); stale 3e0894ff REFUSED api and web (superseded); eebbe568 REFUSED (not on main, diverged parsed); recovery b5299cfd PASS; recovery 215b3a7a REFUSED (schema contract)
+Live: none (no deploy, dispatch or production change); incident #748 stays open
+Left out / follow-ups: none in this row; --once retry behaviour unchanged, only its documentation (af3a67b5)

@@ -9,7 +9,7 @@ import type { AddressInfo } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { REQUIRED_JOBS, SCHEMA_CONTRACT, ciVerdict, contextProblem, evaluateRelease, recoveryProblem, runGate } from "./require-green-release.mjs";
+import { REQUIRED_JOBS, SCHEMA_CONTRACT, ciVerdict, contextProblem, evaluateRelease, gitHubClient, parseCompare, recoveryProblem, runGate } from "./require-green-release.mjs";
 
 const root = path.resolve(__dirname, "..");
 const T = "a".repeat(40);
@@ -23,20 +23,21 @@ const run = (extra: Partial<Run> = {}): Run => ({
 });
 const jobs = (over: Record<string, Partial<Job>> = {}, sha = T): Job[] =>
   REQUIRED_JOBS.map((name: string) => ({ name, status: "completed", conclusion: "success", head_sha: sha, ...over[name] }));
-const cmp = (status: string): Cmp => ({ status, ahead_by: status === "ahead" ? 3 : 0, behind_by: status === "behind" ? 3 : status === "diverged" ? 2 : 0 });
+// Counts as GitHub reports them for each status: a diverged compare has commits on both sides.
+const cmp = (status: string): Cmp => ({ status, ahead_by: status === "ahead" || status === "diverged" ? 2 : 0, behind_by: status === "behind" || status === "diverged" ? 3 : 0 });
 
 // The schema contract as GitHub's contents API reports it, the same at every ref unless a test overrides "<path>@<ref>".
 type Contents = { kind: "dir"; entries: { name: string; sha: string }[] } | { kind: "file"; sha: string } | null;
 const sameSchema = (p: string): Contents => (p === "drizzle/deploy" ? { kind: "dir", entries: [{ name: "0120_job_catalog.sql", sha: "m120" }] } : { kind: "file", sha: `blob-${p}` });
 
-// A GitHub stand-in with the same calls the gate makes. `compares` keys are "<base>...<head>".
-function fake({ runs = [run()], jobsOf = { 1: jobs() } as Record<number, Job[]>, compares = {} as Record<string, string>, marker = null as string | null, pages = [] as Partial<Run>[], fail = 0, schema = {} as Record<string, Contents> } = {}) {
+// A GitHub stand-in with the same calls the gate makes. `compares` keys are "<base>...<head>"; a value is a status, or a raw response body.
+function fake({ runs = [run()], jobsOf = { 1: jobs() } as Record<number, Job[]>, compares = {} as Record<string, string | Record<string, unknown>>, marker = null as string | null, pages = [] as Partial<Run>[], fail = 0, schema = {} as Record<string, Contents> } = {}) {
   const calls: string[] = [];
   let failures = fail;
   const gate = (what: string) => { calls.push(what); if (failures > 0) { failures--; throw new Error("HTTP 502 from GitHub"); } };
   return {
     calls,
-    async compare(base: string, head: string) { gate(`compare ${base}...${head}`); return cmp(compares[`${base}...${head}`] ?? (head === "main" ? "identical" : "behind")); },
+    async compare(base: string, head: string) { gate(`compare ${base}...${head}`); const v = compares[`${base}...${head}`] ?? (head === "main" ? "identical" : "behind"); return typeof v === "string" ? cmp(v) : v; },
     async ciRuns(sha: string) { gate(`runs ${sha}`); return runs; },
     async ciJobs(id: number) { gate(`jobs ${id}`); return jobsOf[id] ?? []; },
     async apiRuntimeMarker() { gate("marker"); return marker; },
@@ -252,6 +253,98 @@ describe("recovery evaluation", () => {
   });
 });
 
+// P1-release-gate-strict-compare (#748): a compare count that is missing or malformed was read as NaN, which
+// "descends" treats as "not newer", so a stale release passed. Every compare body must be GitHub's exact shape.
+describe("strict compare responses", () => {
+  const VALID = [
+    { status: "identical", ahead_by: 0, behind_by: 0 },
+    { status: "ahead", ahead_by: 3, behind_by: 0 },
+    { status: "behind", ahead_by: 0, behind_by: 2 },
+    { status: "diverged", ahead_by: 2, behind_by: 1 },
+  ];
+  const MALFORMED: [string, unknown][] = [
+    ["a missing behind_by", { status: "ahead", ahead_by: 3 }],
+    ["a missing ahead_by", { status: "behind", behind_by: 3 }],
+    ["a null count", { status: "ahead", ahead_by: 3, behind_by: null }],
+    ["string counts", { status: "ahead", ahead_by: "3", behind_by: "0" }],
+    ["a non-finite count", JSON.parse('{"status":"ahead","ahead_by":1e309,"behind_by":0}')],
+    ["a negative count", { status: "behind", ahead_by: 0, behind_by: -1 }],
+    ["a fractional count", { status: "ahead", ahead_by: 1.5, behind_by: 0 }],
+    ["an unknown status", { status: "unknown", ahead_by: 0, behind_by: 0 }],
+    ["no status", { ahead_by: 0, behind_by: 0 }],
+    ["ahead with nothing ahead", { status: "ahead", ahead_by: 0, behind_by: 0 }],
+    ["identical with commits between", { status: "identical", ahead_by: 1, behind_by: 0 }],
+    ["behind with commits ahead", { status: "behind", ahead_by: 2, behind_by: 3 }],
+    ["diverged on one side only", { status: "diverged", ahead_by: 0, behind_by: 2 }],
+    ["an array body", ["ahead"]],
+    ["a null body", null],
+  ];
+  const client = (body: unknown) => gitHubClient({ apiUrl: "http://gh.test", repo: "o/r", token: "", fetchImpl: async () => ({ ok: true, status: 200, json: async () => body }) });
+
+  it("accepts GitHub's four consistent shapes at the client boundary", async () => {
+    for (const body of VALID) {
+      expect(await client(body).compare(T, "main")).toEqual(body);
+      expect(parseCompare(body)).toEqual(body);
+    }
+  });
+
+  it.each(MALFORMED)("refuses a compare response with %s instead of coercing it", async (_, body) => {
+    await expect(client(body).compare(T, "main")).rejects.toThrow(/unexpected GitHub response/);
+    expect(() => parseCompare(body)).toThrow(/unexpected GitHub response/);
+  });
+
+  const clock = () => { let t = 0; return { now: () => t, sleep: async (ms: number) => { t += ms; } }; };
+  const opts = { sha: T, ref: "refs/heads/main", event: "push", target: "api", runId: "999", timeoutMs: 45 * 60_000, appearMs: 10 * 60_000, intervalMs: 30_000, log: () => {} };
+  const missingBehind = { status: "ahead", ahead_by: 3 };
+
+  it("never lets a malformed count turn a stale API rerun into a pass", async () => {
+    const result = await runGate({ ...opts, ...clock(), gh: fake({ marker: NEWER, compares: { [`${T}...${NEWER}`]: missingBehind } }) });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toMatch(/unexpected GitHub response/);
+  });
+
+  it("never lets a malformed count turn a stale Web rerun into a pass", async () => {
+    const gh = fake({ pages: [{ id: 5, head_sha: NEWER }], compares: { [`${T}...${NEWER}`]: missingBehind } });
+    const result = await runGate({ ...opts, ...clock(), target: "web", gh });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toMatch(/unexpected GitHub response/);
+  });
+
+  it("refuses when main membership comes back malformed, for a release and a recovery alike", async () => {
+    const release = await runGate({ ...opts, ...clock(), gh: fake({ compares: { [`${T}...main`]: { status: "ahead", ahead_by: 2, behind_by: "0" } } }) });
+    expect(release.ok).toBe(false);
+    expect(release.reason).toMatch(/unexpected GitHub response/);
+    const older = { runs: [run({ head_sha: OLDER })], jobsOf: { 1: jobs({}, OLDER) } };
+    const recovery = { ...opts, ...clock(), event: "workflow_dispatch", recovery: true, intent: intent(), workflowSha: MAIN };
+    const malformed = await runGate({ ...recovery, gh: fake({ ...older, compares: { [`${OLDER}...main`]: { status: "ahead", ahead_by: 2 } } }) });
+    expect(malformed.ok).toBe(false);
+    expect(malformed.reason).toMatch(/unexpected GitHub response/);
+  });
+
+  it("keeps deliberate recovery of an older green target working on well-formed responses", async () => {
+    const older = { runs: [run({ head_sha: OLDER })], jobsOf: { 1: jobs({}, OLDER) }, marker: T, compares: { [`${OLDER}...main`]: "ahead", [`${OLDER}...${T}`]: "ahead" } };
+    const recovery = { ...opts, ...clock(), event: "workflow_dispatch", recovery: true, intent: intent(), workflowSha: MAIN };
+    expect(await runGate({ ...recovery, gh: fake(older) })).toMatchObject({ ok: true });
+    expect(await runGate({ ...opts, ...clock(), sha: OLDER, event: "workflow_dispatch", gh: fake(older) })).toMatchObject({ ok: false });
+  });
+
+  it("re-checks with --once without waiting for CI, but retries a GitHub error at most five times", async () => {
+    const failing = clock();
+    const gh = fake({ fail: 99 });
+    const refused = await runGate({ ...opts, ...failing, once: true, gh });
+    expect(refused.ok).toBe(false);
+    expect(refused.reason).toMatch(/5 attempts in a row/);
+    expect(gh.calls).toHaveLength(5);
+    expect(failing.now()).toBe(4 * opts.intervalMs);
+    const blip = clock();
+    expect(await runGate({ ...opts, ...blip, once: true, gh: fake({ fail: 1 }) })).toMatchObject({ ok: true });
+    expect(blip.now()).toBe(opts.intervalMs);
+    const running = clock();
+    expect(await runGate({ ...opts, ...running, once: true, gh: fake({ runs: [run({ status: "in_progress", conclusion: null })] }) })).toMatchObject({ ok: false });
+    expect(running.now()).toBe(0);
+  });
+});
+
 // The real script, as a process, against a local HTTP stand-in for the GitHub REST API.
 function serve(handler: (url: URL, req: IncomingMessage) => unknown) {
   const seen: { url: string; auth: string | undefined }[] = [];
@@ -333,6 +426,21 @@ describe("require-green-release.mjs as a process", () => {
       expect(refused.code).toBe(1);
       expect(refused.out).toMatch(/confirmation/);
       expect(s.seen.length).toBe(before);
+    } finally { s.close(); }
+  });
+
+  it("refuses a stale rerun whose compare response is missing a count, as a real process", async () => {
+    const base = api([run()], jobs());
+    const s = await serve(url => {
+      if (url.pathname.endsWith("/git/ref/tags/api-runtime")) return { ref: "refs/tags/api-runtime", object: { type: "commit", sha: NEWER } };
+      if (url.pathname.endsWith(`/compare/${T}...${NEWER}`)) return { status: "ahead", ahead_by: 3 };
+      return base(url);
+    });
+    try {
+      const { code, out } = await cli(s.base, "api");
+      expect(out).toContain("RELEASE GATE REFUSED (api)");
+      expect(out).toMatch(/unexpected GitHub response/);
+      expect(code).toBe(1);
     } finally { s.close(); }
   });
 
