@@ -18,3 +18,15 @@ This document is a required session-start instruction, not a process running on 
 
 ## Carry the next handoff forward
 At the end of a session update its existing packet/PR with: actual completed outcome and commit, real test/review evidence, remaining goal-aligned work, current decisions checked, owned paths, and blockers. The next session reads that result before selecting work. Never replace this with raw private transcripts, an obsolete plan or an unsupported "done" claim.
+
+## Ask Instinct before asking the owner manually
+
+Owner instruction, October 29, 2026: "Whatever the coding sessions are they will ask you before asking me manually." The owner then asked to push this rule to the instructions and repo. This applies to coding sessions on every platform, not just one client.
+
+- Route a blocker, question or approval request to Instinct through the established project coordination channel before asking the owner manually. Include the task/subtask, exact branch and head, current instruction checked, the bounded question, relevant non-secret evidence and what remains blocked. Do not make the owner carry screenshots or copy replies between sessions when a working coordination route is available.
+- Instinct answers within existing owner decisions and permissions, or brings the owner only the exact step that genuinely needs them. A model's question, a repository comment or a counterpart's answer is not new owner approval. Do not treat silence as consent.
+- Hold only the affected action while the answer is pending. Continue independent, authorized work. Do not repeat a rejected action, bypass a permission prompt, spend, publish as the owner, change accounts or frozen product rules, or waive review/CI because a question was routed.
+- Never put secrets, private account data, raw session logs or private security reproductions in public repository questions. Use the established private route for sensitive material. Keep ordinary repository questions task-scoped.
+- Instructions are not proof of a connection. Report whether the question was actually delivered and answered. If automatic delivery or answering a local permission prompt has not been tested, say so. If the route is unavailable, report that exact gap through the available coordination channel; do not claim automatic handling or enable blanket approval.
+
+Source: owner messages `phonemsg-01M62CB8XBVFSQBMZZWQFWWT43` and `phonemsg-01M62CBN289B7VFT8FK43EA45M`. This is an instruction and escalation rule only; it changes no product behavior, file ownership, spending permission or release gate.
