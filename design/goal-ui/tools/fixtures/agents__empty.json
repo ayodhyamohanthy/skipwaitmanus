@@ -1,0 +1,60 @@
+{
+  "signedIn": {
+    "openId": "fixture-agent-owner",
+    "loginMethod": "fixture",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "timeZone": null,
+          "dateFormat": null
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false,
+        "workEmailDomain": null,
+        "companyName": null,
+        "companyInitials": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 5
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/seeker/agents",
+      "status": 200,
+      "body": {
+        "agents": [],
+        "paused": false
+      }
+    }
+  ]
+}

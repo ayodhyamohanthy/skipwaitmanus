@@ -1,0 +1,98 @@
+{
+  "signedIn": {
+    "openId": "fixture-agent-owner",
+    "loginMethod": "fixture",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "timeZone": null,
+          "dateFormat": null
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false,
+        "workEmailDomain": null,
+        "companyName": null,
+        "companyInitials": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 5
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/seeker/agents",
+      "status": 200,
+      "body": {
+        "agents": [
+          {
+            "id": 7,
+            "name": "Fictional draft helper",
+            "keyPrefix": "sw_fictional",
+            "scopes": [
+              "lookup",
+              "draft"
+            ],
+            "limits": {
+              "creditsPerAsk": 10,
+              "creditsPerDay": 20,
+              "creditsPerWeek": 50,
+              "asksPerDay": 3
+            },
+            "status": "active",
+            "expiresAt": "2026-11-04T11:00:20.633937Z",
+            "lastUsedAt": null,
+            "createdAt": "2026-10-27T11:00:20.633937Z"
+          },
+          {
+            "id": 8,
+            "name": "Fictional research helper",
+            "keyPrefix": "sw_fake2",
+            "scopes": [
+              "lookup"
+            ],
+            "limits": {
+              "creditsPerAsk": 10,
+              "creditsPerDay": 20,
+              "creditsPerWeek": 50,
+              "asksPerDay": 3
+            },
+            "status": "paused",
+            "expiresAt": "2026-11-04T11:00:20.633937Z",
+            "lastUsedAt": null,
+            "createdAt": "2026-10-27T11:00:20.633937Z"
+          }
+        ],
+        "paused": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "signedIn": false,
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    }
+  ]
+}
