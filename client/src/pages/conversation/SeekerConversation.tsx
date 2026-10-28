@@ -12,6 +12,7 @@ import { useAuth } from "@/_core/auth";
 import { GoalAppShell, GoalButton, GoalErrorState, GoalMiniStepper, GoalNum, GoalStatus } from "@/components/goal";
 import { referrerGreeting } from "@/components/landed/landedModel";
 import { REFERRED_DEADLINE_ENABLED } from "@shared/referral";
+import { REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import { askView } from "@/components/requests/askView";
 import { SEEKER_MILESTONES } from "@/components/thread/ThreadDecisionPanels";
 import { isUnknownCompany } from "@shared/companies";
@@ -199,7 +200,7 @@ export function SeekerConversation(props: Props) {
 
         <p className="mt-6 border-t border-g-hairline pt-4 text-pretty text-g-meta text-g-ink-2">{HONESTY}</p>
         <p className="mt-2 text-pretty text-g-meta text-g-ink-3">
-          Referrers are never paid and never ask for money. Never pay or accept money for a referral. <Link href="/report" className="underline underline-offset-2">Report or block</Link>
+          {REFERRER_MONEY_SENTENCE} Never pay or accept money for a referral. <Link href="/report" className="underline underline-offset-2">Report or block</Link>
         </p>
         {props.extra}
       </div>
