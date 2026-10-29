@@ -46,6 +46,25 @@ describe("Clarity wiring", () => {
     expect(shouldTrackClarityPath("/pricing", "?utm_source=x")).toBe(true);
   });
 
+  // D-090 post-fix regression round: the token also reached Clarity through
+  // encoded route variants and through any query key, not just returnTo.
+  it("never tracks encoded path variants or a one-time link in any query value", () => {
+    const token = "Q".repeat(43);
+    expect(shouldTrackClarityPath(`/R/${token}`)).toBe(false);
+    expect(shouldTrackClarityPath(`/r%2F${token}`)).toBe(false);
+    expect(shouldTrackClarityPath(`/%72%2F${token}`)).toBe(false);
+    expect(shouldTrackClarityPath(`/API/ASK-INVITES/${token}`)).toBe(false);
+    // Any query key, one or two decodes deep.
+    expect(shouldTrackClarityPath("/sign-in", `?next=%2Fr%2F${token}`)).toBe(false);
+    expect(shouldTrackClarityPath("/sign-in", `?redirect=${encodeURIComponent(`/r/${token}`)}`)).toBe(false);
+    expect(shouldTrackClarityPath("/sign-in", `?returnTo=${encodeURIComponent(`https://skipwait.me/r/${token}`)}`)).toBe(false);
+    expect(shouldTrackClarityPath("/sign-in", `?returnTo=${encodeURIComponent(`/api/ask-invites/${token}/claim`)}`)).toBe(false);
+    expect(shouldTrackClarityPath("/sign-in", `?returnTo=%252Fr%252F${token}`)).toBe(false);
+    // A percent sign on an ordinary page is not a reason to stop tracking.
+    expect(shouldTrackClarityPath("/pricing", "?discount=100%25")).toBe(true);
+    expect(shouldTrackClarityPath("/sign-in", "?returnTo=%2Fexplore&intent=job_seeker")).toBe(true);
+  });
+
   it("does not initialize on a sign-in page that returns to a one-time link", async () => {
     vi.stubGlobal("window", { location: { pathname: "/sign-in", search: "?intent=referrer&returnTo=%2Fr%2Fabc" } });
     vi.stubEnv("VITE_CLARITY_PROJECT_ID", "test-project");

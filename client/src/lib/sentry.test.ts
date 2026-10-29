@@ -64,3 +64,85 @@ describe("client Sentry breadcrumbs never carry a one-time token", () => {
     expect(sent).toContain("/api/companies");
   });
 });
+
+// D-090 post-fix regression round: request headers, error context and encoded
+// or malformed route variants carried the token past the first scrub. Same
+// synthetic token and intercepted envelope: nothing leaves the test.
+describe("client Sentry event fields never carry a one-time token", () => {
+  const TOKEN = "Q".repeat(43);
+  afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.resetModules(); });
+
+  async function captureEvent(event: Record<string, unknown>): Promise<string> {
+    vi.stubEnv("VITE_SENTRY_DSN", "https://examplekey@sentry.invalid/1");
+    vi.resetModules();
+    const Sentry = await import("@sentry/react");
+    const fresh = await import("./sentry");
+    expect(fresh.initClientSentry()).toBe(true);
+    const envelopes: string[] = [];
+    Sentry.getClient()?.on("beforeEnvelope", envelope => { envelopes.push(JSON.stringify(envelope)); });
+    Sentry.captureEvent(event as Parameters<typeof Sentry.captureEvent>[0]);
+    await Sentry.flush(2000);
+    expect(envelopes.length).toBeGreaterThan(0);
+    return envelopes.join("\n");
+  }
+
+  it("scrubs request headers, query, body, context, tags, message and exception text for /r/<token>", async () => {
+    const sent = await captureEvent({
+      message: `failed to load /api/ask-invites/${TOKEN}/claim`,
+      transaction: `/r/${TOKEN}`,
+      tags: { route: `/r/${TOKEN}`, healthy: "yes" },
+      extra: { nested: { url: `/r/${TOKEN}` }, list: [`/api/ask-invites/${TOKEN}`], count: 2 },
+      contexts: { app: { path: `/r/${TOKEN}`, plain: "/explore" } },
+      request: {
+        url: `https://skipwait.me/r/${TOKEN}`,
+        headers: { Referer: `https://skipwait.me/r/${TOKEN}`, "x-page": `/api/ask-invites/${TOKEN}/claim` },
+        query_string: `returnTo=${encodeURIComponent(`/r/${TOKEN}`)}`,
+        data: { returnTo: `/r/${TOKEN}`, role: "job_seeker" },
+      },
+      exception: { values: [{ type: "Error", value: `Load failed /api/ask-invites/${TOKEN}` }] },
+      breadcrumbs: [{ category: "navigation", data: { from: `/r/${TOKEN}`, to: "/explore" } }],
+    });
+    expect(sent).not.toContain(TOKEN);
+    // Ordinary telemetry survives.
+    expect(sent).toContain("/explore");
+    expect(sent).toContain("job_seeker");
+    expect(sent).toContain("healthy");
+    expect(sent).toContain("count\":2");
+  });
+
+  it("scrubs encoded and malformed route variants without throwing", async () => {
+    const variants = [
+      `/R/${TOKEN}`,
+      `/r%2F${TOKEN}`,
+      `%2Fr%2F${TOKEN}`,
+      `%252Fr%252F${TOKEN}`,
+      `/%72%2F${TOKEN}`,
+      `/api%2Fask-invites%2F${TOKEN}`,
+      `/API/ASK-INVITES/${TOKEN}`,
+      `/api/ask-invites/${TOKEN}%ZZ`,
+      `/r/${TOKEN}%E0%A4%A`,
+    ];
+    const sent = await captureEvent({
+      message: "encoded route variants",
+      extra: { variants },
+      tags: { route: variants[0] },
+      request: { url: `https://skipwait.me${variants[1]}`, headers: { Referer: variants[2] } },
+    });
+    for (const variant of variants) expect(sent, variant).not.toContain(TOKEN);
+    expect(sent).toContain("encoded route variants");
+  });
+
+  it("keeps ordinary URLs, tags and text untouched", async () => {
+    const sent = await captureEvent({
+      message: "boom",
+      transaction: "/explore",
+      tags: { route: "/explore", note: "100% healthy" },
+      extra: { url: "/api/companies", count: 2 },
+      request: { url: "https://skipwait.me/explore?tab=jobs", headers: { Referer: "https://skipwait.me/explore" } },
+    });
+    expect(sent).toContain("/explore");
+    expect(sent).toContain("/api/companies");
+    expect(sent).toContain("boom");
+    expect(sent).toContain("100% healthy");
+  });
+});
