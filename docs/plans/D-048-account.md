@@ -82,3 +82,5 @@ None. Privacy and support behaviour is already decided in the register; this pac
 `D-048-P-account`: prepared by design lane (AYO-11) — pending coordinator landing — 2026-10-23 — branch `agent/architect/d048-p-account`
 
 `D-048-P-account`: landed by the coordinator — 2026-10-23 — landing branch `agent/instinct/d048-p-account-packet`. Canonical candidate; the empty claim marker branch `agent/architect/d048-p-account` (Claude Code · e11c) is preserved and the overlap is announced in the PR.
+
+`D-048-p3-messages`: in progress — Hark · d1c3 — 2026-10-29 — branch agent/queue/d048-p3-messages
