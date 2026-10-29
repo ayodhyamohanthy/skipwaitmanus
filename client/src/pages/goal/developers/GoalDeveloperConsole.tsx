@@ -16,9 +16,10 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { ALL_SCOPES, DEFAULT_SCOPES, KINDS, KIND_SHORT, STATUS_META, appSubtitle } from "@/components/developers/consoleMeta";
 import { consoleHref, readConsoleView, type ConsoleView } from "@/components/developers/consoleRoute";
-import type { RegisterAppInput } from "@/components/developers/RegisterAppForm";
 
 export const GOAL_PAGE = { goalLine: "Register your app." } as const;
+/** The register body, the same shape the kit form posts (components/developers/RegisterAppForm, which imports the kit and so is not imported here). */
+type RegisterAppInput = { name: string; kind: AppKind; description: string; website?: string; redirectUrls: string[]; scopes: string[]; agreeToTerms: boolean };
 const LOAD_ERROR = "We could not load your apps";
 const NETWORK_ERROR = "We could not reach skipwait.me. Check your connection and try again.";
 const link = "text-g-ink underline underline-offset-[3px] hover:no-underline";
