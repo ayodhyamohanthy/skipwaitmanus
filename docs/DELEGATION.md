@@ -156,6 +156,8 @@ The reviewer is a session of a model that neither built nor fixed the work (the 
 9. **The packet's own §10 questions**, each answered with a file and line.
 10. **Gate:** CI on the draft PR is green, and you re-ran `pnpm check`, the focused tests and the build on the branch merged with the latest `origin/main`.
 
+CI enforces this (PROCESS-review-gate, D-166): `--verdict` records `reviewed <sha>`, the task branch's tip on origin, and `scripts/review-gate.mjs` (run by `scripts/scope-check.mjs`) fails a Tier 1 pull request unless its newest stage is an independent pass naming its head, or a head that only merged `main` after it; a pass recorded before this gate, or before a merge of `main`, is re-recorded by its reviewer with `--verdict pass`.
+
 Verdict: `pass` (then the reviewer pushes the merged candidate to the pull request, waits until every check is green on that exact commit, lands that same commit on `main` once `main`'s own CI is green (D-082), and runs the live check) or `findings` (each with file:line, severity and the failing test to add first; the implementer fixes them red-first on the same branch).
 
 ## 7. Never do (each line is a real incident)
