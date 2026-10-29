@@ -9,8 +9,10 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const authState = { isLoaded: true, isSignedIn: true };
+// One stable token getter, as the real usePersistFn gives the pages.
+const getToken = async () => "tok";
 vi.mock("@/_core/auth", () => ({
-  useAuth: () => ({ ...authState, userId: "u1", getToken: async () => "tok" }),
+  useAuth: () => ({ ...authState, userId: "u1", getToken }),
   SignInButton: ({ children }: { children: React.ReactNode }) => <div data-testid="sign-in-button">{children}</div>,
 }));
 const flagState = { on: true };
@@ -96,7 +98,7 @@ describe("goal /profile", () => {
 
   it("opens on the goal with one black commit and the saved headline", async () => {
     render(<Profile />);
-    expect(screen.getByRole("heading", { level: 1, name: "Choose what referrers see." })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Choose what referrers see." })).toBeTruthy();
     const headline = await screen.findByLabelText("Headline") as HTMLInputElement;
     expect(headline.value).toBe("Product designer");
     expect((screen.getByLabelText("Display name") as HTMLInputElement).readOnly).toBe(true);
@@ -186,11 +188,11 @@ describe("goal /profile", () => {
     expect(putCalls()).toEqual([{ url: "/api/profile/me", method: "PUT", body: { handle: "meera-iyer" }, auth: "Bearer tok" }]);
   });
 
-  it("signed out: the one next step is sign-in and nothing is fetched", () => {
+  it("signed out: the one next step is sign-in and nothing is fetched", async () => {
     authState.isSignedIn = false;
     render(<Profile />);
-    expect(screen.getByRole("heading", { level: 1, name: "Choose what referrers see." })).toBeTruthy();
-    expect(within(screen.getByTestId("sign-in-button")).getByRole("button", { name: "Sign in" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Choose what referrers see." })).toBeTruthy();
+    expect(within(await screen.findByTestId("sign-in-button")).getByRole("button", { name: "Sign in" })).toBeTruthy();
     expect(server.calls).toHaveLength(0);
   });
 
@@ -214,7 +216,7 @@ describe("goal /work", () => {
 
   it("opens on the goal with every piece, its visibility in words, and one black commit", async () => {
     render(<Work />);
-    expect(screen.getByRole("heading", { level: 1, name: "Choose what referrers see." })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Choose what referrers see." })).toBeTruthy();
     expect(await screen.findByText("Checkout redesign")).toBeTruthy();
     expect(screen.getByText("Private sketchbook")).toBeTruthy();
     expect(screen.getAllByText("Only me").length).toBeGreaterThan(0);
@@ -328,11 +330,11 @@ describe("goal /work", () => {
     expect(screen.getByTestId("goal-offline-state").textContent).toMatch(/offline/);
   });
 
-  it("signed out: the one next step is sign-in and nothing is fetched", () => {
+  it("signed out: the one next step is sign-in and nothing is fetched", async () => {
     authState.isSignedIn = false;
     render(<Work />);
-    expect(screen.getByRole("heading", { level: 1, name: "Choose what referrers see." })).toBeTruthy();
-    expect(within(screen.getByTestId("sign-in-button")).getByRole("button", { name: "Sign in" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Choose what referrers see." })).toBeTruthy();
+    expect(within(await screen.findByTestId("sign-in-button")).getByRole("button", { name: "Sign in" })).toBeTruthy();
     expect(server.calls).toHaveLength(0);
   });
 });
