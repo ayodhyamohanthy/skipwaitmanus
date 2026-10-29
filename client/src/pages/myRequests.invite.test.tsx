@@ -142,6 +142,17 @@ describe("My asks BYOR invite action", () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/invite-link/revoke"))).toBe(true);
   });
 
+  it("masks the issued one-time link from session replay", async () => {
+    stubPage([openAsk(42)]);
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Invite someone you know" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Create one-time link" }));
+    const linkInput = await screen.findByRole("textbox", { name: "One-time invite link" });
+    // §4.3.16: the token never enters analytics, so the issued URL is masked in
+    // session replay by the markup itself, not by a dashboard setting.
+    expect(linkInput.closest('[data-clarity-mask="true"]')).not.toBeNull();
+  });
+
   it.each(["claimed", "delivered"] as const)("shows neutral status copy for a %s link without exposing a name", async state => {
     stubPage([openAsk(42, { waitingForCoverage: false, referrerId: 503, askInvite: { state, createdAt: iso(Date.now()), expiresAt: iso(Date.now() + 7 * day) } })]);
     renderPage();
