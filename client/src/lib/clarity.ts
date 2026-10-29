@@ -5,14 +5,14 @@ import Clarity from "@microsoft/clarity";
 // so tracking stays off those routes entirely. Mirrors the scrub list in
 // client/src/lib/sentry.ts.
 const SENSITIVE_PATHS = [
-  "/company/claim",
-  "/company/dashboard/",
-  "/email-review/",
-  "/share-card/",
-  "/fast/",
-  "/refer/",
-  "/r/",
-  "/api/ask-invites/",
+  /\/company\/claim/i,
+  /\/company\/dashboard\//i,
+  /\/email-review\//i,
+  /\/share-card\//i,
+  /\/fast\//i,
+  /\/refer\//i,
+  /\/r\//i,
+  /\/api\/ask-invites\//i,
 ];
 const MAX_DECODE_PASSES = 2;
 
@@ -29,8 +29,7 @@ function decodeValidEscapes(value: string): string {
 }
 
 function matchesSensitive(value: string): boolean {
-  const lower = value.toLowerCase();
-  return SENSITIVE_PATHS.some((path) => lower.includes(path));
+  return SENSITIVE_PATHS.some((pattern) => pattern.test(value));
 }
 
 // Clarity records the full URL, query included, and React Router matches routes
