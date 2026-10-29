@@ -26,7 +26,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
   LAND_SLOT, REPORT_STATUSES, architectLockOf, ciStateFromRuns, classifyPushError, fixMainIdOf, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
-  mayReport, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
+  mayReport, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
 
@@ -39,8 +39,9 @@ if ((process.env.HTTPS_PROXY || process.env.https_proxy) && process.env.NODE_USE
 }
 
 const LIST = "docs/plans/assignments.json";
+const REGISTER = "docs/DECISIONS.md";
 const LIST_REF = process.env.NEXT_TASK_LIST_REF || "origin/main";
-const CLAIMABLE = ["build", "takeover", "fix-main", "review", "fix", "green", "land", "architect", "unblock", "continue"];
+const CLAIMABLE = ["build", "takeover", "fix-main", "review", "fix", "green", "land", "architect", "resync", "unblock", "continue"];
 const EXIT = { stop: 2, wait: 4, none: 5 };
 const REPORTS = "agent/reports/log";
 const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
@@ -210,7 +211,13 @@ async function state() {
   if (raw === null) fail(`${LIST} is missing on ${LIST_REF}`);
   let doc;
   try { doc = JSON.parse(raw); } catch (e) { fail(`${LIST} is not valid JSON: ${e.message}`); }
-  const errors = validateAssignments(doc, p => tryGit("cat-file", "-e", `${LIST_REF}:${p}`) !== null);
+  // D-202: the decision register is read with the list, from the same ref, and an unreadable
+  // register stops the picker: a guess at which decision is newest would hand out stale work.
+  const registerRaw = tryGit("show", `${LIST_REF}:${REGISTER}`);
+  if (registerRaw === null) fail(`${REGISTER} is missing on ${LIST_REF}; the picker cannot tell which decision is newest`);
+  let register;
+  try { register = parseDecisionRegister(registerRaw); } catch (e) { fail(`${e.message}; fix the register before any work is picked`); }
+  const errors = validateAssignments(doc, p => tryGit("cat-file", "-e", `${LIST_REF}:${p}`) !== null, register);
   if (errors.length) fail(`${LIST} is invalid; tell Claude Code:\n- ${errors.join("\n- ")}`);
   // D-085: every GitHub read is known or unknown; an unknown one stops the picker instead of looking like "nothing there".
   let mainCi = { state: "unknown" }, openPrs = null, mergedHeads = null;
@@ -251,7 +258,7 @@ async function state() {
     const count = raw !== null && /^\d+$/.test(raw) ? Number(raw) : null;
     prBehind.set(head, Number.isSafeInteger(count) ? count : null);
   }
-  return { doc, mainCi, openPrs, mergedHeads, prCi, prBehind, branches: loadBranches(doc.tasks), reports: loadReports() };
+  return { doc, register, mainCi, openPrs, mergedHeads, prCi, prBehind, branches: loadBranches(doc.tasks), reports: loadReports() };
 }
 
 function claim(pick, who, branches) {
@@ -270,7 +277,8 @@ function claim(pick, who, branches) {
       return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who)));
     }
     case "unblock": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Unblock", pick.task.id, who)));
-    case "architect": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who)));
+    case "architect":
+    case "resync": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who)));
     case "fix-main": return Boolean(pushMarker(pick.lock, pick.parent ? tip(pick.parent) : origin(), markerSubject(pick.parent ? "Takeover" : "Claim", fixMainIdOf(pick.sha), who)));
     case "review": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Review claim", pick.task.id, who)));
     case "fix": return branches.has(pick.lock) && Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Fix claim", pick.task.id, who)));
@@ -325,9 +333,11 @@ async function main() {
     return;
   }
   if (args.status) {
-    const { doc, mainCi, openPrs, mergedHeads, prCi, prBehind, branches, reports } = await state();
+    const { doc, register, mainCi, openPrs, mergedHeads, prCi, prBehind, branches, reports } = await state();
+    const newest = register.at(-1);
+    console.log(`Register: ${newest.id}, ${newest.date} — ${newest.title}`);
     console.log(`main CI: ${mainCi.state}${mainCi.url ? ` (${mainCi.url})` : ""}${openPrs === null || mergedHeads === null ? " · pull requests: UNKNOWN (GitHub read failed; the board may be wrong)" : ""}\n`);
-    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, prBehind, reports, now: Date.now() })));
+    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, prBehind, reports, now: Date.now(), register })));
     return;
   }
   if (args.report) {
@@ -368,12 +378,12 @@ async function main() {
   const who = args.claim ? sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4)) : args.as ?? null;
   if (args.claim && who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const { doc, mainCi, openPrs, mergedHeads, prCi, prBehind, branches, reports } = await state();
+    const { doc, register, mainCi, openPrs, mergedHeads, prCi, prBehind, branches, reports } = await state();
     const now = Date.now();
     const avoid = new Set((args.avoid ?? "").split(",").map(id => id.trim()).filter(Boolean));
-    const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, prCi, reports, now, claimant: who, avoid });
+    const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, prCi, reports, now, claimant: who, avoid, register });
     // D-085: every agent starts from the same picture — the priorities top down, green or not.
-    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, prBehind, reports, now });
+    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, prBehind, reports, now, register });
     if (pick.kind === "ceo") pick.board = board;
     else console.log(renderBoard(board));
     const { local, mainBehind } = localState();
@@ -386,10 +396,10 @@ async function main() {
       process.exit(3);
     }
     if (!args.claim || !CLAIMABLE.includes(pick.kind)) {
-      console.log(renderPick(pick, { who: who ?? "<your session name>", date, claimed: false }));
+      console.log(renderPick(pick, { who: who ?? "<your session name>", date, claimed: false, register }));
       process.exit(EXIT[pick.kind] ?? 0);
     }
-    if (claim(pick, who, branches)) { console.log(renderPick(pick, { who, date, claimed: true })); return; }
+    if (claim(pick, who, branches)) { console.log(renderPick(pick, { who, date, claimed: true, register })); return; }
     console.error(`next-task: another agent pushed first (attempt ${attempt}); picking again`);
   }
   fail("three claims in a row were taken by other agents; run again in a minute");

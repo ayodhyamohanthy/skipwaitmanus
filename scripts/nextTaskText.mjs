@@ -109,7 +109,7 @@ const architectSteps = (pick, who, claimed) => steps([
   `git fetch origin && git worktree add ../skipwaitmanus-wt/architect-${slugOf(pick.lock)} ${pick.lockExists || claimed ? pick.lock : `-b ${pick.lock} origin/main`} (if it already exists, use it). Then run \`pnpm install\` before your first \`pnpm check\`: a fresh worktree has no dependencies, and missing ones fail as TS2688/TS5101 (REGISTER-520, Oct 24). Never force-push this branch: its first commit is your claim.`,
   `Read the §3b row "${pick.task.row}", the task's note in docs/plans/assignments.json and every decision it names in docs/DECISIONS.md.`,
   "Write the packet in docs/plans/ exactly as docs/DELEGATION.md describes (goal, binding rules quoted, current behaviour verified in code with file:line, rulings, files in and out of scope, red-first tests, definition of done, review checklist, stop-and-ask). Any session records its rulings as register entries marked \"decided under D-200\" (D-200: no model holds the pen alone). A choice that changes an owner decision (prices, plan contents, legal text, live money, the login rule, referrer fairness) goes to the owner as `--report blocked` with the question; any other gap gets a stated, changeable assumption in the packet (D-109).",
-  `In the same pull request update docs/plans/assignments.json: a packet-only task (its note says so: its work is the rows it adds) gets "status": "done" and its rows are added exactly as its packet's list gives them (the D-048 split, or the packet the CEO wrote); any other task gets its "packet" and "status": "todo", so the next \`${CMD}\` hands it to a builder (D-134).`,
+  `In the same pull request update docs/plans/assignments.json: a packet-only task (its note says so: its work is the rows it adds) gets "status": "done" and its rows are added exactly as its packet's list gives them (the D-048 split, or the packet the CEO wrote); any other task gets its "packet", "status": "todo" and "syncedTo" set to the newest entry in docs/DECISIONS.md (its last row), so the next \`${CMD}\` hands it to a builder (D-134, D-202).`,
   `Land it like any docs change (D-082: pull request, every check green on that exact commit). ${keepAlive(who)}`,
   report(pick.task, who),
 ]);
@@ -150,6 +150,33 @@ const ceoSteps = () => steps([
   "Land those docs through a pull request with every check green (D-082). Then run the picker again: Claude Code sessions take builds like any other session once rows are open (D-200).",
 ]);
 
+/** D-202: re-read the packet against every decision newer than its stamp and move the stamp. Docs only. */
+const resyncSteps = (pick, who, register = null) => {
+  const newest = register?.at(-1)?.id ?? "the newest entry in docs/DECISIONS.md";
+  const since = pick.decisions?.length ? pick.decisions.join(", ") : "every entry after its stamp";
+  return steps([
+    `git fetch origin && git worktree add ../skipwaitmanus-wt/architect-${slugOf(pick.lock)} ${pick.lockExists ? pick.lock : `-b ${pick.lock} origin/main`} (if it already exists, use it). Never force-push this branch: its first commit is the claim.`,
+    `Read the decisions newer than this task's stamp (${since}), then the task's packet and the code paths it changes. If one of them changes what the packet says, the decision wins (D-032).`,
+    `Re-sync the packet in docs/plans/: record how each newer decision changes it, or that the rule is unaffected, and set this task's "syncedTo" to "${newest}" in docs/plans/assignments.json in the same commit. This is a docs change only: no code, no new behaviour.`,
+    `Land it like any docs change: a pull request with every check green on that exact commit (D-082; a conflict-free docs change uses focused checks, Oct 23). ${keepAlive(who)}`,
+    report(pick.task, who),
+  ]);
+};
+
+/** D-202: the register block every pick opens with — the newest decisions, then the stop rule. */
+function decisionsBlock(pick, register) {
+  if (!register?.length) return "";
+  const stamp = pick.task?.syncedTo;
+  const at = stamp ? register.findIndex(e => e.id === stamp) : -1;
+  const first = Math.max(0, Math.min(register.length - 5, at < 0 ? register.length - 5 : at));
+  const shown = register.slice(first).reverse();
+  return [
+    "Newest decisions (read before you work):",
+    ...shown.map(e => `- ${e.id} · ${e.date} · ${e.title}`),
+    `If any of these changes what your task says, stop and run \`${CMD} --report blocked "${pick.task?.id ?? "<task id>"}: conflicts with D-nnn"\` (D-032). A newer decision always beats an older packet, note or chat message.`,
+  ].join("\n");
+}
+
 /** WAIT: for red main, for a red priority above you, or for your own blocked one, which another session or the owner clears (D-200). */
 function waitLines(pick, who) {
   if (pick.mainRed) return [pick.reason, `Do not start other work and do not push to main until main is green. If you hold a claim, keep it alive: \`${CMD} --heartbeat --as "${who}"\`.`];
@@ -184,8 +211,15 @@ export function renderBoard(rows) {
   return ["STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)", ...summaries, ...lines, ""].join("\n");
 }
 
-/** The steps for one pick. ctx: { who, date, claimed } (claimed = this run took the lock or holds it). */
-export function renderPick(pick, { who, date, claimed }) {
+/** The steps for one pick. ctx: { who, date, claimed, register } (claimed = this run took the lock or holds it). */
+export function renderPick(pick, { who, date, claimed, register = null }) {
+  const body = pickText(pick, { who, date, claimed, register });
+  // D-202: every pick opens with the newest decisions, so no agent works from an old packet unseen.
+  const block = decisionsBlock(pick, register);
+  return block ? `${block}\n\n${body}` : body;
+}
+
+function pickText(pick, { who, date, claimed, register = null }) {
   const take = claimed ? "" : `\nNot claimed yet. To take it: ${CMD} --claim "<your model name>"\n`;
   switch (pick.kind) {
     case "stop": return head("STOP", [pick.reason, "Tell the owner what failed; do not choose work yourself."]);
@@ -212,7 +246,7 @@ export function renderPick(pick, { who, date, claimed }) {
     ]) + take;
     case "review": return head(`REVIEW ${pick.task.id} — ${pick.task.title}`, [
       `Tier 1 · pull request ${pick.pr} · branch ${pick.work} · review lock ${pick.lock}`,
-      `No session of your model may have built or fixed this (D-151; built by ${pick.builder ?? "unknown"}). For work built or fixed outside the picker, check pull-request comments and the task reports on the board for your model; if found, post no verdict and report it blocked to the CEO.`,
+      `No session of your model may have built or fixed this (D-151; built by ${pick.builder ?? "unknown"}). For work built or fixed outside the picker, check the pull request's commits and comments and the task's reports on the board for a build, takeover or fix by your model; if you find one, post no verdict and report it blocked to the CEO. A review or findings comment of your own model does not count (D-151 (1)).`,
       ...holding(pick),
       reviewSteps(pick, who),
     ]) + take;
@@ -238,6 +272,10 @@ export function renderPick(pick, { who, date, claimed }) {
       `Any agent (D-109); Claude Code may revise it · lock ${pick.lock}${pick.from ? ` · taken over from ${pick.from}, quiet for 2 hours` : ""}`,
       architectSteps(pick, who, claimed),
     ]) + take;
+    case "resync": return head(`RESYNC ${pick.task.id} — ${pick.task.title}`, [
+      `A decision newer than this task's stamp (${pick.task.syncedTo ?? "none"}) names it: no build, takeover, review, fix or landing until the packet is re-synced. Lock ${pick.lock}; any capable session may take it (D-202, D-200).`,
+      resyncSteps(pick, who, register),
+    ]) + take;
     case "takeover": return head(`TAKE OVER ${pick.task.id} — ${pick.task.title}`, [
       `Half-built and quiet: nobody has pushed to ${pick.work} since ${new Date(pick.since).toISOString()} (queue rule 2, D-085; started by ${pick.from ?? "unknown"}).${pick.why ? ` ${pick.why}.` : ""}`,
       `Continue on the same branch and keep every commit on it. Note the takeover in ${statusAt(pick.task)}.`,
@@ -258,6 +296,7 @@ export function renderPick(pick, { who, date, claimed }) {
         case "green": return head(`CONTINUE: MAKE GREEN ${pick.task.id} — ${pick.task.title}`, [intro, `Pull request ${pick.pr} has red CI.`, greenSteps(pick, who)]);
         case "land": return head(`CONTINUE: LAND ${pick.task.id} — ${pick.task.title}`, [intro, `Pull request ${pick.pr}.`, landSteps(pick, who)]);
         case "architect": return head(`CONTINUE: WRITE THE PACKET FOR ${pick.task.id} — ${pick.task.title}`, [intro, `Lock ${pick.lock}.`, architectSteps({ ...pick, lockExists: true }, who, true)]);
+        case "resync": return head(`CONTINUE: RESYNC ${pick.task.id} — ${pick.task.title}`, [intro, `Lock ${pick.lock}.`, resyncSteps({ ...pick, lockExists: true }, who, register)]);
         case "unblock": return head(`CONTINUE: UNBLOCK ${pick.task.id} — ${pick.task.title}`, [intro, `${pick.report.who} reported it ${pick.report.status}${pick.report.note ? `: ${pick.report.note}` : ""}. Lock ${pick.lock}.`, unblockSteps(pick, who)]);
         default: return head(`CONTINUE ${pick.task.id} — ${pick.task.title}`, [intro, `Tier ${pick.task.tier} · lane ${pick.task.lane} · packet ${pick.task.packet} · branch ${pick.work}`, resumeSteps(pick.task, who, pick.work)]);
       }
