@@ -43,9 +43,12 @@ export default function ReferralConversation({ framed = false }: { framed?: bool
   // The signed-in account, the same auth.me the auth layer already holds: the
   // referrer goal page offers a decision on a pending ask only when the ask is
   // unassigned or assigned to this account (#831 F1).
-  const me = trpc.auth.me.useQuery(undefined, { enabled: Boolean(isSignedIn) && role !== null && role !== "seeker", retry: false, staleTime: 60_000 });
-  const meId = (me.data as { id?: unknown } | null | undefined)?.id;
-  const viewerId: number | null | undefined = typeof meId === "number" ? meId : me.data === null ? null : undefined;
+  // A partial tRPC client (the share-win harness) has no auth router; the
+  // client is fixed for the module's lifetime, so the hook order never changes.
+  const authMe = (trpc as { auth?: typeof trpc.auth }).auth?.me;
+  const me = authMe?.useQuery(undefined, { enabled: Boolean(isSignedIn) && role !== null && role !== "seeker", retry: false, staleTime: 60_000 });
+  const meId = (me?.data as { id?: unknown } | null | undefined)?.id;
+  const viewerId: number | null | undefined = typeof meId === "number" ? meId : me?.data === null ? null : undefined;
 
   const reload = useCallback(async () => {
     if (!isSignedIn || !validId) return;
