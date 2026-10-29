@@ -7,7 +7,7 @@
 // malformed links render an honest state with one way forward.
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { assertGoalPage } from "@/test/goalPageContract";
 import FastTrackLink from "../../FastTrackLink";
 import VanityFastTrackLink from "../../VanityFastTrackLink";
@@ -34,6 +34,8 @@ const ACCEPTED_CARD = { card: { companyDomain: "acme.example", status: "accepted
 
 const setOnline = (value: boolean) => Object.defineProperty(window.navigator, "onLine", { configurable: true, get: () => value });
 
+// Warm the lazily imported goal modules so the first render does not race findBy's timeout.
+beforeAll(async () => { await import("./GoalPrivateLinkLanding"); await import("./GoalShareCard"); }, 30_000);
 beforeEach(() => { surfaces.on = new Set(["links"]); setOnline(true); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); go.mockClear(); setOnline(true); });
 
@@ -73,10 +75,10 @@ describe("/fast/:linkCode", () => {
     expect(go).toHaveBeenCalledWith("/start?fast=a%20b%2Fc");
   });
 
-  it("shows a loading state before the link answers", () => {
+  it("shows a loading state before the link answers", async () => {
     vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
     render(<FastTrackLink />);
-    expect(screen.getByRole("status").getAttribute("aria-busy")).toBe("true");
+    expect((await screen.findByRole("status")).getAttribute("aria-busy")).toBe("true");
     expect(document.querySelector("[data-g-primary]")).toBeNull();
   });
 
@@ -190,7 +192,7 @@ describe("/share-card/:token", () => {
     const { container } = render(<ShareCard />);
     expect(await screen.findByRole("alert")).toBeTruthy();
     assertGoalPage(container, { goalLine: "This share card isn’t available." });
-    expect(screen.getByRole("link", { name: "Start your referral request" }).getAttribute("href")).toBe("/start");
+    expect(screen.getByRole("link", { name: "Start a referral request" }).getAttribute("href")).toBe("/start");
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "Get your own referral." })).toBeTruthy());
     expect(attempts).toBe(2);
