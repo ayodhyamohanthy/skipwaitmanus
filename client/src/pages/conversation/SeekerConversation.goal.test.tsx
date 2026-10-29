@@ -5,6 +5,7 @@
 // ("Get referred." when the company is unknown); one "Your next step" block
 // naming the single next step; status as dot + text.
 import React from "react";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
@@ -200,11 +201,11 @@ describe("seeker /conversation terminal and withdraw-confirm copy come from the 
   });
 });
 
-// F4: the fixture half of the evidence the packet asks for. The fixtures are
-// fictional, schema-shaped and carry no comp sample name. The pixel half for the
-// new states is still owed: this host cannot boot the dev server or build the
-// client (see the row's status line), so no capture is claimed here.
-describe("seeker /conversation fixture evidence (packet item 4)", () => {
+// F4: the fixture and capture evidence the packet asks for. The fixtures are
+// fictional, schema-shaped and carry no comp sample name; every state this row
+// changes has its own 1280/390 pair, and no two states share the same pixels
+// (the accepted/no-name pair used to be byte-identical).
+describe("seeker /conversation fixture and capture evidence (packet item 4)", () => {
   const root = path.resolve(__dirname, "../../../../design/goal-ui");
   const fixtures = fs.readdirSync(path.join(root, "tools/fixtures")).filter(name => name.startsWith("conversation__"));
   const STATUSES = ["pending", "approved", "intro_made", "interview", "offer", "closed", "declined", "withdrawn"];
@@ -230,6 +231,21 @@ describe("seeker /conversation fixture evidence (packet item 4)", () => {
     for (const state of ["accepted", "no-name", "closed", "waiting", "declined", "withdrawn", "held", "intro", "hired"]) {
       expect(fixtures).toContain(`conversation__${state}.json`);
     }
+  });
+
+  it("captures every changed state at both review widths, with no two states sharing pixels", () => {
+    const dir = path.join(root, "captures/conversation");
+    const captures = fs.readdirSync(dir);
+    const states = ["accepted", "no-name", "closed", "waiting", "declined", "withdrawn", "held", "intro", "hired"];
+    for (const state of states) {
+      for (const width of ["1280", "390"]) {
+        const file = `${state}-${width}.png`;
+        expect(captures, file).toContain(file);
+        expect(fs.statSync(path.join(dir, file)).size, file).toBeGreaterThan(1000);
+      }
+    }
+    const hashes = states.map(state => createHash("sha256").update(fs.readFileSync(path.join(dir, `${state}-1280.png`))).digest("hex"));
+    expect(new Set(hashes).size).toBe(states.length);
   });
 });
 
