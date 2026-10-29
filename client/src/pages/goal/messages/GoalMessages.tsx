@@ -25,7 +25,9 @@ const SEND_ERROR = "We could not send this direct message";
 const NETWORK_ERROR = "We could not reach skipwait.me. Check your connection and try again.";
 
 function relativeTime(iso: string) {
-  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  const elapsed = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(elapsed)) return "";
+  const minutes = Math.max(0, Math.round(elapsed / 60000));
   if (minutes < 1) return "now";
   if (minutes < 60) return `${minutes}m`;
   const hours = Math.round(minutes / 60);
@@ -263,7 +265,8 @@ export default function GoalMessages() {
   const ordered = threads ? orderChats(threads) : [];
   const next = ordered.find(waitingOnYou) ?? null;
   return shell(<>
-    <h1 className="text-g-display text-g-ink">{GOAL_PAGE.goalLine}</h1>
+    <Link href="/" className="inline-flex min-h-11 items-center gap-1 self-start text-g-meta text-g-ink-2 hover:text-g-ink"><ArrowLeft aria-hidden="true" className="size-4" strokeWidth={1.75} />Back</Link>
+    <h1 className="mt-2 text-g-display text-g-ink">{GOAL_PAGE.goalLine}</h1>
     <p className="mt-2 text-g-meta text-g-ink-2">{DM_REFERRER_ACCEPTANCE_ERROR} Referral-request conversations stay in <Link href="/requests" className="text-g-ink underline underline-offset-[3px] hover:no-underline">My requests</Link>.</p>
     {!online ? <OfflineNotice /> : null}
 
