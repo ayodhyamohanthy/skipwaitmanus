@@ -61,6 +61,7 @@ describe("policy pages on the goal frame (D-048-p3-policy)", () => {
       expect(off.container.querySelector("[data-testid=goal-policy]")).toBeNull();
       const offBody = legalBody(off.container);
       const offSummary = shortVersion(off.container);
+      const offCrumb = off.container.querySelector('nav[aria-label="Breadcrumb"]') !== null;
       expect(offBody.length).toBeGreaterThan(100);
       cleanup();
 
@@ -72,7 +73,8 @@ describe("policy pages on the goal frame (D-048-p3-policy)", () => {
       expect(shortVersion(on.container)).toEqual(offSummary);
       expect(on.container.querySelectorAll("h1")).toHaveLength(1);
       expect(norm(on.container.querySelector("h1")?.textContent)).toBe(goalLine);
-      expect(on.container.querySelector('nav[aria-label="Breadcrumb"]')).not.toBeNull();
+      // Same breadcrumb as the kit page: present for every prerendered public route.
+      expect(on.container.querySelector('nav[aria-label="Breadcrumb"]') !== null).toBe(offCrumb);
       expect(fetchSpy).not.toHaveBeenCalled();
     });
   }
