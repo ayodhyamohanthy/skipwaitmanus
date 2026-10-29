@@ -58,16 +58,18 @@ function stubApi(routes: { send?: Reply[]; check?: Reply[]; enroll?: Reply[]; pr
 }
 
 async function reachEmailStep(email = "name@wipro.com") {
-  renderVerify();
+  const view = renderVerify();
   await screen.findAllByRole("radio");
   fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
   fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: email } });
+  return view;
 }
 
 async function reachCodeStep(email = "name@wipro.com") {
-  await reachEmailStep(email);
+  const view = await reachEmailStep(email);
   fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
   await screen.findByText("Enter the code");
+  return view;
 }
 
 function enterCode(digits: string) {
@@ -130,13 +132,15 @@ describe("Goal /verify", () => {
 
   it("signed out, hands off to the work-email OTP with a same-origin return target", async () => {
     authState.isSignedIn = false;
+    window.history.replaceState({}, "", "/verify");
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     const { container } = renderVerify();
     const link = await screen.findByRole("link", { name: /Sign in with work email/ });
     expect(link.getAttribute("href")).toBe("/sign-in?intent=referrer&returnTo=%2Fverify");
     assertGoalPage(container, GOAL_PAGE);
-    expect(fetchMock).not.toHaveBeenCalled();
+    // The directory may load, but no verification call is made before sign-in.
+    expect(fetchMock.mock.calls.map(call => String(call[0]))).toEqual(["/api/companies"]);
   });
 
   it("offers no personal email and no social provider on the referrer side", async () => {
@@ -164,9 +168,11 @@ describe("Goal /verify", () => {
 
     cleanup();
     stubApi({ directory: [reply(503, { error: "The company directory is unavailable right now" })] });
-    renderVerify();
-    expect((await screen.findByTestId("goal-error-state")).textContent).toContain("The company directory is unavailable right now");
+    const failed = renderVerify();
+    expect((await screen.findByRole("alert")).textContent).toContain("The company directory is unavailable right now");
+    // The error state's next step is the retry itself, so it is the one commit.
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    assertGoalPage(failed.container, GOAL_PAGE);
   });
 
   it("refuses a personal inbox and a domain the chosen company does not prove", async () => {
@@ -200,8 +206,7 @@ describe("Goal /verify", () => {
 
   it("verifies the code, redeems the receipt, and only then claims the badge", async () => {
     const calls = stubApi({ send: [ok({ sent: true })], check: [ok({ verified: true, receipt: "receipt-1" })], enroll: [ok({ verified: true, workEmailDomain: "wipro.com" })] });
-    const { container } = renderVerify();
-    await reachCodeStep();
+    const { container } = await reachCodeStep();
     enterCode("123456");
     fireEvent.click(screen.getByRole("button", { name: /Verify/ }));
     expect(await screen.findByText("You're verified at Wipro.")).toBeTruthy();
@@ -231,7 +236,7 @@ describe("Goal /verify", () => {
     await reachCodeStep();
     enterCode("111111");
     fireEvent.click(screen.getByRole("button", { name: /Verify/ }));
-    expect(await screen.findByText(/Too many tries/)).toBeTruthy();
+    expect((await screen.findByRole("alert")).textContent).toContain("Too many tries");
     expect(screen.getByRole("button", { name: /Verify/ }).getAttribute("aria-disabled")).toBe("true");
   });
 
