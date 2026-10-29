@@ -4,7 +4,7 @@
 // stays on its own frozen path and nothing here enables a price or a purchase
 // path (D-042, D-123, D-146). The summary and receipts contracts are the live
 // ones in components/plans/billingApi.ts, imported read-only.
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { GoalButton, GoalNextStep, GoalSkeletonRows, useOnlineStatus } from "@/components/goal";
@@ -54,11 +54,17 @@ export default function GoalBilling() {
   const [cancelStep, setCancelStep] = useState<CancelStep>("closed");
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
+  // §8: one cancellation in flight at a time. The busy button also goes inert,
+  // but a second press in the same tick would otherwise reach the server twice.
+  const cancelInFlight = useRef(false);
 
   useEffect(() => {
     if (!isSignedIn) return;
     let active = true;
-    setLoading(true); setError("");
+    // §8: never leave a previous session's amounts on screen as current while the
+    // next load runs, so the panels only render what this load returned.
+    setLoading(true); setError(""); setSummary(null); setReceipts([]);
+
     void (async () => {
       try {
         const token = await fetchToken();
@@ -85,6 +91,8 @@ export default function GoalBilling() {
   const reload = () => setReloadKey(key => key + 1);
 
   const cancelPlan = async () => {
+    if (cancelInFlight.current) return;
+    cancelInFlight.current = true;
     setCancelling(true); setCancelError("");
     try {
       const token = await fetchToken();
@@ -94,7 +102,7 @@ export default function GoalBilling() {
       setSummary(current => current ? { ...current, subscriptionStatus: "non_renewing", subscriptionCurrentTermEnd: payload.currentTermEnd ?? current.subscriptionCurrentTermEnd } : current);
       setCancelStep("done");
     } catch (reason) { setCancelError(failureMessage(reason, "We could not schedule your cancellation")); }
-    finally { setCancelling(false); }
+    finally { cancelInFlight.current = false; setCancelling(false); }
   };
 
   if (!isLoaded) {
@@ -120,19 +128,26 @@ export default function GoalBilling() {
   const status = !paidPlan
     ? "Free plan"
     : `${planLabel} · ${renewing ? "Renews" : "Ends"} ${termEnd ?? (renewing ? "with the plan cycle" : "at the end of this paid cycle")}`;
-  const outOfRequests = (summary?.totalAvailable ?? 0) <= 0;
+  // A balance nobody has loaded yet is not zero (§4, §8): only a parsed summary
+  // can say the seeker is out, so a pending or failed load never claims it and the
+  // single commit stays the plan comparison.
+  const outOfRequests = summary !== null && summary.totalAvailable <= 0;
   const nextHref = outOfRequests && CREDIT_PACKS_ON_SALE ? "/premium?role=job_seeker" : "/plans";
   const nextLabel = outOfRequests && CREDIT_PACKS_ON_SALE ? "Get more referral requests" : SEE_PLANS;
   const reason = error
     ? "Nothing changed on your plan or payments. Try again in a moment."
-    : outOfRequests
-      ? "You have no referral requests left. Add more before you send another request."
-      : renewing
-        ? `Your plan renews ${termEnd ? `on ${termEnd}` : "at the end of this cycle"}. Compare plans before then.`
-        : paidPlan
-          ? `Your plan ends ${termEnd ? `on ${termEnd}` : "at the end of this paid cycle"}. Nothing else is charged.`
-          : "Your plan is Free. Compare plans before you change anything.";
+    : !summary
+      ? "We are checking your plan and referral requests."
+      : outOfRequests
+        ? "You have no referral requests left. Add more before you send another request."
+        : renewing
+          ? `Your plan renews ${termEnd ? `on ${termEnd}` : "at the end of this cycle"}. Compare plans before then.`
+          : paidPlan
+            ? `Your plan ends ${termEnd ? `on ${termEnd}` : "at the end of this paid cycle"}. Nothing else is charged.`
+            : "Your plan is Free. Compare plans before you change anything.";
   const dialogOpen = cancelStep !== "closed";
+  // Same gate as the kit page: only a finished, successful load paints amounts.
+  const loaded = !loading && !error && summary !== null;
 
   return (
     <Frame status={summary ? status : undefined}>
@@ -157,7 +172,7 @@ export default function GoalBilling() {
         </div>
       ) : null}
 
-      {summary ? (
+      {loaded && summary ? (
         <>
           <BalanceSection summary={summary} />
           <PlanSection summary={summary} onCancelRenewal={renewing ? () => { setCancelError(""); setCancelStep("confirm"); } : null} />
@@ -166,7 +181,7 @@ export default function GoalBilling() {
         </>
       ) : null}
 
-      {summary && dialogOpen ? (
+      {loaded && summary && dialogOpen ? (
         <GoalCancelDialog
           planLabel={planLabel}
           termEnd={summary.subscriptionCurrentTermEnd}
