@@ -5,7 +5,7 @@
 // one contract. Money wording is referral-only (D-173, D-180): no rendered
 // string may say "credit", "credits" or the noun "ask"/"asks".
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Billing from "./Billing";
 import { assertGoalPage } from "@/test/goalPageContract";
@@ -46,10 +46,13 @@ const outSummary = { ...freeSummary, totalAvailable: 0, ledger: ledger(0, 0) };
 const settled = { id: 1, provider: "chargebee", amount: 499, currency: "USD", tokenCount: 3, status: "paid", providerInvoiceId: "INV-1001", createdAt: "2026-10-02T10:00:00.000Z" };
 const refunded = { ...settled, id: 2, amount: 999, status: "refunded", providerInvoiceId: "INV-1002" };
 
-const stubBilling = (options: { summary?: unknown; receipts?: unknown[]; summaryStatus?: number; summaryError?: string; cancel?: "ok" | "fail" } = {}) => {
+const stubBilling = (options: { summary?: unknown; receipts?: unknown[]; summaryStatus?: number; summaryError?: string; receiptsStatus?: number; receiptsError?: string; cancel?: "ok" | "fail" } = {}) => {
   const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
     const path = String(url);
-    if (path.includes("/billing/receipts")) return ok({ receipts: options.receipts ?? [] });
+    if (path.includes("/billing/receipts")) {
+      if (options.receiptsStatus) return fail(options.receiptsStatus, { error: options.receiptsError ?? "boom" });
+      return ok({ receipts: options.receipts ?? [] });
+    }
     if (path.includes("/credits/summary")) {
       if (options.summaryStatus) return fail(options.summaryStatus, { error: options.summaryError ?? "boom" });
       return ok({ summary: options.summary ?? freeSummary });
@@ -215,3 +218,153 @@ describe("Goal /billing purchase affordance", () => {
     expect(primary.hasAttribute("data-g-primary")).toBe(true);
   });
 });
+
+// Independent Tier 1 review findings on b535375d (Qoder · 54a1), pinned here
+// first: an unloaded balance is not zero, a previous session's amounts are never
+// current, and the §7 read/cancellation controls hold.
+const deferred = <T,>() => {
+  let resolve: (value: T) => void = () => {};
+  const promise = new Promise<T>(done => { resolve = done; });
+  return { promise, resolve };
+};
+const called = (fetchMock: ReturnType<typeof vi.fn>, fragment: string) =>
+  fetchMock.mock.calls.filter(call => String(call[0]).includes(fragment)).length;
+
+describe("Goal /billing: an unknown balance is never read as zero", () => {
+  it("says it is checking while the summary is still loading", async () => {
+    const pending = deferred<{ ok: boolean; status: number; json: () => Promise<unknown> }>();
+    const fetchMock = vi.fn((url: string) => String(url).includes("/billing/receipts") ? Promise.resolve(ok({ receipts: [] })) : pending.promise);
+    vi.stubGlobal("fetch", fetchMock);
+    const { container } = render(<Billing />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(screen.queryByTestId("goal-skeleton-rows")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/no referral requests left/i);
+    // The single commit is the plan comparison, never a purchase, before the balance is known.
+    expect(container.querySelector("[data-g-primary]")?.getAttribute("href")).toBe("/plans");
+    expect(container.querySelector('a[href^="/premium"]')).toBeNull();
+    pending.resolve(ok({ summary: freeSummary }));
+    expect(await screen.findByText("Referral requests left")).toBeTruthy();
+  });
+});
+
+describe("Goal /billing: a previous session's amounts are never shown as current", () => {
+  it("drops the old balance and receipts when the next load fails", async () => {
+    let failing = false;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (failing) throw new TypeError("Failed to fetch");
+      return String(url).includes("/billing/receipts") ? ok({ receipts: [settled] }) : ok({ summary: startSummary });
+    }));
+    const { rerender } = render(<Billing />);
+    expect(await screen.findByText("$4.99")).toBeTruthy();
+    expect(screen.getByText("INV-1001")).toBeTruthy();
+    // Sign out and back in on the same mounted page: a different session, same component.
+    authState.isSignedIn = false;
+    rerender(<Billing />);
+    failing = true;
+    authState.isSignedIn = true;
+    rerender(<Billing />);
+    expect((await screen.findByRole("alert")).textContent).toContain("Check your connection");
+    expect(screen.queryByText("$4.99")).toBeNull();
+    expect(screen.queryByText("INV-1001")).toBeNull();
+    expect(screen.queryByText("Referral requests left")).toBeNull();
+  });
+});
+
+
+describe("Goal /billing: the reads it makes", () => {
+  it("makes no private request while signed out", async () => {
+    authState.isSignedIn = false;
+    const fetchMock = stubBilling();
+    render(<Billing />);
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+    await Promise.resolve();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("asks for the seeker role with credentials and the session token", async () => {
+    const fetchMock = stubBilling();
+    render(<Billing />);
+    expect(await screen.findByText("Referral requests left")).toBeTruthy();
+    const calls = fetchMock.mock.calls.map(([url, init]) => ({ url: String(url), init: init as RequestInit }));
+    const summary = calls.find(call => call.url.includes("/credits/summary"));
+    const receipts = calls.find(call => call.url.includes("/billing/receipts"));
+    expect(summary?.url).toBe("/api/credits/summary?role=job_seeker");
+    expect(receipts?.url).toBe("/api/billing/receipts?role=job_seeker");
+    for (const call of [summary, receipts]) {
+      expect(call?.init.credentials).toBe("include");
+      expect((call?.init.headers as Record<string, string>).Authorization).toBe("Bearer test-token");
+    }
+  });
+
+  it("sends no Authorization header when there is no token", async () => {
+    authState.getToken.mockResolvedValueOnce(null);
+    const fetchMock = stubBilling();
+    render(<Billing />);
+    expect(await screen.findByText("Referral requests left")).toBeTruthy();
+    const headers = fetchMock.mock.calls.map(([, init]) => (init as RequestInit).headers as Record<string, string>);
+    expect(headers.length).toBe(2);
+    expect(headers.every(entry => !("Authorization" in entry))).toBe(true);
+  });
+
+  it("treats a refused summary as a failed load, not an empty account", async () => {
+    stubBilling({ summaryStatus: 503 });
+    render(<Billing />);
+    expect((await screen.findByRole("alert")).textContent).toContain("We could not load your plan");
+    expect(screen.queryByText("Referral requests left")).toBeNull();
+  });
+
+  it("treats refused receipts as a failed load, never as no payments", async () => {
+    stubBilling({ receiptsStatus: 503 });
+    render(<Billing />);
+    expect((await screen.findByRole("alert")).textContent).toContain("We could not load your receipts");
+    expect(screen.queryByText("No payments yet.")).toBeNull();
+  });
+
+  it("ignores a late response after sign-out", async () => {
+    const pending = deferred<{ ok: boolean; status: number; json: () => Promise<unknown> }>();
+    const fetchMock = vi.fn(() => pending.promise);
+    vi.stubGlobal("fetch", fetchMock);
+    const { rerender } = render(<Billing />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    authState.isSignedIn = false;
+    rerender(<Billing />);
+    pending.resolve(ok({ summary: freeSummary, receipts: [] }));
+    expect(await screen.findByRole("button", { name: "Sign in" })).toBeTruthy();
+    expect(screen.queryByText("Referral requests left")).toBeNull();
+  });
+});
+
+
+describe("Goal /billing: cancellation commits", () => {
+  it("writes nothing when the confirmation is opened and closed", async () => {
+    const fetchMock = stubBilling({ summary: startSummary });
+    render(<Billing />);
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel renewal" }));
+    expect(screen.getByText("Before you go")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Keep my plan" }));
+    expect(screen.queryByText("Before you go")).toBeNull();
+    expect(called(fetchMock, "/subscription-cancel")).toBe(0);
+    expect(await screen.findByText(/Renews 6 Nov 2026/)).toBeTruthy();
+  });
+
+  it("sends one cancellation when the commit is pressed twice while pending", async () => {
+    const pending = deferred<{ ok: boolean; status: number; json: () => Promise<unknown> }>();
+    const fetchMock = vi.fn(async (url: string) => {
+      const path = String(url);
+      if (path.includes("/subscription-cancel")) return pending.promise;
+      if (path.includes("/billing/receipts")) return ok({ receipts: [] });
+      return ok({ summary: startSummary });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Billing />);
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel renewal" }));
+    const confirm = screen.getByRole("button", { name: "Cancel anyway" }) as HTMLButtonElement;
+    // Two presses in one tick, before the busy state can repaint the button.
+    act(() => { confirm.click(); confirm.click(); });
+    await waitFor(() => expect(called(fetchMock, "/subscription-cancel")).toBe(1));
+    pending.resolve(ok({ currentTermEnd: "2026-11-06T00:00:00.000Z" }));
+    expect(await screen.findByText("Renewal cancelled.")).toBeTruthy();
+    expect(called(fetchMock, "/subscription-cancel")).toBe(1);
+  });
+});
+
