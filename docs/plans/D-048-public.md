@@ -73,4 +73,4 @@ None. The split marks these pages as needing no owner call; legal words stay unt
 
 `D-048-P-public`: landed by the coordinator — 2026-10-23 — landing branch `agent/instinct/d048-p-public-packet`. Canonical candidate; the empty claim marker branch `agent/architect/d048-p-public` (Claude Code · e11c) is preserved and the overlap is announced in the PR.
 
-`D-048-p3-links`: in progress — Hark · f5bb — 2026-10-29 — branch `agent/queue/d048-p3-links`
+`D-048-p3-links`: review — agent/queue/d048-p3-links — 076ff70b — draft PR #835 — Hark · f5bb — 2026-10-30
