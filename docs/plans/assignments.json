@@ -982,7 +982,7 @@
       "tier": 1,
       "lane": "register",
       "branch": "agent/queue/register-d212",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "note": "The owner, Oct 26: get an independent review of the final version through the repository's process, bring it up to date with main, require every check on the exact version merged, and resolve findings first. Claude Code wrote it, so review and landing go to a model other than Claude (D-151). The PR from agent/queue/register-d212 supersedes #623 (claude/enterprise-pipeline), which stays open and unmerged until this lands. Scope-check skip is accepted for this docs-only row (reviewer option c) because shared registry files cannot be declared in owns without unsequenced overlap with D-099-bonus-pages."
