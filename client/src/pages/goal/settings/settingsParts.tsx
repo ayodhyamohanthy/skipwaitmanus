@@ -35,7 +35,9 @@ export function InlineLink({ href, children }: { href: string; children: ReactNo
   return <Link href={href} className="underline underline-offset-2 hover:no-underline">{children}</Link>;
 }
 
-/** The one switch geometry the goal tree uses (GoalReferrerSetup's notification row). */
+/** The one switch geometry the goal tree uses (GoalReferrerSetup's notification row).
+ * Offline it keeps showing its current value: the reason sits beside "On"/"Off",
+ * never in its place, and the track dims instead of painting "off". */
 export function Switch({ on, label, onChange, disabledReason }: { on: boolean; label: string; onChange(next: boolean): void; disabledReason?: string }) {
   const inert = disabledReason !== undefined;
   return (
@@ -48,8 +50,9 @@ export function Switch({ on, label, onChange, disabledReason }: { on: boolean; l
       onClick={inert ? event => event.preventDefault() : () => onChange(!on)}
       className="flex min-h-12 items-center justify-end gap-3"
     >
-      <span className="text-g-meta text-g-ink-3">{inert ? disabledReason : on ? "On" : "Off"}</span>
-      <span aria-hidden="true" className={`relative h-5 w-9 shrink-0 rounded-full transition-colors duration-100 ${on && !inert ? "bg-g-ink" : "bg-g-hairline"}`}><i className={`absolute top-0.5 block size-4 rounded-full bg-g-surface transition-all duration-100 ${on && !inert ? "left-[18px]" : "left-0.5"}`} /></span>
+      {inert ? <span className="text-g-meta text-g-ink-3">{disabledReason}</span> : null}
+      <span className="text-g-meta text-g-ink-3">{on ? "On" : "Off"}</span>
+      <span aria-hidden="true" className={`relative h-5 w-9 shrink-0 rounded-full transition-colors duration-100 ${on ? "bg-g-ink" : "bg-g-hairline"}${inert ? " opacity-50" : ""}`}><i className={`absolute top-0.5 block size-4 rounded-full bg-g-surface transition-all duration-100 ${on ? "left-[18px]" : "left-0.5"}`} /></span>
     </button>
   );
 }

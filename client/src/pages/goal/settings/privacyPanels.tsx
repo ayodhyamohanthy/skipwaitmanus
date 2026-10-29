@@ -61,6 +61,9 @@ export function TalentConsentPanel() {
   const grant = trpc.talentConsent.grant.useMutation({ onSuccess: async () => { setNotice("Your talent-discovery consent is active."); await utils.talentConsent.state.invalidate(); } });
   const revoke = trpc.talentConsent.revoke.useMutation({ onSuccess: async () => { setNotice("You are out of talent discovery. Existing access and references were revoked."); await utils.talentConsent.state.invalidate(); } });
   const state = consentState.data;
+  // While consent is active the boxes show what the server says is shared; there
+  // is no update path, so they are read-only until the seeker opts out (review F1).
+  const shared = state?.active ? TALENT_FIELDS.filter(field => (state.selectedFields as readonly string[] | undefined)?.includes(field)) : null;
   const toggle = (field: TalentField, on: boolean) => setFields(current => (on ? TALENT_FIELDS.filter(item => item === field || current.includes(item)) : current.filter(item => item !== field)));
 
   return (
@@ -77,10 +80,11 @@ export function TalentConsentPanel() {
         <div className="mt-2 grid gap-2 gdesk:grid-cols-2">
           {TALENT_FIELDS.map(field => (
             <label key={field} className="flex min-h-11 items-center gap-2 rounded-g-control border border-g-hairline px-3 text-g-label capitalize text-g-ink">
-              <input type="checkbox" className="size-4 accent-g-ink" checked={fields.includes(field)} onChange={event => toggle(field, event.target.checked)} />{field}
+              <input type="checkbox" className="size-4 accent-g-ink" checked={(shared ?? fields).includes(field)} disabled={shared !== null} onChange={event => toggle(field, event.target.checked)} />{field}
             </label>
           ))}
         </div>
+        {shared ? <p className="mt-2 text-g-meta text-g-ink-2">These are the fields your active consent shares. To change them, opt out and opt in again.</p> : null}
         <p className="mt-2 text-g-meta text-g-ink-3">Location, skills and experience are shown in coarse form to reduce re-identification. Edits do not expand an employer's existing snapshot.</p>
       </fieldset>
       {notice ? <DoneNote>{notice}</DoneNote> : null}
