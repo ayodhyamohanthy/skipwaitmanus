@@ -4286,6 +4286,31 @@
         "scripts/nextTaskLandingWaitFallthrough.test.ts"
       ],
       "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
+    },
+    {
+      "id": "PROCESS-session-continuation-docs",
+      "title": "Record automatic next eligible session continuation without changing safety gates",
+      "row": "D-235",
+      "packet": "docs/plans/PROCESS-session-continuation-docs.md",
+      "tier": 1,
+      "lane": "process-session-continuation",
+      "branch": "agent/queue/process-session-continuation-docs",
+      "status": "done",
+      "syncedTo": "D-235",
+      "dependsOn": [],
+      "owns": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        ".github/copilot-instructions.md",
+        "START_HERE.md",
+        "SkipWait-START-HERE.md",
+        "docs/BRIEF.md",
+        "docs/BUILD_CONTINUITY.md",
+        "docs/DELEGATION.md",
+        "docs/plans/D-048-auth.md",
+        "docs/DECISIONS.md"
+      ],
+      "note": "Candidate done status takes effect only when this complete docs-only amendment is independently reviewed and protected-merged. No completion on main yet; no runtime or automation completion. Runtime wording stays owned by PICKER-architect-landing with dependencies unchanged."
     }
   ]
 }
