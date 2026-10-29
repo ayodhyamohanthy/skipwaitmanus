@@ -127,6 +127,10 @@ describe("client Sentry event fields never carry a one-time token", () => {
       extra: { variants },
       tags: { route: variants[0] },
       request: { url: `https://skipwait.me${variants[1]}`, headers: { Referer: variants[2] } },
+      breadcrumbs: [
+        { category: "navigation", data: { from: variants[1], to: variants[2] } },
+        { category: "fetch", data: { url: variants[5] } },
+      ],
     });
     for (const variant of variants) expect(sent, variant).not.toContain(TOKEN);
     expect(sent).toContain("encoded route variants");
