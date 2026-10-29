@@ -12,6 +12,7 @@ import { useAuth } from "@/_core/auth";
 import { GoalAppShell, GoalButton, GoalErrorState, GoalMiniStepper, GoalNextStep, GoalNum, GoalStatus } from "@/components/goal";
 import { referrerGreeting } from "@/components/landed/landedModel";
 import { REFERRED_DEADLINE_ENABLED } from "@shared/referral";
+import { seekerTerminalLine, withdrawConfirmLine } from "@shared/conversationCopy";
 import { REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import { askView } from "@/components/requests/askView";
 import { SEEKER_MILESTONES } from "@/components/thread/ThreadDecisionPanels";
@@ -24,15 +25,21 @@ const HONESTY = "A referral is an introduction. It never promises an interview o
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error ? reason.message : fallback);
 
 function nextLine(request: ThreadRequest, name: string, unknown: boolean): string | null {
-  const company = unknown ? "the company" : name;
-  const at = unknown ? "at the company" : `at ${name}`;
+  const claimed = request.referrerId !== null;
   switch (request.status) {
     case "pending": return seekerWaitingCopy(request);
     case "approved": return `Your referrer submits it through ${unknown ? "the company’s" : `${name}’s`} process, then marks it Referred.`;
     case "intro_made": return `Watch your email for ${unknown ? "the company’s" : `${name}’s`} recruiters. Companies decide hiring.`;
-    case "declined": return `It’s not a judgment of you. Your slot is open again. Try another verified referrer ${at}.`;
-    case "withdrawn": return "You withdrew this ask. Its open slot is free again. The credit came back only if no verified employee had picked it up.";
-    case "closed": return request.referrerId === null ? "Nobody could take it. This referral request is closed." : null;
+    // The seeker reports their own progress; the sentence names that action so
+    // the block's one black commit ("Mark Interviewing"/"Mark Offer"/"Mark Hired")
+    // is not a button without a reason.
+    case "interview": return "You’re interviewing. Mark the next stage when it happens.";
+    case "offer": return "You have an offer. Mark Hired once you accept.";
+    // Terminal lines are D-180's frozen, fact-only helper: no amount, refund
+    // outcome, expiry clock, slot or availability claim (see shared/conversationCopy).
+    case "declined": return seekerTerminalLine("declined", { claimed });
+    case "withdrawn": return seekerTerminalLine("withdrawn", { claimed });
+    case "closed": return seekerTerminalLine("closed", { claimed });
     default: return null;
   }
 }
@@ -103,10 +110,13 @@ export function SeekerConversation(props: Props) {
   const sent = formatDay(request.createdAt === null ? "" : typeof request.createdAt === "number" ? new Date(request.createdAt) : request.createdAt);
   const line = nextLine(request, company, unknown);
   const canWithdraw = request.status === "pending" && (request.referrerId === null || request.heldForReferrer === true || request.unclaimedAssignment === true);
-  const awaitingCoverage = request.queueStatus === "waiting_for_coverage" || request.queueStatus === "held_for_credit";
   const closedFor = ["Declined", "Expired", "Withdrawn"].includes(stage);
   const confirmEmailPending = request.status === "approved" && REFERRED_DEADLINE_ENABLED && confirm !== "email";
+  // The immediate next milestone is this screen's one black commit, so it moves
+  // into the next-step block; the later milestones stay available as secondary
+  // actions. Send is never a primary: the composer is a side action, not a step.
   const nextMilestones = request.status === "intro_made" || request.status === "interview" || request.status === "offer" ? SEEKER_MILESTONES.filter(m => stageIndex(m.stage) > idx) : [];
+  const [nextMilestone, ...laterMilestones] = nextMilestones;
 
   return (
     <GoalAppShell active={returnPath === "/inbox" ? "inbox" : "asks"} pageTitle="Conversation">
@@ -130,6 +140,19 @@ export function SeekerConversation(props: Props) {
               {confirmEmailPending ? (
                 <GoalButton variant="primary" size="sm" className="mt-3" onClick={() => { setActionError(""); setConfirm("email"); }}>I got the referral email</GoalButton>
               ) : null}
+              {confirm === "email" ? (
+                <div className="mt-3" role="group" aria-label="Confirm the referral email">
+                  <p className="text-g-label text-g-ink">Confirm you received the referral email?</p>
+                  <p className="mt-1 text-pretty text-g-meta text-g-ink-2">This tells your referrer you got it and marks this referral request as referred.</p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <GoalButton variant="ghost" flush size="sm" onClick={() => setConfirm(null)}>Cancel</GoalButton>
+                    <GoalButton variant="primary" size="sm" busy={busy} busyLabel="Confirming…" onClick={() => { void run(props.onConfirmReferredEmail, "We could not record your confirmation"); }}>Confirm</GoalButton>
+                  </div>
+                </div>
+              ) : null}
+              {nextMilestone ? (
+                <GoalButton variant="primary" size="sm" className="mt-3" busy={busy} onClick={() => { void run(() => props.onProgress(nextMilestone.status), "We could not record this milestone"); }}>Mark {nextMilestone.stage}</GoalButton>
+              ) : null}
               {closedFor ? (
                 <GoalButton variant="primary" size="sm" className="mt-3" asChild><Link href="/explore">Find another referrer</Link></GoalButton>
               ) : null}
@@ -137,35 +160,22 @@ export function SeekerConversation(props: Props) {
           </div>
         ) : null}
         {props.referrerName ? <p className="mt-1 text-g-meta text-g-ink-2">Your referrer <span className="text-g-ink">{props.referrerName}</span></p> : null}
-        {request.status === "approved" && REFERRED_DEADLINE_ENABLED && request.referredDueAt ? (
-          <p className="mt-1 text-g-meta text-g-ink-3">The referrer’s deadline to mark Referred is {formatDay(request.referredDueAt)}.</p>
-        ) : null}
         {props.referenceId ? <p className="mt-2 text-g-meta text-g-ink">Referred. Reference ID <GoalNum>{props.referenceId}</GoalNum></p> : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {canWithdraw && confirm !== "withdraw" ? <GoalButton variant="ghost" flush size="sm" onClick={() => { setActionError(""); setConfirm("withdraw"); }}>Withdraw ask</GoalButton> : null}
           {stage === "Hired" ? <Link href={`/landed?request=${request.id}`} className="text-g-meta text-g-ink-2 underline underline-offset-2">Thank {referrerGreeting(props.referrerName ?? request.referrerName)}</Link> : null}
-          {nextMilestones.map(m => (
+          {laterMilestones.map(m => (
             <GoalButton key={m.status} variant="outline" size="sm" busy={busy} onClick={() => { void run(() => props.onProgress(m.status), "We could not record this milestone"); }}>Mark {m.stage}</GoalButton>
           ))}
         </div>
         {confirm === "withdraw" ? (
           <div className="mt-3" role="group" aria-label="Withdraw this ask">
             <p className="text-g-label text-g-ink">Withdraw this ask?</p>
-            <p className="mt-1 text-pretty text-g-meta text-g-ink-2">{awaitingCoverage ? "It never reached a verified employee, so no credit was used." : "It leaves the referrer’s queue and frees your slot."}</p>
+            <p className="mt-1 text-pretty text-g-meta text-g-ink-2">{withdrawConfirmLine(request.queueStatus)}</p>
             <div className="mt-3 flex items-center gap-2">
               <GoalButton variant="ghost" flush size="sm" onClick={() => setConfirm(null)}>Keep it</GoalButton>
               <GoalButton variant="outline" size="sm" busy={busy} busyLabel="Withdrawing…" onClick={() => { void run(props.onWithdraw, "We could not withdraw this request"); }}>Withdraw</GoalButton>
-            </div>
-          </div>
-        ) : null}
-        {confirm === "email" ? (
-          <div className="mt-3" role="group" aria-label="Confirm the referral email">
-            <p className="text-g-label text-g-ink">Confirm you received the referral email?</p>
-            <p className="mt-1 text-pretty text-g-meta text-g-ink-2">This tells your referrer you got it and counts the ask as referred.</p>
-            <div className="mt-3 flex items-center gap-2">
-              <GoalButton variant="ghost" flush size="sm" onClick={() => setConfirm(null)}>Cancel</GoalButton>
-              <GoalButton variant="outline" size="sm" busy={busy} busyLabel="Confirming…" onClick={() => { void run(props.onConfirmReferredEmail, "We could not record your confirmation"); }}>Confirm</GoalButton>
             </div>
           </div>
         ) : null}
@@ -201,7 +211,7 @@ export function SeekerConversation(props: Props) {
                   maxLength={3000}
                   className="h-10 min-w-0 flex-1 bg-transparent text-g-body text-g-ink outline-none placeholder:text-g-ink-3 max-gdesk:min-w-[10rem]"
                 />
-                <GoalButton variant={confirmEmailPending ? "outline" : "primary"} size="sm" type="submit" busy={props.sending} busyLabel="Sending…">Send</GoalButton>
+                <GoalButton variant="outline" size="sm" type="submit" busy={props.sending} busyLabel="Sending…">Send</GoalButton>
               </div>
               {props.messageError ? <p role="alert" className="mt-2 text-g-meta text-g-ink font-semibold">{props.messageError}</p> : null}
             </form>

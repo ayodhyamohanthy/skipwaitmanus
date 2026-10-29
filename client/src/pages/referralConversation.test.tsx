@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { REFERRED_DEADLINE_ENABLED } from "@shared/referral";
+import { DECLINED_LINE, WITHDRAW_CONFIRM_AWAITING, WITHDRAW_CONFIRM_VISIBLE, seekerTerminalLine, withdrawConfirmLine } from "@shared/conversationCopy";
 import ReferralConversation from "./ReferralConversation";
 
 const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralConversation /></QueryClientProvider>);
@@ -240,7 +241,8 @@ describe("ReferralConversation thread", () => {
   it("shows the seeker the kit's kind pass note, never the raw decline text", async () => {
     stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerApproved, status: "declined", referrerMessage: "I do not think this role is the right fit for my referral." }] }) : ok({ messages: [] })));
     renderPage();
-    expect(await screen.findByText("It’s not a judgment of you. Your slot is open again. Try another verified referrer at acme.com.")).toBeTruthy();
+    expect(await screen.findByText(DECLINED_LINE)).toBeTruthy();
+    expect(DECLINED_LINE).toBe(seekerTerminalLine("declined", { claimed: true }));
     expect(screen.queryByText(/right fit for my referral/)).toBeNull();
   });
 
@@ -321,6 +323,21 @@ describe("ReferralConversation thread", () => {
     expect(screen.queryByRole("button", { name: /Withdraw ask/ })).toBeNull();
   });
 
+  it("denies a pending seeker the message box at the page level, not just the component's prop (packet item 3)", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("/withdraw")) return ok({ withdrawn: true, requestId: 601, status: "withdrawn" });
+      if (String(url).endsWith("/conversation")) return ok({ messages: [{ id: 1, body: "leak", isMine: false, createdAt: "2026-10-20T10:42:00.000Z" }] });
+      return ok({ requests: [{ ...seekerPending, referrerId: 77, companyName: "Wipro", companyInitials: "W" }] });
+    });
+    stubFetch(fetchMock);
+    renderPage();
+    await screen.findByRole("heading", { level: 1, name: "Get referred at Wipro." });
+    expect(screen.queryByLabelText("Message")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Send" })).toBeNull();
+    // The page never even asks for the messages a pending seeker may not read.
+    expect(fetchMock.mock.calls.some(call => String(call[0]).endsWith("/conversation"))).toBe(false);
+  });
+
   it("offers Withdraw on a personal-link ask its employee has not acted on, with truthful waiting copy (D-050)", async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (String(url).includes("/withdraw")) return ok({ withdrawn: true, requestId: 601, status: "withdrawn" });
@@ -336,7 +353,7 @@ describe("ReferralConversation thread", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/withdraw", expect.objectContaining({ method: "POST" })));
   });
 
-  it("offers Withdraw on a delivered ask nobody picked up (unclaimedAssignment), and its dialog says it frees your slot (P0-allocated-ask-stuck)", async () => {
+  it("offers Withdraw on a delivered ask nobody picked up (unclaimedAssignment), and its dialog uses the shared visible-withdraw line (P0-allocated-ask-stuck)", async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (String(url).includes("/withdraw")) return ok({ withdrawn: true, requestId: 601, status: "withdrawn" });
       return ok({ requests: [{ ...seekerPending, referrerId: 77, queueStatus: "available_for_review", heldForReferrer: false, unclaimedAssignment: true }] });
@@ -345,8 +362,9 @@ describe("ReferralConversation thread", () => {
     renderPage();
     expect(await screen.findByText(/is reviewing your request/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Withdraw ask/ }));
-    expect(await screen.findByText("It leaves the referrer’s queue and frees your slot.")).toBeTruthy();
-    expect(screen.queryByText(/It never reached a verified employee/)).toBeNull();
+    expect(await screen.findByText(WITHDRAW_CONFIRM_VISIBLE)).toBeTruthy();
+    expect(WITHDRAW_CONFIRM_VISIBLE).toBe(withdrawConfirmLine("available_for_review"));
+    expect(screen.queryByText(WITHDRAW_CONFIRM_AWAITING)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Withdraw" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/withdraw", expect.objectContaining({ method: "POST" })));
   });

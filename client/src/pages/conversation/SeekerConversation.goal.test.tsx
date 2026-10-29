@@ -10,6 +10,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SeekerConversation } from "./SeekerConversation";
 import { REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import {
+  CLOSED_UNCLAIMED_LINE,
+  DECLINED_LINE,
+  SUPPORTING_COPY_FORBIDDEN,
+  WITHDRAWN_LINE,
+  WITHDRAW_CONFIRM_AWAITING,
+  WITHDRAW_CONFIRM_VISIBLE,
+  seekerTerminalLine,
+  withdrawConfirmLine,
+} from "@shared/conversationCopy";
 import type { ThreadRequest } from "@/lib/threadApi";
 
 vi.mock("@/_core/auth", () => ({
@@ -121,24 +131,9 @@ describe("seeker /conversation on the goal doctrine (D-150)", () => {
   it("never claims a 7-day clock or a freed slot on an unclaimed closed ask (D-061 coverage close; capacity not guaranteed)", async () => {
     renderConversation({ ...base, status: "closed", referrerId: null });
     const line = await screen.findByText(/Nobody could take it/);
-    expect(line.textContent).toBe("Nobody could take it. This referral request is closed.");
+    expect(line.textContent).toBe(CLOSED_UNCLAIMED_LINE);
     expect(line.textContent).not.toMatch(/7 days/);
     expect(line.textContent).not.toMatch(/slot/i);
-  });
-
-  it("with the referred-deadline flag OFF, an accepted seeker's single primary is Send; no deadline line or confirm button renders", async () => {
-    deadlineFlag.enabled = false;
-    renderConversation({ ...base, status: "approved", referrerId: 77, referredDueAt: "2026-10-30T08:00:00.000Z" }, { canMessage: true });
-    const send = await screen.findByRole("button", { name: "Send" });
-    expect(send.getAttribute("data-g-primary")).toBe("true");
-    expect(document.querySelectorAll("main [data-g-primary]")).toHaveLength(1);
-    expect(screen.queryByText(/deadline to mark Referred/)).toBeNull();
-    expect(screen.queryByRole("button", { name: "I got the referral email" })).toBeNull();
-  });
-
-  it("with the referred-deadline flag ON, an approved ask shows the referrer's deadline line when referredDueAt is set", async () => {
-    renderConversation({ ...base, status: "approved", referrerId: 77, referredDueAt: "2026-10-30T08:00:00.000Z" }, { canMessage: true });
-    expect(await screen.findByText(/deadline to mark Referred/)).toBeTruthy();
   });
 
   it("uses the shared never-paid sentence verbatim in the footer", async () => {
@@ -147,3 +142,135 @@ describe("seeker /conversation on the goal doctrine (D-150)", () => {
     expect(screen.getByText((t) => t.includes(REFERRER_MONEY_SENTENCE))).toBeTruthy();
   });
 });
+
+// F1 (D-180-conversation-copy, amended Oct 28): the terminal and withdraw-confirm
+// lines come from `shared/conversationCopy.ts`, never retyped here, and their
+// supporting copy carries no amount, refund outcome, expiry clock, slot or
+// availability claim.
+describe("seeker /conversation terminal and withdraw-confirm copy come from the frozen helper (D-180)", () => {
+  const reasonOf = (region: HTMLElement) => region.querySelector("p")?.textContent ?? "";
+  const nextStep = () => screen.getByRole("region", { name: "Your next step" });
+  const expectNoForbidden = (copy: string) => {
+    for (const pattern of SUPPORTING_COPY_FORBIDDEN) expect(copy).not.toMatch(pattern);
+  };
+
+  it("declined: the next-step reason is the helper's line, verbatim and forbidden-pattern clean", async () => {
+    renderConversation({ ...base, status: "declined", referrerId: 77 });
+    const reason = reasonOf(await nextStep());
+    expect(reason).toBe(DECLINED_LINE);
+    expect(reason).toBe(seekerTerminalLine("declined", { claimed: true }));
+    expectNoForbidden(reason);
+  });
+
+  it("withdrawn: the next-step reason is the helper's line, verbatim and forbidden-pattern clean", async () => {
+    renderConversation({ ...base, status: "withdrawn", referrerId: 77 });
+    const reason = reasonOf(await nextStep());
+    expect(reason).toBe(WITHDRAWN_LINE);
+    expect(reason).toBe(seekerTerminalLine("withdrawn", { claimed: true }));
+    expectNoForbidden(reason);
+  });
+
+  it("a claimed close (Hired) renders no terminal line, matching the helper's null", async () => {
+    renderConversation({ ...base, status: "closed", referrerId: 77 }, { canMessage: true });
+    await screen.findByTestId("goal-status");
+    expect(seekerTerminalLine("closed", { claimed: true })).toBeNull();
+    expect(screen.queryByText(CLOSED_UNCLAIMED_LINE)).toBeNull();
+  });
+
+  it("withdraw confirm on a request that never reached an employee uses the helper's awaiting line", async () => {
+    renderConversation({ ...base, referrerId: 77, queueStatus: "waiting_for_coverage", unclaimedAssignment: true });
+    fireEvent.click(await screen.findByRole("button", { name: /Withdraw ask/ }));
+    const group = await screen.findByRole("group", { name: "Withdraw this ask" });
+    const copy = group.querySelectorAll("p")[1].textContent ?? "";
+    expect(copy).toBe(WITHDRAW_CONFIRM_AWAITING);
+    expect(copy).toBe(withdrawConfirmLine("waiting_for_coverage"));
+    expectNoForbidden(copy);
+  });
+
+  it("withdraw confirm on a request an employee can see uses the helper's visible line", async () => {
+    renderConversation({ ...base, referrerId: 77, queueStatus: "available_for_review", unclaimedAssignment: true });
+    fireEvent.click(await screen.findByRole("button", { name: /Withdraw ask/ }));
+    const group = await screen.findByRole("group", { name: "Withdraw this ask" });
+    const copy = group.querySelectorAll("p")[1].textContent ?? "";
+    expect(copy).toBe(WITHDRAW_CONFIRM_VISIBLE);
+    expect(copy).toBe(withdrawConfirmLine("available_for_review"));
+    expectNoForbidden(copy);
+  });
+});
+
+// F2 (D-150, D-149 (2)): one black commit per screen, and it lives inside the
+// "Your next step" block. A state with nothing for the seeker to commit records
+// that as a conscious drop in the contract row instead of borrowing the
+// composer's Send as a fake primary.
+describe("seeker /conversation holds its one black commit inside the next-step block (D-150)", () => {
+  const primaries = () => Array.from(document.querySelectorAll<HTMLElement>("main [data-g-primary]"));
+  const nextStep = () => screen.getByRole("region", { name: "Your next step" });
+
+  it("approved with the email confirmation open: Confirm is the one primary and it sits in the block", async () => {
+    renderConversation({ ...base, status: "approved", referrerId: 77 }, { canMessage: true });
+    fireEvent.click(await screen.findByRole("button", { name: "I got the referral email" }));
+    const confirm = await screen.findByRole("button", { name: "Confirm" });
+    expect(confirm.getAttribute("data-g-primary")).toBe("true");
+    expect(nextStep().contains(confirm)).toBe(true);
+    expect(screen.getByRole("button", { name: "Send" }).getAttribute("data-g-primary")).not.toBe("true");
+    expect(primaries()).toHaveLength(1);
+  });
+
+  it("intro_made: the immediate next milestone is the block's one primary, and Send stays secondary", async () => {
+    renderConversation({ ...base, status: "intro_made", referrerId: 77 }, { canMessage: true });
+    const mark = await screen.findByRole("button", { name: "Mark Interviewing" });
+    expect(mark.getAttribute("data-g-primary")).toBe("true");
+    expect(nextStep().contains(mark)).toBe(true);
+    expect(screen.getByRole("button", { name: "Send" }).getAttribute("data-g-primary")).not.toBe("true");
+    expect(primaries()).toHaveLength(1);
+  });
+
+  it("interview and offer: each promotes only its own immediate milestone into the block", async () => {
+    const { unmount } = renderConversation({ ...base, status: "interview", referrerId: 77 }, { canMessage: true });
+    const markOffer = await screen.findByRole("button", { name: "Mark Offer" });
+    expect(markOffer.getAttribute("data-g-primary")).toBe("true");
+    expect(nextStep().contains(markOffer)).toBe(true);
+    expect(screen.queryByRole("button", { name: "Mark Hired" })?.getAttribute("data-g-primary")).not.toBe("true");
+    expect(primaries()).toHaveLength(1);
+    unmount();
+    renderConversation({ ...base, status: "offer", referrerId: 77 }, { canMessage: true });
+    const markHired = await screen.findByRole("button", { name: "Mark Hired" });
+    expect(markHired.getAttribute("data-g-primary")).toBe("true");
+    expect(nextStep().contains(markHired)).toBe(true);
+    expect(primaries()).toHaveLength(1);
+  });
+
+  it("declined: Find another referrer is the block's one primary", async () => {
+    renderConversation({ ...base, status: "declined", referrerId: 77 });
+    const find = await screen.findByRole("link", { name: "Find another referrer" });
+    expect(find.getAttribute("data-g-primary")).toBe("true");
+    expect(nextStep().contains(find)).toBe(true);
+    expect(primaries()).toHaveLength(1);
+  });
+
+  // Recorded drops (D-149 (2)): no seeker commitment exists in these states, so
+  // the screen carries no black commit rather than promoting the composer's Send.
+  it("pending: nothing for the seeker to commit, and Send is never promoted to primary", async () => {
+    renderConversation({ ...base, status: "pending", referrerId: 77, unclaimedAssignment: true }, { canMessage: true });
+    await screen.findByTestId("goal-status");
+    expect(primaries()).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "Send" }).getAttribute("data-g-primary")).not.toBe("true");
+  });
+
+  it("approved with the referred-deadline flag OFF: the referrer acts, so the seeker's screen has no primary", async () => {
+    deadlineFlag.enabled = false;
+    renderConversation({ ...base, status: "approved", referrerId: 77, referredDueAt: "2026-10-30T08:00:00.000Z" }, { canMessage: true });
+    const send = await screen.findByRole("button", { name: "Send" });
+    expect(send.getAttribute("data-g-primary")).not.toBe("true");
+    expect(primaries()).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: "I got the referral email" })).toBeNull();
+  });
+
+  it("Hired: the thank-you is a destination, not a commitment, so no primary is promoted", async () => {
+    renderConversation({ ...base, status: "closed", referrerId: 77 }, { canMessage: true });
+    await screen.findByTestId("goal-status");
+    expect(primaries()).toHaveLength(0);
+    expect(screen.getByRole("link", { name: /Thank/ })).toBeTruthy();
+  });
+});
+
