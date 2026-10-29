@@ -1,0 +1,17 @@
+{
+  "note": "Synthetic fixtures only (example domains, no real people or companies). D-048-p3-links captures.",
+  "shots": [
+    { "name": "fast-ready", "url": "/fast/fx-link-0001", "waitFor": "h1",
+      "routes": [{ "path": "/api/referrer-fast-track/fx-link-0001", "status": 200, "body": { "link": { "companyDomain": "northwind.example", "isActive": true } } }] },
+    { "name": "fast-unavailable", "url": "/fast/fx-link-0002", "waitFor": "[role=alert]",
+      "routes": [{ "path": "/api/referrer-fast-track/fx-link-0002", "status": 404, "body": { "error": "This private referral link is no longer active" } }] },
+    { "name": "fast-loading", "url": "/fast/fx-link-0003", "waitFor": "[role=status][aria-busy=true]",
+      "routes": [{ "path": "/api/referrer-fast-track/fx-link-0003", "hang": true }] },
+    { "name": "vanity-ready", "url": "/refer/northwind/fx-alias", "waitFor": "h1",
+      "routes": [{ "path": "/api/referrer-fast-track/vanity/northwind/fx-alias", "status": 200, "body": { "link": { "companyDomain": "northwind.example", "isActive": true } } }] },
+    { "name": "share-ready", "url": "/share-card/fxsharetoken000000000001", "waitFor": "h1",
+      "routes": [{ "path": "/api/referral-share-cards/public/fxsharetoken000000000001", "status": 200, "body": { "card": { "companyDomain": "northwind.example", "status": "accepted", "inviteCode": "r1-fx000001" } } }] },
+    { "name": "share-unavailable", "url": "/share-card/fxsharetoken000000000002", "waitFor": "[role=alert]",
+      "routes": [{ "path": "/api/referral-share-cards/public/fxsharetoken000000000002", "status": 404, "body": { "error": "This share card is unavailable" } }] }
+  ]
+}

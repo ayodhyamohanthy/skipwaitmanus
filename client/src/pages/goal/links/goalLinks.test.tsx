@@ -71,7 +71,7 @@ describe("/fast/:linkCode", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<FastTrackLink />);
     fireEvent.click(await screen.findByRole("button", { name: "Start your referral request" }));
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/referrer-fast-track/a%20b%2Fc");
+    expect(fetchMock).toHaveBeenCalledWith("/api/referrer-fast-track/a%20b%2Fc", expect.anything());
     expect(go).toHaveBeenCalledWith("/start?fast=a%20b%2Fc");
   });
 
