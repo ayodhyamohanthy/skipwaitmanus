@@ -230,8 +230,10 @@ describe("goal inbox", () => {
     const { resolve } = await import("node:path");
     for (const file of ["goal/inbox/GoalInbox.tsx", "goal/inbox/inboxRows.tsx"]) {
       const source = readFileSync(resolve(__dirname, file), "utf8");
-      const strings = [...source.matchAll(/"([^"\\]*)"|>([^<>{}]+)</g)].map(m => (m[1] ?? m[2] ?? "").trim()).filter(Boolean);
-      const visible = strings.filter(text => /\s/.test(text) || /^[A-Z]/.test(text));
+      const pattern = /"([^"\\]*)"|>([^<>{}]+)</g;
+      const strings: string[] = [];
+      for (let m = pattern.exec(source); m !== null; m = pattern.exec(source)) strings.push((m[1] ?? m[2] ?? "").trim());
+      const visible = strings.filter(Boolean).filter(text => /\s/.test(text) || /^[A-Z]/.test(text));
       expect(visible.filter(text => /\basks?\b/i.test(text))).toEqual([]);
     }
   });
