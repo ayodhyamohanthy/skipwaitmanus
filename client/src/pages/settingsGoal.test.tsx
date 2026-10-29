@@ -322,6 +322,29 @@ describe("Goal /settings: truthfulness", () => {
     expect(screen.getByRole("button", { name: "Request my data" }).getAttribute("aria-disabled")).toBe("true");
   });
 
+  it("shows the fields an active consent actually shares, not the defaults (review F1, 9dc02a40)", async () => {
+    stubApi();
+    consent.state = { data: { active: true, selectedFields: ["headline", "expertise"], policyVersion: "2026-10-01", audience: "Approved employers on skipwait.me", retentionDays: 90, unlockCreditCost: 5, unlockDays: 30 }, isLoading: false };
+    renderAt("?section=privacy");
+    const expertise = (await screen.findByRole("checkbox", { name: "expertise" })) as HTMLInputElement;
+    expect(expertise.checked).toBe(true);
+    expect((screen.getByRole("checkbox", { name: "headline" }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole("checkbox", { name: "location" }) as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByRole("checkbox", { name: "skills" }) as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(screen.getByRole("checkbox", { name: "location" }));
+    expect((screen.getByRole("checkbox", { name: "location" }) as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("keeps a switch's current value visible offline next to the reconnect reason (review F2, 9dc02a40)", async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    stubApi();
+    renderAt("?section=notifications");
+    const toggle = await screen.findByRole("switch", { name: "Email when a new referral request arrives" });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    expect(toggle.textContent).toMatch(/\bOn\b/);
+    expect(toggle.textContent).toMatch(/Reconnect to change your email setting\./);
+  });
+
   it("passes the goal contract in every section that has a next step", async () => {
     stubApi();
     const view = renderAt();
