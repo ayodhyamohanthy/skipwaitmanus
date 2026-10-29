@@ -581,7 +581,7 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
     }));
     renderPage();
     const page = await screen.findByTestId("goal-referrer-conversation");
-    expect(within(page).getByText("Asha R.")).toBeTruthy();
+    expect(within(page).getAllByText("Asha R.").length).toBeGreaterThan(0);
     expect(within(page).getByRole("link", { name: /Asha_R_Resume\.pdf/ }).getAttribute("href")).toBe("/api/documents/31");
     expect(await within(page).findByText("Thanks for accepting.")).toBeTruthy();
     expect(within(page).getByLabelText("Message")).toBeTruthy();
@@ -634,7 +634,8 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
     await screen.findByTestId("goal-referrer-conversation");
     vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
     fireEvent(window, new Event("offline"));
-    expect(await screen.findByText(/You.re offline/)).toBeTruthy();
+    expect(await screen.findByText(/You.re offline\. Your decision and messages can send/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Accept & connect/ }).getAttribute("aria-disabled")).toBe("true");
   });
 
   it("shows a verified referrer no credits pill and no seeker money copy, only the never-paid line (D-055)", async () => {

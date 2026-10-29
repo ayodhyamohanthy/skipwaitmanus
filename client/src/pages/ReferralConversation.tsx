@@ -8,6 +8,8 @@ import { ReferrerPanel } from "@/components/thread/ThreadDecisionPanels";
 import { ThreadMain } from "@/components/thread/ThreadMain";
 import { AppShell } from "@/components/AppShell";
 import { ConversationSignInGate, SeekerConversation } from "./conversation/SeekerConversation";
+import { ReferrerConversation } from "./conversation/ReferrerConversation";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { ShareWinCard } from "@/components/thread/ShareWinCard";
 import { canMessage, companyName, isAccepted } from "@/components/thread/threadModel";
 import { usePersistFn } from "@/hooks/usePersistFn";
@@ -107,6 +109,36 @@ export default function ReferralConversation({ framed = false }: { framed?: bool
         onProgress={async status => { await recordProgress(request!.id, status, fetchToken); await reload(); }}
         onConfirmReferredEmail={async () => { await confirmReferredBySeeker(request!.id, fetchToken); await reload(); }}
         extra={request && isAccepted(request) ? <div className="mt-6"><ShareWinCard roleTitle={request.title} companyName={companyName(request)} status={request.status} /></div> : null}
+      />
+    );
+  }
+
+  // The referrer's side is the goal page behind goalSurfaceOn("conversation")
+  // (D-048-p3-conversation); off, it stays the kit page below unchanged.
+  if (goalSurfaceOn("conversation")) {
+    return (
+      <ReferrerConversation
+        request={request}
+        role={role}
+        failure={failure}
+        loading={loading}
+        onReload={() => { void reload(); }}
+        returnPath={returnPath}
+        passed={passed}
+        ownName={request && isAccepted(request) ? user?.fullName ?? null : null}
+        messages={messages}
+        messageError={messageError}
+        referenceId={referenceId}
+        canMessage={Boolean(request) && canMessage(role, request!)}
+        draft={draft}
+        setDraft={setDraft}
+        sending={sending}
+        onSend={() => { void send(); }}
+        onAccept={async () => { await decideReview(request!.id, "approved", undefined, fetchToken); await reload(); }}
+        onPass={async (reason, passReason) => { await decideReview(request!.id, "declined", reason, fetchToken, passReason); setPassed(true); }}
+        onMarkReferred={async reference => { await recordProgress(request!.id, "intro_made", fetchToken, reference); await reload(); }}
+        onExtendReferredDeadline={async () => { await extendReferredDeadline(request!.id, fetchToken); await reload(); }}
+        onStepBack={async () => { await stepBackFromReferral(request!.id, fetchToken); await reload(); }}
       />
     );
   }
