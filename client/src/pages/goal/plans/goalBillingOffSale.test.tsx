@@ -45,8 +45,12 @@ const summary = {
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
+// The cost of this test is the dynamic import below, not the assertion: the
+// GoalBilling graph takes ~12 s to load and render on a loaded machine, so the
+// 20 s default times out when four suites run in parallel. Nothing here is
+// relaxed — the assertions are unchanged; the budget covers the import.
 describe("Goal /billing with packs off sale", () => {
-  it("points at the plans page instead of the paused purchase page", async () => {
+  it("points at the plans page instead of the paused purchase page", { timeout: 45_000 }, async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string) => (String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary }))));
     const GoalBilling = (await import("./GoalBilling")).default;
     render(<GoalBilling />);
