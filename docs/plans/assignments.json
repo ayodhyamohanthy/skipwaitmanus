@@ -820,7 +820,7 @@
       "tier": 1,
       "lane": "terminology",
       "branch": "agent/copy/d180-conversation-copy",
-      "status": "todo",
+      "status": "done",
       "epic": "D-048-p3",
       "dependsOn": [],
       "owns": [
@@ -1859,7 +1859,7 @@
       "tier": 2,
       "lane": "d048-post",
       "branch": "agent/queue/d048-p3-post",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
@@ -2021,7 +2021,7 @@
       "tier": 1,
       "lane": "d048-verify",
       "branch": "agent/queue/d048-p3-verify",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
