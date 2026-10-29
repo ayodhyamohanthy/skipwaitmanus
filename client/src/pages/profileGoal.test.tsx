@@ -6,7 +6,7 @@
 // Flag off, both routes keep the kit page exactly.
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import React from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const authState = { isLoaded: true, isSignedIn: true };
 // One stable token getter, as the real usePersistFn gives the pages.
@@ -78,6 +78,13 @@ import Work from "@/pages/Work";
 
 const primaries = () => document.querySelectorAll("[data-g-primary]");
 const putCalls = () => server.calls.filter(call => call.method !== "GET");
+
+// Warm the lazily loaded goal chunks so a cold transform on a busy runner
+// never outlasts findBy's timeout.
+beforeAll(async () => {
+  await import("@/pages/goal/profile/GoalProfile");
+  await import("@/pages/goal/profile/GoalWork");
+}, 60_000);
 
 beforeEach(() => {
   authState.isLoaded = true; authState.isSignedIn = true; flagState.on = true;

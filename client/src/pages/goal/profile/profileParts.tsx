@@ -82,11 +82,11 @@ export function InlineError({ children }: { children: ReactNode }) {
 
 const inputClass = "h-(--g-control-h) w-full rounded-g-control border border-g-control-edge bg-g-surface px-3 text-g-body text-g-ink placeholder:text-g-ink-3 max-gdesk:h-12";
 
-export function TextField({ id, label, help, ...rest }: { id: string; label: string; help?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+export function TextField({ id, label, help, readOnly, ...rest }: { id: string; label: string; help?: string } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "className">) {
   return (
     <div className="grid gap-2">
       <label htmlFor={id} className="text-g-label text-g-ink">{label}</label>
-      <input id={id} className={inputClass} {...rest} />
+      <input id={id} readOnly={readOnly} className={readOnly ? `${inputClass} border-g-hairline bg-g-canvas text-g-ink-2` : inputClass} {...rest} />
       {help ? <p className="text-g-meta text-g-ink-3">{help}</p> : null}
     </div>
   );
