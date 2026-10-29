@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link } from "wouter";
 import { MONEY_SENTENCE } from "@shared/moneyCopy";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalEmails = lazy(() => import("./goal/system/GoalEmails"));
 
 /**
  * /emails — reference for every transactional message skipwait.me sends, in
@@ -95,6 +97,7 @@ const TEMPLATES = [
 const SENDER = "skipwait.me <noreply@skipwait.me>";
 
 export default function Emails() {
+  if (goalSurfaceOn("system")) return <Suspense fallback={null}><GoalEmails /></Suspense>;
   const [selected, setSelected] = useState<string>(TEMPLATES[0].name);
   const template: Template = TEMPLATES.find(item => item.name === selected) ?? TEMPLATES[0];
   const emailed = template.channel !== "In-app";
