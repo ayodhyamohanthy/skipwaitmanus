@@ -7,7 +7,7 @@ Written Oct 18 2026 at `main` `5ef0626`. On that commit the full suite was green
 ## 1. Roles
 - **Owner:** decides (register), approves new features and pricing, triggers anything that touches live money or provider settings (catalog apply, the one live payment test, D-065), and answers the questions batched for the weekly review (D-064).
 - **CEO and architect (Claude Code, D-074, D-085):** sets direction and makes the high-stakes calls inside the owner's decisions; keeps the business, the architecture map, this file, the packets and the queue order true; re-analyses what we build toward the goal and brings the owner rated recommendations; writes a packet before a row is delegated (any agent may write one, D-109); writes the red-first tests for Tier 1 packets; reviews Tier 1 work; handles P0 triage and register entries on the owner's say-so. D-225 supersedes the former Claude implementation role: Claude supplies intelligence/reasoning, while other tools develop; another capable session may perform authorized CEO work if that session is unavailable, so no task waits for one model. Tier 1 review remains independent of the builder and fixers (D-151), with required CI and protections (D-082).
-- **Implementer (development tools other than Claude sessions, D-225):** executes exactly one packet per session, on its own branch; after it opens a Tier 1 draft pull request or lands, it reports to the CEO and ends the session (D-085).
+- **Implementer (development tools other than Claude sessions, D-225):** executes one packet at a time on its own branch; after it opens a Tier 1 draft pull request or lands, it reports to the CEO and continues with the next eligible task without another owner prompt (D-085 (10) as amended by D-235); review independence and every gate are unchanged.
 - **Reviewer (a session of a model that neither built nor fixed the work, D-151):** checks Tier 1 work against the packet and §6 before it reaches `main`.
 
 ## 2. What to do next
@@ -79,11 +79,13 @@ handles real money: a mistake reaches real users.
      check on your commit is failing, skipped or still running, or with
      --no-verify. If main goes red after your landing, revert or fix your
      commit before anything else (D-082).
-   - Then report to the CEO with --report and end the session: one packet
-     per session.
+   - Then report to the CEO with --report, rerun the current-instruction
+     preflight and take the next task the picker hands you (D-235).
 8. If anything is unclear, a test fails for an unexpected reason, or a rule
-   seems to conflict with docs/DECISIONS.md: stop. Write the question in
-   your status line, push your branch, end the session. Never guess about
+   seems to conflict with docs/DECISIONS.md: stop that task. Write the
+   question in your status line, push your branch and --report blocked; the
+   block holds that task, its lane and its dependents, so run the picker
+   again for other eligible work. Never guess about
    money, sign-in, identity or privacy.
 ```
 
@@ -100,7 +102,7 @@ The script reads the shared order from `docs/plans/assignments.json` on `origin/
 7. **Claude Code (intelligence/reasoning, D-225)** retains the historical identity `--claim "Claude Code"`, but must not treat a picker build offer as permission to implement. Follow `BUILD_CONTINUITY.md` and return a bounded decision/handoff for another development tool. The older Claude-build role is superseded. No task waits for the CEO session; another capable session may take authorized work. Tier 1 review remains independent (D-151), and all CI and branch-protection gates apply (D-082).
 8. **Reports:** every agent reports to the CEO with `--report green|red|blocked|review|landed --task <id> --as "<name>" --note "<one line>"` when it stops, lands, opens a pull request or gets blocked (markers on `agent/reports/log`). A note is one line; secrets and email addresses are redacted, and no personal data belongs in it (the repo is public). `--status` and the top of every run print one board: every priority top down, its role (CTO, CDO), health, holder, quiet time, pull request and latest report. Only an agent holding part of the task (its builder, reviewer, fixer, lander or unblocker) or the CEO may report on it, and a blocked report stands until the CEO reports on that task.
 9. **Sync:** while your own claimed work has commits or changes not on origin, the picker refuses new work, `--report` and `--fixed` (exit 3, "SYNC FIRST"); other local-only branches and a stale local `main` are reported.
-10. **One packet per session (D-074):** after you open a Tier 1 draft pull request or land, report to the CEO and end the session. A Tier 1 builder whose pull request waits for review holds nothing; the owner's next `build` starts a new session, which runs the picker.
+10. **One packet at a time (D-074 (2) and D-085 (10), amended by D-235; owner, Oct 29 2026, 23:56 IST):** After each bounded handoff (a Tier 1 draft pull request, a landing or a reported block), report the actual outcome with `--report`, push your own work, rerun the current-instruction preflight (`docs/BUILD_CONTINUITY.md`) and take the next task the picker hands you that your role may take (D-225), without waiting for another `build`. One packet at a time, not one packet per session. Never take your own review, and never bypass a held lane, missing authentication or approval, a platform session or usage limit, or a free-only limit. Stop only for a real blocker, no eligible work, an explicit stop or a session limit, and report that exact reason instead of asking the owner to choose routine work. A Tier 1 builder whose pull request waits for review holds nothing: the review goes to a session of a model that neither built nor fixed it (D-151), and the builder takes disjoint eligible work, never its own review. Until its owning row changes `scripts/nextTaskText.mjs`, the picker's printed Tier 1 step still ends with "end the session (one packet per session, D-074)"; read that step as amended by D-235.
 11. **The newest decisions come with every pick (D-202).** Each task in `docs/plans/assignments.json` carries `syncedTo`: the newest register entry its packet was checked against (required on every task that is not `done`). A register entry that changes queued work names those tasks in its "Supersedes · affects" cell as `Affects tasks: <id>, <id>`, or `Affects tasks: none`. The picker compares the two, so every pick it prints — build, continue, takeover, review, fix, make-green, land, packet, unblock, resync, CEO review, fix-main or wait — opens with "Newest decisions (read before you work)": the 5 newest entries plus every entry newer than that task's `syncedTo`. Read them before touching code; if one changes what the task says, stop and `--report blocked "<task id>: conflicts with D-nnn"` (D-032) — a newer decision always beats an older packet, note or chat message. `--status` opens with `Register: D-nnn, YYYY-MM-DD`, and a stale task's row reads `re-sync (D-nnn)` instead of its state.
 12. **A re-sync is anyone's (D-200, D-202).** It is claimed on `agent/architect/<slug>` like a packet, and the session that takes it reads the newer entries, updates the packet — or records in the register that the rule is unaffected — and sets that task's `syncedTo` to the newest entry, all in one docs commit landed like any other docs change. While a task is out of sync, no one is handed a build, takeover, make-green, fix, review, packet or landing on it and it never holds its lane; a task you already hold that goes stale comes back to you as its re-sync.
 
@@ -181,7 +183,7 @@ Verdict: `pass` (then the reviewer pushes the merged candidate to the pull reque
 ## 8. Working in a small context window
 - Required reading is the brief (under 10 KB) plus one packet. Aim for under 15 KB; a large lane keeps its packet under 60 KB and moves reference tables (verification, token values, specs) to an appendix that the implementer opens by section. The architecture map (`docs/ARCHITECTURE.md`) is also a reference: read only the section the packet names.
 - `server/db.ts` is about 470 KB (about 120K tokens) and `server/privateReferralRoutes.ts` about 170 KB: never read either whole. Use the function index in `docs/ARCHITECTURE.md` and `grep -n`, then `sed -n '<from>,<to>p' server/db.ts | cut -c1-400`.
-- One packet per session (after a Tier 1 draft pull request or a landing, report and end the session); commit after every step, so a crashed session loses at most one step.
+- One packet at a time (D-235): after a Tier 1 draft pull request, a landing or a reported block, report and continue through the preflight to the next eligible task; commit after every step, so a crashed session loses at most one step.
 
 ## 9. Running lanes side by side
 - Two lanes may run at the same time only when `docs/plans/README.md` marks them parallel-safe (different functions and files). Everything else waits.
