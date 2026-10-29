@@ -20,7 +20,7 @@ vi.mock("@/_core/auth", () => ({
 }));
 vi.mock("wouter", () => ({
   useLocation: () => ["/messages", vi.fn()],
-  Link: ({ children, href, className }: { children: React.ReactNode; href: string; className?: string }) => <a href={href} className={className}>{children}</a>,
+  Link: ({ children, href, ...rest }: { children: React.ReactNode; href: string } & Record<string, unknown>) => <a href={href} {...rest}>{children}</a>,
 }));
 vi.mock("@/lib/goalSurfaces", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/goalSurfaces")>();
@@ -79,8 +79,9 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.sessionStorage.clear(
 beforeAll(async () => { await import("./goal/messages/GoalMessages").catch(() => undefined); }, 60_000);
 
 const primaries = () => document.querySelectorAll("[data-g-primary]");
+/** Opens a chat from its row in the list (the next-step button names the same person). */
 async function openChat(name: RegExp) {
-  fireEvent.click(await screen.findByRole("button", { name }));
+  fireEvent.click(within(await screen.findByRole("list", { name: "Chats" })).getByRole("button", { name }));
   return screen.findByRole("heading", { level: 1 });
 }
 
@@ -153,7 +154,7 @@ describe("goal /messages: inbox", () => {
   it("a chat that fails to open says so with a retry instead of staying silent", async () => {
     server.threadReply[33] = { status: 500, body: { error: "We could not open this conversation" } };
     render(<Messages />);
-    fireEvent.click(await screen.findByRole("button", { name: /Member · Asha/ }));
+    fireEvent.click(within(await screen.findByRole("list", { name: "Chats" })).getByRole("button", { name: /Member · Asha/ }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toMatch(/We could not open this conversation/);
     delete server.threadReply[33];
