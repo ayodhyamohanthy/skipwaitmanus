@@ -81,14 +81,14 @@ export default function GoalSettings() {
         <p className="mt-3 max-w-[620px] text-g-body text-g-ink-2">Choose your region and how we reach you, then control what we keep.</p>
       </header>
       {!online ? <OfflineNotice /> : null}
-      <nav aria-label="Settings sections" className="mt-6 flex gap-1 overflow-x-auto border-b border-g-hairline">
+      <nav aria-label="Settings sections" className="mt-6 flex gap-0.5 overflow-x-auto border-b border-g-hairline gdesk:gap-1">
         {SETTINGS_SECTIONS.map(item => (
           <button
             key={item}
             type="button"
             aria-current={item === section ? "page" : undefined}
             onClick={() => select(item)}
-            className={`-mb-px min-h-11 shrink-0 border-b-2 px-3 text-g-label transition-colors ${item === section ? "border-g-ink font-semibold text-g-ink" : "border-transparent text-g-ink-2 hover:text-g-ink"}`}
+            className={`-mb-px min-h-11 shrink-0 border-b-2 px-1.5 text-g-label transition-colors gdesk:px-3 ${item === section ? "border-g-ink font-semibold text-g-ink" : "border-transparent text-g-ink-2 hover:text-g-ink"}`}
           >{LABELS[item]}</button>
         ))}
       </nav>

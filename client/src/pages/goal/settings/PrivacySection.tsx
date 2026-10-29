@@ -20,21 +20,25 @@ export default function PrivacySection({ getToken, online }: { getToken: TokenSo
   const request = useMutation({ mutationFn: () => requestDataExport(getToken), onSettled: () => { void queryClient.invalidateQueries({ queryKey: settingsKeys.dataExport }); } });
   const download = useMutation({ mutationFn: (item: DataExportSummary) => downloadDataExport(item.id, item.fileName, getToken) });
   const current = latest.data ?? null;
-  const preparing = current?.status === "requested" || request.isPending;
-  const ready = current?.status === "ready" ? current : null;
-  const actionError = request.error ?? download.error ?? (latest.isError ? latest.error : null);
+  const loadFailed = latest.isError;
+  const preparing = !loadFailed && (current?.status === "requested" || request.isPending);
+  const ready = !loadFailed && current?.status === "ready" ? current : null;
+  const actionError = request.error ?? download.error;
   const offlineReason = "Reconnect to request or download your data.";
 
   return (
     <>
       <GoalNextStep reason="Your account data, as a ZIP of JSON files. Request it here; it is usually ready within the hour and stays available for 7 days.">
         <div className="mt-3">
+          {loadFailed ? <InlineError>We could not check your latest export. Nothing was requested.</InlineError> : null}
           {actionError ? <InlineError>{actionError instanceof Error && actionError.message ? actionError.message : EXPORT_ERROR}</InlineError> : null}
           {current?.status === "failed" ? <InlineError>Your last export could not be prepared. You can request it again.</InlineError> : null}
           {preparing ? <p className="text-g-meta text-g-ink-2" role="status">Preparing your export. We will keep it here once it is ready.</p> : null}
           {ready ? <p className="text-g-meta text-g-ink-2" role="status">Your export is ready ({formatSize(ready.byteSize)}){ready.expiresAt ? `, available until ${new Date(ready.expiresAt).toLocaleDateString()}` : ""}.</p> : null}
           <div className="mt-4">
-            {ready ? (
+            {loadFailed ? (
+              <GoalButton variant="primary" touch="large" busy={latest.isFetching} busyLabel="Checking…" disabledReason={!online ? "Reconnect to check your latest export." : undefined} onClick={() => void latest.refetch()}>Try again</GoalButton>
+            ) : ready ? (
               <GoalButton variant="primary" touch="large" busy={download.isPending} busyLabel="Downloading…" disabledReason={!online ? offlineReason : undefined} onClick={() => download.mutate(ready)}>Download my data</GoalButton>
             ) : preparing ? (
               <GoalButton variant="primary" touch="large" busy busyLabel="Preparing…">Preparing…</GoalButton>

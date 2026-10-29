@@ -231,11 +231,13 @@ describe("Goal /settings: section content", () => {
   });
 
   it("reports a failed panel load instead of rendering it empty", async () => {
-    stubApi({ "GET /api/blocks/mine": [reply(500, { error: "The blocked list is unavailable right now" })], "GET /api/account/sessions": [reply(500, { error: "down" })] });
+    stubApi({ "GET /api/blocks/mine": [reply(500, { error: "The blocked list is unavailable right now" })], "GET /api/account/sessions": [reply(500, { error: "down" })], "GET /api/privacy/export-requests/latest": [reply(500, { error: "down" })] });
     const view = renderAt("?section=privacy");
     const blocksError = await screen.findByTestId("goal-error-state");
     expect(blocksError.textContent).toContain("We could not load your blocked list.");
     expect(screen.queryByText("You haven't blocked anyone.")).toBeNull();
+    expect(await screen.findByText("We could not check your latest export. Nothing was requested.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Request my data" })).toBeNull();
     assertGoalPage(view.container, GOAL_PAGE);
     fireEvent.click(screen.getByRole("button", { name: "Account" }));
     expect(await screen.findByText("We could not load your sessions.")).toBeTruthy();
