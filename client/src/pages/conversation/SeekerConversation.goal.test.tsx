@@ -5,6 +5,8 @@
 // ("Get referred." when the company is unknown); one "Your next step" block
 // naming the single next step; status as dot + text.
 import React from "react";
+import fs from "node:fs";
+import path from "node:path";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -195,6 +197,39 @@ describe("seeker /conversation terminal and withdraw-confirm copy come from the 
     expect(copy).toBe(WITHDRAW_CONFIRM_VISIBLE);
     expect(copy).toBe(withdrawConfirmLine("available_for_review"));
     expectNoForbidden(copy);
+  });
+});
+
+// F4: the fixture half of the evidence the packet asks for. The fixtures are
+// fictional, schema-shaped and carry no comp sample name. The pixel half for the
+// new states is still owed: this host cannot boot the dev server or build the
+// client (see the row's status line), so no capture is claimed here.
+describe("seeker /conversation fixture evidence (packet item 4)", () => {
+  const root = path.resolve(__dirname, "../../../../design/goal-ui");
+  const fixtures = fs.readdirSync(path.join(root, "tools/fixtures")).filter(name => name.startsWith("conversation__"));
+  const STATUSES = ["pending", "approved", "intro_made", "interview", "offer", "closed", "declined", "withdrawn"];
+
+  it("ships one schema-shaped fixture per state, and none retypes a comp sample name", () => {
+    expect(fixtures.length).toBeGreaterThanOrEqual(9);
+    for (const name of fixtures) {
+      const raw = fs.readFileSync(path.join(root, "tools/fixtures", name), "utf8");
+      expect(raw, name).not.toMatch(/kestrel/i);
+      const doc = JSON.parse(raw) as { route?: string; routes?: { path: string; body?: { requests?: Record<string, unknown>[] } }[] };
+      expect(doc.route, name).toBe("/conversation/601");
+      const mine = doc.routes?.find(route => route.path === "/api/company-referrals/mine");
+      if (!mine) continue; // signed-out fixture: no seeker rows to shape
+      const request = mine.body?.requests?.[0];
+      expect(request, name).toBeTruthy();
+      expect(typeof request!.id, name).toBe("number");
+      expect(STATUSES, name).toContain(request!.status);
+      expect(typeof request!.companyDomain, name).toBe("string");
+    }
+  });
+
+  it("covers every state this row changes or depends on", () => {
+    for (const state of ["accepted", "no-name", "closed", "waiting", "declined", "withdrawn", "held", "intro", "hired"]) {
+      expect(fixtures).toContain(`conversation__${state}.json`);
+    }
   });
 });
 
