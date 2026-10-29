@@ -281,6 +281,39 @@ describe("Goal /settings: truthfulness", () => {
     expect(primary(container)).toHaveLength(0);
   });
 
+  it("names no credits in any section's next step (D-180)", async () => {
+    stubApi();
+    const view = renderAt();
+    await screen.findByLabelText("Time zone");
+    expect(nextStep(view.container)?.textContent ?? "").not.toMatch(/credit/i);
+    for (const section of ["Notifications", "App", "Privacy", "Account"]) {
+      fireEvent.click(screen.getByRole("button", { name: section }));
+      await waitFor(() => expect(nextStep(view.container)).toBeTruthy(), { timeout: 5000 });
+      expect(nextStep(view.container)?.textContent ?? "").not.toMatch(/credit/i);
+    }
+  });
+
+  it("states no unlock cost or retention period before the consent state answers", async () => {
+    stubApi();
+    consent.state = { data: undefined, isLoading: true };
+    const view = renderAt("?section=privacy");
+    await screen.findByRole("button", { name: "Request my data" });
+    const panel = view.container.querySelector("[data-skipwait-screen='talent-consent']") as HTMLElement;
+    expect(panel).toBeTruthy();
+    expect(panel.textContent).not.toMatch(/to unlock the exact approved snapshot/);
+    expect(panel.textContent).not.toMatch(/retained for \d+ days/);
+  });
+
+  it("states the server's unlock cost and retention once the consent state answers", async () => {
+    stubApi();
+    consent.state = { data: { active: false, policyVersion: "2026-10-01", audience: "Approved employers on skipwait.me", retentionDays: 45, unlockCreditCost: 7, unlockDays: 14 }, isLoading: false };
+    const view = renderAt("?section=privacy");
+    await screen.findByRole("button", { name: "Request my data" });
+    const text = (view.container.querySelector("[data-skipwait-screen='talent-consent']") as HTMLElement).textContent ?? "";
+    expect(text).toMatch(/\b7\b[^.]*to unlock the exact approved snapshot for\s*14\s*days/);
+    expect(text).toMatch(/retained for 45 days/);
+  });
+
   it("disables network actions offline and says why", async () => {
     Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
     stubApi();
