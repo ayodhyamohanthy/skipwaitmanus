@@ -110,8 +110,8 @@ describe("goal inbox", () => {
     });
     render(<Page />);
     expect((await screen.findAllByText("Seeker · identity hidden")).length).toBeGreaterThan(0);
-    expect(screen.getByText("New ask")).toBeTruthy();
-    const review = screen.getByRole("link", { name: "Review the ask" });
+    expect(screen.getByText("New referral request")).toBeTruthy();
+    const review = screen.getByRole("link", { name: "Review the request" });
     expect(review.getAttribute("href")).toBe("/conversation/9?from=inbox");
     // The list payload carries no seeker identity and the UI invents none.
     expect(screen.queryByText(/candidate/i)).toBeNull();
@@ -141,6 +141,10 @@ describe("goal inbox", () => {
     const { container } = render(<Page />);
     expect(await screen.findByText(/We couldn't load your inbox/)).toBeTruthy();
     expect(screen.queryByText("No conversations yet.")).toBeNull();
+    // Review finding 2 (#815): one honest reason plus the preserved-data line, never the server's sentence appended.
+    expect(within(nextStepBlock()).getByText("We couldn't load your inbox.")).toBeTruthy();
+    expect(within(nextStepBlock()).getByText("Your conversations are still there — nothing was lost.")).toBeTruthy();
+    expect(within(nextStepBlock()).queryByText(/boom/)).toBeNull();
     // The failure still offers exactly one commitment: retry.
     expect(() => assertGoalPage(container, { goalLine: GOAL_LINE })).not.toThrow();
     const retry = screen.getByRole("button", { name: "Try again" });
@@ -201,6 +205,35 @@ describe("goal inbox", () => {
     setOnline(true);
     fireEvent(window, new Event("online"));
     await waitFor(() => expect(screen.queryByText(/You're offline/)).toBeNull());
+  });
+
+  it("uses referral-only words in every state it renders (D-180, review finding 1 on #815)", async () => {
+    const retired = /\basks?\b/i;
+    const states: Array<() => void> = [
+      () => stubFetch((url) => (url.includes("/api/company-referrals/mine") ? { requests: [askingRow(5, { unreadMessageCount: 2 })] } : { requests: [] })),
+      () => stubFetch(() => ({ requests: [] })),
+      () => stubFetch((url) => (url.includes("/api/company-referrals/mine") ? { requests: [askingRow(5)] } : { requests: [] })),
+      () => { accessState.status = "verified"; stubFetch((url) => (url.includes("scope=new") ? { requests: [referringRow(9)] } : { requests: [] })); },
+    ];
+    for (const arrange of states) {
+      arrange();
+      const { container, unmount } = render(<Page />);
+      await screen.findByRole("heading", { name: "Your next step" });
+      expect(container.textContent ?? "").not.toMatch(retired);
+      unmount();
+      accessState.status = "unverified";
+    }
+  });
+
+  it("keeps the retired noun out of the owned source strings (D-180)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    for (const file of ["goal/inbox/GoalInbox.tsx", "goal/inbox/inboxRows.tsx"]) {
+      const source = readFileSync(resolve(__dirname, file), "utf8");
+      const strings = [...source.matchAll(/"([^"\\]*)"|>([^<>{}]+)</g)].map(m => (m[1] ?? m[2] ?? "").trim()).filter(Boolean);
+      const visible = strings.filter(text => /\s/.test(text) || /^[A-Z]/.test(text));
+      expect(visible.filter(text => /\basks?\b/i.test(text))).toEqual([]);
+    }
   });
 
   it("renders the kit inbox untouched while the surface is off (release control)", async () => {
