@@ -83,4 +83,4 @@ None. Privacy and support behaviour is already decided in the register; this pac
 
 `D-048-P-account`: landed by the coordinator — 2026-10-23 — landing branch `agent/instinct/d048-p-account-packet`. Canonical candidate; the empty claim marker branch `agent/architect/d048-p-account` (Claude Code · e11c) is preserved and the overlap is announced in the PR.
 
-`D-048-p3-profile`: in progress — Hark · ebb2 — 2026-10-29 — branch agent/queue/d048-p3-profile
+`D-048-p3-profile`: review — agent/queue/d048-p3-profile — 26b57b24 — PR #826 — Hark · ebb2, 2026-10-29. Red first `7aaa3a1e` (18/26 fail), build `a1fdb98c`, captures `26b57b24` (10 states × 1280/390 with fixtures). Gate on 26b57b24 (main 622d1b0f): check 0 · token audit OK · migration lint 0 · deploy triggers 0 · `VITE_GOAL_SURFACES=all pnpm build` 0 · vitest 558 files / 5132 tests passed, 2 load timeouts in untouched files (classifyCiChange H1, configContract .env) green alone. Flag off: kit unchanged. Kit Remove work has no confirm; kept as is (follow-up). Tier 1: needs an independent review by a model other than Hark.
