@@ -190,6 +190,31 @@ describe("goal inbox", () => {
     expect(await screen.findByText(/Nordisk/)).toBeTruthy();
   });
 
+  it("narrows the rendered rows to the search match, like the kit list (review finding 1 on #815)", async () => {
+    stubFetch((url) => {
+      if (url.includes("/api/company-referrals/mine")) return { requests: [askingRow(5), askingRow(7, { companyDomain: "nordisk.io", companyName: "Nordisk", companyInitials: "NO" })] };
+      return { requests: [] };
+    });
+    render(<Page />);
+    expect(await screen.findByText(/Nordisk/)).toBeTruthy();
+    expect(screen.getAllByTestId("goal-list-row").length).toBe(2);
+    fireEvent.change(screen.getByLabelText("Search conversations"), { target: { value: "Nordisk" } });
+    await waitFor(() => expect(screen.getAllByTestId("goal-list-row").length).toBe(1));
+    expect(screen.queryByText(/Quillmint/)).toBeNull();
+  });
+
+  it("never claims nothing needs you while the referrer's queue is still loading (review finding 2 on #815)", async () => {
+    accessState.status = "verified";
+    vi.stubGlobal("fetch", vi.fn((url: string) => {
+      if (String(url).includes("/api/company-referrals/mine")) return Promise.resolve({ ok: true, json: async () => ({ requests: [askingRow(5)] }) });
+      return new Promise(() => {});
+    }));
+    render(<Page />);
+    expect(await screen.findByText(/Quillmint/)).toBeTruthy();
+    expect(screen.queryByText("Nothing needs you right now.")).toBeNull();
+    expect(screen.getByText("Still checking for replies and new referral requests.")).toBeTruthy();
+  });
+
   it("says it is offline and clears the notice on reconnect", async () => {
     stubFetch((url) => (url.includes("/api/company-referrals/mine") ? { requests: [askingRow(5)] } : { requests: [] }));
     render(<Page />);

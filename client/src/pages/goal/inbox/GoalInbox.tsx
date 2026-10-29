@@ -43,11 +43,13 @@ type NextStep =
   | { kind: "reset"; reason: string; detail: string; label: string };
 
 /** The single next step for what the reader can actually do right now. */
-function planNextStep(threads: readonly InboxThread[], visible: readonly InboxThread[]): NextStep {
+function planNextStep(threads: readonly InboxThread[], visible: readonly InboxThread[], loading: boolean): NextStep {
   const reply = visible.find(thread => thread.unread > 0);
   if (reply) return { kind: "link", reason: reply.who, detail: `${reply.unread} unread message${reply.unread === 1 ? "" : "s"}.`, label: "Reply", href: reply.href };
   const review = visible.find(thread => thread.side === "referring" && thread.pill === "Requested");
   if (review) return { kind: "link", reason: review.who, detail: `A new referral request at ${review.companyName} is waiting for your decision.`, label: "Review the request", href: review.href };
+  // No "nothing needs you" or "no match" claim until every source has settled (review finding 2).
+  if (loading) return { kind: "link", reason: "Still checking for replies and new referral requests.", detail: "Conversations that already loaded stay below; this line updates once everything has loaded.", label: "Find a referrer", href: "/explore" };
   if (visible.length === 0 && threads.length > 0) {
     return { kind: "reset", reason: "No matching conversations.", detail: "Try another search, or switch between My requests and Referring.", label: "Show all conversations" };
   }
@@ -131,8 +133,9 @@ export default function GoalInbox() {
   const retry = () => { if (asking.isError) void asking.refetch(); if (access.status === "error") access.retry(); if (referring.isError) void referring.refetch(); };
   // Rows that did load stay visible; a failed source is never shown as an empty inbox.
   const partial = failed.length > 0 && threads.length > 0;
-  const { waitingOnYou, waitingOnThem } = splitByOwner(threads, side);
-  const plan = planNextStep(threads, visible);
+  // Sections come from the filtered list, so a search narrows what is rendered (review finding 1).
+  const { waitingOnYou, waitingOnThem } = splitByOwner(visible);
+  const plan = planNextStep(threads, visible, loading);
 
   return (
     <main data-skipwait-screen="inbox" className="g-scope pb-10">

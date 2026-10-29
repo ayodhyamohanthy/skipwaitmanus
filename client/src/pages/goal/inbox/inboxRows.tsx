@@ -4,7 +4,7 @@
 // model does (pre-acceptance privacy), and this file only renders what it gets.
 import { Link } from "wouter";
 import { GoalCompanyMark, GoalNum, GoalStatus, type GoalStatusValue } from "@/components/goal";
-import { timeAgo, type InboxSide, type InboxThread } from "@/components/inbox/inboxThreads";
+import { timeAgo, type InboxThread } from "@/components/inbox/inboxThreads";
 
 /** The dot + text vocabulary of My asks and the conversation, keyed off the model's kit status. */
 export function threadView(thread: InboxThread): { status: GoalStatusValue; label: string } {
@@ -55,8 +55,7 @@ export function ThreadRow({ thread }: { thread: InboxThread }) {
   );
 }
 
-/** The page's sections in reading order: first the side the reader can act on. */
-export function splitByOwner(threads: readonly InboxThread[], side: "all" | InboxSide) {
-  const visible = side === "all" ? threads : threads.filter(thread => thread.side === side);
-  return { visible, waitingOnYou: visible.filter(needsYou), waitingOnThem: visible.filter(thread => !needsYou(thread)) };
+/** The page's sections in reading order: first the side the reader can act on. Takes the filtered rows. */
+export function splitByOwner(threads: readonly InboxThread[]) {
+  return { waitingOnYou: threads.filter(needsYou), waitingOnThem: threads.filter(thread => !needsYou(thread)) };
 }
