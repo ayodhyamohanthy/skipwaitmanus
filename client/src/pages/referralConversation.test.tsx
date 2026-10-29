@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { REFERRED_DEADLINE_ENABLED } from "@shared/referral";
 import { DECLINED_LINE, WITHDRAW_CONFIRM_AWAITING, WITHDRAW_CONFIRM_VISIBLE, seekerTerminalLine, withdrawConfirmLine } from "@shared/conversationCopy";
@@ -636,7 +636,8 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
     stubFetch(pendingFetch());
     renderPage();
     await screen.findByTestId("goal-referrer-conversation");
-    vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+    const onLine = vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+    onTestFinished(() => onLine.mockRestore());
     fireEvent(window, new Event("offline"));
     expect(await screen.findByText(/You.re offline\. Your decision and messages can send/)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Accept & connect/ }).getAttribute("aria-disabled")).toBe("true");
@@ -666,7 +667,8 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
     expect(within(page).getByRole("heading", { level: 1, name: "A colleague has this request." })).toBeTruthy();
     expect(within(page).queryByRole("button", { name: /Accept & connect/ })).toBeNull();
     expect(within(page).queryByRole("button", { name: /Pass privately/ })).toBeNull();
-    expect(within(page).getByRole("link", { name: "All requests" })).toBeTruthy();
+    // The back link and the next step's own "All requests" commit.
+    expect(within(page).getAllByRole("link", { name: "All requests" })).toHaveLength(2);
     expect(screen.queryByText(/Asha R\./)).toBeNull();
   });
 

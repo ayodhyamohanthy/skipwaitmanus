@@ -13,7 +13,7 @@ import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { ShareWinCard } from "@/components/thread/ShareWinCard";
 import { canMessage, companyName, isAccepted } from "@/components/thread/threadModel";
 import { usePersistFn } from "@/hooks/usePersistFn";
-import { decideReview, confirmReferredBySeeker, extendReferredDeadline, loadConversation, loadThread, recordProgress, sendConversationMessage, stepBackFromReferral, withdrawThreadRequest, type ThreadMessage, type ThreadRequest, type ThreadRole } from "@/lib/threadApi";
+import { authedFetch, decideReview, confirmReferredBySeeker, extendReferredDeadline, loadConversation, loadThread, recordProgress, sendConversationMessage, stepBackFromReferral, withdrawThreadRequest, type ThreadMessage, type ThreadRequest, type ThreadRole } from "@/lib/threadApi";
 import { trpc } from "@/lib/trpc";
 
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error ? reason.message : fallback);
@@ -40,12 +40,30 @@ export default function ReferralConversation({ framed = false }: { framed?: bool
   const sendingRef = useRef(false);
 
   const profile = trpc.profile.mine.useQuery(undefined, { enabled: Boolean(isSignedIn) && role === "seeker", retry: false, staleTime: 60_000 });
+  // The signed-in account, the same auth.me the auth layer already holds: the
+  // referrer goal page offers a decision on a pending ask only when the ask is
+  // unassigned or assigned to this account (#831 F1).
+  const me = trpc.auth.me.useQuery(undefined, { enabled: Boolean(isSignedIn) && role !== null && role !== "seeker", retry: false, staleTime: 60_000 });
+  const meId = (me.data as { id?: unknown } | null | undefined)?.id;
+  const viewerId: number | null | undefined = typeof meId === "number" ? meId : me.data === null ? null : undefined;
 
   const reload = useCallback(async () => {
     if (!isSignedIn || !validId) return;
     setLoading(true); setError("");
     try {
       const thread = await loadThread(requestId, fetchToken);
+      // #831 F2: the unclaimed preview answers first even for an ask allocated
+      // to this referrer, and it carries no decision-due time. On the goal page
+      // the claimed detail (which only ever serves an ask assigned to this
+      // account) supplies the server's decisionDueAt; a 404 means unassigned.
+      if (goalSurfaceOn("conversation") && thread.role === "referrer-pending" && !thread.request.decisionDueAt) {
+        try {
+          const detail = (await authedFetch(`/api/company-referrals/${requestId}`, fetchToken)).request as { status?: unknown; referrerId?: unknown; decisionDueAt?: unknown } | undefined;
+          if (detail && detail.status === "pending" && typeof detail.referrerId === "number") {
+            thread.request = { ...thread.request, referrerId: detail.referrerId, decisionDueAt: typeof detail.decisionDueAt === "string" ? detail.decisionDueAt : null };
+          }
+        } catch { /* not assigned to this account: the preview stands */ }
+      }
       setRole(thread.role); setRequest(thread.request);
       if (!canMessage(thread.role, thread.request)) { setMessages([]); return; }
       try {
@@ -120,6 +138,7 @@ export default function ReferralConversation({ framed = false }: { framed?: bool
       <ReferrerConversation
         request={request}
         role={role}
+        viewerId={viewerId}
         failure={failure}
         loading={loading}
         onReload={() => { void reload(); }}

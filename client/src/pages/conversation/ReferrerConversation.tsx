@@ -15,16 +15,16 @@
 // credit, a plan or a price; GoalAppShell drops the credits pill on the
 // server's verified-referrer verdict.
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { GoalAppShell, GoalButton, GoalErrorState, GoalNextStep, GoalNum, GoalPassReasons, GoalStatus, GoalTextInput, GoalVerifiedMark, useOnlineStatus, type GoalStatusValue } from "@/components/goal";
+import { GoalAppShell, GoalButton, GoalErrorState, GoalNextStep, GoalNum, GoalPassReasons, GoalSheet, GoalStatus, GoalTextInput, GoalVerifiedMark, useOnlineStatus, type GoalStatusValue } from "@/components/goal";
 import { PASS_REASONS } from "@/components/thread/ThreadDecisionPanels";
 import { companyName, isAccepted, referrerPendingCopy, stageOf, type StageLabel } from "@/components/thread/threadModel";
 import { formatDayTime } from "@/lib/displayPrefs";
 import type { ThreadMessage, ThreadRequest, ThreadRole } from "@/lib/threadApi";
 import { functionEyebrow } from "@shared/jobFunctions";
 import { REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
-import type { PassReasonCode } from "@shared/passReasons";
+import { PASS_REASON_OPTIONS, type PassReasonCode } from "@shared/passReasons";
 import { REFERRED_DEADLINE_ENABLED } from "@shared/referral";
 
 const COORDINATE = "Use messages to coordinate. Keep personal contact details off-platform only if you both choose to.";
@@ -47,11 +47,32 @@ function stamp(value: string | number | null | undefined): string | null {
   return formatDayTime(typeof value === "number" ? new Date(value) : value);
 }
 
+// Phone width, the goal shell's own breakpoint (max-gdesk: < 641px). On a phone
+// the pass reasons open as the goal bottom sheet (GoalSheet, spec §4.10), never
+// the desktop popover that opened upward over the header and the ask (#831 F3).
+const PHONE_QUERY = "(max-width: 640px)";
+function usePhoneWidth(): boolean {
+  const query = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(PHONE_QUERY).matches;
+  const [phone, setPhone] = useState(query);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const list = window.matchMedia(PHONE_QUERY);
+    const update = () => setPhone(list.matches);
+    update();
+    list.addEventListener?.("change", update);
+    return () => list.removeEventListener?.("change", update);
+  }, []);
+  return phone;
+}
+
 type Confirm = null | "accept" | "pass" | "referred" | "extend" | "stepback";
 
 export type ReferrerConversationProps = {
   request: ThreadRequest | null;
   role: Exclude<ThreadRole, "seeker">;
+  /** The signed-in account's id (auth.me); undefined while it loads. A pending ask
+   * offers a decision only when it is unassigned or assigned to this id (#831 F1). */
+  viewerId?: number | null;
   failure: string;
   loading: boolean;
   onReload: () => void;
@@ -75,14 +96,16 @@ export type ReferrerConversationProps = {
 };
 
 export function ReferrerConversation(props: ReferrerConversationProps) {
-  const { request, role, failure, loading, onReload, returnPath, passed } = props;
+  const { request, role, failure, loading, onReload, returnPath, passed, viewerId } = props;
   const online = useOnlineStatus();
+  const phone = usePhoneWidth();
+  const [pick, setPick] = useState<PassReasonCode | null>(null);
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [attested, setAttested] = useState(false);
   const [reference, setReference] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
-  const open = (next: Confirm) => { setActionError(""); setAttested(false); setReference(""); setConfirm(next); };
+  const open = (next: Confirm) => { setActionError(""); setAttested(false); setReference(""); setPick(null); setConfirm(next); };
   const close = () => { setConfirm(null); setActionError(""); };
   const run = async (action: () => Promise<void>, fallback: string) => {
     setBusy(true); setActionError("");
@@ -113,8 +136,13 @@ export function ReferrerConversation(props: ReferrerConversationProps) {
   const company = companyName(request);
   const stage = stageOf(request);
   const accepted = isAccepted(request);
-  const deciding = !passed && role === "referrer-pending" && stage === "Requested";
-  const status = passed ? { status: "withdrawn" as const, label: "Passed privately" } : STATUS[stage];
+  // A pending ask is this referrer's to decide only when nobody holds it or it is
+  // assigned to them. One a colleague holds can only answer Accept with a 409, so
+  // it offers no decision; while the account is still loading nothing is offered.
+  const assignee = request.referrerId ?? null;
+  const colleagueHolds = !passed && role === "referrer-pending" && stage === "Requested" && assignee !== null && viewerId !== undefined && assignee !== viewerId;
+  const deciding = !passed && role === "referrer-pending" && stage === "Requested" && (assignee === null || (viewerId !== undefined && viewerId !== null && assignee === viewerId));
+  const status = passed ? { status: "withdrawn" as const, label: "Passed privately" } : colleagueHolds ? { status: "withdrawn" as const, label: "With a colleague" } : STATUS[stage];
   const asker = accepted && role === "referrer-claimed" ? (request.candidateName ?? "Seeker") : "Seeker · identity hidden";
   // An accepted referrer's file without a link: their document access has ended (D-019(e)).
   const accessEnded = role === "referrer-claimed" && accepted && request.attachments.some(file => !file.url);
@@ -122,6 +150,7 @@ export function ReferrerConversation(props: ReferrerConversationProps) {
 
   const heading = passed
     ? "You passed privately."
+    : colleagueHolds ? "A colleague has this request."
     : deciding ? "Would you refer this person?"
     : stage === "Accepted" ? "Submit through your company."
     : stage === "Hired" ? "Hired. Thank you for opening this door."
@@ -130,6 +159,7 @@ export function ReferrerConversation(props: ReferrerConversationProps) {
 
   let reason: string;
   if (passed) reason = "The request stays active for other verified employees. Your identity was never revealed.";
+  else if (colleagueHolds) reason = `Another verified employee at ${company} is deciding on it. Nothing is needed from you.`;
   else if (deciding) reason = request.decisionDueAt
     ? `Accept or pass by ${new Date(request.decisionDueAt).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}. After that it goes back to your colleagues, and nothing is held against you.`
     : referrerPendingCopy(request);
@@ -161,7 +191,7 @@ export function ReferrerConversation(props: ReferrerConversationProps) {
 
         <div className="relative mt-4">
           <GoalNextStep reason={reason}>
-            {passed || (!deciding && (stage === "Declined" || stage === "Expired" || stage === "Withdrawn")) ? (
+            {passed || colleagueHolds || (!deciding && (stage === "Declined" || stage === "Expired" || stage === "Withdrawn")) ? (
               <GoalButton variant="primary" size="sm" className="mt-3" asChild><Link href={returnPath}>All requests</Link></GoalButton>
             ) : null}
             {deciding ? (
@@ -226,7 +256,40 @@ export function ReferrerConversation(props: ReferrerConversationProps) {
             ) : null}
             {actionError ? <p role="alert" className="mt-2 text-g-meta font-semibold text-g-ink">{actionError}</p> : null}
           </GoalNextStep>
-          {deciding ? (
+          {deciding && phone ? (
+            <GoalSheet open={confirm === "pass"} onOpenChange={next => { if (!next) close(); }} title="Pass privately" description="The seeker sees a kind note with your reason. Never your name.">
+              <div role="radiogroup" aria-label="Pass reason" className="mt-3">
+                {PASS_REASON_OPTIONS.map(option => (
+                  <button
+                    key={option.code}
+                    type="button"
+                    role="radio"
+                    aria-checked={pick === option.code}
+                    onClick={() => setPick(option.code)}
+                    className="flex min-h-11 w-full items-center gap-3 rounded-g-control px-2 text-left text-g-body text-g-ink hover:bg-g-surface-hover"
+                  >
+                    <span aria-hidden="true" className={`size-[18px] shrink-0 rounded-full border-[1.5px] border-g-control-edge${pick === option.code ? " border-[5px] border-g-ink" : ""}`} />
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              {actionError ? <p role="alert" className="mt-2 text-g-meta font-semibold text-g-ink">{actionError}</p> : null}
+              <div className="mt-3 flex items-center justify-end gap-2 border-t border-g-hairline pt-3">
+                <GoalButton size="sm" variant="ghost" onClick={close}>Cancel</GoalButton>
+                <GoalButton
+                  size="sm"
+                  variant="outline"
+                  busy={busy}
+                  disabledReason={pick === null ? "Pick a reason first" : offline}
+                  onClick={() => {
+                    const picked = PASS_REASONS.find(option => option.code === pick);
+                    if (picked) void run(() => props.onPass(picked.value, picked.code), "We could not record your decision");
+                  }}
+                >Pass</GoalButton>
+              </div>
+            </GoalSheet>
+          ) : null}
+          {deciding && !phone ? (
             <GoalPassReasons
               open={confirm === "pass"}
               onOpenChange={next => { if (!next) close(); }}
