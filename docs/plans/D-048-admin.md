@@ -82,3 +82,5 @@ Two admin routes have no split row: `/admin/money-check` (read-only money ops re
 `D-048-P-admin`: prepared by design lane (AYO-11) — pending coordinator landing — 2026-10-23 — branch `agent/architect/d048-p-admin`
 
 `D-048-P-admin`: landed by the coordinator — 2026-10-23 — landing branch `agent/instinct/d048-p-admin-packet`. Canonical candidate; the empty claim marker branch `agent/architect/d048-p-admin` (Claude Code · e11c) is preserved and the overlap is announced in the PR.
+
+`D-048-p3-dev`: in progress — Hark · dbeb — 2026-10-29 — branch agent/queue/d048-p3-dev
