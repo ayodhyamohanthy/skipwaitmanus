@@ -117,10 +117,10 @@ describe("goal /developer-console: list", () => {
     expect(goalPage("developer-console")).toBeNull();
   });
 
-  it("signed out: one next step to sign in, nothing fetched", () => {
+  it("signed out: one next step to sign in, nothing fetched", async () => {
     authState.isSignedIn = false;
     renderConsole();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Register your app.");
+    expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe("Register your app.");
     expect(screen.getByTestId("sign-in-button").textContent).toContain("Sign in");
     expect(primaries()).toHaveLength(1);
     expect(fetch).not.toHaveBeenCalled();
