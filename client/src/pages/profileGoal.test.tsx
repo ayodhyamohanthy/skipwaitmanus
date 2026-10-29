@@ -253,6 +253,9 @@ describe("goal /work", () => {
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toMatch(/Work service is down/);
     expect(screen.queryByText("Add one piece you're proud of.")).toBeNull();
+    // A count is a fact: while the list is unknown the card states none, so it
+    // never reads "0 pinned" beside an alert saying nothing was changed.
+    expect(screen.queryByTestId("pin-count")).toBeNull();
     server.itemsReply = null;
     fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Checkout redesign")).toBeTruthy();
@@ -264,8 +267,11 @@ describe("goal /work", () => {
     render(<Work />);
     expect(await screen.findByText("Loading your work…")).toBeTruthy();
     expect(screen.queryByText("Add one piece you're proud of.")).toBeNull();
+    expect(screen.queryByTestId("pin-count")).toBeNull();
     release();
     expect(await screen.findByText("Checkout redesign")).toBeTruthy();
+    // Once the list is known both counts arrive together.
+    expect(screen.getByTestId("pin-count").textContent).toBe("1 pinned");
   });
 
   it("changes who can see a piece and pins one through the existing PATCH", async () => {

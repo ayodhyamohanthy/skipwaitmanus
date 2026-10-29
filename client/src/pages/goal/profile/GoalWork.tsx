@@ -178,8 +178,10 @@ export default function GoalWork() {
             : <button type="button" className="text-left text-g-ink underline underline-offset-[3px] hover:no-underline" onClick={() => setLinkOpen(true)}>Set your profile link</button>}
         </p>
         <p className="mt-3 flex flex-wrap gap-x-4 text-g-meta text-g-ink-2" aria-live="polite">
-          <span data-testid="pin-count"><GoalNum>{pinned}</GoalNum> pinned</span>
-          {loaded ? <span><GoalNum>{visibleCount}</GoalNum> visible on profile</span> : null}
+          {loaded ? <>
+            <span data-testid="pin-count"><GoalNum>{pinned}</GoalNum> pinned</span>
+            <span><GoalNum>{visibleCount}</GoalNum> visible on profile</span>
+          </> : null}
         </p>
       </section>
     </div>
