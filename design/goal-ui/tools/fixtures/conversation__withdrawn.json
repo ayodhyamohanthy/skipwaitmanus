@@ -1,0 +1,59 @@
+{
+  "signedIn": {
+    "id": "7",
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "route": "/conversation/601",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 4
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/mine",
+      "body": {
+        "requests": [
+          {
+            "id": 601,
+            "title": "Senior Backend Engineer, Payments",
+            "pitch": "Built the payouts reconciliation service; settlement mismatches fell from 1.2% to 0.3% in 6 months.\nRan on-call for 14 Go services that move 40 crore rupees a day.\nShipped idempotent retries that cut duplicate payouts to zero.",
+            "targetRoleUrl": "https://careers.alderbeam.com/jobs/1",
+            "companyDomain": "alderbeam.com",
+            "companyName": "Alderbeam Labs",
+            "companyInitials": "AB",
+            "jobFunction": "Engineering",
+            "status": "withdrawn",
+            "referrerId": 9,
+            "referrerMessage": null,
+            "unreadMessageCount": 0,
+            "createdAt": "2026-10-19T08:00:00.000Z",
+            "updatedAt": "2026-10-20T10:00:00.000Z",
+            "attachmentCount": 1,
+            "referrerName": "Rohit Menon",
+            "referrerTitle": "Staff Engineer"
+          }
+        ]
+      },
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/601/conversation",
+      "body": {
+        "messages": [],
+        "referenceId": null
+      },
+      "status": 200
+    }
+  ]
+}
