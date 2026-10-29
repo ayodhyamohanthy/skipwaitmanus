@@ -320,17 +320,42 @@ describe("Goal /billing: the reads it makes", () => {
     expect(screen.queryByText("No payments yet.")).toBeNull();
   });
 
-  it("ignores a late response after sign-out", async () => {
-    const pending = deferred<{ ok: boolean; status: number; json: () => Promise<unknown> }>();
-    const fetchMock = vi.fn(() => pending.promise);
+  // Tier 1 review finding (Hark · e9cd, PR #819): the test that stood here passed
+  // with the stale-response guard deleted, because the signed-out branch renders no
+  // summary at all, so nothing could overwrite it. This one mounts a single page
+  // across two sessions: the first session's two GETs stay pending, the seeker signs
+  // out and back in, the second session paints its own facts, and only then does the
+  // first session answer. Delete `if (!active) return;` in GoalBilling.tsx and the
+  // late pair replaces the live one, so this fails.
+  it("ignores a late response from the signed-out session", async () => {
+    const oldSummary = deferred<{ ok: boolean; status: number; json: () => Promise<unknown> }>();
+    const oldReceipts = deferred<{ ok: boolean; status: number; json: () => Promise<unknown> }>();
+    let secondSession = false;
+    const fetchMock = vi.fn((url: string) => {
+      const path = String(url);
+      if (secondSession) return Promise.resolve(path.includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: freeSummary }));
+      return path.includes("/billing/receipts") ? oldReceipts.promise : oldSummary.promise;
+    });
     vi.stubGlobal("fetch", fetchMock);
     const { rerender } = render(<Billing />);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    await waitFor(() => expect(called(fetchMock, "/billing/receipts")).toBe(1));
+    // Same mounted page, a different session: out, then back in.
     authState.isSignedIn = false;
     rerender(<Billing />);
-    pending.resolve(ok({ summary: freeSummary, receipts: [] }));
-    expect(await screen.findByRole("button", { name: "Sign in" })).toBeTruthy();
-    expect(screen.queryByText("Referral requests left")).toBeNull();
+    secondSession = true;
+    authState.isSignedIn = true;
+    rerender(<Billing />);
+    // The live session's own facts are on screen before the old session answers.
+    expect(await screen.findByText("No payments yet.")).toBeTruthy();
+    await act(async () => {
+      oldSummary.resolve(ok({ summary: startSummary }));
+      oldReceipts.resolve(ok({ receipts: [settled] }));
+    });
+    // Nothing from the signed-out session may replace what the live one returned.
+    expect(screen.queryByText("$4.99")).toBeNull();
+    expect(screen.queryByText("INV-1001")).toBeNull();
+    expect(screen.queryByText(/Renews 6 Nov 2026/)).toBeNull();
+    expect(screen.getByText("No payments yet.")).toBeTruthy();
   });
 });
 
