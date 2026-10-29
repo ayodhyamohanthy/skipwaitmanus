@@ -4242,7 +4242,7 @@
         "docs/ARCHITECTURE.md",
         "docs/BRIEF.md"
       ],
-      "note": "Serialized because existing BYOR and bonus rows own shared deploy docs. No runtime change or unsupported completion claims; incident748 remains open until path acceptance independently proven. Oct 29 (Claude Opus 5.5 as CEO, D-200 (2)): also waits for FND-4, which now owns docs/ARCHITECTURE.md for its known-gap line (§11 item 4); this row already waits for D-090-BYOR and D-099-bonus-pages, so nothing new waits in practice."
+      "note": "Serialized because existing BYOR and bonus rows own shared deploy docs. No runtime change or unsupported completion claims; incident748 remains open until path acceptance independently proven. Oct 29 (Claude Opus 5.5 as CEO, D-200 (2)): also waits for FND-4, which now owns docs/ARCHITECTURE.md for its known-gap line (§11 item 3, privacy hygiene); this row already waits for D-090-BYOR and D-099-bonus-pages, so nothing new waits in practice."
     },
     {
       "id": "PICKER-heartbeat-slot-safety",
