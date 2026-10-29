@@ -61,7 +61,7 @@ export default function RegionSection() {
 
   return (
     <>
-      <GoalNextStep reason="Plans and credits are priced in the currency this device resolves to. Review the plans priced for you.">
+      <GoalNextStep reason="Plans are priced in the currency this device resolves to. Review the plans priced for you.">
         <GoalButton className="mt-4" variant="primary" touch="large" asChild>
           <Link href="/plans">See plans in {currency}</Link>
         </GoalButton>

@@ -66,10 +66,10 @@ export function TalentConsentPanel() {
   return (
     <section data-skipwait-screen="talent-consent" className="mt-8">
       <h3 className="text-g-heading text-g-ink">Talent discovery consent</h3>
-      <p className="mt-2 text-g-meta text-g-ink-2">Preview and control what approved employers can see. skipwait.me uses this only for anonymous talent discovery and employer introduction requests. Employers may spend <GoalNum>{state?.unlockCreditCost ?? 5}</GoalNum> credits to unlock the exact approved snapshot for <GoalNum>{state?.unlockDays ?? 30}</GoalNum> days. You choose whether to respond to contact requests.</p>
+      <p className="mt-2 text-g-meta text-g-ink-2">Preview and control what approved employers can see. skipwait.me uses this only for anonymous talent discovery and employer introduction requests.{state ? <> Employers may spend <GoalNum>{state.unlockCreditCost}</GoalNum> credits to unlock the exact approved snapshot for <GoalNum>{state.unlockDays}</GoalNum> days.</> : null} You choose whether to respond to contact requests.</p>
       <dl className="mt-4 border border-g-hairline p-3 text-g-meta text-g-ink-2">
         <div><dt className="inline font-semibold text-g-ink">Audience: </dt><dd className="inline">{state?.audience ?? "Approved employers on skipwait.me"}</dd></div>
-        <div><dt className="inline font-semibold text-g-ink">Retention: </dt><dd className="inline">Discovery consent records are retained for {state?.retentionDays ?? 90} days for access history and safety controls.</dd></div>
+        <div><dt className="inline font-semibold text-g-ink">Retention: </dt><dd className="inline">{state ? `Discovery consent records are retained for ${state.retentionDays} days for access history and safety controls.` : "Loading the current retention period"}</dd></div>
         <div><dt className="inline font-semibold text-g-ink">Policy: </dt><dd className="inline">{state?.policyVersion ?? "Loading current policy"}</dd></div>
       </dl>
       <fieldset className="mt-4">
