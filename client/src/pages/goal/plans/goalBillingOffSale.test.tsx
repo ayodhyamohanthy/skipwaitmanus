@@ -13,8 +13,7 @@ vi.mock("@shared/planCatalog", async importOriginal => ({
 }));
 vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: () => true }));
 vi.mock("@/_core/auth", () => ({
-  useAuth: () => ({ isLoaded: true, isSignedIn: true, getToken: async () => "test-token" }),
-  SignInButton: ({ children }: { children?: React.ReactNode }) => <button type="button">{children ?? "Sign in"}</button>,
+  useAuth: () => ({ isLoaded: true, isSignedIn: true, getToken: async () => "test-token", openSignIn: vi.fn() }),
 }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,

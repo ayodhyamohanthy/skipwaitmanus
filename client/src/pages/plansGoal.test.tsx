@@ -12,13 +12,12 @@ import { assertGoalPage } from "@/test/goalPageContract";
 import { GOAL_PAGE } from "./goal/plans/GoalBilling";
 
 const { authState, surfaces } = vi.hoisted(() => ({
-  authState: { isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") },
+  authState: { isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token"), openSignIn: vi.fn() },
   surfaces: { on: new Set<string>() },
 }));
 
 vi.mock("@/_core/auth", () => ({
   useAuth: () => authState,
-  SignInButton: ({ children }: { children?: React.ReactNode }) => <button type="button">{children ?? "Sign in"}</button>,
 }));
 vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
 vi.mock("wouter", () => ({
@@ -45,10 +44,10 @@ const freeSummary = { plan: "free", monthlyAllowance: 0, monthlyCreditsRemaining
 const startSummary = { plan: "start", monthlyAllowance: 10, monthlyCreditsRemaining: 7, totalAvailable: 9, subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z", slots: slots("start", "Start", 8), ledger: ledger(10, 9) };
 const outSummary = { ...freeSummary, totalAvailable: 0, ledger: ledger(0, 0) };
 const settled = { id: 1, provider: "chargebee", amount: 499, currency: "USD", tokenCount: 3, status: "paid", providerInvoiceId: "INV-1001", createdAt: "2026-10-02T10:00:00.000Z" };
-const refunded = { ...settled, id: 2, status: "refunded", providerInvoiceId: "INV-1002" };
+const refunded = { ...settled, id: 2, amount: 999, status: "refunded", providerInvoiceId: "INV-1002" };
 
 const stubBilling = (options: { summary?: unknown; receipts?: unknown[]; summaryStatus?: number; summaryError?: string; cancel?: "ok" | "fail" } = {}) => {
-  const fetchMock = vi.fn(async (url: string) => {
+  const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
     const path = String(url);
     if (path.includes("/billing/receipts")) return ok({ receipts: options.receipts ?? [] });
     if (path.includes("/credits/summary")) {
@@ -172,6 +171,9 @@ describe("Goal /billing plan and cancel states", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Cancel renewal" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel anyway" }));
     expect((await screen.findByRole("alert")).textContent).toContain("We could not schedule your cancellation");
+    // A modal hides the page behind it (Radix aria-hidden), so close it to check the page state.
+    fireEvent.click(screen.getByRole("button", { name: "Keep my plan" }));
+    expect(await screen.findByText(/Renews 6 Nov 2026/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Cancel renewal" })).toBeTruthy();
   });
 
@@ -198,6 +200,7 @@ describe("Goal /billing receipts", () => {
     expect(await screen.findByText("INV-1001")).toBeTruthy();
     expect(screen.getAllByText("3 referral requests").length).toBe(2);
     expect(screen.getByText("$4.99")).toBeTruthy();
+    expect(screen.getByText("$9.99")).toBeTruthy();
     expect(screen.getByText("Refunded")).toBeTruthy();
     expectNoRetiredNouns();
   });
