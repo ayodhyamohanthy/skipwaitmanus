@@ -8,7 +8,7 @@ import { timeAgo, type InboxSide, type InboxThread } from "@/components/inbox/in
 
 /** The dot + text vocabulary of My asks and the conversation, keyed off the model's kit status. */
 export function threadView(thread: InboxThread): { status: GoalStatusValue; label: string } {
-  if (thread.side === "referring" && thread.pill === "Requested") return { status: "queue_new", label: "New ask" };
+  if (thread.side === "referring" && thread.pill === "Requested") return { status: "queue_new", label: "New referral request" };
   switch (thread.pill) {
     case "Accepted": return { status: "accepted", label: "Accepted" };
     case "Referred": return { status: "referred", label: "Referred" };
@@ -22,9 +22,17 @@ export function threadView(thread: InboxThread): { status: GoalStatusValue; labe
   }
 }
 
-/** The thread that needs the reader first: an unread reply, then a fresh ask to review. */
+/** The thread that needs the reader first: an unread reply, then a fresh referral request to review. */
 export function needsYou(thread: InboxThread): boolean {
   return thread.unread > 0 || (thread.side === "referring" && thread.pill === "Requested");
+}
+
+/**
+ * The row's note in referral-only words (D-180). The shared model still words a fresh request with the retired noun
+ * for the kit page; the goal row restates that one line without changing the model or the kit.
+ */
+export function goalNote(thread: InboxThread): string {
+  return thread.note.replace(/\bNew ask for you to review\b/, "New referral request to review");
 }
 
 /** One conversation: mark, who, dot+text status, role and note. The whole row is the link. */
@@ -40,7 +48,7 @@ export function ThreadRow({ thread }: { thread: InboxThread }) {
         <span className="row-span-2"><GoalCompanyMark initials={thread.mark} /></span>
         <span className="min-w-0 truncate text-g-label text-g-ink">{thread.who}</span>
         <span className="justify-self-end"><GoalStatus status={view.status} label={view.label} /></span>
-        <span className="min-w-0 truncate text-g-meta text-g-ink-2">{thread.role} · {thread.note}</span>
+        <span className="min-w-0 truncate text-g-meta text-g-ink-2">{thread.role} · {goalNote(thread)}</span>
         <span className="justify-self-end whitespace-nowrap text-g-meta text-g-ink-3"><GoalNum>{timeAgo(thread.updatedAt)}</GoalNum></span>
       </Link>
     </li>

@@ -47,14 +47,14 @@ function planNextStep(threads: readonly InboxThread[], visible: readonly InboxTh
   const reply = visible.find(thread => thread.unread > 0);
   if (reply) return { kind: "link", reason: reply.who, detail: `${reply.unread} unread message${reply.unread === 1 ? "" : "s"}.`, label: "Reply", href: reply.href };
   const review = visible.find(thread => thread.side === "referring" && thread.pill === "Requested");
-  if (review) return { kind: "link", reason: review.who, detail: `A new ask at ${review.companyName} is waiting for your decision.`, label: "Review the ask", href: review.href };
+  if (review) return { kind: "link", reason: review.who, detail: `A new referral request at ${review.companyName} is waiting for your decision.`, label: "Review the request", href: review.href };
   if (visible.length === 0 && threads.length > 0) {
-    return { kind: "reset", reason: "No matching conversations.", detail: "Try another search, or switch between Asking and Referring.", label: "Show all conversations" };
+    return { kind: "reset", reason: "No matching conversations.", detail: "Try another search, or switch between My requests and Referring.", label: "Show all conversations" };
   }
   if (threads.length === 0) {
-    return { kind: "link", reason: "No conversations yet.", detail: "They open when a referrer accepts your ask. Send one ask to one company.", label: "Find a referrer", href: "/explore" };
+    return { kind: "link", reason: "No conversations yet.", detail: "They open when a referrer accepts your referral request. Send one strong request to one company.", label: "Find a referrer", href: "/explore" };
   }
-  return { kind: "link", reason: "Nothing needs you right now.", detail: "A reply or a new ask appears here when it does. Until then, one more good ask moves you faster.", label: "Find a referrer", href: "/explore" };
+  return { kind: "link", reason: "Nothing needs you right now.", detail: "A reply or a new referral request appears here when it does. Until then, one more strong request moves you faster.", label: "Find a referrer", href: "/explore" };
 }
 
 function PageHeading() {
@@ -99,6 +99,10 @@ export default function GoalInbox() {
   const threads = useMemo(() => buildInboxThreads(asking.data ?? [], referring.data ? [...referring.data.fresh, ...referring.data.completed] : []), [asking.data, referring.data]);
   const visible = useMemo(() => filterInboxThreads(threads, side, query), [threads, side, query]);
 
+  // Every hook runs before the early returns, so the hook order never changes between renders.
+  const loading = asking.isPending || access.status === "checking" || (isReferrer && referring.isPending);
+  const { showSkeleton, isSlow } = useSlowLoad(Boolean(isSignedIn) && loading && threads.length === 0);
+
   if (!isLoaded) {
     return (
       <main data-skipwait-screen="inbox" data-skipwait-loading="true" className="g-scope pb-10">
@@ -121,8 +125,6 @@ export default function GoalInbox() {
     );
   }
 
-  const loading = asking.isPending || access.status === "checking" || (isReferrer && referring.isPending);
-  const { showSkeleton, isSlow } = useSlowLoad(loading && threads.length === 0);
   // A failed verification check is a failed source, not "not a referrer".
   const failed = [asking.isError ? asking.error : null, access.status === "error" ? access.error : null, isReferrer && referring.isError ? referring.error : null].filter(error => error !== null);
   const retrying = asking.isFetching || referring.isFetching || (access.status === "error" && access.retrying);
@@ -150,7 +152,8 @@ export default function GoalInbox() {
 
       {!showSkeleton && failed.length > 0 && !partial ? (
         <div className="mx-4 my-5 gdesk:mx-5">
-          <GoalNextStep reason={`We couldn't load your inbox. ${errorMessage(failed[0])}. Your conversations are still there — nothing was lost.`}>
+          <GoalNextStep reason="We couldn't load your inbox.">
+            <p className="mt-2 text-g-meta text-g-ink-2">Your conversations are still there — nothing was lost.</p>
             <GoalButton variant="primary" className="mt-4" onClick={retry} busy={retrying} busyLabel="Trying again…">Try again</GoalButton>
           </GoalNextStep>
         </div>
@@ -173,7 +176,7 @@ export default function GoalInbox() {
           {threads.length > 0 ? (
             <div className="mx-4 mb-3 flex flex-wrap items-center gap-2 gdesk:mx-5">
               <GoalFilterChip label="All" pressed={side === "all"} onPressedChange={pressed => { if (pressed) setSide("all"); }} count={threads.length} />
-              <GoalFilterChip label="Asking" pressed={side === "asking"} onPressedChange={pressed => { if (pressed) setSide("asking"); }} count={threads.filter(thread => thread.side === "asking").length} />
+              <GoalFilterChip label="My requests" pressed={side === "asking"} onPressedChange={pressed => { if (pressed) setSide("asking"); }} count={threads.filter(thread => thread.side === "asking").length} />
               {isReferrer ? <GoalFilterChip label="Referring" pressed={side === "referring"} onPressedChange={pressed => { if (pressed) setSide("referring"); }} count={threads.filter(thread => thread.side === "referring").length} /> : null}
               <span className="min-w-40 flex-1"><GoalSearchInput label="Search conversations" value={query} onChange={setQuery} placeholder="Search" /></span>
             </div>
