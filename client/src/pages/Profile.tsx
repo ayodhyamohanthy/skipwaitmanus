@@ -1,10 +1,11 @@
 import { ArrowRight, ShieldCheck, UserRound } from "lucide-react";
 import { LoadingNote } from "@/components/app-states/SystemStates";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Link } from "wouter";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { PrivacyControls, type ProfileRole } from "@/components/profile/PrivacyControls";
 import { ProfileForm } from "@/components/profile/ProfileForm";
@@ -24,7 +25,12 @@ function Heading({ children }: { children?: ReactNode }) {
   );
 }
 
+// Goal-UI migration (D-048-p3-profile): the goal page replaces this one when
+// the "profile" surface flag is on; off, the kit page below is unchanged.
+const GoalProfile = lazy(() => import("./goal/profile/GoalProfile"));
+
 export default function Profile() {
+  if (goalSurfaceOn("profile")) return <Suspense fallback={null}><GoalProfile /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [role, setRole] = useState<ProfileRole>("seeker");
