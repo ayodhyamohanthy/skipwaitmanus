@@ -17,7 +17,6 @@ import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { ownsEntry, ownsMatches, slugOf } from "./nextTaskCore.mjs";
 import { runQueueGate } from "./queue-gate.mjs";
-import { runReviewGate } from "./review-gate.mjs";
 
 const ASSIGNMENTS = "docs/plans/assignments.json";
 const SWITCH_ONLY_LINE_LIMIT = 12;
@@ -73,10 +72,16 @@ export function checkBranch(taskId) {
   return { owns, violations: scopeViolations({ owns, changed, packet: task.packet, lineCounts }), skipped: null };
 }
 
-function main() {
+// PROCESS-review-gate: loaded lazily, so a copy of this script without the gate beside it fails open, loudly.
+async function reviewGate() {
+  try { return (await import("./review-gate.mjs")).runReviewGate(); }
+  catch (error) { console.error(`review-gate: could not load (${error instanceof Error ? error.message : String(error)}) — not failing the branch.`); return 0; }
+}
+
+async function main() {
   const queueGateExit = runQueueGate();
   if (queueGateExit !== 0) return queueGateExit;
-  const reviewGateExit = runReviewGate();
+  const reviewGateExit = await reviewGate();
   if (reviewGateExit !== 0) return reviewGateExit;
 
   const taskId = process.argv[2];
@@ -104,4 +109,4 @@ function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = await main();
