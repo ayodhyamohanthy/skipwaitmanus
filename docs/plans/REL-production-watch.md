@@ -111,7 +111,7 @@
 - Landed.
 - The job's first run shows as succeeded in `/api/admin/jobs`.
 
-## REL-5xx-capture: every server error reaches Sentry and the owner, sign-in and webhooks included (lane `observability`, Tier 2, after D-090-BYOR, which edits `server/_core/index.ts` and `server/errorAlerting.ts`)
+## REL-5xx-capture: every server error reaches Sentry and the owner, sign-in and webhooks included (lane `observability`, Tier 2, after D-090-BYOR — a **serialization** edge, not an output need: BYOR owns `server/_core/index.ts` in full and `server/errorAlerting.ts` outright, and this row edits both, so `validateAssignments` and `filesBusy` (PICKER-owns-scope, D-223 (1)) force the wait. It clears only when BYOR narrows those two paths to a declared anchor and this packet names the same one, or when BYOR lands)
 **Why.**
 - **Most 5xx answers go unreported.** Measured 2026-10-28 at `main` `0ae5dcde` and re-checked at this branch's head: **239** literal `status(500|502|503)` matches sit in **36** non-test server files (`git grep -nE 'status\((500|502|503)\)' <sha> -- server/ ':!*.test.*'`). **11** non-test server files import `captureServerError` directly (`_core/index.ts`, `askExpirySweep.ts`, `blockedPairs.ts`, `db.ts`, `jobCatalogRoutes.ts`, `jobSources/sync.ts`, `paymentRefundReview.ts`, `privateReferralRoutes.ts`, `referralTimers.ts`, `scheduledJobsRoutes.ts`, `workosWebhooks.ts`); a raw name-mention count reads 12 because it includes the defining `server/sentry.ts`. **This is a literal source inventory, not handled-response coverage:** it excludes 501/504, computed status codes and tests, and it does not establish whether any individual response is reported. **Import count is also not the whole picture:** `server/adminCatalogSyncRoutes.ts` imports nothing from `./sentry` yet receives `reportError: captureServerError` injected at `server/_core/index.ts:312` and calls it at `:45` and `:60`, so "non-importing files never report" is false. Nothing global reports a 5xx: the `/api` finish hook in `server/_core/index.ts` only logs slow requests. Per-response coverage is **unverified** and needs a call-graph and test audit, not this count.
 - **The owner's 5xx email misses sign-in and webhooks.** `materialErrorAlertMiddleware` (`server/errorAlerting.ts`) is registered after the payment and WorkOS webhooks and after the sign-in routes, so a broken sign-in code send or webhook emails nobody.
@@ -201,7 +201,7 @@
 ## REL-rollback-skew: the web never runs ahead of its API, and rollback works (lane `deploy-workflows`, Tier 2, after REL-release-verify)
 **Why.**
 - **Web ahead of its API.** After a release, the web can call an API that is still rolling out (15 to 40 minutes, `scripts/deploy-cloudflare-two-phase.sh`), so new client code may hit routes the live API does not have yet (AGENTS.md invariant 6).
-- **Rollback is broken.** `rollback.yml` has never run, and `target: web` has no job. A blank commit redeploys the current `main`, not the previous release, and the job writes no `commit-sha.txt`, so `/api/health` and the Sentry release would be empty after a rollback.
+- **The API has a deliberate recovery; the web has none.** `rollback.yml` was rebuilt by #751 (`d550ffd7`, `69dc58bc`) and is no longer the blank-commit path this packet was first written against. It takes `target` (the only choice is `api`), `commit` (a full 40-character SHA), `confirm` (the same SHA again) and `reason`; its `recovery-gate` job runs `scripts/require-green-release.mjs --target api --recovery` from the workflow's own trusted commit, and `recover-api` then refuses a target whose `wrangler.jsonc` has no `API_RELEASE` or whose `Dockerfile` does not copy `commit-sha.txt`, writes the SHA to `commit-sha.txt` (`:107`), stamps `API_RELEASE` (`:129`), deploys with `scripts/deploy-cloudflare-two-phase.sh`, verifies with `scripts/verify-cloudflare-container-release.sh`, and only then moves `refs/tags/api-runtime` (`:149`). It has never run. **What is still missing is the web leg:** `target` offers only `api` and there is no `rollback-web` job, so recovering the web still means redeploying the current `main` rather than the release before it, and nothing checks which web build actually went live.
 
 **What.**
 1. **`deploy-pages.yml`.**
@@ -209,15 +209,15 @@
    - When the push changed API paths (the classifier prints `classification=runtime`), wait before `pages deploy` until `/api/health/ready` reports this SHA or a descendant of it (`git merge-base --is-ancestor <this sha> <live sha>`). GitHub cancels a queued Deploy API run when a newer push queues behind it, so this exact SHA may never be served.
    - Wait up to 45 minutes; then deploy anyway and open the `Deploy failed` issue saying the API did not converge.
 2. **`rollback.yml`.**
-   - Add a `rollback-web` job that builds the given ref and runs `wrangler pages deploy` with the commands `deploy-pages.yml` uses, so `target: web` and `target: all` work.
-   - The API job defaults to the head SHA of the newest successful Deploy API run before the current `api-runtime` commit whose "Deploy container image + worker" step ran (a run classified `skip` or `pipeline` deployed nothing).
-   - It writes that SHA to `commit-sha.txt`, stamps `API_RELEASE`, deploys with `scripts/deploy-cloudflare-two-phase.sh`, and runs `scripts/verify-cloudflare-container-release.sh`, as `deploy-api.yml` does.
-   - It uses `concurrency: { group: deploy-api }`, so a rollback never runs beside a deploy.
-   - It accepts a `commit` input equal to the live SHA, so REL-self-heal can redeploy the live release.
+   - **Keep the API recovery as it is.** Do not add an automatic target: an earlier draft derived the SHA from the newest Deploy API run, which would replace a typed-twice, green-gated, recorded decision with an automatic choice. The four inputs and the `--recovery` gate stay.
+   - Add `web` to the `target` choice (`all` for both legs) and a `rollback-web` job with the same `commit`, `confirm` and `reason` inputs and the same green-CI gate on the target, run from the workflow's own trusted commit.
+   - `rollback-web` builds the target ref and deploys it with the same `wrangler pages deploy` commands `deploy-pages.yml` uses, under `concurrency: { group: deploy-pages }` so it never runs beside a web deploy; the API leg keeps `deploy-api`.
+   - It verifies the build it put live: read the deployed deployment's commit from Cloudflare and fail loudly when it is not the target. No `web-runtime` tag is needed — `REL-release-verify` already takes the newest successful Deploy Web run's `head_sha` as the expected web SHA, so a recovered web is verified by that same rule once its run completes.
+   - A `commit` equal to the live SHA stays accepted, so REL-self-heal can redeploy the live release — but it must pass all four inputs (`target`, `commit`, `confirm`, `reason`), because `confirm` and `reason` are required and a two-input dispatch is refused before any job starts.
    - It stays manual or dispatched; it never runs on push.
 3. **One drill.** On a quiet hour, roll the web back to the release before and then forward again, and paste both run links.
 
-**Tests** (red first): the default rollback SHA skips `skip` and `pipeline` runs, and the descendant rule accepts a newer API SHA.
+**Tests** (red first): the web recovery refuses a dispatch whose `confirm` differs from `commit` or whose `reason` is empty, and one whose target has no green main CI run; it reports failure and leaves the live web alone when the deployed commit is not the target; the API leg keeps its `--recovery` gate and still moves `api-runtime` only after the release verifies.
 
 **Owned paths.** `.github/workflows/deploy-pages.yml` (the checkout and the API wait only), `.github/workflows/rollback.yml`, `scripts/rollbackTarget.mjs` and `scripts/rollbackTarget.test.ts` (new, if the SHA rule needs code).
 
@@ -226,7 +226,7 @@
 - Landed.
 - Both drill links.
 
-## REL-heartbeats: the watchdog sees a stopped scheduler (lane `jobs`, Tier 2, after REL-watchdog and D-090-BYOR, which edits `server/_core/index.ts`)
+## REL-heartbeats: the watchdog sees a stopped scheduler (lane `jobs`, Tier 2, after REL-watchdog — an **output** edge, this row reads its probe contract — and D-090-BYOR, a **serialization** edge only: both own `server/_core/index.ts`, so PICKER-owns-scope (D-223 (1)) forces the wait even though nothing of BYOR's output is used)
 **Why.** Several jobs stop together when the hourly cron, the tick or the job store fails: payment reconcile, coverage delivery, the D-038 timers and the money check. Nobody hears about it:
 - The overdue flag (`OVERDUE_WINDOWS` in `server/scheduledJobsRoutes.ts`, an inline rule) is computed only when someone opens `/api/admin/jobs`, and no client calls it.
 - A job that exhausts its attempts is skipped silently.
@@ -289,7 +289,7 @@
   - an outage opens;
   - `/api/health/live` and `/api/health/ready` both fail with a 5xx or a Cloudflare error page;
   - `GET /` still answers 200.
-- **Action.** The watchdog dispatches `rollback.yml` once, with `target: api` and `commit:` the SHA of `refs/tags/api-runtime` (a redeploy of the live release, not an older one).
+- **Action.** The watchdog dispatches `rollback.yml` once, with all four inputs the current workflow requires: `target: api`, `commit` and `confirm` both the SHA of `refs/tags/api-runtime` (a redeploy of the live release, not an older one), and a fixed `reason` naming the watchdog, e.g. `self-heal: the API container stopped answering`. A two-input dispatch is refused at validation, before the recovery gate runs, so the pair must always be sent together.
 - **Never** when only the sign-in, catalog or packs probes fail.
 - **Limit.** At most one dispatch per 6 hours (KV `lastHealAt`).
 - **Messages.** The DOWN email and issue say "redeploy of <sha8> dispatched".
@@ -297,6 +297,7 @@
 
 **Tests** (red first):
 - It dispatches only on dead-container rounds.
+- The dispatch carries all four inputs the workflow requires, with `confirm` equal to `commit`, so the request is not refused at validation.
 - At most once per 6 hours.
 - Never on a probe-only failure.
 - The token never appears in a log or an alert.

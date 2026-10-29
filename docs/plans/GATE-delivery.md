@@ -121,7 +121,7 @@
 - Landed.
 - One real PR showing the message.
 
-## PICKER-fullstack-lights: the board shows the lights, and a red live release holds every landing but its fix (lane `picker`, Tier 2, after REL-release-verify, REL-watchdog, PROCESS-review-gate, PICKER-review-wording, PICKER-architect-landing, PICKER-decision-sync, BRANCH-HYGIENE-2, PICKER-avoid-unblock and PICKER-avoid-land, which edit the same files; PICKER-decision-sync and BRANCH-HYGIENE-2 declare no `owns` on `main`, so only these dependency edges keep this row behind them)
+## PICKER-fullstack-lights: the board shows the lights, and a red live release holds every landing but its fix (lane `picker`, Tier 2, after REL-release-verify, REL-watchdog, PROCESS-review-gate, PICKER-review-wording, PICKER-architect-landing, PICKER-decision-sync, BRANCH-HYGIENE-2, PICKER-avoid-unblock and PICKER-avoid-land, which edit the same files — every one of these is a **serialization** edge forced by `owns` overlap (PICKER-owns-scope, D-223 (1)), not an output need; PICKER-decision-sync landed (`86559ba7`) so its edge is inert, BRANCH-HYGIENE-2 is held for the owner (D-232), and the edge clears by narrowing `owns` to a declared anchor (D-200 (2)) rather than by preference)
 **Why.** The picker reads only `main`'s CI (`scripts/next-task.mjs`). A failed deploy, an unverified release, an outage or an overdue job never shows on the board, so agents keep landing features on top of a broken production. `PROCESS-scorecard` reports weekly; this is the live view.
 
 **What.**
