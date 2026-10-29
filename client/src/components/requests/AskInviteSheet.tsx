@@ -155,7 +155,7 @@ export function AskInviteSheet({ requestId, companyName, roleTitle, waitingForIn
                   {error ? <p role="alert" className="rounded-g-tile border border-g-hairline px-3 py-2 text-g-meta text-g-ink">{error}</p> : null}
 
                   {issuedLink ? (
-                    <div className="grid gap-2 rounded-g-tile border border-g-hairline bg-g-surface-sunken p-3">
+                    <div data-clarity-mask="true" className="grid gap-2 rounded-g-tile border border-g-hairline bg-g-surface-sunken p-3">
                       <label htmlFor={`ask-invite-url-${requestId}`} className="text-g-label text-g-ink">Your one-time link</label>
                       <input id={`ask-invite-url-${requestId}`} aria-label="One-time invite link" readOnly value={issuedLink.url} className="min-h-11 w-full rounded-g-control border border-g-control-edge bg-g-surface px-3 text-g-meta text-g-ink" onFocus={event => event.currentTarget.select()} />
                       <p className="text-g-meta text-g-ink-2">Save or share this URL now. For your privacy, we don’t show it again after you leave this page.</p>
