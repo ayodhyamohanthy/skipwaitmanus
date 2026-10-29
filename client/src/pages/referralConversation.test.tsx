@@ -16,7 +16,10 @@ const { authState, userState, go } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/_core/auth", () => ({ useAuth: () => authState, useUser: () => userState, SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
-vi.mock("@/lib/trpc", () => ({ trpc: { profile: { mine: { useQuery: () => ({ data: undefined }) } } } }));
+// The signed-in account (auth.me): the referrer goal page compares its id with
+// the ask's referrerId so a colleague's pending ask never offers Accept (#831 F1).
+const { meState } = vi.hoisted(() => ({ meState: { data: { id: 9 } as { id: number } | undefined } }));
+vi.mock("@/lib/trpc", () => ({ trpc: { profile: { mine: { useQuery: () => ({ data: undefined }) } }, auth: { me: { useQuery: () => meState } } } }));
 // D-048-p3-conversation: the referrer branch moves to the goal page behind
 // goalSurfaceOn("conversation"). Off by default here, exactly like vitest's
 // real flag module (no VITE_GOAL_SURFACES), so every kit case below is unchanged.
@@ -41,6 +44,7 @@ beforeEach(() => {
   authState.isSignedIn = true;
   authState.getToken = vi.fn().mockResolvedValue("test-token");
   go.mockReset();
+  meState.data = { id: 9 };
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -647,5 +651,81 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
     expect(screen.queryByTestId("goal-credits-pill")).toBeNull();
     expect(within(page).queryByText(/credit/i)).toBeNull();
     expect(within(page).getByText(/Referrers are never paid and never ask you for money\./)).toBeTruthy();
+  });
+  // #831 review findings (Cline · 4255 on 0da0c28).
+  it("never offers Accept on a pending ask a colleague holds; says it is with a colleague (#831 F1)", async () => {
+    goalOn();
+    meState.data = { id: 9 };
+    stubFetch(vi.fn(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "not available");
+      return ok({ request: { ...referrerPreview, status: "pending", referrerId: 44, candidateName: null, attachments: [] } });
+    }));
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    expect(within(page).getByRole("heading", { level: 1, name: "A colleague has this request." })).toBeTruthy();
+    expect(within(page).queryByRole("button", { name: /Accept & connect/ })).toBeNull();
+    expect(within(page).queryByRole("button", { name: /Pass privately/ })).toBeNull();
+    expect(within(page).getByRole("link", { name: "All requests" })).toBeTruthy();
+    expect(screen.queryByText(/Asha R\./)).toBeNull();
+  });
+
+  it("offers no decision until the signed-in account is known when the ask names a referrer (#831 F1)", async () => {
+    goalOn();
+    meState.data = undefined;
+    stubFetch(vi.fn(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "not available");
+      return ok({ request: { ...referrerPreview, status: "pending", referrerId: 9, candidateName: null, attachments: [] } });
+    }));
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    await waitFor(() => expect(within(page).getByText(/Product Designer/)).toBeTruthy());
+    expect(within(page).queryByRole("button", { name: /Accept & connect/ })).toBeNull();
+  });
+
+  it("shows the server decision-due time on a pending ask assigned to this referrer, even when the preview answers first (#831 F2)", async () => {
+    goalOn();
+    const due = "2026-11-03T09:00:00.000Z";
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return ok({ request: referrerPreview });
+      if (url.endsWith("/api/company-referrals/601")) return ok({ request: { ...referrerPreview, status: "pending", referrerId: 9, candidateName: null, attachments: [], decisionDueAt: due } });
+      return fail(404, "gone");
+    });
+    stubFetch(fetchMock);
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    expect(await within(page).findByText(/^Accept or pass by /)).toBeTruthy();
+    expect(within(page).getByRole("button", { name: /Accept & connect/ })).toBeTruthy();
+    expect(screen.queryByText(/Asha R\./)).toBeNull();
+  });
+
+  it("keeps the preview's pending card when no assignment exists (claimed detail 404s) (#831 F2)", async () => {
+    goalOn();
+    stubFetch(pendingFetch());
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    expect(await within(page).findByRole("button", { name: /Accept & connect/ })).toBeTruthy();
+    expect(within(page).queryByText(/^Accept or pass by /)).toBeNull();
+  });
+
+  it("opens the pass reasons as a bottom sheet on a phone, so the header and the ask stay unclipped (#831 F3)", async () => {
+    goalOn();
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("max-width"), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false }));
+    const fetchMock = pendingFetch(url => (url.includes("/one-click-review") ? ok({ status: "passed", companyDomain: "acme.com" }) : undefined));
+    stubFetch(fetchMock);
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Pass privately/ }));
+    const sheet = await screen.findByTestId("goal-sheet");
+    expect(screen.queryByTestId("goal-pass-reasons")).toBeNull();
+    const reasons = within(sheet).getAllByRole("radio");
+    expect(reasons).toHaveLength(7);
+    expect(reasons.filter(radio => radio.getAttribute("aria-checked") === "true")).toHaveLength(0);
+    const pass = within(sheet).getByRole("button", { name: /^Pass$/ });
+    expect(pass.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(reasons[3]!);
+    fireEvent.click(within(sheet).getByRole("button", { name: /^Pass$/ }));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => String(url).includes("/one-click-review") && String((init as RequestInit | undefined)?.body).includes("declined"))).toBe(true));
   });
 });
