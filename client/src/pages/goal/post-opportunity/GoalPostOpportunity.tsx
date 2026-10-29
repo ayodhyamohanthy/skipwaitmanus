@@ -12,6 +12,7 @@ import { GoalAppShell, GoalButton, GoalErrorState, GoalField, GoalSkeletonRows, 
 import MyOpenings from "@/components/opportunities/MyOpenings";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { readApiJson } from "@/lib/apiResponse";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
 
 type OpportunityMode = "hiring_now" | "walk_in";
 function localInputToIso(value: string) { if (!value) return undefined; const date = new Date(value); return Number.isNaN(date.getTime()) ? undefined : date.toISOString(); }
@@ -65,7 +66,9 @@ function GoalPostOpportunityBody() {
         <div className="mt-5"><Kicker>YOUR NEXT STEP</Kicker></div>
         <h2 className="mt-3 text-[28px] font-semibold leading-[1.08] tracking-[-0.02em]">Verify your work email first.</h2>
         <p className="mt-3 text-g-body leading-[1.6] text-g-ink-2">Company opportunities are shared only by verified employees. Your name and work email remain private.</p>
-        <div className="mt-6"><GoalButton variant="primary" onClick={() => go("/referrer?returnTo=%2Fpost-opportunity")}>Verify work email</GoalButton></div>
+        {/* Packet guardrail 2: the referrer sign-in is the canonical helper href, never a
+            hand-written URL and never a seeker sign-in control. */}
+        <div className="mt-6"><GoalButton variant="primary" asChild><Link href={referrerSignInHref("/post-opportunity")}>Verify work email</Link></GoalButton></div>
       </div>
     );
   }
@@ -134,7 +137,7 @@ function GoalPostOpportunityBody() {
             ? <GoalButton variant="primary" type="submit" disabledReason={canProceed ? undefined : "Add the required details first"}>Continue<ArrowRight className="h-4 w-4" aria-hidden="true" /></GoalButton>
             : isSignedIn
               ? <GoalButton variant="primary" type="submit" busy={publishing} busyLabel="Publishing…" disabledReason={canProceed ? undefined : "Add the required details first"}>Publish privately<ArrowRight className="h-4 w-4" aria-hidden="true" /></GoalButton>
-              : <GoalButton variant="primary" type="button" onClick={() => go("/referrer")}>Use company email to publish</GoalButton>}
+              : <GoalButton variant="primary" type="button" asChild><Link href={referrerSignInHref("/post-opportunity")}>Use company email to publish</Link></GoalButton>}
         </div>
       </form>
     </div>

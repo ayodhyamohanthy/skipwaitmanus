@@ -103,4 +103,33 @@ describe("goal assistant flows",()=>{
      expect(screen.queryByRole("button", { name: "Send referral" })).toBeNull();
    });
  });
+
+ it("sends the cost it shows and, on 409 cost_changed, shows the new cost and re-approves at it (#644)", async () => {
+   const approval = { id: 12, kind: "ask_send", status: "pending", provider: "custom", companyDomain: "fictional.invalid", role: "Fictional role", note: "Confirmed skill", creditCount: 1, slotCount: 1, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86400000).toISOString() };
+   let current = { level: 5, cost: 5 };
+   let posts = 0;
+   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+     if (init?.method === "POST") {
+       posts += 1;
+       if (posts === 1) { current = { level: 6, cost: 6 }; return response({ error: "This referral request now costs 6 referrals. Approve again to send it at that cost.", code: "cost_changed", cost: current }, 409); }
+       return response({ approval: { id: 12, status: "approved" } });
+     }
+     if (url.includes("summary")) return response({ summary: { totalAvailable: 8 } });
+     return response({ approvals: [{ ...approval, status: posts > 1 ? "approved" : "pending", cost: current }] });
+   });
+   vi.stubGlobal("fetch", fetch);
+   render(<GoalApprove />);
+   expect(await screen.findByText("5 referrals")).toBeTruthy();
+   fireEvent.click(screen.getByRole("button", { name: "Send referral" }));
+   expect(await screen.findByText("This referral request now costs 6 referrals. Approve again to send it at that cost.")).toBeTruthy();
+   expect(await screen.findByText("6 referrals")).toBeTruthy();
+   expect(screen.queryByText("Decision recorded")).toBeNull();
+   fireEvent.click(screen.getByRole("button", { name: "Send referral" }));
+   expect(await screen.findByText("Decision recorded")).toBeTruthy();
+   const bodies = fetch.mock.calls.filter(([, init]) => init?.method === "POST").map(([, init]) => JSON.parse(String(init?.body)));
+   expect(bodies).toEqual([
+     { decision: "approved", kind: "ask_send", expectedCost: { level: 5, cost: 5 } },
+     { decision: "approved", kind: "ask_send", expectedCost: { level: 6, cost: 6 } },
+   ]);
+ });
 });
