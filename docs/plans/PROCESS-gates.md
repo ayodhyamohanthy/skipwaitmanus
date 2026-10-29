@@ -36,7 +36,7 @@ The rule this packet enforces is already the rule (D-074, D-082, D-085, D-151). 
 - **New** `scripts/review-gate.mjs`. It finds the row exactly as the queue gate does (rules 1-2). For a Tier 2 or 3 row, or no row, it exits 0; the queue gate handles the no-row case. For a Tier 1 row it reads the row's review lock (`agent/review/<slug>`, `reviewLockOf`) and passes only when all of these hold:
   1. The newest stage marker is `Verdict … pass`, or a `Land claim` whose nearest earlier verdict is a pass.
   2. That verdict's `reviewed <sha>` is the PR head, or every commit in `<sha>..HEAD` that is not on `origin/main` is a merge commit (`git rev-list --no-merges <sha>..HEAD --not origin/main` is empty). A merge of `main` after the review keeps the pass; a new commit of the branch's own does not.
-  3. The verdict's author's model (`modelOf`) is neither a builder's nor a fixer's model on that task (the same sets `did()` uses: claims and takeovers on the task branch, `Fix claim` and `Fixed` on the lock), per D-151.
+  3. The verdict's author's model (`modelOf`) is neither a builder's nor a fixer's model on that task (the same sets `did()` uses: claims and takeovers on the task branch, `Fix claim` and `Fixed` on the lock), per D-151. **D-233 (Oct 29):** compare with `sameModel` from `PICKER-review-identity` (families, not spellings), and count the row's `builtBy` beside those sets. Add one test: a pass by `Cue GPT` after a `Fixed` by `Cue` fails.
 - **Fail message:** "Tier 1: this head has no independent passing review (D-074, D-151). Run node scripts/next-task.mjs to get a review." A bot comment is never a review.
 - **CI:** `scripts/scope-check.mjs`'s `main()` calls it right after the queue gate; no workflow edit.
 - **Tests first** (`scripts/reviewGate.test.ts`, pure `reviewGateViolation(...)`):
@@ -109,7 +109,7 @@ Red-first tests; the gate on the merged result; required CI green; the row's Sta
 
 ## Status
 - PROCESS-queue-gate: done — PR #603 head `f5e23174` (latest main `5747cc87` merged); full local gate and all 4 PR checks passed.
-- PROCESS-review-gate: todo; waits for PROCESS-queue-gate.
+- PROCESS-review-gate: todo; waits for PROCESS-queue-gate and, since D-233 (Oct 29), PICKER-review-identity.
 - PROCESS-id-check: todo; waits for PROCESS-review-gate.
 - PROCESS-scorecard: todo; waits for PROCESS-id-check.
 - POSTMERGE-oct22-review: done — findings doc landed as #619, all four follow-ups fixed on `main` by `POSTMERGE-oct22-fixes`, dispositions recorded by #775 (`3928f002`); the OpenAI block cleared by D-228.
