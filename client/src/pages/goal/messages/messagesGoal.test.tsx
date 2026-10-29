@@ -27,7 +27,7 @@ vi.mock("@/lib/goalSurfaces", async (importOriginal) => {
   return { ...actual, goalSurfaceOn: (id: string) => flagState.on && id === "messages" };
 });
 
-import Messages from "./Messages";
+import Messages from "../../Messages";
 
 const now = new Date().toISOString();
 const memberBlock = { reason: "referrer_acceptance_required", error: "Messages with a referrer open after they accept your request.", senderRole: "member" };
@@ -76,7 +76,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.sessionStorage.clear(); });
 // Warm the lazily loaded goal chunk so a cold transform on a busy runner
 // never outlasts findBy's timeout.
-beforeAll(async () => { await import("./goal/messages/GoalMessages").catch(() => undefined); }, 60_000);
+beforeAll(async () => { await import("./GoalMessages").catch(() => undefined); }, 60_000);
 
 const primaries = () => document.querySelectorAll("[data-g-primary]");
 /** Opens a chat from its row in the list (the next-step button names the same person). */
