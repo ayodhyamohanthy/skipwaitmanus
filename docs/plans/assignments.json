@@ -820,7 +820,7 @@
       "tier": 1,
       "lane": "terminology",
       "branch": "agent/copy/d180-conversation-copy",
-      "status": "todo",
+      "status": "done",
       "epic": "D-048-p3",
       "dependsOn": [],
       "owns": [
