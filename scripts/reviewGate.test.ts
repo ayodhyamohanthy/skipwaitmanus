@@ -5,8 +5,8 @@ import { REVIEW_GATE_FAIL, findGateRow, reviewGateViolation, reviewedOf } from "
 // independent pass verdict that names its exact head (or a head that only merged main after it).
 type Marker = { verb: string; id: string; who: string; verdict?: string; reviewed?: string | null };
 
-const HEAD = "h".repeat(40);
-const REVIEWED = "r".repeat(40);
+const HEAD = "a".repeat(40);
+const REVIEWED = "b".repeat(40);
 const task1 = { id: "T1", tier: 1, branch: "agent/queue/t1" };
 const task2 = { id: "T2", tier: 2, branch: "agent/queue/t2" };
 const built: Marker[] = [{ verb: "Claim", id: "T1", who: "Instinct · b1" }];

@@ -17,6 +17,7 @@ import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { ownsEntry, ownsMatches, slugOf } from "./nextTaskCore.mjs";
 import { runQueueGate } from "./queue-gate.mjs";
+import { runReviewGate } from "./review-gate.mjs";
 
 const ASSIGNMENTS = "docs/plans/assignments.json";
 const SWITCH_ONLY_LINE_LIMIT = 12;
@@ -75,6 +76,8 @@ export function checkBranch(taskId) {
 function main() {
   const queueGateExit = runQueueGate();
   if (queueGateExit !== 0) return queueGateExit;
+  const reviewGateExit = runReviewGate();
+  if (reviewGateExit !== 0) return reviewGateExit;
 
   const taskId = process.argv[2];
   if (!taskId) {
