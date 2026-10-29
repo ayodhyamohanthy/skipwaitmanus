@@ -10,5 +10,12 @@ Owner freeze Oct 25 (user iMessages: "Freezer it" phonemsg-01M5SE7ASV2Y7YCRRZ99E
 
 **Register (Oct 27):** the decision this row implements is D-219 (PR #720), whose authority chain is the 19:13 to 19:35 IST messages Instinct cited on PR #666 (comment 6423014846); the 17:18 to 17:50 messages above are the earlier freeze steps. `docs/PRICING.md` is aligned in #720, not on this branch. D-219's conditions bind this build: nothing goes on sale, referrer and company plans stay unchargeable, and the regular price after a founding cap is unsettled (the code must not price it).
 
+## Release check: no page still offers a paused pack (D-234, Oct 29)
+This PR sets `CREDIT_PACKS_ON_SALE` to false and refuses a new pack checkout with a 409 before any provider call. Before it lands, every pack offer on a page this row owns reads `CREDIT_PACKS_ON_SALE`, so its words stay true whichever state is live (D-044, D-153). On `main` `622d1b0f` two such pages sit outside the original diff, and this row now owns both:
+- `shared/landingContent.ts:17-18, 58, 99`, rendered by `client/src/pages/Home.tsx`, `GoalLanding.tsx` and `GoalLandingV9.tsx`: the landing page's "Buy credits" link ("Extra referral credits are sold in one-time packs that never expire") and its "What does it cost?" answer ("Extra credits are sold in one-time packs (from ₹99 for 2 in India, $5 for 5 elsewhere)").
+- `client/src/pages/About.tsx:22`: "more use credits, which they can buy online as one-off credit packs that never expire."
+
+A test pins each with `CREDIT_PACKS_ON_SALE` false, and the reviewer checks both at the exact head. New words follow D-180: no page says "credit(s)" or the noun "ask". Two more lines sit in files other open rows own, so they are not this PR's: `/premium`'s search title and description (`shared/publicRoutes.ts:39`) go to `D-176-public-claims`, and the composer's no-credits lines (`shared/moneyCopy.ts:114-116`) go to `D-180-a-free-asks-chip`. Terms (`client/src/pages/Terms.tsx:23`) stays with `LAUNCH-legal-copy` and the owner. Merging `main` into #666 is clean on `622d1b0f` (tree `73c61fde`) and leaves no `ci.yml` delta, so that merge meets the Oct 28 handoff condition.
+
 ## Gate
 Green required CI + one independent (non-builder) review per D-151 before merge. Flag-off behavior must stay flag-off.

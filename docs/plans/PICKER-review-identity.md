@@ -26,6 +26,7 @@
    - `D-180-a-free-asks-chip`: `"status": "todo"`, `"builtBy": ["Instinct"]` (it still waits for its dependencies).
 
    Then run `node scripts/next-task.mjs --as "Claude Code · t1"` and `node scripts/next-task.mjs --as "Qoder · t2"` against the merged tree (`NEXT_TASK_LIST_REF=<your branch>`). Paste both outputs in the pull request: the first is never handed #666's review, the second is.
+8. **The CEO step says what D-225 says (D-234).** In `ceoSteps` (`scripts/nextTaskText.mjs:150`), replace "Then run the picker again: Claude Code sessions take builds like any other session once rows are open (D-200)." with "Then run the picker again: a Claude session takes a packet (architect) or re-sync it is offered and passes `--avoid` for builds, fixes, make-green and landings (D-225, D-234)." No test pins the old sentence: `scripts/nextTask.test.ts:543` and `:865` check only "CEO REVIEW".
 
 ## Tests (red first, in a new file `scripts/nextTaskReviewIdentity.test.ts`)
 - `sameModel`:
@@ -42,6 +43,7 @@
   - one moved 30 minutes ago stays `progress`;
   - one whose branch is merged says `landed, mark done`.
 - The review text says `--avoid` and no longer says "report it blocked".
+- The CEO-review text no longer says "Claude Code sessions take builds"; it names packets and re-syncs as the Claude session's work and `--avoid` for builds (What 8).
 
 ## Must stay green, unedited
 - `scripts/nextTask.test.ts` is owned by `PROCESS-review-gate`, so do not edit it. If a test there changes outcome under family matching, stop and report it to the CEO with the test name.
@@ -66,4 +68,4 @@
 - After landing, `node scripts/next-task.mjs --status` shows `PRICING-banded-oct25` as `pr-green` with `review needs-review`, not `in-review`.
 
 ## Status
-- PICKER-review-identity: todo — registered by D-233 (Oct 29).
+- PICKER-review-identity: todo — registered by D-233 (Oct 29); D-234 (Oct 29) adds What 8.

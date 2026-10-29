@@ -191,7 +191,7 @@
       "lane": "pricing",
       "branch": "agent/pricing/banded-plans-oct25",
       "status": "in-review",
-      "syncedTo": "D-233",
+      "syncedTo": "D-234",
       "dependsOn": [
         "D-048-F-credits"
       ],
@@ -218,9 +218,11 @@
         "shared/planFamily.test.ts",
         "shared/planFamily.ts",
         "shared/planReach.test.ts",
-        "client/src/components/goal/useGoalShellMeta.ts"
+        "client/src/components/goal/useGoalShellMeta.ts",
+        "client/src/pages/About.tsx",
+        "shared/landingContent.ts"
       ],
-      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first. Oct 27 queue sync (Claude Code, D-219; changeable): moved up to sit just above LAUNCH-legal-copy and no longer waits on it; LAUNCH-legal-copy now waits for this row instead, because it is owner-held (legal text), shares only policyPages.test.tsx, and its Terms and Cancellation text must describe the pricing this row lands. The owner's freeze said 'push it immediately', and the live app could still open an archived legacy pack cart on Oct 25 (PR #666 comment 6399494075). It still waits for D-048-F-credits (shared AppShell.tsx line), which D-217 unparked to land first through its Tier 1 path. Oct 28 ci.yml handoff (holder's acknowledgment: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/666#issuecomment-6464335154): .github/workflows/ci.yml moved to CI-architect-real-checks, which carries this branch's only ci.yml delta, the typecheck heap line from c9572fcf, byte for byte. #666 lands no ci.yml change: until that row lands it runs no CI carrying the delta, or first restores ci.yml to main's bytes in a forward-only commit; after it lands, #666 merges main and its ci.yml diff must be empty (a conflict resolves to main's version exactly). D-233 (Oct 29): this row sat at in-review, which the picker never hands out, so no reviewer was routed after the Oct 27 07:37Z request. PICKER-review-identity moves it to todo with builtBy [Instinct, Claude], so the picker hands its review to another model. The packet is unaffected. #666 is 341 commits behind main: the review is of the head it finds, and the lander merges main (a merge commit keeps the pass) with .github/workflows/ci.yml at main's bytes."
+      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first. Oct 27 queue sync (Claude Code, D-219; changeable): moved up to sit just above LAUNCH-legal-copy and no longer waits on it; LAUNCH-legal-copy now waits for this row instead, because it is owner-held (legal text), shares only policyPages.test.tsx, and its Terms and Cancellation text must describe the pricing this row lands. The owner's freeze said 'push it immediately', and the live app could still open an archived legacy pack cart on Oct 25 (PR #666 comment 6399494075). It still waits for D-048-F-credits (shared AppShell.tsx line), which D-217 unparked to land first through its Tier 1 path. Oct 28 ci.yml handoff (holder's acknowledgment: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/666#issuecomment-6464335154): .github/workflows/ci.yml moved to CI-architect-real-checks, which carries this branch's only ci.yml delta, the typecheck heap line from c9572fcf, byte for byte. #666 lands no ci.yml change: until that row lands it runs no CI carrying the delta, or first restores ci.yml to main's bytes in a forward-only commit; after it lands, #666 merges main and its ci.yml diff must be empty (a conflict resolves to main's version exactly). D-233 (Oct 29): this row sat at in-review, which the picker never hands out, so no reviewer was routed after the Oct 27 07:37Z request. PICKER-review-identity moves it to todo with builtBy [Instinct, Claude], so the picker hands its review to another model. The packet is unaffected. #666 is 341 commits behind main: the review is of the head it finds, and the lander merges main (a merge commit keeps the pass) with .github/workflows/ci.yml at main's bytes. D-234 (Oct 29, Claude Opus 5.5 · de79 as CEO; changeable): also owns client/src/pages/About.tsx and shared/landingContent.ts, which no open row owns. Once the pause is live they would still offer packs (the landing page's Buy credits link and cost answer, and /about), so #666 does not land until every pack offer in them reads CREDIT_PACKS_ON_SALE (packet, release check). /premium's search title and description go to D-176-public-claims and the composer's no-credits lines to D-180-a-free-asks-chip; Terms stays with LAUNCH-legal-copy. #666 merges with main 622d1b0f without conflict and its ci.yml delta is now empty."
     },
     {
       "id": "PICKER-review-identity",
@@ -231,14 +233,14 @@
       "lane": "picker",
       "branch": "agent/queue/picker-review-identity",
       "status": "todo",
-      "syncedTo": "D-233",
+      "syncedTo": "D-234",
       "dependsOn": [],
       "owns": [
         "scripts/nextTaskCore.mjs",
         "scripts/nextTaskText.mjs",
         "scripts/nextTaskReviewIdentity.test.ts"
       ],
-      "note": "D-233 (Oct 29, Claude Opus 5.5 as CEO): the picker never hands out an in-review row (nextTaskCore.mjs:452, :635), so #666 (frozen D-219 plans) and #734 (main CI flake) have waited with green CI for a reviewer since Oct 27-28; and D-151 compares exact spellings (modelOf :112), so D-132-audit's only pass came from Cue GPT 40 minutes after Cue's fix. Build the packet exactly; its last step moves PRICING-banded-oct25, FIX-share-hub-link-ready and D-180-a-free-asks-chip to todo with builtBy. Do not edit scripts/nextTask.test.ts (PROCESS-review-gate owns it)."
+      "note": "D-233 (Oct 29, Claude Opus 5.5 as CEO): the picker never hands out an in-review row (nextTaskCore.mjs:452, :635), so #666 (frozen D-219 plans) and #734 (main CI flake) have waited with green CI for a reviewer since Oct 27-28; and D-151 compares exact spellings (modelOf :112), so D-132-audit's only pass came from Cue GPT 40 minutes after Cue's fix. Build the packet exactly; its last step moves PRICING-banded-oct25, FIX-share-hub-link-ready and D-180-a-free-asks-chip to todo with builtBy. Do not edit scripts/nextTask.test.ts (PROCESS-review-gate owns it). D-234 (Oct 29, Claude Opus 5.5 · de79 as CEO; changeable): also correct the CEO-review step 5 in scripts/nextTaskText.mjs (ceoSteps), which still says Claude Code sessions take builds (D-200 wording that D-225 superseded): a Claude session takes packets and re-syncs, never builds."
     },
     {
       "id": "LAUNCH-legal-copy",
@@ -278,6 +280,81 @@
         "docs/qa/"
       ],
       "note": "Rule 8 proof before any seeker is invited: BUGFREE_GATE sections 1-4 stay BLOCKED until the signed-in legs are re-run. D-214 (Oct 26): the signed-in route is the authorized alias QA executor - both alias identities (seeker + verified referrer) signed in Oct 26 18:59 IST with codes read by the executor itself (no owner relay; 2 of 4 approved sign-in emails used), and read-only results are landing on issue 709 with account-state-only limits. qa-sweep-1/2 are excluded (no authority; deletion intent recorded, execution unverified) and no owner code forward is needed. Remaining: populated-UI legs at 1280/390 and the runtime checkout refusal (held - no checkout POST without an explicit no-wallet-risk authorization). Never pay or pass the hosted payment form (D-065). The stale packs-stay-on-sale text in docs/PRICING.md reconciles to the Oct 25 frozen banded model alongside PR 666. Defects found become their own rows. D-216 (Oct 27): status moved to owner to hold draft PR #710 from premature automated landing until populated-UI execution under issue #709 completes; unblocks the queue."
+    },
+    {
+      "id": "D-174-seeker-journey-build",
+      "title": "Build the replacement seeker journey per D-174: company search, jobs, ask, pool routing",
+      "row": "D-174",
+      "packet": null,
+      "tier": 2,
+      "lane": "d048-foundation",
+      "branch": "agent/queue/d174-seeker-journey",
+      "status": "architect",
+      "syncedTo": "D-234",
+      "dependsOn": [
+        "D-166-journey-decisions-sync"
+      ],
+      "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-189: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176. D-234 (Oct 29, Claude Opus 5.5 · de79 as CEO; changeable): moved to the head of new work. D-048-p3-live-review-find, and through it D-086.mount, D-086-demand-list, D-099-bonus-line and D-180-a-free-asks-chip, wait for this packet while one outside company can see a request. Packets are reasoning work, so a Claude session in the D-225 role takes this one when offered; any capable session may (D-200)."
+    },
+    {
+      "id": "D-089-request-inbox",
+      "title": "Employee request-inbox link with screen name (idea 1, loop L4, D-089 (3)): write the packet",
+      "row": "D-089",
+      "packet": null,
+      "tier": 1,
+      "lane": "supply-inbox",
+      "branch": "agent/queue/d089-request-inbox",
+      "status": "architect",
+      "syncedTo": "D-234",
+      "dependsOn": [],
+      "note": "D-163: the owner's order puts idea 1 between BYOR and the bonus pages (D-089 (3), D-099), and it had no row, so D-099 could never start. Write the packet now (D-109); its build follows D-090-BYOR, so the packet PR adds D-090-BYOR (and D-086-demand-list, which ideas 1 and 3 still follow) to this row's dependsOn. Start from what is live: the referrer fast-track link already routes asks to one employee (/fast/:linkCode and /refer/:companySlug/:vanityAlias, D-050; client/src/pages/FastTrackLink.tsx, VanityFastTrackLink.tsx, getOrCreateReferrerFastTrackLink). The packet decides what 'with screen name' adds on top, reusing the D-106 screen name if #382 has landed, never the referrer's real name before an accept (D-019(e)), and names its owned paths. Tier 1: referrer identity on a public link. D-234 (Oct 29, Claude Opus 5.5 · de79 as CEO; changeable): moved to the head of new work: supply loop L4, and D-099-bonus-pages waits for this packet. Its build still follows D-090-BYOR."
+    },
+    {
+      "id": "D-174-company-search",
+      "title": "Server company search with name aliases and accent-folding: GET /api/companies/search (at most 10, name only)",
+      "row": "D-193",
+      "packet": "docs/plans/D-193-journey-foundations.md",
+      "tier": 2,
+      "lane": "d174-search",
+      "branch": "agent/queue/d174-company-search",
+      "status": "todo",
+      "syncedTo": "D-234",
+      "dependsOn": [],
+      "note": "D-193 packet section 5.4. Feeds the journey's 'companies pop up as you type' step. Static alias map, no migration. Does not touch normalizedEmployerKey (routing). Register before /api/companies/:slug. D-234 (Oct 29, Claude Opus 5.5 · de79 as CEO; changeable): moved to the head of new work: the journey's first step and the only dependency of D-086.count.",
+      "epic": "D-174",
+      "owns": [
+        "server/companySearch.ts",
+        "server/companySearch.test.ts",
+        "shared/companyNameAliases.ts",
+        "shared/companies.ts",
+        "server/companyDirectoryRoutes.ts",
+        "server/companyDirectoryRoutes.test.ts"
+      ]
+    },
+    {
+      "id": "D-086.count",
+      "title": "Demand count (D-086): distinct people with a live referral request at each listed company (public, k-anonymous) and the unlisted-domain admission queue (admin only), behind two switches that start false",
+      "row": "D-086",
+      "packet": "docs/plans/D-086-demand-list.md",
+      "tier": 1,
+      "lane": "demand-count",
+      "branch": "agent/queue/d086-count",
+      "status": "todo",
+      "syncedTo": "D-234",
+      "epic": "D-086-demand-list",
+      "dependsOn": [
+        "D-174-company-search"
+      ],
+      "owns": [
+        "shared/companyDemand.ts",
+        "shared/companyDemand.test.ts",
+        "server/companyDemand.ts",
+        "server/companyDemand.fixture.test.ts",
+        "server/companyDemandRoutes.ts",
+        "server/companyDemandRoutes.test.ts",
+        "server/companyDirectoryRoutes.ts (switch only)"
+      ],
+      "note": "D-086 packet §5.1. Liveness is status pending plus the imported isAskExpired (no age cutoff of its own; follows D-174-expiry-clock-removal with no change; awaiting-reconfirm requests count). Coverage-neutral (reads no referrer or availability table), listed companies only in public, distinct canonical people, never companySuggestions votes. The admin queue lists unowned corporate domains by people, private, no-store. Mounts inside registerCompanyDirectoryRoutes (D-223 (6)), so it waits for D-174-company-search, which owns that file. Both switches stay false. D-234 (Oct 29, Claude Opus 5.5 · de79 as CEO; changeable): moved up with D-174-company-search, which it waits for; once it lands, D-086.ui waits only for D-090-BYOR. Both switches stay false."
     },
     {
       "id": "SHELL-focus-clearance",
@@ -2737,31 +2814,6 @@
       "dependsOn": []
     },
     {
-      "id": "D-086.count",
-      "title": "Demand count (D-086): distinct people with a live referral request at each listed company (public, k-anonymous) and the unlisted-domain admission queue (admin only), behind two switches that start false",
-      "row": "D-086",
-      "packet": "docs/plans/D-086-demand-list.md",
-      "tier": 1,
-      "lane": "demand-count",
-      "branch": "agent/queue/d086-count",
-      "status": "todo",
-      "syncedTo": "D-227",
-      "epic": "D-086-demand-list",
-      "dependsOn": [
-        "D-174-company-search"
-      ],
-      "owns": [
-        "shared/companyDemand.ts",
-        "shared/companyDemand.test.ts",
-        "server/companyDemand.ts",
-        "server/companyDemand.fixture.test.ts",
-        "server/companyDemandRoutes.ts",
-        "server/companyDemandRoutes.test.ts",
-        "server/companyDirectoryRoutes.ts (switch only)"
-      ],
-      "note": "D-086 packet §5.1. Liveness is status pending plus the imported isAskExpired (no age cutoff of its own; follows D-174-expiry-clock-removal with no change; awaiting-reconfirm requests count). Coverage-neutral (reads no referrer or availability table), listed companies only in public, distinct canonical people, never companySuggestions votes. The admin queue lists unowned corporate domains by people, private, no-store. Mounts inside registerCompanyDirectoryRoutes (D-223 (6)), so it waits for D-174-company-search, which owns that file. Both switches stay false."
-    },
-    {
       "id": "D-086.ui",
       "title": "Demand line and list components (D-086): a count from 3, 'A few people' for 1-2, nothing at zero; employee help links via referrerSignInHref; unlisted-company lines; employer-bonus line; switch off",
       "row": "D-086",
@@ -3005,19 +3057,6 @@
       "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-163: no longer waits for seeker-passwords; shared/telemetryScrub.ts is new on main and #324 picks it up when it merges main. Scope per the packet's CEO addendum (§0): adds the vanity alias and /api/documents/by-key/:key; alerts drop the query."
-    },
-    {
-      "id": "D-089-request-inbox",
-      "title": "Employee request-inbox link with screen name (idea 1, loop L4, D-089 (3)): write the packet",
-      "row": "D-089",
-      "packet": null,
-      "tier": 1,
-      "lane": "supply-inbox",
-      "branch": "agent/queue/d089-request-inbox",
-      "status": "architect",
-      "syncedTo": "D-227",
-      "dependsOn": [],
-      "note": "D-163: the owner's order puts idea 1 between BYOR and the bonus pages (D-089 (3), D-099), and it had no row, so D-099 could never start. Write the packet now (D-109); its build follows D-090-BYOR, so the packet PR adds D-090-BYOR (and D-086-demand-list, which ideas 1 and 3 still follow) to this row's dependsOn. Start from what is live: the referrer fast-track link already routes asks to one employee (/fast/:linkCode and /refer/:companySlug/:vanityAlias, D-050; client/src/pages/FastTrackLink.tsx, VanityFastTrackLink.tsx, getOrCreateReferrerFastTrackLink). The packet decides what 'with screen name' adds on top, reusing the D-106 screen name if #382 has landed, never the referrer's real name before an accept (D-019(e)), and names its owned paths. Tier 1: referrer identity on a public link."
     },
     {
       "id": "D-095-one-tap",
@@ -3607,28 +3646,6 @@
       ]
     },
     {
-      "id": "D-174-company-search",
-      "title": "Server company search with name aliases and accent-folding: GET /api/companies/search (at most 10, name only)",
-      "row": "D-193",
-      "packet": "docs/plans/D-193-journey-foundations.md",
-      "tier": 2,
-      "lane": "d174-search",
-      "branch": "agent/queue/d174-company-search",
-      "status": "todo",
-      "syncedTo": "D-227",
-      "dependsOn": [],
-      "note": "D-193 packet section 5.4. Feeds the journey's 'companies pop up as you type' step. Static alias map, no migration. Does not touch normalizedEmployerKey (routing). Register before /api/companies/:slug.",
-      "epic": "D-174",
-      "owns": [
-        "server/companySearch.ts",
-        "server/companySearch.test.ts",
-        "shared/companyNameAliases.ts",
-        "shared/companies.ts",
-        "server/companyDirectoryRoutes.ts",
-        "server/companyDirectoryRoutes.test.ts"
-      ]
-    },
-    {
       "id": "D-174-job-catalog",
       "title": "Company jobs from verified Greenhouse boards: contracts, migration 0120, adapter, refresh and GET /api/companies/:slug/jobs with filters (switch off)",
       "row": "D-193",
@@ -3667,14 +3684,14 @@
       "lane": "d176-claims",
       "branch": "agent/queue/d176-public-claims",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-234",
       "dependsOn": [
         "D-176-availability-framing-removal",
         "D-048-fix-landing-flash-snapshot-v2",
         "D-048-F-static-frame",
         "D-174-fix-post-binding"
       ],
-      "note": "D-193 packet section 5.6. Production marks only skipwait and go-neutrinos open, while Home and the /explore description claim Wipro and TCS too. Copy only; dropping openToReferrals/openCount from the public payload waits for the D-189 journey packet (D-193 (6)).",
+      "note": "D-193 packet section 5.6. Production marks only skipwait and go-neutrinos open, while Home and the /explore description claim Wipro and TCS too. Copy only; dropping openToReferrals/openCount from the public payload waits for the D-189 journey packet (D-193 (6)). D-234 (Oct 29, Claude Opus 5.5 · de79 as CEO; changeable): also /premium's search title and description (shared/publicRoutes.ts:39, 'Buy referral credit packs') read CREDIT_PACKS_ON_SALE, so they stay true whether or not PRICING-banded-oct25's pack pause has landed.",
       "epic": "D-174",
       "owns": [
         "client/src/pages/Home.tsx",
@@ -3810,21 +3827,6 @@
       "owns": [
         "docs/research/D-175-coverage.md"
       ]
-    },
-    {
-      "id": "D-174-seeker-journey-build",
-      "title": "Build the replacement seeker journey per D-174: company search, jobs, ask, pool routing",
-      "row": "D-174",
-      "packet": null,
-      "tier": 2,
-      "lane": "d048-foundation",
-      "branch": "agent/queue/d174-seeker-journey",
-      "status": "architect",
-      "syncedTo": "D-227",
-      "dependsOn": [
-        "D-166-journey-decisions-sync"
-      ],
-      "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-189: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176."
     },
     {
       "id": "D-166-founder-decisions-sync",
@@ -4048,7 +4050,7 @@
       "lane": "terminology",
       "branch": "agent/copy/free-asks-chip-terminology",
       "status": "in-review",
-      "syncedTo": "D-233",
+      "syncedTo": "D-234",
       "dependsOn": [
         "PRICING-banded-oct25",
         "D-174-held-ask-reconfirm",
@@ -4071,7 +4073,7 @@
         "client/src/components/plans/planCatalog.test.ts",
         "server/moneyCopy.test.ts"
       ],
-      "note": "Headline-only slice of D-180: free monthly allowance says referrals (owner headline decision Oct 23). Paid-unit credits and the ASK_COST tail stay with D-180-referral-words; no behavior or eligibility change. Depends on the active owners of the touched files so their in-flight edits land first; rebase the test expectations forward on any conflict. Oct 27 (Claude Code, landing review): also waits for PRICING-banded-oct25 (PR #666), which owns PlansV2.tsx, PlansV2.test.tsx and policyPages.test.tsx too; #666 rewrites PlansV2 with referral wording, so this slice drops its PlansV2 hunks when it rebases. D-233 (Oct 29): PICKER-review-identity moves it to todo with builtBy [Instinct]; it still waits for its dependencies. Packet unaffected."
+      "note": "Headline-only slice of D-180: free monthly allowance says referrals (owner headline decision Oct 23). Paid-unit credits and the ASK_COST tail stay with D-180-referral-words; no behavior or eligibility change. Depends on the active owners of the touched files so their in-flight edits land first; rebase the test expectations forward on any conflict. Oct 27 (Claude Code, landing review): also waits for PRICING-banded-oct25 (PR #666), which owns PlansV2.tsx, PlansV2.test.tsx and policyPages.test.tsx too; #666 rewrites PlansV2 with referral wording, so this slice drops its PlansV2 hunks when it rebases. D-233 (Oct 29): PICKER-review-identity moves it to todo with builtBy [Instinct]; it still waits for its dependencies. Packet unaffected. D-234 (Oct 29, Claude Opus 5.5 · de79 as CEO; changeable): also the composer's no-credits lines (shared/moneyCopy.ts:114-116, 'Add a credit pack in Plans and credits') read CREDIT_PACKS_ON_SALE: while packs are paused they never point to a pack and say what the seeker can actually do (D-153)."
     },
     {
       "id": "D-048-copy-goal-twins",

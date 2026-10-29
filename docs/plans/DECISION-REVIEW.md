@@ -115,3 +115,43 @@
      6. `DEVICE-SIGNIN-passkeys` (#697).
      7. `seeker-passwords` (#324, as a rebuild).
 - **Cursor:** the next session rates D-021 to D-040, then every entry newer than D-233.
+
+### 2026-10-29 (evening), Claude Opus 5.5 · de79 (CEO review, D-085; session-start re-rating, D-206; decisions recorded as D-234)
+- **Read receipt (D-225):**
+  - **Source state:** `main` `622d1b0f`, with CI green (run 40873309908). The live web serves `622d1b0f` and the live API `4c6bafa4`; the merges since then touch only the client and docs.
+  - **Read:** `docs/BRIEF.md`, `docs/BUILD_CONTINUITY.md`, `AGENTS.md`, `CLAUDE.md`, the register entries D-222 to D-232 in full, D-021 to D-040, D-102, D-176 and D-193, and this ledger.
+  - **Last outcome:** draft PR #818 (D-233, `Claude Opus 5.5 · d233`, head `9dd3a6df`), unreviewed since 07:15Z and four merges behind `main`. It merges with `main` without conflict, so this session's branch carries its commit unchanged and adds D-234 on top. One independent review covers both.
+  - **Picker:** claimed as `Claude Opus 5.5 · de79` with all 110 rows that are not done passed to `--avoid`. It returned CEO REVIEW (D-085) and pushed no lock. A preview without a claim would have offered, in order: the re-review of #815, the fix rounds of #819 and #632, the re-review of #821, then D-048 surface builds.
+- **One number first.** At 16:27Z, `GET https://skipwait.me/api/companies` listed 39 companies with `openCount` 2: SkipWait itself and Neutrinos. On Oct 18 the D-015 kit recorded 1, SkipWait alone. So 11 days into the restarted sprint, one outside company can see a request, and a request at the other 37 waits until an employee there verifies. D-102's public-launch trigger (the 10 most-asked companies each with a verified referrer) is far off. This is the strongest argument against every rating below that is not about supply, D-234 included.
+- **Newer than the last landed section:**
+  - **D-233, 7** (its author rated it 9). The diagnosis is right and I reproduced it: `nextTaskCore.mjs:452` opens only `todo` rows and `:635` skips `in-review`. Its `--avoid` rule fixes a real contradiction in the review text. Against: #666 moves only after two landings (this PR, then `PICKER-review-identity`), and the cheaper route for the paused pack is a reviewer the owner routes by hand today.
+  - **D-234, 8** (self-rated, see the entry). Its strongest counter-argument is its own: no queue order adds a referrer.
+- **Cursor D-021 to D-040:**
+  - **D-021, 8, active** (amended by D-066; its credit clause is confirmed by D-147 and its expiry clause suspended by D-174). Reopening a declined request to colleagues is the fastest second chance at the same company. Against: with one outside company open, there are rarely colleagues to reopen it to.
+  - **D-022, 6, active** (its window is now D-220's 24 h, and D-177 narrowed its link rule). Posted roles turn a referrer's own hiring into requests. Against: production has no posted role at any of the 39 companies (the `D-174-fix-post-binding` note), so neither the feature nor its first look has ever run.
+  - **D-023, 9, active.** It is why this section leads with a number nobody wants. Against: self-ratings drift up (D-233 rated itself 9).
+  - **D-024, 7, active.** A small UI rule with no effect on the goal either way.
+  - **D-025 and D-027, historical.** They left the register under D-067, and their IDs stay reserved.
+  - **D-026, 10 for the vision; 6 for the session-start sync as practised.** The sync and its records are now most of the output: of the first 104 pull requests merged after Oct 26, 25 touched product code (#818's count).
+  - **D-028, 7, todo.** Link unfurls and real-data company pages are cheap reach for both sides. Against: D-176 superseded its coverage clause, and its indexable pages now wait in D-099 behind six rows.
+  - **D-029 and D-032, historical.** D-059 merged both into D-026.
+  - **D-030 with D-049 and D-057, 7, active and frozen.** The work-email code is what makes a referrer verified, and that is the product's trust. Against: the scarcest user pays the highest sign-in cost on every visit. Whether a verified referrer may add a passkey (D-209 (a)) is the owner's call, and it bears directly on supply.
+  - **D-031, 9, active.** Against: with no paid acquisition, supply grows only with founder time; D-204's credits buy tools, not referrers.
+  - **D-033, 8, active.** Two clear role cards at sign-in serve both sides.
+  - **D-034, 9, active** (amended by D-038, D-061, D-173 and D-174). With one outside company open, this is the rule that keeps seekers' money safe: nothing is charged for a request nobody can see. Against: a waiting request costs nothing to send, so only the two-per-company cap limits how widely a seeker spreads them.
+  - **D-035, historical** (rejected, D-147).
+  - **D-036, superseded** by D-219, which paused the packs.
+  - **D-037, historical** (D-046; retired by D-059). Its reasoning was right, and today's number bears it out. It returns as the new owner question on paid plans.
+  - **D-038, 8, active** (refined by D-076 and D-066). Lapses return a request to colleagues, and the referred deadline stops a seeker waiting on a silent acceptance. Against: the timers matter only once a company has more than one available referrer.
+  - **D-039, as amended by D-219, 8, active.** Three free referrals a month at any level keep the door open. Against: the verified-card condition (D-079, off) will cost sign-ups when it switches on, so measure it then.
+  - **D-040, 9, active.** Labeled employer placement keeps referrers' trust that nothing is bought.
+- **Under the top five open rows** (once D-233 closes `P1-release-gate-strict-compare`: `PRICING-banded-oct25`, `LAUNCH-legal-copy`, `LAUNCH-live-qa`, `SKIPPY-fix` and `BRANCH-HYGIENE-2`). The section above rated their decisions this morning. One change: **D-219 goes from 8 to 7.** The supply number makes D-037's concern live for monthly plans, so the owner gets a question on it. The rest are unchanged.
+- **Actions:**
+  - D-234 (CEO remit) does three things. It moves `D-174-seeker-journey-build`, `D-089-request-inbox`, `D-174-company-search` and `D-086.count` to the head of new work. It records that packets and re-syncs are reasoning work a Claude session takes (`BUILD_CONTINUITY.md`, `CLAUDE.md` and `AGENTS.md` rule 7, plus What 8 in the `PICKER-review-identity` packet for the picker's CEO step). It adds a release check to #666: the landing page and `/about` must stop offering packs once the pause is live, so `PRICING-banded-oct25` now owns those two files, and two more lines go to `D-176-public-claims` and `D-180-a-free-asks-chip`.
+  - Carried #818 forward unchanged. No price, flag, legal text, money path or code changed.
+- **Owner questions (rated, D-023):**
+  1. **Paid seeker plans while one outside company can see requests, 8/10 for (a).** In the register: before any banded checkout switches on, require either an outside-supply floor or carry-over of unused included referrals while requests wait.
+  2. **The D-015 day-14 number, due Mon Nov 2.** How many first messages have gone out? The kit's own rule applies: under 50, you decide whether the founder time exists; 50 or more with fewer than 3 outside referrers, change the companies or the message. This is not a decision, but every other rating here depends on it.
+  3. **One reviewer outside Claude for this pull request**, which carries #818 (or an answer to #818's question 1).
+  4. **One reviewer outside Instinct and Claude for #666, routed by hand, after a plain merge of `main`.** That is the fastest way your Oct 25 pause goes live; `PICKER-review-identity` would route it on its own, but only after this pull request and that build land.
+- **Cursor:** the next session rates D-041 to D-060, then every entry newer than D-234.
