@@ -264,7 +264,7 @@ export default function GoalVerify() {
         <GoalNextStep reason={directory.isError ? "We could not load the companies. Try again to see who you can verify at." : "Pick the company you can open a work email at today."}>
           <Stage title="Where do you work?">
             {directory.data ? (companies.length ? (
-              <div className="mt-4 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Company">
+              <div className="mt-4 grid gap-2 gdesk:grid-cols-2" role="radiogroup" aria-label="Company">
                 {companies.map(item => (
                   <button key={item.slug} type="button" role="radio" aria-checked={selected?.slug === item.slug} onClick={() => setCompany(item.slug)} className={`flex min-h-14 items-center gap-3 rounded-g-tile border p-3 text-left transition-colors ${selected?.slug === item.slug ? "border-g-ink" : "border-g-hairline hover:border-g-control-edge"}`}>
                     <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-g-tile border border-g-hairline text-g-meta font-semibold">{item.initials}</span>
@@ -327,7 +327,7 @@ export default function GoalVerify() {
       <GoalNextStep reason="Enter the six digits from your work email.">
         <Stage title="Enter the code">
           <p className="mt-2 text-g-meta text-g-ink-2">Sent to <strong className="break-all text-g-ink">{email.trim()}</strong>. <button type="button" className="underline underline-offset-2 hover:no-underline" onClick={backToEmail}>Change</button></p>
-          <div className="mt-4 flex gap-2 sm:gap-3" role="group" aria-label="6-digit code">
+          <div className="mt-4 flex gap-2 gdesk:gap-3" role="group" aria-label="6-digit code">
             {code.map((digit, i) => (
               <input
                 key={i}
