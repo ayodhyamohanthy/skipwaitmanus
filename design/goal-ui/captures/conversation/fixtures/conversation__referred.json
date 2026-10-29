@@ -1,0 +1,94 @@
+{
+  "signedIn": {
+    "id": "9",
+    "name": "Rohit Menon",
+    "email": "rohit.menon@example.com",
+    "role": "user"
+  },
+  "route": "/conversation/601",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": true,
+        "workEmailDomain": "alderbeam.com",
+        "companyName": "Alderbeam Labs",
+        "companyInitials": "AB"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/mine",
+      "status": 200,
+      "body": {
+        "requests": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/601/preview",
+      "status": 404,
+      "body": {
+        "error": "claimed"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/601",
+      "status": 200,
+      "body": {
+        "request": {
+          "id": 601,
+          "title": "Senior Backend Engineer, Payments",
+          "targetRoleUrl": "https://careers.alderbeam.com/jobs/1",
+          "companyDomain": "alderbeam.com",
+          "companyName": "Alderbeam Labs",
+          "companyInitials": "AB",
+          "jobFunction": "Engineering",
+          "candidateName": "Asha Rao",
+          "candidateMessage": "Built the payouts reconciliation service; settlement mismatches fell from 1.2% to 0.3% in 6 months.\nRan on-call for 14 Go services that move 40 crore rupees a day.",
+          "status": "intro_made",
+          "referrerId": 9,
+          "attachments": [
+            {
+              "id": 31,
+              "fileName": "Asha_Rao_Resume.pdf",
+              "mimeType": "application/pdf",
+              "fileSize": 120000,
+              "url": "/api/documents/31"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/601/conversation",
+      "status": 200,
+      "body": {
+        "messages": [
+          {
+            "id": 1,
+            "body": "Thank you for accepting. Is there anything you need from me for the referral form?",
+            "createdAt": "Tue 2026-10-20 4:12 PM IST (UTC+05:30)",
+            "isMine": false
+          },
+          {
+            "id": 2,
+            "body": "Your resume covers it. I will submit it through our portal today.",
+            "createdAt": "Tue 2026-10-20 6:40 PM IST (UTC+05:30)",
+            "isMine": true
+          }
+        ],
+        "referenceId": "TC-4410"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "wait": 6000
+    }
+  ]
+}
