@@ -25,7 +25,7 @@
   - A review email to a referrer that fails, or that a restart interrupts, is never sent again.
 - **Branches pile up.**
   - There were 473 branches on origin on Oct 26, before the first D-205 pass (298 after it, `docs/plans/BRANCH-HYGIENE.md`).
-  - Landings are still mostly fast-forward pushes (`git push origin <sha>:main`). These work only because `main-protection` lets the admin role bypass `always`, and every session pushes as that account. The picker still prints that push (`scripts/nextTaskText.mjs`). PR #595 landed that way on Oct 25, and its branch stayed behind.
+  - Landings are still mostly fast-forward pushes (`git push origin <sha>:main`). These work only because `main-protection` lets the admin role bypass its rules, and every session pushes as that account: read on 2026-10-29 without admin scope, the ruleset (`updated_at` 2026-10-27T09:37:55Z) lists `pull_request` and `required_status_checks` but returns no `bypass_actors`, and a direct `<sha>:main` push still succeeds — so a bypass of some scope exists, and the `always` value recorded on Oct 22 is unverified since the Oct 27 change. The picker still prints that push (`scripts/nextTaskText.mjs`). PR #595 landed that way on Oct 25, and its branch stayed behind.
   - A push never triggers GitHub's auto-delete, and marker branches (review locks, heartbeats, architect claims) are deleted by nothing.
 
 ## 3. The roles, and what does each job here
@@ -98,7 +98,7 @@ Lights 4 to 7 run by themselves after landing; nobody waits for them. A red ligh
 D-205 sets the rule: a branch is deleted once it is done and merged (its tip is in `main`, or a merged pull request's head equals its tip), never before. Open pull requests, unmerged work and the branches of unfinished tasks stay, and marker branches go when their stage is over.
 - **First pass:** it ran on Oct 26 (`docs/plans/BRANCH-HYGIENE.md`): 176 merged branches deleted, 473 → 298.
 - **Unmerged branches:** the owner chose to keep them for now.
-- **Ongoing:** BRANCH-HYGIENE-1 and -2 make it automatic. BRANCH-HYGIENE-2 also switches the picker's landing step to the merge button, so landings stop leaving branches behind.
+- **Ongoing, and not automatic today:** BRANCH-HYGIENE-1 built the cleanup script and landed through #758, but real deletion runs under the coordinator's retention hold on #758, and BRANCH-HYGIENE-2 — the row that wires the cleanup into every picker run and the landing step — is held at `owner` under D-232. Until that hold is released, a pass is a manual, authorized run. When it is released, BRANCH-HYGIENE-2 also switches the picker's landing step to the merge button, so landings stop leaving branches behind.
 
 ## Status
 The tasks are listed in the two packets; each writes its status line there (D-134).

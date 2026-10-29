@@ -4172,7 +4172,7 @@
     },
     {
       "id": "OPS-github-settings",
-      "title": "Owner settings: main-protection admin bypass limited to pull requests; merge queue on; squash and rebase off; secret scanning, push protection and CodeQL on; new checks into the ruleset after 3 green days; watchdog secrets; Sentry alert rule (D-212 (6))",
+      "title": "Owner settings: main-protection's admin bypass scope re-read (recorded `always` on Oct 22, unverified since the Oct 27 ruleset change) and limited to pull requests; merge queue on; squash and rebase off; secret scanning, push protection and CodeQL on; new checks into the ruleset after 3 green days; watchdog secrets; Sentry alert rule (D-212 (6))",
       "row": "D-212",
       "packet": "docs/plans/ENTERPRISE-PIPELINE.md",
       "tier": 3,
