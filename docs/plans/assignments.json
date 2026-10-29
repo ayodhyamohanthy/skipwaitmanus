@@ -135,8 +135,8 @@
       "tier": 1,
       "lane": "ci-gate",
       "branch": "agent/queue/ci-architect-real-checks",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-229",
       "dependsOn": [],
       "owns": [
         ".github/workflows/ci.yml",
@@ -327,8 +327,8 @@
       "tier": 1,
       "lane": "skippy-seeker",
       "branch": "agent/queue/skippy-fix-s1-ssrf",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-231",
       "dependsOn": [],
       "note": "Oct 28 (D-132-item3 packet revision 2, section 11a; decided under D-200, changeable): built exactly as SKIPPY-fix.md section S-1 says (red first with an injected fake fetcher, no network). Owner and holder check on main 6cbee199: no open row owns these files, and SKIPPY-fix has no owns, branch or claim, so nothing in flight is taken. Latent: SKIPPIE_SEEKER_ENABLED is off in production; no flag goes on until the parent SKIPPY-fix lands with its proof, including S-1 live item 2 (D-201). Tier 1 (security): independent review.",
       "epic": "SKIPPY-fix",
@@ -361,10 +361,10 @@
       "tier": 2,
       "lane": "repo-hygiene",
       "branch": "agent/queue/branch-hygiene",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-231",
       "dependsOn": [],
-      "note": "The owner, Oct 23. On ecdbc227, origin had 345 branches besides main; 69 tips are already in main, and squash-merged heads need the merged-PR check. Never delete main, agent/reports/log, the landing slot, unmerged work or any branch of a task that is not done. Paste the dry run in the PR; the lander pastes the --apply output after landing."
+      "note": "Code lands through #758 (built by Claude Code · da74; review fixes 83119df8, fb344ff8, a46ea06c, c8ed44bd). Landing authorizes no cleanup: under the retention hold on #758 (Oct 27, restated Oct 28) nobody runs --apply or --local and no real-origin dry run is performed; docs/plans/branch-retention.json is an interlock, not permission, so the backlog run stays a separate step for the owner or coordinator, and BRANCH-HYGIENE-2 must not wire --apply into the picker's landing step before that release. Never delete main, agent/reports/log, the landing slot, unmerged work or any branch of a task that is not done."
     },
     {
       "id": "BRANCH-HYGIENE-2",
@@ -374,12 +374,12 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/branch-hygiene-picker",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-232",
       "dependsOn": [
         "BRANCH-HYGIENE-1"
       ],
-      "note": "Uses BRANCH-HYGIENE-1's pure classifier. Safe delete only (git branch -d); never the checked-out branch, another worktree's branch or a dirty worktree. Notes, never blocking."
+      "note": "Not buildable while the retention hold stands (D-232): its two wiring bullets run --local on every picker run and wire --apply into the landing step, which this row's sibling BRANCH-HYGIENE-1 note and the packet's status line forbid until the coordinator or the owner releases the cleanup run. Nothing is built and no branch is touched; the read-only note is not shipped alone. When the release comes, build the packet section as written and remove its held banner. Uses BRANCH-HYGIENE-1's pure classifier. Safe delete only (git branch -d); never the checked-out branch, another worktree's branch or a dirty worktree. Notes, never blocking."
     },
     {
       "id": "SKIPPY-redteam",
@@ -476,14 +476,14 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-review-wording",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "owns": [
         "scripts/nextTaskText.mjs",
         "scripts/nextTaskReviewWording.test.ts"
       ],
-      "note": "D-184: on Oct 23 GPT · 5deb stopped the re-reviews of #547 and #527 because the review step says to look for 'your model' in the comments, without 'as builder or fixer'. One sentence in case \"review\" of scripts/nextTaskText.mjs plus a new test file (scripts/nextTaskReviewWording.test.ts, so it shares no owned file with PROCESS-review-gate); hand-outs unchanged."
+      "note": "D-184: on Oct 23 GPT · 5deb stopped the re-reviews of #547 and #527 because the review step says to look for 'your model' in the comments, without 'as builder or fixer'. One sentence in case \"review\" of scripts/nextTaskText.mjs plus a new test file (scripts/nextTaskReviewWording.test.ts, so it shares no owned file with PROCESS-review-gate); hand-outs unchanged. Implemented by PR #801 (`d82e4d04`) — Qoder · f568, Oct 29: the step now checks the pull request's commits and comments and the task's reports for a build, takeover or fix by your model, and states that a review or findings comment of your own model does not count (D-151 (1)); did(), fixers and every hand-out are unchanged."
     },
     {
       "id": "PICKER-architect-landing",
@@ -820,7 +820,7 @@
       "tier": 1,
       "lane": "terminology",
       "branch": "agent/copy/d180-conversation-copy",
-      "status": "todo",
+      "status": "done",
       "epic": "D-048-p3",
       "dependsOn": [],
       "owns": [
@@ -992,7 +992,7 @@
       "tier": 1,
       "lane": "money-assist",
       "branch": "agent/queue/assist-approval-cost",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-assistants"
@@ -1859,7 +1859,7 @@
       "tier": 2,
       "lane": "d048-post",
       "branch": "agent/queue/d048-p3-post",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
@@ -2021,7 +2021,7 @@
       "tier": 1,
       "lane": "d048-verify",
       "branch": "agent/queue/d048-p3-verify",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
