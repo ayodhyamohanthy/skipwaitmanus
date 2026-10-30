@@ -107,7 +107,9 @@ describe("apiFetch (REL-client-capture)", () => {
     await apiFetch(`/api/referrer-review-links/${token}?email=someone%40example.com&code=123456`);
     await apiFetch(new URL("https://skipwait.me/api/requests/48213/withdraw?x=1"));
     expect(captured).toHaveLength(2);
-    expect(captured[0].context?.route).toBe("/api/referrer-review-links/:id");
+    // The packet's rule is literal: any 16+ character [A-Za-z0-9_-] segment becomes :id,
+    // route words included, so this tag is lossy by design and can never keep a token.
+    expect(captured[0].context?.route).toBe("/api/:id/:id");
     expect(captured[1].context?.route).toBe("/api/requests/:id/withdraw");
     const text = reportText();
     for (const secret of [token, "48213", "someone", "example.com", "123456", "?"]) expect(text).not.toContain(secret);
