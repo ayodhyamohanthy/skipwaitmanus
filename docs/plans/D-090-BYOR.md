@@ -2,6 +2,8 @@
 
 > Read `docs/BRIEF.md` first, then this packet. You need nothing else unless a section below names it.
 
+> **D-246 (CEO, Oct 30): this row waits for `D-057-session-gate`.** D-057 takes a limited handoff of four files, for its build only: `server/privateReferralRoutes.ts`, `server/_core/index.ts` (switch only), `drizzle/schema.ts` and `server/schemaReconcile.ts`. This row keeps its id, branch, scope, all of #632's code, its findings `b8552f96` and its holds; nothing here is taken over. After D-057 lands, merge `main` into `agent/claude/d090-byor` with a merge commit and keep both sides in those files. Holder check: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/632#issuecomment-6524431308.
+
 | Field | Value |
 |---|---|
 | Queue row | `docs/plans/assignments.json` → `D-090-BYOR` (the picker reads it). Its status goes in the `docs/KIT_V4_BUILD_PLAN.md` §3b row "D-090" (added by D-154; this task is its only one, D-134) |
