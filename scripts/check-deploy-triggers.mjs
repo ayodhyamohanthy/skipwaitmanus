@@ -21,6 +21,7 @@ const workflows = {
     file: ".github/workflows/deploy-api.yml",
     must: ["server/**", "shared/**", "drizzle/**", "src/worker.ts", "wrangler.jsonc", "tsconfig.json"],
   },
+  watchdog: { file: ".github/workflows/deploy-watchdog.yml", must: ["watchdog/**", ".github/workflows/deploy-watchdog.yml"] },
 };
 
 const problems = [];
