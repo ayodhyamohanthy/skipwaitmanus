@@ -50,7 +50,11 @@ export default function NotificationsSection({ getToken, online }: { getToken: T
         </div>
       </Section>
 
-      {hasVerifiedWorkEmail(access.data) ? (
+      {access.isError ? (
+        <Section title="Referrer alerts">
+          <GoalErrorState className="mt-3 px-0" title="We could not check your work email." body="Your referrer alert settings stay hidden until the check works. Nothing was changed." retry={{ label: "Try again", onClick: () => { void access.refetch(); } }} />
+        </Section>
+      ) : hasVerifiedWorkEmail(access.data) ? (
         <Section title="Referrer alerts">
           <p className="mt-2 text-g-meta text-g-ink-2">These reach you because your work email is verified. They never replace the email record above.</p>
           <div className="mt-1"><NewAskEmailRow getToken={getToken} online={online} /></div>
