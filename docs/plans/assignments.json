@@ -781,7 +781,7 @@
       "tier": 2,
       "lane": "deploy-workflows",
       "branch": "agent/queue/rel-release-verify",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-240",
       "dependsOn": [],
       "epic": "D-212",
