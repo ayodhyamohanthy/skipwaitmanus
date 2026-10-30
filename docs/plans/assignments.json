@@ -2840,6 +2840,29 @@
       "epic": "D-048-p3"
     },
     {
+      "id": "D-048-system-repair",
+      "title": "Repair goal system gallery parity and Loading; commit acceptance evidence",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-system-repair.md",
+      "tier": 2,
+      "lane": "d048-system",
+      "branch": "agent/queue/d048-system-repair",
+      "status": "todo",
+      "syncedTo": "D-232",
+      "dependsOn": [
+        "D-048-p3-system",
+        "D-048-F-goal-check"
+      ],
+      "owns": [
+        "client/src/pages/goal/system/GoalAppStates.tsx",
+        "client/src/pages/goal/system/systemParity.goal.test.tsx",
+        "client/src/pages/goal/system/systemPages.goal.test.tsx",
+        "design/goal-ui/captures/system/**"
+      ],
+      "note": "Additive follow-up for merged #834: visible blank Loading and browser/dismissal parity, goal-on tests, reproducible committed synthetic captures. System stays off; D-180 copy stays separate.",
+      "epic": "D-048-p3"
+    },
+    {
       "id": "D-048-p3-links",
       "title": "W7 /fast/:linkCode, /refer/:companySlug/:vanityAlias, /share-card/:token",
       "row": "D-048",
