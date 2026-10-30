@@ -19,9 +19,9 @@ test("withdraw returns the referral", async ({ context, page }) => {
   await page.getByRole("link", { name: "View ask" }).click();
   await expect(page).toHaveURL(/\/conversation\/\d+/);
   await page.getByRole("button", { name: "Withdraw ask" }).click();
-  const confirm = page.getByRole("dialog").getByRole("button", { name: /withdraw/i });
-  if (await confirm.count()) await confirm.last().click();
-  await expect(page.getByText(/withdrawn/i).first()).toBeVisible();
+  // The confirmation is an inline group, not a dialog (SeekerConversation.tsx).
+  await page.getByRole("group", { name: "Withdraw this ask" }).getByRole("button", { name: "Withdraw", exact: true }).click();
+  await expect(page.getByText("Withdrawn", { exact: true }).first()).toBeVisible();
 
   await page.reload();
   await expect.poll(() => readBalance(page)).toBe(before);

@@ -2,6 +2,7 @@
 // referrer sees the official-process attestation before deciding; Accept posts
 // ethicsConfirmed: true and Pass never does.
 import type { Page, Request } from "playwright/test";
+import { PASS_REASON_OPTIONS } from "../shared/passReasons";
 import { expect, REFERRER_COMPANY, seekerSendsAcmeAsk, test } from "./fixtures";
 
 const ATTESTATION = `By accepting, you confirm you'll refer only through ${REFERRER_COMPANY}'s official process.`;
@@ -25,10 +26,11 @@ test("the attestation is shown before Accept", async ({ newContext, referrerPage
   await openFirstNewAsk(page);
   const pass = page.waitForRequest(isDecision);
   await page.getByRole("button", { name: "Pass privately" }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("radio").first().check();
-  await dialog.getByRole("button", { name: /pass/i }).last().click();
+  // Each reason is a plain button that posts at once (MyCompanyInbox.tsx, the
+  // "Pass reason" list): no confirm step, so the first reason is the decision.
+  const reasons = page.getByRole("radiogroup", { name: "Pass reason" });
+  await expect(reasons).toBeVisible();
+  await reasons.getByRole("button", { name: PASS_REASON_OPTIONS[0].label }).click();
   const passBody = JSON.parse((await pass).postData() ?? "{}") as Record<string, unknown>;
   expect(passBody.decision).toBe("declined");
   expect(passBody).not.toHaveProperty("ethicsConfirmed");
