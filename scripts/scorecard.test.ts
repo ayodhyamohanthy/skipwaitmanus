@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  classifyPath, isRevert, kindOf, liveLine, median, mergedInWindow, reportCounts, sampleSpan, scorecardLines,
+  classifyPath, isRevert, tier1Status, kindOf, liveLine, median, mergedInWindow, reportCounts, sampleSpan, scorecardLines,
 } from "./scorecard.mjs";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -96,26 +96,59 @@ describe("PROCESS-scorecard: numbers", () => {
   });
 });
 
+describe("PROCESS-scorecard: Tier 1 review on a merged head (the review gate's rule)", () => {
+  const HEAD = "a".repeat(40);
+  const task = { id: "T1", tier: 1, branch: "agent/queue/t1" };
+  const built = [{ verb: "Claim", id: "T1", who: "Builder · 0001" }];
+  const verdict = (verdictValue: string, who: string, reviewed: string | null) => ({ verb: "Verdict", id: "T1", verdict: verdictValue, who, reviewed });
+  const status = (lock: object[], extra: Record<string, unknown> = {}) =>
+    tier1Status({ task, kind: "product", head: HEAD, workMarkers: built, lockMarkers: lock, nonMergeCommitsSince: () => [], ...extra });
+
+  it("a Tier 2 row, or a docs-only merge, is not counted", () => {
+    expect(status([], { task: { ...task, tier: 2 } })).toBe("n/a");
+    expect(status([], { kind: "docs" })).toBe("n/a");
+    expect(status([], { task: null })).toBe("n/a");
+  });
+
+  it("an independent pass naming the head is a pass", () => {
+    expect(status([verdict("pass", "Reviewer · 0002", HEAD)])).toBe("pass");
+  });
+
+  it("an independent pass recorded before verdicts named their head is counted apart, not as unreviewed", () => {
+    expect(status([verdict("pass", "Reviewer · 0002", null)])).toBe("unpinned");
+  });
+
+  it("no review, findings last, or a pass by the builder's model is no independent pass", () => {
+    expect(status([])).toBe("none");
+    expect(status([verdict("findings", "Reviewer · 0002", HEAD)])).toBe("none");
+    expect(status([verdict("pass", "Builder · 0009", null)])).toBe("none");
+    expect(status([verdict("pass", "Builder · 0009", HEAD)])).toBe("none");
+  });
+});
+
 describe("PROCESS-scorecard: output", () => {
   const card = scorecardLines({
     days: 7,
     sample: { days: 12, truncated: false },
     merged: [
-      { number: 10, kind: "product", hours: 0.3, untracked: true, unreviewedTier1: false, revert: false },
-      { number: 11, kind: "product", hours: 5, untracked: false, unreviewedTier1: true, revert: false },
-      { number: 12, kind: "docs", hours: 1, untracked: false, unreviewedTier1: false, revert: true },
-      { number: 13, kind: "tests", hours: 2, untracked: false, unreviewedTier1: null, revert: false },
+      { number: 10, kind: "product", hours: 0.3, untracked: true, tier1: "n/a", revert: false },
+      { number: 11, kind: "product", hours: 5, untracked: false, tier1: "none", revert: false },
+      { number: 12, kind: "docs", hours: 1, untracked: false, tier1: "n/a", revert: true },
+      { number: 13, kind: "tests", hours: 2, untracked: false, tier1: null, revert: false },
+      { number: 14, kind: "scripts", hours: 3, untracked: false, tier1: "unpinned", revert: false },
+      { number: 15, kind: "product", hours: 4, untracked: false, tier1: "pass", revert: false },
     ],
     reports: { total: 2, byStatus: { blocked: 1, landed: 1 }, blockedByTask: [["X", 1]] },
     live: ["Live API: abc12345 = main"],
   });
 
   it("prints one number per line, in plain text", () => {
-    expect(card).toContain("Merged PRs: 4 (product code 2, tests only 1, scripts 0, docs only 1, unknown 0)");
+    expect(card).toContain("Merged PRs: 6 (product code 3, tests only 1, scripts 1, docs only 1, unknown 0)");
     expect(card).toContain("Product-code merges with no queue row: 1 (#10)");
-    expect(card).toContain("Tier 1 merges without an independent pass on their head: 1 (#11)");
-    expect(card).toContain("Merges whose review could not be read: 1 (#13)");
-    expect(card).toContain("Open-to-merge: median 1.5 h, longest 5.0 h (#11)");
+    expect(card).toContain("Tier 1 code merges without an independent pass: 1 (#11)");
+    expect(card).toContain("Tier 1 code merges whose pass predates head-pinned verdicts: 1 (#14)");
+    expect(card).toContain("Tier 1 merges whose review could not be read: 1 (#13)");
+    expect(card).toContain("Open-to-merge: median 2.5 h, longest 5.0 h (#11)");
     expect(card).toContain("Reverts: 1 (#12)");
     expect(card).toContain("Board reports: 2 (blocked 1, landed 1)");
     expect(card).toContain("Blocked reports per task: X 1");
@@ -128,5 +161,7 @@ describe("PROCESS-scorecard: output", () => {
     expect(short[0]).toBe("Scorecard: last 7 days; the PR sample covers only 3 days (100-item page), so the counts below are a floor");
     expect(short).toContain("Open-to-merge: none merged");
     expect(short).toContain("Blocked reports per task: none");
+    expect(short).toContain("Tier 1 code merges whose pass predates head-pinned verdicts: 0");
+    expect(short.some(line => line.startsWith("Tier 1 merges whose review could not be read"))).toBe(false);
   });
 });
