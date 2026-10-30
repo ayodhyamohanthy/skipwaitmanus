@@ -185,3 +185,4 @@ GATE-e2e-journeys applies the deploy migrations twice to MySQL. This row stays o
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 
 GATE-test-integrity: done — e425fac9 (PR #846)
+GATE-tier-floor: in progress — DeepSeek V4.1 Flash 1017 · s38fcc2f0 — 2026-10-30 — branch agent/queue/gate-tier-floor
