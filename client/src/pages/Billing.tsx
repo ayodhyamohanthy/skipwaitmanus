@@ -1,19 +1,26 @@
 import { ArrowRight } from "lucide-react";
 import { LoadingNote } from "@/components/app-states/SystemStates";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Link } from "wouter";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { Button } from "@/components/kit/button";
 import { Heading, Panel } from "@/components/kit/preview-kit";
 import { failureMessage, parseReceipts, parseSummary, type CreditSummary, type Receipt } from "@/components/plans/billingApi";
 import { CurrentPlanPanel, PaymentMethodPanel, ReceiptsPanel } from "@/components/plans/BillingPanels";
 import { CancelPlanDialog } from "@/components/plans/CancelPlanDialog";
 
+// D-048-p3-plans: the goal surface for /billing (goalSurfaceOn("plans"), dark
+// until its release edit). The kit body below stays unchanged for the flag-off
+// path, so one page module serves both versions and the money code path is one.
+const GoalBilling = lazy(() => import("./goal/plans/GoalBilling"));
+
 const plansAndCredits = <Link href="/plans" className="text-link text-sm">Plans &amp; credits<ArrowRight className="size-4" /></Link>;
 
 export default function Billing() {
+  if (goalSurfaceOn("plans")) return <Suspense fallback={null}><GoalBilling /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [summary, setSummary] = useState<CreditSummary | null>(null);
