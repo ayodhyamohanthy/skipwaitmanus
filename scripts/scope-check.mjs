@@ -78,11 +78,19 @@ async function reviewGate() {
   catch (error) { console.error(`review-gate: could not load (${error instanceof Error ? error.message : String(error)}) — not failing the branch.`); return 0; }
 }
 
+// PROCESS-id-check: the same lazy, fail-open load, after the review gate.
+async function idCheck() {
+  try { return (await import("./decision-id-check.mjs")).runDecisionIdCheck(); }
+  catch (error) { console.error(`decision-id-check: could not load (${error instanceof Error ? error.message : String(error)}) — not failing the branch.`); return 0; }
+}
+
 async function main() {
   const queueGateExit = runQueueGate();
   if (queueGateExit !== 0) return queueGateExit;
   const reviewGateExit = await reviewGate();
   if (reviewGateExit !== 0) return reviewGateExit;
+  const idCheckExit = await idCheck();
+  if (idCheckExit !== 0) return idCheckExit;
 
   const taskId = process.argv[2];
   if (!taskId) {
