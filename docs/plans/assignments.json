@@ -1880,7 +1880,7 @@
       "lane": "d048-asks",
       "branch": "agent/queue/d048-inbox",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-244",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
