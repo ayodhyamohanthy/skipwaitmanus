@@ -133,6 +133,12 @@ export async function sendAsk(page: Page): Promise<{ body: Record<string, unknow
   return { body, status: response.status() };
 }
 
+/** The send answers 200 or 201 depending on the path; anything else is a failed send. */
+export function expectCreated(status: number) {
+  expect(status, "the ask was created").toBeGreaterThanOrEqual(200);
+  expect(status, "the ask was created").toBeLessThan(300);
+}
+
 /** A signed-in seeker sends one ask to acme.example from /ask. */
 export async function seekerSendsAcmeAsk(context: BrowserContext): Promise<void> {
   await devSignIn(context);
@@ -141,14 +147,15 @@ export async function seekerSendsAcmeAsk(context: BrowserContext): Promise<void>
   await writeAsk(page);
   await attachResume(page);
   const { status } = await sendAsk(page);
-  expect(status).toBe(200);
+  expectCreated(status);
   await expect(page.getByText(`Ask sent to ${REFERRER_COMPANY}.`)).toBeVisible();
   await page.close();
 }
 
 /** The shell's balance chip, read as the screen labels it ("2 credits" / "2 referrals", D-180). */
 export async function readBalance(page: Page): Promise<number> {
-  const chip = page.getByRole("link", { name: /^\s*\d+\s+(credits?|referrals?)\s*$/i }).first();
+  // GoalShell's pill: aria-label "<n> credits available. Open credit details".
+  const chip = page.getByRole("link", { name: /^\d+ (credits?|referrals?) available/i }).first();
   await expect(chip).toBeVisible();
   const value = Number((await chip.innerText()).match(/\d+/)?.[0]);
   expect(Number.isFinite(value)).toBeTruthy();

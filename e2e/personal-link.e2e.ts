@@ -2,7 +2,7 @@
 // survives sign-in. A signed-out seeker opens the link, writes the request on
 // the composer it leads to, presses Send, signs in, and the request that is
 // finally sent still names the referrer's link (fastTrackCode).
-import { attachResume, expect, isAskPost, REASONS, REFERRER_COMPANY, routeSignInThroughDevPlane, sendAsk, test, writeAsk } from "./fixtures";
+import { attachResume, expectCreated, expect, isAskPost, REASONS, REFERRER_COMPANY, routeSignInThroughDevPlane, sendAsk, test, writeAsk } from "./fixtures";
 
 test("a personal link survives sign-in", async ({ referrerPage, context, page }) => {
   // The referrer's own personal link, as their link screen hands it out.
@@ -36,6 +36,6 @@ test("a personal link survives sign-in", async ({ referrerPage, context, page })
   const { body, status } = await sendAsk(page);
   expect(body.fastTrackCode, "the request still names the referrer's personal link").toBe(link.linkCode);
   expect(body.targetRoleUrl).toBe(jobLink);
-  expect(status).toBe(200);
+  expectCreated(status);
   await expect(page.getByText(`Ask sent to ${REFERRER_COMPANY}.`)).toBeVisible();
 });
