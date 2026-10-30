@@ -939,8 +939,8 @@
       "tier": 2,
       "lane": "process",
       "branch": "agent/queue/gate-tier-floor",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "done",
+      "syncedTo": "D-243",
       "dependsOn": [
         "PROCESS-review-gate"
       ],
