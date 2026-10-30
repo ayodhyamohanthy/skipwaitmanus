@@ -54,4 +54,4 @@ Only after behavior, tests, inspected post-fix captures and committed reproducib
 
 ## Status
 
-Registered for repair; not started, no claim or runtime change made by this registration.
+D-048-system-repair: in progress - Instinct system repair · dbd8 - 2026-10-30 - branch agent/queue/d048-system-repair. Main c645870c and D-232 checked; prior outcome #837 registers unresolved #834 behavior and evidence. Own paths only; D-180 copy and production flags excluded.
