@@ -13,6 +13,7 @@ Evidence: independent750review https://github.com/ayodhyamohanthy/skipwaitmanus/
 ## Status
 
 - P1-release-gate-strict-compare: in-review — implementation merged as fecf0d3b (#755; head 3ff72fa2; land marker 634ab8e6); required CI 40580698077 success on the merged head; packet item 5 acceptance pending — no post-landing normal gated release identity is recorded here yet, and runtime acceptance stays with #748
+- D-249 (Oct 30): the row released its file reservation — `owns` is removed from `docs/plans/assignments.json` because the code is on `main` and only the item 5 observation remains, so it no longer holds `scripts/require-green-release.mjs` and `scripts/requireGreenRelease.test.ts` against `REL-rollback-skew` (`filesBusy`, `scripts/nextTaskCore.mjs:552`). The row stays `in-review` until item 5 is recorded. If item 5 needs code, re-declare `owns` in a docs-only pull request (D-200 (2)).
 
 Evidence — P1-release-gate-strict-compare — Claude Code · da74 — 2026-10-27
 Branch agent/queue/p1-release-gate-strict-compare @ af3a67b5, contains origin/main 9746ec9a

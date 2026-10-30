@@ -117,15 +117,11 @@
       "lane": "deploy",
       "branch": "agent/queue/p1-release-gate-strict-compare",
       "status": "in-review",
-      "syncedTo": "D-227",
+      "syncedTo": "D-249",
       "dependsOn": [
         "P1-deploy-green-gate"
       ],
-      "owns": [
-        "scripts/require-green-release.mjs",
-        "scripts/requireGreenRelease.test.ts"
-      ],
-      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 acceptance (observe a subsequent normal gated release and its identities) is still pending, so the row is not done. No live rollback/DB/settings tests."
+      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 acceptance (observe a subsequent normal gated release and its identities) is still pending, so the row is not done. D-249 (Oct 30): the row releases its file reservation (owns removed) because its code is on main and only that observation remains, so REL-rollback-skew can own the two #751 files; re-declare owns in a docs-only PR (D-200 (2)) if item 5 needs code. No live rollback/DB/settings tests."
     },
     {
       "id": "CI-architect-real-checks",
@@ -873,7 +869,7 @@
       "lane": "deploy-workflows",
       "branch": "agent/queue/rel-rollback-skew",
       "status": "todo",
-      "syncedTo": "D-222",
+      "syncedTo": "D-249",
       "dependsOn": [
         "REL-release-verify"
       ],
@@ -882,8 +878,11 @@
         ".github/workflows/deploy-pages.yml",
         ".github/workflows/rollback.yml",
         "scripts/rollbackTarget.mjs",
-        "scripts/rollbackTarget.test.ts"
-      ]
+        "scripts/rollbackTarget.test.ts",
+        "scripts/require-green-release.mjs",
+        "scripts/requireGreenRelease.test.ts"
+      ],
+      "note": "D-249 (Oct 30): owns widened to the two #751 files after P1-release-gate-strict-compare released them. The API leg's behaviour stays identical; the web leg refuses schema drift only for the API, still needs a full-SHA target on main with green newest-attempt CI, confirm and reason, and updates the four pinned assertions additively with a Ported assertions table."
     },
     {
       "id": "REL-self-heal",

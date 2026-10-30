@@ -222,7 +222,9 @@
 
 **Tests** (red first): the web recovery refuses a dispatch whose `confirm` differs from `commit` or whose `reason` is empty, and one whose target has no green main CI run; it reports failure and leaves the live web alone when the deployed commit is not the target; the API leg keeps its `--recovery` gate and still moves `api-runtime` only after the release verifies.
 
-**Owned paths.** `.github/workflows/deploy-pages.yml` (the checkout and the API wait only), `.github/workflows/rollback.yml`, `scripts/rollbackTarget.mjs` and `scripts/rollbackTarget.test.ts` (new, if the SHA rule needs code).
+**Owned paths.** `.github/workflows/deploy-pages.yml` (the checkout and the API wait only), `.github/workflows/rollback.yml`, `scripts/rollbackTarget.mjs` and `scripts/rollbackTarget.test.ts` (new, if the SHA rule needs code), plus — under D-249 (Oct 30) — `scripts/require-green-release.mjs` and `scripts/requireGreenRelease.test.ts`, the two #751 files this row's web leg must change.
+
+**Ruling (D-249, Oct 30) — the blocked item 2 is unblocked.** `P1-release-gate-strict-compare` released its reservation of those two files (its code is on `main`; only its item 5 observation is owed), so this row now owns them. Measured on #876's head `9a2d193f`: adding `- web`/`- all` and a `rollback-web` job fails exactly three pins (`requireGreenRelease.test.ts:542` the `api`-only choice list, `:551` the two job keys, `:569` the three token-bearing steps), and `recoveryProblem({system: "web"|"all"})` answers "only the API has a recovery job". The API leg must stay identical; the web leg is not refused for schema drift but keeps the full-SHA, `confirm`, `reason`, on-`main` and green-newest-CI checks and proves the web commit it deployed; the pins change additively, with a "Ported assertions" table for GATE-test-integrity.
 
 **Done:**
 - Tests pass and CI is green.
