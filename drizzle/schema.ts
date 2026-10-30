@@ -1091,6 +1091,22 @@ export const askWorkItems = mysqlTable("askWorkItems", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("ask_work_items_request_piece_unique").on(table.referralRequestId, table.workItemId), index("ask_work_items_request_idx").on(table.referralRequestId, table.position)]);
 
+/** D-090 BYOR (0111): one private one-time link per waiting ask, which the seeker sends to an insider they already know. Only the token's SHA-256 is stored — never the token. `activeRequestKey` is `link:<requestId>` while the link is live and NULL otherwise, the house pattern for "at most one active row" (referralAvailabilitySlots). */
+export const askInviteLinks = mysqlTable("askInviteLinks", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  linkTokenHash: varchar("linkTokenHash", { length: 64 }).notNull(),
+  status: mysqlEnum("status", ["active", "claimed", "delivered", "revoked", "expired"]).default("active").notNull(),
+  claimedByUserId: int("claimedByUserId").references(() => users.id, { onDelete: "set null" }),
+  claimedAt: timestamp("claimedAt"),
+  reservationExpiresAt: timestamp("reservationExpiresAt"),
+  activeRequestKey: varchar("activeRequestKey", { length: 64 }),
+  expiresAt: timestamp("expiresAt").notNull(),
+  closedAt: timestamp("closedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("ask_invites_token_hash_unique").on(table.linkTokenHash), uniqueIndex("ask_invites_active_request_unique").on(table.activeRequestKey), index("ask_invites_request_idx").on(table.referralRequestId), index("ask_invites_status_expiry_idx").on(table.status, table.expiresAt), index("ask_invites_creator_created_idx").on(table.createdByUserId, table.createdAt)]);
+
 /** D-132 audit item 2 (0106): the job level and credit cost an ask was priced at, stored once at creation. Written only while ASK_LEVEL_COST is on; no row means the flat 1-credit price. */
 export const askCosts = mysqlTable("askCosts", {
   id: int("id").autoincrement().primaryKey(),

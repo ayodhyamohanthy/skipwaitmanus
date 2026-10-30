@@ -1,0 +1,40 @@
+{
+  "route": "/r/:token",
+  "name": "d090_c6_landing-claimed",
+  "viewports": {
+    "web": {
+      "live": "artifacts/d090-c6/landing-claimed/live/web/d090_c6_landing-claimed.png",
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "liveHeight": 900
+    },
+    "mobile": {
+      "live": "artifacts/d090-c6/landing-claimed/live/mobile/d090_c6_landing-claimed.png",
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "liveHeight": 1688
+    }
+  },
+  "metadata": {
+    "persona": "synthetic claimer; claimed state",
+    "fixture": "landing-claimed.json",
+    "sourceCommit": "f179f882",
+    "flags": {
+      "BILLING_ENV": "test",
+      "BYOR_LINK_ENABLED": "true",
+      "VITE_BYOR_LINK": "true"
+    },
+    "build": {
+      "VITE_GOAL_SURFACES": "not used by D-090 captures",
+      "sourceCommit": "f179f882"
+    },
+    "evidenceMode": "local Vite only; fixture-intercepted API; no database, provider, production backend, or real account"
+  },
+  "status": "captured"
+}

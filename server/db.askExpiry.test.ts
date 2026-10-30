@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SQL, type SQL as SQLQuery } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { jobs, notifications, planCreditGrants, promoCreditGrants, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
+import { askInviteLinks, jobs, notifications, planCreditGrants, promoCreditGrants, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { expireStalePendingReferralRequest, withdrawCompanyReferralRequest } from "./db";
 import { createAskExpirySweep } from "./askExpirySweep";
 import { coverageWaitExpiredNotice } from "./coverageDelivery";
@@ -14,7 +14,7 @@ const dialect = new MySqlDialect();
 const NOW = new Date("2026-10-08T12:00:00.000Z");
 const DAY = 24 * 60 * 60 * 1000;
 
-type Table = typeof referralRequests | typeof tokenBalances | typeof tokenTransactions | typeof referralTransitionEvents | typeof notifications | typeof referralDocumentAccessGrants | typeof planCreditGrants | typeof promoCreditGrants | typeof jobs | typeof referralAvailabilitySlots;
+type Table = typeof referralRequests | typeof tokenBalances | typeof tokenTransactions | typeof referralTransitionEvents | typeof notifications | typeof referralDocumentAccessGrants | typeof planCreditGrants | typeof promoCreditGrants | typeof jobs | typeof referralAvailabilitySlots | typeof askInviteLinks;
 let tables: Record<string, Array<Record<string, unknown>>>;
 
 function rowsFor(table: Table): Array<Record<string, unknown>> {
@@ -26,6 +26,7 @@ function rowsFor(table: Table): Array<Record<string, unknown>> {
   if (table === referralDocumentAccessGrants) return tables.docGrants;
   if (table === jobs) return tables.jobs;
   if (table === referralAvailabilitySlots) return tables.slots;
+  if (table === askInviteLinks) return [];
   if (table === planCreditGrants || table === promoCreditGrants) return [];
   throw new Error("Unexpected table");
 }

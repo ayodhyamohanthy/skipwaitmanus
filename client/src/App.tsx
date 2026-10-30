@@ -75,6 +75,7 @@ const FastTrackLink = lazy(() => import("./pages/FastTrackLink"));
 const VanityFastTrackLink = lazy(() => import("./pages/VanityFastTrackLink"));
 const ShareCard = lazy(() => import("./pages/ShareCard"));
 const EmailReviewAction = lazy(() => import("./pages/EmailReviewAction"));
+const AskInviteLink = lazy(() => import("./pages/AskInviteLink"));
 const MyRequests = lazy(() => import("./pages/MyRequests"));
 const MyCompanyInbox = lazy(() => import("./pages/MyCompanyInbox"));
 const ReferralConversation = lazy(() => import("./pages/ReferralConversation"));
@@ -128,6 +129,7 @@ function Router() {
           <Route path="/refer/:companySlug/:vanityAlias" component={VanityFastTrackLink} />
           <Route path="/share-card/:token" component={ShareCard} />
           <Route path="/email-review/:linkToken" component={EmailReviewAction} />
+          <Route path="/r/:token" component={AskInviteLink} />
           <Route path="/start" component={Onboarding} />
           <Route path="/request">
             <Redirect to={askRedirectTarget(typeof window === "undefined" ? "" : window.location.search)} />
