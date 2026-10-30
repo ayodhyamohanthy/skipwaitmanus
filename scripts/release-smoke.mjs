@@ -13,7 +13,9 @@
 //     In GitHub Actions: works out what this release-verify run does (verify,
 //     superseded or skip) and the expected SHAs, from the triggering deploy run,
 //     the newest successful Deploy Web run and refs/tags/api-runtime. Writes
-//     action, reason, status_sha, web_sha and api_sha to $GITHUB_OUTPUT.
+//     action, reason, status_sha, incident_sha, web_sha and api_sha to
+//     $GITHUB_OUTPUT. A deploy that did not succeed is still verified (D-240)
+//     with an empty status_sha, so no status lands on the failed commit.
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import {
@@ -33,6 +35,7 @@ import {
   formatLine,
   isSha,
   parseJsonBody,
+  incidentShaFor,
   planVerification,
   summarize,
 } from "./releaseSmokeCore.mjs";
@@ -206,6 +209,7 @@ async function plan() {
     action: decision.action,
     reason: decision.reason || "",
     status_sha: decision.statusSha || "",
+    incident_sha: incidentShaFor(decision) || "",
     web_sha: decision.webSha || "",
     api_sha: decision.apiSha || "",
   };

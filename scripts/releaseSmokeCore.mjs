@@ -263,9 +263,15 @@ export function supersededBy(trigger, runs) {
 /**
  * Decide what one release-verify run does, before any smoke runs.
  * - dispatch: verify the live release; the status goes on the dispatched SHA.
- * - workflow_run: a deploy that did not succeed is reported by its own
- *   "Deploy failed" issue, so nothing is verified; a superseded run exits
- *   without a status; otherwise the status goes on the deploy's head SHA.
+ * - workflow_run (D-240): every completion of either deploy is planned,
+ *   whatever its conclusion. A superseded run exits without a status or an
+ *   issue. Otherwise the live release is checked at the expected SHAs (web =
+ *   newest successful web head, API = refs/tags/api-runtime, which a failed
+ *   API run never moves), so a partial deploy checks each side at its own SHA.
+ *   A successful completion puts the status on its head SHA; one that did not
+ *   succeed sets no status (statusSha null: that commit did not ship) and names
+ *   any incident by the web SHA the live release was expected to serve, so two
+ *   completions over the same live SHAs share one incident.
  */
 export function planVerification({ event, trigger = null, dispatchSha = null, runs = [], apiTagOutput = "" }) {
   const webSha = expectedWebSha(runs);
@@ -275,9 +281,14 @@ export function planVerification({ event, trigger = null, dispatchSha = null, ru
     statusSha = dispatchSha;
   } else if (event === "workflow_run") {
     if (!trigger) return { action: "skip", reason: "no triggering deploy run" };
-    if (trigger.conclusion !== "success") return { action: "skip", reason: `${trigger.name} ended ${trigger.conclusion}; its Deploy failed issue reports it` };
     const newer = supersededBy(trigger, runs);
     if (newer) return { action: "superseded", reason: `${newer.name} run ${newer.id} is ${newer.status}` };
+    if (trigger.conclusion !== "success") {
+      const reason = `${trigger.name} ended ${trigger.conclusion} at ${String(trigger.head_sha || "unknown").slice(0, 8)}; checking what is live, no status on that commit`;
+      if (!webSha) return { action: "fail", reason: `no successful ${DEPLOY_WEB_WORKFLOW} run on main`, statusSha: null, incidentSha: null, webSha, apiSha };
+      if (!apiSha) return { action: "fail", reason: "refs/tags/api-runtime not found", statusSha: null, incidentSha: webSha, webSha, apiSha };
+      return { action: "verify", reason, statusSha: null, incidentSha: webSha, webSha, apiSha };
+    }
     statusSha = trigger.head_sha;
   } else {
     return { action: "skip", reason: `unsupported event ${event}` };
@@ -286,6 +297,17 @@ export function planVerification({ event, trigger = null, dispatchSha = null, ru
   if (!webSha) return { action: "fail", reason: `no successful ${DEPLOY_WEB_WORKFLOW} run on main`, statusSha, webSha, apiSha };
   if (!apiSha) return { action: "fail", reason: "refs/tags/api-runtime not found", statusSha, webSha, apiSha };
   return { action: "verify", statusSha, webSha, apiSha };
+}
+
+/**
+ * The SHA a "Release not verified" incident is named by: the planned
+ * incidentSha when the plan carries one (a completion that did not succeed),
+ * else the status SHA. A skipped or superseded plan names none.
+ */
+export function incidentShaFor(plan) {
+  if (!plan || (plan.action !== "verify" && plan.action !== "fail")) return null;
+  if (plan.incidentSha !== undefined) return plan.incidentSha || null;
+  return plan.statusSha || null;
 }
 
 // ---------------------------------------------------------------- incident text

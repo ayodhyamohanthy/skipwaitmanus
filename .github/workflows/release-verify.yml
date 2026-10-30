@@ -73,7 +73,7 @@ jobs:
           pnpm exec playwright install --with-deps chromium
 
       - name: Mark the release pending
-        if: steps.plan.outputs.action == 'verify'
+        if: steps.plan.outputs.action == 'verify' && steps.plan.outputs.status_sha != ''
         env:
           SHA: ${{ steps.plan.outputs.status_sha }}
         run: |
@@ -94,7 +94,7 @@ jobs:
           exit 0
 
       - name: Release verified
-        if: steps.plan.outputs.action == 'verify' && steps.smoke.outputs.verified == 'true'
+        if: steps.plan.outputs.action == 'verify' && steps.plan.outputs.status_sha != '' && steps.smoke.outputs.verified == 'true'
         env:
           SHA: ${{ steps.plan.outputs.status_sha }}
           WEB_SHA: ${{ steps.plan.outputs.web_sha }}
@@ -109,16 +109,29 @@ jobs:
             gh issue close "$number" --comment "Release verified at \`$SHA\` (web \`${WEB_SHA:0:8}\`, API \`${API_SHA:0:8}\`): $RUN_URL"
           done < open-incidents.txt
 
+      # D-240: a deploy that did not succeed is checked against what is live,
+      # but its own commit did not ship, so a pass sets no status on it; its
+      # "Deploy failed" incident still speaks for it.
+      - name: Live release healthy after a failed deploy
+        if: steps.plan.outputs.action == 'verify' && steps.plan.outputs.status_sha == '' && steps.smoke.outputs.verified == 'true'
+        env:
+          REASON: ${{ steps.plan.outputs.reason }}
+          WEB_SHA: ${{ steps.plan.outputs.web_sha }}
+          API_SHA: ${{ steps.plan.outputs.api_sha }}
+        run: |
+          echo "::notice::live release healthy (web ${WEB_SHA:0:8}, API ${API_SHA:0:8}); no status set: $REASON"
+
       - name: Release not verified
         if: always() && (steps.plan.outputs.action == 'fail' || (steps.plan.outputs.action == 'verify' && steps.smoke.outputs.verified != 'true'))
         env:
           SHA: ${{ steps.plan.outputs.status_sha }}
+          INCIDENT_SHA: ${{ steps.plan.outputs.incident_sha }}
           WEB_SHA: ${{ steps.plan.outputs.web_sha }}
           API_SHA: ${{ steps.plan.outputs.api_sha }}
           REASON: ${{ steps.plan.outputs.reason }}
         run: |
           if [ ! -s smoke.txt ]; then echo "FAIL  release-verify — ${REASON:-the smoke did not run}" > smoke.txt; fi
-          release="${SHA:-${{ github.sha }}}"
+          release="${INCIDENT_SHA:-${SHA:-${{ github.sha }}}}"
           title="Release not verified: ${release:0:8}"
           SHA="$release" node --input-type=module -e '
             import { readFileSync, writeFileSync } from "node:fs";
