@@ -25,10 +25,11 @@ export const SIGNED_OUT_PROBE = "/api/notifications";
 export const ADMIN_GATE_PATH = "/api/auth/workos/admin";
 
 /**
- * The signed-out public pages scripts/live-flow-audit.mjs visits (landing,
- * /start and its "public surfaces" list), plus its unknown-route NotFound check.
+ * The signed-out public pages scripts/live-flow-audit.mjs visits: the landing,
+ * /start and its "public surfaces" list. Its unknown-route check is left out:
+ * that page's own document answers 404 by design.
  */
-export const PUBLIC_PAGES = ["/", "/start", "/wall", "/share", "/privacy", "/premium", "/plans", "/settings", "/components", "/post-opportunity", "/definitely-not-a-route"];
+export const PUBLIC_PAGES = ["/", "/start", "/wall", "/share", "/privacy", "/premium", "/plans", "/settings", "/components", "/post-opportunity"];
 
 /** Rollouts converge in 15 to 40 minutes (packet REL-release-verify). */
 export const API_WAIT_MINUTES = 45;
