@@ -7,7 +7,7 @@ vi.mock("./sentry", () => ({ isServerSentryActive: () => sentry.active }));
 
 import { WEBHOOK_UNAUTHORIZED_ACTION, WEBHOOK_UNAUTHORIZED_CAPTURE_INTERVAL_MS, recordWebhookUnauthorized, resetWebhookAuthAlarmForTests } from "./webhookAuthAlarm";
 
-const T0 = Date.parse("Fri 2026-10-30 1:30 PM IST (UTC+05:30)");
+const T0 = Date.parse("2026-10-30T08:00:00Z");
 
 beforeEach(() => { sentry.captureMessage.mockReset(); sentry.active = true; resetWebhookAuthAlarmForTests(); });
 afterEach(() => { vi.restoreAllMocks(); });

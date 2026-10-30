@@ -9,7 +9,7 @@ vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
 vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
 
 const store = createInMemoryDrizzle();
-const NOW = Date.parse("Fri 2026-10-30 7:30 AM IST (UTC+05:30)");
+const NOW = Date.parse("2026-10-30T02:00:00Z");
 const HOUR = 60 * 60_000;
 const logRow = (id: number, action: string, hoursAgo: number) => ({ id, actorUserId: null, action, outcome: "failure", resourceType: "chargebee_webhook", resourceId: null, companyDomain: null, metadata: null, createdAt: new Date(NOW - hoursAgo * HOUR) });
 
@@ -35,7 +35,7 @@ function makeDeps(sent: Sent[]): DailyMoneyCheckDeps {
     recordActivity: vi.fn(async () => undefined),
   };
 }
-const run = (deps: DailyMoneyCheckDeps) => createDailyMoneyCheck(deps)({ nowMs: NOW, windowKey: "Fri 2026-10-30 7:30 AM IST (UTC+05:30)" });
+const run = (deps: DailyMoneyCheckDeps) => createDailyMoneyCheck(deps)({ nowMs: NOW, windowKey: "2026-10-30" });
 
 describe("webhook_unauthorized_24h (D-212)", () => {
   beforeEach(() => {
