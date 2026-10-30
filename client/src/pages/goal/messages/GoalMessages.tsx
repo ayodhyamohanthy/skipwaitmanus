@@ -203,18 +203,20 @@ export default function GoalMessages() {
       if (memberRule) { if (openCounterpartRef.current === recipientUserId) setFollowRule(memberRule); return; }
       if (response.status === 409) {
         clearPendingSend(DM_SEND_WORKFLOW);
-        setThreadError("That send changed while retrying, so we kept your text and did not send a duplicate. Review it and send again to start a fresh attempt.");
+        if (openCounterpartRef.current === recipientUserId) setThreadError("That send changed while retrying, so we kept your text and did not send a duplicate. Review it and send again to start a fresh attempt.");
         return;
       }
       if (response.status === 429) {
         const retryAt = payload.retryAt;
         const retryDate = typeof retryAt === "string" || typeof retryAt === "number" ? new Date(retryAt) : null;
         const suffix = retryDate && !Number.isNaN(retryDate.getTime()) ? ` Try again after ${retryDate.toLocaleString()}.` : " Try again in a few minutes.";
-        setThreadError(`${payload.error || "You're sending messages too quickly."}${suffix}`);
+        if (openCounterpartRef.current === recipientUserId) setThreadError(`${payload.error || "You're sending messages too quickly."}${suffix}`);
         return;
       }
       throw new Error(payload.error || SEND_ERROR);
-    } catch (reason) { setThreadError(reason instanceof Error ? reason.message : SEND_ERROR); }
+    } catch (reason) {
+      if (openCounterpartRef.current === recipientUserId) setThreadError(reason instanceof Error ? reason.message : SEND_ERROR);
+    }
     finally { inFlightRef.current = false; setSending(false); }
   };
 

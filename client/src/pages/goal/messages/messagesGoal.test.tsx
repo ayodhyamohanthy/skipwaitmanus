@@ -8,6 +8,8 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { assertGoalPage } from "@/test/goalPageContract";
+import { GOAL_PAGE } from "./GoalMessages";
 
 const { getToken, authState, flagState } = vi.hoisted(() => ({
   getToken: vi.fn().mockResolvedValue("test-token"),
@@ -85,6 +87,8 @@ async function openChat(name: RegExp) {
   return screen.findByRole("heading", { level: 1 });
 }
 
+// Assert the page contract only on inbox states with its single next-step block.
+// Loading/error and open-chat/pre-acceptance panels intentionally have no such block.
 describe("goal /messages: inbox", () => {
   it("flag off keeps the kit page", async () => {
     flagState.on = false;
@@ -95,9 +99,10 @@ describe("goal /messages: inbox", () => {
   });
 
   it("opens on the goal with the chat waiting on you first and one black commit to answer it", async () => {
-    render(<Messages />);
+    const { container } = render(<Messages />);
     expect(await screen.findByRole("heading", { level: 1, name: "Your chats." })).toBeTruthy();
     const rows = await screen.findAllByTestId("goal-chat-row");
+    assertGoalPage(container, GOAL_PAGE);
     expect(rows[0]?.textContent).toMatch(/Member · Asha/);
     expect(rows[0]?.textContent).toMatch(/Waiting on you/);
     expect(rows[1]?.textContent).toMatch(/Referrer · acme\.com/);
@@ -116,8 +121,9 @@ describe("goal /messages: inbox", () => {
 
   it("an empty inbox points at a referral request and names where those conversations live", async () => {
     server.threads = [];
-    render(<Messages />);
+    const { container } = render(<Messages />);
     expect(await screen.findByText("No chats yet.")).toBeTruthy();
+    assertGoalPage(container, GOAL_PAGE);
     expect(screen.getByRole("link", { name: "My requests" }).getAttribute("href")).toBe("/requests");
     expect(primaries()).toHaveLength(1);
     expect(screen.getByRole("link", { name: /Ask for a referral/ }).getAttribute("href")).toBe("/ask");
@@ -164,8 +170,9 @@ describe("goal /messages: inbox", () => {
 
   it("signed out: one next step to sign in, the rule stated, nothing fetched", async () => {
     authState.isSignedIn = false;
-    render(<Messages />);
+    const { container } = render(<Messages />);
     expect(await screen.findByRole("heading", { level: 1, name: "Your chats." })).toBeTruthy();
+    assertGoalPage(container, GOAL_PAGE);
     expect(screen.getByText("Messages with a referrer open after they accept your request.")).toBeTruthy();
     expect(within(screen.getByTestId("sign-in-button")).getByRole("button", { name: "Sign in" })).toBeTruthy();
     expect(server.gets).toHaveLength(0);
@@ -259,6 +266,28 @@ describe("goal /messages: a chat", () => {
     answer({ status: 403, body: memberBlock });
     await waitFor(() => expect(window.sessionStorage.length).toBe(0));
     expect(screen.queryByTestId("goal-dm-rule")).toBeNull();
+    expect(screen.getByLabelText("Message")).toBeTruthy();
+  });
+
+  it.each([
+    { name: "409 conflict", status: 409, body: {} },
+    { name: "429 rate limit", status: 429, body: { error: "You're sending messages too quickly." } },
+    { name: "500 server error", status: 500, body: { error: "Message service is down" } },
+  ])("does not show a late $name in a different chat", async ({ status, body }) => {
+    let release: (value: { status: number; body: unknown }) => void = () => {};
+    server.postReply = () => new Promise(resolve => { release = resolve; });
+    render(<Messages />);
+    await openChat(/Referrer · acme\.com/);
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "A message for the referrer" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+    await waitFor(() => expect(server.posts).toHaveLength(1));
+    fireEvent.click(screen.getByRole("button", { name: "All chats" }));
+    await openChat(/Member · Asha/);
+    const sendButton = screen.getByRole("button", { name: "Send message" });
+    expect(sendButton.getAttribute("aria-busy")).toBe("true");
+    release({ status, body });
+    await waitFor(() => expect(sendButton.getAttribute("aria-busy")).toBeNull());
+    expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getByLabelText("Message")).toBeTruthy();
   });
 
