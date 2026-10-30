@@ -3382,7 +3382,7 @@
       "tier": 2,
       "lane": "observability",
       "branch": "agent/queue/fnd4-token-paths",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-163: no longer waits for seeker-passwords; shared/telemetryScrub.ts is new on main and #324 picks it up when it merges main. Scope per the packet's CEO addendum (§0): adds the vanity alias and /api/documents/by-key/:key; alerts drop the query."
