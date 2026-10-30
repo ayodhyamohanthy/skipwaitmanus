@@ -2212,7 +2212,7 @@
       "tier": 1,
       "lane": "d048-money",
       "branch": "agent/queue/d048-p3-plans",
-      "status": "in-review",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
