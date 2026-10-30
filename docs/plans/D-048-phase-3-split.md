@@ -182,8 +182,8 @@ A packet's pull request adds exactly these rows (as the table lists them: lane, 
 - `D-048-P-employer` adds: `D-048-p3-employer`, `D-048-p3-employer-talent`, `D-048-p3-employer-billing`, `D-048-p3-for-companies`
 - `D-048-P-public` adds: `D-048-p3-policy`, `D-048-p3-system`, `D-048-p3-links`
 - `D-048-P-marketing` adds: `D-048-p3-home-signed-in`, `D-048-p3-discovery`, `D-048-p3-public-profile`
-- The CEO adds (release rows once their surfaces land; retirement rows after their release): `D-048-R1`, `D-048-R2`, `D-048-R3`, `D-048-R4`, `D-048-R5`, `D-048-R6`, `D-048-R7`, `D-048-R8`, `D-048-K1`, `D-048-K2`, `D-048-K3`, `D-048-K4`, `D-048-K5`, `D-048-K-kit`
-- Already in `docs/plans/assignments.json`: `D-048-p3-map`, `D-048-phase-3`, `D-048-F-typescale`, `D-048-p3-w0-shell`, `D-048-P-seeker`, `D-048-P-referrer`, `D-048-P-money`, `D-048-P-auth`, `D-048-P-account`, `D-048-P-admin`, `D-048-P-employer`, `D-048-P-public`, `D-048-P-marketing`, `D-048-p3-requests`, `D-048-p3-explore`, `D-048-p3-home`, `D-048-p3-queue`, `D-048-p3-company`, `D-048-p3-ask` (done)
+- The CEO adds (release rows as soon as every row they depend on is registered, D-168; retirement rows after their release): `D-048-R2`, `D-048-R3`, `D-048-R5`, `D-048-R6`, `D-048-R7`, `D-048-R8`, `D-048-K1`, `D-048-K2`, `D-048-K3`, `D-048-K4`, `D-048-K5`, `D-048-K-kit`
+- Already in `docs/plans/assignments.json`: `D-048-p3-map`, `D-048-phase-3`, `D-048-F-typescale`, `D-048-p3-w0-shell`, `D-048-P-seeker`, `D-048-P-referrer`, `D-048-P-money`, `D-048-P-auth`, `D-048-P-account`, `D-048-P-admin`, `D-048-P-employer`, `D-048-P-public`, `D-048-P-marketing`, `D-048-p3-requests`, `D-048-p3-explore`, `D-048-p3-home`, `D-048-p3-queue`, `D-048-p3-company`, `D-048-p3-ask` (done); `D-048-R1`, `D-048-R4` (D-168)
 
 ## Rulings that make the rows executable (CEO, D-134)
 

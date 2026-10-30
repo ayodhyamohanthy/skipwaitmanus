@@ -539,6 +539,3 @@ registered by owner Ayu, coordinator unavailable, Oct 22. Scoped owner exception
 ### Owner merge-policy amendment, Oct 23, 2026
 
 The scoped amendment in `docs/DECISIONS.md` supersedes repeating a full local gate solely because main moves. Conflict-free docs/registry integrations with no runtime delta use focused checks, separate independent delta review and required CI. Runtime PRs use supported GitHub merge/queue with actual required merge-result CI, never historical-head CI or a bypass. Employee-decline credits remain spent under D-147; phone-file/history holds remain unchanged.
-
-
-Scoped Oct 23 founder exception for one manual claim only: see docs/DECISIONS.md, section "Scoped founder manual-claim exception, Oct 23, 2026". Applies only to PICKER-review-independence by Forge · fd06 after the attestation is committed and published; reviews and every other hold remain unchanged.

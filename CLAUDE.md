@@ -13,6 +13,3 @@ Pick work only from the priority queue in [`docs/KIT_V4_BUILD_PLAN.md`](./docs/K
 Push to `main` only when everything is green (D-082): `main`'s latest CI, the full gate on your commit merged with `origin/main`, and GitHub CI on that exact commit (pull request first). A docs/registry-only PR needs focused checks, a separate independent delta review and required CI instead of a fresh full gate each time `main` moves (owner merge-policy amendment, Oct 23). While `main` is red, push nothing but the fix.
 
 @AGENTS.md
-
-
-Scoped Oct 23 founder exception for one manual claim only: see docs/DECISIONS.md, section "Scoped founder manual-claim exception, Oct 23, 2026". Applies only to PICKER-review-independence by Forge · fd06 after the attestation is committed and published; reviews and every other hold remain unchanged.
