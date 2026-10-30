@@ -13,6 +13,8 @@ Written Oct 18 2026 at `main` `5ef0626`. On that commit the full suite was green
 ## 2. What to do next
 The binding order is the plan §3b (rules 1–7, D-072, D-053). The execution view with packet links, risk tiers and which lanes can run side by side is [`docs/plans/README.md`](plans/README.md). Only a row whose packet exists there may be handed to a model. Any capable session may write a missing packet; do not wait for the architect specifically (D-200).
 
+The CEO review starts from `node scripts/scorecard.mjs` (PROCESS-scorecard, D-166): the last 7 days of merges by kind, product-code merges with no queue row, Tier 1 code merges without an independent pass, open-to-merge times, reverts, board reports and the live API and web SHAs against `main`.
+
 ## 3. Risk tiers
 | Tier | What | Who may implement | Before `main` |
 |---|---|---|---|
@@ -155,6 +157,8 @@ The reviewer is a session of a model that neither built nor fixed the work (the 
 8. **Docs:** the D-068 updates are in the same push; the row's evidence matches what you reproduced.
 9. **The packet's own §10 questions**, each answered with a file and line.
 10. **Gate:** CI on the draft PR is green, and you re-ran `pnpm check`, the focused tests and the build on the branch merged with the latest `origin/main`.
+
+CI enforces this (PROCESS-review-gate, D-166): `--verdict` records `reviewed <sha>`, the task branch's tip on origin, and `scripts/review-gate.mjs` (run by `scripts/scope-check.mjs`) fails a Tier 1 pull request unless its newest stage is an independent pass naming its head, or a head that only merged `main` after it; a pass recorded before this gate, or before a merge of `main`, is re-recorded by its reviewer with `--verdict pass`.
 
 Verdict: `pass` (then the reviewer pushes the merged candidate to the pull request, waits until every check is green on that exact commit, lands that same commit on `main` once `main`'s own CI is green (D-082), and runs the live check) or `findings` (each with file:line, severity and the failing test to add first; the implementer fixes them red-first on the same branch).
 

@@ -72,9 +72,25 @@ export function checkBranch(taskId) {
   return { owns, violations: scopeViolations({ owns, changed, packet: task.packet, lineCounts }), skipped: null };
 }
 
-function main() {
+// PROCESS-review-gate: loaded lazily, so a copy of this script without the gate beside it fails open, loudly.
+async function reviewGate() {
+  try { return (await import("./review-gate.mjs")).runReviewGate(); }
+  catch (error) { console.error(`review-gate: could not load (${error instanceof Error ? error.message : String(error)}) — not failing the branch.`); return 0; }
+}
+
+// PROCESS-id-check: the same lazy, fail-open load, after the review gate.
+async function idCheck() {
+  try { return (await import("./decision-id-check.mjs")).runDecisionIdCheck(); }
+  catch (error) { console.error(`decision-id-check: could not load (${error instanceof Error ? error.message : String(error)}) — not failing the branch.`); return 0; }
+}
+
+async function main() {
   const queueGateExit = runQueueGate();
   if (queueGateExit !== 0) return queueGateExit;
+  const reviewGateExit = await reviewGate();
+  if (reviewGateExit !== 0) return reviewGateExit;
+  const idCheckExit = await idCheck();
+  if (idCheckExit !== 0) return idCheckExit;
 
   const taskId = process.argv[2];
   if (!taskId) {
@@ -101,4 +117,4 @@ function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = await main();

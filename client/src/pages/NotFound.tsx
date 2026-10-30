@@ -1,11 +1,15 @@
+import { lazy, Suspense } from "react";
 import { Link } from "wouter";
 import { AppShell } from "@/components/AppShell";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalNotFound = lazy(() => import("./goal/system/GoalNotFound"));
 
 // Kit v4 not-found (app/src/routes/__root.tsx NotFoundComponent). The kit
 // renders it inside its shell for any unmatched path, so the catch-all route
 // keeps the sidebar and tab bar. Wordmark, title, body and the two actions,
 // nothing else.
 export default function NotFound() {
+  if (goalSurfaceOn("system")) return <Suspense fallback={null}><GoalNotFound /></Suspense>;
   return <AppShell><NotFoundContent /></AppShell>;
 }
 

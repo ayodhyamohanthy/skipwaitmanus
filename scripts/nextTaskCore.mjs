@@ -109,7 +109,7 @@ export const fixMainLockOf = sha => `agent/queue/fix-main-${sha.slice(0, 8)}`;
 export const fixMainIdOf = sha => `fix-main-${sha.slice(0, 8)}`;
 /** Claude Code sessions take the CEO review when nothing else waits (D-085), known by the "Claude" name prefix; D-200: no other step is theirs alone. */
 export const isArchitect = who => /^claude/i.test((who ?? "").trim());
-const modelOf = who => (who ?? "").split(" · ")[0];
+export const modelOf = who => (who ?? "").split(" · ")[0];
 
 /** "Claim GO-LIVE-1: Qwen 3 · s1" -> { verb: "Claim", id: "GO-LIVE-1", who: "Qwen 3 · s1" }. */
 export function parseMarker(subject) {
