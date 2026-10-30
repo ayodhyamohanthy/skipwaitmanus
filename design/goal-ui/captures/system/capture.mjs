@@ -1,0 +1,24 @@
+// Synthetic local evidence only. Run VITE_GOAL_SURFACES=system PORT=3017 pnpm dev,
+// then node design/goal-ui/captures/system/capture.mjs baseline|fixed.
+import {createRequire} from 'node:module';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+const require=createRequire(new URL('../../../../package.json',import.meta.url));
+const {chromium}=require('playwright');
+const phase=process.argv[2]; if(!['baseline','fixed'].includes(phase))throw Error('baseline|fixed required');
+const out=new URL(`./${phase}/`,import.meta.url);await mkdir(out,{recursive:true});
+const browser=await chromium.launch({headless:true,channel:"chrome",args:["--no-sandbox"]});const results=[];
+const scenarios=[['android','/app-states'],...['Install (iPhone)','Push permission','Offline','Slow connection','Not found','Something went wrong','Payment failed','Loading'].map(chip=>[chip.toLowerCase().replaceAll(/[^a-z]+/g,'-'),'/app-states',{chip}]),['android-dismiss','/app-states',{action:'Not now'}],['android-reopen','/app-states',{action:'Not now',reopen:'Install (Android)'}],['iphone-dismiss','/app-states',{chip:'Install (iPhone)',action:'Got it'}],['iphone-reopen','/app-states',{chip:'Install (iPhone)',action:'Got it',reopen:'Install (iPhone)'}],['install-unavailable','/app-states',{action:'Install app'}],...['accepted','dismissed','error'].map(install=>[`install-${install}`,'/app-states',{install,action:'Install app'}]),...['granted','denied','default','error','absent'].map(permission=>[`push-${permission}`,'/app-states',{permission,chip:'Push permission',action:'Allow'}]),['push-later','/app-states',{chip:'Push permission',action:'Maybe later'}],['offline','/offline'],['offline-draft','/offline',{draft:true}],['not-found','/not-a-real-page'],...['Work-email code','Password reset','Welcome','New message','Report outcome','Review ready'].map(template=>[`emails-${template.toLowerCase().replaceAll(/[^a-z]+/g,'-')}`,'/emails',{template}])];
+try{for(const [width,height,dpr]of[[390,844,2],[1280,900,1]].filter(v=>!process.argv[3]||v[0]===Number(process.argv[3])))for(const[name,route,opts={}]of scenarios){
+ const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:dpr});const errors=[];const warnings=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+ await page.route('https://**',r=>r.abort());
+ await page.route('**/api/**',async r=>{const p=new URL(r.request().url()).pathname;await r.fulfill({status:200,contentType:'application/json',body:p.startsWith('/api/trpc/')?JSON.stringify(p.slice('/api/trpc/'.length).split(',').map(()=>({result:{data:{json:null}}}))):'{}'})});
+ await page.addInitScript(o=>{localStorage.setItem('skipwait:cookie-consent','all');if(o.draft)localStorage.setItem('skipwait-pwa-referral-draft',JSON.stringify({name:'Synthetic candidate',targetUrl:'https://careers.synthetic.example/jobs/'+('long-'.repeat(22))+'123',updatedAt:1793310000000}));Object.defineProperty(window,'Notification',{configurable:true,value:o.permission==='absent'?undefined:{requestPermission:async()=>{if(o.permission==='error')throw Error('synthetic');return o.permission||'denied'}}});},opts);
+ await page.goto('http://localhost:3017'+route,{waitUntil:'domcontentloaded'});await page.waitForSelector('[data-goal-page]');await page.evaluate(()=>document.fonts.ready);
+ const click=async text=>{const button=page.getByRole('button',{name:text,exact:true});if(await button.count())await button.click();else warnings.push('missing action '+text)};
+ if(opts.chip)await click(opts.chip);
+ if(opts.install)await page.evaluate(outcome=>{window.dispatchEvent(Object.assign(new Event('beforeinstallprompt',{cancelable:true}),{prompt:async()=>{if(outcome==='error')throw Error('synthetic');},userChoice:Promise.resolve({outcome})}));},opts.install);
+ if(opts.template)await click(opts.template);if(opts.action)await click(opts.action);if(opts.reopen)await click(opts.reopen);
+ await page.waitForTimeout(200);const metrics=await page.evaluate(()=>({width:innerWidth,dpr:devicePixelRatio,scrollWidth:document.documentElement.scrollWidth,loading:[...document.querySelectorAll('[aria-label="Loading"] > div')].map(el=>({background:getComputedStyle(el).backgroundColor,parent:getComputedStyle(el.parentElement.parentElement).backgroundColor}))}));
+ const file=`${name}-${width}.png`;await page.screenshot({path:new URL(file,out).pathname,fullPage:true});results.push({file,route,fixture:opts,viewport:{width,height,dpr},metrics,errors,warnings});console.log(JSON.stringify(results.at(-1)));await page.close();
+}}finally{await browser.close();await writeFile(new URL(`manifest-${process.argv[3]||'all'}.json`,out),JSON.stringify({phase,source:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),command:`node design/goal-ui/captures/system/capture.mjs ${phase}`,synthetic:true,results},null,2)+'\n')}
