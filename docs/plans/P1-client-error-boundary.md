@@ -10,4 +10,10 @@ Exact owned paths are registered in this row; no active overlap found. Recover c
 
 ## Status
 
-- P1-client-error-boundary: in progress — Hark · 3001 — 2026-10-30 — branch agent/queue/p1-client-error-boundary
+- P1-client-error-boundary: review — agent/queue/p1-client-error-boundary — 36abad74
+
+Evidence — P1-client-error-boundary — Hark · 3001 — 2026-10-31
+Branch agent/queue/p1-client-error-boundary @ 36abad74, contains origin/main 2d72dec7
+Red first: 6 failing before the fix in server/trpcErrorBoundary.test.ts (synthetic production-mode fetch-adapter cases)
+Gate (local, low-RAM): check 0 · token audit OK · migration lint OK · deploy triggers OK · scope-check 2 owned paths · focused vitest 5 files / 30 tests passed / 0 failed; full suite and build left to exact-head CI
+Left out / follow-ups: logging and Sentry sinks (separate correction work, not closed here); the coordinator's private synthetic cases were not available to this session, so the independent reviewer checks the formatter against them
