@@ -494,17 +494,18 @@
       "lane": "picker",
       "branch": "agent/queue/picker-architect-landing",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-237",
       "dependsOn": [
         "PICKER-review-wording",
         "PROCESS-review-gate"
       ],
       "owns": [
+        "scripts/next-task.mjs",
         "scripts/nextTaskCore.mjs",
         "scripts/nextTaskText.mjs",
         "scripts/nextTaskArchitectLanding.test.ts"
       ],
-      "note": "D-190: workBranchOf skips reserved agent/architect/ branches, so #557 and #585 sat green with no landing hand-out on Oct 23. Use the lock branch as the work branch for architect rows that carry file changes; hand the landing to anyone but the writer. Waits for the two rows that own files it edits."
+      "note": "D-190: workBranchOf skips reserved agent/architect/ branches, so #557 and #585 sat green with no landing hand-out on Oct 23. Use the lock branch as the work branch for architect rows that carry file changes; hand the landing to anyone but the writer. Waits for the two rows that own files it edits. D-237: PR #838 (head 08729ea5, 4 files) holds packet items 2-3, but item 1 also needs the git loader in scripts/next-task.mjs (markersOn drops commits that change files, so buildView cannot see a packet lock) and scope-check refused it; D-237 adds that file to owns and the hand-out resumes. The landing still goes to a session that is not the packet's writer."
     },
     {
       "id": "REGISTER-oct24",
@@ -4654,6 +4655,7 @@
       "status": "todo",
       "syncedTo": "D-227",
       "dependsOn": [
+        "PICKER-architect-landing",
         "PROCESS-review-gate"
       ],
       "owns": [
