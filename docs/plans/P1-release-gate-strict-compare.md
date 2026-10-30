@@ -12,7 +12,7 @@ Evidence: independent750review https://github.com/ayodhyamohanthy/skipwaitmanus/
 
 ## Status
 
-- P1-release-gate-strict-compare: in-review — implementation merged as fecf0d3b (#755; head 3ff72fa2; land marker 634ab8e6); required CI 40580698077 success on the merged head; packet item 5 acceptance pending — no post-landing normal gated release identity is recorded here yet, and runtime acceptance stays with #748
+- P1-release-gate-strict-compare: done (D-233, Oct 29). Implementation merged as fecf0d3b (#755; head 3ff72fa2; land marker 634ab8e6); required CI 40580698077 success on the merged head. Item 5 is met by three later normal API releases that passed the gate: deploy-api runs 40776096517 (815b4b11), 40785803110 (e4660457) and 40791203801 (4c6bafa4), each with jobs release-gate, migrate-db and deploy at success. At 2026-10-29T07:01Z `scripts/verify-live-release.sh` printed CONVERGED for 4c6bafa4, and skipwait.me served `git-commit` 4c6bafa4. Runtime acceptance of incident #748 stays with #748.
 
 Evidence — P1-release-gate-strict-compare — Claude Code · da74 — 2026-10-27
 Branch agent/queue/p1-release-gate-strict-compare @ af3a67b5, contains origin/main 9746ec9a
