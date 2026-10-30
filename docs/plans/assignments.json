@@ -673,7 +673,7 @@
       "tier": 3,
       "lane": "process",
       "branch": "agent/queue/process-scorecard",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-id-check"
