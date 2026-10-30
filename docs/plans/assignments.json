@@ -2848,7 +2848,7 @@
       "lane": "d048-system",
       "branch": "agent/queue/d048-system-repair",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-232",
       "dependsOn": [
         "D-048-p3-system",
         "D-048-F-goal-check"

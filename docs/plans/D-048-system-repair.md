@@ -10,7 +10,7 @@ Docs-only registration for a bounded repair of merged PR #834. No runtime change
 | Branch | `agent/queue/d048-system-repair` |
 | Lane | `d048-system` |
 | Depends on | `D-048-p3-system`, `D-048-F-goal-check` |
-| Decisions checked | D-227, with later register entries checked before execution |
+| Decisions checked | D-232, newest main register entry at registration; D-228 through D-232 add no system repair change. Recheck later entries before execution. |
 | Packet basis | `D-048-public.md` §§5-7, `D-048-phase-3-split.md` §3 local gate and §6 release, `GOAL_UI_COVERAGE.md` §1 |
 
 ## Evidence and current state
