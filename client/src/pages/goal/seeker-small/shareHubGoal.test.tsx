@@ -90,7 +90,7 @@ describe("goal share hub", () => {
     authState.isSignedIn = true;
     view.rerender(<Painted paints={paints} />);
     expect(claimsReadyWithoutLink(paints)).toEqual([]);
-    expect(screen.getByText(/Creating your link…/)).toBeTruthy();
+    expect(screen.getByText(/^Creating your link… When a friend joins with it/)).toBeTruthy();
     resolveInvite({ ok: true, status: 200, json: async () => ({ invite: { inviteCode: "PAL-123" }, locked: false }) } as Response);
     expect(await screen.findByText(/invite=PAL-123/)).toBeTruthy();
     expect(screen.getByText(/Your link is ready\./)).toBeTruthy();
