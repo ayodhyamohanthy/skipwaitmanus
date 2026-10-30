@@ -493,7 +493,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-architect-landing",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-237",
       "dependsOn": [
         "PICKER-review-wording",
