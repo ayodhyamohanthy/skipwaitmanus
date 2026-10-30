@@ -384,4 +384,4 @@ It needs the owner's confirmation of that hard stop (D-204, D-200 (6)), and #383
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
-REL-release-verify: in progress — Hark · 6699 — 2026-10-30 — branch agent/queue/rel-release-verify — resumed under D-238: both deploy-api.yml verify steps back on `classification == 'runtime'`, `id: deploy` and the Notify rewrite kept, marker untouched; releaseSmoke.test.ts pins the amended shape.
+REL-release-verify: review — agent/queue/rel-release-verify — 1207c138 — Hark · 6699 — draft PR #853 under D-238 (verify steps on `classification == 'runtime'`, `id: deploy` kept, marker untouched). Open question: D-238 (5) says release-verify checks the live site after a failed deploy, but `planVerification` skips a trigger that did not succeed (its Deploy failed issue reports it); amend that sentence or authorise the core change.
