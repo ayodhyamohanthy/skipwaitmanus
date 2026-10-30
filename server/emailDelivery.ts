@@ -1,6 +1,11 @@
 export type TransactionalEmailInput = { to: string; subject: string; html?: string; text: string };
 
-export type TransactionalEmailResult = { sent: boolean; reason: "sent" | "not_configured" | "delivery_failed" };
+/**
+ * `providerStatus` is the provider's HTTP status when it answered non-2xx
+ * (REL-review-email-retry), so a retry can record why a send failed. It is
+ * absent on success, when not configured, and on a network error or timeout.
+ */
+export type TransactionalEmailResult = { sent: boolean; reason: "sent" | "not_configured" | "delivery_failed"; providerStatus?: number };
 
 export type EmailDeliveryDependencies = { fetchImpl?: typeof fetch };
 
@@ -29,7 +34,7 @@ export function createZeptoMailSender(dependencies: EmailDeliveryDependencies = 
         }),
         signal: AbortSignal.timeout(EMAIL_TIMEOUT_MS),
       });
-      if (!response.ok) throw new Error("delivery failed");
+      if (!response.ok) return { sent: false, reason: "delivery_failed", providerStatus: response.status };
       return { sent: true, reason: "sent" };
     } catch { return { sent: false, reason: "delivery_failed" }; }
   };
@@ -52,7 +57,7 @@ export function createResendSender(dependencies: EmailDeliveryDependencies = {})
         body: JSON.stringify({ from, to: [to], subject, ...(html ? { html } : {}), text }),
         signal: AbortSignal.timeout(EMAIL_TIMEOUT_MS),
       });
-      if (!response.ok) throw new Error("delivery failed");
+      if (!response.ok) return { sent: false, reason: "delivery_failed", providerStatus: response.status };
       return { sent: true, reason: "sent" };
     } catch { return { sent: false, reason: "delivery_failed" }; }
   };
