@@ -181,7 +181,7 @@
    - **On the next verified release:** comment on and close every open `Release not verified` issue.
 3. **Both deploy workflows:**
    - Replace the "Notify" step's comment on the newest issue: on failure, open or update one issue `Deploy failed: <workflow name>` labelled `incident` (label created as above); on success, close it if open.
-   - In `deploy-api.yml`, give the step "Deploy container image + worker" `id: deploy` (it has none). Run "Verify administrator sign-in gate" and "Verify active Cloudflare container release" with `if: always() && steps.deploy.outcome != 'skipped'`, so a failure in the middle of a deploy still checks what went live.
+   - In `deploy-api.yml`, give the step "Deploy container image + worker" `id: deploy` (it has none) as the job's addressable deploy step. Leave "Verify administrator sign-in gate" and "Verify active Cloudflare container release" on their existing `if: steps.changes.outputs.classification == 'runtime'`: #748's pinned `scripts/requireGreenRelease.test.ts` (a `wrangler.jsonc` read counts as a production step) and `scripts/assert-api-workflow-selection.sh` both require that condition, and D-238 records the run that proves `always()` fails them. A deploy that fails midway is still seen: the Notify step opens its incident, and `release-verify.yml` runs on the failed deploy's completion and checks what actually went live.
    - Leave "Update deployed runtime marker" as it is, so a failed deploy never moves `api-runtime`.
 4. **`drift-watch.yml` stays for now.** PR #689 repairs #687, and an open registry PR (#690) gives it a row. Once `release/verified` has been green on `main` for 3 days, any session retires it with a one-line row; do not delete it here.
 
@@ -190,8 +190,9 @@
 - The expected SHAs come from the newest successful web run and the `api-runtime` tag.
 - A superseded run exits without a status.
 - The `workflows:` names match the deploy files.
+- D-238: `deploy-api.yml` keeps `id: deploy`, both verify steps on `if: steps.changes.outputs.classification == 'runtime'`, and the marker step unchanged.
 
-**Owned paths.** `scripts/release-smoke.mjs`, `scripts/releaseSmokeCore.mjs`, `scripts/releaseSmoke.test.ts`, `.github/workflows/release-verify.yml` (new), and `.github/workflows/deploy-api.yml` and `.github/workflows/deploy-pages.yml` (only the Notify steps, the deploy step id and the two `if:` lines; leave the `paths:` filters as they are). Map lines: "Container/runtime deploy" and "Pages deploy".
+**Owned paths.** `scripts/release-smoke.mjs`, `scripts/releaseSmokeCore.mjs`, `scripts/releaseSmoke.test.ts`, `.github/workflows/release-verify.yml` (new), and `.github/workflows/deploy-api.yml` and `.github/workflows/deploy-pages.yml` (only the Notify steps and the deploy step id; every existing `if:` line and the `paths:` filters stay as they are). Map lines: "Container/runtime deploy" and "Pages deploy".
 
 **Done:**
 - Tests pass and CI is green.
