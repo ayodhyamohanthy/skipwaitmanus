@@ -76,13 +76,13 @@
    - **Plans read the server catalog.** `/plans` shows the prices `/api/plans/catalog` returns.
 5. **CI.** A job `e2e journeys` in `.github/workflows/ci.yml` runs on `pull_request` and on `push` to `main`.
    - It runs `pnpm exec playwright install --with-deps chromium`, with the browser cached.
-   - Its first step exits green when the diff touches only `docs/**` or `*.md` (rule 2; no `paths:` filter).
+   - Its first step exits green when the diff touches only `docs/**` or `*.md` (rule 2; no `paths:` filter). The diff is read with `git diff --no-renames --name-only "$BASE_SHA...$HEAD_SHA"` (D-239 (6)): rename detection is on by default, so a plain `--name-only` lists only the new path when a runtime file is renamed into `docs/`, and the journeys would skip a runtime change.
    - On failure it uploads the Playwright trace and screenshots as an artifact.
 6. **`package.json`:** one script line, `"e2e": "playwright test -c e2e/playwright.config.ts"`. No new dependency.
 
 **Tests.** The journeys are the tests. Prove each catches its bug: in the PR, link a CI run where the personal-link journey fails against a throwaway branch that reverts the P0 fix (never pushed to `main`), next to the green run.
 
-**Owned paths.** `e2e/`, `scripts/e2e-server.mjs`, `.github/workflows/ci.yml` (the new job only), `package.json` (one script line). The `AGENTS.md` "Validation commands" text goes at the end of your done line here (`— map: ...`); any session folds it in.
+**Owned paths.** `e2e/`, `scripts/e2e-server.mjs`, `.github/workflows/ci.yml` (the new job only), `scripts/ciMarkerSkip.test.ts` (the two exact-count assertions and the per-job blocking-step assertions, added by D-239), `package.json` (one script line). The `AGENTS.md` "Validation commands" text goes at the end of your done line here (`— map: ...`); any session folds it in.
 
 **Done:**
 - Six journeys green on `main`, with the red run linked.
@@ -185,3 +185,6 @@ GATE-e2e-journeys applies the deploy migrations twice to MySQL. This row stays o
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 
 GATE-test-integrity: done — e425fac9 (PR #846)
+GATE-tier-floor: done — 0899a26a (PR #862; built by DeepSeek V4.1 Flash 1017 · s38fcc2f0 at 2cbe6f33, gate/PR/land finished by the Cline · b579 takeover). Gate proof: `pnpm check` 0, `scripts/` 28 files/925 tests, full `pnpm vitest run` 5316 passed with 6 load-flakes in `scripts/classifyCiChange.test.ts`, `server/chargebeeRoutes.cardValidation.test.ts` and `client/src/pages/startGoal.test.tsx` that each pass alone (70/70), token audit, migration lint, deploy triggers and `pnpm build` all 0, `scope-check` inside the row's owns; the new message reproduced locally on a scratch Tier 2 tree that touches `server/dailyMoneyCheck.ts` — "Tier 1: this change touches `server/dailyMoneyCheck.ts`, which are Tier 1 (D-212)…" — the first real Tier 2 row that touches a Tier 1 path will show it in CI (none exists today, so that instance is unverified)
+
+GATE-e2e-journeys: done — 629a2167 — built by Hark · 2979, landed by Qoder · 3415 — six core journeys in a real browser against a real MySQL on every pull request and every push to main (personal link survives sign-in, queue attestation before Accept, cost before Send, withdraw returns the referral, work-email-only referrer sign-in, plans read the server catalog), `scripts/e2e-server.mjs` builds the schema from empty and applies the deploy migrations twice, and the `e2e journeys` job in `.github/workflows/ci.yml` runs green on the PR (red run against the throwaway branch 41023432494 fails only the personal-link journey); the #748 pin names the e2e job and pins each required job's own blocking commands (D-239), and its docs-only diff reads `--no-renames`. — map: Validation commands gain `pnpm e2e` (the six journeys in `e2e/*.e2e.ts`, served by `scripts/e2e-server.mjs`; CI job `e2e journeys`).

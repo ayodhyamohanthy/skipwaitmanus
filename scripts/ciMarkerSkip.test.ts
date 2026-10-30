@@ -25,6 +25,11 @@ import path from "node:path";
 const ci = fs.readFileSync(path.join(__dirname, "..", ".github", "workflows", "ci.yml"), "utf8");
 
 const REQUIRED_JOBS = ["typecheck", "unit + component + route tests", "production build"] as const;
+// D-239: the required list stays exactly the three jobs in the ruleset. The
+// whole-file inventory assertions below must also account for the non-required
+// `e2e journeys` job, which is named here explicitly so no job can appear
+// silently. This union is used by those two assertions only.
+const CI_JOBS = [...REQUIRED_JOBS, "e2e journeys"] as const;
 /** The one gate every skippable step carries, byte for byte. */
 const FAST_PATH_GATE = "${{ steps.classify.outputs.marker_only != 'true' }}";
 /** The event-count claim, byte for byte: only ever an input to the classifier. */
@@ -122,7 +127,7 @@ describe("H1: every required job starts, and only its own classifier may skip st
   it("no aggregate job hides a skipped required job", () => {
     const jobs = ci.slice(ci.indexOf("\njobs:")).split(/\n  (?=[a-zA-Z][\w-]*:\n)/).filter((b) => b.trim());
     const names = jobs.map((b) => /name: (.+)\n/.exec(b)?.[1]).filter(Boolean);
-    expect(names.sort()).toEqual([...REQUIRED_JOBS].sort());
+    expect(names.sort()).toEqual([...CI_JOBS].sort());
   });
 
   it("no branch prefix survives in any workflow instruction", () => {
@@ -187,7 +192,7 @@ describe("CI-architect-real-checks: what must not move", () => {
   it("keeps the triggers, the concurrency group and the job runners", () => {
     expect(ci).toContain("on:\n  pull_request:\n  push:\n    branches: [main]\n  workflow_dispatch:\n");
     expect(ci).toContain("concurrency:\n  group: ci-${{ github.ref }}\n  cancel-in-progress: true\n");
-    expect(ci.match(/runs-on: ubuntu-latest/g)?.length).toBe(REQUIRED_JOBS.length);
+    expect(ci.match(/runs-on: ubuntu-latest/g)?.length).toBe(CI_JOBS.length);
   });
 
   it("keeps the blocking steps that already lived in the typecheck job", () => {
@@ -195,4 +200,32 @@ describe("CI-architect-real-checks: what must not move", () => {
       expect(ci, `missing step ${step}`).toContain(step);
     }
   });
+});
+
+// D-239 F1 (P1): the whole-file test above asserts these commands exist
+// somewhere in ci.yml, and `e2e journeys` runs `pnpm build` too, so a required
+// job's own build could be turned into `echo skipped` and still pass. These
+// additions assert each required job runs its own blocking commands inside its
+// own job block; `CI_JOBS` is not used here.
+describe("D-239 F1: each required job runs its own blocking commands", () => {
+  const BLOCKING_COMMANDS: Record<(typeof REQUIRED_JOBS)[number], readonly string[]> = {
+    typecheck: [
+      "pnpm install --frozen-lockfile",
+      "NODE_OPTIONS=--max-old-space-size=6144 pnpm check",
+      "node scripts/design-token-audit.mjs",
+      "node scripts/check-deploy-triggers.mjs",
+      "node scripts/scope-check.mjs --branch",
+    ],
+    "unit + component + route tests": ["pnpm install --frozen-lockfile", "pnpm vitest run"],
+    "production build": ["pnpm install --frozen-lockfile", "pnpm build"],
+  };
+
+  for (const job of REQUIRED_JOBS) {
+    it(`${job} carries each of its blocking commands in its own job block`, () => {
+      const block = jobBlock(job);
+      for (const command of BLOCKING_COMMANDS[job]) {
+        expect(block, `${job} must run ${command} itself`).toContain(command);
+      }
+    });
+  }
 });
