@@ -383,4 +383,4 @@ It needs the owner's confirmation of that hard stop (D-204, D-200 (6)), and #383
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
-REL-watchdog: in progress — Hark · 03f3 — 2026-10-30 — branch agent/queue/rel-watchdog
+REL-watchdog: in progress — Hark · 03f3 — 2026-10-30 — branch agent/queue/rel-watchdog — PR #845 built, CI green on 358f895e, full local gate green. Owner question before landing: please run `npx wrangler secret put ZEPTOMAIL_API_KEY --name skipwait-watchdog` (optional: GITHUB_ISSUES_TOKEN); deploy-watchdog fails on main by design until it exists. Alert email delivery unverified until then. — map: External watchdog: `watchdog/` Worker `skipwait-watchdog`, cron */5, read-only probes of /, /api/health/ready, /api/health/latency, /api/plans/catalog, the Google sign-in redirect and two malformed code sends; two failed rounds email the owner and open an `incident` issue; deployed by `.github/workflows/deploy-watchdog.yml`.
