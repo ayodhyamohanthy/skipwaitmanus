@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { REVIEW_GATE_FAIL, findGateRow, reviewGateViolation, reviewedOf } from "./review-gate.mjs";
+import { REVIEW_GATE_FAIL, findGateRow, isStatusOnlyChange, reviewGateViolation, reviewedOf } from "./review-gate.mjs";
 
 // PROCESS-review-gate (D-166, docs/plans/PROCESS-gates.md): a Tier 1 row merges only after an
 // independent pass verdict that names its exact head (or a head that only merged main after it).
@@ -103,5 +103,47 @@ describe("PROCESS-review-gate", () => {
     expect(findGateRow(tasks, "agent/architect/t1")).toBe(task1);
     expect(findGateRow(tasks, "agent/instinct/t1")).toBeNull();
     expect(findGateRow(tasks, "claude/docs")).toBeNull();
+  });
+});
+
+// The landing steps make one more commit after the review: the status commit (the task's
+// "status" in docs/plans/assignments.json and its line in the packet's Status section). PR #819
+// (D-048-p3-plans) failed on exactly that: head 653125b4 changed only those two lines after the
+// reviewed 9f66f1ed. A status commit keeps the pass; anything else after the review does not.
+const PACKET_BEFORE = ["# D-048", "", "## Rows", "- `D-048-p3-plans`: owns client/src/pages/goal/plans/**", "", "## Status", "", "- `D-048-p3-plans`: review — branch — 02590e56", "- `D-048-p3-premium`: not started", ""].join("\n");
+const PACKET_AFTER = PACKET_BEFORE.replace("review — branch — 02590e56", "done — 9f66f1ed — landed");
+const ROWS_BEFORE = ['{', '  "tasks": [', '    {', '      "id": "D-048-p3-plans",', '      "tier": 1,', '      "status": "in-review",', '      "syncedTo": "D-227"', '    }', '  ]', '}', ''].join("\n");
+const ROWS_AFTER = ROWS_BEFORE.replace('"status": "in-review"', '"status": "done"');
+const statusCommitOf819 = [
+  { path: "docs/plans/D-048-money.md", before: PACKET_BEFORE, after: PACKET_AFTER, removed: [8], added: [8] },
+  { path: "docs/plans/assignments.json", before: ROWS_BEFORE, after: ROWS_AFTER, removed: [6], added: [6] },
+];
+
+describe("PROCESS-review-gate: the status commit a landing makes keeps the pass", () => {
+  it("reads the #819 status commit (assignments.json status + packet Status line) as status-only", () => {
+    expect(isStatusOnlyChange(statusCommitOf819)).toBe(true);
+    expect(isStatusOnlyChange([statusCommitOf819[1]])).toBe(true);
+    expect(isStatusOnlyChange([statusCommitOf819[0]])).toBe(true);
+  });
+
+  it("does not read a code change, a packet edit outside Status, or another assignments field as status-only", () => {
+    expect(isStatusOnlyChange([...statusCommitOf819, { path: "client/src/pages/Billing.tsx", before: "a\n", after: "b\n", removed: [1], added: [1] }])).toBe(false);
+    expect(isStatusOnlyChange([{ path: "docs/plans/D-048-money.md", before: PACKET_BEFORE, after: PACKET_BEFORE.replace("owns client", "owns server"), removed: [4], added: [4] }])).toBe(false);
+    expect(isStatusOnlyChange([{ path: "docs/plans/assignments.json", before: ROWS_BEFORE, after: ROWS_BEFORE.replace('"tier": 1', '"tier": 2'), removed: [5], added: [5] }])).toBe(false);
+    expect(isStatusOnlyChange([{ path: "docs/plans/sub/x.md", before: PACKET_BEFORE, after: PACKET_AFTER, removed: [8], added: [8] }])).toBe(false);
+    expect(isStatusOnlyChange([])).toBe(false);
+  });
+
+  it("passes #819's shape: the reviewed commit, a merge of main, then only the status commit", () => {
+    const sinceReview = () => ["653125b4"];
+    expect(gate({ lockMarkers: passOn(REVIEWED), nonMergeCommitsSince: sinceReview, isStatusCommit: (sha: string) => sha === "653125b4" })).toBeNull();
+  });
+
+  it("still fails when a code commit follows the review, with or without a status commit beside it", () => {
+    const isStatusCommit = (sha: string) => sha === "653125b4";
+    expect(gate({ lockMarkers: passOn(REVIEWED), nonMergeCommitsSince: () => ["c0ffee0"], isStatusCommit })).toContain(REVIEW_GATE_FAIL);
+    const mixed = gate({ lockMarkers: passOn(REVIEWED), nonMergeCommitsSince: () => ["c0ffee0", "653125b4"], isStatusCommit });
+    expect(mixed).toContain(REVIEW_GATE_FAIL);
+    expect(mixed).toContain("1 commit(s)");
   });
 });
