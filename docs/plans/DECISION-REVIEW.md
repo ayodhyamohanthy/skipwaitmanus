@@ -71,14 +71,14 @@
   - **D-005, 3, superseded** by D-219.
   - **D-006, 9, active and frozen.** Referrers must trust that requests are not bought. D-196's paid priority is the first sanctioned exception and stays unsold until its routing is reviewed.
   - **D-007, 8, active.** Correct today. I don't know when registration becomes mandatory for this business (the turnover threshold, or USD export of services); a CA should confirm before revenue nears it.
-  - **D-008, 6, superseded** by D-068's same-push rule. As practised, docs drift anyway: D-233 closed five stale rows.
+  - **D-008, 6, superseded** by D-068's same-push rule. As practised, docs drift anyway: D-212 (8) and D-233 closed five stale rows between them.
   - **D-009, 7, active** as the picker. One queue works, but its `in-review` blind spot left the revenue review idle for two days (D-233).
   - **D-010, 10, active.** The goal.
   - **D-011, 8, active**; its providers moved into D-049. Missing Apple sign-in (D-209 question) matters for iPhone-heavy seekers.
   - **D-012, historical** (D-059). Item (2) lives on as D-147, rated below.
   - **D-013, historical** (D-053).
-  - **D-014, historical** (D-046, D-219). Its fact still matters most: on Oct 14 no external company had an available referrer. No session can read today's value.
-  - **D-015, 9 for the strategy; results unknown.** Supply is the binding constraint, and founder outreach is the cheapest supply lever. The day-14 review is Nov 2. Missing evidence: the D-018 numbers (owner question 2).
+  - **D-014, historical** (D-046, D-219). Its fact still matters most: on Oct 14 no external company had an available referrer. At 2026-10-30T02:38Z `GET https://skipwait.me/api/companies` listed 39 companies with `openCount` 2, SkipWait itself and Neutrinos, so one outside company can see a request today.
+  - **D-015, 9 for the strategy; results thin so far.** Supply is the binding constraint, and founder outreach is the cheapest supply lever. One outside company has an available referrer (see D-014). The day-14 review is Nov 2; the rest of the D-018 numbers are owner question 2.
   - **D-016, historical.** The "Open doors at launch" landing row is gone from the client; the phrase survives only as a referrer-workspace headline, and D-176 removed availability framing.
   - **D-017, 8, active and mostly done.** `P0-ask-link-signin` is done, and `D-174-fix-post-binding` covers posted roles. The personal link is the referrer's own growth loop (L2).
   - **D-018, 8, active.** "Faster" cannot be measured without it. Against: the panel is admin-only and unreported, so no session sees the numbers.
@@ -96,8 +96,8 @@
   - **D-123, 9.** It kept prices from going live without the owner's word.
 - **Actions:**
   - D-233 (CEO remit) routes reviews of work built outside the picker: `builtBy`, D-151 by model family, `--avoid` instead of a block, and `in-review` only while a named session is landing the row.
-  - Registered the build row `PICKER-review-identity` (Tier 2), placed just after `PRICING-banded-oct25`; `PROCESS-review-gate` now waits for it.
-  - Closed five rows on evidence: `P1-release-gate-strict-compare` (item 5 met by three gated releases and a CONVERGED live check), `D-048-fix-start-ask-handoff`, `D-166-founder-decisions-sync`, `D-048-doctrine-benefit-copy` and `D-179-ats-validation`.
+  - Registered the build row `PICKER-review-identity` (Tier 2), placed just after `PRICING-banded-oct25`. It also fixes the landed review gate (#836), waits for `PICKER-architect-landing` (#838) for file order, and `PICKER-avoid-unblock` and `GATE-tier-floor` wait for it.
+  - Closed three rows on evidence: `P1-release-gate-strict-compare` (item 5 met by three gated releases and a CONVERGED live check), `D-048-doctrine-benefit-copy` and `D-179-ats-validation`. D-212 (8) closed `D-048-fix-start-ask-handoff` and `D-166-founder-decisions-sync` on `main` first.
   - Corrected `docs/DELEGATION.md` §6 and the `AGENTS.md` queue row to the family rule. No price, flag, legal text or money path changed.
 - **Owner questions (rated, D-023):**
   1. **A route for CEO docs pull requests to reach an independent reviewer, 8/10.**
@@ -105,7 +105,7 @@
      - *Recommendation:* let a pull request that only adds one Tier 1 `REGISTER-*` row and its brief land on required CI, so the picker then routes the real change's review.
      - *Against:* it waives review for a class of pull requests, which is your rule to bend; a registration could also slip in a reorder. Scope-checking it to one added row limits that.
      - *Alternative:* wait for `PICKER-architect-landing` (D-190), which now sits behind `PROCESS-review-gate` and `PICKER-review-identity`.
-  2. **The D-018 numbers before the Nov 2 day-14 review of D-015.** Four numbers: verified referrers by company, weekly active external referrers, requests per week by outcome, and median time to a referrer's first decision. This is not a decision; it decides how D-015, D-227 and D-223 rate next.
+  2. **The D-018 numbers before the Nov 2 day-14 review of D-015.** The public directory shows only that 2 of 39 companies have an available referrer. Three more numbers: weekly active external referrers, requests per week by outcome, and median time to a referrer's first decision. This is not a decision; it decides how D-015, D-227 and D-223 rate next.
   3. **Seven rows wait for you.** Suggested order by goal impact:
      1. `LAUNCH-legal-copy` (#659). Terms still says "Referrals are always free" (`client/src/pages/Terms.tsx:23`) while packs sell and D-219 prices are frozen.
      2. `D-048-F-shell-parts` (#767).

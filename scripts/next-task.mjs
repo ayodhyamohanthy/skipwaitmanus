@@ -313,12 +313,18 @@ async function main() {
     const lockName = reviewLockOf(task), lock = branches.get(lockName);
     const stage = reviewStateOf(lock, task.id);
     const holder = stageHolderOf(lock, task.id);
-    if (args.verdict && (stage !== "in-review" || holder !== args.as)) fail(`only the reviewer holding ${lockName} records a verdict (it is ${stage}, held by ${holder ?? "nobody"})`);
+    // PROCESS-review-gate (D-166): the reviewer who passed may re-record the pass on the current head (after a merge of main, or
+    // over a verdict written before verdicts named their head); a landing refuses a head no verdict names.
+    const reviewer = [...(lock?.markers ?? [])].reverse().find(m => m.id === task.id && m.verb === "Review claim")?.who ?? null;
+    const rerecord = args.verdict === "pass" && ["passed", "landing"].includes(stage) && reviewer === args.as;
+    if (args.verdict && !rerecord && (stage !== "in-review" || holder !== args.as)) fail(`only the reviewer holding ${lockName} records a verdict (it is ${stage}, held by ${holder ?? "nobody"})`);
     if (args.fixed && (stage !== "fixing" || holder !== args.as)) fail(`only the agent holding the fix claim on ${lockName} marks it fixed (it is ${stage}, held by ${holder ?? "nobody"})`);
     if (args.fixed) requireSynced(doc, branches, args.as);
     const subject = args.verdict ? markerSubject("Verdict", task.id, args.as, args.verdict) : markerSubject("Fixed", task.id, args.as);
-    if (!pushMarker(lockName, tip(lockName), subject)) fail(`could not push ${lockName}: it moved; fetch and run again`);
-    console.log(`Recorded on ${lockName}: ${subject}`);
+    // The body names the head reviewed: the tip of the task's branch on origin now, which the gate compares with the PR head.
+    const reviewed = args.verdict ? (onOrigin(task.branch) ? tip(task.branch) : fail(`${task.branch} is not on origin; there is no head to review`)) : null;
+    if (!pushMarker(lockName, tip(lockName), subject, reviewed ? `reviewed ${reviewed}` : undefined)) fail(`could not push ${lockName}: it moved; fetch and run again`);
+    console.log(`Recorded on ${lockName}: ${subject}${reviewed ? ` (reviewed ${reviewed})` : ""}`);
     return;
   }
   if (args.landed) {

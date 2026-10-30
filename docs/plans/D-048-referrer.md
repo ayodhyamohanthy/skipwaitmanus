@@ -86,7 +86,7 @@ None. The split's open design questions are already decided under D-123 in `D-04
 
 `D-048-P-referrer`: prepared PR pending landing — GPT · d492 — 2026-10-23 — branch `agent/architect/d048-p-referrer`
 
-`D-048-p3-post`: in progress — DeepSeek V4.1 Flash 1017 · 5edd — 2026-10-29 — branch agent/queue/d048-p3-post
+`D-048-p3-post`: done — `033b638f` (#814) — DeepSeek V4.1 Flash 1017 · 5edd — 2026-10-29 — goal `/post-opportunity` referrer sign-in moved onto the canonical `referrerSignInHref()` helper on both the work-email gate and the publish gate (packet guardrail 2); red first (no link existed, the gate called `go()` with a literal URL), 11/11 after, and the test now pins the helper href and its exact value; gate green (typecheck, token audit, scope-check 3 owned paths, goalBoundary 3/3); flag stays off, `RELEASED` untouched
 
 `D-048-p3-invite`: done — `fb420761` (#577) — goal `/invite` behind `goalSurfaceOn('invite')`: company request and personal invite-link panels, flag-off parity, canonical referrer OTP href, exact-head CI green (D-085)
 

@@ -20,10 +20,11 @@
 4. **The review pick names them.** The `review` action (`:573`) and its `continue` form (`:705`) carry `builtBy: v.task.builtBy ?? []`. `case "review"` in `scripts/nextTaskText.mjs` prints `built by <owner>, <builtBy...>` (or `unknown` when both are empty).
 5. **`--avoid`, not blocked.** In the same sentence (`:249`), replace "if you find one, post no verdict and report it blocked to the CEO" with "if you find one, post no verdict and run this picker again with `--avoid <id>` (a model conflict is a reason of your own session, never a block, D-233)". Keep the phrases "No session of your model" and "A review or findings comment of your own model does not count", which `scripts/nextTaskReviewWording.test.ts` pins.
 6. **The board shows a stuck `in-review` row.** In `statusBoard`, an `in-review` row gets `quietHours` from the newest of its work branch tip, its review lock and its heartbeat. After 2 hours with no movement its health is `red`. When its work branch or pull request has merged, the board says `landed, mark done`. This is display only: no hand-out changes.
-7. **Release, in the same pull request after the code.** In `docs/plans/assignments.json` set:
-   - `PRICING-banded-oct25`: `"status": "todo"`, `"builtBy": ["Instinct", "Claude"]`;
-   - `FIX-share-hub-link-ready`: `"status": "todo"`, `"builtBy": ["Claude"]`;
-   - `D-180-a-free-asks-chip`: `"status": "todo"`, `"builtBy": ["Instinct"]` (it still waits for its dependencies).
+7. **The review gate uses the same identity.** `PROCESS-review-gate` landed as #836, and `scripts/review-gate.mjs:72-75` compares `modelOf` spellings. Switch it to `sameModel`, and add the row's `builtBy` to its builder set.
+8. **Release, in the same pull request after the code.** In `docs/plans/assignments.json`, set each row's `builtBy`, and its `status` to `todo` if it is still `in-review` (#804 and #828 may already have moved #734's and #666's rows):
+   - `PRICING-banded-oct25`: `"builtBy": ["Instinct", "Claude"]`;
+   - `FIX-share-hub-link-ready`: `"builtBy": ["Claude"]`;
+   - `D-180-a-free-asks-chip`: `"builtBy": ["Instinct"]` (it still waits for its dependencies).
 
    Then run `node scripts/next-task.mjs --as "Claude Code · t1"` and `node scripts/next-task.mjs --as "Qoder · t2"` against the merged tree (`NEXT_TASK_LIST_REF=<your branch>`). Paste both outputs in the pull request: the first is never handed #666's review, the second is.
 
@@ -42,9 +43,11 @@
   - one moved 30 minutes ago stays `progress`;
   - one whose branch is merged says `landed, mark done`.
 - The review text says `--avoid` and no longer says "report it blocked".
+- The gate (`reviewGateViolation` from `scripts/review-gate.mjs`, tested in the new file): a pass by `Cue GPT · 06ca` after a `Fixed` by `Cue · 8303` fails, and with `builtBy: ["Instinct"]` a pass by `Instinct coordinator · x` fails.
 
 ## Must stay green, unedited
 - `scripts/nextTask.test.ts` is owned by `PROCESS-review-gate`, so do not edit it. If a test there changes outcome under family matching, stop and report it to the CEO with the test name.
+- `scripts/reviewGate.test.ts` belongs to the done `PROCESS-review-gate`, so do not edit it; the new gate cases go in the new test file.
 - `scripts/nextTaskReviewWording.test.ts`, `scripts/registerShape.test.ts` and `scripts/briefContract.test.ts`.
 - `validateAssignments` on the merged tree.
 - `pnpm check` and `LANG=en_US.UTF-8 pnpm vitest run scripts/`.
@@ -53,15 +56,15 @@
 - The resume note at `:864` keeps exact names: it finds your own earlier session, and a family match there would name other sessions as yours.
 - No hand-out change for `in-review` rows; only the board changes.
 - No new dependency.
-- No other row's status, except the three in What 7.
+- No other row's status, except the three in What 8.
 - The `AGENTS.md` system-map row and `docs/DELEGATION.md` §6 already state the D-233 rule (the D-233 pull request updated both), so this row edits neither.
 
 ## Owns
-`scripts/nextTaskCore.mjs`, `scripts/nextTaskText.mjs`, `scripts/nextTaskReviewIdentity.test.ts`, this packet's Status section and the three rows' fields in `docs/plans/assignments.json`.
+`scripts/nextTaskCore.mjs`, `scripts/nextTaskText.mjs`, `scripts/review-gate.mjs`, `scripts/nextTaskReviewIdentity.test.ts`, this packet's Status section and the three rows' fields in `docs/plans/assignments.json`. For file order it waits for `PICKER-architect-landing` (#838); `PICKER-avoid-unblock` and `GATE-tier-floor` wait for it.
 
 ## Definition of done
 - Red-first proof: each new test fails on `main` and passes on the branch, with the failing output in the pull request.
-- The two picker previews from What 7 are in the pull request.
+- The two picker previews from What 8 are in the pull request.
 - Required CI is green on the exact head, and the row lands as a merge commit (Tier 2, D-082, D-134 (6)).
 - After landing, `node scripts/next-task.mjs --status` shows `PRICING-banded-oct25` as `pr-green` with `review needs-review`, not `in-review`.
 
