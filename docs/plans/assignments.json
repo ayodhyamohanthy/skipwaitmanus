@@ -2409,7 +2409,7 @@
       "lane": "d048-profile",
       "branch": "agent/queue/d048-p3-profile",
       "status": "todo",
-      "syncedTo": "D-241",
+      "syncedTo": "D-242",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2941,7 +2941,7 @@
       "lane": "d048-discovery",
       "branch": "agent/queue/d048-p3-discovery",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-241",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-marketing",
@@ -2953,9 +2953,10 @@
         "client/src/pages/JobExplorer.tsx",
         "client/src/pages/goal/discovery/**",
         "scripts/kit-screens/fixtures/*__goal-discovery-*.json",
-        "design/goal-ui/captures/discovery/**"
+        "design/goal-ui/captures/discovery/**",
+        "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-harness dependency - fixture globs share the kit-screens/fixtures folder; the harness row lands first and this row adds its fixtures on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('discovery').",
+      "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-harness dependency - fixture globs share the kit-screens/fixtures folder; the harness row lands first and this row adds its fixtures on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('discovery'). D-241 (Oct 30): owns gains client/src/test/goalPagesBoundary.test.ts (its only owner D-048-F-goal-check is done); the boundary must walk root-alias, relative, barrel and transitive runtime imports, admit only an audited list of goal-styled and behavior-only modules, and prove with negative controls that the legacy OneTapShareActions share component fails; assertions only added, no waivers.",
       "epic": "D-048-p3"
     },
     {
