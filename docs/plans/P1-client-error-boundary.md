@@ -7,3 +7,7 @@ Only the tRPC client response formatter and its focused test. Unexpected interna
 
 ## Ownership and proof
 Exact owned paths are registered in this row; no active overlap found. Recover current source and owners again before implementation. Red-first synthetic production-mode adapter tests, including known safe controls and unexpected/nested exceptions, per the reviewed private contract; no production probe or real user data. Review the actual final implementation independently with model-family provenance, required exact-head/current-main merge-result CI and protected merge. No history rewrite, cleanup or unrelated tests changed. Registration and local tests alone are not runtime completion.
+
+## Status
+
+- P1-client-error-boundary: in progress — Hark · 3001 — 2026-10-30 — branch agent/queue/p1-client-error-boundary
