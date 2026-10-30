@@ -345,6 +345,16 @@ describe("Goal /settings: truthfulness", () => {
     expect(toggle.textContent).toMatch(/Reconnect to change your email setting\./);
   });
 
+  it("says the work-email check failed instead of hiding the referrer alerts (review F1, 64519aee)", async () => {
+    stubApi({ "GET /api/company-referrals/access": [reply(500, { error: "unavailable" })] });
+    renderAt("?section=notifications");
+    expect(await screen.findByText("We could not check your work email.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Referrer alerts" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(screen.queryByRole("switch", { name: "Email when a new referral request arrives" })).toBeNull();
+    expect(screen.queryByLabelText("Slack incoming-webhook URL")).toBeNull();
+  });
+
   it("passes the goal contract in every section that has a next step", async () => {
     stubApi();
     const view = renderAt();
