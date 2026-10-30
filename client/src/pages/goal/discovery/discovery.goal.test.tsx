@@ -60,7 +60,7 @@ describe("goal /wall", () => {
   it("meets the goal-page contract with the anonymity line and one black commit", async () => {
     stubWall();
     const { container } = render(<GoalWall />);
-    await screen.findByRole("heading", { level: 2, name: "Product Designer" });
+    await screen.findByRole("heading", { level: 3, name: "Product Designer" });
     assertGoalPage(container, WALL_GOAL);
     expect(WALL_GOAL.goalLine).toBe("See openings shared by verified employees.");
     expect(screen.getByText(/never shows an employee name, a candidate name or a resume/)).toBeTruthy();
@@ -69,12 +69,15 @@ describe("goal /wall", () => {
   });
 
   it("hands the chosen opening to /start as the referral draft", async () => {
+    localStorage.setItem("bridge-target-compensation", "stale");
     stubWall({ opportunities: [opening({ compensation: "₹12–18 LPA" })] });
     render(<GoalWall />);
-    await screen.findByRole("heading", { level: 2, name: "Product Designer" });
+    await screen.findByRole("heading", { level: 3, name: "Product Designer" });
     fireEvent.click(screen.getByRole("button", { name: "Request a referral" }));
     expect(localStorage.getItem("bridge-target-url")).toBe("https://careers.synthetic.example/jobs/design");
-    expect(localStorage.getItem("bridge-target-compensation")).toBe("₹12–18 LPA");
+    // D-071 / audit R6: the goal UI shows no pay row and hands none on; a stale value is cleared.
+    expect(localStorage.getItem("bridge-target-compensation")).toBeNull();
+    expect(screen.queryByText(/₹12–18 LPA/)).toBeNull();
     expect(readReferralDraft()?.targetUrl).toBe("https://careers.synthetic.example/jobs/design");
     expect(go).toHaveBeenCalledWith("/start");
   });
@@ -95,9 +98,9 @@ describe("goal /wall", () => {
   it("selects another opening and shows a named poster only when they chose to", async () => {
     stubWall({ opportunities: [opening({ id: 1 }), opening({ id: 2, roleTitle: "QA Engineer", poster: { kind: "firstName", firstName: "Ravi" } })], companies: [{ slug: "synthetic", name: "Synthetic Co", domains: ["synthetic.example"] }] });
     render(<GoalWall />);
-    await screen.findByRole("heading", { level: 2, name: "Product Designer" });
-    fireEvent.click(screen.getByRole("button", { name: /QA Engineer/ }));
-    expect(screen.getByRole("heading", { level: 2, name: "QA Engineer" })).toBeTruthy();
+    await screen.findByRole("heading", { level: 3, name: "Product Designer" });
+    fireEvent.click(screen.getByRole("button", { name: /^QA Engineer/ }));
+    expect(screen.getByRole("heading", { level: 3, name: "QA Engineer" })).toBeTruthy();
     expect(screen.getByText("Posted by Ravi")).toBeTruthy();
     await waitFor(() => expect(screen.getAllByRole("link", { name: "Synthetic Co" })[0].getAttribute("href")).toBe("/explore/synthetic"));
   });
@@ -106,13 +109,13 @@ describe("goal /wall", () => {
     window.history.replaceState(null, "", "/wall?opening=2");
     stubWall({ opportunities: [opening({ id: 1 }), opening({ id: 2, roleTitle: "QA Engineer" })] });
     render(<GoalWall />);
-    expect(await screen.findByRole("heading", { level: 2, name: "QA Engineer" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 3, name: "QA Engineer" })).toBeTruthy();
   });
 
   it("labels partner tips and keeps them out of the referral commit", async () => {
     stubWall({ opportunities: [opening({ id: 1 }), opening({ id: 2, roleTitle: "B" }), opening({ id: 3, roleTitle: "C" })], partners: [{ id: 7, partnerName: "Prep Partner", headline: "Practice interviews", description: null, ctaLabel: "Try it", ctaUrl: "https://partner.synthetic.example" }] });
     render(<GoalWall />);
-    await screen.findByRole("heading", { level: 2, name: "Product Designer" });
+    await screen.findByRole("heading", { level: 3, name: "Product Designer" });
     expect(screen.getByText("Partner tip · Prep Partner")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Try it/ }).getAttribute("target")).toBe("_blank");
   });
@@ -120,7 +123,7 @@ describe("goal /wall", () => {
   it("a walk-in without a role link explains itself instead of committing", async () => {
     stubWall({ opportunities: [opening({ kind: "walk_in", targetRoleUrl: null, walkInAt: "2026-11-02T04:30:00.000Z" })] });
     const { container } = render(<GoalWall />);
-    await screen.findByRole("heading", { level: 2, name: "Product Designer" });
+    await screen.findByRole("heading", { level: 3, name: "Product Designer" });
     assertGoalPage(container, WALL_GOAL);
     const commit = screen.getByRole("button", { name: "Request a referral" });
     expect(commit.getAttribute("aria-disabled")).toBe("true");
@@ -154,7 +157,7 @@ describe("goal /jobs", () => {
   it("meets the goal-page contract with save and paste as quiet actions", async () => {
     stubJobs();
     const { container } = render(<GoalJobs />);
-    await screen.findByRole("heading", { level: 2, name: "Senior Product Designer" });
+    await screen.findByRole("heading", { level: 3, name: "Senior Product Designer" });
     assertGoalPage(container, JOBS_GOAL);
     expect(JOBS_GOAL.goalLine).toBe("Browse roles worth a referral.");
     expect(screen.getByRole("button", { name: "Paste it instead." })).toBeTruthy();
@@ -166,7 +169,7 @@ describe("goal /jobs", () => {
     localStorage.setItem("bridge-target-compensation", "Old");
     localStorage.setItem("skipwait-job-source", "sample");
     render(<GoalJobs />);
-    await screen.findByRole("heading", { level: 2, name: "Senior Product Designer" });
+    await screen.findByRole("heading", { level: 3, name: "Senior Product Designer" });
     fireEvent.click(screen.getByRole("button", { name: "Request a referral" }));
     expect(readReferralDraft()?.targetUrl).toBe("https://careers.synthetic.example/jobs/11");
     expect(localStorage.getItem("bridge-target-url")).toBe("https://careers.synthetic.example/jobs/11");
@@ -178,8 +181,8 @@ describe("goal /jobs", () => {
   it("a role without a job link cannot commit and says why", async () => {
     stubJobs();
     render(<GoalJobs />);
-    await screen.findByRole("heading", { level: 2, name: "Senior Product Designer" });
-    fireEvent.click(screen.getByRole("button", { name: /Backend Engineer/ }));
+    await screen.findByRole("heading", { level: 3, name: "Senior Product Designer" });
+    fireEvent.click(screen.getByRole("button", { name: /^Backend Engineer/ }));
     const commit = screen.getByRole("button", { name: "Request a referral" });
     expect(commit.getAttribute("aria-disabled")).toBe("true");
     expect(screen.getByText(/This role has no job link/)).toBeTruthy();
@@ -191,7 +194,7 @@ describe("goal /jobs", () => {
     auth.isSignedIn = true;
     const fetch = stubJobs({ saved: [12] });
     render(<GoalJobs />);
-    await screen.findByRole("heading", { level: 2, name: "Senior Product Designer" });
+    await screen.findByRole("heading", { level: 3, name: "Senior Product Designer" });
     await screen.findByRole("button", { name: /^Saved roles/, pressed: false });
     fireEvent.click(screen.getByRole("button", { name: "Save Senior Product Designer" }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/saved-roles/11", expect.objectContaining({ method: "PUT" })));
@@ -203,7 +206,7 @@ describe("goal /jobs", () => {
   it("signed out, Save opens the sign-in step instead of saving", async () => {
     const fetch = stubJobs();
     render(<GoalJobs />);
-    await screen.findByRole("heading", { level: 2, name: "Senior Product Designer" });
+    await screen.findByRole("heading", { level: 3, name: "Senior Product Designer" });
     fireEvent.click(screen.getByRole("button", { name: "Save Senior Product Designer" }));
     expect(screen.getByRole("heading", { level: 1, name: "Sign in to save roles." })).toBeTruthy();
     expect(fetch.mock.calls.some(([url]) => String(url).startsWith("/api/saved-roles/"))).toBe(false);
@@ -232,7 +235,7 @@ describe("goal /jobs", () => {
     window.history.replaceState(null, "", "/jobs?q=designer");
     const fetch = stubJobs();
     render(<GoalJobs />);
-    await screen.findByRole("heading", { level: 2, name: "Senior Product Designer" });
+    await screen.findByRole("heading", { level: 3, name: "Senior Product Designer" });
     expect(fetch).toHaveBeenCalledWith("/api/jobs?query=designer");
     expect(window.location.search).toBe("?q=designer");
     expect((screen.getByRole("searchbox", { name: "Search roles" }) as HTMLInputElement).value).toBe("designer");
