@@ -655,7 +655,7 @@
       "dependsOn": [
         "PROCESS-queue-gate"
       ],
-      "note": "D-166 (2): verdicts record 'reviewed <sha>'; merges of main after the review keep it; the reviewer's model never built or fixed it (D-151). D-233 (Oct 29): the gate as built (#836) compares exact modelOf spellings (scripts/review-gate.mjs:72-75); PICKER-review-identity switches it to sameModel and counts the row's builtBy.",
+      "note": "D-166 (2): verdicts record 'reviewed <sha>'; merges of main after the review keep it; the reviewer's model never built or fixed it (D-151). D-233 (Oct 29): the gate as built (#836) compares exact modelOf spellings (reviewGateViolation, scripts/review-gate.mjs:115-118 on 6d0ace96); PICKER-review-identity switches it to sameModel and counts the row's builtBy.",
       "owns": [
         "scripts/review-gate.mjs",
         "scripts/reviewGate.test.ts",
@@ -694,7 +694,7 @@
       "tier": 3,
       "lane": "process",
       "branch": "agent/queue/process-scorecard",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-id-check"
