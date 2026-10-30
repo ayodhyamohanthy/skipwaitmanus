@@ -386,4 +386,4 @@ It needs the owner's confirmation of that hard stop (D-204, D-200 (6)), and #383
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
-REL-release-verify: review — agent/queue/rel-release-verify — 1207c138 — Hark · 6699 — draft PR #853 under D-238 (verify steps on `classification == 'runtime'`, `id: deploy` kept, marker untouched). Open question: D-238 (5) says release-verify checks the live site after a failed deploy, but `planVerification` skips a trigger that did not succeed (its Deploy failed issue reports it); amend that sentence or authorise the core change.
+REL-release-verify: review — agent/queue/rel-release-verify — 3e42f6b0 — Hark · 6699 — draft PR #853 under D-240: planVerification checks every deploy completion (failed and partial deploys against what is live, no release/verified on a failed head, supersession first, one incident per live state); D-238 shape, #748 pins and marker unchanged; CI green on 3e42f6b0. Not landed.
