@@ -1,0 +1,25 @@
+
+ RUN  v4.1.11 /workspace/work/skipwaitmanus-2-wt/fix-share-hub
+
+stdout | client/src/pages/goal/seeker-small/shareHubGoal.test.tsx
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+
+ ✓ client/src/pages/goal/seeker-small/shareHubGoal.test.tsx (7 tests) 597ms
+     ✓ opens on the goal with the copy commit once the link is ready  470ms
+stdout | client/src/pages/shareHub.test.tsx
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+
+ ✓ client/src/pages/shareHub.test.tsx (7 tests) 359ms
+stdout | client/src/components/goal/goalBoundary.test.ts
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+
+ ✓ client/src/components/goal/goalBoundary.test.ts (3 tests) 149ms
+
+ Test Files  3 passed (3)
+      Tests  17 passed (17)
+   Start at  11:26:49
+   Duration  15.18s (transform 733ms, setup 153ms, import 3.65s, tests 1.11s, environment 9.55s)
+

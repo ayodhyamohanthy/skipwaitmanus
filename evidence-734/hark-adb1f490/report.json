@@ -1,0 +1,107 @@
+{
+  "base": "http://127.0.0.1:3110",
+  "scenarios": {
+    "390/loading": {
+      "files": [
+        "share-loading-390.png"
+      ],
+      "statusTrace": [
+        "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+      ],
+      "readyWithoutLinkFrames": [],
+      "copyButton": null,
+      "pageErrors": []
+    },
+    "390/ready": {
+      "files": [
+        "share-ready-390.png"
+      ],
+      "statusTrace": [
+        "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.",
+        "Your link is ready. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+      ],
+      "readyWithoutLinkFrames": [],
+      "copyButton": null,
+      "pageErrors": []
+    },
+    "390/locked-null": {
+      "files": [
+        "share-locked-null-390.png"
+      ],
+      "statusTrace": [
+        "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.",
+        "Your personal link is unavailable. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+      ],
+      "readyWithoutLinkFrames": [],
+      "copyButton": "absent",
+      "pageErrors": []
+    },
+    "390/signin": {
+      "files": [
+        "share-signin-before-390.png",
+        "share-signin-same-mount-creating-390.png",
+        "share-signin-same-mount-ready-390.png"
+      ],
+      "sameMountNode": true,
+      "statusTrace": [
+        "Sign in to share one personal link.",
+        "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.",
+        "Your link is ready. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+      ],
+      "readyWithoutLinkFrames": [],
+      "copyButton": null,
+      "pageErrors": []
+    },
+    "1280/loading": {
+      "files": [
+        "share-loading-1280.png"
+      ],
+      "statusTrace": [
+        "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+      ],
+      "readyWithoutLinkFrames": [],
+      "copyButton": null,
+      "pageErrors": []
+    },
+    "1280/ready": {
+      "files": [
+        "share-ready-1280.png"
+      ],
+      "statusTrace": [
+        "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.",
+        "Your link is ready. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+      ],
+      "readyWithoutLinkFrames": [],
+      "copyButton": null,
+      "pageErrors": []
+    },
+    "1280/locked-null": {
+      "files": [
+        "share-locked-null-1280.png"
+      ],
+      "statusTrace": [
+        "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.",
+        "Your personal link is unavailable. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+      ],
+      "readyWithoutLinkFrames": [],
+      "copyButton": "absent",
+      "pageErrors": []
+    },
+    "1280/signin": {
+      "files": [
+        "share-signin-before-1280.png",
+        "share-signin-same-mount-creating-1280.png",
+        "share-signin-same-mount-ready-1280.png"
+      ],
+      "sameMountNode": true,
+      "statusTrace": [
+        "Sign in to share one personal link.",
+        "Creating your link… When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.",
+        "Your link is ready. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request."
+      ],
+      "readyWithoutLinkFrames": [],
+      "copyButton": null,
+      "pageErrors": []
+    }
+  }
+}

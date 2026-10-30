@@ -1,0 +1,66 @@
+
+ RUN  v4.1.11 /workspace/work/skipwaitmanus-2-wt/fix-share-hub
+
+stdout | client/src/pages/goal/seeker-small/shareHubGoal.test.tsx
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+
+ ❯ client/src/pages/goal/seeker-small/shareHubGoal.test.tsx (7 tests | 2 failed) 583ms
+     ✓ opens on the goal with the copy commit once the link is ready  453ms
+     ✓ never says the link is ready before it exists (first paint, before any effect runs) 15ms
+     × a locked account (invite null) never hears the link is ready and sees the unlock policy 18ms
+     × signing in on the same mount never paints ready before the link exists 27ms
+     ✓ offers Try again when the link cannot be created 38ms
+     ✓ gates sharing behind sign-in 11ms
+     ✓ flags off keeps the kit hub 19ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  client/src/pages/goal/seeker-small/shareHubGoal.test.tsx > goal share hub > a locked account (invite null) never hears the link is ready and sees the unlock policy
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "Help a friend find their next role.Your link is ready. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.Your next stepShare your personal link.Copy linkLink unavailableOther ways to send itSend by emailInviteEnter one email addressXLink unavailableFacebookLink unavailableLinkedInLink unavailableTelegramLink unavailableMediumLink unavailableRewards apply once per verified new account. Self-invites and duplicate accounts are not eligible.Back to my requests",
++ ]
+
+ ❯ client/src/pages/goal/seeker-small/shareHubGoal.test.tsx:73:44
+     71|     render(<Painted paints={paints} />);
+     72|     await waitFor(() => expect(document.body.textContent ?? "").not.to…
+     73|     expect(claimsReadyWithoutLink(paints)).toEqual([]);
+       |                                            ^
+     74|     expect(document.body.textContent ?? "").not.toContain("Your link i…
+     75|     expect(document.body.textContent ?? "").not.toMatch(/invite=/);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  client/src/pages/goal/seeker-small/shareHubGoal.test.tsx > goal share hub > signing in on the same mount never paints ready before the link exists
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "Help a friend find their next role.Your link is ready. When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.Your next stepShare your personal link.Copy linkLink unavailableOther ways to send itSend by emailInviteEnter one email addressXLink unavailableFacebookLink unavailableLinkedInLink unavailableTelegramLink unavailableMediumLink unavailableRewards apply once per verified new account. Self-invites and duplicate accounts are not eligible.Back to my requests",
++ ]
+
+ ❯ client/src/pages/goal/seeker-small/shareHubGoal.test.tsx:92:44
+     90|     authState.isSignedIn = true;
+     91|     view.rerender(<Painted paints={paints} />);
+     92|     expect(claimsReadyWithoutLink(paints)).toEqual([]);
+       |                                            ^
+     93|     expect(screen.getByText(/^Creating your link… When a friend joins …
+     94|     resolveInvite({ ok: true, status: 200, json: async () => ({ invite…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 5 passed (7)
+   Start at  11:23:03
+   Duration  5.31s (transform 574ms, setup 82ms, import 1.88s, tests 583ms, environment 2.44s)
+
