@@ -17,7 +17,7 @@ export function DiscoveryFrame({ screen, page, current, account, children }: { s
       <header className="border-b border-g-hairline bg-g-surface">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4 gdesk:px-5">
           <a href="/" aria-label="skipwait.me home" className="inline-flex shrink-0 items-center"><GoalBrandMark /></a>
-          <nav aria-label="Discover" className="flex min-w-0 items-center gap-4 text-g-meta text-g-ink-2">
+          <nav aria-label="Discover" className="flex min-w-0 items-center gap-3 text-g-meta text-g-ink-2 gdesk:gap-4">
             {DOORS.map(door => (
               <a key={door.href} href={door.href} aria-current={door.href === current ? "page" : undefined}
                 className={door.href === current ? "text-g-ink underline decoration-g-ink underline-offset-[6px]" : door.href === "/explore" ? "max-gdesk:hidden hover:text-g-ink" : "hover:text-g-ink"}>

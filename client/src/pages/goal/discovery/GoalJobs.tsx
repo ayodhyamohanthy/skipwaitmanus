@@ -153,8 +153,8 @@ export default function GoalJobs() {
   } else {
     const canSend = isValidTargetRoleUrl(selected.targetRoleUrl);
     body = (
-      <div className="mt-6 grid gap-6 gdesk:grid-cols-[minmax(0,1fr)_minmax(0,400px)] gdesk:items-start">
-        <ul aria-label="Roles" className="grid gap-1">
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 gdesk:grid-cols-[minmax(0,1fr)_minmax(0,400px)] gdesk:items-start">
+        <ul aria-label="Roles" className="grid grid-cols-[minmax(0,1fr)] gap-1">
           {visibleJobs.map(job => {
             const saved = savedIds.has(job.id);
             const isSelected = job.id === selected.id;
@@ -193,8 +193,8 @@ export default function GoalJobs() {
       </header>
       <form role="search" aria-label="Search roles" onSubmit={event => { event.preventDefault(); void loadJobs(); }} className="mt-5 grid max-w-3xl gap-2 gdesk:grid-cols-[minmax(0,1fr)_220px_auto]">
         <GoalSearchInput label="Search roles" value={query} onChange={setQuery} placeholder="Role, company, or keyword" />
-        <GoalTextInput aria-label="Filter by location" value={location} onChange={event => setLocation(event.target.value)} placeholder="Location" />
-        <GoalButton type="submit" variant="outline">Search</GoalButton>
+        <GoalTextInput className="h-11" aria-label="Filter by location" value={location} onChange={event => setLocation(event.target.value)} placeholder="Location" />
+        <GoalButton type="submit" variant="outline" className="h-11">Search</GoalButton>
       </form>
       <div className="mt-3 flex flex-wrap items-center gap-3 text-g-meta text-g-ink-2">
         <span>Have a job link? <button type="button" onClick={pasteInstead} className="text-g-ink underline underline-offset-[3px]">Paste it instead.</button></span>

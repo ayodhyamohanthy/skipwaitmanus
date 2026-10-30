@@ -158,8 +158,8 @@ export default function GoalWall() {
     const company = companyOf(selected.companyDomain);
     const position = opportunities.findIndex(opportunity => opportunity.id === selected.id) + 1;
     body = (
-      <div className="mt-6 grid gap-6 gdesk:grid-cols-[minmax(0,1fr)_minmax(0,400px)] gdesk:items-start">
-        <ul aria-label="Openings" className="grid gap-1">
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 gdesk:grid-cols-[minmax(0,1fr)_minmax(0,400px)] gdesk:items-start">
+        <ul aria-label="Openings" className="grid grid-cols-[minmax(0,1fr)] gap-1">
           {items.map(item => item.kind === "partner"
             ? <PartnerRow key={`partner-${item.module.id}-${item.module.headline}`} module={item.module} />
             : <GoalListRow key={item.opportunity.id} density="ask" selected={item.opportunity.id === selected.id} onSelect={() => setSelectedId(item.opportunity.id)}
