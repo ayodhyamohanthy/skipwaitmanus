@@ -3,7 +3,7 @@
 // (agent/architect/<slug>). The picker must see that pull request, its CI and
 // its merge, and hand the landing to any session but the packet's writer.
 import { describe, expect, it } from "vitest";
-import { pickNextTask, statusBoard } from "./nextTaskCore.mjs";
+import { parseBranchLog, pickNextTask, statusBoard } from "./nextTaskCore.mjs";
 import { renderPick } from "./nextTaskText.mjs";
 
 const NOW = Date.parse("2026-10-30T06:00:00+05:30");
@@ -108,5 +108,32 @@ describe("the printed packet landing step (D-190, D-183)", () => {
       expect(text).toContain("You must not have written this packet");
       expect(text).not.toContain("reviewed and passed");
     }
+  });
+});
+
+// D-237: packet item 1 needs the loader to say whether a lock branch carries a commit that changes files.
+// `markersOn` dropped those commits (a marker is an empty commit), so the core could never tell a
+// marker-only lock from a packet lock. The loader now reads one log per branch and reports `work`.
+describe("the loader's view of a branch (D-237)", () => {
+  // The loader's own git format: one record per commit, "\x1e" before the subject, "\x1f" after it, then --name-only.
+  const log = (...records: [subject: string, files?: string[]][]) =>
+    records.map(([subject, files = []]) => `\x1e${subject}\x1f${files.map(f => `\n${f}`).join("")}\n`).join("");
+
+  it("counts a commit that lists files as work, whatever its subject says", () => {
+    const commits = parseBranchLog(log(["Claim P: Kimi · s3"], ["PICKER-architect-landing: the packet", ["scripts/nextTaskCore.mjs", "docs/plans/PICKER-PARALLEL.md"]]));
+    expect(commits.map(c => c.files.length)).toEqual([0, 2]);
+    expect(commits.some(c => c.files.length > 0)).toBe(true);
+  });
+
+  it("reports a marker-only lock as no work, so it is never taken for a packet branch", () => {
+    const commits = parseBranchLog(log(["Claim P: Kimi · s3"], ["Heartbeat P: Kimi · s3"]));
+    expect(commits.every(c => c.files.length === 0)).toBe(true);
+    expect(commits.some(c => c.files.length > 0)).toBe(false);
+  });
+
+  it("keeps the subject whole and reads an empty or missing log as no commits", () => {
+    expect(parseBranchLog(log(["Claim P: Kimi · s3"]))).toEqual([{ subject: "Claim P: Kimi · s3", files: [] }]);
+    expect(parseBranchLog("")).toEqual([]);
+    expect(parseBranchLog(undefined)).toEqual([]);
   });
 });

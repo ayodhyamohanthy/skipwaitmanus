@@ -127,6 +127,18 @@ export function parseMarker(subject) {
   return { verb: m[1], id: m[2], who: sanitizeName(m[3]) };
 }
 
+/**
+ * D-237: one commit per record from the loader's `git log --reverse --no-merges --format=%x1e%s%x1f
+ * --name-only` read of `origin/main..<ref>`. A commit that lists files is work; an empty list is a marker.
+ * The core stays pure: the loader does the git call and passes the text, so this rule is testable.
+ */
+export function parseBranchLog(raw) {
+  return String(raw ?? "").split("\x1e").filter(Boolean).map(rec => {
+    const [subject, files = ""] = rec.split("\x1f");
+    return { subject: subject.trim(), files: files.split("\n").map(f => f.trim()).filter(Boolean) };
+  });
+}
+
 /** `extra` is the verdict (pass|findings) for a Verdict and the status for a Report. */
 export function markerSubject(verb, id, who, extra) {
   return verb === "Verdict" || verb === "Report" ? `${verb} ${id}: ${extra} — ${who}` : `${verb} ${id}: ${who}`;
