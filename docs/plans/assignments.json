@@ -803,7 +803,7 @@
       "lane": "e2e",
       "branch": "agent/queue/gate-e2e-journeys",
       "status": "todo",
-      "syncedTo": "D-222",
+      "syncedTo": "D-239",
       "dependsOn": [
         "CI-architect-real-checks"
       ],
@@ -812,9 +812,10 @@
         "e2e/",
         "scripts/e2e-server.mjs",
         ".github/workflows/ci.yml",
+        "scripts/ciMarkerSkip.test.ts",
         "package.json (switch only)"
       ],
-      "note": "Oct 28 merge-up: waits for CI-architect-real-checks, which now owns .github/workflows/ci.yml (handed over from PRICING-banded-oct25, PR #666); add the e2e job on top of its version of the file."
+      "note": "Oct 28 merge-up: waits for CI-architect-real-checks, which now owns .github/workflows/ci.yml (handed over from PRICING-banded-oct25, PR #666); add the e2e job on top of its version of the file. D-239: adding the job trips the #748 pin scripts/ciMarkerSkip.test.ts (exact job list at :122-126, runs-on count at :190), so D-239 adds that file to owns; the pin gains CI_JOBS = [...REQUIRED_JOBS, \"e2e journeys\"] for those two assertions only, no assertion removed or loosened, and the job stays non-required (making it required is the owner's ruleset action, OPS-github-settings). The independent review of the D-239 ruling added two requirements, now part of D-239: (F1) the pin also gains add-only assertions that each required job runs its own blocking commands inside its own jobBlock, because the whole-file pnpm build check stops protecting production build once the e2e job also builds; CI_JOBS stays exact and only serves the job inventory and runner count. (F2) the docs-only step reads git diff --no-renames --name-only, so a runtime-to-docs rename cannot skip the journeys."
     },
     {
       "id": "REL-heartbeats",

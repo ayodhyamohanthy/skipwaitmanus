@@ -76,13 +76,13 @@
    - **Plans read the server catalog.** `/plans` shows the prices `/api/plans/catalog` returns.
 5. **CI.** A job `e2e journeys` in `.github/workflows/ci.yml` runs on `pull_request` and on `push` to `main`.
    - It runs `pnpm exec playwright install --with-deps chromium`, with the browser cached.
-   - Its first step exits green when the diff touches only `docs/**` or `*.md` (rule 2; no `paths:` filter).
+   - Its first step exits green when the diff touches only `docs/**` or `*.md` (rule 2; no `paths:` filter). The diff is read with `git diff --no-renames --name-only "$BASE_SHA...$HEAD_SHA"` (D-239 (6)): rename detection is on by default, so a plain `--name-only` lists only the new path when a runtime file is renamed into `docs/`, and the journeys would skip a runtime change.
    - On failure it uploads the Playwright trace and screenshots as an artifact.
 6. **`package.json`:** one script line, `"e2e": "playwright test -c e2e/playwright.config.ts"`. No new dependency.
 
 **Tests.** The journeys are the tests. Prove each catches its bug: in the PR, link a CI run where the personal-link journey fails against a throwaway branch that reverts the P0 fix (never pushed to `main`), next to the green run.
 
-**Owned paths.** `e2e/`, `scripts/e2e-server.mjs`, `.github/workflows/ci.yml` (the new job only), `package.json` (one script line). The `AGENTS.md` "Validation commands" text goes at the end of your done line here (`— map: ...`); any session folds it in.
+**Owned paths.** `e2e/`, `scripts/e2e-server.mjs`, `.github/workflows/ci.yml` (the new job only), `scripts/ciMarkerSkip.test.ts` (the two exact-count assertions and the per-job blocking-step assertions, added by D-239), `package.json` (one script line). The `AGENTS.md` "Validation commands" text goes at the end of your done line here (`— map: ...`); any session folds it in.
 
 **Done:**
 - Six journeys green on `main`, with the red run linked.
@@ -185,3 +185,5 @@ GATE-e2e-journeys applies the deploy migrations twice to MySQL. This row stays o
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 
 GATE-test-integrity: done — e425fac9 (PR #846)
+
+GATE-e2e-journeys: in progress — Hark · 2979 — 2026-10-30 — branch `agent/queue/gate-e2e-journeys`; PR #847 (head `59a85db1`) is blocked on the #748 pin `scripts/ciMarkerSkip.test.ts` (exact job list `:122-126`, `runs-on` count `:190`). D-239 widens this row's `owns` to that pin and rules the edit: `CI_JOBS = [...REQUIRED_JOBS, "e2e journeys"]` for those two assertions only, no assertion removed or loosened, and the job stays non-required (making it required is the owner's ruleset action, `OPS-github-settings`).
