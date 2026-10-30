@@ -73,4 +73,4 @@ None. Signed-in home routing and discovery scope are already ruled (D-123 questi
 
 `D-048-P-marketing`: landed by the coordinator — 2026-10-23 — landing branch `agent/instinct/d048-p-marketing-packet`. Canonical candidate; the empty claim marker branch `agent/architect/d048-p-marketing` (Claude Code · e11c) is preserved and the overlap is announced in the PR.
 
-`D-048-p3-discovery`: done — 15b91207 — Hark · f6a7 — 2026-10-30 — PR #852
+`D-048-p3-discovery`: in progress — Hark · f6a7 — 2026-10-30 — PR #852 (owner correction: not done; goal-native share component and full-page check before review)
