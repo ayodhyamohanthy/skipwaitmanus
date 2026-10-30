@@ -475,7 +475,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     if (!isSignedIn) {
       // Save the seeker's work even when the directory cannot resolve the company.
       saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons) });
-      goToSeekerSignIn(askSignInReturnTo(window.location.pathname, window.location.search));
+      goToSeekerSignIn("/ask");
       return;
     }
     try {
