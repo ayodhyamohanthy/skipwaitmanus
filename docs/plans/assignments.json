@@ -873,17 +873,20 @@
       "lane": "deploy-workflows",
       "branch": "agent/queue/rel-rollback-skew",
       "status": "todo",
-      "syncedTo": "D-222",
+      "syncedTo": "D-248",
       "dependsOn": [
-        "REL-release-verify"
+        "REL-release-verify",
+        "P1-release-gate-strict-compare"
       ],
       "epic": "D-212",
       "owns": [
         ".github/workflows/deploy-pages.yml",
         ".github/workflows/rollback.yml",
         "scripts/rollbackTarget.mjs",
-        "scripts/rollbackTarget.test.ts"
-      ]
+        "scripts/rollbackTarget.test.ts",
+        "scripts/requireGreenRelease.test.ts"
+      ],
+      "note": "D-212 packet docs/plans/REL-production-watch.md; item 1 built by Hark · 44b1 on agent/queue/rel-rollback-skew (PR #876, draft, head 9a2d193f) and stands. D-248: the item 2 block clears by adding scripts/requireGreenRelease.test.ts to owns, because the three #751 pins at :542 (options are exactly `- api`), :551 (jobs are exactly [recovery-gate, recover-api]) and :569 (exactly three GITHUB_TOKEN steps) describe this row's own file rollback.yml but live in a test file another row owns. Those pins are extended to the api/all/web option set, the rollback-web job and its token step, never loosened or deleted, and scripts/require-green-release.mjs is NOT widened: the web leg runs this row's scripts/rollbackTarget.mjs web-gate (already built, accepts web/all and reuses ciVerdict/releaseRuns by import), so a target: all dispatch reaches each leg's gate as its own system and TARGETS/contextProblem and the release path stay byte-identical. Serialization edge P1-release-gate-strict-compare: both rows edit scripts/requireGreenRelease.test.ts (D-223 (1)), so the row waits for it. The web leg takes job-level concurrency group deploy-pages, keeping rollback.yml's workflow-level group deploy-api pin true. Build item 2 on the same branch, never a takeover; item 3 (production drill, both run links) and the status: \"done\" landing commit are still owed; a draft PR cannot be merged, so a LAND hand-out on #876 before item 2 is a red report, never a forced merge."
     },
     {
       "id": "REL-self-heal",
