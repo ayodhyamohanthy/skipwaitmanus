@@ -11,7 +11,8 @@
  * row it reads the row's review lock (`agent/review/<slug>`) and passes only when:
  *   1. the newest stage marker is a pass verdict, or a Land claim whose nearest earlier verdict is a pass;
  *   2. that verdict's body `reviewed <sha>` is the head, or every commit after it in the head's own
- *      history that is not on origin/main is a merge (a merge of main keeps the pass, a new commit does not);
+ *      history that is not on origin/main is a merge or the status commit a landing makes (a merge of
+ *      main and the status commit keep the pass, any other new commit does not);
  *   3. the verdict's author's model neither built (Claim, Takeover on the task branch) nor fixed
  *      (Fix claim, Fixed on the lock) the work (D-151).
  * A bot comment is never a review. Like the queue gate it fails open, loudly, only on its own
@@ -44,13 +45,54 @@ export function reviewedOf(body) {
 
 const fail = why => `${REVIEW_GATE_FAIL} ${why}`;
 
+/** 1-based line numbers of a markdown file's `## Status` section (heading excluded), up to the next `#`/`##` heading. */
+function statusSectionLines(text) {
+  const lines = String(text ?? "").split("\n");
+  const inside = new Set();
+  let open = false;
+  lines.forEach((line, i) => {
+    if (/^#{1,2}\s/.test(line)) { open = /^##\s+Status\s*$/.test(line); return; }
+    if (open) inside.add(i + 1);
+  });
+  return inside;
+}
+
+const STATUS_FIELD = /^\s*"status":\s*"[^"]*",?\s*$/;
+
+/**
+ * The status commit the landing steps make after the review (nextTaskText.mjs: "set this task's
+ * status to done in docs/plans/assignments.json … set its Status line to done — <sha>"): it changes
+ * nothing but `"status"` lines of docs/plans/assignments.json and lines inside the `## Status`
+ * section of docs/plans/*.md packets. `files` is every file the commit changed, each with its text
+ * before and after and the 1-based line numbers removed (in `before`) and added (in `after`).
+ */
+export function isStatusOnlyChange(files) {
+  if (!Array.isArray(files) || !files.length) return false;
+  return files.every(file => {
+    if (!file || typeof file.path !== "string") return false;
+    const removed = Array.isArray(file.removed) ? file.removed : [];
+    const added = Array.isArray(file.added) ? file.added : [];
+    if (!removed.length && !added.length) return false;
+    if (file.path === ASSIGNMENTS) {
+      const before = String(file.before ?? "").split("\n");
+      const after = String(file.after ?? "").split("\n");
+      return removed.every(n => STATUS_FIELD.test(before[n - 1] ?? "")) && added.every(n => STATUS_FIELD.test(after[n - 1] ?? ""));
+    }
+    if (!/^docs\/plans\/[^/]+\.md$/.test(file.path)) return false;
+    const before = statusSectionLines(file.before);
+    const after = statusSectionLines(file.after);
+    return removed.every(n => before.has(n)) && added.every(n => after.has(n));
+  });
+}
+
 /**
  * The rule, with no I/O. `workMarkers` are the task branch's markers and `lockMarkers` the review
  * lock's, oldest first, each verdict carrying `reviewed` (sha or null). `nonMergeCommitsSince(sha)`
  * lists the head's own non-merge commits after `sha` that are not on origin/main, or returns null
- * when `sha` is not in the head's history. Returns null to pass, or the failure message.
+ * when `sha` is not in the head's history. `isStatusCommit(sha)` is true for the status commit a
+ * landing makes (`isStatusOnlyChange`), which keeps the pass. Returns null to pass, or the failure message.
  */
-export function reviewGateViolation({ task, head, workMarkers = [], lockMarkers = [], nonMergeCommitsSince }) {
+export function reviewGateViolation({ task, head, workMarkers = [], lockMarkers = [], nonMergeCommitsSince, isStatusCommit }) {
   if (!task || Number(task.tier) !== 1) return null;
   const stage = lockMarkers.filter(m => m && m.id === task.id && m.verb !== "Heartbeat");
   const last = stage.at(-1);
@@ -64,7 +106,8 @@ export function reviewGateViolation({ task, head, workMarkers = [], lockMarkers 
   if (reviewed !== head) {
     const own = typeof nonMergeCommitsSince === "function" ? nonMergeCommitsSince(reviewed) : null;
     if (own === null) return fail(`The reviewed commit ${reviewed.slice(0, 8)} is not in this head's history.`);
-    if (own.length) return fail(`${own.length} commit(s) of the branch's own came after the reviewed commit ${reviewed.slice(0, 8)} (only merges of main keep a pass).`);
+    const unreviewed = own.filter(sha => !(typeof isStatusCommit === "function" && isStatusCommit(sha)));
+    if (unreviewed.length) return fail(`${unreviewed.length} commit(s) of the branch's own came after the reviewed commit ${reviewed.slice(0, 8)} (only merges of main and the landing's status commit keep a pass).`);
   }
 
   // D-151: the same sets the picker's did() reads — builders on the task branch, fixers on the lock.
@@ -74,6 +117,31 @@ export function reviewGateViolation({ task, head, workMarkers = [], lockMarkers 
   const model = modelOf(verdict.who);
   if (builders.includes(model) || fixers.includes(model)) return fail(`The pass is by ${model}, the model that ${builders.includes(model) ? "built" : "fixed"} this work; a review must come from another model (D-151).`);
   return null;
+}
+
+/** What one non-merge commit changed, for `isStatusOnlyChange`: each file's text on both sides and the changed line numbers. */
+function changesOf(sha) {
+  // Untrimmed and unbounded by the 1 MB default: line numbers must match the file exactly.
+  const show = (rev, path) => {
+    try { return execFileSync("git", ["show", `${rev}:${path}`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] }); }
+    catch { return ""; }
+  };
+  const paths = git(["diff-tree", "--no-commit-id", "--no-renames", "-r", "--name-only", sha]).split("\n").filter(Boolean);
+  return paths.map(path => {
+    const removed = [];
+    const added = [];
+    for (const m of git(["diff", "-U0", "--no-renames", `${sha}^`, sha, "--", path]).matchAll(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/gm)) {
+      const [a, b, c, d] = [Number(m[1]), m[2] === undefined ? 1 : Number(m[2]), Number(m[3]), m[4] === undefined ? 1 : Number(m[4])];
+      for (let i = 0; i < b; i++) removed.push(a + i);
+      for (let i = 0; i < d; i++) added.push(c + i);
+    }
+    return { path, before: show(`${sha}^`, path), after: show(sha, path), removed, added };
+  });
+}
+
+/** True when `sha` is the status commit a landing makes; false on any doubt (the commit then counts as unreviewed). */
+function statusCommit(sha) {
+  try { return isStatusOnlyChange(changesOf(sha)); } catch { return false; }
 }
 
 /** Empty marker commits on `range`, oldest first, with each verdict's reviewed head. Commits that change files are work. */
@@ -129,7 +197,7 @@ export function runReviewGate({ local = false } = {}) {
       try { git(["merge-base", "--is-ancestor", sha, head]); } catch { return null; }
       return git(["rev-list", "--no-merges", `${sha}..${head}`, "--not", "origin/main"]).split("\n").filter(Boolean);
     };
-    const violation = reviewGateViolation({ task, head, workMarkers, lockMarkers, nonMergeCommitsSince });
+    const violation = reviewGateViolation({ task, head, workMarkers, lockMarkers, nonMergeCommitsSince, isStatusCommit: statusCommit });
     if (violation) {
       console.error(`review-gate: ${task.id} at ${head.slice(0, 8)}: ${violation}`);
       return 1;
