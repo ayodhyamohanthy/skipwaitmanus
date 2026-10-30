@@ -6,8 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Bookmark, BookmarkCheck } from "lucide-react";
-import { toast } from "sonner";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { GOAL_NAV, GoalButton, GoalEmptyState, GoalErrorState, GoalFilterChip, GoalNextStep, GoalSearchInput, GoalSkeletonRows, GoalTextInput } from "@/components/goal";
 import { readApiJson } from "@/lib/apiResponse";
 import { readReferralDraft, saveReferralDraft } from "@/lib/pwaContinuity";
@@ -29,7 +28,7 @@ function jobMetadata(job: JobRow) {
 }
 
 export default function GoalJobs() {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, openSignIn } = useAuth();
   const [, go] = useLocation();
   // SEO contract (as on the kit page): /jobs?q={term} seeds the search and
   // /jobs?job={id} selects and scrolls to that role.
@@ -42,6 +41,8 @@ export default function GoalJobs() {
   const [savedOnly, setSavedOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // A failed save or hand-off is said in a goal alert line on the page, never a kit toast.
+  const [notice, setNotice] = useState("");
   const [signInGate, setSignInGate] = useState(false);
 
   const loadJobs = async (nextQuery = query, nextLocation = location) => {
@@ -87,7 +88,7 @@ export default function GoalJobs() {
       if (!response.ok) throw new Error(payload.error || SAVE_ERROR);
     } catch (toggleError) {
       setSavedIds(current => { const next = new Set(current); if (wasSaved) next.add(jobId); else next.delete(jobId); return next; });
-      toast(toggleError instanceof Error ? toggleError.message : SAVE_ERROR);
+      setNotice(toggleError instanceof Error ? toggleError.message : SAVE_ERROR);
     }
   };
 
@@ -107,7 +108,7 @@ export default function GoalJobs() {
       localStorage.removeItem("skipwait-job-source");
       go("/start");
     } catch {
-      toast("We could not save this job link on your device. Copy the listing URL and paste it to continue.");
+      setNotice("We could not save this job link on your device. Copy the listing URL and paste it to continue.");
     }
   };
 
@@ -115,7 +116,7 @@ export default function GoalJobs() {
   const selected = visibleJobs.find(job => job.id === selectedId) ?? visibleJobs[0];
   // A moved page imports no kit or ui component (goalPagesBoundary), so the kit
   // account menu stays on the kit page; signed in, the frame links the person's own list.
-  const account = isSignedIn ? <a href={GOAL_NAV.asks.href} className="text-g-ink hover:underline">{GOAL_NAV.asks.label}</a> : <SignInButton><GoalButton size="sm" variant="ghost">Sign in</GoalButton></SignInButton>;
+  const account = isSignedIn ? <a href={GOAL_NAV.asks.href} className="text-g-ink hover:underline">{GOAL_NAV.asks.label}</a> : <GoalButton size="sm" variant="ghost" onClick={() => openSignIn()}>Sign in</GoalButton>;
 
   if (signInGate) {
     return (
@@ -126,7 +127,7 @@ export default function GoalJobs() {
           <p className="mt-2 text-g-body text-g-ink-2">Browsing is open to everyone. Sign in to keep the roles you like and request referrals.</p>
           <div className="mt-6">
             <GoalNextStep>
-              <div className="mt-4"><SignInButton><GoalButton variant="primary">Sign in to continue</GoalButton></SignInButton></div>
+              <div className="mt-4"><GoalButton variant="primary" onClick={() => openSignIn()}>Sign in to continue</GoalButton></div>
             </GoalNextStep>
           </div>
         </div>
@@ -200,6 +201,7 @@ export default function GoalJobs() {
         <span>Have a job link? <button type="button" onClick={pasteInstead} className="text-g-ink underline underline-offset-[3px]">Paste it instead.</button></span>
         {isSignedIn ? <GoalFilterChip label="Saved roles" pressed={savedOnly} onPressedChange={setSavedOnly} count={savedIds.size} /> : null}
       </div>
+      {notice ? <p role="alert" className="mt-3 max-w-3xl text-g-meta text-g-crimson">{notice}</p> : null}
       {body}
     </DiscoveryFrame>
   );

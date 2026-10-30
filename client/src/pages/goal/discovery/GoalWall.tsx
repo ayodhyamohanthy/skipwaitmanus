@@ -8,17 +8,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { ExternalLink } from "lucide-react";
 import { GoalButton, GoalEmptyState, GoalErrorState, GoalListRow, GoalNextStep, GoalSkeletonRows, GoalVerifiedMark } from "@/components/goal";
-import { OneTapShareActions } from "@/components/OneTapShareActions";
-import type { PartnerModuleRow } from "@/components/PartnerModuleCard";
 import { readApiJson } from "@/lib/apiResponse";
 import { readReferralDraft, saveReferralDraft } from "@/lib/pwaContinuity";
 import { applySeo } from "@/lib/seo";
 import { DiscoveryFrame } from "./DiscoveryFrame";
+import { GoalShareActions, GoalZeroActivityShare } from "./GoalShareActions";
 
 export const GOAL_PAGE = { goalLine: "See openings shared by verified employees." } as const;
 
 type OpportunityPoster = { kind: "firstName"; firstName: string } | { kind: "anonymous" };
 type Opportunity = { id: number; companyDomain: string; kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl: string | null; location: string | null; walkInAt: string | null; walkInEndsAt: string | null; createdAt: string; isSponsored?: boolean; poster?: OpportunityPoster };
+// The /api/partners row (same shape as the kit PartnerModuleCard reads; declared here so the page imports nothing from a kit file).
+type PartnerModuleRow = { id: number; partnerName: string; headline: string; description: string | null; ctaLabel: string; ctaUrl: string };
 type DirectoryCompany = { slug: string; name: string; domains: string[] };
 type WallItem = { kind: "opportunity"; opportunity: Opportunity } | { kind: "partner"; module: PartnerModuleRow };
 
@@ -151,6 +152,7 @@ export default function GoalWall() {
             <div className="mt-4"><GoalButton variant="primary" onClick={() => go("/start")}>Request a referral</GoalButton></div>
           </GoalNextStep>
         </div>
+        <GoalZeroActivityShare className="mt-6" />
         {quietLinks}
       </div>
     );
@@ -187,7 +189,7 @@ export default function GoalWall() {
           </GoalNextStep>
           <section aria-label="Share this opening" className="mt-4">
             <p className="mb-2 text-g-meta text-g-ink-3">Share this opening</p>
-            <OneTapShareActions title={`${selected.roleTitle} at ${selected.companyDomain}`} message={`A verified employee shared a hiring signal for ${selected.roleTitle} at ${selected.companyDomain}. See if this opening is relevant to you:`} link={`${window.location.origin}/wall?opening=${selected.id}`} />
+            <GoalShareActions title={`${selected.roleTitle} at ${selected.companyDomain}`} message={`A verified employee shared a hiring signal for ${selected.roleTitle} at ${selected.companyDomain}. See if this opening is relevant to you:`} link={`${window.location.origin}/wall?opening=${selected.id}`} />
           </section>
           {quietLinks}
         </div>
