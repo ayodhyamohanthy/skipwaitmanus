@@ -91,7 +91,19 @@ const greenSteps = (pick, who) => steps([
   report(pick.task, who),
 ]);
 
-const landSteps = (pick, who) => steps([
+// D-190 (3), D-183: a packet pull request on its architect lock lands by the docs path, by anyone but its writer.
+const packetLandSteps = (pick, who) => steps([
+  `Take the landing slot first: agent/queue/landing (first push wins; a quiet slot is free after 30 minutes). Keep it alive during deploys with \`${CMD} --heartbeat --as "${who}"\`.`,
+  worktree(pick.work),
+  `Read docs/BRIEF.md and the §3b row "${pick.task.row}". Merge the latest origin/main into ${pick.work} (never rebase). In docs/plans/assignments.json keep every row main has unchanged and add only the packet's rows (D-183); never push to the lock branch except that merge and its conflict resolution.`,
+  "Run `node -e \"import('./scripts/nextTaskCore.mjs').then(async c => { const fs = await import('node:fs'); console.log(JSON.stringify(c.validateAssignments(JSON.parse(fs.readFileSync('docs/plans/assignments.json', 'utf8')), p => fs.existsSync(p), c.parseDecisionRegister(fs.readFileSync('docs/DECISIONS.md', 'utf8'))))) })\"` (validateAssignments must print []) and `pnpm vitest run scripts/`; both must pass before you land.",
+  `Land under D-082: wait until every check on that exact head of ${pick.pr} is green and main's own CI is green, then merge with GitHub's "Create a merge commit" button pinned to that head (never squash or rebase-merge, D-134 (6)). If main moved, merge it again, re-run the two checks above and wait for the new head's checks; never force-push. If anything goes red, revert your merge before anything else.`,
+  keepAlive(who),
+  `After main's CI and any deploys finish, release the landing slot: \`${CMD} --landed --task ${pick.task.id} --as "${who}"\`.`,
+  report(pick.task, who),
+]);
+
+const landSteps = (pick, who) => pick.packet ? packetLandSteps(pick, who) : steps([
   `Take the landing slot first: agent/queue/landing (first push wins; a quiet slot is free after 30 minutes). Keep it alive during deploys with \`${CMD} --heartbeat --as "${who}"\`.`,
   worktree(pick.work),
   `Read docs/BRIEF.md and the §3b row "${pick.task.row}". Merge the latest origin/main into ${pick.work} and re-run the full gate yourself; never land on someone else's word.`,
@@ -264,7 +276,9 @@ function pickText(pick, { who, date, claimed, register = null }) {
       greenSteps(pick, who),
     ]) + take;
     case "land": return head(`LAND ${pick.task.id} — ${pick.task.title}`, [
-      `Pull request ${pick.pr} is ${pick.tier1 ? "reviewed and passed" : "built"}, but nobody has landed it for 2 hours (last held by ${pick.from ?? "unknown"}; D-085).${pick.tier1 ? " You must not have built or fixed it." : ""}`,
+      pick.packet
+        ? `Packet pull request ${pick.pr} on its architect lock ${pick.work} has green CI and waits for a lander (written by ${pick.from ?? "unknown"}; D-190). You must not have written this packet: its writer never lands it.`
+        : `Pull request ${pick.pr} is ${pick.tier1 ? "reviewed and passed" : "built"}, but nobody has landed it for 2 hours (last held by ${pick.from ?? "unknown"}; D-085).${pick.tier1 ? " You must not have built or fixed it." : ""}`,
       ...holding(pick),
       landSteps(pick, who),
     ]) + take;
@@ -294,7 +308,7 @@ function pickText(pick, { who, date, claimed, register = null }) {
         case "review": return head(`CONTINUE REVIEW ${pick.task.id} — ${pick.task.title}`, [intro, `Tier 1 · pull request ${pick.pr} · branch ${pick.work} · review lock ${pick.lock}`, reviewSteps(pick, who)]);
         case "fix": return head(`CONTINUE FIXING REVIEW FINDINGS ${pick.task.id} — ${pick.task.title}`, [intro, `Tier 1 · pull request ${pick.pr} · branch ${pick.work}`, fixSteps(pick, who)]);
         case "green": return head(`CONTINUE: MAKE GREEN ${pick.task.id} — ${pick.task.title}`, [intro, `Pull request ${pick.pr} has red CI.`, greenSteps(pick, who)]);
-        case "land": return head(`CONTINUE: LAND ${pick.task.id} — ${pick.task.title}`, [intro, `Pull request ${pick.pr}.`, landSteps(pick, who)]);
+        case "land": return head(`CONTINUE: LAND ${pick.task.id} — ${pick.task.title}`, [intro, pick.packet ? `Packet pull request ${pick.pr} on ${pick.work} (D-190). You must not have written this packet: its writer never lands it.` : `Pull request ${pick.pr}.`, landSteps(pick, who)]);
         case "architect": return head(`CONTINUE: WRITE THE PACKET FOR ${pick.task.id} — ${pick.task.title}`, [intro, `Lock ${pick.lock}.`, architectSteps({ ...pick, lockExists: true }, who, true)]);
         case "resync": return head(`CONTINUE: RESYNC ${pick.task.id} — ${pick.task.title}`, [intro, `Lock ${pick.lock}.`, resyncSteps({ ...pick, lockExists: true }, who, register)]);
         case "unblock": return head(`CONTINUE: UNBLOCK ${pick.task.id} — ${pick.task.title}`, [intro, `${pick.report.who} reported it ${pick.report.status}${pick.report.note ? `: ${pick.report.note}` : ""}. Lock ${pick.lock}.`, unblockSteps(pick, who)]);
