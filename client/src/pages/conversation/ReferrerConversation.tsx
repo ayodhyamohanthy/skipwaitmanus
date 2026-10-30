@@ -18,7 +18,6 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { GoalAppShell, GoalButton, GoalErrorState, GoalNextStep, GoalNum, GoalPassReasons, GoalSheet, GoalStatus, GoalTextInput, GoalVerifiedMark, useOnlineStatus, type GoalStatusValue } from "@/components/goal";
-import { PASS_REASONS } from "@/components/thread/ThreadDecisionPanels";
 import { companyName, isAccepted, referrerPendingCopy, stageOf, type StageLabel } from "@/components/thread/threadModel";
 import { formatDayTime } from "@/lib/displayPrefs";
 import type { ThreadMessage, ThreadRequest, ThreadRole } from "@/lib/threadApi";
@@ -28,6 +27,12 @@ import { PASS_REASON_OPTIONS, type PassReasonCode } from "@shared/passReasons";
 import { REFERRED_DEADLINE_ENABLED } from "@shared/referral";
 
 export const GOAL_PAGE = { goalLine: "Would you refer this person?" } as const;
+
+// Pass reasons (D-052) built from the shared list, exactly as the kit decision
+// panels build them: `value` is the legacy decline reason the server routes on,
+// `code` the reason the referrer picked. Local, so this moved page does not
+// import the kit panels and their kit button (D-167 (3)).
+const PASS_REASONS = PASS_REASON_OPTIONS.map(option => ({ label: option.label, value: option.legacy, code: option.code }));
 
 const COORDINATE = "Use messages to coordinate. Keep personal contact details off-platform only if you both choose to.";
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error ? reason.message : fallback);
