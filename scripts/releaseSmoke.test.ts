@@ -1,6 +1,6 @@
 // REL-release-verify (D-212): pins every rule of the post-deploy release smoke
 // and the release-verify workflow on fixtures. No network.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { planCatalogResponseSchema } from "../shared/billingCatalog";
 import {
@@ -225,7 +225,7 @@ const workflowText = (file: string) => readFileSync(`.github/workflows/${file}`,
 const nameLine = (text: string) => /^name:\s*(.+)$/m.exec(text)?.[1]?.trim();
 
 describe("release-verify.yml", () => {
-  const wf = workflowText("release-verify.yml");
+  const wf = existsSync(".github/workflows/release-verify.yml") ? workflowText("release-verify.yml") : "";
 
   it("listens to the exact names of both deploy workflows", () => {
     const apiName = nameLine(workflowText("deploy-api.yml"));
