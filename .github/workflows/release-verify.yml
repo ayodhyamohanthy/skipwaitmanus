@@ -1,0 +1,142 @@
+name: Release verify
+
+# REL-release-verify (D-212): after every deploy, check the live release end to
+# end and say so. The expected SHAs never come from path filters: the web SHA is
+# the head of the newest successful "Deploy Web (Cloudflare Pages)" run on main,
+# the API SHA is refs/tags/api-runtime (moved only after a verified runtime
+# deploy). The result is a commit status release/verified on the deployed
+# commit; a failure opens or updates one "Release not verified: <sha8>" issue
+# labelled incident, and the next verified release closes every such issue.
+# Read-only against production: scripts/release-smoke.mjs signs in to nothing,
+# writes nothing and spends nothing.
+on:
+  workflow_run:
+    workflows: ["Deploy API (Cloudflare Containers)", "Deploy Web (Cloudflare Pages)"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit to mark release/verified (default: the tip of main)"
+        required: false
+        type: string
+
+concurrency:
+  group: release-verify
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+  statuses: write
+  issues: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    # Up to 45 minutes waiting for the API to serve its SHA, then the smoke.
+    timeout-minutes: 75
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Plan this verification
+        id: plan
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DISPATCH_SHA: ${{ inputs.sha }}
+        run: node scripts/release-smoke.mjs --plan
+
+      - name: Superseded or nothing to verify
+        if: steps.plan.outputs.action == 'superseded' || steps.plan.outputs.action == 'skip'
+        env:
+          ACTION: ${{ steps.plan.outputs.action }}
+          REASON: ${{ steps.plan.outputs.reason }}
+        run: |
+          echo "::notice::release-verify $ACTION, no status set: $REASON"
+
+      - uses: pnpm/action-setup@v4
+        if: steps.plan.outputs.action == 'verify'
+
+      - uses: actions/setup-node@v4
+        if: steps.plan.outputs.action == 'verify'
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        if: steps.plan.outputs.action == 'verify'
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+
+      - name: Mark the release pending
+        if: steps.plan.outputs.action == 'verify'
+        env:
+          SHA: ${{ steps.plan.outputs.status_sha }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/$SHA" -f state=pending -f context=release/verified \
+            -f description="Checking the live release" -f target_url="$RUN_URL" >/dev/null
+
+      - name: Smoke the live release
+        id: smoke
+        if: steps.plan.outputs.action == 'verify'
+        env:
+          WEB_SHA: ${{ steps.plan.outputs.web_sha }}
+          API_SHA: ${{ steps.plan.outputs.api_sha }}
+        run: |
+          set +e
+          node scripts/release-smoke.mjs --web-sha "$WEB_SHA" --api-sha "$API_SHA" --out smoke.txt
+          code=$?
+          if [ "$code" = 0 ]; then echo "verified=true" >> "$GITHUB_OUTPUT"; else echo "verified=false" >> "$GITHUB_OUTPUT"; fi
+          exit 0
+
+      - name: Release verified
+        if: steps.plan.outputs.action == 'verify' && steps.smoke.outputs.verified == 'true'
+        env:
+          SHA: ${{ steps.plan.outputs.status_sha }}
+          WEB_SHA: ${{ steps.plan.outputs.web_sha }}
+          API_SHA: ${{ steps.plan.outputs.api_sha }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/$SHA" -f state=success -f context=release/verified \
+            -f description="Live release verified (web ${WEB_SHA:0:8}, API ${API_SHA:0:8})" -f target_url="$RUN_URL" >/dev/null
+          gh issue list --label incident --state open --limit 100 --json number,title \
+            --jq '.[] | select(.title | startswith("Release not verified: ")) | .number' > open-incidents.txt
+          while read -r number; do
+            [ -n "$number" ] || continue
+            gh issue close "$number" --comment "Release verified at \`$SHA\` (web \`${WEB_SHA:0:8}\`, API \`${API_SHA:0:8}\`): $RUN_URL"
+          done < open-incidents.txt
+
+      - name: Release not verified
+        if: always() && (steps.plan.outputs.action == 'fail' || (steps.plan.outputs.action == 'verify' && steps.smoke.outputs.verified != 'true'))
+        env:
+          SHA: ${{ steps.plan.outputs.status_sha }}
+          WEB_SHA: ${{ steps.plan.outputs.web_sha }}
+          API_SHA: ${{ steps.plan.outputs.api_sha }}
+          REASON: ${{ steps.plan.outputs.reason }}
+        run: |
+          if [ ! -s smoke.txt ]; then echo "FAIL  release-verify — ${REASON:-the smoke did not run}" > smoke.txt; fi
+          release="${SHA:-${{ github.sha }}}"
+          title="Release not verified: ${release:0:8}"
+          SHA="$release" node --input-type=module -e '
+            import { readFileSync, writeFileSync } from "node:fs";
+            import { releaseIncidentBody } from "./scripts/releaseSmokeCore.mjs";
+            const lines = readFileSync("smoke.txt", "utf8").split("\n").filter(Boolean);
+            writeFileSync("incident.md", releaseIncidentBody({ sha: process.env.SHA, webSha: process.env.WEB_SHA, apiSha: process.env.API_SHA, lines, runUrl: process.env.RUN_URL }));
+          '
+          if [ -n "$SHA" ]; then
+            gh api "repos/${{ github.repository }}/statuses/$SHA" -f state=failure -f context=release/verified \
+              -f description="Live release not verified; see the run" -f target_url="$RUN_URL" >/dev/null
+          fi
+          gh label create incident --color B60205 --force
+          existing=$(gh issue list --label incident --state open --limit 100 --json number,title \
+            | jq -r --arg t "$title" '.[] | select(.title == $t) | .number' | head -n 1)
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file incident.md
+          else
+            gh issue create --title "$title" --label incident --body-file incident.md
+          fi
+          cat smoke.txt
+          exit 1
