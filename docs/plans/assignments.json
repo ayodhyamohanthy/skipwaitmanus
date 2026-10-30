@@ -3388,17 +3388,86 @@
       "note": "D-163: no longer waits for seeker-passwords; shared/telemetryScrub.ts is new on main and #324 picks it up when it merges main. Scope per the packet's CEO addendum (§0): adds the vanity alias and /api/documents/by-key/:key; alerts drop the query."
     },
     {
-      "id": "D-089-request-inbox",
-      "title": "Employee request-inbox link with screen name (idea 1, loop L4, D-089 (3)): write the packet",
+      "id": "D-089.server",
+      "title": "Request-inbox link, server (D-089): referrer-chosen screen name on the referral link (PUT /api/referrer-fast-track/me/screen-name), resume a paused link, screenName on the public resolvers, askedYouDirectly on inbox rows; switch off",
       "row": "D-089",
-      "packet": null,
+      "packet": "docs/plans/D-089-request-inbox.md",
+      "tier": 1,
+      "lane": "supply-inbox-server",
+      "branch": "agent/queue/d089-server",
+      "status": "todo",
+      "syncedTo": "D-248",
+      "epic": "D-089-request-inbox",
+      "dependsOn": [
+        "D-090-BYOR",
+        "D-086-demand-list"
+      ],
+      "owns": [
+        "shared/requestInboxLink.ts",
+        "shared/requestInboxLink.test.ts",
+        "server/referrerScreenName.ts",
+        "server/referrerScreenName.test.ts",
+        "server/db.ts",
+        "server/privateReferralRoutes.ts",
+        "server/referrerFastTrackLinks.test.ts",
+        "server/privateReferralRoutes.requestInboxLink.test.ts",
+        "server/referrerSessionGate*.test.ts"
+      ],
+      "note": "D-248 packet §5.1. server/db.ts only in getOrCreateReferrerFastTrackLink, the two getPublicReferrerFastTrack* resolvers, new resumeReferrerFastTrackLink and the askedYouDirectly field in listCompanyReferralInboxByState; server/privateReferralRoutes.ts only in the /api/referrer-fast-track block and D-057's gated list; server/referrerSessionGate*.test.ts only adding the two new routes to D-057's pin. No migration, no env key, no money path. Red-first T1-T8. Waits for D-090-BYOR (owns db.ts and the routes; owner order idea 2 first, D-057 through it per D-246) and D-086-demand-list (owner order: after the demand list). Switch REQUEST_INBOX_LINK_ENABLED stays false."
+    },
+    {
+      "id": "D-089.ui",
+      "title": "Request-inbox link, UI (D-089): goal-native referral-link panel on /referrer-home with screen-name edit and pause/resume, 'Sent to you directly' marker on /queue rows, screen name on the goal /fast and /refer landings; switch off",
+      "row": "D-089",
+      "packet": "docs/plans/D-089-request-inbox.md",
+      "tier": 2,
+      "lane": "supply-inbox-ui",
+      "branch": "agent/queue/d089-ui",
+      "status": "todo",
+      "syncedTo": "D-248",
+      "epic": "D-089-request-inbox",
+      "dependsOn": [
+        "D-089.server",
+        "D-048-p3-links"
+      ],
+      "owns": [
+        "client/src/components/referrer-home/GoalReferralLinkPanel.tsx",
+        "client/src/components/referrer-home/referralLinkApi.ts",
+        "client/src/components/referrer-home/goalReferralLinkPanel.test.tsx",
+        "client/src/pages/goal/referrer-home/GoalReferrerHome.tsx (switch only)",
+        "client/src/components/referrer-home/referrerData.ts",
+        "client/src/pages/MyCompanyInbox.tsx",
+        "client/src/pages/goal/links/**",
+        "client/src/pages/FastTrackLink.tsx (switch only)",
+        "client/src/pages/VanityFastTrackLink.tsx (switch only)",
+        "client/src/pages/requestInboxLanding.test.tsx",
+        "docs/plans/GOAL_UI_COVERAGE.md",
+        "design/goal-ui/captures/request-inbox/**"
+      ],
+      "note": "D-248 packet §5.2. referrerData.ts only the askedYouDirectly field; MyCompanyInbox.tsx only the marker; GoalReferrerHome.tsx one mount. One black commit per page stays the page's GoalNextStep (assertGoalPage); no kit import; captures at 1280 and 390. Waits for D-089.server and D-048-p3-links (owns the landings and pages/goal/links); GOAL_UI_COVERAGE.md (D-086.ui, D-090-BYOR) and MyCompanyInbox.tsx/referrerData.ts (D-057-session-gate) are reached through D-089.server. Red-first U1-U7. Switch stays false."
+    },
+    {
+      "id": "D-089-request-inbox",
+      "title": "Employee request-inbox link with screen name (idea 1, loop L4, D-089 (3)): release row - flips REQUEST_INBOX_LINK_ENABLED after its rows, QA and the owner's look at the captures",
+      "row": "D-089",
+      "packet": "docs/plans/D-089-request-inbox.md",
       "tier": 1,
       "lane": "supply-inbox",
       "branch": "agent/queue/d089-request-inbox",
-      "status": "architect",
-      "syncedTo": "D-227",
-      "dependsOn": [],
-      "note": "D-163: the owner's order puts idea 1 between BYOR and the bonus pages (D-089 (3), D-099), and it had no row, so D-099 could never start. Write the packet now (D-109); its build follows D-090-BYOR, so the packet PR adds D-090-BYOR (and D-086-demand-list, which ideas 1 and 3 still follow) to this row's dependsOn. Start from what is live: the referrer fast-track link already routes asks to one employee (/fast/:linkCode and /refer/:companySlug/:vanityAlias, D-050; client/src/pages/FastTrackLink.tsx, VanityFastTrackLink.tsx, getOrCreateReferrerFastTrackLink). The packet decides what 'with screen name' adds on top, reusing the D-106 screen name if #382 has landed, never the referrer's real name before an accept (D-019(e)), and names its owned paths. Tier 1: referrer identity on a public link."
+      "status": "todo",
+      "syncedTo": "D-248",
+      "dependsOn": [
+        "D-089.server",
+        "D-089.ui"
+      ],
+      "note": "D-248 packet §5.3 (release row, D-223 (3)): flips REQUEST_INBOX_LINK_ENABLED after D-089.server and D-089.ui land; no-money QA on a preview (name set, copy, pause/resume, signed-out seeker sends through the vanity link, marker shows); 1280/390 captures go to the owner before the flip (D-089 (3), BACKLOG item 10; packet §4.10) together with the independent Tier 1 review (public payload, real-name check, D-019(e)); syncs AGENTS.md, PRD, BACKLOG item 10 and the §3b row D-089. The owner's order holds through its rows: after D-090-BYOR and D-086-demand-list (D-089 (3), D-163 (5)). D-099-bonus-pages keeps waiting for this row.",
+      "owns": [
+        "shared/requestInboxLink.ts (switch only)",
+        "AGENTS.md",
+        "docs/PRD.md",
+        "docs/KIT_V4_BUILD_PLAN.md",
+        "docs/BACKLOG.md"
+      ]
     },
     {
       "id": "D-095-one-tap",
