@@ -383,3 +383,4 @@ It needs the owner's confirmation of that hard stop (D-204, D-200 (6)), and #383
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
+REL-webhook-auth-alarm: in progress — Hark · 1e5b — 2026-10-30 — branch agent/queue/rel-webhook-auth-alarm
