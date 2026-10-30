@@ -20,3 +20,7 @@ Only `client/src/pages/goal/seeker-small/GoalShareHub.tsx` and its test. No mech
 2. One independent D-151 review of the exact head by a model other than Claude (the builder is Claude family), routed by the coordinator; the reviewer never merges.
 3. A 390x844@2x viewport capture of the goal share hub in the ready state, confirming no visual regression from the loading-gate change.
 4. Coordinator lands after both pass; the twins fix then merges main forward on its own branch.
+
+## Status
+
+review — Hark — 2026-10-30 — branch `agent/queue/fix-main-eb0fd8cd` — `adb1f490`. Owner-directed fix round: the first-render fix was not enough. Red first `f19be229` (2 new tests fail on the old component: a locked account with `invite: null` and a sign-in on the same mount each commit "Your link is ready." with no link); fix `adb1f490` ("ready" only when an invite code has arrived; "Creating your link…" until the current load answers, including after a same-mount sign-in; locked shows the existing D-155 unlock sentence verbatim and hides copy/share; reward and rules wording unchanged). Merged origin/main `e6b785a0`. Local: shareHubGoal 7/7, shareHub 7/7, goalBoundary 3/3, `pnpm check` 0, token audit OK, scope-check 2 owned paths. Captures 390/1280 (loading, ready, locked-null, same-mount sign-in): branch `agent/evidence/fix-main-eb0fd8cd`, `evidence-734/hark-adb1f490/`. Needs one independent D-151 review of the final head by a model that is neither Claude nor Hark; not landed.
