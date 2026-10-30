@@ -694,10 +694,10 @@
       "tier": 2,
       "lane": "watchdog",
       "branch": "agent/queue/rel-watchdog",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "owner",
+      "syncedTo": "D-243",
       "dependsOn": [],
-      "note": "D-212: the GitHub 5-minute watch ran 24 times in 79 hours. Owner actions at landing: wrangler secret put ZEPTOMAIL_API_KEY --name skipwait-watchdog (required) and GITHUB_ISSUES_TOKEN (optional).",
+      "note": "Landed in PR #845. Nothing left to build. Remaining, in order, and all of it the owner's: (1) `npx wrangler secret put ZEPTOMAIL_API_KEY --name skipwait-watchdog` - this cannot be run before the landing, because the Worker `skipwait-watchdog` only exists after the first main run of deploy-watchdog, which deploys it and then fails the secret check on purpose (packet item 5, docs/plans/REL-production-watch.md:53); (2) `gh workflow run deploy-watchdog.yml --ref main` and confirm that run is green, which replaces the red run the landing leaves behind by design; (3) record the alert proof (a local `wrangler dev --test-scheduled` run against a 404) and set this row to done with the merge SHA. Optional: GITHUB_ISSUES_TOKEN. status owner parks the row so the picker stops handing out a landing that is already done - the D-230/D-232 precedent; no new decision is needed, because the owner action is already written in this packet. Background: the GitHub 5-minute watch ran 24 times in 79 hours.",
       "epic": "D-212",
       "owns": [
         "watchdog/",
