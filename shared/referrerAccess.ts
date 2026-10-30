@@ -37,12 +37,13 @@ export const referrerAccessResponseSchema = z.object({
   // An older server sends no codeRequired: read as false.
   codeRequired: z.boolean().optional(),
   ...companyIdentityFieldsSchema.shape,
-}).transform((access): ReferrerAccessResponse & { codeRequired: boolean } => ({
+}).transform((access): ReferrerAccessResponse => ({
   verifiedCompanyAccess: access.verifiedCompanyAccess,
   workEmailDomain: access.workEmailDomain ?? null,
   companyName: access.companyName ?? null,
   companyInitials: access.companyInitials ?? null,
-  codeRequired: access.verifiedCompanyAccess && access.codeRequired === true,
+  // Round-trips unchanged: present only when the server sent it, and never true for an unverified answer.
+  ...(access.codeRequired === undefined ? {} : { codeRequired: access.verifiedCompanyAccess && access.codeRequired }),
 }));
 
 /** The one verified-referrer predicate: the server granted access for a company domain. */
