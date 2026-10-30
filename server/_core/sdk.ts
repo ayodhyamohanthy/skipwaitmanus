@@ -10,12 +10,12 @@ const RENEW_AFTER_MS = 24 * 60 * 60_000;
 const ISSUER = "https://skipwait.me";
 const AUDIENCE = "skipwait-web";
 const isNonEmptyString = (value: unknown): value is string => typeof value === "string" && value.length > 0;
-export type SessionPayload = { openId: string; appId: string; name: string; sid?: string };
+export type SessionPayload = { openId: string; appId: string; name: string; sid?: string; amr?: "work_email_otp"; ssid?: string };
 /** Only a WorkOS hosted-session id is ever carried in the app token. */
 const hostedSid = (value: unknown): string | undefined => typeof value === "string" && /^session_[A-Za-z0-9]+$/.test(value) ? value : undefined;
 class SDKServer {
   private getSessionSecret(){return new TextEncoder().encode(ENV.cookieSecret)}
-  async createSessionToken(openId:string,options:{expiresInMs?:number;name?:string;sid?:string}={}){
+  async createSessionToken(openId:string,options:{expiresInMs?:number;name?:string;sid?:string;amr?:"work_email_otp";ssid?:string}={}){
     // All app-session issuance goes through an active-account gate. Re-read
     // after signing so a concurrent suspension cannot leave the login endpoint
     // reporting success with a token minted from stale account state.
@@ -42,7 +42,7 @@ class SDKServer {
       // JWT iat and MySQL TIMESTAMP both enforce revocation at one-second granularity.
       // Comparing raw milliseconds falsely rejects a token minted later in the same second.
       if(account.sessionsValidAfter&&Math.floor(account.sessionsValidAfter.getTime()/1000)>payload.iat)return null;
-      return {openId,appId,name:typeof name==="string"?name:"",sid:hostedSid((payload as Record<string,unknown>).sid)};
+      return {openId,appId,name:typeof name==="string"?name:"",sid:hostedSid((payload as Record<string,unknown>).sid),amr:undefined as "work_email_otp"|undefined,ssid:undefined as string|undefined};
     }catch{return null}
   }
   /** A fresh token for a valid session older than RENEW_AFTER_MS, else null. Young tokens cost no DB read. */

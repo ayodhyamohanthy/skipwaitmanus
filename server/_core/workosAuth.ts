@@ -121,6 +121,11 @@ export async function currentWorkosSessionId(req: Request): Promise<string | nul
   } catch { return null; }
 }
 
+/** D-057-session-gate §0b.2: the session key of a verified WorkOS access token. Contract only (red first). */
+export function sessionKeyFromWorkosClaims(_payload: Record<string, unknown>): string | undefined {
+  return undefined;
+}
+
 async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | undefined> {
   const clientId = configuredWorkosClientId();
   const { payload } = await jwtVerify(bearer, workosJwks(clientId), { issuer: WORKOS_ISSUER, algorithms: ["RS256"] });

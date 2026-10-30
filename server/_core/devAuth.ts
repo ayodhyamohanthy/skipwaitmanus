@@ -26,6 +26,10 @@ export type DevIdentity = {
   account: { id: number; openId: string; role?: "user" | "admin"; name: string | null; email: string | null; loginMethod: string | null };
   primaryEmail: DevEmailAddress | null;
   emailAddresses: DevEmailAddress[];
+  /** D-057-session-gate: set only when this request's own session was made by the work-email code login. */
+  sessionAmr?: "work_email_otp";
+  /** D-057-session-gate §0b.2: `workos:<sid>` or `app:<ssid>`, from the verified credential only. */
+  sessionKey?: string;
 };
 
 function readSessionToken(req: Request): string | undefined {

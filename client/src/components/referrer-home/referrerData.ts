@@ -54,7 +54,7 @@ export const referrerPreferencesSchema = z.object({
 const preferencesPayloadSchema = z.object({ preferences: referrerPreferencesSchema });
 
 /** Verified work-email access (shared/referrerAccess.ts); companyName/companyInitials come from the server company directory. */
-export type CompanyAccess = { verified: boolean; domain: string; companyName: string | null; companyInitials: string | null };
+export type CompanyAccess = { verified: boolean; domain: string; companyName: string | null; companyInitials: string | null; codeRequired?: boolean };
 export type ReferrerPreferences = z.infer<typeof referrerPreferencesSchema>;
 export type ReferrerPreferencesPatch = Partial<Omit<ReferrerPreferences, "preferAreas" | "preferLevels">> & { preferAreas?: string[]; preferLevels?: string[] };
 export type ReferrerImpact = z.infer<typeof impactSchema>["summary"];
