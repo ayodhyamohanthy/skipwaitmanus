@@ -184,4 +184,4 @@ GATE-e2e-journeys applies the deploy migrations twice to MySQL. This row stays o
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 
-GATE-test-integrity: in progress — Hark · b0aa — 2026-10-30 — branch agent/queue/gate-test-integrity
+GATE-test-integrity: done — e425fac9 (PR #846)

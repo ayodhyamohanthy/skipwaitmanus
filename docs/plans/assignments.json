@@ -761,7 +761,7 @@
       "tier": 2,
       "lane": "ci-checks",
       "branch": "agent/queue/gate-test-integrity",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-222",
       "dependsOn": [],
       "epic": "D-212",
