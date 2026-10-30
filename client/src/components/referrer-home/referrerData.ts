@@ -11,6 +11,7 @@ import { impactCardPayloadSchema, type ImpactCardPayload } from "@shared/shareIm
 import { JOB_LEVELS, REFERRER_AREAS, jobFunctionFieldSchema, type JobFunction } from "@shared/jobFunctions";
 import { referrerThankYouWallSchema, type ReferrerThankYouWall } from "@shared/landedJourney";
 import { readApiJson } from "@/lib/apiResponse";
+import { isWorkEmailCodeRequired, notifyWorkEmailCodeRequired } from "@/lib/referrerStepUpApi";
 
 export type TokenSource = () => Promise<string | null | undefined>;
 
@@ -54,6 +55,7 @@ export const referrerPreferencesSchema = z.object({
 const preferencesPayloadSchema = z.object({ preferences: referrerPreferencesSchema });
 
 /** Verified work-email access (shared/referrerAccess.ts); companyName/companyInitials come from the server company directory. */
+/** `codeRequired`: verified, but this session needs the in-session work-email step-up before referrer actions (D-057). */
 export type CompanyAccess = { verified: boolean; domain: string; companyName: string | null; companyInitials: string | null; codeRequired?: boolean };
 export type ReferrerPreferences = z.infer<typeof referrerPreferencesSchema>;
 export type ReferrerPreferencesPatch = Partial<Omit<ReferrerPreferences, "preferAreas" | "preferLevels">> & { preferAreas?: string[]; preferLevels?: string[] };
@@ -81,6 +83,8 @@ async function getJson<T>(path: string, getToken: TokenSource, schema: z.ZodType
   const token = await getToken();
   const response = await fetch(path, { credentials: "include", headers: authHeaders(token) });
   const payload = await readApiJson<Record<string, unknown>>(response, fallback);
+  // D-057: a referrer read refused for this session re-checks the verdict, so the page shows the step-up.
+  if (isWorkEmailCodeRequired(response.status, payload)) notifyWorkEmailCodeRequired();
   if (!response.ok) throw new Error(typeof payload.error === "string" && payload.error ? payload.error : fallback);
   const parsed = schema.safeParse(payload);
   if (!parsed.success) throw new Error(fallback);
@@ -96,6 +100,7 @@ async function sendJson<T>(path: string, method: "PUT" | "POST", body: unknown, 
   const token = await getToken();
   const response = await fetch(path, { method, credentials: "include", headers: { "Content-Type": "application/json", ...authHeaders(token) }, body: JSON.stringify(body) });
   const payload = await readApiJson<Record<string, unknown>>(response, fallback);
+  if (isWorkEmailCodeRequired(response.status, payload)) notifyWorkEmailCodeRequired();
   if (!response.ok) throw new Error(typeof payload.error === "string" && payload.error ? payload.error : fallback);
   const parsed = schema.safeParse(payload);
   if (!parsed.success) throw new Error(fallback);
@@ -105,7 +110,7 @@ async function sendJson<T>(path: string, method: "PUT" | "POST", body: unknown, 
 /** The server's verified-referrer verdict, judged by the one shared predicate. A failed or malformed check throws; it never reads as "not verified". */
 export async function fetchCompanyAccess(getToken: TokenSource): Promise<CompanyAccess> {
   const access = await getJson(REFERRER_ACCESS_PATH, getToken, referrerAccessResponseSchema, "We could not check your work-email verification.");
-  return { verified: isVerifiedReferrer(access), domain: access.workEmailDomain ?? "", companyName: access.companyName, companyInitials: access.companyInitials };
+  return { verified: isVerifiedReferrer(access), domain: access.workEmailDomain ?? "", companyName: access.companyName, companyInitials: access.companyInitials, ...(access.codeRequired ? { codeRequired: true } : {}) };
 }
 
 export async function fetchReferrerPreferences(getToken: TokenSource): Promise<ReferrerPreferences> {

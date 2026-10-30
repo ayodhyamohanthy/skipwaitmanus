@@ -83,7 +83,8 @@ export function registerReviewerLoginRoutes(app: Express) {
     try {
       const account = await provision(role, email);
       if (!account) return fail();
-      const token = await sdk.createSessionToken(account.openId, { name: account.name ?? email });
+      // D-057 §0 item 3: the founder-approved demo referrer (off unless REVIEWER_LOGIN_ENABLED) keeps a code-session claim; no other role gets it.
+      const token = await sdk.createSessionToken(account.openId, { name: account.name ?? email, ...(role === "referrer" ? { amr: "work_email_otp" as const } : {}) });
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: SESSION_ACCESS_TTL_MS });
       console.info("[ReviewerLogin] signed in", { role });
       res.json({ signedIn: true, role, redirectTo: ACCOUNTS[role].landing });

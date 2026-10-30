@@ -84,7 +84,9 @@ export async function resolveDevIdentity(req: Request): Promise<DevIdentity | un
     // hand. Returning undefined maps to the routes' existing 401 handling.
     if (account.suspended) return undefined;
     const primaryEmail = emailField(account.email);
-    return { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
+    // D-057: the session's own claim and key, copied from the verified cookie only (never the openId or subject).
+    const sessionKey = session.sid ? `workos:${session.sid}` : session.ssid ? `app:${session.ssid}` : undefined;
+    return { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [], ...(session.amr ? { sessionAmr: session.amr } : {}), ...(sessionKey ? { sessionKey } : {}) };
   } catch {
     return undefined;
   }

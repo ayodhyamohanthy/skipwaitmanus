@@ -18,6 +18,12 @@ export type ReferrerAccessResponse = {
   workEmailDomain: string | null;
   companyName: string | null;
   companyInitials: string | null;
+  /**
+   * D-057 (D-245): true only for a verified referrer whose current session has
+   * neither a work-email code session nor a fresh in-session step-up proof. The
+   * record and the referrer links stay; referrer actions ask for the code first.
+   */
+  codeRequired?: boolean;
 };
 
 /**
@@ -28,12 +34,15 @@ export type ReferrerAccessResponse = {
 export const referrerAccessResponseSchema = z.object({
   verifiedCompanyAccess: z.boolean(),
   workEmailDomain: z.string().nullish(),
+  // An older server sends no codeRequired: read as false.
+  codeRequired: z.boolean().optional(),
   ...companyIdentityFieldsSchema.shape,
-}).transform((access): ReferrerAccessResponse => ({
+}).transform((access): ReferrerAccessResponse & { codeRequired: boolean } => ({
   verifiedCompanyAccess: access.verifiedCompanyAccess,
   workEmailDomain: access.workEmailDomain ?? null,
   companyName: access.companyName ?? null,
   companyInitials: access.companyInitials ?? null,
+  codeRequired: access.verifiedCompanyAccess && access.codeRequired === true,
 }));
 
 /** The one verified-referrer predicate: the server granted access for a company domain. */

@@ -13,6 +13,10 @@ const isNonEmptyString = (value: unknown): value is string => typeof value === "
 export type SessionPayload = { openId: string; appId: string; name: string; sid?: string; amr?: "work_email_otp"; ssid?: string };
 /** Only a WorkOS hosted-session id is ever carried in the app token. */
 const hostedSid = (value: unknown): string | undefined => typeof value === "string" && /^session_[A-Za-z0-9]+$/.test(value) ? value : undefined;
+/** D-057: the work-email-code claim is read and written only in this exact form; the subject never implies it. */
+const workEmailAmr = (value: unknown): "work_email_otp" | undefined => value === "work_email_otp" ? "work_email_otp" : undefined;
+/** D-057 §0b.2: one app-session chain. A random UUID; renewal keeps it, the jti never is it. */
+const sessionChainId = (value: unknown): string | undefined => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value) ? value : undefined;
 class SDKServer {
   private getSessionSecret(){return new TextEncoder().encode(ENV.cookieSecret)}
   async createSessionToken(openId:string,options:{expiresInMs?:number;name?:string;sid?:string;amr?:"work_email_otp";ssid?:string}={}){
@@ -21,7 +25,7 @@ class SDKServer {
     // reporting success with a token minted from stale account state.
     const before=await db.getUserByOpenId(openId);
     if(!before||before.suspended)throw new Error("ACCOUNT_NOT_ACTIVE");
-    const token=await this.signSession({openId,appId:ENV.appId,name:options.name||"",sid:hostedSid(options.sid)},options);
+    const token=await this.signSession({openId,appId:ENV.appId,name:options.name||"",sid:hostedSid(options.sid),amr:workEmailAmr(options.amr),ssid:sessionChainId(options.ssid)??randomUUID()},options);
     const after=await db.getUserByOpenId(openId);
     if(!after||after.suspended||after.sessionsValidAfter.getTime()!==before.sessionsValidAfter.getTime())throw new Error("ACCOUNT_NOT_ACTIVE");
     return token;
@@ -29,7 +33,7 @@ class SDKServer {
   async signSession(payload:SessionPayload,options:{expiresInMs?:number}={}){
     if(payload.appId!==ENV.appId) throw new Error("Session app ID mismatch");
     const issuedAt=Math.floor(Date.now()/1000), expiresInMs=Math.min(options.expiresInMs??ACCESS_TTL_MS,ACCESS_TTL_MS);
-    return new SignJWT({openId:payload.openId,appId:payload.appId,name:payload.name,...(hostedSid(payload.sid)?{sid:hostedSid(payload.sid)}:{})}).setProtectedHeader({alg:"HS256",typ:"JWT"}).setIssuer(ISSUER).setAudience(AUDIENCE).setSubject(payload.openId).setIssuedAt(issuedAt).setJti(randomUUID()).setExpirationTime(issuedAt+Math.floor(expiresInMs/1000)).sign(this.getSessionSecret());
+    return new SignJWT({openId:payload.openId,appId:payload.appId,name:payload.name,...(hostedSid(payload.sid)?{sid:hostedSid(payload.sid)}:{}),...(workEmailAmr(payload.amr)?{amr:"work_email_otp"}:{}),...(sessionChainId(payload.ssid)?{ssid:sessionChainId(payload.ssid)}:{})}).setProtectedHeader({alg:"HS256",typ:"JWT"}).setIssuer(ISSUER).setAudience(AUDIENCE).setSubject(payload.openId).setIssuedAt(issuedAt).setJti(randomUUID()).setExpirationTime(issuedAt+Math.floor(expiresInMs/1000)).sign(this.getSessionSecret());
   }
   async verifySession(cookieValue:string|undefined|null){
     if(!cookieValue)return null;
@@ -42,7 +46,7 @@ class SDKServer {
       // JWT iat and MySQL TIMESTAMP both enforce revocation at one-second granularity.
       // Comparing raw milliseconds falsely rejects a token minted later in the same second.
       if(account.sessionsValidAfter&&Math.floor(account.sessionsValidAfter.getTime()/1000)>payload.iat)return null;
-      return {openId,appId,name:typeof name==="string"?name:"",sid:hostedSid((payload as Record<string,unknown>).sid),amr:undefined as "work_email_otp"|undefined,ssid:undefined as string|undefined};
+      return {openId,appId,name:typeof name==="string"?name:"",sid:hostedSid((payload as Record<string,unknown>).sid),amr:workEmailAmr((payload as Record<string,unknown>).amr),ssid:sessionChainId((payload as Record<string,unknown>).ssid)};
     }catch{return null}
   }
   /** A fresh token for a valid session older than RENEW_AFTER_MS, else null. Young tokens cost no DB read. */
@@ -53,7 +57,7 @@ class SDKServer {
     if(Date.now()-iat*1000<RENEW_AFTER_MS)return null;
     const session=await this.verifySession(cookieValue);
     if(!session)return null;
-    return this.createSessionToken(session.openId,{name:session.name,...(session.sid?{sid:session.sid}:{})});
+    return this.createSessionToken(session.openId,{name:session.name,...(session.sid?{sid:session.sid}:{}),...(session.amr?{amr:session.amr}:{}),...(session.ssid?{ssid:session.ssid}:{})});
   }
   async revokeSession(cookieValue:string|undefined|null){
     if(!cookieValue)return;

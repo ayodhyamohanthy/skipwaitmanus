@@ -171,7 +171,10 @@ describe("§0b.7 item 1: a Google-first account completes the step-up with no ac
     expect(stored).not.toContain("workos:session_S1");
     // Activity rows carry the domain only.
     const stepUpActivity = w.activity.filter(row => row.action.startsWith("work_email.step_up_"));
-    expect(stepUpActivity.map(row => row.action)).toEqual(["work_email.step_up_sent", "work_email.step_up_verified"]);
+    // The first claim was refused by the gate (denied), then the code was sent and verified.
+    expect(stepUpActivity.map(row => row.action)).toEqual(["work_email.step_up_denied", "work_email.step_up_sent", "work_email.step_up_verified"]);
+    expect(stepUpActivity[0].metadata).toEqual({ reason: "code_required" });
+    expect(stepUpActivity.slice(1).map(row => row.metadata)).toEqual([{ domain: "acme.com" }, { domain: "acme.com" }]);
     expect(JSON.stringify(stepUpActivity)).not.toContain("ref@acme.com");
   });
 
