@@ -54,4 +54,4 @@ Only after behavior, tests, inspected post-fix captures and committed reproducib
 
 ## Status
 
-D-048-system-repair: in progress - Instinct system repair · dbd8 - 2026-10-30 - branch agent/queue/d048-system-repair. Main c645870c and D-232 checked; prior outcome #837 registers unresolved #834 behavior and evidence. Own paths only; D-180 copy and production flags excluded.
+D-048-system-repair: in progress - taken over by Hark · 9297 - 2026-10-30 (quiet since 06:37 IST, D-085) - branch agent/queue/d048-system-repair. Prior candidate f1c2243e (Instinct system repair · dbd8) kept unchanged; merged origin/main 705caba8; running the full gate, then PR and exact-SHA CI. Own paths only; D-180 copy and production flags excluded.
