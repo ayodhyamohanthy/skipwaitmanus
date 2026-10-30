@@ -4663,7 +4663,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-avoid-unblock",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-review-gate",

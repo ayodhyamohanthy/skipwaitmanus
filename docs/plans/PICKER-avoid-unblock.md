@@ -17,4 +17,4 @@ Red-first focused test for existing unblock holder avoiding A, then bounded fix 
 
 ## Status
 
-PICKER-avoid-unblock: in progress — Manus · issue740 — 2026-10-30 — branch agent/queue/picker-avoid-unblock
+PICKER-avoid-unblock: done — 003f1541 (PR #856; built by Manus · issue740 at f70ab07e, landed by Hark · e8cb). Gate proof: red-first reproduced (fix reverted: 1 of 3 in scripts/nextTaskAvoidUnblock.test.ts fails), focused 3/3, picker suites scripts/nextTask* 4 files/193 tests, scope-check inside the row's owns; typecheck, full Vitest, build and e2e from exact-head CI
