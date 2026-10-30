@@ -1,0 +1,22 @@
+// @vitest-environment jsdom
+// Goal-on parity regressions for registered D-048-system-repair.
+import React from 'react';
+import {cleanup,render,screen,fireEvent,act}from'@testing-library/react';
+import{afterEach,it,expect,vi}from'vitest';
+import GoalAppStates from './GoalAppStates';
+vi.mock('wouter',()=>({Link:({href,children,...rest}:any)=><a href={href}{...rest}>{children}</a>}));
+afterEach(()=>{cleanup();vi.unstubAllGlobals()});
+const chip=(name:string)=>fireEvent.click(screen.getByRole('button',{name,exact:true}));
+it('preserves Android Not now dismissal',()=>{render(<GoalAppStates/>);chip('Not now');expect(screen.queryByRole('button',{name:'Install app',exact:true})).toBeNull()});
+it('preserves iPhone Got it dismissal',()=>{render(<GoalAppStates/>);chip('Install (iPhone)');chip('Got it');expect(screen.queryByText('Add skipwait.me to your Home Screen')).toBeNull()});
+it('preserves offered beforeinstallprompt action',async()=>{render(<GoalAppStates/>);const prompt=vi.fn().mockResolvedValue(undefined);const offered=Object.assign(new Event('beforeinstallprompt',{cancelable:true}),{prompt,userChoice:Promise.resolve({outcome:'accepted'})});act(()=>{window.dispatchEvent(offered)});chip('Install app');await Promise.resolve();expect(prompt).toHaveBeenCalledTimes(1)});
+it('preserves browser permission call and denied feedback',async()=>{const requestPermission=vi.fn().mockResolvedValue('denied');vi.stubGlobal('Notification',{requestPermission});render(<GoalAppStates/>);chip('Push permission');chip('Allow');await Promise.resolve();expect(requestPermission).toHaveBeenCalledTimes(1);expect(screen.getByRole('status').textContent).toMatch(/blocked/)});
+it('preserves Maybe later without permission call',()=>{const requestPermission=vi.fn();vi.stubGlobal('Notification',{requestPermission});render(<GoalAppStates/>);chip('Push permission');chip('Maybe later');expect(screen.getByRole('status').textContent).toBe('Notifications stay off until you allow them.');expect(requestPermission).not.toHaveBeenCalled()});
+
+it('shows an honest visible Loading message and retry reaches it',()=>{render(<GoalAppStates/>);chip('Offline');chip('Try again');expect(screen.getByRole('status',{name:'Loading'}).textContent).toContain('Loading');});
+it.each(['granted','default'])('reports permission outcome %s',async result=>{vi.stubGlobal('Notification',{requestPermission:vi.fn().mockResolvedValue(result)});render(<GoalAppStates/>);chip('Push permission');chip('Allow');expect((await screen.findByRole('status')).textContent).toMatch(result==='granted'?/allowed/:/stay off/)});
+it('reports permission errors honestly',async()=>{vi.stubGlobal('Notification',{requestPermission:vi.fn().mockRejectedValue(new Error('synthetic'))});render(<GoalAppStates/>);chip('Push permission');chip('Allow');expect((await screen.findByRole('status')).textContent).toMatch(/didn't show/)});
+it('reports install dismissed and consumes the offered prompt',async()=>{render(<GoalAppStates/>);const prompt=vi.fn().mockResolvedValue(undefined);act(()=>window.dispatchEvent(Object.assign(new Event('beforeinstallprompt',{cancelable:true}),{prompt,userChoice:Promise.resolve({outcome:'dismissed'})})));chip('Install app');expect((await screen.findByRole('status')).textContent).toMatch(/Install dismissed/);chip('Install app');expect((await screen.findByRole('status')).textContent).toMatch(/hasn't offered/);expect(prompt).toHaveBeenCalledTimes(1)});
+it('reports install errors and unavailable API honestly',async()=>{render(<GoalAppStates/>);const prompt=vi.fn().mockRejectedValue(new Error('synthetic'));act(()=>window.dispatchEvent(Object.assign(new Event('beforeinstallprompt'),{prompt,userChoice:Promise.resolve({outcome:'accepted'})})));chip('Install app');expect((await screen.findByRole('status')).textContent).toMatch(/didn't open/);chip('Install app');expect((await screen.findByRole('status')).textContent).toMatch(/hasn't offered/)});
+it('reopens both dismissed install sheets from the chips',()=>{render(<GoalAppStates/>);chip('Not now');chip('Install (Android)');expect(screen.getByRole('button',{name:'Install app'})).toBeTruthy();chip('Install (iPhone)');chip('Got it');chip('Install (iPhone)');expect(screen.getByRole('button',{name:'Got it'})).toBeTruthy()});
+it('supports absent notification API without requesting',async()=>{vi.stubGlobal('Notification',undefined);render(<GoalAppStates/>);chip('Push permission');chip('Allow');expect((await screen.findByRole('status')).textContent).toMatch(/support notifications/)});
