@@ -19,6 +19,7 @@ import {
   expectedApiSha,
   expectedWebSha,
   formatLine,
+  incidentShaFor,
   parseJsonBody,
   planVerification,
   releaseIncidentBody,
@@ -197,9 +198,84 @@ describe("planVerification", () => {
     expect(supersededBy(webTrigger, [webTrigger, api])).toBe(api);
   });
 
-  it("a deploy that did not succeed is left to its Deploy failed issue", () => {
-    const failed = run({ id: 13, conclusion: "failure" });
-    expect(planVerification({ event: "workflow_run", trigger: failed, runs: [failed], apiTagOutput: tag }).action).toBe("skip");
+  // D-240 (a): replaces "a deploy that did not succeed is left to its Deploy failed issue".
+  it.each(["failure", "cancelled", "timed_out"])("a failed deploy (%s) is checked against what is live and never marks its own head verified", conclusion => {
+    const NEW = "d".repeat(40);
+    const webDone = run({ id: 20, head_sha: WEB, run_started_at: "2026-10-30T05:00:00Z" });
+    const failedApi = run({ id: 21, name: DEPLOY_API_WORKFLOW, head_sha: NEW, conclusion, run_started_at: "2026-10-30T06:00:00Z" });
+    const plan = planVerification({ event: "workflow_run", trigger: failedApi, runs: [webDone, failedApi], apiTagOutput: tag });
+    expect(plan).toMatchObject({ action: "verify", webSha: WEB, apiSha: API });
+    expect(plan.statusSha).toBeNull();
+    expect(plan.statusSha).not.toBe(NEW);
+    expect(incidentShaFor(plan)).toBe(WEB);
+    expect(incidentShaFor(plan)).not.toBe(NEW);
+  });
+
+  it("a failed web deploy is checked too, at the last successful web head, without marking the failed head", () => {
+    const NEW = "d".repeat(40);
+    const webDone = run({ id: 20, head_sha: WEB, run_started_at: "2026-10-30T05:00:00Z" });
+    const failedWeb = run({ id: 22, head_sha: NEW, conclusion: "failure", run_started_at: "2026-10-30T06:00:00Z" });
+    const plan = planVerification({ event: "workflow_run", trigger: failedWeb, runs: [webDone, failedWeb], apiTagOutput: tag });
+    expect(plan).toMatchObject({ action: "verify", statusSha: null, webSha: WEB, apiSha: API });
+  });
+
+  describe("D-240 (b): a partial deploy checks each side at its own expected SHA", () => {
+    const NEW = "d".repeat(40);
+    const prevWeb = run({ id: 30, head_sha: WEB, run_started_at: "2026-10-30T05:00:00Z" });
+
+    it("API live at the new SHA, web not: API at NEW, web at the previous successful head", () => {
+      const apiOk = run({ id: 31, name: DEPLOY_API_WORKFLOW, head_sha: NEW, run_started_at: "2026-10-30T06:00:00Z" });
+      const webFailed = run({ id: 32, head_sha: NEW, conclusion: "failure", run_started_at: "2026-10-30T06:01:00Z" });
+      const movedTag = `${NEW}\trefs/tags/api-runtime\n`;
+      const runs = [prevWeb, apiOk, webFailed];
+      expect(planVerification({ event: "workflow_run", trigger: apiOk, runs, apiTagOutput: movedTag })).toMatchObject({ action: "verify", statusSha: NEW, webSha: WEB, apiSha: NEW });
+      const fromWeb = planVerification({ event: "workflow_run", trigger: webFailed, runs, apiTagOutput: movedTag });
+      expect(fromWeb).toMatchObject({ action: "verify", statusSha: null, webSha: WEB, apiSha: NEW });
+      expect(incidentShaFor(fromWeb)).toBe(WEB);
+    });
+
+    it("web live at the new SHA, API not: web at NEW, API at the unmoved tag", () => {
+      const webOk = run({ id: 33, head_sha: NEW, run_started_at: "2026-10-30T06:00:00Z" });
+      const apiFailed = run({ id: 34, name: DEPLOY_API_WORKFLOW, head_sha: NEW, conclusion: "failure", run_started_at: "2026-10-30T06:01:00Z" });
+      const runs = [prevWeb, webOk, apiFailed];
+      expect(planVerification({ event: "workflow_run", trigger: webOk, runs, apiTagOutput: tag })).toMatchObject({ action: "verify", statusSha: NEW, webSha: NEW, apiSha: API });
+      const fromApi = planVerification({ event: "workflow_run", trigger: apiFailed, runs, apiTagOutput: tag });
+      expect(fromApi).toMatchObject({ action: "verify", statusSha: null, webSha: NEW, apiSha: API });
+      expect(fromApi.apiSha).not.toBe(NEW);
+    });
+  });
+
+  describe("D-240 (c): supersession and one incident per live state", () => {
+    const NEW = "d".repeat(40);
+    const webDone = run({ id: 40, head_sha: WEB, run_started_at: "2026-10-30T05:00:00Z" });
+    const failedApi = run({ id: 41, name: DEPLOY_API_WORKFLOW, head_sha: NEW, conclusion: "failure", run_started_at: "2026-10-30T06:00:00Z" });
+
+    it.each(["queued", "in_progress"])("a newer %s run of the same kind supersedes a failed completion: no status, no issue", status => {
+      const newer = run({ id: 42, name: DEPLOY_API_WORKFLOW, head_sha: OLD, status, conclusion: null, run_started_at: "2026-10-30T06:05:00Z" });
+      const plan = planVerification({ event: "workflow_run", trigger: failedApi, runs: [webDone, failedApi, newer], apiTagOutput: tag });
+      expect(plan.action).toBe("superseded");
+      expect(plan).not.toHaveProperty("statusSha");
+      expect(incidentShaFor(plan)).toBeNull();
+    });
+
+    it("any running run of the other kind supersedes a failed completion", () => {
+      const otherKind = run({ id: 43, head_sha: OLD, status: "in_progress", conclusion: null, run_started_at: "2026-10-30T04:00:00Z" });
+      const plan = planVerification({ event: "workflow_run", trigger: failedApi, runs: [webDone, failedApi, otherKind], apiTagOutput: tag });
+      expect(plan.action).toBe("superseded");
+      expect(incidentShaFor(plan)).toBeNull();
+    });
+
+    it("two failed completions over the same live SHAs name one incident, not two", () => {
+      const failedApiAgain = run({ id: 44, name: DEPLOY_API_WORKFLOW, head_sha: OLD, conclusion: "timed_out", run_started_at: "2026-10-30T07:00:00Z" });
+      const failedWeb = run({ id: 45, head_sha: NEW, conclusion: "cancelled", run_started_at: "2026-10-30T07:30:00Z" });
+      const runs = [webDone, failedApi, failedApiAgain, failedWeb];
+      const titles = [failedApi, failedApiAgain, failedWeb].map(trigger => {
+        const plan = planVerification({ event: "workflow_run", trigger, runs, apiTagOutput: tag });
+        expect(plan).toMatchObject({ action: "verify", statusSha: null, webSha: WEB, apiSha: API });
+        return releaseIncidentTitle(incidentShaFor(plan));
+      });
+      expect(new Set(titles)).toEqual(new Set([releaseIncidentTitle(WEB)]));
+    });
   });
 
   it("a dispatch marks the SHA it was given", () => {
@@ -247,6 +323,16 @@ describe("release-verify.yml", () => {
     expect(wf).toContain("issues: write");
     expect(wf).toContain("release/verified");
     expect(wf).toContain("gh label create incident --color B60205 --force");
+  });
+
+  it("D-240: status steps run only with a status SHA, and the incident is named by the planned incident SHA", () => {
+    for (const step of ["Mark the release pending", "Release verified"]) {
+      const block = wf.slice(wf.indexOf(`- name: ${step}`), wf.indexOf("- name:", wf.indexOf(`- name: ${step}`) + 1));
+      expect(block).toMatch(/if: [^\n]*steps\.plan\.outputs\.status_sha != ''/);
+    }
+    expect(wf).toContain("INCIDENT_SHA: ${{ steps.plan.outputs.incident_sha }}");
+    expect(wf).toMatch(/title="Release not verified: \$\{release:0:8\}"/);
+    expect(wf).toMatch(/release="\$\{INCIDENT_SHA/);
   });
 
   it("never derives a SHA from path filters", () => {
