@@ -27,6 +27,8 @@ import { REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import { PASS_REASON_OPTIONS, type PassReasonCode } from "@shared/passReasons";
 import { REFERRED_DEADLINE_ENABLED } from "@shared/referral";
 
+export const GOAL_PAGE = { goalLine: "Would you refer this person?" } as const;
+
 const COORDINATE = "Use messages to coordinate. Keep personal contact details off-platform only if you both choose to.";
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error ? reason.message : fallback);
 

@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { REFERRED_DEADLINE_ENABLED } from "@shared/referral";
 import { DECLINED_LINE, WITHDRAW_CONFIRM_AWAITING, WITHDRAW_CONFIRM_VISIBLE, seekerTerminalLine, withdrawConfirmLine } from "@shared/conversationCopy";
 import ReferralConversation from "./ReferralConversation";
+import { GOAL_PAGE as CONVERSATION_GOAL } from "./conversation/ReferrerConversation";
+import { assertGoalPage } from "@/test/goalPageContract";
 
 const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralConversation /></QueryClientProvider>);
 
@@ -511,6 +513,8 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
     renderPage();
     const page = await screen.findByTestId("goal-referrer-conversation");
     expect(within(page).getByRole("heading", { level: 1, name: "Would you refer this person?" })).toBeTruthy();
+    // D-167 (3): the moved-page contract itself, not just its parts.
+    assertGoalPage(page, CONVERSATION_GOAL);
     expect(within(page).getByText(/Product Designer/)).toBeTruthy();
     expect(within(page).getByRole("heading", { name: "Your next step" })).toBeTruthy();
     expect(page.querySelectorAll("[data-g-primary]")).toHaveLength(1);
