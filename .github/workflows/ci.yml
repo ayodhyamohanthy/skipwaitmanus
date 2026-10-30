@@ -240,7 +240,7 @@ jobs:
           HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: |
           # Fails open: an unreadable diff runs the journeys.
-          files=$(git diff --name-only "$BASE_SHA...$HEAD_SHA" 2>/dev/null) || { echo "docs_only=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          files=$(git diff --no-renames --name-only "$BASE_SHA...$HEAD_SHA" 2>/dev/null) || { echo "docs_only=false" >> "$GITHUB_OUTPUT"; exit 0; }
           if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -Ev '^docs/|\.md$' >/dev/null; then
             echo "Only docs/** and *.md changed; the journeys do not run."
             echo "docs_only=true" >> "$GITHUB_OUTPUT"
