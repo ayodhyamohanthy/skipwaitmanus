@@ -386,3 +386,4 @@ It needs the owner's confirmation of that hard stop (D-204, D-200 (6)), and #383
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
+REL-watchdog: landed — PR #845 (built by Hark · 03f3, landed by Deepseek-V4.1-Flash · 812d). deploy-watchdog's first main run is red by design until the owner sets the secret: run `npx wrangler secret put ZEPTOMAIL_API_KEY --name skipwait-watchdog` (optional: GITHUB_ISSUES_TOKEN), then `gh workflow run deploy-watchdog.yml --ref main` to turn it green. The alert proof is still owed. — map: External watchdog: `watchdog/` Worker `skipwait-watchdog`, cron */5, read-only probes of /, /api/health/ready, /api/health/latency, /api/plans/catalog, the Google sign-in redirect and two malformed code sends; two failed rounds email the owner and open an `incident` issue; deployed by `.github/workflows/deploy-watchdog.yml`.
