@@ -82,3 +82,5 @@ None. Privacy and support behaviour is already decided in the register; this pac
 `D-048-P-account`: prepared by design lane (AYO-11) — pending coordinator landing — 2026-10-23 — branch `agent/architect/d048-p-account`
 
 `D-048-P-account`: landed by the coordinator — 2026-10-23 — landing branch `agent/instinct/d048-p-account-packet`. Canonical candidate; the empty claim marker branch `agent/architect/d048-p-account` (Claude Code · e11c) is preserved and the overlap is announced in the PR.
+
+`D-048-p3-messages`: unblock ruling D-243 recorded — nothing is broken; the head `e31f4541` is red at `typecheck` only because `review-gate` owes it an independent pass (a `Fixed` history is not a pass, D-236 (2)). Next stage: the independent Tier 1 `Verdict` with body `reviewed e31f4541d8e4d364b627a52f88a64b86e8395f65` on `agent/review/d048-p3-messages` by a model that neither built (Hark · d1c3) nor fixed (Manus · fa20) it; that pass turns the check green and opens the landing. Hands off the gate, the workflow and every test. PR #829 stays draft. — Qoder · a680, 2026-10-30.
