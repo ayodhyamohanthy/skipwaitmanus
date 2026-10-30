@@ -493,18 +493,19 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-architect-landing",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-237",
       "dependsOn": [
         "PICKER-review-wording",
         "PROCESS-review-gate"
       ],
       "owns": [
+        "scripts/next-task.mjs",
         "scripts/nextTaskCore.mjs",
         "scripts/nextTaskText.mjs",
         "scripts/nextTaskArchitectLanding.test.ts"
       ],
-      "note": "D-190: workBranchOf skips reserved agent/architect/ branches, so #557 and #585 sat green with no landing hand-out on Oct 23. Use the lock branch as the work branch for architect rows that carry file changes; hand the landing to anyone but the writer. Waits for the two rows that own files it edits."
+      "note": "D-190: workBranchOf skips reserved agent/architect/ branches, so #557 and #585 sat green with no landing hand-out on Oct 23. Use the lock branch as the work branch for architect rows that carry file changes; hand the landing to anyone but the writer. Waits for the two rows that own files it edits. D-237: PR #838 (head 08729ea5, 4 files) holds packet items 2-3, but item 1 also needs the git loader in scripts/next-task.mjs (markersOn drops commits that change files, so buildView cannot see a packet lock) and scope-check refused it; D-237 adds that file to owns and the hand-out resumes. The landing still goes to a session that is not the packet's writer."
     },
     {
       "id": "REGISTER-oct24",
@@ -609,10 +610,10 @@
       "tier": 2,
       "lane": "process",
       "branch": "agent/queue/process-queue-gate",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "D-166 (2): 23 of 38 product-code merges Oct 19-23 had no row. New scripts/queue-gate.mjs called from scripts/scope-check.mjs, already in the required typecheck job, so no workflow edit; five pass rules in the packet; fails open only on its own error.",
+      "note": "D-166 (2): 23 of 38 product-code merges Oct 19-23 had no row. New scripts/queue-gate.mjs called from scripts/scope-check.mjs, already in the required typecheck job, so no workflow edit; five pass rules in the packet; fails open only on its own error. Done: #603, merged 2026-10-23; set by D-212 (8) because the picker no longer saw the landing and handed the row out again.",
       "owns": [
         "scripts/queue-gate.mjs",
         "scripts/queueGate.test.ts",
@@ -629,7 +630,7 @@
       "tier": 2,
       "lane": "process",
       "branch": "agent/queue/process-review-gate",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-queue-gate"
@@ -653,7 +654,7 @@
       "tier": 3,
       "lane": "process",
       "branch": "agent/queue/process-id-check",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-review-gate"
@@ -673,7 +674,7 @@
       "tier": 3,
       "lane": "process",
       "branch": "agent/queue/process-scorecard",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-id-check"
@@ -686,6 +687,296 @@
       ]
     },
     {
+      "id": "REL-watchdog",
+      "title": "External watchdog: a Cloudflare Worker probes the site every 5 minutes and emails the owner after two failed rounds (D-212, D-100)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 2,
+      "lane": "watchdog",
+      "branch": "agent/queue/rel-watchdog",
+      "status": "owner",
+      "syncedTo": "D-243",
+      "dependsOn": [],
+      "note": "Landed in PR #845 (merge c91c7ca1); main CI green on it. The Worker is NOT deployed yet, and the blocker is not the secret: deploy-watchdog run 41050824580 failed at `Ensure the WATCHDOG_STATE KV namespace and use its id` with Cloudflare `Authentication error [code: 10000]`, because this repo's CLOUDFLARE_API_TOKEN carries Workers Scripts (deploy-api runs `wrangler secret list` and `wrangler secret put` successfully on every API deploy) but no Workers KV Storage scope. Owner actions, in order: (1) add Account -> Workers KV Storage: Edit to CLOUDFLARE_API_TOKEN; (2) `gh workflow run deploy-watchdog.yml --ref main` - it creates the WATCHDOG_STATE namespace and deploys `skipwait-watchdog`, then fails its own secret check by design (packet item 5, docs/plans/REL-production-watch.md:53); (3) `npx wrangler secret put ZEPTOMAIL_API_KEY --name skipwait-watchdog` (optional: GITHUB_ISSUES_TOKEN); (4) `gh workflow run deploy-watchdog.yml --ref main` again - that run is green; (5) record the alert proof (a local `wrangler dev --test-scheduled` run against a 404) and set this row to done with the merge SHA. status owner parks the row so the picker stops handing out a landing that is already merged - the D-230/D-232 precedent. No new decision is needed: every step above is already written in this packet.",
+      "epic": "D-212",
+      "owns": [
+        "watchdog/",
+        "scripts/watchdogCore.test.ts",
+        ".github/workflows/deploy-watchdog.yml",
+        "scripts/check-deploy-triggers.mjs (switch only)"
+      ]
+    },
+    {
+      "id": "REL-review-email-retry",
+      "title": "A referrer's review email that failed or never went out is sent again, up to 5 attempts, then the owner is told (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 1,
+      "lane": "notifications",
+      "branch": "agent/queue/rel-review-email-retry",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "D-174-job-catalog"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "server/reviewDeliveryRetry.ts",
+        "server/reviewDeliveryRetry.test.ts",
+        "server/scheduledJobRegistry.ts (switch only)",
+        "shared/scheduledJobs.ts (switch only)",
+        "server/scheduledJobsContract.test.ts (switch only)",
+        "server/emailDelivery.ts",
+        "server/emailDelivery*.test.ts"
+      ]
+    },
+    {
+      "id": "REL-5xx-capture",
+      "title": "Every server 5xx reaches Sentry and the owner, sign-in and webhooks included; admin alerts get a second channel (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 2,
+      "lane": "observability",
+      "branch": "agent/queue/rel-5xx-capture",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "D-090-BYOR"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "server/httpErrorCapture.ts",
+        "server/httpErrorCapture.test.ts",
+        "server/_core/index.ts (switch only)",
+        "server/errorAlerting.ts",
+        "server/errorAlerting.test.ts"
+      ],
+      "note": "Oct 27 merge-up: waits for D-090-BYOR (PR #632, built), which also edits server/_core/index.ts, server/errorAlerting.ts and its test."
+    },
+    {
+      "id": "GATE-test-integrity",
+      "title": "CI fails on a deleted or loosened test, .only or a new .skip; pinned login and money tests cannot lose assertions (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/GATE-delivery.md",
+      "tier": 2,
+      "lane": "ci-checks",
+      "branch": "agent/queue/gate-test-integrity",
+      "status": "done",
+      "syncedTo": "D-222",
+      "dependsOn": [],
+      "epic": "D-212",
+      "owns": [
+        "scripts/test-integrity.mjs",
+        "scripts/testIntegrityCore.mjs",
+        "scripts/testIntegrity.test.ts",
+        "scripts/scope-check.mjs (switch only)",
+        ".github/pull_request_template.md"
+      ]
+    },
+    {
+      "id": "REL-release-verify",
+      "title": "After every deploy a workflow checks the live release and sets release/verified; failures open one incident; deploy notices stop landing on random issues (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 2,
+      "lane": "deploy-workflows",
+      "branch": "agent/queue/rel-release-verify",
+      "status": "todo",
+      "syncedTo": "D-240",
+      "dependsOn": [],
+      "epic": "D-212",
+      "owns": [
+        "scripts/release-smoke.mjs",
+        "scripts/releaseSmokeCore.mjs",
+        "scripts/releaseSmoke.test.ts",
+        ".github/workflows/release-verify.yml",
+        ".github/workflows/deploy-api.yml",
+        ".github/workflows/deploy-pages.yml"
+      ]
+    },
+    {
+      "id": "GATE-e2e-journeys",
+      "title": "Six core journeys run in a real browser against MySQL on every PR, the two Oct 22 regressions first; the deploy migrations apply twice (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/GATE-delivery.md",
+      "tier": 2,
+      "lane": "e2e",
+      "branch": "agent/queue/gate-e2e-journeys",
+      "status": "todo",
+      "syncedTo": "D-239",
+      "dependsOn": [
+        "CI-architect-real-checks"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "e2e/",
+        "scripts/e2e-server.mjs",
+        ".github/workflows/ci.yml",
+        "scripts/ciMarkerSkip.test.ts",
+        "package.json (switch only)"
+      ],
+      "note": "Oct 28 merge-up: waits for CI-architect-real-checks, which now owns .github/workflows/ci.yml (handed over from PRICING-banded-oct25, PR #666); add the e2e job on top of its version of the file. D-239: adding the job trips the #748 pin scripts/ciMarkerSkip.test.ts (exact job list at :122-126, runs-on count at :190), so D-239 adds that file to owns; the pin gains CI_JOBS = [...REQUIRED_JOBS, \"e2e journeys\"] for those two assertions only, no assertion removed or loosened, and the job stays non-required (making it required is the owner's ruleset action, OPS-github-settings). The independent review of the D-239 ruling added two requirements, now part of D-239: (F1) the pin also gains add-only assertions that each required job runs its own blocking commands inside its own jobBlock, because the whole-file pnpm build check stops protecting production build once the e2e job also builds; CI_JOBS stays exact and only serves the job inventory and runner count. (F2) the docs-only step reads git diff --no-renames --name-only, so a runtime-to-docs rename cannot skip the journeys."
+    },
+    {
+      "id": "REL-heartbeats",
+      "title": "Public no-data /api/health/jobs with one overdue rule, probed by the watchdog: a stopped scheduler alerts (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 2,
+      "lane": "jobs",
+      "branch": "agent/queue/rel-heartbeats",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "REL-watchdog",
+        "D-090-BYOR"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "server/healthRoutes.ts",
+        "server/healthRoutes*.test.ts",
+        "server/scheduledJobsRoutes.ts",
+        "server/scheduledJobsRoutes*.test.ts",
+        "server/_core/index.ts (switch only)",
+        "watchdog/src/core.ts",
+        "scripts/watchdogCore.test.ts"
+      ],
+      "note": "Oct 27 merge-up: also waits for D-090-BYOR (PR #632, built), which also edits server/_core/index.ts."
+    },
+    {
+      "id": "REL-webhook-auth-alarm",
+      "title": "A Chargebee webhook refused for its secret is recorded, sent to Sentry and flagged by the daily money check (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 1,
+      "lane": "payments-ops",
+      "branch": "agent/queue/rel-webhook-auth-alarm",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [],
+      "epic": "D-212",
+      "owns": [
+        "server/webhookAuthAlarm.ts",
+        "server/webhookAuthAlarm.test.ts",
+        "server/chargebeeRoutes.ts (switch only)",
+        "server/chargebeeRoutes*.test.ts",
+        "server/dailyMoneyCheck.ts",
+        "server/dailyMoneyCheck*.test.ts"
+      ]
+    },
+    {
+      "id": "REL-rollback-skew",
+      "title": "The web never runs ahead of its API, and rollback works for web and API (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 2,
+      "lane": "deploy-workflows",
+      "branch": "agent/queue/rel-rollback-skew",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "REL-release-verify"
+      ],
+      "epic": "D-212",
+      "owns": [
+        ".github/workflows/deploy-pages.yml",
+        ".github/workflows/rollback.yml",
+        "scripts/rollbackTarget.mjs",
+        "scripts/rollbackTarget.test.ts"
+      ]
+    },
+    {
+      "id": "REL-self-heal",
+      "title": "When the API container is dead, the watchdog redeploys the live release once and tells the owner (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 2,
+      "lane": "watchdog",
+      "branch": "agent/queue/rel-self-heal",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "REL-watchdog",
+        "REL-rollback-skew",
+        "REL-heartbeats"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "watchdog/src/index.ts",
+        "watchdog/src/core.ts",
+        "scripts/watchdogCore.test.ts"
+      ]
+    },
+    {
+      "id": "REL-client-capture",
+      "title": "Failed calls in the browser (5xx, HTML instead of JSON, network) reach Sentry, sign-in and checkout return first (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 1,
+      "lane": "observability-client",
+      "branch": "agent/queue/rel-client-capture",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "FIX-device-signin"
+      ],
+      "epic": "D-212",
+      "note": "D-212: SeekerSignIn.tsx is left to DEVICE-SIGNIN-passkeys, which rewrites that form and adopts apiFetch there.",
+      "owns": [
+        "client/src/lib/apiFetch.ts",
+        "client/src/lib/apiFetch.test.ts",
+        "client/src/main.tsx",
+        "client/src/components/WorkEmailSignIn.tsx (switch only)",
+        "client/src/components/ReferrerOtpSignIn.tsx (switch only)",
+        "client/src/components/plans/PendingCheckoutReturn.tsx (switch only)"
+      ]
+    },
+    {
+      "id": "GATE-tier-floor",
+      "title": "The review gate uses the tier computed from the paths, so a money or sign-in change filed as Tier 2 still needs an independent pass (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/GATE-delivery.md",
+      "tier": 2,
+      "lane": "process",
+      "branch": "agent/queue/gate-tier-floor",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "PROCESS-review-gate"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "scripts/tierClassifyCore.mjs",
+        "scripts/tierClassify.test.ts",
+        "scripts/review-gate.mjs",
+        "scripts/reviewGate.test.ts"
+      ]
+    },
+    {
+      "id": "REL-ops-invariants",
+      "title": "A daily read-only ops check finds failures that still answer 200: stuck review emails, request drought, exhausted jobs, work-email codes never used (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 1,
+      "lane": "ops-check",
+      "branch": "agent/queue/rel-ops-invariants",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "REL-review-email-retry",
+        "D-174-job-catalog"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "server/dailyOpsCheck.ts",
+        "server/dailyOpsCheck.test.ts",
+        "server/scheduledJobRegistry.ts (switch only)",
+        "shared/scheduledJobs.ts (switch only)",
+        "server/scheduledJobsContract.test.ts (switch only)",
+        "server/workEmailOtpPurge.ts"
+      ]
+    },
+    {
       "id": "REGISTER-D212",
       "title": "Land the enterprise-pipeline ruling D-212 (roles as gates, seven lights, REL and GATE packets, 18 rows) after an independent review by a model other than Claude",
       "row": "D-163",
@@ -693,10 +984,10 @@
       "tier": 1,
       "lane": "register",
       "branch": "agent/queue/register-d212",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "The owner, Oct 26: get an independent review of the final version through the repository's process, bring it up to date with main, require every check on the exact version merged, and resolve findings first. Claude Code wrote it, so review and landing go to a model other than Claude (D-151). The PR from agent/queue/register-d212 supersedes #623 (claude/enterprise-pipeline), which stays open and unmerged until this lands."
+      "note": "The owner, Oct 26: get an independent review of the final version through the repository's process, bring it up to date with main, require every check on the exact version merged, and resolve findings first. Claude Code wrote it, so review and landing go to a model other than Claude (D-151). The PR from agent/queue/register-d212 supersedes #623 (claude/enterprise-pipeline), which stays open and unmerged until this lands. Scope-check skip is accepted for this docs-only row (reviewer option c) because shared registry files cannot be declared in owns without unsequenced overlap with D-099-bonus-pages."
     },
     {
       "id": "D-069-chargebee-catalog-sync",
@@ -1430,6 +1721,30 @@
       "note": "D-167 §6.2: shown on every signed-in page and the landing, so they move before the surfaces. Behaviour unchanged, including cookie consent and applyAnalyticsConsent. Oct 23 finding (Main, from the AYO-8 kit/settings 390px capture): the existing AppShell chrome duplicates the bell/profile affordances at mobile width (bell+profile left, bell right); whole-app scope, not any surface worker’s bug. The dedup fix is a candidate for this row’s scope and must not change auth behaviour. D-231 (Oct 28, unblock ruling): status moved to owner. PR #767 is a draft under an explicit owner hold (owner comments on #767: 6454185406, 6463784167, 6465559515, 6468051896, 6468097061, 6468614231, 6472224583) and no session may merge, make ready, revert, edit or mark it Landed, or renew its landing lease. Exact head 7d6d6498 has required CI green, so the pending work is acceptance, not repair. Packet 6.2 asks for goal primitives and tokens, but the four components import no components/goal module and the boundary test admits a moved surface only via MOVED_SURFACES (client/src/components/goal/goalBoundary.test.ts:14), a file owned by the open D-090-BYOR draft #632 together with this row's packet GOAL_UI_COVERAGE.md; the owner requires his own acknowledgment before any boundary change. No dependsOn edge is added: whether this row takes the boundary entries after #632 lands or the owner acknowledges them now is the open question (D-223 (1)). Owner question, one: accept the shell parts at the carrier and acknowledge the MOVED_SURFACES registration so the row returns to todo and lands, or keep the hold, and in that answer say whether the boundary entries land here or after #632. Until he answers the row waits in owner and nothing lands."
     },
     {
+      "id": "D-048-F-app-wrapper",
+      "title": "App-wide wrapper states on the goal system: offline and slow-connection notices, update notice, error boundary fallback, global toaster (App.tsx)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-F-app-wrapper.md",
+      "tier": 2,
+      "lane": "d048-app-wrapper",
+      "branch": "agent/queue/d048-f-app-wrapper",
+      "status": "todo",
+      "syncedTo": "D-243",
+      "dependsOn": [
+        "D-048-F-goal-check",
+        "D-048-F-primitives"
+      ],
+      "epic": "D-048-p3",
+      "owns": [
+        "client/src/components/ErrorBoundary.tsx",
+        "client/src/components/PwaStatus.tsx",
+        "client/src/components/goal/wrapper/**",
+        "client/src/App.tsx (switch only)",
+        "design/goal-ui/captures/app-wrapper/**"
+      ],
+      "note": "Found by D-048-p3-discovery (#852): App.tsx mounts legacy kit/ui states around every route, absent from route-only captures (D-150, D-167). Goal variant renders only where the route's existing goal surface is on; goalSurfaces.ts read-only, no new flag, RELEASED untouched, nothing enabled. Behaviour preserved: triggers, silent update (SKIP_WAITING, no banner/reload), toaster position/offset, Try again/reload/Go home, captureClientError, role=status aria-live=polite. Existing pwaStatus/systemStates tests read-only and green. Disjoint from held D-048-F-shell-parts (D-231), D-048-dark-mode (D-230; both App.tsx switch-only), D-090-BYOR (incl. goalBoundary.test.ts) and D-048-p3-discovery's goalPagesBoundary.test.ts (D-241 unchanged). Red-first tests, own boundary test with negative control, 1280/390 whole-page captures of every state. Suspense LoadingScreen fallback is out of scope (later row)."
+    },
+    {
       "id": "D-048-F-coverage",
       "title": "Coverage test: every route and component in GOAL_UI_COVERAGE.md has an owner row",
       "row": "D-048",
@@ -1565,7 +1880,7 @@
       "lane": "d048-asks",
       "branch": "agent/queue/d048-inbox",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-244",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1874,7 +2189,7 @@
         "client/src/pages/goal/post-opportunity/**",
         "design/goal-ui/captures/post-opportunity/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('post-opportunity').",
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('post-opportunity'). Done: #578, merged 2026-10-23; set by D-212 (8) because the picker no longer saw the landing and handed the row out again.",
       "epic": "D-048-p3"
     },
     {
@@ -1923,7 +2238,7 @@
       "tier": 1,
       "lane": "d048-money",
       "branch": "agent/queue/d048-p3-plans",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
@@ -2168,7 +2483,7 @@
       "lane": "d048-messages",
       "branch": "agent/queue/d048-p3-messages",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-243",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2531,7 +2846,7 @@
       "tier": 2,
       "lane": "d048-system",
       "branch": "agent/queue/d048-p3-system",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
@@ -2548,6 +2863,29 @@
         "design/goal-ui/captures/system/**"
       ],
       "note": "Implementation row from the D-048-public.md packet (AYO-11 design lane). flag: goalSurfaceOn('system'); #324 Emails.tsx change ported at release via drift check.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-system-repair",
+      "title": "Repair goal system gallery parity and Loading; commit acceptance evidence",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-system-repair.md",
+      "tier": 2,
+      "lane": "d048-system",
+      "branch": "agent/queue/d048-system-repair",
+      "status": "done",
+      "syncedTo": "D-232",
+      "dependsOn": [
+        "D-048-p3-system",
+        "D-048-F-goal-check"
+      ],
+      "owns": [
+        "client/src/pages/goal/system/GoalAppStates.tsx",
+        "client/src/pages/goal/system/systemParity.goal.test.tsx",
+        "client/src/pages/goal/system/systemPages.goal.test.tsx",
+        "design/goal-ui/captures/system/**"
+      ],
+      "note": "Additive follow-up for merged #834: visible blank Loading and browser/dismissal parity, goal-on tests, reproducible committed synthetic captures. System stays off; D-180 copy stays separate.",
       "epic": "D-048-p3"
     },
     {
@@ -2627,7 +2965,7 @@
       "lane": "d048-discovery",
       "branch": "agent/queue/d048-p3-discovery",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-241",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-marketing",
@@ -2639,9 +2977,10 @@
         "client/src/pages/JobExplorer.tsx",
         "client/src/pages/goal/discovery/**",
         "scripts/kit-screens/fixtures/*__goal-discovery-*.json",
-        "design/goal-ui/captures/discovery/**"
+        "design/goal-ui/captures/discovery/**",
+        "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-harness dependency - fixture globs share the kit-screens/fixtures folder; the harness row lands first and this row adds its fixtures on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('discovery').",
+      "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-harness dependency - fixture globs share the kit-screens/fixtures folder; the harness row lands first and this row adds its fixtures on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('discovery'). D-241 (Oct 30): owns gains client/src/test/goalPagesBoundary.test.ts (its only owner D-048-F-goal-check is done); the boundary must walk root-alias, relative, barrel and transitive runtime imports, admit only an audited list of goal-styled and behavior-only modules, and prove with negative controls that the legacy OneTapShareActions share component fails; assertions only added, no waivers.",
       "epic": "D-048-p3"
     },
     {
@@ -3136,8 +3475,10 @@
       "branch": "agent/queue/d100-provider-recon",
       "status": "todo",
       "syncedTo": "D-227",
-      "dependsOn": [],
-      "note": "D-223 subtask of D-100. Writes nothing; never adds a gateway key.",
+      "dependsOn": [
+        "REL-webhook-auth-alarm"
+      ],
+      "note": "D-223 subtask of D-100. Writes nothing; never adds a gateway key. Oct 27: waits for REL-webhook-auth-alarm, which ranks higher and also edits server/dailyMoneyCheck.ts.",
       "epic": "D-100",
       "owns": [
         "server/chargebeeAccountApi.ts",
@@ -3441,7 +3782,7 @@
       "status": "architect",
       "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "Any agent writes the packet (D-109): write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected."
+      "note": "Any agent writes the packet (D-109): write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected. It also retires sync-guard.yml (only echoes) and design-gate.yml (`|| true`), D-212 (7)."
     },
     {
       "id": "D-048-fix-start-ask-handoff",
@@ -3451,10 +3792,10 @@
       "tier": 2,
       "lane": "d048-foundation",
       "branch": "agent/instinct/d048-fix-start-ask-handoff",
-      "status": "in-review",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top."
+      "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top. Done: #586, merged 2026-10-23; set by D-212 (8) because the picker no longer saw the landing and handed the row out again."
     },
     {
       "id": "D-048-fix-explore-open-first",
@@ -3770,9 +4111,9 @@
         "server/db.ts",
         "server/privateReferralRoutes.ts",
         "server/referralTimers.ts",
-        "shared/scheduledJobs.ts",
-        "server/scheduledJobRegistry.ts",
-        "server/scheduledJobsContract.test.ts"
+        "shared/scheduledJobs.ts (switch only)",
+        "server/scheduledJobRegistry.ts (switch only)",
+        "server/scheduledJobsContract.test.ts (switch only)"
       ]
     },
     {
@@ -3791,6 +4132,107 @@
       "owns": [
         "docs/research/D-175-coverage.md"
       ]
+    },
+    {
+      "id": "PICKER-fullstack-lights",
+      "title": "--status prints the seven lights for the live release, and a red live release holds every landing but its fix (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/GATE-delivery.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-fullstack-lights",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "REL-release-verify",
+        "REL-watchdog",
+        "PROCESS-review-gate",
+        "PICKER-review-wording",
+        "PICKER-architect-landing",
+        "PICKER-decision-sync",
+        "BRANCH-HYGIENE-2",
+        "PICKER-avoid-land",
+        "PICKER-heartbeat-slot-safety",
+        "PICKER-landed-marker-continuity",
+        "PICKER-landing-wait-fallthrough"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTask.test.ts"
+      ],
+      "note": "Oct 27 merge-up: also waits for PICKER-avoid-land (and so PICKER-avoid-unblock), which edit scripts/nextTaskCore.mjs; PICKER-qa-stage follows through this row. Oct 28 merge-up: also waits for PICKER-heartbeat-slot-safety, PICKER-landed-marker-continuity and PICKER-landing-wait-fallthrough, the three picker rows main gained after this branch's last merge-up, which own scripts/next-task.mjs and scripts/nextTaskCore.mjs. New rows wait for the older queued owning stage (no cycle: all three reach PROCESS-review-gate, none reaches this row), and PICKER-qa-stage follows through here, so the six merged-registry owns overlaps become none."
+    },
+    {
+      "id": "PICKER-qa-stage",
+      "title": "QA: the checklist runs inside the one Tier 1 review, and a session that did not build it checks Tier 2/3 UI changes within 24 hours after landing (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/GATE-delivery.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-qa-stage",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "GATE-e2e-journeys",
+        "GATE-tier-floor",
+        "D-048-F-harness",
+        "PICKER-fullstack-lights"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTask.test.ts",
+        "docs/QA-CHECKLIST.md"
+      ]
+    },
+    {
+      "id": "REL-synthetic-journeys",
+      "title": "Signed-in synthetic journeys checked in production with tagged test accounts, Chargebee test site only (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 1,
+      "lane": "synthetic",
+      "branch": "agent/queue/rel-synthetic-journeys",
+      "status": "architect",
+      "syncedTo": "D-222",
+      "dependsOn": [],
+      "note": "D-212: targets the QA preview (#383), never production; needs the owner's hard-stop confirmation on the Cloudflare credits (D-204) and #383 brought up to date before any build.",
+      "epic": "D-212"
+    },
+    {
+      "id": "GATE-migration-apply",
+      "title": "CI applies deploy migrations to MySQL twice before production (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/GATE-delivery.md",
+      "tier": 2,
+      "lane": "ci-checks",
+      "branch": "agent/queue/gate-migration-apply",
+      "status": "architect",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "GATE-e2e-journeys"
+      ],
+      "note": "D-212: GATE-e2e-journeys applies the deploy migrations twice to MySQL; this row stays open only if they cannot apply from an empty database, and then any agent writes its packet from that finding.",
+      "epic": "D-212"
+    },
+    {
+      "id": "OPS-github-settings",
+      "title": "Owner settings: main-protection's admin bypass scope re-read (recorded `always` on Oct 22, unverified since the Oct 27 ruleset change) and limited to pull requests; merge queue on; squash and rebase off; secret scanning, push protection and CodeQL on; new checks into the ruleset after 3 green days; watchdog secrets; Sentry alert rule (D-212 (6))",
+      "row": "D-212",
+      "packet": "docs/plans/ENTERPRISE-PIPELINE.md",
+      "tier": 3,
+      "lane": "settings",
+      "branch": "agent/queue/ops-github-settings",
+      "status": "owner",
+      "syncedTo": "D-222",
+      "dependsOn": [],
+      "note": "Owner's word needed for each (account settings). Nothing to build.",
+      "epic": "D-212"
     },
     {
       "id": "D-174-seeker-journey-build",
@@ -3815,10 +4257,10 @@
       "tier": 2,
       "lane": "process",
       "branch": "agent/coordinator/founder-decisions-sync",
-      "status": "in-review",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "Owner instruction (iMessage phonemsg-01M5MYS5WDHAMNZ7TF602GTK65 'Push the decisions as instructions' + phonemsg-01M5MYSQVDTXCYGCPBR001P7Q9 'So old decisions are updated' + phonemsg-01M5MZ7J6YYH3ZRBJNKT6TCZJS 'Push then'). Scope: docs/DECISIONS.md + the AGENTS.md compass amendment line only. Adds D-169 (open-first directory), D-170 (keyword job search), D-171 (cross-company verified switch preserving the draft), D-172 (automatic device-saved sign-in prompt with native-flow guardrails), D-173 (buyer-facing 'referrals' terminology + plan allowance/extras structure). Supersession limited to the 'credits' name (wording only); no price, count, SKU, security or auth-mechanism content decided; unresolved allowances/prices/level-cost stay open. D-168 is claimed on agent/claude/ceo-oct23-release-rows, so numbering starts at D-169."
+      "note": "Owner instruction (iMessage phonemsg-01M5MYS5WDHAMNZ7TF602GTK65 'Push the decisions as instructions' + phonemsg-01M5MYSQVDTXCYGCPBR001P7Q9 'So old decisions are updated' + phonemsg-01M5MZ7J6YYH3ZRBJNKT6TCZJS 'Push then'). Scope: docs/DECISIONS.md + the AGENTS.md compass amendment line only. Adds D-169 (open-first directory), D-170 (keyword job search), D-171 (cross-company verified switch preserving the draft), D-172 (automatic device-saved sign-in prompt with native-flow guardrails), D-173 (buyer-facing 'referrals' terminology + plan allowance/extras structure). Supersession limited to the 'credits' name (wording only); no price, count, SKU, security or auth-mechanism content decided; unresolved allowances/prices/level-cost stay open. D-168 is claimed on agent/claude/ceo-oct23-release-rows, so numbering starts at D-169. Done: #599, merged 2026-10-23; set by D-212 (8) because the picker no longer saw the landing and handed the row out again."
     },
     {
       "id": "D-166-journey-decisions-sync",
@@ -3935,7 +4377,7 @@
       "row": "D-179",
       "packet": null,
       "tier": 2,
-      "lane": "process",
+      "lane": "d179-docs",
       "branch": "agent/coordinator/ats-referral-validation",
       "status": "in-review",
       "syncedTo": "D-227",
@@ -4237,15 +4679,16 @@
       "lane": "picker",
       "branch": "agent/queue/picker-heartbeat-slot-safety",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-237",
       "dependsOn": [
+        "PICKER-architect-landing",
         "PROCESS-review-gate"
       ],
       "owns": [
         "scripts/next-task.mjs",
         "scripts/nextTaskHeartbeatSlot.test.ts"
       ],
-      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change. D-237: waits for PICKER-architect-landing because both rows edit scripts/next-task.mjs; that serialization edge is the only change to this row."
     },
     {
       "id": "PICKER-landed-marker-continuity",
