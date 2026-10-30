@@ -85,8 +85,9 @@ Test (AGENTS.md product compass): the seeker gets a named, verified person to as
 ## 5. The rows
 ### 5.1 `D-089.server` (Tier 1: referrer identity on a public payload and referrer inbox data; M)
 **Depends on:**
-- `D-090-BYOR`: owns `server/db.ts` and `server/privateReferralRoutes.ts`, and the owner's order puts idea 2 first.
+- `D-090-BYOR`: the owner's order puts idea 2 first.
 - `D-086-demand-list`: the owner's order is after the demand list.
+- `D-174-pool-nudges`: the end of the open chain of rows that own `server/db.ts` and `server/privateReferralRoutes.ts` (`P0-referral-access-availability` → `D-132-item3` → `D-174-held-ask-reconfirm` → `D-174-ask-from-job` → `D-174-pool-nudges`). This row goes after them, so no other row is reordered.
 - `D-057-session-gate` is reached through BYOR (D-246).
 
 **Owns:**
@@ -118,7 +119,7 @@ Test (AGENTS.md product compass): the seeker gets a named, verified person to as
 **Depends on:**
 - `D-089.server`;
 - `D-048-p3-links`: owns the landings and their goal folder;
-- `D-086.ui` and `D-090-BYOR`: both own `GOAL_UI_COVERAGE.md`, and are reached through `D-089.server`;
+- `D-086.admit`: the last open owner of `GOAL_UI_COVERAGE.md`. `D-086.ui` and `D-090-BYOR` also own it, and are reached through it and through `D-089.server`;
 - `D-057-session-gate`: owns `MyCompanyInbox.tsx` and `referrerData.ts`, reached through BYOR.
 
 **Owns:**
@@ -199,10 +200,10 @@ D-248 (in `docs/DECISIONS.md`): the rulings in §4, in short. `Affects tasks: D-
 ## 11. Gaps and risks (stated, not hidden)
 - **A freed name can be taken.** After a rename, a colleague at the same company may take the old name, and seekers following an old bio link would reach that colleague. Harm is bounded: it is still a verified employee of the same company, under the same D-019(e) privacy. Preventing it needs a retired-names table, which means a migration. Left out to keep the rows migration-free. The owner or any session may add it later.
 - **The real-name check is exact-match only.** It stops accidents, not a determined referrer, and that is by design: the name is theirs to choose.
-- **Order cost.** Both rows wait for BYOR and the demand list, so L4 ships late. The owner's order (D-089 (3)) decides that. Only the owner can reorder it.
+- **Order cost.** Both rows wait for BYOR and the demand list (the owner's order, D-089 (3)). The server row also waits for the D-174 server chain (it ends at `D-174-pool-nudges`), and the UI row waits for `D-086.admit`, which waits for `D-048-p3-admin`. The reason is file ownership, not priority. So L4 ships late. Any session may shorten this by reordering rows under D-200, giving the reason. This packet does not, because that would move other rows' work.
 - **The mocks.** No comp exists in `design/goal-ui/` for these surfaces. The design gate is moved to the release (§4.10).
 
 ## Status
-- D-089.server: todo; waits for `D-090-BYOR` and `D-086-demand-list`.
-- D-089.ui: todo; waits for `D-089.server` and `D-048-p3-links`.
+- D-089.server: todo; waits for `D-090-BYOR`, `D-086-demand-list` and `D-174-pool-nudges`.
+- D-089.ui: todo; waits for `D-089.server`, `D-048-p3-links` and `D-086.admit`.
 - D-089-request-inbox (release): todo; waits for both rows. Packet written by Hark · b6a8, Oct 30 2026.
