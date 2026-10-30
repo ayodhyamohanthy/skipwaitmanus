@@ -8,8 +8,7 @@ import { useLocation } from "wouter";
 import { ArrowLeft, Bookmark, BookmarkCheck } from "lucide-react";
 import { toast } from "sonner";
 import { SignInButton, useAuth } from "@/_core/auth";
-import { AccountMenu } from "@/components/AccountMenu";
-import { GoalButton, GoalEmptyState, GoalErrorState, GoalFilterChip, GoalNextStep, GoalSearchInput, GoalSkeletonRows, GoalTextInput } from "@/components/goal";
+import { GOAL_NAV, GoalButton, GoalEmptyState, GoalErrorState, GoalFilterChip, GoalNextStep, GoalSearchInput, GoalSkeletonRows, GoalTextInput } from "@/components/goal";
 import { readApiJson } from "@/lib/apiResponse";
 import { readReferralDraft, saveReferralDraft } from "@/lib/pwaContinuity";
 import { applySeo, jobsJsonLd } from "@/lib/seo";
@@ -114,7 +113,9 @@ export default function GoalJobs() {
 
   const visibleJobs = useMemo(() => (savedOnly ? jobs.filter(job => savedIds.has(job.id)) : jobs), [jobs, savedOnly, savedIds]);
   const selected = visibleJobs.find(job => job.id === selectedId) ?? visibleJobs[0];
-  const account = isSignedIn ? <AccountMenu /> : <SignInButton><GoalButton size="sm" variant="ghost">Sign in</GoalButton></SignInButton>;
+  // A moved page imports no kit or ui component (goalPagesBoundary), so the kit
+  // account menu stays on the kit page; signed in, the frame links the person's own list.
+  const account = isSignedIn ? <a href={GOAL_NAV.asks.href} className="text-g-ink hover:underline">{GOAL_NAV.asks.label}</a> : <SignInButton><GoalButton size="sm" variant="ghost">Sign in</GoalButton></SignInButton>;
 
   if (signInGate) {
     return (
