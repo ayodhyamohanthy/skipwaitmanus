@@ -148,7 +148,7 @@ A component is redesigned once, by its owner row; the other rows that use it wai
 ## 4. Single-page components move with their page's row
 Each listed component is redesigned by the row that owns its page (§2), in the same PR, one component per commit where the row is large. A component not listed here or in §3 must get an owner in this file before anyone edits it.
 
-- `App.tsx`: `ErrorBoundary.tsx`, `PwaStatus.tsx`
+- `App.tsx` (owner row `D-048-F-app-wrapper`, with the global toaster; packet `docs/plans/D-048-F-app-wrapper.md`): `ErrorBoundary.tsx`, `PwaStatus.tsx`
 - `pages/AdminFlowHealth.tsx`: `admin/BaselineMetricsPanel.tsx`
 - `pages/AdminOverview.tsx`: `admin/AdminOverviewView.tsx`, `admin/AdminSectionViews.tsx`, `admin/AdminShell.tsx`
 - `pages/AdminPaymentsReview.tsx`: `admin/PaymentReviewRow.tsx`

@@ -84,6 +84,12 @@ async function idCheck() {
   catch (error) { console.error(`decision-id-check: could not load (${error instanceof Error ? error.message : String(error)}) — not failing the branch.`); return 0; }
 }
 
+// GATE-test-integrity: the same lazy, fail-open load, after the id check.
+async function testIntegrity() {
+  try { return (await import("./test-integrity.mjs")).runTestIntegrity(); }
+  catch (error) { console.error(`test-integrity: could not load (${error instanceof Error ? error.message : String(error)}) — not failing the branch.`); return 0; }
+}
+
 async function main() {
   const queueGateExit = runQueueGate();
   if (queueGateExit !== 0) return queueGateExit;
@@ -91,6 +97,8 @@ async function main() {
   if (reviewGateExit !== 0) return reviewGateExit;
   const idCheckExit = await idCheck();
   if (idCheckExit !== 0) return idCheckExit;
+  const testIntegrityExit = await testIntegrity();
+  if (testIntegrityExit !== 0) return testIntegrityExit;
 
   const taskId = process.argv[2];
   if (!taskId) {
