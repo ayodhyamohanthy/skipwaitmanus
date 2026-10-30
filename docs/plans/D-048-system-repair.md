@@ -15,7 +15,7 @@ Docs-only registration for a bounded repair of merged PR #834. No runtime change
 
 ## Evidence and current state
 
-PR #834 merged as `b03ab68a21adef9dc58f0f1967f079e1dca96f7d`, final head `89d1819bb33191e63677579b1c04d81e38e5089b`. The original row is done and its implementation remains off: `system` is absent from `RELEASED`. Do not reopen or revive the merged branch. This additive row carries the remaining work explicitly.
+PR #834 merged as `b03ab68a21adef9dc58f0f1967f079e1dca96f7d`, final head `89d1819bb33191e63677579b1c04d81e38e5089b`. The original row is done. Source defaults exclude `system` from `RELEASED`, and the checked Pages build workflow does not set `VITE_GOAL_SURFACES`. The flag function still honors an explicit environment override in production; these source facts do not prove the deployed compiled value or whole-release parity. Only the observed public 404 showed the legacy branch; signed-in system routes remain unverified. Do not reopen or revive the merged branch. This additive row carries the remaining work explicitly.
 
 1. Local goal-on captures at the merged source show the Loading chip as a blank phone at both 390 and 1280 CSS pixels. `GoalAppStates.tsx` uses `bg-g-surface` for both the phone and loading bars. The invisible result is the finding; a computed-style cause still needs checking.
 2. Private tests against the real goal component fail for Android Not now dismissal, iPhone Got it dismissal, offered `beforeinstallprompt`, notification permission response and Maybe later. Existing `appStates.test.tsx` already pins these behaviors on the legacy gallery. Goal handlers currently show an unavailable message without calling the offered browser APIs. This is not evidence that the browser lacks those APIs.
