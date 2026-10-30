@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { Signal, WifiOff } from "lucide-react";
 import { StatusBanner } from "@/components/app-states/SystemStates";
+import { Toaster } from "@/components/ui/sonner";
+// Relative on purpose: the goal wrapper variants live with the goal primitives
+// (D-048-F-app-wrapper) and render only where the route's goal surface is on.
+import { GoalNotice } from "./goal/wrapper/GoalNotice";
+import { GOAL_TOASTER_PROPS } from "./goal/wrapper/goalToaster";
+import { useGoalWrapperOn } from "./goal/wrapper/routeSurface";
 
 export const SW_UPDATE_EVENT = "skipwait:sw-update";
 
@@ -23,6 +29,7 @@ export const isSlowConnection = (c: NetworkInformation | undefined) => Boolean(c
 
 /** Kit "Slow connection" state. Only claims what is true: the device reports a 2G-class link. */
 export function SlowConnectionNotice() {
+  const goal = useGoalWrapperOn();
   const [slow, setSlow] = useState(() => isSlowConnection(connection()));
   useEffect(() => {
     const c = connection();
@@ -32,11 +39,13 @@ export function SlowConnectionNotice() {
     return () => c.removeEventListener?.("change", update);
   }, []);
   if (!slow || (typeof navigator !== "undefined" && !navigator.onLine)) return null;
+  if (goal) return <GoalNotice icon={<Signal className="size-4 shrink-0" aria-hidden="true" />}>Slow connection. Pages may take a moment to load.</GoalNotice>;
   return <StatusBanner icon={<Signal className="size-4 shrink-0" aria-hidden="true" />}>Slow connection. Pages may take a moment to load.</StatusBanner>;
 }
 
 /** Kit "Offline" banner. Hidden on /offline, which carries the same banner itself. */
 export function OfflineNotice() {
+  const goal = useGoalWrapperOn();
   const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);
   useEffect(() => {
     const restore = () => setOnline(true);
@@ -46,5 +55,15 @@ export function OfflineNotice() {
     return () => { window.removeEventListener("online", restore); window.removeEventListener("offline", lose); };
   }, []);
   if (online || (typeof window !== "undefined" && window.location.pathname === "/offline")) return null;
+  if (goal) return <GoalNotice icon={<WifiOff className="size-4 shrink-0" aria-hidden="true" />}>You&apos;re offline. Showing saved info.</GoalNotice>;
   return <StatusBanner icon={<WifiOff className="size-4 shrink-0" aria-hidden="true" />}>You&apos;re offline. Showing saved info.</StatusBanner>;
+}
+
+/**
+ * The one app-wide toaster. It stays mounted for the app's whole life, so a toast fired just before a
+ * navigation survives it; on a goal route the same instance takes the goal styling (D-048-F-app-wrapper).
+ */
+export function AppToaster() {
+  const goal = useGoalWrapperOn();
+  return <Toaster position="top-center" offset={{ top: "72px" }} mobileOffset={{ top: "72px" }} {...(goal ? GOAL_TOASTER_PROPS : {})} />;
 }

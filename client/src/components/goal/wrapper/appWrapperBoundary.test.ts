@@ -1,8 +1,8 @@
 // D-048-F-app-wrapper goal boundary. Every module under components/goal/wrapper
 // and every module it reaches (alias, relative path, barrel, transitive) must
-// import nothing from components/kit/*, components/ui/*, app-states/SystemStates
-// or styles/kit.css, and the goal wrapper source carries no shadcn token class
-// and no class defined in styles/kit.css. Negative controls prove the walk and
+// import nothing from the kit or ui component folders, app-states/SystemStates
+// or the kit stylesheet, and the goal wrapper source carries no shadcn token
+// class and no class defined in the kit stylesheet. Negative controls prove the walk and
 // the class scan catch today's legacy StatusBanner and ErrorScreen. Apart from
 // goalBoundary.test.ts (D-090-BYOR) and goalPagesBoundary.test.ts (D-241).
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";

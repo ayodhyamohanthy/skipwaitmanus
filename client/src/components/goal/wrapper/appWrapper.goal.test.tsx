@@ -169,6 +169,7 @@ describe("goal toaster (surface on)", () => {
 
   it("with the surface off the legacy toaster keeps its shadcn colours", async () => {
     vi.stubEnv("VITE_GOAL_SURFACES", "");
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }));
     render(<AppToaster />);
     act(() => { toast("Saved."); });
     await screen.findByText("Saved.");
