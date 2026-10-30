@@ -165,7 +165,7 @@ export async function runWatchdog(env: Env): Promise<void> {
   const { next, actions } = decide(prev, rounds, Date.now());
   const delivered = await deliver(env, actions);
   const kept = settle(prev, next, delivered);
-  console.log(`[watchdog] ${kept.state} · rounds ${rounds.length} · failing ${kept.failing.join(",") || "none"} · alerts ${actions.length}${delivered ? "" : " (undelivered)"}`);
+  console.log(`[watchdog] decided ${next.state} · rounds ${rounds.length} · failing ${next.failing.join(",") || "none"} · alerts ${actions.length}${delivered ? "" : " undelivered, kept " + kept.state}`);
   try {
     await env.WATCHDOG_STATE.put(STATE_KEY, JSON.stringify(kept));
   } catch {
