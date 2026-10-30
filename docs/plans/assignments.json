@@ -4653,7 +4653,7 @@
       "lane": "picker",
       "branch": "agent/queue/picker-heartbeat-slot-safety",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-237",
       "dependsOn": [
         "PICKER-architect-landing",
         "PROCESS-review-gate"
@@ -4662,7 +4662,7 @@
         "scripts/next-task.mjs",
         "scripts/nextTaskHeartbeatSlot.test.ts"
       ],
-      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change. D-237: waits for PICKER-architect-landing because both rows edit scripts/next-task.mjs; that serialization edge is the only change to this row."
     },
     {
       "id": "PICKER-landed-marker-continuity",
