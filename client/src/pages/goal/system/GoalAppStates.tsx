@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, ArrowRight, CreditCard, RefreshCw, SearchX, Signal, WifiOff, Download, Share, X, Bell } from "lucide-react";
 import { GoalButton, GoalNextStep } from "@/components/goal";
@@ -64,7 +64,7 @@ function Screen({ state, show }: { state: AppState; show: (s: AppState) => void 
     case "Offline":
       return <><Banner icon={<WifiOff className="size-4" />} text="You're offline. Showing saved info." /><Center icon={<WifiOff className="size-8" />} title="No connection." text="Your drafts are saved on this device. Send them when you're back online."><button type="button" onClick={() => show("Loading")} className="min-h-11 rounded-g-tile border border-g-hairline px-4 py-2 text-g-label text-g-ink hover:bg-g-surface">Try again</button></Center></>;
     case "Slow connection":
-      return <><Banner icon={<Signal className="size-4" />} text="Slow connection — pages may take a moment." /><div className="space-y-3">{[0, 1, 2].map(i => <div key={i} className="flex gap-3 rounded-g-tile border border-g-hairline p-4"><span className="size-10  rounded-g-tile bg-g-surface" /><span className="flex-1 space-y-2"><span className="block h-3 w-2/3  rounded-[0.25rem] bg-g-surface" /><span className="block h-3 w-1/3  rounded-[0.25rem] bg-g-surface" /></span></div>)}</div></>;
+      return <><Banner icon={<Signal className="size-4" />} text="Slow connection — pages may take a moment." /><div className="space-y-3">{[0, 1, 2].map(i => <div key={i} className="flex gap-3 rounded-g-tile border border-g-hairline p-4"><span className="size-10  rounded-g-tile bg-g-surface" /><span className="flex-1 space-y-2"><span className="block h-3 w-2/3  rounded-[0.25rem] bg-g-hairline" /><span className="block h-3 w-1/3  rounded-[0.25rem] bg-g-hairline" /></span></div>)}</div></>;
     case "Not found":
       return <Center icon={<SearchX className="size-8" />} title="This door doesn't lead anywhere." text="The page may have moved, or the link was mistyped."><Link href="/explore" className="min-h-11 rounded-g-tile bg-g-primary px-4 py-2 text-g-label font-semibold text-g-on-primary">Explore companies</Link><Link href="/" className="min-h-11 rounded-g-tile border border-g-hairline px-4 py-2 text-g-label text-g-ink">Go home</Link></Center>;
     case "Something went wrong":
@@ -72,7 +72,7 @@ function Screen({ state, show }: { state: AppState; show: (s: AppState) => void 
     case "Payment failed":
       return <Center icon={<CreditCard className="size-8 text-g-ink-3" />} title="Payment didn't go through." text="Your card was declined by your bank. You haven't been charged, and your plan hasn't changed."><Link href="/plans" className="min-h-11 rounded-g-tile bg-g-primary px-4 py-2 text-g-label font-semibold text-g-on-primary">Try another card</Link><Link href="/support" className="min-h-11 rounded-g-tile border border-g-hairline px-4 py-2 text-g-label text-g-ink">Contact support</Link><small className="text-g-meta text-g-ink-3">Some banks block international payments — check your card settings.</small></Center>;
     case "Loading":
-      return <div className="space-y-4" role="status" aria-label="Loading"><div className="h-8 w-40 rounded-[0.25rem] bg-g-surface" /><div className="h-4 w-56 rounded-[0.25rem] bg-g-surface" />{[0, 1, 2, 3].map(i => <div key={i} className="h-20 rounded-g-tile bg-g-surface" />)}</div>;
+      return <div className="space-y-4" role="status" aria-label="Loading"><p className="text-g-label text-g-ink-2">Loading</p><div className="h-8 w-40 rounded-[0.25rem] bg-g-hairline" /><div className="h-4 w-56 rounded-[0.25rem] bg-g-hairline" />{[0, 1, 2, 3].map(i => <div key={i} className="h-20 rounded-g-tile bg-g-hairline" />)}</div>;
   }
 }
 
@@ -80,31 +80,53 @@ function Banner({ icon, text }: { icon: ReactNode; text: string }) {
   return <div className="-mx-6 -mt-6 mb-4 flex items-center gap-2 bg-g-surface px-6 py-2 text-g-meta text-g-ink-2">{icon}{text}</div>;
 }
 
+type InstallPrompt = Event & {prompt: () => Promise<void>; userChoice: Promise<{outcome: "accepted" | "dismissed"}>};
 function InstallAndroid() {
+  const [offered, setOffered] = useState<InstallPrompt | null>(null);
+  const [dismissed, setDismissed] = useState(false);
   const [status, setStatus] = useState("");
+  useEffect(() => {
+    const capture = (event: Event) => {
+      if (!("prompt" in event) || typeof event.prompt !== "function" || !("userChoice" in event)) return;
+      event.preventDefault(); setOffered(event as InstallPrompt);
+    };
+    window.addEventListener("beforeinstallprompt", capture);
+    return () => window.removeEventListener("beforeinstallprompt", capture);
+  }, []);
+  const install = async () => {
+    if (window.matchMedia?.("(display-mode: standalone)").matches) {setStatus("skipwait.me is already installed on this device.");return;}
+    if (!offered) {setStatus("Your browser hasn't offered install here. Use its menu: Install app, or Add to Home screen.");return;}
+    try {await offered.prompt(); const choice = await offered.userChoice; setStatus(choice.outcome === "accepted" ? "Installing skipwait.me on this device." : "Install dismissed. You can install later from the browser menu.");}
+    catch {setStatus("The install prompt didn't open. Use the browser menu instead.");}
+    finally {setOffered(null);}
+  };
+  if (dismissed) return <p role="status" className="text-g-meta text-g-ink-3">Install dismissed.</p>;
   return (
     <>
-      <div className="space-y-3 opacity-40"><div className="h-6 w-32 rounded-[0.25rem] bg-g-surface" /><div className="h-24 rounded-g-tile bg-g-surface" /><div className="h-24 rounded-g-tile bg-g-surface" /></div>
+      <div className="space-y-3 opacity-40"><div className="h-6 w-32 rounded-[0.25rem] bg-g-hairline" /><div className="h-24 rounded-g-tile bg-g-surface" /><div className="h-24 rounded-g-tile bg-g-surface" /></div>
       <div className="absolute inset-x-3 bottom-3 rounded-g-tile border border-g-hairline bg-g-canvas p-5 shadow-lg">
         <div className="flex items-center gap-3"><span className="grid size-12 place-items-center rounded-g-tile bg-g-primary text-lg font-bold text-g-on-primary">S.</span><span><strong className="block text-g-ink">Install skipwait.me</strong><small className="text-g-ink-3">One tap from your home screen</small></span></div>
-        <button type="button" onClick={() => setStatus("Install prompt not available in this browser. Use its menu: Install app, or Add to Home screen.")} className="mt-4 min-h-11 w-full rounded-g-tile bg-g-primary px-4 py-2 text-g-label font-semibold text-g-on-primary">Install app</button>
+        <button type="button" onClick={() => {void install();}} className="mt-4 min-h-11 w-full rounded-g-tile bg-g-primary px-4 py-2 text-g-label font-semibold text-g-on-primary">Install app</button>
         {status ? <p role="status" className="mt-2 text-center text-g-meta text-g-ink-3">{status}</p> : null}
-        <button type="button" className="mt-2 w-full text-g-meta text-g-ink-3">Not now</button>
+        <button type="button" onClick={() => setDismissed(true)} className="mt-2 min-h-11 w-full text-g-meta text-g-ink-3">Not now</button>
       </div>
     </>
   );
 }
 
 function InstallIphone() {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return <p role="status" className="text-g-meta text-g-ink-3">Install instructions dismissed.</p>;
   return (
     <>
-      <div className="space-y-3 opacity-40"><div className="h-6 w-32 rounded-[0.25rem] bg-g-surface" /><div className="h-24 rounded-g-tile bg-g-surface" /><div className="h-24 rounded-g-tile bg-g-surface" /></div>
+      <div className="space-y-3 opacity-40"><div className="h-6 w-32 rounded-[0.25rem] bg-g-hairline" /><div className="h-24 rounded-g-tile bg-g-surface" /><div className="h-24 rounded-g-tile bg-g-surface" /></div>
       <div className="absolute inset-x-3 bottom-3 rounded-g-tile border border-g-hairline bg-g-canvas p-5 shadow-lg">
         <strong className="block text-g-ink">Add skipwait.me to your Home Screen</strong>
         <ol className="mt-3 space-y-3 text-g-body text-g-ink-2">
           <li className="flex items-center gap-2"><span className="grid size-6 place-items-center rounded-full bg-g-surface text-g-meta">1</span>Tap <Share className="size-4" /> Share in Safari</li>
           <li className="flex items-center gap-2"><span className="grid size-6 place-items-center rounded-full bg-g-surface text-g-meta">2</span>Choose “Add to Home Screen”</li>
         </ol>
+        <button type="button" onClick={() => setDismissed(true)} className="mt-4 min-h-11 w-full text-g-meta text-g-ink-3">Got it</button>
       </div>
     </>
   );
@@ -112,13 +134,19 @@ function InstallIphone() {
 
 function PushPermission() {
   const [status, setStatus] = useState("");
+  const request = async () => {
+    if (typeof Notification === "undefined" || typeof Notification.requestPermission !== "function") {setStatus("This browser doesn't support notifications.");return;}
+    try {const result = await Notification.requestPermission();setStatus(result === "granted" ? "Notifications are allowed in this browser." : result === "denied" ? "Notifications are blocked. Allow them in your browser settings to change that." : "Notifications stay off until you allow them.");}
+    catch {setStatus("The browser didn't show the permission prompt. Try again from your browser settings.");}
+  };
   return (
     <>
-      <div className="space-y-3 opacity-40"><div className="h-6 w-32 rounded-[0.25rem] bg-g-surface" /><div className="h-24 rounded-g-tile bg-g-surface" /></div>
+      <div className="space-y-3 opacity-40"><div className="h-6 w-32 rounded-[0.25rem] bg-g-hairline" /><div className="h-24 rounded-g-tile bg-g-surface" /></div>
       <div className="absolute inset-x-3 bottom-3 rounded-g-tile border border-g-hairline bg-g-canvas p-5 shadow-lg">
         <div className="flex items-center gap-3"><Bell className="size-6 text-g-ink-3" /><strong className="text-g-ink">Allow notifications?</strong></div>
         <p className="mt-2 text-g-body text-g-ink-2">skipwait.me sends no device push today. This screen only sets the browser permission.</p>
-        <button type="button" onClick={() => setStatus("Permission request not available in this browser.")} className="mt-4 min-h-11 w-full rounded-g-tile bg-g-primary px-4 py-2 text-g-label font-semibold text-g-on-primary">Allow</button>
+        <button type="button" onClick={() => {void request();}} className="mt-4 min-h-11 w-full rounded-g-tile bg-g-primary px-4 py-2 text-g-label font-semibold text-g-on-primary">Allow</button>
+        <button type="button" onClick={() => setStatus("Notifications stay off until you allow them.")} className="mt-2 min-h-11 w-full text-g-meta text-g-ink-3">Maybe later</button>
         {status ? <p role="status" className="mt-2 text-center text-g-meta text-g-ink-3">{status}</p> : null}
       </div>
     </>
