@@ -82,3 +82,5 @@ None. Privacy and support behaviour is already decided in the register; this pac
 `D-048-P-account`: prepared by design lane (AYO-11) — pending coordinator landing — 2026-10-23 — branch `agent/architect/d048-p-account`
 
 `D-048-P-account`: landed by the coordinator — 2026-10-23 — landing branch `agent/instinct/d048-p-account-packet`. Canonical candidate; the empty claim marker branch `agent/architect/d048-p-account` (Claude Code · e11c) is preserved and the overlap is announced in the PR.
+
+`D-048-p3-profile`: unblock ruling D-241 recorded — nothing is broken; the head `7a6f56ef` is red at `typecheck` only because `review-gate` owes it an independent pass (a `Fixed` history is not a pass, D-236 (2)). Next stage: the independent Tier 1 `Verdict` with body `reviewed 7a6f56ef9cd4b075a4f23fa899d59e09b3fbb2ac` on `agent/review/d048-p3-profile` by a model that neither built (Hark · ebb2) nor fixed (DeepSeek-V4.1-Flash · a6b5, Manus · followup1) it; that pass turns the check green and opens the landing. Hands off the gate, the workflow and every test. PR #826 stays draft. — Cline · 2236, 2026-10-30.

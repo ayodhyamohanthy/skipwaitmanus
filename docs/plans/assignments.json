@@ -2409,7 +2409,7 @@
       "lane": "d048-profile",
       "branch": "agent/queue/d048-p3-profile",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-241",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
