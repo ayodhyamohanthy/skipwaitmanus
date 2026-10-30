@@ -9,12 +9,13 @@ import { SignInButton, useAuth } from "@/_core/auth";
 import { GoalButton, GoalFilterChip, GoalNextStep, useOnlineStatus } from "@/components/goal";
 import { asProfileVisibility } from "@/components/profile/VisibilityOptions";
 import { usePersistFn } from "@/hooks/usePersistFn";
-import { GoalHeader, InlineError, LoadError, LoadingState, OfflineNotice, ProfileLinkDialog, TextField, discoverability, requestJson, type ProfileRole } from "./profileParts";
+import { GoalHeader, GOAL_LINE, InlineError, LoadError, LoadingState, OfflineNotice, ProfileLinkDialog, TextField, discoverability, requestJson, type ProfileRole } from "./profileParts";
 
 type Profile = { headline: string | null; company: string | null; workEmailDomain: string | null; workEmailVerifiedAt: string | null; handle: string | null; profileVisibility: string };
 type ProfilePayload = { displayName?: string; profile?: Profile | null; error?: string };
 
 const LINE = "Share the minimum a referrer needs for a useful introduction. You decide what opens, and when.";
+export const GOAL_PAGE = { goalLine: GOAL_LINE } as const;
 
 function PrivacyRow({ title, hint }: { title: string; hint: string }) {
   return (

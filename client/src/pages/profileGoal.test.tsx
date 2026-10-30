@@ -75,6 +75,9 @@ vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit
 
 import Profile from "@/pages/Profile";
 import Work from "@/pages/Work";
+import { GOAL_PAGE as PROFILE_GOAL_PAGE } from "@/pages/goal/profile/GoalProfile";
+import { GOAL_PAGE as WORK_GOAL_PAGE } from "@/pages/goal/profile/GoalWork";
+import { assertGoalPage } from "@/test/goalPageContract";
 
 const primaries = () => document.querySelectorAll("[data-g-primary]");
 const putCalls = () => server.calls.filter(call => call.method !== "GET");
@@ -104,7 +107,7 @@ describe("goal /profile", () => {
   });
 
   it("opens on the goal with one black commit and the saved headline", async () => {
-    render(<Profile />);
+    const { container } = render(<Profile />);
     expect(await screen.findByRole("heading", { level: 1, name: "Choose what referrers see." })).toBeTruthy();
     const headline = await screen.findByLabelText("Headline") as HTMLInputElement;
     expect(headline.value).toBe("Product designer");
@@ -112,6 +115,7 @@ describe("goal /profile", () => {
     expect(primaries()).toHaveLength(1);
     expect(primaries()[0]?.textContent).toMatch(/Save profile/);
     expect(document.querySelector('[data-goal-page="profile"]')).toBeTruthy();
+    assertGoalPage(container, PROFILE_GOAL_PAGE);
   });
 
   it("states what a referrer sees from the saved page visibility, per role", async () => {
@@ -129,7 +133,7 @@ describe("goal /profile", () => {
     expect(within(publicPreview).queryByText("Not publicly discoverable")).toBeNull();
   });
 
-  it("shows loading while the profile is on its way", async () => {
+  it("shows loading while the profile is on its way (contract-exempt: no next-step block before data loads)", async () => {
     let release: () => void = () => {};
     server.profileReply = () => new Promise(resolve => { release = () => resolve({ status: 200, body: server.profile }); });
     render(<Profile />);
@@ -139,7 +143,7 @@ describe("goal /profile", () => {
     expect(await screen.findByLabelText("Headline")).toBeTruthy();
   });
 
-  it("a failed load renders its error and a retry, never an empty form", async () => {
+  it("a failed load renders its error and a retry, never an empty form (contract-exempt: no next-step block when data failed to load)", async () => {
     server.profileReply = { status: 500, body: { error: "Profile service is down" } };
     render(<Profile />);
     const alert = await screen.findByRole("alert");
@@ -197,10 +201,11 @@ describe("goal /profile", () => {
 
   it("signed out: the one next step is sign-in and nothing is fetched", async () => {
     authState.isSignedIn = false;
-    render(<Profile />);
+    const { container } = render(<Profile />);
     expect(await screen.findByRole("heading", { level: 1, name: "Choose what referrers see." })).toBeTruthy();
     expect(within(await screen.findByTestId("sign-in-button")).getByRole("button", { name: "Sign in" })).toBeTruthy();
     expect(server.calls).toHaveLength(0);
+    assertGoalPage(container, PROFILE_GOAL_PAGE);
   });
 
   it("never names the retired nouns", async () => {
@@ -222,7 +227,7 @@ describe("goal /work", () => {
   });
 
   it("opens on the goal with every piece, its visibility in words, and one black commit", async () => {
-    render(<Work />);
+    const { container } = render(<Work />);
     expect(await screen.findByRole("heading", { level: 1, name: "Choose what referrers see." })).toBeTruthy();
     expect(await screen.findByText("Checkout redesign")).toBeTruthy();
     expect(screen.getByText("Private sketchbook")).toBeTruthy();
@@ -230,6 +235,7 @@ describe("goal /work", () => {
     expect(primaries()).toHaveLength(1);
     expect(primaries()[0]?.textContent).toMatch(/Add work/);
     expect(screen.getByTestId("pin-count").textContent).toBe("1 pinned");
+    assertGoalPage(container, WORK_GOAL_PAGE);
   });
 
   it("what a referrer sees never includes a piece marked Only me", async () => {
@@ -249,13 +255,14 @@ describe("goal /work", () => {
 
   it("a failed load renders its error and a retry, never the empty state", async () => {
     server.itemsReply = { status: 500, body: { error: "Work service is down" } };
-    render(<Work />);
+    const { container } = render(<Work />);
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toMatch(/Work service is down/);
     expect(screen.queryByText("Add one piece you're proud of.")).toBeNull();
     // A count is a fact: while the list is unknown the card states none, so it
     // never reads "0 pinned" beside an alert saying nothing was changed.
     expect(screen.queryByTestId("pin-count")).toBeNull();
+    assertGoalPage(container, WORK_GOAL_PAGE);
     server.itemsReply = null;
     fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Checkout redesign")).toBeTruthy();
@@ -264,10 +271,11 @@ describe("goal /work", () => {
   it("shows loading while the work is on its way", async () => {
     let release: () => void = () => {};
     server.itemsReply = () => new Promise(resolve => { release = () => resolve({ status: 200, body: { items: server.items } }); });
-    render(<Work />);
+    const { container } = render(<Work />);
     expect(await screen.findByText("Loading your work…")).toBeTruthy();
     expect(screen.queryByText("Add one piece you're proud of.")).toBeNull();
     expect(screen.queryByTestId("pin-count")).toBeNull();
+    assertGoalPage(container, WORK_GOAL_PAGE);
     release();
     expect(await screen.findByText("Checkout redesign")).toBeTruthy();
     // Once the list is known both counts arrive together.
@@ -345,9 +353,10 @@ describe("goal /work", () => {
 
   it("signed out: the one next step is sign-in and nothing is fetched", async () => {
     authState.isSignedIn = false;
-    render(<Work />);
+    const { container } = render(<Work />);
     expect(await screen.findByRole("heading", { level: 1, name: "Choose what referrers see." })).toBeTruthy();
     expect(within(await screen.findByTestId("sign-in-button")).getByRole("button", { name: "Sign in" })).toBeTruthy();
     expect(server.calls).toHaveLength(0);
+    assertGoalPage(container, WORK_GOAL_PAGE);
   });
 });

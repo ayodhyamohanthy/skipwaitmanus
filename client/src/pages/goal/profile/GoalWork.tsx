@@ -9,12 +9,13 @@ import { SignInButton, useAuth } from "@/_core/auth";
 import { GoalButton, GoalFilterChip, GoalNextStep, GoalNum, useOnlineStatus } from "@/components/goal";
 import type { WorkItem } from "@/components/profile/workItems";
 import { usePersistFn } from "@/hooks/usePersistFn";
-import { GoalHeader, InlineError, LoadError, LoadingState, OfflineNotice, ProfileLinkDialog, WorkDialog, WorkRow, requestJson, type NewWorkItem, type WorkPatch } from "./profileParts";
+import { GoalHeader, GOAL_LINE, InlineError, LoadError, LoadingState, OfflineNotice, ProfileLinkDialog, WorkDialog, WorkRow, requestJson, type NewWorkItem, type WorkPatch } from "./profileParts";
 
 type OwnerCard = { displayName: string; headline: string | null; handle: string | null };
 type ItemPayload = { item?: WorkItem; error?: string };
 
 const LINE = "Put your best work on your profile, pinned pieces first. No feed, no likes, no ranking: you decide who sees each piece.";
+export const GOAL_PAGE = { goalLine: GOAL_LINE } as const;
 
 export default function GoalWork() {
   const { isSignedIn, getToken } = useAuth();
