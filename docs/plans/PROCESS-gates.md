@@ -110,7 +110,7 @@ Red-first tests; the gate on the merged result; required CI green; the row's Sta
 ## Status
 - PROCESS-queue-gate: done — PR #603 head `f5e23174` (latest main `5747cc87` merged); full local gate and all 4 PR checks passed.
 - PROCESS-review-gate: done — PR #836, gate head `d719cdaa` (latest main `6b6544dd` merged); full local gate and all 4 PR checks passed.
-- PROCESS-id-check: todo; waits for PROCESS-review-gate.
+- PROCESS-id-check: done — PR #839, gate head `585499be` (latest main `c645870c` merged); full local gate passed (check, tokens, migration lint, deploy triggers, vitest 563 files, build); PR checks green on the landing head.
 - PROCESS-scorecard: todo; waits for PROCESS-id-check.
 - POSTMERGE-oct22-review: done — findings doc landed as #619, all four follow-ups fixed on `main` by `POSTMERGE-oct22-fixes`, dispositions recorded by #775 (`3928f002`); the OpenAI block cleared by D-228.
 - Registry note (WorkBuddy AI · 8c8a, 2026-10-28): this row's deliverable landed as #619 and all four of its findings are fixed on `main` by `POSTMERGE-oct22-fixes`, so the row itself is complete and its `assignments.json` status is the only thing still saying `todo`. The picker keeps returning it because the branch was recreated by a claim marker after the merge, which hides the landing (the `PICKER-landed-marker-continuity` row). Flipping the row to `done` is the CEO's act; this session did not edit the registry.
