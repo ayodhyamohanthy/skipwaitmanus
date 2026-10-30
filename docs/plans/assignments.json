@@ -3309,9 +3309,9 @@
       "lane": "sign-in",
       "branch": "agent/queue/d057-session-gate",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-245",
       "dependsOn": [],
-      "note": "D-163: no longer waits for seeker-passwords (D-080 lets #324 land once this gate closes the Bearer path, so waiting on #324 deadlocked the lane). Build against main from the packet's CEO addendum (§0, re-verified on 06323e5c): the amr claim is set only by the work-email code login and the reviewer demo's referrer role; never inferred from the workemail_ subject; the request's own code cookie for the same account passes even when an AuthKit Bearer resolved the identity (no sign-in loop). Every referrer types one code after deploy (D-049)."
+      "note": "D-245 (owner/CEO answer, Oct 30): the block (Hark · 450f, 1f344276) clears. A personal-login session reaches referrer actions only after an in-session work-email step-up (POST /api/referrer/step-up/send|verify) that writes a server-side proof bound to account, session key (workos:<sid> or app:<ssid>), exact work email and purpose (12 h, single-use challenge, void on logout, revocation, suspension and employer change); it never runs the standalone code login, never drops the Bearer, never accepts another account's cookie, never matches by domain or links accounts. Build from packet §0b (it wins over §0 to §8). Owns stay unset: privateReferralRoutes.ts, server/_core/index.ts, drizzle/schema.ts and server/schemaReconcile.ts are owned by D-090-BYOR and its chain (packet §0b.8); the order is open for the owner/CEO. Tier 1 independent review and the full browser path (§0b.9) before done. Every referrer types one code after deploy (D-049)."
     },
     {
       "id": "FND-4",
