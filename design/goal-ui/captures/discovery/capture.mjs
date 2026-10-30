@@ -51,14 +51,22 @@ const scenarios = [
   ["jobs-no-link", "/jobs?job=12", { "/api/jobs": [200, JOBS] }],
   ["jobs-empty", "/jobs?q=astronaut", { "/api/jobs": [200, { jobs: [] }] }],
   ["jobs-error", "/jobs", { "/api/jobs": [500, { error: "We could not load the job list" }] }],
+  // Whole-page checks (owner rule, Oct 30): the share block after "More" (no native
+  // share sheet in headless Chromium, so the copy path and its goal status line show),
+  // the walk-in's share block, the /jobs sign-in step, and a first visit with no stored
+  // cookie choice (any global banner the app renders shows up here).
+  ["wall-share-copied", "/wall?opening=4", { "/api/opportunities": [200, WALL] }, { action: "share" }],
+  ["wall-first-visit", "/wall", { "/api/opportunities": [200, WALL] }, { fresh: true }],
+  ["jobs-sign-in-step", "/jobs", { "/api/jobs": [200, JOBS] }, { action: "save" }],
+  ["jobs-first-visit", "/jobs", { "/api/jobs": [200, JOBS] }, { fresh: true }],
 ];
 
 const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
 const results = [];
 try {
   for (const [width, height, dpr] of [[1280, 900, 1], [390, 844, 2]]) {
-    for (const [name, route, fixtures] of scenarios) {
-      const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: dpr });
+    for (const [name, route, fixtures, opts = {}] of scenarios) {
+      const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: dpr, timezoneId: "Asia/Kolkata", locale: "en-IN" });
       const errors = [];
       page.on("pageerror", error => errors.push(error.message));
       await page.route("https://**", r => r.abort());
@@ -67,13 +75,16 @@ try {
         const [status, body] = fixtures[path] ?? (path === "/api/partners" ? [200, PARTNERS] : path === "/api/companies" ? [200, COMPANIES] : path.startsWith("/api/trpc/") ? [200, path.slice(10).split(",").map(() => ({ result: { data: { json: null } } }))] : [401, {}]);
         await r.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
       });
-      await page.addInitScript(() => localStorage.setItem("skipwait:cookie-consent", "all"));
+      if (!opts.fresh) await page.addInitScript(() => localStorage.setItem("skipwait:cookie-consent", "all"));
+      if (opts.action === "share") await page.addInitScript(() => { Object.defineProperty(navigator, "share", { value: undefined, configurable: true }); Object.defineProperty(navigator, "clipboard", { value: { writeText: async () => undefined }, configurable: true }); });
       await page.goto(base + route, { waitUntil: "domcontentloaded" });
       await page.waitForSelector("[data-goal-page]");
       await page.waitForFunction(() => !document.querySelector('[aria-busy="true"]'));
       await page.evaluate(() => document.fonts.ready);
+      if (opts.action === "share") { await page.getByRole("button", { name: "More sharing options" }).click(); await page.getByText("Opening link copied.").waitFor(); }
+      if (opts.action === "save") { await page.getByRole("button", { name: "Save Senior Product Designer" }).click(); await page.getByRole("heading", { level: 1, name: "Sign in to save roles." }).waitFor(); }
       await page.waitForTimeout(300);
-      const metrics = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, innerWidth, h1: document.querySelector("h1")?.textContent, primaries: document.querySelectorAll("[data-g-primary]").length }));
+      const metrics = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, innerWidth, h1: document.querySelector("h1")?.textContent, primaries: document.querySelectorAll("[data-g-primary]").length, goalShare: document.querySelectorAll("[data-goal-share]").length, nestedButtons: document.querySelectorAll("button button").length, kitHexClasses: [...document.querySelectorAll("[class]")].filter(el => /#[0-9a-f]{3,6}/i.test(String(el.getAttribute("class")))).length, outsideGoalScope: [...document.body.querySelectorAll("body > *:not(script)")].flatMap(el => [...el.children]).filter(el => !el.closest(".g-scope") && el.getBoundingClientRect().height > 0 && getComputedStyle(el).display !== "none").map(el => (el.getAttribute("data-skipwait-screen") || el.tagName) + ":" + (el.textContent || "").trim().slice(0, 60)) }));
       const file = `${name}-${width}.png`;
       await page.screenshot({ path: new URL(file, out).pathname, fullPage: true });
       results.push({ file, route, viewport: { width, height, dpr }, metrics, errors });
