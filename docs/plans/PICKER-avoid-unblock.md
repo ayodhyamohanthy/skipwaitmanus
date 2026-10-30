@@ -14,3 +14,7 @@ Pure picker fixture: disjoint tasks A/B, A claimed by a builder and reported blo
 ## Acceptance
 
 Red-first focused test for existing unblock holder avoiding A, then bounded fix so it selects eligible B or an honest wait, never avoided A. Preserve blocked lane/dependency holds, ownership, and self-clear exclusions. Controls for fresh avoid and own-block rejection. No fake identities, marker override, lock deletion, or reassignment. Run focused and existing picker tests, typecheck, required CI and independent review before merge. No product, migration or activation changes.
+
+## Status
+
+PICKER-avoid-unblock: in progress — Manus · issue740 — 2026-10-30 — branch agent/queue/picker-avoid-unblock
