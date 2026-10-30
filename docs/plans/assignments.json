@@ -1721,6 +1721,30 @@
       "note": "D-167 §6.2: shown on every signed-in page and the landing, so they move before the surfaces. Behaviour unchanged, including cookie consent and applyAnalyticsConsent. Oct 23 finding (Main, from the AYO-8 kit/settings 390px capture): the existing AppShell chrome duplicates the bell/profile affordances at mobile width (bell+profile left, bell right); whole-app scope, not any surface worker’s bug. The dedup fix is a candidate for this row’s scope and must not change auth behaviour. D-231 (Oct 28, unblock ruling): status moved to owner. PR #767 is a draft under an explicit owner hold (owner comments on #767: 6454185406, 6463784167, 6465559515, 6468051896, 6468097061, 6468614231, 6472224583) and no session may merge, make ready, revert, edit or mark it Landed, or renew its landing lease. Exact head 7d6d6498 has required CI green, so the pending work is acceptance, not repair. Packet 6.2 asks for goal primitives and tokens, but the four components import no components/goal module and the boundary test admits a moved surface only via MOVED_SURFACES (client/src/components/goal/goalBoundary.test.ts:14), a file owned by the open D-090-BYOR draft #632 together with this row's packet GOAL_UI_COVERAGE.md; the owner requires his own acknowledgment before any boundary change. No dependsOn edge is added: whether this row takes the boundary entries after #632 lands or the owner acknowledges them now is the open question (D-223 (1)). Owner question, one: accept the shell parts at the carrier and acknowledge the MOVED_SURFACES registration so the row returns to todo and lands, or keep the hold, and in that answer say whether the boundary entries land here or after #632. Until he answers the row waits in owner and nothing lands."
     },
     {
+      "id": "D-048-F-app-wrapper",
+      "title": "App-wide wrapper states on the goal system: offline and slow-connection notices, update notice, error boundary fallback, global toaster (App.tsx)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-F-app-wrapper.md",
+      "tier": 2,
+      "lane": "d048-app-wrapper",
+      "branch": "agent/queue/d048-f-app-wrapper",
+      "status": "todo",
+      "syncedTo": "D-243",
+      "dependsOn": [
+        "D-048-F-goal-check",
+        "D-048-F-primitives"
+      ],
+      "epic": "D-048-p3",
+      "owns": [
+        "client/src/components/ErrorBoundary.tsx",
+        "client/src/components/PwaStatus.tsx",
+        "client/src/components/goal/wrapper/**",
+        "client/src/App.tsx (switch only)",
+        "design/goal-ui/captures/app-wrapper/**"
+      ],
+      "note": "Found by D-048-p3-discovery (#852): App.tsx mounts legacy kit/ui states around every route, absent from route-only captures (D-150, D-167). Goal variant renders only where the route's existing goal surface is on; goalSurfaces.ts read-only, no new flag, RELEASED untouched, nothing enabled. Behaviour preserved: triggers, silent update (SKIP_WAITING, no banner/reload), toaster position/offset, Try again/reload/Go home, captureClientError, role=status aria-live=polite. Existing pwaStatus/systemStates tests read-only and green. Disjoint from held D-048-F-shell-parts (D-231), D-048-dark-mode (D-230; both App.tsx switch-only), D-090-BYOR (incl. goalBoundary.test.ts) and D-048-p3-discovery's goalPagesBoundary.test.ts (D-241 unchanged). Red-first tests, own boundary test with negative control, 1280/390 whole-page captures of every state. Suspense LoadingScreen fallback is out of scope (later row)."
+    },
+    {
       "id": "D-048-F-coverage",
       "title": "Coverage test: every route and component in GOAL_UI_COVERAGE.md has an owner row",
       "row": "D-048",
