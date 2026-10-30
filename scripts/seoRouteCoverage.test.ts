@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { isKnownRoute, KNOWN_ROUTE_PATTERNS } from "../functions/_middleware";
+import { isKnownRoute, isNoindexRoute, KNOWN_ROUTE_PATTERNS, NOINDEX_ROUTE_PATTERNS } from "../functions/_middleware";
 import { STATIC_ROUTES } from "../functions/sitemap.xml";
 import { PUBLIC_ROUTES } from "../shared/publicRoutes";
 import { PUBLIC_PAGES, publicSnapshots } from "./prerender-public-pages";
@@ -107,5 +107,29 @@ describe("a change to the crawlable output still reaches production", () => {
   it("keeps every deploy workflow watching the files its build reads", () => {
     const script = path.resolve(import.meta.dirname, "check-deploy-triggers.mjs");
     expect(() => execFileSync(process.execPath, [script], { stdio: "pipe" })).not.toThrow();
+  });
+});
+
+describe("the noindex list marks exactly the session and one-time-link screens (issue 96)", () => {
+  it("only marks screens the router declares and the status rule knows", () => {
+    for (const pattern of NOINDEX_ROUTE_PATTERNS) {
+      expect(appRoutes, `${pattern} is noindexed but not routed in App.tsx`).toContain(pattern);
+      expect(isKnownRoute(pattern), `${pattern} is noindexed but unknown to the status rule`).toBe(true);
+    }
+  });
+
+  it("marks the signed-in and one-time-link screens", () => {
+    for (const path of ["/start", "/request", "/share", "/inbox", "/notifications", "/fast/abc"]) {
+      expect(isNoindexRoute(path), `${path} must be noindexed`).toBe(true);
+    }
+  });
+
+  it("never marks an indexable or sitemap route", () => {
+    for (const path of ["/", "/jobs", "/wall", "/explore", "/premium", "/plans", "/pricing", "/referrer", "/employer"]) {
+      expect(isNoindexRoute(path), `${path} is indexable and must stay so`).toBe(false);
+    }
+    for (const { path } of STATIC_ROUTES) {
+      expect(isNoindexRoute(path), `${path} is in the sitemap and must stay indexable`).toBe(false);
+    }
   });
 });

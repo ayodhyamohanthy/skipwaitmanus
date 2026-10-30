@@ -55,8 +55,8 @@ export const GoalButton = forwardRef<HTMLButtonElement, GoalButtonProps>(functio
           variant === "primary" && "bg-g-primary text-g-on-primary hover:bg-g-primary-pressed active:bg-g-primary-pressed hover:not-active:bg-g-primary-hover",
           variant === "ghost" && "text-g-ink hover:bg-g-surface-hover aria-expanded:bg-g-surface-hover",
           variant === "outline" && "border-g-ink text-g-ink",
-          inert && "cursor-not-allowed border-g-control-edge text-g-ink-3 hover:bg-transparent active:bg-transparent",
-          inert && variant === "primary" && "bg-transparent hover:bg-transparent",
+          inert && "cursor-not-allowed border-g-control-edge text-g-ink-3 hover:bg-transparent! active:bg-transparent!",
+          inert && variant === "primary" && "bg-transparent",
           className,
         )}
         {...rest}

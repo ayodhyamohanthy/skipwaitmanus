@@ -117,22 +117,42 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
 ];
 
 /**
+ * Screens served only to a signed-in visitor or a one-time link open. A crawler
+ * must not index them, and the signal has to arrive in the served response
+ * (issue 96, fix 2), not be injected by JavaScript the crawler may not run.
+ * Every pattern here must also be a KNOWN_ROUTE_PATTERN; the route-coverage
+ * test checks both lists against App.tsx.
+ */
+export const NOINDEX_ROUTE_PATTERNS: readonly string[] = [
+  "/start",
+  "/request",
+  "/share",
+  "/inbox",
+  "/notifications",
+  "/fast/:linkCode",
+];
+
+/**
  * `/` stays exact; every other pattern tolerates one trailing slash so Pages
  * can still answer `/about/` with its own 308 to `/about`.
  */
-const KNOWN_ROUTE_RE = new RegExp(
-  `^(?:${KNOWN_ROUTE_PATTERNS.map(pattern => {
-    const body = pattern
-      .split("/")
-      .map(segment => {
-        if (segment === "*") return "[^/]+(?:/[^/]+)*";
-        if (segment.startsWith(":")) return "[^/]+";
-        return segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      })
-      .join("/");
-    return pattern === "/" ? "/" : `${body}/?`;
-  }).join("|")})$`,
-);
+const buildRouteRegExp = (patterns: readonly string[]): RegExp =>
+  new RegExp(
+    `^(?:${patterns.map(pattern => {
+      const body = pattern
+        .split("/")
+        .map(segment => {
+          if (segment === "*") return "[^/]+(?:/[^/]+)*";
+          if (segment.startsWith(":")) return "[^/]+";
+          return segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        })
+        .join("/");
+      return pattern === "/" ? "/" : `${body}/?`;
+    }).join("|")})$`,
+  );
+
+const KNOWN_ROUTE_RE = buildRouteRegExp(KNOWN_ROUTE_PATTERNS);
+const NOINDEX_ROUTE_RE = buildRouteRegExp(NOINDEX_ROUTE_PATTERNS);
 
 /** True when the single-page app has a real screen for this path. */
 export function isKnownRoute(pathname: string): boolean {
@@ -142,6 +162,13 @@ export function isKnownRoute(pathname: string): boolean {
   if (pathname.includes("//")) return false;
   const normalized = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
   return KNOWN_ROUTE_RE.test(normalized);
+}
+
+/** True when this screen exists but must stay out of a crawler's index. */
+export function isNoindexRoute(pathname: string): boolean {
+  if (pathname.includes("//")) return false;
+  const normalized = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  return NOINDEX_ROUTE_RE.test(normalized);
 }
 
 const CANONICAL_HOST = "skipwait.me";
@@ -185,6 +212,10 @@ export const onRequest: PagesFunction = async context => {
   const contentType = headers.get("content-type") || "";
   const isHtml = contentType.includes("text/html");
   if (isHtml) headers.delete("Access-Control-Allow-Origin");
+  // Issue 96 fix 2: these screens reach only a signed-in visitor or a one-time
+  // link, so the crawler is told noindex in the response itself, the way the
+  // share-card function already does.
+  if (isHtml && isNoindexRoute(url.pathname)) headers.set("X-Robots-Tag", "noindex");
 
   // Only a successful HTML page for an unrouted path becomes a 404. Anything
   // already non-200 keeps its own status so real failures stay visible.
