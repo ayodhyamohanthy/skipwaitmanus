@@ -5,13 +5,13 @@
 | Field | Value |
 |---|---|
 | Queue row | §3b `D-057-session-gate` (add it under "Drift from approved decisions" when you claim it) |
-| Decisions | D-057, D-049, D-030, D-019 (basics: the referrer flow must keep working) |
+| Decisions | D-057, D-049, D-030, D-019 (basics: the referrer flow must keep working), D-245 (step-up), D-246 (sequencing and owns) |
 | Risk tier | 1 (sessions, the referrer boundary) |
 | Size | M |
 | Implementer | any model; independent review required |
 | Branch | `agent/<model>/d057-session-gate` |
 | Depends on | nothing (D-163; it used to wait for the seeker-passwords lane, which now waits for this one) |
-| Do not run at the same time as | D-057-referrer-continuity (the next lane builds on this one) |
+| Do not run at the same time as | D-057-referrer-continuity (the next lane builds on this one). D-090-BYOR and its chain wait for this row (D-246), and their four shared files are handed over only for this build (§0b.8) |
 | Verified against | `main` `681ea79`; re-verified on `main` `06323e5c` by the CEO addendum below; amended on `main` `2892629a` by the CEO answer in §0b (D-245) |
 
 ## 0. CEO addendum, Oct 23 (D-163): this overrides the table above and §3 to §5 where they differ
@@ -145,7 +145,7 @@ The build edits exactly these paths: the no-conflict paths, then the four confli
 - `server/_core/index.ts` is owned by `D-090-BYOR`; `D-132-item3` and `D-099-bonus-pages` hold it switch-only.
 - `drizzle/schema.ts` and `server/schemaReconcile.ts` are owned by `D-090-BYOR` and `D-099-bonus-pages`.
 
-This row had no `owns` before, and it keeps none in `docs/plans/assignments.json`. Adding these four paths makes `validateAssignments` fail ("tasks D-057-session-gate and D-090-BYOR own overlapping paths and neither waits for the other"), and either fix moves other live rows' schedules: this gate waiting for D-090-BYOR, or that whole chain waiting for this gate. That order is the owner's (or CEO's) call, and it stays open here. Until it is made, `scripts/scope-check.mjs` skips this row ("declares no owns"), so the reviewer checks the diff against this list by hand (DELEGATION §6.1). The builder merges `origin/main` before review and resolves any overlap with those rows in their favour. Changes to `server/privateReferralRoutes.ts` are limited to the middleware, the route list and the `/access` verdict.
+**Sequencing recorded (D-246, CEO, Oct 30).** This row goes first, and its `owns` in `docs/plans/assignments.json` are now this whole list, so `scripts/scope-check.mjs` enforces it. The four shared paths are owned narrowly: `server/_core/index.ts (switch only)`, which allows step-up route registration plus the dev wrapper's two copied fields, 12 lines at most; `server/privateReferralRoutes.ts`, limited to the middleware, the route list and the `/access` verdict; and `drizzle/schema.ts` and `server/schemaReconcile.ts`, limited to the additive `referrerStepUps` table. The register has no additive-only form, so those three are full entries and the reviewer checks the limits. `D-090-BYOR` waits for this row, and its chain waits through it. This is a **limited handoff of those four files, for this build only**. #632 keeps its code, findings `b8552f96` and holds, and is not edited by this build. Its holder was asked to push any unpushed work on the four files (https://github.com/ayodhyamohanthy/skipwaitmanus/pull/632#issuecomment-6524431308). Before you edit any of the four, re-read that thread and #632's head. If the holder reports unpushed or mid-edit work there, or #632 has a new push touching them, stop and `--report blocked "D-057-session-gate: overlap with D-090-BYOR on <file>"` with the exact hunk. Never edit around it or take the file over (D-246 (4)). Changes to `server/privateReferralRoutes.ts` stay limited to the middleware, the route list and the `/access` verdict.
 
 **Deliberately not edited (owned elsewhere):**
 - `server/db.ts`: reads only through existing exports;
