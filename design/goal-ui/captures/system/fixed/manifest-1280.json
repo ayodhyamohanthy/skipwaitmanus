@@ -33,7 +33,7 @@
       "warnings": []
     },
     {
-      "file": "install-iphone--1280.png",
+      "file": "gallery-install-iphone--1280.png",
       "route": "/app-states",
       "fixture": {
         "chip": "Install (iPhone)"
@@ -63,7 +63,7 @@
       "warnings": []
     },
     {
-      "file": "push-permission-1280.png",
+      "file": "gallery-push-permission-1280.png",
       "route": "/app-states",
       "fixture": {
         "chip": "Push permission"
@@ -93,7 +93,7 @@
       "warnings": []
     },
     {
-      "file": "offline-1280.png",
+      "file": "gallery-offline-1280.png",
       "route": "/app-states",
       "fixture": {
         "chip": "Offline"
@@ -123,7 +123,7 @@
       "warnings": []
     },
     {
-      "file": "slow-connection-1280.png",
+      "file": "gallery-slow-connection-1280.png",
       "route": "/app-states",
       "fixture": {
         "chip": "Slow connection"
@@ -153,7 +153,7 @@
       "warnings": []
     },
     {
-      "file": "not-found-1280.png",
+      "file": "gallery-not-found-1280.png",
       "route": "/app-states",
       "fixture": {
         "chip": "Not found"
@@ -183,7 +183,7 @@
       "warnings": []
     },
     {
-      "file": "something-went-wrong-1280.png",
+      "file": "gallery-something-went-wrong-1280.png",
       "route": "/app-states",
       "fixture": {
         "chip": "Something went wrong"
@@ -213,7 +213,7 @@
       "warnings": []
     },
     {
-      "file": "payment-failed-1280.png",
+      "file": "gallery-payment-failed-1280.png",
       "route": "/app-states",
       "fixture": {
         "chip": "Payment failed"
@@ -243,7 +243,7 @@
       "warnings": []
     },
     {
-      "file": "loading-1280.png",
+      "file": "gallery-loading-1280.png",
       "route": "/app-states",
       "fixture": {
         "chip": "Loading"
@@ -1003,5 +1003,6 @@
     }
   ],
   "captureScript": "design/goal-ui/captures/system/capture.mjs",
-  "captureScriptSha256": "168c99df8a24ff33dd6445a0649f699e28b2112eacc6406d7c98ca0c650680c3"
+  "captureScriptSha256": "671b80de2fb801df1e863a5036429707ea9a8aad3717b5549d1c2f7214a71e82",
+  "recipeHistory": "Original capture recipe at c742a192; additive namespacing/filter/base options fix filename collisions. No UI source change. Four gallery collision images recaptured using corrected script."
 }
