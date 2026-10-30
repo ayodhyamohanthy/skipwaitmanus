@@ -26,7 +26,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
   LAND_SLOT, REPORT_STATUSES, architectLockOf, ciStateFromRuns, classifyPushError, fixMainIdOf, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
-  mayReport, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
+  mayReport, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
 
@@ -89,15 +89,18 @@ async function github(repo, path) {
   return res.json();
 }
 
-/** Marker commits are empty: a commit that changes files is work, whatever its subject says. */
-function markersOn(ref) {
-  const raw = tryGit("log", "--reverse", "--no-merges", "--format=%x1e%s%x1f", "--name-only", `origin/main..${ref}`) ?? "";
-  return raw.split("\x1e").filter(Boolean).flatMap(rec => {
-    const [subject, files = ""] = rec.split("\x1f");
-    const m = files.trim() ? null : parseMarker(subject.trim());
-    return m ? [m] : [];
-  });
+/**
+ * D-237: one read per branch, shared by the marker list and the `work` flag. Marker commits are empty: a
+ * commit that changes files is work, whatever its subject says (D-190).
+ */
+function commitsOn(ref) {
+  return parseBranchLog(tryGit("log", "--reverse", "--no-merges", "--format=%x1e%s%x1f", "--name-only", `origin/main..${ref}`) ?? "");
 }
+
+const markersOn = commits => commits.flatMap(({ subject, files }) => {
+  const m = files.length ? null : parseMarker(subject);
+  return m ? [m] : [];
+});
 
 function loadBranches(tasks) {
   const wanted = new Set([...tasks.flatMap(t => [t.branch, reviewLockOf(t), architectLockOf(t), heartbeatOf(slugOf(t.branch))]), LAND_SLOT]);
@@ -110,7 +113,9 @@ function loadBranches(tasks) {
     if (!wanted.has(name) && !slugs.some(s => name.endsWith(s)) && !fixMain) continue;
     const ref = `refs/remotes/origin/${name}`;
     const merged = tryGit("merge-base", "--is-ancestor", ref, "origin/main") !== null;
-    branches.set(name, { tipMs: Number(unix) * 1000, tipSha: sha, merged, markers: markersOn(ref) });
+    const commits = commitsOn(ref);
+    // D-237: buildView cannot call git, so the loader reports whether the ref carries a file-changing commit.
+    branches.set(name, { tipMs: Number(unix) * 1000, tipSha: sha, merged, work: commits.some(c => c.files.length > 0), markers: markersOn(commits) });
   }
   return branches;
 }
@@ -313,12 +318,18 @@ async function main() {
     const lockName = reviewLockOf(task), lock = branches.get(lockName);
     const stage = reviewStateOf(lock, task.id);
     const holder = stageHolderOf(lock, task.id);
-    if (args.verdict && (stage !== "in-review" || holder !== args.as)) fail(`only the reviewer holding ${lockName} records a verdict (it is ${stage}, held by ${holder ?? "nobody"})`);
+    // PROCESS-review-gate (D-166): the reviewer who passed may re-record the pass on the current head (after a merge of main, or
+    // over a verdict written before verdicts named their head); a landing refuses a head no verdict names.
+    const reviewer = [...(lock?.markers ?? [])].reverse().find(m => m.id === task.id && m.verb === "Review claim")?.who ?? null;
+    const rerecord = args.verdict === "pass" && ["passed", "landing"].includes(stage) && reviewer === args.as;
+    if (args.verdict && !rerecord && (stage !== "in-review" || holder !== args.as)) fail(`only the reviewer holding ${lockName} records a verdict (it is ${stage}, held by ${holder ?? "nobody"})`);
     if (args.fixed && (stage !== "fixing" || holder !== args.as)) fail(`only the agent holding the fix claim on ${lockName} marks it fixed (it is ${stage}, held by ${holder ?? "nobody"})`);
     if (args.fixed) requireSynced(doc, branches, args.as);
     const subject = args.verdict ? markerSubject("Verdict", task.id, args.as, args.verdict) : markerSubject("Fixed", task.id, args.as);
-    if (!pushMarker(lockName, tip(lockName), subject)) fail(`could not push ${lockName}: it moved; fetch and run again`);
-    console.log(`Recorded on ${lockName}: ${subject}`);
+    // The body names the head reviewed: the tip of the task's branch on origin now, which the gate compares with the PR head.
+    const reviewed = args.verdict ? (onOrigin(task.branch) ? tip(task.branch) : fail(`${task.branch} is not on origin; there is no head to review`)) : null;
+    if (!pushMarker(lockName, tip(lockName), subject, reviewed ? `reviewed ${reviewed}` : undefined)) fail(`could not push ${lockName}: it moved; fetch and run again`);
+    console.log(`Recorded on ${lockName}: ${subject}${reviewed ? ` (reviewed ${reviewed})` : ""}`);
     return;
   }
   if (args.landed) {

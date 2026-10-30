@@ -52,7 +52,7 @@
 - Owns: `server/workEmailOtp.ts`, `server/workEmailOtp.test.ts`.
 - Done: also an independent review by another model (D-151).
 
-## D-100.provider-recon: the daily money check compares the provider's payments with ours (Tier 1, lane `security-recon`)
+## D-100.provider-recon: the daily money check compares the provider's payments with ours (Tier 1, lane `security-recon`, after REL-webhook-auth-alarm, which also edits `server/dailyMoneyCheck.ts`)
 **What.** The check stays read-only.
 1. Add `listRecentTransactions(credentials, { since })` to `server/chargebeeAccountApi.ts`: successful payment transactions from the last 2 days, on each configured site (INR and USD).
 2. In `server/dailyMoneyCheck.ts`, add two finding lines:
