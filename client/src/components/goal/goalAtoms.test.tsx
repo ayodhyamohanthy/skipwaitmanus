@@ -31,6 +31,17 @@ describe("GoalButton", () => {
     expect(reason?.textContent).toMatch(/offline/i);
   });
 
+  it("inert primary keeps its rest fill on hover (issue 699: the override must win the specificity fight)", () => {
+    render(
+      <GoalButton variant="primary" disabledReason="Add your resume first">
+        Send ask
+      </GoalButton>,
+    );
+    const cls = screen.getByTestId("goal-button").className;
+    expect(cls).toMatch(/(^|\s)hover:bg-transparent!(\s|$)/);
+    expect(cls).toMatch(/(^|\s)bg-transparent(\s|$)/);
+  });
+
   it("never uses the native disabled attribute, even when busy", () => {
     render(<GoalButton busy busyLabel="Sending your ask…">Send ask</GoalButton>);
     const button = screen.getByTestId("goal-button");
