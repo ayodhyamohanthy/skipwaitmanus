@@ -782,7 +782,7 @@
       "lane": "deploy-workflows",
       "branch": "agent/queue/rel-release-verify",
       "status": "todo",
-      "syncedTo": "D-238",
+      "syncedTo": "D-240",
       "dependsOn": [],
       "epic": "D-212",
       "owns": [
