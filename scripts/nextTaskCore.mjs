@@ -127,6 +127,18 @@ export function parseMarker(subject) {
   return { verb: m[1], id: m[2], who: sanitizeName(m[3]) };
 }
 
+/**
+ * D-237: one commit per record from the loader's `git log --reverse --no-merges --format=%x1e%s%x1f
+ * --name-only` read of `origin/main..<ref>`. A commit that lists files is work; an empty list is a marker.
+ * The core stays pure: the loader does the git call and passes the text, so this rule is testable.
+ */
+export function parseBranchLog(raw) {
+  return String(raw ?? "").split("\x1e").filter(Boolean).map(rec => {
+    const [subject, files = ""] = rec.split("\x1f");
+    return { subject: subject.trim(), files: files.split("\n").map(f => f.trim()).filter(Boolean) };
+  });
+}
+
 /** `extra` is the verdict (pass|findings) for a Verdict and the status for a Report. */
 export function markerSubject(verb, id, who, extra) {
   return verb === "Verdict" || verb === "Report" ? `${verb} ${id}: ${extra} — ${who}` : `${verb} ${id}: ${who}`;
@@ -424,12 +436,17 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports }) {
   const byTask = reportsByTask(reports);
   return tasks.map((task, at) => {
     const id = task.id;
-    const work = workBranchOf(task, branches);
-    const info = work ? branches.get(work) : null;
     const lockName = reviewLockOf(task);
     const lock = branches.get(lockName) ?? null;
     const archName = architectLockOf(task);
     const arch = branches.get(archName) ?? null;
+    // D-190: an architect row's packet is written and opened as a pull request on its lock branch, which
+    // workBranchOf skips as reserved. When the lock carries a commit that changes files (the loader's `work`),
+    // or a pull request from it merged, the lock is the row's work branch for the pull request, CI and landing.
+    const packetMerged = Boolean(arch?.tipSha && mergedHeads.get(archName)?.has(arch.tipSha));
+    const packet = task.status === "architect" && Boolean(arch) && (arch.work === true || packetMerged);
+    const work = packet ? archName : workBranchOf(task, branches);
+    const info = work ? branches.get(work) : null;
     const pr = work ? openPrs.get(work) ?? null : null;
     const ci = pr ? prCi.get(work) ?? { state: "unknown" } : { state: "unknown" };
     // A squash merge leaves the branch unmerged in git; GitHub's merged pull request says it landed.
@@ -448,8 +465,10 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports }) {
       reviewer: lastBy(lockMarkers, ["Review claim"])?.who ?? null, fixer: lastBy(lockMarkers, ["Fix claim"])?.who ?? null,
       lander: lastBy(lockMarkers, ["Land claim"])?.who ?? null, review: reviewStateOf(lock, id), stageHolder: lockMarkers.at(-1)?.who ?? null,
       unblocker: archMarkers.at(-1)?.verb === "Unblock" ? archMarkers.at(-1).who : null,
-      done: task.status === "done" || (task.status === "todo" && landed),
+      done: task.status === "done" || ((task.status === "todo" || packet) && landed),
       open: task.status === "todo" && Boolean(info) && !landed,
+      packet, writers: packet ? everyone(archMarkers, ["Claim", "Takeover"]) : [],
+      packetLander: packet ? (archMarkers.at(-1)?.verb === "Land claim" ? archMarkers.at(-1).who : null) : null,
     };
   });
 }
@@ -627,6 +646,15 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     // that waits for the owner stays with the owner.
     const stale = staleOf(v);
     if (stale && v.task.status !== "owner") return resync(v);
+    // D-190: a packet's pull request with green CI lands through the slot (the docs path: no Tier 1 review),
+    // by any session but a writer of the packet; anything else about it stays with the packet stage below.
+    if (v.packet && v.pr && v.ci === "green") {
+      if (claimant && v.writers.includes(claimant)) return skip(v, "its packet pull request is green, and you wrote the packet; another session lands it (D-190)");
+      if (v.packetLander && !quiet(archAt(v))) return skip(v, `${v.packetLander} is landing its packet pull request`);
+      if (slotBusyFor(claimant)) return waitLanding();
+      return { kind: "land", task: v.task, work: v.work, pr: v.pr, lock: v.archName, tier1: true, packet: true, from: v.packetLander ?? v.owner };
+    }
+    if (v.packet && v.pr && v.ci === "error") return skip(v, `cannot read CI for ${v.pr}; skipped until it can be read`);
     if (v.task.status === "architect") {
       const writer = holderOf(v.arch, v.task.id);
       if (writer && !quiet(archAt(v))) return skip(v, `${writer} is writing its packet`);
@@ -715,6 +743,8 @@ function ownStage(v, claimant) {
     if (v.pr && v.task.tier === 1 && !(v.ci === "red" && ["needs-review", "in-review"].includes(v.review))) return null;
     return { kind: "continue", of: v.pr ? (v.ci === "red" ? "green" : "land") : "build", task: v.task, work: v.work, pr: v.pr, tier1: v.task.tier === 1, at: v.at };
   }
+  // D-190: the packet's lander (a Land claim on the lock, never its writer) continues the landing while CI is green.
+  if (v.packet && v.pr && v.packetLander === claimant && v.ci === "green" && !v.writers.includes(claimant)) return { kind: "continue", of: "land", task: v.task, work: v.work, pr: v.pr, lock: v.archName, tier1: true, packet: true, at: v.at };
   if (v.task.status === "architect" && v.arch && holderOf(v.arch, v.task.id) === claimant) return { kind: "continue", of: "architect", task: v.task, lock: v.archName, at: v.at };
   if (v.open && v.said?.status === "blocked" && v.unblocker === claimant && !(v.said.blockers ?? [v.said.who]).includes(claimant)) return { kind: "continue", of: "unblock", task: v.task, report: v.said, lock: v.archName, at: v.at };
   return null;
@@ -879,6 +909,8 @@ export function mayReport({ task, branches, claimant }) {
     holderOf(work ? branches.get(work) : null, task.id),
     stageHolderOf(branches.get(reviewLockOf(task)), task.id),
     lastBy(stageMarkers(branches.get(architectLockOf(task)), task.id), ["Claim", "Takeover", "Unblock"])?.who ?? null,
+    // D-190: the lander of a packet pull request holds a Land claim on the architect lock.
+    lastBy(stageMarkers(branches.get(architectLockOf(task)), task.id), ["Land claim"])?.who ?? null,
   ];
   return names.includes(claimant);
 }
@@ -899,7 +931,8 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehi
     const archHeld = task.status === "architect" && Boolean(v.arch);
     const activeAt = archHeld ? archAt(v) : v.open ? workAt(v) : null;
     const quiet = activeAt !== null && now - activeAt > IDLE_MS;
-    const review = pr && task.tier === 1 ? v.review : null;
+    // D-190: a packet pull request goes the docs path, never through a Tier 1 review.
+    const review = pr && task.tier === 1 && !v.packet ? v.review : null;
     // D-202: an out-of-sync task shows the decision that holds it, not its old state.
     const stale = outOfSyncOf(v, register);
     let state;
@@ -908,6 +941,7 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehi
     else if (task.status === "owner") state = "owner";
     else if (task.status === "in-review") state = "in-review";
     else if (task.dependsOn.some(d => !doneIds.has(d))) state = "waiting";
+    else if (v.packet && pr) state = { red: "pr-red", green: "pr-green", running: "pr-running", "running-after-red": "pr-running" }[v.ci] ?? "pr-open";
     else if (task.status === "architect") state = archHeld ? (quiet ? "quiet" : "packet") : "architect";
     else if (!v.open) state = task.dependsOn.some(d => !doneIds.has(d)) ? "waiting" : "todo";
     else if (pr) state = { red: "pr-red", green: "pr-green", running: "pr-running", "running-after-red": "pr-running" }[v.ci] ?? "pr-open";
