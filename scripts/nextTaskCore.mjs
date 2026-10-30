@@ -669,6 +669,9 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   };
 
   let mine = claimant ? ownWork(view, claimant) : null;
+  // --avoid also applies when the claimant already holds a continuation: let the
+  // normal pass preserve blocked-lane holds and select another eligible task.
+  if (mine?.kind === "continue" && mine.task && avoid.has(mine.task.id)) mine = null;
   // D-202: a holder continuing an out-of-sync task is handed the re-sync first, not its build
   // (a blocked wait still comes first: the block is cleared before the packet moves).
   if (mine && mine.kind !== "wait" && mine.task) {
