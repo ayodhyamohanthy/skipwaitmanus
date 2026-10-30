@@ -187,7 +187,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Verify administrator sign-in gate
-        if: always() && steps.deploy.outcome != 'skipped'
+        if: steps.changes.outputs.classification == 'runtime'
         run: |
           expected=$(node -e 'let s=require("fs").readFileSync("wrangler.jsonc","utf8");process.stdout.write(s.match(/"SKIPWAIT_ADMIN_EMAIL":\s*"([^"]+)"/)?.[1]||"")')
           test -n "$expected"
@@ -200,7 +200,7 @@ jobs:
         # This is the acceptance gate. The api-runtime marker below must never
         # move until Cloudflare proves the exact active version, image, baked
         # commit SHA, and ready state for this release.
-        if: always() && steps.deploy.outcome != 'skipped'
+        if: steps.changes.outputs.classification == 'runtime'
         env:
           EXPECTED_SHA: ${{ github.sha }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

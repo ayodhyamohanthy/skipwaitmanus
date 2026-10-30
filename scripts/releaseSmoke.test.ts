@@ -262,12 +262,25 @@ describe("deploy workflow notices", () => {
     expect(text).toContain("'incident'");
   });
 
-  it("deploy-api.yml verifies what went live even when the deploy step fails midway", () => {
+  it("deploy-api.yml keeps the D-238 shape: id: deploy, both verify steps runtime-only, marker unchanged", () => {
     const text = workflowText("deploy-api.yml");
-    expect(text).toMatch(/- name: Deploy container image \+ worker\n\s+id: deploy\n/);
+    expect(text).toMatch(/- name: Deploy container image \+ worker\n\s+id: deploy\n\s+if: steps\.changes\.outputs\.classification == 'runtime'\n/);
     for (const step of ["Verify administrator sign-in gate", "Verify active Cloudflare container release"]) {
-      expect(text).toMatch(new RegExp(`- name: ${step}\\n(?:\\s+#[^\\n]*\\n)*\\s+if: always\\(\\) && steps\\.deploy\\.outcome != 'skipped'\\n`));
+      expect(text).toMatch(new RegExp(`- name: ${step}\\n(?:\\s+#[^\\n]*\\n)*\\s+if: steps\\.changes\\.outputs\\.classification == 'runtime'\\n`));
     }
-    expect(text).toMatch(/- name: Update deployed runtime marker\n\s+if: steps\.changes\.outputs\.classification == 'runtime'\n/);
+    expect(text).not.toMatch(/steps\.deploy\.outcome/);
+    expect(text).toContain(
+      [
+        "      - name: Update deployed runtime marker",
+        "        if: steps.changes.outputs.classification == 'runtime'",
+        "        run: |",
+        '          git tag -f api-runtime "${{ github.sha }}"',
+        "          git push -f origin refs/tags/api-runtime",
+        "",
+      ].join("\n"),
+    );
+    const marker = text.indexOf("- name: Update deployed runtime marker");
+    expect(text.indexOf("- name: Verify active Cloudflare container release")).toBeLessThan(marker);
+    expect(text.indexOf("- name: Verify administrator sign-in gate")).toBeLessThan(marker);
   });
 });
