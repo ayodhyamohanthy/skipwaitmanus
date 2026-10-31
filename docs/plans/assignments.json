@@ -868,7 +868,7 @@
       "tier": 2,
       "lane": "deploy-workflows",
       "branch": "agent/queue/rel-rollback-skew",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-248",
       "dependsOn": [
         "REL-release-verify"
