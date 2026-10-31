@@ -116,12 +116,12 @@
       "tier": 1,
       "lane": "deploy",
       "branch": "agent/queue/p1-release-gate-strict-compare",
-      "status": "in-review",
+      "status": "done",
       "syncedTo": "D-248",
       "dependsOn": [
         "P1-deploy-green-gate"
       ],
-      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 normal gated-release identity observation is recorded in the packet (October 31, Web a93c6ec3 / API 29045de2); overall review/merge-history closeout remains unqualified, so the row is not automatically done. No live rollback/DB/settings tests. D-248 (Oct 30): the row releases its two-file reservation (owns removed) because its code is on main (fecf0d3b is an ancestor of origin/main) and only the item 5 observation remains, so it must not hold scripts/require-green-release.mjs and scripts/requireGreenRelease.test.ts against REL-rollback-skew (filesBusy, scripts/nextTaskCore.mjs:552). The row stays in-review until item 5 is recorded; if item 5 needs code, re-declare owns in a docs-only pull request (D-200 (2))."
+      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 normal gated-release identity observation is recorded in the packet (October 31, Web a93c6ec3 / API 29045de2); observation landed in #905 (9b349848), and separate read-only qualification confirmed the original independent exact-head review, clean integration, required candidate/main CI, normal merge and anchored landed marker. This docs closeout marks the packet done under D-248; incident #748 remains OPEN. No live rollback/DB/settings tests. D-248 (Oct 30): the row releases its two-file reservation (owns removed) because its code is on main (fecf0d3b is an ancestor of origin/main) and only the item 5 observation remains, so it must not hold scripts/require-green-release.mjs and scripts/requireGreenRelease.test.ts against REL-rollback-skew (filesBusy, scripts/nextTaskCore.mjs:552). The row stays in-review until item 5 is recorded; if item 5 needs code, re-declare owns in a docs-only pull request (D-200 (2))."
     },
     {
       "id": "CI-architect-real-checks",
