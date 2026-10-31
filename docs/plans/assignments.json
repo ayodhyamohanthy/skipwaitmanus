@@ -3461,7 +3461,7 @@
       "tier": 2,
       "lane": "security-csp",
       "branch": "agent/queue/d100-csp-enforce",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-100.csp-report"
