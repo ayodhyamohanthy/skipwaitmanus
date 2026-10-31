@@ -853,8 +853,8 @@
       "tier": 1,
       "lane": "payments-ops",
       "branch": "agent/queue/rel-webhook-auth-alarm",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "owner",
+      "syncedTo": "D-262",
       "dependsOn": [],
       "epic": "D-212",
       "owns": [
@@ -919,8 +919,8 @@
       "tier": 1,
       "lane": "observability-client",
       "branch": "agent/queue/rel-client-capture",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "owner",
+      "syncedTo": "D-256",
       "dependsOn": [
         "FIX-device-signin"
       ],
@@ -2070,8 +2070,8 @@
       "tier": 1,
       "lane": "d048-thread",
       "branch": "agent/queue/d048-p3-conversation",
-      "status": "todo",
-      "syncedTo": "D-251",
+      "status": "owner",
+      "syncedTo": "D-257",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2436,8 +2436,8 @@
       "tier": 1,
       "lane": "d048-profile",
       "branch": "agent/queue/d048-p3-profile",
-      "status": "todo",
-      "syncedTo": "D-253",
+      "status": "owner",
+      "syncedTo": "D-258",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2825,7 +2825,7 @@
       "tier": 2,
       "lane": "d048-policy",
       "branch": "agent/queue/d048-p3-policy",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
@@ -2969,7 +2969,7 @@
       "lane": "d048-discovery",
       "branch": "agent/queue/d048-p3-discovery",
       "status": "todo",
-      "syncedTo": "D-241",
+      "syncedTo": "D-261",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-marketing",
@@ -3439,8 +3439,8 @@
       "tier": 2,
       "lane": "security-headers",
       "branch": "agent/queue/d100-csp-report",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-259",
       "dependsOn": [
         "FND-4"
       ],
@@ -3561,7 +3561,7 @@
       "tier": 3,
       "lane": "security-audit-secrets",
       "branch": "agent/queue/d100-secrets-sweep",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
@@ -3595,8 +3595,8 @@
       "tier": 3,
       "lane": "security-audit-referral",
       "branch": "agent/queue/d100-authz-referral",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-260",
       "dependsOn": [],
       "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
       "epic": "D-100",
@@ -3612,10 +3612,10 @@
       "tier": 3,
       "lane": "security-audit-account",
       "branch": "agent/queue/d100-authz-account",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-260",
       "dependsOn": [],
-      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1). D-260: audit delivered (13 published findings, CI green on 1012897c); one finding withheld under rule 1 and parked for the owner — only its discovering session can open the draft security advisory that gives it a durable private home.",
       "epic": "D-100",
       "owns": [
         "docs/reviews/D-100-authz-account.md"
