@@ -83,3 +83,5 @@ Each audit writes one report: a findings table with ID, file:line, what can go w
 
 ## Status
 One line per row, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
+
+- D-100.authz-account: waits for the owner — D-260 — audit delivered on PR #889 (`1012897c`, CI green, 13 published findings); one finding withheld under rule 1 and parked for the owner.

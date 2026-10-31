@@ -3612,10 +3612,10 @@
       "tier": 3,
       "lane": "security-audit-account",
       "branch": "agent/queue/d100-authz-account",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-260",
       "dependsOn": [],
-      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1). D-260: audit delivered (13 published findings, CI green on 1012897c); one finding withheld under rule 1 and parked for the owner — only its discovering session can open the draft security advisory that gives it a durable private home.",
       "epic": "D-100",
       "owns": [
         "docs/reviews/D-100-authz-account.md"
