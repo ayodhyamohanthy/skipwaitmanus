@@ -853,8 +853,8 @@
       "tier": 1,
       "lane": "payments-ops",
       "branch": "agent/queue/rel-webhook-auth-alarm",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "owner",
+      "syncedTo": "D-262",
       "dependsOn": [],
       "epic": "D-212",
       "owns": [
@@ -2900,7 +2900,7 @@
       "tier": 2,
       "lane": "d048-links",
       "branch": "agent/queue/d048-p3-links",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
@@ -3439,7 +3439,7 @@
       "tier": 2,
       "lane": "security-headers",
       "branch": "agent/queue/d100-csp-report",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-259",
       "dependsOn": [
         "FND-4"
@@ -3461,7 +3461,7 @@
       "tier": 2,
       "lane": "security-csp",
       "branch": "agent/queue/d100-csp-enforce",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-100.csp-report"
@@ -3629,7 +3629,7 @@
       "tier": 3,
       "lane": "security-audit-admin",
       "branch": "agent/queue/d100-authz-admin-money",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
