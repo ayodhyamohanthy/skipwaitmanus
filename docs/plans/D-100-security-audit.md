@@ -82,3 +82,4 @@ Each audit writes one report: a findings table with ID, file:line, what can go w
 
 ## Status
 One line per row, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
+- D-100.authz-account: in progress — Hark · a2b5 — 2026-10-30 — branch agent/queue/d100-authz-account
