@@ -6,6 +6,17 @@ import { CSP_REPORT_PATH, handleCspReport } from "./cspReport";
 // a future move off TLS on this host is recoverable without a support ticket.
 const HSTS_MAX_AGE_SECONDS = 15552000;
 
+// D-100.csp-enforce: the enforcing header is built but stays off. Only
+// D-100.csp-release flips this, after seven days of reports from the
+// report-only policy and the CEO's sign-off. Off, the response is unchanged.
+export const CSP_ENFORCED = false;
+
+export const CSP_POLICY = `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; report-uri ${CSP_REPORT_PATH}`;
+
+export function contentSecurityPolicyHeader(enforced: boolean): { name: string; value: string } {
+  return { name: enforced ? "Content-Security-Policy" : "Content-Security-Policy-Report-Only", value: CSP_POLICY };
+}
+
 export function globalSecurityHeaders(req: Request, res: Response, next: NextFunction) {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -13,7 +24,8 @@ export function globalSecurityHeaders(req: Request, res: Response, next: NextFun
   // No skipwait.me surface is meant to be embedded, so refuse framing outright
   // rather than only same-origin framing.
   res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("Content-Security-Policy-Report-Only", `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; report-uri ${CSP_REPORT_PATH}`);
+  const csp = contentSecurityPolicyHeader(CSP_ENFORCED);
+  res.setHeader(csp.name, csp.value);
   // Only meaningful over TLS, and browsers ignore it on plain http.
   if (isSecureRequest(req)) {
     res.setHeader("Strict-Transport-Security", `max-age=${HSTS_MAX_AGE_SECONDS}; includeSubDomains`);
