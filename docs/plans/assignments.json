@@ -710,8 +710,8 @@
       "tier": 1,
       "lane": "notifications",
       "branch": "agent/queue/rel-review-email-retry",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "owner",
+      "syncedTo": "D-255",
       "dependsOn": [
         "D-174-job-catalog"
       ],
