@@ -19,7 +19,7 @@ describe("PlansV2 (D-132, flag OFF)", () => {
     render(<PlansV2 book="INR" />);
     const card = screen.getByRole("region", { name: "Entry level Referrers" });
     expect(within(card as HTMLElement).getByTestId("this-month-open_door").textContent).toBe("₹0");
-    expect(within(card as HTMLElement).getByText(/3 free credits every month/)).toBeTruthy();
+    expect(within(card as HTMLElement).getByText(/3 free referrals every month/)).toBeTruthy();
   });
 
   it("Fast Track defaults to 25 credits: This month Rs1,624 = Rs499 fee + Rs1,125", () => {
