@@ -14,6 +14,7 @@ import { createChargebeePendingReconcile, createSubscriptionPendingReconcile } f
 import { createDataExportSweep } from "./dataExport";
 import { createWorkEmailReverifySweep } from "./workEmailReverifySweep";
 import { createWorkEmailOtpPurgeJob } from "./workEmailOtpPurge";
+import { createReviewDeliveryRetry } from "./reviewDeliveryRetry";
 import type { ScheduledJobDefinition } from "./scheduledJobRunner";
 
 const MINUTE = 60_000;
@@ -108,5 +109,14 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 24 * 60 * MINUTE,
     leaseMs: 15 * MINUTE,
     run: createJobCatalogSync(),
+  },
+  {
+    // REL-review-email-retry (D-212): resends referrer review emails left failed,
+    // pending or mid-send, up to 5 attempts, then emails the owner once.
+    name: "review-delivery-retry",
+    description: "Resends referrer review emails that failed, never left pending or died mid-send, with each referrer's existing link, up to 5 attempts; the fifth failure emails the owner",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createReviewDeliveryRetry(),
   },
 ];

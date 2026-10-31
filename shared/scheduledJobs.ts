@@ -7,7 +7,7 @@
 // boundary parses with these schemas; nothing else defines these shapes.
 import { z } from "zod";
 
-export const SCHEDULED_JOB_NAMES = ["ask-expiry-sweep", "first-look-release", "plan-credit-cycles", "chargebee-pending-reconcile", "chargebee-subscription-reconcile", "work-email-reverify-sweep", "data-export-sweep", "work-email-otp-purge", "coverage-delivery-retry", "referral-timers", "daily-money-check", "billing-review-retry", "job-catalog-sync"] as const;
+export const SCHEDULED_JOB_NAMES = ["ask-expiry-sweep", "first-look-release", "plan-credit-cycles", "chargebee-pending-reconcile", "chargebee-subscription-reconcile", "work-email-reverify-sweep", "data-export-sweep", "work-email-otp-purge", "coverage-delivery-retry", "referral-timers", "daily-money-check", "billing-review-retry", "job-catalog-sync", "review-delivery-retry"] as const;
 export const scheduledJobNameSchema = z.enum(SCHEDULED_JOB_NAMES);
 export type ScheduledJobName = z.infer<typeof scheduledJobNameSchema>;
 
