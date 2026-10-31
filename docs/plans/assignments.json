@@ -116,16 +116,12 @@
       "tier": 1,
       "lane": "deploy",
       "branch": "agent/queue/p1-release-gate-strict-compare",
-      "status": "in-review",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-248",
       "dependsOn": [
         "P1-deploy-green-gate"
       ],
-      "owns": [
-        "scripts/require-green-release.mjs",
-        "scripts/requireGreenRelease.test.ts"
-      ],
-      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 acceptance (observe a subsequent normal gated release and its identities) is still pending, so the row is not done. No live rollback/DB/settings tests."
+      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 normal gated-release identity observation is recorded in the packet (October 31, Web a93c6ec3 / API 29045de2); observation landed in #905 (9b349848), and separate read-only qualification confirmed the original independent exact-head review, clean integration, required candidate/main CI, normal merge and anchored landed marker. This docs closeout marks the packet done under D-248; incident #748 remains OPEN. No live rollback/DB/settings tests. D-248 (Oct 30): the row releases its two-file reservation (owns removed) because its code is on main (fecf0d3b is an ancestor of origin/main) and only the item 5 observation remains, so it must not hold scripts/require-green-release.mjs and scripts/requireGreenRelease.test.ts against REL-rollback-skew (filesBusy, scripts/nextTaskCore.mjs:552). The row stays in-review until item 5 is recorded; if item 5 needs code, re-declare owns in a docs-only pull request (D-200 (2))."
     },
     {
       "id": "CI-architect-real-checks",
@@ -190,7 +186,7 @@
       "tier": 1,
       "lane": "pricing",
       "branch": "agent/pricing/banded-plans-oct25",
-      "status": "in-review",
+      "status": "todo",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-credits"
@@ -220,7 +216,7 @@
         "shared/planReach.test.ts",
         "client/src/components/goal/useGoalShellMeta.ts"
       ],
-      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first. Oct 27 queue sync (Claude Code, D-219; changeable): moved up to sit just above LAUNCH-legal-copy and no longer waits on it; LAUNCH-legal-copy now waits for this row instead, because it is owner-held (legal text), shares only policyPages.test.tsx, and its Terms and Cancellation text must describe the pricing this row lands. The owner's freeze said 'push it immediately', and the live app could still open an archived legacy pack cart on Oct 25 (PR #666 comment 6399494075). It still waits for D-048-F-credits (shared AppShell.tsx line), which D-217 unparked to land first through its Tier 1 path. Oct 28 ci.yml handoff (holder's acknowledgment: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/666#issuecomment-6464335154): .github/workflows/ci.yml moved to CI-architect-real-checks, which carries this branch's only ci.yml delta, the typecheck heap line from c9572fcf, byte for byte. #666 lands no ci.yml change: until that row lands it runs no CI carrying the delta, or first restores ci.yml to main's bytes in a forward-only commit; after it lands, #666 merges main and its ci.yml diff must be empty (a conflict resolves to main's version exactly)."
+      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first. Oct 27 queue sync (Claude Code, D-219; changeable): moved up to sit just above LAUNCH-legal-copy and no longer waits on it; LAUNCH-legal-copy now waits for this row instead, because it is owner-held (legal text), shares only policyPages.test.tsx, and its Terms and Cancellation text must describe the pricing this row lands. The owner's freeze said 'push it immediately', and the live app could still open an archived legacy pack cart on Oct 25 (PR #666 comment 6399494075). It still waits for D-048-F-credits (shared AppShell.tsx line), which D-217 unparked to land first through its Tier 1 path. Oct 28 ci.yml handoff (holder's acknowledgment: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/666#issuecomment-6464335154): .github/workflows/ci.yml moved to CI-architect-real-checks, which carries this branch's only ci.yml delta, the typecheck heap line from c9572fcf, byte for byte. #666 lands no ci.yml change: until that row lands it runs no CI carrying the delta, or first restores ci.yml to main's bytes in a forward-only commit; after it lands, #666 merges main and its ci.yml diff must be empty (a conflict resolves to main's version exactly). Oct 31 routing-only reconciliation (D-200 (2), D-151): in-review -> todo restores the normal picker route to the already-built Tier 1 PR #666 at 521c86101c4ec799929ffaf221b75e497eabadf5; in-review is skipped by the picker, and no review lock exists. This is not permission to build, take over or fix the pricing branch. Instinct built it and Claude fixed it, so both model families remain excluded from independent review/landing; prior findings alone do not exclude a reviewer (D-184). An eligible model must obtain the actual normal review claim, name its exact reviewed head and own the semantic verdict. Read-only compatibility on current main 31dc637a found a clean composition, ci.yml identical to main and 55 existing focused assertions passing; that is input, not a verdict or a substitute for required composed-head CI, full applicable checks and source-frozen money-off acceptance. No price, plan content, display default, post-cap price, legal text or live-money permission changes. PR #828 also carries unrelated FND-4/BYOR and D-206 changes, which are not adopted by this routing-only slice."
     },
     {
       "id": "LAUNCH-legal-copy",
@@ -714,8 +710,8 @@
       "tier": 1,
       "lane": "notifications",
       "branch": "agent/queue/rel-review-email-retry",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "owner",
+      "syncedTo": "D-255",
       "dependsOn": [
         "D-174-job-catalog"
       ],
@@ -873,7 +869,7 @@
       "lane": "deploy-workflows",
       "branch": "agent/queue/rel-rollback-skew",
       "status": "todo",
-      "syncedTo": "D-222",
+      "syncedTo": "D-248",
       "dependsOn": [
         "REL-release-verify"
       ],
@@ -882,8 +878,10 @@
         ".github/workflows/deploy-pages.yml",
         ".github/workflows/rollback.yml",
         "scripts/rollbackTarget.mjs",
-        "scripts/rollbackTarget.test.ts"
-      ]
+        "scripts/rollbackTarget.test.ts",
+        "scripts/requireGreenRelease.test.ts"
+      ],
+      "note": "D-212 packet docs/plans/REL-production-watch.md; item 1 built by Hark · 44b1 on agent/queue/rel-rollback-skew (PR #876, draft, head 9a2d193f) and stands. D-248: the item 2 block clears by adding scripts/requireGreenRelease.test.ts to owns, because the three #751 pins at :542 (options are exactly `- api`), :551 (jobs are exactly [recovery-gate, recover-api]) and :569 (exactly three GITHUB_TOKEN steps) describe this row's own file rollback.yml but live in a test file another row owns. Those pins are extended to the api/all/web option set, the rollback-web job and its token step, never loosened or deleted, and scripts/require-green-release.mjs is NOT widened: the web leg runs this row's scripts/rollbackTarget.mjs web-gate (already built, accepts web/all and reuses ciVerdict/releaseRuns by import), so a target: all dispatch reaches each leg's gate as its own system and TARGETS/contextProblem and the release path stay byte-identical. The phantom reservation is released instead of waited on: P1-release-gate-strict-compare's code is on main (fecf0d3b) and only its item 5 observation remains, so it drops its two-file owns and this row gains no dependsOn edge - waiting there would park a buildable row behind a row that may never read done. The web leg takes job-level concurrency group deploy-pages, keeping rollback.yml's workflow-level group deploy-api pin true. Build item 2 on the same branch, never a takeover; item 3 (production drill, both run links) and the status: \"done\" landing commit are still owed; a draft PR cannot be merged, so a LAND hand-out on #876 before item 2 is a red report, never a forced merge."
     },
     {
       "id": "REL-self-heal",
@@ -1879,8 +1877,8 @@
       "tier": 1,
       "lane": "d048-asks",
       "branch": "agent/queue/d048-inbox",
-      "status": "todo",
-      "syncedTo": "D-244",
+      "status": "owner",
+      "syncedTo": "D-254",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2067,7 +2065,7 @@
       "lane": "d048-thread",
       "branch": "agent/queue/d048-p3-conversation",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-251",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2407,8 +2405,8 @@
       "tier": 1,
       "lane": "d048-settings",
       "branch": "agent/queue/d048-p3-settings",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-247",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2433,7 +2431,7 @@
       "lane": "d048-profile",
       "branch": "agent/queue/d048-p3-profile",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-253",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2482,7 +2480,7 @@
       "tier": 1,
       "lane": "d048-messages",
       "branch": "agent/queue/d048-p3-messages",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-243",
       "dependsOn": [
         "D-048-F-harness",
@@ -2671,7 +2669,7 @@
       "tier": 1,
       "lane": "d048-dev",
       "branch": "agent/queue/d048-p3-dev",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
@@ -3313,7 +3311,7 @@
       "status": "todo",
       "syncedTo": "D-246",
       "dependsOn": [],
-      "note": "D-245 (owner/CEO answer, Oct 30): the block (Hark · 450f, 1f344276) clears. A personal-login session reaches referrer actions only after an in-session work-email step-up (POST /api/referrer/step-up/send|verify) that writes a server-side proof bound to account, session key (workos:<sid> or app:<ssid>), exact work email and purpose (12 h, single-use challenge, void on logout, revocation, suspension and employer change); it never runs the standalone code login, never drops the Bearer, never accepts another account's cookie, never matches by domain or links accounts. Build from packet §0b (it wins over §0 to §8). D-246 (CEO sequencing, Oct 30): this row goes first. Its owns are the full §0b.8 list, including the four shared paths: server/privateReferralRoutes.ts (middleware, route list and /access verdict only), server/_core/index.ts (switch only: step-up route registration and the dev wrapper's two copied fields), drizzle/schema.ts and server/schemaReconcile.ts (the additive referrerStepUps table only). D-090-BYOR now waits for this row, and BYOR's chain (P0-referral-access-availability, D-132-item3, D-174-held-ask-reconfirm, D-174-ask-from-job, D-174-pool-nudges, D-099-bonus-pages, D-086-demand-list, DEPLOY-gate-docs-sync) waits through it. The handoff from BYOR is limited to those four files, for this build only; #632 keeps all its code, findings (b8552f96) and holds, and this build resolves any overlap with #632 in #632's favour where both can stand. Tier 1 independent review and the full browser path (§0b.9) before done. Every referrer types one code after deploy (D-049).",
+      "note": "D-245 (owner/CEO answer, Oct 30): the block (Hark · 450f, 1f344276) clears. A personal-login session reaches referrer actions only after an in-session work-email step-up (POST /api/referrer/step-up/send|verify) that writes a server-side proof bound to account, session key (workos:<sid> or app:<ssid>), exact work email and purpose (12 h, single-use challenge, void on logout, revocation, suspension and employer change); it never runs the standalone code login, never drops the Bearer, never accepts another account's cookie, never matches by domain or links accounts. Build from packet §0b (it wins over §0 to §8). D-246 (CEO sequencing, Oct 30): this row goes first. Its owns are the full §0b.8 list, including the four shared paths: server/privateReferralRoutes.ts (middleware, route list and /access verdict only), server/_core/index.ts (switch only: step-up route registration and the dev wrapper's two copied fields), drizzle/schema.ts and server/schemaReconcile.ts (the additive referrerStepUps table only). D-090-BYOR now waits for this row, and BYOR's chain (P0-referral-access-availability, D-132-item3, D-174-held-ask-reconfirm, D-174-ask-from-job, D-174-pool-nudges, D-099-bonus-pages, D-086-demand-list, DEPLOY-gate-docs-sync) waits through it. The handoff from BYOR is limited to those four files, for this build only; #632 keeps all its code, findings (b8552f96) and holds, and this build resolves any overlap with #632 in #632's favour where both can stand. Tier 1 independent review and the full browser path (§0b.9) before done. Every referrer types one code after deploy (D-049). Oct 31 owns amendment (docs/registry only, D-200 (2); Instinct's answer on #811, comment 6537600491, choice A, to packet conflict 8 raised on #867 head 83abf39a): owns gains exactly e2e/fixtures.ts and scripts/seed-test-accounts.ts, so the e2e journeys personal-link and queue-attestation, which the gate correctly refuses with the seeded plain test_seed session, are repaired by this row through the real local step-up send/verify path with delivery intercepted locally. test_seed stays a test identity (never relabelled as a work-email login, no amr minted for it, no production bypass); any direct test setup must be justified, isolated to the local harness and proven unable to change production authorization. Red-first controls and limits are in packet §0b.8a. GATE-e2e-journeys (done) keeps its history; the rest of e2e/ is not claimed. This amendment releases no hold: the #867 shared-file hold stays, and runtime edits to the two paths wait for this amendment's independent scope review and landing.",
       "owns": [
         "server/_core/sdk.ts",
         "server/_core/sdk*.test.ts",
@@ -3369,6 +3367,8 @@
         "drizzle/schema.ts",
         "server/schemaReconcile.ts",
         "server/schemaReconcile*.test.ts",
+        "e2e/fixtures.ts",
+        "scripts/seed-test-accounts.ts",
         "docs/plans/D-057-session-gate.md",
         "AGENTS.md",
         "docs/KIT_V4_BUILD_PLAN.md"
