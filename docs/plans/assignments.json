@@ -1877,8 +1877,8 @@
       "tier": 1,
       "lane": "d048-asks",
       "branch": "agent/queue/d048-inbox",
-      "status": "todo",
-      "syncedTo": "D-244",
+      "status": "owner",
+      "syncedTo": "D-254",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
