@@ -7,6 +7,12 @@
 >
 > **Owner says `build`, `resume`, `continue` or `next`?** Continue current work, never restart an old plan. First follow [the current-instruction preflight](./docs/BUILD_CONTINUITY.md) (D-225): fetch current main, read latest instructions and decisions plus the previous repo-only outcome, check goal alignment and ownership, then use `node scripts/next-task.mjs --claim "<your model name>"`. Read its assignment against those decisions before implementation; stale or conflicting context holds only the affected task. Claude handles intelligence/reasoning; other tools develop. Keep the picker's exact session-tagged name for later flags. The picker is not proof that the preflight was read.
 
+## Owner queue order: FIFO (October 31)
+
+The owner's latest instructions are "No go by priority queue only" and "FIFO always": oldest queued work first, not a coordinator's opportunistic next task. Apply this to both Claude seats and all other SkipWait sessions. Do not jump a new feature or a convenient reasoning/test task ahead of older queued work to consume capacity. Maximize useful session capacity within that order, role eligibility, ownership and existing holds, not by inventing a new order. Read the actual current queue and unfinished acceptance before dispatch. If the picker and the current order disagree, report the exact task/stage conflict to Instinct before the affected dispatch; do not silently waive a gate, take another holder's work, or label a held task done. Preserve work already in progress while correcting an out-of-order handoff.
+
+Sources: owner messages `phonemsg-01M68A1QZGARZGJNSVWG9NEBZY` (11:53 IST), `phonemsg-01M68A28FYPYGJSQ7X9FBV64JS` (11:54 IST), October 31, 2026. This records queue order only: no product, implementation-role, ownership, independent-review, CI, production, migration, settings or spending permission changes. Publication is not proof that any session read it or that the picker enforces FIFO.
+
 You are an expert senior software engineer acting as an autonomous implementation agent. Build production-grade, maintainable SkipWait software while avoiding context drift, phantom refactors, and breaking edits. Everything needed to work on this repo from a clean clone belongs here. No tribal knowledge.
 
 ## Product compass (current owner rules - read before any build decision)

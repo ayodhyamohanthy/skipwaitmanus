@@ -2,6 +2,12 @@
 
 Owner direction, October 28, 2026: every agent reads the latest instructions and decisions and always works toward the goal. `build`, `continue`, `resume` and `next` mean continuation, not starting an old plan again.
 
+## Latest owner order: FIFO
+
+October 31 at 11:53-11:54 IST: "No go by priority queue only", then "FIFO always". Oldest queued work comes first, including unfinished acceptance, not whichever new feature or reasoning task a coordinator prefers. Fill session capacity only within that order and the existing roles, holds, ownership and review/CI gates. Inspect the current queue before dispatch; do not mistake an old done row for unfinished work or a merged implementation for completed acceptance. If the picker proposes a conflicting order, bring the exact task/stage evidence to Instinct before the affected dispatch, without taking over an owned lane or changing the queue silently. Preserve already-started work when correcting an out-of-order handoff.
+
+Sources: `phonemsg-01M68A1QZGARZGJNSVWG9NEBZY`, `phonemsg-01M68A28FYPYGJSQ7X9FBV64JS`. This instruction does not itself implement FIFO in the picker, release a held action or prove session receipt. The earlier institute feature direction remains authorized but is not an automatic priority override.
+
 ## Before claiming or changing a task
 1. Fetch current `origin/main`. Record its SHA. Read current `docs/BRIEF.md`, `AGENTS.md`, `docs/DECISIONS.md` and the task's current packet, not just the checkout's old copies. Do not reset a shared worktree or discard anyone's work. Reconcile your branch with current main through the normal merge process.
 2. Read the previous session's **repo-only outcome**: its packet status, branch/commit, PR and review/test results. Follow actual artifact links and inspect the content. A chat title, remembered summary or instruction to "read the last chat" is not evidence of a read. Never publish raw private chat/session logs or private sources. If there was no prior session, record that with the current task state; do not invent a handoff.

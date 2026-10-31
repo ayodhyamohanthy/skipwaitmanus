@@ -1,5 +1,10 @@
 # SkipWait decision register (single source of truth)
 
+## Owner direction - FIFO queue order (October 31, 2026, 11:54 IST)
+
+At 11:53 IST the owner instructed "No go by priority queue only", then at 11:54 IST clarified "FIFO always". Oldest queued work first, not opportunistic coordinator selection or an automatic new-feature jump. Keep both Claude seats and other sessions productive within that order, existing role eligibility, ownership and holds. Inspect actual unfinished acceptance; report a picker/order conflict through Instinct before the affected dispatch, without silently overriding gates or taking another holder's work. Preserve already-started work during a routing correction. No product, spending, production, migration, settings, ownership, review or CI change is granted. Sources: `phonemsg-01M68A1QZGARZGJNSVWG9NEBZY`, `phonemsg-01M68A28FYPYGJSQ7X9FBV64JS`. See `AGENTS.md` and `docs/BUILD_CONTINUITY.md`. This dated source record is not a numbered-register collision or a claim of picker enforcement/session acknowledgment.
+
+
 Every owner decision lives here. Any doc, code, copy, test or config that disagrees with an **active** entry is wrong and must be fixed (or the doc marked "Superseded by D-xxx"). Read this with `AGENTS.md` section 0 and `docs/KIT_V4_BUILD_PLAN.md`.
 
 ## How decisions are made (binding, owner Oct 14 2026)
