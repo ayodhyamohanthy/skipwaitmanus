@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { REFERRED_DEADLINE_ENABLED } from "@shared/referral";
 import { DECLINED_LINE, WITHDRAW_CONFIRM_AWAITING, WITHDRAW_CONFIRM_VISIBLE, seekerTerminalLine, withdrawConfirmLine } from "@shared/conversationCopy";
 import ReferralConversation from "./ReferralConversation";
+import { GOAL_PAGE as CONVERSATION_GOAL } from "./conversation/ReferrerConversation";
+import { assertGoalPage } from "@/test/goalPageContract";
 
 const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralConversation /></QueryClientProvider>);
 
@@ -16,7 +18,22 @@ const { authState, userState, go } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/_core/auth", () => ({ useAuth: () => authState, useUser: () => userState, SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
-vi.mock("@/lib/trpc", () => ({ trpc: { profile: { mine: { useQuery: () => ({ data: undefined }) } } } }));
+// The signed-in account (auth.me): the referrer goal page compares its id with
+// the ask's referrerId so a colleague's pending ask never offers Accept (#831 F1).
+const { meState } = vi.hoisted(() => ({ meState: { data: { id: 9 } as { id: number } | undefined } }));
+vi.mock("@/lib/trpc", () => ({ trpc: { profile: { mine: { useQuery: () => ({ data: undefined }) } }, auth: { me: { useQuery: () => meState } } } }));
+// D-048-p3-conversation: the referrer branch moves to the goal page behind
+// goalSurfaceOn("conversation"). Off by default here, exactly like vitest's
+// real flag module (no VITE_GOAL_SURFACES), so every kit case below is unchanged.
+const { surfaces, referrerAccessOverride } = vi.hoisted(() => ({
+  surfaces: { on: new Set<string>() },
+  referrerAccessOverride: { value: null as null | { status: "verified"; access: { verified: true; domain: string; companyName: string | null; companyInitials: string | null } } },
+}));
+vi.mock("@/lib/goalSurfaces", async importOriginal => ({ ...(await importOriginal<typeof import("@/lib/goalSurfaces")>()), goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
+vi.mock("@/hooks/useReferrerAccess", async importOriginal => {
+  const actual = await importOriginal<typeof import("@/hooks/useReferrerAccess")>();
+  return { ...actual, useReferrerAccess: () => referrerAccessOverride.value ?? actual.useReferrerAccess() };
+});
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/conversation/601", go],
@@ -24,9 +41,12 @@ vi.mock("wouter", () => ({
 }));
 
 beforeEach(() => {
+  surfaces.on.clear();
+  referrerAccessOverride.value = null;
   authState.isSignedIn = true;
   authState.getToken = vi.fn().mockResolvedValue("test-token");
   go.mockReset();
+  meState.data = { id: 9 };
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -456,5 +476,262 @@ describe("ReferralConversation thread", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("We could not send this private message")).toBeTruthy();
     expect((screen.getByLabelText("Message") as HTMLInputElement).value).toBe("Hello");
+  });
+});
+
+// D-048-p3-conversation (packet docs/plans/D-048-referrer.md §4-§5): the
+// referrer's side of /conversation/:requestId on the goal system, behind
+// goalSurfaceOn("conversation"). Seeker cases above are untouched.
+describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () => {
+  const goalOn = () => { surfaces.on.add("conversation"); };
+  const pendingFetch = (extra?: (url: string, init?: RequestInit) => unknown) => vi.fn(async (url: string, init?: RequestInit) => {
+    const hit = extra?.(String(url), init);
+    if (hit) return hit;
+    if (String(url).endsWith("/mine")) return ok({ requests: [] });
+    if (String(url).endsWith("/preview")) return ok({ request: referrerPreview });
+    return fail(404, "gone");
+  });
+  const acceptedFetch = (status: string, extra?: (url: string, init?: RequestInit) => unknown) => vi.fn(async (url: string, init?: RequestInit) => {
+    const hit = extra?.(String(url), init);
+    if (hit) return hit;
+    if (String(url).endsWith("/mine")) return ok({ requests: [] });
+    if (String(url).endsWith("/preview")) return fail(404, "claimed");
+    if (String(url).endsWith("/conversation")) return ok({ messages: [{ id: 1, body: "Thanks for accepting.", createdAt: "Wed 2026-08-19 2:30 PM IST (UTC+05:30)", isMine: false }], referenceId: null });
+    return ok({ request: { ...referrerPreview, status, referrerId: 9, candidateName: "Asha R.", attachments: [{ id: 31, fileName: "Asha_R_Resume.pdf", url: "/api/documents/31" }] } });
+  });
+
+  it("keeps the kit referrer page while the conversation flag is off (flag-off parity)", async () => {
+    stubFetch(pendingFetch());
+    renderPage();
+    expect(await screen.findByText("Would you refer this person?")).toBeTruthy();
+    expect(screen.queryByTestId("goal-referrer-conversation")).toBeNull();
+  });
+
+  it("renders the pending ask as a goal page: one next step, one black Accept, identity, resume and composer hidden (D-019)", async () => {
+    goalOn();
+    stubFetch(pendingFetch());
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    expect(within(page).getByRole("heading", { level: 1, name: "Would you refer this person?" })).toBeTruthy();
+    // D-167 (3): the moved-page contract itself, not just its parts.
+    assertGoalPage(page, CONVERSATION_GOAL);
+    expect(within(page).getByText(/Product Designer/)).toBeTruthy();
+    expect(within(page).getByRole("heading", { name: "Your next step" })).toBeTruthy();
+    expect(page.querySelectorAll("[data-g-primary]")).toHaveLength(1);
+    expect(within(page).getByRole("button", { name: /Accept & connect/ }).hasAttribute("data-g-primary")).toBe(true);
+    expect(within(page).getByText("Seeker · identity hidden")).toBeTruthy();
+    expect(within(page).getByText(/I have led two end-to-end redesigns/)).toBeTruthy();
+    expect(within(page).getByText("Resume and profile shared after acceptance")).toBeTruthy();
+    expect(screen.queryByText(/Asha R\./)).toBeNull();
+    expect(screen.queryByLabelText("Message")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Resume/ })).toBeNull();
+  });
+
+  it("accepts only after the official-process attestation, through one-click review", async () => {
+    goalOn();
+    const fetchMock = pendingFetch(url => (url.includes("/one-click-review") ? ok({ status: "approved", companyDomain: "acme.com" }) : undefined));
+    stubFetch(fetchMock);
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Accept & connect/ }));
+    const group = await screen.findByRole("group", { name: "Accept this request" });
+    expect(within(group).getByText(/both see names, and you.ll get the resume/)).toBeTruthy();
+    const accept = within(group).getByRole("button", { name: /^Accept/ });
+    expect(accept.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(accept);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/one-click-review"))).toBe(false);
+    fireEvent.click(within(group).getByLabelText(/refer only through .+ official process/i));
+    fireEvent.click(within(group).getByRole("button", { name: /^Accept/ }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/company-referrals/601/one-click-review",
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "approved", ethicsConfirmed: true }) }),
+    ));
+  });
+
+  it("renders a server refusal of the accept in plain words and keeps the confirm open", async () => {
+    goalOn();
+    stubFetch(pendingFetch(url => (url.includes("/one-click-review") ? fail(409, "Another verified employee already accepted this request") : undefined)));
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Accept & connect/ }));
+    const group = await screen.findByRole("group", { name: "Accept this request" });
+    fireEvent.click(within(group).getByLabelText(/official process/i));
+    fireEvent.click(within(group).getByRole("button", { name: /^Accept/ }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Another verified employee already accepted this request");
+    expect(screen.getByRole("group", { name: "Accept this request" })).toBeTruthy();
+  });
+
+  it("passes privately with an actively picked reason and says the identity stayed hidden (D-052)", async () => {
+    goalOn();
+    const fetchMock = pendingFetch(url => (url.includes("/one-click-review") ? ok({ status: "passed", companyDomain: "acme.com" }) : undefined));
+    stubFetch(fetchMock);
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Pass privately/ }));
+    const reasons = await screen.findAllByRole("radio");
+    expect(reasons).toHaveLength(7);
+    expect(reasons.filter(radio => radio.getAttribute("aria-checked") === "true")).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: /^Pass$/ }));
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/one-click-review"))).toBe(false);
+    fireEvent.click(screen.getByRole("radio", { name: /At capacity right now/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Pass$/ }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/company-referrals/601/one-click-review",
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "declined", declineReason: "timing", passReason: "at_capacity" }) }),
+    ));
+    expect(await screen.findByText(/You passed privately/)).toBeTruthy();
+    expect(screen.getByText(/Your identity was never revealed/)).toBeTruthy();
+  });
+
+  it("opens names, resume and messages only after acceptance, and marks Referred with the optional reference", async () => {
+    goalOn();
+    const bodies: unknown[] = [];
+    stubFetch(acceptedFetch("approved", (url, init) => {
+      if (url.endsWith("/progress")) { bodies.push(JSON.parse(String(init?.body))); return ok({ progress: { status: "intro_made", changed: true } }); }
+      return undefined;
+    }));
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    expect(within(page).getAllByText("Asha R.").length).toBeGreaterThan(0);
+    expect(within(page).getByRole("link", { name: /Asha_R_Resume\.pdf/ }).getAttribute("href")).toBe("/api/documents/31");
+    expect(await within(page).findByText("Thanks for accepting.")).toBeTruthy();
+    expect(within(page).getByLabelText("Message")).toBeTruthy();
+    expect(page.querySelectorAll("[data-g-primary]")).toHaveLength(1);
+    fireEvent.click(within(page).getByRole("button", { name: /Mark as referred/ }));
+    const group = await screen.findByRole("group", { name: "Mark as referred" });
+    fireEvent.change(within(group).getByLabelText(/Reference ID/), { target: { value: " TC-4410 " } });
+    fireEvent.click(within(group).getByRole("button", { name: /Confirm/ }));
+    await waitFor(() => expect(bodies).toEqual([{ status: "intro_made", referenceId: "TC-4410" }]));
+  });
+
+  it("sends a message as the accepted referrer and keeps the draft when the server refuses", async () => {
+    goalOn();
+    stubFetch(acceptedFetch("approved", (url, init) => (init?.method === "POST" && url.endsWith("/conversation") ? fail(403, "We could not send this private message") : undefined)));
+    renderPage();
+    const composer = await screen.findByLabelText("Message");
+    fireEvent.change(composer, { target: { value: "Submitted today." } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("We could not send this private message")).toBeTruthy();
+    expect((screen.getByLabelText("Message") as HTMLInputElement).value).toBe("Submitted today.");
+  });
+
+  it("states the referred outcome without promising a hire", async () => {
+    goalOn();
+    stubFetch(acceptedFetch("intro_made"));
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    expect(within(page).getByText(/Companies decide hiring/)).toBeTruthy();
+    expect(within(page).queryByRole("button", { name: /Mark as referred/ })).toBeNull();
+  });
+
+  it("keeps a claimed but not yet accepted ask anonymous with no composer", async () => {
+    goalOn();
+    stubFetch(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "claimed");
+      return ok({ request: { id: 601, title: "Product Designer", targetRoleUrl: null, companyDomain: "acme.com", status: "pending", referrerId: 9, candidateName: "Asha R.", candidateMessage: "Note.", attachments: [{ mimeType: "application/pdf", fileSize: 10, availability: "after_claim" }] } });
+    });
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    expect(within(page).getByText("Seeker · identity hidden")).toBeTruthy();
+    expect(screen.queryByText(/Asha R\./)).toBeNull();
+    expect(screen.queryByLabelText("Message")).toBeNull();
+  });
+
+  it("says the referrer is offline instead of failing silently", async () => {
+    goalOn();
+    stubFetch(pendingFetch());
+    renderPage();
+    await screen.findByTestId("goal-referrer-conversation");
+    const onLine = vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+    onTestFinished(() => onLine.mockRestore());
+    fireEvent(window, new Event("offline"));
+    expect(await screen.findByText(/You.re offline\. Your decision and messages can send/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Accept & connect/ }).getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("shows a verified referrer no credits pill and no seeker money copy, only the never-paid line (D-055)", async () => {
+    goalOn();
+    referrerAccessOverride.value = { status: "verified", access: { verified: true, domain: "acme.com", companyName: "Acme", companyInitials: "A" } };
+    stubFetch(pendingFetch());
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    expect(screen.queryByTestId("goal-credits-pill")).toBeNull();
+    expect(within(page).queryByText(/credit/i)).toBeNull();
+    expect(within(page).getByText(/Referrers are never paid and never ask you for money\./)).toBeTruthy();
+  });
+  // #831 review findings (Cline · 4255 on 0da0c28).
+  it("never offers Accept on a pending ask a colleague holds; says it is with a colleague (#831 F1)", async () => {
+    goalOn();
+    meState.data = { id: 9 };
+    stubFetch(vi.fn(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "not available");
+      return ok({ request: { ...referrerPreview, status: "pending", referrerId: 44, candidateName: null, attachments: [] } });
+    }));
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    expect(within(page).getByRole("heading", { level: 1, name: "A colleague has this request." })).toBeTruthy();
+    expect(within(page).queryByRole("button", { name: /Accept & connect/ })).toBeNull();
+    expect(within(page).queryByRole("button", { name: /Pass privately/ })).toBeNull();
+    // The back link and the next step's own "All requests" commit.
+    expect(within(page).getAllByRole("link", { name: "All requests" })).toHaveLength(2);
+    expect(screen.queryByText(/Asha R\./)).toBeNull();
+  });
+
+  it("offers no decision until the signed-in account is known when the ask names a referrer (#831 F1)", async () => {
+    goalOn();
+    meState.data = undefined;
+    stubFetch(vi.fn(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "not available");
+      return ok({ request: { ...referrerPreview, status: "pending", referrerId: 9, candidateName: null, attachments: [] } });
+    }));
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    await waitFor(() => expect(within(page).getByText(/Product Designer/)).toBeTruthy());
+    expect(within(page).queryByRole("button", { name: /Accept & connect/ })).toBeNull();
+  });
+
+  it("shows the server decision-due time on a pending ask assigned to this referrer, even when the preview answers first (#831 F2)", async () => {
+    goalOn();
+    const due = "2026-11-03T09:00:00.000Z";
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return ok({ request: referrerPreview });
+      if (url.endsWith("/api/company-referrals/601")) return ok({ request: { ...referrerPreview, status: "pending", referrerId: 9, candidateName: null, attachments: [], decisionDueAt: due } });
+      return fail(404, "gone");
+    });
+    stubFetch(fetchMock);
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    expect(await within(page).findByText(/^Accept or pass by /)).toBeTruthy();
+    expect(within(page).getByRole("button", { name: /Accept & connect/ })).toBeTruthy();
+    expect(screen.queryByText(/Asha R\./)).toBeNull();
+  });
+
+  it("keeps the preview's pending card when no assignment exists (claimed detail 404s) (#831 F2)", async () => {
+    goalOn();
+    stubFetch(pendingFetch());
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    expect(await within(page).findByRole("button", { name: /Accept & connect/ })).toBeTruthy();
+    expect(within(page).queryByText(/^Accept or pass by /)).toBeNull();
+  });
+
+  it("opens the pass reasons as a bottom sheet on a phone, so the header and the ask stay unclipped (#831 F3)", async () => {
+    goalOn();
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("max-width"), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false }));
+    const fetchMock = pendingFetch(url => (url.includes("/one-click-review") ? ok({ status: "passed", companyDomain: "acme.com" }) : undefined));
+    stubFetch(fetchMock);
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Pass privately/ }));
+    const sheet = await screen.findByTestId("goal-sheet");
+    expect(screen.queryByTestId("goal-pass-reasons")).toBeNull();
+    const reasons = within(sheet).getAllByRole("radio");
+    expect(reasons).toHaveLength(7);
+    expect(reasons.filter(radio => radio.getAttribute("aria-checked") === "true")).toHaveLength(0);
+    const pass = within(sheet).getByRole("button", { name: /^Pass$/ });
+    expect(pass.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(reasons[3]!);
+    fireEvent.click(within(sheet).getByRole("button", { name: /^Pass$/ }));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => String(url).includes("/one-click-review") && String((init as RequestInit | undefined)?.body).includes("declined"))).toBe(true));
   });
 });
