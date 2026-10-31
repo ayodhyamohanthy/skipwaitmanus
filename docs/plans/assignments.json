@@ -2405,7 +2405,7 @@
       "tier": 1,
       "lane": "d048-settings",
       "branch": "agent/queue/d048-p3-settings",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-247",
       "dependsOn": [
         "D-048-F-harness",
