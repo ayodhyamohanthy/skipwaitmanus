@@ -1,21 +1,58 @@
 import * as Sentry from "@sentry/node";
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { scrubTelemetryUrl } from "../shared/telemetryScrub";
 import { isServerSentryActive } from "./sentry";
 
 // D-100.csp-report: the report-only CSP (server/securityHeaders.ts) posts its
 // violations here. globalSecurityHeaders answers this route before any body
 // parser, so the handler reads its own raw body, capped at 8 KB. It keeps only
-// the effective directive, the blocked host and a scrubbed page path (FND-4's
-// shared scrubber drops query, fragment and token segments), counts each
-// (directive, blocked host) pair, and sends one scrubbed message per pair per
-// UTC day. Nothing else is stored, no cookie is set and no session is needed.
+// the effective directive, the blocked host and a page-path label, counts each
+// (directive, blocked host) pair, and sends one message per pair per UTC day.
+// Nothing else is stored, no cookie is set and no session is needed.
+//
+// Every report field is client-supplied, and anyone can post one, so no part
+// of the reported page URL is echoed (Instinct's qualification on #883). The
+// page-path label is one of three things: a fixed route template from
+// CSP_PAGE_ROUTE_TEMPLATES (the production routes of client/src/App.tsx; a
+// test keeps the two in step), `/api/*` for any API path, or `/:unknown` for
+// anything else: an unlisted path, a suffix after a template, a missing or
+// unparseable URL. Query, fragment, origin and every path segment are dropped;
+// only the template's own fixed text and placeholders are logged. Referrer,
+// source file, sample and policy fields are never read. FND-4's shared
+// scrubber is not used here: it keeps unknown paths as they are, which is
+// right for our own routes but not for arbitrary reported URLs.
 
 export const CSP_REPORT_PATH = "/api/csp-report";
 export const CSP_REPORT_MAX_BYTES = 8 * 1024;
 const DEFAULT_MAX_PAIRS_PER_DAY = 200;
-const SCRUB_ORIGIN = "https://skipwait.me";
+const PARSE_ORIGIN = "https://skipwait.me";
+const UNKNOWN_PATH = "/:unknown";
+const API_PATH = "/api/*";
+
+/** The production page routes of client/src/App.tsx, token parameters named `:token`. */
+export const CSP_PAGE_ROUTE_TEMPLATES: readonly string[] = [
+  "/", "/fast/:token", "/refer/:companySlug/:token", "/share-card/:token", "/email-review/:token", "/start",
+  "/request", "/requests", "/verify", "/ask", "/explore", "/explore/:slug", "/alerts", "/notifications",
+  "/onboarding", "/profile", "/work", "/p/:handle", "/referrer-home", "/invite", "/referrer-setup",
+  "/safety", "/help", "/landed", "/sign-in", "/reviewer-sign-in", "/report", "/suggest-company",
+  "/company/claim", "/company/dashboard/:slug", "/for-companies", "/admin-review", "/app-states", "/emails",
+  "/developers", "/assistants", "/skippy", "/agents", "/approve", "/connect-assistant", "/developer-console",
+  "/forgot-password", "/reset-password", "/wallet", "/thread", "/thread/:requestId",
+  "/conversation/:requestId", "/messages", "/share", "/inbox", "/queue", "/settings", "/referrer",
+  "/referrer/impact", "/premium", "/plans", "/billing", "/privacy", "/terms", "/refunds", "/shipping",
+  "/cancellations", "/about", "/contact", "/pricing", "/support", "/guidelines", "/job-referral-platforms",
+  "/choosing-a-job-referral-platform", "/how-employees-refer-candidates", "/offline", "/wall", "/jobs",
+  "/employer", "/employer/talent", "/employer/billing", "/employer/opportunities", "/admin",
+  "/admin/partners", "/post-opportunity", "/admin/activity", "/admin/approvals",
+  "/admin/approvals/:kind/:id", "/admin/payments", "/admin/catalog-sync", "/admin/privacy-requests",
+  "/admin/flow-health", "/admin/token-recovery", "/admin/users", "/admin/schema", "/admin/smoke",
+  "/admin/money-check", "/admin/skippie",
+];
+
+const TEMPLATE_SEGMENTS = CSP_PAGE_ROUTE_TEMPLATES.map(template => ({
+  template,
+  segments: template.split("/").filter(Boolean).map(segment => segment.toLowerCase()),
+}));
 const CONTENT_TYPES = new Set(["application/csp-report", "application/reports+json"]);
 
 export type CspViolation = { directive: string; blockedHost: string; documentPath: string };
@@ -62,11 +99,32 @@ function blockedLabel(value: string | undefined): string {
   }
 }
 
+// The page as a route template, `/api/*` or `/:unknown`; never reported text.
+function pagePathLabel(value: string | undefined): string {
+  const raw = (value ?? "").trim();
+  if (raw === "") return UNKNOWN_PATH;
+  let pathname: string;
+  try {
+    const url = new URL(raw, PARSE_ORIGIN);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return UNKNOWN_PATH;
+    pathname = url.pathname;
+  } catch {
+    return UNKNOWN_PATH;
+  }
+  const segments = pathname.split("/").filter(Boolean).map(segment => segment.toLowerCase());
+  if (segments[0] === "api") return API_PATH;
+  for (const { template, segments: fixed } of TEMPLATE_SEGMENTS) {
+    if (fixed.length !== segments.length) continue;
+    if (fixed.every((part, index) => part.startsWith(":") || part === segments[index])) return template;
+  }
+  return UNKNOWN_PATH;
+}
+
 function violation(document: string | undefined, blocked: string | undefined, directive: string | undefined): CspViolation {
   return {
     directive: directiveLabel(directive),
     blockedHost: blockedLabel(blocked),
-    documentPath: document ? scrubTelemetryUrl(document, SCRUB_ORIGIN) : "/",
+    documentPath: pagePathLabel(document),
   };
 }
 
