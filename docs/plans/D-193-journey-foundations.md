@@ -245,7 +245,7 @@ The D-189 packet also rules the pre-send per-company state against D-176 and add
 
 ## Status
 
-D-174-fix-post-binding: in progress — Antigravity · 5a06 — 2026-11-01 — branch `agent/queue/d174-fix-post-binding`
+D-174-fix-post-binding: review — agent/queue/d174-fix-post-binding — 2a6f7f43 (PR draft ready for independent review)
 
 D-174-sample-job-removal: done — PR #688 (unblocked by D-210)
 
