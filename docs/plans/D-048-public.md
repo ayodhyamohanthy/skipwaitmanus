@@ -74,3 +74,5 @@ None. The split marks these pages as needing no owner call; legal words stay unt
 `D-048-P-public`: landed by the coordinator — 2026-10-23 — landing branch `agent/instinct/d048-p-public-packet`. Canonical candidate; the empty claim marker branch `agent/architect/d048-p-public` (Claude Code · e11c) is preserved and the overlap is announced in the PR.
 
 `D-048-p3-system`: done — ca6f334b — built by Claude · ae3f, landed by Hark · 4234 (gate re-run on the main merge: check, token audit, migrations lint, deploy triggers, vitest 562 files, build) — 2026-10-30 — branch agent/queue/d048-p3-system
+
+`D-048-p3-policy`: done — 31c2cb08 — built by Hark · 2a96, Tier 2 (no separate review, AGENTS rule 5), landed by Claude Opus 5.5 (Eggplant) · 1f1e (main 68e87751 merged; gate re-run: check, token audit, migrations lint, deploy triggers, scope-check, build, vitest; exact-head CI green incl. e2e journeys) — 2026-10-31 — branch agent/queue/d048-p3-policy, PR #832. Flag `policy` stays off (not in `RELEASED`).
