@@ -2669,7 +2669,7 @@
       "tier": 1,
       "lane": "d048-dev",
       "branch": "agent/queue/d048-p3-dev",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
