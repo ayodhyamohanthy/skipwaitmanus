@@ -3629,7 +3629,7 @@
       "tier": 3,
       "lane": "security-audit-admin",
       "branch": "agent/queue/d100-authz-admin-money",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
