@@ -2969,7 +2969,7 @@
       "lane": "d048-discovery",
       "branch": "agent/queue/d048-p3-discovery",
       "status": "todo",
-      "syncedTo": "D-241",
+      "syncedTo": "D-261",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-marketing",
