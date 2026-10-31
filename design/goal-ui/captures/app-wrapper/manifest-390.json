@@ -1,6 +1,6 @@
 {
   "task": "D-048-F-app-wrapper",
-  "source": "65a4d7df6f6d995850b29f16c22b17b763f596f6",
+  "source": "c56febbbc34218522c46813cc2be2fe6594b2afe",
   "command": "node design/goal-ui/captures/app-wrapper/capture.mjs 390",
   "server": "VITE_GOAL_SURFACES=start, NODE_ENV=development, no database, API mocked",
   "synthetic": true,
@@ -26,8 +26,7 @@
         "screen": null
       },
       "errors": [
-        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
       ]
     },
     {
@@ -47,22 +46,23 @@
           "kind": "notice",
           "box": {
             "x": 0,
-            "y": 0,
+            "y": 740,
             "w": 390,
-            "h": 37
+            "h": 36
           },
-          "color": "rgb(82, 82, 91)",
-          "background": "rgb(250, 250, 250)"
+          "color": "oklch(0.191 0 0)",
+          "background": "rgba(0, 0, 0, 0)"
         },
-        "overlaps": [],
+        "overlaps": [
+          "[role=\"dialog\"][aria-label=\"Cookie choices\"]"
+        ],
         "statusCount": 1,
         "toasters": 1,
         "h1": 1,
         "screen": null
       },
       "errors": [
-        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
       ]
     },
     {
@@ -82,22 +82,23 @@
           "kind": "notice",
           "box": {
             "x": 0,
-            "y": 0,
+            "y": 720,
             "w": 390,
-            "h": 57
+            "h": 56
           },
-          "color": "rgb(82, 82, 91)",
-          "background": "rgb(250, 250, 250)"
+          "color": "oklch(0.191 0 0)",
+          "background": "rgba(0, 0, 0, 0)"
         },
-        "overlaps": [],
+        "overlaps": [
+          "[role=\"dialog\"][aria-label=\"Cookie choices\"]"
+        ],
         "statusCount": 1,
         "toasters": 1,
         "h1": 1,
         "screen": null
       },
       "errors": [
-        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
       ]
     },
     {
@@ -123,8 +124,7 @@
         "screen": null
       },
       "errors": [
-        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
       ]
     },
     {
@@ -159,7 +159,6 @@
       },
       "errors": [
         "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "%o\n\n%s\n\n%s\n Error: synthetic route failure\n    at window.matchMedia (<anonymous>:9:92)\n    at reducedMotion (http://localhost:3017/src/pages/GoalLanding.tsx:26:60)\n    at http://localhost:3017/src/pag"
       ]
     },
@@ -195,8 +194,7 @@
       },
       "errors": [
         "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "%o\n\n%s\n\n%s\n Error: synthetic app-wide failure\n    at Navigator.get [as connection] (<anonymous>:5:136)\n    at connection (http://localhost:3017/src/components/PwaStatus.tsx:24:80)\n    at http://localh",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+        "%o\n\n%s\n\n%s\n Error: synthetic app-wide failure\n    at Navigator.get [as connection] (<anonymous>:5:136)\n    at connection (http://localhost:3017/src/components/PwaStatus.tsx?t=1793416718028:24:80)\n    "
       ]
     },
     {
@@ -230,8 +228,7 @@
         "screen": null
       },
       "errors": [
-        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
       ]
     },
     {
@@ -255,8 +252,7 @@
         "screen": "onboarding"
       },
       "errors": [
-        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
       ]
     },
     {
@@ -276,12 +272,12 @@
           "kind": "notice",
           "box": {
             "x": 0,
-            "y": 0,
+            "y": 740,
             "w": 390,
-            "h": 37
+            "h": 36
           },
-          "color": "rgb(82, 82, 91)",
-          "background": "rgb(250, 250, 250)"
+          "color": "oklch(0.191 0 0)",
+          "background": "rgba(0, 0, 0, 0)"
         },
         "overlaps": [],
         "statusCount": 1,
@@ -290,8 +286,7 @@
         "screen": "onboarding"
       },
       "errors": [
-        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
       ]
     },
     {
@@ -311,12 +306,12 @@
           "kind": "notice",
           "box": {
             "x": 0,
-            "y": 0,
+            "y": 720,
             "w": 390,
-            "h": 57
+            "h": 56
           },
-          "color": "rgb(82, 82, 91)",
-          "background": "rgb(250, 250, 250)"
+          "color": "oklch(0.191 0 0)",
+          "background": "rgba(0, 0, 0, 0)"
         },
         "overlaps": [],
         "statusCount": 1,
@@ -325,8 +320,7 @@
         "screen": "onboarding"
       },
       "errors": [
-        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
       ]
     },
     {
@@ -352,8 +346,7 @@
         "screen": "onboarding"
       },
       "errors": [
-        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
       ]
     },
     {
@@ -388,7 +381,6 @@
       },
       "errors": [
         "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: net::ERR_FAILED",
         "%o\n\n%s\n\n%s\n TypeError: Failed to fetch dynamically imported module: http://localhost:3017/src/pages/Onboarding.tsx The above error occurred in one of your React components. React will try to recreate "
       ]
@@ -425,8 +417,7 @@
       },
       "errors": [
         "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "%o\n\n%s\n\n%s\n Error: synthetic app-wide failure\n    at Navigator.get [as connection] (<anonymous>:5:136)\n    at connection (http://localhost:3017/src/components/PwaStatus.tsx:24:80)\n    at http://localh",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+        "%o\n\n%s\n\n%s\n Error: synthetic app-wide failure\n    at Navigator.get [as connection] (<anonymous>:5:136)\n    at connection (http://localhost:3017/src/components/PwaStatus.tsx?t=1793416718028:24:80)\n    "
       ]
     },
     {
@@ -460,8 +451,7 @@
         "screen": "onboarding"
       },
       "errors": [
-        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
       ]
     }
   ]
