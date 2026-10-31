@@ -117,15 +117,11 @@
       "lane": "deploy",
       "branch": "agent/queue/p1-release-gate-strict-compare",
       "status": "in-review",
-      "syncedTo": "D-227",
+      "syncedTo": "D-248",
       "dependsOn": [
         "P1-deploy-green-gate"
       ],
-      "owns": [
-        "scripts/require-green-release.mjs",
-        "scripts/requireGreenRelease.test.ts"
-      ],
-      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 acceptance (observe a subsequent normal gated release and its identities) is still pending, so the row is not done. No live rollback/DB/settings tests."
+      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 acceptance (observe a subsequent normal gated release and its identities) is still pending, so the row is not done. No live rollback/DB/settings tests. D-248 (Oct 30): the row releases its two-file reservation (owns removed) because its code is on main (fecf0d3b is an ancestor of origin/main) and only the item 5 observation remains, so it must not hold scripts/require-green-release.mjs and scripts/requireGreenRelease.test.ts against REL-rollback-skew (filesBusy, scripts/nextTaskCore.mjs:552). The row stays in-review until item 5 is recorded; if item 5 needs code, re-declare owns in a docs-only pull request (D-200 (2))."
     },
     {
       "id": "CI-architect-real-checks",
@@ -802,7 +798,7 @@
       "tier": 2,
       "lane": "e2e",
       "branch": "agent/queue/gate-e2e-journeys",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-239",
       "dependsOn": [
         "CI-architect-real-checks"
@@ -873,7 +869,7 @@
       "lane": "deploy-workflows",
       "branch": "agent/queue/rel-rollback-skew",
       "status": "todo",
-      "syncedTo": "D-222",
+      "syncedTo": "D-248",
       "dependsOn": [
         "REL-release-verify"
       ],
@@ -882,8 +878,10 @@
         ".github/workflows/deploy-pages.yml",
         ".github/workflows/rollback.yml",
         "scripts/rollbackTarget.mjs",
-        "scripts/rollbackTarget.test.ts"
-      ]
+        "scripts/rollbackTarget.test.ts",
+        "scripts/requireGreenRelease.test.ts"
+      ],
+      "note": "D-212 packet docs/plans/REL-production-watch.md; item 1 built by Hark · 44b1 on agent/queue/rel-rollback-skew (PR #876, draft, head 9a2d193f) and stands. D-248: the item 2 block clears by adding scripts/requireGreenRelease.test.ts to owns, because the three #751 pins at :542 (options are exactly `- api`), :551 (jobs are exactly [recovery-gate, recover-api]) and :569 (exactly three GITHUB_TOKEN steps) describe this row's own file rollback.yml but live in a test file another row owns. Those pins are extended to the api/all/web option set, the rollback-web job and its token step, never loosened or deleted, and scripts/require-green-release.mjs is NOT widened: the web leg runs this row's scripts/rollbackTarget.mjs web-gate (already built, accepts web/all and reuses ciVerdict/releaseRuns by import), so a target: all dispatch reaches each leg's gate as its own system and TARGETS/contextProblem and the release path stay byte-identical. The phantom reservation is released instead of waited on: P1-release-gate-strict-compare's code is on main (fecf0d3b) and only its item 5 observation remains, so it drops its two-file owns and this row gains no dependsOn edge - waiting there would park a buildable row behind a row that may never read done. The web leg takes job-level concurrency group deploy-pages, keeping rollback.yml's workflow-level group deploy-api pin true. Build item 2 on the same branch, never a takeover; item 3 (production drill, both run links) and the status: \"done\" landing commit are still owed; a draft PR cannot be merged, so a LAND hand-out on #876 before item 2 is a red report, never a forced merge."
     },
     {
       "id": "REL-self-heal",
@@ -939,8 +937,8 @@
       "tier": 2,
       "lane": "process",
       "branch": "agent/queue/gate-tier-floor",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "done",
+      "syncedTo": "D-243",
       "dependsOn": [
         "PROCESS-review-gate"
       ],
@@ -2067,7 +2065,7 @@
       "lane": "d048-thread",
       "branch": "agent/queue/d048-p3-conversation",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-251",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2408,7 +2406,7 @@
       "lane": "d048-settings",
       "branch": "agent/queue/d048-p3-settings",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-247",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -3313,7 +3311,7 @@
       "status": "todo",
       "syncedTo": "D-246",
       "dependsOn": [],
-      "note": "D-245 (owner/CEO answer, Oct 30): the block (Hark · 450f, 1f344276) clears. A personal-login session reaches referrer actions only after an in-session work-email step-up (POST /api/referrer/step-up/send|verify) that writes a server-side proof bound to account, session key (workos:<sid> or app:<ssid>), exact work email and purpose (12 h, single-use challenge, void on logout, revocation, suspension and employer change); it never runs the standalone code login, never drops the Bearer, never accepts another account's cookie, never matches by domain or links accounts. Build from packet §0b (it wins over §0 to §8). D-246 (CEO sequencing, Oct 30): this row goes first. Its owns are the full §0b.8 list, including the four shared paths: server/privateReferralRoutes.ts (middleware, route list and /access verdict only), server/_core/index.ts (switch only: step-up route registration and the dev wrapper's two copied fields), drizzle/schema.ts and server/schemaReconcile.ts (the additive referrerStepUps table only). D-090-BYOR now waits for this row, and BYOR's chain (P0-referral-access-availability, D-132-item3, D-174-held-ask-reconfirm, D-174-ask-from-job, D-174-pool-nudges, D-099-bonus-pages, D-086-demand-list, DEPLOY-gate-docs-sync) waits through it. The handoff from BYOR is limited to those four files, for this build only; #632 keeps all its code, findings (b8552f96) and holds, and this build resolves any overlap with #632 in #632's favour where both can stand. Tier 1 independent review and the full browser path (§0b.9) before done. Every referrer types one code after deploy (D-049).",
+      "note": "D-245 (owner/CEO answer, Oct 30): the block (Hark · 450f, 1f344276) clears. A personal-login session reaches referrer actions only after an in-session work-email step-up (POST /api/referrer/step-up/send|verify) that writes a server-side proof bound to account, session key (workos:<sid> or app:<ssid>), exact work email and purpose (12 h, single-use challenge, void on logout, revocation, suspension and employer change); it never runs the standalone code login, never drops the Bearer, never accepts another account's cookie, never matches by domain or links accounts. Build from packet §0b (it wins over §0 to §8). D-246 (CEO sequencing, Oct 30): this row goes first. Its owns are the full §0b.8 list, including the four shared paths: server/privateReferralRoutes.ts (middleware, route list and /access verdict only), server/_core/index.ts (switch only: step-up route registration and the dev wrapper's two copied fields), drizzle/schema.ts and server/schemaReconcile.ts (the additive referrerStepUps table only). D-090-BYOR now waits for this row, and BYOR's chain (P0-referral-access-availability, D-132-item3, D-174-held-ask-reconfirm, D-174-ask-from-job, D-174-pool-nudges, D-099-bonus-pages, D-086-demand-list, DEPLOY-gate-docs-sync) waits through it. The handoff from BYOR is limited to those four files, for this build only; #632 keeps all its code, findings (b8552f96) and holds, and this build resolves any overlap with #632 in #632's favour where both can stand. Tier 1 independent review and the full browser path (§0b.9) before done. Every referrer types one code after deploy (D-049). Oct 31 owns amendment (docs/registry only, D-200 (2); Instinct's answer on #811, comment 6537600491, choice A, to packet conflict 8 raised on #867 head 83abf39a): owns gains exactly e2e/fixtures.ts and scripts/seed-test-accounts.ts, so the e2e journeys personal-link and queue-attestation, which the gate correctly refuses with the seeded plain test_seed session, are repaired by this row through the real local step-up send/verify path with delivery intercepted locally. test_seed stays a test identity (never relabelled as a work-email login, no amr minted for it, no production bypass); any direct test setup must be justified, isolated to the local harness and proven unable to change production authorization. Red-first controls and limits are in packet §0b.8a. GATE-e2e-journeys (done) keeps its history; the rest of e2e/ is not claimed. This amendment releases no hold: the #867 shared-file hold stays, and runtime edits to the two paths wait for this amendment's independent scope review and landing.",
       "owns": [
         "server/_core/sdk.ts",
         "server/_core/sdk*.test.ts",
@@ -3369,6 +3367,8 @@
         "drizzle/schema.ts",
         "server/schemaReconcile.ts",
         "server/schemaReconcile*.test.ts",
+        "e2e/fixtures.ts",
+        "scripts/seed-test-accounts.ts",
         "docs/plans/D-057-session-gate.md",
         "AGENTS.md",
         "docs/KIT_V4_BUILD_PLAN.md"
@@ -3382,7 +3382,7 @@
       "tier": 2,
       "lane": "observability",
       "branch": "agent/queue/fnd4-token-paths",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-163: no longer waits for seeker-passwords; shared/telemetryScrub.ts is new on main and #324 picks it up when it merges main. Scope per the packet's CEO addendum (§0): adds the vanity alias and /api/documents/by-key/:key; alerts drop the query."
@@ -4663,7 +4663,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-avoid-unblock",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-review-gate",
