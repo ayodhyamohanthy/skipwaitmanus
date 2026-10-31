@@ -317,6 +317,7 @@
 - A local `wrangler dev --test-scheduled` run against a stub that answers 1101 on `/api/*` shows exactly one dispatch request, made against a dry-run endpoint.
 
 ## REL-client-capture: a failed call in the browser is recorded (lane `observability-client`, Tier 1, after FIX-device-signin)
+**Status (D-256, Oct 31): parked at `owner`.** The product work is complete and every local gate passes (`pnpm check` 0, 6 focused files / 53 tests, scope-check clean on the 6 owned paths, `test-integrity` 0, `pnpm build` success; captures at 1280/390 byte-identical to `main`). The only red required job on head `f8b080b1` is the Tier 1 review gate — `Nobody has reviewed REL-client-capture yet` — and no session can be handed that review: the gate lives inside the required `typecheck` job, the picker hands REVIEW only when CI is not red, and every other stage makes the taker a builder barred by D-151 (D-254 defect). The branch's builder set is `Hark`, `Cline`, `Qoder` and `DeepSeek V4.1 Flash Free`. PR #851 stays draft; the row is released by the same answer the D-254 picker-row question awaits.
 **Why.**
 - **Query and mutation errors.** React Query and mutation errors reach only `console.error` (`client/src/main.tsx`).
 - **HTML instead of JSON.** Errors containing "Unexpected token '<'" are dropped even there. That is the API answering HTML, which is what an outage looks like.
