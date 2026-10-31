@@ -237,7 +237,10 @@ describe("page path privacy contract (route template, API bucket or unknown)", (
     expect(pagePathOf(documentUri)).toBe("/:unknown");
   });
 
-  it("names every production route in client/src/App.tsx, and nothing else", () => {
+  // A route another row adds later falls to `/:unknown` (privacy-safe) until it is
+  // listed here, so this checks the templates against App.tsx without blocking
+  // that row: every template is a real production route, and today all of them are.
+  function appRoutes(): Set<string> {
     const app = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
     const routes = new Set<string>();
     for (const line of app.split("\n")) {
@@ -245,9 +248,20 @@ describe("page path privacy contract (route template, API bucket or unknown)", (
       const match = line.match(/<Route path="([^"]+)"/);
       if (match?.[1]) routes.add(match[1].replace(/:[A-Za-z]+/g, ":param").toLowerCase());
     }
-    const templates = new Set(cspReport.CSP_PAGE_ROUTE_TEMPLATES.map(template => template.replace(/:[A-Za-z]+/g, ":param").toLowerCase()));
-    expect(routes.size).toBeGreaterThan(80);
-    expect([...templates].sort()).toEqual([...routes].sort());
+    return routes;
+  }
+  const normalized = (template: string) => template.replace(/:[A-Za-z]+/g, ":param").toLowerCase();
+
+  it("lists only production routes of client/src/App.tsx, each once", () => {
+    const routes = appRoutes();
+    const templates = cspReport.CSP_PAGE_ROUTE_TEMPLATES.map(normalized);
+    expect(new Set(templates).size).toBe(templates.length);
+    expect(templates.filter(template => !routes.has(template))).toEqual([]);
+  });
+
+  it("covers the 93 production routes App.tsx has at this row's head (DEV /components stays unknown)", () => {
+    expect(cspReport.CSP_PAGE_ROUTE_TEMPLATES).toHaveLength(93);
+    expect(cspReport.CSP_PAGE_ROUTE_TEMPLATES).not.toContain("/components");
   });
 });
 
