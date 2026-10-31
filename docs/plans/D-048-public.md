@@ -75,4 +75,4 @@ None. The split marks these pages as needing no owner call; legal words stay unt
 
 `D-048-p3-system`: done — ca6f334b — built by Claude · ae3f, landed by Hark · 4234 (gate re-run on the main merge: check, token audit, migrations lint, deploy triggers, vitest 562 files, build) — 2026-10-30 — branch agent/queue/d048-p3-system
 
-`D-048-p3-links`: review — agent/queue/d048-p3-links — 076ff70b — draft PR #835 — Hark · f5bb — 2026-10-30
+`D-048-p3-links`: done — b01436d5 — built by Hark · f5bb; long-domain repair and landing by Qoder · a555 (gate on the main merge: check, token audit, migrations lint, deploy triggers, vitest 582 files / 5,516 tests, one host-only classifyCiChange timeout green in isolation 54/54, build, flags-on build; captures 0 overflow on all 16) — 2026-10-31 — branch agent/queue/d048-p3-links
