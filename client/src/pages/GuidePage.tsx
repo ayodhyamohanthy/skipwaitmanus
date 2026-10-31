@@ -4,6 +4,8 @@ import { applySeo, faqJsonLd } from "@/lib/seo";
 import { Breadcrumbs } from "@/components/PolicyPageShell";
 import { publicRoute } from "@shared/publicRoutes";
 import { guideFor, relatedGuides } from "@/content/guides";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+import { GoalGuidePage } from "@/pages/goal/policy/GoalGuidePage";
 
 /**
  * One component behind all three guide routes.
@@ -28,6 +30,8 @@ export default function GuidePage() {
   }, [guide, route]);
 
   if (!guide || !route) return null;
+  // D-048-p3-policy: the guide routes belong to the `policy` goal surface.
+  if (goalSurfaceOn("policy")) return <GoalGuidePage guide={guide} route={route} />;
 
   return (
     <main data-skipwait-screen={guide.route} className="min-h-screen bg-white px-5 py-5 text-black sm:px-6 sm:py-8">

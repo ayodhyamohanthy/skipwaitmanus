@@ -1,0 +1,47 @@
+{
+  "signedIn": false,
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 3
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "timeZone": "Asia/Kolkata",
+          "dateFormat": "mdy"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "wait": 2500
+    }
+  ]
+}
