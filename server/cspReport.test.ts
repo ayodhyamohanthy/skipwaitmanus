@@ -1,13 +1,22 @@
+import { readFileSync } from "node:fs";
+import * as Sentry from "@sentry/node";
 import express from "express";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as cspReport from "./cspReport";
 import {
   CSP_REPORT_MAX_BYTES,
   createCspReportCounter,
   createCspReportHandler,
+  handleCspReport,
   parseCspReportBody,
   type CspReportEmit,
 } from "./cspReport";
+
+// The live handler's emitter is exercised with Sentry mocked, so the message
+// and tags it would send can be read without a DSN or any network.
+vi.mock("@sentry/node", () => ({ captureMessage: vi.fn() }));
+vi.mock("./sentry", () => ({ isServerSentryActive: () => true }));
 
 // D-100.csp-report: the report-only CSP posts violations here. The endpoint
 // reads its own raw body (it runs before every body parser), keeps only the
@@ -167,5 +176,141 @@ describe("createCspReportCounter", () => {
     expect(emitted.map(event => event.blockedHost)).toEqual(["a.example", "b.example", "*"]);
     expect(emitted[2]?.message).toBe("CSP report-only: daily limit of 2 distinct violations reached; further new pairs are not reported today");
     expect(counter.count("script-src-elem", "c.example")).toBe(0);
+  });
+});
+
+// Instinct's privacy qualification on #883: report fields are client-supplied,
+// so the page path that reaches a log line or Sentry is one of a fixed set of
+// route templates (client/src/App.tsx), an `/api/*` bucket, or `/:unknown`.
+// No segment of the reported path is ever echoed.
+const CANARY = "pvcanary7q";
+
+function pagePathOf(documentUri: string | undefined): string | undefined {
+  const report: Record<string, string> = { "blocked-uri": "inline", "effective-directive": "script-src" };
+  if (documentUri !== undefined) report["document-uri"] = documentUri;
+  return parseCspReportBody("application/csp-report", legacy(report))?.[0]?.documentPath;
+}
+
+describe("page path privacy contract (route template, API bucket or unknown)", () => {
+  it.each([
+    ["https://skipwait.me/explore/acme-corp", "/explore/:slug"],
+    [`https://skipwait.me/p/${CANARY}`, "/p/:handle"],
+    [`https://skipwait.me/refer/acme/${CANARY}`, "/refer/:companySlug/:token"],
+    [`https://skipwait.me/refer/${CANARY}/${SECRET}`, "/refer/:companySlug/:token"],
+    [`https://skipwait.me/admin/approvals/${CANARY}/123`, "/admin/approvals/:kind/:id"],
+    [`https://skipwait.me/conversation/${CANARY}`, "/conversation/:requestId"],
+    [`https://skipwait.me/thread/${CANARY}`, "/thread/:requestId"],
+    [`https://skipwait.me/company/dashboard/${CANARY}`, "/company/dashboard/:slug"],
+    [`https://skipwait.me/share-card/${CANARY}`, "/share-card/:token"],
+    [`https://skipwait.me/Explore/?q=${CANARY}#${CANARY}`, "/explore"],
+  ])("reduces a known route %s to its template", (documentUri, template) => {
+    expect(pagePathOf(documentUri)).toBe(template);
+  });
+
+  it.each([
+    `https://skipwait.me/unknown-route/${CANARY}?secret=x`,
+    `https://skipwait.me/${CANARY}`,
+    `https://skipwait.me/fast/${SECRET}/${CANARY}`,
+    `https://skipwait.me/email-review/${SECRET}/${CANARY}`,
+    `https://skipwait.me/explore/acme/${CANARY}`,
+    `https://skipwait.me/plans/${CANARY}`,
+    "https://skipwait.me/components",
+    `https://skipwait.me/%2e%2e/${CANARY}`,
+    `https://skipwait.me/explore%2F${CANARY}`,
+  ])("buckets an unknown path or a suffix after a template as /:unknown: %s", documentUri => {
+    expect(pagePathOf(documentUri)).toBe("/:unknown");
+  });
+
+  it("buckets every API path as /api/* with no segment kept", () => {
+    expect(pagePathOf(`https://skipwait.me/api/${CANARY}/x?y=1`)).toBe("/api/*");
+    expect(pagePathOf("https://skipwait.me/api")).toBe("/api/*");
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["empty", ""],
+    ["a scheme with no path", `javascript:${CANARY}`],
+    ["about:blank", "about:blank"],
+    ["unparseable text", `http://[${CANARY}`],
+    ["a data URL", `data:text/html,${CANARY}`],
+  ])("buckets a %s document as /:unknown", (_label, documentUri) => {
+    expect(pagePathOf(documentUri)).toBe("/:unknown");
+  });
+
+  it("names every production route in client/src/App.tsx, and nothing else", () => {
+    const app = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
+    const routes = new Set<string>();
+    for (const line of app.split("\n")) {
+      if (line.includes("import.meta.env.DEV")) continue;
+      const match = line.match(/<Route path="([^"]+)"/);
+      if (match?.[1]) routes.add(match[1].replace(/:[A-Za-z]+/g, ":param").toLowerCase());
+    }
+    const templates = new Set(cspReport.CSP_PAGE_ROUTE_TEMPLATES.map(template => template.replace(/:[A-Za-z]+/g, ":param").toLowerCase()));
+    expect(routes.size).toBeGreaterThan(80);
+    expect([...templates].sort()).toEqual([...routes].sort());
+  });
+});
+
+describe("live /api/csp-report emits no client-supplied canary (log line and Sentry message/tags)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  let host = 0;
+  const nextHost = () => `h${++host}-${Date.now()}.example`;
+
+  async function emitted(contentType: string, body: string) {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const capture = vi.mocked(Sentry.captureMessage);
+    capture.mockClear();
+    const app = express();
+    app.post("/api/csp-report", (req, res) => handleCspReport(req, res));
+    const response = await request(app).post("/api/csp-report").set("Content-Type", contentType).send(body);
+    return { status: response.status, text: JSON.stringify([warn.mock.calls, capture.mock.calls]).toLowerCase() };
+  }
+
+  it("legacy shape: canaries in path, query, fragment, referrer, source file, sample and policy never reach the log or Sentry", async () => {
+    const { status, text } = await emitted("application/csp-report", JSON.stringify({ "csp-report": {
+      "document-uri": `https://skipwait.me/unknown-route/${CANARY}?secret=${CANARY}#${CANARY}`,
+      "blocked-uri": `https://${nextHost()}/${CANARY}?q=${CANARY}`,
+      "effective-directive": "script-src",
+      referrer: `https://skipwait.me/p/${CANARY}?r=${CANARY}`,
+      "source-file": `https://skipwait.me/assets/${CANARY}.js?v=${CANARY}`,
+      "script-sample": CANARY,
+      "original-policy": `default-src 'self'; report-uri /${CANARY}`,
+      disposition: CANARY,
+      "line-number": 1,
+    } }));
+    expect(status).toBe(204);
+    expect(text).toContain("/:unknown");
+    expect(text).not.toContain(CANARY);
+  });
+
+  it("Reporting API shape: canaries in url, documentURL, referrer, sourceFile and sample never reach the log or Sentry", async () => {
+    const { status, text } = await emitted("application/reports+json", JSON.stringify([{
+      type: "csp-violation",
+      url: `https://skipwait.me/${CANARY}`,
+      user_agent: CANARY,
+      body: {
+        documentURL: `https://skipwait.me/explore/acme/${CANARY}?x=${CANARY}`,
+        blockedURL: `https://${nextHost()}/${CANARY}`,
+        effectiveDirective: "img-src",
+        referrer: `https://skipwait.me/${CANARY}`,
+        sourceFile: `https://skipwait.me/${CANARY}.js`,
+        sample: CANARY,
+        originalPolicy: CANARY,
+      },
+    }]));
+    expect(status).toBe(204);
+    expect(text).toContain("/:unknown");
+    expect(text).not.toContain(CANARY);
+  });
+
+  it("a personal parameter on a known route reaches the log and Sentry only as its template", async () => {
+    const { text } = await emitted("application/csp-report", legacy({
+      "document-uri": `https://skipwait.me/p/${CANARY}`,
+      "blocked-uri": `https://${nextHost()}/x.js`,
+      "effective-directive": "script-src-elem",
+    }));
+    expect(text).toContain("/p/:handle");
+    expect(text).not.toContain(CANARY);
   });
 });
