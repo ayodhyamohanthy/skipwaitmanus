@@ -85,10 +85,29 @@ export type PaidCatalogPlan = CatalogPlan & { id: CatalogPlanId };
 /**
  * Credit PACKS (the D-005/D-036 ladder: first pack ₹99 for 2 / $5 for 5, then
  * 25 / 60 / 150) stay on sale alongside the passes (D-036/D-046). The flag
- * below only hides client entry points: the server checkout route, pricing and
- * the payment-recovery screen are untouched.
+ * below only hides client entry points: the payment-recovery screen is
+ * untouched, so a checkout started before the pause still finishes.
+ *
+ * PAUSED Oct 25 2026: the owner froze pricing/plans/referrals ("You can pause
+ * old pricing once and start pushing this immediately", iMessage
+ * phonemsg-01M5SP3S0WNXCX7F1V5Z3PDX9D) ahead of the banded-plans replacement
+ * (shared/planFamily.ts). New pack purchases stop here and at the server
+ * (LEGACY_PACK_SALES_PAUSED below); credits already bought keep working and
+ * never expire, and nothing is cancelled or refunded.
  */
-export const CREDIT_PACKS_ON_SALE = true;
+export const CREDIT_PACKS_ON_SALE = false;
+
+/**
+ * Server half of the Oct 25 2026 old-pricing pause: the kit pack checkout
+ * refuses NEW credit-pack purchases before any provider call. Entitlements are
+ * untouched (balances, withdrawals, payment recovery and verified webhooks run
+ * as before); the legacy single credit stays retired. Off when the banded
+ * plans (shared/planFamily.ts) open their own checkout.
+ */
+export const LEGACY_PACK_SALES_PAUSED: boolean = true;
+export const LEGACY_PACK_SALES_PAUSED_CODE = "legacy_pricing_paused";
+export const LEGACY_PACK_SALES_PAUSED_ERROR =
+  "Credit pack purchases are paused while pricing is updated. Nothing has been charged; credits you already have still work.";
 
 /**
  * D-084 (P0, Oct 20): passes and Keep warm are sold only once a paid pass can
