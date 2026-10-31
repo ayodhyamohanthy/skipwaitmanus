@@ -1,0 +1,125 @@
+{
+  "signedIn": {
+    "id": 11,
+    "name": "Meera Iyer",
+    "email": "meera@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 3
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "timeZone": "Asia/Kolkata",
+          "dateFormat": "mdy"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/developer-apps",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "apps": [
+          {
+            "id": 1,
+            "name": "Trackwise",
+            "kind": "web_app",
+            "description": "Helps job seekers track referral asks",
+            "website": "https://example.com",
+            "redirectUrls": [
+              "https://example.com/oauth/skipwait"
+            ],
+            "scopes": [
+              "companies:read",
+              "requests:read",
+              "asks:draft"
+            ],
+            "status": "live",
+            "rejectReasons": [],
+            "webhookUrl": "https://example.com/hooks/skipwait",
+            "clientId": "sw_app_demo0001",
+            "createdAt": "2026-10-01T05:30:00.000Z"
+          },
+          {
+            "id": 2,
+            "name": "Pathfinder",
+            "kind": "agent_mcp",
+            "description": "Helps job seekers track referral asks",
+            "website": "https://example.com",
+            "redirectUrls": [
+              "https://example.com/oauth/skipwait"
+            ],
+            "scopes": [
+              "companies:read",
+              "requests:read",
+              "asks:draft"
+            ],
+            "status": "rejected",
+            "rejectReasons": [
+              "Explain on your approval screen what is sent for the user",
+              "Remove the credits:spend permission until you need it"
+            ],
+            "webhookUrl": null,
+            "clientId": "sw_app_demo0002",
+            "createdAt": "2026-10-01T05:30:00.000Z"
+          },
+          {
+            "id": 3,
+            "name": "Draftly",
+            "kind": "server_integration",
+            "description": "Helps job seekers track referral asks",
+            "website": "https://example.com",
+            "redirectUrls": [
+              "https://example.com/oauth/skipwait"
+            ],
+            "scopes": [
+              "companies:read",
+              "requests:read",
+              "asks:draft"
+            ],
+            "status": "test",
+            "rejectReasons": [],
+            "webhookUrl": null,
+            "clientId": "sw_app_demo0003",
+            "createdAt": "2026-10-01T05:30:00.000Z"
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "wait": 2500
+    }
+  ]
+}

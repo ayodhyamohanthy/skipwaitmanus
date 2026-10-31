@@ -139,6 +139,7 @@ The build edits exactly these paths: the no-conflict paths, then the four confli
 - the new migration `drizzle/deploy/<next>_referrer_step_ups.sql`;
 - tests beside each file;
 - docs: this packet, the AGENTS.md living-map rows for auth and the referrer gate, and the plan §3b row and §5.
+- the e2e session fixture paths `e2e/fixtures.ts` and `scripts/seed-test-accounts.ts`, limited as §0b.8a says (added Oct 31; nothing else under `e2e/` or `scripts/`).
 
 **Owned by other live rows; recorded here, no new task:**
 - `server/privateReferralRoutes.ts` is owned by `D-090-BYOR` (todo, draft PR #632, review findings `b8552f96`) and by every row of the chain that waits for it: `P0-referral-access-availability`, `D-132-item3`, `D-174-held-ask-reconfirm`, `D-174-ask-from-job` and `D-174-pool-nudges`.
@@ -153,6 +154,26 @@ The build edits exactly these paths: the no-conflict paths, then the four confli
 - `server/emailDelivery.ts` (`REL-review-email-retry`): imports only;
 - `server/workEmailOtpPurge.ts` (`REL-ops-invariants`): purging step-up rows is a follow-up for that row, and the address of record must outlive any purge;
 - `client/src/pages/UnifiedInbox.tsx` (`D-048-p3-inbox`).
+
+### 0b.8a Owns amendment, Oct 31: the e2e session fixture (conflict 8 on #867)
+**Source.** Instinct's answer on the coordination thread, PR #811 comment 6537600491 (https://github.com/ayodhyamohanthy/skipwaitmanus/pull/811#issuecomment-6537600491), choice A of Hark · e9cd's question 6537588308. It is recorded through this docs/registry-only amendment (D-200 (2): any session may change a row and says why in its pull request). It adds no decision ID, no row and no rewrite of D-245 or D-246. This subsection sits here, not in §8a, because §8a exists only on #867's branch; #867 lists the same problem as its §8a item 8, and this subsection answers it.
+
+**The conflict.** On PR #867 head `83abf39a`, the e2e journeys `personal-link.e2e.ts` ("a personal link survives sign-in") and `queue-attestation.e2e.ts` ("the attestation is shown before Accept") fail. `e2e/fixtures.ts` signs the seeded verified referrer (`qa.referrer@acme.example`) in with the plain `app_session_id` cookie that `scripts/seed-test-accounts.ts` mints (`loginMethod: test_seed`, no `amr`, no step-up proof). The new gate refuses that session with 403 `work_email_code_required`. **That refusal is correct, and the gate is not weakened to make it pass.** Unit, route, build and tsc are green on that head. The two journeys sat outside this row's `owns`, and `GATE-e2e-journeys`, the former owner of `e2e/`, is `done`.
+
+**What `owns` now adds.** Exactly `e2e/fixtures.ts` and `scripts/seed-test-accounts.ts`. The rest of `e2e/` (journey files, `playwright.config.ts`, `.auth/`) and `scripts/e2e-server.mjs` stay unclaimed by this row. If the repair turns out to need any of them, or a server-side seam for local delivery interception, that is a new conflict. Record it on this row and ask Instinct on #811; never edit around it.
+
+**How the fixture is repaired (binding):**
+- The fixture gets the seeded referrer's referrer access **through the real local step-up path**: `POST /api/referrer/step-up/send`, then `POST /api/referrer/step-up/verify`. The code comes from delivery intercepted **locally** (the e2e stack's in-process mail capture, never a real provider call). The proof it gets is the same account- and session-bound §0b.3 proof a real person gets.
+- `test_seed` stays a test identity. The seeder does not relabel it as a real work-email login. It mints no `amr: "work_email_otp"` for it, writes no alias, link or merge, and adds no production bypass, flag or environment switch that skips the gate.
+- **Direct test setup** (writing a proof row or minting a cookie by hand) is allowed only if the real send/verify path cannot be driven from the harness. The PR must show why, keep it inside the local test harness (the seeder needs an explicit `DATABASE_URL` and says never production, and `scripts/e2e-server.mjs:36` refuses any database host but localhost), and prove that it cannot change production authorization: no code path in `server/` or `shared/` reads it, and the production build is byte-identical in its auth paths. A missing proof must still be refused.
+
+**Red-first controls (required, each shown red before the repair and green after):**
+1. The original plain seeded `test_seed` session is denied: 403 `work_email_code_required` on a referrer action, and `/access` returns `codeRequired: true`.
+2. The same account and the same session, after a valid step-up proof, succeeds.
+3. Another account's or another session's proof, or a revoked or expired proof, stays denied.
+4. `personal-link.e2e.ts` and `queue-attestation.e2e.ts` both pass, with no assertion weakened, removed or skipped, and with the gate unchanged.
+
+**What this does not do.** It does not release the #867 shared-file hold or any other hold, and it does not touch #867's branch. It changes no other conflict decision, the login or identity invariants, or D-246's sequencing (`D-090-BYOR` still waits for this row; #632 keeps its code, findings and holds). It authorizes no production migration and no provider call. Runtime edits to the two paths wait until this amendment has passed an independent scope review and landed. The session that authored it (Hark · e9cd) neither reviews nor lands it.
 
 ### 0b.9 Definition of done (adds to §7)
 - Tier 1 draft PR with an independent review (D-151). The builder `Hark · 450f`, and any fixer, never reviews or lands it.
