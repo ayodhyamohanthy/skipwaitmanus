@@ -82,3 +82,4 @@ Each audit writes one report: a findings table with ID, file:line, what can go w
 
 ## Status
 One line per row, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
+- D-100.otp-hmac: review — agent/queue/d100-otp-hmac — 192f17a6 (draft PR #884; needs an independent Tier 1 pass by a non-Hark model, D-151)
