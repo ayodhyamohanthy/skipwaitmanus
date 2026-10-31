@@ -542,3 +542,7 @@ The scoped amendment in `docs/DECISIONS.md` supersedes repeating a full local ga
 
 
 Scoped Oct 23 founder exception for one manual claim only: see docs/DECISIONS.md, section "Scoped founder manual-claim exception, Oct 23, 2026". Applies only to PICKER-review-independence by Forge · fd06 after the attestation is committed and published; reviews and every other hold remain unchanged.
+
+## Current founder build direction - institutes (Oct 31)
+
+Build bulk plans and referrals for institutes using candidate email lists, with a permitted 10% institution discount and payment-verified activation plus transactional activation emails. This is the founder's new explicit feature direction, not a consumer-price change or automatic go-live. Preserve candidate identity/privacy, current catalog, money, ownership and independent-review gates. Discount stacking and precise on-behalf delegation are open in the [build packet](docs/plans/INSTITUTES-bulk-oct31.md). Sources: `phonemsg-01M6892F33T035JZSAA1917NKY`, `phonemsg-01M6896AS74F9S9T45Y9M9FY75`. No live recipients or payment were supplied.

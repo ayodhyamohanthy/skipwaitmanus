@@ -42,3 +42,7 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 - A push to `main` deploys what it touches (D-003). Watch CI and both deploys to the end; if anything goes red, revert or fix first. Then `EXPECTED_SHA=<sha> bash scripts/verify-live-release.sh` must print CONVERGED (when the API deployed), skipwait.me must serve `<meta name="git-commit">` with your SHA (web); check affected screens at 1280 and 390. Mark the row done with the SHA.
 - Migrations: the next free number on `main` (`drizzle/deploy/`) and in plan §5; never destructive; schema-dependent code lands only after its migration is verified.
 - Owner actions: plan §6. System map: `AGENTS.md`.
+
+## New founder build direction - institutes (Oct 31)
+
+Build bulk plans and referrals for institutes using candidate email lists, with a permitted 10% institution discount and payment-verified activation plus transactional activation emails. This is the founder's new explicit feature direction, not a consumer-price change or automatic go-live. Preserve candidate identity/privacy, current catalog, money, ownership and independent-review gates. Discount stacking and precise on-behalf delegation are open in the [build packet](plans/INSTITUTES-bulk-oct31.md). Sources: `phonemsg-01M6892F33T035JZSAA1917NKY`, `phonemsg-01M6896AS74F9S9T45Y9M9FY75`. No live recipients or payment were supplied.
