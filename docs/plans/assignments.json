@@ -2065,7 +2065,7 @@
       "lane": "d048-thread",
       "branch": "agent/queue/d048-p3-conversation",
       "status": "todo",
-      "syncedTo": "D-250",
+      "syncedTo": "D-251",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2431,7 +2431,7 @@
       "lane": "d048-profile",
       "branch": "agent/queue/d048-p3-profile",
       "status": "todo",
-      "syncedTo": "D-251",
+      "syncedTo": "D-252",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
