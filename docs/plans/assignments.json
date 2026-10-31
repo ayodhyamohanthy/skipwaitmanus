@@ -3439,7 +3439,7 @@
       "tier": 2,
       "lane": "security-headers",
       "branch": "agent/queue/d100-csp-report",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-259",
       "dependsOn": [
         "FND-4"
