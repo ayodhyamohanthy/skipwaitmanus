@@ -1,0 +1,60 @@
+{
+  "signedIn": {
+    "id": 21,
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "timeZone": "Asia/Kolkata",
+          "dateFormat": "dmy"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false,
+        "workEmailDomain": null,
+        "companyName": null,
+        "companyInitials": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "exact",
+      "abort": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/receipts",
+      "match": "exact",
+      "abort": true
+    }
+  ],
+  "actions": [
+    {
+      "wait": 2500
+    }
+  ]
+}
