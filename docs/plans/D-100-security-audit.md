@@ -24,6 +24,7 @@
 
 **Owns:** `server/securityHeaders.ts`, `server/securityHeaders.test.ts`, `server/cspReport.ts`, `server/cspReport.test.ts`.
 **Done:** red-first tests, full gate, landed; one real report seen on the preview (log line or Sentry event, with no query string in it).
+**Status:** unblocked under D-259 (Oct 31): `owns` remains strictly the four declared server/test paths; `functions/_middleware.ts` is not added to this row and the page-level `report-uri` header addition is sequenced under `D-090-BYOR` following `D-057`. The `/api/csp-report` endpoint and `/api/*` CSP header are delivered and verified within declared `owns` on PR #883; the 7-day collection preceding `D-100.csp-enforce` begins once the page header is wired in that later handoff.
 
 ## D-100.csp-enforce: an enforcing CSP behind a switch (Tier 2, lane `security-csp`, after D-100.csp-report)
 **What.** Add `CSP_ENFORCED = false` in `server/securityHeaders.ts`. When it is true, the same policy is also sent as `Content-Security-Policy`, plus each source the live app needs, named explicitly. Never add `'unsafe-inline'` for scripts; use a nonce or a hash if one is needed. Report-only stays.
@@ -82,4 +83,5 @@ Each audit writes one report: a findings table with ID, file:line, what can go w
 
 ## Status
 One line per row, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
-- D-100.authz-referral: in progress — Hark · 585f — 2026-10-30 — branch agent/queue/d100-authz-referral
+- D-100.secrets-sweep: done — ac8d6986 — Antigravity · 6171 — 2026-10-31 — read-only audit report of secrets/tokens in logs/Sentry (no P0/P1; 4 P2, 8 P3); scope check clean; CI green.
+- D-100.authz-referral: done — 28e1b40a — Antigravity · 6171 — 2026-10-31 — read-only audit of referral, document, block and safety routes (8 P3 findings published; H-1 withheld per rule 1); scope check clean; CI green.
