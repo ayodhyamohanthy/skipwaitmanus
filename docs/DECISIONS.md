@@ -22,6 +22,10 @@ Autonomy reaffirmation (October 31, 11:56 IST): the owner said "I hate manual", 
 
 Ethics guardrail for every psychology-based proposal: no dark patterns, false urgency, fabricated proof or scarcity, guilt-tripping, or pressure on referrers; referring always stays voluntary; real numbers only.
 
+## Owner directive - institute bulk purchase (October 31, 2026)
+
+Authenticated founder direction at 11:36 IST, reaffirmed for repo publication at 11:38 IST: build institutes buying bulk plans and referrals for candidates from an easy email list, with a permitted 10% institute discount; activate paid candidate benefits/accounts and send activation emails only after payment is verified. Source messages: `phonemsg-01M6892F33T035JZSAA1917NKY`, `phonemsg-01M6896AS74F9S9T45Y9M9FY75`. This explicitly authorizes the new feature, not unrelated consumer repricing or live payment/email/production effects. See [the build packet](plans/INSTITUTES-bulk-oct31.md) for exact scope, open discount/delegation decisions and shared-owner handoffs. Candidate identity/privacy and current payment/review gates remain. No implementation, sales enablement or founder resolution of the packet's open questions is claimed. This dated source record preserves the instruction immediately without inventing a conflicting numbered decision; normal register integration must check all open branches before assigning the next D-ID.
+
 ## Active decisions
 IDs are unique and never reused: immediately before committing a new entry, fetch `main` and every open branch (`git fetch origin`, then `git show <branch>:docs/DECISIONS.md` for each `origin/*` branch), take the highest existing ID + 1 across them, and re-check after a rebase. If two open branches hold one ID, the first to reach `main` keeps it and the later one renumbers every reference in its own merge (D-162: an open branch can already hold the next ID).
 | ID | Date | Decision | Evidence / source | Supersedes · affects | Sync |
