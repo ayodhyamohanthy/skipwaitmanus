@@ -3852,6 +3852,18 @@
       "note": "Any agent writes the packet (D-109): write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected. It also retires sync-guard.yml (only echoes) and design-gate.yml (`|| true`), D-212 (7)."
     },
     {
+      "id": "AYO-20-approval-honesty",
+      "title": "Legacy approval sheet: fail closed on unstated cost, no false wallet math",
+      "row": "LIVE-OCT23",
+      "packet": null,
+      "tier": 1,
+      "lane": "ask-signin",
+      "branch": "agent/instinct/ayo20-approval-honesty",
+      "status": "in-review",
+      "dependsOn": [],
+      "note": "Coordinator prep under the whole-app + standing bug-fix mandate (Main, Oct 23): the live credit_spend approval card displayed an unstated cost as '1 credit' and promised wallet-after math the server's decide path never performs (QA runtime proof, AYO-20). UI-only honesty fix (Tier 1 review: it touches the credit approval action) in client/src/components/assistants/ApprovalSheet.tsx: unknown cost fails closed (approve disabled, plain copy) and the balance shows without after-math; the server-side contract fix (null guard + actual charge path) stays out of scope pending proper authority (todo-01M5MPYCGYE7MF9KNCHKEWS3RH). ask_send behavior untouched."
+    },
+    {
       "id": "D-048-fix-start-ask-handoff",
       "title": "Preserve the job link from /start through the ask form (receiver-side prefill)",
       "row": "D-048",
