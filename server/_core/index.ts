@@ -91,6 +91,7 @@ import { WorkOS } from "@workos-inc/node";
 import { registerAccountSessionRoutes } from "../accountSessions";
 import { registerAccountPreferenceRoutes } from "../accountPreferences";
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
+import { registerReferrerStepUpRoutes } from "../referrerStepUpRoutes";
 import { registerReviewerLoginRoutes } from "./reviewerLogin";
 import { sessionRenewal } from "./sessionRenewal";
 import { registerPaymentRoutes, findRazorpayOrdersByReceipt, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
@@ -163,7 +164,7 @@ async function startServer() {
     : async (req: express.Request) => {
     const identity = await resolveDevIdentity(req);
     if (!identity) return undefined;
-    return { account: identity.account, primaryEmail: identity.primaryEmail, emailAddresses: identity.emailAddresses };
+    return { account: identity.account, primaryEmail: identity.primaryEmail, emailAddresses: identity.emailAddresses, sessionAmr: identity.sessionAmr, sessionKey: identity.sessionKey };
   };
   registerJobLinkPreviewRoutes(app, { resolveEmployerDomainFromTargetUrl: db.resolveEmployerDomainFromTargetUrl });
     // Public control-plane bodies stay small. The two deprecated JSON document
@@ -212,6 +213,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Referrer OTP-first login is a public surface, always registered.
   app.use("/api", sessionRenewal);
   registerReferrerOtpLoginRoutes(app);
+  // D-057-session-gate: the in-session work-email step-up and the referrer session gate, before the routes it guards.
+  registerReferrerStepUpRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   registerReviewerLoginRoutes(app);
   registerPasswordResetRoutes(app);
   if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);

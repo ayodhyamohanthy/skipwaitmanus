@@ -13,6 +13,8 @@ import MyOpenings from "@/components/opportunities/MyOpenings";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { readApiJson } from "@/lib/apiResponse";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
+import { GoalWorkEmailStepUp } from "@/components/goal/GoalWorkEmailStepUp";
+import { isWorkEmailCodeRequired, notifyWorkEmailCodeRequired } from "@/lib/referrerStepUpApi";
 
 type OpportunityMode = "hiring_now" | "walk_in";
 function localInputToIso(value: string) { if (!value) return undefined; const date = new Date(value); return Number.isNaN(date.getTime()) ? undefined : date.toISOString(); }
@@ -51,7 +53,7 @@ function GoalPostOpportunityBody() {
       const token = await getToken();
       const response = await fetch("/api/opportunities", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ kind: mode, roleTitle, targetRoleUrl: targetRoleUrl || undefined, location: location || undefined, compensation: compensation.trim() || undefined, walkInAt: localInputToIso(walkInAt), walkInEndsAt: localInputToIso(walkInEndsAt), ...(showPosterFirstName ? { showPosterFirstName: true } : {}) }) });
       const payload = await readApiJson<{ opportunity?: { companyDomain: string; roleTitle: string }; error?: string }>(response, "We could not publish that opportunity");
-      if (!response.ok || !payload.opportunity) throw new Error(payload.error || "We could not publish that opportunity");
+      if (isWorkEmailCodeRequired(response.status, payload)) notifyWorkEmailCodeRequired(); if (!response.ok || !payload.opportunity) throw new Error(payload.error || "We could not publish that opportunity");
       setPublished(payload.opportunity);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not publish that opportunity"); } finally { setPublishing(false); }
   };
@@ -59,6 +61,8 @@ function GoalPostOpportunityBody() {
 
   if (access.status === "checking") return <div data-skipwait-screen="post-opportunity-loading" className="px-5 py-6"><p className="mb-4 text-g-meta text-g-ink-3">Checking your company access…</p><GoalSkeletonRows density="company" count={3} /></div>;
   if (access.status === "error") return <div data-skipwait-screen="post-opportunity-access-error"><GoalErrorState title="We couldn’t check your company access" body={`${access.error.message || "Check your connection and try again."} Nothing changed on your account.`} retry={{ label: access.retrying ? "Trying again…" : "Try again", onClick: access.retry }} /></div>;
+  // D-057: a personal-login session confirms the work email in place, never through the code sign-in.
+  if (access.status === "code_required") return <div data-skipwait-screen="post-opportunity-step-up"><GoalWorkEmailStepUp access={access.access} /></div>;
   if (access.status === "signed-out" || access.status === "unverified") {
     return (
       <div data-skipwait-screen="post-opportunity-access" className="max-w-[560px] px-5 py-8 max-gdesk:px-4">

@@ -11,6 +11,7 @@ import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { readApiJson } from "@/lib/apiResponse";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { GoalWorkspaceNav } from "./GoalReferrer";
+import { GoalWorkEmailStepUp } from "@/components/goal/GoalWorkEmailStepUp";
 
 type ReferrerImpactSummary = { acceptedReferrals: number; introductions: number; activeConversations: number; outcomesShared: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> };
 
@@ -78,6 +79,9 @@ export default function GoalReferrerImpact() {
   }
 
   if (access.status === "error") return <Frame screen="referrer-impact-access-error"><GoalErrorState title="We could not check your verification." body={access.error.message || "Check your connection and try again."} retry={{ label: access.retrying ? "Trying again…" : "Try again", onClick: access.retry }} /></Frame>;
+
+  // D-057: a personal-login session confirms the work email in place, never through the code sign-in.
+  if (access.status === "code_required") return <Frame screen="referrer-impact-step-up"><GoalWorkEmailStepUp access={access.access} /></Frame>;
 
   if (!hasVerifiedWorkEmail) {
     return (
