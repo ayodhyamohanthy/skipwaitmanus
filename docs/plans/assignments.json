@@ -853,8 +853,8 @@
       "tier": 1,
       "lane": "payments-ops",
       "branch": "agent/queue/rel-webhook-auth-alarm",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "owner",
+      "syncedTo": "D-262",
       "dependsOn": [],
       "epic": "D-212",
       "owns": [
