@@ -7,6 +7,11 @@ On October 21 the owner described colleges and training institutes buying for st
 
 The October 31 email-list purchase, on-behalf referrals and payment-verified activation/email requirements extend that existing group concept. Preserve the original permitted 10% discount for the institution purchase use case; renaming does not extend it to every group, employer or consumer purchase. No new buyer-wide discount, employer price mapping or replacement catalog is authorized. The frozen banded catalog remains the basis; #666's Team/Growth employer seats/openings are not student bulk entitlements. Current group allocation/activation implementation remains pending, not supplied by this packet.
 
+## Group seats: initial buy and later additions
+At 11:59 IST the owner clarified: "Groups can buy a certain number of seats or can increase 1 by 1 post a group buy" (`phonemsg-01M68ACCV7ASBCRVTDF80QXS5S`). The Group Plan supports an initial selected seat quantity and later additions one seat at a time to that existing group purchase. Do not require another full cohort purchase, invent a fixed minimum block for additions, or map these candidate seats to Team/Growth employer openings/seats. Bind each purchased seat/allocation to the correct group and candidate identity; verified payment is required before activating a paid added seat or sending its activation email. Preserve existing members, balances and grants; duplicate add-seat payment events grant only once, concurrent additions cannot over/under-count seats, and a failed addition must not disturb the original group purchase.
+
+Proration, alignment to the existing renewal, per-seat terms and whether a later single-seat addition qualifies for the original institution-specific 10% permission are not settled by "increase 1 by 1". Check current frozen rules and the original group-purchase contract first; do not invent commercial terms or broaden discounts. These are open integration details, not a new consumer pricing decision.
+
 ## Original direction and scope
 On October 31, 2026 at 11:36 IST the founder requested institutes buying bulk plans and referrals for candidates using their email addresses in the easiest format, permitted a 10% discount, and requested account activation plus activation emails to the list once paid. At 11:38 IST he said to push this to the repo for building.
 
@@ -43,7 +48,7 @@ Shared integration must obtain exact limited-hunk ACK / scope registration BEFOR
 Record actual accepted holder, owned paths and exact source head. No forced claim/lease release, self-review, manual pass or review-gate waiver. Claude reasons; verified available development models implement, with actual model-history-independent Tier 1 review.
 
 ## Proof and delivery gates
-- Red-first list parser/duplicates/invalid input, 10% quote arithmetic/tampering, cross-institute access and identity binding.
+- Red-first list parser/duplicates/invalid input, initial seat quantity and later one-seat additions, 10% quote arithmetic/tampering, cross-group access and identity binding. Test concurrent/replayed additions, unchanged original seats after failed add-on, and no activation before verified payment.
 - Payment-negative and duplicate/reordered webhook tests; partial failure/restart/idempotent grants and notification outbox tests; refunds and recovery without duplicated balances.
 - Candidate activation collision/verified alias/revoked delegation and privacy negatives; no request without the accepted delegation scope.
 - Real local full-stack flow with synthetic recipients/provider TEST or mocks, exact base/head and limitations. No real charge/email/production DB test without its separate authority.
