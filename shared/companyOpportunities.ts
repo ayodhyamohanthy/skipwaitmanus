@@ -6,7 +6,7 @@
 // below are the only shapes clients accept. A public post never carries owner
 // ids, emails, last names or any work-email verification evidence; the poster
 // appears as anonymous or as the first name they chose to show. When a seeker
-// asks from a post, the poster alone sees that ask for the first 48 hours.
+// asks from a post, the poster alone sees that ask for the first 24 hours.
 import { z } from "zod";
 
 export const OPPORTUNITY_KINDS = ["hiring_now", "walk_in"] as const;
@@ -15,8 +15,8 @@ export type OpportunityKind = z.infer<typeof opportunityKindSchema>;
 
 /** A post is live for 30 days; the poster can renew it in one tap. */
 export const OPPORTUNITY_TTL_DAYS = 30;
-/** An ask written from a post goes to the poster alone for the first 48 hours. */
-export const OPPORTUNITY_FIRST_LOOK_HOURS = 48;
+/** An ask written from a post goes to the poster alone for the first 24 hours (owner rule, Oct 25 2026). */
+export const OPPORTUNITY_FIRST_LOOK_HOURS = 24;
 
 export const OPPORTUNITY_TTL_MS = OPPORTUNITY_TTL_DAYS * 24 * 60 * 60 * 1000;
 export const OPPORTUNITY_FIRST_LOOK_MS = OPPORTUNITY_FIRST_LOOK_HOURS * 60 * 60 * 1000;

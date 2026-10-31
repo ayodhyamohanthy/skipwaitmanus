@@ -160,7 +160,7 @@ describe("Ask composer page (goal, W2)", () => {
     window.history.replaceState(null, "", "/ask?post=91&job=https%3A%2F%2Fcareers.wipro.com%2Fjobs%2F1234567-product-designer");
     renderPage();
     await waitFor(() => expect((screen.getByLabelText("Job link") as HTMLInputElement).value).toBe("https://careers.wipro.com/jobs/1234567-product-designer"));
-    expect(screen.getByText("The employee who posted this role sees your ask first, for 48 hours. After that, other verified referrers at the company can pick it up.")).toBeTruthy();
+    expect(screen.getByText("The employee who posted this role sees your ask first, for 24 hours. After that, other verified referrers at the company can pick it up.")).toBeTruthy();
     fillReasons();
     fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
     await screen.findByRole("status");
