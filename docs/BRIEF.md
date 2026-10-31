@@ -43,6 +43,6 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 - Migrations: the next free number on `main` (`drizzle/deploy/`) and in plan §5; never destructive; schema-dependent code lands only after its migration is verified.
 - Owner actions: plan §6. System map: `AGENTS.md`.
 
-## Institutes (Oct 31)
+## Group Plan (Oct 31)
 
-Bulk plans/referrals from candidate emails: 10% institution discount, verified-payment activation and emails. On-behalf consent, discount interaction and all holds remain: [packet](plans/INSTITUTES-bulk-oct31.md). Not built or live.
+Group bulk plans/referrals via candidate emails: 10% institution discount, verified-payment activation and emails. On-behalf consent, discount interaction and all holds remain: [packet](plans/GROUP-bulk-oct31.md). Not built or live.
