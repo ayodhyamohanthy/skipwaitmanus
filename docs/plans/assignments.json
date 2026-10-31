@@ -853,8 +853,8 @@
       "tier": 1,
       "lane": "payments-ops",
       "branch": "agent/queue/rel-webhook-auth-alarm",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "owner",
+      "syncedTo": "D-262",
       "dependsOn": [],
       "epic": "D-212",
       "owns": [
@@ -2900,7 +2900,7 @@
       "tier": 2,
       "lane": "d048-links",
       "branch": "agent/queue/d048-p3-links",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
@@ -2969,7 +2969,7 @@
       "lane": "d048-discovery",
       "branch": "agent/queue/d048-p3-discovery",
       "status": "todo",
-      "syncedTo": "D-241",
+      "syncedTo": "D-261",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-marketing",
@@ -3439,7 +3439,7 @@
       "tier": 2,
       "lane": "security-headers",
       "branch": "agent/queue/d100-csp-report",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-259",
       "dependsOn": [
         "FND-4"
@@ -3461,7 +3461,7 @@
       "tier": 2,
       "lane": "security-csp",
       "branch": "agent/queue/d100-csp-enforce",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-100.csp-report"
