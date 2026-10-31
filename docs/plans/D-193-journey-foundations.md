@@ -245,7 +245,7 @@ The D-189 packet also rules the pre-send per-company state against D-176 and add
 
 ## Status
 
-D-174-fix-post-binding: in progress — Hark · 35ad (takeover from Antigravity · 5a06, MAKE GREEN) — 2026-11-01 — branch agent/queue/d174-fix-post-binding
+D-174-fix-post-binding: review — agent/queue/d174-fix-post-binding — 5c2cc172
 
 D-174-sample-job-removal: done — PR #688 (unblocked by D-210)
 
