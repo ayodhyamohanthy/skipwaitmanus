@@ -535,11 +535,13 @@ describe("rollback.yml: deliberate API recovery", () => {
   const recover = wf.steps("recover-api");
   const at = (pattern: RegExp) => recover.findIndex(s => has(s, pattern));
 
-  it("is dispatch-only and asks for the API target, the full commit twice and a reason", () => {
+  it("is dispatch-only and asks for the system, the full commit twice and a reason", () => {
     expect(wf.text).toMatch(/^on:\n {2}workflow_dispatch:\n/m);
     expect(wf.text).not.toMatch(/^ {2}(push|pull_request|pull_request_target|schedule|workflow_run|workflow_call):/m);
     for (const name of ["target", "commit", "confirm", "reason"]) expect(inputs).toMatch(new RegExp(`\\n {6}${name}:\\n(?: {8}.+\\n)*? {8}required: true\\n`));
-    expect(inputs).toMatch(/ {8}options:\n {10}- api\n(?! {10}-)/);
+    // D-248 (4): the option set is exact and in declared order, so a fourth option or a
+    // reordered one that skips this pin still fails.
+    expect(inputs).toMatch(/ {8}options:\n {10}- api\n {10}- all\n {10}- web\n(?! {10}- )/);
   });
 
   it("waits in the API deploy queue and lets the gate read Actions", () => {
@@ -548,12 +550,14 @@ describe("rollback.yml: deliberate API recovery", () => {
   });
 
   it("validates the request with the workflow's own code before the older target is ever checked out", () => {
-    expect([...wf.jobs.keys()]).toEqual(["recovery-gate", "recover-api"]);
+    expect([...wf.jobs.keys()]).toEqual(["recovery-gate", "recover-api", "rollback-web"]);
     expect(wf.needs("recovery-gate")).toEqual([]);
-    expect(wf.needs("recover-api")).toEqual(["recovery-gate"]);
+    expect(wf.needs("recover-api")).toEqual(["recovery-gate", "rollback-web"]);
+    expect(wf.needs("rollback-web")).toEqual(["recovery-gate"]);
     const gate = wf.steps("recovery-gate");
     expect(gate.some(s => has(s, /^ {10}ref:/))).toBe(false);
     expect(gate.some(s => has(s, /run: node scripts\/require-green-release\.mjs --target api --recovery\s*$/))).toBe(true);
+    expect(gate.some(s => has(s, /run: node scripts\/rollbackTarget\.mjs web-gate\s*$/))).toBe(true);
     const trusted = at(/path: trusted/);
     const target = at(/ref: \$\{\{ inputs\.commit \}\}/);
     expect(trusted).toBeGreaterThanOrEqual(0);
@@ -566,7 +570,13 @@ describe("rollback.yml: deliberate API recovery", () => {
     const all = [...wf.jobs.keys()].flatMap(job => wf.steps(job));
     for (const s of all) if (has(s, /actions\/checkout@/)) expect(has(s, /persist-credentials: false/)).toBe(true);
     const tokened = all.filter(s => has(s, /secrets\.GITHUB_TOKEN/)).map(s => s.name);
-    expect(tokened).toEqual(["Require a deliberate request and green CI on the recovery target", "Re-check the recovery target", "Move the runtime marker to the target"]);
+    expect(tokened).toEqual([
+      "Require a deliberate request and green CI on the recovery target",
+      "Require a deliberate request and green CI on the web recovery target",
+      "Re-check the recovery target",
+      "Move the runtime marker to the target",
+      "Re-check the web recovery target",
+    ]);
     expect(wf.text).not.toMatch(/git push/);
   });
 
@@ -589,6 +599,45 @@ describe("rollback.yml: deliberate API recovery", () => {
       const runAt = s.body.findIndex(l => /^ {8}run:/.test(l));
       if (runAt >= 0) expect(s.body.slice(runAt).join("\n")).not.toMatch(/\$\{\{\s*(inputs|github\.event\.inputs)\./);
     }
+  });
+
+  it("recovers the web from the trusted checkout with the gate, build, deploy and verify Deploy Web uses", () => {
+    const web = wf.steps("rollback-web");
+    const at = (pattern: RegExp) => web.findIndex(s => has(s, pattern));
+    const trusted = at(/path: trusted/);
+    const target = at(/ref: \$\{\{ inputs\.commit \}\}/);
+    expect(trusted).toBeGreaterThanOrEqual(0);
+    expect(target).toBeGreaterThan(trusted);
+    expect(has(web[trusted], /^ {10}ref:/)).toBe(false);
+    expect(has(web[target], /path: target/)).toBe(true);
+    // Every control script runs from the trusted commit, never the older target's own copy.
+    const scripts = web.filter(s => has(s, /rollbackTarget\.mjs/));
+    expect(scripts.map(s => s.name)).toEqual(["Re-check the web recovery target", "Verify the live web is the target"]);
+    for (const s of scripts) expect(has(s, /working-directory: trusted/)).toBe(true);
+    const gate = at(/node scripts\/rollbackTarget\.mjs web-gate/);
+    const build = at(/VITE_GIT_COMMIT_SHA: \$\{\{ inputs\.commit \}\}/);
+    const deploy = at(/npx wrangler pages deploy dist\/public --project-name skipwait --branch main/);
+    const verify = at(/node scripts\/rollbackTarget\.mjs verify-web/);
+    expect([gate, build, deploy, verify].every(i => i >= 0)).toBe(true);
+    expect([gate < deploy, deploy < verify]).toEqual([true, true]);
+    // The build carries the target SHA, so the live page can prove which release it is.
+    expect(has(web[build], /pnpm build/)).toBe(true);
+    expect(has(web[gate], /^ {8}if:/)).toBe(false);
+    // No migration, no container deploy, no runtime tag: the web leg touches the web only.
+    expect(web.some(s => has(s, /apply-deploy-migrations|MYSQL_PWD|npx wrangler deploy|api-runtime/))).toBe(false);
+  });
+
+  it("runs the web leg in the web deploy queue, alone, and before the API leg when both are asked for", () => {
+    const web = wf.jobs.get("rollback-web") ?? [];
+    expect(web).toContain("    concurrency:");
+    expect(web).toContain("      group: deploy-pages");
+    expect(web).toContain("      cancel-in-progress: false");
+    expect(web.some(l => /^ {4}if: .*inputs\.target != 'api'/.test(l))).toBe(true);
+    const api = wf.jobs.get("recover-api") ?? [];
+    expect(api.some(l => /^ {4}if: .*inputs\.target != 'web'/.test(l))).toBe(true);
+    expect(api.some(l => /needs\.rollback-web\.result == 'success'/.test(l))).toBe(true);
+    // The job-level web queue leaves the workflow-level API queue pin true.
+    expect(wf.text).toMatch(/^concurrency:\n {2}group: deploy-api\n {2}cancel-in-progress: false$/m);
   });
 });
 

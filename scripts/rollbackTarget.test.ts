@@ -1,12 +1,14 @@
 // @vitest-environment node
 // REL-rollback-skew (D-212): the web recovery takes a deliberate, green, typed-twice target and
 // verifies what Cloudflare serves; the web deploy waits for its API before it goes live.
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { REQUIRED_JOBS } from "./require-green-release.mjs";
-import { apiConverged, deployedCommitProblem, evaluateWebTarget, pageCommit, runWebGate, verifyWeb, waitForApi, webRecoveryProblem } from "./rollbackTarget.mjs";
+import { apiConverged, deployedCommitProblem, evaluateWebTarget, liveApiCommit, pageCommit, runWebGate, verifyWeb, waitForApi, webRecoveryProblem } from "./rollbackTarget.mjs";
 
 const root = path.resolve(__dirname, "..");
 const T = "a".repeat(40);
@@ -177,6 +179,82 @@ describe("the web waits for its API", () => {
   });
 });
 
+// Instinct, Oct 30: a 503 JSON naming the target SHA was read as convergence because the SHA was
+// read without checking HTTP success or readiness. Only a 200 `state: "ready"` answer proves the
+// live API runs a release, so every other answer is "not yet", never "converged".
+describe("the API wait believes only a ready health answer", () => {
+  it("reads the commit of a 200 ready answer", () => {
+    expect(liveApiCommit({ status: 200, body: { ok: true, state: "ready", commitSha: T } })).toBe(T);
+    expect(liveApiCommit({ status: 200, body: { ok: true, state: "ready", commitSha: ` ${T} ` } })).toBe(T);
+  });
+
+  it("refuses a 503 that names the target SHA: a rollout, a failure and a refusal are not readiness", () => {
+    for (const state of ["validating", "failed", undefined]) {
+      expect(() => liveApiCommit({ status: 503, body: { ok: false, state, commitSha: T } })).toThrow(/HTTP 503/);
+    }
+    expect(() => liveApiCommit({ status: 401, body: { commitSha: T } })).toThrow(/HTTP 401/);
+  });
+
+  it("refuses a 200 that is not ready or names no full SHA", () => {
+    expect(() => liveApiCommit({ status: 200, body: { state: "validating", commitSha: T } })).toThrow(/not ready/);
+    expect(() => liveApiCommit({ status: 200, body: { ok: true, commitSha: T } })).toThrow(/not ready/);
+    expect(() => liveApiCommit({ status: 200, body: null })).toThrow(/not ready/);
+    expect(() => liveApiCommit({ status: 200, body: { state: "ready", commitSha: T.slice(0, 7) } })).toThrow(/full commit SHA/);
+  });
+});
+
+// The real script as a process against a local HTTP stand-in for the live API.
+function serveApi(answer: (n: number) => { status: number; body: unknown }) {
+  let calls = 0;
+  const server = createServer((_req, res) => {
+    const { status, body } = answer(++calls);
+    res.writeHead(status, { "content-type": "application/json" });
+    res.end(JSON.stringify(body));
+  });
+  return new Promise<{ base: string; calls: () => number; close: () => void }>(resolve => server.listen(0, "127.0.0.1", () => {
+    resolve({ base: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, calls: () => calls, close: () => server.close() });
+  }));
+}
+function waitCli(base: string, extra: Record<string, string> = {}) {
+  const env: Record<string, string> = {
+    PATH: process.env.PATH ?? "", API_BASE_URL: base, EXPECTED_SHA: T, GITHUB_SHA: T,
+    RELEASE_API_WAIT_MINUTES: "0.005", RELEASE_API_WAIT_INTERVAL_SECONDS: "0.001", ...extra,
+  };
+  return new Promise<{ code: number | null; out: string }>(resolve => {
+    const child = spawn(process.execPath, ["scripts/rollbackTarget.mjs", "wait-api"], { cwd: root, env });
+    let out = "";
+    child.stdout.on("data", d => { out += d; });
+    child.stderr.on("data", d => { out += d; });
+    child.on("close", code => resolve({ code, out }));
+  });
+}
+
+describe("wait-api as a process", () => {
+  it("exits 0 on a ready API running this commit", async () => {
+    const s = await serveApi(() => ({ status: 200, body: { ok: true, state: "ready", commitSha: T } }));
+    try {
+      const { code, out } = await waitCli(s.base);
+      expect(out).toContain(`API WAIT CONVERGED: ${T}`);
+      expect(code).toBe(0);
+    } finally { s.close(); }
+  });
+
+  it.each([
+    ["a 503 whose JSON names the target SHA", () => ({ status: 503, body: { ok: false, state: "validating", commitSha: T } })],
+    ["a 503 failed rollout naming the target SHA", () => ({ status: 503, body: { ok: false, state: "failed", commitSha: T } })],
+    ["a 401", () => ({ status: 401, body: { commitSha: T } })],
+    ["an HTML error page", () => ({ status: 200, body: "<html>oops</html>" })],
+  ])("exits 1 on %s and never reports convergence", async (_label, answer) => {
+    const s = await serveApi(answer as () => { status: number; body: unknown });
+    try {
+      const { code, out } = await waitCli(s.base);
+      expect(out).toContain("DID NOT CONVERGE");
+      expect(out).not.toContain(`API WAIT CONVERGED: ${T}`);
+      expect(code).toBe(1);
+    } finally { s.close(); }
+  });
+});
+
 // deploy-pages.yml: only the checkout and the API wait belong to this row.
 function deployJob() {
   const text = readFileSync(path.join(root, ".github/workflows/deploy-pages.yml"), "utf8");
@@ -208,14 +286,21 @@ describe("deploy-pages.yml waits for its API before the Pages deploy", () => {
     expect([classify < wait, wait < deploy]).toEqual([true, true]);
   });
 
-  it("deploys anyway after the wait, then fails the job so the Deploy failed issue says the API did not converge", () => {
+  it("fails closed: a failed wait stops the job before any production write and records why", () => {
+    const wait = at(/node scripts\/rollbackTarget\.mjs wait-api/);
     const deploy = at(/wrangler pages deploy/);
-    const fail = at(/steps\.api-wait\.outputs\.converged == 'false'/);
-    const notify = at(/name: Notify sync status/);
+    const record = at(/steps\.api-wait\.outcome == 'failure'/);
+    // The wait is an ordinary step, so its non-zero exit skips every later step but the record.
+    expect(steps[wait]).not.toMatch(/continue-on-error/);
+    expect(deploy).toBeGreaterThan(wait);
+    // No condition may let the Pages deploy run after a failed wait, and no record step deploys.
     expect(steps[deploy]).not.toMatch(/^ {8}if:/m);
-    expect(fail).toBeGreaterThan(deploy);
-    expect(fail).toBeLessThan(notify);
-    expect(steps[fail]).toMatch(/API did not converge/);
-    expect(steps[fail]).toMatch(/exit 1/);
+    expect(record).toBeGreaterThan(wait);
+    expect(steps[record]).toMatch(/^ {8}if: failure\(\)/m);
+    expect(steps[record]).toMatch(/API did not converge/);
+    expect(steps[record]).toMatch(/NOT deployed/);
+    expect(steps[record]).not.toMatch(/wrangler pages deploy/);
+    // The old fail-open shape is gone: nothing deploys and then fails afterwards.
+    expect(steps.some(s => /steps\.api-wait\.outputs\.converged == 'false'/.test(s))).toBe(false);
   });
 });

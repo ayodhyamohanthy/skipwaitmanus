@@ -19,10 +19,12 @@
 //
 // wait-api polls /api/health/ready until its commitSha is this SHA or a descendant of it
 // (`git merge-base --is-ancestor <sha> <live>`; a queued Deploy API run can be cancelled by a
-// newer push, so this exact SHA may never be served). After RELEASE_API_WAIT_MINUTES (45) it
-// gives up and reports converged=false; the workflow then deploys anyway and fails the job
-// after the deploy, so the Deploy failed issue is opened. It writes converged=true|false to
-// GITHUB_OUTPUT and exits 0 either way.
+// newer push, so this exact SHA may never be served). Only a 200 answer whose state is "ready"
+// proves the live API runs a release: a 503 (validating or failed), a 401, an HTML body or a
+// body without a full SHA names no verified release, so it is "not yet", never convergence.
+// After RELEASE_API_WAIT_MINUTES (45) it gives up, writes converged=true|false to GITHUB_OUTPUT
+// and exits 1: the caller must not deploy the web over an API it could not verify (D-212; the
+// web never runs ahead of its API). Fail-closed is the rule for this row.
 //
 // It needs no packages, so it runs before `pnpm install`.
 import { appendFileSync } from "node:fs";
@@ -130,6 +132,16 @@ export async function verifyWeb({ expected, readCanonical, readPage, attempts = 
   return { ok: false, reason: `${last}; the web recovery did not put the target live. Nothing else was deployed` };
 }
 
+/** The live API commit from a /api/health/ready answer; throws unless that answer proves a ready release. */
+export function liveApiCommit({ status, body } = {}) {
+  if (status !== 200) throw new Error(`the health endpoint answered HTTP ${status}`);
+  const state = body?.state;
+  if (state !== "ready") throw new Error(`the API reports "${typeof state === "string" && state ? state : "no state"}", not ready`);
+  const sha = typeof body?.commitSha === "string" ? body.commitSha.trim() : "";
+  if (!FULL_SHA.test(sha)) throw new Error("the health endpoint reports no full commit SHA");
+  return sha;
+}
+
 /** Whether the live API runs sha or a commit that descends from it. isAncestor(a, b) is `git merge-base --is-ancestor a b`. */
 export function apiConverged({ sha, live, isAncestor }) {
   if (!FULL_SHA.test(sha ?? "") || !FULL_SHA.test(live ?? "")) return false;
@@ -211,8 +223,8 @@ async function main() {
       sha,
       readLive: async () => {
         const res = await fetch(`${base.replace(/\/$/, "")}/api/health/ready`, { signal: AbortSignal.timeout(20_000), headers: { "cache-control": "no-cache" } });
-        const body = await res.json().catch(() => { throw new Error(`HTTP ${res.status} without JSON`); });
-        return typeof body?.commitSha === "string" ? body.commitSha.trim() : null;
+        const body = await res.json().catch(() => null);
+        return liveApiCommit({ status: res.status, body });
       },
       isAncestor: gitIsAncestor,
       timeoutMs: minutes(env.RELEASE_API_WAIT_MINUTES, 45) * 60_000,
@@ -220,10 +232,11 @@ async function main() {
       sleep: sleepMs, log: line => console.log(line),
     });
     const verdict = `API WAIT ${result.converged ? "CONVERGED" : "DID NOT CONVERGE"}: ${plain(sha)} — ${result.reason}`;
-    console.log(result.converged ? verdict : `::warning::${verdict}`);
+    console.log(result.converged ? verdict : `::error::${verdict}`);
     if (env.GITHUB_OUTPUT) appendFileSync(env.GITHUB_OUTPUT, `converged=${result.converged}\n`);
     summary(`### ${verdict}`);
-    process.exit(0);
+    // Fail closed: a caller that cannot see a ready API must not write the web ahead of it.
+    process.exit(result.converged ? 0 : 1);
   }
 
   console.log(`::error::unknown command "${plain(command)}" (use web-gate, verify-web or wait-api)`);

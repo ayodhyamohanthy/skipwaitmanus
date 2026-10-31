@@ -90,7 +90,9 @@ jobs:
 
       # REL-rollback-skew (D-212): new client code must not reach an API that is still
       # rolling out (15 to 40 minutes). Wait until /api/health/ready reports this SHA or a
-      # descendant; after 45 minutes deploy anyway and fail the job after the deploy.
+      # descendant. Fail closed: no 200 `state: "ready"` answer within 45 minutes (a
+      # timeout, a 5xx, a 401, an HTML body) fails this step, so the Pages deploy below is
+      # skipped and the live web keeps the release its API is running.
       - name: Wait for the live API to run this commit
         id: api-wait
         if: steps.api-changes.outputs.classification == 'runtime'
@@ -98,6 +100,24 @@ jobs:
           EXPECTED_SHA: ${{ github.sha }}
           RELEASE_API_WAIT_MINUTES: "45"
         run: node scripts/rollbackTarget.mjs wait-api
+
+      # The Deploy failed issue says why. The notify step below records the failed run on it.
+      - name: Record that the web was not deployed because the API did not converge
+        if: failure() && steps.api-wait.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW: ${{ github.workflow }}
+        run: |
+          msg="API did not converge on ${GITHUB_SHA} within 45 minutes; the web was NOT deployed (REL-rollback-skew). Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          echo "::error::${msg}"
+          echo "### ${msg}" >> "$GITHUB_STEP_SUMMARY"
+          title="Deploy failed: ${WORKFLOW}"
+          gh label create incident --color B60205 >/dev/null 2>&1 || true
+          num=$(gh issue list --label incident --state open --limit 100 --json number,title | TITLE="$title" node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const i=JSON.parse(s||"[]").find(x=>x.title===process.env.TITLE);process.stdout.write(i?String(i.number):"")})' || true)
+          if [ -n "$num" ]; then gh issue comment "$num" --body "$msg" || true
+          else gh issue create --title "$title" --label incident --body "$msg" || true
+          fi
 
       # Last look before the production write: CI may have been re-run red since
       # release-gate passed, or this job alone may be a re-run.
@@ -123,25 +143,6 @@ jobs:
             echo "attempt $i: SHA not live yet — waiting"; sleep 15
           done
           echo "SYNC FAILED: live site does not carry the pushed commit"; exit 1
-
-      # The Deploy failed issue says why; the notify step below then records the failed run on it.
-      - name: Fail when the API did not converge
-        if: steps.api-wait.outputs.converged == 'false'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          WORKFLOW: ${{ github.workflow }}
-        run: |
-          msg="API did not converge on ${GITHUB_SHA} within 45 minutes; the web was deployed anyway (REL-rollback-skew). Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          echo "::error::${msg}"
-          echo "### ${msg}" >> "$GITHUB_STEP_SUMMARY"
-          title="Deploy failed: ${WORKFLOW}"
-          gh label create incident --color B60205 >/dev/null 2>&1 || true
-          num=$(gh issue list --label incident --state open --limit 100 --json number,title | TITLE="$title" node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const i=JSON.parse(s||"[]").find(x=>x.title===process.env.TITLE);process.stdout.write(i?String(i.number):"")})' || true)
-          if [ -n "$num" ]; then gh issue comment "$num" --body "$msg" || true
-          else gh issue create --title "$title" --label incident --body "$msg" || true
-          fi
-          exit 1
 
       - name: Append sync log
         if: always()

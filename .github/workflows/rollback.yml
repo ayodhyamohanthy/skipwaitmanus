@@ -13,17 +13,31 @@ name: Rollback (manual)
 #     server/schemaReconcile.ts byte for byte), since only then is the older code known
 #     to fit the live database. No migration and no database change runs here.
 # It waits in the deploy-api queue, deploys and verifies the target SHA with the same
-# scripts as Deploy API, then moves refs/tags/api-runtime to it. Any refusal changes
-# nothing in production; fix the input or the target's CI and dispatch again. To
-# redeploy the Web, dispatch Deploy Web on main (also gated).
+# scripts as Deploy API, then moves refs/tags/api-runtime to it.
+#
+# REL-rollback-skew (D-212) adds the web leg. The same request recovers the Web (web) or
+# both systems (all) to an older green commit; each leg keeps its own trusted gate: the API
+# leg runs require-green-release.mjs --target api --recovery (unchanged, and the release
+# path used by the deploy workflows is byte-identical), the web leg runs this row's
+# scripts/rollbackTarget.mjs web-gate, which reuses the same CI verdict by import. The web
+# leg builds the target ref and deploys it with the same wrangler pages deploy command
+# Deploy Web uses, under a job-level deploy-pages concurrency group so it never runs beside
+# a web deploy, then verifies from Cloudflare and the live page that the target is what the
+# world now gets. For `all` the web leg finishes first: a newer web must never face an API
+# that has already gone back (the skew this row exists to prevent).
+#
+# Any refusal changes nothing in production; fix the input or the target's CI and dispatch
+# again.
 on:
   workflow_dispatch:
     inputs:
       target:
-        description: 'System to recover (only the API has a recovery job)'
+        description: 'System to recover (api, web or all)'
         type: choice
         options:
           - api
+          - all
+          - web
         default: api
         required: true
       commit:
@@ -62,6 +76,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Require a deliberate request and green CI on the recovery target
+        if: inputs.target != 'web'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RECOVERY_SYSTEM: ${{ inputs.target }}
@@ -69,9 +84,24 @@ jobs:
           RECOVERY_CONFIRM: ${{ inputs.confirm }}
           RECOVERY_REASON: ${{ inputs.reason }}
         run: node scripts/require-green-release.mjs --target api --recovery
+      # The web leg keeps its own gate (D-248): require-green-release.mjs stays API-only, and
+      # scripts/rollbackTarget.mjs web-gate reuses its ciVerdict/releaseRuns by import, so a
+      # target: all dispatch reaches each leg's gate as that leg's own system.
+      - name: Require a deliberate request and green CI on the web recovery target
+        if: inputs.target != 'api'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RECOVERY_SYSTEM: ${{ inputs.target }}
+          RECOVERY_COMMIT: ${{ inputs.commit }}
+          RECOVERY_CONFIRM: ${{ inputs.confirm }}
+          RECOVERY_REASON: ${{ inputs.reason }}
+        run: node scripts/rollbackTarget.mjs web-gate
 
   recover-api:
-    needs: recovery-gate
+    # For target: all the web recovers first: a newer web must never face an API that has
+    # already gone back. A skipped web leg (target: api) leaves the API recovery unchanged.
+    needs: [recovery-gate, rollback-web]
+    if: ${{ !cancelled() && needs.recovery-gate.result == 'success' && inputs.target != 'web' && (inputs.target == 'api' || needs.rollback-web.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       # Control scripts run from the trusted checkout; the target only supplies the artifact.
@@ -154,3 +184,83 @@ jobs:
           EXPECTED_SHA: ${{ inputs.commit }}
         run: |
           printf '### Recovery %s: target %s, workflow commit %s\n' "$RESULT" "$EXPECTED_SHA" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+
+  rollback-web:
+    needs: recovery-gate
+    if: ${{ !cancelled() && needs.recovery-gate.result == 'success' && inputs.target != 'api' }}
+    runs-on: ubuntu-latest
+    # Job level, so rollback.yml's workflow-level deploy-api pin stays true and this leg
+    # never runs beside a Deploy Web run (both write the production Pages deployment).
+    concurrency:
+      group: deploy-pages
+      cancel-in-progress: false
+    steps:
+      # Control scripts run from the trusted checkout; the target only supplies the artifact.
+      - name: Check out the trusted workflow code
+        uses: actions/checkout@v4
+        with:
+          path: trusted
+          persist-credentials: false
+      - name: Check out the recovery target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+          path: target
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: target/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: target/pnpm-lock.yaml
+      - name: Install the target's dependencies
+        working-directory: target
+        run: pnpm install --frozen-lockfile
+      # The same build Deploy Web runs, stamped with the target SHA so the live page proves it.
+      - name: Build the target web
+        working-directory: target
+        env:
+          VITE_WORKOS_CLIENT_ID: client_01M17TTFJ6784B1CN6MHAHB60Y
+          VITE_WORKOS_ENABLED: "true"
+          VITE_GIT_COMMIT_SHA: ${{ inputs.commit }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_CLARITY_PROJECT_ID: ${{ secrets.VITE_CLARITY_PROJECT_ID }}
+        run: pnpm build
+      # Last look before the production write: a CI re-run of the target may have turned
+      # red, or this job alone may be a re-run.
+      - name: Re-check the web recovery target
+        working-directory: trusted
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RECOVERY_SYSTEM: ${{ inputs.target }}
+          RECOVERY_COMMIT: ${{ inputs.commit }}
+          RECOVERY_CONFIRM: ${{ inputs.confirm }}
+          RECOVERY_REASON: ${{ inputs.reason }}
+        run: node scripts/rollbackTarget.mjs web-gate
+      # The same command Deploy Web uses, so the recovered build becomes the production
+      # deployment of the same project.
+      - name: Deploy the target web to Cloudflare Pages
+        working-directory: target
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler pages deploy dist/public --project-name skipwait --branch main --commit-dirty=true
+      # REL-release-verify never sees a recovery (it triggers on the deploy workflows), so
+      # this leg proves itself: Cloudflare's canonical deployment and the live page both
+      # carry the target, or the job fails loudly.
+      - name: Verify the live web is the target
+        working-directory: trusted
+        env:
+          EXPECTED_SHA: ${{ inputs.commit }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/rollbackTarget.mjs verify-web
+      - name: Record the recovery result
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+          EXPECTED_SHA: ${{ inputs.commit }}
+        run: |
+          printf '### Web recovery %s: target %s, workflow commit %s\n' "$RESULT" "$EXPECTED_SHA" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
