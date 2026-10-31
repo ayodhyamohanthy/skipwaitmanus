@@ -2065,7 +2065,7 @@
       "lane": "d048-thread",
       "branch": "agent/queue/d048-p3-conversation",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-250",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
