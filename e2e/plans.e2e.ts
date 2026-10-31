@@ -59,8 +59,7 @@ test("legacy plans page retains server-catalog price-mutation control in isolate
   const legacyIndexHtmlPath = path.join(LEGACY_PLANS_OUT_DIR, "index.html");
   if (!fs.existsSync(legacyIndexHtmlPath)) {
     const { build } = await import("vite");
-    const { default: config } = await import("./legacy-plans.vite.config");
-    await build(config);
+    await build({ configFile: path.resolve(import.meta.dirname, "legacy-plans.vite.config.ts") });
   }
 
   // Verify the default output is unchanged
