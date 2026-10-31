@@ -3056,8 +3056,14 @@ export async function referralWasClaimedTx(tx: LedgerTx, requestId: number): Pro
 export async function lapseClaimTx(tx: LedgerTx, requestId: number, nowMs: number): Promise<{ lapsed: boolean; reason?: string }> {
   const current = (await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, jobSeekerId: referralRequests.jobSeekerId, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(eq(referralRequests.id, requestId)).limit(1).for("update"))[0];
   if (!current || current.status !== "pending" || !current.referrerId) return { lapsed: false };
+  // A claim tenure ends at ANY release event (claim_lapse, referred_lapse,
+  // step_back), not only at claim_lapse: reading just claim/claim_lapse lets a
+  // stale claim from an earlier tenure govern a tenure that began without a claim
+  // event (a coverage delivery sets referrerId with no event). Same pickup
+  // definition as referralWasClaimedTx, so claim and allocation lapses can never
+  // both consider one tenure.
   const latest = await tx.select({ id: referralTransitionEvents.id, action: referralTransitionEvents.action, createdAt: referralTransitionEvents.createdAt }).from(referralTransitionEvents)
-    .where(and(eq(referralTransitionEvents.referralRequestId, requestId), inArray(referralTransitionEvents.action, ["claim", "claim_lapse"])))
+    .where(and(eq(referralTransitionEvents.referralRequestId, requestId), inArray(referralTransitionEvents.action, [...PICKUP_OR_RELEASE_ACTIONS])))
     .for("update");
   const claimEvent = latestByEventId(latest);
   if (!claimEvent || claimEvent.action !== "claim") return { lapsed: false };
@@ -3442,9 +3448,23 @@ async function transitionReferralRequestTx(tx: any, input: ReferralTransitionInp
   return { status: input.toStatus, revision: nextRevision, replayed: false as const };
 }
 
-export async function reviewReferralRequest(userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) {
+export async function reviewReferralRequest(userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }, nowMs: number = Date.now()) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  return db.transaction(async tx => {
+  // D-038-A review-time enforcement, atomic: the 48-hour lapse check and the
+  // decision run in ONE transaction under the same row and event locks, so a claim
+  // cannot cross its lapse instant between a check and a decision already in
+  // flight, and a down or lagging timers job can never let a lapsed claim approve
+  // or decline. A lapse found here COMMITS with the transaction (a rolled-back
+  // lapse would report a return that never persisted); the conflict is thrown
+  // after the commit, carrying the post-lapse state the transaction recorded.
+  // No-ops for unclaimed asks, un-lapsed claims and every non-pending status, on
+  // the same claimLapseAtMs rule and REFERRAL_TIMERS_SINCE floor the sweep uses.
+  const outcome = await db.transaction(async tx => {
+    const lapse = await lapseClaimTx(tx, input.requestId, nowMs);
+    if (lapse.lapsed) {
+      const after = (await tx.select({ status: referralRequests.status, revision: referralRequests.revision }).from(referralRequests).where(eq(referralRequests.id, input.requestId)).limit(1))[0];
+      return { lapsed: true as const, status: after?.status ?? "missing", revision: typeof after?.revision === "number" ? after.revision : -1 };
+    }
     const rows = await tx.select({ request: referralRequests, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, input.requestId)).limit(1).for("update");
     const current = rows[0]?.request;
     const operationKey = `review:${userId}:${input.decision}`;
@@ -3457,10 +3477,13 @@ export async function reviewReferralRequest(userId: number, input: { requestId: 
     if (input.decision === "declined") {
       const note = input.message?.trim();
       const result = await passReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, companyDomain: rows[0]?.companyDomain ?? "", jobSeekerId: current.jobSeekerId, reason: note || oneClickDeclineMessages.cannot_support, reasonCode: null, operationKey, releasedClaim: true });
-      return { ...result, status: "passed" as const };
+      return { lapsed: false as const, result: { ...result, status: "passed" as const } };
     }
-    return transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "review", operationKey, toStatus: "approved", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== userId) throw new Error("Referral Request not found"); }, patch: { referrerMessage: input.message ?? null }, notification: { userId: current.jobSeekerId, title: "Referral Request approved", body: input.message || "Your Referrer has reviewed your Referral Request." } });
+    const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "review", operationKey, toStatus: "approved", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== userId) throw new Error("Referral Request not found"); }, patch: { referrerMessage: input.message ?? null }, notification: { userId: current.jobSeekerId, title: "Referral Request approved", body: input.message || "Your Referrer has reviewed your Referral Request." } });
+    return { lapsed: false as const, result };
   });
+  if (outcome.lapsed) throw new ReferralTransitionConflict("This referral request can no longer be reviewed", { status: outcome.status, revision: outcome.revision });
+  return outcome.result;
 }
 
 export function authorizeApprovedReferralConversation(userId: number, request: { jobSeekerId: number; referrerId: number | null; status: string } | undefined) {
