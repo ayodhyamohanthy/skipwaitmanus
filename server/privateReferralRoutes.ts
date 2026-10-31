@@ -33,6 +33,7 @@ import { CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, Pla
 import { BlockedPersonalLinkError } from "./blockedPairs";
 import { creditLedgerQuerySchema, creditLedgerResponseSchema, type CreditLedgerEntry } from "../shared/creditLedger";
 import type { ReferrerAccessResponse } from "../shared/referrerAccess";
+import { REFERRER_SESSION_LOCAL } from "./referrerSessionGate";
 import { resolveAskNote } from "../shared/askNote";
 import { landedJourneyRequestSchema, type LandedJourneyRequest, type LandedJourneyState, type ReferrerThankYouWall } from "../shared/landedJourney";
 import { isOpportunityExpired, myOpportunitiesResponseSchema, opportunityAskSelectionSchema, OPPORTUNITY_TTL_MS } from "../shared/companyOpportunities";
@@ -928,8 +929,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in with your company email to continue" });
       const body = await loadAccess(identity.account.id);
+      // D-057 §0b.5: the session gate (installed before this router) leaves its answer for this request.
+      const sessionPasses: unknown = res.locals[REFERRER_SESSION_LOCAL];
       res.set("Cache-Control", "private, no-store");
-      res.json(body);
+      res.json(typeof sessionPasses === "boolean" ? { ...body, codeRequired: body.verifiedCompanyAccess && !sessionPasses } : body);
     } catch { res.status(500).json({ error: "We could not check your company-email access" }); }
   });
   app.get("/api/referrer-impact/me", async (req, res) => {
