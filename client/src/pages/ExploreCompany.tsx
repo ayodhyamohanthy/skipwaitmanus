@@ -76,11 +76,44 @@ export default function ExploreCompany() {
 }
 
 function CompanyPage({ company }: { company: PublicCompany }) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.has("open") || params.has("post");
+  });
   const composer = useAskComposer(company);
   useEffect(() => {
     applySeo({ title: `Referrals at ${company.name}`, description: `Request a private introduction to someone at ${company.name}. ${ASK_COST_SENTENCE}`, path: `/explore/${company.slug}` });
   }, [company.name, company.slug]);
+
+  const handleOpenChange = (open: boolean) => {
+    setDrawerOpen(open);
+    if (!open) {
+      composer.selectPost(null);
+      composer.clearAfterClose();
+      if (typeof window !== "undefined" && window.location.search) {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has("open") || url.searchParams.has("post")) {
+          url.searchParams.delete("open");
+          url.searchParams.delete("post");
+          window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
+        }
+      }
+    }
+  };
+
+  const openHeroAsk = () => {
+    composer.selectPost(null);
+    if (typeof window !== "undefined" && window.location.search) {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("post")) {
+        url.searchParams.delete("post");
+        window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
+      }
+    }
+    setDrawerOpen(true);
+  };
+
   const open = company.openToReferrals;
   return (
     <GoalAppShell
@@ -89,8 +122,10 @@ function CompanyPage({ company }: { company: PublicCompany }) {
       drawer={
         <AskDrawer
           open={drawerOpen}
-          onOpenChange={setDrawerOpen}
+          onOpenChange={handleOpenChange}
           company={company}
+          isPostSelected={Boolean(composer.postSelection)}
+          onChangeRole={() => composer.selectPost(null)}
           context={composer.sent ? null : composer.context}
           signedIn={composer.signedIn}
           url={composer.url}
@@ -119,7 +154,7 @@ function CompanyPage({ company }: { company: PublicCompany }) {
           draftState={composer.draftState}
           error={composer.sendError}
           sent={composer.sent}
-          onAnother={() => setDrawerOpen(false)}
+          onAnother={() => handleOpenChange(false)}
         />
       }
     >
@@ -154,9 +189,9 @@ function CompanyPage({ company }: { company: PublicCompany }) {
         <p className="mt-6 text-pretty text-g-body text-g-ink-2">Ask a verified employee. Your name and resume stay private until they accept.</p>
         <div className="mt-5 max-gdesk:grid">
           {open ? (
-            <GoalButton variant="primary" touch="large" className="gdesk:min-w-[280px]" onClick={() => setDrawerOpen(true)}>Ask for a referral</GoalButton>
+            <GoalButton variant="primary" touch="large" className="gdesk:min-w-[280px]" onClick={openHeroAsk}>Ask for a referral</GoalButton>
           ) : (
-            <GoalButton variant="outline" touch="large" className="gdesk:min-w-[280px]" onClick={() => setDrawerOpen(true)}>Ask anyway</GoalButton>
+            <GoalButton variant="outline" touch="large" className="gdesk:min-w-[280px]" onClick={openHeroAsk}>Ask anyway</GoalButton>
           )}
         </div>
         <p className="mt-3 text-g-meta text-g-ink-3">

@@ -13,15 +13,37 @@ export function goToSeekerSignIn(returnTo: string): void {
   window.location.assign(seekerSignInUrl(returnTo));
 }
 
-// Only /ask owns referral query handoff. Never forward unrelated query values
-// (job links, tokens or a nested returnTo) into the authentication return URL.
-export function askSignInReturnTo(pathname: string, search: string): string {
+// /ask and company doors (/explore/:slug) own referral query handoff.
+// Never forward unrelated query values into the authentication return URL.
+export function askSignInReturnTo(
+  pathname: string,
+  search: string,
+  postSelection?: { opportunityId?: number | null } | null,
+): string {
+  const cleanPath = pathname.replace(/\/+$/, "");
+  const isCompanyDoor = /^\/explore\/[^/]+$/.test(cleanPath);
+
+  if (isCompanyDoor) {
+    const source = new URLSearchParams(search);
+    const rawPost = source.get("post");
+    const oppId = postSelection?.opportunityId ?? (rawPost && /^\d+$/.test(rawPost) ? Number(rawPost) : undefined);
+    const params = new URLSearchParams();
+    params.set("open", "1");
+    if (oppId !== undefined && oppId > 0) {
+      params.set("post", String(oppId));
+    }
+    return `${cleanPath}?${params.toString()}`;
+  }
+
   if (pathname !== "/ask") return "/ask";
   const source = new URLSearchParams(search);
   const allowed = new URLSearchParams();
   for (const key of ["fast", "referCompany", "referAlias", "post"]) {
     const value = source.get(key);
     if (value !== null) allowed.set(key, value);
+  }
+  if (!allowed.has("post") && postSelection?.opportunityId) {
+    allowed.set("post", String(postSelection.opportunityId));
   }
   const query = allowed.toString();
   return query ? `/ask?${query}` : "/ask";
