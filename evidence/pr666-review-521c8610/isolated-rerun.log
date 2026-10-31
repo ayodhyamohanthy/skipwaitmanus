@@ -1,0 +1,468 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.patchedDependencies", "pnpm.overrides". See https://pnpm.io/settings for the new home of each setting.
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/private/tmp/qoder-composed-666[39m
+
+[90mstdout[2m | scripts/classifyCiChange.test.ts
+[22m[39m[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+
+[90mstdout[2m | server/b2bMonetization.test.ts
+[22m[39m[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+
+classify-ci-change: substantive - 1 file(s) changed between the pinned base and head
+classify-ci-change: marker - no file changed between the pinned base and head
+classify-ci-change: contradiction - the event reported no change, but 1 file(s) differ between the pinned base and head
+classify-ci-change: the event reported an empty diff and the pinned diff is not empty, so this required job fails rather than passing without real steps.
+classify-ci-change: substantive - the diff could not be read: no merge base
+classify-ci-change: substantive - not a pull request event: every push, dispatch and re-run runs the full required steps
+[90mstdout[2m | client/src/pages/plansGoal.test.tsx
+[22m[39m[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+
+ [32m✓[39m server/b2bMonetization.test.ts [2m([22m[2m33 tests[22m[2m)[22m[32m 147[2mms[22m[39m
+ [31m❯[39m client/src/pages/plansGoal.test.tsx [2m([22m[2m24 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 6325[2mms[22m[39m
+     [32m✓[39m renders the kit billing page untouched when the flag is off[32m 158[2mms[22m[39m
+     [33m[2m✓[22m[39m opens with the goal line, one next step and one black commit [33m 316[2mms[22m[39m
+     [32m✓[39m states the balance and plan facts in referral-only words (D-173, D-180)[32m 32[2mms[22m[39m
+     [32m✓[39m never shows a failed load as a zero balance[32m 19[2mms[22m[39m
+     [32m✓[39m treats a malformed summary as a failed load, never as an empty account[32m 19[2mms[22m[39m
+     [32m✓[39m recovers from a failed load with the single retry commit[32m 43[2mms[22m[39m
+     [32m✓[39m asks a signed-out visitor to sign in as the only commit[32m 12[2mms[22m[39m
+     [32m✓[39m shows an active plan's renewal date and keeps the cancel control[32m 24[2mms[22m[39m
+     [32m✓[39m confirms the cancellation on the server and only then reports the term end[32m 118[2mms[22m[39m
+     [32m✓[39m keeps the plan renewing when the server refuses the cancellation[32m 94[2mms[22m[39m
+     [32m✓[39m offers no renewal control on a plan that already ends[32m 15[2mms[22m[39m
+     [32m✓[39m reads a stale retired plan as Free, never by its retired name[32m 16[2mms[22m[39m
+     [32m✓[39m lists settled payments with provider facts and a refund as dot + text[32m 30[2mms[22m[39m
+[31m     [31m×[31m sends a seeker with no referral requests left to the packs on sale[39m[33m 5011[2mms[22m[39m
+     [32m✓[39m says it is checking while the summary is still loading[32m 67[2mms[22m[39m
+     [32m✓[39m drops the old balance and receipts when the next load fails[32m 36[2mms[22m[39m
+     [32m✓[39m makes no private request while signed out[32m 7[2mms[22m[39m
+     [32m✓[39m asks for the seeker role with credentials and the session token[32m 14[2mms[22m[39m
+     [32m✓[39m sends no Authorization header when there is no token[32m 13[2mms[22m[39m
+     [32m✓[39m treats a refused summary as a failed load, not an empty account[32m 12[2mms[22m[39m
+     [32m✓[39m treats refused receipts as a failed load, never as no payments[32m 12[2mms[22m[39m
+     [32m✓[39m ignores a late response from the signed-out session[32m 73[2mms[22m[39m
+     [32m✓[39m writes nothing when the confirmation is opened and closed[32m 57[2mms[22m[39m
+     [32m✓[39m sends one cancellation when the commit is pressed twice while pending[32m 121[2mms[22m[39m
+ [32m✓[39m scripts/classifyCiChange.test.ts [2m([22m[2m54 tests[22m[2m)[22m[33m 21862[2mms[22m[39m
+     [33m[2m✓[22m[39m A5: a change that is reverted nets to the fast path [33m 352[2mms[22m[39m
+     [33m[2m✓[22m[39m A2/A6: a modified, renamed, deleted or mode-only file is substantive [33m 586[2mms[22m[39m
+     [33m[2m✓[22m[39m A3: a base that moves afterwards does not change the verdict for the pinned pair [33m 369[2mms[22m[39m
+     [33m[2m✓[22m[39m L1: base and head each made the same change - the direct pair is empty, the pull request is not [33m 320[2mms[22m[39m
+     [33m[2m✓[22m[39m a marker branch forked 400 commits behind main still reads empty from a merge base [33m 15824[2mms[22m[39m
+     [33m[2m✓[22m[39m a complete (non-shallow) clone with unrelated histories also stays substantive: --unshallow failing is not fatal and not a fast path [33m 1844[2mms[22m[39m
+     [33m[2m✓[22m[39m a merge base that cannot be resolved stays substantive, never a fast path [33m 1835[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/plansGoal.test.tsx[2m > [22mGoal /billing purchase affordance[2m > [22msends a seeker with no referral requests left to the packs on sale
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find role="link" and name "Get more referral requests"
+
+Ignored nodes: comments, script, style
+[36m<body[39m
+  [33mstyle[39m=[32m""[39m
+[36m>[39m
+  [36m<div>[39m
+    [36m<main[39m
+      [33mclass[39m=[32m"g-scope mx-auto w-full max-w-[920px] bg-g-canvas px-4 py-6 font-g-sans text-g-ink gdesk:px-8 gdesk:py-8"[39m
+      [33mdata-goal-page[39m=[32m"plans"[39m
+      [33mdata-skipwait-screen[39m=[32m"billing"[39m
+    [36m>[39m
+      [36m<header>[39m
+        [36m<h1[39m
+          [33mclass[39m=[32m"text-balance text-g-display text-g-ink"[39m
+        [36m>[39m
+          [0mManage your plan and referral requests.[0m
+        [36m</h1>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-2 flex items-center gap-2 text-g-meta text-g-ink-2"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33maria-hidden[39m=[32m"true"[39m
+            [33mclass[39m=[32m"size-(--g-dot) shrink-0 rounded-full bg-g-ink"[39m
+          [36m/>[39m
+          [36m<span>[39m
+            [0mFree plan[0m
+          [36m</span>[39m
+        [36m</p>[39m
+      [36m</header>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"mt-6"[39m
+      [36m>[39m
+        [36m<section[39m
+          [33maria-labelledby[39m=[32m"goal-next-step-heading"[39m
+          [33mclass[39m=[32m"border border-g-hairline p-4 gdesk:p-5"[39m
+        [36m>[39m
+          [36m<h2[39m
+            [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+            [33mid[39m=[32m"goal-next-step-heading"[39m
+          [36m>[39m
+            [0mYour next step[0m
+          [36m</h2>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"mt-2 text-g-meta text-g-ink-2"[39m
+          [36m>[39m
+            [0mYou have no referral requests left. Add more before you send another request.[0m
+          [36m</p>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 rounded-g-control border border-transparent text-g-label whitespace-nowrap transition-colors duration-(--g-dur-hover) ease-g-out select-none h-(--g-control-h) px-[14px] max-gdesk:h-12 bg-g-primary text-g-on-primary hover:bg-g-primary-pressed active:bg-g-primary-pressed hover:not-active:bg-g-primary-hover"[39m
+            [33mdata-g-primary[39m=[32m"true"[39m
+            [33mdata-testid[39m=[32m"goal-button"[39m
+            [33mhref[39m=[32m"/plans"[39m
+          [36m>[39m
+            [0mSee plans and prices[0m
+          [36m</a>[39m
+        [36m</section>[39m
+      [36m</div>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"mt-6 border border-g-hairline p-4 gdesk:p-5"[39m
+        [33mdata-testid[39m=[32m"goal-billing-balance"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-baseline justify-between gap-3"[39m
+        [36m>[39m
+          [36m<h2[39m
+            [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+          [36m>[39m
+            [0mReferral requests left[0m
+          [36m</h2>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"g-num text-g-heading text-g-ink"[39m
+            [33mdata-testid[39m=[32m"goal-num"[39m
+          [36m>[39m
+            [0m0[0m
+          [36m</span>[39m
+        [36m</div>[39m
+        [36m<dl[39m
+          [33mclass[39m=[32m"mt-3 grid gap-1.5"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-baseline justify-between gap-3"[39m
+          [36m>[39m
+            [36m<dt[39m
+              [33mclass[39m=[32m"text-g-meta text-g-ink-2"[39m
+            [36m>[39m
+              [0mFrom your plan[0m
+            [36m</dt>[39m
+            [36m<dd[39m
+              [33mclass[39m=[32m"text-g-meta text-g-ink"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"g-num"[39m
+                [33mdata-testid[39m=[32m"goal-num"[39m
+              [36m>[39m
+                [0m0[0m
+              [36m</span>[39m
+            [36m</dd>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-baseline justify-between gap-3"[39m
+          [36m>[39m
+            [36m<dt[39m
+              [33mclass[39m=[32m"text-g-meta text-g-ink-2"[39m
+            [36m>[39m
+              [0mUsed this cycle[0m
+            [36m</dt>[39m
+            [36m<dd[39m
+              [33mclass[39m=[32m"text-g-meta text-g-ink"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"g-num"[39m
+                [33mdata-testid[39m=[32m"goal-num"[39m
+              [36m>[39m
+                [0m0[0m
+              [36m</span>[39m
+            [36m</dd>[39m
+          [36m</div>[39m
+        [36m</dl>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"mt-6 border border-g-hairline p-4 gdesk:p-5"[39m
+        [33mdata-testid[39m=[32m"goal-billing-plan"[39m
+      [36m>[39m
+        [36m<h2[39m
+          [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+        [36m>[39m
+          [0mYour plan[0m
+        [36m</h2>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-3 grid gap-1.5"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-g-meta text-g-ink-2"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"g-num"[39m
+              [33mdata-testid[39m=[32m"goal-num"[39m
+            [36m>[39m
+              [0m1[0m
+            [36m</span>[39m
+            [0m of [0m
+            [36m<span[39m
+              [33mclass[39m=[32m"g-num"[39m
+              [33mdata-testid[39m=[32m"goal-num"[39m
+            [36m>[39m
+              [0m3[0m
+            [36m</span>[39m
+            [0m open at once[0m
+          [36m</p>[39m
+        [36m</div>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"mt-6 border border-g-hairline p-4 gdesk:p-5"[39m
+        [33mdata-testid[39m=[32m"goal-billing-payment-method"[39m
+      [36m>[39m
+        [36m<h2[39m
+          [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+        [36m>[39m
+          [0mPayment method[0m
+        [36m</h2>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-3 text-g-meta text-g-ink-2"[39m
+        [36m>[39m
+          [0mCheckout runs on the payment provider's hosted page. Card and bank details stay with them — skipwait.me never sees or stores them, so there are no saved methods to list here.[0m
+        [36m</p>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-2 text-g-meta text-g-ink-3"[39m
+        [36m>[39m
+          [0mPlans are charged in rupees in India and in US dollars elsewhere. The provider shows the payment methods available to you at checkout.[0m
+        [36m</p>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"mt-6 border border-g-hairline p-4 gdesk:p-5"[39m
+        [33mdata-testid[39m=[32m"goal-billing-receipts"[39m
+      [36m>[39m
+        [36m<h2[39m
+          [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+        [36m>[39m
+          [0mReceipts[0m
+        [36m</h2>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-3 min-h-12 content-center text-g-label text-g-ink"[39m
+        [36m>[39m
+          [0mNo payments yet.[0m
+        [36m</p>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-1 text-g-meta text-g-ink-2"[39m
+        [36m>[39m
+          [0mSettled payments appear here with provider references.[0m
+        [36m</p>[39m
+      [36m</section>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body[39m
+  [33mstyle[39m=[32m""[39m
+[36m>[39m
+  [36m<div>[39m
+    [36m<main[39m
+      [33mclass[39m=[32m"g-scope mx-auto w-full max-w-[920px] bg-g-canvas px-4 py-6 font-g-sans text-g-ink gdesk:px-8 gdesk:py-8"[39m
+      [33mdata-goal-page[39m=[32m"plans"[39m
+      [33mdata-skipwait-screen[39m=[32m"billing"[39m
+    [36m>[39m
+      [36m<header>[39m
+        [36m<h1[39m
+          [33mclass[39m=[32m"text-balance text-g-display text-g-ink"[39m
+        [36m>[39m
+          [0mManage your plan and referral requests.[0m
+        [36m</h1>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-2 flex items-center gap-2 text-g-meta text-g-ink-2"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33maria-hidden[39m=[32m"true"[39m
+            [33mclass[39m=[32m"size-(--g-dot) shrink-0 rounded-full bg-g-ink"[39m
+          [36m/>[39m
+          [36m<span>[39m
+            [0mFree plan[0m
+          [36m</span>[39m
+        [36m</p>[39m
+      [36m</header>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"mt-6"[39m
+      [36m>[39m
+        [36m<section[39m
+          [33maria-labelledby[39m=[32m"goal-next-step-heading"[39m
+          [33mclass[39m=[32m"border border-g-hairline p-4 gdesk:p-5"[39m
+        [36m>[39m
+          [36m<h2[39m
+            [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+            [33mid[39m=[32m"goal-next-step-heading"[39m
+          [36m>[39m
+            [0mYour next step[0m
+          [36m</h2>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"mt-2 text-g-meta text-g-ink-2"[39m
+          [36m>[39m
+            [0mYou have no referral requests left. Add more before you send another request.[0m
+          [36m</p>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 rounded-g-control border border-transparent text-g-label whitespace-nowrap transition-colors duration-(--g-dur-hover) ease-g-out select-none h-(--g-control-h) px-[14px] max-gdesk:h-12 bg-g-primary text-g-on-primary hover:bg-g-primary-pressed active:bg-g-primary-pressed hover:not-active:bg-g-primary-hover"[39m
+            [33mdata-g-primary[39m=[32m"true"[39m
+            [33mdata-testid[39m=[32m"goal-button"[39m
+            [33mhref[39m=[32m"/plans"[39m
+          [36m>[39m
+            [0mSee plans and prices[0m
+          [36m</a>[39m
+        [36m</section>[39m
+      [36m</div>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"mt-6 border border-g-hairline p-4 gdesk:p-5"[39m
+        [33mdata-testid[39m=[32m"goal-billing-balance"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-baseline justify-between gap-3"[39m
+        [36m>[39m
+          [36m<h2[39m
+            [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+          [36m>[39m
+            [0mReferral requests left[0m
+          [36m</h2>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"g-num text-g-heading text-g-ink"[39m
+            [33mdata-testid[39m=[32m"goal-num"[39m
+          [36m>[39m
+            [0m0[0m
+          [36m</span>[39m
+        [36m</div>[39m
+        [36m<dl[39m
+          [33mclass[39m=[32m"mt-3 grid gap-1.5"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-baseline justify-between gap-3"[39m
+          [36m>[39m
+            [36m<dt[39m
+              [33mclass[39m=[32m"text-g-meta text-g-ink-2"[39m
+            [36m>[39m
+              [0mFrom your plan[0m
+            [36m</dt>[39m
+            [36m<dd[39m
+              [33mclass[39m=[32m"text-g-meta text-g-ink"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"g-num"[39m
+                [33mdata-testid[39m=[32m"goal-num"[39m
+              [36m>[39m
+                [0m0[0m
+              [36m</span>[39m
+            [36m</dd>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-baseline justify-between gap-3"[39m
+          [36m>[39m
+            [36m<dt[39m
+              [33mclass[39m=[32m"text-g-meta text-g-ink-2"[39m
+            [36m>[39m
+              [0mUsed this cycle[0m
+            [36m</dt>[39m
+            [36m<dd[39m
+              [33mclass[39m=[32m"text-g-meta text-g-ink"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"g-num"[39m
+                [33mdata-testid[39m=[32m"goal-num"[39m
+              [36m>[39m
+                [0m0[0m
+              [36m</span>[39m
+            [36m</dd>[39m
+          [36m</div>[39m
+        [36m</dl>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"mt-6 border border-g-hairline p-4 gdesk:p-5"[39m
+        [33mdata-testid[39m=[32m"goal-billing-plan"[39m
+      [36m>[39m
+        [36m<h2[39m
+          [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+        [36m>[39m
+          [0mYour plan[0m
+        [36m</h2>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-3 grid gap-1.5"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-g-meta text-g-ink-2"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"g-num"[39m
+              [33mdata-testid[39m=[32m"goal-num"[39m
+            [36m>[39m
+              [0m1[0m
+            [36m</span>[39m
+            [0m of [0m
+            [36m<span[39m
+              [33mclass[39m=[32m"g-num"[39m
+              [33mdata-testid[39m=[32m"goal-num"[39m
+            [36m>[39m
+              [0m3[0m
+            [36m</span>[39m
+            [0m open at once[0m
+          [36m</p>[39m
+        [36m</div>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"mt-6 border border-g-hairline p-4 gdesk:p-5"[39m
+        [33mdata-testid[39m=[32m"goal-billing-payment-method"[39m
+      [36m>[39m
+        [36m<h2[39m
+          [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+        [36m>[39m
+          [0mPayment method[0m
+        [36m</h2>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-3 text-g-meta text-g-ink-2"[39m
+        [36m>[39m
+          [0mCheckout runs on the payment provider's hosted page. Card and bank details stay with them — skipwait.me never sees or stores them, so there are no saved methods to list here.[0m
+        [36m</p>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-2 text-g-meta text-g-ink-3"[39m
+        [36m>[39m
+          [0mPlans are charged in rupees in India and in US dollars elsewhere. The provider shows the payment methods available to you at checkout.[0m
+        [36m</p>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"mt-6 border border-g-hairline p-4 gdesk:p-5"[39m
+        [33mdata-testid[39m=[32m"goal-billing-receipts"[39m
+      [36m>[39m
+        [36m<h2[39m
+          [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+        [36m>[39m
+          [0mReceipts[0m
+        [36m</h2>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-3 min-h-12 content-center text-g-label text-g-ink"[39m
+        [36m>[39m
+          [0mNo payments yet.[0m
+        [36m</p>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-1 text-g-meta text-g-ink-2"[39m
+        [36m>[39m
+          [0mSettled payments appear here with provider references.[0m
+        [36m</p>[39m
+      [36m</section>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+[36m</body>[39m
+[90m [2m❯[22m waitForWrapper node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:[2m163:27[22m[39m
+[90m [2m❯[22m node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:[2m86:33[22m[39m
+[36m [2m❯[22m client/src/pages/plansGoal.test.tsx:[2m216:34[22m[39m
+    [90m214|[39m     [34mstubBilling[39m({ summary[33m:[39m outSummary })[33m;[39m
+    [90m215|[39m     [34mrender[39m([33m<[39m[33mBilling[39m [33m/[39m[33m>[39m)[33m;[39m
+    [90m216|[39m     const primary = await screen.findByRole("link", { name: "Get more …
+    [90m   |[39m                                  [31m^[39m
+    [90m217|[39m     expect(primary.getAttribute("href")).toBe("/premium?role=job_seeke…
+    [90m218|[39m     [34mexpect[39m(primary[33m.[39m[34mhasAttribute[39m([32m"data-g-primary"[39m))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m110 passed[39m[22m[90m (111)[39m
+[2m   Start at [22m 08:09:30
+[2m   Duration [22m 22.28s[2m (transform 1.58s, setup 239ms, import 4.53s, tests 28.33s, environment 1.59s)[22m
+
+RERUN_EXIT=1
