@@ -77,9 +77,19 @@ const reportingApiSchema = z.array(z.object({
   }).optional(),
 }));
 
+// CSP Level 3 fetch, document, navigation, reporting and Trusted Types
+// directives. Anything else, however well-formed, is client text: `unknown`.
+const KNOWN_DIRECTIVES = new Set([
+  "default-src", "child-src", "connect-src", "font-src", "frame-src", "img-src", "manifest-src", "media-src",
+  "object-src", "prefetch-src", "script-src", "script-src-elem", "script-src-attr", "style-src", "style-src-elem",
+  "style-src-attr", "worker-src", "base-uri", "sandbox", "form-action", "frame-ancestors", "navigate-to",
+  "report-uri", "report-to", "require-trusted-types-for", "trusted-types", "upgrade-insecure-requests",
+  "block-all-mixed-content", "fenced-frame-src", "webrtc",
+]);
+
 function directiveLabel(value: string | undefined): string {
   const first = (value ?? "").trim().split(/\s+/, 1)[0]?.toLowerCase() ?? "";
-  return /^[a-z-]{1,64}$/.test(first) ? first : "unknown";
+  return KNOWN_DIRECTIVES.has(first) ? first : "unknown";
 }
 
 // The blocked resource is reduced to its host (or scheme / keyword such as
