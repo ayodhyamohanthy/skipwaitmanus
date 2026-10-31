@@ -7,6 +7,10 @@ At 11:53 IST the owner instructed "No go by priority queue only", then at 11:54 
 
 Every owner decision lives here. Any doc, code, copy, test or config that disagrees with an **active** entry is wrong and must be fixed (or the doc marked "Superseded by D-xxx"). Read this with `AGENTS.md` section 0 and `docs/KIT_V4_BUILD_PLAN.md`.
 
+Reconciliation: this newer owner instruction supersedes D-009's discretionary P0 / in-progress / lowest-unblocked selection order wherever it conflicts with FIFO. D-010's goal remains; current authorization, dependencies, owner holds, role eligibility, file ownership and independent-review/CI gates remain. This is not permission to seize a held lane or to implement work for which a required grant is absent. Record the concrete order/eligibility conflict through Instinct rather than inventing an exception or asking the founder to repeat FIFO.
+
+Autonomy reaffirmation (October 31, 11:56 IST): the owner said "I hate manual", "Unless it really requires" and "If something can be completely automated and platform be developed autonomously I appreciate it" (`phonemsg-01M68A7CB1MTW6WH3VH4ZP75JM`, `phonemsg-01M68A7KWVBPK9E7Y9YRYEHTMK`, `phonemsg-01M68A75WRJ81ZP5NK30K06QVS`). Handle ordinary questions, handoffs, testing and continuation through the established coordination route without founder relay, within FIFO and existing authority. This adds no spending, posts-in-the-owner's-name, production/security change or review/CI waiver; a genuinely user-only approval still goes to the owner.
+
 ## How decisions are made (binding, owner Oct 14 2026)
 **Every platform and agent (Claude, Codex, Gemini, Copilot, Instinct, Devin, humans):** before merging any change that alters product behaviour, auth, money, data or copy, check it against this register; if it embodies a new decision, add the entry (or ask the owner) in the same PR.
 1. **Audit first.** Inspect the project area and the evidence before proposing anything.

@@ -8,6 +8,8 @@ October 31 at 11:53-11:54 IST: "No go by priority queue only", then "FIFO always
 
 Sources: `phonemsg-01M68A1QZGARZGJNSVWG9NEBZY`, `phonemsg-01M68A28FYPYGJSQ7X9FBV64JS`. This instruction does not itself implement FIFO in the picker, release a held action or prove session receipt. The earlier institute feature direction remains authorized but is not an automatic priority override.
 
+This newer FIFO instruction supersedes D-009's conflicting discretionary P0 / in-progress / lowest-unblocked selection order, retaining D-010's goal and all authorization/eligibility holds. The owner's 11:56 autonomy reaffirmation asks for ordinary questions, handoffs, testing and continuation to be handled without manual founder relay wherever possible, within FIFO and existing authority (sources in `docs/DECISIONS.md`). It adds no production, security, spending or representation grant.
+
 ## Before claiming or changing a task
 1. Fetch current `origin/main`. Record its SHA. Read current `docs/BRIEF.md`, `AGENTS.md`, `docs/DECISIONS.md` and the task's current packet, not just the checkout's old copies. Do not reset a shared worktree or discard anyone's work. Reconcile your branch with current main through the normal merge process.
 2. Read the previous session's **repo-only outcome**: its packet status, branch/commit, PR and review/test results. Follow actual artifact links and inspect the content. A chat title, remembered summary or instruction to "read the last chat" is not evidence of a read. Never publish raw private chat/session logs or private sources. If there was no prior session, record that with the current task state; do not invent a handoff.
