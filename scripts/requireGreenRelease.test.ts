@@ -549,6 +549,25 @@ describe("rollback.yml: deliberate API recovery", () => {
     expect(wf.text).toMatch(/^permissions:\n(?: {2}.+\n)*? {2}actions: read$/m);
   });
 
+  // Finding on #876 (D-248 mapping): each leg enters its own gate as its own system. The API
+  // gate is API-only, so a target: all dispatch must still hand it "api"; handing it "all"
+  // makes the gate refuse its own request before any job starts.
+  it("feeds each recovery leg its own system, so target: all reaches both gates", () => {
+    expect(recoveryProblem({ system: "all", commit: T, confirm: T, reason: "drill" })).toMatch(/only the API has a recovery job/);
+    const gate = wf.steps("recovery-gate");
+    const apiGate = gate.find(s => has(s, /node scripts\/require-green-release\.mjs --target api --recovery\s*$/));
+    const webGate = gate.find(s => has(s, /node scripts\/rollbackTarget\.mjs web-gate\s*$/));
+    expect(apiGate && has(apiGate, /^ {10}RECOVERY_SYSTEM: api$/)).toBe(true);
+    expect(webGate && has(webGate, /^ {10}RECOVERY_SYSTEM: \$\{\{ inputs\.target \}\}$/)).toBe(true);
+    const apiRecheck = recover.find(s => has(s, /node trusted\/scripts\/require-green-release\.mjs --target api --recovery --once/));
+    expect(apiRecheck && has(apiRecheck, /^ {10}RECOVERY_SYSTEM: api$/)).toBe(true);
+    const webRecheck = wf.steps("rollback-web").find(s => has(s, /node scripts\/rollbackTarget\.mjs web-gate\s*$/));
+    expect(webRecheck && has(webRecheck, /^ {10}RECOVERY_SYSTEM: \$\{\{ inputs\.target \}\}$/)).toBe(true);
+    for (const s of [...wf.jobs.keys()].flatMap(job => wf.steps(job))) {
+      if (has(s, /require-green-release\.mjs --target api/)) expect(has(s, /RECOVERY_SYSTEM: \$\{\{ inputs\.target \}\}/)).toBe(false);
+    }
+  });
+
   it("validates the request with the workflow's own code before the older target is ever checked out", () => {
     expect([...wf.jobs.keys()]).toEqual(["recovery-gate", "recover-api", "rollback-web"]);
     expect(wf.needs("recovery-gate")).toEqual([]);

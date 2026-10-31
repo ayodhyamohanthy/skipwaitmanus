@@ -79,7 +79,9 @@ jobs:
         if: inputs.target != 'web'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RECOVERY_SYSTEM: ${{ inputs.target }}
+          # The system this leg recovers, never the dispatch's: the API gate is API-only and
+          # refuses target "all" as "only the API has a recovery job".
+          RECOVERY_SYSTEM: api
           RECOVERY_COMMIT: ${{ inputs.commit }}
           RECOVERY_CONFIRM: ${{ inputs.confirm }}
           RECOVERY_REASON: ${{ inputs.reason }}
@@ -146,7 +148,8 @@ jobs:
       - name: Re-check the recovery target
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RECOVERY_SYSTEM: ${{ inputs.target }}
+          # This leg recovers the API even when the dispatch asked for all (see recovery-gate).
+          RECOVERY_SYSTEM: api
           RECOVERY_COMMIT: ${{ inputs.commit }}
           RECOVERY_CONFIRM: ${{ inputs.confirm }}
           RECOVERY_REASON: ${{ inputs.reason }}
