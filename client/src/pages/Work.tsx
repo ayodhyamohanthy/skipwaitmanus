@@ -1,9 +1,10 @@
 import { Check, Eye, Pin, Plus, Upload, Users } from "lucide-react";
 import { LoadingNote } from "@/components/app-states/SystemStates";
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { AddWorkSheet, type NewWorkItem } from "@/components/profile/AddWorkSheet";
 import { ProfileLinkSheet } from "@/components/profile/ProfileLinkSheet";
@@ -22,7 +23,12 @@ function Heading() {
   return <div className="page-heading"><div><span className="eyebrow">NO FEED. NO LIKES. JUST YOUR WORK.</span><h1>Your work, in one quiet place<span className="brand-dot">.</span></h1><p>Publish projects to your profile. Pin your best so they lead your profile.</p></div></div>;
 }
 
+// Goal-UI migration (D-048-p3-profile): the goal page replaces this one when
+// the "profile" surface flag is on; off, the kit page below is unchanged.
+const GoalWork = lazy(() => import("./goal/profile/GoalWork"));
+
 export default function Work() {
+  if (goalSurfaceOn("profile")) return <Suspense fallback={null}><GoalWork /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [items, setItems] = useState<WorkItem[]>([]);
