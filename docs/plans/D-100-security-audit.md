@@ -82,3 +82,4 @@ Each audit writes one report: a findings table with ID, file:line, what can go w
 
 ## Status
 One line per row, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
+- D-100.csp-report: blocked (scope question) — Hark · d3f2 — 2026-10-30 — branch agent/queue/d100-csp-report. Packet items 1-4 are built inside the owned files, red-first. Question: browsers take the page policy from `functions/_middleware.ts` (`CSP_REPORT_ONLY`, live on skipwait.me HTML), not from `server/securityHeaders.ts`, which only reaches `/api/*` responses. Without `report-uri /api/csp-report` in `functions/_middleware.ts` (outside this row's owns) no page violation is ever reported, so the row's Done ("one real report seen on the preview") cannot be met. Needs an owns amendment from a session that did not build this row (add `functions/_middleware.ts`), or a ruling that it is a separate row.
