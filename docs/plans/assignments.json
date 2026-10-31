@@ -2,7 +2,7 @@
   "version": 1,
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
-  "updated": "2026-10-26",
+  "updated": "2026-10-30",
   "rules": "Order is priority. Any capable session adds, removes or reorders tasks (D-200 (2): say why in the pull request), except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
@@ -78,6 +78,7 @@
       "lane": "auth-device",
       "branch": "agent/queue/fix-device-signin",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168); next is one independent review by a model other than Claude (D-200), then landing on green required CI. Face ID, passkeys and Sign in with Apple are not in this row: they change the login rule and wait for the owner.",
       "owns": [
@@ -88,6 +89,59 @@
         "server/workEmailOtp.ts",
         "server/workEmailOtp.test.ts"
       ]
+    },
+    {
+      "id": "P1-deploy-green-gate",
+      "title": "Block migrations, Web/API deploys and deliberate manual recovery until exact-target-SHA required CI succeeds (#748)",
+      "row": "D-082",
+      "packet": "docs/plans/P1-deploy-green-gate.md",
+      "tier": 1,
+      "lane": "deploy",
+      "branch": "agent/queue/p1-deploy-green-gate",
+      "status": "done",
+      "dependsOn": [],
+      "owns": [
+        ".github/workflows/deploy-api.yml",
+        ".github/workflows/deploy-pages.yml",
+        "scripts/require-green-release.mjs",
+        "scripts/requireGreenRelease.test.ts",
+        ".github/workflows/rollback.yml"
+      ]
+    },
+    {
+      "id": "P1-release-gate-strict-compare",
+      "title": "Fail closed on malformed compare responses before superseded release (#748)",
+      "row": "D-082",
+      "packet": "docs/plans/P1-release-gate-strict-compare.md",
+      "tier": 1,
+      "lane": "deploy",
+      "branch": "agent/queue/p1-release-gate-strict-compare",
+      "status": "done",
+      "syncedTo": "D-248",
+      "dependsOn": [
+        "P1-deploy-green-gate"
+      ],
+      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 normal gated-release identity observation is recorded in the packet (October 31, Web a93c6ec3 / API 29045de2); observation landed in #905 (9b349848), and separate read-only qualification confirmed the original independent exact-head review, clean integration, required candidate/main CI, normal merge and anchored landed marker. This docs closeout marks the packet done under D-248; incident #748 remains OPEN. No live rollback/DB/settings tests. D-248 (Oct 30): the row releases its two-file reservation (owns removed) because its code is on main (fecf0d3b is an ancestor of origin/main) and only the item 5 observation remains, so it must not hold scripts/require-green-release.mjs and scripts/requireGreenRelease.test.ts against REL-rollback-skew (filesBusy, scripts/nextTaskCore.mjs:552). The row stays in-review until item 5 is recorded; if item 5 needs code, re-declare owns in a docs-only pull request (D-200 (2))."
+    },
+    {
+      "id": "CI-architect-real-checks",
+      "title": "Close substantive architect PR CI skip through explicit workflow ownership handoff (#748/#752)",
+      "row": "D-082",
+      "packet": "docs/plans/CI-architect-real-checks.md",
+      "tier": 1,
+      "lane": "ci-gate",
+      "branch": "agent/queue/ci-architect-real-checks",
+      "status": "done",
+      "syncedTo": "D-229",
+      "dependsOn": [],
+      "owns": [
+        ".github/workflows/ci.yml",
+        "scripts/ciMarkerSkip.test.ts",
+        "scripts/classifyCiChange.mjs",
+        "scripts/classifyCiChange.test.ts",
+        "docs/plans/CI-architect-real-checks.md"
+      ],
+      "note": "Ownership resolved by handoff from PRICING-banded-oct25 (holder's acknowledgment: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/666#issuecomment-6464335154). Carries #666's typecheck heap line byte for byte (c9572fcf, ci.yml hunk only; never cherry-pick that commit) and adds nothing inside the Typecheck step, so #666 merges main without a ci.yml conflict. No dependency on pricing or on P1 (deploy workflows are disjoint). Keep the three required job names, the ci.yml path, push/dispatch behaviour and P1's release-gate inputs. Build only on this task branch, never on an agent/architect/* branch (its required jobs are skipped until this lands). Tier 1: independent review by a model that neither built nor fixed it, plus the real linked draft-PR runs in the packet."
     },
     {
       "id": "D-174-sample-job-removal",
@@ -132,12 +186,12 @@
       "tier": 1,
       "lane": "pricing",
       "branch": "agent/pricing/banded-plans-oct25",
-      "status": "in-review",
+      "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-credits"
       ],
       "owns": [
-        ".github/workflows/ci.yml",
         "client/src/components/AppShell.tsx",
         "client/src/components/seekerCreditsCard.test.tsx",
         "client/src/lib/planFamilyFlag.ts",
@@ -159,9 +213,14 @@
         "shared/planCatalog.ts",
         "shared/planFamily.test.ts",
         "shared/planFamily.ts",
-        "shared/planReach.test.ts"
+        "shared/planReach.test.ts",
+        "client/src/components/goal/useGoalShellMeta.ts",
+        "client/src/pages/plansGoal.test.tsx",
+        "scripts/prerender-public-pages.tsx",
+        "shared/landingContent.ts",
+        "client/src/pages/About.tsx"
       ],
-      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first. Oct 27 queue sync (Claude Code, D-219; changeable): moved up to sit just above LAUNCH-legal-copy and no longer waits on it; LAUNCH-legal-copy now waits for this row instead, because it is owner-held (legal text), shares only policyPages.test.tsx, and its Terms and Cancellation text must describe the pricing this row lands. The owner's freeze said 'push it immediately', and the live app could still open an archived legacy pack cart on Oct 25 (PR #666 comment 6399494075). It still waits for D-048-F-credits (shared AppShell.tsx line), which D-217 unparked to land first through its Tier 1 path."
+      "note": "Registers the already-open PR 666 (frozen Oct 25 banded family) so scope-check can see the branch; the work predates this row. PASS_SALES_ENABLED stays false - nothing goes on sale. Depends on LAUNCH-legal-copy and D-048-F-credits for the two shared files; their edits land first. Oct 27 queue sync (Claude Code, D-219; changeable): moved up to sit just above LAUNCH-legal-copy and no longer waits on it; LAUNCH-legal-copy now waits for this row instead, because it is owner-held (legal text), shares only policyPages.test.tsx, and its Terms and Cancellation text must describe the pricing this row lands. The owner's freeze said 'push it immediately', and the live app could still open an archived legacy pack cart on Oct 25 (PR #666 comment 6399494075). It still waits for D-048-F-credits (shared AppShell.tsx line), which D-217 unparked to land first through its Tier 1 path. Oct 28 ci.yml handoff (holder's acknowledgment: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/666#issuecomment-6464335154): .github/workflows/ci.yml moved to CI-architect-real-checks, which carries this branch's only ci.yml delta, the typecheck heap line from c9572fcf, byte for byte. #666 lands no ci.yml change: until that row lands it runs no CI carrying the delta, or first restores ci.yml to main's bytes in a forward-only commit; after it lands, #666 merges main and its ci.yml diff must be empty (a conflict resolves to main's version exactly). Oct 31 routing-only reconciliation (D-200 (2), D-151): in-review -> todo restores the normal picker route to the already-built Tier 1 PR #666 at 521c86101c4ec799929ffaf221b75e497eabadf5; in-review is skipped by the picker, and no review lock exists. That routing-only slice did not grant a build, takeover or fix; the bounded normal FIX scope recorded below follows the later independent findings. Instinct built it and Claude fixed it, so both model families remain excluded from independent review/landing; prior findings alone do not exclude a reviewer (D-184). An eligible model must obtain the actual normal review claim, name its exact reviewed head and own the semantic verdict. Read-only compatibility on current main 31dc637a found a clean composition, ci.yml identical to main and 55 existing focused assertions passing; that is input, not a verdict or a substitute for required composed-head CI, full applicable checks and source-frozen money-off acceptance. No price, plan content, display default, post-cap price, legal text or live-money permission changes. PR #828 also carries unrelated FND-4/BYOR and D-206 changes, which are not adopted by this routing-only slice. Oct 31 independent findings at review5721976397 (reviewed521c8610, verdictd59f14b1) require the existing row12 normal FIX stage, not a new row or parallel branch. Bounded scope adds plansGoal.test.tsx (paused CTA plus positive on-sale control only), prerender-public-pages.tsx (premium/plans/employer pack-pause claims only), landingContent.ts (crawler pack-sale link only) and About.tsx (pack-pause sentence only). The first path is held only by the done D-048-p3-plans row; snapshot paths have done row owners; About has no registered owner. Historical open416/383 FAQ hunks and110 snapshot/FAQ hunks are not adopted, reactivated or permission to overwrite unpublished work. Preserve their holds and reconcile the intended snapshot hunk explicitly. Premium.tsx metadata, Pricing.tsx free line and policyPages.test.tsx already belong to this row. Keep current price/plan/default, all money flags off, legal text and positive on-sale controls; no FAQ rewrite, deployment or sale. An eligible non-Qoder developer needs the normal FIX claim; the Qoder reviewer family never fixes its own findings. Any actual conflicting unpublished hunk needs its holder ACK before editing. Follow full current instructions, existing branch and re-review/CI gates. Existing shared paths remain serialized by current dependency edges: D-048-p3-premium and D-048-p3-pricing wait for this row; LAUNCH-legal-copy (owner-held) and D-180-a-free-asks-chip also wait for it. F2 adds Premium metadata and F3 adds Pricing free-line/copy-guard assertions only; no goal-switch, Terms/Guidelines/Cancellation or their existing policy assertions are changed. Current716 changes the Guidelines money-line assertion;659 changes Terms/Cancellation assertions, distinct from the new pricing/pack-pause guard. Preserve both and their holds; actual conflicting in-flight hunks require limited serialization, not blanket ownership transfer."
     },
     {
       "id": "LAUNCH-legal-copy",
@@ -172,6 +231,7 @@
       "lane": "launch-legal",
       "branch": "agent/queue/launch-legal-copy",
       "status": "owner",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PRICING-banded-oct25"
       ],
@@ -193,6 +253,7 @@
       "lane": "launch-qa",
       "branch": "agent/queue/launch-live-qa",
       "status": "owner",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "owns": [
         "docs/BUGFREE_GATE.md",
@@ -241,9 +302,9 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-review-independence",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "D-151: did() compares exact session names, so on Oct 22 the picker handed #382's re-review to Qoder · a236 right after Qoder · 31dd fixed it. Compare models, count Fixed markers as fixes, and print the rule in the review step. Every Tier 1 review the queue hands out, P0-ask-link-signin's and P1-queue-attestation's included, goes through this check."
+      "note": "D-151: implemented on main by PR #530 (`ff4e0546`) — `did()` compares models at the review and landing hand-outs, `fixers` counts `Fixed` markers as well as `Fix claim`, and the printed review step names the model and outside-picker checks, with red-first tests in `scripts/nextTask.test.ts` (\"D-151 model-independent reviews and landings\"). Takeover (DeepSeek V4.1 Flash Free · a54e) found no packet item left to build and closed the row without a code change; focused picker tests 159 passed on main `d27959aa`."
     },
     {
       "id": "PICKER-decision-sync",
@@ -253,9 +314,28 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-decision-sync",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "The owner, Oct 23: agents must always work on the most recent decision, never on old work. Builders are told to read only the brief and their packet (scripts/nextTaskText.mjs:42), so a packet older than a decision can be built as written (D-147, D-148 then D-152). Until this lands, the interim rule in the packet binds every agent. D-221 (Oct 26): the Oct 25 owner decisions are now register entries D-219 and D-220 with their affected tasks, so the syncedTo stamp must not certify rows those entries change until each is re-synced."
+    },
+    {
+      "id": "SKIPPY-fix.s1-ssrf",
+      "title": "Skippy S-1: the job-page reader uses the safe public fetcher (fetchPublicJobLink); delete isPublicHostname and the hand-written redirect loop (flags stay off)",
+      "row": "D-201",
+      "packet": "docs/plans/SKIPPY-fix.md",
+      "tier": 1,
+      "lane": "skippy-seeker",
+      "branch": "agent/queue/skippy-fix-s1-ssrf",
+      "status": "done",
+      "syncedTo": "D-231",
+      "dependsOn": [],
+      "note": "Oct 28 (D-132-item3 packet revision 2, section 11a; decided under D-200, changeable): built exactly as SKIPPY-fix.md section S-1 says (red first with an injected fake fetcher, no network). Owner and holder check on main 6cbee199: no open row owns these files, and SKIPPY-fix has no owns, branch or claim, so nothing in flight is taken. Latent: SKIPPIE_SEEKER_ENABLED is off in production; no flag goes on until the parent SKIPPY-fix lands with its proof, including S-1 live item 2 (D-201). Tier 1 (security): independent review.",
+      "epic": "SKIPPY-fix",
+      "owns": [
+        "server/skippieSeekerDeps.ts",
+        "server/skippieSeekerDeps.test.ts"
+      ]
     },
     {
       "id": "SKIPPY-fix",
@@ -266,10 +346,12 @@
       "lane": "skippy-seeker",
       "branch": "agent/queue/skippy-fix",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
-        "D-132-item3"
+        "D-132-item3",
+        "SKIPPY-fix.s1-ssrf"
       ],
-      "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. S-3 reuses D-132-item3's shared expectedCost/AskPriceChangedError guard; this task waits for that row rather than duplicating or overlapping its transaction work. All flags stay off until SKIPPY-fix lands with its proof. The owner asked to work on Skippy (Oct 23), so it remains ordered after the live regressions and the two picker fixes. D-221 (Oct 26): keeps its D-132-item3 dependency (S-3 binds to item 3's accepted-price precondition; pinned by scripts/register520Packets.test.ts). D-132-item3's re-scope delivers that model-independent precondition against the D-219 quote first, so the S-1 SSRF fix waits only on that step. S-2 and S-3 state the cost per D-219 (one referral of the request's level, spend source shown); no D-132 level-credit model."
+      "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. S-3 reuses D-132-item3's shared expectedCost/AskPriceChangedError guard; this task waits for that row rather than duplicating or overlapping its transaction work. All flags stay off until SKIPPY-fix lands with its proof. The owner asked to work on Skippy (Oct 23), so it remains ordered after the live regressions and the two picker fixes. D-221 (Oct 26): keeps its D-132-item3 dependency (S-3 binds to item 3's accepted-price precondition; pinned by scripts/register520Packets.test.ts). D-132-item3's re-scope delivers that model-independent precondition against the D-219 quote first, so the S-1 SSRF fix waits only on that step. S-2 and S-3 state the cost per D-219 (one referral of the request's level, spend source shown); no D-132 level-credit model. Oct 28 (D-132-item3 packet revision 2, decided under D-200; changeable): S-1 (the SSRF fix, server/skippieSeekerDeps.ts only, no DB guard) moves to SKIPPY-fix.s1-ssrf so it is not held behind the guard and its D-090-BYOR wait; this row keeps S-2 to S-6 and the live proof, and waits for both. No flag changes (D-201)."
     },
     {
       "id": "BRANCH-HYGIENE-1",
@@ -279,9 +361,10 @@
       "tier": 2,
       "lane": "repo-hygiene",
       "branch": "agent/queue/branch-hygiene",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-231",
       "dependsOn": [],
-      "note": "The owner, Oct 23. On ecdbc227, origin had 345 branches besides main; 69 tips are already in main, and squash-merged heads need the merged-PR check. Never delete main, agent/reports/log, the landing slot, unmerged work or any branch of a task that is not done. Paste the dry run in the PR; the lander pastes the --apply output after landing."
+      "note": "Code lands through #758 (built by Claude Code · da74; review fixes 83119df8, fb344ff8, a46ea06c, c8ed44bd). Landing authorizes no cleanup: under the retention hold on #758 (Oct 27, restated Oct 28) nobody runs --apply or --local and no real-origin dry run is performed; docs/plans/branch-retention.json is an interlock, not permission, so the backlog run stays a separate step for the owner or coordinator, and BRANCH-HYGIENE-2 must not wire --apply into the picker's landing step before that release. Never delete main, agent/reports/log, the landing slot, unmerged work or any branch of a task that is not done."
     },
     {
       "id": "BRANCH-HYGIENE-2",
@@ -291,11 +374,12 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/branch-hygiene-picker",
-      "status": "todo",
+      "status": "owner",
+      "syncedTo": "D-232",
       "dependsOn": [
         "BRANCH-HYGIENE-1"
       ],
-      "note": "Uses BRANCH-HYGIENE-1's pure classifier. Safe delete only (git branch -d); never the checked-out branch, another worktree's branch or a dirty worktree. Notes, never blocking."
+      "note": "Not buildable while the retention hold stands (D-232): its two wiring bullets run --local on every picker run and wire --apply into the landing step, which this row's sibling BRANCH-HYGIENE-1 note and the packet's status line forbid until the coordinator or the owner releases the cleanup run. Nothing is built and no branch is touched; the read-only note is not shipped alone. When the release comes, build the packet section as written and remove its held banner. Uses BRANCH-HYGIENE-1's pure classifier. Safe delete only (git branch -d); never the checked-out branch, another worktree's branch or a dirty worktree. Notes, never blocking."
     },
     {
       "id": "SKIPPY-redteam",
@@ -306,6 +390,7 @@
       "lane": "skippy-redteam",
       "branch": "agent/queue/skippy-redteam",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "SKIPPY-fix"
       ],
@@ -320,6 +405,7 @@
       "lane": "skippy-seeker",
       "branch": "agent/queue/skippy-purchase",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": [
         "SKIPPY-fix"
       ],
@@ -334,6 +420,7 @@
       "lane": "auth-stepup",
       "branch": "agent/queue/skippy-stepup",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": [
         "SKIPPY-fix"
       ],
@@ -348,6 +435,7 @@
       "lane": "skippy-agents",
       "branch": "agent/queue/skippy-agent-send",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "SKIPPY-fix"
       ],
@@ -362,6 +450,7 @@
       "lane": "skippy-agents",
       "branch": "agent/queue/skippy-auto-send",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": [
         "SKIPPY-6"
       ],
@@ -387,13 +476,14 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-review-wording",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "owns": [
         "scripts/nextTaskText.mjs",
         "scripts/nextTaskReviewWording.test.ts"
       ],
-      "note": "D-184: on Oct 23 GPT · 5deb stopped the re-reviews of #547 and #527 because the review step says to look for 'your model' in the comments, without 'as builder or fixer'. One sentence in case \"review\" of scripts/nextTaskText.mjs plus a new test file (scripts/nextTaskReviewWording.test.ts, so it shares no owned file with PROCESS-review-gate); hand-outs unchanged."
+      "note": "D-184: on Oct 23 GPT · 5deb stopped the re-reviews of #547 and #527 because the review step says to look for 'your model' in the comments, without 'as builder or fixer'. One sentence in case \"review\" of scripts/nextTaskText.mjs plus a new test file (scripts/nextTaskReviewWording.test.ts, so it shares no owned file with PROCESS-review-gate); hand-outs unchanged. Implemented by PR #801 (`d82e4d04`) — Qoder · f568, Oct 29: the step now checks the pull request's commits and comments and the task's reports for a build, takeover or fix by your model, and states that a review or findings comment of your own model does not count (D-151 (1)); did(), fixers and every hand-out are unchanged."
     },
     {
       "id": "PICKER-architect-landing",
@@ -403,17 +493,19 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-architect-landing",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-237",
       "dependsOn": [
         "PICKER-review-wording",
         "PROCESS-review-gate"
       ],
       "owns": [
+        "scripts/next-task.mjs",
         "scripts/nextTaskCore.mjs",
         "scripts/nextTaskText.mjs",
         "scripts/nextTaskArchitectLanding.test.ts"
       ],
-      "note": "D-190: workBranchOf skips reserved agent/architect/ branches, so #557 and #585 sat green with no landing hand-out on Oct 23. Use the lock branch as the work branch for architect rows that carry file changes; hand the landing to anyone but the writer. Waits for the two rows that own files it edits."
+      "note": "D-190: workBranchOf skips reserved agent/architect/ branches, so #557 and #585 sat green with no landing hand-out on Oct 23. Use the lock branch as the work branch for architect rows that carry file changes; hand the landing to anyone but the writer. Waits for the two rows that own files it edits. D-237: PR #838 (head 08729ea5, 4 files) holds packet items 2-3, but item 1 also needs the git loader in scripts/next-task.mjs (markersOn drops commits that change files, so buildView cannot see a packet lock) and scope-check refused it; D-237 adds that file to owns and the hand-out resumes. The landing still goes to a session that is not the packet's writer."
     },
     {
       "id": "REGISTER-oct24",
@@ -455,15 +547,16 @@
     },
     {
       "id": "D-200-instructions-sync",
-      "title": "Instruction files say what D-200 and the picker already do: Claude Code builds too, nothing waits for one model or session",
+      "title": "Instruction files state D-225's role split and D-200's no-step-waits rule: Claude supplies intelligence, other tools develop",
       "row": "D-200",
       "packet": "docs/plans/D-200-instructions-sync.md",
       "tier": 3,
       "lane": "d200-docs",
       "branch": "agent/queue/d200-instructions-sync",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "D-200 (7): CLAUDE.md, AGENTS.md, docs/BRIEF.md and docs/DELEGATION.md still say Claude Code never builds. Docs only, five exact edits in the packet. Any model except a Claude Code session builds it (its safety check refuses edits to its own instruction files)."
+      "note": "D-200 (7), re-synced to D-225 (Oct 28). D-225 superseded the Claude-builds-too half this row was written for, so the remaining work was to remove the one surviving 'Claude Code builds too' sentence (AGENTS.md, the D-058 row) and close D-200 (7). CLAUDE.md, docs/BRIEF.md and docs/DELEGATION.md already state the D-225 split. The re-sync is recorded in the packet because assignments.json allows no syncedTo key until PICKER-decision-sync lands."
     },
     {
       "id": "POSTMERGE-oct22-review",
@@ -473,9 +566,10 @@
       "tier": 1,
       "lane": "audit",
       "branch": "agent/queue/postmerge-oct22-review",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-228",
       "dependsOn": [],
-      "note": "D-166 (2): #465, #478, #482 (migration 0106), #490 (migration 0107), #506, #517, #534, #535, #479, #510 merged with only a failed Copilot bot review. Review them as they are on main by a model other than Instinct; findings go to docs/plans/POSTMERGE-oct22-findings.md and become fix rows. No code change in this row.",
+      "note": "D-166 (2): #465, #478, #482 (migration 0106), #490 (migration 0107), #506, #517, #534, #535, #479, #510 merged with only a failed Copilot bot review. Review them as they are on main by a model other than Instinct; findings go to docs/plans/POSTMERGE-oct22-findings.md and become fix rows. No code change in this row. DONE: the findings doc landed as #619 (all ten PRs covered) and the four follow-ups were fixed by POSTMERGE-oct22-fixes on main (821399d4, 09891b3b, 91e0b6c8, 01928e67 + 5ff7ef2c, 57/57 regression tests verified on main 5fe7f9ee); #775 records each disposition. The OpenAI block was raised against code fixes this row forbids; D-228 clears it.",
       "owns": [
         "docs/plans/POSTMERGE-oct22-findings.md"
       ]
@@ -516,9 +610,10 @@
       "tier": 2,
       "lane": "process",
       "branch": "agent/queue/process-queue-gate",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "D-166 (2): 23 of 38 product-code merges Oct 19-23 had no row. New scripts/queue-gate.mjs called from scripts/scope-check.mjs, already in the required typecheck job, so no workflow edit; five pass rules in the packet; fails open only on its own error.",
+      "note": "D-166 (2): 23 of 38 product-code merges Oct 19-23 had no row. New scripts/queue-gate.mjs called from scripts/scope-check.mjs, already in the required typecheck job, so no workflow edit; five pass rules in the packet; fails open only on its own error. Done: #603, merged 2026-10-23; set by D-212 (8) because the picker no longer saw the landing and handed the row out again.",
       "owns": [
         "scripts/queue-gate.mjs",
         "scripts/queueGate.test.ts",
@@ -535,7 +630,8 @@
       "tier": 2,
       "lane": "process",
       "branch": "agent/queue/process-review-gate",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-queue-gate"
       ],
@@ -558,7 +654,8 @@
       "tier": 3,
       "lane": "process",
       "branch": "agent/queue/process-id-check",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-review-gate"
       ],
@@ -577,7 +674,8 @@
       "tier": 3,
       "lane": "process",
       "branch": "agent/queue/process-scorecard",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-id-check"
       ],
@@ -589,6 +687,298 @@
       ]
     },
     {
+      "id": "REL-watchdog",
+      "title": "External watchdog: a Cloudflare Worker probes the site every 5 minutes and emails the owner after two failed rounds (D-212, D-100)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 2,
+      "lane": "watchdog",
+      "branch": "agent/queue/rel-watchdog",
+      "status": "owner",
+      "syncedTo": "D-243",
+      "dependsOn": [],
+      "note": "Landed in PR #845 (merge c91c7ca1); main CI green on it. The Worker is NOT deployed yet, and the blocker is not the secret: deploy-watchdog run 41050824580 failed at `Ensure the WATCHDOG_STATE KV namespace and use its id` with Cloudflare `Authentication error [code: 10000]`, because this repo's CLOUDFLARE_API_TOKEN carries Workers Scripts (deploy-api runs `wrangler secret list` and `wrangler secret put` successfully on every API deploy) but no Workers KV Storage scope. Owner actions, in order: (1) add Account -> Workers KV Storage: Edit to CLOUDFLARE_API_TOKEN; (2) `gh workflow run deploy-watchdog.yml --ref main` - it creates the WATCHDOG_STATE namespace and deploys `skipwait-watchdog`, then fails its own secret check by design (packet item 5, docs/plans/REL-production-watch.md:53); (3) `npx wrangler secret put ZEPTOMAIL_API_KEY --name skipwait-watchdog` (optional: GITHUB_ISSUES_TOKEN); (4) `gh workflow run deploy-watchdog.yml --ref main` again - that run is green; (5) record the alert proof (a local `wrangler dev --test-scheduled` run against a 404) and set this row to done with the merge SHA. status owner parks the row so the picker stops handing out a landing that is already merged - the D-230/D-232 precedent. No new decision is needed: every step above is already written in this packet.",
+      "epic": "D-212",
+      "owns": [
+        "watchdog/",
+        "scripts/watchdogCore.test.ts",
+        ".github/workflows/deploy-watchdog.yml",
+        "scripts/check-deploy-triggers.mjs (switch only)"
+      ]
+    },
+    {
+      "id": "REL-review-email-retry",
+      "title": "A referrer's review email that failed or never went out is sent again, up to 5 attempts, then the owner is told (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 1,
+      "lane": "notifications",
+      "branch": "agent/queue/rel-review-email-retry",
+      "status": "owner",
+      "syncedTo": "D-255",
+      "dependsOn": [
+        "D-174-job-catalog"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "server/reviewDeliveryRetry.ts",
+        "server/reviewDeliveryRetry.test.ts",
+        "server/scheduledJobRegistry.ts (switch only)",
+        "shared/scheduledJobs.ts (switch only)",
+        "server/scheduledJobsContract.test.ts (switch only)",
+        "server/emailDelivery.ts",
+        "server/emailDelivery*.test.ts"
+      ]
+    },
+    {
+      "id": "REL-5xx-capture",
+      "title": "Every server 5xx reaches Sentry and the owner, sign-in and webhooks included; admin alerts get a second channel (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 2,
+      "lane": "observability",
+      "branch": "agent/queue/rel-5xx-capture",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "D-090-BYOR"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "server/httpErrorCapture.ts",
+        "server/httpErrorCapture.test.ts",
+        "server/_core/index.ts (switch only)",
+        "server/errorAlerting.ts",
+        "server/errorAlerting.test.ts"
+      ],
+      "note": "Oct 27 merge-up: waits for D-090-BYOR (PR #632, built), which also edits server/_core/index.ts, server/errorAlerting.ts and its test."
+    },
+    {
+      "id": "GATE-test-integrity",
+      "title": "CI fails on a deleted or loosened test, .only or a new .skip; pinned login and money tests cannot lose assertions (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/GATE-delivery.md",
+      "tier": 2,
+      "lane": "ci-checks",
+      "branch": "agent/queue/gate-test-integrity",
+      "status": "done",
+      "syncedTo": "D-222",
+      "dependsOn": [],
+      "epic": "D-212",
+      "owns": [
+        "scripts/test-integrity.mjs",
+        "scripts/testIntegrityCore.mjs",
+        "scripts/testIntegrity.test.ts",
+        "scripts/scope-check.mjs (switch only)",
+        ".github/pull_request_template.md"
+      ]
+    },
+    {
+      "id": "REL-release-verify",
+      "title": "After every deploy a workflow checks the live release and sets release/verified; failures open one incident; deploy notices stop landing on random issues (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 2,
+      "lane": "deploy-workflows",
+      "branch": "agent/queue/rel-release-verify",
+      "status": "done",
+      "syncedTo": "D-240",
+      "dependsOn": [],
+      "epic": "D-212",
+      "owns": [
+        "scripts/release-smoke.mjs",
+        "scripts/releaseSmokeCore.mjs",
+        "scripts/releaseSmoke.test.ts",
+        ".github/workflows/release-verify.yml",
+        ".github/workflows/deploy-api.yml",
+        ".github/workflows/deploy-pages.yml"
+      ]
+    },
+    {
+      "id": "GATE-e2e-journeys",
+      "title": "Six core journeys run in a real browser against MySQL on every PR, the two Oct 22 regressions first; the deploy migrations apply twice (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/GATE-delivery.md",
+      "tier": 2,
+      "lane": "e2e",
+      "branch": "agent/queue/gate-e2e-journeys",
+      "status": "done",
+      "syncedTo": "D-239",
+      "dependsOn": [
+        "CI-architect-real-checks"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "e2e/",
+        "scripts/e2e-server.mjs",
+        ".github/workflows/ci.yml",
+        "scripts/ciMarkerSkip.test.ts",
+        "package.json (switch only)"
+      ],
+      "note": "Oct 28 merge-up: waits for CI-architect-real-checks, which now owns .github/workflows/ci.yml (handed over from PRICING-banded-oct25, PR #666); add the e2e job on top of its version of the file. D-239: adding the job trips the #748 pin scripts/ciMarkerSkip.test.ts (exact job list at :122-126, runs-on count at :190), so D-239 adds that file to owns; the pin gains CI_JOBS = [...REQUIRED_JOBS, \"e2e journeys\"] for those two assertions only, no assertion removed or loosened, and the job stays non-required (making it required is the owner's ruleset action, OPS-github-settings). The independent review of the D-239 ruling added two requirements, now part of D-239: (F1) the pin also gains add-only assertions that each required job runs its own blocking commands inside its own jobBlock, because the whole-file pnpm build check stops protecting production build once the e2e job also builds; CI_JOBS stays exact and only serves the job inventory and runner count. (F2) the docs-only step reads git diff --no-renames --name-only, so a runtime-to-docs rename cannot skip the journeys."
+    },
+    {
+      "id": "REL-heartbeats",
+      "title": "Public no-data /api/health/jobs with one overdue rule, probed by the watchdog: a stopped scheduler alerts (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 2,
+      "lane": "jobs",
+      "branch": "agent/queue/rel-heartbeats",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "REL-watchdog",
+        "D-090-BYOR"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "server/healthRoutes.ts",
+        "server/healthRoutes*.test.ts",
+        "server/scheduledJobsRoutes.ts",
+        "server/scheduledJobsRoutes*.test.ts",
+        "server/_core/index.ts (switch only)",
+        "watchdog/src/core.ts",
+        "scripts/watchdogCore.test.ts"
+      ],
+      "note": "Oct 27 merge-up: also waits for D-090-BYOR (PR #632, built), which also edits server/_core/index.ts."
+    },
+    {
+      "id": "REL-webhook-auth-alarm",
+      "title": "A Chargebee webhook refused for its secret is recorded, sent to Sentry and flagged by the daily money check (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 1,
+      "lane": "payments-ops",
+      "branch": "agent/queue/rel-webhook-auth-alarm",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [],
+      "epic": "D-212",
+      "owns": [
+        "server/webhookAuthAlarm.ts",
+        "server/webhookAuthAlarm.test.ts",
+        "server/chargebeeRoutes.ts (switch only)",
+        "server/chargebeeRoutes*.test.ts",
+        "server/dailyMoneyCheck.ts",
+        "server/dailyMoneyCheck*.test.ts"
+      ]
+    },
+    {
+      "id": "REL-rollback-skew",
+      "title": "The web never runs ahead of its API, and rollback works for web and API (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 2,
+      "lane": "deploy-workflows",
+      "branch": "agent/queue/rel-rollback-skew",
+      "status": "todo",
+      "syncedTo": "D-248",
+      "dependsOn": [
+        "REL-release-verify"
+      ],
+      "epic": "D-212",
+      "owns": [
+        ".github/workflows/deploy-pages.yml",
+        ".github/workflows/rollback.yml",
+        "scripts/rollbackTarget.mjs",
+        "scripts/rollbackTarget.test.ts",
+        "scripts/requireGreenRelease.test.ts"
+      ],
+      "note": "D-212 packet docs/plans/REL-production-watch.md; item 1 built by Hark · 44b1 on agent/queue/rel-rollback-skew (PR #876, draft, head 9a2d193f) and stands. D-248: the item 2 block clears by adding scripts/requireGreenRelease.test.ts to owns, because the three #751 pins at :542 (options are exactly `- api`), :551 (jobs are exactly [recovery-gate, recover-api]) and :569 (exactly three GITHUB_TOKEN steps) describe this row's own file rollback.yml but live in a test file another row owns. Those pins are extended to the api/all/web option set, the rollback-web job and its token step, never loosened or deleted, and scripts/require-green-release.mjs is NOT widened: the web leg runs this row's scripts/rollbackTarget.mjs web-gate (already built, accepts web/all and reuses ciVerdict/releaseRuns by import), so a target: all dispatch reaches each leg's gate as its own system and TARGETS/contextProblem and the release path stay byte-identical. The phantom reservation is released instead of waited on: P1-release-gate-strict-compare's code is on main (fecf0d3b) and only its item 5 observation remains, so it drops its two-file owns and this row gains no dependsOn edge - waiting there would park a buildable row behind a row that may never read done. The web leg takes job-level concurrency group deploy-pages, keeping rollback.yml's workflow-level group deploy-api pin true. Build item 2 on the same branch, never a takeover; item 3 (production drill, both run links) and the status: \"done\" landing commit are still owed; a draft PR cannot be merged, so a LAND hand-out on #876 before item 2 is a red report, never a forced merge."
+    },
+    {
+      "id": "REL-self-heal",
+      "title": "When the API container is dead, the watchdog redeploys the live release once and tells the owner (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 2,
+      "lane": "watchdog",
+      "branch": "agent/queue/rel-self-heal",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "REL-watchdog",
+        "REL-rollback-skew",
+        "REL-heartbeats"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "watchdog/src/index.ts",
+        "watchdog/src/core.ts",
+        "scripts/watchdogCore.test.ts"
+      ]
+    },
+    {
+      "id": "REL-client-capture",
+      "title": "Failed calls in the browser (5xx, HTML instead of JSON, network) reach Sentry, sign-in and checkout return first (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 1,
+      "lane": "observability-client",
+      "branch": "agent/queue/rel-client-capture",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "FIX-device-signin"
+      ],
+      "epic": "D-212",
+      "note": "D-212: SeekerSignIn.tsx is left to DEVICE-SIGNIN-passkeys, which rewrites that form and adopts apiFetch there.",
+      "owns": [
+        "client/src/lib/apiFetch.ts",
+        "client/src/lib/apiFetch.test.ts",
+        "client/src/main.tsx",
+        "client/src/components/WorkEmailSignIn.tsx (switch only)",
+        "client/src/components/ReferrerOtpSignIn.tsx (switch only)",
+        "client/src/components/plans/PendingCheckoutReturn.tsx (switch only)"
+      ]
+    },
+    {
+      "id": "GATE-tier-floor",
+      "title": "The review gate uses the tier computed from the paths, so a money or sign-in change filed as Tier 2 still needs an independent pass (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/GATE-delivery.md",
+      "tier": 2,
+      "lane": "process",
+      "branch": "agent/queue/gate-tier-floor",
+      "status": "done",
+      "syncedTo": "D-243",
+      "dependsOn": [
+        "PROCESS-review-gate"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "scripts/tierClassifyCore.mjs",
+        "scripts/tierClassify.test.ts",
+        "scripts/review-gate.mjs",
+        "scripts/reviewGate.test.ts"
+      ]
+    },
+    {
+      "id": "REL-ops-invariants",
+      "title": "A daily read-only ops check finds failures that still answer 200: stuck review emails, request drought, exhausted jobs, work-email codes never used (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 1,
+      "lane": "ops-check",
+      "branch": "agent/queue/rel-ops-invariants",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "REL-review-email-retry",
+        "D-174-job-catalog"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "server/dailyOpsCheck.ts",
+        "server/dailyOpsCheck.test.ts",
+        "server/scheduledJobRegistry.ts (switch only)",
+        "shared/scheduledJobs.ts (switch only)",
+        "server/scheduledJobsContract.test.ts (switch only)",
+        "server/workEmailOtpPurge.ts"
+      ]
+    },
+    {
       "id": "REGISTER-D212",
       "title": "Land the enterprise-pipeline ruling D-212 (roles as gates, seven lights, REL and GATE packets, 18 rows) after an independent review by a model other than Claude",
       "row": "D-163",
@@ -596,9 +986,10 @@
       "tier": 1,
       "lane": "register",
       "branch": "agent/queue/register-d212",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "The owner, Oct 26: get an independent review of the final version through the repository's process, bring it up to date with main, require every check on the exact version merged, and resolve findings first. Claude Code wrote it, so review and landing go to a model other than Claude (D-151). The PR from agent/queue/register-d212 supersedes #623 (claude/enterprise-pipeline), which stays open and unmerged until this lands."
+      "note": "The owner, Oct 26: get an independent review of the final version through the repository's process, bring it up to date with main, require every check on the exact version merged, and resolve findings first. Claude Code wrote it, so review and landing go to a model other than Claude (D-151). The PR from agent/queue/register-d212 supersedes #623 (claude/enterprise-pipeline), which stays open and unmerged until this lands. Scope-check skip is accepted for this docs-only row (reviewer option c) because shared registry files cannot be declared in owns without unsequenced overlap with D-099-bonus-pages."
     },
     {
       "id": "D-069-chargebee-catalog-sync",
@@ -674,6 +1065,7 @@
       "lane": "d048-find",
       "branch": "agent/queue/d048-live-review-find",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-fix-send-ask-blocker",
         "P0-ask-link-signin",
@@ -714,6 +1106,24 @@
       "epic": "D-048-p3"
     },
     {
+      "id": "D-180-conversation-copy",
+      "title": "Seeker conversation terminal and withdraw-confirm lines from one shared helper, fact-only, referral vocabulary (D-180 slice)",
+      "row": "COPY",
+      "packet": "docs/plans/D-180-conversation-copy.md",
+      "tier": 1,
+      "lane": "terminology",
+      "branch": "agent/copy/d180-conversation-copy",
+      "status": "done",
+      "epic": "D-048-p3",
+      "dependsOn": [],
+      "owns": [
+        "shared/conversationCopy.ts",
+        "shared/conversationCopy.test.ts"
+      ],
+      "note": "Unblocks D-048-p3-live-review-conversation (#786) under the explicit Oct 28 amendment of OCT21-BUILT-PRS.md item 1 (packet section 3), which this registration PR carries. New module only; shared/moneyCopy.ts is not edited, so no holder of it (D-174-held-ask-reconfirm, D-180-a-free-asks-chip, D-099-bonus-pages switch-only) is touched and no ACK is needed. Fact-only lines in D-180 referral vocabulary: no amount, refund, clock, slot or availability claim; the withdraw confirm is keyed on queueStatus only (held_for_credit/waiting_for_coverage vs the rest). No behavior, price, charge, refund, expiry or flag change; proof is a baseline diff (packet 4d), not constant pins. Review: D-151, not the builder's model family.",
+      "syncedTo": "D-227"
+    },
+    {
       "id": "D-048-p3-live-review-conversation",
       "title": "Redesign the live seeker /conversation to the goal doctrine (D-150), then review it (D-149)",
       "row": "D-048",
@@ -722,16 +1132,25 @@
       "lane": "d048-seeker-thread",
       "branch": "agent/queue/d048-live-review-conversation",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-038-reconcile",
         "D-132-audit",
         "ROW20-CD",
-        "D-048-F-goal-check"
+        "D-048-F-goal-check",
+        "D-180-conversation-copy"
       ],
-      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost.",
+      "note": "D-150: the seeker conversation went live as goal colours on the old layout; redesign it and propose its contract row. D-149: money lines from shared/moneyCopy.ts, the D-038 referred-email gate ported into the live page, a client pin that a pending seeker sees no message box. After D-132-audit (the page's cost lines) and ROW20-CD (which ports the Hired link and thank-you into this page), both editing the same file first. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost. Oct 27 (owns): the packet's owned paths (OCT21-BUILT-PRS.md: the page, threadModel.ts seeker copy only, their tests, the conversation fixtures and captures) are registered file by file. The seeker cases in referralConversation.test.tsx pin the old h1 and the 7-day closed line this row must change, and the captures folder is shared, so D-048-p3-conversation (unclaimed) now waits for this row instead of both owning those paths at once (D-134, D-167). Oct28 registration candidate: packet item1 amended to fact-only terminal/withdraw-confirm helper shared/conversationCopy.ts; helper row D-180-conversation-copy must land before adoption. #786 remains draft; no runtime change or completed-feature acceptance.",
       "epic": "D-048-p3",
       "owns": [
-        "client/src/pages/conversation/SeekerConversation.tsx"
+        "client/src/pages/conversation/SeekerConversation.tsx",
+        "client/src/pages/conversation/SeekerConversation.goal.test.tsx",
+        "client/src/components/thread/threadModel.ts",
+        "client/src/components/thread/threadModel.test.ts",
+        "client/src/pages/referralConversation.test.tsx",
+        "client/src/pages/referralConversation.shareWin.test.tsx",
+        "design/goal-ui/tools/fixtures/conversation__*.json",
+        "design/goal-ui/captures/conversation/**"
       ]
     },
     {
@@ -763,11 +1182,12 @@
       "tier": 2,
       "lane": "design-theme",
       "branch": "agent/queue/d048-dark-mode",
-      "status": "todo",
+      "status": "owner",
+      "syncedTo": "D-230",
       "dependsOn": [
         "SHELL-focus-clearance"
       ],
-      "note": "Owner direction relayed in #645/#646: 'Have light and dark mode', 'In our platform'; dark colour counterpart approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light pixel-unchanged; no default or system-follow change). Tier 2: visual only. Ships the token system, toggle, shell and the top seeker journey with both-mode 1280/390 captures; other surfaces go dark-ready as their own rows move them.",
+      "note": "Owner hold, recorded as D-230 (Oct 28): PR #766 stays draft; do not merge it and do not run --landed on it - a slot claim is not landing authorization, and this CLI's only release path writes a false Landed marker. Built and passing on head fc6072a4 (do not rebuild): the 27-token client/src/styles/goalDark.css, its R9 admission and fixtures in scripts/designTokenAuditCore.mjs, the switchable provider, sw-theme persistence and the pre-paint script; node scripts/design-token-audit.mjs exits 0 there, so D-224's contract is met. Open before the owner accepts: containment (html.dark still restyles the legacy kit surfaces; neither client/index.html:9 nor ThemeContext.tsx tests a route), the reported 1.19-1.67:1 cross-fade dip, and both-mode 1280/390 captures of every rendered state including fictional signed-in fixtures per admitted route. status owner parks the row so the picker stops handing that landing to the next idle session - the D-216 precedent used to hold draft PR #710; the owner's answer to the D-230 question returns it to the queue. Background: owner direction relayed in #645/#646 ('Have light and dark mode', 'In our platform'); the dark colour counterpart was approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light palette pixel-unchanged, no default or system-follow change). Tier 2: visual only.",
       "owns": [
         "client/src/styles/goalDark.css",
         "client/src/contexts/themeContext.test.tsx",
@@ -778,7 +1198,10 @@
         "client/src/components/goal/GoalMoreMenu.tsx",
         "client/src/components/goal/goalMoreMenu.test.tsx",
         "client/index.html (switch only)",
-        "DESIGN.md"
+        "DESIGN.md",
+        "scripts/designTokenAuditCore.mjs",
+        "scripts/designTokenAudit.test.ts",
+        "design/goal-ui/captures/dark-mode/**"
       ]
     },
     {
@@ -862,18 +1285,23 @@
       "tier": 1,
       "lane": "money-assist",
       "branch": "agent/queue/assist-approval-cost",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-assistants"
       ],
-      "note": "Issue #644: decideAssistantApproval never re-reads the approved creditCount, so with ASK_LEVEL_COST on an owner who saw 1 credit could pay up to 10. Latent today (flag off; only the unsold land plan grants assistants), so ASK_LEVEL_COST and any land sale stay off until this is done. Contract: the decision body carries expectedCreditCount; the route re-derives the cost with the quote route's own functions and answers 409 cost_changed before any charge on a mismatch. No edit to server/db.ts or privateReferralRoutes.ts. Waits for D-048-p3-assistants (both edit Approve.tsx). D-221 (Oct 26): the shown cost is the quote route's full cost object under D-219 (unit count, level band, spend source), not an integer credit count; the invariant stays: charge exactly what was approved, or 409 cost_changed with nothing charged.",
+      "note": "Issue #644: decideAssistantApproval never re-reads the approved creditCount, so with ASK_LEVEL_COST on an owner who saw 1 credit could pay up to 10. Latent today (flag off; only the unsold land plan grants assistants), so ASK_LEVEL_COST and any land sale stay off until this is done. Contract: the decision body carries expectedCreditCount; the route re-derives the cost with the quote route's own functions and answers 409 cost_changed before any charge on a mismatch. No edit to server/db.ts or privateReferralRoutes.ts. Waits for D-048-p3-assistants (both edit Approve.tsx). D-221 (Oct 26): the shown cost is the quote route's full cost object under D-219 (unit count, level band, spend source), not an integer credit count; the invariant stays: charge exactly what was approved, or 409 cost_changed with nothing charged. Oct 27 (#644): Approve.tsx now only switches to the dark goal GoalApprove.tsx, which also posts { decision, kind }, so the goal page and its flow test join owns (D-048-p3-assistants, their only owner, is done) or it would loop on 409 once released; the cost object is a shared Zod contract (shared/assistantApprovalCost.ts) so the client never imports server code.",
       "owns": [
         "server/assistantApprovalCost.ts",
         "server/assistantApprovalCost.test.ts",
         "server/assistantRoutes.ts",
         "server/assistantRoutes.test.ts",
         "client/src/pages/Approve.tsx",
-        "client/src/pages/approve.test.tsx"
+        "client/src/pages/approve.test.tsx",
+        "shared/assistantApprovalCost.ts",
+        "shared/assistantApprovalCost.test.ts",
+        "client/src/pages/goal/assistants/GoalApprove.tsx",
+        "client/src/pages/goal/assistants/assistantFlows.test.tsx"
       ]
     },
     {
@@ -890,17 +1318,35 @@
     },
     {
       "id": "D-132-item3",
-      "title": "D-132 item-3 follow-ups held outside the queue (#550 + #542): Skippy and bridge-page quote gates, accepted-price precondition; flags off",
+      "title": "Atomic accepted-price precondition: a covered request is charged exactly the accepted cost (units, band, spend source) or answers 409 ask_price_changed with nothing written (D-221 re-scope; no D-219 mapping)",
       "row": "D-132",
-      "packet": "docs/plans/STRANDED-OCT23.md",
+      "packet": "docs/plans/D-132-item3-accepted-price.md",
       "tier": 1,
       "lane": "money-core",
       "branch": "agent/queue/d132-item3",
-      "status": "architect",
+      "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
-        "D-132-audit"
+        "D-132-audit",
+        "D-090-BYOR",
+        "P0-referral-access-availability"
       ],
-      "note": "D-165: cut agent/queue/d132-item3 from #550's head, merge #542 (the only piece #550 lacks), then merge main after D-132-audit lands; keep #547's version of #541's part. Tier 1 review by a model other than Instinct; then close #541-#544 and #550. D-221 (Oct 26): re-scope before any build. D-219 (owner freeze Oct 25, re-confirmed Oct 26) supersedes the D-132 per-level credit model this row builds, so PRs #541-#544 and #550 are not landed as written. Keep the valid invariant (an ask is charged exactly the quote the seeker accepted, or answers 409 with nothing charged) and restate the quote as the request's level band plus its spend source. First deliverable of the re-scope: the accepted-price precondition (expectedCost, 409 before any debit), which SKIPPY-fix S-3 needs; the D-132 per-level credit quote is not rebuilt."
+      "note": "D-165: cut agent/queue/d132-item3 from #550's head, merge #542 (the only piece #550 lacks), then merge main after D-132-audit lands; keep #547's version of #541's part. Tier 1 review by a model other than Instinct; then close #541-#544 and #550. D-221 (Oct 26): re-scope before any build. D-219 (owner freeze Oct 25, re-confirmed Oct 26) supersedes the D-132 per-level credit model this row builds, so PRs #541-#544 and #550 are not landed as written. Keep the valid invariant (an ask is charged exactly the quote the seeker accepted, or answers 409 with nothing charged) and restate the quote as the request's level band plus its spend source. First deliverable of the re-scope: the accepted-price precondition (expectedCost, 409 before any debit), which SKIPPY-fix S-3 needs; the D-132 per-level credit quote is not rebuilt. Oct 28 re-scope (Claude Opus 5.5 · 4ef3, architect, decided under D-200; changeable): packet docs/plans/D-132-item3-accepted-price.md replaces the STRANDED-OCT23 cut-from-#550 plan. The row builds only the model-independent guard (expectedCost = {units, band, source}; band null until the owner settles D-219 (8)); #541-#544, #550 and #542 are source material, never merged. Waits for D-090-BYOR (open draft #632 owns server/db.ts and server/privateReferralRoutes.ts; D-223 (5) keeps an in-flight PR unheld). Revision 2 (coordinator review F1-F5): the quote keeps numeric cost and adds acceptedCost; expectedCost carries per-bucket units; the preview is a locked reconcile like getTokenWallet, not read-only; no composer row is registered (packet section 12); the BYOR serialization stands unless #632s holder agrees to reorder. Skippy adoption stays SKIPPY-fix S-3. Revision 3 (round-2 review GAP 1-3): owns the one production wiring key in server/_core/index.ts (switch only; D-099-bonus-pages already waits for this row through D-174-held-ask-reconfirm) with a source-pin wiring test, and a new rollback-capable create-path fixture (server/askCreateFixtureDb.ts) because every existing create-path fixture runs transactions without rollback; SKIPPY-fix S-2/S-3 now echo the acceptedCost object and report chargedCost. Oct28: also waits for the bounded private access-availability repair, which itself waits for BYOR until an actual limited owner handoff and reviewed reorder; existing BYOR hold is unchanged.",
+      "owns": [
+        "shared/acceptedAskCost.ts",
+        "shared/acceptedAskCost.test.ts",
+        "server/creditLedger.ts",
+        "server/planGates.ts",
+        "server/db.ts",
+        "server/privateReferralRoutes.ts",
+        "server/_core/index.ts (switch only)",
+        "server/askQuoteWiring.test.ts",
+        "server/askCreateFixtureDb.ts",
+        "server/askCreateFixtureDb.test.ts",
+        "server/db.askPriceGuard.test.ts",
+        "server/askQuoteRoute.test.ts",
+        "server/privateReferralRoutes.integration.test.ts"
+      ]
     },
     {
       "id": "D-132-v2-checkout",
@@ -911,6 +1357,7 @@
       "lane": "money-core",
       "branch": "agent/instinct/v2-checkout-port",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-132-item3",
         "D-132-audit"
@@ -1177,7 +1624,7 @@
       "tier": 1,
       "lane": "design-core",
       "branch": "agent/instinct/d048-f-credits",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness"
       ],
@@ -1259,7 +1706,8 @@
       "tier": 2,
       "lane": "design-shell",
       "branch": "agent/queue/d048-f-shell-parts",
-      "status": "todo",
+      "status": "owner",
+      "syncedTo": "D-231",
       "dependsOn": [
         "D-048-F-credits",
         "D-048-F-goal-check"
@@ -1272,7 +1720,31 @@
         "client/src/components/CookieConsent.tsx",
         "client/src/components/shellParts.goal.test.tsx"
       ],
-      "note": "D-167 §6.2: shown on every signed-in page and the landing, so they move before the surfaces. Behaviour unchanged, including cookie consent and applyAnalyticsConsent. Oct 23 finding (Main, from the AYO-8 kit/settings 390px capture): the existing AppShell chrome duplicates the bell/profile affordances at mobile width (bell+profile left, bell right); whole-app scope, not any surface worker’s bug. The dedup fix is a candidate for this row’s scope and must not change auth behaviour."
+      "note": "D-167 §6.2: shown on every signed-in page and the landing, so they move before the surfaces. Behaviour unchanged, including cookie consent and applyAnalyticsConsent. Oct 23 finding (Main, from the AYO-8 kit/settings 390px capture): the existing AppShell chrome duplicates the bell/profile affordances at mobile width (bell+profile left, bell right); whole-app scope, not any surface worker’s bug. The dedup fix is a candidate for this row’s scope and must not change auth behaviour. D-231 (Oct 28, unblock ruling): status moved to owner. PR #767 is a draft under an explicit owner hold (owner comments on #767: 6454185406, 6463784167, 6465559515, 6468051896, 6468097061, 6468614231, 6472224583) and no session may merge, make ready, revert, edit or mark it Landed, or renew its landing lease. Exact head 7d6d6498 has required CI green, so the pending work is acceptance, not repair. Packet 6.2 asks for goal primitives and tokens, but the four components import no components/goal module and the boundary test admits a moved surface only via MOVED_SURFACES (client/src/components/goal/goalBoundary.test.ts:14), a file owned by the open D-090-BYOR draft #632 together with this row's packet GOAL_UI_COVERAGE.md; the owner requires his own acknowledgment before any boundary change. No dependsOn edge is added: whether this row takes the boundary entries after #632 lands or the owner acknowledges them now is the open question (D-223 (1)). Owner question, one: accept the shell parts at the carrier and acknowledge the MOVED_SURFACES registration so the row returns to todo and lands, or keep the hold, and in that answer say whether the boundary entries land here or after #632. Until he answers the row waits in owner and nothing lands."
+    },
+    {
+      "id": "D-048-F-app-wrapper",
+      "title": "App-wide wrapper states on the goal system: offline and slow-connection notices, update notice, error boundary fallback, global toaster (App.tsx)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-F-app-wrapper.md",
+      "tier": 2,
+      "lane": "d048-app-wrapper",
+      "branch": "agent/queue/d048-f-app-wrapper",
+      "status": "todo",
+      "syncedTo": "D-243",
+      "dependsOn": [
+        "D-048-F-goal-check",
+        "D-048-F-primitives"
+      ],
+      "epic": "D-048-p3",
+      "owns": [
+        "client/src/components/ErrorBoundary.tsx",
+        "client/src/components/PwaStatus.tsx",
+        "client/src/components/goal/wrapper/**",
+        "client/src/App.tsx (switch only)",
+        "design/goal-ui/captures/app-wrapper/**"
+      ],
+      "note": "Found by D-048-p3-discovery (#852): App.tsx mounts legacy kit/ui states around every route, absent from route-only captures (D-150, D-167). Goal variant renders only where the route's existing goal surface is on; goalSurfaces.ts read-only, no new flag, RELEASED untouched, nothing enabled. Behaviour preserved: triggers, silent update (SKIP_WAITING, no banner/reload), toaster position/offset, Try again/reload/Go home, captureClientError, role=status aria-live=polite. Existing pwaStatus/systemStates tests read-only and green. Disjoint from held D-048-F-shell-parts (D-231), D-048-dark-mode (D-230; both App.tsx switch-only), D-090-BYOR (incl. goalBoundary.test.ts) and D-048-p3-discovery's goalPagesBoundary.test.ts (D-241 unchanged). Red-first tests, own boundary test with negative control, 1280/390 whole-page captures of every state. Suspense LoadingScreen fallback is out of scope (later row)."
     },
     {
       "id": "D-048-F-coverage",
@@ -1409,7 +1881,8 @@
       "tier": 1,
       "lane": "d048-asks",
       "branch": "agent/queue/d048-inbox",
-      "status": "todo",
+      "status": "owner",
+      "syncedTo": "D-254",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1482,7 +1955,7 @@
       "tier": 1,
       "lane": "d048-assistants",
       "branch": "agent/queue/d048-assistants",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1535,6 +2008,7 @@
       "lane": "d048-skippy",
       "branch": "agent/queue/d048-skippy",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1557,7 +2031,8 @@
       "tier": 1,
       "lane": "d048-agents",
       "branch": "agent/queue/d048-agents",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1594,6 +2069,7 @@
       "lane": "d048-thread",
       "branch": "agent/queue/d048-p3-conversation",
       "status": "todo",
+      "syncedTo": "D-251",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1601,7 +2077,8 @@
         "D-038-reconcile",
         "D-105-win-card",
         "ROW20-CD",
-        "D-048-F-goal-check"
+        "D-048-F-goal-check",
+        "D-048-p3-live-review-conversation"
       ],
       "owns": [
         "client/src/pages/ReferralConversation.tsx",
@@ -1610,7 +2087,7 @@
         "client/src/pages/referralConversation.test.tsx",
         "design/goal-ui/captures/conversation/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147) (attribution unverified - no recovered owner original; register state and refund behavior unchanged); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4).",
+      "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147) (attribution unverified - no recovered owner original; register state and refund behavior unchanged); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). Oct 27: waits for D-048-p3-live-review-conversation (claimed), which also owns referralConversation.test.tsx (its seeker cases) and the conversation captures folder; this row then builds on the redesigned seeker page.",
       "epic": "D-048-p3"
     },
     {
@@ -1647,7 +2124,7 @@
       "tier": 1,
       "lane": "d048-referrer-home",
       "branch": "agent/queue/d048-p3-referrer-home",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1699,7 +2176,8 @@
       "tier": 2,
       "lane": "d048-post",
       "branch": "agent/queue/d048-p3-post",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1713,7 +2191,7 @@
         "client/src/pages/goal/post-opportunity/**",
         "design/goal-ui/captures/post-opportunity/**"
       ],
-      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('post-opportunity').",
+      "note": "Implementation row from the D-048 referrer packet; flag: goalSurfaceOn('post-opportunity'). Done: #578, merged 2026-10-23; set by D-212 (8) because the picker no longer saw the landing and handed the row out again.",
       "epic": "D-048-p3"
     },
     {
@@ -1724,7 +2202,7 @@
       "tier": 1,
       "lane": "d048-verify",
       "branch": "agent/queue/d048-p3-email-review",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
@@ -1762,7 +2240,8 @@
       "tier": 1,
       "lane": "d048-money",
       "branch": "agent/queue/d048-p3-plans",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1793,6 +2272,7 @@
       "lane": "d048-premium",
       "branch": "agent/queue/d048-p3-premium",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1818,6 +2298,7 @@
       "lane": "d048-pricing",
       "branch": "agent/queue/d048-p3-pricing",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-money",
@@ -1857,7 +2338,8 @@
       "tier": 1,
       "lane": "d048-verify",
       "branch": "agent/queue/d048-p3-verify",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1883,6 +2365,7 @@
       "lane": "d048-auth",
       "branch": "agent/queue/d048-p3-signin",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
@@ -1926,7 +2409,8 @@
       "tier": 1,
       "lane": "d048-settings",
       "branch": "agent/queue/d048-p3-settings",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-247",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1951,6 +2435,7 @@
       "lane": "d048-profile",
       "branch": "agent/queue/d048-p3-profile",
       "status": "todo",
+      "syncedTo": "D-253",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1999,7 +2484,8 @@
       "tier": 1,
       "lane": "d048-messages",
       "branch": "agent/queue/d048-p3-messages",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-243",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2023,6 +2509,7 @@
       "lane": "d048-support",
       "branch": "agent/queue/d048-p3-support",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2064,6 +2551,7 @@
       "lane": "d048-admin",
       "branch": "agent/queue/d048-p3-admin",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2090,6 +2578,7 @@
       "lane": "d048-admin-money",
       "branch": "agent/queue/d048-p3-admin-money",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-admin",
         "D-048-F-goal-check"
@@ -2113,6 +2602,7 @@
       "lane": "d048-admin-people",
       "branch": "agent/queue/d048-p3-admin-people",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-admin",
         "D-048-F-goal-check"
@@ -2135,6 +2625,7 @@
       "lane": "d048-admin-approvals",
       "branch": "agent/queue/d048-p3-admin-approvals",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-admin",
         "D-048-F-goal-check"
@@ -2157,6 +2648,7 @@
       "lane": "d048-admin-ops",
       "branch": "agent/queue/d048-p3-admin-ops",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-admin",
         "D-048-F-goal-check"
@@ -2181,7 +2673,8 @@
       "tier": 1,
       "lane": "d048-dev",
       "branch": "agent/queue/d048-p3-dev",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
@@ -2221,6 +2714,7 @@
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2247,6 +2741,7 @@
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer-talent",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-employer",
         "D-048-F-goal-check"
@@ -2268,6 +2763,7 @@
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer-billing",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-employer",
         "D-048-F-goal-check"
@@ -2289,6 +2785,7 @@
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-for-companies",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-employer",
         "D-107-claim-company",
@@ -2327,6 +2824,7 @@
       "lane": "d048-policy",
       "branch": "agent/queue/d048-p3-policy",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-public",
@@ -2350,7 +2848,8 @@
       "tier": 2,
       "lane": "d048-system",
       "branch": "agent/queue/d048-p3-system",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
@@ -2369,6 +2868,29 @@
       "epic": "D-048-p3"
     },
     {
+      "id": "D-048-system-repair",
+      "title": "Repair goal system gallery parity and Loading; commit acceptance evidence",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-system-repair.md",
+      "tier": 2,
+      "lane": "d048-system",
+      "branch": "agent/queue/d048-system-repair",
+      "status": "done",
+      "syncedTo": "D-232",
+      "dependsOn": [
+        "D-048-p3-system",
+        "D-048-F-goal-check"
+      ],
+      "owns": [
+        "client/src/pages/goal/system/GoalAppStates.tsx",
+        "client/src/pages/goal/system/systemParity.goal.test.tsx",
+        "client/src/pages/goal/system/systemPages.goal.test.tsx",
+        "design/goal-ui/captures/system/**"
+      ],
+      "note": "Additive follow-up for merged #834: visible blank Loading and browser/dismissal parity, goal-on tests, reproducible committed synthetic captures. System stays off; D-180 copy stays separate.",
+      "epic": "D-048-p3"
+    },
+    {
       "id": "D-048-p3-links",
       "title": "W7 /fast/:linkCode, /refer/:companySlug/:vanityAlias, /share-card/:token",
       "row": "D-048",
@@ -2377,6 +2899,7 @@
       "lane": "d048-links",
       "branch": "agent/queue/d048-p3-links",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
@@ -2418,6 +2941,7 @@
       "lane": "d048-home",
       "branch": "agent/queue/d048-p3-home-signed-in",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-marketing",
@@ -2443,6 +2967,7 @@
       "lane": "d048-discovery",
       "branch": "agent/queue/d048-p3-discovery",
       "status": "todo",
+      "syncedTo": "D-241",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-marketing",
@@ -2454,9 +2979,10 @@
         "client/src/pages/JobExplorer.tsx",
         "client/src/pages/goal/discovery/**",
         "scripts/kit-screens/fixtures/*__goal-discovery-*.json",
-        "design/goal-ui/captures/discovery/**"
+        "design/goal-ui/captures/discovery/**",
+        "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-harness dependency - fixture globs share the kit-screens/fixtures folder; the harness row lands first and this row adds its fixtures on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('discovery').",
+      "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-harness dependency - fixture globs share the kit-screens/fixtures folder; the harness row lands first and this row adds its fixtures on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('discovery'). D-241 (Oct 30): owns gains client/src/test/goalPagesBoundary.test.ts (its only owner D-048-F-goal-check is done); the boundary must walk root-alias, relative, barrel and transitive runtime imports, admit only an audited list of goal-styled and behavior-only modules, and prove with negative controls that the legacy OneTapShareActions share component fails; assertions only added, no waivers.",
       "epic": "D-048-p3"
     },
     {
@@ -2468,6 +2994,7 @@
       "lane": "d048-profile",
       "branch": "agent/queue/d048-p3-public-profile",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-p3-profile",
@@ -2532,16 +3059,125 @@
       "dependsOn": []
     },
     {
-      "id": "D-086-demand-list",
-      "title": "Demand list (D-086, loop L1): k-anonymous public demand counts per company and asks at companies not yet open",
+      "id": "D-086.count",
+      "title": "Demand count (D-086): distinct people with a live referral request at each listed company (public, k-anonymous) and the unlisted-domain admission queue (admin only), behind two switches that start false",
       "row": "D-086",
-      "packet": null,
+      "packet": "docs/plans/D-086-demand-list.md",
+      "tier": 1,
+      "lane": "demand-count",
+      "branch": "agent/queue/d086-count",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "epic": "D-086-demand-list",
+      "dependsOn": [
+        "D-174-company-search"
+      ],
+      "owns": [
+        "shared/companyDemand.ts",
+        "shared/companyDemand.test.ts",
+        "server/companyDemand.ts",
+        "server/companyDemand.fixture.test.ts",
+        "server/companyDemandRoutes.ts",
+        "server/companyDemandRoutes.test.ts",
+        "server/companyDirectoryRoutes.ts (switch only)"
+      ],
+      "note": "D-086 packet §5.1. Liveness is status pending plus the imported isAskExpired (no age cutoff of its own; follows D-174-expiry-clock-removal with no change; awaiting-reconfirm requests count). Coverage-neutral (reads no referrer or availability table), listed companies only in public, distinct canonical people, never companySuggestions votes. The admin queue lists unowned corporate domains by people, private, no-store. Mounts inside registerCompanyDirectoryRoutes (D-223 (6)), so it waits for D-174-company-search, which owns that file. Both switches stay false."
+    },
+    {
+      "id": "D-086.ui",
+      "title": "Demand line and list components (D-086): a count from 3, 'A few people' for 1-2, nothing at zero; employee help links via referrerSignInHref; unlisted-company lines; employer-bonus line; switch off",
+      "row": "D-086",
+      "packet": "docs/plans/D-086-demand-list.md",
+      "tier": 2,
+      "lane": "demand-ui",
+      "branch": "agent/queue/d086-ui",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "epic": "D-086-demand-list",
+      "dependsOn": [
+        "D-086.count",
+        "D-090-BYOR"
+      ],
+      "owns": [
+        "client/src/components/demand/CompanyDemandLine.tsx",
+        "client/src/components/demand/CompanyDemandList.tsx",
+        "client/src/components/demand/useCompanyDemand.ts",
+        "client/src/components/demand/companyDemand.test.tsx",
+        "docs/plans/GOAL_UI_COVERAGE.md"
+      ],
+      "note": "D-086 packet §5.2. Waits for D-090-BYOR because both own GOAL_UI_COVERAGE.md (D-167 line per new component). No black commit; login rule pinned by its own test."
+    },
+    {
+      "id": "D-086.mount",
+      "title": "Mount the demand line on /explore/:slug and the list on /explore (D-086), behind the switch",
+      "row": "D-086",
+      "packet": "docs/plans/D-086-demand-list.md",
+      "tier": 2,
+      "lane": "demand-mount",
+      "branch": "agent/queue/d086-mount",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "epic": "D-086-demand-list",
+      "dependsOn": [
+        "D-086.ui",
+        "D-048-p3-live-review-find"
+      ],
+      "owns": [
+        "client/src/pages/Explore.tsx (switch only)",
+        "client/src/pages/ExploreCompany.tsx (switch only)",
+        "client/src/pages/explore.demandMount.test.tsx",
+        "design/goal-ui/captures/demand/**"
+      ],
+      "note": "D-086 packet §5.3. Mounts into the pages D-048-p3-live-review-find redesigns, after it lands; captures at 1280 and 390."
+    },
+    {
+      "id": "D-086.admit",
+      "title": "Read-only admin view of the unlisted-company admission queue (D-086): domains by people asking; listing stays the authenticated admin POST /api/admin/companies",
+      "row": "D-086",
+      "packet": "docs/plans/D-086-demand-list.md",
+      "tier": 2,
+      "lane": "demand-admit",
+      "branch": "agent/queue/d086-admit",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "epic": "D-086-demand-list",
+      "dependsOn": [
+        "D-086.count",
+        "D-086.ui",
+        "D-048-p3-admin"
+      ],
+      "owns": [
+        "client/src/components/admin/UnlistedDemandView.tsx",
+        "client/src/components/admin/unlistedDemandView.test.tsx",
+        "client/src/pages/AdminOverview.tsx (switch only)",
+        "docs/plans/GOAL_UI_COVERAGE.md"
+      ],
+      "note": "D-086 packet §5.5. Admin only and read-only: no create form, prefill or listing control (none exists on main). Listing stays a manual authenticated POST /api/admin/companies (D-101); nothing is listed automatically. Not a dependency of the release row; until it lands admins read the queue as JSON."
+    },
+    {
+      "id": "D-086-demand-list",
+      "title": "Demand list (D-086, loop L1): k-anonymous public counts of people asking for a referral at each listed company, with moderated admission of unlisted companies; release row",
+      "row": "D-086",
+      "packet": "docs/plans/D-086-demand-list.md",
       "tier": 1,
       "lane": "demand",
       "branch": "agent/queue/d086-demand-list",
-      "status": "architect",
-      "dependsOn": [],
-      "note": "D-154, D-162: queued so the packet can be written now (D-109); its build follows D-090-BYOR (owner word, D-162). The packet pull request adds D-090-BYOR to this row's dependsOn, and also D-048-p3-live-review-find (both edit /explore and /ask) unless the packet's owned paths leave that row's files alone. Scope: public counts per company from 3 up, 'A few people' for 1-2, never 0, no seeker detail (D-086 (2) overrides the PRD copy's old 'singular for 1'); the count is people asking for a referral at that company and is not built yet: ROW20-B (#311) counts suggestions filed on /invite (as a seeker) and /suggest-company (seeker or employee), one per person per company, admin-only, so the packet decides which real rows count (D-102); the ask-to-any-company path (no credit, no slot until a verified referrer exists, then D-034/D-047/D-062, closing at 90 days under D-061); D-102's honest availability lines; the copy in docs/PRD.md; owned paths. D-221 (Oct 26): the packet writer replaces the 90-day closure with D-174 (requests never expire for launch) plus D-193 (4) (reconfirm before spend), and drops the 'not yet open' availability framing (D-176). Whether public per-company demand counts survive D-176 is checked against D-193 (3) before any owner question."
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "D-086.count",
+        "D-086.ui",
+        "D-086.mount",
+        "D-090-BYOR",
+        "D-048-p3-live-review-find"
+      ],
+      "note": "D-086 packet §5.4 (release row, D-223 (3)): flips COMPANY_DEMAND_ADMIN_ENABLED and COMPANY_DEMAND_PUBLIC_ENABLED after D-086.count, D-086.ui and D-086.mount land, QA with captures, the normal privacy review inside the independent Tier 1 review, and the CEO's sign-off. Public demand counts every live request (the runtime's own isAskExpired, no age cutoff of its own) at every listed company whatever its coverage (D-176/D-174), k-anonymous; it is not D-193 (3)'s private waiting count. Unlisted companies reach public display only through admin admission (packet §4.5); D-086.admit is the admin view and does not hold this row. The ask-to-any-company path already exists (packet §3.6-§3.7, §3.11); the 90-day closure is replaced by D-174 plus D-193 (4) in D-174-held-ask-reconfirm and D-174-expiry-clock-removal. D-099-bonus-pages, D-089-request-inbox (by its note) and DEPLOY-gate-docs-sync keep waiting for this row.",
+      "owns": [
+        "shared/companyDemand.ts (switch only)",
+        "AGENTS.md",
+        "docs/PRD.md",
+        "docs/KIT_V4_BUILD_PLAN.md"
+      ]
     },
     {
       "id": "D-090-BYOR",
@@ -2552,8 +3188,121 @@
       "lane": "supply",
       "branch": "agent/claude/d090-byor",
       "status": "todo",
-      "dependsOn": [],
-      "note": "D-162: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main (docs/DECISIONS.md conflicts on the D-148 row: keep main's side and drop the branch's row, since D-162 records the waiver; the packet merges cleanly, so delete by hand its 'Gate waived by the owner (D-148 ...)' paragraph in §0 and its 'in progress — workbuddy · b0eb' Status line), and renumber 0107_ask_invites.sql to the next free number at landing (check drizzle/deploy/ on main and plan §5 at landing: on Oct 23 main has 0107_seeker_levels.sql and 0108_landed_thank_you.sql, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). Build C1-C5 in order: D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 puts the invite action into MyRequests.tsx as it is on main, as a ghost button or plain link (one black commit per page, D-150). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5). D-187 (Oct 24): C1-C6 are built; resume there: add \"/r/:token\" to KNOWN_ROUTE_PATTERNS in functions/_middleware.ts (not D-057's gate); the local '[auth] VITE_WORKOS_CLIENT_ID is not set' line is listed, not counted; user-facing 'ask' copy becomes D-180's referral vocabulary (money lines keep 'credit'); full gate, renumber 0111 at landing, Tier 1 draft PR. Review: not workbuddy, not GPT (D-151)."
+      "syncedTo": "D-246",
+      "dependsOn": [
+        "D-057-session-gate"
+      ],
+      "note": "D-162: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main (docs/DECISIONS.md conflicts on the D-148 row: keep main's side and drop the branch's row, since D-162 records the waiver; the packet merges cleanly, so delete by hand its 'Gate waived by the owner (D-148 ...)' paragraph in §0 and its 'in progress — workbuddy · b0eb' Status line), and renumber 0107_ask_invites.sql to the next free number at landing (check drizzle/deploy/ on main and plan §5 at landing: on Oct 23 main has 0107_seeker_levels.sql and 0108_landed_thank_you.sql, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). Build C1-C5 in order: D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 puts the invite action into MyRequests.tsx as it is on main, as a ghost button or plain link (one black commit per page, D-150). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5). D-187 (Oct 24): C1-C6 are built; resume there: add \"/r/:token\" to KNOWN_ROUTE_PATTERNS in functions/_middleware.ts (not D-057's gate); the local '[auth] VITE_WORKOS_CLIENT_ID is not set' line is listed, not counted; user-facing 'ask' copy becomes D-180's referral vocabulary (money lines keep 'credit'); full gate, renumber 0111 at landing, Tier 1 draft PR. Review: not workbuddy, not GPT (D-151). D-246 (CEO sequencing, Oct 30): waits for D-057-session-gate, which takes a limited handoff of server/privateReferralRoutes.ts, server/_core/index.ts (switch only), drizzle/schema.ts and server/schemaReconcile.ts for its build only. #632 keeps its id, branch, scope, code, findings (b8552f96: F1-F4 in server/sentry.ts) and holds; no takeover. After D-057 lands, merge main into agent/claude/d090-byor (merge commit, never rebase) and resolve the four files by keeping both sides.",
+      "owns": [
+        ".env.example",
+        "AGENTS.md",
+        "artifacts/d090-c6/README.md",
+        "artifacts/d090-c6/invite-sheet-report.json",
+        "artifacts/d090-c6/invite-sheet/live/mobile/d090_c6_invite-sheet.png",
+        "artifacts/d090-c6/invite-sheet/live/web/d090_c6_invite-sheet.png",
+        "artifacts/d090-c6/landing-claimed-report.json",
+        "artifacts/d090-c6/landing-claimed/live/mobile/d090_c6_landing-claimed.png",
+        "artifacts/d090-c6/landing-claimed/live/web/d090_c6_landing-claimed.png",
+        "artifacts/d090-c6/landing-held-report.json",
+        "artifacts/d090-c6/landing-held/live/mobile/d090_c6_landing-held.png",
+        "artifacts/d090-c6/landing-held/live/web/d090_c6_landing-held.png",
+        "artifacts/d090-c6/landing-signed-out-report.json",
+        "artifacts/d090-c6/landing-signed-out/live/mobile/d090_c6_landing-signed-out.png",
+        "artifacts/d090-c6/landing-signed-out/live/web/d090_c6_landing-signed-out.png",
+        "artifacts/d090-c6/landing-verified-report.json",
+        "artifacts/d090-c6/landing-verified/live/mobile/d090_c6_landing-verified.png",
+        "artifacts/d090-c6/landing-verified/live/web/d090_c6_landing-verified.png",
+        "artifacts/d090-c6/manifest.json",
+        "artifacts/d090-c6/sheet-revoke-confirmation-report.json",
+        "artifacts/d090-c6/sheet-revoke-confirmation/live/mobile/d090_c6_sheet-revoke-confirmation.png",
+        "artifacts/d090-c6/sheet-revoke-confirmation/live/web/d090_c6_sheet-revoke-confirmation.png",
+        "artifacts/d090-c6/waiting-row-report.json",
+        "artifacts/d090-c6/waiting-row/live/mobile/d090_c6_waiting-row.png",
+        "artifacts/d090-c6/waiting-row/live/web/d090_c6_waiting-row.png",
+        "client/src/App.tsx (switch only)",
+        "client/src/components/goal/goalBoundary.test.ts",
+        "client/src/components/requests/AskInviteSheet.tsx",
+        "client/src/components/requests/askInviteApi.test.ts",
+        "client/src/components/requests/askInviteApi.ts",
+        "client/src/components/requests/requestsApi.test.ts",
+        "client/src/components/requests/requestsApi.ts",
+        "client/src/lib/clarity.test.ts",
+        "client/src/lib/clarity.ts",
+        "client/src/lib/flags.ts",
+        "client/src/lib/sentry.test.ts",
+        "client/src/lib/sentry.ts",
+        "client/src/metadataAndRouteLoading.test.ts",
+        "client/src/pages/AskInviteLink.test.tsx",
+        "client/src/pages/AskInviteLink.tsx",
+        "client/src/pages/MyRequests.tsx",
+        "client/src/pages/myRequests.invite.test.tsx",
+        "docs/BACKLOG.md",
+        "docs/KIT_V4_BUILD_PLAN.md",
+        "docs/PRD.md",
+        "docs/plans/D-090-BYOR.md",
+        "docs/plans/GOAL_UI_COVERAGE.md",
+        "drizzle/deploy/0111_ask_invites.sql",
+        "drizzle/schema.ts",
+        "functions/_middleware.ts",
+        "scripts/qa/d090-byor.mjs",
+        "scripts/qa/d090-vite.config.mjs",
+        "scripts/qa/fixtures/d090-byor/invite-sheet.json",
+        "scripts/qa/fixtures/d090-byor/landing-claimed.json",
+        "scripts/qa/fixtures/d090-byor/landing-held.json",
+        "scripts/qa/fixtures/d090-byor/landing-signed-out.json",
+        "scripts/qa/fixtures/d090-byor/landing-verified.json",
+        "scripts/qa/fixtures/d090-byor/sheet-revoke-confirmation.json",
+        "scripts/qa/fixtures/d090-byor/waiting-row.json",
+        "server/_core/index.ts",
+        "server/askInviteClaim.test.ts",
+        "server/askInviteReservation.test.ts",
+        "server/askInviteRoutes.test.ts",
+        "server/askInviteRoutes.ts",
+        "server/askInviteSweep.test.ts",
+        "server/askInviteSweep.ts",
+        "server/askInvites.minePayload.test.ts",
+        "server/askInvites.test.ts",
+        "server/askInvites.token.test.ts",
+        "server/askInvites.ts",
+        "server/db.askExpiry.test.ts",
+        "server/db.coverageDelivery.test.ts",
+        "server/db.ts",
+        "server/errorAlerting.test.ts",
+        "server/errorAlerting.ts",
+        "server/privateReferralRoutes.ts",
+        "server/scheduledJobRegistry.ts",
+        "server/scheduledJobsContract.test.ts",
+        "server/schemaReconcile.ts",
+        "server/sentry.test.ts",
+        "server/sentry.ts",
+        "shared/askInvites.test.ts",
+        "shared/askInvites.ts",
+        "shared/scheduledJobs.ts",
+        "src/worker.ts"
+      ]
+    },
+    {
+      "id": "P0-referral-access-availability",
+      "title": "Private referral access remains unavailable while authorization cannot be established",
+      "row": "D-019",
+      "packet": "docs/plans/PRIVATE-referral-access-availability.md",
+      "tier": 1,
+      "lane": "referral-access",
+      "branch": "agent/queue/p0-referral-access-availability",
+      "status": "todo",
+      "dependsOn": [
+        "D-090-BYOR"
+      ],
+      "owns": [
+        "server/privateReferralRoutes.ts",
+        "server/blocksRoutes.ts",
+        "server/blocksRoutes.queryCoverage.test.ts",
+        "server/blockEnforcement.test.ts",
+        "server/documentAccessLifecycle.test.ts",
+        "server/referralBlockAvailability.test.ts"
+      ],
+      "note": "Coordinator-scoped existing-access-rule reliability correction; private reviewed contract governs exact cases. Registration is not implementation or acceptance. Shared route is serialized behind active BYOR #632 pending actual holder limited handoff/ACK and reviewed reordering. D-132-item3 waits for this row and BYOR, preserving all existing work and holds. No anonymous-summary/consent redesign, delivery-policy change, pricing/expiry/refund change or activation. Tier1 independent final fix review, exact required CI/current-main integration, protected landing and postmerge verification remain required.",
+      "syncedTo": "D-227"
     },
     {
       "id": "D-057-session-gate",
@@ -2564,8 +3313,70 @@
       "lane": "sign-in",
       "branch": "agent/queue/d057-session-gate",
       "status": "todo",
+      "syncedTo": "D-246",
       "dependsOn": [],
-      "note": "D-163: no longer waits for seeker-passwords (D-080 lets #324 land once this gate closes the Bearer path, so waiting on #324 deadlocked the lane). Build against main from the packet's CEO addendum (§0, re-verified on 06323e5c): the amr claim is set only by the work-email code login and the reviewer demo's referrer role; never inferred from the workemail_ subject; the request's own code cookie for the same account passes even when an AuthKit Bearer resolved the identity (no sign-in loop). Every referrer types one code after deploy (D-049)."
+      "note": "D-245 (owner/CEO answer, Oct 30): the block (Hark · 450f, 1f344276) clears. A personal-login session reaches referrer actions only after an in-session work-email step-up (POST /api/referrer/step-up/send|verify) that writes a server-side proof bound to account, session key (workos:<sid> or app:<ssid>), exact work email and purpose (12 h, single-use challenge, void on logout, revocation, suspension and employer change); it never runs the standalone code login, never drops the Bearer, never accepts another account's cookie, never matches by domain or links accounts. Build from packet §0b (it wins over §0 to §8). D-246 (CEO sequencing, Oct 30): this row goes first. Its owns are the full §0b.8 list, including the four shared paths: server/privateReferralRoutes.ts (middleware, route list and /access verdict only), server/_core/index.ts (switch only: step-up route registration and the dev wrapper's two copied fields), drizzle/schema.ts and server/schemaReconcile.ts (the additive referrerStepUps table only). D-090-BYOR now waits for this row, and BYOR's chain (P0-referral-access-availability, D-132-item3, D-174-held-ask-reconfirm, D-174-ask-from-job, D-174-pool-nudges, D-099-bonus-pages, D-086-demand-list, DEPLOY-gate-docs-sync) waits through it. The handoff from BYOR is limited to those four files, for this build only; #632 keeps all its code, findings (b8552f96) and holds, and this build resolves any overlap with #632 in #632's favour where both can stand. Tier 1 independent review and the full browser path (§0b.9) before done. Every referrer types one code after deploy (D-049). Oct 31 owns amendment (docs/registry only, D-200 (2); Instinct's answer on #811, comment 6537600491, choice A, to packet conflict 8 raised on #867 head 83abf39a): owns gains exactly e2e/fixtures.ts and scripts/seed-test-accounts.ts, so the e2e journeys personal-link and queue-attestation, which the gate correctly refuses with the seeded plain test_seed session, are repaired by this row through the real local step-up send/verify path with delivery intercepted locally. test_seed stays a test identity (never relabelled as a work-email login, no amr minted for it, no production bypass); any direct test setup must be justified, isolated to the local harness and proven unable to change production authorization. Red-first controls and limits are in packet §0b.8a. GATE-e2e-journeys (done) keeps its history; the rest of e2e/ is not claimed. This amendment releases no hold: the #867 shared-file hold stays, and runtime edits to the two paths wait for this amendment's independent scope review and landing.",
+      "owns": [
+        "server/_core/sdk.ts",
+        "server/_core/sdk*.test.ts",
+        "server/_core/otpLogin.ts",
+        "server/_core/otpLogin*.test.ts",
+        "server/_core/reviewerLogin.ts",
+        "server/_core/reviewerLogin*.test.ts",
+        "server/_core/devAuth.ts",
+        "server/_core/devAuth*.test.ts",
+        "server/_core/workosAuth.ts",
+        "server/_core/workosAuth*.test.ts",
+        "server/profileRoutes.ts",
+        "server/profileRoutes*.test.ts",
+        "server/referrerStepUp.ts",
+        "server/referrerStepUpRoutes.ts",
+        "server/referrerStepUp*.test.ts",
+        "server/referrerSessionGate.ts",
+        "server/referrerSessionGate*.test.ts",
+        "shared/referrerAccess.ts",
+        "shared/referrerAccess*.test.ts",
+        "shared/referrerStepUp.ts",
+        "shared/referrerStepUp*.test.ts",
+        "client/src/hooks/useReferrerAccess.ts",
+        "client/src/hooks/useReferrerAccess*.test.tsx",
+        "client/src/lib/threadApi.ts",
+        "client/src/lib/threadApi*.test.ts",
+        "client/src/components/referrer-home/referrerData.ts",
+        "client/src/components/referrer-home/referrerData*.test.ts",
+        "client/src/lib/referrerStepUpApi.ts",
+        "client/src/lib/referrerStepUpApi*.test.ts",
+        "client/src/components/goal/GoalWorkEmailStepUp.tsx",
+        "client/src/components/goal/GoalWorkEmailStepUp*.test.tsx",
+        "client/src/components/goal/goalWorkEmailStepUp*.test.tsx",
+        "client/src/pages/MyCompanyInbox.tsx",
+        "client/src/pages/myCompanyInbox*.test.tsx",
+        "client/src/pages/ReferrerImpact.tsx",
+        "client/src/pages/referrerImpact*.test.tsx",
+        "client/src/pages/PostOpportunity.tsx",
+        "client/src/pages/postOpportunity*.test.tsx",
+        "client/src/pages/Alerts.tsx",
+        "client/src/pages/alerts*.test.tsx",
+        "client/src/pages/goal/referrer/GoalReferrer.tsx",
+        "client/src/pages/goal/referrer/goalReferrer*.test.tsx",
+        "client/src/pages/goal/referrer/GoalReferrerImpact.tsx",
+        "client/src/pages/goal/post-opportunity/GoalPostOpportunity.tsx",
+        "client/src/pages/goal/post-opportunity/goalPostOpportunity*.test.tsx",
+        "client/src/pages/goal/alerts/GoalAlerts.tsx",
+        "client/src/pages/goal/alerts/goalAlerts*.test.tsx",
+        "drizzle/deploy/*_referrer_step_ups.sql",
+        "server/privateReferralRoutes.ts",
+        "server/privateReferralRoutes*.test.ts",
+        "server/_core/index.ts (switch only)",
+        "drizzle/schema.ts",
+        "server/schemaReconcile.ts",
+        "server/schemaReconcile*.test.ts",
+        "e2e/fixtures.ts",
+        "scripts/seed-test-accounts.ts",
+        "docs/plans/D-057-session-gate.md",
+        "AGENTS.md",
+        "docs/KIT_V4_BUILD_PLAN.md"
+      ]
     },
     {
       "id": "FND-4",
@@ -2575,7 +3386,8 @@
       "tier": 2,
       "lane": "observability",
       "branch": "agent/queue/fnd4-token-paths",
-      "status": "todo",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-163: no longer waits for seeker-passwords; shared/telemetryScrub.ts is new on main and #324 picks it up when it merges main. Scope per the packet's CEO addendum (§0): adds the vanity alias and /api/documents/by-key/:key; alerts drop the query."
     },
@@ -2588,6 +3400,7 @@
       "lane": "supply-inbox",
       "branch": "agent/queue/d089-request-inbox",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-163: the owner's order puts idea 1 between BYOR and the bonus pages (D-089 (3), D-099), and it had no row, so D-099 could never start. Write the packet now (D-109); its build follows D-090-BYOR, so the packet PR adds D-090-BYOR (and D-086-demand-list, which ideas 1 and 3 still follow) to this row's dependsOn. Start from what is live: the referrer fast-track link already routes asks to one employee (/fast/:linkCode and /refer/:companySlug/:vanityAlias, D-050; client/src/pages/FastTrackLink.tsx, VanityFastTrackLink.tsx, getOrCreateReferrerFastTrackLink). The packet decides what 'with screen name' adds on top, reusing the D-106 screen name if #382 has landed, never the referrer's real name before an accept (D-019(e)), and names its owned paths. Tier 1: referrer identity on a public link."
     },
@@ -2607,12 +3420,221 @@
       "id": "D-100-security-audit",
       "title": "Security, availability and payments hardening: read-only audit first, then flagged fixes (D-100)",
       "row": "D-100",
-      "packet": null,
+      "packet": "docs/plans/D-100-security-audit.md",
       "tier": 3,
       "lane": "security",
       "branch": "agent/claude/d100-security-audit",
-      "status": "architect",
-      "dependsOn": []
+      "status": "done",
+      "dependsOn": [],
+      "note": "Packet-only (D-223): its work is the D-100.* rows that follow, written in docs/plans/D-100-security-audit.md.",
+      "epic": "D-100"
+    },
+    {
+      "id": "D-100.csp-report",
+      "title": "The report-only CSP collects violations: report-uri and a scrubbed /api/csp-report",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-headers",
+      "branch": "agent/queue/d100-csp-report",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "FND-4"
+      ],
+      "note": "D-223 subtask of D-100. After FND-4 (reuses its scrubber). Answered inside globalSecurityHeaders, so it never edits server/_core/index.ts.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts",
+        "server/securityHeaders.test.ts",
+        "server/cspReport.ts",
+        "server/cspReport.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.csp-enforce",
+      "title": "An enforcing CSP built behind CSP_ENFORCED = false",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-csp",
+      "branch": "agent/queue/d100-csp-enforce",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "D-100.csp-report"
+      ],
+      "note": "D-223 subtask of D-100. Off until D-100.csp-release.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts",
+        "server/securityHeaders.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.csp-release",
+      "title": "Switch CSP_ENFORCED on after 7 days of reports, with captures and the CEO's sign-off",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-csp-release",
+      "branch": "agent/queue/d100-csp-release",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "D-100.csp-enforce"
+      ],
+      "note": "D-223 release row of the CSP pieces: one line, opens only 7 days after D-100.csp-report is live.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts"
+      ]
+    },
+    {
+      "id": "D-100.hsts-preload",
+      "title": "HSTS preload built behind HSTS_PRELOAD = false (switching it on is the owner's word)",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 2,
+      "lane": "security-hsts",
+      "branch": "agent/queue/d100-hsts-preload",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "D-100.csp-release"
+      ],
+      "note": "D-223 subtask of D-100. Same file as the CSP rows, so after them.",
+      "epic": "D-100",
+      "owns": [
+        "server/securityHeaders.ts",
+        "server/securityHeaders.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.otp-hmac",
+      "title": "The work-email code is stored as an HMAC, with a one-TTL read of the old hash",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 1,
+      "lane": "security-otp",
+      "branch": "agent/queue/d100-otp-hmac",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "FIX-device-signin"
+      ],
+      "note": "D-223 subtask of D-100. After FIX-device-signin, which edits server/workEmailOtp.ts. Sign-in path: independent review by another model (D-151).",
+      "epic": "D-100",
+      "owns": [
+        "server/workEmailOtp.ts",
+        "server/workEmailOtp.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.provider-recon",
+      "title": "The daily money check compares Chargebee's recent payments with ours (read-only)",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 1,
+      "lane": "security-recon",
+      "branch": "agent/queue/d100-provider-recon",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "REL-webhook-auth-alarm"
+      ],
+      "note": "D-223 subtask of D-100. Writes nothing; never adds a gateway key. Oct 27: waits for REL-webhook-auth-alarm, which ranks higher and also edits server/dailyMoneyCheck.ts.",
+      "epic": "D-100",
+      "owns": [
+        "server/chargebeeAccountApi.ts",
+        "server/dailyMoneyCheck.ts",
+        "server/dailyMoneyCheck.test.ts"
+      ]
+    },
+    {
+      "id": "D-100.secrets-sweep",
+      "title": "Read-only audit: no secret, token, code or personal data in logs, Sentry, alerts or error bodies",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-secrets",
+      "branch": "agent/queue/d100-secrets-sweep",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [],
+      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-secrets-sweep.md"
+      ]
+    },
+    {
+      "id": "P1-client-error-boundary",
+      "title": "Unexpected internal API errors return a neutral safe response",
+      "row": "D-019",
+      "packet": "docs/plans/P1-client-error-boundary.md",
+      "tier": 1,
+      "lane": "api-error-boundary",
+      "branch": "agent/queue/p1-client-error-boundary",
+      "status": "todo",
+      "syncedTo": "D-228",
+      "dependsOn": [],
+      "owns": [
+        "server/_core/trpc.ts",
+        "server/trpcErrorBoundary.test.ts"
+      ],
+      "note": "Standalone existing-privacy reliability correction; no active owned-path overlap at registration. Reviewed private telemetry contract governs red-first synthetic cases. Scope only client response formatting, not Sentry/logging sinks or their acceptance. Separate actual sink remediation remains required. No legal, analytics, money, expiry/refund, feature flag, deployment/API activation or ownership-hold change. Independent Tier1 final implementation review and exact current-main required CI/protected merge remain required."
+    },
+    {
+      "id": "D-100.authz-referral",
+      "title": "Read-only audit: authorization and personal data on the referral, document, block and safety routes",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-referral",
+      "branch": "agent/queue/d100-authz-referral",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [],
+      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-authz-referral.md"
+      ]
+    },
+    {
+      "id": "D-100.authz-account",
+      "title": "Read-only audit: authorization and personal data on the account, messaging, employer, agent and public routes",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-account",
+      "branch": "agent/queue/d100-authz-account",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [],
+      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-authz-account.md"
+      ]
+    },
+    {
+      "id": "D-100.authz-admin-money",
+      "title": "Read-only audit: authorization on the admin, payment, webhook, job and health routes",
+      "row": "D-100",
+      "packet": "docs/plans/D-100-security-audit.md",
+      "tier": 3,
+      "lane": "security-audit-admin",
+      "branch": "agent/queue/d100-authz-admin-money",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [],
+      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
+      "epic": "D-100",
+      "owns": [
+        "docs/reviews/D-100-authz-admin-money.md"
+      ]
     },
     {
       "id": "D-099-bonus-pages",
@@ -2623,6 +3645,7 @@
       "lane": "seo",
       "branch": "agent/claude/d099-bonus-pages",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-174-held-ask-reconfirm",
         "D-174-sample-job-removal",
@@ -2681,6 +3704,7 @@
       "lane": "seo",
       "branch": "agent/queue/d099-bonus-line",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-099-bonus-pages",
         "D-048-p3-live-review-find",
@@ -2704,6 +3728,7 @@
       "lane": "i18n",
       "branch": "agent/claude/d093-language",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": []
     },
     {
@@ -2715,6 +3740,7 @@
       "lane": "ai",
       "branch": "agent/claude/d094-ai-in-ui",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": []
     },
     {
@@ -2804,6 +3830,7 @@
       "lane": "sign-in",
       "branch": "agent/claude/seeker-signin-finish",
       "status": "owner",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-057-session-gate"
       ],
@@ -2818,8 +3845,9 @@
       "lane": "deploy-workflows",
       "branch": "agent/claude/sync-log-off-main",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "Any agent writes the packet (D-109): write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected."
+      "note": "Any agent writes the packet (D-109): write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected. It also retires sync-guard.yml (only echoes) and design-gate.yml (`|| true`), D-212 (7)."
     },
     {
       "id": "D-048-fix-start-ask-handoff",
@@ -2829,9 +3857,10 @@
       "tier": 2,
       "lane": "d048-foundation",
       "branch": "agent/instinct/d048-fix-start-ask-handoff",
-      "status": "in-review",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top."
+      "note": "Coordinator bounded fix (Main, Oct 23): the shared ask composer ignored the /start hand-off - Onboarding.begin writes the referral draft and company confirmation binding and routes /request -> /ask, but useAskComposer read only AskPrefill, so the link arrived blank. Fix scoped to client/src/pages/explore/useAskComposer.tsx + client/src/pages/ask.startHandoff.test.tsx: a fresh (1h), confirmation-bound draft fills the still-empty link at lowest precedence (account draft, posted role and session prefill outrank it); stale or mismatched hand-offs are cleaned up, and sign-out destroys the hand-off (logoutPrivacy), so no stale or wrong-account draft can fill. Receiver proof test renders the real /ask form. D-048-p3-live-review-find waits on this row and reconciles its redesign on top. Done: #586, merged 2026-10-23; set by D-212 (8) because the picker no longer saw the landing and handed the row out again."
     },
     {
       "id": "D-048-fix-explore-open-first",
@@ -2886,6 +3915,7 @@
       "lane": "ask-flow",
       "branch": "agent/coordinator/expiry-clock-removal",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-166-journey-decisions-sync",
         "D-174-held-ask-reconfirm"
@@ -2915,6 +3945,7 @@
       "lane": "d174-fix",
       "branch": "agent/queue/d174-fix-post-binding",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-132-audit",
         "D-048-fix-send-ask-blocker"
@@ -2941,12 +3972,15 @@
       "lane": "d174-pool",
       "branch": "agent/queue/d174-held-ask-reconfirm",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-048-fix-post-copy",
         "POSTMERGE-oct22-fixes",
-        "D-132-audit"
+        "D-132-audit",
+        "D-090-BYOR",
+        "D-132-item3"
       ],
-      "note": "D-193 packet section 5.3 and ruling (5): builds D-061's never-built reconfirm-before-spend without its closure, in deliverWaitingAskTx (every delivery path). Transition events, no migration; in-app notice only (no D-060 email exists yet). ASK_RECONFIRM_ENABLED stays false until QA; D-174-expiry-clock-removal waits for this row. D-197: also waits for D-132-audit (both own server/db.ts, server/privateReferralRoutes.ts and shared/moneyCopy.ts; the money-core audit goes first, D-146). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost.",
+      "note": "D-193 packet section 5.3 and ruling (5): builds D-061's never-built reconfirm-before-spend without its closure, in deliverWaitingAskTx (every delivery path). Transition events, no migration; in-app notice only (no D-060 email exists yet). ASK_RECONFIRM_ENABLED stays false until QA; D-174-expiry-clock-removal waits for this row. D-197: also waits for D-132-audit (both own server/db.ts, server/privateReferralRoutes.ts and shared/moneyCopy.ts; the money-core audit goes first, D-146). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost. Oct 28 (D-132-item3 re-scope): also waits for D-132-item3, which owns the same server/db.ts and server/privateReferralRoutes.ts and lands the accepted-price guard first; it already waits for D-090-BYOR, so no new wait beyond that row.",
       "epic": "D-174",
       "owns": [
         "shared/askReconfirm.ts",
@@ -2968,6 +4002,7 @@
       "lane": "d174-search",
       "branch": "agent/queue/d174-company-search",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-193 packet section 5.4. Feeds the journey's 'companies pop up as you type' step. Static alias map, no migration. Does not touch normalizedEmployerKey (routing). Register before /api/companies/:slug.",
       "epic": "D-174",
@@ -2988,8 +4023,10 @@
       "tier": 1,
       "lane": "d174-jobs",
       "branch": "agent/queue/d174-job-catalog",
-      "status": "todo",
-      "dependsOn": [],
+      "status": "done",
+      "dependsOn": [
+        "D-090-BYOR"
+      ],
       "note": "D-193 packet section 5.5. No code anywhere fetches a company's jobs today; the D-174 journey's jobs step needs this. Level = assignJobLevel on (title, snippet, applyUrl), the same fields that price the request. JOB_CATALOG_ENABLED stays false until QA.",
       "epic": "D-174",
       "owns": [
@@ -3017,6 +4054,7 @@
       "lane": "d176-claims",
       "branch": "agent/queue/d176-public-claims",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-176-availability-framing-removal",
         "D-048-fix-landing-flash-snapshot-v2",
@@ -3042,6 +4080,7 @@
       "lane": "copy-sync",
       "branch": "agent/queue/decision-copy-oct26",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "owns": [
         "client/src/components/referrer-home/WaitingAsks.tsx",
@@ -3065,6 +4104,7 @@
       "lane": "docs-sync",
       "branch": "agent/queue/decision-sync-oct26",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-221 (Oct 26): Markdown only. Fix each line in the audit's section 9 to the current rule (D-219 pricing and paused packs, D-176 availability, D-174 expiry as a runtime caveat only, D-147, D-200 landing and who builds, D-196/D-219 referrer-plan exception, D-080/D-163 sign-in order). The register keeps its history; other docs state the current rule. Leave the eight entry-doc banners to D-200-instructions-sync and the landing-route wording to D-212 if it lands first. Tier 3: lands on green required CI (D-200)."
     },
@@ -3077,6 +4117,7 @@
       "lane": "d174-jobs",
       "branch": "agent/queue/d174-job-sources-more",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-174-job-catalog"
       ],
@@ -3097,6 +4138,7 @@
       "lane": "d174-ask",
       "branch": "agent/queue/d174-ask-from-job",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-174-job-catalog",
         "D-048-fix-post-copy",
@@ -3122,6 +4164,7 @@
       "lane": "d174-pool",
       "branch": "agent/queue/d174-pool-nudges",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-174-ask-from-job"
       ],
@@ -3133,9 +4176,9 @@
         "server/db.ts",
         "server/privateReferralRoutes.ts",
         "server/referralTimers.ts",
-        "shared/scheduledJobs.ts",
-        "server/scheduledJobRegistry.ts",
-        "server/scheduledJobsContract.test.ts"
+        "shared/scheduledJobs.ts (switch only)",
+        "server/scheduledJobRegistry.ts (switch only)",
+        "server/scheduledJobsContract.test.ts (switch only)"
       ]
     },
     {
@@ -3147,12 +4190,114 @@
       "lane": "d175-research",
       "branch": "agent/queue/d175-coverage-study",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-193 packet section 5.10; starts from the packet's appendix (live GETs, Oct 24). Docs only, no paid or account-based access. The CEO decides the Wikidata seed from it (D-123).",
       "epic": "D-174",
       "owns": [
         "docs/research/D-175-coverage.md"
       ]
+    },
+    {
+      "id": "PICKER-fullstack-lights",
+      "title": "--status prints the seven lights for the live release, and a red live release holds every landing but its fix (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/GATE-delivery.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-fullstack-lights",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "REL-release-verify",
+        "REL-watchdog",
+        "PROCESS-review-gate",
+        "PICKER-review-wording",
+        "PICKER-architect-landing",
+        "PICKER-decision-sync",
+        "BRANCH-HYGIENE-2",
+        "PICKER-avoid-land",
+        "PICKER-heartbeat-slot-safety",
+        "PICKER-landed-marker-continuity",
+        "PICKER-landing-wait-fallthrough"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTask.test.ts"
+      ],
+      "note": "Oct 27 merge-up: also waits for PICKER-avoid-land (and so PICKER-avoid-unblock), which edit scripts/nextTaskCore.mjs; PICKER-qa-stage follows through this row. Oct 28 merge-up: also waits for PICKER-heartbeat-slot-safety, PICKER-landed-marker-continuity and PICKER-landing-wait-fallthrough, the three picker rows main gained after this branch's last merge-up, which own scripts/next-task.mjs and scripts/nextTaskCore.mjs. New rows wait for the older queued owning stage (no cycle: all three reach PROCESS-review-gate, none reaches this row), and PICKER-qa-stage follows through here, so the six merged-registry owns overlaps become none."
+    },
+    {
+      "id": "PICKER-qa-stage",
+      "title": "QA: the checklist runs inside the one Tier 1 review, and a session that did not build it checks Tier 2/3 UI changes within 24 hours after landing (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/GATE-delivery.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-qa-stage",
+      "status": "todo",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "GATE-e2e-journeys",
+        "GATE-tier-floor",
+        "D-048-F-harness",
+        "PICKER-fullstack-lights"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTask.test.ts",
+        "docs/QA-CHECKLIST.md"
+      ]
+    },
+    {
+      "id": "REL-synthetic-journeys",
+      "title": "Signed-in synthetic journeys checked in production with tagged test accounts, Chargebee test site only (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-production-watch.md",
+      "tier": 1,
+      "lane": "synthetic",
+      "branch": "agent/queue/rel-synthetic-journeys",
+      "status": "architect",
+      "syncedTo": "D-222",
+      "dependsOn": [],
+      "note": "D-212: targets the QA preview (#383), never production; needs the owner's hard-stop confirmation on the Cloudflare credits (D-204) and #383 brought up to date before any build.",
+      "epic": "D-212"
+    },
+    {
+      "id": "GATE-migration-apply",
+      "title": "CI applies deploy migrations to MySQL twice before production (D-212)",
+      "row": "D-212",
+      "packet": "docs/plans/GATE-delivery.md",
+      "tier": 2,
+      "lane": "ci-checks",
+      "branch": "agent/queue/gate-migration-apply",
+      "status": "architect",
+      "syncedTo": "D-222",
+      "dependsOn": [
+        "GATE-e2e-journeys"
+      ],
+      "note": "D-212: GATE-e2e-journeys applies the deploy migrations twice to MySQL; this row stays open only if they cannot apply from an empty database, and then any agent writes its packet from that finding.",
+      "epic": "D-212"
+    },
+    {
+      "id": "OPS-github-settings",
+      "title": "Owner settings: main-protection's admin bypass scope re-read (recorded `always` on Oct 22, unverified since the Oct 27 ruleset change) and limited to pull requests; merge queue on; squash and rebase off; secret scanning, push protection and CodeQL on; new checks into the ruleset after 3 green days; watchdog secrets; Sentry alert rule (D-212 (6))",
+      "row": "D-212",
+      "packet": "docs/plans/ENTERPRISE-PIPELINE.md",
+      "tier": 3,
+      "lane": "settings",
+      "branch": "agent/queue/ops-github-settings",
+      "status": "owner",
+      "syncedTo": "D-222",
+      "dependsOn": [],
+      "note": "Owner's word needed for each (account settings). Nothing to build.",
+      "epic": "D-212"
     },
     {
       "id": "D-174-seeker-journey-build",
@@ -3163,6 +4308,7 @@
       "lane": "d048-foundation",
       "branch": "agent/queue/d174-seeker-journey",
       "status": "architect",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-166-journey-decisions-sync"
       ],
@@ -3176,9 +4322,10 @@
       "tier": 2,
       "lane": "process",
       "branch": "agent/coordinator/founder-decisions-sync",
-      "status": "in-review",
+      "status": "done",
+      "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "Owner instruction (iMessage phonemsg-01M5MYS5WDHAMNZ7TF602GTK65 'Push the decisions as instructions' + phonemsg-01M5MYSQVDTXCYGCPBR001P7Q9 'So old decisions are updated' + phonemsg-01M5MZ7J6YYH3ZRBJNKT6TCZJS 'Push then'). Scope: docs/DECISIONS.md + the AGENTS.md compass amendment line only. Adds D-169 (open-first directory), D-170 (keyword job search), D-171 (cross-company verified switch preserving the draft), D-172 (automatic device-saved sign-in prompt with native-flow guardrails), D-173 (buyer-facing 'referrals' terminology + plan allowance/extras structure). Supersession limited to the 'credits' name (wording only); no price, count, SKU, security or auth-mechanism content decided; unresolved allowances/prices/level-cost stay open. D-168 is claimed on agent/claude/ceo-oct23-release-rows, so numbering starts at D-169."
+      "note": "Owner instruction (iMessage phonemsg-01M5MYS5WDHAMNZ7TF602GTK65 'Push the decisions as instructions' + phonemsg-01M5MYSQVDTXCYGCPBR001P7Q9 'So old decisions are updated' + phonemsg-01M5MZ7J6YYH3ZRBJNKT6TCZJS 'Push then'). Scope: docs/DECISIONS.md + the AGENTS.md compass amendment line only. Adds D-169 (open-first directory), D-170 (keyword job search), D-171 (cross-company verified switch preserving the draft), D-172 (automatic device-saved sign-in prompt with native-flow guardrails), D-173 (buyer-facing 'referrals' terminology + plan allowance/extras structure). Supersession limited to the 'credits' name (wording only); no price, count, SKU, security or auth-mechanism content decided; unresolved allowances/prices/level-cost stay open. D-168 is claimed on agent/claude/ceo-oct23-release-rows, so numbering starts at D-169. Done: #599, merged 2026-10-23; set by D-212 (8) because the picker no longer saw the landing and handed the row out again."
     },
     {
       "id": "D-166-journey-decisions-sync",
@@ -3221,7 +4368,7 @@
       "tier": 2,
       "lane": "d048-fix-sendask",
       "branch": "agent/ayo9/send-ask-blocker-ux",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-132-audit"
       ],
@@ -3239,6 +4386,7 @@
       "id": "D-177-recruiter-posts-referral-drives",
       "title": "Recruiter/HR job posts (public + internal) and employee-published referral drives feeding the company -> job -> ask journey",
       "status": "architect",
+      "syncedTo": "D-227",
       "lane": "employer",
       "branch": "agent/queue/d177-recruiter-drives",
       "packet": null,
@@ -3262,6 +4410,7 @@
       "lane": "d048-foundation",
       "branch": "agent/queue/d178-agent-portal",
       "status": "architect",
+      "syncedTo": "D-227",
       "owns": [
         "docs/plans/D-178-agent-portal-access.md"
       ],
@@ -3293,9 +4442,10 @@
       "row": "D-179",
       "packet": null,
       "tier": 2,
-      "lane": "process",
+      "lane": "d179-docs",
       "branch": "agent/coordinator/ats-referral-validation",
       "status": "in-review",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "Docs-only direction record in PR #608 (owner iMessage Oct 24 1:09 IST, phonemsg-01M5N4DC140W9347XWW34NAWX1); the DECISIONS.md D-179 entry is already on main via #610. Packet doc lives on the #608 branch and arrives with it. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact."
     },
@@ -3307,7 +4457,7 @@
       "tier": 2,
       "lane": "d048-foundation",
       "branch": "agent/queue/postopp-copy-v2",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [
         "D-048-fix-post-copy"
       ],
@@ -3326,6 +4476,7 @@
       "lane": "money-core",
       "branch": "agent/queue/d132-item5-correction",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [
         "D-132-audit"
       ],
@@ -3343,6 +4494,7 @@
       "lane": "payments",
       "branch": "agent/queue/agedout-evidence-test",
       "status": "todo",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "owns": [
         "server/agedOutCoverageGap.evidence.test.ts"
@@ -3358,6 +4510,7 @@
       "lane": "auth-device",
       "branch": "agent/queue/device-signin-passkeys",
       "status": "owner",
+      "syncedTo": "D-227",
       "dependsOn": [
         "FIX-device-signin"
       ],
@@ -3383,6 +4536,7 @@
       "lane": "terminology",
       "branch": "agent/copy/free-asks-chip-terminology",
       "status": "in-review",
+      "syncedTo": "D-227",
       "dependsOn": [
         "PRICING-banded-oct25",
         "D-174-held-ask-reconfirm",
@@ -3437,10 +4591,28 @@
       "lane": "design-core",
       "branch": "agent/instinct/doctrine-benefit-copy-oct27",
       "status": "in-review",
+      "syncedTo": "D-227",
       "dependsOn": [],
       "note": "Amends design/goal-ui/DOCTRINE.md only: owner steering Oct 27 12:12 IST - goal-oriented UI design; benefit-oriented UX copy/microcopy (benefit + next step + failure recovery) across headings/buttons/empty states/errors. Terminology freeze, legal and payment semantics unchanged; noun swaps are the floor, not the bar.",
       "owns": [
         "design/goal-ui/DOCTRINE.md"
+      ]
+    },
+    {
+      "id": "FIX-share-hub-link-ready",
+      "title": "Goal /share hub: never show the link as ready before it exists (flaky main CI test)",
+      "row": "D-048",
+      "packet": "docs/plans/FIX-share-hub-link-ready.md",
+      "tier": 1,
+      "lane": "d048-foundation",
+      "branch": "agent/queue/fix-main-eb0fd8cd",
+      "status": "in-review",
+      "syncedTo": "D-227",
+      "dependsOn": [],
+      "note": "Main CI flake: shareHubGoal.test.tsx 'opens on the goal with the copy commit once the link is ready' failed on eb0fd8cd (run 40467542914) and dc7f71a8; GoalShareHub started with loading=false so the link could render as ready before it existed. PR #734 by a new Claude session (head 5149e8af, two files). Registered post-hoc by the coordinator: the D-166 queue gate refused the unregistered branch; the owner-direct label was NOT used and no gate bypass was granted. Tier 1: one independent D-151 review of the exact head by a model other than Claude (builder is Claude family), then landing on green required CI. Owns overlaps D-048-copy-goal-twins-trigger-fix, which now waits on this row and merges main forward after it lands.",
+      "owns": [
+        "client/src/pages/goal/seeker-small/GoalShareHub.tsx",
+        "client/src/pages/goal/seeker-small/shareHubGoal.test.tsx"
       ]
     },
     {
@@ -3452,8 +4624,11 @@
       "lane": "d048-foundation",
       "branch": "agent/deepseek/d048-goal-twins-trigger-fix",
       "status": "todo",
-      "dependsOn": [],
-      "note": "Post-merge review 6435626730 on #727: FINDINGS. Fix on a new branch off current main: (1) blocking - friend mailto/X message implies one trigger unlocks both rewards; state each person's own trigger (inviter next, joiner first; server/db.ts:4041-4045, 4437-4450, 4047-4048). (2) inviter status line same single-trigger construction. (3) '1 extra referral' -> '1 extra referral request' (reward is a request, not a completed referral). (4) tests: assert rendered mailto body + X strings per-party, signed-out copy, load-error text, close-others button; extend noun-ask guard to all rendered states. Refresh affected 390/1280 captures. Frozen naming, no unit semantics, no flag/RELEASED/pricing/billing change. Tier 1: independent D-151 review (seat-1 offered) before merge; reviewer never merges.",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "FIX-share-hub-link-ready"
+      ],
+      "note": "Post-merge review 6435626730 on #727: FINDINGS. Fix on a new branch off current main: (1) blocking - friend mailto/X message implies one trigger unlocks both rewards; state each person's own trigger (inviter next, joiner first; server/db.ts:4041-4045, 4437-4450, 4047-4048). (2) inviter status line same single-trigger construction. (3) '1 extra referral' -> '1 extra referral request' (reward is a request, not a completed referral). (4) tests: assert rendered mailto body + X strings per-party, signed-out copy, load-error text, close-others button; extend noun-ask guard to all rendered states. Refresh affected 390/1280 captures. Frozen naming, no unit semantics, no flag/RELEASED/pricing/billing change. Tier 1: independent D-151 review (seat-1 offered) before merge; reviewer never merges. Owns overlaps FIX-share-hub-link-ready; this row waits for it and merges main forward after it lands.",
       "owns": [
         "client/src/pages/goal/seeker-small/GoalLanded.tsx",
         "client/src/pages/goal/seeker-small/GoalShareHub.tsx",
@@ -3462,6 +4637,163 @@
         "design/goal-ui/captures/seeker-small/**",
         "docs/plans/D-048-seeker.md"
       ]
+    },
+    {
+      "id": "D-222-referral-count-shell",
+      "title": "Persistent person-owned remaining-referral count in the shell (D-222)",
+      "row": "D-048",
+      "packet": "docs/plans/D-222-referral-count.md",
+      "tier": 1,
+      "lane": "design-shell",
+      "branch": "agent/queue/d222-referral-count",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "PRICING-banded-oct25"
+      ],
+      "note": "Build docs/plans/D-222-referral-count.md exactly: AppShell stops nulling the balance on REFERRER_SURFACE; the count element reads 'N referrals left' with 'referrals' meaning preserved at 390px; plain non-linked text on referrer routes (D-055: no plan/purchase affordance), quiet link allowed on seeker routes; honest loading/error-retry/'0 referrals left' states; hook and ledger semantics unchanged. Proof: viewport-true 1280x900 + 390x844@2x captures of ready, zero, error/retry and the referrer no-purchase boundary. Tier 1: one independent non-builder/non-fixer review; reviewer never merges.",
+      "owns": [
+        "client/src/components/AppShell.tsx",
+        "client/src/components/goal/GoalShell.tsx",
+        "client/src/components/appShell.test.tsx",
+        "design/goal-ui/captures/shell/**"
+      ]
+    },
+    {
+      "id": "PICKER-avoid-unblock",
+      "title": "Respect avoid when continuing an existing unblock stage (issue #740)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-avoid-unblock.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-avoid-unblock",
+      "status": "done",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "PROCESS-review-gate",
+        "PICKER-architect-landing"
+      ],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskAvoidUnblock.test.ts"
+      ]
+    },
+    {
+      "id": "LANDING-PROCEDURE-AUDIT-oct27",
+      "title": "Independent audit of five squash deviations and premature landing marker (#741)",
+      "row": "D-134",
+      "packet": "docs/plans/LANDING-PROCEDURE-AUDIT-oct27.md",
+      "tier": 2,
+      "lane": "audit",
+      "branch": "agent/queue/procedure-audit-oct27",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [],
+      "owns": [
+        "docs/plans/LANDING-PROCEDURE-AUDIT-oct27.md"
+      ],
+      "note": "Independent auditor only; Instinct coordinator is the subject and must not self-close. Preserve branches, no history/settings/production mutation. Register separate code remediation if evidence requires it."
+    },
+    {
+      "id": "PICKER-avoid-land",
+      "title": "Respect avoid for a passing reviewer owned LAND continuation (#744)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-avoid-land.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-avoid-land",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "PICKER-avoid-unblock"
+      ],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskAvoidLand.test.ts"
+      ]
+    },
+    {
+      "id": "DEPLOY-gate-docs-sync",
+      "title": "Sync deployment and manual recovery docs to verified green gate behavior (#748)",
+      "row": "D-068",
+      "packet": "docs/plans/DEPLOY-gate-docs-sync.md",
+      "tier": 3,
+      "lane": "deploy-docs",
+      "branch": "agent/queue/deploy-gate-docs-sync",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "P1-deploy-green-gate",
+        "D-090-BYOR",
+        "D-099-bonus-pages"
+      ],
+      "owns": [
+        "AGENTS.md",
+        "docs/DEPLOY.md",
+        "docs/ARCHITECTURE.md",
+        "docs/BRIEF.md"
+      ],
+      "note": "Serialized because existing BYOR and bonus rows own shared deploy docs. No runtime change or unsupported completion claims; incident748 remains open until path acceptance independently proven."
+    },
+    {
+      "id": "PICKER-heartbeat-slot-safety",
+      "title": "Renew an owned landing lease without taking another fresh landing slot",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-heartbeat-slot-safety.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-heartbeat-slot-safety",
+      "status": "todo",
+      "syncedTo": "D-237",
+      "dependsOn": [
+        "PICKER-architect-landing",
+        "PROCESS-review-gate"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskHeartbeatSlot.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change. D-237: waits for PICKER-architect-landing because both rows edit scripts/next-task.mjs; that serialization edge is the only change to this row."
+    },
+    {
+      "id": "PICKER-landed-marker-continuity",
+      "title": "Keep merged work landed through marker-only branch recreation",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-landed-marker-continuity.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-landed-marker-continuity",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "PICKER-heartbeat-slot-safety",
+        "PICKER-avoid-land"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskLandedMarkerContinuity.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
+    },
+    {
+      "id": "PICKER-landing-wait-fallthrough",
+      "title": "Offer eligible disjoint work before returning a landing-slot wait",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-landing-wait-fallthrough.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-landing-wait-fallthrough",
+      "status": "todo",
+      "syncedTo": "D-227",
+      "dependsOn": [
+        "PICKER-landed-marker-continuity"
+      ],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskLandingWaitFallthrough.test.ts"
+      ],
+      "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
     }
   ]
 }

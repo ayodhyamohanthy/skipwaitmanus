@@ -234,6 +234,8 @@ export type AskComposer = {
   sendBusyLabel: string;
   sending: boolean;
   sendBlocked?: string;
+  sendGuidance: string | null;
+  creditRecovery: boolean;
   send(): void;
   onSaveDraft: (() => void) | null;
   draftState: "idle" | "saving" | "saved";
@@ -524,7 +526,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
           queryClient.invalidateQueries({ queryKey: companyDirectoryKeys.all }),
           queryClient.invalidateQueries({ queryKey: ["ask-quote"] }),
         ]);
-        setSendError(typeof payload.error === "string" ? payload.error : "This company just opened up to referrals. Nothing was sent and nothing was charged - check the live price and send again if it works for you.");
+        setSendError(typeof payload.error === "string" ? payload.error : "The cost changed before sending. Nothing was sent and nothing was charged - check the live price and send again if it works for you.");
         return;
       }
       // Task 13: more pinned work than the plan puts in front of a referrer. The
@@ -659,6 +661,8 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     sendBusyLabel: sendStage === "resume" ? "Uploading your resume…" : "Sending your ask…",
     sending: sendStage !== "idle",
     sendBlocked: blocked,
+    sendGuidance: !online ? blocked ?? null : cost.blockedReason && isSignedIn ? "Your balance is too low to send this referral request." : url.trim() && linkOk ? missing : null,
+    creditRecovery: online && Boolean(isSignedIn && cost.blockedReason),
     send: () => { void send(); },
     onSaveDraft: isSignedIn ? () => { void saveDraft(); } : null,
     draftState,

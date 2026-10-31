@@ -29,6 +29,9 @@ describe("verified employee opportunity post", () => {
     fireEvent.change(screen.getByLabelText("Role or job title"), { target: { value: "Product Designer" } });
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.change(screen.getByLabelText(/Public job link/i), { target: { value: "https://careers.acme.com/jobs/design" } });
+    const publicJobLink = screen.getByLabelText("Public job link") as HTMLInputElement;
+    expect(publicJobLink.closest("label")?.textContent).toContain("(required)");
+    expect(publicJobLink.required).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Publish privately" }));
     await waitFor(() => expect(screen.getByText("Your opportunity is live.")).toBeTruthy());
     expect(getToken).toHaveBeenCalled();
@@ -45,6 +48,7 @@ describe("verified employee opportunity post", () => {
     await screen.findByLabelText("Role or job title");
     fireEvent.change(screen.getByLabelText("Role or job title"), { target: { value: "Product Designer" } });
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.change(screen.getByLabelText("Public job link"), { target: { value: "https://careers.acme.com/jobs/design" } });
     const compensationInput = await screen.findByLabelText("Compensation");
     expect(compensationInput).toBeTruthy();
     expect(compensationInput.getAttribute("placeholder")).toContain("₹12–18 LPA or $80k–$110k");
@@ -63,6 +67,9 @@ describe("verified employee opportunity post", () => {
     fireEvent.change(screen.getByLabelText("Role or job title"), { target: { value: "Walk-in hiring" } });
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByLabelText("Starts at")).toBeTruthy();
+    const publicJobLink = screen.getByLabelText("Public job link") as HTMLInputElement;
+    expect(publicJobLink.closest("label")?.textContent).toContain("(optional)");
+    expect(publicJobLink.required).toBe(false);
     const continueButton = screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement;
     expect(continueButton.disabled).toBe(true);
   });
@@ -76,6 +83,10 @@ describe("verified employee opportunity post", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     const toggle = (await screen.findByLabelText(/Show my first name/)) as HTMLInputElement;
     expect(toggle.checked).toBe(false);
+    const footerCopy = screen.getByText(/Your company is confirmed only when you publish/).textContent ?? "";
+    expect(footerCopy).toContain("Your name and work email never appear on the card.");
+    expect(footerCopy).not.toContain("Your first name appears on the card.");
+    fireEvent.change(screen.getByLabelText("Public job link"), { target: { value: "https://careers.acme.com/jobs/design" } });
     fireEvent.click(screen.getByRole("button", { name: "Publish privately" }));
     await waitFor(() => expect(screen.getByText("Your opportunity is live.")).toBeTruthy());
     expect(String(fetchMock.mock.calls[1][1]?.body)).not.toContain("showPosterFirstName");
@@ -90,6 +101,10 @@ describe("verified employee opportunity post", () => {
     fireEvent.change(screen.getByLabelText("Role or job title"), { target: { value: "Product Designer" } });
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.click(await screen.findByLabelText(/Show my first name/));
+    const footerCopy = screen.getByText(/Your company is confirmed only when you publish/).textContent ?? "";
+    expect(footerCopy).toContain("Your first name appears on the card. Your last name and work email never appear.");
+    expect(footerCopy).not.toContain("Your name and work email never appear on the card.");
+    fireEvent.change(screen.getByLabelText("Public job link"), { target: { value: "https://careers.acme.com/jobs/design" } });
     fireEvent.click(screen.getByRole("button", { name: "Publish privately" }));
     await waitFor(() => expect(screen.getByText("Your opportunity is live.")).toBeTruthy());
     expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({ showPosterFirstName: true });

@@ -8,13 +8,14 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import * as core from "./nextTaskCore.mjs";
 import {
-  IDLE_MS, ciStateFromRuns, epicSummaries, localSyncIssues, markerSubject, parseMarker, pickNextTask, reviewStateOf, roleOf, statusBoard, validateAssignments,
+  IDLE_MS, ciStateFromRuns, epicSummaries, localSyncIssues, markerSubject, parseDecisionRegister, parseMarker, pickNextTask, reviewStateOf, roleOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
 import { scopeViolations } from "./scope-check.mjs";
 
 const root = path.resolve(__dirname, "..");
 const real = JSON.parse(readFileSync(path.join(root, "docs/plans/assignments.json"), "utf8"));
+const realRegister = parseDecisionRegister(readFileSync(path.join(root, "docs/DECISIONS.md"), "utf8"));
 const exists = (p: string) => existsSync(path.join(root, p));
 const NOW = Date.parse("2026-10-20T12:00:00Z");
 const HOUR = 3_600_000;
@@ -29,18 +30,18 @@ const task = (id: string, extra: Record<string, unknown> = {}) => ({
 const claimBy = (who: string, id: string, hoursAgo = 1, merged = false): Branch =>
   ({ tipMs: NOW - hoursAgo * HOUR, merged, markers: [{ verb: "Claim", id, who }] });
 type Report = { id: string; status: string; who: string; at: number; note: string };
-type PickOpts = { branches?: [string, Branch][]; prs?: [string, string][] | null; prCi?: [string, string][]; prCiAt?: [string, number][]; merged?: [string, string[]][] | null; reports?: Report[]; claimant?: string; ci?: object };
+type PickOpts = { branches?: [string, Branch][]; prs?: [string, string][] | null; prCi?: [string, string][]; prCiAt?: [string, number][]; merged?: [string, string[]][] | null; reports?: Report[]; claimant?: string; ci?: object; register?: ReturnType<typeof parseDecisionRegister> };
 const pick = (tasks: ReturnType<typeof task>[], opts: PickOpts = {}) =>
   pickNextTask({
     tasks, mainCi: opts.ci ?? green, branches: new Map(opts.branches ?? []), openPrs: opts.prs === null ? null : new Map(opts.prs ?? []),
     prCi: new Map((opts.prCi ?? []).map(([b, state]) => [b, { state, at: new Map(opts.prCiAt ?? []).get(b) }])), reports: opts.reports ?? [],
     mergedHeads: opts.merged === null ? null : new Map((opts.merged ?? []).map(([b, shas]) => [b, new Set(shas)])),
-    now: NOW, claimant: opts.claimant ?? null,
+    now: NOW, claimant: opts.claimant ?? null, register: opts.register ?? [],
   });
 
 describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => {
   it("is valid and every packet it names exists", () => {
-    expect(validateAssignments(real, exists)).toEqual([]);
+    expect(validateAssignments(real, exists, realRegister)).toEqual([]);
   });
 
   it("hands a fresh agent the first pickable task in order", () => {
@@ -49,14 +50,14 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
     expect(real.tasks.slice(0, 4).map(t => t.id)).toEqual([
       "P0-ask-link-signin", "P1-queue-attestation", "PREMIUM-total-label", "D-067-outbox-fixture-repair",
     ]);
-    const first = pickNextTask({ tasks: real.tasks, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
+    const first = pickNextTask({ tasks: real.tasks, register: realRegister, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
     // P0-ask-link-signin and P1-queue-attestation are both done (each landed after its
     // review; P1 as merge 2be41b2d), both owner follow-ups are done, and SEC-deps-oct24
     // landed as 1e97d6ea (#663). The owner's device sign-in report comes next.
     expect(first).toMatchObject({ kind: "build", task: { id: "FIX-device-signin" } });
     // Both owner follow-ups (PREMIUM-total-label and D-067-outbox-fixture-repair) are done,
     // so slicing off the live regressions still leaves the launch batch first.
-    const followUps = pickNextTask({ tasks: real.tasks.slice(2), mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
+    const followUps = pickNextTask({ tasks: real.tasks.slice(2), register: realRegister, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
     expect(followUps).toMatchObject({ kind: "build", task: { id: "FIX-device-signin" } });
   });
 
@@ -1339,12 +1340,23 @@ describe("actual next-task --status integration", () => {
       run(["remote", "add", "origin", origin]);
       mkdirSync(path.join(work, "docs/plans"), { recursive: true });
       writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture\n");
+      // D-202: the picker reads the register beside the list; A was last synced to D-001, so D-003 (which names it) holds it.
+      writeFileSync(path.join(work, "docs/DECISIONS.md"), [
+        "# Decisions",
+        "",
+        "| ID | Date | Decision | Evidence | Notes | Status |",
+        "|---|---|---|---|---|---|",
+        "| D-001 | 2026-10-19 | **One** | e | — | adopted |",
+        "| D-002 | 2026-10-20 | **Two** | e | — | adopted |",
+        "| D-003 | 2026-10-21 | **Three** | e | Affects tasks: A. | adopted |",
+        "",
+      ].join("\n"));
       writeFileSync(path.join(work, "docs/plans/assignments.json"), JSON.stringify({
         version: 1,
         repo: "o/r",
         tasks: [{
           id: "A", title: "Fixture task", row: "A", packet: "docs/plans/test.md", tier: 2,
-          lane: "design", branch: "agent/queue/a", status: "todo", dependsOn: [], epic: "E",
+          lane: "design", branch: "agent/queue/a", status: "todo", dependsOn: [], epic: "E", syncedTo: "D-001",
         }],
       }, null, 2) + "\n");
       run(["add", "."]);
@@ -1382,8 +1394,98 @@ globalThis.fetch = async input => {
       expect(result).toContain("behind main 2");
       expect(result).toContain("E: 0/1 done, 1 PR");
       expect(result).toContain("CDO");
+      expect(result).toContain("Register: D-003, 2026-10-21");
+      expect(result).toContain("re-sync (D-003)");
     } finally {
       rmSync(fixture, { recursive: true, force: true });
+    }
+  });
+});
+
+// PROCESS-review-gate (D-166): a verdict names the head it reviewed, so CI can tell a pass on this head from a pass on an older one.
+describe("actual next-task --verdict integration", () => {
+  const setup = () => {
+    const fixture = mkdtempSync(path.join(os.tmpdir(), "next-task-verdict-"));
+    const work = path.join(fixture, "work");
+    const origin = path.join(fixture, "origin.git");
+    const mock = path.join(fixture, "mock.mjs");
+    const run = (args: string[]) => execFileSync("git", args, { cwd: work, encoding: "utf8" }).trim();
+    mkdirSync(work, { recursive: true });
+    execFileSync("git", ["init", "--bare", origin], { encoding: "utf8" });
+    run(["init", "-b", "main"]);
+    run(["config", "user.name", "Fixture"]);
+    run(["config", "user.email", "fixture@example.test"]);
+    run(["remote", "add", "origin", origin]);
+    mkdirSync(path.join(work, "docs/plans"), { recursive: true });
+    writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture\n");
+    writeFileSync(path.join(work, "docs/DECISIONS.md"), [
+      "# Decisions", "", "| ID | Date | Decision | Evidence | Notes | Status |", "|---|---|---|---|---|---|",
+      "| D-001 | 2026-10-19 | **One** | e | — | adopted |", "",
+    ].join("\n"));
+    writeFileSync(path.join(work, "docs/plans/assignments.json"), JSON.stringify({
+      version: 1, repo: "o/r",
+      tasks: [{ id: "A", title: "Fixture task", row: "A", packet: "docs/plans/test.md", tier: 1, lane: "process", branch: "agent/queue/a", status: "in-review", dependsOn: [], syncedTo: "D-001" }],
+    }, null, 2) + "\n");
+    run(["add", "."]);
+    run(["commit", "-m", "root"]);
+    run(["push", "-u", "origin", "main"]);
+    run(["switch", "-c", "agent/queue/a"]);
+    run(["commit", "--allow-empty", "-m", "Claim A: Builder · b1"]);
+    writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture, built\n");
+    run(["commit", "-am", "A: the work"]);
+    run(["push", "-u", "origin", "agent/queue/a"]);
+    const head = run(["rev-parse", "HEAD"]);
+    run(["switch", "-c", "agent/review/a", "main"]);
+    run(["commit", "--allow-empty", "-m", "Review claim A: Reviewer · r1"]);
+    run(["push", "-u", "origin", "agent/review/a"]);
+    run(["switch", "main"]);
+    writeFileSync(mock, `
+const response = body => ({ ok: true, status: 200, json: async () => body });
+globalThis.fetch = async input => {
+  const url = String(input);
+  if (url.includes('/actions/workflows/ci.yml/runs')) return response({ workflow_runs: [] });
+  if (url.includes('/pulls?state=open')) return response([{ head: { repo: { full_name: 'o/r' }, ref: 'agent/queue/a', sha: '${"0".repeat(40)}' }, html_url: 'https://example.test/pr/1' }]);
+  if (url.includes('/pulls?state=closed')) return response([]);
+  throw new Error('unexpected fetch: ' + url);
+};
+`);
+    const picker = (args: string[]) => spawnSync(process.execPath, ["--import", mock, path.join(root, "scripts/next-task.mjs"), ...args], {
+      cwd: work, encoding: "utf8", env: { ...process.env, GH_TOKEN: "fixture-not-real", NODE_USE_ENV_PROXY: "1" },
+    });
+    const lockBody = () => run(["log", "-1", "--format=%b", "origin/agent/review/a"]);
+    const lockSubject = () => run(["log", "-1", "--format=%s", "origin/agent/review/a"]);
+    return { fixture, run, picker, head, lockBody, lockSubject };
+  };
+
+  it("records 'reviewed <sha>' (the task branch's tip on origin) in the verdict marker's body, subject unchanged", () => {
+    const f = setup();
+    try {
+      const res = f.picker(["--verdict", "pass", "--task", "A", "--as", "Reviewer · r1"]);
+      expect(res.status, res.stderr).toBe(0);
+      expect(f.lockSubject()).toBe(markerSubject("Verdict", "A", "Reviewer · r1", "pass"));
+      expect(f.lockBody()).toBe(`reviewed ${f.head}`);
+    } finally {
+      rmSync(f.fixture, { recursive: true, force: true });
+    }
+  });
+
+  it("lets the reviewer who passed re-record the pass on the current head, and nobody else", () => {
+    const f = setup();
+    try {
+      expect(f.picker(["--verdict", "pass", "--task", "A", "--as", "Reviewer · r1"]).status).toBe(0);
+      // A merge of main onto the task branch after the pass: the reviewer names the new head.
+      f.run(["switch", "agent/queue/a"]);
+      f.run(["merge", "--no-ff", "-m", "Merge main", "main"]);
+      f.run(["push", "origin", "agent/queue/a"]);
+      const merged = f.run(["rev-parse", "HEAD"]);
+      f.run(["switch", "main"]);
+      const other = f.picker(["--verdict", "pass", "--task", "A", "--as", "Other · o1"]);
+      expect(other.status).not.toBe(0);
+      const again = f.picker(["--verdict", "pass", "--task", "A", "--as", "Reviewer · r1"]);
+      expect(again.status, again.stderr).toBe(0);
+      expect(f.lockBody()).toBe(`reviewed ${merged}`);
+    } finally {
+      rmSync(f.fixture, { recursive: true, force: true });
     }
   });
 });
@@ -1624,5 +1726,193 @@ describe("switch-only claims share a file", () => {
     expect(validateAssignments(doc, () => true).filter(e => e.includes("overlapping"))).toEqual([]);
     const full = { ...doc, tasks: [doc.tasks[0], { ...doc.tasks[1], owns: ["server/b.ts", "server/_core/index.ts"] }] };
     expect(validateAssignments(full, () => true).filter(e => e.includes("overlapping"))).toHaveLength(1);
+  });
+});
+
+/*
+ * D-202 (docs/plans/PICKER-decision-sync.md): the register is data too. Each task
+ * records the newest decision its packet was checked against (`syncedTo`), a decision
+ * names the tasks it changes (`Affects tasks:`), and the picker withholds out-of-sync
+ * work until a re-sync updates the packet and the stamp. Every pick prints the newest
+ * decisions first, and the board opens with the register's newest entry.
+ */
+describe("D-202: reading the decision register", () => {
+  it("reads the real register's ids, dates, titles and Affects tasks trailers", () => {
+    const byId = new Map(realRegister.map(e => [e.id, e]));
+    expect(byId.size).toBe(realRegister.length);
+    // The one month-only date in the register (D-004) is read, never skipped.
+    expect(byId.get("D-004").date).toBe("2026-10");
+    expect(byId.get("D-136")).toMatchObject({ date: "2026-10-22" });
+    expect(byId.get("D-136").title).toContain("Skippy (the code name Skippie stays in code and routes)");
+    expect(byId.get("D-136").title.length).toBeLessThanOrEqual(160);
+    expect(byId.get("D-154").title).toContain("BYOR waits for the demand list");
+    // No trailer means null, not [].
+    expect(byId.get("D-136").affects).toBeNull();
+    // D-202's decision text quotes the trailer before the real one: the last occurrence wins.
+    expect(byId.get("D-202").affects).toEqual(["PICKER-decision-sync"]);
+    // A parenthetical gloss never becomes an id (D-219, D-221).
+    expect(byId.get("D-219").affects).toContain("PRICING-banded-oct25");
+    expect(byId.get("D-219").affects).toContain("D-099-bonus-pages");
+    expect(byId.get("D-219").affects).not.toContain("D-217");
+    expect(byId.get("D-219").affects).not.toContain("D-048-F-credits");
+    expect(byId.get("D-221").affects).toContain("DECISION-COPY-oct26");
+    expect(byId.get("D-221").affects).not.toContain("D-048-p3-support");
+    // Trailing prose after the ids is not read as ids (D-201, D-205, D-223).
+    expect(byId.get("D-201").affects).toContain("SKIPPY-7");
+    expect(byId.get("D-201").affects).not.toContain("AGENTS.md");
+    expect(byId.get("D-205").affects).toEqual(["BRANCH-HYGIENE-1", "BRANCH-HYGIENE-2"]);
+    expect(byId.get("D-223").affects).toEqual(["D-100-security-audit"]);
+    expect(byId.get("D-222").affects).toEqual(["D-222-referral-count-shell"]);
+  });
+
+  it("reads ids, 'none', a missing trailer, a plain title and a long one cut to 160 characters", () => {
+    const register = parseDecisionRegister([
+      "| D-001 | 2026-10-01 | **One** | e | Affects tasks: A, B. Docs: docs/x.md | adopted |",
+      "| D-002 | 2026-10-02 | **Two** | e | Affects tasks: none. Affects `ADOPTION.md` | adopted |",
+      "| D-003 | 2026-10-03 | **Three** | e | — | adopted |",
+      "| D-004 | 2026-10-04 | A plain `title` here | e | — | adopted |",
+      `| D-005 | 2026-10-05 | ${"x".repeat(200)} | e | — | adopted |`,
+    ].join("\n"));
+    expect(register.map(e => e.affects)).toEqual([["A", "B"], [], null, null, null]);
+    expect(register[2].title).toBe("Three");
+    expect(register[3].title).toBe("A plain title here");
+    expect(register[4].title).toHaveLength(160);
+  });
+
+  it("throws, naming the line, on a malformed row or a duplicate id", () => {
+    expect(() => parseDecisionRegister("intro\n| D-001 | October 1 | **One** | e | — | adopted |")).toThrow(/DECISIONS\.md:2/);
+    expect(() => parseDecisionRegister("| D-12 | 2026-10-01 | **One** | e | — | adopted |")).toThrow(/DECISIONS\.md:1/);
+    expect(() => parseDecisionRegister("| D-001 | 2026-10-01 | **One** | e | — | adopted |\n| D-001 | 2026-10-02 | **Two** | e | — | adopted |")).toThrow(/duplicate D-001/);
+  });
+});
+
+describe("D-202: syncedTo is validated against the register", () => {
+  const one = parseDecisionRegister("| D-001 | 2026-10-01 | **One** | e | — | adopted |");
+  const errorsOf = (extra: Record<string, unknown>) =>
+    validateAssignments({ version: 1, repo: "o/r", tasks: [task("A", extra)] }, exists, one).join("\n");
+
+  it("requires syncedTo on every task that is not done, and only accepts an entry that exists", () => {
+    expect(errorsOf({})).toContain("syncedTo");
+    expect(errorsOf({ syncedTo: "D-9" })).toContain("syncedTo");
+    expect(errorsOf({ syncedTo: "D-009" })).toContain("D-009");
+    expect(errorsOf({ syncedTo: "D-001" })).toBe("");
+  });
+
+  it("lets a done task omit it, but never lets one name a missing entry", () => {
+    expect(errorsOf({ status: "done" })).toBe("");
+    expect(errorsOf({ status: "done", syncedTo: "D-009" })).toContain("D-009");
+  });
+});
+
+const registerOf = (affects: string[]) => parseDecisionRegister([
+  "| D-001 | 2026-10-01 | **One** | e | — | adopted |",
+  "| D-002 | 2026-10-02 | **Two** | e | — | adopted |",
+  `| D-003 | 2026-10-03 | **Three** | e | Affects tasks: ${affects.join(", ")}. | adopted |`,
+].join("\n"));
+
+describe("D-202: out-of-sync work is withheld and re-synced", () => {
+  it("hands an out-of-sync task to any session as a re-sync, never as its build", () => {
+    const register = registerOf(["A"]);
+    const stale = task("A", { syncedTo: "D-001" });
+    expect(pick([stale], { register })).toMatchObject({ kind: "resync", task: { id: "A" } });
+    expect(pick([stale], { register, claimant: "Qwen 3 · s1" })).toMatchObject({ kind: "resync", task: { id: "A" } });
+    // No CEO gate (D-200): a Claude session may take it too.
+    expect(pick([stale], { register, claimant: "Claude Code · s9" })).toMatchObject({ kind: "resync", task: { id: "A" } });
+  });
+
+  it("withholds a takeover, a review and a landing until the packet is re-synced", () => {
+    const register = registerOf(["A", "M"]);
+    const halfBuilt: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 3)];
+    expect(pick([task("A", { syncedTo: "D-003" })], { branches: [halfBuilt] })).toMatchObject({ kind: "takeover" });
+    expect(pick([task("A", { syncedTo: "D-001" })], { branches: [halfBuilt], register })).toMatchObject({ kind: "resync" });
+    const built: [string, Branch] = ["agent/queue/m", claimBy("DeepSeek · s4", "M", 3)];
+    const lock: [string, Branch] = ["agent/review/m", { tipMs: NOW, merged: false, markers: [{ verb: "Fixed", id: "M", who: "DeepSeek · s4" }] }];
+    const pr: [string, string] = ["agent/queue/m", "https://x/pull/1"];
+    const tier1 = { tier: 1, syncedTo: "D-003" };
+    expect(pick([task("M", tier1)], { branches: [built, lock], prs: [pr], prCi: [["agent/queue/m", "green"]], claimant: "Kimi · r1" })).toMatchObject({ kind: "review" });
+    expect(pick([task("M", { ...tier1, syncedTo: "D-001" })], { branches: [built, lock], prs: [pr], prCi: [["agent/queue/m", "green"]], claimant: "Kimi · r1", register })).toMatchObject({ kind: "resync" });
+  });
+
+  it("hands the task out again once it is re-synced to the newest entry", () => {
+    const register = registerOf(["A"]);
+    expect(pick([task("A", { syncedTo: "D-001" })], { register })).toMatchObject({ kind: "resync" });
+    expect(pick([task("A", { syncedTo: "D-003" })], { register })).toMatchObject({ kind: "build", task: { id: "A" } });
+  });
+
+  it("an out-of-sync lane-mate never makes its lane busy", () => {
+    const register = registerOf(["A"]);
+    const staleA = task("A", { syncedTo: "D-001", lane: "L" });
+    const freshB = task("B", { syncedTo: "D-003", lane: "L" });
+    const branches: [string, Branch][] = [["agent/queue/a", claimBy("Qwen · s1", "A", 3)]];
+    expect(pick([freshB, staleA], { branches, register })).toMatchObject({ kind: "build", task: { id: "B" } });
+  });
+
+  it("a holder continuing an out-of-sync task is handed the re-sync, not the build", () => {
+    const register = registerOf(["A"]);
+    const branches: [string, Branch][] = [["agent/queue/a", claimBy("Qwen · s1", "A", 0.5)]];
+    expect(pick([task("A", { syncedTo: "D-001" })], { branches, register, claimant: "Qwen · s1" })).toMatchObject({ kind: "resync", task: { id: "A" } });
+  });
+
+  it("the board shows re-sync (D-nnn) instead of the state of an out-of-sync task", () => {
+    const register = registerOf(["A"]);
+    const rows = statusBoard({ tasks: [task("A", { syncedTo: "D-001" }), task("B", { syncedTo: "D-003" })], branches: new Map(), openPrs: new Map(), now: NOW, register });
+    expect(rows[0].state).toBe("re-sync (D-003)");
+    expect(rows[1].state).toBe("todo");
+    expect(renderBoard(rows)).toContain("re-sync (D-003)");
+  });
+
+  it("prints re-sync steps that update the packet and the stamp, then land as docs", () => {
+    const text = renderPick({ kind: "resync", task: task("A", { syncedTo: "D-001" }), lock: "agent/architect/a", lockExists: false, decisions: ["D-003"] }, { who: "Kimi · s1", date: "2026-10-20", claimed: true, register: registerOf(["A"]) });
+    expect(text).toContain("RESYNC A");
+    expect(text).toContain("syncedTo");
+    expect(text).toContain("D-003");
+    expect(text).toContain("docs change");
+  });
+});
+
+describe("D-202: every pick opens with the newest decisions", () => {
+  const register = parseDecisionRegister([
+    "| D-001 | 2026-10-01 | **One** | e | — | adopted |",
+    "| D-002 | 2026-10-02 | **Two** | e | — | adopted |",
+    "| D-003 | 2026-10-03 | **Three** | e | — | adopted |",
+    "| D-004 | 2026-10-04 | **Four** | e | — | adopted |",
+    "| D-005 | 2026-10-05 | **Five** | e | — | adopted |",
+    "| D-006 | 2026-10-06 | **Six** | e | — | adopted |",
+  ].join("\n"));
+  const ctx = { who: "Kimi · s1", date: "2026-10-20", claimed: true, register };
+  const report = { id: "A", status: "blocked", who: "Qwen · s1", at: NOW - HOUR, note: "" };
+
+  it("lists the five newest entries, every entry newer than the task's syncedTo, and the stop rule", () => {
+    const text = renderPick({ kind: "build", task: task("A", { syncedTo: "D-002" }) }, ctx);
+    expect(text.startsWith("Newest decisions (read before you work):")).toBe(true);
+    expect(text).toContain("D-002 · 2026-10-02 · Two");
+    expect(text).toContain("D-003 · 2026-10-03 · Three");
+    expect(text).toContain("D-006 · 2026-10-06 · Six");
+    expect(text).not.toContain("D-001 ·");
+    expect(text).toContain('--report blocked "A: conflicts with D-nnn"');
+    expect(text).toContain("A newer decision always beats an older packet, note or chat message.");
+    expect(text.indexOf("Newest decisions")).toBeLessThan(text.indexOf("NEXT: BUILD"));
+  });
+
+  it("opens every kind of pick, for every role", () => {
+    const picks: Record<string, unknown>[] = [
+      { kind: "stop", reason: "x" },
+      { kind: "wait", reason: "x", gate: "A" },
+      { kind: "none", skipped: [] },
+      { kind: "ceo", skipped: [] },
+      { kind: "fix-main", sha: "a".repeat(40), lock: "agent/queue/fix-main-aaaaaaaa", from: "x" },
+      { kind: "unblock", task: task("A"), report, lock: "agent/architect/a", lockExists: false },
+      { kind: "review", task: task("M", { tier: 1 }), work: "agent/queue/m", pr: "https://x", lock: "agent/review/m", lockExists: true, builder: "Q" },
+      { kind: "fix", task: task("M"), work: "agent/queue/m", pr: "https://x", lock: "agent/review/m" },
+      { kind: "green", task: task("A"), work: "agent/queue/a", pr: "https://x", why: "red", since: NOW, from: "Q" },
+      { kind: "land", task: task("A"), work: "agent/queue/a", pr: "https://x", tier1: false, from: "Q" },
+      { kind: "architect", task: task("A"), lock: "agent/architect/a", lockExists: false },
+      { kind: "takeover", task: task("A"), work: "agent/queue/a", since: NOW, from: "Q" },
+      { kind: "build", task: task("A") },
+      { kind: "continue", of: "build", task: task("A"), work: "agent/queue/a", tier1: false },
+      { kind: "resync", task: task("A"), lock: "agent/architect/a", lockExists: false, decisions: ["D-006"] },
+      { kind: "continue", of: "resync", task: task("A"), lock: "agent/architect/a" },
+    ];
+    for (const p of picks) expect(renderPick(p as never, ctx).startsWith("Newest decisions (read before you work):")).toBe(true);
   });
 });
