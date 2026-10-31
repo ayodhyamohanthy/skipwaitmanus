@@ -1732,7 +1732,7 @@
       "tier": 2,
       "lane": "d048-app-wrapper",
       "branch": "agent/queue/d048-f-app-wrapper",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-243",
       "dependsOn": [
         "D-048-F-goal-check",

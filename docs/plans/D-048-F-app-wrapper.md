@@ -65,4 +65,4 @@ Read-only: `components/app-states/SystemStates.tsx` (owned by the done `D-048-p3
 - Gate: `pnpm check`, `node scripts/design-token-audit.mjs`, focused tests, `LANG=en_US.UTF-8 pnpm vitest run`, `pnpm build`, `VITE_GOAL_SURFACES=all pnpm build`, scope-check inside `owns`, then green required CI on the exact head and a merge commit (never squash).
 
 ## Status
-- D-048-F-app-wrapper: review — Hark · 838b — 2026-10-30 — branch agent/queue/d048-f-app-wrapper, PR #877 (code and evidence at 585e953e); built by Hark, so a session of another model lands it (D-151)
+- D-048-F-app-wrapper: done — `aab45d36` — Antigravity · d124 — 2026-10-31 — goal app-wide wrapper states (offline/slow notices, update notice, error boundary fallback, global toaster) behind goal surface check: 31/31 focused tests, design tokens clean, scope check clean; required CI green.
