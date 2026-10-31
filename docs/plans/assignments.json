@@ -3440,7 +3440,7 @@
       "lane": "security-headers",
       "branch": "agent/queue/d100-csp-report",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-259",
       "dependsOn": [
         "FND-4"
       ],
