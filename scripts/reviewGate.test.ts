@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { REVIEW_GATE_FAIL, findGateRow, isStatusOnlyChange, reviewGateViolation, reviewedOf } from "./review-gate.mjs";
+import { REVIEW_GATE_FAIL, TIER_FLOOR_FAIL, findGateRow, isStatusOnlyChange, reviewGateViolation, reviewedOf } from "./review-gate.mjs";
+import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
+
 
 // PROCESS-review-gate (D-166, docs/plans/PROCESS-gates.md): a Tier 1 row merges only after an
 // independent pass verdict that names its exact head (or a head that only merged main after it).
@@ -19,8 +21,10 @@ const onlyMergesSince = () => [];
 const ownCommitSince = () => ["c0ffee0"];
 
 const gate = (over: Partial<Parameters<typeof reviewGateViolation>[0]> = {}) => reviewGateViolation({
-  task: task1, head: HEAD, workMarkers: built, lockMarkers: passOn(HEAD), nonMergeCommitsSince: ownCommitSince, ...over,
+  head: HEAD, workMarkers: built, lockMarkers: passOn(HEAD), nonMergeCommitsSince: ownCommitSince, ...over,
+  task: "task" in over ? over.task : task1,
 });
+
 
 describe("PROCESS-review-gate", () => {
   it("passes a Tier 1 head whose independent pass verdict names that exact head", () => {
@@ -77,8 +81,10 @@ describe("PROCESS-review-gate", () => {
   });
 
   it("passes a Tier 2 or Tier 3 row and no row at all", () => {
-    expect(gate({ task: task2, lockMarkers: [] })).toBeNull();
-    expect(gate({ task: { ...task2, tier: 3 }, lockMarkers: [] })).toBeNull();
+    const plainPaths = ["server/jobLinkPreviewRoutes.ts"];
+    const tierOfPlain = (changes: Parameters<typeof classifyTier>[0]) => classifyTier(changes).tier;
+    expect(gate({ task: task2, lockMarkers: [], tierOf: tierOfPlain, changedPaths: plainPaths })).toBeNull();
+    expect(gate({ task: { ...task2, tier: 3 }, lockMarkers: [], tierOf: tierOfPlain, changedPaths: plainPaths })).toBeNull();
     expect(gate({ task: null, lockMarkers: [] })).toBeNull();
   });
 
@@ -147,3 +153,41 @@ describe("PROCESS-review-gate: the status commit a landing makes keeps the pass"
     expect(mixed).toContain("1 commit(s)");
   });
 });
+
+// GATE-tier-floor (D-212): the gate uses the higher of the row's declared tier and the tier the
+// changed paths compute, so a money or sign-in change filed as Tier 2 still needs an independent pass.
+describe("GATE-tier-floor: the computed tier raises a declared Tier 2 row", () => {
+  const money = [{ path: "server/payments.ts", added: ["+  const refund = 1;"], removed: [], context: [] }];
+  const plain = [{ path: "server/jobLinkPreviewRoutes.ts", added: ["+  return ok;"], removed: [], context: [] }];
+  const tierOfPaths = (changes: Parameters<typeof classifyTier>[0]) => classifyTier(changes).tier;
+  const task2WithWork = { ...task2, tier: task2.tier };
+
+  it("computes the money path Tier 1 and the plain path Tier 2", () => {
+    expect(tierOfPaths(money)).toBe(1);
+    expect(tierOfPaths(plain)).toBe(2);
+  });
+
+  it("fails a declared Tier 2 row whose diff is Tier 1 by path, naming the Tier 1 paths and the cure", () => {
+    const violation = gate({ task: task2WithWork, workMarkers: [], lockMarkers: [], tierOf: tierOfPaths, tierReasonPaths, changedPaths: money });
+    expect(String(violation)).toContain(TIER_FLOOR_FAIL);
+    expect(String(violation)).toContain("server/payments.ts");
+    expect(String(violation)).toContain("docs/plans/assignments.json");
+  });
+
+  it("passes that row once an independent pass on the head exists", () => {
+    const lockMarkers = [
+      { verb: "Review claim", id: "T2", who: "Mistral · r1" },
+      { verb: "Verdict", id: "T2", who: "Mistral · r1", verdict: "pass", reviewed: HEAD },
+    ];
+    expect(gate({ task: task2WithWork, workMarkers: [], lockMarkers, tierOf: tierOfPaths, changedPaths: money })).toBeNull();
+  });
+
+  it("leaves a declared Tier 2 row whose diff is Tier 2 alone", () => {
+    expect(gate({ task: task2WithWork, workMarkers: [], lockMarkers: [], tierOf: tierOfPaths, changedPaths: plain })).toBeNull();
+  });
+
+  it("never lowers a declared Tier 1 row to its computed tier", () => {
+    expect(String(gate({ task: task1, workMarkers: [], lockMarkers: [], tierOf: tierOfPaths, changedPaths: plain }))).toContain(REVIEW_GATE_FAIL);
+  });
+});
+
