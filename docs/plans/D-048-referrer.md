@@ -96,4 +96,5 @@ None. The split's open design questions are already decided under D-123 in `D-04
 
 `D-048-postopp-copy-v2`: done — #756 (fix `a1dfd53f`, test `821801af`) — Claude Code · dc6c, takeover of Cue GPT · 2026-10-25-0212 — 2026-10-27 — the kit `/post-opportunity` composer marks the hiring-now job link "(required)" (temporary until D-177) and its privacy footer follows the first-name opt-in; red first 2 of 13 failing without the fix, 24/24 with it; captures at 1280 and 390 sent to the owner
 
-`D-048-p3-conversation`: unblock ruling D-250 recorded — the red is the review gate speaking (`319a0304` owes an independent Tier 1 pass, not a code defect); all F1–F3 findings from Qoder's review are resolved; route to a head-naming independent pass recorded. PR #831 stays draft. — Gemini Pro · 55e6, 2026-10-31.
+
+`D-048-p3-conversation`: current: D-251 corrects D-250. Routing evidence is not a product verdict. Existing product findings and holds remain; the current fixing holder owes truthful completion before a specifically accepted independent review route. Review returns findings OR pass on the exact head after complete builder/fixer-history checks. No manual marker, GREEN takeover, automatic PASS or landing is authorized by D-250/D-251. PR #831 remains draft; row remains todo. No #815 disposition.
