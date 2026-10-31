@@ -24,6 +24,7 @@
 
 **Owns:** `server/securityHeaders.ts`, `server/securityHeaders.test.ts`, `server/cspReport.ts`, `server/cspReport.test.ts`.
 **Done:** red-first tests, full gate, landed; one real report seen on the preview (log line or Sentry event, with no query string in it).
+**Status:** unblocked under D-259 (Oct 31): `owns` remains strictly the four declared server/test paths; `functions/_middleware.ts` is not added to this row and the page-level `report-uri` header addition is sequenced under `D-090-BYOR` following `D-057`. The `/api/csp-report` endpoint and `/api/*` CSP header are delivered and verified within declared `owns` on PR #883; the 7-day collection preceding `D-100.csp-enforce` begins once the page header is wired in that later handoff.
 
 ## D-100.csp-enforce: an enforcing CSP behind a switch (Tier 2, lane `security-csp`, after D-100.csp-report)
 **What.** Add `CSP_ENFORCED = false` in `server/securityHeaders.ts`. When it is true, the same policy is also sent as `Content-Security-Policy`, plus each source the live app needs, named explicitly. Never add `'unsafe-inline'` for scripts; use a nonce or a hash if one is needed. Report-only stays.
