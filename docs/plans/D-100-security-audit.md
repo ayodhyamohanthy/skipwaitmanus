@@ -82,3 +82,4 @@ Each audit writes one report: a findings table with ID, file:line, what can go w
 
 ## Status
 One line per row, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
+- D-100.secrets-sweep: review — agent/queue/d100-secrets-sweep — 3d7c11e8 (report on main 2d72dec7; Tier 3, docs-only; built by Hark · 9976, so a non-Hark session lands it)
