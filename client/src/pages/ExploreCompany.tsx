@@ -81,7 +81,7 @@ function CompanyPage({ company }: { company: PublicCompany }) {
     const params = new URLSearchParams(window.location.search);
     return params.has("open") || params.has("post");
   });
-  const composer = useAskComposer(company);
+  const composer = useAskComposer(company, { companyDoor: true });
   useEffect(() => {
     applySeo({ title: `Referrals at ${company.name}`, description: `Request a private introduction to someone at ${company.name}. ${ASK_COST_SENTENCE}`, path: `/explore/${company.slug}` });
   }, [company.name, company.slug]);

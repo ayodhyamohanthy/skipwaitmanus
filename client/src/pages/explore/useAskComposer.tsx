@@ -254,7 +254,7 @@ export type AskComposer = {
   clearAfterClose(): void;
 };
 
-export function useAskComposer(company: PublicCompany | null): AskComposer {
+export function useAskComposer(company: PublicCompany | null, options?: { companyDoor?: boolean }): AskComposer {
   const { isLoaded, isSignedIn, userId, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const online = useOnlineStatus();
@@ -488,7 +488,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
         note: composeWhyMe(reasons),
         opportunityId: postSelection?.opportunityId,
       });
-      goToSeekerSignIn(askSignInReturnTo(window.location.pathname, window.location.search, postSelection));
+      goToSeekerSignIn(askSignInReturnTo(window.location.pathname, window.location.search, postSelection, { companyDoor: options?.companyDoor === true }));
       return;
     }
     try {

@@ -15,13 +15,17 @@ export function goToSeekerSignIn(returnTo: string): void {
 
 // /ask and company doors (/explore/:slug) own referral query handoff.
 // Never forward unrelated query values into the authentication return URL.
+// Only the company door's own drawer returns to the door: the caller says so
+// (companyDoor), because /ask and the other composers can be rendered under an
+// /explore path and must still return to /ask (the P0 personal-link round trip).
 export function askSignInReturnTo(
   pathname: string,
   search: string,
   postSelection?: { opportunityId?: number | null } | null,
+  options?: { companyDoor?: boolean },
 ): string {
   const cleanPath = pathname.replace(/\/+$/, "");
-  const isCompanyDoor = /^\/explore\/[^/]+$/.test(cleanPath);
+  const isCompanyDoor = options?.companyDoor === true && /^\/explore\/[^/]+$/.test(cleanPath);
 
   if (isCompanyDoor) {
     const source = new URLSearchParams(search);
