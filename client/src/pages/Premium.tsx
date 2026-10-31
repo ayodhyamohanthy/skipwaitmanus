@@ -54,7 +54,11 @@ export default function Premium() {
   const updateQuantity = (next: number) => setQuantity(Math.max(1, Math.min(1000, Number.isFinite(next) ? Math.round(next) : 1)));
 
   useEffect(() => {
-    applySeo({ title: "Buy referral credits", description: `${ASK_COST_SENTENCE} Extra credits are sold in packs and never expire.`, path: "/premium" });
+    if (CREDIT_PACKS_ON_SALE) {
+      applySeo({ title: "Buy referral credits", description: `${ASK_COST_SENTENCE} Extra credits are sold in packs and never expire.`, path: "/premium" });
+    } else {
+      applySeo({ title: "Credit packs are paused", description: "Credit packs are paused while we update our plans. Any credits already in your account still work.", path: "/premium" });
+    }
   }, []);
 
   useEffect(() => {

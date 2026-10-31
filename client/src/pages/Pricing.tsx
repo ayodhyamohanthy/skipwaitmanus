@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { ArrowRight, Tag } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { PolicyPageShell, PolicySection } from "@/components/PolicyPageShell";
-import { ASK_COST_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import { PLAN_FAMILY, planFeeMinor } from "@shared/planFamily";
 import { money } from "@/components/plans/format";
 /** /pricing — public price list. Mirrors the checkout prices; no sign-in. */
@@ -17,7 +17,7 @@ export default function Pricing() {
     status="published"
   >
     <PolicySection number="01" title="Free">
-      <p><strong>{ASK_COST_SENTENCE}</strong> The free credits reset each month. {REFERRER_MONEY_SENTENCE}</p>
+      <p><strong>3 free referrals a month at any level with a verified card; no carry-forward.</strong> {REFERRER_MONEY_SENTENCE}</p>
     </PolicySection>
     <PolicySection number="02" title="Plans (frozen October 25, 2026)">
       <ul>

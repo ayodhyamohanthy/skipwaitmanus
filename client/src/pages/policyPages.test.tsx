@@ -190,3 +190,54 @@ describe("public credit copy matches the decline rule", () => {
     expect(LANDING_FAQ).not.toMatch(/withdrawn or expired asks get the credit back|spent once a verified employee picks up/);
   });
 });
+
+describe("paused credit packs copy guard (D-044, D-153, D-219, PR666 F2)", () => {
+  it("public snapshots, landing content, About and Premium metadata make no pack-sale claim while credit packs are paused", async () => {
+    // 1. Check publicSnapshots from scripts/prerender-public-pages
+    const { publicSnapshots } = await import("../../../scripts/prerender-public-pages");
+    const snapshots = publicSnapshots();
+    const premiumSnap = snapshots.find(s => s.route === "/premium");
+    const plansSnap = snapshots.find(s => s.route === "/plans");
+    const employerSnap = snapshots.find(s => s.route === "/employer");
+
+    for (const snap of [premiumSnap, plansSnap, employerSnap]) {
+      expect(snap?.markup).not.toMatch(/Buy credits/i);
+      expect(snap?.markup).not.toMatch(/Credits for \$1 each/i);
+      expect(snap?.markup).not.toMatch(/Extra credits cost \$1 each/i);
+      expect(snap?.markup).not.toMatch(/More credits are sold on the credits page/i);
+      expect(snap?.markup).not.toMatch(/use credits for more/i);
+    }
+
+    // 2. Check LANDING_EXPLORE from shared/landingContent
+    const { LANDING_EXPLORE } = await import("@shared/landingContent");
+    const premiumLink = LANDING_EXPLORE.find(l => l.href === "/premium");
+    expect(premiumLink?.label).not.toMatch(/Buy credits/i);
+    expect(premiumLink?.summary).not.toMatch(/Extra referral credits are sold in one-time packs/i);
+
+    // 3. Check About page
+    render(<About />);
+    const aboutText = document.body.textContent ?? "";
+    expect(aboutText).not.toMatch(/buy online as one-off credit packs that never expire/i);
+    cleanup();
+
+    // 4. Check Premium page metadata / SEO
+    const { default: Premium } = await import("./Premium");
+    render(<Premium />);
+    expect(document.title).not.toMatch(/Buy referral credits/i);
+    const metaDesc = document.querySelector('meta[name="description"]')?.getAttribute("content") ?? "";
+    expect(metaDesc).not.toMatch(/Extra credits are sold in packs/i);
+    cleanup();
+  });
+});
+
+describe("/pricing free allowance copy (D-219, D-173, D-180, PR666 F3)", () => {
+  it("/pricing states 3 free referrals a month at any level with a verified card and contains no credit/ask in its free line", () => {
+    render(<Pricing />);
+    const freeSection = screen.getByRole("heading", { name: "1. Free" }).closest("section")!;
+    expect(freeSection.textContent).toContain("3 free referrals a month at any level with a verified card");
+    const freeLine = freeSection.querySelector("strong")?.textContent ?? "";
+    expect(freeLine).not.toMatch(/\bcredits?\b/i);
+    expect(freeLine).not.toMatch(/\basks?\b/i);
+    cleanup();
+  });
+});
