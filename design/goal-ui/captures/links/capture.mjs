@@ -60,3 +60,8 @@ for (const shot of fixtures.shots) {
 await browser.close();
 server.close();
 console.log(JSON.stringify(results, null, 1));
+const overflowing = results.filter(r => r.horizontalOverflowPx !== 0);
+if (overflowing.length) {
+  console.error(`horizontal overflow: ${overflowing.map(r => `${r.shot}@${r.width}=${r.horizontalOverflowPx}px`).join(", ")}`);
+  process.exitCode = 1;
+}

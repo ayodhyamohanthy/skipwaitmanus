@@ -12,6 +12,10 @@
     { "name": "share-ready", "url": "/share-card/fxsharetoken000000000001", "waitFor": "h1",
       "routes": [{ "path": "/api/referral-share-cards/public/fxsharetoken000000000001", "status": 200, "body": { "card": { "companyDomain": "northwind.example", "status": "accepted", "inviteCode": "r1-fx000001" } } }] },
     { "name": "share-unavailable", "url": "/share-card/fxsharetoken000000000002", "waitFor": "[role=alert]",
-      "routes": [{ "path": "/api/referral-share-cards/public/fxsharetoken000000000002", "status": 404, "body": { "error": "This share card is unavailable" } }] }
+      "routes": [{ "path": "/api/referral-share-cards/public/fxsharetoken000000000002", "status": 404, "body": { "error": "This share card is unavailable" } }] },
+    { "name": "fast-long-domain", "url": "/fast/fx-link-0004", "waitFor": "h1",
+      "routes": [{ "path": "/api/referrer-fast-track/fx-link-0004", "status": 200, "body": { "link": { "companyDomain": "fabrikaminternationalholding.example", "isActive": true } } }] },
+    { "name": "vanity-long-domain", "url": "/refer/contosoresearchlab/fx-alias-long", "waitFor": "h1",
+      "routes": [{ "path": "/api/referrer-fast-track/vanity/contosoresearchlab/fx-alias-long", "status": 200, "body": { "link": { "companyDomain": "contosoresearchlab.example", "isActive": true } } }] }
   ]
 }

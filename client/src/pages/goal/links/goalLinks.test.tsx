@@ -75,6 +75,14 @@ describe("/fast/:linkCode", () => {
     expect(go).toHaveBeenCalledWith("/start?fast=a%20b%2Fc");
   });
 
+  it("keeps a 36-character company domain intact in the goal line and the body", async () => {
+    const longDomain = "fabrikaminternationalholding.example";
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ link: { companyDomain: longDomain, isActive: true } })));
+    render(<FastTrackLink />);
+    expect(await screen.findByRole("heading", { level: 1, name: `Get referred at ${longDomain}.` })).toBeTruthy();
+    expect(screen.getByText(new RegExp(`A verified employee at ${longDomain} shared this link`))).toBeTruthy();
+  });
+
   it("shows a loading state before the link answers", async () => {
     vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
     render(<FastTrackLink />);

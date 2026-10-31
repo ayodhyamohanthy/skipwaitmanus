@@ -12,7 +12,7 @@ import { GoalNextStep } from "@/components/goal/GoalNextStep";
 export function LinkFrame({ screen, children }: { screen: string; children: ReactNode }) {
   return (
     <main data-skipwait-screen={screen} className="grid min-h-dvh place-items-center bg-g-canvas px-5 py-6 font-g-sans text-g-ink">
-      <section className="w-full max-w-[560px] rounded-g-tile border border-g-hairline bg-g-surface p-6 gdesk:p-8">
+      <section className="w-full min-w-0 max-w-[560px] [overflow-wrap:anywhere] rounded-g-tile border border-g-hairline bg-g-surface p-6 gdesk:p-8">
         <Link href="/" aria-label="SkipWait.me home" className="inline-flex">
           <GoalBrandMark />
         </Link>
