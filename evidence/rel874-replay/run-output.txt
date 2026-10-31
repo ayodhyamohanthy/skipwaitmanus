@@ -1,0 +1,28 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/private/tmp/qoder-rel874-replay[39m
+
+[90mstdout[2m | server/scratchRel874Replay.test.ts
+[22m[39m[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+
+[90mstdout[2m | server/scratchRel874Replay.test.ts[2m > [22m[2mscratch replay of the open REL-review-email-retry findings at 15897e05[2m > [22m[2mnegative 1: alertOwner returning {sent:false} is discarded and never retried
+[22m[39m[negative-1] first run: alertCalls=1 (alertOwner returned {sent:false}) row={"status":"failed","attemptCount":5} output={"processed":0,"failed":1,"error":"Error: review email retry failed: delivery_failed:503"}
+
+[90mstdout[2m | server/scratchRel874Replay.test.ts[2m > [22m[2mscratch replay of the open REL-review-email-retry findings at 15897e05[2m > [22m[2mnegative 1: alertOwner returning {sent:false} is discarded and never retried
+[22m[39m[negative-1] second due pass: alertCalls=1 sends=1 output={"processed":0,"failed":0} (no owner-alert retry)
+
+[90mstdout[2m | server/scratchRel874Replay.test.ts[2m > [22m[2mscratch replay of the open REL-review-email-retry findings at 15897e05[2m > [22m[2mnegative 2: the due scan excludes attemptCount 5 and the row is never claimed
+[22m[39m[negative-2] due ids=[61] (row 62 at attempt 5 excluded) sends=["riya@acme.com"] row62={"status":"failed","attemptCount":5} directClaim=undefined
+
+[90mstdout[2m | server/scratchRel874Replay.test.ts[2m > [22m[2mscratch replay of the open REL-review-email-retry findings at 15897e05[2m > [22m[2mnegative 3: a paused claimer rewrites attemptCount 5 after a completed attempt 5 and sends a sixth email
+[22m[39m[negative-3] after A, B paused: sends=1 alertCalls=1 durable={"status":"failed","attemptCount":5} A={"processed":0,"failed":1}
+
+[90mstdout[2m | server/scratchRel874Replay.test.ts[2m > [22m[2mscratch replay of the open REL-review-email-retry findings at 15897e05[2m > [22m[2mnegative 3: a paused claimer rewrites attemptCount 5 after a completed attempt 5 and sends a sixth email
+[22m[39m[negative-3] after B resumed: sends=2 alertCalls=2 durable={"status":"failed","attemptCount":5} B={"processed":0,"failed":1} (stale rewrite kept the counter at 5 while a sixth email went out)
+
+ [32m✓[39m server/scratchRel874Replay.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m   Start at [22m 06:14:36
+[2m   Duration [22m 2.26s[2m (transform 844ms, setup 68ms, import 1.99s, tests 24ms, environment 0ms)[22m
