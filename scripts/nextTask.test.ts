@@ -1402,6 +1402,94 @@ globalThis.fetch = async input => {
   });
 });
 
+// PROCESS-review-gate (D-166): a verdict names the head it reviewed, so CI can tell a pass on this head from a pass on an older one.
+describe("actual next-task --verdict integration", () => {
+  const setup = () => {
+    const fixture = mkdtempSync(path.join(os.tmpdir(), "next-task-verdict-"));
+    const work = path.join(fixture, "work");
+    const origin = path.join(fixture, "origin.git");
+    const mock = path.join(fixture, "mock.mjs");
+    const run = (args: string[]) => execFileSync("git", args, { cwd: work, encoding: "utf8" }).trim();
+    mkdirSync(work, { recursive: true });
+    execFileSync("git", ["init", "--bare", origin], { encoding: "utf8" });
+    run(["init", "-b", "main"]);
+    run(["config", "user.name", "Fixture"]);
+    run(["config", "user.email", "fixture@example.test"]);
+    run(["remote", "add", "origin", origin]);
+    mkdirSync(path.join(work, "docs/plans"), { recursive: true });
+    writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture\n");
+    writeFileSync(path.join(work, "docs/DECISIONS.md"), [
+      "# Decisions", "", "| ID | Date | Decision | Evidence | Notes | Status |", "|---|---|---|---|---|---|",
+      "| D-001 | 2026-10-19 | **One** | e | — | adopted |", "",
+    ].join("\n"));
+    writeFileSync(path.join(work, "docs/plans/assignments.json"), JSON.stringify({
+      version: 1, repo: "o/r",
+      tasks: [{ id: "A", title: "Fixture task", row: "A", packet: "docs/plans/test.md", tier: 1, lane: "process", branch: "agent/queue/a", status: "in-review", dependsOn: [], syncedTo: "D-001" }],
+    }, null, 2) + "\n");
+    run(["add", "."]);
+    run(["commit", "-m", "root"]);
+    run(["push", "-u", "origin", "main"]);
+    run(["switch", "-c", "agent/queue/a"]);
+    run(["commit", "--allow-empty", "-m", "Claim A: Builder · b1"]);
+    writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture, built\n");
+    run(["commit", "-am", "A: the work"]);
+    run(["push", "-u", "origin", "agent/queue/a"]);
+    const head = run(["rev-parse", "HEAD"]);
+    run(["switch", "-c", "agent/review/a", "main"]);
+    run(["commit", "--allow-empty", "-m", "Review claim A: Reviewer · r1"]);
+    run(["push", "-u", "origin", "agent/review/a"]);
+    run(["switch", "main"]);
+    writeFileSync(mock, `
+const response = body => ({ ok: true, status: 200, json: async () => body });
+globalThis.fetch = async input => {
+  const url = String(input);
+  if (url.includes('/actions/workflows/ci.yml/runs')) return response({ workflow_runs: [] });
+  if (url.includes('/pulls?state=open')) return response([{ head: { repo: { full_name: 'o/r' }, ref: 'agent/queue/a', sha: '${"0".repeat(40)}' }, html_url: 'https://example.test/pr/1' }]);
+  if (url.includes('/pulls?state=closed')) return response([]);
+  throw new Error('unexpected fetch: ' + url);
+};
+`);
+    const picker = (args: string[]) => spawnSync(process.execPath, ["--import", mock, path.join(root, "scripts/next-task.mjs"), ...args], {
+      cwd: work, encoding: "utf8", env: { ...process.env, GH_TOKEN: "fixture-not-real", NODE_USE_ENV_PROXY: "1" },
+    });
+    const lockBody = () => run(["log", "-1", "--format=%b", "origin/agent/review/a"]);
+    const lockSubject = () => run(["log", "-1", "--format=%s", "origin/agent/review/a"]);
+    return { fixture, run, picker, head, lockBody, lockSubject };
+  };
+
+  it("records 'reviewed <sha>' (the task branch's tip on origin) in the verdict marker's body, subject unchanged", () => {
+    const f = setup();
+    try {
+      const res = f.picker(["--verdict", "pass", "--task", "A", "--as", "Reviewer · r1"]);
+      expect(res.status, res.stderr).toBe(0);
+      expect(f.lockSubject()).toBe(markerSubject("Verdict", "A", "Reviewer · r1", "pass"));
+      expect(f.lockBody()).toBe(`reviewed ${f.head}`);
+    } finally {
+      rmSync(f.fixture, { recursive: true, force: true });
+    }
+  });
+
+  it("lets the reviewer who passed re-record the pass on the current head, and nobody else", () => {
+    const f = setup();
+    try {
+      expect(f.picker(["--verdict", "pass", "--task", "A", "--as", "Reviewer · r1"]).status).toBe(0);
+      // A merge of main onto the task branch after the pass: the reviewer names the new head.
+      f.run(["switch", "agent/queue/a"]);
+      f.run(["merge", "--no-ff", "-m", "Merge main", "main"]);
+      f.run(["push", "origin", "agent/queue/a"]);
+      const merged = f.run(["rev-parse", "HEAD"]);
+      f.run(["switch", "main"]);
+      const other = f.picker(["--verdict", "pass", "--task", "A", "--as", "Other · o1"]);
+      expect(other.status).not.toBe(0);
+      const again = f.picker(["--verdict", "pass", "--task", "A", "--as", "Reviewer · r1"]);
+      expect(again.status, again.stderr).toBe(0);
+      expect(f.lockBody()).toBe(`reviewed ${merged}`);
+    } finally {
+      rmSync(f.fixture, { recursive: true, force: true });
+    }
+  });
+});
+
 /*
  * PICKER-owns-scope (docs/plans/PICKER-PARALLEL.md): a task declares the files it will
  * touch, so two lanes cannot edit one file unseen. `owns` holds paths, folder prefixes
