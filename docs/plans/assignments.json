@@ -3596,7 +3596,7 @@
       "lane": "security-audit-referral",
       "branch": "agent/queue/d100-authz-referral",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-260",
       "dependsOn": [],
       "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1).",
       "epic": "D-100",
