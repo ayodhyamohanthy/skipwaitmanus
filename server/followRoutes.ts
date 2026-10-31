@@ -1,4 +1,5 @@
 import express, { type Express, type Request } from "express";
+import { refuseReviewerExternalAction } from "./_core/reviewerLogin";
 import { followState, followUser, listFollowers, listFollowing, unfollowUser, type FollowSummary } from "./db";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
@@ -34,6 +35,7 @@ export function registerFollowRoutes(app: Express, deps: FollowRouteDeps) {
     const targetUserId = parseUserId(req.params.userId);
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to follow members" });
       if (!targetUserId) return res.status(400).json({ error: "Invalid member" });
       if (targetUserId === identity.account.id) return res.status(400).json({ error: "You cannot follow yourself" });
@@ -49,6 +51,7 @@ export function registerFollowRoutes(app: Express, deps: FollowRouteDeps) {
     const targetUserId = parseUserId(req.params.userId);
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to manage follows" });
       if (!targetUserId) return res.status(400).json({ error: "Invalid member" });
       await doUnfollow(identity.account.id, targetUserId);

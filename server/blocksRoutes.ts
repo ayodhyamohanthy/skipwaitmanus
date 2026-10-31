@@ -1,4 +1,5 @@
 import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { refuseReviewerExternalAction } from "./_core/reviewerLogin";
 import express, { type Express, type Request } from "express";
 import { referralRequests, userBlocks, users } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -146,6 +147,7 @@ export function registerBlocksRoutes(app: Express, deps: BlocksRouteDeps) {
   app.post("/api/blocks", express.json(), async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to block members" });
       const body = (req.body ?? {}) as Record<string, unknown>;
       const hasBlockedKey = body.blockedUserId !== undefined && body.blockedUserId !== null;
@@ -188,6 +190,7 @@ export function registerBlocksRoutes(app: Express, deps: BlocksRouteDeps) {
   app.delete("/api/blocks/:id", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to manage blocks" });
       const id = Number(req.params.id);
       if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid block reference" });

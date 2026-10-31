@@ -288,3 +288,17 @@ describe("hourly limit on refused sends (D-012 item 3 review: no referrer oracle
     expect(sends).toBe(0);
   });
 });
+
+describe("reviewer isolation (REVIEWER-ISOLATION-1)", () => {
+  it("refuses a demo review account starting a thread: 403, nothing sent", async () => {
+    let sends = 0;
+    const app = buildApp({
+      resolveIdentity: async () => ({ account: { id: 99, openId: "reviewer_seeker" } }),
+      sendDirectMessage: async () => { sends += 1; return { id: 1, replayed: false as const }; },
+    });
+    const response = await request(app).post("/api/dms/threads/22").set("Idempotency-Key", "dm-test-key-00000002").send({ body: "Hello" });
+    expect(response.status).toBe(403);
+    expect(response.body.error).toMatch(/demo review accounts/i);
+    expect(sends).toBe(0);
+  });
+});
