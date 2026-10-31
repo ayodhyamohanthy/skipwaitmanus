@@ -919,8 +919,8 @@
       "tier": 1,
       "lane": "observability-client",
       "branch": "agent/queue/rel-client-capture",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "owner",
+      "syncedTo": "D-256",
       "dependsOn": [
         "FIX-device-signin"
       ],
