@@ -111,6 +111,13 @@ export async function defaultReferrerSessionGateDeps(): Promise<ReferrerSessionG
   };
 }
 
+const isPositiveInteger = (value: number) => Number.isInteger(value) && value > 0;
+/** True when a route handler's Number() or parseInt() would read this path value as a positive request id. */
+export function readableAsRequestId(raw: unknown): boolean {
+  const value = String(raw ?? "");
+  return isPositiveInteger(Number(value)) || isPositiveInteger(Number.parseInt(value, 10));
+}
+
 /** Where the /access verdict finds the gate's answer for its own request (privateReferralRoutes reads it). */
 export const REFERRER_SESSION_LOCAL = "referrerSessionPasses";
 
@@ -123,8 +130,10 @@ export function installReferrerSessionGate(app: Express, deps: { resolveIdentity
   const gateDeps = () => (resolved ??= typeof deps.gate === "function" ? deps.gate() : Promise.resolve(deps.gate));
   const guard = (route: ReferrerRoute) => async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // The router's own pattern also matches sibling paths (/api/company-referrals/inbox for :requestId); only real ids are this route.
-      if (route.path.includes(":requestId") && !/^\d+$/.test(String(req.params.requestId ?? ""))) return next();
+      // The router's own pattern also matches sibling paths (/api/company-referrals/inbox for :requestId). Only a value
+      // no handler could read as a request id is a sibling: anything Number() or parseInt() takes as a positive id
+      // ("0x2bd", "701.0", "+701", " 701") is that request to the handler, so the gate guards it too.
+      if (route.path.includes(":requestId") && !readableAsRequestId(req.params.requestId)) return next();
       const identity = await deps.resolveIdentity(req);
       // Signed out: the route answers its own 401, and the client offers the signed-out work-email sign-in.
       if (!identity) return next();
