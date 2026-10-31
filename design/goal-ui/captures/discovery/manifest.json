@@ -1,0 +1,488 @@
+{
+  "source": "2d8e3bf5a24be98ed4f8ffe3c8d3de2256271176",
+  "command": "VITE_GOAL_SURFACES=all pnpm build && node design/goal-ui/captures/discovery/capture.mjs",
+  "synthetic": true,
+  "results": [
+    {
+      "file": "wall-default-1280.png",
+      "route": "/wall",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 1,
+        "goalShare": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-walk-in-1280.png",
+      "route": "/wall?opening=3",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 1,
+        "goalShare": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-empty-1280.png",
+      "route": "/wall",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 1,
+        "goalShare": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-error-1280.png",
+      "route": "/wall",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 0,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-default-1280.png",
+      "route": "/jobs",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "Browse roles worth a referral.",
+        "primaries": 1,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-no-link-1280.png",
+      "route": "/jobs?job=12",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "Browse roles worth a referral.",
+        "primaries": 1,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-empty-1280.png",
+      "route": "/jobs?q=astronaut",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "Browse roles worth a referral.",
+        "primaries": 1,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-error-1280.png",
+      "route": "/jobs",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "Browse roles worth a referral.",
+        "primaries": 0,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-share-copied-1280.png",
+      "route": "/wall?opening=4",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 1,
+        "goalShare": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-first-visit-1280.png",
+      "route": "/wall",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 1,
+        "goalShare": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-sign-in-step-1280.png",
+      "route": "/jobs",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "Sign in to save roles.",
+        "primaries": 1,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-first-visit-1280.png",
+      "route": "/jobs",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "Browse roles worth a referral.",
+        "primaries": 1,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-default-390.png",
+      "route": "/wall",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 1,
+        "goalShare": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-walk-in-390.png",
+      "route": "/wall?opening=3",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 1,
+        "goalShare": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-empty-390.png",
+      "route": "/wall",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 1,
+        "goalShare": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-error-390.png",
+      "route": "/wall",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 0,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-default-390.png",
+      "route": "/jobs",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "Browse roles worth a referral.",
+        "primaries": 1,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-no-link-390.png",
+      "route": "/jobs?job=12",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "Browse roles worth a referral.",
+        "primaries": 1,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-empty-390.png",
+      "route": "/jobs?q=astronaut",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "Browse roles worth a referral.",
+        "primaries": 1,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-error-390.png",
+      "route": "/jobs",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "Browse roles worth a referral.",
+        "primaries": 0,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-share-copied-390.png",
+      "route": "/wall?opening=4",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 1,
+        "goalShare": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-first-visit-390.png",
+      "route": "/wall",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 1,
+        "goalShare": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-sign-in-step-390.png",
+      "route": "/jobs",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "Sign in to save roles.",
+        "primaries": 1,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-first-visit-390.png",
+      "route": "/jobs",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "Browse roles worth a referral.",
+        "primaries": 1,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    }
+  ],
+  "sourceNote": "app code at this commit; capture.mjs scenarios committed alongside the captures"
+}

@@ -72,3 +72,5 @@ None. Signed-in home routing and discovery scope are already ruled (D-123 questi
 `D-048-P-marketing`: prepared by design lane (AYO-11) — pending coordinator landing — 2026-10-23 — branch `agent/architect/d048-p-marketing`
 
 `D-048-P-marketing`: landed by the coordinator — 2026-10-23 — landing branch `agent/instinct/d048-p-marketing-packet`. Canonical candidate; the empty claim marker branch `agent/architect/d048-p-marketing` (Claude Code · e11c) is preserved and the overlap is announced in the PR.
+
+`D-048-p3-discovery`: review — Hark · f6a7 — 2026-10-30 — 47743723 — PR #852: goal-native share replaces the kit OneTapShareActions on /wall (same behaviour), /jobs has no share and drops the kit toast and nested SignInButton; D-241 boundary walks the whole runtime graph with the audited list and negative controls, all 11 goal pages green; captures refreshed at 1280/390; not landed (owner, Oct 30)
