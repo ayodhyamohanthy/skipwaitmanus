@@ -2070,8 +2070,8 @@
       "tier": 1,
       "lane": "d048-thread",
       "branch": "agent/queue/d048-p3-conversation",
-      "status": "todo",
-      "syncedTo": "D-251",
+      "status": "owner",
+      "syncedTo": "D-257",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
