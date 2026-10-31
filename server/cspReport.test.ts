@@ -314,3 +314,17 @@ describe("live /api/csp-report emits no client-supplied canary (log line and Sen
     expect(text).not.toContain(CANARY);
   });
 });
+
+describe("directive label is a known CSP directive or unknown (separable hardening)", () => {
+  it.each(["script-src-elem", "style-src-attr", "img-src", "frame-ancestors", "form-action", "default-src", "require-trusted-types-for"])("keeps the known directive %s", directive => {
+    expect(parseCspReportBody("application/csp-report", legacy({ "document-uri": "https://skipwait.me/", "blocked-uri": "inline", "effective-directive": directive }))?.[0]?.directive).toBe(directive);
+  });
+
+  // Letters and hyphens only, so it passes the old shape check and only an allow-list stops it.
+  const DIRECTIVE_CANARY = "pvdirectivecanary";
+
+  it("collapses a well-formed but unknown directive to unknown, in both report shapes", () => {
+    expect(parseCspReportBody("application/csp-report", legacy({ "document-uri": "https://skipwait.me/", "blocked-uri": "inline", "violated-directive": `${DIRECTIVE_CANARY}-src 'self'` }))?.[0]?.directive).toBe("unknown");
+    expect(parseCspReportBody("application/reports+json", JSON.stringify([{ type: "csp-violation", body: { documentURL: "https://skipwait.me/", blockedURL: "inline", effectiveDirective: DIRECTIVE_CANARY } }]))?.[0]?.directive).toBe("unknown");
+  });
+});
