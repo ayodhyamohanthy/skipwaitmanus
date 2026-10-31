@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Queue rows | `D-089.server` (Tier 1), `D-089.ui` (Tier 2), and the parent `D-089-request-inbox` as the release row (Tier 1, D-223 (3)) |
-| Decisions | D-089 (3), D-087 (L4), D-163 (5), D-050, D-017, D-106, D-019(e), D-030/D-049/D-057 with D-245 (login rule), D-034, D-128, D-150/D-167 (goal pages), D-153/D-180 (wording), D-223 (rows and switches), D-246 (order). Rulings in D-248 (§10) |
-| Verified against | `origin/main` `8650b06c` (Oct 30 2026). Line numbers drift: find functions by name |
+| Decisions | D-089 (3), D-087 (L4), D-163 (5), D-050, D-017, D-106, D-019(e), D-030/D-049/D-057 with D-245 (login rule), D-034, D-128, D-150/D-167 (goal pages), D-153/D-180 (wording), D-223 (rows and switches), D-246 (order). Rulings in D-263 (§10) |
+| Verified against | `origin/main` `8650b06c` (Oct 30 2026), re-checked on `05d0f7de` (Nov 1 2026, Hark · a442: §3 files unchanged except the landed `D-048-p3-links` landings, §3.8 updated). Line numbers drift: find functions by name |
 | Migrations, env keys, dependencies | None. One in-code switch, `REQUEST_INBOX_LINK_ENABLED = false` (§4.1) |
 | Writer | Hark · b6a8, architect lock `agent/architect/d089-request-inbox` |
 
@@ -27,7 +27,7 @@ Test (AGENTS.md product compass): the seeker gets a named, verified person to as
 - **D-150/D-167:** a moved page opens with its goal line and has one "Your next step" block with exactly one black commit.
 - **D-223:** rows split by owned files. Each row lands by itself behind a switch that starts off, and the release row turns it on.
 
-## 3. Current behaviour (verified on `8650b06c`)
+## 3. Current behaviour (verified on `8650b06c`, re-checked on `05d0f7de`)
 1. **Storage.** `referrerFastTrackLinks` (`drizzle/schema.ts`) has one row per referrer (`referrer_fast_track_referrer_unique`), with `linkCode` (32 hex), `vanityAlias` (varchar 30, globally unique), `companyDomain`, `isActive` and `deactivatedAt`.
 2. **Minting.** `getOrCreateReferrerFastTrackLink` (`server/db.ts`, near `ReferrerFastTrackLink`) refuses anyone who is not a verified employee of their work-email domain. It mints `ref-` plus 10 hex characters (`createFastTrackAlias`). Nothing lets a referrer choose the alias: `isSafeFastTrackAlias` exists (format plus the reserved list `reservedFastTrackAliases`), but only the resolvers call it.
 3. **A paused link can never come back (defect).** `getOrCreateReferrerFastTrackLink` returns the existing row whenever its company matches and it has an alias, including `isActive: false`. The card's "Create a new link" calls the same GET again and stays paused. A pause is permanent unless the referrer changes company.
@@ -38,11 +38,11 @@ Test (AGENTS.md product compass): the seeker gets a named, verified person to as
 5. **Asking through a link.** `POST /api/company-referrals` accepts `fastTrackCode` or `fastTrackCompanySlug` plus `fastTrackAlias` (the regex guards near `safeFastTrackCode`). `createCompanyReferralRequest` (`server/db.ts`) resolves the link (`getActiveReferrerFastTrackLink` / `…VanityLink`) and requires the job link's company to equal the link's (`fastTrackLinkMatchesCompany`). It refuses a blocked pair (`BlockedPersonalLinkError`), inserts the request with `referrerId` set to the link owner and notifies only them ("A referral request from your link is ready"). The spend follows the normal delivery path. The ask is visible at once, so D-034 spends at creation. D-050 withdrawal applies.
 6. **The referrer's inbox.** `listCompanyReferralInboxByState` (`server/db.ts`) lists a link ask in `new` for its owner (`row.referrerId === userId`). It returns `isClaimedByYou: row.referrerId === userId`, so a link ask looks claimed, and the queue (`client/src/pages/MyCompanyInbox.tsx`) opens it straight in `/conversation`. Nothing tells a link ask apart from one the referrer claimed from the pool. The function already reads claim events for `ownPending` rows.
 7. **The referrer cannot reach the link in the product.** `client/src/components/ReferrerFastTrackCard.tsx` is imported by nothing. `#426` (`c1690f40`) removed it from the queue, and `GOAL_UI_COVERAGE.md` §5 lists it for retirement. Only the smoke runtime (`client/src/contexts/smokeRuntime.ts`) calls `GET /me`.
-8. **Seeker landings.** `/fast/:linkCode` (`client/src/pages/FastTrackLink.tsx`) and `/refer/:companySlug/:vanityAlias` (`VanityFastTrackLink.tsx`) show the company only, then hand off to `/start?fast=…` or `/start?referCompany=…`. Their goal redesign is row `D-048-p3-links` (open PR #835, not landed).
+8. **Seeker landings.** `/fast/:linkCode` (`client/src/pages/FastTrackLink.tsx`) and `/refer/:companySlug/:vanityAlias` (`VanityFastTrackLink.tsx`) show the company only, then hand off to `/start?fast=…` or `/start?referCompany=…&referAlias=…`. Their goal redesign `D-048-p3-links` has landed (`5ed99b4f`): behind `goalSurfaceOn("links")` both pages render `GoalFastTrackLink` / `GoalVanityFastTrackLink` from `client/src/pages/goal/links/GoalPrivateLinkLanding.tsx`, whose zod schema accepts `{ link: { companyDomain, isActive: true } }` only and whose copy reads "A verified employee at {companyDomain} shared this link"; the kit pages stay as the fallback. §4.9 edits that goal landing.
 9. **Telemetry.** `shared/telemetryScrub.ts` already strips the alias from `/api/referrer-fast-track/vanity/:companySlug/:vanityAlias` (FND-4: the alias names one referrer).
 10. **Not to collide with:** `D-090-BYOR` takes `/r/:token` for its one-time links. The idea-lab stub's `skipwait.me/r/theirname` (BACKLOG item 10) cannot be used. This packet keeps `/refer/<company>/<screen name>`.
 
-## 4. Rulings (decided under D-200; changeable; register text D-248 in §10)
+## 4. Rulings (decided under D-200; changeable; register text D-263 in §10)
 1. **One switch.** `REQUEST_INBOX_LINK_ENABLED = false` in `shared/requestInboxLink.ts` (the D-193 in-code pattern; no env key). Both sides read it. While it is false:
    - `PUT /me/screen-name` answers 404.
    - The public payloads carry no `screenName`.
@@ -195,7 +195,7 @@ Stop and `--report blocked "D-089.<row>: <question>"` if any of these hold:
 Never guess about identity or privacy.
 
 ## 10. Register entry added by this packet
-D-248 (in `docs/DECISIONS.md`): the rulings in §4, in short. `Affects tasks: D-089-request-inbox, D-089.server, D-089.ui`.
+D-263 (in `docs/DECISIONS.md`): the rulings in §4, in short. `Affects tasks: D-089-request-inbox, D-089.server, D-089.ui`.
 
 ## 11. Gaps and risks (stated, not hidden)
 - **A freed name can be taken.** After a rename, a colleague at the same company may take the old name, and seekers following an old bio link would reach that colleague. Harm is bounded: it is still a verified employee of the same company, under the same D-019(e) privacy. Preventing it needs a retired-names table, which means a migration. Left out to keep the rows migration-free. The owner or any session may add it later.
@@ -207,3 +207,4 @@ D-248 (in `docs/DECISIONS.md`): the rulings in §4, in short. `Affects tasks: D-
 - D-089.server: todo; waits for `D-090-BYOR`, `D-086-demand-list` and `D-174-pool-nudges`.
 - D-089.ui: todo; waits for `D-089.server`, `D-048-p3-links` and `D-086.admit`.
 - D-089-request-inbox (release): todo; waits for both rows. Packet written by Hark · b6a8, Oct 30 2026.
+- Nov 1 2026, Hark · a442 (takeover from Antigravity · 5a06): merged `origin/main` `05d0f7de`; register entry renumbered D-248 → D-263 (D-248 was taken on `main`); §3 re-checked, §3.8 updated for the landed `D-048-p3-links`. Landing held: the packet adds rows `D-089.server` and `D-089.ui`, and the Oct 31 owner restriction ("new rows paused", `docs/BUILD_CONTINUITY.md`) is out to Instinct before it merges.

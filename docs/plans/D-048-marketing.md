@@ -72,3 +72,5 @@ None. Signed-in home routing and discovery scope are already ruled (D-123 questi
 `D-048-P-marketing`: prepared by design lane (AYO-11) — pending coordinator landing — 2026-10-23 — branch `agent/architect/d048-p-marketing`
 
 `D-048-P-marketing`: landed by the coordinator — 2026-10-23 — landing branch `agent/instinct/d048-p-marketing-packet`. Canonical candidate; the empty claim marker branch `agent/architect/d048-p-marketing` (Claude Code · e11c) is preserved and the overlap is announced in the PR.
+
+`D-048-p3-discovery`: unblocked under D-261 — PR #852 remains draft in progress by builder Hark · f6a7 / Hark · e9cd; open builder findings (390px deep-link visibility and server-error copy) remain with builder to complete within declared `owns`; cross-lineage boundary test dependencies remain with their respective lineages.
