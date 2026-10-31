@@ -2,7 +2,7 @@
   "version": 1,
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
-  "updated": "2026-10-28",
+  "updated": "2026-10-30",
   "rules": "Order is priority. Any capable session adds, removes or reorders tasks (D-200 (2): say why in the pull request), except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
@@ -117,15 +117,11 @@
       "lane": "deploy",
       "branch": "agent/queue/p1-release-gate-strict-compare",
       "status": "in-review",
-      "syncedTo": "D-227",
+      "syncedTo": "D-248",
       "dependsOn": [
         "P1-deploy-green-gate"
       ],
-      "owns": [
-        "scripts/require-green-release.mjs",
-        "scripts/requireGreenRelease.test.ts"
-      ],
-      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 acceptance (observe a subsequent normal gated release and its identities) is still pending, so the row is not done. No live rollback/DB/settings tests."
+      "note": "Required failclosed contract correction from750review: Number(undefined)->NaN can allow superseded release. Implementation merged as fecf0d3b (#755, head 3ff72fa2) with required CI 40580698077 success and land marker 634ab8e6; packet item 5 acceptance (observe a subsequent normal gated release and its identities) is still pending, so the row is not done. No live rollback/DB/settings tests. D-248 (Oct 30): the row releases its two-file reservation (owns removed) because its code is on main (fecf0d3b is an ancestor of origin/main) and only the item 5 observation remains, so it must not hold scripts/require-green-release.mjs and scripts/requireGreenRelease.test.ts against REL-rollback-skew (filesBusy, scripts/nextTaskCore.mjs:552). The row stays in-review until item 5 is recorded; if item 5 needs code, re-declare owns in a docs-only pull request (D-200 (2))."
     },
     {
       "id": "CI-architect-real-checks",
@@ -694,10 +690,10 @@
       "tier": 2,
       "lane": "watchdog",
       "branch": "agent/queue/rel-watchdog",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "owner",
+      "syncedTo": "D-243",
       "dependsOn": [],
-      "note": "D-212: the GitHub 5-minute watch ran 24 times in 79 hours. Owner actions at landing: wrangler secret put ZEPTOMAIL_API_KEY --name skipwait-watchdog (required) and GITHUB_ISSUES_TOKEN (optional).",
+      "note": "Landed in PR #845 (merge c91c7ca1); main CI green on it. The Worker is NOT deployed yet, and the blocker is not the secret: deploy-watchdog run 41050824580 failed at `Ensure the WATCHDOG_STATE KV namespace and use its id` with Cloudflare `Authentication error [code: 10000]`, because this repo's CLOUDFLARE_API_TOKEN carries Workers Scripts (deploy-api runs `wrangler secret list` and `wrangler secret put` successfully on every API deploy) but no Workers KV Storage scope. Owner actions, in order: (1) add Account -> Workers KV Storage: Edit to CLOUDFLARE_API_TOKEN; (2) `gh workflow run deploy-watchdog.yml --ref main` - it creates the WATCHDOG_STATE namespace and deploys `skipwait-watchdog`, then fails its own secret check by design (packet item 5, docs/plans/REL-production-watch.md:53); (3) `npx wrangler secret put ZEPTOMAIL_API_KEY --name skipwait-watchdog` (optional: GITHUB_ISSUES_TOKEN); (4) `gh workflow run deploy-watchdog.yml --ref main` again - that run is green; (5) record the alert proof (a local `wrangler dev --test-scheduled` run against a 404) and set this row to done with the merge SHA. status owner parks the row so the picker stops handing out a landing that is already merged - the D-230/D-232 precedent. No new decision is needed: every step above is already written in this packet.",
       "epic": "D-212",
       "owns": [
         "watchdog/",
@@ -781,8 +777,8 @@
       "tier": 2,
       "lane": "deploy-workflows",
       "branch": "agent/queue/rel-release-verify",
-      "status": "todo",
-      "syncedTo": "D-238",
+      "status": "done",
+      "syncedTo": "D-240",
       "dependsOn": [],
       "epic": "D-212",
       "owns": [
@@ -802,8 +798,8 @@
       "tier": 2,
       "lane": "e2e",
       "branch": "agent/queue/gate-e2e-journeys",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "done",
+      "syncedTo": "D-239",
       "dependsOn": [
         "CI-architect-real-checks"
       ],
@@ -812,9 +808,10 @@
         "e2e/",
         "scripts/e2e-server.mjs",
         ".github/workflows/ci.yml",
+        "scripts/ciMarkerSkip.test.ts",
         "package.json (switch only)"
       ],
-      "note": "Oct 28 merge-up: waits for CI-architect-real-checks, which now owns .github/workflows/ci.yml (handed over from PRICING-banded-oct25, PR #666); add the e2e job on top of its version of the file."
+      "note": "Oct 28 merge-up: waits for CI-architect-real-checks, which now owns .github/workflows/ci.yml (handed over from PRICING-banded-oct25, PR #666); add the e2e job on top of its version of the file. D-239: adding the job trips the #748 pin scripts/ciMarkerSkip.test.ts (exact job list at :122-126, runs-on count at :190), so D-239 adds that file to owns; the pin gains CI_JOBS = [...REQUIRED_JOBS, \"e2e journeys\"] for those two assertions only, no assertion removed or loosened, and the job stays non-required (making it required is the owner's ruleset action, OPS-github-settings). The independent review of the D-239 ruling added two requirements, now part of D-239: (F1) the pin also gains add-only assertions that each required job runs its own blocking commands inside its own jobBlock, because the whole-file pnpm build check stops protecting production build once the e2e job also builds; CI_JOBS stays exact and only serves the job inventory and runner count. (F2) the docs-only step reads git diff --no-renames --name-only, so a runtime-to-docs rename cannot skip the journeys."
     },
     {
       "id": "REL-heartbeats",
@@ -872,7 +869,7 @@
       "lane": "deploy-workflows",
       "branch": "agent/queue/rel-rollback-skew",
       "status": "todo",
-      "syncedTo": "D-222",
+      "syncedTo": "D-248",
       "dependsOn": [
         "REL-release-verify"
       ],
@@ -881,8 +878,10 @@
         ".github/workflows/deploy-pages.yml",
         ".github/workflows/rollback.yml",
         "scripts/rollbackTarget.mjs",
-        "scripts/rollbackTarget.test.ts"
-      ]
+        "scripts/rollbackTarget.test.ts",
+        "scripts/requireGreenRelease.test.ts"
+      ],
+      "note": "D-212 packet docs/plans/REL-production-watch.md; item 1 built by Hark · 44b1 on agent/queue/rel-rollback-skew (PR #876, draft, head 9a2d193f) and stands. D-248: the item 2 block clears by adding scripts/requireGreenRelease.test.ts to owns, because the three #751 pins at :542 (options are exactly `- api`), :551 (jobs are exactly [recovery-gate, recover-api]) and :569 (exactly three GITHUB_TOKEN steps) describe this row's own file rollback.yml but live in a test file another row owns. Those pins are extended to the api/all/web option set, the rollback-web job and its token step, never loosened or deleted, and scripts/require-green-release.mjs is NOT widened: the web leg runs this row's scripts/rollbackTarget.mjs web-gate (already built, accepts web/all and reuses ciVerdict/releaseRuns by import), so a target: all dispatch reaches each leg's gate as its own system and TARGETS/contextProblem and the release path stay byte-identical. The phantom reservation is released instead of waited on: P1-release-gate-strict-compare's code is on main (fecf0d3b) and only its item 5 observation remains, so it drops its two-file owns and this row gains no dependsOn edge - waiting there would park a buildable row behind a row that may never read done. The web leg takes job-level concurrency group deploy-pages, keeping rollback.yml's workflow-level group deploy-api pin true. Build item 2 on the same branch, never a takeover; item 3 (production drill, both run links) and the status: \"done\" landing commit are still owed; a draft PR cannot be merged, so a LAND hand-out on #876 before item 2 is a red report, never a forced merge."
     },
     {
       "id": "REL-self-heal",
@@ -938,8 +937,8 @@
       "tier": 2,
       "lane": "process",
       "branch": "agent/queue/gate-tier-floor",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "done",
+      "syncedTo": "D-243",
       "dependsOn": [
         "PROCESS-review-gate"
       ],
@@ -1720,6 +1719,30 @@
       "note": "D-167 §6.2: shown on every signed-in page and the landing, so they move before the surfaces. Behaviour unchanged, including cookie consent and applyAnalyticsConsent. Oct 23 finding (Main, from the AYO-8 kit/settings 390px capture): the existing AppShell chrome duplicates the bell/profile affordances at mobile width (bell+profile left, bell right); whole-app scope, not any surface worker’s bug. The dedup fix is a candidate for this row’s scope and must not change auth behaviour. D-231 (Oct 28, unblock ruling): status moved to owner. PR #767 is a draft under an explicit owner hold (owner comments on #767: 6454185406, 6463784167, 6465559515, 6468051896, 6468097061, 6468614231, 6472224583) and no session may merge, make ready, revert, edit or mark it Landed, or renew its landing lease. Exact head 7d6d6498 has required CI green, so the pending work is acceptance, not repair. Packet 6.2 asks for goal primitives and tokens, but the four components import no components/goal module and the boundary test admits a moved surface only via MOVED_SURFACES (client/src/components/goal/goalBoundary.test.ts:14), a file owned by the open D-090-BYOR draft #632 together with this row's packet GOAL_UI_COVERAGE.md; the owner requires his own acknowledgment before any boundary change. No dependsOn edge is added: whether this row takes the boundary entries after #632 lands or the owner acknowledges them now is the open question (D-223 (1)). Owner question, one: accept the shell parts at the carrier and acknowledge the MOVED_SURFACES registration so the row returns to todo and lands, or keep the hold, and in that answer say whether the boundary entries land here or after #632. Until he answers the row waits in owner and nothing lands."
     },
     {
+      "id": "D-048-F-app-wrapper",
+      "title": "App-wide wrapper states on the goal system: offline and slow-connection notices, update notice, error boundary fallback, global toaster (App.tsx)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-F-app-wrapper.md",
+      "tier": 2,
+      "lane": "d048-app-wrapper",
+      "branch": "agent/queue/d048-f-app-wrapper",
+      "status": "todo",
+      "syncedTo": "D-243",
+      "dependsOn": [
+        "D-048-F-goal-check",
+        "D-048-F-primitives"
+      ],
+      "epic": "D-048-p3",
+      "owns": [
+        "client/src/components/ErrorBoundary.tsx",
+        "client/src/components/PwaStatus.tsx",
+        "client/src/components/goal/wrapper/**",
+        "client/src/App.tsx (switch only)",
+        "design/goal-ui/captures/app-wrapper/**"
+      ],
+      "note": "Found by D-048-p3-discovery (#852): App.tsx mounts legacy kit/ui states around every route, absent from route-only captures (D-150, D-167). Goal variant renders only where the route's existing goal surface is on; goalSurfaces.ts read-only, no new flag, RELEASED untouched, nothing enabled. Behaviour preserved: triggers, silent update (SKIP_WAITING, no banner/reload), toaster position/offset, Try again/reload/Go home, captureClientError, role=status aria-live=polite. Existing pwaStatus/systemStates tests read-only and green. Disjoint from held D-048-F-shell-parts (D-231), D-048-dark-mode (D-230; both App.tsx switch-only), D-090-BYOR (incl. goalBoundary.test.ts) and D-048-p3-discovery's goalPagesBoundary.test.ts (D-241 unchanged). Red-first tests, own boundary test with negative control, 1280/390 whole-page captures of every state. Suspense LoadingScreen fallback is out of scope (later row)."
+    },
+    {
       "id": "D-048-F-coverage",
       "title": "Coverage test: every route and component in GOAL_UI_COVERAGE.md has an owner row",
       "row": "D-048",
@@ -1855,7 +1878,7 @@
       "lane": "d048-asks",
       "branch": "agent/queue/d048-inbox",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-244",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2383,7 +2406,7 @@
       "lane": "d048-settings",
       "branch": "agent/queue/d048-p3-settings",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-247",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2458,7 +2481,7 @@
       "lane": "d048-messages",
       "branch": "agent/queue/d048-p3-messages",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-243",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2940,7 +2963,7 @@
       "lane": "d048-discovery",
       "branch": "agent/queue/d048-p3-discovery",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-241",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-marketing",
@@ -2952,9 +2975,10 @@
         "client/src/pages/JobExplorer.tsx",
         "client/src/pages/goal/discovery/**",
         "scripts/kit-screens/fixtures/*__goal-discovery-*.json",
-        "design/goal-ui/captures/discovery/**"
+        "design/goal-ui/captures/discovery/**",
+        "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-harness dependency - fixture globs share the kit-screens/fixtures folder; the harness row lands first and this row adds its fixtures on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('discovery').",
+      "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-harness dependency - fixture globs share the kit-screens/fixtures folder; the harness row lands first and this row adds its fixtures on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('discovery'). D-241 (Oct 30): owns gains client/src/test/goalPagesBoundary.test.ts (its only owner D-048-F-goal-check is done); the boundary must walk root-alias, relative, barrel and transitive runtime imports, admit only an audited list of goal-styled and behavior-only modules, and prove with negative controls that the legacy OneTapShareActions share component fails; assertions only added, no waivers.",
       "epic": "D-048-p3"
     },
     {
@@ -3160,9 +3184,11 @@
       "lane": "supply",
       "branch": "agent/claude/d090-byor",
       "status": "todo",
-      "syncedTo": "D-227",
-      "dependsOn": [],
-      "note": "D-162: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main (docs/DECISIONS.md conflicts on the D-148 row: keep main's side and drop the branch's row, since D-162 records the waiver; the packet merges cleanly, so delete by hand its 'Gate waived by the owner (D-148 ...)' paragraph in §0 and its 'in progress — workbuddy · b0eb' Status line), and renumber 0107_ask_invites.sql to the next free number at landing (check drizzle/deploy/ on main and plan §5 at landing: on Oct 23 main has 0107_seeker_levels.sql and 0108_landed_thank_you.sql, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). Build C1-C5 in order: D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 puts the invite action into MyRequests.tsx as it is on main, as a ghost button or plain link (one black commit per page, D-150). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5). D-187 (Oct 24): C1-C6 are built; resume there: add \"/r/:token\" to KNOWN_ROUTE_PATTERNS in functions/_middleware.ts (not D-057's gate); the local '[auth] VITE_WORKOS_CLIENT_ID is not set' line is listed, not counted; user-facing 'ask' copy becomes D-180's referral vocabulary (money lines keep 'credit'); full gate, renumber 0111 at landing, Tier 1 draft PR. Review: not workbuddy, not GPT (D-151).",
+      "syncedTo": "D-246",
+      "dependsOn": [
+        "D-057-session-gate"
+      ],
+      "note": "D-162: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main (docs/DECISIONS.md conflicts on the D-148 row: keep main's side and drop the branch's row, since D-162 records the waiver; the packet merges cleanly, so delete by hand its 'Gate waived by the owner (D-148 ...)' paragraph in §0 and its 'in progress — workbuddy · b0eb' Status line), and renumber 0107_ask_invites.sql to the next free number at landing (check drizzle/deploy/ on main and plan §5 at landing: on Oct 23 main has 0107_seeker_levels.sql and 0108_landed_thank_you.sql, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). Build C1-C5 in order: D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 puts the invite action into MyRequests.tsx as it is on main, as a ghost button or plain link (one black commit per page, D-150). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5). D-187 (Oct 24): C1-C6 are built; resume there: add \"/r/:token\" to KNOWN_ROUTE_PATTERNS in functions/_middleware.ts (not D-057's gate); the local '[auth] VITE_WORKOS_CLIENT_ID is not set' line is listed, not counted; user-facing 'ask' copy becomes D-180's referral vocabulary (money lines keep 'credit'); full gate, renumber 0111 at landing, Tier 1 draft PR. Review: not workbuddy, not GPT (D-151). D-246 (CEO sequencing, Oct 30): waits for D-057-session-gate, which takes a limited handoff of server/privateReferralRoutes.ts, server/_core/index.ts (switch only), drizzle/schema.ts and server/schemaReconcile.ts for its build only. #632 keeps its id, branch, scope, code, findings (b8552f96: F1-F4 in server/sentry.ts) and holds; no takeover. After D-057 lands, merge main into agent/claude/d090-byor (merge commit, never rebase) and resolve the four files by keeping both sides.",
       "owns": [
         ".env.example",
         "AGENTS.md",
@@ -3283,9 +3309,68 @@
       "lane": "sign-in",
       "branch": "agent/queue/d057-session-gate",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-246",
       "dependsOn": [],
-      "note": "D-163: no longer waits for seeker-passwords (D-080 lets #324 land once this gate closes the Bearer path, so waiting on #324 deadlocked the lane). Build against main from the packet's CEO addendum (§0, re-verified on 06323e5c): the amr claim is set only by the work-email code login and the reviewer demo's referrer role; never inferred from the workemail_ subject; the request's own code cookie for the same account passes even when an AuthKit Bearer resolved the identity (no sign-in loop). Every referrer types one code after deploy (D-049)."
+      "note": "D-245 (owner/CEO answer, Oct 30): the block (Hark · 450f, 1f344276) clears. A personal-login session reaches referrer actions only after an in-session work-email step-up (POST /api/referrer/step-up/send|verify) that writes a server-side proof bound to account, session key (workos:<sid> or app:<ssid>), exact work email and purpose (12 h, single-use challenge, void on logout, revocation, suspension and employer change); it never runs the standalone code login, never drops the Bearer, never accepts another account's cookie, never matches by domain or links accounts. Build from packet §0b (it wins over §0 to §8). D-246 (CEO sequencing, Oct 30): this row goes first. Its owns are the full §0b.8 list, including the four shared paths: server/privateReferralRoutes.ts (middleware, route list and /access verdict only), server/_core/index.ts (switch only: step-up route registration and the dev wrapper's two copied fields), drizzle/schema.ts and server/schemaReconcile.ts (the additive referrerStepUps table only). D-090-BYOR now waits for this row, and BYOR's chain (P0-referral-access-availability, D-132-item3, D-174-held-ask-reconfirm, D-174-ask-from-job, D-174-pool-nudges, D-099-bonus-pages, D-086-demand-list, DEPLOY-gate-docs-sync) waits through it. The handoff from BYOR is limited to those four files, for this build only; #632 keeps all its code, findings (b8552f96) and holds, and this build resolves any overlap with #632 in #632's favour where both can stand. Tier 1 independent review and the full browser path (§0b.9) before done. Every referrer types one code after deploy (D-049).",
+      "owns": [
+        "server/_core/sdk.ts",
+        "server/_core/sdk*.test.ts",
+        "server/_core/otpLogin.ts",
+        "server/_core/otpLogin*.test.ts",
+        "server/_core/reviewerLogin.ts",
+        "server/_core/reviewerLogin*.test.ts",
+        "server/_core/devAuth.ts",
+        "server/_core/devAuth*.test.ts",
+        "server/_core/workosAuth.ts",
+        "server/_core/workosAuth*.test.ts",
+        "server/profileRoutes.ts",
+        "server/profileRoutes*.test.ts",
+        "server/referrerStepUp.ts",
+        "server/referrerStepUpRoutes.ts",
+        "server/referrerStepUp*.test.ts",
+        "server/referrerSessionGate.ts",
+        "server/referrerSessionGate*.test.ts",
+        "shared/referrerAccess.ts",
+        "shared/referrerAccess*.test.ts",
+        "shared/referrerStepUp.ts",
+        "shared/referrerStepUp*.test.ts",
+        "client/src/hooks/useReferrerAccess.ts",
+        "client/src/hooks/useReferrerAccess*.test.tsx",
+        "client/src/lib/threadApi.ts",
+        "client/src/lib/threadApi*.test.ts",
+        "client/src/components/referrer-home/referrerData.ts",
+        "client/src/components/referrer-home/referrerData*.test.ts",
+        "client/src/lib/referrerStepUpApi.ts",
+        "client/src/lib/referrerStepUpApi*.test.ts",
+        "client/src/components/goal/GoalWorkEmailStepUp.tsx",
+        "client/src/components/goal/GoalWorkEmailStepUp*.test.tsx",
+        "client/src/components/goal/goalWorkEmailStepUp*.test.tsx",
+        "client/src/pages/MyCompanyInbox.tsx",
+        "client/src/pages/myCompanyInbox*.test.tsx",
+        "client/src/pages/ReferrerImpact.tsx",
+        "client/src/pages/referrerImpact*.test.tsx",
+        "client/src/pages/PostOpportunity.tsx",
+        "client/src/pages/postOpportunity*.test.tsx",
+        "client/src/pages/Alerts.tsx",
+        "client/src/pages/alerts*.test.tsx",
+        "client/src/pages/goal/referrer/GoalReferrer.tsx",
+        "client/src/pages/goal/referrer/goalReferrer*.test.tsx",
+        "client/src/pages/goal/referrer/GoalReferrerImpact.tsx",
+        "client/src/pages/goal/post-opportunity/GoalPostOpportunity.tsx",
+        "client/src/pages/goal/post-opportunity/goalPostOpportunity*.test.tsx",
+        "client/src/pages/goal/alerts/GoalAlerts.tsx",
+        "client/src/pages/goal/alerts/goalAlerts*.test.tsx",
+        "drizzle/deploy/*_referrer_step_ups.sql",
+        "server/privateReferralRoutes.ts",
+        "server/privateReferralRoutes*.test.ts",
+        "server/_core/index.ts (switch only)",
+        "drizzle/schema.ts",
+        "server/schemaReconcile.ts",
+        "server/schemaReconcile*.test.ts",
+        "docs/plans/D-057-session-gate.md",
+        "AGENTS.md",
+        "docs/KIT_V4_BUILD_PLAN.md"
+      ]
     },
     {
       "id": "FND-4",
@@ -3295,7 +3380,7 @@
       "tier": 2,
       "lane": "observability",
       "branch": "agent/queue/fnd4-token-paths",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-163: no longer waits for seeker-passwords; shared/telemetryScrub.ts is new on main and #324 picks it up when it merges main. Scope per the packet's CEO addendum (§0): adds the vanity alias and /api/documents/by-key/:key; alerts drop the query."
@@ -4576,7 +4661,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-avoid-unblock",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "PROCESS-review-gate",
