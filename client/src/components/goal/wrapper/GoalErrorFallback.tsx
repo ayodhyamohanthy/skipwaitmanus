@@ -1,6 +1,8 @@
 // Goal error fallback for both error boundaries (D-048-F-app-wrapper). Same
-// words, actions and screen ids as the legacy ErrorScreen; the raw error is
-// never shown. One h1, one black commit (Try again), Go home as a ghost link.
+// actions and screen ids as the legacy ErrorScreen; the raw error is never
+// shown. One h1, one black commit (Try again), Go home as a ghost link.
+// Copy says only what the boundary knows (PR 877 review): no cause, no blame
+// and no promise about the person's data.
 import { GoalBrandMark } from "../GoalBrandMark";
 import { GoalButton } from "../GoalButton";
 
@@ -12,8 +14,8 @@ export function GoalErrorFallback({ screen, onRetry }: { screen: string; onRetry
       </div>
       <div className="flex flex-1 items-center px-6 pb-16 max-gdesk:px-4">
         <div className="mx-auto w-full max-w-[480px]">
-          <h1 className="text-g-display text-balance text-g-ink">Something went wrong on our side.</h1>
-          <p className="mt-2 text-g-body text-pretty text-g-ink-2">Nothing you did. Your asks and messages are safe.</p>
+          <h1 className="text-g-display text-balance text-g-ink">Something went wrong.</h1>
+          <p className="mt-2 text-g-body text-pretty text-g-ink-2">Try again, or come back in a moment.</p>
           <div className="mt-6 flex flex-wrap items-center gap-2">
             <GoalButton variant="primary" onClick={onRetry}>Try again</GoalButton>
             <GoalButton variant="ghost" asChild><a href="/">Go home</a></GoalButton>

@@ -51,7 +51,7 @@ describe("goal network notices (surface on)", () => {
     act(() => { window.dispatchEvent(new Event("offline")); });
     const banner = screen.getByRole("status");
     expect(banner.getAttribute("aria-live")).toBe("polite");
-    expect(banner.textContent).toBe("You're offline. Showing saved info.");
+    expect(banner.textContent).toBe("You're offline.");
     expect(banner.getAttribute("data-goal-wrapper")).toBe("notice");
     expect(banner.className).not.toMatch(SHADCN);
     act(() => { window.dispatchEvent(new Event("online")); });
@@ -115,8 +115,8 @@ describe("goal error fallback (surface on)", () => {
     expect(fallback).not.toBeNull();
     expect(fallback?.getAttribute("data-skipwait-screen")).toBe("app-error");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole("heading", { level: 1, name: "Something went wrong on our side." })).toBeTruthy();
-    expect(screen.getByText("Nothing you did. Your asks and messages are safe.")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Something went wrong." })).toBeTruthy();
+    expect(screen.getByText("Try again, or come back in a moment.")).toBeTruthy();
     expect(screen.queryByText(/secret internal detail/)).toBeNull();
     expect(captureClientError).toHaveBeenCalledWith(expect.objectContaining({ message: "secret internal detail" }), expect.objectContaining({ boundary: "ErrorBoundary" }));
     expect(screen.getByRole("link", { name: "Go home" }).getAttribute("href")).toBe("/");

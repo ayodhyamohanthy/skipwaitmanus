@@ -55,7 +55,8 @@ export function OfflineNotice() {
     return () => { window.removeEventListener("online", restore); window.removeEventListener("offline", lose); };
   }, []);
   if (online || (typeof window !== "undefined" && window.location.pathname === "/offline")) return null;
-  if (goal) return <GoalNotice icon={<WifiOff className="size-4 shrink-0" aria-hidden="true" />}>You&apos;re offline. Showing saved info.</GoalNotice>;
+  // Goal copy claims only what navigator reports: offline is not proof that saved data exists (PR 877 review).
+  if (goal) return <GoalNotice icon={<WifiOff className="size-4 shrink-0" aria-hidden="true" />}>You&apos;re offline.</GoalNotice>;
   return <StatusBanner icon={<WifiOff className="size-4 shrink-0" aria-hidden="true" />}>You&apos;re offline. Showing saved info.</StatusBanner>;
 }
 
