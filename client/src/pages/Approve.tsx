@@ -1,3 +1,5 @@
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+import GoalApprove from "./goal/assistants/GoalApprove";
 import { Bot, Check } from "lucide-react";
 import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
@@ -7,15 +9,20 @@ import { readApiJson } from "@/lib/apiResponse";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { ApprovalCard, ApprovalResult, Sheet } from "@/components/assistants/ApprovalSheet";
 import type { AssistantApproval } from "@/components/assistants/format";
+import { approvalCostChangedSchema, approvalDecisionBody, withListedCost, type ApprovalCost } from "@shared/assistantApprovalCost";
+
+/** Issue 644: a pending ask carries the cost the server will hold the owner to; the card shows it. */
+type PricedApproval = AssistantApproval & { cost?: ApprovalCost };
+const shownApproval = (approval: PricedApproval): AssistantApproval => (approval.cost ? { ...approval, creditCount: approval.cost.cost } : approval);
 
 type CreditsSummary = { plan?: string; totalAvailable?: number; monthlyCreditsRemaining?: number; monthlyAllowance?: number };
 
 const FOOTNOTE = "Unanswered approvals expire after 24 hours.";
 
-export default function Approve() {
+function LegacyApprove() {
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
-  const [approvals, setApprovals] = useState<AssistantApproval[]>([]);
+  const [approvals, setApprovals] = useState<PricedApproval[]>([]);
   const [credits, setCredits] = useState<CreditsSummary | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -39,9 +46,9 @@ export default function Approve() {
         fetch("/api/assistants/approvals", { credentials: "include", headers: await authHeaders() }),
         fetch("/api/credits/summary?role=job_seeker", { credentials: "include", headers: await authHeaders() }),
       ]);
-      const approvalsPayload = await readApiJson<{ approvals?: AssistantApproval[]; error?: string }>(approvalsResponse, "We could not load your approvals");
+      const approvalsPayload = await readApiJson<{ approvals?: Array<AssistantApproval & { cost?: unknown }>; error?: string }>(approvalsResponse, "We could not load your approvals");
       if (!approvalsResponse.ok) throw new Error(approvalsPayload.error || "We could not load your approvals");
-      setApprovals(Array.isArray(approvalsPayload.approvals) ? approvalsPayload.approvals : []);
+      setApprovals(Array.isArray(approvalsPayload.approvals) ? approvalsPayload.approvals.map(withListedCost) : []);
       if (creditsResponse.ok) {
         const creditsPayload = await readApiJson<{ summary?: CreditsSummary }>(creditsResponse, "");
         if (creditsPayload.summary) setCredits(creditsPayload.summary);
@@ -56,7 +63,7 @@ export default function Approve() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const decide = async (approval: AssistantApproval, decision: "approved" | "declined") => {
+  const decide = async (approval: PricedApproval, decision: "approved" | "declined") => {
     if (workingId !== null) return;
     setWorkingId(approval.id); setActionError(null);
     try {
@@ -64,12 +71,15 @@ export default function Approve() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", ...(await authHeaders()) },
-        body: JSON.stringify({ decision, kind: approval.kind }),
+        body: JSON.stringify(approvalDecisionBody(approval, decision)),
       });
       const payload = await readApiJson<{ error?: string }>(response, "We could not record that decision");
+      // Issue 644: the cost changed and nothing was charged; show the new cost so the owner can approve it.
+      const costChanged = response.status === 409 ? approvalCostChangedSchema.safeParse(payload) : null;
+      if (costChanged?.success) setApprovals(list => list.map(item => (item.id === approval.id ? { ...item, cost: costChanged.data.cost } : item)));
       if (!response.ok) throw new Error(payload.error || "We could not record that decision");
       setEditingId(null);
-      setResult({ approval, decision });
+      setResult({ approval: shownApproval(approval), decision });
       await load();
     } catch (reason) {
       setActionError({ id: approval.id, message: reason instanceof Error ? reason.message : "We could not record that decision" });
@@ -154,7 +164,7 @@ export default function Approve() {
           {pending.map((approval, index) => (
             <ApprovalCard
               key={approval.id}
-              approval={approval}
+              approval={shownApproval(approval)}
               balance={balance}
               primary={index === 0}
               handlers={{
@@ -173,4 +183,8 @@ export default function Approve() {
       )}
     </>,
   );
+}
+
+export default function Approve() {
+  return goalSurfaceOn("assistants") ? <GoalApprove /> : <LegacyApprove />;
 }
