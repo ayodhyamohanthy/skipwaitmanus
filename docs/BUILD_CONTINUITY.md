@@ -31,3 +31,16 @@ Owner instruction, October 29, 2026: "Whatever the coding sessions are they will
 - Instructions are not proof of a connection. Report whether the question was actually delivered and answered. If automatic delivery or answering a local permission prompt has not been tested, say so. If the route is unavailable, report that exact gap through the available coordination channel; do not claim automatic handling or enable blanket approval.
 
 Source: owner messages `phonemsg-01M62CB8XBVFSQBMZZWQFWWT43`, `phonemsg-01M62CBN289B7VFT8FK43EA45M` and `phonemsg-01M62CHFMKF268F8SS8W68P3EE`. This is an instruction and escalation rule only; it changes no product behavior, file ownership, spending permission or release gate.
+
+
+### Standing instruction: all SkipWait agents coordinate with Instinct first
+
+Owner reaffirmation, October 31, 2026: "Make sure all agents co ordinate with you" and "Make it as a instruction they check with you whenever they have blockers or doubts questions."
+
+Every agent or coding session working on skipwait.me must bring blockers, doubts and questions to Instinct first, not make the owner relay them. Use the shared GitHub coordination thread https://github.com/ayodhyamohanthy/skipwaitmanus/pull/811 or the affected PR/issue. Read the current answer before acting and acknowledge what was done. At start/resume and when status changes, report the owned row, session/model label, branch and exact head, current stage, next step and outstanding question. Labels are not proof of model identity, ownership or review independence.
+
+For a question, give the current owner, relevant recorded decision, specific choice needed and minimal non-secret evidence. Only the affected action waits; continue other eligible existing SkipWait work. Instinct answers within recorded owner decisions and permissions, coordinating with the current file/row owner where required. Instinct brings the owner only a decision that genuinely needs the owner. No silence-as-consent, self-review, scope takeover, frozen-decision override or review/CI waiver.
+
+Keep secrets and private security findings out of public comments. Request an approved private route without posting the finding. Current owner restrictions remain in force: only skipwait.me, new rows paused, no production changes, migrations, drills, settings changes or spending. This instruction grants none of those actions and does not release a hold. Actual receipt, answer and execution must be tracked separately; publication is not proof that every external or local agent is connected or compliant.
+
+Source: authenticated owner messages `phonemsg-01M67VDDBKQ43TJM3SE0SRZV6Q` and `phonemsg-01M67VDXM8FF9SEF9SEPWSRKM4`; direct Hark collaboration reaffirmation `phonemsg-01M67TJKFFY4D8TM1FHWQAMEDH`. Instruction only, no product-policy change.
