@@ -30,7 +30,7 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 | W1 comps: /explore + ask drawer (w1-comps) | L1 | build | live (#362), reviewed in #472; the redesign to the doctrine is D-048-p3-live-review-find (D-150) |
 | Demand list (D-086) | L1 | build | approved; queued as `D-086-demand-list`, packet to write (D-154); its build follows BYOR (D-162); mocks in hand |
 | BYOR one-time link (idea 2) | L2 | build | approved (D-090); packet `docs/plans/D-090-BYOR.md`; building now, ahead of the demand list (owner word, D-162) |
-| Employee request-inbox link (idea 1) | L4 | packet written (`docs/plans/D-089-request-inbox.md`, D-263): screen name on the referral link, direct-request marker, switch off | build after idea 2 and the demand list (rows `D-089.server`, `D-089.ui`, release `D-089-request-inbox`) |
+| Employee request-inbox link (idea 1) | L4 | packet written (`docs/plans/D-089-request-inbox.md`, D-266): screen name on the referral link, direct-request marker, one switch starting off | build after idea 2 and the demand list; its two build rows (`D-089.server`, `D-089.ui`) are in the packet and not yet registered, and the release row waits for the owner's word on the Oct 31 new-rows pause (D-266) |
 | Sourced bonus pages (idea 3) | L5 | packet written (`docs/plans/D-099-bonus-pages.md`, D-163) | build after ideas 2 and 1 and the demand list |
 | Bedrock AI provider plan | - | build | plan with owner; AWS access needed |
 
