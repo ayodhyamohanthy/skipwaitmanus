@@ -1,5 +1,5 @@
 {
-  "source": "e8d0425ba9ef8ca52aab9ee9150c900a1ee69a06",
+  "source": "07c6c51016a7302a2a91a95c3cbb3e2e72c2525a",
   "command": "VITE_GOAL_SURFACES=all pnpm build && node design/goal-ui/captures/discovery/capture.mjs",
   "synthetic": true,
   "results": [
@@ -14,6 +14,14 @@
       "metrics": {
         "scrollWidth": 1280,
         "innerWidth": 1280,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 470,
+          "bottom": 510,
+          "left": 753,
+          "right": 902
+        },
+        "actionInViewport": true,
         "h1": "See openings shared by verified employees.",
         "primaries": 1,
         "goalShare": 1,
@@ -34,6 +42,14 @@
       "metrics": {
         "scrollWidth": 1280,
         "innerWidth": 1280,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 470,
+          "bottom": 510,
+          "left": 753,
+          "right": 902
+        },
+        "actionInViewport": true,
         "h1": "See openings shared by verified employees.",
         "primaries": 1,
         "goalShare": 1,
@@ -54,6 +70,14 @@
       "metrics": {
         "scrollWidth": 1280,
         "innerWidth": 1280,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 450,
+          "bottom": 490,
+          "left": 169,
+          "right": 318
+        },
+        "actionInViewport": true,
         "h1": "See openings shared by verified employees.",
         "primaries": 1,
         "goalShare": 1,
@@ -74,6 +98,9 @@
       "metrics": {
         "scrollWidth": 1280,
         "innerWidth": 1280,
+        "scrollY": 0,
+        "actionRect": null,
+        "actionInViewport": false,
         "h1": "See openings shared by verified employees.",
         "primaries": 0,
         "goalShare": 0,
@@ -94,6 +121,14 @@
       "metrics": {
         "scrollWidth": 1280,
         "innerWidth": 1280,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 454,
+          "bottom": 494,
+          "left": 753,
+          "right": 902
+        },
+        "actionInViewport": true,
         "h1": "Browse roles worth a referral.",
         "primaries": 1,
         "goalShare": 0,
@@ -114,6 +149,14 @@
       "metrics": {
         "scrollWidth": 1280,
         "innerWidth": 1280,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 454,
+          "bottom": 494,
+          "left": 753,
+          "right": 902
+        },
+        "actionInViewport": true,
         "h1": "Browse roles worth a referral.",
         "primaries": 1,
         "goalShare": 0,
@@ -134,6 +177,14 @@
       "metrics": {
         "scrollWidth": 1280,
         "innerWidth": 1280,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 478,
+          "bottom": 518,
+          "left": 169,
+          "right": 298
+        },
+        "actionInViewport": true,
         "h1": "Browse roles worth a referral.",
         "primaries": 1,
         "goalShare": 0,
@@ -154,6 +205,9 @@
       "metrics": {
         "scrollWidth": 1280,
         "innerWidth": 1280,
+        "scrollY": 0,
+        "actionRect": null,
+        "actionInViewport": false,
         "h1": "Browse roles worth a referral.",
         "primaries": 0,
         "goalShare": 0,
@@ -174,6 +228,14 @@
       "metrics": {
         "scrollWidth": 1280,
         "innerWidth": 1280,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 470,
+          "bottom": 510,
+          "left": 753,
+          "right": 902
+        },
+        "actionInViewport": true,
         "h1": "See openings shared by verified employees.",
         "primaries": 1,
         "goalShare": 1,
@@ -194,6 +256,14 @@
       "metrics": {
         "scrollWidth": 1280,
         "innerWidth": 1280,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 470,
+          "bottom": 510,
+          "left": 753,
+          "right": 902
+        },
+        "actionInViewport": true,
         "h1": "See openings shared by verified employees.",
         "primaries": 1,
         "goalShare": 1,
@@ -214,6 +284,14 @@
       "metrics": {
         "scrollWidth": 1280,
         "innerWidth": 1280,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 322,
+          "bottom": 362,
+          "left": 437,
+          "right": 592
+        },
+        "actionInViewport": true,
         "h1": "Sign in to save roles.",
         "primaries": 1,
         "goalShare": 0,
@@ -234,6 +312,126 @@
       "metrics": {
         "scrollWidth": 1280,
         "innerWidth": 1280,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 454,
+          "bottom": 494,
+          "left": 753,
+          "right": 902
+        },
+        "actionInViewport": true,
+        "h1": "Browse roles worth a referral.",
+        "primaries": 1,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-opening-11-1280.png",
+      "route": "/wall?opening=11",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "scrollY": 718,
+        "actionRect": {
+          "top": 265,
+          "bottom": 305,
+          "left": 753,
+          "right": 902
+        },
+        "actionInViewport": true,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 1,
+        "goalShare": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-job-22-1280.png",
+      "route": "/jobs?job=22",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "scrollY": 189,
+        "actionRect": {
+          "top": 265,
+          "bottom": 305,
+          "left": 753,
+          "right": 902
+        },
+        "actionInViewport": true,
+        "h1": "Browse roles worth a referral.",
+        "primaries": 1,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-select-end-1280.png",
+      "route": "/wall",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "scrollY": 985,
+        "actionRect": {
+          "top": 265,
+          "bottom": 305,
+          "left": 753,
+          "right": 902
+        },
+        "actionInViewport": true,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 1,
+        "goalShare": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-select-end-1280.png",
+      "route": "/jobs",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "scrollY": 237,
+        "actionRect": {
+          "top": 217,
+          "bottom": 257,
+          "left": 753,
+          "right": 902
+        },
+        "actionInViewport": true,
         "h1": "Browse roles worth a referral.",
         "primaries": 1,
         "goalShare": 0,
@@ -254,6 +452,14 @@
       "metrics": {
         "scrollWidth": 390,
         "innerWidth": 390,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 566,
+          "bottom": 610,
+          "left": 33,
+          "right": 182
+        },
+        "actionInViewport": true,
         "h1": "See openings shared by verified employees.",
         "primaries": 1,
         "goalShare": 1,
@@ -274,6 +480,14 @@
       "metrics": {
         "scrollWidth": 390,
         "innerWidth": 390,
+        "scrollY": 329,
+        "actionRect": {
+          "top": 237,
+          "bottom": 281,
+          "left": 33,
+          "right": 182
+        },
+        "actionInViewport": true,
         "h1": "See openings shared by verified employees.",
         "primaries": 1,
         "goalShare": 1,
@@ -294,6 +508,14 @@
       "metrics": {
         "scrollWidth": 390,
         "innerWidth": 390,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 586,
+          "bottom": 630,
+          "left": 33,
+          "right": 182
+        },
+        "actionInViewport": true,
         "h1": "See openings shared by verified employees.",
         "primaries": 1,
         "goalShare": 1,
@@ -314,6 +536,9 @@
       "metrics": {
         "scrollWidth": 390,
         "innerWidth": 390,
+        "scrollY": 0,
+        "actionRect": null,
+        "actionInViewport": false,
         "h1": "See openings shared by verified employees.",
         "primaries": 0,
         "goalShare": 0,
@@ -334,6 +559,14 @@
       "metrics": {
         "scrollWidth": 390,
         "innerWidth": 390,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 634,
+          "bottom": 678,
+          "left": 33,
+          "right": 182
+        },
+        "actionInViewport": true,
         "h1": "Browse roles worth a referral.",
         "primaries": 1,
         "goalShare": 0,
@@ -354,6 +587,14 @@
       "metrics": {
         "scrollWidth": 390,
         "innerWidth": 390,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 634,
+          "bottom": 678,
+          "left": 33,
+          "right": 182
+        },
+        "actionInViewport": true,
         "h1": "Browse roles worth a referral.",
         "primaries": 1,
         "goalShare": 0,
@@ -374,6 +615,14 @@
       "metrics": {
         "scrollWidth": 390,
         "innerWidth": 390,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 658,
+          "bottom": 702,
+          "left": 33,
+          "right": 162
+        },
+        "actionInViewport": true,
         "h1": "Browse roles worth a referral.",
         "primaries": 1,
         "goalShare": 0,
@@ -394,6 +643,9 @@
       "metrics": {
         "scrollWidth": 390,
         "innerWidth": 390,
+        "scrollY": 0,
+        "actionRect": null,
+        "actionInViewport": false,
         "h1": "Browse roles worth a referral.",
         "primaries": 0,
         "goalShare": 0,
@@ -414,6 +666,14 @@
       "metrics": {
         "scrollWidth": 390,
         "innerWidth": 390,
+        "scrollY": 329,
+        "actionRect": {
+          "top": 237,
+          "bottom": 281,
+          "left": 33,
+          "right": 182
+        },
+        "actionInViewport": true,
         "h1": "See openings shared by verified employees.",
         "primaries": 1,
         "goalShare": 1,
@@ -434,6 +694,14 @@
       "metrics": {
         "scrollWidth": 390,
         "innerWidth": 390,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 566,
+          "bottom": 610,
+          "left": 33,
+          "right": 182
+        },
+        "actionInViewport": true,
         "h1": "See openings shared by verified employees.",
         "primaries": 1,
         "goalShare": 1,
@@ -454,6 +722,14 @@
       "metrics": {
         "scrollWidth": 390,
         "innerWidth": 390,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 318,
+          "bottom": 362,
+          "left": 33,
+          "right": 188
+        },
+        "actionInViewport": true,
         "h1": "Sign in to save roles.",
         "primaries": 1,
         "goalShare": 0,
@@ -474,6 +750,126 @@
       "metrics": {
         "scrollWidth": 390,
         "innerWidth": 390,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 634,
+          "bottom": 678,
+          "left": 33,
+          "right": 182
+        },
+        "actionInViewport": true,
+        "h1": "Browse roles worth a referral.",
+        "primaries": 1,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-opening-11-390.png",
+      "route": "/wall?opening=11",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "scrollY": 329,
+        "actionRect": {
+          "top": 237,
+          "bottom": 281,
+          "left": 33,
+          "right": 182
+        },
+        "actionInViewport": true,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 1,
+        "goalShare": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-job-22-390.png",
+      "route": "/jobs?job=22",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "scrollY": 0,
+        "actionRect": {
+          "top": 634,
+          "bottom": 678,
+          "left": 33,
+          "right": 182
+        },
+        "actionInViewport": true,
+        "h1": "Browse roles worth a referral.",
+        "primaries": 1,
+        "goalShare": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "wall-select-end-390.png",
+      "route": "/wall",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "scrollY": 329,
+        "actionRect": {
+          "top": 237,
+          "bottom": 281,
+          "left": 33,
+          "right": 182
+        },
+        "actionInViewport": true,
+        "h1": "See openings shared by verified employees.",
+        "primaries": 1,
+        "goalShare": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": []
+      },
+      "errors": []
+    },
+    {
+      "file": "jobs-select-end-390.png",
+      "route": "/jobs",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "scrollY": 441,
+        "actionRect": {
+          "top": 193,
+          "bottom": 237,
+          "left": 33,
+          "right": 182
+        },
+        "actionInViewport": true,
         "h1": "Browse roles worth a referral.",
         "primaries": 1,
         "goalShare": 0,

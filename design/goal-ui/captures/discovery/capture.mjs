@@ -20,8 +20,20 @@ const server = createServer(async (req, res) => {
   const path = decodeURIComponent(new URL(req.url, "http://x").pathname);
   let file = join(root, path);
   try { if (!(await stat(file)).isFile()) throw new Error("dir"); } catch { file = join(root, "index.html"); }
-  res.writeHead(200, { "content-type": TYPES[extname(file)] ?? "application/octet-stream" });
-  res.end(await readFile(file));
+  try {
+    const content = await readFile(file);
+    res.writeHead(200, { "content-type": TYPES[extname(file)] ?? "application/octet-stream" });
+    res.end(content);
+  } catch {
+    try {
+      const fallback = await readFile(join(root, "index.html"));
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end(fallback);
+    } catch {
+      res.writeHead(404);
+      res.end("Not found");
+    }
+  }
 });
 await new Promise(resolve => server.listen(0, resolve));
 const base = `http://localhost:${server.address().port}`;
