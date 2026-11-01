@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Safety from "./Safety";
 import Help from "./Help";
+import { WaitingAsks } from "@/components/referrer-home/WaitingAsks";
 import Landed from "./Landed";
 import SignIn from "./SignIn";
 
@@ -46,7 +47,9 @@ describe("Trust cluster", () => {
     expect(screen.queryByText(/preparation tools and more open asks/)).toBeNull();
     // Live plan model: asks are free and capped per plan (shared/planCatalog.ts), plan credits roll over.
     fireEvent.click(screen.getByRole("button", { name: "How many asks can I have open?" }));
-    expect(screen.getByText(/^Free: 3 at a time; paid plans allow more\./)).toBeTruthy();
+    // D-219: the Free limit is the whole answer; no unsold paid plan is named.
+    expect(screen.getByText(/^Free: 3 at a time\./)).toBeTruthy();
+    expect(screen.queryByText(/paid plans/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Do credits expire?" }));
     expect(screen.getByText("Purchased credits never expire. Plan credits roll over based on your plan.")).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText(/Search: credits/), { target: { value: "expire" } });
@@ -88,5 +91,29 @@ describe("Trust cluster", () => {
     expect(screen.queryByText(/Forgot password/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Give a referral/ }));
     expect(screen.getByText(/Choose who you help/)).toBeTruthy();
+  });
+});
+
+// DECISION-COPY-oct26 (D-034, D-147): the referrer surfaces never show a credit
+// effect, and the guides state the spend rule the ledger keeps.
+describe("Decision copy pins (DECISION-COPY-oct26)", () => {
+  it("WaitingAsks never renders the word credit", () => {
+    const view = {
+      company: { id: 1, name: "Acme", slug: "acme" },
+      waiting: [],
+      atCapacity: false,
+      isNew: true,
+      showSamples: true,
+      hasEverReviewed: false,
+    } as unknown as ConstructorParameters<typeof WaitingAsks>[0]["view"];
+    const { container } = render(<WaitingAsks view={view} nowMs={0} />);
+    expect(container.textContent).not.toMatch(/credit/i);
+  });
+
+  it("the guides spend rule matches the ledger (D-034)", async () => {
+    const guides = await import("@/content/guides");
+    const blob = JSON.stringify(Object.values(guides));
+    expect(blob).not.toMatch(/credit leaves your balance when you send/i);
+    expect(blob).toMatch(/A referral request is used only when a verified employee can see it/);
   });
 });
