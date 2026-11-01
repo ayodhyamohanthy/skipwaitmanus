@@ -22,15 +22,17 @@ describe("job catalog contracts (D-174-job-catalog)", () => {
     expect(() => companyJobSourceSchema.parse({ ...base, unexpected: true })).toThrow();
   });
 
-  it("companyJobSourceSchema refuses a provider this row does not cover", () => {
+  it("companyJobSourceSchema accepts greenhouse, ashby, lever and refuses others", () => {
     const base = {
       companyId: 1,
-      provider: "workday",
-      boardToken: "stripe",
-      evidenceUrl: "https://stripe.com/jobs",
+      boardToken: "test",
+      evidenceUrl: "https://example.com/jobs",
       status: "verified",
     };
-    expect(() => companyJobSourceSchema.parse(base)).toThrow();
+    expect(companyJobSourceSchema.safeParse({ ...base, provider: "greenhouse" }).success).toBe(true);
+    expect(companyJobSourceSchema.safeParse({ ...base, provider: "ashby" }).success).toBe(true);
+    expect(companyJobSourceSchema.safeParse({ ...base, provider: "lever" }).success).toBe(true);
+    expect(companyJobSourceSchema.safeParse({ ...base, provider: "workday" }).success).toBe(false);
   });
 
   it("catalogJobSchema rejects unknown fields and out-of-range levels", () => {

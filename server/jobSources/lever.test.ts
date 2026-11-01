@@ -6,6 +6,7 @@ import {
   LEVER_CRAWL_DELAY_MS,
   fetchLeverJobBoard,
   parseLeverJobs,
+  resetLeverCrawlDelay,
   waitLeverCrawlDelay,
 } from "./lever";
 import {
@@ -102,6 +103,7 @@ describe("lever source fetch (D-174-job-sources-more)", () => {
   });
 
   it("respects Lever's Crawl-delay (1000ms)", async () => {
+    resetLeverCrawlDelay();
     expect(LEVER_CRAWL_DELAY_MS).toBe(1000);
     const sleeps: number[] = [];
     const fakeSleep = async (ms: number) => { sleeps.push(ms); };
