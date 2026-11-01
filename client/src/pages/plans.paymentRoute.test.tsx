@@ -28,14 +28,14 @@ describe("Plans automatic payment route", () => {
     window.history.pushState({}, "", "/plans?role=job_seeker");
     render(<Plans />);
     expect(screen.getByText("$0")).toBeTruthy();
-    expect(screen.getByText("Credits")).toBeTruthy();
+    expect(screen.queryByText("Credits")).toBeNull(); // Oct 25 2026 freeze: pack sales paused
     expect(screen.getByText(/PayPal \(USD\) · Secure hosted checkout via Chargebee/)).toBeTruthy();
     expect(screen.queryByText("India · INR")).toBeNull();
     expect(screen.queryByText("Outside India · USD")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: /different billing country.*use india payment/i }));
     expect(screen.getByText("₹0")).toBeTruthy();
-    expect(screen.getByText("Credits")).toBeTruthy();
+    expect(screen.queryByText("Credits")).toBeNull(); // Oct 25 2026 freeze: pack sales paused
     expect(screen.getByText(/Razorpay \(INR\)/)).toBeTruthy();
     expect(screen.queryByText(/Global equivalent/)).toBeNull();
     expect(screen.queryByText(/India regional price/)).toBeNull();
@@ -49,10 +49,10 @@ describe("Plans automatic payment route", () => {
     window.history.pushState({}, "", "/plans?role=job_seeker");
     render(<Plans />);
     expect(screen.getByText(/Razorpay \(INR\)/)).toBeTruthy();
-    expect(screen.getByText("Credits")).toBeTruthy();
+    expect(screen.queryByText("Credits")).toBeNull(); // Oct 25 2026 freeze: pack sales paused
     expect(screen.queryByText(/PayPal/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /different billing country.*use international payment/i }));
-    expect(screen.getByText("Credits")).toBeTruthy();
+    expect(screen.queryByText("Credits")).toBeNull(); // Oct 25 2026 freeze: pack sales paused
     expect(screen.getAllByText(/PayPal/).length).toBeGreaterThan(0);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
