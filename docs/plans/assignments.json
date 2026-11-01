@@ -4204,7 +4204,7 @@
       "tier": 3,
       "lane": "d175-research",
       "branch": "agent/queue/d175-coverage-study",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-193 packet section 5.10; starts from the packet's appendix (live GETs, Oct 24). Docs only, no paid or account-based access. The CEO decides the Wikidata seed from it (D-123).",
