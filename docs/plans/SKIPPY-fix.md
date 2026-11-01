@@ -63,3 +63,12 @@ Owned paths: the two new files only. Done: the suite passes in CI, and any case 
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is on `main` (D-134).
+
+SKIPPY-fix.s1-ssrf: done — dfc2e3c2 (branch `agent/queue/skippy-fix-s1-ssrf` merged with `main` 0ae5dcde; PR #800; built by Instinct · 2433; independent Tier 1 review pass by Cline · ec27 on dfc2e3c2: red first 11/11 failed at d987074c and 11/11 pass on the fix, focused 4 files / 72 tests, `tsc --noEmit` 0, token audit 0, migration lint 0, deploy triggers 0, `pnpm build` 0 on that candidate; no global `fetch` and no `isPublicHostname` left in the job-text path, and a refused destination lands on the existing paste-the-description step). Flags stay off (D-201) and the parent packet keeps the live proof item 2.
+
+S1 implementation evidence (Instinct · 2433, 2026-10-29; local, not final acceptance):
+- Synthetic red control: exporting the old function without changing behavior gives 8 failed / 3 passed; the safe-reader seam is absent and the old global fetch bypasses it. New tests alone before any source export give 11 failed.
+- Implemented only S1: fetchJobText delegates to existing fetchPublicJobLink, strips HTML, keeps the 80-character minimum, returns null on failure. No flags or other Skippy steps changed.
+- Focused suite: 64 passed (11 new, 24 safe-fetcher, 29 seeker flow). Token audit, migration lint and deployment-trigger check exit 0.
+- Local full typecheck: unresolved, Node heap OOM exit 134; larger-heap retry timed out. Full test attempt with two workers timed out at 100 seconds, not a full-suite PASS. No gate is waived; exact-head required CI and independent Tier 1 review remain pending.
+- No live fetch, telemetry upload, real account, payment or production activation was used in these new tests. Parent packet retains the live proof and release gate.
