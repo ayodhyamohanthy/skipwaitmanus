@@ -2,21 +2,22 @@
 
 > Read `docs/BRIEF.md` first, then this packet. Each row in §5 is its own task (D-223): claim it with the picker, build only that row, and edit only the paths in its `owns` (scope-check fails anything else). Rows that share plan row D-093 write their status line in the Status section at the end, never in a shared §3b row (D-134).
 >
-> This packet changes no runtime behaviour. It registers rows in `docs/plans/assignments.json` and records its rulings as D-249 (decided under D-200; changeable). Nothing below is built or live.
+> This packet changes no runtime behaviour. It registers rows in `docs/plans/assignments.json` and records its rulings as D-274 (decided under D-200; changeable). In this change set only the packet file and the parent row's `packet`/`syncedTo`/`status` land: the six rows it defines are held by the owner's Oct 31 "new rows paused" restriction and are listed, ready to apply, in §9.1. Nothing below is built or live.
 
 | Field | Value |
 |---|---|
-| Queue rows | `D-093.capture` (Tier 1), `D-093.metrics` (Tier 2), `D-093.runtime` (Tier 2), `D-093.picker` (Tier 2), `D-093.mount` (Tier 2), `D-093.menu` (Tier 2); the parent `D-093-language` becomes the release row (Tier 1, D-223 (3)) |
+| Queue rows | `D-093.capture` (Tier 1), `D-093.metrics` (Tier 2), `D-093.runtime` (Tier 2), `D-093.picker` (Tier 2), `D-093.mount` (Tier 2), `D-093.menu` (Tier 2); the parent `D-093-language` becomes the release row (Tier 1, D-223 (3)) — **all seven held by the Oct 31 "new rows paused" restriction, so the parent sits at `status: "owner"` until the owner answers (D-274)** |
 | Decisions | D-093 (the spec), D-091 (pre-approval), D-092 (global north star), D-059 (its translation answer is superseded by D-093), D-031/D-204 (free tools only), D-153 (writing rule), D-167 (goal UI coverage), D-200, D-202, D-223, D-225; login rule D-030/D-049/D-057 (untouched) |
-| Verified against | `origin/main` `94c697b4` (merge of #887, Oct 30 2026). No production query, API or provider call was made. |
+| Verified against | `origin/main` `a67b6f2a` (Nov 2 2026, re-synced by `Cline · d353`; the packet body's code citations were first verified on `94c697b4`, Oct 30 2026 and §0 records that check). No production query, API or provider call was made. |
 | Migrations, env keys, dependencies | One additive migration (`D-093.capture`: two nullable columns). No env key. No new dependency in any row here; a per-script Noto font package is added only by a future per-language row (§6.3). |
-| Writer | Hark · 66fd, architect lock `agent/architect/d093-language`. Under D-190 the writer never lands this packet; an eligible session lands it through the architect-landing steps. |
+| Writer | Hark · 66fd, architect lock `agent/architect/d093-language` (packet body, Oct 31 2026). Re-synced and handed to landing by `Cline · d353` on the same lock (D-274). Under D-190 a writer never lands this packet; an eligible session lands it through the architect-landing steps. |
 
 ## 0. Read receipt (D-225)
 - **Main:** `94c697b4`, after `git fetch origin`. Highest register entry on `main`: D-248.
 - **Read:** `AGENTS.md` (product compass, login rule, team rules), `START_HERE.md`, `docs/DELEGATION.md` §§1-4, `docs/BUILD_CONTINUITY.md`, register entries D-059, D-091, D-092, D-093, D-109, D-153, D-167, D-193, D-200, D-223 and the titles of D-227 to D-248 (none touches language, i18n or the files below), `docs/plans/global-readiness-i18n-ai-plan.md` (Oct 21 build-desk plan; this packet replaces its §2 as the executable plan), `docs/plans/D-086-demand-list.md` (format) and `docs/plans/D-222-referral-count.md`.
 - **Prior repo-only outcome:** none. The task row had `packet: null`, status `architect`, no lock commits before the claim `a2d00cfb`, and no PR. The plan's §3b has no row "D-093" (`grep -n D-093 docs/KIT_V4_BUILD_PLAN.md` finds nothing); `docs/BACKLOG.md:92` lists the item.
 - **Goal contribution:** D-092's global north star and D-093's "let users use the platform in their own language". The first slice is the one D-093 itself names first: count which languages people actually sign up in and whether they reach their first referral request, so translation effort follows real users instead of a guess (D-093 records "no user language data yet").
+- **Re-sync, Nov 2 2026 (`Cline · d353`, D-274):** main `a67b6f2a`, register head D-273 (the highest ID on `main` and on every `origin/*` branch, checked before numbering this entry as D-274). The body above was written against `94c697b4`; nothing in D-227 to D-273 touches language, i18n, `accountPreferences`, `schemaReconcile`, `AppShell`, `AccountMenu` or `TrustPrivacy`, and no register entry names `D-093-language` (checked by `grep`). **Prior repo-only outcome for this row:** packet commit `642b0b4d` on `agent/architect/d093-language` (Oct 30, complete), then four takeover markers (`8ffb232b`, `45c0a4d9`, `0d8c9a56`, `5acc41c5`) and five `blocked` reports (`fc5359fd`, `ec5ee282` and earlier) that all asked the same thing: the packet's six rows need new registry rows, and the Oct 31 "new rows paused" restriction forbids them, so each re-hand only churned the lock head. This re-sync answers that without churn: the packet and the parent row land now, the six rows stay defined here in §9.1 and the row parks at `owner` (D-274).
 
 ## 1. Goal
 1. **Measure first (D-093 "First:").** Record each new account's browser language (primary subtag only) at signup and the person's chosen language, and give admins a private count: signups by language and first-request completion by language. Publish the English-fallback share of every catalogue in CI.
@@ -41,7 +42,7 @@
 8. **Privacy text.** `client/src/pages/TrustPrivacy.tsx` "What we collect" (`:53-55`) lists account details, referral content and transaction records; "Cookies & on-device storage" (`:61-63`) lists a session cookie, a security cookie and an offline cache. Neither mentions a language. The file is owned by `LAUNCH-legal-copy` (status `owner`).
 9. **Funnel data available.** `users.createdAt` (`drizzle/schema.ts:27`); `referralRequests.jobSeekerId` and `createdAt` (`:511-`). The admin flow-health funnel (`server/db.ts:2891-`, `client/src/pages/AdminFlowHealth.tsx`) has no language dimension.
 
-## 4. Rulings (decided under D-200 by this packet; changeable; register entry D-249)
+## 4. Rulings (decided under D-200 by this packet; changeable; register entry D-274)
 1. **Order: measure, then machinery, then languages.** D-093 names capture first. The release row turns on capture only; no non-English language becomes visible from this packet.
 2. **"Signup language field" is a stored data field, not a new form field.** No sign-in or sign-up page changes (login rule). At account creation the client reports the primary subtag of the browser's first language; the server stores it once.
 3. **Data minimisation.** Only the primary language subtag is stored, mapped to the registry (`en`, `hi`, `te`, `or`, `ta`, `kn`) or `other`. Never the full `navigator.languages` list, region subtag, country, IP or billing region (D-093 "never inferred from company or country").
@@ -130,10 +131,170 @@ Capture adds a new item to what skipwait.me collects. The release row may not sh
 - **Q2 (blocks only per-language rows):** who reviews the money, credit, legal and trust strings for हिन्दी, తెలుగు, ଓଡ଼ିଆ, தமிழ், ಕನ್ನಡ? Free options first (D-031/D-204): the owner for languages he reads, or a named native-speaker volunteer. A paid translator needs the owner's yes. Default until answered: no language beyond English is visible.
 - **Q3 (optional):** should signup *starts* by language be counted with a first-party, cookie-less aggregate counter on the sign-in page? Default: no (§4.11).
 
-## 9. Registry delta (in this PR)
-- `D-093-language`: `packet` → this file, `status` `architect` → `todo`, `tier` 2 → 1, `syncedTo` → `D-249`, `dependsOn` and `owns` per §5.7, a note.
-- Six new rows per §5.1-§5.6 with `epic: "D-093-language"`, `syncedTo: "D-249"`, branches `agent/queue/d093-<slug>`.
+## 9. Registry delta
+
+**Landed by this change set (docs only, D-274):**
+- This packet, `docs/plans/D-093-language.md`.
+- `D-093-language` in `docs/plans/assignments.json`: `packet` → this file, `status` `architect` → `owner`, `syncedTo` → `D-274`, and a note naming the hold. `tier` stays 2 and `dependsOn`/`owns` stay empty: a row that cannot be built must not claim the release row's `owns`.
+
+**Held by the owner's Oct 31 "new rows paused" restriction (D-274; the question is in `docs/DECISIONS.md` → Open owner questions):**
+- The six rows in §9.1, each with `epic: "D-093-language"` and branches `agent/queue/d093-<slug>`.
+- `D-093-language`'s promotion to the Tier 1 release row: `tier` 1, `status` `todo`, and `dependsOn`/`owns` per §5.7.
 - `D-099-bonus-pages` gains `D-093.capture` in `dependsOn`: both own `drizzle/schema.ts` and `server/schemaReconcile.ts`, and D-099 already waits for `D-090-BYOR` and owner-held rows, so ordering capture first delays nothing.
+
+Nothing above is registered today. Until it is, no row of this packet is buildable and the parent row is parked at `owner`.
+
+### 9.1 The six rows, exactly as they will be added
+
+Apply verbatim in one docs-only PR once the pause lifts, setting `syncedTo` to the newest register entry at that moment (it reads `D-274` here, the entry that created this packet). Nothing else in `docs/plans/assignments.json` changes except the parent row and `D-099-bonus-pages` per §9.
+
+```json
+[
+  {
+    "id": "D-093.capture",
+    "title": "Language capture (D-093): browser language at signup (primary subtag, write-once, under 24 h) and the chosen language as an account setting; one additive guarded migration; switch starts false",
+    "row": "D-093",
+    "packet": "docs/plans/D-093-language.md",
+    "tier": 1,
+    "lane": "i18n-capture",
+    "branch": "agent/queue/d093-capture",
+    "status": "todo",
+    "syncedTo": "D-274",
+    "epic": "D-093-language",
+    "dependsOn": [
+      "D-090-BYOR"
+    ],
+    "owns": [
+      "shared/languages.ts",
+      "shared/languages.test.ts",
+      "shared/accountPreferences.ts",
+      "server/accountPreferences.ts",
+      "server/accountPreferences.test.ts",
+      "server/accountLanguage.ts",
+      "server/accountLanguage.test.ts",
+      "drizzle/schema.ts",
+      "server/schemaReconcile.ts",
+      "drizzle/deploy/*_account_language.sql"
+    ],
+    "note": "D-093 packet §5.1. Waits for D-090-BYOR (and through it D-057-session-gate): all three own drizzle/schema.ts and server/schemaReconcile.ts. Does not edit server/db.ts or server/_core/index.ts (optional deps default to server/accountLanguage.ts). LANGUAGE_CAPTURE_ENABLED stays false; only English is visible. Tier 1: independent D-151 review."
+  },
+  {
+    "id": "D-093.metrics",
+    "title": "Language funnel (D-093): admin-only, no-store JSON of signups and first-request completion by signup language; 404 while the capture switch is off",
+    "row": "D-093",
+    "packet": "docs/plans/D-093-language.md",
+    "tier": 2,
+    "lane": "i18n-metrics",
+    "branch": "agent/queue/d093-metrics",
+    "status": "todo",
+    "syncedTo": "D-274",
+    "epic": "D-093-language",
+    "dependsOn": [
+      "D-093.capture"
+    ],
+    "owns": [
+      "server/languageFunnel.ts",
+      "server/languageFunnel.test.ts",
+      "server/_core/index.ts (switch only)"
+    ],
+    "note": "D-093 packet §5.2. Aggregates only, no user ids or per-person dates; numbers never committed (D-059). Admins read JSON until a later admin-ops panel."
+  },
+  {
+    "id": "D-093.runtime",
+    "title": "i18n runtime (D-093): content.json as the English catalogue, partial locale files with English fallback, Intl.PluralRules plurals, the language store and account sync, CI fallback-share report",
+    "row": "D-093",
+    "packet": "docs/plans/D-093-language.md",
+    "tier": 2,
+    "lane": "i18n-runtime",
+    "branch": "agent/queue/d093-runtime",
+    "status": "todo",
+    "syncedTo": "D-274",
+    "epic": "D-093-language",
+    "dependsOn": [
+      "D-093.capture"
+    ],
+    "owns": [
+      "shared/i18n/catalog.ts",
+      "shared/i18n/catalog.test.ts",
+      "shared/i18n/locales/**",
+      "client/src/lib/i18n.ts",
+      "client/src/lib/i18n.test.ts",
+      "client/src/lib/useLanguageSync.ts",
+      "client/src/lib/useLanguageSync.test.ts",
+      "scripts/i18n-coverage.mjs",
+      "scripts/i18nCoverage.test.ts",
+      "client/src/App.tsx (switch only)"
+    ],
+    "note": "D-093 packet §5.3. No new dependency. Formatting stays on the device locale (device.ts unchanged). Signed-out choice wins until the account has one; never from country, company, email domain or billing region."
+  },
+  {
+    "id": "D-093.picker",
+    "title": "Endonym language picker and one-time consent line (D-093), plus the real Language field in Settings; no flags; hidden while only English is visible",
+    "row": "D-093",
+    "packet": "docs/plans/D-093-language.md",
+    "tier": 2,
+    "lane": "i18n-picker",
+    "branch": "agent/queue/d093-picker",
+    "status": "todo",
+    "syncedTo": "D-274",
+    "epic": "D-093-language",
+    "dependsOn": [
+      "D-093.runtime"
+    ],
+    "owns": [
+      "client/src/components/goal/GoalLanguagePicker.tsx",
+      "client/src/components/goal/GoalLanguageConsent.tsx",
+      "client/src/components/goal/goalLanguage.test.tsx",
+      "client/src/components/settings/RegionPanel.tsx",
+      "client/src/components/settings/regionPanel.language.test.tsx"
+    ],
+    "note": "D-093 packet §5.4. The consent line never navigates or changes the URL. Goal tokens and logical properties only."
+  },
+  {
+    "id": "D-093.mount",
+    "title": "Mount the language picker in the signed-out top bar and the consent line on every shell route (D-093); captures at 1280 and 390",
+    "row": "D-093",
+    "packet": "docs/plans/D-093-language.md",
+    "tier": 2,
+    "lane": "i18n-mount",
+    "branch": "agent/queue/d093-mount",
+    "status": "todo",
+    "syncedTo": "D-274",
+    "epic": "D-093-language",
+    "dependsOn": [
+      "D-093.picker",
+      "D-222-referral-count-shell"
+    ],
+    "owns": [
+      "client/src/components/AppShell.tsx",
+      "client/src/components/appShell.language.test.tsx",
+      "design/goal-ui/captures/language/**"
+    ],
+    "note": "D-093 packet §5.5. Waits for D-222-referral-count-shell (and through it PRICING-banded-oct25), which own AppShell.tsx. The Sign in link and referrer sign-in links stay unchanged."
+  },
+  {
+    "id": "D-093.menu",
+    "title": "Language entry in the signed-in account menu (D-093); hidden while only English is visible",
+    "row": "D-093",
+    "packet": "docs/plans/D-093-language.md",
+    "tier": 2,
+    "lane": "i18n-menu",
+    "branch": "agent/queue/d093-menu",
+    "status": "todo",
+    "syncedTo": "D-274",
+    "epic": "D-093-language",
+    "dependsOn": [
+      "D-093.picker",
+      "D-048-F-shell-parts"
+    ],
+    "owns": [
+      "client/src/components/AccountMenu.tsx (switch only)",
+      "client/src/components/accountMenu.language.test.tsx"
+    ],
+    "note": "D-093 packet §5.6. Waits for the owner-held D-048-F-shell-parts (D-231); Settings carries the choice until then. Not a dependency of the release row."
+  }
+]
+```
 
 ## 10. Review checklist (any row)
 1. Edits only its `owns`; no new dependency, env key or migration beyond §5.1.
@@ -149,3 +310,5 @@ Stop with `--report blocked` if: a row needs a file outside its `owns`; a functi
 
 ## Status
 - Packet: Hark · 66fd, `agent/architect/d093-language`, Oct 31 2026.
+- Re-sync and landing hand-off: `Cline · d353`, `agent/architect/d093-language`, Nov 2 2026 (D-274). Re-verified against main `a67b6f2a`; §9 rewritten so the packet can land without creating rows; `D-093-language` set to `packet` + `syncedTo: "D-274"` + `status: "owner"`.
+- Row status: **held at `owner`.** Nothing is buildable: the six rows are registered nowhere, and the owner's Oct 31 "new rows paused" restriction forbids adding them. The one question that unblocks it is in `docs/DECISIONS.md` → *Open owner questions* (D-274). This packet is not landed by its writers (D-190); any other eligible session lands it on green required CI, then a later docs-only PR applies §9.1 if the owner releases the rows.
