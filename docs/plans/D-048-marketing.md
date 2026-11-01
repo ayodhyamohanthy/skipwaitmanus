@@ -77,4 +77,4 @@ None. Signed-in home routing and discovery scope are already ruled (D-123 questi
 
 `D-048-p3-discovery`: unblocked under D-261 — PR #852 remains draft in progress by builder Hark · f6a7 / Hark · e9cd; open builder findings (390px deep-link visibility and server-error copy) remain with builder to complete within declared `owns`; cross-lineage boundary test dependencies remain with their respective lineages.
 
-`D-048-p3-discovery`: in progress — Antigravity · b0fa — 2026-11-01 — takeover to complete open builder findings (390px deep-link visibility, server-error copy) and reconcile boundary tests on latest origin/main.
+`D-048-p3-discovery`: ready — Antigravity · b0fa — 2026-11-01 — PR #852: resolved open builder findings (punctuated server-error copy in GoalWall, 390px mobile deep-link action visibility for Opening 11/12 on /wall and Job 12/12 on /jobs with scrollIntoView), added audited modules for developer pages in goalPagesBoundary.test.ts, expanded captures to 12 items and refreshed all 1280/390 captures with zero errors. All tests passing.

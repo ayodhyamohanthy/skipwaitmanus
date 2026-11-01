@@ -50,6 +50,8 @@ export default function GoalJobs() {
     try {
       const params = new URLSearchParams(); if (nextQuery.trim()) params.set("query", nextQuery.trim()); if (nextLocation.trim()) params.set("location", nextLocation.trim());
       const canonical = new URLSearchParams(); if (nextQuery.trim()) canonical.set("q", nextQuery.trim()); if (nextLocation.trim()) canonical.set("location", nextLocation.trim());
+      const jobParam = urlParams.get("job");
+      if (jobParam && !nextQuery.trim() && !nextLocation.trim()) canonical.set("job", jobParam);
       const canonicalQuery = canonical.toString();
       window.history.replaceState(null, "", canonicalQuery ? `/jobs?${canonicalQuery}` : "/jobs");
       const response = await fetch(`/api/jobs${params.size ? `?${params.toString()}` : ""}`);
@@ -76,7 +78,7 @@ export default function GoalJobs() {
       if (node && typeof node.scrollIntoView === "function") node.scrollIntoView({ block: "nearest" });
     }, 120);
     return () => clearTimeout(timer);
-  }, [jobs]);
+  }, [jobs, selectedId]);
 
   const toggleSave = async (jobId: number) => {
     if (!isSignedIn) { setSignInGate(true); return; }
@@ -155,7 +157,18 @@ export default function GoalJobs() {
     const canSend = isValidTargetRoleUrl(selected.targetRoleUrl);
     body = (
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 gdesk:grid-cols-[minmax(0,1fr)_minmax(0,400px)] gdesk:items-start">
-        <ul aria-label="Roles" className="grid grid-cols-[minmax(0,1fr)] gap-1">
+        <div id="selected-role-step" className="order-first gdesk:order-2 gdesk:sticky gdesk:top-6">
+          <GoalNextStep>
+            <p className="mt-3 text-g-meta text-g-ink-3">{jobMetadata(selected).join(" · ")}</p>
+            <h3 className="mt-1 text-g-heading text-g-ink">{selected.title}</h3>
+            <p className="mt-2 text-g-meta text-g-ink-2">A verified employee at the company sees your request privately. Referrers stay anonymous until they accept.</p>
+            <div className="mt-4">
+              <GoalButton variant="primary" onClick={() => requestReferral(selected)} disabledReason={canSend ? undefined : "No job link to send"}>Request a referral</GoalButton>
+            </div>
+            {canSend ? null : <p className="mt-2 text-g-meta text-g-ink-2">This role has no job link. Paste the employer’s listing instead.</p>}
+          </GoalNextStep>
+        </div>
+        <ul aria-label="Roles" className="grid grid-cols-[minmax(0,1fr)] gap-1 gdesk:order-1">
           {visibleJobs.map(job => {
             const saved = savedIds.has(job.id);
             const isSelected = job.id === selected.id;
@@ -171,17 +184,6 @@ export default function GoalJobs() {
             );
           })}
         </ul>
-        <div className="gdesk:sticky gdesk:top-6">
-          <GoalNextStep>
-            <p className="mt-3 text-g-meta text-g-ink-3">{jobMetadata(selected).join(" · ")}</p>
-            <h3 className="mt-1 text-g-heading text-g-ink">{selected.title}</h3>
-            <p className="mt-2 text-g-meta text-g-ink-2">A verified employee at the company sees your request privately. Referrers stay anonymous until they accept.</p>
-            <div className="mt-4">
-              <GoalButton variant="primary" onClick={() => requestReferral(selected)} disabledReason={canSend ? undefined : "No job link to send"}>Request a referral</GoalButton>
-            </div>
-            {canSend ? null : <p className="mt-2 text-g-meta text-g-ink-2">This role has no job link. Paste the employer’s listing instead.</p>}
-          </GoalNextStep>
-        </div>
       </div>
     );
   }

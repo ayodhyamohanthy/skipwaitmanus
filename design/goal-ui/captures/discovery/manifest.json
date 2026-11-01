@@ -1,5 +1,5 @@
 {
-  "source": "2d8e3bf5a24be98ed4f8ffe3c8d3de2256271176",
+  "source": "e8d0425ba9ef8ca52aab9ee9150c900a1ee69a06",
   "command": "VITE_GOAL_SURFACES=all pnpm build && node design/goal-ui/captures/discovery/capture.mjs",
   "synthetic": true,
   "results": [
@@ -483,6 +483,5 @@
       },
       "errors": []
     }
-  ],
-  "sourceNote": "app code at this commit; capture.mjs scenarios committed alongside the captures"
+  ]
 }

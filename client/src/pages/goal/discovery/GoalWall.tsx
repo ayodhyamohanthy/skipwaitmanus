@@ -27,6 +27,13 @@ const LOAD_ERROR = "Internal openings are temporarily unavailable. Please try ag
 const FEATURED_LABEL = "Featured listing · paid placement";
 const ORGANIC_LABEL = "Employee-shared opening";
 
+function formatReassuranceBody(errorMessage: string, reassurance: string): string {
+  const trimmed = errorMessage.trim();
+  if (!trimmed) return reassurance;
+  const punctuated = /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+  return `${punctuated} ${reassurance}`;
+}
+
 function formatWalkIn(opportunity: Opportunity) {
   if (!opportunity.walkInAt) return "Walk-in details shared";
   const start = new Date(opportunity.walkInAt);
@@ -99,6 +106,14 @@ export default function GoalWall() {
     const openingId = Number(new URLSearchParams(window.location.search).get("opening"));
     if (opportunities.some(opportunity => opportunity.id === openingId)) setSelectedId(openingId);
   }, [opportunities]);
+  useEffect(() => {
+    if (selectedId == null) return;
+    const timer = setTimeout(() => {
+      const node = document.getElementById(`opening-${selectedId}`);
+      if (node && typeof node.scrollIntoView === "function") node.scrollIntoView({ block: "nearest" });
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [opportunities, selectedId]);
 
   // Contextual partner slot, as on the kit page: after every third opening, one labelled partner tip.
   const items = useMemo(() => {
@@ -142,7 +157,7 @@ export default function GoalWall() {
   if (loading) {
     body = <GoalSkeletonRows density="ask" count={4} className="mt-6 px-0" />;
   } else if (error) {
-    body = <GoalErrorState className="mt-6 px-0 max-gdesk:px-0" title="We couldn’t load openings" body={`${error} Nothing was lost. Your saved roles and requests are unchanged.`} retry={{ label: "Try again", onClick: retry }} />;
+    body = <GoalErrorState className="mt-6 px-0 max-gdesk:px-0" title="We couldn’t load openings" body={formatReassuranceBody(error, "Nothing was lost. Your saved roles and requests are unchanged.")} retry={{ label: "Try again", onClick: retry }} />;
   } else if (!selected) {
     body = (
       <div className="mt-6 max-w-2xl">
@@ -161,15 +176,7 @@ export default function GoalWall() {
     const position = opportunities.findIndex(opportunity => opportunity.id === selected.id) + 1;
     body = (
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 gdesk:grid-cols-[minmax(0,1fr)_minmax(0,400px)] gdesk:items-start">
-        <ul aria-label="Openings" className="grid grid-cols-[minmax(0,1fr)] gap-1">
-          {items.map(item => item.kind === "partner"
-            ? <PartnerRow key={`partner-${item.module.id}-${item.module.headline}`} module={item.module} />
-            : <GoalListRow key={item.opportunity.id} density="ask" selected={item.opportunity.id === selected.id} onSelect={() => setSelectedId(item.opportunity.id)}
-                title={item.opportunity.roleTitle}
-                meta={`${placementLabel(item.opportunity)} · ${companyOf(item.opportunity.companyDomain)?.name ?? item.opportunity.companyDomain}`}
-                footer={[item.opportunity.location, whenLabel(item.opportunity)].filter(Boolean).join(" · ")} />)}
-        </ul>
-        <div className="gdesk:sticky gdesk:top-6">
+        <div className="order-first gdesk:order-2 gdesk:sticky gdesk:top-6">
           <GoalNextStep>
             <p className="mt-3 text-g-meta text-g-ink-3">{placementLabel(selected)} · {position} of {opportunities.length}</p>
             <h3 className="mt-1 text-g-heading text-g-ink">{selected.roleTitle}</h3>
@@ -193,6 +200,16 @@ export default function GoalWall() {
           </section>
           {quietLinks}
         </div>
+        <ul aria-label="Openings" className="grid grid-cols-[minmax(0,1fr)] gap-1 gdesk:order-1">
+          {items.map(item => item.kind === "partner"
+            ? <PartnerRow key={`partner-${item.module.id}-${item.module.headline}`} module={item.module} />
+            : <div key={item.opportunity.id} id={`opening-${item.opportunity.id}`} className="min-w-0">
+                <GoalListRow density="ask" selected={item.opportunity.id === selected.id} onSelect={() => setSelectedId(item.opportunity.id)}
+                  title={item.opportunity.roleTitle}
+                  meta={`${placementLabel(item.opportunity)} · ${companyOf(item.opportunity.companyDomain)?.name ?? item.opportunity.companyDomain}`}
+                  footer={[item.opportunity.location, whenLabel(item.opportunity)].filter(Boolean).join(" · ")} />
+              </div>)}
+        </ul>
       </div>
     );
   }

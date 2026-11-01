@@ -147,9 +147,30 @@ describe("goal /wall", () => {
     expect(screen.getByTestId("goal-skeleton-rows")).toBeTruthy();
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("We couldn’t load openings");
+    expect(alert.textContent).toContain("Openings are unavailable right now. Nothing was lost.");
+    expect(alert.textContent).not.toContain("right now Nothing was lost");
     const before = fetch.mock.calls.filter(([url]) => String(url) === "/api/opportunities").length;
     fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(fetch.mock.calls.filter(([url]) => String(url) === "/api/opportunities").length).toBe(before + 1));
+  });
+
+  it("at 390px deep-link, selects opening 11 of 12 and places its commit action in view above the list", async () => {
+    window.history.replaceState(null, "", "/wall?opening=11");
+    const opportunities = Array.from({ length: 12 }, (_, i) =>
+      opening({ id: i + 1, roleTitle: `Opening Role ${i + 1}`, targetRoleUrl: `https://careers.synthetic.example/jobs/${i + 1}` })
+    );
+    const scrollMock = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollMock;
+    stubWall({ opportunities });
+    render(<GoalWall />);
+
+    expect(await screen.findByRole("heading", { level: 3, name: "Opening Role 11" })).toBeTruthy();
+    const step = screen.getByRole("region", { name: "Your next step" });
+    expect(step.textContent).toContain("Opening Role 11");
+    expect(within(step).getByRole("button", { name: "Request a referral" })).toBeTruthy();
+    expect(step.parentElement?.className).toContain("order-first");
+    const list = screen.getByRole("list", { name: "Openings" });
+    expect(list.className).toContain("gdesk:order-1");
   });
 });
 
@@ -239,5 +260,31 @@ describe("goal /jobs", () => {
     expect(fetch).toHaveBeenCalledWith("/api/jobs?query=designer");
     expect(window.location.search).toBe("?q=designer");
     expect((screen.getByRole("searchbox", { name: "Search roles" }) as HTMLInputElement).value).toBe("designer");
+  });
+
+  it("at 390px deep-link, selects job 12 of 12 and places its commit action in view above the list", async () => {
+    window.history.replaceState(null, "", "/jobs?job=12");
+    const catalogJobs = Array.from({ length: 12 }, (_, i) => ({
+      id: i + 1,
+      title: `Catalog Role ${i + 1}`,
+      company: `Company ${i + 1}`,
+      location: "Bengaluru",
+      seniority: "Mid",
+      workMode: "Hybrid",
+      targetRoleUrl: `https://careers.synthetic.example/jobs/${i + 1}`,
+    }));
+    const scrollMock = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollMock;
+    stubJobs({ list: catalogJobs });
+    render(<GoalJobs />);
+
+    expect(await screen.findByRole("heading", { level: 3, name: "Catalog Role 12" })).toBeTruthy();
+    const step = document.getElementById("selected-role-step");
+    expect(step).toBeTruthy();
+    expect(step?.className).toContain("order-first");
+    expect(step?.textContent).toContain("Catalog Role 12");
+    expect(within(step!).getByRole("button", { name: "Request a referral" })).toBeTruthy();
+    const list = screen.getByRole("list", { name: "Roles" });
+    expect(list.className).toContain("gdesk:order-1");
   });
 });

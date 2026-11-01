@@ -43,6 +43,11 @@ const AUDITED: AuditEntry[] = [
   { file: "components/plans/planCatalog.ts", kind: "behavior-only", reason: "plan catalogue data, no UI" },
   { file: "components/referrer-home/referrerData.ts", kind: "behavior-only", reason: "referrer-home data loading, no UI" },
   { file: "components/verify/verifyApi.ts", kind: "behavior-only", reason: "work-email verify API calls, no UI" },
+  { file: "components/settings/settingsApi.ts", kind: "behavior-only", reason: "settings API fetchers, schemas and error constants, no UI" },
+  { file: "components/settings/settingsQueries.ts", kind: "behavior-only", reason: "work-email access query hook, no UI" },
+  { file: "components/developers/consoleMeta.ts", kind: "behavior-only", reason: "developer console app kinds, scopes and status metadata constants, no UI" },
+  { file: "components/developers/consoleRoute.ts", kind: "behavior-only", reason: "developer console view and URL search query parser and serializer, no UI" },
+  { file: "components/developers/mcpTools.ts", kind: "behavior-only", reason: "documented MCP tools list, endpoint constant and description pairs, no UI" },
 ];
 
 type Read = (file: string) => string | null;
@@ -262,6 +267,12 @@ describe("moved-page import boundary: negative controls", () => {
       const offenders = offendersFor({ [PAGE]: page(`import { X } from "${spec}";`) });
       expect(offenders.some(line => line.includes("components/OneTapShareActions.tsx"))).toBe(true);
     }
+  });
+
+  it("the kit SettingsNav fails when a goal page reaches it", () => {
+    expect(AUDITED.some(entry => /SettingsNav/.test(entry.file))).toBe(false);
+    const offenders = offendersFor({ [PAGE]: page(`import { SettingsNav } from "@/components/settings/SettingsNav";`) });
+    expect(offenders.some(line => line.includes("components/settings/SettingsNav.tsx"))).toBe(true);
   });
 
   it("an unaudited legacy-styled component fails even with no kit import, and a listed module failing its kind fails", () => {

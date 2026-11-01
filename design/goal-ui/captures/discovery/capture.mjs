@@ -32,6 +32,14 @@ const WALL = { opportunities: [
   opening(2, "Data Analyst", { companyDomain: "example.org", poster: { kind: "firstName", firstName: "Asha" }, location: "Bengaluru" }),
   opening(3, "Walk-in: Support Associates", { kind: "walk_in", targetRoleUrl: null, location: "Hyderabad", walkInAt: "2026-11-04T04:30:00.000Z", walkInEndsAt: "2026-11-04T10:30:00.000Z" }),
   opening(4, "Backend Engineer"),
+  opening(5, "Frontend Engineer", { location: "Remote" }),
+  opening(6, "Product Manager", { companyDomain: "example.org", location: "Delhi" }),
+  opening(7, "DevOps Engineer", { location: "Bengaluru" }),
+  opening(8, "Security Specialist", { location: "Remote" }),
+  opening(9, "Mobile Engineer (iOS)", { location: "Hyderabad" }),
+  opening(10, "Mobile Engineer (Android)", { location: "Bengaluru" }),
+  opening(11, "Staff Infrastructure Engineer", { location: "Remote" }),
+  opening(12, "Technical Writer", { location: "Remote" }),
 ] };
 const PARTNERS = { modules: [{ id: 9, partnerName: "Synthetic Prep", headline: "Practice a mock interview", description: "Thirty minutes with a reviewer.", ctaLabel: "See how it works", ctaUrl: "https://partner.synthetic.example" }] };
 const COMPANIES = { companies: [{ slug: "synthetic", name: "Synthetic Co", domains: ["synthetic.example"] }, { slug: "example-org", name: "Example Org", domains: ["example.org"] }] };
@@ -40,6 +48,14 @@ const JOBS = { jobs: [
   { id: 12, title: "Backend Engineer", company: "Example Org", location: "Remote", seniority: "Mid", workMode: "Remote", targetRoleUrl: null },
   { id: 13, title: "Data Scientist", company: "Synthetic Co", location: "Pune", seniority: "Mid", workMode: "Onsite", targetRoleUrl: "https://careers.synthetic.example/jobs/13" },
   { id: 14, title: "Engineering Manager, Payments Platform", company: "Example Org", location: "Remote", seniority: "Lead", workMode: "Remote", targetRoleUrl: "https://careers.example.org/jobs/14" },
+  { id: 15, title: "Site Reliability Engineer", company: "Synthetic Co", location: "Bengaluru", seniority: "Mid", workMode: "Hybrid", targetRoleUrl: "https://careers.synthetic.example/jobs/15" },
+  { id: 16, title: "Frontend Engineer", company: "Example Org", location: "Remote", seniority: "Junior", workMode: "Remote", targetRoleUrl: "https://careers.example.org/jobs/16" },
+  { id: 17, title: "Product Operations Lead", company: "Synthetic Co", location: "Mumbai", seniority: "Lead", workMode: "Onsite", targetRoleUrl: "https://careers.synthetic.example/jobs/17" },
+  { id: 18, title: "Machine Learning Engineer", company: "Synthetic Co", location: "Bengaluru", seniority: "Senior", workMode: "Hybrid", targetRoleUrl: "https://careers.synthetic.example/jobs/18" },
+  { id: 19, title: "Technical Program Manager", company: "Example Org", location: "Remote", seniority: "Senior", workMode: "Remote", targetRoleUrl: "https://careers.example.org/jobs/19" },
+  { id: 20, title: "QA Automation Engineer", company: "Synthetic Co", location: "Hyderabad", seniority: "Mid", workMode: "Hybrid", targetRoleUrl: "https://careers.synthetic.example/jobs/20" },
+  { id: 21, title: "Security Operations Analyst", company: "Example Org", location: "Remote", seniority: "Mid", workMode: "Remote", targetRoleUrl: "https://careers.example.org/jobs/21" },
+  { id: 22, title: "Cloud Architect", company: "Synthetic Co", location: "Bengaluru", seniority: "Lead", workMode: "Hybrid", targetRoleUrl: "https://careers.synthetic.example/jobs/22" },
 ] };
 
 const scenarios = [
