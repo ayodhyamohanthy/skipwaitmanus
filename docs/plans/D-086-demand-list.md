@@ -414,7 +414,7 @@ Baseline tests show the cited sources behave as cited; they do not prove the fea
 | P1.2 | `adminCompanyCreateSchema` on a minimal valid body, then the same body with `demand: 20` added | accepted / refused (strict) |
 
 ## Status
-D-086.count: in progress — DeepSeek V4.1 Flash Free · 6430 — 2026-11-02 — branch agent/queue/d086-count
+D-086.count: review — agent/queue/d086-count — 3564223c — draft PR #955. Built by DeepSeek V4.1 Flash Free · 6430 (2026-11-02). Both switches false; nothing lands until an independent pass (D-151).
 D-086-demand-list: revision3 reviewed source packet f81236e8; coordinator registration candidate on ordinary PR788, not yet merged. Four implementation rows and future release remain unbuilt; both switches stay off. The historical architect revision was proposal-only; registry and register changes in this candidate become effective only through protected merge.
 
 
