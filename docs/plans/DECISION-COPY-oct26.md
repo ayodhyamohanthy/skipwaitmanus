@@ -30,4 +30,6 @@ Before changing any line, make the existing pins (`savedAlerts.test.tsx`, `forCo
 
 ## Status
 - `DECISION-COPY-oct26`: registered by D-221 (Oct 26 audit); todo.
+- in progress — Dev (Skydive) · c8e3 — 2026-11-01 — branch `agent/queue/decision-copy-oct26`. Note: the hand-out's step 3 names a §3b row "D-221" in `docs/KIT_V4_BUILD_PLAN.md`, but no such row exists on `main`; this packet's Status section carries the status instead (the row is not in this task's `owns`, and the build plan is not either).
+- Conflict found while building (2026-11-01): `client/src/pages/alerts.test.tsx:190,223` pins the exact CAP_NOTE string "Free: 3 alerts · Momentum and Land: unlimited", but that file is owned by `D-057-session-gate` (`client/src/pages/alerts*.test.tsx`), not this row. Changing `SavedAlerts.tsx` without it leaves those two pins red; editing it fails scope-check. Question for Instinct: a limited two-line handoff of that file for the pin update (mirroring the D-246 handoff form), or another route.
 - Oct 27: `D-048-p3-support` (owns `Help.tsx`) and `D-048-p3-for-companies` (owns `ForCompanies.tsx`, switch only), added by #656, wait for this row so the copy fix lands before their goal redesigns.
