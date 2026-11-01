@@ -31,4 +31,44 @@ describe("searchCompanies", () => {
     expect(out).toEqual(["b", "c", "a"]);
   });
   it("empty query returns nothing", () => { expect(searchCompanies([tcs], "  ")).toEqual([]); });
+
+  it("finds directory companies by common long and short name aliases", () => {
+    const companies = [
+      make("openai", "OpenAI"),
+      make("servicenow", "ServiceNow"),
+      make("cognizant", "Cognizant"),
+      make("ibm", "IBM"),
+      make("societe-generale", "Societe Generale"),
+      make("sofi", "SoFi"),
+      make("ford", "Ford"),
+      make("maersk", "Maersk"),
+      make("mongodb", "MongoDB"),
+      make("citiustech", "CitiusTech"),
+      make("korn-ferry", "Korn Ferry"),
+      make("blackrock", "BlackRock"),
+      make("capgemini", "Capgemini"),
+    ];
+
+    const probes: Record<string, string> = {
+      "Open AI": "openai",
+      "Service Now": "servicenow",
+      "CTS": "cognizant",
+      "Cognizant Technology Solutions": "cognizant",
+      "International Business Machines": "ibm",
+      "SocGen": "societe-generale",
+      "Social Finance": "sofi",
+      "Ford Motor Company": "ford",
+      "Moller Maersk": "maersk",
+      "Mongo DB": "mongodb",
+      "Citius Tech": "citiustech",
+      "Kornferry": "korn-ferry",
+      "Black Rock": "blackrock",
+      "Cap Gemini": "capgemini",
+    };
+
+    for (const [query, expectedSlug] of Object.entries(probes)) {
+      const results = searchCompanies(companies, query);
+      expect(results.map(c => c.slug), `query "${query}" should find "${expectedSlug}"`).toContain(expectedSlug);
+    }
+  });
 });
