@@ -2968,7 +2968,7 @@
       "tier": 2,
       "lane": "d048-discovery",
       "branch": "agent/queue/d048-p3-discovery",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-271",
       "dependsOn": [
         "D-048-F-static-frame",
