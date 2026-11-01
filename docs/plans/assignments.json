@@ -3730,13 +3730,14 @@
       "id": "D-093-language",
       "title": "Language experience: endonym picker, no flags (D-093)",
       "row": "D-093",
-      "packet": null,
+      "packet": "docs/plans/D-093-language.md",
       "tier": 2,
       "lane": "i18n",
       "branch": "agent/claude/d093-language",
-      "status": "architect",
-      "syncedTo": "D-227",
-      "dependsOn": []
+      "status": "owner",
+      "syncedTo": "D-274",
+      "dependsOn": [],
+      "note": "D-274: the packet is written and lands with this row, but its six rows (packet sections 5.1-5.6) and this row's promotion to the Tier 1 release row are held by the owner's Oct 31 \"new rows paused\" restriction, so nothing here is buildable yet. Parked at owner with the batched question in docs/DECISIONS.md (Open owner questions). When the pause lifts, one docs-only PR adds the six rows exactly as packet section 9.1 gives them and sets packet/status todo/tier 1/dependsOn/owns per section 5.7."
     },
     {
       "id": "D-094-ai-in-ui",
@@ -4288,9 +4289,9 @@
       "lane": "synthetic",
       "branch": "agent/queue/rel-synthetic-journeys",
       "status": "owner",
-      "syncedTo": "D-274",
+      "syncedTo": "D-275",
       "dependsOn": [],
-      "note": "D-274: packet adopted; R1-R6 are the build design and R0 (no second container, make `e2e journeys` required) is the coordinator's call. Parked at owner because every route ends in an owner action: R0 needs the owner's ruleset addition (D-212 (6)), R1-R6 need the credits hard-stop confirmation (D-204), the second-container approval and the Oct 31 pause lifted. No session builds it.",
+      "note": "D-275: packet adopted; R1-R6 are the build design and R0 (no second container, make `e2e journeys` required) is the coordinator's call. Parked at owner because every route ends in an owner action: R0 needs the owner's ruleset addition (D-212 (6)), R1-R6 need the credits hard-stop confirmation (D-204), the second-container approval and the Oct 31 pause lifted. No session builds it.",
       "epic": "D-212"
     },
     {
