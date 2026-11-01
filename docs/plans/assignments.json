@@ -2,7 +2,7 @@
   "version": 1,
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
-  "updated": "2026-10-30",
+  "updated": "2026-11-01",
   "rules": "Order is priority. Any capable session adds, removes or reorders tasks (D-200 (2): say why in the pull request), except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
@@ -78,16 +78,17 @@
       "lane": "auth-device",
       "branch": "agent/queue/fix-device-signin",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-272",
       "dependsOn": [],
-      "note": "Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168); next is one independent review by a model other than Claude (D-200), then landing on green required CI. Face ID, passkeys and Sign in with Apple are not in this row: they change the login rule and wait for the owner.",
+      "note": "Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168); next is one independent review by a model other than Claude (D-200), then landing on green required CI. Face ID, passkeys and Sign in with Apple are not in this row: they change the login rule and wait for the owner. D-272 (2026-11-01): the row is done and live (PR #655 merged 059ef908; PASS 084577f9 by GPT 2a58 on head 9237ac4e, an ancestor of main; 40/40 focused green). The board flip and the property rewrite of the nextTask.test.ts:47-62 first-pick pin ride agent/queue/fix-device-signin as an ordinary Tier 1 pull request - do not rebuild; one independent review, then landing.",
       "owns": [
         "client/src/lib/rememberedSignInEmail.ts",
         "client/src/components/SeekerSignIn.tsx",
         "client/src/components/ReferrerOtpSignIn.tsx",
         "client/src/components/deviceSignIn.test.tsx",
         "server/workEmailOtp.ts",
-        "server/workEmailOtp.test.ts"
+        "server/workEmailOtp.test.ts",
+        "scripts/nextTask.test.ts"
       ]
     },
     {
@@ -2968,8 +2969,8 @@
       "tier": 2,
       "lane": "d048-discovery",
       "branch": "agent/queue/d048-p3-discovery",
-      "status": "todo",
-      "syncedTo": "D-261",
+      "status": "done",
+      "syncedTo": "D-271",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-marketing",
@@ -2982,9 +2983,12 @@
         "client/src/pages/goal/discovery/**",
         "scripts/kit-screens/fixtures/*__goal-discovery-*.json",
         "design/goal-ui/captures/discovery/**",
-        "client/src/test/goalPagesBoundary.test.ts"
+        "client/src/test/goalPagesBoundary.test.ts",
+        "client/src/components/settings/SettingsNav.tsx",
+        "client/src/components/settings/settingsSections.ts",
+        "client/src/pages/goal/settings/GoalSettings.tsx"
       ],
-      "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-harness dependency - fixture globs share the kit-screens/fixtures folder; the harness row lands first and this row adds its fixtures on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('discovery'). D-241 (Oct 30): owns gains client/src/test/goalPagesBoundary.test.ts (its only owner D-048-F-goal-check is done); the boundary must walk root-alias, relative, barrel and transitive runtime imports, admit only an audited list of goal-styled and behavior-only modules, and prove with negative controls that the legacy OneTapShareActions share component fails; assertions only added, no waivers.",
+      "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-harness dependency - fixture globs share the kit-screens/fixtures folder; the harness row lands first and this row adds its fixtures on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('discovery'). D-241 (Oct 30): owns gains client/src/test/goalPagesBoundary.test.ts (its only owner D-048-F-goal-check is done); the boundary must walk root-alias, relative, barrel and transitive runtime imports, admit only an audited list of goal-styled and behavior-only modules, and prove with negative controls that the legacy OneTapShareActions share component fails; assertions only added, no waivers. Nov 1 D-271: the three settings-boundary paths (SettingsNav.tsx, behavior-only settingsSections.ts, the GoalSettings.tsx import line) join owns so the strengthened boundary test passes without a kit component in a goal page's import graph; D-048-p3-settings stays done and closed.",
       "epic": "D-048-p3"
     },
     {
@@ -3314,8 +3318,8 @@
       "tier": 1,
       "lane": "sign-in",
       "branch": "agent/queue/d057-session-gate",
-      "status": "todo",
-      "syncedTo": "D-265",
+      "status": "owner",
+      "syncedTo": "D-268",
       "dependsOn": [],
       "note": "D-245 (owner/CEO answer, Oct 30): the block (Hark · 450f, 1f344276) clears. A personal-login session reaches referrer actions only after an in-session work-email step-up (POST /api/referrer/step-up/send|verify) that writes a server-side proof bound to account, session key (workos:<sid> or app:<ssid>), exact work email and purpose (12 h, single-use challenge, void on logout, revocation, suspension and employer change); it never runs the standalone code login, never drops the Bearer, never accepts another account's cookie, never matches by domain or links accounts. Build from packet §0b (it wins over §0 to §8). D-246 (CEO sequencing, Oct 30): this row goes first. Its owns are the full §0b.8 list, including the four shared paths: server/privateReferralRoutes.ts (middleware, route list and /access verdict only), server/_core/index.ts (switch only: step-up route registration and the dev wrapper's two copied fields), drizzle/schema.ts and server/schemaReconcile.ts (the additive referrerStepUps table only). D-090-BYOR now waits for this row, and BYOR's chain (P0-referral-access-availability, D-132-item3, D-174-held-ask-reconfirm, D-174-ask-from-job, D-174-pool-nudges, D-099-bonus-pages, D-086-demand-list, DEPLOY-gate-docs-sync) waits through it. The handoff from BYOR is limited to those four files, for this build only; #632 keeps all its code, findings (b8552f96) and holds, and this build resolves any overlap with #632 in #632's favour where both can stand. Tier 1 independent review and the full browser path (§0b.9) before done. Every referrer types one code after deploy (D-049). Oct 31 owns amendment (docs/registry only, D-200 (2); Instinct's answer on #811, comment 6537600491, choice A, to packet conflict 8 raised on #867 head 83abf39a): owns gains exactly e2e/fixtures.ts and scripts/seed-test-accounts.ts, so the e2e journeys personal-link and queue-attestation, which the gate correctly refuses with the seeded plain test_seed session, are repaired by this row through the real local step-up send/verify path with delivery intercepted locally. test_seed stays a test identity (never relabelled as a work-email login, no amr minted for it, no production bypass); any direct test setup must be justified, isolated to the local harness and proven unable to change production authorization. Red-first controls and limits are in packet §0b.8a. GATE-e2e-journeys (done) keeps its history; the rest of e2e/ is not claimed. This amendment releases no hold: the #867 shared-file hold stays, and runtime edits to the two paths wait for this amendment's independent scope review and landing. Nov 1 D-265 owns refinement: narrows alerts*.test.tsx to client/src/pages/alerts.stepUp.test.tsx so alerts.test.tsx is owned by DECISION-COPY-oct26.",
       "owns": [
@@ -3482,11 +3486,12 @@
       "lane": "security-csp-release",
       "branch": "agent/queue/d100-csp-release",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-269",
       "dependsOn": [
-        "D-100.csp-enforce"
+        "D-100.csp-enforce",
+        "D-090-BYOR"
       ],
-      "note": "D-223 release row of the CSP pieces: one line, opens only 7 days after D-100.csp-report is live.",
+      "note": "D-223 release row of the CSP pieces: one line, flips CSP_ENFORCED = true in server/securityHeaders.ts only after D-090-BYOR lands page CSP in functions/_middleware.ts, 7 days of clean violation reports at /api/csp-report elapse with zero legitimate blocked sources, captures at 1280 and 390 verify no broken pages, and the CEO signs off (D-259, D-269).",
       "epic": "D-100",
       "owns": [
         "server/securityHeaders.ts"
@@ -3958,8 +3963,8 @@
       "tier": 1,
       "lane": "d174-fix",
       "branch": "agent/queue/d174-fix-post-binding",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-267",
       "dependsOn": [
         "D-132-audit",
         "D-048-fix-send-ask-blocker"
@@ -4015,7 +4020,7 @@
       "tier": 2,
       "lane": "d174-search",
       "branch": "agent/queue/d174-company-search",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-193 packet section 5.4. Feeds the journey's 'companies pop up as you type' step. Static alias map, no migration. Does not touch normalizedEmployerKey (routing). Register before /api/companies/:slug.",
@@ -4093,8 +4098,8 @@
       "tier": 2,
       "lane": "copy-sync",
       "branch": "agent/queue/decision-copy-oct26",
-      "status": "todo",
-      "syncedTo": "D-265",
+      "status": "done",
+      "syncedTo": "D-270",
       "dependsOn": [],
       "owns": [
         "client/src/components/referrer-home/WaitingAsks.tsx",
@@ -4106,9 +4111,10 @@
         "client/src/content/guides.ts",
         "client/src/pages/ForCompanies.tsx",
         "client/src/pages/forCompanies.test.tsx",
-        "client/src/components/VisualJourney.tsx"
+        "client/src/components/VisualJourney.tsx",
+        "client/src/pages/referrerHome.test.tsx"
       ],
-      "note": "D-221 (Oct 26 decision audit): seven live strings still state rules that newer decisions replaced. Copy and its pinning tests only; Help.tsx line 17's 7-day expiry stays until D-174-expiry-clock-removal (runtime truth). Tier 2: lands on green required CI (D-200). Nov 1 D-265: client/src/pages/alerts.test.tsx added to owns so lines 190 and 223 can pin the Free alert cap note."
+      "note": "D-221 (Oct 26 decision audit): seven live strings still state rules that newer decisions replaced. Copy and its pinning tests only; Help.tsx line 17's 7-day expiry stays until D-174-expiry-clock-removal (runtime truth). Tier 2: lands on green required CI (D-200). Nov 1 D-265: client/src/pages/alerts.test.tsx added to owns so lines 190 and 223 can pin the Free alert cap note. Nov 1 D-270: client/src/pages/referrerHome.test.tsx added to owns so line 140 can pin the D-176 truth."
     },
     {
       "id": "DECISION-SYNC-oct26",
@@ -4222,7 +4228,7 @@
       "lane": "picker",
       "branch": "agent/queue/picker-fullstack-lights",
       "status": "todo",
-      "syncedTo": "D-222",
+      "syncedTo": "D-272",
       "dependsOn": [
         "REL-release-verify",
         "REL-watchdog",
@@ -4234,7 +4240,8 @@
         "PICKER-avoid-land",
         "PICKER-heartbeat-slot-safety",
         "PICKER-landed-marker-continuity",
-        "PICKER-landing-wait-fallthrough"
+        "PICKER-landing-wait-fallthrough",
+        "FIX-device-signin"
       ],
       "epic": "D-212",
       "owns": [
@@ -4243,7 +4250,7 @@
         "scripts/nextTaskText.mjs",
         "scripts/nextTask.test.ts"
       ],
-      "note": "Oct 27 merge-up: also waits for PICKER-avoid-land (and so PICKER-avoid-unblock), which edit scripts/nextTaskCore.mjs; PICKER-qa-stage follows through this row. Oct 28 merge-up: also waits for PICKER-heartbeat-slot-safety, PICKER-landed-marker-continuity and PICKER-landing-wait-fallthrough, the three picker rows main gained after this branch's last merge-up, which own scripts/next-task.mjs and scripts/nextTaskCore.mjs. New rows wait for the older queued owning stage (no cycle: all three reach PROCESS-review-gate, none reaches this row), and PICKER-qa-stage follows through here, so the six merged-registry owns overlaps become none."
+      "note": "Oct 27 merge-up: also waits for PICKER-avoid-land (and so PICKER-avoid-unblock), which edit scripts/nextTaskCore.mjs; PICKER-qa-stage follows through this row. Oct 28 merge-up: also waits for PICKER-heartbeat-slot-safety, PICKER-landed-marker-continuity and PICKER-landing-wait-fallthrough, the three picker rows main gained after this branch's last merge-up, which own scripts/next-task.mjs and scripts/nextTaskCore.mjs. New rows wait for the older queued owning stage (no cycle: all three reach PROCESS-review-gate, none reaches this row), and PICKER-qa-stage follows through here, so the six merged-registry owns overlaps become none. D-272: also waits for FIX-device-signin, whose closure lands the live-registry first-pick de-pin of scripts/nextTask.test.ts that this row owns."
     },
     {
       "id": "PICKER-qa-stage",
@@ -4254,12 +4261,13 @@
       "lane": "picker",
       "branch": "agent/queue/picker-qa-stage",
       "status": "todo",
-      "syncedTo": "D-222",
+      "syncedTo": "D-272",
       "dependsOn": [
         "GATE-e2e-journeys",
         "GATE-tier-floor",
         "D-048-F-harness",
-        "PICKER-fullstack-lights"
+        "PICKER-fullstack-lights",
+        "FIX-device-signin"
       ],
       "epic": "D-212",
       "owns": [
@@ -4268,7 +4276,8 @@
         "scripts/nextTaskText.mjs",
         "scripts/nextTask.test.ts",
         "docs/QA-CHECKLIST.md"
-      ]
+      ],
+      "note": " D-272: also waits for FIX-device-signin, whose closure lands the live-registry first-pick de-pin of scripts/nextTask.test.ts that this row owns."
     },
     {
       "id": "REL-synthetic-journeys",
@@ -4288,17 +4297,23 @@
       "id": "GATE-migration-apply",
       "title": "CI applies deploy migrations to MySQL twice before production (D-212)",
       "row": "D-212",
-      "packet": "docs/plans/GATE-delivery.md",
+      "packet": "docs/plans/GATE-migration-apply.md",
       "tier": 2,
       "lane": "ci-checks",
       "branch": "agent/queue/gate-migration-apply",
-      "status": "architect",
-      "syncedTo": "D-222",
+      "status": "todo",
+      "syncedTo": "D-266",
       "dependsOn": [
         "GATE-e2e-journeys"
       ],
-      "note": "D-212: GATE-e2e-journeys applies the deploy migrations twice to MySQL; this row stays open only if they cannot apply from an empty database, and then any agent writes its packet from that finding.",
-      "epic": "D-212"
+      "note": "Packet docs/plans/GATE-migration-apply.md (written 2026-11-01 at main f5b9afb9): the e2e job's journal step always falls back to drizzle-kit push (CI run 41260983242: 0017 drops an index twice; 7 journal statements fail from empty), and on a push base a PR's deploy CREATE TABLE never runs, so a bad foreign key goes green. prepare instead pushes the base revision's schema.ts, applies the deploy migrations twice and fails on missing tables or columns against HEAD schema.ts. Repo-only; no drizzle/** edit, no production dump (D-100 owner item). Rulings are changeable assumptions (D-109).",
+      "epic": "D-212",
+      "owns": [
+        "scripts/migrationGateCore.mjs",
+        "scripts/migrationGate.test.ts",
+        "scripts/e2e-server.mjs",
+        ".github/workflows/ci.yml"
+      ]
     },
     {
       "id": "OPS-github-settings",
@@ -4701,7 +4716,7 @@
       "tier": 2,
       "lane": "audit",
       "branch": "agent/queue/procedure-audit-oct27",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "owns": [
