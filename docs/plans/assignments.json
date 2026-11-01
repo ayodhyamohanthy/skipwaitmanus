@@ -3406,7 +3406,7 @@
       "lane": "supply-inbox",
       "branch": "agent/queue/d089-request-inbox",
       "status": "owner",
-      "syncedTo": "D-268",
+      "syncedTo": "D-276",
       "dependsOn": [
         "D-090-BYOR",
         "D-086-demand-list"
