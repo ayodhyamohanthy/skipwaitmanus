@@ -47,7 +47,7 @@ export default function GoalHelp() {
         {list.length === 0 ? (
           <li className="border-b border-g-hairline py-6">
             <p className="text-g-label text-g-ink">No answers for “{query}”.</p>
-            <p className="mt-1 text-g-meta text-g-ink-2">Try another word, or contact support below.</p>
+            <p className="mt-1 text-g-meta text-g-ink-2">Try another word, or contact support above.</p>
           </li>
         ) : list.map(({ question, answer }) => {
           const expanded = open === question;
