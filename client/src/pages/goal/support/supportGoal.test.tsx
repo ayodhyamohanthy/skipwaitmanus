@@ -48,7 +48,8 @@ const SAFETY_LINE = "Stay safe on SkipWait.";
 const DAILY_CAP = "You have filed several reports today. Contact support directly for anything urgent.";
 // Fixed plain lines (review 6562676959): never the browser's raw "Failed to fetch".
 const REPORT_FAILED = "We could not file this report. Try again in a moment, or contact support.";
-const REPORT_NETWORK = "We couldn't reach SkipWait, so your report was not sent. Check your connection and submit again.";
+// Review 6563041566: a rejected report fetch is uncertain, so the old "was not sent… submit again" line is gone.
+const REPORT_NETWORK = "We couldn't confirm your report reached SkipWait. Check with support before sending it again, so it isn't filed twice.";
 const BLOCK_FAILED = "Your report was filed, but the block did not go through. Try blocking again, or contact support.";
 const BLOCK_NETWORK = "Your report was filed, but we couldn't reach SkipWait to block this person. Check your connection and try blocking again.";
 const OFFLINE_VISIBLE = "Nothing is sent while you're offline; reconnect to send your report.";
@@ -126,6 +127,8 @@ describe("goal /safety", () => {
     expect(screen.getByText(`${MONEY_SENTENCE} There are no commissions and no paid priority: a referral is a voluntary introduction, not a purchase.`)).toBeTruthy();
     expect(screen.getByText("Resumes stay private until a referrer accepts a request.")).toBeTruthy();
     expect(screen.getByText(/ownership of an email address on an approved company domain/)).toBeTruthy();
+    // The pay answer is collapsed on arrival (a disclosure button since review 6563729015); open it to reach its link.
+    fireEvent.click(screen.getByRole("button", { name: "What if someone asks me to pay?" }));
     expect(screen.getByRole("link", { name: "Report" }).getAttribute("href")).toBe("/report");
     expect(primary(container)?.getAttribute("href")).toBe("/explore");
     expect(fetchMock).not.toHaveBeenCalled();
@@ -161,7 +164,7 @@ describe("goal /report", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Thanks. We're on it." })).toBeTruthy();
     assertGoalPage(container, { goalLine: REPORT_LINE });
     expect(screen.getByText(/reference #R-1048/)).toBeTruthy();
-    expect(screen.getByText("Within 4 hours")).toBeTruthy();
+    expect(screen.getByText("We review your report")).toBeTruthy();
     expect(screen.getByText(/immediate danger, contact local emergency services first/)).toBeTruthy();
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { body?: string; method?: string }];
     expect(url).toBe("/api/safety-reports");
@@ -210,7 +213,7 @@ describe("goal /report", () => {
     fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
     expect((await screen.findByRole("link", { name: "Contact support" })).getAttribute("href")).toBe("/support");
     expect(screen.queryByRole("link", { name: "Manage blocked people" })).toBeNull();
-    expect(screen.getByText("Within 48 hours")).toBeTruthy();
+    expect(screen.getByText("We review your report")).toBeTruthy();
   });
 
   it("offline: the submit commit names why it waits and sends nothing", async () => {
@@ -456,5 +459,143 @@ describe("review 6562676959: additional items that reproduce in the owned files"
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+// Corrections for review comments 6563041566, 6563729015 and 6563736305 on PR #954 (red first).
+const REPORT_UNCONFIRMED = "We couldn't confirm your report reached SkipWait. Check with support before sending it again, so it isn't filed twice.";
+
+describe("review 6563041566: a rejected report fetch is uncertain, not proof it went unsent", () => {
+  it("lost response: the server processed the POST but the reply never arrived; the page neither says 'not sent' nor 'filed', and gives a support route", async () => {
+    let processed = 0;
+    const fetchMock = vi.fn(async () => { processed += 1; throw new TypeError("Failed to fetch"); });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Report />);
+    fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
+    const alert = await screen.findByRole("alert");
+    expect(processed).toBe(1);
+    expect(alert.textContent).toBe(REPORT_UNCONFIRMED);
+    expect(alert.textContent).not.toMatch(/not sent|submit again|was filed|can't be filed twice|won't be filed twice/i);
+    expect(screen.queryByText(/We're on it/)).toBeNull();
+    expect(screen.queryByText(/reference #/)).toBeNull();
+    expect(screen.getByRole("heading", { level: 2, name: "Add details" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Contact support" }).getAttribute("href")).toBe("/support");
+    expect(callsTo(fetchMock, "/api/safety-reports")).toBe(1);
+  });
+});
+
+describe("review 6563729015: owned UI fixes", () => {
+  it("1. 'I feel unsafe' shows the emergency-services direction before Submit, and nothing is sent to show it", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Report />);
+    fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
+    expect(screen.queryByText(/immediate danger, contact local emergency services first/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /I feel unsafe/ }));
+    const line = screen.getByText(/immediate danger, contact local emergency services first/);
+    const submit = screen.getByRole("button", { name: "Submit report" });
+    expect(line.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2, name: "Add details" })).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /I feel unsafe/ }));
+    expect(screen.queryByText(/immediate danger, contact local emergency services first/)).toBeNull();
+  });
+
+  it("2. a refusal that says 'contact support' gives a real support route on the details step, and the report is not shown as filed", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => fail(400, { error: DAILY_CAP })));
+    const { container } = render(<Report />);
+    fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
+    expect((await screen.findByRole("alert")).textContent).toBe(DAILY_CAP);
+    const support = screen.getByRole("link", { name: "Contact support" });
+    expect(support.getAttribute("href")).toBe("/support");
+    expect(support).not.toBe(primary(container));
+    expect(screen.getByRole("heading", { level: 2, name: "Add details" })).toBeTruthy();
+    expect(screen.queryByText(/We're on it|Report received|reference #/)).toBeNull();
+    assertGoalPage(container, { goalLine: REPORT_LINE });
+  });
+
+  it("3. help policy links are separate block targets of at least 44px, with no gap-1 inline g-hit links", async () => {
+    render(<Help />);
+    await screen.findByRole("heading", { level: 1, name: HELP_LINE });
+    const policies = screen.getByRole("navigation", { name: "Rules & policies" });
+    const list = policies.querySelector("ul") as HTMLElement;
+    expect(list.className).not.toMatch(/\bgap-1\b/);
+    for (const link of within(policies).getAllByRole("link")) {
+      expect(link.className).not.toMatch(/\bg-hit\b/);
+      expect(link.className).toMatch(/\bmin-h-11\b/);
+      expect(link.className).toMatch(/\b(flex|block)\b/);
+    }
+  });
+
+  it("4. unselected report tiles and off toggles use the control-edge token, not the hairline divider", async () => {
+    const restore = at("https://skipwait.me/report?request=42");
+    try {
+      vi.stubGlobal("fetch", vi.fn());
+      render(<Report />);
+      const unselected = (await screen.findByRole("radio", { name: /Harassment/ })).closest("label") as HTMLElement;
+      expect(unselected.className).toMatch(/\bborder-g-control-edge\b/);
+      expect(unselected.className).not.toMatch(/\bborder-g-hairline\b/);
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+      for (const name of [/Also block this person/, /I feel unsafe/]) {
+        const toggle = screen.getByRole("button", { name });
+        expect(toggle.getAttribute("aria-pressed")).toBe("false");
+        expect(toggle.className).toMatch(/\bborder-g-control-edge\b/);
+        expect(toggle.className).not.toMatch(/\bborder-g-hairline\b/);
+      }
+    } finally {
+      restore();
+    }
+  });
+
+  it("5. safety rows are buttons with aria-expanded and a visible disclosure marker; activating one toggles it", async () => {
+    render(<Safety />);
+    await screen.findByRole("heading", { level: 1, name: SAFETY_LINE });
+    const section = screen.getByRole("region", { name: "Safety questions" });
+    const rows = within(section).getAllByRole("button");
+    expect(rows).toHaveLength(SAFETY_ANSWERS.length + 1);
+    expect(rows[0].getAttribute("aria-expanded")).toBe("true");
+    for (const row of rows.slice(1)) expect(row.getAttribute("aria-expanded")).toBe("false");
+    for (const row of rows) {
+      expect(row.tagName).toBe("BUTTON");
+      expect(row.querySelector("svg[aria-hidden='true']")).toBeTruthy();
+      const panel = document.getElementById(row.getAttribute("aria-controls") ?? "");
+      expect(panel).toBeTruthy();
+      expect(panel!.hidden).toBe(row.getAttribute("aria-expanded") !== "true");
+    }
+    fireEvent.click(rows[1]);
+    expect(rows[1].getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(rows[0]);
+    expect(rows[0].getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
+describe("review 6563736305: owned non-money wording is referral-only, and no unbacked service promise", () => {
+  it("the help search placeholder and the category say referral, not credits (D-173/D-180)", async () => {
+    render(<Help />);
+    const search = await screen.findByRole("searchbox", { name: "Search help" });
+    expect(search.getAttribute("placeholder")).not.toMatch(/credit/i);
+    expect(search.getAttribute("placeholder")).toMatch(/referral/i);
+    const chips = within(screen.getByRole("group", { name: "Help categories" })).getAllByRole("button").map(chip => chip.textContent);
+    expect(chips).toContain("Plans & referrals");
+    expect(chips.filter(chip => /credit/i.test(chip ?? ""))).toEqual([]);
+  });
+
+  it("no owned support copy promises a reply time, a review window or a safety team (no approved commitment in docs)", async () => {
+    const unbacked = /working day|within \d+ hours|within hours|safety team/i;
+    const help = render(<Help />);
+    await screen.findByRole("heading", { level: 1, name: HELP_LINE });
+    expect(help.container.textContent).not.toMatch(unbacked);
+    help.unmount();
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ report: { id: 52, reference: "R-1052" } })));
+    const report = render(<Report />);
+    fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
+    expect(report.container.textContent).not.toMatch(unbacked);
+    fireEvent.click(screen.getByRole("button", { name: /I feel unsafe/ }));
+    expect(report.container.textContent).not.toMatch(unbacked);
+    fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
+    await screen.findByRole("heading", { level: 2, name: "Thanks. We're on it." });
+    expect(report.container.textContent).not.toMatch(unbacked);
   });
 });
