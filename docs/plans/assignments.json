@@ -4505,7 +4505,7 @@
       "tier": 2,
       "lane": "money-core",
       "branch": "agent/queue/d132-item5-correction",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-132-audit"
