@@ -4094,7 +4094,7 @@
       "tier": 2,
       "lane": "copy-sync",
       "branch": "agent/queue/decision-copy-oct26",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-270",
       "dependsOn": [],
       "owns": [
