@@ -3315,9 +3315,9 @@
       "lane": "sign-in",
       "branch": "agent/queue/d057-session-gate",
       "status": "todo",
-      "syncedTo": "D-246",
+      "syncedTo": "D-265",
       "dependsOn": [],
-      "note": "D-245 (owner/CEO answer, Oct 30): the block (Hark · 450f, 1f344276) clears. A personal-login session reaches referrer actions only after an in-session work-email step-up (POST /api/referrer/step-up/send|verify) that writes a server-side proof bound to account, session key (workos:<sid> or app:<ssid>), exact work email and purpose (12 h, single-use challenge, void on logout, revocation, suspension and employer change); it never runs the standalone code login, never drops the Bearer, never accepts another account's cookie, never matches by domain or links accounts. Build from packet §0b (it wins over §0 to §8). D-246 (CEO sequencing, Oct 30): this row goes first. Its owns are the full §0b.8 list, including the four shared paths: server/privateReferralRoutes.ts (middleware, route list and /access verdict only), server/_core/index.ts (switch only: step-up route registration and the dev wrapper's two copied fields), drizzle/schema.ts and server/schemaReconcile.ts (the additive referrerStepUps table only). D-090-BYOR now waits for this row, and BYOR's chain (P0-referral-access-availability, D-132-item3, D-174-held-ask-reconfirm, D-174-ask-from-job, D-174-pool-nudges, D-099-bonus-pages, D-086-demand-list, DEPLOY-gate-docs-sync) waits through it. The handoff from BYOR is limited to those four files, for this build only; #632 keeps all its code, findings (b8552f96) and holds, and this build resolves any overlap with #632 in #632's favour where both can stand. Tier 1 independent review and the full browser path (§0b.9) before done. Every referrer types one code after deploy (D-049). Oct 31 owns amendment (docs/registry only, D-200 (2); Instinct's answer on #811, comment 6537600491, choice A, to packet conflict 8 raised on #867 head 83abf39a): owns gains exactly e2e/fixtures.ts and scripts/seed-test-accounts.ts, so the e2e journeys personal-link and queue-attestation, which the gate correctly refuses with the seeded plain test_seed session, are repaired by this row through the real local step-up send/verify path with delivery intercepted locally. test_seed stays a test identity (never relabelled as a work-email login, no amr minted for it, no production bypass); any direct test setup must be justified, isolated to the local harness and proven unable to change production authorization. Red-first controls and limits are in packet §0b.8a. GATE-e2e-journeys (done) keeps its history; the rest of e2e/ is not claimed. This amendment releases no hold: the #867 shared-file hold stays, and runtime edits to the two paths wait for this amendment's independent scope review and landing.",
+      "note": "D-245 (owner/CEO answer, Oct 30): the block (Hark · 450f, 1f344276) clears. A personal-login session reaches referrer actions only after an in-session work-email step-up (POST /api/referrer/step-up/send|verify) that writes a server-side proof bound to account, session key (workos:<sid> or app:<ssid>), exact work email and purpose (12 h, single-use challenge, void on logout, revocation, suspension and employer change); it never runs the standalone code login, never drops the Bearer, never accepts another account's cookie, never matches by domain or links accounts. Build from packet §0b (it wins over §0 to §8). D-246 (CEO sequencing, Oct 30): this row goes first. Its owns are the full §0b.8 list, including the four shared paths: server/privateReferralRoutes.ts (middleware, route list and /access verdict only), server/_core/index.ts (switch only: step-up route registration and the dev wrapper's two copied fields), drizzle/schema.ts and server/schemaReconcile.ts (the additive referrerStepUps table only). D-090-BYOR now waits for this row, and BYOR's chain (P0-referral-access-availability, D-132-item3, D-174-held-ask-reconfirm, D-174-ask-from-job, D-174-pool-nudges, D-099-bonus-pages, D-086-demand-list, DEPLOY-gate-docs-sync) waits through it. The handoff from BYOR is limited to those four files, for this build only; #632 keeps all its code, findings (b8552f96) and holds, and this build resolves any overlap with #632 in #632's favour where both can stand. Tier 1 independent review and the full browser path (§0b.9) before done. Every referrer types one code after deploy (D-049). Oct 31 owns amendment (docs/registry only, D-200 (2); Instinct's answer on #811, comment 6537600491, choice A, to packet conflict 8 raised on #867 head 83abf39a): owns gains exactly e2e/fixtures.ts and scripts/seed-test-accounts.ts, so the e2e journeys personal-link and queue-attestation, which the gate correctly refuses with the seeded plain test_seed session, are repaired by this row through the real local step-up send/verify path with delivery intercepted locally. test_seed stays a test identity (never relabelled as a work-email login, no amr minted for it, no production bypass); any direct test setup must be justified, isolated to the local harness and proven unable to change production authorization. Red-first controls and limits are in packet §0b.8a. GATE-e2e-journeys (done) keeps its history; the rest of e2e/ is not claimed. This amendment releases no hold: the #867 shared-file hold stays, and runtime edits to the two paths wait for this amendment's independent scope review and landing. Nov 1 D-265 owns refinement: narrows alerts*.test.tsx to client/src/pages/alerts.stepUp.test.tsx so alerts.test.tsx is owned by DECISION-COPY-oct26.",
       "owns": [
         "server/_core/sdk.ts",
         "server/_core/sdk*.test.ts",
@@ -3358,7 +3358,7 @@
         "client/src/pages/PostOpportunity.tsx",
         "client/src/pages/postOpportunity*.test.tsx",
         "client/src/pages/Alerts.tsx",
-        "client/src/pages/alerts*.test.tsx",
+        "client/src/pages/alerts.stepUp.test.tsx",
         "client/src/pages/goal/referrer/GoalReferrer.tsx",
         "client/src/pages/goal/referrer/goalReferrer*.test.tsx",
         "client/src/pages/goal/referrer/GoalReferrerImpact.tsx",
@@ -3394,67 +3394,6 @@
       "note": "D-163: no longer waits for seeker-passwords; shared/telemetryScrub.ts is new on main and #324 picks it up when it merges main. Scope per the packet's CEO addendum (§0): adds the vanity alias and /api/documents/by-key/:key; alerts drop the query."
     },
     {
-      "id": "D-089.server",
-      "title": "Request-inbox link, server (D-089): referrer-chosen screen name on the referral link (PUT /api/referrer-fast-track/me/screen-name), resume a paused link, screenName on the public resolvers, askedYouDirectly on inbox rows; switch off",
-      "row": "D-089",
-      "packet": "docs/plans/D-089-request-inbox.md",
-      "tier": 1,
-      "lane": "supply-inbox-server",
-      "branch": "agent/queue/d089-server",
-      "status": "todo",
-      "syncedTo": "D-263",
-      "epic": "D-089-request-inbox",
-      "dependsOn": [
-        "D-090-BYOR",
-        "D-086-demand-list",
-        "D-174-pool-nudges"
-      ],
-      "owns": [
-        "shared/requestInboxLink.ts",
-        "shared/requestInboxLink.test.ts",
-        "server/referrerScreenName.ts",
-        "server/referrerScreenName.test.ts",
-        "server/db.ts",
-        "server/privateReferralRoutes.ts",
-        "server/referrerFastTrackLinks.test.ts",
-        "server/privateReferralRoutes.requestInboxLink.test.ts",
-        "server/referrerSessionGate*.test.ts"
-      ],
-      "note": "D-263 packet §5.1. server/db.ts only in getOrCreateReferrerFastTrackLink, the two getPublicReferrerFastTrack* resolvers, new resumeReferrerFastTrackLink and the askedYouDirectly field in listCompanyReferralInboxByState; server/privateReferralRoutes.ts only in the /api/referrer-fast-track block and D-057's gated list; server/referrerSessionGate*.test.ts only adding the two new routes to D-057's pin. No migration, no env key, no money path. Red-first T1-T8. Waits for D-090-BYOR (owner order idea 2 first, D-057 through it per D-246), D-086-demand-list (owner order: after the demand list) and D-174-pool-nudges, the end of the open server/db.ts + privateReferralRoutes.ts owner chain (P0-referral-access-availability -> D-132-item3 -> D-174-held-ask-reconfirm -> D-174-ask-from-job -> D-174-pool-nudges), so no other row is reordered. Switch REQUEST_INBOX_LINK_ENABLED stays false."
-    },
-    {
-      "id": "D-089.ui",
-      "title": "Request-inbox link, UI (D-089): goal-native referral-link panel on /referrer-home with screen-name edit and pause/resume, 'Sent to you directly' marker on /queue rows, screen name on the goal /fast and /refer landings; switch off",
-      "row": "D-089",
-      "packet": "docs/plans/D-089-request-inbox.md",
-      "tier": 2,
-      "lane": "supply-inbox-ui",
-      "branch": "agent/queue/d089-ui",
-      "status": "todo",
-      "syncedTo": "D-263",
-      "epic": "D-089-request-inbox",
-      "dependsOn": [
-        "D-089.server",
-        "D-048-p3-links",
-        "D-086.admit"
-      ],
-      "owns": [
-        "client/src/components/referrer-home/GoalReferralLinkPanel.tsx",
-        "client/src/components/referrer-home/referralLinkApi.ts",
-        "client/src/components/referrer-home/goalReferralLinkPanel.test.tsx",
-        "client/src/pages/goal/referrer-home/GoalReferrerHome.tsx (switch only)",
-        "client/src/components/referrer-home/referrerData.ts",
-        "client/src/pages/MyCompanyInbox.tsx",
-        "client/src/pages/goal/links/**",
-        "client/src/pages/FastTrackLink.tsx (switch only)",
-        "client/src/pages/VanityFastTrackLink.tsx (switch only)",
-        "client/src/pages/requestInboxLanding.test.tsx",
-        "docs/plans/GOAL_UI_COVERAGE.md",
-        "design/goal-ui/captures/request-inbox/**"
-      ],
-      "note": "D-263 packet §5.2. referrerData.ts only the askedYouDirectly field; MyCompanyInbox.tsx only the marker; GoalReferrerHome.tsx one mount. One black commit per page stays the page's GoalNextStep (assertGoalPage); no kit import; captures at 1280 and 390. Waits for D-089.server, D-048-p3-links (owns the landings and pages/goal/links) and D-086.admit (the last open owner of GOAL_UI_COVERAGE.md); GOAL_UI_COVERAGE.md (D-086.ui, D-090-BYOR) and MyCompanyInbox.tsx/referrerData.ts (D-057-session-gate) are reached through D-089.server. Red-first U1-U7. Switch stays false."
-    },
-    {
       "id": "D-089-request-inbox",
       "title": "Employee request-inbox link with screen name (idea 1, loop L4, D-089 (3)): release row - flips REQUEST_INBOX_LINK_ENABLED after its rows, QA and the owner's look at the captures",
       "row": "D-089",
@@ -3462,13 +3401,13 @@
       "tier": 1,
       "lane": "supply-inbox",
       "branch": "agent/queue/d089-request-inbox",
-      "status": "todo",
-      "syncedTo": "D-263",
+      "status": "owner",
+      "syncedTo": "D-266",
       "dependsOn": [
-        "D-089.server",
-        "D-089.ui"
+        "D-090-BYOR",
+        "D-086-demand-list"
       ],
-      "note": "D-263 packet §5.3 (release row, D-223 (3)): flips REQUEST_INBOX_LINK_ENABLED after D-089.server and D-089.ui land; no-money QA on a preview (name set, copy, pause/resume, signed-out seeker sends through the vanity link, marker shows); 1280/390 captures go to the owner before the flip (D-089 (3), BACKLOG item 10; packet §4.10) together with the independent Tier 1 review (public payload, real-name check, D-019(e)); syncs AGENTS.md, PRD, BACKLOG item 10 and the §3b row D-089. The owner's order holds through its rows: after D-090-BYOR and D-086-demand-list (D-089 (3), D-163 (5)). D-099-bonus-pages keeps waiting for this row.",
+      "note": "D-266 packet §5.3 (release row, D-223 (3)): flips REQUEST_INBOX_LINK_ENABLED after D-089.server and D-089.ui land; no-money QA on a preview (name set, copy, pause/resume, signed-out seeker sends through the vanity link, marker shows); 1280/390 captures go to the owner before the flip (D-089 (3), BACKLOG item 10; packet §4.10) together with the independent Tier 1 review (public payload, real-name check, D-019(e)); syncs AGENTS.md, PRD, BACKLOG item 10 and the §3b row D-089. The owner's order holds through its rows: after D-090-BYOR and D-086-demand-list (D-089 (3), D-163 (5)). D-099-bonus-pages keeps waiting for this row. HELD FOR ONE OWNER WORD (D-266): this row's two build rows, D-089.server (Tier 1) and D-089.ui (Tier 2), are written in docs/plans/D-089-request-inbox.md §5.1-5.2 and are NOT added here, because the owner's Oct 31 \"new rows paused\" restriction is still the text on main (docs/BUILD_CONTINUITY.md, \"Ask Instinct before asking the owner manually\") and no register entry records it lifted; the Nov 1 #811 relays are a counterpart's answer, which that same instruction says is not owner approval. When the owner says the pause is lifted on main, a docs-only PR adds both rows verbatim from the packet, sets this row back to status todo with dependsOn D-089.server and D-089.ui, and moves no other row. While parked here the row waits on D-090-BYOR and D-086-demand-list directly: its owns claims AGENTS.md, docs/PRD.md, docs/KIT_V4_BUILD_PLAN.md and docs/BACKLOG.md, which those rows and D-057-session-gate also own, and PICKER-owns-scope clears an overlap only when one side transitively waits for the other (scripts/nextTaskCore.mjs:350-356). Once D-089.server and D-089.ui exist, that clearance runs through them (D-089.server waits on both, and D-057-session-gate is reached through D-090-BYOR), so the release row's dependsOn becomes the two rows and no edge is added to the other three.",
       "owns": [
         "shared/requestInboxLink.ts (switch only)",
         "AGENTS.md",
@@ -3649,7 +3588,7 @@
       "tier": 1,
       "lane": "api-error-boundary",
       "branch": "agent/queue/p1-client-error-boundary",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-228",
       "dependsOn": [],
       "owns": [
@@ -3913,14 +3852,26 @@
       "id": "SYNC-LOG-off-main",
       "title": "Keep the deploy log without pushing to main (the D-082 ruleset refuses the bot's push)",
       "row": "D-082",
-      "packet": null,
-      "tier": 3,
+      "packet": "docs/plans/SYNC-LOG-off-main.md",
+      "tier": 2,
       "lane": "deploy-workflows",
-      "branch": "agent/claude/sync-log-off-main",
-      "status": "architect",
-      "syncedTo": "D-227",
-      "dependsOn": [],
-      "note": "Any agent writes the packet (D-109): write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected. It also retires sync-guard.yml (only echoes) and design-gate.yml (`|| true`), D-212 (7)."
+      "branch": "agent/queue/sync-log-off-main",
+      "status": "todo",
+      "syncedTo": "D-263",
+      "dependsOn": [
+        "REL-rollback-skew"
+      ],
+      "note": "D-263 packet docs/plans/SYNC-LOG-off-main.md: the Web deploy records its result in the run summary (as deploy-api.yml does), never a push to main; deploy-pages.yml drops contents: write; sync-guard.yml and design-gate.yml retire (D-212 (7)). Tier 2 (deploy workflow). Waits for REL-rollback-skew only because both own deploy-pages.yml.",
+      "owns": [
+        ".github/workflows/deploy-pages.yml",
+        ".github/workflows/sync-guard.yml",
+        ".github/workflows/design-gate.yml",
+        "scripts/append-sync-log.sh",
+        "scripts/syncLogOffMain.test.ts",
+        "docs/SYNC_LOG.md",
+        "docs/SYNC_SYSTEM.md",
+        "docs/DESIGN_SYSTEM_SPEC.md"
+      ]
     },
     {
       "id": "D-048-fix-start-ask-handoff",
@@ -4153,12 +4104,13 @@
       "lane": "copy-sync",
       "branch": "agent/queue/decision-copy-oct26",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-265",
       "dependsOn": [],
       "owns": [
         "client/src/components/referrer-home/WaitingAsks.tsx",
         "client/src/components/alerts/SavedAlerts.tsx",
         "client/src/components/alerts/savedAlerts.test.tsx",
+        "client/src/pages/alerts.test.tsx",
         "client/src/pages/Help.tsx",
         "client/src/pages/trustCluster.test.tsx",
         "client/src/content/guides.ts",
@@ -4166,7 +4118,7 @@
         "client/src/pages/forCompanies.test.tsx",
         "client/src/components/VisualJourney.tsx"
       ],
-      "note": "D-221 (Oct 26 decision audit): seven live strings still state rules that newer decisions replaced. Copy and its pinning tests only; Help.tsx line 17's 7-day expiry stays until D-174-expiry-clock-removal (runtime truth). Tier 2: lands on green required CI (D-200)."
+      "note": "D-221 (Oct 26 decision audit): seven live strings still state rules that newer decisions replaced. Copy and its pinning tests only; Help.tsx line 17's 7-day expiry stays until D-174-expiry-clock-removal (runtime truth). Tier 2: lands on green required CI (D-200). Nov 1 D-265: client/src/pages/alerts.test.tsx added to owns so lines 190 and 223 can pin the Free alert cap note."
     },
     {
       "id": "DECISION-SYNC-oct26",

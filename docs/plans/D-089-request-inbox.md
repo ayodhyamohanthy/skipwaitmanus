@@ -2,14 +2,15 @@
 
 | Field | Value |
 |---|---|
-| Queue rows | `D-089.server` (Tier 1), `D-089.ui` (Tier 2), and the parent `D-089-request-inbox` as the release row (Tier 1, D-223 (3)) |
-| Decisions | D-089 (3), D-087 (L4), D-163 (5), D-050, D-017, D-106, D-019(e), D-030/D-049/D-057 with D-245 (login rule), D-034, D-128, D-150/D-167 (goal pages), D-153/D-180 (wording), D-223 (rows and switches), D-246 (order). Rulings in D-263 (§10) |
-| Verified against | `origin/main` `8650b06c` (Oct 30 2026), re-checked on `05d0f7de` (Nov 1 2026, Hark · a442: §3 files unchanged except the landed `D-048-p3-links` landings, §3.8 updated). Line numbers drift: find functions by name |
+| Queue rows | `D-089.server` (Tier 1), `D-089.ui` (Tier 2), and the parent `D-089-request-inbox` as the release row (Tier 1, D-223 (3)). **The two build rows are written here but are not in `docs/plans/assignments.json` yet** — adding them needs the owner's word on his Oct 31 "new rows paused" restriction (§10, and the question in `docs/DECISIONS.md`, Open owner questions) |
+| Decisions | D-089 (3), D-087 (L4), D-163 (5), D-050, D-017, D-106, D-019(e), D-030/D-049/D-057 with D-245 (login rule), D-034, D-128, D-150/D-167 (goal pages), D-153/D-180 (wording), D-223 (rows and switches), D-246 (order). Rulings in D-266 (§10) |
+| Verified against | `origin/main` `8650b06c` (Oct 30 2026); re-checked on `05d0f7de` (Nov 1 2026, Hark · a442: §3 files unchanged except the landed `D-048-p3-links` landings, §3.8 updated); re-checked on `e36c3d62` (Nov 1 2026, Qoder · f00e: `git diff --stat 05d0f7de e36c3d62` over every file §3 names returns empty, so §3 still describes `main`). Line numbers drift: find functions by name |
 | Migrations, env keys, dependencies | None. One in-code switch, `REQUEST_INBOX_LINK_ENABLED = false` (§4.1) |
-| Writer | Hark · b6a8, architect lock `agent/architect/d089-request-inbox` |
+| Writer | Hark · b6a8, then Hark · a442, then Qoder · f00e; architect lock `agent/architect/d089-request-inbox` |
 
 ## 0. Read receipt (D-225)
 Read before writing: `AGENTS.md`, `START_HERE.md`, `docs/DELEGATION.md`, the register entries D-017, D-050, D-087, D-089, D-106, D-128, D-162, D-163, D-223, D-225, D-227 and D-240 to D-247 (the newest on `main`), `docs/BACKLOG.md` item 10 (the idea-lab stub), `docs/PRD.md` growth table, `docs/plans/GOAL_UI_COVERAGE.md` §5, and the packets `D-090-BYOR.md`, `D-086-demand-list.md`, `D-099-bonus-pages.md` and `D-057-session-gate.md` §4. No newer entry changes this task's scope: no register entry names `D-089-request-inbox` under `Affects tasks:`.
+Re-read on `origin/main` `e36c3d62` (Nov 1 2026, Qoder · f00e): `AGENTS.md`, `docs/BRIEF.md`, `docs/BUILD_CONTINUITY.md`, the register entries D-248 to D-265 (every entry newer than the packet's own D-263 draft), `docs/plans/assignments.json`, and the four `D-100` csp/authz rows' status lines. Two things moved this scope. First, D-263 on `main` is now `SYNC-LOG-off-main`, so this packet's entry is renumbered to **D-266** — D-264 is held by `agent/architect/d094-ai-in-ui` and D-265 by `docs/d265-decision-copy-unblock`. Second, the "new rows paused" restriction is still live text and still cited as in force by D-254, D-256 and D-262, so the two build rows stay unregistered (§5). No entry names `D-089.server` or `D-089.ui`.
 
 ## 1. Goal
 A verified employee gets one link to paste wherever seekers ask for referrals (a LinkedIn bio, a Blind or Fishbowl reply). It is signed with a screen name they choose, never their real name. A seeker who opens it sees "a verified employee at <company>" plus that screen name, and sends a referral request that goes to that employee alone. The employee sees those requests marked as sent to them directly. Loop L4 (D-087): each employee who shares the link brings seekers, and every request through it reaches a verified referrer straight away.
@@ -42,7 +43,7 @@ Test (AGENTS.md product compass): the seeker gets a named, verified person to as
 9. **Telemetry.** `shared/telemetryScrub.ts` already strips the alias from `/api/referrer-fast-track/vanity/:companySlug/:vanityAlias` (FND-4: the alias names one referrer).
 10. **Not to collide with:** `D-090-BYOR` takes `/r/:token` for its one-time links. The idea-lab stub's `skipwait.me/r/theirname` (BACKLOG item 10) cannot be used. This packet keeps `/refer/<company>/<screen name>`.
 
-## 4. Rulings (decided under D-200; changeable; register text D-263 in §10)
+## 4. Rulings (decided under D-200; changeable; register text D-266 in §10)
 1. **One switch.** `REQUEST_INBOX_LINK_ENABLED = false` in `shared/requestInboxLink.ts` (the D-193 in-code pattern; no env key). Both sides read it. While it is false:
    - `PUT /me/screen-name` answers 404.
    - The public payloads carry no `screenName`.
@@ -83,6 +84,8 @@ Test (AGENTS.md product compass): the seeker gets a named, verified person to as
 10. **Design gate.** D-089 (3) and BACKLOG item 10 want the design placed and seen first. D-120 makes `DESIGN.md` the design for new UI. So the rows build to `DESIGN.md` behind the switch, and the release row puts the 1280/390 captures in front of the owner before flipping. This is a changeable assumption, not an owner decision changed: if the owner wants comps before any build, `D-089.ui` waits and nothing else moves.
 
 ## 5. The rows
+**Registration gate (before either row can be picked).** §5.1 and §5.2 are written so a builder can copy them straight into `docs/plans/assignments.json`, and this packet's PR does **not** add them: the owner's Oct 31 "new rows paused" restriction is still the text on `main` (`docs/BUILD_CONTINUITY.md`), D-254, D-256 and D-262 each still treat it as in force, and the two #811 relays of him answering "build" to that exact question (6546540294, 6550450035) are a counterpart's repository answer, which the same instruction says is not his approval. One docs-only PR adds both rows verbatim from here the moment the owner's word is on `main`; nothing else in the queue moves, and both rows already wait for `D-090-BYOR`, `D-086-demand-list`, `D-174-pool-nudges` and `D-086.admit`, all still `todo`, so no build starts earlier either way.
+
 ### 5.1 `D-089.server` (Tier 1: referrer identity on a public payload and referrer inbox data; M)
 **Depends on:**
 - `D-090-BYOR`: the owner's order puts idea 2 first.
@@ -149,7 +152,7 @@ Test (AGENTS.md product compass): the seeker gets a named, verified person to as
 - U6. The landing names the screen name only when it is non-null and never renders `ref-`.
 - U7. The goal boundary test stays green (no kit import).
 
-### 5.3 `D-089-request-inbox`: the release row (Tier 1; status `todo`, waits for its rows)
+### 5.3 `D-089-request-inbox`: the release row (Tier 1; status `owner`, waits for the registration question and then its rows)
 **Owns:** `shared/requestInboxLink.ts` (switch only), `AGENTS.md`, `docs/PRD.md`, `docs/KIT_V4_BUILD_PLAN.md`, `docs/BACKLOG.md`.
 
 **Steps:**
@@ -195,16 +198,18 @@ Stop and `--report blocked "D-089.<row>: <question>"` if any of these hold:
 Never guess about identity or privacy.
 
 ## 10. Register entry added by this packet
-D-263 (in `docs/DECISIONS.md`): the rulings in §4, in short. `Affects tasks: D-089-request-inbox, D-089.server, D-089.ui`.
+D-266 (in `docs/DECISIONS.md`): the rulings in §4 in short, plus the registration gate in §5 with the measurements behind it. `Affects tasks: D-089-request-inbox`. `D-089.server` and `D-089.ui` are named in the entry as rows this packet defines, not as rows on `main`, so the picker has nothing to re-sync on them. The entry also carries the one question to the owner, in `docs/DECISIONS.md` → Open owner questions: lift "new rows paused", or keep these two rows parked.
 
 ## 11. Gaps and risks (stated, not hidden)
 - **A freed name can be taken.** After a rename, a colleague at the same company may take the old name, and seekers following an old bio link would reach that colleague. Harm is bounded: it is still a verified employee of the same company, under the same D-019(e) privacy. Preventing it needs a retired-names table, which means a migration. Left out to keep the rows migration-free. The owner or any session may add it later.
 - **The real-name check is exact-match only.** It stops accidents, not a determined referrer, and that is by design: the name is theirs to choose.
 - **Order cost.** Both rows wait for BYOR and the demand list (the owner's order, D-089 (3)). The server row also waits for the D-174 server chain (it ends at `D-174-pool-nudges`), and the UI row waits for `D-086.admit`, which waits for `D-048-p3-admin`. The reason is file ownership, not priority. So L4 ships late. Any session may shorten this by reordering rows under D-200, giving the reason. This packet does not, because that would move other rows' work.
 - **The mocks.** No comp exists in `design/goal-ui/` for these surfaces. The design gate is moved to the release (§4.10).
+- **The release row's docs claim collides until the build rows exist.** §5.3 gives the release row `AGENTS.md`, `docs/PRD.md`, `docs/KIT_V4_BUILD_PLAN.md` and `docs/BACKLOG.md`; `D-086-demand-list`, `D-090-BYOR` and `D-057-session-gate` claim some of the same files, and PICKER-owns-scope rejects two non-done rows owning the same path unless one transitively waits for the other (`scripts/nextTaskCore.mjs:350-356`). With `D-089.server` and `D-089.ui` registered that clears on its own, because the server row waits on both and reaches D-057 through BYOR. Without them it does not, so the parked release row lists `D-090-BYOR` and `D-086-demand-list` in `dependsOn` for now; drop those two edges in the same commit that adds the build rows. Measured: `validateAssignments` returns `[]` with them and three overlap errors without.
 
 ## Status
-- D-089.server: todo; waits for `D-090-BYOR`, `D-086-demand-list` and `D-174-pool-nudges`.
-- D-089.ui: todo; waits for `D-089.server`, `D-048-p3-links` and `D-086.admit`.
-- D-089-request-inbox (release): todo; waits for both rows. Packet written by Hark · b6a8, Oct 30 2026.
+- D-089.server: not registered (§5 registration gate); when it is, todo, waiting for `D-090-BYOR`, `D-086-demand-list` and `D-174-pool-nudges`.
+- D-089.ui: not registered (§5 registration gate); when it is, todo, waiting for `D-089.server`, `D-048-p3-links` and `D-086.admit`.
+- D-089-request-inbox (release): `status: "owner"` — waits for the one owner word in §10, then for both rows. Packet written by Hark · b6a8, Oct 30 2026.
 - Nov 1 2026, Hark · a442 (takeover from Antigravity · 5a06): merged `origin/main` `05d0f7de`; register entry renumbered D-248 → D-263 (D-248 was taken on `main`); §3 re-checked, §3.8 updated for the landed `D-048-p3-links`. Landing held: the packet adds rows `D-089.server` and `D-089.ui`, and the Oct 31 owner restriction ("new rows paused", `docs/BUILD_CONTINUITY.md`) is out to Instinct before it merges.
+- Nov 1 2026, Qoder · f00e (takeover from Hark · a442): merged `origin/main` `e36c3d62`. **Correction:** the line above says the new-rows question "is out to Instinct"; it was not — no comment on PR #811 named D-089 before this session, so the question had never been delivered. It is posted now (#811, and as the first entry under Open owner questions in `docs/DECISIONS.md`), with the measurements: main still carries the Oct 31 restriction as live text, D-254/D-256/D-262 each still treat it as in force, and the task-id set in `docs/plans/assignments.json` at `2d72dec7` (the last commit before Oct 31 00:00) equals the set at `e36c3d62` — 241 rows both, so no new row has reached `main` under the relayed lift. The relayed owner word is real evidence and is cited (§5), but BUILD_CONTINUITY says a counterpart's repository answer is not the owner's approval, so the two build rows are not registered here. Register entry renumbered again, D-263 → **D-266** (D-263 is `SYNC-LOG-off-main` on `main`, D-264 and D-265 are held by open branches). §3 re-verified: `git diff --stat 05d0f7de e36c3d62` over every file §3 names returns empty. The release row is restamped `architect` → `owner`, `syncedTo` → `D-266`, with this packet as its `packet`; no other row's fields, tier, lane, branch or dependency changed, and `validateAssignments` returns `[]`.
