@@ -112,3 +112,24 @@ owner (above). Do not pre-build them behind a flag.
 - Registered by DeepSeek V4.1 Flash Free · 8c0f under D-209 (docs only). Build
   waits for the owner's answers to (a) and (b); the picker hands out no work on
   this row before then.
+- Oct 26 (verification gaps, logged for the owner/Claude while review proceeds): the
+  real server/DB accept criterion is blocked on two UNPROVEN facts, not on code.
+  (1) ISOLATION: the skipwait-qa preview's DATABASE_URL is `secret_text` on both the
+  preview and production workers (host unreadable); the preview shows 2 fictional
+  companies vs 39 in prod, which suggests but does not prove a separate DB; the Oct 21
+  deployer's binding record is unrecoverable (transcript index gap); the vault item
+  "skipwait-qa scratch DB (local QA)" holds a bare user + password with NO host; the
+  repo has no QA deploy automation to audit. Missing: grounded binding provenance
+  (which DATABASE_URL the preview worker actually holds) or a fresh preview whose
+  binding is known by construction. (2) COST: the QA scoped token cannot read the
+  account plan or DB capacity; public free-tier limits do not prove this account is
+  covered. Missing: account plan/usage + DB capacity evidence. Until both ground, no
+  deploy or journey test against that preview, and no safe/free claim. Lead for a
+  construction-known route: `.github/workflows/db-rehearsal.yml` shows repo variables
+  for the prod DB and a NEW DB server with a `skipwait_rehearsal` database - a fresh
+  isolated preview could bind a scratch DB by construction, but its capacity and the
+  deploy authority are unverified; route through the owner before use.
+  Hygiene (routed through the private security lane, no values here): the preview
+  worker stores its test-mode Chargebee key + webhook secret as plain_text vars
+  (prod uses secret_text). Bounded test-credential storage issue; no compromise
+  asserted; changing worker secret settings needs the owning route's authority.
