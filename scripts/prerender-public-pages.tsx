@@ -21,7 +21,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Router } from "wouter";
 import { askCostLanding, ASK_COST_SENTENCE, CREDIT_RULE, FREE_ASKS_CHIP, REFERRER_MONEY_SENTENCE } from "../shared/moneyCopy";
-import { CREDIT_PACKS_ON_SALE, FREE_PLAN } from "../shared/planCatalog";
+import { FREE_PLAN } from "../shared/planCatalog";
 import { GOAL_FOOTER_COLS, GOAL_LANDING_BAND_H2, GOAL_LANDING_BAND_LEAD, GOAL_LANDING_COMPARE_H2, GOAL_LANDING_COMPARE_ROWS, GOAL_LANDING_EMPLOYEE_H2, GOAL_LANDING_EMPLOYEE_LEAD, GOAL_LANDING_EXPLORE_NOTE, GOAL_LANDING_FAIR_H2, GOAL_LANDING_FIGURES_HREF, GOAL_LANDING_FIGURES_TEXT, GOAL_LANDING_H1, GOAL_LANDING_HERO_LEAD, GOAL_LANDING_QUOTE, GOAL_LANDING_QUOTE_LEAD, GOAL_LANDING_QUOTE_REST, GOAL_LANDING_STEPS_H2, GOAL_LANDING_TRUST_H2_PARTS, goalLandingFairRules, goalLandingSteps, goalLandingTrust, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_GUIDES } from "../shared/landingContent";
 import { publicRoute } from "../shared/publicRoutes";
 import { GUIDES } from "../client/src/content/guides";
@@ -167,15 +167,11 @@ export function publicSnapshots(): PublicSnapshot[] {
     },
     {
       route: "/premium",
-      markup: CREDIT_PACKS_ON_SALE
-        ? `<main data-skipwait-snapshot="premium"><h1>Credits for $1 each. Never expire.</h1><p>${ASK_COST_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire. ${CREDIT_RULE} ${REFERRER_MONEY_SENTENCE}</p><p><a href="/premium">Buy credits</a> · <a href="/plans">See plans and credits</a> · <a href="/pricing">See all prices</a> · <a href="/referrer">Employees: verify a work email to review requests</a></p></main>`
-        : `<main data-skipwait-snapshot="premium"><h1>Credit packs are paused.</h1><p>We are updating our plans. Any credits already in your account still work. ${REFERRER_MONEY_SENTENCE}</p><p><a href="/plans">See plans and prices</a> · <a href="/pricing">See all prices</a> · <a href="/support">Support</a> · <a href="/referrer">Employees: verify a work email to review requests</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="premium"><h1>Credits for $1 each. Never expire.</h1><p>${ASK_COST_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire. ${CREDIT_RULE} ${REFERRER_MONEY_SENTENCE}</p><p><a href="/premium">Buy credits</a> · <a href="/plans">See plans and credits</a> · <a href="/pricing">See all prices</a> · <a href="/referrer">Employees: verify a work email to review requests</a></p></main>`,
     },
     {
       route: "/plans",
-      markup: CREDIT_PACKS_ON_SALE
-        ? `<main data-skipwait-snapshot="plans"><h1>Plans and credits.</h1><p>${FREE_PLAN.creditsPerMonth} referral requests are free every month, and up to ${FREE_PLAN.openRequests} can be open at once. More credits are sold on the credits page, and a credit you buy never expires. ${CREDIT_RULE} ${REFERRER_MONEY_SENTENCE}</p><p><a href="/plans">Open plans</a> · <a href="/premium">Buy credits</a> · <a href="/pricing">See all prices</a> · <a href="/refunds">Refunds &amp; cancellation</a></p></main>`
-        : `<main data-skipwait-snapshot="plans"><h1>Plans and prices.</h1><p>${FREE_PLAN.creditsPerMonth} referral requests are free every month, and up to ${FREE_PLAN.openRequests} can be open at once. Compare plans and pricing for job referrals. ${REFERRER_MONEY_SENTENCE}</p><p><a href="/plans">Open plans</a> · <a href="/pricing">See all prices</a> · <a href="/refunds">Refunds &amp; cancellation</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="plans"><h1>Plans and credits.</h1><p>${FREE_PLAN.creditsPerMonth} referral requests are free every month, and up to ${FREE_PLAN.openRequests} can be open at once. More credits are sold on the credits page, and a credit you buy never expires. ${CREDIT_RULE} ${REFERRER_MONEY_SENTENCE}</p><p><a href="/plans">Open plans</a> · <a href="/premium">Buy credits</a> · <a href="/pricing">See all prices</a> · <a href="/refunds">Refunds &amp; cancellation</a></p></main>`,
     },
     {
       route: "/referrer",
@@ -183,9 +179,7 @@ export function publicSnapshots(): PublicSnapshot[] {
     },
     {
       route: "/employer",
-      markup: CREDIT_PACKS_ON_SALE
-        ? `<main data-skipwait-snapshot="employer"><h1>Hire without the noise.</h1><p>Employer accounts feature open roles as a clearly labeled listing, unlock anonymized opt-in talent with credits, and manage a self-serve promotion budget. Employers never buy referrals: seekers get ${FREE_ASKS_CHIP} and use credits for more, and referrers are never paid.</p><p><a href="/employer">Open the employer workspace</a> · <a href="/jobs">See the seeker side of the product</a> · <a href="/pricing">See prices</a> · <a href="/contact">Contact us</a></p></main>`
-        : `<main data-skipwait-snapshot="employer"><h1>Hire without the noise.</h1><p>Employer accounts feature open roles as a clearly labeled listing, unlock anonymized opt-in talent with credits, and manage a self-serve promotion budget. Employers never buy referrals: seekers get 3 free referrals every month, and referrers are never paid.</p><p><a href="/employer">Open the employer workspace</a> · <a href="/jobs">See the seeker side of the product</a> · <a href="/pricing">See prices</a> · <a href="/contact">Contact us</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="employer"><h1>Hire without the noise.</h1><p>Employer accounts feature open roles as a clearly labeled listing, unlock anonymized opt-in talent with credits, and manage a self-serve promotion budget. Employers never buy referrals: seekers get ${FREE_ASKS_CHIP} and use credits for more, and referrers are never paid.</p><p><a href="/employer">Open the employer workspace</a> · <a href="/jobs">See the seeker side of the product</a> · <a href="/pricing">See prices</a> · <a href="/contact">Contact us</a></p></main>`,
     },
   ].map(snapshot => {
     const route = publicRoute(snapshot.route);

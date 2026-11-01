@@ -1,10 +1,7 @@
 // @vitest-environment jsdom
 // GO-LIVE-1 / D-036: once any credit pack is on sale in a currency, /premium
-// retires the per-credit UI for that currency. Oct 25 2026 freeze: pack sales
-// are paused (CREDIT_PACKS_ON_SALE=false), so /premium shows the paused screen
-// in every probe state and never offers a purchase; the per-credit checkout
-// stays retired server-side. Payment recovery (status=pending) still runs
-// above every one of these branches.
+// retires the per-credit UI for that currency and points at the packs on
+// /plans; the legacy per-credit checkout is never started.
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render as rtlRender, screen, waitFor } from "@testing-library/react";
@@ -38,21 +35,18 @@ function setup(packsAvailable: boolean) {
   return fetchMock;
 }
 
-describe("/premium while pack sales are paused (Oct 25 2026 freeze; D-036 retirement kept server-side)", () => {
-  it("shows the paused screen and never offers the per-credit checkout when a pack is on sale", async () => {
+describe("/premium retires the single credit per currency (D-036)", () => {
+  it("shows the packs pointer and never offers the per-credit checkout when a pack is on sale", async () => {
     const fetchMock = setup(true);
-    expect(await screen.findByText("Credit packs are paused.")).toBeTruthy();
-    expect(screen.queryByText("Credit packs replace single credits.")).toBeNull();
+    expect(await screen.findByText("Credit packs replace single credits.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "See credit packs" }).getAttribute("href")).toBe("/plans#packs");
     expect(screen.queryByRole("spinbutton")).toBeNull();
-    // No payment CTA on the exact legacy deep link /premium?role=job_seeker (QA Oct 25).
-    expect(screen.queryByText(/Sign in to pay|Continue to pay|Pay ₹|Pay \$/i)).toBeNull();
     expect(fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === "POST")).toEqual([]);
   });
 
-  it("shows the same paused screen while no pack is on sale in the currency", async () => {
+  it("keeps the per-credit UI while no pack is on sale in the currency", async () => {
     setup(false);
-    expect(await screen.findByText("Credit packs are paused.")).toBeTruthy();
-    expect(screen.queryByRole("spinbutton")).toBeNull();
+    expect(await screen.findByRole("spinbutton")).toBeTruthy();
     expect(screen.queryByText("Credit packs replace single credits.")).toBeNull();
   });
 });

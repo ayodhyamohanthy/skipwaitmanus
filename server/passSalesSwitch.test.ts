@@ -44,7 +44,7 @@ describe("passes are listed but not sold until a paid pass can always be activat
     const concierge = await startKitPlanCheckout({ req, request: { planId: "land_concierge", interval: "30d", currency: "USD", billingCountry: "INTL", role: "job_seeker" }, customer, urls, deps: { isAvailable: everythingLive, createPlanCheckout: vi.fn() } });
     expect(concierge).toMatchObject({ ok: false, status: 403, code: "application_required" });
     const createPackCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/pack", hostedPageId: "hp_pack" }));
-    const pack = await startKitPackCheckout({ req, request: { packId: "pack_5", billingCountry: "INTL", role: "job_seeker" }, customer, urls, deps: { isAvailable: everythingLive, createPackCheckout, newCheckoutIntentId: () => "intent_pack", packSalesPaused: false } });
+    const pack = await startKitPackCheckout({ req, request: { packId: "pack_5", billingCountry: "INTL", role: "job_seeker" }, customer, urls, deps: { isAvailable: everythingLive, createPackCheckout, newCheckoutIntentId: () => "intent_pack" } });
     expect(pack).toMatchObject({ ok: true });
     expect(createPackCheckout).toHaveBeenCalledOnce();
   });

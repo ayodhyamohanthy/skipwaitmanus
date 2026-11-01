@@ -11,7 +11,7 @@
  * not produce itself.
  */
 import { CREDIT_RULE, MONEY_SENTENCE, MONEY_SENTENCE_SHORT, PAID_PLANS_SENTENCE, REFERRING_FREE_LINE } from "./moneyCopy";
-import { CREDIT_PACKS_ON_SALE, firstPackClaim } from "./planCatalog";
+import { firstPackClaim } from "./planCatalog";
 
 /** The first-pack claim, from the catalog the server sells (POSTMERGE-oct22 #534). */
 const FIRST_PACK_INR = firstPackClaim("INR") ?? "our smallest pack";
@@ -55,9 +55,7 @@ export const LANDING_EXPLORE: readonly LandingLink[] = [
   { href: "/jobs", label: "Browse roles", summary: "Published roles worth a referral." },
   { href: "/wall", label: "Internal openings", summary: "Hiring signals shared privately by verified employees." },
   { href: "/referrer", label: "For employees", summary: "Verify your work email to review private requests at your company." },
-  ...(CREDIT_PACKS_ON_SALE
-    ? [{ href: "/premium", label: "Buy credits", summary: "Extra referral credits are sold in one-time packs that never expire." }]
-    : [{ href: "/premium", label: "Credit packs", summary: "Credit packs are paused while we update our plans." }]),
+  { href: "/premium", label: "Buy credits", summary: "Extra referral credits are sold in one-time packs that never expire." },
   { href: "/pricing", label: "Pricing", summary: "The free monthly allowance, extra credits, and what a credit buys." },
   { href: "/plans", label: "Plans and credits", summary: PAID_PLANS_SENTENCE },
   { href: "/about", label: "About us", summary: "Who runs skipwait.me and what it sells." },

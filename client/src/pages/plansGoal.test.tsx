@@ -11,21 +11,10 @@ import Billing from "./Billing";
 import { assertGoalPage } from "@/test/goalPageContract";
 import { GOAL_PAGE } from "./goal/plans/GoalBilling";
 
-const { authState, surfaces, planCatalogFlags } = vi.hoisted(() => ({
+const { authState, surfaces } = vi.hoisted(() => ({
   authState: { isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token"), openSignIn: vi.fn() },
   surfaces: { on: new Set<string>() },
-  planCatalogFlags: { creditPacksOnSale: false },
 }));
-
-vi.mock("@shared/planCatalog", async importOriginal => {
-  const actual = await importOriginal<typeof import("@shared/planCatalog")>();
-  return {
-    ...actual,
-    get CREDIT_PACKS_ON_SALE() {
-      return planCatalogFlags.creditPacksOnSale;
-    },
-  };
-});
 
 vi.mock("@/_core/auth", () => ({
   useAuth: () => authState,
@@ -83,12 +72,7 @@ const expectNoRetiredNouns = () => {
   expect(text).not.toMatch(/\basks?\b/i);
 };
 
-beforeEach(() => {
-  authState.isSignedIn = true;
-  authState.isLoaded = true;
-  surfaces.on = new Set(["plans"]);
-  planCatalogFlags.creditPacksOnSale = false;
-});
+beforeEach(() => { authState.isSignedIn = true; authState.isLoaded = true; surfaces.on = new Set(["plans"]); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); authState.getToken.mockClear(); });
 
 describe("Goal /billing flag gate", () => {
@@ -226,18 +210,7 @@ describe("Goal /billing receipts", () => {
 });
 
 describe("Goal /billing purchase affordance", () => {
-  it("sends a seeker with no referral requests left to /plans while packs are paused", async () => {
-    stubBilling({ summary: outSummary });
-    render(<Billing />);
-    const primary = await screen.findByRole("link", { name: "See plans and prices" });
-    expect(primary.getAttribute("href")).toBe("/plans");
-    expect(primary.hasAttribute("data-g-primary")).toBe(true);
-    expect(screen.queryByRole("link", { name: "Get more referral requests" })).toBeNull();
-    expect(document.querySelector('a[href^="/premium"]')).toBeNull();
-  });
-
-  it("sends a seeker with no referral requests left to the packs on sale when packs are enabled", async () => {
-    planCatalogFlags.creditPacksOnSale = true;
+  it("sends a seeker with no referral requests left to the packs on sale", async () => {
     stubBilling({ summary: outSummary });
     render(<Billing />);
     const primary = await screen.findByRole("link", { name: "Get more referral requests" });

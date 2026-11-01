@@ -2,9 +2,13 @@ import { Link } from "wouter";
 import { ArrowRight, Tag } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { PolicyPageShell, PolicySection } from "@/components/PolicyPageShell";
-import { REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
-import { PLAN_FAMILY, planFeeMinor } from "@shared/planFamily";
-import { money } from "@/components/plans/format";
+import { ASK_COST_SENTENCE, CREDIT_RULE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { firstPackClaim } from "@shared/planCatalog";
+
+// POSTMERGE-oct22 #534: the first-pack claim comes from the catalog the server sells, never from copy here.
+const FIRST_PACK_INR = firstPackClaim("INR") ?? "our smallest pack";
+const FIRST_PACK_USD = firstPackClaim("USD") ?? "our smallest pack";
+
 /** /pricing — public price list. Mirrors the checkout prices; no sign-in. */
 export default function Pricing() {
   return <PolicyPageShell
@@ -17,14 +21,12 @@ export default function Pricing() {
     status="published"
   >
     <PolicySection number="01" title="Free">
-      <p><strong>3 free referrals a month at any level with a verified card; no carry-forward.</strong> {REFERRER_MONEY_SENTENCE}</p>
+      <p><strong>{ASK_COST_SENTENCE}</strong> The free credits reset each month. {REFERRER_MONEY_SENTENCE}</p>
     </PolicySection>
-    <PolicySection number="02" title="Plans (frozen October 25, 2026)">
+    <PolicySection number="02" title="Extra credits (one-time)">
       <ul>
-        {PLAN_FAMILY.map(plan => (
-          <li key={plan.id}><strong>{plan.label}</strong>: founding price <strong>{money(planFeeMinor(plan.id, "INR"), "INR")}</strong> a month in India, <strong>{money(planFeeMinor(plan.id, "USD"), "USD")}</strong> a month everywhere else. Includes monthly referrals inside its band.</li>
-        ))}
-        <li>Extra referrals are priced per referrer level with volume discounts; the full list is on the plans page. Checkout is not switched on yet; the old credit packs are paused, and credits already bought still work.</li>
+        <li>Credits are sold in one-time packs: from <strong>{FIRST_PACK_INR}</strong> (India) or <strong>{FIRST_PACK_USD}</strong> (rest of the world). Larger packs cost less per credit.</li>
+        <li>Purchased credits never expire. {CREDIT_RULE}</li>
       </ul>
     </PolicySection>
     <PolicySection number="03" title="Payment">

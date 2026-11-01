@@ -99,34 +99,19 @@ describe("kit plan checkout decision", () => {
   });
 });
 
-describe("legacy pricing pause (Oct 25 2026 freeze)", () => {
-  it("refuses a new pack checkout before any provider call, with nothing charged", async () => {
-    const createPackCheckout = vi.fn();
-    const isAvailable = vi.fn(() => true);
-    const started = await startKitPackCheckout({
-      req, request: { packId: "pack_25", billingCountry: "IN", role: "job_seeker" }, customer: { billingCountry: "IN" }, urls,
-      deps: { isAvailable, createPackCheckout },
-    });
-    expect(started).toMatchObject({ ok: false, status: 409, code: "legacy_pricing_paused" });
-    expect(started.ok === false && started.error).toContain("Nothing has been charged");
-    expect(isAvailable).not.toHaveBeenCalled();
-    expect(createPackCheckout).not.toHaveBeenCalled();
-  });
-});
-
 describe("kit credit pack checkout decision", () => {
   it("sells the pack for the requesting region's currency at the catalog amount", async () => {
     const createPackCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/pack", hostedPageId: "hp_pack" }));
     const india = await startKitPackCheckout({
       req, request: { packId: "pack_25", billingCountry: "IN", role: "job_seeker" }, customer: { billingCountry: "IN" }, urls,
-      deps: { isAvailable: () => true, createPackCheckout, newCheckoutIntentId: () => "intent_pack", packSalesPaused: false },
+      deps: { isAvailable: () => true, createPackCheckout, newCheckoutIntentId: () => "intent_pack" },
     });
     expect(india).toMatchObject({ ok: true, price: { packId: "pack_25", credits: 25, currency: "INR", amount: 119_900, itemPriceId: "skipwait_pack_25-INR" } });
     expect(createPackCheckout).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ itemPriceId: "skipwait_pack_25-INR", currency: "INR" }));
 
     const globally = await startKitPackCheckout({
       req, request: { packId: "pack_5", billingCountry: "INTL", role: "job_seeker" }, customer: {}, urls,
-      deps: { isAvailable: () => true, createPackCheckout, newCheckoutIntentId: () => "intent_pack", packSalesPaused: false },
+      deps: { isAvailable: () => true, createPackCheckout, newCheckoutIntentId: () => "intent_pack" },
     });
     expect(globally).toMatchObject({ ok: true, price: { packId: "pack_5", credits: 5, currency: "USD", amount: 500 } });
   });
@@ -135,7 +120,7 @@ describe("kit credit pack checkout decision", () => {
     const createPackCheckout = vi.fn();
     const started = await startKitPackCheckout({
       req, request: { packId: "pack_150", billingCountry: "INTL", role: "job_seeker" }, customer: {}, urls,
-      deps: { isAvailable: nothingLive, createPackCheckout, packSalesPaused: false },
+      deps: { isAvailable: nothingLive, createPackCheckout },
     });
     expect(started).toMatchObject({ ok: false, status: 409, code: NOT_AVAILABLE_CODE });
     expect(createPackCheckout).not.toHaveBeenCalled();
@@ -188,7 +173,7 @@ describe("kit checkout over the two money routes", () => {
   it("stores a kit pack intent as credits, not as a legacy token pack", async () => {
     const createPaymentIntent = vi.fn();
     const createPackCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/pack", hostedPageId: "hp_pack" }));
-    const response = await request(app({ createPaymentIntent, kitCheckout: { isAvailable: () => true, createPackCheckout, newCheckoutIntentId: () => "intent_pack", packSalesPaused: false } }))
+    const response = await request(app({ createPaymentIntent, kitCheckout: { isAvailable: () => true, createPackCheckout, newCheckoutIntentId: () => "intent_pack" } }))
       .post("/api/chargebee/checkout")
       .send({ packId: "pack_60", billingCountry: "IN" });
     expect(response.status).toBe(200);

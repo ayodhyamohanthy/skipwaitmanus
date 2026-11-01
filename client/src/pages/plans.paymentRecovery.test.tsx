@@ -57,8 +57,7 @@ describe("Plans payment return recovery", () => {
     vi.stubGlobal("fetch", fetchMock);
     const view = render(<Plans />);
     expect(screen.getByText(/Razorpay \(INR\)/)).toBeTruthy();
-    // Oct 25 2026 freeze: pack sales paused, no purchase section on the legacy page.
-    expect(screen.queryByText("Credits")).toBeNull();
+    expect(screen.getByText("Credits")).toBeTruthy();
     expect(fetchMock.mock.calls.every(([url]) => String(url).startsWith("/api/plans/catalog"))).toBe(true);
     fetchMock.mockClear();
     view.unmount();

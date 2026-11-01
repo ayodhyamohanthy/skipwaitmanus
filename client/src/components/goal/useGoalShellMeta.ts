@@ -18,7 +18,7 @@ const PAGE_TITLES: Array<[RegExp, string]> = [
   [/^\/inbox/, "Inbox"],
   [/^\/conversation/, "Conversation"],
   [/^\/alerts/, "Alerts"],
-  [/^\/plans/, "Plans"],
+  [/^\/plans/, "Plans and credits"],
   [/^\/billing/, "Billing"],
   [/^\/profile/, "Profile"],
   [/^\/settings/, "Settings"],
