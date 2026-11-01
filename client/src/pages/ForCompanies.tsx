@@ -59,7 +59,7 @@ export default function ForCompanies() {
           </div>
         </section>
         <section className="launch-section" aria-label="Launch companies">
-          <span className="eyebrow">PEOPLE OPEN TO REFERRALS AT LAUNCH</span>
+          <span className="eyebrow">COMPANIES ON SKIPWAIT.ME</span>
           {directory.data
             ? <div className="co-logos">{directory.data.companies.map(item => <span key={item.slug}><Building2 />{item.name}</span>)}</div>
             : directory.isError
