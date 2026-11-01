@@ -29,7 +29,7 @@ describe("plan catalog copy after D-012 item 3 and D-067", () => {
   }
 
   it("states the D-063 money sentence in the fairness band and never calls referrals free", () => {
-    expect(fairnessRules).toContain("3 free credits every month; extra asks use credits.");
+    expect(fairnessRules).toContain("3 free referrals every month; extra asks use credits.");
     expect(fairnessRules).toContain("Referrers are never paid and never ask you for money.");
     for (const line of [...fairnessRules, ...planFaqs().flat()]) expect(line).not.toMatch(/always free|free\.\s*always|referrals (?:are|stay) free/i);
   });

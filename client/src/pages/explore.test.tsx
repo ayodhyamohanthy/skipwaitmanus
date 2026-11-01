@@ -307,7 +307,7 @@ describe("Explore company door (goal, W2)", () => {
     expect(screen.getByText("People open to referral requests")).toBeTruthy();
     expect(screen.getByText("Ask a verified employee. Your name and resume stay private until they accept.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Ask for a referral" }).getAttribute("data-g-primary")).toBe("true");
-    expect(screen.getByText("3 free credits every month; extra asks use credits.")).toBeTruthy();
+    expect(screen.getByText("3 free referrals every month; extra asks use credits.")).toBeTruthy();
     // Company mark is initials, never a logo; functions join the hero, not the old kit meta.
     expect(screen.getByText("W", { exact: true })).toBeTruthy();
     expect(screen.getByText(/Find a role on the company’s own careers site/)).toBeTruthy();
@@ -336,7 +336,7 @@ describe("Explore company door (goal, W2)", () => {
     const commit = screen.getByRole("button", { name: "Ask anyway" });
     expect(commit.getAttribute("data-g-primary")).toBeNull();
     expect(screen.getByText(/waits free until one can/)).toBeTruthy();
-    expect(screen.queryByText(/3 free credits every month/)).toBeNull();
+    expect(screen.queryByText(/3 free referrals every month/)).toBeNull();
   });
 
   it("explains a failed load with Try again instead of a 404", async () => {
@@ -356,7 +356,7 @@ describe("Explore company door (goal, W2)", () => {
     renderWithQuery(<ExploreCompany />);
     await screen.findByRole("heading", { level: 1 });
     expect(document.title).toBe("Referrals at Wipro · skipwait.me");
-    expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Request a private introduction to someone at Wipro. 3 free credits every month; extra asks use credits.");
+    expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Request a private introduction to someone at Wipro. 3 free referrals every month; extra asks use credits.");
     expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore/wipro");
   });
 

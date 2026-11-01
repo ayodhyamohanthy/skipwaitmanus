@@ -30,7 +30,7 @@ const CARD_COPY: Record<PlanFamilyId, { name: string; feeNote: string; bullets: 
   open_door: {
     name: "Free to join. Start with no card.",
     feeNote: "no commitment",
-    bullets: ["3 free credits every month", "Referrers matched at your own level", "Cost shown before every ask"],
+    bullets: ["3 free referrals every month", "Referrers matched at your own level", "Cost shown before every ask"],
     cta: "Start free",
     primary: false,
   },
