@@ -186,8 +186,8 @@
       "tier": 1,
       "lane": "pricing",
       "branch": "agent/pricing/banded-plans-oct25",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-266",
       "dependsOn": [
         "D-048-F-credits"
       ],
