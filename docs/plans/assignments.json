@@ -4637,10 +4637,10 @@
       "tier": 1,
       "lane": "d048-foundation",
       "branch": "agent/queue/fix-main-eb0fd8cd",
-      "status": "in-review",
+      "status": "todo",
       "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "Main CI flake: shareHubGoal.test.tsx 'opens on the goal with the copy commit once the link is ready' failed on eb0fd8cd (run 40467542914) and dc7f71a8; GoalShareHub started with loading=false so the link could render as ready before it existed. PR #734 by a new Claude session (head 5149e8af, two files). Registered post-hoc by the coordinator: the D-166 queue gate refused the unregistered branch; the owner-direct label was NOT used and no gate bypass was granted. Tier 1: one independent D-151 review of the exact head by a model other than Claude (builder is Claude family), then landing on green required CI. Owns overlaps D-048-copy-goal-twins-trigger-fix, which now waits on this row and merges main forward after it lands.",
+      "note": "Main CI flake: shareHubGoal.test.tsx 'opens on the goal with the copy commit once the link is ready' failed on eb0fd8cd (run 40467542914) and dc7f71a8; GoalShareHub started with loading=false so the link could render as ready before it existed. PR #734 by a new Claude session (two files; current PR #734 head ce329367, required CI run 40657326739 green on that head). Registered post-hoc by the coordinator: the D-166 queue gate refused the unregistered branch; the owner-direct label was NOT used and no gate bypass was granted. Tier 1: one independent D-151 review of the exact head by a model other than Claude (builder is Claude family), then landing on green required CI. Owns overlaps D-048-copy-goal-twins-trigger-fix, which now waits on this row and merges main forward after it lands. Status correction only: in-review -> todo, following D-217 precedent. The open implementation still owes independent non-Claude exact-head review; no review lock or accepted final verdict exists. A mismatched historical claim id leaves the automated builder list empty, so the known Claude builder exclusion must still be checked manually. Existing technical review and evidence captures are not final acceptance. Integration with latest main, required CI, residual readiness findings, release/flag reachability and landing remain unsettled. No source, ownership, dependency, release or history change.",
       "owns": [
         "client/src/pages/goal/seeker-small/GoalShareHub.tsx",
         "client/src/pages/goal/seeker-small/shareHubGoal.test.tsx"
