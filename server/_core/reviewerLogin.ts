@@ -93,3 +93,23 @@ export function registerReviewerLoginRoutes(app: Express) {
     }
   });
 }
+
+// The marker lives in shared/reviewerAccounts.ts (leaf) so billing/environment
+// code can use it without importing this route (circular through db).
+export { REVIEWER_OPENID_PREFIX, isReviewerOpenId } from "../../shared/reviewerAccounts";
+import { isReviewerOpenId } from "../../shared/reviewerAccounts";
+
+export const REVIEWER_EXTERNAL_ACTION_REFUSAL =
+  "Demo review accounts can browse the product but cannot take actions that reach real members.";
+
+/**
+ * Least-privilege guard for the shared demo review accounts: their sessions are ordinary, so
+ * routes that fan out to real members or external services refuse them here. Returns true when
+ * the response was sent. Browse/checkout-preview paths stay open on purpose - a hosted checkout
+ * cart with no payment behind it reaches no one.
+ */
+export function refuseReviewerExternalAction(res: Response, openId: string | null | undefined): boolean {
+  if (!isReviewerOpenId(openId)) return false;
+  res.status(403).json({ error: REVIEWER_EXTERNAL_ACTION_REFUSAL });
+  return true;
+}

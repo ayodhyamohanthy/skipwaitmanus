@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isLiveChargebeeRequest, resolveBillingEnvironment, resolveChargebeeRuntime, resolveChargebeeWebhookSecret, validateBillingEnvironment } from "./chargebeeEnvironment";
+import { isLiveChargebeeRequest, resolveBillingEnvironment, resolveChargebeeRuntime, resolveChargebeeRuntimeForAccount, resolveChargebeeWebhookSecret, validateBillingEnvironment } from "./chargebeeEnvironment";
 
 describe("Chargebee environment boundary", () => {
   const env = {
@@ -33,5 +33,24 @@ describe("Chargebee environment boundary", () => {
   it("fails startup validation when the selected environment is incomplete", () => {
     expect(() => validateBillingEnvironment({ ...env, CHARGEBEE_LIVE_WEBHOOK_SECRET: undefined })).toThrow(/CHARGEBEE_LIVE_WEBHOOK_SECRET/);
     expect(validateBillingEnvironment(env)).toBe("live");
+  });
+});
+
+describe("resolveChargebeeRuntimeForAccount (REVIEWER-ISOLATION-1)", () => {
+  const env = { BILLING_ENV: "live", CHARGEBEE_LIVE_SITE: "skipwait", CHARGEBEE_LIVE_API_KEY: "live-key", CHARGEBEE_TEST_SITE: "skipwait-test", CHARGEBEE_TEST_API_KEY: "test-key" };
+  it("routes demo review accounts to the test site even in live mode", () => {
+    const runtime = resolveChargebeeRuntimeForAccount("skipwait.me", "reviewer_seeker", env);
+    expect(runtime).toEqual({ environment: "test", site: "skipwait-test", apiKey: "test-key" });
+  });
+  it("fails closed for demo review accounts when the test environment is not configured", () => {
+    const { CHARGEBEE_TEST_SITE: _s, CHARGEBEE_TEST_API_KEY: _k, ...noTest } = env;
+    expect(() => resolveChargebeeRuntimeForAccount("skipwait.me", "reviewer_seeker", noTest)).toThrow(/test environment/i);
+  });
+  it("leaves real members on the live site", () => {
+    const runtime = resolveChargebeeRuntimeForAccount("skipwait.me", "workos_member", env);
+    expect(runtime).toEqual({ environment: "live", site: "skipwait", apiKey: "live-key" });
+  });
+  it("live webhook secret resolution never returns a test secret", () => {
+    expect(resolveChargebeeWebhookSecret("skipwait.me", { ...env, BILLING_ENV: "live", CHARGEBEE_LIVE_WEBHOOK_SECRET: "live-secret", CHARGEBEE_WEBHOOK_SECRET: "test-secret" })).toBe("live-secret");
   });
 });

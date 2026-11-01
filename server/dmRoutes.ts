@@ -1,4 +1,5 @@
 import { retryAfterSecondsUntil, setRetryAfter } from "./retryAfter";
+import { refuseReviewerExternalAction } from "./_core/reviewerLogin";
 import express, { type Express, type Request } from "express";
 import { DM_FOLLOW_REQUIRED, dmSendBlockFor, type DmFollowRequired, type DmSendBlock, type ReferrerDmGate } from "../shared/directMessages";
 import { DirectMessageFollowRequiredError, dmRecipientExists, dmThreadExists, getDb, isMutualFollow, listDmThread, listDmThreads, sendDirectMessage } from "./db";
@@ -85,6 +86,7 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
     let actorUserId: number | undefined;
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to send a direct message" });
       actorUserId = identity.account.id;
       if (!Number.isInteger(counterpartUserId) || counterpartUserId <= 0) return res.status(400).json({ error: "Invalid member" });

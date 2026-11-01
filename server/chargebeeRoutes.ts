@@ -1,8 +1,9 @@
 import type { Express, Request, Response } from "express";
+import { refuseReviewerExternalAction } from "./_core/reviewerLogin";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
 import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parsePaymentSourceEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole, VerifiedChargebeeHostedPage } from "./chargebee";
-import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
+import { resolveChargebeeRuntime, resolveChargebeeRuntimeForAccount, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 import { retrieveCheckoutSubscription, subscriptionEventFromCheckoutPage, type RetrievedCheckoutSubscription } from "./chargebeeSubscriptionApi";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { giftClaimRequestSchema } from "../shared/giftSubscriptions";
@@ -13,7 +14,7 @@ import { anyPackAvailableForCurrency, refusalBody, startKitPackCheckout, startKi
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
 import type { RetiredPlanAlertInput } from "./errorAlerting";
 
-export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
+export type ChargebeeIdentity = { account: { id: number; openId?: string; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
 
 type SubscriptionCheckoutIntentRow = { hostedPageId: string; checkoutIntentId: string; userId: number; role: "job_seeker" | "referrer"; plan: string; itemPriceId: string; currency: string; status: string; failureReason?: string | null };
 
@@ -108,7 +109,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
           request: kitPack.data,
           customer: { email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined, firstName: identity.account.name?.split(" ")[0], lastName: identity.account.name?.split(" ").slice(1).join(" "), billingCountry: kitPack.data.billingCountry },
           urls: { redirectUrl: `${origin}/plans?role=${kitPack.data.role}&payment=pending`, cancelUrl: `${origin}/plans?role=${kitPack.data.role}&payment=cancelled` },
-          deps: deps.kitCheckout,
+          deps: { ...deps.kitCheckout, credentials: () => { try { return resolveChargebeeRuntimeForAccount(req.hostname, identity.account.openId); } catch { return null; } }, },
         });
         if (!started.ok) return res.status(started.status).json(refusalBody(started));
         await deps.createPaymentIntent({ hostedPageId: started.checkout.hostedPageId, checkoutIntentId: started.checkoutIntentId, userId: identity.account.id, role: kitPack.data.role, tokenCount: started.price.credits, amount: started.price.amount, currency: started.price.currency });
@@ -135,7 +136,11 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         return res.status(410).json({ error: SINGLE_CREDIT_RETIRED_ERROR, code: SINGLE_CREDIT_RETIRED_CODE });
       }
       const origin = publicOutboundOrigin(req);
-      const runtime = deps.createCheckout ? undefined : resolveChargebeeRuntime(req.hostname);
+      let runtime: ReturnType<typeof resolveChargebeeRuntime> | undefined;
+      if (!deps.createCheckout) {
+        try { runtime = resolveChargebeeRuntimeForAccount(req.hostname, identity.account.openId); }
+        catch { return res.status(503).json({ error: "Payments are not available right now. Please try again in a moment." }); }
+      }
       const checkout = await (deps.createCheckout ?? createChargebeeCheckout)({
         itemPriceId,
         quantity,
@@ -173,7 +178,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
           request: kitPlan.data,
           customer: { email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined, firstName: identity.account.name?.split(" ")[0], lastName: identity.account.name?.split(" ").slice(1).join(" "), billingCountry: kitPlan.data.billingCountry },
           urls: { redirectUrl: `${origin}/plans?role=${kitPlan.data.role}&payment=pending`, cancelUrl: `${origin}/plans?role=${kitPlan.data.role}&payment=cancelled` },
-          deps: deps.kitCheckout,
+          deps: { ...deps.kitCheckout, credentials: () => { try { return resolveChargebeeRuntimeForAccount(req.hostname, identity.account.openId); } catch { return null; } }, },
         });
         if (!started.ok) return res.status(started.status).json(refusalBody(started));
         await deps.createSubscriptionIntent({ hostedPageId: started.checkout.hostedPageId, checkoutIntentId: started.checkoutIntentId, userId: identity.account.id, role: kitPlan.data.role, plan: started.price.plan, itemPriceId: started.price.itemPriceId, amount: started.price.amount, currency: started.price.currency, billingPeriod: started.price.interval, kind: "new" });
@@ -216,6 +221,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   app.post("/api/chargebee/gifts/claim", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to claim your gift" });
       const parsed = giftClaimRequestSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "That gift reference is not valid" });
@@ -240,6 +246,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   app.post("/api/chargebee/subscription-cancel", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to manage your plan" });
       const role = roleFromBody(req.body?.role);
       const subscription = await deps.getUserSubscription?.(identity.account.id, role);
@@ -260,6 +267,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   app.post("/api/chargebee/credit-recovery", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to confirm your referral credits" });
       const role = roleFromBody(req.body?.role);
       const hostedPageId = typeof req.body?.hostedPageId === "string" ? req.body.hostedPageId.trim() : "";
@@ -321,6 +329,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   app.post("/api/chargebee/subscription-recovery", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to confirm your pass" });
       const role = roleFromBody(req.body?.role);
       if (recoveryThrottled(identity.account.id, role)) return res.status(429).json({ error: "Too many confirmation tries. Give it a minute and try again." });
@@ -389,6 +398,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   // voids automatically) is the whole check.
   app.post("/api/chargebee/card-validation", async (req, res) => {
     const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
     if (!identity) return res.status(401).json({ error: "Sign in to validate your card. Nothing has been charged." });
     // QA review (D-079): gated on the flag so a flag-off deploy is byte-for-byte today.
     if (!freeCreditsRequireCardValidation() || !deps.createCardValidationPage) return res.status(503).json({ error: "Card validation is not available. Nothing has been charged." });
@@ -439,6 +449,11 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         console.error("[Chargebee] unlinked kit subscription needs review", { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId, reason: applied.reason });
         record({ action: "billing.unlinked_subscription", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType, reason: applied.reason ?? "unknown", itemPriceId: subscription.itemPriceId } });
         void deps.alertRetiredPlanEvent?.({ eventId: subscription.eventId, eventType: subscription.eventType, reason: "unlinked_subscription", subscriptionId: subscription.subscriptionId, itemPriceId: subscription.itemPriceId }).catch(() => undefined);
+      }
+      if (applied?.status !== "duplicate" && applied?.reason === "reviewer_account") {
+        console.error("[Chargebee] payment on a demo review account needs owner review", { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId });
+        record({ action: "billing.reviewer_account_event", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType, itemPriceId: subscription.itemPriceId } });
+        void deps.alertRetiredPlanEvent?.({ eventId: subscription.eventId, eventType: subscription.eventType, reason: "reviewer_account", subscriptionId: subscription.subscriptionId, itemPriceId: subscription.itemPriceId }).catch(() => undefined);
       }
       if (applied?.status !== "duplicate" && (retired || unsupported)) {
         const reason = retired ? PLAN_RETIRED_CODE : "unsupported_plan";

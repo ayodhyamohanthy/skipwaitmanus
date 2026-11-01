@@ -225,7 +225,7 @@ export function createPaymentRefundAlerter(dependencies: AlertDependencies = {})
  * Why a plan event reached a human: plan_retired (a Pro/Max subscription, D-067), gift_claimed /
  * gift_claim_refused (a gift of one), or unsupported_plan (an item price skipwait.me cannot place).
  */
-export type RetiredPlanAlertReason = "plan_retired" | "gift_claimed" | "gift_claim_refused" | "unsupported_plan" | "unlinked_subscription";
+export type RetiredPlanAlertReason = "plan_retired" | "gift_claimed" | "gift_claim_refused" | "unsupported_plan" | "unlinked_subscription" | "reviewer_account";
 export type RetiredPlanAlertInput = { eventId?: string; eventType?: string; reason: RetiredPlanAlertReason; subscriptionId?: string; giftId?: string; itemPriceId?: string };
 
 /**
@@ -277,10 +277,15 @@ export function createRetiredPlanAlerter(dependencies: AlertDependencies = {}) {
   const recordActivity = dependencies.recordActivity ?? recordOperationalActivity;
   return async function alertRetiredPlanEvent(input: RetiredPlanAlertInput) {
     const ref = input.subscriptionId ?? input.giftId ?? input.eventId ?? "unknown";
-    const unsupported = input.reason === "unsupported_plan" || input.reason === "unlinked_subscription";
-    const subject = `skipwait.me ${unsupported ? "unrecognised" : "retired"} plan event needs review · ${ref}`;
+    const reviewer = input.reason === "reviewer_account";
+    const unsupported = !reviewer && (input.reason === "unsupported_plan" || input.reason === "unlinked_subscription");
+    const subject = reviewer
+      ? `skipwait.me payment on a demo review account needs review · ${ref}`
+      : `skipwait.me ${unsupported ? "unrecognised" : "retired"} plan event needs review · ${ref}`;
     const text = [
-      unsupported
+      reviewer
+        ? "A Chargebee event arrived for a shared demo review account (REVIEWER-ISOLATION-1). Nothing was granted; if any real payment completed on the provider side, cancel it and refund it in the Chargebee dashboard."
+        : unsupported
         ? input.reason === "unlinked_subscription"
           ? "Chargebee sold a kit pass that no checkout intent or wallet on skipwait.me could match - a paid pass must never sit unactivated (GO-LIVE-1b). Nothing was granted automatically."
           : "Chargebee sent a subscription event for an item price skipwait.me could not match to a plan it sells. Nothing was granted."
@@ -296,7 +301,7 @@ export function createRetiredPlanAlerter(dependencies: AlertDependencies = {}) {
           : "In the Chargebee dashboard, check which plan this subscription is on and whether the item price was renamed. Do not cancel or refund until you know; if it is a current plan, fix the price book so its next event applies."
         : "In the Chargebee dashboard, cancel the subscription and refund the customer for any payment it took.",
     ].join("\n");
-    const action = unsupported ? "system.unsupported_plan_alert_sent" : "system.retired_plan_alert_sent";
+    const action = reviewer ? "system.reviewer_account_alert_sent" : unsupported ? "system.unsupported_plan_alert_sent" : "system.retired_plan_alert_sent";
     const metadata = { eventId: input.eventId, reason: input.reason, subscriptionId: input.subscriptionId, giftId: input.giftId };
     try {
       const delivery = await sendAdminAlertEmail(fetchImpl, { subject, text });

@@ -1,4 +1,5 @@
 import { setRetryAfter } from "./retryAfter";
+import { refuseReviewerExternalAction } from "./_core/reviewerLogin";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
 import { dispatchReferralReviewDeliveries } from "./referralReviewDispatch";
 import { buildClaimedAskDetailView, claimResponseView } from "./referrerAskView";
@@ -396,6 +397,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.put("/api/referrer/slack-webhook", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to manage your private triage delivery" });
       if (!deps.saveReferrerSlackWebhook) return res.status(503).json({ error: "Slack triage delivery is unavailable right now" });
       const webhookUrl = typeof req.body?.webhookUrl === "string" ? req.body.webhookUrl.trim() : "";
@@ -418,6 +420,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.delete("/api/referrer/slack-webhook", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to manage your private triage delivery" });
       if (!deps.deactivateReferrerSlackWebhook) return res.status(503).json({ error: "Slack triage delivery is unavailable right now" });
       const result = await deps.deactivateReferrerSlackWebhook(identity.account.id);
@@ -441,6 +444,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/opportunities", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to publish an opportunity" });
       // D-022: the gate is the server's own work-email verdict (the shared
       // verified-referrer rule), never a sign-in email presented on the session.
@@ -462,6 +466,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/opportunities/:id/renew", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       const opportunityId = Number(req.params.id);
       if (!identity) return res.status(401).json({ error: "Sign in to renew your opening" });
       if (!Number.isInteger(opportunityId) || opportunityId <= 0) return res.status(400).json({ error: "Invalid opening reference" });
@@ -476,6 +481,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/opportunities/:id/close", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       const opportunityId = Number(req.params.id);
       if (!identity) return res.status(401).json({ error: "Sign in to close your opening" });
       if (!Number.isInteger(opportunityId) || opportunityId <= 0) return res.status(400).json({ error: "Invalid opening reference" });
@@ -644,6 +650,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/privacy/requests/erasure", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to request account deletion" });
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       const privacyRequest = await deps.createPrivacyErasureRequest?.(identity.account.id); if (!privacyRequest) return res.status(503).json({ error: "Privacy requests are unavailable right now" });
       record({ actorUserId: identity.account.id, action: "privacy.erasure_requested", outcome: "success", resourceType: "privacy_request", resourceId: privacyRequest.id, metadata: { alreadyRequested: privacyRequest.alreadyRequested } });
       res.status(privacyRequest.alreadyRequested ? 200 : 201).json({ request: privacyRequest });
@@ -652,6 +659,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/work-email/otp/send", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in before verifying a work email" });
       const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
       if (!deps.sendWorkEmailOtp) return res.status(503).json({ error: "Work-email verification is unavailable right now" });
@@ -667,6 +675,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/work-email/otp/verify", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in before verifying a work email" });
       const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
       const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
@@ -688,6 +697,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/company-referrals/verify-work-email", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
       if (!identity) return res.status(401).json({ error: "Sign in to verify a work email" });
       if (!email) return res.status(400).json({ error: "Enter the work email address that received your code" });
@@ -741,6 +751,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     let actorUserId: number | undefined;
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in before sending a private company request" });
       actorUserId = identity.account.id;
       const { targetRoleUrl, attachmentIds, confirmedCompanyDomain, compensation, fastTrackCode, fastTrackCompanySlug, fastTrackAlias, companySlug, expectedCoverage } = req.body as { companySlug?: string; targetRoleUrl?: string; attachmentIds?: number[]; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; expectedCoverage?: string };
@@ -1023,6 +1034,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/referral-share-cards/:requestId", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to create a share card" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral reference" });
       const card = await (deps.getOrCreateReferralShareCard ?? getOrCreateReferralShareCard)(identity.account.id, requestId);
@@ -1034,6 +1046,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.delete("/api/referral-share-cards/:requestId", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to remove a share card" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral reference" });
       const result = await (deps.revokeReferralShareCard ?? revokeReferralShareCard)(identity.account.id, requestId);
@@ -1090,6 +1103,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/personal-invites/claim", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       const inviteCode = typeof req.body?.inviteCode === "string" ? req.body.inviteCode.slice(0, 64) : "";
       const verifiedEmail = identity?.primaryEmail?.emailAddress?.trim().toLowerCase() ?? "";
       if (!identity) return res.status(401).json({ error: "Sign in before claiming an invite" });
@@ -1189,6 +1203,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/company-referrals/availability/open", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to open referral capacity" });
       if (!deps.openCompanyReferralAvailability) return res.status(503).json({ error: "Referral availability is unavailable right now" });
       const requestedSlotCount = typeof req.body?.slotCount === "number" ? req.body.slotCount : 1;
@@ -1216,6 +1231,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/company-referrals/:requestId/save", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       const saved = req.body?.saved !== false;
       if (!identity) return res.status(401).json({ error: "Sign in to save a private request" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
@@ -1229,6 +1245,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/company-referrals/:requestId/withdraw", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to withdraw a referral request" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral reference" });
       if (!deps.withdrawCompanyReferralRequest) return res.status(501).json({ error: "Withdrawing requests is not available yet" });
@@ -1245,6 +1262,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/company-referrals/:requestId/review", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       const decision = req.body?.decision;
       const message = typeof req.body?.message === "string" ? req.body.message.slice(0, 3000) : undefined;
       if (!identity) return res.status(401).json({ error: "Sign in to review a private request" });
@@ -1259,6 +1277,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/company-referrals/:requestId/one-click-review", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId); const decision = req.body?.decision; const declineReason = req.body?.declineReason;
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to review this private request" });
       if (!Number.isInteger(requestId) || requestId <= 0 || (decision !== "approved" && decision !== "declined") || (decision === "declined" && !isOneClickDeclineReason(declineReason)) || passReasonOf(req.body) === undefined) return res.status(400).json({ error: "Choose accept or a concise decline reason" });
       // An accept reveals names both ways and the resume, so it must be an explicit confirmed act (the kit
@@ -1277,6 +1296,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/referrer-review-links/:linkToken/decision", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const linkToken = req.params.linkToken; const decision = req.body?.decision; const declineReason = req.body?.declineReason;
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to use this private review link" });
       if (!isOpaqueReviewLinkToken(linkToken) || (decision !== "approved" && decision !== "declined") || (decision === "declined" && !isOneClickDeclineReason(declineReason)) || passReasonOf(req.body) === undefined) return res.status(400).json({ error: "This private review action is invalid" });
       if (!deps.resolveReferrerReviewEmailLink || !deps.oneClickReviewReferralRequest) return res.status(503).json({ error: "Email review is unavailable right now" });
@@ -1300,6 +1320,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     let actorUserId: number | undefined;
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to record private referral progress" });
       actorUserId = identity.account.id;
       const status = req.body?.status;
@@ -1347,6 +1368,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     let actorUserId: number | undefined;
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to send a private message" });
       actorUserId = identity.account.id;
       const recentCount = deps.countRecentMessagesBySender ? await deps.countRecentMessagesBySender(identity.account.id, new Date(Date.now() - 60 * 60 * 1000)) : 0;
@@ -1467,6 +1489,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/company-referrals/:requestId/claim", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to claim a referral request" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
       if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
@@ -1487,6 +1510,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     if (!referredActionsEnabled) return refuseReferredAction(res);
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to extend this referral deadline" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
       if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
@@ -1503,6 +1527,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     if (!referredActionsEnabled) return refuseReferredAction(res);
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to step back from this referral" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
       if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
@@ -1519,6 +1544,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     if (!referredActionsEnabled) return refuseReferredAction(res);
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity) return res.status(401).json({ error: "Sign in to confirm this referral" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
       if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
@@ -1561,6 +1587,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/admin/approval-queue/:kind/:id/decision", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       const kind = req.params.kind;
       const itemId = Number(req.params.id);
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
@@ -1594,6 +1621,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/admin/users/:userId/suspend", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const userId = Number(req.params.userId);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
       if (!Number.isInteger(userId) || userId <= 0) return res.status(400).json({ error: "Invalid user reference" });
       if (typeof req.body?.suspended !== "boolean") return res.status(400).json({ error: "State whether the account should be suspended" });
@@ -1621,6 +1649,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/admin/payments/review/:paymentId/revoke-credits", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const paymentId = Number(req.params.paymentId);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
       if (!Number.isInteger(paymentId) || paymentId <= 0) return res.status(400).json({ error: "Invalid payment reference" });
       if (!deps.revokeCreditedPaymentCredits) return res.status(501).json({ error: "Credit revocation is unavailable" });
@@ -1633,6 +1662,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/admin/payments/review/:paymentId", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const paymentId = Number(req.params.paymentId);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
       if (!Number.isInteger(paymentId) || paymentId <= 0) return res.status(400).json({ error: "Invalid payment reference" });
       // The shared contract (shared/paymentReview.ts) is checked before anything runs; only a take-back may carry a credit cap.
@@ -1677,6 +1707,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/admin/privacy-requests/:requestId/review", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid privacy request" });
       const status = req.body?.status; const resolution = typeof req.body?.resolution === "string" ? req.body.resolution.slice(0, 500) : undefined;
@@ -1744,6 +1775,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/admin/token-recovery/grants", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
       if (req.body?.confirmed !== true) return res.status(400).json({ error: "Confirm that you reviewed the payment or support issue before granting tokens" });
       const recipientUserId = Number(req.body?.recipientUserId); const role = req.body?.role; const tokenCount = Number(req.body?.tokenCount);
@@ -1773,6 +1805,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/admin/schema/reconcile", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
+      if (refuseReviewerExternalAction(res, identity?.account?.openId)) return;
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
       await reconcileSchema();
       record({ actorUserId: identity.account.id, action: "admin.schema_reconcile_run", outcome: isSchemaReconciled() ? "success" : "failure", resourceType: "schema_reconcile", metadata: { statementCount: getLastReconcileResults().length, reconciled: isSchemaReconciled() } });

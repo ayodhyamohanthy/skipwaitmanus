@@ -1,4 +1,5 @@
 import type { Express, Request } from "express";
+import { refuseReviewerExternalAction } from "./_core/reviewerLogin";
 import { z } from "zod";
 import { companyClaimEnabled, CompanyClaimError, confirmCompanyClaim, loadCompanyClaimDashboard, sendCompanyClaimLink } from "./companyClaim";
 type Deps = {
@@ -21,6 +22,7 @@ export function registerCompanyClaimRoutes(app: Express, deps: Deps) {
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to verify your company" });
+      if (refuseReviewerExternalAction(res, (identity.account as { openId?: string }).openId)) return;
       res.json(await action(identity.account.id, req));
     } catch (error) {
       if (error instanceof CompanyClaimError) return res.status(error.status).json({ error: error.message });

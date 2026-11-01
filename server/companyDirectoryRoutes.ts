@@ -9,6 +9,7 @@
 //   PATCH /api/admin/companies/:id admin: edit, hide/list, add/remove alias domains
 // Contracts live in shared/companies.ts; services are injectable for tests.
 import express, { type Express, type Request, type Response } from "express";
+import { refuseReviewerExternalAction } from "./_core/reviewerLogin";
 import { adminCompanyCreateSchema, adminCompanyUpdateSchema, COMPANY_NOT_FOUND_ERROR, COMPANY_SLUG_PATTERN, type AdminCompany, type AdminCompanyCreate, type AdminCompanyUpdate, type CompanyDirectoryResponse, type PublicCompany } from "../shared/companies";
 import { companyOpportunitiesResponseSchema } from "../shared/companyOpportunities";
 import { getCompanyDirectoryEntry, listAdminCompanies, listCompanyDirectory } from "./companyDirectory";
@@ -62,6 +63,7 @@ export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirect
   /** 401 for anonymous, 403 for signed-in non-admins; the admin identity otherwise. */
   const requireAdmin = async (req: Request, res: Response) => {
     const identity = await deps.resolveIdentity(req);
+    if (refuseReviewerExternalAction(res, (identity?.account as { openId?: string } | undefined)?.openId)) return undefined;
     if (!identity) { res.status(401).json({ error: "Sign in to continue" }); return undefined; }
     if (identity.account.role !== "admin") {
       record({ actorUserId: identity.account.id, action: "admin.companies_denied", outcome: "denied", resourceType: "company" });

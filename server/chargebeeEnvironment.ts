@@ -1,3 +1,4 @@
+import { isReviewerOpenId } from "../shared/reviewerAccounts";
 export type ChargebeeRuntime = {
   environment: "test" | "live";
   site: string;
@@ -47,4 +48,20 @@ export function resolveChargebeeRuntime(_host: string | undefined, env: Chargebe
 
 export function resolveChargebeeWebhookSecret(_host: string | undefined, env: ChargebeeEnvironment = process.env): string | undefined {
   return resolveBillingEnvironment(env) === "live" ? env.CHARGEBEE_LIVE_WEBHOOK_SECRET : env.CHARGEBEE_WEBHOOK_SECRET;
+}
+
+/**
+ * REVIEWER-ISOLATION-1: demo review accounts never reach the live Chargebee site.
+ * Their hosted pages are created on the sandbox site from CHARGEBEE_TEST_SITE /
+ * CHARGEBEE_TEST_API_KEY, and a missing test configuration refuses the checkout
+ * (fail closed - never a silent fall back to live). Real members are untouched.
+ */
+export function resolveChargebeeRuntimeForAccount(host: string | undefined, accountOpenId: string | null | undefined, env: ChargebeeEnvironment = process.env): ChargebeeRuntime {
+  if (isReviewerOpenId(accountOpenId)) {
+    const site = env.CHARGEBEE_TEST_SITE;
+    const apiKey = env.CHARGEBEE_TEST_API_KEY;
+    if (!site || !apiKey) throw new Error("Demo review checkout requires the Chargebee test environment (CHARGEBEE_TEST_SITE/CHARGEBEE_TEST_API_KEY); refusing to use the live site");
+    return { environment: "test", site, apiKey };
+  }
+  return resolveChargebeeRuntime(host, env);
 }
