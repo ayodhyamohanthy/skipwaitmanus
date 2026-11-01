@@ -9,7 +9,7 @@
 // Flag off, the kit pages render unchanged.
 import React from "react";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ASK_COST_SENTENCE, CREDIT_RULE, MONEY_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import { FREE_PLAN } from "@shared/planCatalog";
 import { assertGoalPage } from "@/test/goalPageContract";
@@ -56,6 +56,11 @@ function offline() {
 }
 const primary = (container: HTMLElement) => container.querySelector("[data-g-primary]") as HTMLElement | null;
 
+// The page files load their goal versions lazily; warm those chunks once so a
+// cold transform on a slow disk never outlasts the first findBy* timeout.
+beforeAll(async () => {
+  await Promise.all([import("./GoalHelp"), import("./GoalReport"), import("./GoalSafety")]);
+}, 60_000);
 beforeEach(() => { flagState.on = true; authState.isSignedIn = true; go.mockReset(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
