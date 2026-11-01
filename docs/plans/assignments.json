@@ -3578,7 +3578,7 @@
       "tier": 1,
       "lane": "api-error-boundary",
       "branch": "agent/queue/p1-client-error-boundary",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-228",
       "dependsOn": [],
       "owns": [
