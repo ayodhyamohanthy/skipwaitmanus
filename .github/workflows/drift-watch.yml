@@ -32,12 +32,26 @@ jobs:
           # still trigger runtime deploys). Docs-only HEADs correctly resolve
           # to the older runtime commit. --first-parent picks the merge commit
           # main deployed, never the PR commit inside it (#475).
+          # Keep this path list literal: driftWatch.test.ts extracts and runs it.
           expected=$(git log -1 --first-parent --format=%H origin/main -- server shared drizzle src/worker.ts Dockerfile .dockerignore package.json pnpm-lock.yaml patches wrangler.jsonc tsconfig.json vite.config.ts)
+          PATHS="server shared drizzle src/worker.ts Dockerfile .dockerignore package.json pnpm-lock.yaml patches wrangler.jsonc tsconfig.json vite.config.ts"
           echo "expected=$expected" >> "$GITHUB_OUTPUT"
           if EXPECTED_SHA="$expected" bash scripts/verify-live-release.sh; then
             echo "drifted=false" >> "$GITHUB_OUTPUT"
           else
-            echo "drifted=true" >> "$GITHUB_OUTPUT"
+            # Reverse-direction landings (branch fast-forwarded onto main) put
+            # branch catch-up merges on main's first-parent chain; their diffs
+            # touch watched paths even when main's tree content there equals the
+            # deployed commit, so sha comparison alone false-positives (#687).
+            # The real invariant is artifact equivalence: no diff between the
+            # live sha and origin/main over the runtime path set.
+            live_sha=$(curl -sS --max-time 20 https://skipwait.me/api/health/ready | jq -r .commitSha 2>/dev/null || echo "")
+            if [[ -n "$live_sha" && "$live_sha" != "null" ]] && git cat-file -e "$live_sha^{commit}" 2>/dev/null && git diff --quiet "$live_sha" origin/main -- $PATHS; then
+              echo "content-equivalent: live $live_sha matches origin/main over runtime paths"
+              echo "drifted=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "drifted=true" >> "$GITHUB_OUTPUT"
+            fi
           fi
 
       - name: Report drift
