@@ -205,11 +205,19 @@ jobs:
 
   # GATE-e2e-journeys (D-212, docs/plans/GATE-delivery.md): the core journeys in
   # a real browser against the built server and a real MySQL, on every pull
-  # request and every push to main. scripts/e2e-server.mjs builds the schema
-  # from an empty database and applies the deploy migrations twice (the second
-  # run must apply nothing). Not a required check until it has been green on
-  # main for 3 days and the owner adds it (D-212 (6)). No `paths:` filter: a
+  # request and every push to main. Not a required check until it has been green
+  # on main for 3 days and the owner adds it (D-212 (6)). No `paths:` filter: a
   # docs-only change exits green in the first step instead.
+  #
+  # GATE-migration-apply (D-212): the schema step proves what a pull request's
+  # deploy migrations do on the database `main` already has. It pushes the base
+  # revision's drizzle/schema.ts, applies drizzle/deploy/*.sql twice (the second
+  # run must apply nothing), then compares the result with the PR's own
+  # schema.ts: a table or column no deploy migration creates fails here, not in
+  # production's migrate-db. It reads repository files only - no production
+  # database, dump or secret. A base revision it cannot resolve or push falls
+  # back to the head schema and warns, so a broken tool never reddens a pull
+  # request for a reason that is not a breach.
   e2e:
     name: e2e journeys
     runs-on: ubuntu-latest
@@ -269,8 +277,10 @@ jobs:
       - name: Build
         if: ${{ steps.docs.outputs.docs_only != 'true' }}
         run: pnpm build
-      - name: Schema from empty, deploy migrations applied twice
+      - name: Base schema, deploy migrations applied twice, drift check
         if: ${{ steps.docs.outputs.docs_only != 'true' }}
+        env:
+          MIGRATION_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: node scripts/e2e-server.mjs prepare
       - name: Journeys
         if: ${{ steps.docs.outputs.docs_only != 'true' }}

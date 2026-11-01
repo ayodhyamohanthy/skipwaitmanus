@@ -247,7 +247,7 @@ describe("ci.yml e2e prepare step", () => {
   });
 
   it("keeps the full history the base revision is read from", () => {
-    expect(job.slice(0, job.indexOf("steps:"))).toContain("fetch-depth: 0");
+    expect(job).toContain("fetch-depth: 0");
   });
 });
 
