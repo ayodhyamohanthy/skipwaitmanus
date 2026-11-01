@@ -4094,13 +4094,14 @@
       "lane": "copy-sync",
       "branch": "agent/queue/decision-copy-oct26",
       "status": "todo",
-      "syncedTo": "D-265",
+      "syncedTo": "D-268",
       "dependsOn": [],
       "owns": [
         "client/src/components/referrer-home/WaitingAsks.tsx",
         "client/src/components/alerts/SavedAlerts.tsx",
         "client/src/components/alerts/savedAlerts.test.tsx",
         "client/src/pages/alerts.test.tsx",
+        "client/src/pages/referrerHome.test.tsx",
         "client/src/pages/Help.tsx",
         "client/src/pages/trustCluster.test.tsx",
         "client/src/content/guides.ts",
@@ -4108,7 +4109,7 @@
         "client/src/pages/forCompanies.test.tsx",
         "client/src/components/VisualJourney.tsx"
       ],
-      "note": "D-221 (Oct 26 decision audit): seven live strings still state rules that newer decisions replaced. Copy and its pinning tests only; Help.tsx line 17's 7-day expiry stays until D-174-expiry-clock-removal (runtime truth). Tier 2: lands on green required CI (D-200). Nov 1 D-265: client/src/pages/alerts.test.tsx added to owns so lines 190 and 223 can pin the Free alert cap note."
+      "note": "D-221 (Oct 26 decision audit): seven live strings still state rules that newer decisions replaced. Copy and its pinning tests only; Help.tsx line 17's 7-day expiry stays until D-174-expiry-clock-removal (runtime truth). Tier 2: lands on green required CI (D-200). Nov 1 D-265: client/src/pages/alerts.test.tsx added to owns so lines 190 and 223 can pin the Free alert cap note. Nov 1 D-268: client/src/pages/referrerHome.test.tsx added to owns so line 140 can pin the new D-176 WaitingAsks line (that one assertion only)."
     },
     {
       "id": "DECISION-SYNC-oct26",
