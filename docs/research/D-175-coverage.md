@@ -10,7 +10,7 @@ Every fact below carries its UTC time. All requests were made on **2026-11-01** 
 - **Crawl-class:** 7 of 39. Their own careers site names the system behind it (Workday, Avature, Taleo, SuccessFactors or a Radancy front end), and robots.txt allows the pages, but there is no licensed public read API.
 - **Not feasible today:** 18 of 39. In 7 of them the site refuses scripts (a robots.txt or page that answers 403, a 429, or a refused connection), or a robots rule bars generic bots. In 10 no source shows in the page HTML, and 1 (SkipWait) has no jobs page. Section 3 says which is which.
 - **Indian employers seekers ask for most (11):** Paytm alone has an official API (Lever, 201 jobs), and Paytm is not in the directory. Accenture and Wipro are crawl-class. The other 8 are not feasible today.
-- **Two token collisions:** the Greenhouse board `tcs` is *Thornbury Community Services* (a UK care provider, 95 jobs), not Tata Consultancy Services. The Lever site `eternal` is a US athletics company (4 postings), not Eternal Limited (Zomato). A board whose token matches a company's name is **never** proof that the board belongs to that company (section 7.1).
+- **Two token collisions:** the Greenhouse board `tcs` is *Thornbury Community Services* (95 UK clinical jobs), not Tata Consultancy Services. The Lever site `eternal` is a US employer hiring a "Performance Team" for athletes (4 postings), not Eternal Limited (Zomato). A board whose token matches a company's name is **never** proof that the board belongs to that company (section 7.1).
 - **Wikidata (CC0) seeding:** each candidate rule seeds a different number of companies: 4,120 with at least 1,000 employees, 13,628 listed on a stock exchange, and about 14,500 clean rows for the two combined after domain dedupe. The 41 companies this study could look up show that an employee-count rule drops Wipro, HCLTech, Flipkart, Swiggy, PhonePe and Paytm. Domains taken from Wikidata must never be used for work-email verification until an admin checks them: anyone can edit Wikidata (section 5).
 
 ## 2. Method and evidence rules
@@ -24,7 +24,7 @@ Each was tried with the slug, the slug without hyphens and the name squeezed int
 **What counts as proof that a board belongs to the company**, strongest first:
 1. The company's own careers page links to or configures the board (for example `kraken.com/careers` → `jobs.ashbyhq.com/kraken.com`, or `coinbase.com/careers` carrying `COINBASE_PUBLIC_GREENHOUSE_BOARD_ID: "coinbase"`).
 2. A posting URL that the board itself publishes resolves on the company's own domain (for example a Stripe posting resolves to `stripe.com/careers/listing/...`, 200).
-3. The board's own content names the company in almost every posting. This is accepted only together with a matching board name. It is weaker than 1 and 2, and the table says when it is the only proof.
+3. The board's own content names the company in almost every posting. This is accepted only together with a matching board name (Greenhouse) or board token (Ashby, whose API returns no board name). It is weaker than 1 and 2, and the table says when it is the only proof.
 
 **Verdicts:**
 - **Official API:** a documented public read API, with ownership shown by rule 1, 2 or 3.
@@ -99,7 +99,7 @@ TCS, Infosys, Wipro, Accenture and Cognizant are directory rows 4, 10, 2, 8 and 
 | Cognizant | not identified | see row 11 | — | Not feasible today |
 | Flipkart | TurboHire | `flipkartcareers.com` (200, 07:02Z) links `turbohire.co/careerpage/`. `careers.turbohire.co/robots.txt` disallows `*` and allows only Googlebot, Bingbot, Slurp and DuckDuckBot (07:06Z); boards 404 | — | Not feasible (blocked) |
 | Swiggy | SmartRecruiters | The `careers.swiggy.in` app (200, 07:02Z) loads its assets from `au.smrtr.io`, a SmartRecruiters host (07:09Z). `api.smartrecruiters.com/robots.txt` allows only LinkedInBot under `/v1/companies/` and disallows `*` (07:06Z); boards 404 | — | Not feasible (§6 Q3 default) |
-| Zomato (Eternal Limited) | none verified | `zomato.com` timed out (07:02Z) and refused the robots.txt request (07:07Z). `eternal.com/careers/` (200, 07:03Z) has no system link. The Lever site `eternal` (4 postings, 06:58Z) is a US athletics company's "Performance Team" in NYC and SF, not Eternal Limited | — | Not feasible today; token collision |
+| Zomato (Eternal Limited) | none verified | `zomato.com` timed out (07:02Z) and refused the robots.txt request (07:07Z). `eternal.com/careers/` (200, 07:03Z) has no system link. The Lever site `eternal` (4 postings, 06:58Z) hires a "Performance Team" for athletes in NYC and SF; it is not Eternal Limited | — | Not feasible today; token collision |
 | PhonePe | none (own site) | `phonepe.com/careers/job-openings/` (200, 07:09Z) builds its openings on phonepe.com and calls no outside system; boards 404 (the Oct 24 appendix found its Greenhouse board inactive) | — | Not feasible today (no API) |
 | Paytm | Lever · `paytm` | `paytm.com/careers/` (200, 07:03Z) links `jobs.lever.co/paytm`; postings describe Paytm | 201 (06:58Z) | Official API (not a directory company) |
 
@@ -152,7 +152,7 @@ The CEO decides it from this section (D-123; free data within D-175). The study 
 - **(a) Seed the search index, not the directory: rule B ∪ rule A (about 14,500 rows, 5.3a), deduped by 5.5, names and aliases only, domains held for admin confirmation. 7/10.**
   - For: a seeker typing "Wipro" or "HCL" finds the company at once, and `D-174-company-search` gets real names and aliases (HCLTech's item is labelled "HCL Technologies"; Infosys has 8 English aliases). Swiggy, Flipkart, PhonePe and Paytm meet neither rule, so they still need a demand entry (option c).
   - Against, strongest first: a large index of companies with no verified referrers can read as a promise of help. The search result must say plainly that a request goes out when someone there verifies (D-176). Rule B also skips private companies.
-- (b) Seed the directory itself with rule A. 3/10: it drops the Indian employers seekers ask for most, and it pulls in non-employers (India Post, a foundation).
+- (b) Seed the directory itself with rule A. 3/10: it drops the Indian employers seekers ask for most, and in India it pulls in government bodies (India Post, a nuclear fuel plant) and a foundation instead.
 - (c) Do not seed. Grow the directory only from demand (the D-086 admission queue) and use Wikidata only to check a name and suggest aliases. 6/10: safest and no spam, but slow, and search stays thin outside 39 companies.
 
 ## 6. Evidence for the owner questions in packet §7
@@ -161,12 +161,12 @@ The CEO decides it from this section (D-123; free data within D-175). The study 
   - The Workday hosts for Accenture and Concentrix publish job sitemaps in robots.txt with no Disallow (07:06Z), and an Accenture job page carries `JobPosting` structured data: title, date posted, location, employment type (07:14Z). So a sitemap-only, robots-respecting reader is within those sites' own published rules.
   - Lenovo (Avature) publishes 8 locale sitemaps. Société Générale's Taleo host sets no robots rules.
   - The SAP SuccessFactors host behind Wipro disallows all bots (07:06Z), although the `careers.wipro.com` front end allows them.
-  - Against: this is still not a licensed API; Accenture alone lists many thousands of jobs, so a daily refresh is bulk fetching; and these sitemaps and endpoints can change or be blocked without notice.
+  - Against: this is still not a licensed API. Refreshing every job page daily at a large employer is bulk fetching (the study read only Accenture's first sitemap file, 100 job URLs, so its total is unmeasured). And these sitemaps and pages can change or be blocked without notice.
   - **Rating stays 4/10 at launch.** If the owner wants it later, start with Workday sitemaps for Accenture and Concentrix, at most one request per job per day, honouring robots.txt on every run.
 - **Q1 (charge at pickup) and Q2 (free credits refunded after their month ends):** these are money-rule questions, not coverage questions. This study gathered no evidence on them and changes nothing about them. Their defaults (today's rules) stand.
 
 ## 7. What this means for the D-174 rows
-1. **Token check before any source joins (D-170, `D-174-job-catalog`, `D-174-job-sources-more`).** Accept a board for a directory company only with proof rule 1 or 2 from section 2, or rule 3 together with a matching board name. Never accept a slug or name match alone: `tcs` and `eternal` would have shown another company's jobs under TCS and Zomato.
+1. **Token check before any source joins (D-170, `D-174-job-catalog`, `D-174-job-sources-more`).** Accept a board for a directory company only with proof rule 1 or 2 from section 2, or rule 3 together with a matching board name or Ashby token. Never accept a slug or name match alone: `tcs` and `eternal` would have shown another company's jobs under TCS and Zomato.
 2. **`D-174-job-sources-more` (Ashby + Lever):**
    - Ashby adds 4 directory companies (Kraken, Snowflake, 1Password and OpenAI; 1,350 jobs at 06:57–06:58Z), and Kraken needs the name `kraken.com`.
    - Lever adds **no directory company today**. Its one India hit, Paytm, is not in the directory.
@@ -176,10 +176,10 @@ The CEO decides it from this section (D-123; free data within D-175). The study 
 
 ## 8. Limits
 - Only the HTML each server sent was read, and no page was run in a browser. A page that builds its job list in the browser can hide its source, so "no source in HTML" is not proof that none exists.
-- One request per page, timed as above. Counts move daily.
+- Each careers page and posting URL was fetched once or twice (a second pass looked for system names the first pass missed), timed as above. Counts move daily.
 - A robots.txt answering 403 was treated as "do not fetch". This is stricter than RFC 9309, which lets a 4xx robots.txt mean "no rules". It cost rows 4, 10, 29 and 32 their careers-page check.
 - Wikidata counts depend on the 12-class list and on how complete Wikidata is. 5.2 shows the gaps that matter. The QLever snapshot may trail live Wikidata by days, and the one cross-check against the Wikidata Query Service matched.
-- No paid source, login, LinkedIn or personal account was used. Requests stayed within each robots.txt and stopped at the first 429.
+- No paid source, login, LinkedIn or personal account was used. Every HTML fetch stayed within its host's robots.txt. A careers page that answered 429 was not retried, and the Wikidata endpoints were retried only at spaced intervals after a 429.
 
 ## Sources
 - APIs: `boards-api.greenhouse.io/v1/boards/{token}` and `/jobs`, `api.lever.co/v0/postings/{site}?mode=json`, `api.ashbyhq.com/posting-api/job-board/{name}` (06:57–07:08Z).
