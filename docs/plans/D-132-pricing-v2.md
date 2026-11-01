@@ -48,3 +48,4 @@ One line per task, `<id>: in progress — <who> — <date> — branch <b>` when 
 - JOB-LEVELS: done — `0e1ccba4` (#381, flag off)
 - D-132-plans-v2: done — `f2b8fd05` (#410, flag off)
 - D-132-audit: done — `40e160e2` (#547, flags off; independent review passed on 32811bb7, landed after merging the latest main and green exact-head CI)
+- D-132-audit-item5-correction: done — `626770b8` (docs only; item 5 corrected against `main` `f5b9afb9`, the re-pricing gap fixed by `821399d4`; flags off)
