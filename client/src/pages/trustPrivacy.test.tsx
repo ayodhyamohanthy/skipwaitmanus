@@ -7,6 +7,14 @@ import TrustPrivacy from "./TrustPrivacy";
 afterEach(cleanup);
 
 describe("TrustPrivacy", () => {
+  it("names every processor that handles personal data (LAUNCH-legal-copy)", () => {
+    const { container } = render(<TrustPrivacy />);
+    const text = container.textContent ?? "";
+    for (const name of ["WorkOS", "ZeptoMail", "Sentry", "Cloudflare", "Chargebee", "Razorpay", "PayPal"]) {
+      expect(text, `processor ${name} must be named`).toContain(name);
+    }
+  });
+
   it("explains private referral safeguards and links users to their account controls", () => {
     render(<TrustPrivacy />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Privacy.");
