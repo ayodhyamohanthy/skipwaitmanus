@@ -2969,7 +2969,7 @@
       "lane": "d048-discovery",
       "branch": "agent/queue/d048-p3-discovery",
       "status": "todo",
-      "syncedTo": "D-261",
+      "syncedTo": "D-271",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-marketing",
@@ -2982,9 +2982,12 @@
         "client/src/pages/goal/discovery/**",
         "scripts/kit-screens/fixtures/*__goal-discovery-*.json",
         "design/goal-ui/captures/discovery/**",
-        "client/src/test/goalPagesBoundary.test.ts"
+        "client/src/test/goalPagesBoundary.test.ts",
+        "client/src/components/settings/SettingsNav.tsx",
+        "client/src/components/settings/settingsSections.ts",
+        "client/src/pages/goal/settings/GoalSettings.tsx"
       ],
-      "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-harness dependency - fixture globs share the kit-screens/fixtures folder; the harness row lands first and this row adds its fixtures on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('discovery'). D-241 (Oct 30): owns gains client/src/test/goalPagesBoundary.test.ts (its only owner D-048-F-goal-check is done); the boundary must walk root-alias, relative, barrel and transitive runtime imports, admit only an audited list of goal-styled and behavior-only modules, and prove with negative controls that the legacy OneTapShareActions share component fails; assertions only added, no waivers.",
+      "note": "Oct 23 owns reconciliation (coordinator): added D-048-F-harness dependency - fixture globs share the kit-screens/fixtures folder; the harness row lands first and this row adds its fixtures on top (D-167 one-owner-per-file). Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('discovery'). D-241 (Oct 30): owns gains client/src/test/goalPagesBoundary.test.ts (its only owner D-048-F-goal-check is done); the boundary must walk root-alias, relative, barrel and transitive runtime imports, admit only an audited list of goal-styled and behavior-only modules, and prove with negative controls that the legacy OneTapShareActions share component fails; assertions only added, no waivers. Nov 1 D-271: the three settings-boundary paths (SettingsNav.tsx, behavior-only settingsSections.ts, the GoalSettings.tsx import line) join owns so the strengthened boundary test passes without a kit component in a goal page's import graph; D-048-p3-settings stays done and closed.",
       "epic": "D-048-p3"
     },
     {
