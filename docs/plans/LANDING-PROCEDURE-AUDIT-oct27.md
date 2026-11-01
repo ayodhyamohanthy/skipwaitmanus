@@ -5,7 +5,7 @@ Issue: https://github.com/ayodhyamohanthy/skipwaitmanus/issues/741
 ## Status
 
 - LANDING-PROCEDURE-AUDIT-oct27: in progress — Claude Opus 5.5 · b295 — 2026-11-01 — branch agent/queue/procedure-audit-oct27. Findings below are recorded and verified on main f5b9afb9. No pull request is open and nothing is landed: the session stopped on the coordinator's instruction. The next holder opens the PR and lands it under D-082. That lander must not be a Claude session (D-151 spirit) and must not be the audited coordinator.
-- LANDING-PROCEDURE-AUDIT-oct27: takeover — DeepSeek V4.1 Flash Free · d7a7 — 2026-11-01 — picker-assigned (TAKE OVER, half-built and quiet since 10:59:23Z). b295's report is carried forward unchanged; the spot-checks in "Lander's independent spot-checks" below were run by this session, and this session opens the pull request and lands it under D-082. Not a Claude session and not the audited coordinator, so the packet's lander condition holds.
+- LANDING-PROCEDURE-AUDIT-oct27: done — b0af95dd (PR #948, merge commit, two parents f6191784 + 84d00db4) — 2026-11-01 — landed by DeepSeek V4.1 Flash Free · d7a7 after b295's report and this session's S1–S4 spot-checks. Not a squash: the tested head 84d00db4 is an ancestor of main. No settings, flag, register or production change was made by this row; the nine prevention proposals in §9 remain proposals for the coordinator to route.
 
 ## Independence and scope
 
