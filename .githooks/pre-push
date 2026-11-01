@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# skipwait pre-push guard (fail-closed). Enable once per clone:
+#   git config core.hooksPath .githooks
+# Blocks a push when: (1) any pushed file carries merge-conflict markers,
+# (2) typecheck fails, or (3) tests related to the pushed changes fail.
+# Rationale: repeated push-before-check incidents (conflict markers 1432e78b,
+# red explore tests 82045b62) reached origin. This guard makes the check
+# mechanical instead of a personal routine.
+set -euo pipefail
+
+remote="${1:-origin}"
+changed=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    range=$(git merge-base origin/main "$local_sha" 2>/dev/null || echo "")
+    [ -n "$range" ] && changed="$changed $(git diff --name-only "$range" "$local_sha")"
+  else
+    changed="$changed $(git diff --name-only "$remote_sha" "$local_sha")"
+  fi
+done
+changed=$(echo "$changed" | tr ' ' '\n' | sort -u | grep -v '^$' || true)
+[ -z "$changed" ] && exit 0
+
+echo "[pre-push] checking $(echo "$changed" | wc -l) changed files"
+
+# 1. Conflict markers in any pushed file (working-tree content).
+marker_hits=0
+while IFS= read -r f; do
+  case "$f" in *.md|*.ts|*.tsx|*.js|*.json|*.css|*.html|*.sql|*.sh|*.mjs)
+    [ -f "$f" ] && grep -nE '^(<{7}|={7}|>{7})( |$)' "$f" && marker_hits=1 ;;
+  esac
+done <<< "$changed"
+if [ "$marker_hits" = "1" ]; then
+  echo "[pre-push] FAIL: merge-conflict markers in pushed files" >&2; exit 1
+fi
+
+# 2. Typecheck when code changes.
+if echo "$changed" | grep -qE '\.(ts|tsx|mjs)$|package.json|tsconfig'; then
+  echo "[pre-push] typecheck"
+  NODE_OPTIONS=--max-old-space-size=1600 pnpm check >/dev/null || { echo "[pre-push] FAIL: typecheck" >&2; exit 1; }
+fi
+
+# 3. Tests related to the pushed changes.
+if echo "$changed" | grep -qE '\.(ts|tsx)$'; then
+  echo "[pre-push] related tests"
+  pnpm exec vitest related --run $changed >/dev/null 2>&1 || { echo "[pre-push] FAIL: related tests red" >&2; exit 1; }
+fi
+
+echo "[pre-push] OK"
