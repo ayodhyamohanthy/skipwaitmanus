@@ -4,7 +4,7 @@
 // company column carries the company NAME counts nothing (never fuzzy-matched).
 import { describe, expect, it } from "vitest";
 import { canonicalPeople, jobs, profiles, referralRequests, referralTransitionEvents, users, type Row } from "../drizzle/schema";
-import { countDemandPeople, type DemandCompany } from "../shared/companyDemand";
+import type { DemandCompany } from "../shared/companyDemand";
 import { isAskExpired } from "../shared/referral";
 import { loadCompanyDemand, loadUnlistedDemand } from "./companyDemand";
 import { createInMemoryDrizzle } from "./inMemoryDrizzle.testkit";
@@ -91,10 +91,10 @@ describe("loadCompanyDemand", () => {
     expect(await loadCompanyDemand([acme], NOW, store({ asks: [waiting], events: [reconfirm] }).db)).toEqual([{ slug: "acme", name: "Acme", people: 1 }]);
   });
 
-  it("matches the pure count on the same rows", async () => {
-    const asks = [ask(100, 10, 1), ask(101, 11, 1), ask(102, 12, 2), ask(103, 13, 3)];
-    const db = store({ asks });
-    expect(await loadCompanyDemand([acme, globex], NOW, db.db)).toEqual(countDemandPeople(asks, [acme, globex], NOW));
+  it("answers zeros without reading when no company has a domain", async () => {
+    const db = store({ asks: [] });
+    expect(await loadCompanyDemand([{ slug: "empty", name: "Empty", domains: [] }], NOW, db.db)).toEqual([{ slug: "empty", name: "Empty", people: 0 }]);
+    expect(await loadCompanyDemand([], NOW, db.db)).toEqual([]);
   });
 });
 
