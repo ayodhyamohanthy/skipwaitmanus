@@ -4019,7 +4019,7 @@
       "tier": 2,
       "lane": "d174-search",
       "branch": "agent/queue/d174-company-search",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "note": "D-193 packet section 5.4. Feeds the journey's 'companies pop up as you type' step. Static alias map, no migration. Does not touch normalizedEmployerKey (routing). Register before /api/companies/:slug.",
