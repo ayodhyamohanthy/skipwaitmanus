@@ -9,11 +9,13 @@
 //
 // A public body carries slugs, names and a demand state only. There is no
 // total, no request count, no availability field and no domain.
+import { DrizzleQueryError } from "drizzle-orm";
 import type { Express, Request, Response } from "express";
 import { COMPANY_NOT_FOUND_ERROR, COMPANY_SLUG_PATTERN, type AdminCompany, type CompanyDirectoryResponse, type PublicCompany } from "../shared/companies";
 import { COMPANY_DEMAND_ADMIN_ENABLED, COMPANY_DEMAND_PUBLIC_ENABLED, companyDemandDetailResponseSchema, companyDemandListResponseSchema, orderDemandList, toPublicDemand, unlistedDemandAdminResponseSchema, type DemandCompany } from "../shared/companyDemand";
 import { getCompanyDirectoryEntry, listAdminCompanies, listCompanyDirectory } from "./companyDirectory";
 import { loadCompanyDemand, loadUnlistedDemand } from "./companyDemand";
+import { CompanyDirectoryUnavailableError } from "./companyDirectorySource";
 import { captureServerError } from "./sentry";
 
 type Identity = { account: { id: number; role?: "user" | "admin" } };
@@ -68,13 +70,14 @@ export function registerCompanyDemandRoutes(app: Express, deps: CompanyDemandRou
   };
 
   /**
-   * The only failure mode of a read-only aggregate is "we cannot read it now",
-   * so every loader error is a 503 and never a cached body. It is still
-   * reported: a programming error must not look like a quiet outage.
+   * A read that fails is a 503 and never a cached body: the only input is the
+   * clock, so "we cannot read it now" is the honest answer. Anything else is a
+   * 500, so a contract bug never hides as a quiet outage. Both reach Sentry.
    */
-  const unavailable = (res: Response, error: unknown) => {
+  const failed = (res: Response, error: unknown) => {
     report(error, { source: "company-demand" });
-    res.status(503).set("Cache-Control", "no-store").json({ error: UNAVAILABLE });
+    const down = error instanceof CompanyDirectoryUnavailableError || error instanceof DrizzleQueryError;
+    res.status(down ? 503 : 500).set("Cache-Control", "no-store").json({ error: down ? UNAVAILABLE : "Something went wrong on our side" });
   };
 
   app.get("/api/company-demand", async (_req, res) => {
@@ -83,7 +86,7 @@ export function registerCompanyDemandRoutes(app: Express, deps: CompanyDemandRou
       const directory = await list();
       const counts = await loadCounts(directory.companies.map(asDemandCompany), Date.now());
       res.set("Cache-Control", PUBLIC_CACHE).json(companyDemandListResponseSchema.parse({ companies: orderDemandList(counts) }));
-    } catch (error) { unavailable(res, error); }
+    } catch (error) { failed(res, error); }
   });
 
   app.get("/api/company-demand/:slug", async (req, res) => {
@@ -96,7 +99,7 @@ export function registerCompanyDemandRoutes(app: Express, deps: CompanyDemandRou
       if (!company) return res.status(404).set("Cache-Control", "no-store").json({ error: COMPANY_NOT_FOUND_ERROR });
       const [count] = await loadCounts([asDemandCompany(company)], Date.now());
       res.set("Cache-Control", PUBLIC_CACHE).json(companyDemandDetailResponseSchema.parse({ demand: toPublicDemand(count?.people ?? 0) }));
-    } catch (error) { unavailable(res, error); }
+    } catch (error) { failed(res, error); }
   });
 
   app.get("/api/admin/company-demand/unlisted", async (req, res) => {
@@ -107,6 +110,6 @@ export function registerCompanyDemandRoutes(app: Express, deps: CompanyDemandRou
       // still a company, so its domain never reaches the admission queue.
       const ownedDomains = (await adminList()).flatMap(company => company.domains);
       res.json(unlistedDemandAdminResponseSchema.parse({ domains: await loadUnlisted(ownedDomains, Date.now()) }));
-    } catch (error) { unavailable(res, error); }
+    } catch (error) { failed(res, error); }
   });
 }

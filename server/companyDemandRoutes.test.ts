@@ -1,4 +1,5 @@
 import express from "express";
+import { DrizzleQueryError } from "drizzle-orm";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { COMPANY_NOT_FOUND_ERROR, type AdminCompany, type PublicCompany } from "../shared/companies";
@@ -73,6 +74,17 @@ describe("GET /api/company-demand", () => {
     expect(response.headers["cache-control"]).toBe("no-store");
     expect(response.body).toEqual({ error: "We could not load demand right now" });
     expect(reports).toEqual([{ source: "company-demand" }]);
+  });
+
+  it("answers 503 for a driver failure, and 500 for anything else so a bug never hides as an outage", async () => {
+    const driver = Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" });
+    const down = appWith({ loadCompanyDemand: async () => { throw new DrizzleQueryError("select 1", [], driver); } });
+    expect((await request(down.app).get("/api/company-demand")).status).toBe(503);
+    const bug = appWith({ loadCompanyDemand: async () => { throw new Error("a contract bug"); } });
+    const response = await request(bug.app).get("/api/company-demand");
+    expect(response.status).toBe(500);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(bug.reports).toEqual([{ source: "company-demand" }]);
   });
 });
 
