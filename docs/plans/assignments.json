@@ -4281,16 +4281,16 @@
     },
     {
       "id": "REL-synthetic-journeys",
-      "title": "Signed-in synthetic journeys checked in production with tagged test accounts, Chargebee test site only (D-212)",
+      "title": "Signed-in synthetic journeys checked on the QA preview with fictional accounts, Chargebee test site only (D-212)",
       "row": "D-212",
       "packet": "docs/plans/REL-production-watch.md",
       "tier": 1,
       "lane": "synthetic",
       "branch": "agent/queue/rel-synthetic-journeys",
-      "status": "architect",
-      "syncedTo": "D-222",
+      "status": "owner",
+      "syncedTo": "D-274",
       "dependsOn": [],
-      "note": "D-212: targets the QA preview (#383), never production; needs the owner's hard-stop confirmation on the Cloudflare credits (D-204) and #383 brought up to date before any build.",
+      "note": "D-274: packet adopted; R1-R6 are the build design and R0 (no second container, make `e2e journeys` required) is the coordinator's call. Parked at owner because every route ends in an owner action: R0 needs the owner's ruleset addition (D-212 (6)), R1-R6 need the credits hard-stop confirmation (D-204), the second-container approval and the Oct 31 pause lifted. No session builds it.",
       "epic": "D-212"
     },
     {
@@ -4505,7 +4505,7 @@
       "tier": 2,
       "lane": "money-core",
       "branch": "agent/queue/d132-item5-correction",
-      "status": "done",
+      "status": "todo",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-132-audit"
