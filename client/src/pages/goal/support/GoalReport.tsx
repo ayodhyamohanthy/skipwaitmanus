@@ -6,6 +6,11 @@
 // A refused report shows the server's own words and stays on the details step;
 // a failure without server words, or a request that never reached the server,
 // shows a fixed plain line with a next step (never the browser's raw error).
+// A rejected report fetch is uncertain (review 6563041566): the response may
+// have been lost after the server filed it, so the page says it could not
+// confirm the report, never "not sent" or "filed", and routes to support
+// before a resend. Any error on the details step carries that support route.
+// "I feel unsafe" shows the emergency-services line before Submit (6563729015).
 // A failed block keeps the filed report, says the block did not go through and
 // offers a block-only retry (POST /api/blocks again, never a second report) or
 // support. Offline, the submit commit waits and names why, and nothing is sent.
@@ -26,12 +31,15 @@ const OFFLINE_REASON = "You're offline. Reconnect to send your report.";
 // Review 6562676959: fixed lines with a next step. Only the server's own
 // refusal (its error field) is shown in its words.
 const REPORT_FAILED = "We could not file this report. Try again in a moment, or contact support.";
-const REPORT_NETWORK = "We couldn't reach SkipWait, so your report was not sent. Check your connection and submit again.";
+// A rejected fetch does not prove the POST went unsent (the reply may be lost
+// after the server filed it), so this neither says "not sent" nor "filed".
+const REPORT_UNCONFIRMED = "We couldn't confirm your report reached SkipWait. Check with support before sending it again, so it isn't filed twice.";
+const EMERGENCY = "If you're in immediate danger, contact local emergency services first.";
 const BLOCK_FAILED = "Your report was filed, but the block did not go through. Try blocking again, or contact support.";
 const BLOCK_NETWORK = "Your report was filed, but we couldn't reach SkipWait to block this person. Check your connection and try blocking again.";
 
-// A fetch that rejects never reached the server (offline at the socket, DNS,
-// blocked request), whatever navigator.onLine says.
+// A fetch that rejected: it may never have reached the server, or the server
+// may have processed it and the response was lost. The caller cannot tell.
 class Unreached extends Error {}
 async function send(url: string, init: RequestInit): Promise<Response> {
   try {
@@ -57,7 +65,7 @@ function Toggle({ pressed, onToggle, icon: Icon, title, hint }: { pressed: boole
       type="button"
       aria-pressed={pressed}
       onClick={onToggle}
-      className={cn("g-hit flex min-h-14 w-full items-center gap-3 rounded-g-control border p-4 text-left transition-colors duration-(--g-dur-hover)", pressed ? "border-g-ink bg-g-surface-selected" : "border-g-hairline hover:bg-g-surface-hover")}
+      className={cn("g-hit flex min-h-14 w-full items-center gap-3 rounded-g-control border p-4 text-left transition-colors duration-(--g-dur-hover)", pressed ? "border-g-ink bg-g-surface-selected" : "border-g-control-edge hover:bg-g-surface-hover")}
     >
       <Icon aria-hidden="true" className="size-5 shrink-0 text-g-ink" strokeWidth={1.75} />
       <span className="flex-1"><span className="block text-g-label text-g-ink">{title}</span><span className="block text-g-meta text-g-ink-2">{hint}</span></span>
@@ -161,7 +169,7 @@ export default function GoalReport() {
       if (alsoBlock && reportRequestId) await block(headers);
     } catch (reason) {
       // Only a report that was not filed shows here; a filed one keeps step 2.
-      if (!filed) setError(reason instanceof Unreached ? REPORT_NETWORK : reason instanceof Error && reason.message ? reason.message : REPORT_FAILED);
+      if (!filed) setError(reason instanceof Unreached ? REPORT_UNCONFIRMED : reason instanceof Error && reason.message ? reason.message : REPORT_FAILED);
     } finally {
       setSubmitting(false);
     }
@@ -169,13 +177,15 @@ export default function GoalReport() {
 
   const timeline: ReadonlyArray<readonly [string, string]> = [
     ["Now", `Report received${reference ? ` · reference #${reference}` : ""}`],
-    [urgent ? "Within 4 hours" : "Within 48 hours", "A person on our safety team reviews it"],
+    // Review 6563736305: no approved review window or safety-team commitment
+    // exists in docs, so the timeline names the step without a time or team.
+    ["Next", "We review your report"],
     ["After review", "We may warn, restrict, or remove the account"],
     ["Then", "You get a notification with the outcome"],
   ];
 
   return (
-    <main data-skipwait-screen="report" data-goal-page="report" className={MAIN}>
+    <main data-skipwait-screen="report" data-goal-page="report" className={cn(MAIN, !online && "pb-24 gdesk:pb-7")}>
       <button type="button" onClick={() => go(backTarget)} className="g-hit -ml-1 inline-flex items-center gap-1 self-start text-g-meta text-g-ink-2 hover:text-g-ink">
         <ArrowLeft aria-hidden="true" className="size-4" strokeWidth={1.75} />{backLabel}
       </button>
@@ -188,7 +198,7 @@ export default function GoalReport() {
           <h2 className="mt-1 text-g-heading text-g-ink">What&apos;s going on?</h2>
           <div className="mt-4 grid gap-2" role="radiogroup" aria-label="Report reason">
             {REPORT_REASONS.map(([title, hint]) => (
-              <label key={title} className={cn("g-hit flex min-h-14 cursor-pointer items-center gap-3 rounded-g-control border p-4", reason === title ? "border-g-ink bg-g-surface-selected" : "border-g-hairline hover:bg-g-surface-hover")}>
+              <label key={title} className={cn("g-hit flex min-h-14 cursor-pointer items-center gap-3 rounded-g-control border p-4", reason === title ? "border-g-ink bg-g-surface-selected" : "border-g-control-edge hover:bg-g-surface-hover")}>
                 <input type="radio" name="report-reason" checked={reason === title} onChange={() => setReason(title)} className="size-4 accent-g-ink" />
                 <span><span className="block text-g-label text-g-ink">{title}</span>{hint ? <span className="block text-g-meta text-g-ink-2">{hint}</span> : null}</span>
               </label>
@@ -226,11 +236,17 @@ export default function GoalReport() {
                 To block someone immediately, contact support from this page after filing — blocking both directions is handled by our team for now.
               </p>
             )}
-            <Toggle pressed={urgent} onToggle={() => setUrgent(!urgent)} icon={ShieldAlert} title="I feel unsafe" hint="Reviewed first, within hours." />
+            <Toggle pressed={urgent} onToggle={() => setUrgent(!urgent)} icon={ShieldAlert} title="I feel unsafe" hint="Marks your report as urgent." />
           </div>
-          {error ? <p role="alert" className="mt-4 text-g-label text-g-crimson">{error}</p> : null}
+          {urgent ? <p className="mt-3 border border-g-control-edge p-4 text-g-label text-g-ink">{EMERGENCY}</p> : null}
+          {error ? (
+            <div className="mt-4">
+              <p role="alert" className="text-g-label text-g-crimson">{error}</p>
+              <div className="mt-3"><GoalButton variant="ghost" asChild><Link href="/support">Contact support</Link></GoalButton></div>
+            </div>
+          ) : null}
           <div className="mt-6">
-            <GoalNextStep reason={reportRequestId && alsoBlock ? "We file the report first, then block this person." : "A person on our safety team reviews every report."}>
+            <GoalNextStep reason={reportRequestId && alsoBlock ? "We file the report first, then block this person." : "We review reports and notify you of the outcome."}>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <GoalButton
                   variant="primary"
@@ -271,7 +287,7 @@ export default function GoalReport() {
               </div>
             </div>
           ) : null}
-          {urgent ? <p className="mt-4 border border-g-hairline p-4 text-g-meta text-g-ink">If you&apos;re in immediate danger, contact local emergency services first.</p> : null}
+          {urgent ? <p className="mt-4 border border-g-control-edge p-4 text-g-label text-g-ink">{EMERGENCY}</p> : null}
           <div className="mt-6">
             <GoalNextStep reason="We'll notify you when the review is done.">
               <div className="mt-3 flex flex-wrap items-center gap-2">

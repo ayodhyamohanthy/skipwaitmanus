@@ -24,6 +24,9 @@ const scenarios = [
   ["report-reason", "/report", {}],
   ["report-details", "/report?request=42", { steps: ["Continue"] }],
   ["report-details-offline", "/report", { steps: ["Continue"], offline: true }],
+  // Review 6563729015: the emergency-services line shows before Submit when "I feel unsafe" is on.
+  ["report-details-unsafe", "/report", { steps: ["Continue", "I feel unsafe"] }],
+  ["safety-pay-open", "/safety", { steps: ["What if someone asks me to pay?"] }],
   // The server's daily cap answers 400 with this line (server/db.ts createSafetyReport).
   ["report-refused", "/report", { steps: ["Continue", "Submit report"], report: 400 }],
   ["report-unreached", "/report", { steps: ["Continue", "Submit report"], report: "abort" }],

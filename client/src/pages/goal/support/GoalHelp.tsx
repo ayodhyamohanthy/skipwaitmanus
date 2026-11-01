@@ -26,7 +26,7 @@ export default function GoalHelp() {
       <p className="mt-2 text-g-body text-g-ink-2">Find the answer, or reach a person.</p>
 
       <div className="mt-5">
-        <GoalNextStep reason="Still stuck after the answers below? A person replies within 1 working day.">
+        <GoalNextStep reason="Still stuck after the answers below? Contact support.">
           <div className="mt-3">
             <GoalButton variant="primary" asChild><Link href="/support">Contact support</Link></GoalButton>
           </div>
@@ -34,7 +34,7 @@ export default function GoalHelp() {
       </div>
 
       <div className="mt-6">
-        <GoalSearchInput label="Search help" value={query} onChange={setQuery} placeholder="Search: credits, verify, expire…" />
+        <GoalSearchInput label="Search help" value={query} onChange={setQuery} placeholder="Search: referral requests, verify, plans…" />
       </div>
       <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Help categories">
         <GoalFilterChip label="All" pressed={category === "All"} onPressedChange={() => setCategory("All")} />
@@ -70,9 +70,11 @@ export default function GoalHelp() {
 
       <nav aria-label="Rules & policies" className="mt-6">
         <h2 className="text-g-label text-g-ink">Rules &amp; policies</h2>
-        <ul className="mt-2 grid gap-1">
+        {/* Review 6563729015: one 44px block target per link, stacked with no
+            overlap (no g-hit ::after spilling onto the next link). */}
+        <ul className="mt-2 grid">
           {HELP_POLICY_LINKS.map(([label, href]) => (
-            <li key={href}><Link href={href} className="g-hit text-g-body text-g-ink underline underline-offset-4">{label}</Link></li>
+            <li key={href}><Link href={href} className="flex min-h-11 w-full items-center text-g-body text-g-ink underline underline-offset-4">{label}</Link></li>
           ))}
         </ul>
       </nav>
