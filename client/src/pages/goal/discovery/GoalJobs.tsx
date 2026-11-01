@@ -74,8 +74,16 @@ export default function GoalJobs() {
   useEffect(() => {
     if (selectedId == null) return;
     const timer = setTimeout(() => {
-      const node = document.getElementById(`job-${selectedId}`);
-      if (node && typeof node.scrollIntoView === "function") node.scrollIntoView({ block: "nearest" });
+      const isDesktop = typeof window !== "undefined" && (typeof window.matchMedia === "function" ? window.matchMedia("(min-width: 641px)").matches : (window.innerWidth ?? 0) >= 641);
+      if (isDesktop) {
+        const node = document.getElementById(`job-${selectedId}`);
+        if (node && typeof node.scrollIntoView === "function") node.scrollIntoView({ block: "nearest", behavior: "instant" });
+      } else {
+        const actionStep = document.getElementById("selected-role-step");
+        if (actionStep && typeof actionStep.scrollIntoView === "function") {
+          actionStep.scrollIntoView({ block: "nearest", behavior: "instant" });
+        }
+      }
     }, 120);
     return () => clearTimeout(timer);
   }, [jobs, selectedId]);

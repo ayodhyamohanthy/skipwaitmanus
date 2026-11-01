@@ -32,6 +32,10 @@ node design/goal-ui/captures/discovery/capture.mjs
 | `/wall` first visit, no stored cookie choice (no global banner renders on this page) | `wall-first-visit-*.png` |
 | `/jobs` signed out after Save: the sign-in step | `jobs-sign-in-step-*.png` |
 | `/jobs` first visit, no stored cookie choice | `jobs-first-visit-*.png` |
+| `/wall?opening=11` late opening deep link (12 openings): action button in viewport | `wall-opening-11-*.png` |
+| `/jobs?job=22` late job deep link (12 jobs): action button in viewport | `jobs-job-22-*.png` |
+| `/wall` selecting late row (opening 12): action button kept/brought into viewport | `wall-select-end-*.png` |
+| `/jobs` selecting late row (job 22): action button kept/brought into viewport | `jobs-select-end-*.png` |
 
 Not capturable here: the native OS share sheet (navigator.share) and the app-level notices
 App.tsx mounts around every route (offline, slow connection, update prompt, toaster), which

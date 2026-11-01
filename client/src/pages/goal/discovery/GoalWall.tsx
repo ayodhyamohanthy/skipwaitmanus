@@ -109,8 +109,16 @@ export default function GoalWall() {
   useEffect(() => {
     if (selectedId == null) return;
     const timer = setTimeout(() => {
-      const node = document.getElementById(`opening-${selectedId}`);
-      if (node && typeof node.scrollIntoView === "function") node.scrollIntoView({ block: "nearest" });
+      const isDesktop = typeof window !== "undefined" && (typeof window.matchMedia === "function" ? window.matchMedia("(min-width: 641px)").matches : (window.innerWidth ?? 0) >= 641);
+      if (isDesktop) {
+        const node = document.getElementById(`opening-${selectedId}`);
+        if (node && typeof node.scrollIntoView === "function") node.scrollIntoView({ block: "nearest", behavior: "instant" });
+      } else {
+        const actionStep = document.getElementById("selected-opening-step");
+        if (actionStep && typeof actionStep.scrollIntoView === "function") {
+          actionStep.scrollIntoView({ block: "start", behavior: "instant" });
+        }
+      }
     }, 120);
     return () => clearTimeout(timer);
   }, [opportunities, selectedId]);
@@ -176,7 +184,7 @@ export default function GoalWall() {
     const position = opportunities.findIndex(opportunity => opportunity.id === selected.id) + 1;
     body = (
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 gdesk:grid-cols-[minmax(0,1fr)_minmax(0,400px)] gdesk:items-start">
-        <div className="order-first gdesk:order-2 gdesk:sticky gdesk:top-6">
+        <div id="selected-opening-step" className="order-first gdesk:order-2 gdesk:sticky gdesk:top-6">
           <GoalNextStep>
             <p className="mt-3 text-g-meta text-g-ink-3">{placementLabel(selected)} · {position} of {opportunities.length}</p>
             <h3 className="mt-1 text-g-heading text-g-ink">{selected.roleTitle}</h3>

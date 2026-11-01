@@ -75,6 +75,10 @@ const scenarios = [
   ["wall-first-visit", "/wall", { "/api/opportunities": [200, WALL] }, { fresh: true }],
   ["jobs-sign-in-step", "/jobs", { "/api/jobs": [200, JOBS] }, { action: "save" }],
   ["jobs-first-visit", "/jobs", { "/api/jobs": [200, JOBS] }, { fresh: true }],
+  ["wall-opening-11", "/wall?opening=11", { "/api/opportunities": [200, WALL] }],
+  ["jobs-job-22", "/jobs?job=22", { "/api/jobs": [200, JOBS] }],
+  ["wall-select-end", "/wall", { "/api/opportunities": [200, WALL] }, { action: "select-near-end-wall" }],
+  ["jobs-select-end", "/jobs", { "/api/jobs": [200, JOBS] }, { action: "select-near-end-jobs" }],
 ];
 
 const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
@@ -88,7 +92,7 @@ try {
       await page.route("https://**", r => r.abort());
       await page.route("**/api/**", async r => {
         const path = new URL(r.request().url()).pathname;
-        const [status, body] = fixtures[path] ?? (path === "/api/partners" ? [200, PARTNERS] : path === "/api/companies" ? [200, COMPANIES] : path.startsWith("/api/trpc/") ? [200, path.slice(10).split(",").map(() => ({ result: { data: { json: null } } }))] : [401, {}]);
+        const [status, body] = fixtures[path] ?? (path === "/api/partners" ? [200, PARTNERS] : (path === "/api/companies" || path === "/api/companies/directory") ? [200, COMPANIES] : path.startsWith("/api/trpc/") ? [200, path.slice(10).split(",").map(() => ({ result: { data: { json: null } } }))] : [401, {}]);
         await r.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
       });
       if (!opts.fresh) await page.addInitScript(() => localStorage.setItem("skipwait:cookie-consent", "all"));
@@ -99,8 +103,26 @@ try {
       await page.evaluate(() => document.fonts.ready);
       if (opts.action === "share") { await page.getByRole("button", { name: "More sharing options" }).click(); await page.getByText("Opening link copied.").waitFor(); }
       if (opts.action === "save") { await page.getByRole("button", { name: "Save Senior Product Designer" }).click(); await page.getByRole("heading", { level: 1, name: "Sign in to save roles." }).waitFor(); }
+      if (opts.action === "select-near-end-wall") { await page.locator("#opening-12 button").first().click(); }
+      if (opts.action === "select-near-end-jobs") { await page.locator("#job-22 button").first().click(); }
       await page.waitForTimeout(300);
-      const metrics = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, innerWidth, h1: document.querySelector("h1")?.textContent, primaries: document.querySelectorAll("[data-g-primary]").length, goalShare: document.querySelectorAll("[data-goal-share]").length, nestedButtons: document.querySelectorAll("button button").length, kitHexClasses: [...document.querySelectorAll("[class]")].filter(el => /#[0-9a-f]{3,6}/i.test(String(el.getAttribute("class")))).length, outsideGoalScope: [...document.body.querySelectorAll("body > *:not(script)")].flatMap(el => [...el.children]).filter(el => !el.closest(".g-scope") && el.getBoundingClientRect().height > 0 && getComputedStyle(el).display !== "none").map(el => (el.getAttribute("data-skipwait-screen") || el.tagName) + ":" + (el.textContent || "").trim().slice(0, 60)) }));
+      const metrics = await page.evaluate(() => {
+        const primary = document.querySelector("[data-g-primary]");
+        const rect = primary ? primary.getBoundingClientRect() : null;
+        return {
+          scrollWidth: document.documentElement.scrollWidth,
+          innerWidth,
+          scrollY: window.scrollY,
+          actionRect: rect ? { top: Math.round(rect.top), bottom: Math.round(rect.bottom), left: Math.round(rect.left), right: Math.round(rect.right) } : null,
+          actionInViewport: rect ? (rect.top >= 0 && rect.bottom <= window.innerHeight) : false,
+          h1: document.querySelector("h1")?.textContent,
+          primaries: document.querySelectorAll("[data-g-primary]").length,
+          goalShare: document.querySelectorAll("[data-goal-share]").length,
+          nestedButtons: document.querySelectorAll("button button").length,
+          kitHexClasses: [...document.querySelectorAll("[class]")].filter(el => /#[0-9a-f]{3,6}/i.test(String(el.getAttribute("class")))).length,
+          outsideGoalScope: [...document.body.querySelectorAll("body > *:not(script)")].flatMap(el => [...el.children]).filter(el => !el.closest(".g-scope") && el.getBoundingClientRect().height > 0 && getComputedStyle(el).display !== "none").map(el => (el.getAttribute("data-skipwait-screen") || el.tagName) + ":" + (el.textContent || "").trim().slice(0, 60))
+        };
+      });
       const file = `${name}-${width}.png`;
       await page.screenshot({ path: new URL(file, out).pathname, fullPage: true });
       results.push({ file, route, viewport: { width, height, dpr }, metrics, errors });
