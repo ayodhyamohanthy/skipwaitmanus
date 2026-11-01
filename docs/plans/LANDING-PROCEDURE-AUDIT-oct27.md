@@ -5,6 +5,7 @@ Issue: https://github.com/ayodhyamohanthy/skipwaitmanus/issues/741
 ## Status
 
 - LANDING-PROCEDURE-AUDIT-oct27: in progress — Claude Opus 5.5 · b295 — 2026-11-01 — branch agent/queue/procedure-audit-oct27. Findings below are recorded and verified on main f5b9afb9. No pull request is open and nothing is landed: the session stopped on the coordinator's instruction. The next holder opens the PR and lands it under D-082. That lander must not be a Claude session (D-151 spirit) and must not be the audited coordinator.
+- LANDING-PROCEDURE-AUDIT-oct27: takeover — DeepSeek V4.1 Flash Free · d7a7 — 2026-11-01 — picker-assigned (TAKE OVER, half-built and quiet since 10:59:23Z). b295's report is carried forward unchanged; the spot-checks in "Lander's independent spot-checks" below were run by this session, and this session opens the pull request and lands it under D-082. Not a Claude session and not the audited coordinator, so the packet's lander condition holds.
 
 ## Independence and scope
 
@@ -127,3 +128,20 @@ Fixed on main. `ci.yml` now classifies marker-only pull requests by content, not
 - F10 (architect CI skip): **fixed**.
 
 What this audit did not do: it rewrote no history, deleted no branch, changed no settings, flag or register entry, posted no GitHub comment, made no production request, and did not land anything.
+
+## Lander's independent spot-checks (DeepSeek V4.1 Flash Free · d7a7, 2026-11-01)
+
+The takeover holder re-ran the falsifiable claims from scratch rather than carrying them forward. Four checks, all read-only against `origin/main` and `origin/agent/queue/landing`.
+
+| # | Claim checked | Method | Result |
+|---|---|---|---|
+| S1 | A `Landed` marker was written before its merge succeeded (§4) | `git log origin/agent/queue/landing` vs `git log -1 b5299cfd` | **CONFIRMED.** `1ca7b3f2` is dated 2026-10-27 10:14:57Z; the #579 merge `b5299cfd` is 10:20:48Z. The marker preceded the merge by 5 m 51 s. |
+| S2 | No squash-signature landing after `ab92ba4d` (§2) | Full-history scan of the 941 commits on main since 10:26:52Z for one-parent, `committer=GitHub`, `(#N)`-suffixed commits | **CONFIRMED.** 0 matches. |
+| S3 | `D-048-doctrine-benefit-copy` is still `in-review` although #730 landed (§6) | `assignments.json` on main + PR 730 API | **CONFIRMED.** Row reads `in-review`; #730 `MERGED` at 2026-10-27T07:19:08Z as `54e3a5b8`, one parent. |
+| S4 | `--landed` never confirms the merge (§4) | Read `scripts/next-task.mjs:335-344` and `releaseLandingSlotError` (`scripts/nextTaskCore.mjs:159-165`) | **CONFIRMED.** The only gates are slot holder and task id; `merged_at`, merge method and landed SHA are not read. |
+
+**One correction, for the detective check in §9 item 3.** The report says the five were "committed by `GitHub` with the `(#N)` suffix". That is true of the **committer** (`%cn`) on all five — `author` is the repo owner (`AyodhyaRam Mohanthy`) on every one, because a web squash keeps the PR author as author. A detective check that filters on `%an == "GitHub"` therefore finds **nothing at all**; the identifying signature is `committer=GitHub` **and** exactly one parent **and** a trailing `(#N)`. S2 above was run with the committer field for this reason: the first pass filtered on author and returned a false negative, which is exactly the failure mode this correction is meant to prevent.
+
+These spot-checks confirm the report's conclusions and change none of them. No file outside this packet was touched, no settings or register entry was written, and no GitHub comment was posted by this session.
+
+— DeepSeek V4.1 Flash Free · d7a7
