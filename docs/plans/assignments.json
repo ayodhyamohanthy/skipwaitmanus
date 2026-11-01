@@ -4316,18 +4316,180 @@
     },
     {
       "id": "D-174-seeker-journey-build",
-      "title": "Build the replacement seeker journey per D-174: company search, jobs, ask, pool routing",
+      "title": "Release the D-174 seeker journey: switch on company typeahead and the careers-site jobs list after QA, review and the CEO's sign-off",
       "row": "D-174",
-      "packet": null,
-      "tier": 2,
-      "lane": "d048-foundation",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 1,
+      "lane": "d174-journey",
       "branch": "agent/queue/d174-seeker-journey",
-      "status": "architect",
-      "syncedTo": "D-227",
+      "status": "todo",
+      "syncedTo": "D-266",
       "dependsOn": [
-        "D-166-journey-decisions-sync"
+        "D-166-journey-decisions-sync",
+        "D-174-seeker-journey-build.door-neutral",
+        "D-174-seeker-journey-build.composer-neutral",
+        "D-174-seeker-journey-build.public-payload",
+        "D-174-seeker-journey-build.search",
+        "D-174-seeker-journey-build.jobs-list",
+        "D-174-seeker-journey-build.job-ask",
+        "D-174-company-search",
+        "D-174-ask-from-job"
       ],
-      "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-189: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176."
+      "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-189: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176. Packet written Nov 1 (docs/plans/D-174-seeker-journey-build.md): this row is the D-223 release row of six pieces (door-neutral, composer-neutral, public-payload, search, jobs-list, job-ask); it flips COMPANY_TYPEAHEAD_ENABLED and COMPANY_JOBS_ENABLED only, never JOB_CATALOG_ENABLED. Lane moved off d048-foundation so unrelated holds there do not hold the release.",
+      "epic": "D-174",
+      "owns": [
+        "client/src/pages/explore/useCompanySearch.ts (switch only)",
+        "client/src/pages/explore/companyJobsApi.ts (switch only)"
+      ]
+    },
+    {
+      "id": "D-174-seeker-journey-build.door-neutral",
+      "title": "Company door, drawer and /ask show the same state for every company before sending (D-176 drift fix)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 2,
+      "lane": "d174-journey-door",
+      "branch": "agent/queue/d174-journey-door",
+      "status": "todo",
+      "syncedTo": "D-266",
+      "dependsOn": [
+        "D-174-fix-post-binding",
+        "D-176-public-claims"
+      ],
+      "note": "Packet section 6.1, rulings 1, 3 and 4: no open/not-open header, one primary commit, one verified-mark line, the not-open block and its alert control removed, sent headline in D-180 words. No switch: the live door contradicts D-176. Re-pins only the listed D-176 assertions.",
+      "epic": "D-174-seeker-journey-build",
+      "owns": [
+        "client/src/pages/ExploreCompany.tsx",
+        "client/src/pages/explore/AskDrawer.tsx",
+        "client/src/pages/Ask.tsx",
+        "client/src/pages/explore/coverageNeutral.test.tsx",
+        "client/src/pages/explore.test.tsx",
+        "client/src/pages/exploreDrawer.test.tsx",
+        "client/src/pages/ask.test.tsx"
+      ]
+    },
+    {
+      "id": "D-174-seeker-journey-build.composer-neutral",
+      "title": "The composer prices every company on the unknown-coverage line and says post-save which way the request went (D-176)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 1,
+      "lane": "d174-journey-composer",
+      "branch": "agent/queue/d174-journey-composer",
+      "status": "todo",
+      "syncedTo": "D-266",
+      "dependsOn": [
+        "D-174-seeker-journey-build.door-neutral"
+      ],
+      "note": "Packet section 6.2, rulings 1 to 4: no openToReferrals read, askCostLine open:null, expectedCoverage never sent (server guard untouched), watch removed, post-save first clause only (expiry clauses stay for D-174-expiry-clock-removal). Money display: no amount, spend point, refund or key changes. Coordinator question 1 covers the D-132 flag-on re-pins.",
+      "epic": "D-174-seeker-journey-build",
+      "owns": [
+        "client/src/pages/explore/useAskComposer.tsx",
+        "client/src/pages/explore/AskDrawer.tsx",
+        "client/src/pages/explore/coverageNeutral.test.tsx",
+        "client/src/pages/explore/ask.costQuote.test.tsx",
+        "client/src/pages/explore.test.tsx",
+        "client/src/pages/exploreDrawer.test.tsx"
+      ]
+    },
+    {
+      "id": "D-174-seeker-journey-build.public-payload",
+      "title": "GET /api/companies stops sending openToReferrals and openCount; /plans coverage block reads only the seeker's own requests",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 2,
+      "lane": "d174-journey-payload",
+      "branch": "agent/queue/d174-journey-payload",
+      "status": "todo",
+      "syncedTo": "D-266",
+      "dependsOn": [
+        "D-174-seeker-journey-build.composer-neutral",
+        "D-174-company-search"
+      ],
+      "note": "Packet section 6.3, ruling 5 (D-193 (5)): expand-then-contract, keys optional for one release, admin schema keeps availability, companyClaim reads an internal getter, CoverageBlock lists no directory companies. Fixture cleanup is a later row (packet section 9).",
+      "epic": "D-174-seeker-journey-build",
+      "owns": [
+        "shared/companies.ts",
+        "server/companyDirectory.ts",
+        "server/companyDirectory.test.ts",
+        "server/companyDirectoryContract.test.ts",
+        "server/companyDirectoryRoutes.ts (switch only)",
+        "server/companyClaim.ts",
+        "server/companyClaim.test.ts",
+        "client/src/components/plans/PlansKitSections.tsx",
+        "client/src/components/plans/coverageBlock.test.tsx"
+      ]
+    },
+    {
+      "id": "D-174-seeker-journey-build.search",
+      "title": "Company typeahead on /explore with a paste-a-link path for unlisted companies (switch off)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 2,
+      "lane": "d174-journey-search",
+      "branch": "agent/queue/d174-journey-search",
+      "status": "todo",
+      "syncedTo": "D-266",
+      "dependsOn": [
+        "D-174-company-search"
+      ],
+      "note": "Packet section 6.4, ruling 8: COMPANY_TYPEAHEAD_ENABLED = false until the release row; switch off keeps today's filter byte-for-byte.",
+      "epic": "D-174-seeker-journey-build",
+      "owns": [
+        "client/src/pages/Explore.tsx",
+        "client/src/pages/explore/useCompanySearch.ts",
+        "client/src/pages/explore/companySearch.test.tsx"
+      ]
+    },
+    {
+      "id": "D-174-seeker-journey-build.jobs-list",
+      "title": "The company door lists careers-site jobs with location, level and function filters and honest completeness states (switch off)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 2,
+      "lane": "d174-journey-jobs",
+      "branch": "agent/queue/d174-journey-jobs",
+      "status": "todo",
+      "syncedTo": "D-266",
+      "dependsOn": [
+        "D-174-job-catalog",
+        "D-174-seeker-journey-build.door-neutral"
+      ],
+      "note": "Packet section 6.5, rulings 6 and 7: reads GET /api/companies/:slug/jobs; levels are JOB_LEVEL_LABELS (no band grouping until D-219's mapping is decided); employee posts first; COMPANY_JOBS_ENABLED = false until the release row.",
+      "epic": "D-174-seeker-journey-build",
+      "owns": [
+        "client/src/pages/explore/companyJobsApi.ts",
+        "client/src/pages/explore/CompanyJobs.tsx",
+        "client/src/pages/explore/companyJobs.test.tsx",
+        "client/src/pages/ExploreCompany.tsx (switch only)"
+      ]
+    },
+    {
+      "id": "D-174-seeker-journey-build.job-ask",
+      "title": "A picked careers-site job locks the drawer and sends catalogJobId to both the quote and the send (behind COMPANY_JOBS_ENABLED)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 1,
+      "lane": "d174-journey-composer",
+      "branch": "agent/queue/d174-journey-job-ask",
+      "status": "todo",
+      "syncedTo": "D-266",
+      "dependsOn": [
+        "D-174-ask-from-job",
+        "D-174-seeker-journey-build.jobs-list",
+        "D-174-seeker-journey-build.composer-neutral"
+      ],
+      "note": "Packet section 6.6: money path (quote equals charge, D-193 section 5.8); jobSelection mirrors postSelection after D-174-fix-post-binding; credit rules unchanged.",
+      "epic": "D-174-seeker-journey-build",
+      "owns": [
+        "client/src/pages/explore/useAskComposer.tsx",
+        "client/src/pages/explore/AskDrawer.tsx",
+        "client/src/pages/explore/askSend.ts",
+        "client/src/pages/explore/askSend.test.ts",
+        "client/src/hooks/useAskQuote.ts",
+        "client/src/pages/explore/jobAsk.test.tsx",
+        "client/src/pages/ExploreCompany.tsx (switch only)"
+      ]
     },
     {
       "id": "D-166-founder-decisions-sync",
