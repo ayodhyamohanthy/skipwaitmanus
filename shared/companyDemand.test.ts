@@ -163,7 +163,12 @@ describe("countDemandPeople", () => {
     });
 
     it("counts a request awaiting reconfirm: reconfirm gates the spend, not liveness", () => {
-      const awaitingReconfirm = { ...row({ coverageVisibleAt: new Date(NOW - 40 * DAY) }), reconfirmRequestedAt: new Date(NOW - 2 * DAY) };
+      // D-174-held-ask-reconfirm asks a waiting request older than 30 days for a
+      // one-tap reconfirm before its credit is spent. It stays pending and inside
+      // the runtime's own shelf life, so it keeps counting: the count neither
+      // freezes nor expires at the reconfirm threshold.
+      const awaitingReconfirm = { ...row({ waitingForCoverage: true, createdAt: new Date(NOW - 40 * DAY) }), reconfirmRequestedAt: new Date(NOW - 2 * DAY) };
+      expect(isAskExpired(awaitingReconfirm, NOW)).toBe(false);
       expect(peopleAt([awaitingReconfirm], "acme")).toBe(1);
     });
 
