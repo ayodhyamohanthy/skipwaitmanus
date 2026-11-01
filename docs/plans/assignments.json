@@ -77,10 +77,10 @@
       "tier": 1,
       "lane": "auth-device",
       "branch": "agent/queue/fix-device-signin",
-      "status": "todo",
-      "syncedTo": "D-272",
+      "status": "owner",
+      "syncedTo": "D-273",
       "dependsOn": [],
-      "note": "Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168); next is one independent review by a model other than Claude (D-200), then landing on green required CI. Face ID, passkeys and Sign in with Apple are not in this row: they change the login rule and wait for the owner. D-272 (2026-11-01): the row is done and live (PR #655 merged 059ef908; PASS 084577f9 by GPT 2a58 on head 9237ac4e, an ancestor of main; 40/40 focused green). The board flip and the property rewrite of the nextTask.test.ts:47-62 first-pick pin ride agent/queue/fix-device-signin as an ordinary Tier 1 pull request - do not rebuild; one independent review, then landing.",
+      "note": "D-273 (2026-11-01): parked at owner. The deliverable is complete on PR #952 (head 48eb44df): status done plus the structural rewrite of the nextTask.test.ts:47-62 first-pick pin. That head is red only at the review gate - unit + component + route, production build and e2e journeys are all green on it - and the pass it needs cannot be issued: nextTaskCore.mjs:573-584 returns fix or green for every red CI and reaches review only below that guard (:586-592), so the picker's 'then it is reviewed again' cannot happen. Lands unchanged once the D-254 answer opens a review route; do not rebuild. Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168); next is one independent review by a model other than Claude (D-200), then landing on green required CI. Face ID, passkeys and Sign in with Apple are not in this row: they change the login rule and wait for the owner. D-272 (2026-11-01): the row is done and live (PR #655 merged 059ef908; PASS 084577f9 by GPT 2a58 on head 9237ac4e, an ancestor of main; 40/40 focused green). The board flip and the property rewrite of the nextTask.test.ts:47-62 first-pick pin ride agent/queue/fix-device-signin as an ordinary Tier 1 pull request - do not rebuild; one independent review, then landing.",
       "owns": [
         "client/src/lib/rememberedSignInEmail.ts",
         "client/src/components/SeekerSignIn.tsx",
