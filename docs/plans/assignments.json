@@ -3749,7 +3749,7 @@
         "shared/languages.ts (switch only)",
         "client/src/pages/TrustPrivacy.tsx"
       ],
-      "note": "D-093 release row (packet section 5.7, D-223 (3)): flips LANGUAGE_CAPTURE_ENABLED and adds the owner-approved privacy sentence after its five rows land, preview QA and an independent Tier 1 (privacy) review. Status stays owner: the TrustPrivacy wording is the owner's (packet section 8 Q1, unresolved) and LAUNCH-legal-copy owns TrustPrivacy.tsx. The six decomposition rows were registered Nov 2 through the ordinary docs/registry route (routine decomposition of D-093; the earlier \"new rows paused\" premise was corrected in docs/BUILD_CONTINUITY.md). Registration is not activation or product acceptance. No language other than English becomes visible."
+      "note": "D-093 release row (packet section 5.7, D-223 (3)): flips LANGUAGE_CAPTURE_ENABLED and adds the owner-approved privacy sentence after its five rows land, preview QA and an independent Tier 1 (privacy) review. Status stays owner: the TrustPrivacy wording is the owner's (packet section 8 Q1, unresolved) and LAUNCH-legal-copy owns TrustPrivacy.tsx. The six decomposition rows were registered Nov 2 through the ordinary docs/registry route (routine decomposition of D-093: coordinator qualification, PR #891 comment 6563726334; the earlier \"new rows paused\" premise was a coordination recommendation, not an owner restriction, corrected in docs/BUILD_CONTINUITY.md, and no owner pause-lift question is pending; the other restriction clauses there still stand pending their own qualification). Registration is not activation or product acceptance. No language other than English becomes visible."
     },
     {
       "id": "D-093.capture",
