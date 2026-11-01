@@ -3482,11 +3482,12 @@
       "lane": "security-csp-release",
       "branch": "agent/queue/d100-csp-release",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-269",
       "dependsOn": [
-        "D-100.csp-enforce"
+        "D-100.csp-enforce",
+        "D-090-BYOR"
       ],
-      "note": "D-223 release row of the CSP pieces: one line, opens only 7 days after D-100.csp-report is live.",
+      "note": "D-223 release row of the CSP pieces: one line, flips CSP_ENFORCED = true in server/securityHeaders.ts only after D-090-BYOR lands page CSP in functions/_middleware.ts, 7 days of clean violation reports at /api/csp-report elapse with zero legitimate blocked sources, captures at 1280 and 390 verify no broken pages, and the CEO signs off (D-259, D-269).",
       "epic": "D-100",
       "owns": [
         "server/securityHeaders.ts"
