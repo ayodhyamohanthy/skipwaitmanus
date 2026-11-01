@@ -137,7 +137,7 @@ The build edits exactly these paths: the no-conflict paths, then the four confli
 - `client/src/hooks/useReferrerAccess.ts`, `client/src/lib/threadApi.ts`, `client/src/components/referrer-home/referrerData.ts`, the new `client/src/lib/referrerStepUpApi.ts` and the new `client/src/components/goal/GoalWorkEmailStepUp.tsx`;
 - the eight surface files in §0b.6;
 - the new migration `drizzle/deploy/<next>_referrer_step_ups.sql`;
-- tests beside each file;
+- tests beside each file (with the alerts surface test narrowed to `client/src/pages/alerts.stepUp.test.tsx` per D-265, keeping `alerts.test.tsx` with `DECISION-COPY-oct26`);
 - docs: this packet, the AGENTS.md living-map rows for auth and the referrer gate, and the plan §3b row and §5.
 - the e2e session fixture paths `e2e/fixtures.ts` and `scripts/seed-test-accounts.ts`, limited as §0b.8a says (added Oct 31; nothing else under `e2e/` or `scripts/`).
 
@@ -248,3 +248,6 @@ A person who verified a work email is a verified referrer for every session they
 
 ## 8. Stop and ask if
 A referrer action route cannot be reached in a code session or after a step-up (for example, a link opened from email lands signed out): stop and describe the flow. Never weaken the gate. Any remaining conflict (ownership, a test the step-up cannot meet, a path not in §0b.8) is recorded precisely on this row's status line and reported blocked, never as a new overlapping task (D-245).
+
+## Status
+- Nov 1: D-265 (Antigravity · 88b9): owns narrowed from `client/src/pages/alerts*.test.tsx` to `client/src/pages/alerts.stepUp.test.tsx` (the test file introduced by this row), keeping `alerts.test.tsx` with `DECISION-COPY-oct26`.
