@@ -47,7 +47,7 @@ Every enterprise role is a picker stage or a machine check, and a release counts
 | 2.1 | 1 (go-live slice: `/plans` packs and passes, coverage before payment, no accidental renewal) | [GO-LIVE-1-plans-purchase.md](GO-LIVE-1-plans-purchase.md) | 1 | M | done — #351; passes switched off by the D-084 P0 and kept off by D-146 | 1.1 live, 1.3 built | 3.1 |
 | 2.1b | 1 (pass slice: a paid pass always activates, then passes go back on sale; D-084) | [GO-LIVE-1b-pass-activation.md](GO-LIVE-1b-pass-activation.md) | 1 | M | landed — PR #359 (merge of `agent/queue/go-live-passes`); passes stay off (D-146) | 2.1 live | 3.1 |
 | 2.2 | D-065-daily-money-check | live (`eed80e5f`, PR #317); follow-up [D-065-B-slice-checks.md](D-065-B-slice-checks.md) | 2 | S | done — `dc8d0bf3` (PR #333) | — | everything |
-| 2.3 | Owner: read the D-069 dry run, apply, fix `billing_cycles` mismatches in Chargebee, add the pass-refund wording to `/refunds`, then the one live ₹99 UPI buy-and-refund (D-065) | plan §6 | — | — | owner action | 1.3, 2.1 | — |
+| 2.3 | Owner: the D-069 catalog sync (dry run, then apply), the `billing_cycles` fixes and the pass-refund wording were written for the legacy pack and pass catalog, which D-219 (6) paused (provider items archived Oct 25, D-214 (3)); the sync compares the site against `shared/planCatalog.ts`, which changes with PR #666 (`PRICING-banded-oct25`), and any activation needs the owner's word (D-123). The one live ₹99 UPI buy-and-refund (D-065) stays owner-only with his explicit approval; the pack it would buy is paused | plan §6 | — | — | owner action | 1.3, 2.1 | — |
 
 ## Stage 3 — the money rules (one at a time; same functions in `server/db.ts`)
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on |

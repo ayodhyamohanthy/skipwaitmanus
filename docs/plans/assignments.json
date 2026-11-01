@@ -4125,10 +4125,10 @@
       "tier": 3,
       "lane": "docs-sync",
       "branch": "agent/queue/decision-sync-oct26",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-275",
       "dependsOn": [],
-      "note": "D-221 (Oct 26): Markdown only. Fix each line in the audit's section 9 to the current rule (D-219 pricing and paused packs, D-176 availability, D-174 expiry as a runtime caveat only, D-147, D-200 landing and who builds, D-196/D-219 referrer-plan exception, D-080/D-163 sign-in order). The register keeps its history; other docs state the current rule. Leave the eight entry-doc banners to D-200-instructions-sync and the landing-route wording to D-212 if it lands first. Tier 3: lands on green required CI (D-200)."
+      "note": "D-221 (Oct 26): Markdown only. Fix each line in the audit's section 9 to the current rule (D-219 pricing and paused packs, D-176 availability, D-174 expiry as a runtime caveat only, D-147, D-200 landing and who builds, D-196/D-219 referrer-plan exception, D-080/D-163 sign-in order). The register keeps its history; other docs state the current rule. Leave the eight entry-doc banners to D-200-instructions-sync and the landing-route wording to D-212 if it lands first. Tier 3: lands on green required CI (D-200). Nov 1 (Claude Opus 5.5 · ltik, checked through D-265): section 9 done except what other rows own: the landing-route wording (DEPLOY-gate-docs-sync), docs/BUGFREE_GATE.md 4.1-4.4 (LAUNCH-live-qa, at owner) and the non-Markdown design/goal-ui/content.json and pick/ comps; the packet's Status section has the detail. Nov 1 (Buffy · 566c, landed): PR #933 fast-forwarded onto main 45aa6661; D-266-D-275 affect none of this row's files; syncedTo now D-275; gate: scripts tests 1030/1030, validateAssignments []."
     },
     {
       "id": "D-174-job-sources-more",
