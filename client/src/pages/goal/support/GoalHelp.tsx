@@ -25,6 +25,14 @@ export default function GoalHelp() {
       <h1 className="mt-2 text-g-display text-g-ink">{GOAL_PAGE.goalLine}</h1>
       <p className="mt-2 text-g-body text-g-ink-2">Find the answer, or reach a person.</p>
 
+      <div className="mt-5">
+        <GoalNextStep reason="Still stuck after the answers below? A person replies within 1 working day.">
+          <div className="mt-3">
+            <GoalButton variant="primary" asChild><Link href="/support">Contact support</Link></GoalButton>
+          </div>
+        </GoalNextStep>
+      </div>
+
       <div className="mt-6">
         <GoalSearchInput label="Search help" value={query} onChange={setQuery} placeholder="Search: credits, verify, expire…" />
       </div>
@@ -59,14 +67,6 @@ export default function GoalHelp() {
           );
         })}
       </ul>
-
-      <div className="mt-6">
-        <GoalNextStep reason="Still stuck? A person replies within 1 working day.">
-          <div className="mt-3">
-            <GoalButton variant="primary" asChild><Link href="/support">Contact support</Link></GoalButton>
-          </div>
-        </GoalNextStep>
-      </div>
 
       <nav aria-label="Rules & policies" className="mt-6">
         <h2 className="text-g-label text-g-ink">Rules &amp; policies</h2>

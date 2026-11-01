@@ -19,6 +19,14 @@ export default function GoalSafety() {
       <h1 className="mt-2 text-g-display text-g-ink">{GOAL_PAGE.goalLine}</h1>
       <p className="mt-2 text-g-body text-g-ink-2">Clear boundaries. Real people. No fine-print surprises.</p>
 
+      <div className="mt-5">
+        <GoalNextStep reason="Explore freely. Share only when you’re ready.">
+          <div className="mt-3">
+            <GoalButton variant="primary" asChild><Link href="/explore">Explore companies</Link></GoalButton>
+          </div>
+        </GoalNextStep>
+      </div>
+
       <section aria-label="Safety questions" className="mt-6 border-t border-g-hairline">
         {SAFETY_ANSWERS.map(([question, answer], index) => (
           <details key={question} open={index === 0} className="border-b border-g-hairline">
@@ -31,14 +39,6 @@ export default function GoalSafety() {
           <p className={ANSWER}>Do not pay for a referral or share sensitive financial information. Use <Link href="/report" className="text-g-ink underline underline-offset-4">Report</Link> on the conversation — it&rsquo;s confidential.</p>
         </details>
       </section>
-
-      <div className="mt-6">
-        <GoalNextStep reason="Explore freely. Share only when you’re ready.">
-          <div className="mt-3">
-            <GoalButton variant="primary" asChild><Link href="/explore">Explore companies</Link></GoalButton>
-          </div>
-        </GoalNextStep>
-      </div>
     </main>
   );
 }

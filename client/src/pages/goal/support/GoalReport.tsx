@@ -186,6 +186,7 @@ export default function GoalReport() {
                 </GoalButton>
                 <GoalButton variant="ghost" leadingIcon={ArrowLeft} onClick={() => setStep(0)}>Back</GoalButton>
               </div>
+              {!online ? <p className="mt-2 text-g-meta text-g-ink-2">Nothing is sent while you&apos;re offline; reconnect to send your report.</p> : null}
             </GoalNextStep>
           </div>
         </>
