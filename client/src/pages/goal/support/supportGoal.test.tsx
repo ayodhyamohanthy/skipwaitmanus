@@ -49,9 +49,14 @@ const DAILY_CAP = "You have filed several reports today. Contact support directl
 // Fixed plain lines (review 6562676959): never the browser's raw "Failed to fetch".
 const REPORT_FAILED = "We could not file this report. Try again in a moment, or contact support.";
 // Review 6563041566: a rejected report fetch is uncertain, so the old "was not sent… submit again" line is gone.
-const REPORT_NETWORK = "We couldn't confirm your report reached SkipWait. Check with support before sending it again, so it isn't filed twice.";
+// Review 6565471121 (2): no duplicate-prevention promise; support before a resend.
+const REPORT_NETWORK = "We couldn't confirm your report reached SkipWait. Contact support before sending it again.";
 const BLOCK_FAILED = "Your report was filed, but the block did not go through. Try blocking again, or contact support.";
-const BLOCK_NETWORK = "Your report was filed, but we couldn't reach SkipWait to block this person. Check your connection and try blocking again.";
+// Review 6565471121 (1): a rejected block fetch cannot confirm the block either way.
+const BLOCK_NETWORK = "Your report was filed, but we couldn't confirm the block went through. Try blocking again.";
+// Review 6565471121 (3): the done step states what the code did (the report is filed), no operational promise.
+const DONE_HEADING = "Thanks. Your report is filed.";
+const DONE_PATTERN = /Your report is filed/;
 const OFFLINE_VISIBLE = "Nothing is sent while you're offline; reconnect to send your report.";
 const ok = (json: unknown) => ({ ok: true, status: 200, json: async () => json });
 const fail = (status: number, json: unknown) => ({ ok: false, status, json: async () => json });
@@ -161,10 +166,10 @@ describe("goal /report", () => {
     fireEvent.change(screen.getByPlaceholderText(/What happened/), { target: { value: "Suspicious fee request" } });
     fireEvent.click(screen.getByRole("button", { name: /I feel unsafe/ }));
     fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
-    expect(await screen.findByRole("heading", { level: 2, name: "Thanks. We're on it." })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 2, name: DONE_HEADING })).toBeTruthy();
     assertGoalPage(container, { goalLine: REPORT_LINE });
     expect(screen.getByText(/reference #R-1048/)).toBeTruthy();
-    expect(screen.getByText("We review your report")).toBeTruthy();
+    expect(screen.getByText("Contact support and quote your reference.")).toBeTruthy();
     expect(screen.getByText(/immediate danger, contact local emergency services first/)).toBeTruthy();
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { body?: string; method?: string }];
     expect(url).toBe("/api/safety-reports");
@@ -179,7 +184,7 @@ describe("goal /report", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
     fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
     expect((await screen.findByRole("alert")).textContent).toBe(DAILY_CAP);
-    expect(screen.queryByText(/We're on it/)).toBeNull();
+    expect(screen.queryByText(DONE_PATTERN)).toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Add details" })).toBeTruthy();
   });
 
@@ -193,7 +198,7 @@ describe("goal /report", () => {
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
       fireEvent.click(screen.getByRole("button", { name: /Also block this person/ }));
       fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
-      expect(await screen.findByRole("heading", { level: 2, name: "Thanks. We're on it." })).toBeTruthy();
+      expect(await screen.findByRole("heading", { level: 2, name: DONE_HEADING })).toBeTruthy();
       expect(screen.getByRole("alert").textContent).toMatch(/block did not go through/);
       expect(screen.queryByText(/This person is blocked/)).toBeNull();
       expect(screen.getByRole("link", { name: "Manage blocked people" }).getAttribute("href")).toBe("/settings");
@@ -209,11 +214,11 @@ describe("goal /report", () => {
     render(<Report />);
     fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
     expect(screen.queryByRole("button", { name: /Also block this person/ })).toBeNull();
-    expect(screen.getByText(/blocking both directions is handled by our team/)).toBeTruthy();
+    expect(screen.getByText(/open Report from your conversation with them/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
     expect((await screen.findByRole("link", { name: "Contact support" })).getAttribute("href")).toBe("/support");
     expect(screen.queryByRole("link", { name: "Manage blocked people" })).toBeNull();
-    expect(screen.getByText("We review your report")).toBeTruthy();
+    expect(screen.getByText("Contact support and quote your reference.")).toBeTruthy();
   });
 
   it("offline: the submit commit names why it waits and sends nothing", async () => {
@@ -264,7 +269,7 @@ async function fileWithBlock(fetchMock: ReturnType<typeof vi.fn>) {
   fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
   fireEvent.click(screen.getByRole("button", { name: /Also block this person/ }));
   fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
-  expect(await screen.findByRole("heading", { level: 2, name: "Thanks. We're on it." })).toBeTruthy();
+  expect(await screen.findByRole("heading", { level: 2, name: DONE_HEADING })).toBeTruthy();
 }
 
 describe("review 6562676959: failed block recovery (finding 1)", () => {
@@ -321,7 +326,7 @@ describe("review 6562676959: rejected fetch while navigator.onLine is true (find
     fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
     expect((await screen.findByRole("alert")).textContent).toBe(REPORT_NETWORK);
     expect(screen.queryByText(/Failed to fetch/)).toBeNull();
-    expect(screen.queryByText(/We're on it/)).toBeNull();
+    expect(screen.queryByText(DONE_PATTERN)).toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Add details" })).toBeTruthy();
   });
 
@@ -384,7 +389,7 @@ describe("review 6562676959: the visible offline line and its transitions (findi
     setOnline(true);
     expect(screen.queryByText(OFFLINE_VISIBLE)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
-    expect(await screen.findByRole("heading", { level: 2, name: "Thanks. We're on it." })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 2, name: DONE_HEADING })).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
@@ -396,7 +401,7 @@ describe("review 6562676959: generic refusal stays separate from the daily cap (
     fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
     fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
     expect((await screen.findByRole("alert")).textContent).toBe(REPORT_FAILED);
-    expect(screen.queryByText(/We're on it/)).toBeNull();
+    expect(screen.queryByText(DONE_PATTERN)).toBeNull();
   });
 });
 
@@ -409,7 +414,7 @@ describe("review 6562676959: referral vocabulary, D-180 (finding 6)", () => {
     fireEvent.click(await screen.findByRole("radio", { name: "Spam or repeated requests" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
-    await screen.findByRole("heading", { level: 2, name: "Thanks. We're on it." });
+    await screen.findByRole("heading", { level: 2, name: DONE_HEADING });
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, { body?: string }];
     expect(JSON.parse(String(init.body)).reason).toBe("Spam or repeated asks");
   });
@@ -463,7 +468,7 @@ describe("review 6562676959: additional items that reproduce in the owned files"
 });
 
 // Corrections for review comments 6563041566, 6563729015 and 6563736305 on PR #954 (red first).
-const REPORT_UNCONFIRMED = "We couldn't confirm your report reached SkipWait. Check with support before sending it again, so it isn't filed twice.";
+const REPORT_UNCONFIRMED = "We couldn't confirm your report reached SkipWait. Contact support before sending it again.";
 
 describe("review 6563041566: a rejected report fetch is uncertain, not proof it went unsent", () => {
   it("lost response: the server processed the POST but the reply never arrived; the page neither says 'not sent' nor 'filed', and gives a support route", async () => {
@@ -477,7 +482,7 @@ describe("review 6563041566: a rejected report fetch is uncertain, not proof it 
     expect(processed).toBe(1);
     expect(alert.textContent).toBe(REPORT_UNCONFIRMED);
     expect(alert.textContent).not.toMatch(/not sent|submit again|was filed|can't be filed twice|won't be filed twice/i);
-    expect(screen.queryByText(/We're on it/)).toBeNull();
+    expect(screen.queryByText(DONE_PATTERN)).toBeNull();
     expect(screen.queryByText(/reference #/)).toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Add details" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Contact support" }).getAttribute("href")).toBe("/support");
@@ -512,7 +517,7 @@ describe("review 6563729015: owned UI fixes", () => {
     expect(support.getAttribute("href")).toBe("/support");
     expect(support).not.toBe(primary(container));
     expect(screen.getByRole("heading", { level: 2, name: "Add details" })).toBeTruthy();
-    expect(screen.queryByText(/We're on it|Report received|reference #/)).toBeNull();
+    expect(screen.queryByText(/Your report is filed|Report received|reference #/)).toBeNull();
     assertGoalPage(container, { goalLine: REPORT_LINE });
   });
 
@@ -595,7 +600,131 @@ describe("review 6563736305: owned non-money wording is referral-only, and no un
     fireEvent.click(screen.getByRole("button", { name: /I feel unsafe/ }));
     expect(report.container.textContent).not.toMatch(unbacked);
     fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
-    await screen.findByRole("heading", { level: 2, name: "Thanks. We're on it." });
+    await screen.findByRole("heading", { level: 2, name: DONE_HEADING });
     expect(report.container.textContent).not.toMatch(unbacked);
+  });
+});
+
+// Corrections for review comment 6565471121 on PR #954 (red first).
+describe("review 6565471121 (1): a rejected block fetch claims neither unreachability nor non-receipt", () => {
+  it("says the block could not be confirmed, offers a block-only retry, and never says the server couldn't be reached", async () => {
+    const restore = at("https://skipwait.me/report?request=42");
+    try {
+      let blockAttempts = 0;
+      const fetchMock = vi.fn(async (url: string) => {
+        if (String(url).startsWith("/api/blocks")) {
+          blockAttempts += 1;
+          if (blockAttempts === 1) throw new TypeError("Failed to fetch");
+          return ok({ block: { blockedUserId: 7 } });
+        }
+        return ok({ report: { id: 48, reference: "R-1048" } });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      render(<Report />);
+      fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
+      fireEvent.click(screen.getByRole("button", { name: /Also block this person/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
+      // Waits on the alert, not the done heading, so this pins the block wording alone.
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toBe(BLOCK_NETWORK);
+      expect(alert.textContent).not.toMatch(/couldn.t reach|could not reach|can.t reach|unreachable|didn.t reach|never reached|not received|wasn.t received|not sent|wasn.t sent|check your connection/i);
+      fireEvent.click(screen.getByRole("button", { name: "Try blocking again" }));
+      expect(await screen.findByText(/This person is blocked\./)).toBeTruthy();
+      expect(callsTo(fetchMock, "/api/blocks")).toBe(2);
+      expect(callsTo(fetchMock, "/api/safety-reports")).toBe(1);
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe("review 6565471121 (2): the report uncertainty line has a support-before-resend path and no exactly-once promise", () => {
+  it("routes to support before a resend without implying support prevents a duplicate", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
+    render(<Report />);
+    fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe(REPORT_UNCONFIRMED);
+    expect(alert.textContent).toMatch(/Contact support before sending it again/);
+    expect(alert.textContent).not.toMatch(/filed twice|so it isn.t|duplicate|exactly once|only once|won.t be filed|can.t be filed|not be filed again/i);
+    expect(screen.getByRole("link", { name: "Contact support" }).getAttribute("href")).toBe("/support");
+  });
+});
+
+describe("review 6565471121 (3): owned goal copy makes no unsupported operational promise", () => {
+  // Operational assertions (staffing, people, review timing, active review,
+  // outcome notification, intervention) have no approved operations evidence.
+  // Policy facts the code backs (a report is recorded, a block can be placed,
+  // the reporter is not named) stay. Imported shared/moneyCopy lines are excluded.
+  const OPERATIONAL = /reach a person|real people|a person for manual|manual review|our team|\bteam\b|we.re on it|we review|we.ll review|we will review|review is done|helps us review|notify you|notification with the outcome|with the outcome|step in\b|interven|handled by|follow up on your report/i;
+  const moneyLines = [ASK_COST_SENTENCE, CREDIT_RULE, REFERRER_MONEY_SENTENCE, MONEY_SENTENCE];
+  const strip = (text: string) => moneyLines.reduce((rest, line) => rest.split(line).join(""), text);
+  const offending = (text: string | null | undefined) => (strip(text ?? "").match(new RegExp(OPERATIONAL.source, "gi")) ?? []);
+
+  it("help and safety content (questions and answers, money lines excluded) has none", () => {
+    const owned = [
+      ...HELP_ANSWERS.flatMap(({ question, answer }) => [question, answer]),
+      ...SAFETY_ANSWERS.flatMap(([question, answer]) => [question, answer]),
+      ...REPORT_REASONS.flatMap(([label, hint]) => [label, hint]),
+    ];
+    expect(owned.flatMap(offending)).toEqual([]);
+  });
+
+  it("the rendered help and safety pages, every answer opened, have none", async () => {
+    const help = render(<Help />);
+    await screen.findByRole("heading", { level: 1, name: HELP_LINE });
+    const seen: string[] = [help.container.textContent ?? ""];
+    for (const { question } of HELP_ANSWERS) {
+      const button = screen.getByRole("button", { name: question });
+      if (button.getAttribute("aria-expanded") !== "true") fireEvent.click(button);
+      seen.push(help.container.textContent ?? "");
+    }
+    help.unmount();
+    const safety = render(<Safety />);
+    await screen.findByRole("heading", { level: 1, name: SAFETY_LINE });
+    for (const row of within(screen.getByRole("region", { name: "Safety questions" })).getAllByRole("button")) {
+      if (row.getAttribute("aria-expanded") !== "true") fireEvent.click(row);
+    }
+    seen.push(safety.container.textContent ?? "");
+    expect(seen.flatMap(offending)).toEqual([]);
+  });
+
+  it("every report state (signed out, each step, done with and without a conversation, block failure) has none", async () => {
+    const seen: string[] = [];
+    authState.isSignedIn = false;
+    vi.stubGlobal("fetch", vi.fn());
+    const signedOut = render(<Report />);
+    await screen.findByRole("heading", { level: 1, name: REPORT_LINE });
+    seen.push(signedOut.container.textContent ?? "");
+    signedOut.unmount();
+    authState.isSignedIn = true;
+
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ report: { id: 60, reference: "R-1060" } })));
+    const plain = render(<Report />);
+    seen.push(plain.container.textContent ?? "");
+    fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: /I feel unsafe/ }));
+    seen.push(plain.container.textContent ?? "", screen.getByPlaceholderText(/What happened/).getAttribute("placeholder") ?? "");
+    fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
+    await screen.findByRole("heading", { level: 2, name: DONE_HEADING });
+    seen.push(plain.container.textContent ?? "");
+    plain.unmount();
+
+    const restore = at("https://skipwait.me/report?request=42");
+    try {
+      const fetchMock = vi.fn(async (url: string) => (String(url).startsWith("/api/blocks") ? fail(500, {}) : ok({ report: { id: 61, reference: "R-1061" } })));
+      vi.stubGlobal("fetch", fetchMock);
+      const conv = render(<Report />);
+      fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
+      fireEvent.click(screen.getByRole("button", { name: /Also block this person/ }));
+      seen.push(conv.container.textContent ?? "");
+      fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
+      await screen.findByRole("alert");
+      seen.push(conv.container.textContent ?? "");
+    } finally {
+      restore();
+    }
+    expect(seen.flatMap(offending)).toEqual([]);
   });
 });
