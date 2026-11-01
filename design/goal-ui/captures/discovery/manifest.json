@@ -1,5 +1,5 @@
 {
-  "source": "07c6c51016a7302a2a91a95c3cbb3e2e72c2525a",
+  "source": "329d72ae6f187740be2ddf3545e05e3bb77e8e63",
   "command": "VITE_GOAL_SURFACES=all pnpm build && node design/goal-ui/captures/discovery/capture.mjs",
   "synthetic": true,
   "results": [
