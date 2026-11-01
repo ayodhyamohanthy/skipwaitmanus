@@ -1,0 +1,290 @@
+{
+  "source": "c015ac86",
+  "synthetic": true,
+  "checks": [
+    {
+      "name": "help-policy-targets",
+      "width": 390,
+      "pass": true,
+      "detail": {
+        "boxes": [
+          {
+            "href": "/guidelines",
+            "height": 44,
+            "visualHeight": 44
+          },
+          {
+            "href": "/terms",
+            "height": 44,
+            "visualHeight": 44
+          },
+          {
+            "href": "/privacy",
+            "height": 44,
+            "visualHeight": 44
+          },
+          {
+            "href": "/safety",
+            "height": 44,
+            "visualHeight": 44
+          }
+        ],
+        "overlaps": []
+      }
+    },
+    {
+      "name": "help-policy-taps",
+      "width": 390,
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "report-control-edges",
+      "width": 390,
+      "pass": true,
+      "detail": {
+        "canvas": "rgb(255, 255, 255)",
+        "controls": [
+          {
+            "name": "unselected tile",
+            "border": "rgb(138, 138, 138)",
+            "ratio": 3.45
+          },
+          {
+            "name": "Also block this person",
+            "border": "rgb(138, 138, 138)",
+            "ratio": 3.45
+          },
+          {
+            "name": "I feel unsafeMarks you",
+            "border": "rgb(138, 138, 138)",
+            "ratio": 3.45
+          }
+        ]
+      }
+    },
+    {
+      "name": "safety-disclosure-keys",
+      "width": 390,
+      "pass": true,
+      "detail": {
+        "count": 6,
+        "results": [
+          {
+            "i": 0,
+            "marker": true,
+            "before": "true",
+            "afterEnter": "false",
+            "afterSpace": "true"
+          },
+          {
+            "i": 1,
+            "marker": true,
+            "before": "false",
+            "afterEnter": "true",
+            "afterSpace": "false"
+          },
+          {
+            "i": 2,
+            "marker": true,
+            "before": "false",
+            "afterEnter": "true",
+            "afterSpace": "false"
+          },
+          {
+            "i": 3,
+            "marker": true,
+            "before": "false",
+            "afterEnter": "true",
+            "afterSpace": "false"
+          },
+          {
+            "i": 4,
+            "marker": true,
+            "before": "false",
+            "afterEnter": "true",
+            "afterSpace": "false"
+          },
+          {
+            "i": 5,
+            "marker": true,
+            "before": "false",
+            "afterEnter": "true",
+            "afterSpace": "false"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offline-notice-overlap",
+      "width": 390,
+      "pass": true,
+      "detail": {
+        "noticePresent": true,
+        "noticeBox": {
+          "x": 122.078125,
+          "y": 740,
+          "width": 145.828125,
+          "height": 36
+        },
+        "targets": [
+          {
+            "x": 33,
+            "y": 583,
+            "width": 142.484375,
+            "height": 44
+          },
+          {
+            "x": 33,
+            "y": 635,
+            "width": 324,
+            "height": 40
+          }
+        ],
+        "covered": 0
+      }
+    },
+    {
+      "name": "help-policy-targets",
+      "width": 1280,
+      "pass": true,
+      "detail": {
+        "boxes": [
+          {
+            "href": "/guidelines",
+            "height": 44,
+            "visualHeight": 44
+          },
+          {
+            "href": "/terms",
+            "height": 44,
+            "visualHeight": 44
+          },
+          {
+            "href": "/privacy",
+            "height": 44,
+            "visualHeight": 44
+          },
+          {
+            "href": "/safety",
+            "height": 44,
+            "visualHeight": 44
+          }
+        ],
+        "overlaps": []
+      }
+    },
+    {
+      "name": "help-policy-taps",
+      "width": 1280,
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "report-control-edges",
+      "width": 1280,
+      "pass": true,
+      "detail": {
+        "canvas": "rgb(255, 255, 255)",
+        "controls": [
+          {
+            "name": "unselected tile",
+            "border": "rgb(138, 138, 138)",
+            "ratio": 3.45
+          },
+          {
+            "name": "Also block this person",
+            "border": "rgb(138, 138, 138)",
+            "ratio": 3.45
+          },
+          {
+            "name": "I feel unsafeMarks you",
+            "border": "rgb(138, 138, 138)",
+            "ratio": 3.45
+          }
+        ]
+      }
+    },
+    {
+      "name": "safety-disclosure-keys",
+      "width": 1280,
+      "pass": true,
+      "detail": {
+        "count": 6,
+        "results": [
+          {
+            "i": 0,
+            "marker": true,
+            "before": "true",
+            "afterEnter": "false",
+            "afterSpace": "true"
+          },
+          {
+            "i": 1,
+            "marker": true,
+            "before": "false",
+            "afterEnter": "true",
+            "afterSpace": "false"
+          },
+          {
+            "i": 2,
+            "marker": true,
+            "before": "false",
+            "afterEnter": "true",
+            "afterSpace": "false"
+          },
+          {
+            "i": 3,
+            "marker": true,
+            "before": "false",
+            "afterEnter": "true",
+            "afterSpace": "false"
+          },
+          {
+            "i": 4,
+            "marker": true,
+            "before": "false",
+            "afterEnter": "true",
+            "afterSpace": "false"
+          },
+          {
+            "i": 5,
+            "marker": true,
+            "before": "false",
+            "afterEnter": "true",
+            "afterSpace": "false"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offline-notice-overlap",
+      "width": 1280,
+      "pass": true,
+      "detail": {
+        "noticePresent": true,
+        "noticeBox": {
+          "x": 1110.171875,
+          "y": 840,
+          "width": 145.828125,
+          "height": 36
+        },
+        "targets": [
+          {
+            "x": 397,
+            "y": 720,
+            "width": 142.484375,
+            "height": 40
+          },
+          {
+            "x": 397,
+            "y": 768,
+            "width": 590,
+            "height": 20
+          }
+        ],
+        "covered": 0
+      }
+    }
+  ]
+}
