@@ -28,7 +28,7 @@ export const HELP_ANSWERS: ReadonlyArray<HelpAnswer> = [
   // not imported from shared/moneyCopy, and both are money wording. D-173 keeps
   // money lines byte-identical until the D-132 audit, and D-180 freezes money
   // wording, so "credits" stays here; the rename belongs to the terminology
-  // lane (#598) and the D-180 owner (#704), not this row.
+  // lane (PR 598) and the D-180 owner (PR 704), not this row.
   { category: "Plans & referrals", question: "Do credits expire?", answer: "Purchased credits never expire. Plan credits roll over based on your plan." },
   { category: "Plans & referrals", question: "Does paying move me up the queue?", answer: "Never. Every referral request is shown on equal terms." },
   { category: "Plans & referrals", question: "How do I cancel?", answer: "Open Plans and manage your subscription there. You keep access until the period ends." },

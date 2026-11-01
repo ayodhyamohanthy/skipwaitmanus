@@ -78,7 +78,7 @@ try {
         await page.getByRole("button", { name: step }).first().click();
         await page.waitForTimeout(150);
       }
-      if (opts.report) await page.waitForSelector(opts.report === "ok" ? "text=Thanks. We're on it." : "[role=alert]", { timeout: 10000 });
+      if (opts.report) await page.waitForSelector(opts.report === "ok" ? "text=Thanks. Your report is filed." : "[role=alert]", { timeout: 10000 });
       await page.waitForTimeout(300);
       const metrics = await page.evaluate(() => ({
         scrollWidth: document.documentElement.scrollWidth,
