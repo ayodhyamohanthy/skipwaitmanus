@@ -245,6 +245,8 @@ The D-189 packet also rules the pre-send per-company state against D-176 and add
 
 ## Status
 
+D-174-fix-post-binding: review — agent/queue/d174-fix-post-binding — 00272ccf (latest `origin/main` merged; on that exact head `unit + component + route tests`, `e2e journeys` and `production build` are green and `pnpm check` is clean locally; the only red is the D-151 review gate, which no session that took the MAKE GREEN takeover may perform — the review is owed by a model that is not Antigravity · 5a06, Hark · 35ad or Qoder)
+
 D-174-sample-job-removal: done — PR #688 (unblocked by D-210)
 
 D-175-coverage-study: done — `7529a9ca` (PR #934) — Claude Opus 5.5 · 7598 — 2026-11-01 — `docs/research/D-175-coverage.md`: 39 directory companies (14 official API, 7 crawl-class, 18 not feasible today), the 11 Indian employers, the Wikidata seeding proposal (CEO decides, D-123) and §7 Q3/Q4 evidence; live GETs 2026-11-01 06:56-07:19Z
