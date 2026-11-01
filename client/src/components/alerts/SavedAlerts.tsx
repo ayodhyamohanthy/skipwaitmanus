@@ -27,8 +27,8 @@ function alertStatus(alert: SeekerAlert): string {
 
 const messageOf = (reason: unknown, fallback: string) => (reason instanceof Error && reason.message ? reason.message : fallback);
 
-// Kit footnote, verbatim. Any paid plan is unlimited on the server (shared/alerts.ts canAddAlert).
-const CAP_NOTE = `Free: ${FREE_ALERT_LIMIT} alerts · Momentum and Land: unlimited`;
+// Kit footnote, verbatim. The note states only the Free cap (D-219: the retired plan names name nothing that is sold).
+const CAP_NOTE = `Free: ${FREE_ALERT_LIMIT} alerts`;
 // Kit size-9 icon button with a 44px tap target from a transparent ::before.
 const ICON_BUTTON = "relative size-9 before:absolute before:-inset-1";
 
