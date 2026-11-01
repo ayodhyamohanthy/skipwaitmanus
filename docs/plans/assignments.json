@@ -3842,14 +3842,26 @@
       "id": "SYNC-LOG-off-main",
       "title": "Keep the deploy log without pushing to main (the D-082 ruleset refuses the bot's push)",
       "row": "D-082",
-      "packet": null,
-      "tier": 3,
+      "packet": "docs/plans/SYNC-LOG-off-main.md",
+      "tier": 2,
       "lane": "deploy-workflows",
-      "branch": "agent/claude/sync-log-off-main",
-      "status": "architect",
-      "syncedTo": "D-227",
-      "dependsOn": [],
-      "note": "Any agent writes the packet (D-109): write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected. It also retires sync-guard.yml (only echoes) and design-gate.yml (`|| true`), D-212 (7)."
+      "branch": "agent/queue/sync-log-off-main",
+      "status": "todo",
+      "syncedTo": "D-263",
+      "dependsOn": [
+        "REL-rollback-skew"
+      ],
+      "note": "D-263 packet docs/plans/SYNC-LOG-off-main.md: the Web deploy records its result in the run summary (as deploy-api.yml does), never a push to main; deploy-pages.yml drops contents: write; sync-guard.yml and design-gate.yml retire (D-212 (7)). Tier 2 (deploy workflow). Waits for REL-rollback-skew only because both own deploy-pages.yml.",
+      "owns": [
+        ".github/workflows/deploy-pages.yml",
+        ".github/workflows/sync-guard.yml",
+        ".github/workflows/design-gate.yml",
+        "scripts/append-sync-log.sh",
+        "scripts/syncLogOffMain.test.ts",
+        "docs/SYNC_LOG.md",
+        "docs/SYNC_SYSTEM.md",
+        "docs/DESIGN_SYSTEM_SPEC.md"
+      ]
     },
     {
       "id": "D-048-fix-start-ask-handoff",
