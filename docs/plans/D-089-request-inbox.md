@@ -3,10 +3,10 @@
 | Field | Value |
 |---|---|
 | Queue rows | `D-089.server` (Tier 1), `D-089.ui` (Tier 2), and the parent `D-089-request-inbox` as the release row (Tier 1, D-223 (3)). **The two build rows are written here but are not in `docs/plans/assignments.json` yet** — adding them needs the owner's word on his Oct 31 "new rows paused" restriction (§10, and the question in `docs/DECISIONS.md`, Open owner questions) |
-| Decisions | D-089 (3), D-087 (L4), D-163 (5), D-050, D-017, D-106, D-019(e), D-030/D-049/D-057 with D-245 (login rule), D-034, D-128, D-150/D-167 (goal pages), D-153/D-180 (wording), D-223 (rows and switches), D-246 (order). Rulings in D-266 (§10) |
-| Verified against | `origin/main` `8650b06c` (Oct 30 2026); re-checked on `05d0f7de` (Nov 1 2026, Hark · a442: §3 files unchanged except the landed `D-048-p3-links` landings, §3.8 updated); re-checked on `e36c3d62` (Nov 1 2026, Qoder · f00e: `git diff --stat 05d0f7de e36c3d62` over every file §3 names returns empty, so §3 still describes `main`). Line numbers drift: find functions by name |
+| Decisions | D-089 (3), D-087 (L4), D-163 (5), D-050, D-017, D-106, D-019(e), D-030/D-049/D-057 with D-245 (login rule), D-034, D-128, D-150/D-167 (goal pages), D-153/D-180 (wording), D-223 (rows and switches), D-246 (order). Rulings in D-268 (§10) |
+| Verified against | `origin/main` `8650b06c` (Oct 30 2026); re-checked on `05d0f7de` (Nov 1 2026, Hark · a442: §3 files unchanged except the landed `D-048-p3-links` landings, §3.8 updated); re-checked on `e36c3d62` (Nov 1 2026, Qoder · f00e: `git diff --stat 05d0f7de e36c3d62` over every file §3 names returns empty, so §3 still describes `main`); re-checked on `f5b9afb9` (Nov 1 2026, Claude Code · 1999: `git diff --stat e36c3d62 f5b9afb9` over every file §3 names is empty, and the §3.3, §3.4, §3.6, §3.8 and §3.9 claims were re-read in the code). Line numbers drift: find functions by name |
 | Migrations, env keys, dependencies | None. One in-code switch, `REQUEST_INBOX_LINK_ENABLED = false` (§4.1) |
-| Writer | Hark · b6a8, then Hark · a442, then Qoder · f00e; architect lock `agent/architect/d089-request-inbox` |
+| Writer | Hark · b6a8, then Hark · a442, then Qoder · f00e, then Claude Code · 1999; architect lock `agent/architect/d089-request-inbox` |
 
 ## 0. Read receipt (D-225)
 Read before writing: `AGENTS.md`, `START_HERE.md`, `docs/DELEGATION.md`, the register entries D-017, D-050, D-087, D-089, D-106, D-128, D-162, D-163, D-223, D-225, D-227 and D-240 to D-247 (the newest on `main`), `docs/BACKLOG.md` item 10 (the idea-lab stub), `docs/PRD.md` growth table, `docs/plans/GOAL_UI_COVERAGE.md` §5, and the packets `D-090-BYOR.md`, `D-086-demand-list.md`, `D-099-bonus-pages.md` and `D-057-session-gate.md` §4. No newer entry changes this task's scope: no register entry names `D-089-request-inbox` under `Affects tasks:`.
@@ -43,7 +43,7 @@ Test (AGENTS.md product compass): the seeker gets a named, verified person to as
 9. **Telemetry.** `shared/telemetryScrub.ts` already strips the alias from `/api/referrer-fast-track/vanity/:companySlug/:vanityAlias` (FND-4: the alias names one referrer).
 10. **Not to collide with:** `D-090-BYOR` takes `/r/:token` for its one-time links. The idea-lab stub's `skipwait.me/r/theirname` (BACKLOG item 10) cannot be used. This packet keeps `/refer/<company>/<screen name>`.
 
-## 4. Rulings (decided under D-200; changeable; register text D-266 in §10)
+## 4. Rulings (decided under D-200; changeable; register text D-268 in §10)
 1. **One switch.** `REQUEST_INBOX_LINK_ENABLED = false` in `shared/requestInboxLink.ts` (the D-193 in-code pattern; no env key). Both sides read it. While it is false:
    - `PUT /me/screen-name` answers 404.
    - The public payloads carry no `screenName`.
@@ -198,7 +198,7 @@ Stop and `--report blocked "D-089.<row>: <question>"` if any of these hold:
 Never guess about identity or privacy.
 
 ## 10. Register entry added by this packet
-D-266 (in `docs/DECISIONS.md`): the rulings in §4 in short, plus the registration gate in §5 with the measurements behind it. `Affects tasks: D-089-request-inbox`. `D-089.server` and `D-089.ui` are named in the entry as rows this packet defines, not as rows on `main`, so the picker has nothing to re-sync on them. The entry also carries the one question to the owner, in `docs/DECISIONS.md` → Open owner questions: lift "new rows paused", or keep these two rows parked.
+D-268 (in `docs/DECISIONS.md`): the rulings in §4 in short, plus the registration gate in §5 with the measurements behind it. `Affects tasks: D-089-request-inbox`. `D-089.server` and `D-089.ui` are named in the entry as rows this packet defines, not as rows on `main`, so the picker has nothing to re-sync on them. The entry also carries the one question to the owner, in `docs/DECISIONS.md` → Open owner questions: lift "new rows paused", or keep these two rows parked.
 
 ## 11. Gaps and risks (stated, not hidden)
 - **A freed name can be taken.** After a rename, a colleague at the same company may take the old name, and seekers following an old bio link would reach that colleague. Harm is bounded: it is still a verified employee of the same company, under the same D-019(e) privacy. Preventing it needs a retired-names table, which means a migration. Left out to keep the rows migration-free. The owner or any session may add it later.
