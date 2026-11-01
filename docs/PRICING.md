@@ -49,3 +49,7 @@ All monthly founding-member prices, India Rs / global USD. A band names the refe
 2. Re-scope the D-132 money rows to the banded model (D-221): the quote states the request's level and spend source; the accepted-price guard stays.
 3. Provider catalog: create the banded items additively (no charge, no subscription), then INR and USD QA captures.
 4. No real payment without the founder's one-word yes. No pricing questions to the founder; only a genuinely unresolved item from "Not decided yet" goes to him.
+
+## Group Plan and scoped institution discount (Oct 31)
+
+Extend the existing Group Plan with bulk plans and referrals using candidate email lists, with a permitted 10% institution discount and payment-verified activation plus transactional activation emails. This is the founder's new explicit feature direction, not a consumer-price change or automatic go-live. Preserve candidate identity/privacy, current catalog, money, ownership and independent-review gates. Discount stacking and precise on-behalf delegation are open in the [build packet](plans/GROUP-bulk-oct31.md). Sources: `phonemsg-01M6892F33T035JZSAA1917NKY`, `phonemsg-01M6896AS74F9S9T45Y9M9FY75`. No live recipients or payment were supplied.
