@@ -32,3 +32,4 @@ Before changing any line, make the existing pins (`savedAlerts.test.tsx`, `alert
 - `DECISION-COPY-oct26`: registered by D-221 (Oct 26 audit); todo.
 - Nov 1: unblocked by D-265 (Antigravity · 88b9): `D-057-session-gate` narrowed to `client/src/pages/alerts.stepUp.test.tsx`; `client/src/pages/alerts.test.tsx` added to `owns` so lines 190 and 223 can pin the Free alert cap note.
 - Oct 27: `D-048-p3-support` (owns `Help.tsx`) and `D-048-p3-for-companies` (owns `ForCompanies.tsx`, switch only), added by #656, wait for this row so the copy fix lands before their goal redesigns.
+- Nov 1: unblocked by D-270 (Gemini · 1e9c): client/src/pages/referrerHome.test.tsx added to owns so line 140 can pin the D-176 truth without scope violation.
