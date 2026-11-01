@@ -3395,16 +3395,26 @@
     },
     {
       "id": "D-089-request-inbox",
-      "title": "Employee request-inbox link with screen name (idea 1, loop L4, D-089 (3)): write the packet",
+      "title": "Employee request-inbox link with screen name (idea 1, loop L4, D-089 (3)): release row - flips REQUEST_INBOX_LINK_ENABLED after its rows, QA and the owner's look at the captures",
       "row": "D-089",
-      "packet": null,
+      "packet": "docs/plans/D-089-request-inbox.md",
       "tier": 1,
       "lane": "supply-inbox",
       "branch": "agent/queue/d089-request-inbox",
-      "status": "architect",
-      "syncedTo": "D-227",
-      "dependsOn": [],
-      "note": "D-163: the owner's order puts idea 1 between BYOR and the bonus pages (D-089 (3), D-099), and it had no row, so D-099 could never start. Write the packet now (D-109); its build follows D-090-BYOR, so the packet PR adds D-090-BYOR (and D-086-demand-list, which ideas 1 and 3 still follow) to this row's dependsOn. Start from what is live: the referrer fast-track link already routes asks to one employee (/fast/:linkCode and /refer/:companySlug/:vanityAlias, D-050; client/src/pages/FastTrackLink.tsx, VanityFastTrackLink.tsx, getOrCreateReferrerFastTrackLink). The packet decides what 'with screen name' adds on top, reusing the D-106 screen name if #382 has landed, never the referrer's real name before an accept (D-019(e)), and names its owned paths. Tier 1: referrer identity on a public link."
+      "status": "owner",
+      "syncedTo": "D-266",
+      "dependsOn": [
+        "D-090-BYOR",
+        "D-086-demand-list"
+      ],
+      "note": "D-266 packet §5.3 (release row, D-223 (3)): flips REQUEST_INBOX_LINK_ENABLED after D-089.server and D-089.ui land; no-money QA on a preview (name set, copy, pause/resume, signed-out seeker sends through the vanity link, marker shows); 1280/390 captures go to the owner before the flip (D-089 (3), BACKLOG item 10; packet §4.10) together with the independent Tier 1 review (public payload, real-name check, D-019(e)); syncs AGENTS.md, PRD, BACKLOG item 10 and the §3b row D-089. The owner's order holds through its rows: after D-090-BYOR and D-086-demand-list (D-089 (3), D-163 (5)). D-099-bonus-pages keeps waiting for this row. HELD FOR ONE OWNER WORD (D-266): this row's two build rows, D-089.server (Tier 1) and D-089.ui (Tier 2), are written in docs/plans/D-089-request-inbox.md §5.1-5.2 and are NOT added here, because the owner's Oct 31 \"new rows paused\" restriction is still the text on main (docs/BUILD_CONTINUITY.md, \"Ask Instinct before asking the owner manually\") and no register entry records it lifted; the Nov 1 #811 relays are a counterpart's answer, which that same instruction says is not owner approval. When the owner says the pause is lifted on main, a docs-only PR adds both rows verbatim from the packet, sets this row back to status todo with dependsOn D-089.server and D-089.ui, and moves no other row. While parked here the row waits on D-090-BYOR and D-086-demand-list directly: its owns claims AGENTS.md, docs/PRD.md, docs/KIT_V4_BUILD_PLAN.md and docs/BACKLOG.md, which those rows and D-057-session-gate also own, and PICKER-owns-scope clears an overlap only when one side transitively waits for the other (scripts/nextTaskCore.mjs:350-356). Once D-089.server and D-089.ui exist, that clearance runs through them (D-089.server waits on both, and D-057-session-gate is reached through D-090-BYOR), so the release row's dependsOn becomes the two rows and no edge is added to the other three.",
+      "owns": [
+        "shared/requestInboxLink.ts (switch only)",
+        "AGENTS.md",
+        "docs/PRD.md",
+        "docs/KIT_V4_BUILD_PLAN.md",
+        "docs/BACKLOG.md"
+      ]
     },
     {
       "id": "D-095-one-tap",
