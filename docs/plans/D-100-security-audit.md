@@ -31,7 +31,7 @@ Pricing and monetization doctrine (AGENTS.md): "Never choose money-spending opti
 | D-100-security-audit | Read-only security audit of auth, money, session, cookies, CSP, rate limits | 3 | security | `docs/plans/D-100-security-audit.md`, `docs/reviews/D-100-security-audit.md` | none | n/a |
 | D-100.csp-report | Add `report-uri /api/csp-report` to `CSP_REPORT_ONLY`; scrubbed violation logger | 2 | security-headers | `server/securityHeaders.ts`, `server/securityHeaders.test.ts`, `server/cspReport.ts`, `server/cspReport.test.ts` | FND-4 | n/a |
 | D-100.csp-enforce | Switch CSP to enforce mode (`Content-Security-Policy`) after 7-day report period | 2 | security-headers | `server/securityHeaders.ts`, `server/securityHeaders.test.ts` | D-100.csp-report | `CSP_ENFORCED = false` |
-| D-100.csp-release | Release CSP enforcement: flip switch to `true` | 2 | security-headers | `server/securityHeaders.ts`, `server/securityHeaders.test.ts` | D-100.csp-enforce | `CSP_ENFORCED = true` |
+| D-100.csp-release | Release CSP enforcement: flip switch to `true` | 2 | security-headers | `server/securityHeaders.ts`, `server/securityHeaders.test.ts` | D-100.csp-enforce, D-090-BYOR | `CSP_ENFORCED = true` |
 | D-100.hsts-preload | Add `preload` to `Strict-Transport-Security` header | 2 | security-headers | `server/securityHeaders.ts`, `server/securityHeaders.test.ts` | none | `HSTS_PRELOAD = false` |
 | D-100.otp-hmac | HMAC-SHA256 hash work-email OTP codes; delete plaintext fallback | 1 | security-auth | `server/_core/workosAuth.ts`, `server/_core/workosAuth.test.ts` | none | `OTP_HMAC_SINCE` |
 | D-100.provider-recon | Daily Chargebee payment reconciliation (read-only daily check) | 1 | payments-ops | `server/dailyMoneyCheck.ts`, `server/dailyMoneyCheck.test.ts` | D-065-C | `PROVIDER_RECON_ENABLED = false` |
@@ -58,6 +58,7 @@ Each audit writes one report: a findings table with ID, file:line, what can go w
 ## Status
 One line per row, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 - D-100.csp-report: done — ea9fb526 — Hark · d3f2 / Gemini 2.5 · 8b1c — 2026-11-01 — report-only CSP with report-uri /api/csp-report and scrubbed violation endpoint; scope check clean; CI green.
+- D-100.csp-release: waiting — D-269 — PR #924 unlandable with 0 changed files; release row waits for D-090-BYOR to wire static page CSP in functions/_middleware.ts (D-259), followed by the 7-day violation report collection period, desktop/mobile captures and the CEO's sign-off.
 - D-100.csp-enforce: done — 234bbdd0 — Hark · 6d81 — 2026-11-01 — enforcing CSP header built behind CSP_ENFORCED = false (off; response unchanged); release stays D-100.csp-release; scope check clean; CI green.
 - D-100.authz-admin-money: done — 7919a95d — Hark · 7580 — 2026-10-31 — read-only audit of the admin, payment, webhook, job and health routes (landed by Hark · 0226); scope check clean; CI green.
 - D-100.authz-account: waits for the owner — D-260 — audit delivered on PR #889 (`1012897c`, CI green, 13 published findings); one finding withheld under rule 1 and parked for the owner.
