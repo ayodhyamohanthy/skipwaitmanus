@@ -4712,7 +4712,7 @@
       "tier": 2,
       "lane": "audit",
       "branch": "agent/queue/procedure-audit-oct27",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
       "owns": [
