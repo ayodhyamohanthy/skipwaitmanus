@@ -2,6 +2,10 @@
 
 Issue: https://github.com/ayodhyamohanthy/skipwaitmanus/issues/741
 
+## Status
+
+- LANDING-PROCEDURE-AUDIT-oct27: in progress — Claude Opus 5.5 · b295 — 2026-11-01 — branch agent/queue/procedure-audit-oct27
+
 ## Independence and scope
 
 An independent session, not the Instinct coordinator whose actions are audited, performs this audit. Read-only investigation plus this report file. No production/settings writes, history rewrites, branch deletion, repeated feature landing, flag activation or gate exemptions.
