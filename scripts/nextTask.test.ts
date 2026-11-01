@@ -50,15 +50,32 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
     expect(real.tasks.slice(0, 4).map(t => t.id)).toEqual([
       "P0-ask-link-signin", "P1-queue-attestation", "PREMIUM-total-label", "D-067-outbox-fixture-repair",
     ]);
+    // D-272: this is a property, not a pin on one row. The old literal pin on
+    // FIX-device-signin moved on every landing (fa663ac8 recorded the removal
+    // intent; D-272 executes it). Whatever the live registry holds, a fresh agent
+    // on a green main with an empty board is handed the first in-order row the
+    // picker can act on; when that is a build, the row is a todo row whose
+    // dependencies are all done, and closing it never hands the same row again.
     const first = pickNextTask({ tasks: real.tasks, register: realRegister, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    // P0-ask-link-signin and P1-queue-attestation are both done (each landed after its
-    // review; P1 as merge 2be41b2d), both owner follow-ups are done, and SEC-deps-oct24
-    // landed as 1e97d6ea (#663). The owner's device sign-in report comes next.
-    expect(first).toMatchObject({ kind: "build", task: { id: "FIX-device-signin" } });
-    // Both owner follow-ups (PREMIUM-total-label and D-067-outbox-fixture-repair) are done,
-    // so slicing off the live regressions still leaves the launch batch first.
-    const followUps = pickNextTask({ tasks: real.tasks.slice(2), register: realRegister, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null });
-    expect(followUps).toMatchObject({ kind: "build", task: { id: "FIX-device-signin" } });
+    if (first.kind === "stop" || first.kind === "wait" || !("task" in first)) return;
+    if (first.kind === "resync") {
+      // A task a newer decision names (D-202) is handed as a re-sync, never as a build.
+      expect(first.task.status).not.toBe("done");
+      return;
+    }
+    expect(first.kind).toBe("build");
+    const picked = first.task;
+    expect(picked.status).toBe("todo");
+    const doneIds = new Set(real.tasks.filter((t: { status?: string }) => t.status === "done").map(t => t.id));
+    for (const dep of picked.dependsOn ?? []) expect(doneIds.has(dep)).toBe(true);
+    const after = pickNextTask({
+      tasks: real.tasks.map((t: { id?: string }) => (t.id === picked.id ? { ...t, status: "done" } : t)),
+      register: realRegister, mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null,
+    });
+    if (after.kind === "build") {
+      expect(after.task.id).not.toBe(picked.id);
+      expect(after.task.status).toBe("todo");
+    }
   });
 
   it("rejects unknown keys, duplicates, bad branches, missing packets, unknown dependencies and cycles", () => {
