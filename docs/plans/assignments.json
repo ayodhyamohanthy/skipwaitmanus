@@ -3958,8 +3958,8 @@
       "tier": 1,
       "lane": "d174-fix",
       "branch": "agent/queue/d174-fix-post-binding",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-267",
       "dependsOn": [
         "D-132-audit",
         "D-048-fix-send-ask-blocker"
