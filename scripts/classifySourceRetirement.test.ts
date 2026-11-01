@@ -27,6 +27,8 @@ try{
  pass('invalid head blocked',()=>assert.throws(()=>call('HEAD')));
  mkdirSync(join(cwd,'scripts'));writeFileSync(join(cwd,'scripts/classify-source-retirement.mjs'),'// synthetic\n');git('add','.');git('commit','-qm','finite companion');
  pass('approved companion allowed',()=>assert.equal(call(git('rev-parse','HEAD')),'source-only'));
+ writeFileSync(join(cwd,'scripts/requireGreenRelease.test.ts'),'// synthetic release safety pins\n');git('add','.');git('commit','-qm','finite release-contract companion');
+ pass('exact release-contract test companion allowed',()=>assert.equal(call(git('rev-parse','HEAD')),'source-only'));
  mkdirSync(join(cwd,'server'));writeFileSync(join(cwd,'server/db.ts'),'// runtime\n');git('add','.');git('commit','-qm','mixed runtime');
  pass('mixed aggregate runtime blocked',()=>assert.throws(()=>call(git('rev-parse','HEAD'))));
  git('checkout','-q',head);writeFileSync(join(cwd,'drizzle/deploy/0121_other.sql'),'SELECT 2;');git('add','.');git('commit','-qm','mixed migration');

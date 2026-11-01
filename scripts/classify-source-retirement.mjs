@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 const roster='drizzle/deploy/0063_clerk_roster_import.sql';
 const expected='3d75e958aa4ba913a8b0536b1ccf5ffee60d80df';
-const companions=new Set(['.github/workflows/deploy-api.yml','scripts/classify-source-retirement.mjs','scripts/classifySourceRetirement.test.ts','.github/workflows/drift-watch.yml','scripts/driftWatch.test.ts']);
+const companions=new Set(['.github/workflows/deploy-api.yml','scripts/classify-source-retirement.mjs','scripts/classifySourceRetirement.test.ts','.github/workflows/drift-watch.yml','scripts/driftWatch.test.ts','scripts/requireGreenRelease.test.ts']);
 export function classify({cwd, before, head, event, approvedBlob=expected}) {
  const git=(...args)=>execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
  if (!/^[a-f0-9]{40}$/.test(head??'')) throw Error('Unverifiable head');
