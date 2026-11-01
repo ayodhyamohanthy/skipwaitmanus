@@ -4288,17 +4288,23 @@
       "id": "GATE-migration-apply",
       "title": "CI applies deploy migrations to MySQL twice before production (D-212)",
       "row": "D-212",
-      "packet": "docs/plans/GATE-delivery.md",
+      "packet": "docs/plans/GATE-migration-apply.md",
       "tier": 2,
       "lane": "ci-checks",
       "branch": "agent/queue/gate-migration-apply",
-      "status": "architect",
-      "syncedTo": "D-222",
+      "status": "todo",
+      "syncedTo": "D-266",
       "dependsOn": [
         "GATE-e2e-journeys"
       ],
-      "note": "D-212: GATE-e2e-journeys applies the deploy migrations twice to MySQL; this row stays open only if they cannot apply from an empty database, and then any agent writes its packet from that finding.",
-      "epic": "D-212"
+      "note": "Packet docs/plans/GATE-migration-apply.md (written 2026-11-01 at main f5b9afb9): the e2e job's journal step always falls back to drizzle-kit push (CI run 41260983242: 0017 drops an index twice; 7 journal statements fail from empty), and on a push base a PR's deploy CREATE TABLE never runs, so a bad foreign key goes green. prepare instead pushes the base revision's schema.ts, applies the deploy migrations twice and fails on missing tables or columns against HEAD schema.ts. Repo-only; no drizzle/** edit, no production dump (D-100 owner item). Rulings are changeable assumptions (D-109).",
+      "epic": "D-212",
+      "owns": [
+        "scripts/migrationGateCore.mjs",
+        "scripts/migrationGate.test.ts",
+        "scripts/e2e-server.mjs",
+        ".github/workflows/ci.yml"
+      ]
     },
     {
       "id": "OPS-github-settings",
