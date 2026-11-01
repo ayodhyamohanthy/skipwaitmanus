@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import Safety from "./Safety";
 import Help from "./Help";
 import { WaitingAsks } from "@/components/referrer-home/WaitingAsks";
+import type { ReferrerHomeView } from "@/components/referrer-home/referrerData";
 import Landed from "./Landed";
 import SignIn from "./SignIn";
 
@@ -105,7 +106,7 @@ describe("Decision copy pins (DECISION-COPY-oct26)", () => {
       isNew: true,
       showSamples: true,
       hasEverReviewed: false,
-    } as unknown as ConstructorParameters<typeof WaitingAsks>[0]["view"];
+    } as unknown as ReferrerHomeView;
     const { container } = render(<WaitingAsks view={view} nowMs={0} />);
     expect(container.textContent).not.toMatch(/credit/i);
   });
