@@ -24,9 +24,12 @@ const scenarios = [
   ["report-reason", "/report", {}],
   ["report-details", "/report?request=42", { steps: ["Continue"] }],
   ["report-details-offline", "/report", { steps: ["Continue"], offline: true }],
-  ["report-refused", "/report", { steps: ["Continue", "Submit report"], report: 429 }],
+  // The server's daily cap answers 400 with this line (server/db.ts createSafetyReport).
+  ["report-refused", "/report", { steps: ["Continue", "Submit report"], report: 400 }],
+  ["report-unreached", "/report", { steps: ["Continue", "Submit report"], report: "abort" }],
   ["report-done-urgent", "/report", { steps: ["Continue", "I feel unsafe", "Submit report"], report: "ok" }],
   ["report-done-block-failed", "/report?request=42", { steps: ["Continue", "Also block this person", "Submit report"], report: "ok", block: 500 }],
+  ["report-done-block-unreached", "/report?request=42", { steps: ["Continue", "Also block this person", "Submit report"], report: "ok", block: "abort" }],
 ];
 
 const widths = [[390, 844, 2], [1280, 900, 1]].filter(([w]) => !process.argv[2] || w === Number(process.argv[2]));
@@ -53,8 +56,10 @@ try {
         if (url.pathname === "/api/credits/summary") return json(200, { summary: { totalAvailable: 3 } });
         if (url.pathname === "/api/company-referrals/access") return json(200, { verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null });
         if (method === "POST" && url.pathname === "/api/safety-reports") {
-          return opts.report === "ok" ? json(200, { report: { id: 48, reference: "R-SYN-1048" } }) : json(opts.report || 500, { error: "You have filed several reports in a short time. Try again in a few minutes." });
+          if (opts.report === "abort") return r.abort("failed");
+          return opts.report === "ok" ? json(200, { report: { id: 48, reference: "R-SYN-1048" } }) : json(opts.report || 500, { error: "You have filed several reports today. Contact support directly for anything urgent." });
         }
+        if (method === "POST" && url.pathname === "/api/blocks" && opts.block === "abort") return r.abort("failed");
         if (method === "POST" && url.pathname === "/api/blocks") return opts.block === "ok" ? json(200, { blocked: true, created: true, id: 9 }) : json(opts.block || 500, { error: "synthetic" });
         unmatched.add(`${method} ${url.pathname}`);
         return json(signedIn ? 404 : 401, { error: "not mocked" });

@@ -1,7 +1,7 @@
 {
-  "source": "8d07a2520454845cf2344a4102712dee032a3f30",
+  "source": "7288e9d67c23267e0e12ff659c11150df002847c (+ working-tree capture.mjs fixtures: daily-cap 400, unreached report/block)",
   "build": "VITE_GOAL_SURFACES=support (local vite dev server)",
-  "command": "node design/goal-ui/captures/support/capture.mjs",
+  "command": "node design/goal-ui/captures/support/capture.mjs 390|1280 (run in CAPTURE_ONLY batches; merged here)",
   "synthetic": true,
   "results": [
     {
@@ -106,11 +106,11 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
@@ -142,11 +142,11 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
@@ -180,9 +180,7 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "In HTML, %s cannot be a descendant of <%s>.\nThis will cause a hydration error.%s <button> button \n\n  ...\n    <AppShell data-loc=\"client/src...\">\n      <GoalShell data-loc=\"client/src...\" active=\"find\" verifiedReferrer={false} pageTitle=\"skipwait.me\" credits={null} ...>\n        <div data-loc=\"client/src...\" data-testid=\"goal-shell\" className=\"g-scope gr...\">\n          <nav>\n          <header>\n          <main data-loc=\"client/src...\" className=\"max-gdesk:...\">\n            <Report data-loc=\"client/src...\">\n              <Suspense data-loc=\"client/src...\" fallback={null}>\n                <GoalReport data-loc=\"client/src...\">\n                  <main data-loc=\"client/src...\" data-skipwait-screen=\"report-sig...\" data-goal-page=\"report\" ...>\n                    <p>\n                    <h1>\n                    <p>\n                    <div data-loc=\"client/src...\" className=\"mt-6\">\n                      <GoalNextStep data-loc=\"client/src...\" reason=\"Sign in so...\">\n                        <section data-loc=\"client/src...\" aria-labelledby=\"goal-next-...\" className=\"border bor...\">\n                          <h2>\n                          <p>\n                          <div data-loc=\"client/src...\" className=\"mt-3\">\n                            <SignInButton data-loc=\"client/src...\">\n>                             <button\n>                               data-loc=\"client/src/_core/auth.tsx:222\"\n>                               type=\"button\"\n>                               className={undefined}\n>                               onClick={function onClick}\n>                             >\n                                <GoalButton2 data-loc=\"client/src...\" variant=\"primary\">\n>                                 <button\n>                                   data-loc=\"client/src/pages/goal/support/GoalReport.tsx:73\"\n>                                   ref={null}\n>                                   type=\"button\"\n>                                   data-testid=\"goal-button\"\n>                                   data-g-primary={true}\n>                                   aria-disabled={undefined}\n>                                   aria-busy={undefined}\n>                                   aria-describedby={undefined}\n>                                   onClick={undefined}\n>                                   className=\"inline-flex items-center justify-center gap-2 rounded-g-control border ...\"\n>                                 >\n          ...\n",
-        "<%s> cannot contain a nested %s.\nSee this log for the ancestor stack trace. button <button>"
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
       ]
     },
     {
@@ -252,8 +250,8 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
@@ -299,8 +297,7 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
       ]
     },
     {
@@ -312,7 +309,7 @@
           "Continue",
           "Submit report"
         ],
-        "report": 429
+        "report": 400
       },
       "viewport": {
         "width": 390,
@@ -336,14 +333,57 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+      ]
+    },
+    {
+      "file": "report-unreached-390.png",
+      "route": "/report",
+      "persona": "synthetic seeker",
+      "fixture": {
+        "steps": [
+          "Continue",
+          "Submit report"
+        ],
+        "report": "abort"
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "skipwait.me",
+        "Report a problem."
+      ],
+      "primaries": 1,
+      "unmatchedApi": [
+        "GET /api/account/preferences",
+        "GET /api/notifications"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: net::ERR_FAILED"
       ]
     },
     {
@@ -423,15 +463,60 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    },
+    {
+      "file": "report-done-block-unreached-390.png",
+      "route": "/report?request=42",
+      "persona": "synthetic seeker",
+      "fixture": {
+        "steps": [
+          "Continue",
+          "Also block this person",
+          "Submit report"
+        ],
+        "report": "ok",
+        "block": "abort"
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "skipwait.me",
+        "Report a problem."
+      ],
+      "primaries": 1,
+      "unmatchedApi": [
+        "GET /api/account/preferences",
+        "GET /api/notifications"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: net::ERR_FAILED"
       ]
     },
     {
@@ -498,11 +583,11 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
@@ -575,8 +660,8 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
@@ -610,9 +695,7 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "In HTML, %s cannot be a descendant of <%s>.\nThis will cause a hydration error.%s <button> button \n\n  ...\n    <AppShell data-loc=\"client/src...\">\n      <GoalShell data-loc=\"client/src...\" active=\"find\" verifiedReferrer={false} pageTitle=\"skipwait.me\" credits={null} ...>\n        <div data-loc=\"client/src...\" data-testid=\"goal-shell\" className=\"g-scope gr...\">\n          <nav>\n          <header>\n          <main data-loc=\"client/src...\" className=\"max-gdesk:...\">\n            <Report data-loc=\"client/src...\">\n              <Suspense data-loc=\"client/src...\" fallback={null}>\n                <GoalReport data-loc=\"client/src...\">\n                  <main data-loc=\"client/src...\" data-skipwait-screen=\"report-sig...\" data-goal-page=\"report\" ...>\n                    <p>\n                    <h1>\n                    <p>\n                    <div data-loc=\"client/src...\" className=\"mt-6\">\n                      <GoalNextStep data-loc=\"client/src...\" reason=\"Sign in so...\">\n                        <section data-loc=\"client/src...\" aria-labelledby=\"goal-next-...\" className=\"border bor...\">\n                          <h2>\n                          <p>\n                          <div data-loc=\"client/src...\" className=\"mt-3\">\n                            <SignInButton data-loc=\"client/src...\">\n>                             <button\n>                               data-loc=\"client/src/_core/auth.tsx:222\"\n>                               type=\"button\"\n>                               className={undefined}\n>                               onClick={function onClick}\n>                             >\n                                <GoalButton2 data-loc=\"client/src...\" variant=\"primary\">\n>                                 <button\n>                                   data-loc=\"client/src/pages/goal/support/GoalReport.tsx:73\"\n>                                   ref={null}\n>                                   type=\"button\"\n>                                   data-testid=\"goal-button\"\n>                                   data-g-primary={true}\n>                                   aria-disabled={undefined}\n>                                   aria-busy={undefined}\n>                                   aria-describedby={undefined}\n>                                   onClick={undefined}\n>                                   className=\"inline-flex items-center justify-center gap-2 rounded-g-control border ...\"\n>                                 >\n          ...\n",
-        "<%s> cannot contain a nested %s.\nSee this log for the ancestor stack trace. button <button>"
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
       ]
     },
     {
@@ -681,11 +764,11 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
@@ -725,8 +808,8 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
@@ -741,7 +824,7 @@
           "Continue",
           "Submit report"
         ],
-        "report": 429
+        "report": 400
       },
       "viewport": {
         "width": 1280,
@@ -764,15 +847,58 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+      ]
+    },
+    {
+      "file": "report-unreached-1280.png",
+      "route": "/report",
+      "persona": "synthetic seeker",
+      "fixture": {
+        "steps": [
+          "Continue",
+          "Submit report"
+        ],
+        "report": "abort"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "skipwait.me",
+        "Report a problem."
+      ],
+      "primaries": 1,
+      "unmatchedApi": [
+        "GET /api/account/preferences",
+        "GET /api/notifications"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: net::ERR_FAILED"
       ]
     },
     {
@@ -862,7 +988,51 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
       ]
+    },
+    {
+      "file": "report-done-block-unreached-1280.png",
+      "route": "/report?request=42",
+      "persona": "synthetic seeker",
+      "fixture": {
+        "steps": [
+          "Continue",
+          "Also block this person",
+          "Submit report"
+        ],
+        "report": "ok",
+        "block": "abort"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "skipwait.me",
+        "Report a problem."
+      ],
+      "primaries": 1,
+      "unmatchedApi": [
+        "GET /api/account/preferences",
+        "GET /api/notifications"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: net::ERR_FAILED"
+      ]
     }
-  ],
-  "note": "report-details-offline-* re-captured after the visible offline line was added; source is the commit of the rest of the set plus that change (both in this branch)."
+  ]
 }
