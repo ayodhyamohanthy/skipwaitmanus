@@ -245,7 +245,7 @@ The D-189 packet also rules the pre-send per-company state against D-176 and add
 
 ## Status
 
-D-174-fix-post-binding: review — agent/queue/d174-fix-post-binding — 5c2cc172
+D-174-fix-post-binding: review — agent/queue/d174-fix-post-binding — 00272ccf (latest `origin/main` merged; on that exact head `unit + component + route tests`, `e2e journeys` and `production build` are green and `pnpm check` is clean locally; the only red is the D-151 review gate, which no session that took the MAKE GREEN takeover may perform — the review is owed by a model that is not Antigravity · 5a06, Hark · 35ad or Qoder)
 
 D-174-sample-job-removal: done — PR #688 (unblocked by D-210)
 
