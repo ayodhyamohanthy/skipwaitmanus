@@ -31,5 +31,5 @@ Before changing any line, make the existing pins (`savedAlerts.test.tsx`, `alert
 ## Status
 - `DECISION-COPY-oct26`: registered by D-221 (Oct 26 audit); todo.
 - Nov 1: unblocked by D-265 (Antigravity · 88b9): `D-057-session-gate` narrowed to `client/src/pages/alerts.stepUp.test.tsx`; `client/src/pages/alerts.test.tsx` added to `owns` so lines 190 and 223 can pin the Free alert cap note.
-- Nov 1: D-268 (Claude Opus 5.5 · 6e9e): D-265 already answers the alerts.test.tsx question and the holder applied it in `c0d1830a`; the one pin still outside `owns` was `client/src/pages/referrerHome.test.tsx:140` (pins the old `WaitingAsks.tsx:38` line), now added to `owns` for that single assertion. It must pin the new D-176 line, never be deleted or loosened.
 - Oct 27: `D-048-p3-support` (owns `Help.tsx`) and `D-048-p3-for-companies` (owns `ForCompanies.tsx`, switch only), added by #656, wait for this row so the copy fix lands before their goal redesigns.
+- Nov 1: unblocked again by D-268 (Claude Opus 5.5 · 6e9e), answering report `2a7faa77`: `client/src/pages/referrerHome.test.tsx` (owned by no row) added to `owns` so line 140 can pin the new D-176 `WaitingAsks.tsx:38` line; that one assertion only, never deleted or loosened. On `c0d1830a` it was the only red in the full unit suite.
