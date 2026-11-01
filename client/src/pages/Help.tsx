@@ -1,5 +1,7 @@
 import { BadgeCheck, ChevronDown, CreditCard, LifeBuoy, MessageSquare, Search, ShieldCheck, UserRound } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalHelp = lazy(() => import("./goal/support/GoalHelp"));
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { Heading, Panel, field } from "@/components/kit/preview-kit";
@@ -29,6 +31,10 @@ const FAQS: ReadonlyArray<readonly [string, string, string]> = [
 ];
 
 export default function Help() {
+  return goalSurfaceOn("support") ? <Suspense fallback={null}><GoalHelp /></Suspense> : <KitHelp />;
+}
+
+function KitHelp() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [open, setOpen] = useState<string | null>(FAQS[0]?.[1] ?? null);
