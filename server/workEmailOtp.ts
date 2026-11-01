@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomInt } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { and, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 import { workEmailOtpCodes, workEmailOtpRateLimits, workEmailOtpReceipts } from "../drizzle/schema";
 import { getDb, isWorkEmailDomain } from "./db";
@@ -47,7 +47,38 @@ export function isValidOtpLoginEmail(value: string, opts: { seeker?: boolean } =
   if (opts.seeker) return true;
   return isWorkEmailDomain(value.slice(value.lastIndexOf("@") + 1).toLowerCase());
 }
-export function hashCode(email: string, code: string): string { return createHash("sha256").update(`${email.toLowerCase()}:${code}`).digest("hex"); }
+/**
+ * D-100.otp-hmac: a six-digit code has a million values, so an unkeyed SHA-256 of `email:code`
+ * is recoverable offline from one database row. The stored hash is HMAC-SHA256 under a server
+ * key derived like `workEmailFingerprintSecret` (`server/workEmailKey.ts`) with its own
+ * `work-email-otp:` prefix: `WORK_EMAIL_HMAC_KEY` when set, otherwise `JWT_SECRET`. Same 64-hex
+ * width, so no migration. Rotating the key only voids codes in flight (each lives 10 minutes).
+ */
+export function otpCodeHashSecret(env: NodeJS.ProcessEnv = process.env): string {
+  const configured = env.WORK_EMAIL_HMAC_KEY?.trim();
+  return configured ? `work-email-otp:${configured}` : `work-email-otp-jwt:${env.JWT_SECRET?.trim() || "skipwait-local-development-secret"}`;
+}
+export function hashCode(email: string, code: string, secret: string = otpCodeHashSecret()): string {
+  return createHmac("sha256", secret).update(`${email.toLowerCase()}:${code}`).digest("hex");
+}
+/** The pre-D-100 form, read only for rows created before OTP_HMAC_SINCE. */
+function legacyHashCode(email: string, code: string): string { return createHash("sha256").update(`${email.toLowerCase()}:${code}`).digest("hex"); }
+/**
+ * Rows created before this instant may still hold the legacy SHA-256 form. Codes live
+ * CODE_TTL_MS (10 minutes), so the legacy read dies on its own once this has passed; a later
+ * row may delete it. Rows created at or after it must carry the HMAC.
+ */
+export const OTP_HMAC_SINCE = "2026-11-06T00:00:00.000Z";
+const OTP_HMAC_SINCE_MS = Date.parse(OTP_HMAC_SINCE);
+function sameHex(a: string, b: string): boolean {
+  const left = Buffer.from(a, "utf8"), right = Buffer.from(b, "utf8");
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+function storedCodeMatches(row: { codeHash: string; createdAt: Date | string | null }, email: string, code: string): boolean {
+  if (sameHex(row.codeHash, hashCode(email, code))) return true;
+  const createdMs = row.createdAt == null ? Number.NaN : new Date(row.createdAt).getTime();
+  return Number.isFinite(createdMs) && createdMs < OTP_HMAC_SINCE_MS && sameHex(row.codeHash, legacyHashCode(email, code));
+}
 
 type Limit = { key: string; windowMs: number; limit: number };
 function fixedWindow(timestamp: number, windowMs: number) { return Math.floor(timestamp / windowMs) * windowMs; }
@@ -139,10 +170,10 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
       const accepted = await db.transaction(async tx => {
         // Only the newest active code is accepted. Locking serializes correct
         // and wrong guesses, so one request consumes it and counters never lose increments.
-        const selected = await tx.execute(sql`SELECT id, codeHash, attempts FROM workEmailOtpCodes WHERE email IN (${sql.join(workEmailStorageKeys(email).read.map(value => sql`${value}`), sql`, `)}) AND consumedAt IS NULL AND expiresAt > ${new Date(timestamp)} ORDER BY createdAt DESC, id DESC LIMIT 1 FOR UPDATE`);
-        const rows = (selected as unknown as Array<Array<{ id: number; codeHash: string; attempts: number }>>)[0] ?? [];
+        const selected = await tx.execute(sql`SELECT id, codeHash, attempts, createdAt FROM workEmailOtpCodes WHERE email IN (${sql.join(workEmailStorageKeys(email).read.map(value => sql`${value}`), sql`, `)}) AND consumedAt IS NULL AND expiresAt > ${new Date(timestamp)} ORDER BY createdAt DESC, id DESC LIMIT 1 FOR UPDATE`);
+        const rows = (selected as unknown as Array<Array<{ id: number; codeHash: string; attempts: number; createdAt: Date | string | null }>>)[0] ?? [];
         if (rows.length !== 1 || rows[0].attempts >= MAX_ATTEMPTS) return false;
-        if (rows[0].codeHash !== hashCode(email, code)) {
+        if (!storedCodeMatches(rows[0], email, code)) {
           await tx.update(workEmailOtpCodes).set({ attempts: sql`${workEmailOtpCodes.attempts} + 1` }).where(and(eq(workEmailOtpCodes.id, rows[0].id), isNull(workEmailOtpCodes.consumedAt), lt(workEmailOtpCodes.attempts, MAX_ATTEMPTS)));
           return false;
         }

@@ -57,6 +57,7 @@ Each audit writes one report: a findings table with ID, file:line, what can go w
 
 ## Status
 One line per row, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
+- D-100.otp-hmac: review — agent/queue/d100-otp-hmac — 192f17a6 (draft PR #884; needs an independent Tier 1 pass by a non-Hark model, D-151)
 - D-100.csp-report: done — ea9fb526 — Hark · d3f2 / Gemini 2.5 · 8b1c — 2026-11-01 — report-only CSP with report-uri /api/csp-report and scrubbed violation endpoint; scope check clean; CI green.
 - D-100.csp-release: waiting — D-269 — PR #924 unlandable with 0 changed files; release row waits for D-090-BYOR to wire static page CSP in functions/_middleware.ts (D-259), followed by the 7-day violation report collection period, desktop/mobile captures and the CEO's sign-off.
 - D-100.csp-enforce: done — 234bbdd0 — Hark · 6d81 — 2026-11-01 — enforcing CSP header built behind CSP_ENFORCED = false (off; response unchanged); release stays D-100.csp-release; scope check clean; CI green.
