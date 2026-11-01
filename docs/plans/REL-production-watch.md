@@ -375,18 +375,78 @@ It also sends one short "all clear" line every Monday, so a check that stopped r
 - The first run shows as succeeded.
 
 ## REL-synthetic-journeys (architect, Tier 1): signed-in journeys checked on the QA preview
-Signed-in flows are never exercised after a release:
-- send a referral request;
-- a referrer accepts;
-- withdraw it, and the referral returns;
-- a checkout page opens and is never paid.
 
-Any agent writes the packet first (D-109). It targets the isolated QA preview Worker from #383, not production:
-- Basic Auth, fictional data, the Chargebee test site and its own QA database. The repository secrets `SKIPWAIT_QA_DB_*` and `QA_CHARGEBEE_TEST_API_KEY` exist.
-- No test accounts or excluded rows in production.
-- It runs on the Cloudflare credits D-204 allows, behind a hard stop.
+> **Packet adopted by D-275** (recorded under D-200, changeable). Drafted by Claude Opus 5.5 · 2a75 on 2026-11-01; re-verified and adopted by `DeepSeek V4.1 Flash Free · 1896` on 2026-11-02 against `main` `a67b6f2a`, register through D-273. R1-R6 are the build design. **R0 is the architect's recommendation to the coordinator and is not decided here.** The row is parked at `owner`: every route out of this packet ends in an owner action, and the Oct 31 pause forbids the rest.
 
-It needs the owner's confirmation of that hard stop (D-204, D-200 (6)), and #383 brought up to date, before any build.
+### Goal
+
+After a release, the systems learn a signed-in flow is broken before a user does — D-212 (1), the owner's words: "if something is not working our systems should know and has to be worked fixed not untill user faces an error and drops off". The four journeys: send a referral request; a referrer accepts; withdraw before pickup and the referral comes back; a checkout page opens and is never paid.
+
+### Binding rules (quoted; the register wins)
+
+- D-212 (6): the owner's word is needed for "the hard stop on the Cloudflare credits before synthetic journeys run on the QA preview (#383, D-204)".
+- D-204 (2): "A service paid from credits counts as free under D-031 and D-138 only when something stops it before any card is charged ... If none exists, it needs the owner's one-word yes like any paid service."
+- `.github/workflows/ci.yml:206-212`, the e2e job's own comment: "Not a required check until it has been green on `main` for 3 days and the owner adds it (D-212 (6))."
+- AGENTS.md: "Real payment execution is prohibited in engineering and QA. Use provider test modes, mocks, or synthetic fixtures" (D-065).
+- #383's runbook (`docs/qa/preview-share-flags.md` on `agent/instinct/qa-preview-share` `9e365116`, "Safety correction (Oct 21)"): "Deployment is NOT approved: a second container has usage costs. Workflow is manual-only ... No successful deploy or preview URL exists yet." It also says: "Initialize schema with drizzle-kit push from schema.ts, NOT the deploy migrations: those include historical real-user imports. Never copy production rows."
+- Owner restrictions in force (`docs/BUILD_CONTINUITY.md`, Oct 31): "only skipwait.me, new rows paused, no production changes, migrations, drills, settings changes or spending."
+- D-219 (6) and D-214 (3): legacy packs are paused and archived at the provider; passes are unsold. Nothing new is on sale.
+- This packet's REL rules 1-4: free only, never break what works, no personal data or ids in alerts, proof before done. The original row text adds: "No test accounts or excluded rows in production."
+
+### Current behaviour (re-verified on `a67b6f2a`)
+
+1. **Three of the four journeys already run on every pull request and every push to `main`, on the exact commit that deploys.** `.github/workflows/ci.yml:213-288` (job `e2e journeys`, `name:` at `:214`) builds the server, installs Chromium and drives it against a MySQL 8 service, using `e2e/withdraw.e2e.ts:6` (send a request, withdraw it, the balance returns), `e2e/queue-attestation.e2e.ts:19` (a referrer accepts after the attestation), `e2e/ask-cost.e2e.ts:5`, `e2e/personal-link.e2e.ts:7`, `e2e/referrer-sign-in.e2e.ts:6` and `e2e/plans.e2e.ts:15`. Sign-in is the dev plane (`scripts/e2e-server.mjs:18`: NODE_ENV=test, no WorkOS keys; `e2e/fixtures.ts:69-72`). The job is not a required check yet (`ci.yml:210-211`, D-212 (6)).
+2. **After a deploy, production is checked only while signed out.** `scripts/releaseSmokeCore.mjs` asserts `/api/health` (`:89`), `/api/health/ready` (`:100`), `/api/health/latency` (`:110`), `/api/plans/catalog` (`:121`) and a signed-out refusal (`SIGNED_OUT_PROBE = "/api/notifications"`, `:22`); `release-verify.yml:138` is where the workflow imports it. The watchdog probes (`watchdog/src/core.ts:20-28`) are read-only too: home, ready, latency, catalog, the Google sign-in redirect and two malformed code sends. The watchdog Worker is landed, but not deployed (Status, REL-watchdog).
+3. **There is no checkout page to open today.** `shared/planCatalog.ts:91` still has `CREDIT_PACKS_ON_SALE = true` (pending #666), but the provider items are archived (D-214 (3)), `PASS_SALES_ENABLED` is `false` (`:101`), and `PRICING-banded-oct25` waits for the owner. A journey that opens a checkout page would fail against an archived item, or pass only against an item that is not for sale.
+4. **#383 is not a usable base.** Open draft, head `9e365116`, last pushed 2026-10-21T23:45Z, built as an integration branch for #373/#375/#381/#382, and all four have since landed (D-104, D-105, D-106 and JOB-LEVELS are `done`). Its `env.qa` (`wrangler.jsonc` on that branch, lines 66-90) runs a separate `Dockerfile.qa` image with flags baked on, NODE_ENV=test, dev-plane sign-in (no WorkOS) and dummy Chargebee values ("test-site calls would just fail auth"). Its database `skipwait_qa` sits on **the production MySQL server** (`deploy-qa.yml` header on that branch: "skipwait_qa on the same MySQL server"). The repository secrets `SKIPWAIT_QA_DB_*` and `QA_CHARGEBEE_TEST_API_KEY` are named by this packet, but they are **UNVERIFIED**: reading them needs admin scope.
+
+### What each failure class is caught by today
+
+| Failure after a release | Caught today by | A QA-preview journey adds |
+|---|---|---|
+| A code regression in send, accept or withdraw | `e2e journeys` on the PR and on the `main` push, before or while it deploys (item 1) | Nothing: the same specs run on the same source |
+| Production-only configuration (WorkOS keys, R2 document storage, the email sender, the container secret passthrough) | `server/configContract.test.ts` statically; REL-5xx-capture and REL-client-capture, once landed (one is waiting, the other parked at owner), and only after a real user hits it | Nothing: the preview has its own config and its own secrets |
+| A Cloudflare container runtime difference on a signed-in path | Nothing | Partly: same source, but a different image (`Dockerfile.qa`) |
+| Chargebee test-site hosted-page creation | Nothing | Only once a checkout is on sale and the preview has a real test-site key |
+
+### Rulings
+
+- **R0, recommended to the coordinator (7/10): do not deploy a second container for this row.** Re-scope REL-synthetic-journeys to the free path: (a) `e2e journeys` becomes a required check, the owner setting D-212 (6) already schedules after 3 green days on `main`; (b) the checkout journey joins `e2e journeys` against the mocked provider (AGENTS.md §4, "Mock third-party APIs first") once the owner puts a checkout on sale. The row then closes as covered, by a register entry rather than a status edit here. *Against:* this never exercises the deployed container or production configuration. That gap stays with REL-5xx-capture and REL-client-capture, which alert on the first failing user once they land (neither is live: one is waiting, the other parked at owner), and with the watchdog's signed-out probes, once the watchdog is deployed. *Why not lower:* every design that does catch production-only faults needs test accounts in production, which this packet's row text forbids. The QA preview does not catch them either (table above).
+- **R1 (if R0 is declined): the target is an isolated QA preview Worker only, never production.** D-212 (6) and the row text decide this. The row title in `docs/plans/assignments.json` ("checked in production with tagged test accounts") contradicts both. The adopting pull request corrects it to "checked on the QA preview with fictional accounts".
+- **R2: one set of journeys, two targets.** The preview run reuses `e2e/*.e2e.ts` and `e2e/fixtures.ts` through a `baseURL` and auth switch in `e2e/playwright.config.ts`, never a second suite. An assertion change stays under GATE-test-integrity.
+- **R3: the checkout journey waits for a checkout on sale.** Until the owner prices one (`PRICING-banded-oct25`), there is no checkout journey: it is not faked, and the preview never opens an archived or unsold item. When one exists, the journey runs against the Chargebee **test site** only, and it stops at the hosted page URL: no card, no payment, no webhook replay.
+- **R4: build fresh; never revive #383.** Take only `env.qa`, the Basic Auth gate (`src/worker.ts` on that branch, lines 72-94: 503 without a gate secret, `noindex`) and the guarded schema reset from `deploy-qa.yml`. Drop the share-card flags, the share fixtures and `ENABLE_ADMIN_SMOKE_FIXTURE`. The preview's database moves **off the production MySQL server**, or the owner accepts that shared server in writing: a runaway QA reset or a load spike there touches production.
+- **R5: a hard stop before any deploy.** The build cannot start until the owner has (i) confirmed the D-204 hard stop on the Cloudflare credits (D-212 (6)), (ii) approved the second container that #383's runbook says is not approved, and (iii) lifted the Oct 31 pause on spending and production changes. App-side, the preview runs only on manual dispatch or a once-daily schedule (never on every push), `max_instances: 1`, with no cron triggers. A workflow step refuses to deploy unless a repository variable `QA_PREVIEW_HARD_STOP_CONFIRMED` equals the date the owner confirmed. Setting that variable is the owner's settings action, not a session's.
+- **R6: fictional data only.** Fixtures come from `scripts/seed-test-accounts.ts` patterns against the preview's own database, at a company domain under a reserved TLD (`.test` or `.example`), so no real employee is ever notified. No production row, export or import is used, ever (#383 runbook).
+
+### Files (only if R1-R6 are adopted)
+
+- **In scope:** `wrangler.jsonc` (an `env.qa` block only), a new `.github/workflows/synthetic-journeys.yml`, `e2e/playwright.config.ts` (the target switch), `e2e/fixtures.ts` (the preview auth path only), `src/worker.ts` (the QA gate only, unreachable while `QA_PREVIEW` is unset), and this packet's Status line.
+- **Out of scope:** production routes, crons, secrets or settings; `drizzle/deploy/**`; any payment, refund or credit code; the share-card fixtures; #383 itself, which stays as it is.
+
+### Red-first tests
+
+1. With `QA_PREVIEW=true` and no gate secret, the Worker answers 503 and never forwards the request to the container.
+2. With a wrong Basic Auth value it answers 401, `noindex`; production (no `QA_PREVIEW`) is byte-identical before and after.
+3. The workflow refuses to deploy when `QA_PREVIEW_HARD_STOP_CONFIRMED` is missing or empty (a script test on the guard, not a live run).
+4. `e2e/playwright.config.ts` resolves the CI target unchanged when no preview URL is set: `e2e journeys` behaves exactly as today.
+5. The seed refuses any database name without `qa`, and any company domain outside the reserved TLDs.
+
+### Definition of done
+
+The four tests above are red first and then pass, and CI is green on the exact head. An independent Tier 1 review passes (the change touches the Worker entry and sign-in fixtures). It lands through the merge-commit button. The first preview run is linked, all three non-checkout journeys pass, and its cost line is read from the provider's usage page by the owner (never a session). An alert proof is given: a deliberately broken preview build makes the workflow fail and open one `incident`, using packet rule 3 wording.
+
+### Review checklist
+
+- [ ] Nothing reaches production: no route, cron, secret or variable changes there, and the gate path is dead code without `QA_PREVIEW`.
+- [ ] No production data, no real company domain and no real person in any fixture.
+- [ ] The hard-stop guard fails closed, and only the owner can satisfy it.
+- [ ] No Chargebee call outside the test site, and no payment step after the hosted page URL.
+- [ ] `e2e journeys` in CI is unchanged.
+
+### Stop and ask
+
+Stop and report, without guessing, if: the owner has not given all three R5 confirmations; the QA database cannot leave the production server and the owner has not accepted that in writing; a journey needs a production account, a real domain or a real payment; or a checkout is still not on sale when the checkout journey's turn comes.
 
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
@@ -394,3 +454,4 @@ REL-watchdog: landed — PR #845, merge c91c7ca1, main CI green (built by Hark �
 REL-release-verify: done — bc454c4a — built by Hark · 6699, landed by Qoder · 3415 — planVerification checks every deploy completion (failed and partial deploys against what is live, no release/verified on a failed head, supersession first, one incident per live state, D-240); D-238 shape, #748 pins and marker unchanged; full gate green on the main merge, PR #853. — map: after every Deploy API/Deploy Web completion, `.github/workflows/release-verify.yml` smoke-checks the live release (`scripts/release-smoke.mjs`, planner `scripts/releaseSmokeCore.mjs`) and sets `release/verified`; failures open one `Release not verified` incident (REL-watchdog map line records the watchdog deploy state).
 REL-rollback-skew: landed — PR #876 (code 2e5d9a21, plus the `all`-mapping repair landed with it) — built by Hark · 44b1, fail-closed item 1 and item 2 by Qoder · 1c6b, `all`-mapping repair and landing by Qoder · 532a — 2026-10-31 — branch agent/queue/rel-rollback-skew. **Item 3, the one drill with both run links, has NOT run**, and the owner's Oct 31 pause on production drills and dispatches holds it, so the row is parked at `owner`: web recovery is unverified live until that drill runs. Item 1 now fails closed (finding on #876): wait-api accepts only a 200 `state: "ready"` answer with a full SHA and exits 1 otherwise, so no `pages deploy` runs after a failed wait and the incident records "the web was NOT deployed"; the packet's earlier "deploy anyway" line was reconciled in the owner lane (it would ship the new-web/old-API skew). Item 2: target `api`/`all`/`web`; a `rollback-web` job gates on the target's own green main CI through `scripts/rollbackTarget.mjs web-gate` from the trusted checkout (D-248: `require-green-release.mjs` byte-identical, API leg unchanged), builds the target ref with its SHA, deploys with Deploy Web's own wrangler command under job-level `concurrency: deploy-pages`, then verifies Cloudflare's canonical deployment and the live page; `all` recovers the web first because `recover-api` needs `rollback-web`. The three #751 pins in `scripts/requireGreenRelease.test.ts` are extended to the exact option set, job list and tokened steps (D-248 added the file to owns); 107/107 focused tests, mutation-checked; scope-check clean on 5 owned paths; exact-head CI green on 2e5d9a21 before the status commit. The last pre-landing repair hands each leg its own `RECOVERY_SYSTEM`, so `target: all` no longer dies in the API-only gate (red-first pin in `scripts/requireGreenRelease.test.ts`). — map: `.github/workflows/deploy-pages.yml` waits for `/api/health/ready` before the Pages deploy and fails closed; `.github/workflows/rollback.yml` recovers `api`, `web` or `all` from a green main target; `scripts/rollbackTarget.mjs` holds the gate, the Cloudflare/live verify and the wait.
 REL-webhook-auth-alarm: parked at owner — PR #850 draft, code head 34e0700d merged with main 2eeb6b1f at 3ca0e0cc; product code, unit tests, e2e journeys and production build green; typecheck fails only at the D-151 review gate because the picker defect (D-254) hands GREEN instead of REVIEW on a gate-only red; parked under D-262 and released by the D-254 owner question.
+REL-synthetic-journeys: packet adopted, parked at owner — D-275 — adopted by DeepSeek V4.1 Flash Free · 1896 on 2026-11-02 (drafted by Claude Opus 5.5 · 2a75, 2026-11-01) — branch agent/architect/rel-synthetic-journeys. R1-R6 are the build design; R0 (do not deploy a second container) is the architect's recommendation to the coordinator and is not decided. The row is parked at owner because every route ends in an owner action: R0 needs the owner to add `e2e journeys` to ruleset 25433342 (D-212 (6)), and R1-R6 need the credits hard stop, the second-container approval and the Oct 31 spending-pause lift (R5). No build starts until one of those arrives; nothing in the packet is built, deployed or spent. The packet pull request #956 on the architect branch never merged: its only red was the Tier 1 review gate, whose cure names `agent/queue/rel-synthetic-journeys` (absent from origin) and is handed only on green CI, so no session could issue the pass. The packet therefore lands as the docs-only ruling `docs/d275-rel-synthetic-journeys` (D-275 (6)), with the unsatisfiable cure recorded as an open defect.
