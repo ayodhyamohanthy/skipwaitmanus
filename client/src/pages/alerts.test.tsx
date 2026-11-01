@@ -187,7 +187,7 @@ describe("Alerts center", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Saved alerts" }));
     expect(screen.getByRole("tab", { name: "Saved alerts" }).getAttribute("aria-selected")).toBe("true");
     expect(await screen.findByRole("heading", { name: "Get told when a door opens." })).toBeTruthy();
-    expect(await screen.findByText("Free: 3 alerts · Momentum and Land: unlimited")).toBeTruthy();
+    expect(await screen.findByText("Free: 3 alerts")).toBeTruthy();
     expect(screen.getByRole("button", { name: "New alert" })).toBeTruthy();
     for (const fake of [/Merkle/, /Instant · push and email/, /Saved company alerts aren't available yet/]) expect(screen.queryByText(fake)).toBeNull();
     expect(screen.queryByRole("button", { name: "Mark all read" })).toBeNull();
@@ -220,7 +220,7 @@ describe("Alerts center", () => {
     renderAlerts();
     fireEvent.click(await screen.findByRole("tab", { name: "Saved alerts" }));
     expect(await screen.findByText("acme.com")).toBeTruthy();
-    expect(screen.getByText("Free: 3 alerts · Momentum and Land: unlimited")).toBeTruthy();
+    expect(screen.getByText("Free: 3 alerts")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "New alert" }));
     fireEvent.change(screen.getByPlaceholderText("acme.com"), { target: { value: "Globex" } });
     fireEvent.click(screen.getByRole("button", { name: "Save alert" }));

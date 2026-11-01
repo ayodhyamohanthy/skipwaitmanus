@@ -2,6 +2,14 @@
 
 Owner direction, October 28, 2026: every agent reads the latest instructions and decisions and always works toward the goal. `build`, `continue`, `resume` and `next` mean continuation, not starting an old plan again.
 
+## Latest owner order: FIFO
+
+October 31 at 11:53-11:54 IST: "No go by priority queue only", then "FIFO always". Oldest queued work comes first, including unfinished acceptance, not whichever new feature or reasoning task a coordinator prefers. Fill session capacity only within that order and the existing roles, holds, ownership and review/CI gates. Inspect the current queue before dispatch; do not mistake an old done row for unfinished work or a merged implementation for completed acceptance. If the picker proposes a conflicting order, bring the exact task/stage evidence to Instinct before the affected dispatch, without taking over an owned lane or changing the queue silently. Preserve already-started work when correcting an out-of-order handoff.
+
+Sources: `phonemsg-01M68A1QZGARZGJNSVWG9NEBZY`, `phonemsg-01M68A28FYPYGJSQ7X9FBV64JS`. This instruction does not itself implement FIFO in the picker, release a held action or prove session receipt. The earlier institute feature direction remains authorized but is not an automatic priority override.
+
+This newer FIFO instruction supersedes D-009's conflicting discretionary P0 / in-progress / lowest-unblocked selection order, retaining D-010's goal and all authorization/eligibility holds. The owner's 11:56 autonomy reaffirmation asks for ordinary questions, handoffs, testing and continuation to be handled without manual founder relay wherever possible, within FIFO and existing authority (sources in `docs/DECISIONS.md`). It adds no production, security, spending or representation grant.
+
 ## Before claiming or changing a task
 1. Fetch current `origin/main`. Record its SHA. Read current `docs/BRIEF.md`, `AGENTS.md`, `docs/DECISIONS.md` and the task's current packet, not just the checkout's old copies. Do not reset a shared worktree or discard anyone's work. Reconcile your branch with current main through the normal merge process.
 2. Read the previous session's **repo-only outcome**: its packet status, branch/commit, PR and review/test results. Follow actual artifact links and inspect the content. A chat title, remembered summary or instruction to "read the last chat" is not evidence of a read. Never publish raw private chat/session logs or private sources. If there was no prior session, record that with the current task state; do not invent a handoff.
@@ -18,3 +26,50 @@ This document is a required session-start instruction, not a process running on 
 
 ## Carry the next handoff forward
 At the end of a session update its existing packet/PR with: actual completed outcome and commit, real test/review evidence, remaining goal-aligned work, current decisions checked, owned paths, and blockers. The next session reads that result before selecting work. Never replace this with raw private transcripts, an obsolete plan or an unsupported "done" claim.
+
+## Ask Instinct before asking the owner manually
+
+Owner instruction, October 29, 2026: "Whatever the coding sessions are they will ask you before asking me manually." The owner then asked to push this rule to the instructions and repo. This applies to coding sessions on every platform, not just one client. The owner explicitly named OpenCode, Cline, Qoder, Perch CLI, Claude, Freebuff and WorkBuddy, and any number of sessions; these names do not imply a verified connection to each app.
+
+- At each start or resume, report to Instinct through the established project coordination channel what the session is building: project, task and subtask, branch/head, current decisions checked, owned paths, next step and blockers. Update the report when the task or its status changes. A local session is not visible merely because this instruction exists; report delivery and per-platform connectivity honestly.
+- Route a blocker, question or approval request to Instinct through the established project coordination channel before asking the owner manually. Include the task/subtask, exact branch and head, current instruction checked, the bounded question, relevant non-secret evidence and what remains blocked. Do not make the owner carry screenshots or copy replies between sessions when a working coordination route is available.
+- Instinct answers within existing owner decisions and permissions, or brings the owner only the exact decision that genuinely needs them, in iMessage. Coding sessions do not ask the owner manually first. A model's question, a repository comment or a counterpart's answer is not new owner approval. Do not treat silence as consent.
+- Hold only the affected action while the answer is pending. Continue independent, authorized work. Do not repeat a rejected action, bypass a permission prompt, spend, publish as the owner, change accounts or frozen product rules, or waive review/CI because a question was routed.
+- Never put secrets, private account data, raw session logs or private security reproductions in public repository questions. Use the established private route for sensitive material. Keep ordinary repository questions task-scoped.
+- Instructions are not proof of a connection. Report whether the question was actually delivered and answered. If automatic delivery or answering a local permission prompt has not been tested, say so. If the route is unavailable, report that exact gap through the available coordination channel; do not claim automatic handling or enable blanket approval.
+
+Source: owner messages `phonemsg-01M62CB8XBVFSQBMZZWQFWWT43`, `phonemsg-01M62CBN289B7VFT8FK43EA45M` and `phonemsg-01M62CHFMKF268F8SS8W68P3EE`. This is an instruction and escalation rule only; it changes no product behavior, file ownership, spending permission or release gate.
+
+
+### Standing instruction: all SkipWait agents coordinate with Instinct first
+
+Owner reaffirmation, October 31, 2026: "Make sure all agents co ordinate with you" and "Make it as a instruction they check with you whenever they have blockers or doubts questions."
+
+Every agent or coding session working on skipwait.me must bring blockers, doubts and questions to Instinct first, not make the owner relay them. Instinct owns every agent's question through a grounded answer or a clear next step, checks receipt and coordinates follow-through. Only a decision that genuinely needs the owner's approval returns to the owner; routine questions do not become owner-relay work. Use the shared GitHub coordination thread https://github.com/ayodhyamohanthy/skipwaitmanus/pull/811 or the affected PR/issue. Read the current answer before acting and acknowledge what was done. At start/resume and when status changes, report the owned row, session/model label, branch and exact head, current stage, next step and outstanding question. Labels are not proof of model identity, ownership or review independence.
+
+For a question, give the current owner, relevant recorded decision, specific choice needed and minimal non-secret evidence. Only the affected action waits; continue other eligible existing SkipWait work. Instinct answers within recorded owner decisions and permissions, coordinating with the current file/row owner where required. Instinct brings the owner only a decision that genuinely needs the owner. No silence-as-consent, self-review, scope takeover, frozen-decision override or review/CI waiver.
+
+Keep secrets and private security findings out of public comments. Request an approved private route without posting the finding. Current owner restrictions remain in force: only skipwait.me, new rows paused, no production changes, migrations, drills, settings changes or spending. This instruction grants none of those actions and does not release a hold. Actual receipt, answer and execution must be tracked separately; publication is not proof that every external or local agent is connected or compliant.
+
+Source: authenticated owner messages `phonemsg-01M67VDDBKQ43TJM3SE0SRZV6Q` and `phonemsg-01M67VDXM8FF9SEF9SEPWSRKM4`; direct Hark collaboration reaffirmation `phonemsg-01M67TJKFFY4D8TM1FHWQAMEDH`. Instruction only, no product-policy change.
+
+October 31 reaffirmation: "Handle all questions of all agents" and "Push thiz instruction to repo" (owner messages `phonemsg-01M67VKQS3P5YZ9BQPBDFDQ8QJ`, `phonemsg-01M67VM8B5MVCV61BDZ1HEEKR7`). This adds question ownership, not new product, spending, production or review authority.
+### Evidence and proof are mandatory for every task
+
+Owner instruction, October 31, 2026: "Proofs for all not words, make this as a instruction" and "Push to repo".
+
+Evidence and proof are mandatory for every task, including research, coding, review, coordination, questions, handoffs and session continuation. This applies to Instinct and the coordinator's own claims as well as every other contributor. Every contributor must attach or link evidence of the exact result claimed, for every task, question, review, handoff and session-continuation report. Use real test-run output, an inspected screenshot, a source-backed artifact, or a live readback that shows the claimed state and its exact branch/head, task or session where relevant. A plan, narration, instruction file, successful send or another session's work does not prove the claimed outcome. Another contributor's report is evidence to check, not a substitute for verifying the exact result claimed. If that result has no proof, label it **UNVERIFIED** and state the missing check. Never say done, ready, verified, running or resumed on intention alone.
+
+Track these states separately: question posted; grounded answer delivered; the affected session's acknowledgment; actual productive continuation. A posted answer is not acknowledgment. Acknowledgment is not a resumed session or completed repair. A same-session continuation claim needs evidence tied to that same session plus actual productive test, commit or task progress, not a GitHub acknowledgment or another agent's artifact. Keep following the assigned outcome through receipt and real progress, or report the exact capability/authority gap without claiming an automatic restart.
+
+Evidence must remain safe to share. Never publish secrets, private account data, raw private chats/session transcripts, sensitive logs, internal tooling traces or raw internal artifacts, or unfixed security details as proof. Use a sanitized public result and the approved private route where needed; missing permission is not permission to expose the source. This instruction adds no spending, production, migration, settings, ownership, frozen-policy, review or CI permission and creates no new task row.
+
+Source: authenticated owner messages `phonemsg-01M67ZKHHYA6DA1GSFKE8C31MV` `phonemsg-01M67ZKP6AG0H7FMJ5BFK5W75J`, and the explicit "And for yourself too" follow-up `phonemsg-01M67ZKXV7FHR63H0N0QQ9YCB4`, plus "Evidence and proofs are mandatory for every task . Make this as instruction" (`phonemsg-01M67ZNETM4CYFMCWRT7PDJJR4`).
+
+### Bounded source-only cleanup approval (November 1, 2026)
+
+The owner approved removing the historical public import source after preserving its records in the private database. The read-only preservation check is complete. At 16:53 IST the owner approved the bounded release-rule change for this cleanup only, so that removing that source triggers neither a production deployment nor the production migration path. Required tests and independent review remain required. The repository stays public; historical copies are not removed by this approval.
+
+This is a record of the owner's instruction, not a new product decision, task row, ownership assignment, landing approval or gate waiver. It permits only the reviewed source-only cleanup route. It does not permit production changes, database writes or migrations, history rewriting, repository visibility/settings changes, unrelated runtime changes, spending, forced claims, reopening completed rows or bypassing ownership, FIFO order, CI or independent review. Mixed or unverifiable changes must not use the cleanup exception. Keep private records and sensitive evidence out of public repository content. Continue through the existing qualified documentation and technical review paths before publication or landing of implementation.
+
+Sources: authenticated owner instruction `phonemsg-01M6BBTKZ9QC2XZ1WH8NQX2NX3` (November 1, 16:22 IST); bounded approval question `phonemsg-01M6BBYBMGSTC55GBE6B47M3RJ` (16:24 IST) and the owner's like reaction (November 1, 16:53 IST), verified in the live conversation. This dated instruction records only that exact approved scope and does not infer a broader waiver.

@@ -13,7 +13,7 @@ const CATS = [["Asking", MessageSquare], ["Referring", BadgeCheck], ["Plans & cr
 const FAQS: ReadonlyArray<readonly [string, string, string]> = [
   // D-063: the money sentence, then the credit rule exactly as the ledger keeps it.
   ["Asking", "Does asking for a referral cost anything?", `${ASK_COST_SENTENCE} ${CREDIT_RULE} ${REFERRER_MONEY_SENTENCE}`],
-  ["Asking", "How many asks can I have open?", `Free: ${FREE_PLAN.openRequests} at a time; paid plans allow more. An answered, withdrawn or expired ask frees its slot.`],
+  ["Asking", "How many asks can I have open?", `Free: ${FREE_PLAN.openRequests} at a time. An answered, withdrawn or expired ask frees its slot.`],
   ["Asking", "Why did my ask expire?", "If no referrer accepts within 7 days it closes automatically and your slot returns. Try refreshing your note."],
   ["Asking", "Does a referral guarantee an interview?", "No. Referrers recommend; companies decide. We never promise outcomes."],
   ["Referring", "How do I become a referrer?", "Verify your work email with a one-time code, then choose your job areas and monthly capacity."],

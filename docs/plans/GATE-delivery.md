@@ -181,6 +181,8 @@ They are used two ways, and neither adds a second approval (D-200 (4)):
 ## GATE-migration-apply (architect, Tier 2): only if the e2e job cannot apply the migrations from empty
 GATE-e2e-journeys applies the deploy migrations twice to MySQL. This row stays open only if that PR finds the migrations cannot apply from an empty database. In that case, any agent writes the packet from that PR's finding (a baseline snapshot of the production schema, D-100); otherwise the row is closed as done by GATE-e2e-journeys.
 
+**That finding held (D-239).** On `main` the journal step always falls back to `drizzle-kit push`; see CI run 41260983242 and its `0017_careful_ricochet.sql` warning. This row's packet is now [`GATE-migration-apply.md`](GATE-migration-apply.md), written 2026-11-01. It uses the base revision's `schema.ts` instead of a production dump, so it needs no owner item or production access. The reasons are in that packet's §3 and §4. GATE-e2e-journeys' done line below says the job builds the schema "from empty". In fact only its fallback `push` does; it is left unedited as that row's record.
+
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 
