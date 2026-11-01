@@ -46,6 +46,7 @@ const AUDITED: AuditEntry[] = [
   { file: "components/verify/verifyApi.ts", kind: "behavior-only", reason: "work-email verify API calls, no UI" },
   { file: "components/settings/settingsApi.ts", kind: "behavior-only", reason: "settings API fetchers, schemas and error constants, no UI" },
   { file: "components/settings/settingsQueries.ts", kind: "behavior-only", reason: "work-email access query hook, no UI" },
+  { file: "components/settings/settingsSections.ts", kind: "behavior-only", reason: "settings section constants, type and parsing helper, no UI" },
   { file: "components/developers/consoleMeta.ts", kind: "behavior-only", reason: "developer console app kinds, scopes and status metadata constants, no UI" },
   { file: "components/developers/consoleRoute.ts", kind: "behavior-only", reason: "developer console view and URL search query parser and serializer, no UI" },
   { file: "components/developers/mcpTools.ts", kind: "behavior-only", reason: "documented MCP tools list, endpoint constant and description pairs, no UI" },

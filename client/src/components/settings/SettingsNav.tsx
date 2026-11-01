@@ -1,7 +1,8 @@
 // Kit v4 Settings section nav (app/src/routes/settings.tsx): a 200px column of
 // min-h-11 rounded-xl buttons on desktop, a horizontal pill row on mobile.
-export const SETTINGS_SECTIONS = ["region", "notifications", "app", "privacy", "account"] as const;
-export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+import { SETTINGS_SECTIONS, type SettingsSection, parseSettingsSection } from "./settingsSections";
+
+export { SETTINGS_SECTIONS, type SettingsSection, parseSettingsSection };
 
 const LABELS: Record<SettingsSection, string> = {
   region: "Region",
@@ -10,12 +11,6 @@ const LABELS: Record<SettingsSection, string> = {
   privacy: "Privacy",
   account: "Account",
 };
-
-/** Reads ?section= from a search string; anything unknown falls back to Region. */
-export function parseSettingsSection(search: string): SettingsSection {
-  const value = new URLSearchParams(search).get("section");
-  return SETTINGS_SECTIONS.find(section => section === value) ?? "region";
-}
 
 export function SettingsNav({ active, onSelect }: { active: SettingsSection; onSelect: (section: SettingsSection) => void }) {
   return <nav className="flex gap-1 overflow-x-auto md:flex-col" aria-label="Settings sections">
