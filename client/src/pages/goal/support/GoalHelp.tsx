@@ -23,7 +23,7 @@ export default function GoalHelp() {
     <main data-skipwait-screen="help" data-goal-page="help" className="g-scope mx-auto flex w-full max-w-2xl flex-col bg-g-canvas px-4 py-6 font-g-sans text-g-ink gdesk:px-5 gdesk:py-7">
       <p className="text-g-meta text-g-ink-3">Help centre</p>
       <h1 className="mt-2 text-g-display text-g-ink">{GOAL_PAGE.goalLine}</h1>
-      <p className="mt-2 text-g-body text-g-ink-2">Find the answer, or reach a person.</p>
+      <p className="mt-2 text-g-body text-g-ink-2">Find the answer, or contact support.</p>
 
       <div className="mt-5">
         <GoalNextStep reason="Still stuck after the answers below? Contact support.">

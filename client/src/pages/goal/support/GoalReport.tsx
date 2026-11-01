@@ -9,11 +9,16 @@
 // A rejected report fetch is uncertain (review 6563041566): the response may
 // have been lost after the server filed it, so the page says it could not
 // confirm the report, never "not sent" or "filed", and routes to support
-// before a resend. Any error on the details step carries that support route.
+// before a resend, with no promise that doing so prevents a duplicate
+// (review 6565471121). Any error on the details step carries that support route.
 // "I feel unsafe" shows the emergency-services line before Submit (6563729015).
 // A failed block keeps the filed report, says the block did not go through and
 // offers a block-only retry (POST /api/blocks again, never a second report) or
-// support. Offline, the submit commit waits and names why, and nothing is sent.
+// support; a rejected block fetch says only that the block could not be
+// confirmed. Offline, the submit commit waits and names why, and nothing is sent.
+// Review 6565471121: the copy states what the code does (the report is filed
+// with a reference, a block can be placed, the reporter is not named) and makes
+// no operational promise (review, timing, staff, notification, intervention).
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, Ban, Check, ShieldAlert } from "lucide-react";
@@ -33,10 +38,13 @@ const OFFLINE_REASON = "You're offline. Reconnect to send your report.";
 const REPORT_FAILED = "We could not file this report. Try again in a moment, or contact support.";
 // A rejected fetch does not prove the POST went unsent (the reply may be lost
 // after the server filed it), so this neither says "not sent" nor "filed".
-const REPORT_UNCONFIRMED = "We couldn't confirm your report reached SkipWait. Check with support before sending it again, so it isn't filed twice.";
+const REPORT_UNCONFIRMED = "We couldn't confirm your report reached SkipWait. Contact support before sending it again.";
 const EMERGENCY = "If you're in immediate danger, contact local emergency services first.";
 const BLOCK_FAILED = "Your report was filed, but the block did not go through. Try blocking again, or contact support.";
-const BLOCK_NETWORK = "Your report was filed, but we couldn't reach SkipWait to block this person. Check your connection and try blocking again.";
+// A rejected block fetch proves neither that the server was unreachable nor
+// that it did not receive the block (review 6565471121); blocks are idempotent,
+// so a block-only retry stays.
+const BLOCK_NETWORK = "Your report was filed, but we couldn't confirm the block went through. Try blocking again.";
 
 // A fetch that rejected: it may never have reached the server, or the server
 // may have processed it and the response was lost. The caller cannot tell.
@@ -109,7 +117,7 @@ export default function GoalReport() {
         <h1 className="mt-2 text-g-display text-g-ink">{GOAL_PAGE.goalLine}</h1>
         <p className="mt-2 text-g-body text-g-ink-2">Reporting is confidential. The other person isn&apos;t told who reported them.</p>
         <div className="mt-6">
-          <GoalNextStep reason="Sign in so we can follow up on your report.">
+          <GoalNextStep reason="Sign in to file a report.">
             {/* One button: SignInButton would wrap GoalButton in its own <button>. */}
             <div className="mt-3"><GoalButton variant="primary" onClick={() => openSignIn()}>Sign in</GoalButton></div>
           </GoalNextStep>
@@ -177,11 +185,9 @@ export default function GoalReport() {
 
   const timeline: ReadonlyArray<readonly [string, string]> = [
     ["Now", `Report received${reference ? ` · reference #${reference}` : ""}`],
-    // Review 6563736305: no approved review window or safety-team commitment
-    // exists in docs, so the timeline names the step without a time or team.
-    ["Next", "We review your report"],
-    ["After review", "We may warn, restrict, or remove the account"],
-    ["Then", "You get a notification with the outcome"],
+    // Review 6565471121: no review, outcome notification or account action is
+    // promised (no operations evidence); only what the code did, and a route.
+    ["To add anything", "Contact support and quote your reference."],
   ];
 
   return (
@@ -216,14 +222,14 @@ export default function GoalReport() {
         <>
           <StepLabel step={1} />
           <h2 className="mt-1 text-g-heading text-g-ink">Add details</h2>
-          <p className="mt-1 text-g-meta text-g-ink-2">Optional. Anything that helps us review quickly. Reason: {reason}.</p>
+          <p className="mt-1 text-g-meta text-g-ink-2">Optional. Anything that explains what happened. Reason: {reason}.</p>
           <label className="mt-4 block">
             <span className="sr-only">Details</span>
             <textarea
               value={details}
               maxLength={2000}
               onChange={event => setDetails(event.target.value)}
-              placeholder="What happened? Include anything that helps us review quickly."
+              placeholder="What happened? Include anything that explains it."
               className="min-h-32 w-full rounded-g-control border border-g-control-edge bg-g-surface p-4 text-g-body text-g-ink placeholder:text-g-ink-3"
             />
           </label>
@@ -233,7 +239,7 @@ export default function GoalReport() {
             ) : (
               <p className="flex items-start gap-2 border border-g-hairline p-4 text-g-meta text-g-ink-2">
                 <Ban aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
-                To block someone immediately, contact support from this page after filing — blocking both directions is handled by our team for now.
+                To block someone, open Report from your conversation with them and choose “Also block this person”, or contact support from this page after filing.
               </p>
             )}
             <Toggle pressed={urgent} onToggle={() => setUrgent(!urgent)} icon={ShieldAlert} title="I feel unsafe" hint="Marks your report as urgent." />
@@ -246,7 +252,7 @@ export default function GoalReport() {
             </div>
           ) : null}
           <div className="mt-6">
-            <GoalNextStep reason={reportRequestId && alsoBlock ? "We file the report first, then block this person." : "We review reports and notify you of the outcome."}>
+            <GoalNextStep reason={reportRequestId && alsoBlock ? "We file the report first, then block this person." : "Submitting files your report with a reference."}>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <GoalButton
                   variant="primary"
@@ -268,8 +274,8 @@ export default function GoalReport() {
       {step === 2 ? (
         <>
           <StepLabel step={2} />
-          <h2 className="mt-1 text-g-heading text-g-ink">Thanks. We&apos;re on it.</h2>
-          <p className="mt-1 text-g-body text-g-ink-2">{blocked ? "This person is blocked. " : ""}Here&apos;s what happens next:</p>
+          <h2 className="mt-1 text-g-heading text-g-ink">Thanks. Your report is filed.</h2>
+          <p className="mt-1 text-g-body text-g-ink-2">{blocked ? "This person is blocked. " : ""}Here&apos;s where it stands:</p>
           <ol className="mt-4 grid gap-4 border-y border-g-hairline py-4">
             {timeline.map(([when, what], index) => (
               <li key={when} className="flex gap-3">
@@ -289,7 +295,7 @@ export default function GoalReport() {
           ) : null}
           {urgent ? <p className="mt-4 border border-g-control-edge p-4 text-g-label text-g-ink">{EMERGENCY}</p> : null}
           <div className="mt-6">
-            <GoalNextStep reason="We'll notify you when the review is done.">
+            <GoalNextStep reason="Keep your reference if you contact support about this report.">
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <GoalButton variant="primary" asChild><Link href="/requests">Back to requests</Link></GoalButton>
                 {/* Blocking is self-serve only with a conversation in context; otherwise

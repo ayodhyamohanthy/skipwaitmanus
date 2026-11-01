@@ -35,7 +35,7 @@ export default function GoalSafety() {
     <main data-skipwait-screen="safety" data-goal-page="safety" className="g-scope mx-auto flex w-full max-w-2xl flex-col bg-g-canvas px-4 py-6 font-g-sans text-g-ink gdesk:px-5 gdesk:py-7">
       <p className="text-g-meta text-g-ink-3">Help &amp; safety</p>
       <h1 className="mt-2 text-g-display text-g-ink">{GOAL_PAGE.goalLine}</h1>
-      <p className="mt-2 text-g-body text-g-ink-2">Clear boundaries. Real people. No fine-print surprises.</p>
+      <p className="mt-2 text-g-body text-g-ink-2">Clear boundaries. No fine-print surprises.</p>
 
       <div className="mt-5">
         <GoalNextStep reason="Explore freely. Share only when you’re ready.">

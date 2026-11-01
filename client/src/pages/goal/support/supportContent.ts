@@ -2,7 +2,9 @@
 // The kit pages keep their own copies (Help.tsx, Safety.tsx); the goal pages
 // may not import a kit page file (goalPagesBoundary), so the answers are
 // mirrored here word for word (except the D-173/D-180 category name "Plans &
-// referrals", review 6563736305), and every money line is imported from
+// referrals", review 6563736305, and the answers rewritten by review
+// 6565471121 to drop operational promises: staff, manual review, stepping in),
+// and every money line is imported from
 // shared/moneyCopy.ts, never retyped (D-063, D-134). A copy change to the kit
 // answers ports here through the kit-drift check before release.
 import { ASK_COST_SENTENCE, CREDIT_RULE, MONEY_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
@@ -20,15 +22,20 @@ export const HELP_ANSWERS: ReadonlyArray<HelpAnswer> = [
   { category: "Asking", question: "Why did my referral request expire?", answer: "If no referrer accepts within 7 days it closes automatically and your slot returns. Try refreshing your note." },
   { category: "Asking", question: "Does a referral guarantee an interview?", answer: "No. Referrers recommend; companies decide. We never promise outcomes." },
   { category: "Referring", question: "How do I become a referrer?", answer: "Verify your work email with a one-time code, then choose your job areas and monthly capacity." },
-  { category: "Referring", question: "My company uses a different email domain.", answer: "Start verification anyway — unlisted domains go to a person for manual review." },
+  { category: "Referring", question: "My company uses a different email domain.", answer: "Contact support with your company name and work email domain." },
   { category: "Referring", question: "Will seekers see my name?", answer: "Only after you accept their referral request. Passing is private." },
+  // Review 6565471121 (4): this question and its answer are retyped kit copy,
+  // not imported from shared/moneyCopy, and both are money wording. D-173 keeps
+  // money lines byte-identical until the D-132 audit, and D-180 freezes money
+  // wording, so "credits" stays here; the rename belongs to the terminology
+  // lane (#598) and the D-180 owner (#704), not this row.
   { category: "Plans & referrals", question: "Do credits expire?", answer: "Purchased credits never expire. Plan credits roll over based on your plan." },
   { category: "Plans & referrals", question: "Does paying move me up the queue?", answer: "Never. Every referral request is shown on equal terms." },
   { category: "Plans & referrals", question: "How do I cancel?", answer: "Open Plans and manage your subscription there. You keep access until the period ends." },
   { category: "Account & privacy", question: "Who can see my resume?", answer: "Only a referrer who accepted your referral request." },
-  { category: "Account & privacy", question: "How do I delete my account?", answer: "Settings lets you download your data or request deletion review. We review requests rather than silently removing records." },
-  { category: "Safety", question: "Someone asked me for money.", answer: "Don't pay. Contact support and we will review it confidentially." },
-  { category: "Safety", question: "How do I block someone?", answer: "Contact support from any conversation and we will step in — including both-direction blocks where needed." },
+  { category: "Account & privacy", question: "How do I delete my account?", answer: "Settings lets you download your data or request account deletion. A deletion request is recorded and its status shows in Settings; records are not removed instantly." },
+  { category: "Safety", question: "Someone asked me for money.", answer: "Don't pay. Use Report on the conversation (the other person isn't told who reported them), or contact support." },
+  { category: "Safety", question: "How do I block someone?", answer: "Open Report from your conversation with them and choose “Also block this person”. Otherwise, contact support." },
 ];
 
 export const HELP_POLICY_LINKS: ReadonlyArray<readonly [label: string, href: string]> = [
