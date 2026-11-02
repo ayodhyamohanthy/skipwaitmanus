@@ -1,0 +1,1001 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/workspace/work/skipwaitmanus-2-wt/d174-journey-search[39m
+
+[90mstdout[2m | client/src/pages/explore/companySearch.test.tsx
+[22m[39m[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+
+ [31m❯[39m client/src/pages/explore/companySearch.test.tsx [2m([22m[2m16 tests[22m[2m | [22m[31m6 failed[39m[2m)[22m[33m 23226[2mms[22m[39m
+     [32m✓[39m ships off[32m 10[2mms[22m[39m
+     [33m[2m✓[22m[39m off: /explore keeps today's searchbox and client filter, and never calls the search route [33m 599[2mms[22m[39m
+     [32m✓[39m asks the route with one q and parses the strict response[32m 5[2mms[22m[39m
+     [32m✓[39m refuses a response that carries availability (D-176) or more than 10 companies[32m 4[2mms[22m[39m
+     [32m✓[39m throws on a failed request[32m 4[2mms[22m[39m
+     [33m[2m✓[22m[39m waits 150 ms, needs one non-space character, and sends only the settled query [33m 416[2mms[22m[39m
+     [32m✓[39m does nothing when disabled[32m 205[2mms[22m[39m
+     [33m[2m✓[22m[39m suggests companies as a combobox; arrow keys move, Enter opens /explore/:slug [33m 351[2mms[22m[39m
+     [33m[2m✓[22m[39m a click on a suggestion opens the company door; Escape closes the list [33m 503[2mms[22m[39m
+     [33m[2m✓[22m[39m no suggestion: the paste-a-link path comes first, Request a company stays the quiet link, and the event has no query text [33m 352[2mms[22m[39m
+[31m     [31m×[31m loading: while the settled query is in flight a Searching line renders (busy), with no availability text and no event[39m[33m 5074[2mms[22m[39m
+[31m     [31m×[31m error: a failed search shows a retry line, the client filter still works, no event fires, and Try again re-runs the search[39m[33m 5112[2mms[22m[39m
+[31m     [31m×[31m empty: a blank box asks nothing and shows no search state; an answer with no company shows the no-match path, with no availability text[39m[33m 5357[2mms[22m[39m
+[31m     [31m×[31m idle for a blank box, loading while settling and in flight, then ready[39m[32m 8[2mms[22m[39m
+[31m     [31m×[31m error on a failed request; retry re-runs the same query[39m[33m 5019[2mms[22m[39m
+[31m     [31m×[31m idle and sends nothing when the switch is off[39m[32m 205[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 6 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/explore/companySearch.test.tsx[2m > [22mswitch on: typeahead on /explore[2m > [22mloading: while the settled query is in flight a Searching line renders (busy), with no availability text and no event
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an element by: [data-testid="company-search-loading"]
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"g-scope grid min-h-screen gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)] gdesk:grid-rows-[var(--g-topbar-h)_minmax(0,1fr)] max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px-56px),auto)_56px]"[39m
+      [33mdata-testid[39m=[32m"goal-shell"[39m
+    [36m>[39m
+      [36m<nav[39m
+        [33maria-label[39m=[32m"Primary"[39m
+        [33mclass[39m=[32m"max-gdesk:hidden gdesk:sticky gdesk:top-0 gdesk:h-screen gdesk:self-start gdesk:row-span-2 gdesk:col-start-1 gdesk:row-start-1 flex flex-col items-center border-r border-g-hairline bg-g-surface-sunken px-2 pb-5"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"flex h-14 items-center"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"text-[14px]/5 font-bold tracking-[-0.02em] text-g-ink"[39m
+            [33mhref[39m=[32m"/"[39m
+          [36m>[39m
+            [0mskipwait.me[0m
+          [36m</a>[39m
+        [36m</span>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-2 flex w-full flex-col items-center gap-1"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33maria-current[39m=[32m"page"[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink bg-g-surface-selected font-semibold text-g-ink"[39m
+            [33mhref[39m=[32m"/explore"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-search size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"11"[39m
+                [33mcy[39m=[32m"11"[39m
+                [33mr[39m=[32m"8"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21 21-4.3-4.3"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mFind[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink"[39m
+            [33mhref[39m=[32m"/requests"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-send size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.854 2.147-10.94 10.939"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mMy asks[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink"[39m
+            [33mhref[39m=[32m"/inbox"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-messages-square size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mInbox[0m
+          [36m</a>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-auto flex w-full flex-col items-center gap-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"menu"[39m
+              [33mclass[39m=[32m"text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-ellipsis size-5"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"24"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.75"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"24"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"12"[39m
+                  [33mcy[39m=[32m"12"[39m
+                  [33mr[39m=[32m"1"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"g-scope grid min-h-screen gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)] gdesk:grid-rows-[var(--g-topbar-h)_minmax(0,1fr)] max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px-56px),auto)_56px]"[39m
+      [33mdata-testid[39m=[32m"goal-shell"[39m
+    [36m>[39m
+      [36m<nav[39m
+        [33maria-label[39m=[32m"Primary"[39m
+        [33mclass[39m=[32m"max-gdesk:hidden gdesk:sticky gdesk:top-0 gdesk:h-screen gdesk:self-start gdesk:row-span-2 gdesk:col-start-1 gdesk:row-start-1 flex flex-col items-center border-r border-g-hairline bg-g-surface-sunken px-2 pb-5"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"flex h-14 items-center"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"text-[14px]/5 font-bold tracking-[-0.02em] text-g-ink"[39m
+            [33mhref[39m=[32m"/"[39m
+          [36m>[39m
+            [0mskipwait.me[0m
+          [36m</a>[39m
+        [36m</span>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-2 flex w-full flex-col items-center gap-1"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33maria-current[39m=[32m"page"[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink bg-g-surface-selected font-semibold text-g-ink"[39m
+            [33mhref[39m=[32m"/explore"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-search size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"11"[39m
+                [33mcy[39m=[32m"11"[39m
+                [33mr[39m=[32m"8"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21 21-4.3-4.3"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mFind[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink"[39m
+            [33mhref[39m=[32m"/requests"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-send size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.854 2.147-10.94 10.939"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mMy asks[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink"[39m
+            [33mhref[39m=[32m"/inbox"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-messages-square size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mInbox[0m
+          [36m</a>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-auto flex w-full flex-col items-center gap-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"menu"[39m
+              [33mclass[39m=[32m"text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-ellipsis size-5"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"24"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.75"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"24"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"12"[39m
+                  [33mcy[39m=[32m"12"[39m
+                  [33mr[39m=[32m"1"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39...
+[90m [2m❯[22m waitForWrapper ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:[2m163:27[22m[39m
+[90m [2m❯[22m ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:[2m86:33[22m[39m
+[36m [2m❯[22m client/src/pages/explore/companySearch.test.tsx:[2m240:34[22m[39m
+    [90m238|[39m     [35mawait[39m screen[33m.[39m[34mfindByTestId[39m([32m"goal-directory-summary"[39m)[33m;[39m
+    [90m239|[39m     fireEvent.change(screen.getByRole("combobox", { name: "Search comp…
+    [90m240|[39m     const loading = await screen.findByTestId("company-search-loading"…
+    [90m   |[39m                                  [31m^[39m
+    [90m241|[39m     [34mexpect[39m(loading[33m.[39m[34mgetAttribute[39m([32m"aria-busy"[39m))[33m.[39m[34mtoBe[39m([32m"true"[39m)[33m;[39m
+    [90m242|[39m     [34mexpect[39m(loading[33m.[39mtextContent)[33m.[39m[34mtoContain[39m([32m"Searching companies"[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/explore/companySearch.test.tsx[2m > [22mswitch on: typeahead on /explore[2m > [22merror: a failed search shows a retry line, the client filter still works, no event fires, and Try again re-runs the search
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find role="alert"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"g-scope grid min-h-screen gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)] gdesk:grid-rows-[var(--g-topbar-h)_minmax(0,1fr)] max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px-56px),auto)_56px]"[39m
+      [33mdata-testid[39m=[32m"goal-shell"[39m
+    [36m>[39m
+      [36m<nav[39m
+        [33maria-label[39m=[32m"Primary"[39m
+        [33mclass[39m=[32m"max-gdesk:hidden gdesk:sticky gdesk:top-0 gdesk:h-screen gdesk:self-start gdesk:row-span-2 gdesk:col-start-1 gdesk:row-start-1 flex flex-col items-center border-r border-g-hairline bg-g-surface-sunken px-2 pb-5"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"flex h-14 items-center"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"text-[14px]/5 font-bold tracking-[-0.02em] text-g-ink"[39m
+            [33mhref[39m=[32m"/"[39m
+          [36m>[39m
+            [0mskipwait.me[0m
+          [36m</a>[39m
+        [36m</span>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-2 flex w-full flex-col items-center gap-1"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33maria-current[39m=[32m"page"[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink bg-g-surface-selected font-semibold text-g-ink"[39m
+            [33mhref[39m=[32m"/explore"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-search size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"11"[39m
+                [33mcy[39m=[32m"11"[39m
+                [33mr[39m=[32m"8"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21 21-4.3-4.3"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mFind[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink"[39m
+            [33mhref[39m=[32m"/requests"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-send size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.854 2.147-10.94 10.939"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mMy asks[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink"[39m
+            [33mhref[39m=[32m"/inbox"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-messages-square size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mInbox[0m
+          [36m</a>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-auto flex w-full flex-col items-center gap-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"menu"[39m
+              [33mclass[39m=[32m"text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-ellipsis size-5"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"24"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.75"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"24"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"12"[39m
+                  [33mcy[39m=[32m"12"[39m
+                  [33mr[39m=[32m"1"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"g-scope grid min-h-screen gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)] gdesk:grid-rows-[var(--g-topbar-h)_minmax(0,1fr)] max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px-56px),auto)_56px]"[39m
+      [33mdata-testid[39m=[32m"goal-shell"[39m
+    [36m>[39m
+      [36m<nav[39m
+        [33maria-label[39m=[32m"Primary"[39m
+        [33mclass[39m=[32m"max-gdesk:hidden gdesk:sticky gdesk:top-0 gdesk:h-screen gdesk:self-start gdesk:row-span-2 gdesk:col-start-1 gdesk:row-start-1 flex flex-col items-center border-r border-g-hairline bg-g-surface-sunken px-2 pb-5"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"flex h-14 items-center"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"text-[14px]/5 font-bold tracking-[-0.02em] text-g-ink"[39m
+            [33mhref[39m=[32m"/"[39m
+          [36m>[39m
+            [0mskipwait.me[0m
+          [36m</a>[39m
+        [36m</span>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-2 flex w-full flex-col items-center gap-1"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33maria-current[39m=[32m"page"[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink bg-g-surface-selected font-semibold text-g-ink"[39m
+            [33mhref[39m=[32m"/explore"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-search size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"11"[39m
+                [33mcy[39m=[32m"11"[39m
+                [33mr[39m=[32m"8"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21 21-4.3-4.3"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mFind[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink"[39m
+            [33mhref[39m=[32m"/requests"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-send size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.854 2.147-10.94 10.939"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mMy asks[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink"[39m
+            [33mhref[39m=[32m"/inbox"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-messages-square size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mInbox[0m
+          [36m</a>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-auto flex w-full flex-col items-center gap-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"menu"[39m
+              [33mclass[39m=[32m"text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-ellipsis size-5"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"24"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.75"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"24"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"12"[39m
+                  [33mcy[39m=[32m"12"[39m
+                  [33mr[39m=[32m"1"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39...
+[90m [2m❯[22m waitForWrapper ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:[2m163:27[22m[39m
+[90m [2m❯[22m ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:[2m86:33[22m[39m
+[36m [2m❯[22m client/src/pages/explore/companySearch.test.tsx:[2m261:32[22m[39m
+    [90m259|[39m     [35mawait[39m screen[33m.[39m[34mfindByTestId[39m([32m"goal-directory-summary"[39m)[33m;[39m
+    [90m260|[39m     fireEvent.change(screen.getByRole("combobox", { name: "Search comp…
+    [90m261|[39m     [35mconst[39m alert [33m=[39m [35mawait[39m screen[33m.[39m[34mfindByRole[39m([32m"alert"[39m)[33m;[39m
+    [90m   |[39m                                [31m^[39m
+    [90m262|[39m     expect(alert.textContent).toContain("We couldn’t search companies.…
+    [90m263|[39m     const retry = within(alert).getByRole("button", { name: "Try again…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/explore/companySearch.test.tsx[2m > [22mswitch on: typeahead on /explore[2m > [22mempty: a blank box asks nothing and shows no search state; an answer with no company shows the no-match path, with no availability text
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an element by: [data-testid="company-search-no-match"]
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"g-scope grid min-h-screen gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)] gdesk:grid-rows-[var(--g-topbar-h)_minmax(0,1fr)] max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px-56px),auto)_56px]"[39m
+      [33mdata-testid[39m=[32m"goal-shell"[39m
+    [36m>[39m
+      [36m<nav[39m
+        [33maria-label[39m=[32m"Primary"[39m
+        [33mclass[39m=[32m"max-gdesk:hidden gdesk:sticky gdesk:top-0 gdesk:h-screen gdesk:self-start gdesk:row-span-2 gdesk:col-start-1 gdesk:row-start-1 flex flex-col items-center border-r border-g-hairline bg-g-surface-sunken px-2 pb-5"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"flex h-14 items-center"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"text-[14px]/5 font-bold tracking-[-0.02em] text-g-ink"[39m
+            [33mhref[39m=[32m"/"[39m
+          [36m>[39m
+            [0mskipwait.me[0m
+          [36m</a>[39m
+        [36m</span>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-2 flex w-full flex-col items-center gap-1"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33maria-current[39m=[32m"page"[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink bg-g-surface-selected font-semibold text-g-ink"[39m
+            [33mhref[39m=[32m"/explore"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-search size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"11"[39m
+                [33mcy[39m=[32m"11"[39m
+                [33mr[39m=[32m"8"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21 21-4.3-4.3"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mFind[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink"[39m
+            [33mhref[39m=[32m"/requests"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-send size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.854 2.147-10.94 10.939"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mMy asks[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink"[39m
+            [33mhref[39m=[32m"/inbox"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-messages-square size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mInbox[0m
+          [36m</a>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-auto flex w-full flex-col items-center gap-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"menu"[39m
+              [33mclass[39m=[32m"text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-ellipsis size-5"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"24"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.75"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"24"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"12"[39m
+                  [33mcy[39m=[32m"12"[39m
+                  [33mr[39m=[32m"1"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"g-scope grid min-h-screen gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)] gdesk:grid-rows-[var(--g-topbar-h)_minmax(0,1fr)] max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px-56px),auto)_56px]"[39m
+      [33mdata-testid[39m=[32m"goal-shell"[39m
+    [36m>[39m
+      [36m<nav[39m
+        [33maria-label[39m=[32m"Primary"[39m
+        [33mclass[39m=[32m"max-gdesk:hidden gdesk:sticky gdesk:top-0 gdesk:h-screen gdesk:self-start gdesk:row-span-2 gdesk:col-start-1 gdesk:row-start-1 flex flex-col items-center border-r border-g-hairline bg-g-surface-sunken px-2 pb-5"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"flex h-14 items-center"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"text-[14px]/5 font-bold tracking-[-0.02em] text-g-ink"[39m
+            [33mhref[39m=[32m"/"[39m
+          [36m>[39m
+            [0mskipwait.me[0m
+          [36m</a>[39m
+        [36m</span>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-2 flex w-full flex-col items-center gap-1"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33maria-current[39m=[32m"page"[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink bg-g-surface-selected font-semibold text-g-ink"[39m
+            [33mhref[39m=[32m"/explore"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-search size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"11"[39m
+                [33mcy[39m=[32m"11"[39m
+                [33mr[39m=[32m"8"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21 21-4.3-4.3"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mFind[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink"[39m
+            [33mhref[39m=[32m"/requests"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-send size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.854 2.147-10.94 10.939"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mMy asks[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink"[39m
+            [33mhref[39m=[32m"/inbox"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-messages-square size-5"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.75"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mInbox[0m
+          [36m</a>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-auto flex w-full flex-col items-center gap-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"menu"[39m
+              [33mclass[39m=[32m"text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-ellipsis size-5"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"24"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.75"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"24"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"12"[39m
+                  [33mcy[39m=[32m"12"[39m
+                  [33mr[39m=[32m"1"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39...
+[90m [2m❯[22m waitForWrapper ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:[2m163:27[22m[39m
+[90m [2m❯[22m ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:[2m86:33[22m[39m
+[36m [2m❯[22m client/src/pages/explore/companySearch.test.tsx:[2m295:32[22m[39m
+    [90m293|[39m     [34mexpect[39m(events)[33m.[39m[34mtoEqual[39m([])[33m;[39m
+    [90m294|[39m     fireEvent[33m.[39m[34mchange[39m(box[33m,[39m { target[33m:[39m { value[33m:[39m [32m"Qwerty Works"[39m } })[33m;[39m
+    [90m295|[39m     [35mconst[39m empty [33m=[39m [35mawait[39m screen[33m.[39m[34mfindByTestId[39m([32m"company-search-no-match"[39m)[33m;[39m
+    [90m   |[39m                                [31m^[39m
+    [90m296|[39m     expect(within(empty).getByRole("link", { name: "Paste a Qwerty Wor…
+    [90m297|[39m     [34mexpect[39m(screen[33m.[39m[34mqueryByTestId[39m([32m"company-search-loading"[39m))[33m.[39m[34mtoBeNull[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/explore/companySearch.test.tsx[2m > [22museCompanySearch states[2m > [22midle for a blank box, loading while settling and in flight, then ready
+[31m[1mAssertionError[22m: expected undefined to be 'idle' // Object.is equality[39m
+
+[32m- Expected:[39m
+"idle"
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m client/src/pages/explore/companySearch.test.tsx:[2m311:35[22m[39m
+    [90m309|[39m     stub(() => new Promise<SearchAnswer>(resolve => { release = resolv…
+    [90m310|[39m     const { result, rerender } = renderHook(({ q }) => useCompanySearc…
+    [90m311|[39m     [34mexpect[39m(result[33m.[39mcurrent[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"idle"[39m)[33m;[39m
+    [90m   |[39m                                   [31m^[39m
+    [90m312|[39m     [34mrerender[39m({ q[33m:[39m [32m"wip"[39m })[33m;[39m
+    [90m313|[39m     [34mexpect[39m(result[33m.[39mcurrent[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"loading"[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/explore/companySearch.test.tsx[2m > [22museCompanySearch states[2m > [22merror on a failed request; retry re-runs the same query
+[31m[1mAssertionError[22m: expected undefined to be 'error' // Object.is equality
+
+Ignored nodes: comments, script, style
+[36m<html>[31m
+  [36m<head>[31m
+    [36m<title>[31m
+      [0mFind a referral · skipwait.me[0m
+    [36m</title>[31m
+    [36m<meta[31m
+      [33mcontent[31m=[32m"Find people open to referral requests at skipwait.me, Wipro, Neutrinos, TCS, and Merkle."[31m
+      [33mname[31m=[32m"description"[31m
+    [36m/>[31m
+    [36m<meta[31m
+      [33mcontent[31m=[32m"Find people open to referral requests at skipwait.me, Wipro, Neutrinos, TCS, and Merkle."[31m
+      [33mproperty[31m=[32m"og:description"[31m
+    [36m/>[31m
+    [36m<meta[31m
+      [33mcontent[31m=[32m"Find a referral · skipwait.me"[31m
+      [33mproperty[31m=[32m"og:title"[31m
+    [36m/>[31m
+    [36m<meta[31m
+      [33mcontent[31m=[32m"https://skipwait.me/explore"[31m
+      [33mproperty[31m=[32m"og:url"[31m
+    [36m/>[31m
+    [36m<link[31m
+      [33mhref[31m=[32m"https://skipwait.me/explore"[31m
+      [33mrel[31m=[32m"canonical"[31m
+    [36m/>[31m
+  [36m</head>[31m
+  [36m<body>[31m
+    [36m<div />[31m
+  [36m</body>[31m
+[36m</html>[31m[39m
+
+[32m- Expected:[39m
+"error"
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m client/src/pages/explore/companySearch.test.tsx:[2m325:55[22m[39m
+    [90m323|[39m     const fetchMock = stub(() => (fail ? { status: 503, body: {} } : {…
+    [90m324|[39m     const { result } = renderHook(() => useCompanySearch("zeta", true)…
+    [90m325|[39m     [35mawait[39m [34mwaitFor[39m(() [33m=>[39m [34mexpect[39m(result[33m.[39mcurrent[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"error"[39m))[33m;[39m
+    [90m   |[39m                                                       [31m^[39m
+    [90m326|[39m     [34mexpect[39m(result[33m.[39mcurrent[33m.[39msuggestions)[33m.[39m[34mtoEqual[39m([])[33m;[39m
+    [90m327|[39m     [34mexpect[39m(result[33m.[39mcurrent[33m.[39mnoMatch)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+[90m [2m❯[22m runWithExpensiveErrorDiagnosticsDisabled ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:[2m47:12[22m[39m
+[90m [2m❯[22m checkCallback ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:[2m124:77[22m[39m
+[90m [2m❯[22m Timeout.checkRealTimersCallback ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:[2m118:16[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/explore/companySearch.test.tsx[2m > [22museCompanySearch states[2m > [22midle and sends nothing when the switch is off
+[31m[1mAssertionError[22m: expected undefined to be 'idle' // Object.is equality[39m
+
+[32m- Expected:[39m
+"idle"
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m client/src/pages/explore/companySearch.test.tsx:[2m339:35[22m[39m
+    [90m337|[39m     const { result } = renderHook(() => useCompanySearch("zeta", false…
+    [90m338|[39m     await new Promise(resolve => setTimeout(resolve, COMPANY_SEARCH_DE…
+    [90m339|[39m     [34mexpect[39m(result[33m.[39mcurrent[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"idle"[39m)[33m;[39m
+    [90m   |[39m                                   [31m^[39m
+    [90m340|[39m     [34mexpect[39m([34msearchCalls[39m(fetchMock))[33m.[39m[34mtoEqual[39m([])[33m;[39m
+    [90m341|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m6 failed[39m[22m[2m | [22m[1m[32m10 passed[39m[22m[90m (16)[39m
+[2m   Start at [22m 17:40:14
+[2m   Duration [22m 100.50s[2m (transform 6.90s, setup 457ms, import 58.09s, tests 23.23s, environment 18.05s)[22m
+

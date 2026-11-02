@@ -1,0 +1,21 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/workspace/work/skipwaitmanus-2-wt/d174-journey-search[39m
+
+[90mstdout[2m | client/src/pages/explore/companySearch.test.tsx
+[22m[39m[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+
+ [32m✓[39m client/src/pages/explore/companySearch.test.tsx [2m([22m[2m16 tests[22m[2m)[22m[33m 4366[2mms[22m[39m
+     [33m[2m✓[22m[39m off: /explore keeps today's searchbox and client filter, and never calls the search route [33m 653[2mms[22m[39m
+     [33m[2m✓[22m[39m waits 150 ms, needs one non-space character, and sends only the settled query [33m 421[2mms[22m[39m
+     [33m[2m✓[22m[39m suggests companies as a combobox; arrow keys move, Enter opens /explore/:slug [33m 348[2mms[22m[39m
+     [33m[2m✓[22m[39m a click on a suggestion opens the company door; Escape closes the list [33m 616[2mms[22m[39m
+     [33m[2m✓[22m[39m loading: while the settled query is in flight a Searching line renders (busy), with no availability text and no event [33m 331[2mms[22m[39m
+     [33m[2m✓[22m[39m error: a failed search shows a retry line, the client filter still works, no event fires, and Try again re-runs the search [33m 342[2mms[22m[39m
+     [33m[2m✓[22m[39m empty: a blank box asks nothing and shows no search state; an answer with no company shows the no-match path, with no availability text [33m 539[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m16 passed[39m[22m[90m (16)[39m
+[2m   Start at [22m 18:00:53
+[2m   Duration [22m 69.22s[2m (transform 4.68s, setup 550ms, import 50.48s, tests 4.37s, environment 13.14s)[22m
+
