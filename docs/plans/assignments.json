@@ -4987,6 +4987,24 @@
       "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
     },
     {
+      "id": "SUPPORT-A",
+      "title": "Kit /support page promises only what works today: remove the unbacked person, response-time, triage, pause and notification promises (D-153)",
+      "row": "D-153",
+      "packet": "docs/plans/SUPPORT-A.md",
+      "tier": 2,
+      "lane": "support-promises",
+      "branch": "agent/queue/support-a",
+      "status": "todo",
+      "syncedTo": "D-277",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/Support.tsx",
+        "client/src/pages/support.promises.test.tsx",
+        "artifacts/support-promises/**"
+      ],
+      "note": "D-277: Half A of the #811 packet proposal (comment 6567956835) only. Client copy only: apply the packet's byte-exact R1-R5 (L27, L28, L40, L64, L68); keep P1-P9 (L4, L20, L39, L41, PolicyPageShell.tsx:25) and L31 byte-for-byte; L17 and L29 are architect choices, not adopted (L41 legal/business hours are owner-only). Self-serve cards L14-17 out of scope: stop and report if one is false. No server, db.ts or shared file; SUPPORT-B1/B2 and the BYOR edge are not registered. Residuals shared/publicRoutes.ts:48 (D-176-public-claims) and shared/landingContent.ts:63 (PRICING-banded-oct25) are not fixed. Builder: a non-Claude development session through the picker (D-225)."
+    },
+    {
       "id": "CONV-report-entry",
       "title": "Seeker conversation \"Report or block\" link carries the ask only when it is accepted (R-B-min, seeker side)",
       "row": "D-048",
