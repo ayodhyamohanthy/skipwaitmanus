@@ -51,9 +51,13 @@ export default function Explore() {
   const companySearch = useCompanySearch(query, typeahead);
   // The server suggests by company name; the directory filter also matches function and industry.
   // "Unlisted" needs both: an answered search with no company and no directory row for the query.
-  const noMatch = typeahead && Boolean(companies) && companySearch.status === "ready" && companySearch.noMatch && shown.length === 0;
+  // Whether the company exists is a question about the query alone: the active
+  // function chip only narrows what the directory shows, so it never makes a company unlisted.
+  const queryMatched = useMemo(() => filterCompanies(companies ?? [], { query, fn: null }).length > 0, [companies, query]);
+  const noMatch = typeahead && Boolean(companies) && companySearch.status === "ready" && companySearch.noMatch && !queryMatched;
   // No empty-directory claim while the search is in flight, failed, or suggested a company the filter misses.
-  const searchSpeaks = typeahead && (companySearch.status === "loading" || companySearch.status === "error" || (companySearch.status === "ready" && companySearch.suggestions.length > 0));
+  // When the query does match rows the chip hides, the filter empty state is the truthful line and stays.
+  const searchSpeaks = typeahead && !queryMatched && (companySearch.status === "loading" || companySearch.status === "error" || (companySearch.status === "ready" && companySearch.suggestions.length > 0));
 
   useEffect(() => { applySeo({ title: "Find a referral", description: exploreDescription(companies ?? []) ?? publicRoute("/explore")?.description, path: "/explore" }); }, [companies]);
 

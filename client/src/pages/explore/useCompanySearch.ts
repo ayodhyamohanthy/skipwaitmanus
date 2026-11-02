@@ -4,13 +4,25 @@
 // and nothing here sends a request.
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { companySearchResponseSchema } from "@shared/companies";
+import { companySearchQuerySchema, companySearchResponseSchema } from "@shared/companies";
 import { readApiJson } from "@/lib/apiResponse";
 
 export const COMPANY_TYPEAHEAD_ENABLED = false;
 export const COMPANY_SEARCH_DEBOUNCE_MS = 150;
 export const COMPANY_SEARCH_MAX = 10;
 const COMPANY_SEARCH_ERROR = "We could not search companies. Check your connection and try again.";
+
+/**
+ * The route answers 400 when `q` breaks its own query contract
+ * (`companySearchQuerySchema`: over 80 characters after trim). That is invalid
+ * input, not a connection failure: asking again cannot succeed, so it is never retried.
+ */
+class CompanySearchInvalidError extends Error {
+  constructor() { super("Invalid search"); this.name = "CompanySearchInvalidError"; }
+}
+export const isCompanySearchInvalid = (error: unknown): boolean => error instanceof CompanySearchInvalidError;
+/** The route's own contract, read client-side so a query it would refuse is never sent (no silent truncation). */
+const acceptedByRoute = (q: string) => companySearchQuerySchema.safeParse({ q }).success;
 
 export type CompanySuggestion = ReturnType<typeof companySearchResponseSchema.parse>["companies"][number];
 
@@ -23,6 +35,7 @@ export async function fetchCompanySearch(query: string): Promise<CompanySuggesti
   } catch {
     throw new Error(COMPANY_SEARCH_ERROR);
   }
+  if (response.status === 400) throw new CompanySearchInvalidError();
   const payload = await readApiJson<Record<string, unknown>>(response, COMPANY_SEARCH_ERROR);
   if (!response.ok) throw new Error(COMPANY_SEARCH_ERROR);
   const parsed = companySearchResponseSchema.safeParse(payload);
@@ -39,8 +52,9 @@ function useDebounced(value: string, ms: number): string {
   return settled;
 }
 
-/** idle: nothing asked (switch off or a blank box); loading: settling or in flight; error: the request failed; ready: answered. */
-export type CompanySearchStatus = "idle" | "loading" | "error" | "ready";
+/** idle: nothing asked (switch off or a blank box); loading: settling or in flight; error: the request failed (retryable);
+ * invalid: the route's contract refuses the query (400, never retried); ready: answered. */
+export type CompanySearchStatus = "idle" | "loading" | "error" | "invalid" | "ready";
 
 export interface CompanySearchState {
   status: CompanySearchStatus;
@@ -60,14 +74,16 @@ export function useCompanySearch(input: string, enabled: boolean): CompanySearch
   const result = useQuery({
     queryKey: ["company-directory", "search", query] as const,
     queryFn: () => fetchCompanySearch(query),
-    enabled: enabled && query.length >= 1,
+    enabled: enabled && query.length >= 1 && acceptedByRoute(query),
     staleTime: 60_000,
     retry: false,
   });
   const retry = () => { void result.refetch(); };
   const empty = { suggestions: [] as CompanySuggestion[], noMatch: false, retry };
   if (!enabled || typed.length === 0) return { status: "idle", query: "", ...empty };
+  if (query === typed && !acceptedByRoute(query)) return { status: "invalid", query, ...empty };
   if (query !== typed || result.isFetching || result.isPending) return { status: "loading", query: typed, ...empty };
+  if (result.isError && isCompanySearchInvalid(result.error)) return { status: "invalid", query, ...empty };
   if (result.isError) return { status: "error", query, ...empty };
   return { status: "ready", query, suggestions: result.data, noMatch: result.data.length === 0, retry };
 }
