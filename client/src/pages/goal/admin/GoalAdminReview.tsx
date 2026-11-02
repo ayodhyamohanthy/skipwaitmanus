@@ -131,7 +131,7 @@ export default function GoalAdminReview() {
       <AdminGoalHeading goalLine={GOAL_PAGE.goalLine} body={BODY} />
       <div className="grid gap-6 gdesk:grid-cols-[340px_minmax(0,1fr)]">
         <section aria-label="Cases" className="min-w-0 border border-g-hairline bg-g-surface">
-          <div role="tablist" aria-label="Review kinds" className="flex gap-1 overflow-x-auto border-b border-g-hairline p-2">
+          <div role="tablist" aria-label="Review kinds" className="flex flex-wrap gap-1 border-b border-g-hairline p-2">
             {ADMIN_REVIEW_TABS.map(([id, label]) => (
               <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => { setTab(id); reset(); }}
                 className={cn("h-9 shrink-0 rounded-g-control px-3 text-g-meta", tab === id ? "bg-g-primary text-g-on-primary" : "text-g-ink-2 hover:bg-g-surface-hover")}>

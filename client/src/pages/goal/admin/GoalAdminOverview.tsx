@@ -84,7 +84,7 @@ export default function GoalAdminOverview() {
         <GoalErrorState className="mb-6 border border-g-hairline px-5" title={failed.map(query => query.error?.message).filter(Boolean).join(" ")} body="Nothing is shown as clear while a list failed to load." retry={{ label: "Try again", onClick: retry }} />
       ) : null}
       {!loading && !failed.length ? (
-        <div className="grid gap-6 gdesk:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="grid items-start gap-6 gdesk:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <GoalNextStep reason={oldest ? `Oldest open case: ${oldest.title} · ${oldest.ref} · opened ${caseAge(oldest.createdAt)} ago` : "Nothing needs a decision right now."}>
             <GoalButton variant="primary" asChild className="mt-3">
               {oldest ? <a href={`/admin-review?tab=${adminTabFor(oldest.kind)}`}>Open the oldest case</a> : <a href="/admin-review">Open the review queue</a>}
