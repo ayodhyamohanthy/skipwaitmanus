@@ -2,13 +2,13 @@
 
 > Read `docs/BRIEF.md` first, then this packet. Each row in §5 is its own task (D-223): claim it with the picker, build only that row, and edit only the paths in its `owns` (scope-check fails anything else). Rows that share plan row D-093 write their status line in the Status section at the end, never in a shared §3b row (D-134).
 >
-> This packet changes no runtime behaviour. It registers rows in `docs/plans/assignments.json` and records its rulings as D-274 (decided under D-200; changeable). The packet file and the parent row's `packet`/`syncedTo`/`status` landed in PR #891 (`bd0974a9`); the six rows it defines are not registered and are listed, ready to apply, in §9.1. Nothing below is built or live.
+> This packet changes no runtime behaviour. It registers rows in `docs/plans/assignments.json` and records its rulings as D-274 (decided under D-200; changeable). The packet file and the parent row's `packet`/`syncedTo`/`status` landed in PR #891 (`bd0974a9`). The six rows it defines (§9.1, with C1-C7) are registered in `docs/plans/assignments.json` (Nov 2 2026, ordinary docs/registry PR #960, `syncedTo: "D-275"`), with `D-099-bonus-pages` waiting on `D-093.capture` and the parent carrying its §5.7 release-row metadata; the parent's status stays `owner` (§8 Q1). Nothing below is built or live.
 >
 > **Correction, Nov 2 2026 (docs-only, PR #891 follow-up):** D-274 and earlier text in this packet described the six rows as held by an owner's Oct 31 "new rows paused" restriction. That premise was wrong: the clause in `docs/BUILD_CONTINUITY.md` was the coordinator's recommendation with coordinator-supplied paste-in wording, not an owner restriction (see that file's provenance correction, which also gives the original-source citations). The row-specific qualification that the six rows are routine decomposition of the already-decided D-093 goal is the coordinator's (PR #891 comment 6563726334), resting on the original owner instructions the coordinator personally recovered (cited, with the intermediary PR #891 comments 6562514915 and 6562522480, in that file's correction; not authenticated by a repository assertion); it is not derived from D-200, D-223 or a repo-only audit. The rows are registered, when they are, through the normal architect/reviewer route, and no owner pause-lift question is pending. This correction registers nothing, changes no status, dependency or FIFO order, and releases no other hold; the other restriction clauses in `docs/BUILD_CONTINUITY.md` (only skipwait.me; no production changes, migrations, drills, settings changes or spending) are preserved, and their original attribution was not qualified here. Sections 5.1, 5.3, 5.4, 5.5 and 9.1 also carry the seven packet corrections (C1-C7) from the coordinator qualification on PR #891.
 
 | Field | Value |
 |---|---|
-| Queue rows | `D-093.capture` (Tier 1), `D-093.metrics` (Tier 2), `D-093.runtime` (Tier 2), `D-093.picker` (Tier 2), `D-093.mount` (Tier 2), `D-093.menu` (Tier 2); the parent `D-093-language` becomes the release row (Tier 1, D-223 (3)) — **none registered yet; the parent sits at `status: "owner"` (D-274). The "new rows paused" premise D-274 gave for that is corrected (see the note above); moving the status is a separate qualified step, not part of the correction** |
+| Queue rows | `D-093.capture` (Tier 1), `D-093.metrics` (Tier 2), `D-093.runtime` (Tier 2), `D-093.picker` (Tier 2), `D-093.mount` (Tier 2), `D-093.menu` (Tier 2); the parent `D-093-language` becomes the release row (Tier 1, D-223 (3)) — **the six rows are registered (Nov 2, ordinary docs/registry PR, `syncedTo: "D-275"`); the parent carries its release-row metadata (Tier 1, `dependsOn`/`owns` per §5.7) but its status stays `owner`, because its privacy wording (§8 Q1) is unresolved and `LAUNCH-legal-copy` owns `TrustPrivacy.tsx`** |
 | Decisions | D-093 (the spec), D-091 (pre-approval), D-092 (global north star), D-059 (its translation answer is superseded by D-093), D-031/D-204 (free tools only), D-153 (writing rule), D-167 (goal UI coverage), D-200, D-202, D-223, D-225; login rule D-030/D-049/D-057 (untouched) |
 | Verified against | `origin/main` `a67b6f2a` (Nov 2 2026, re-synced by `Cline · d353`; the packet body's code citations were first verified on `94c697b4`, Oct 30 2026 and §0 records that check). C1-C7 file paths re-checked on `45aa6661` (Nov 2 2026, `Hark · 5de4`, read-only; no tsc or test run in this correction). No production query, API or provider call was made. |
 | Migrations, env keys, dependencies | One additive migration (`D-093.capture`: two nullable columns). No env key. No new dependency in any row here; a per-script Noto font package is added only by a future per-language row (§6.3). |
@@ -142,16 +142,16 @@ Capture adds a new item to what skipwait.me collects. The release row may not sh
 - This packet, `docs/plans/D-093-language.md`.
 - `D-093-language` in `docs/plans/assignments.json`: `packet` → this file, `status` `architect` → `owner`, `syncedTo` → `D-274`, and a note naming the hold. `tier` stays 2 and `dependsOn`/`owns` stay empty: a row that cannot be built must not claim the release row's `owns`.
 
-**Not registered yet (D-274; premise corrected Nov 2, see the note at the top). They are routine decomposition of D-093 (coordinator qualification, PR #891 comment 6563726334, resting on the recovered original owner instructions) and go through the normal architect/reviewer registration route; no owner pause-lift question is pending:**
+**Registered Nov 2 2026 through an ordinary docs/registry PR (routine decomposition of D-093, a qualification by the coordinator on PR #891 comment 6563726334 resting on the recovered original owner instructions; the D-274 pause premise was corrected, see the note at the top, and no owner pause-lift question is pending):**
 - The six rows in §9.1, each with `epic: "D-093-language"` and branches `agent/queue/d093-<slug>`.
 - `D-093-language`'s promotion to the Tier 1 release row: `tier` 1, `status` `todo`, and `dependsOn`/`owns` per §5.7.
 - `D-099-bonus-pages` gains `D-093.capture` in `dependsOn`: both own `drizzle/schema.ts` and `server/schemaReconcile.ts`, and D-099 already waits for `D-090-BYOR` and owner-held rows, so ordering capture first delays nothing.
 
-Nothing above is registered today. Until it is, no row of this packet is buildable and the parent row stays at `owner` (unchanged by the Nov 2 correction). Registry simulations recorded on PR #891 (coordinator qualification, Nov 2): the six rows alone give one `D-099-bonus-pages` overlap error, which the `D-099-bonus-pages` → `D-093.capture` dependency above removes; parent promotion and the C6/C7 paths also validate with zero errors. That establishes mechanical scope only, not adoption or a FIFO position.
+Registered as above, with one field held back: the parent's `status` stays `owner` rather than §5.7's `todo`, because the release row's privacy wording (§8 Q1) is the owner's and unresolved. Registration is not activation or product acceptance: every row waits on its dependencies (capture on `D-090-BYOR`, and through it `D-057-session-gate`), `LANGUAGE_CAPTURE_ENABLED` stays false, the migration and release gates are unchanged, and no OWNER-status dependency is released. Registry simulations recorded on PR #891 (coordinator qualification, Nov 2): the six rows alone give one `D-099-bonus-pages` overlap error, which the `D-099-bonus-pages` → `D-093.capture` dependency above removes; parent metadata and the C6/C7 paths also validate with zero errors.
 
 ### 9.1 The six rows, exactly as they will be added
 
-Apply verbatim in one docs-only PR through the normal architect/reviewer route, setting `syncedTo` to the newest register entry at that moment (it reads `D-274` here, the entry that created this packet). Nothing else in `docs/plans/assignments.json` changes except the parent row and `D-099-bonus-pages` per §9.
+Applied verbatim on Nov 2 2026 in one docs-only PR, with `syncedTo` set to the newest register entry at that moment, `D-275` (it read `D-274` before, the entry that created this packet; D-275 concerns only `REL-synthetic-journeys`). Nothing else in `docs/plans/assignments.json` changes except the parent row and `D-099-bonus-pages` per §9.
 
 ```json
 [
@@ -164,7 +164,7 @@ Apply verbatim in one docs-only PR through the normal architect/reviewer route, 
     "lane": "i18n-capture",
     "branch": "agent/queue/d093-capture",
     "status": "todo",
-    "syncedTo": "D-274",
+    "syncedTo": "D-275",
     "epic": "D-093-language",
     "dependsOn": [
       "D-090-BYOR"
@@ -192,7 +192,7 @@ Apply verbatim in one docs-only PR through the normal architect/reviewer route, 
     "lane": "i18n-metrics",
     "branch": "agent/queue/d093-metrics",
     "status": "todo",
-    "syncedTo": "D-274",
+    "syncedTo": "D-275",
     "epic": "D-093-language",
     "dependsOn": [
       "D-093.capture"
@@ -213,7 +213,7 @@ Apply verbatim in one docs-only PR through the normal architect/reviewer route, 
     "lane": "i18n-runtime",
     "branch": "agent/queue/d093-runtime",
     "status": "todo",
-    "syncedTo": "D-274",
+    "syncedTo": "D-275",
     "epic": "D-093-language",
     "dependsOn": [
       "D-093.capture"
@@ -241,7 +241,7 @@ Apply verbatim in one docs-only PR through the normal architect/reviewer route, 
     "lane": "i18n-picker",
     "branch": "agent/queue/d093-picker",
     "status": "todo",
-    "syncedTo": "D-274",
+    "syncedTo": "D-275",
     "epic": "D-093-language",
     "dependsOn": [
       "D-093.runtime"
@@ -266,7 +266,7 @@ Apply verbatim in one docs-only PR through the normal architect/reviewer route, 
     "lane": "i18n-mount",
     "branch": "agent/queue/d093-mount",
     "status": "todo",
-    "syncedTo": "D-274",
+    "syncedTo": "D-275",
     "epic": "D-093-language",
     "dependsOn": [
       "D-093.picker",
@@ -290,7 +290,7 @@ Apply verbatim in one docs-only PR through the normal architect/reviewer route, 
     "lane": "i18n-menu",
     "branch": "agent/queue/d093-menu",
     "status": "todo",
-    "syncedTo": "D-274",
+    "syncedTo": "D-275",
     "epic": "D-093-language",
     "dependsOn": [
       "D-093.picker",
@@ -320,6 +320,6 @@ Stop with `--report blocked` if: a row needs a file outside its `owns`; a functi
 ## Status
 - Packet: Hark · 66fd, `agent/architect/d093-language`, Oct 31 2026.
 - Re-sync and landing hand-off: `Cline · d353`, `agent/architect/d093-language`, Nov 2 2026 (D-274). Re-verified against main `a67b6f2a`; §9 rewritten so the packet can land without creating rows; `D-093-language` set to `packet` + `syncedTo: "D-274"` + `status: "owner"`.
-- Row status: **`owner`, unchanged.** Nothing is buildable: the six rows are registered nowhere. *(Corrected Nov 2: the earlier reason given here, an owner's Oct 31 "new rows paused" restriction, was the coordinator's recommendation, not an owner restriction, and no owner pause-lift question is pending; §9.1 goes through the normal architect/reviewer route (routine-decomposition qualification: coordinator, PR #891 comment 6563726334). The other `docs/BUILD_CONTINUITY.md` restriction clauses still stand pending their own qualification. Moving this row's status is a separate qualified step, not done by the correction.)* What remains for the owner is only §8: Q1 (privacy wording, release row only), Q2 (translation reviewers) and the optional Q3; real production effects stay separately qualified.
+- Row status: **parent `owner`; six rows `todo`, each waiting on its dependencies.** The six rows were registered Nov 2 2026 (`Hark · 5de4`, branch `docs/d093-register-six-rows`, ordinary docs/registry PR stacked on the correction PR #959). The parent gained its §5.7 release-row metadata but stays `owner`: the privacy sentence (§8 Q1) is unresolved and owner-only. What remains for the owner is only §8: Q1 (privacy wording, release row only), Q2 (translation reviewers) and the optional Q3; real production effects stay separately qualified. The other `docs/BUILD_CONTINUITY.md` restriction clauses still stand pending their own qualification.
 - Pull request: [#891](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/891) (`agent/architect/d093-language` → `main`), docs/registry only; merged `bd0974a9` on Nov 2 2026.
 - Correction (C1-C7 and the D-274 premise): `Hark · 5de4`, branch `docs/d274-d093-language-correction`, Nov 2 2026, docs-only, from the coordinator qualification on PR #891 (comment 6563726334); C5 footnote wording, provenance citations and the standing-clauses note tightened from #959 comment 6564712090. Not landed by its writer.
