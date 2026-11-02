@@ -4462,7 +4462,7 @@
       "tier": 2,
       "lane": "ci-checks",
       "branch": "agent/queue/gate-migration-apply",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-266",
       "dependsOn": [
         "GATE-e2e-journeys"
