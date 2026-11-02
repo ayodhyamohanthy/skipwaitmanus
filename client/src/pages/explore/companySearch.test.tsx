@@ -12,10 +12,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 
-const { go, flag, events } = vi.hoisted(() => ({
+const { go, flag, events, eventArgs } = vi.hoisted(() => ({
   go: vi.fn(),
   flag: { on: false },
   events: [] as string[],
+  /** Every argument every event was sent with, serialised: the no-query-text check reads this. */
+  eventArgs: [] as string[],
 }));
 
 vi.mock("@/_core/auth", () => ({
@@ -32,7 +34,7 @@ vi.mock("wouter", () => ({
 }));
 vi.mock("@/lib/clarity", async importOriginal => ({
   ...(await importOriginal<typeof import("@/lib/clarity")>()),
-  trackClarityEvent: (name: string) => { events.push(name); },
+  trackClarityEvent: (...args: unknown[]) => { events.push(String(args[0])); eventArgs.push(JSON.stringify(args)); },
 }));
 // The switch is a module constant (false on main); the tests read it through a getter so both states run.
 vi.mock("./useCompanySearch", async importOriginal => {
@@ -54,13 +56,14 @@ const searchRow = (slug: string) => { const { openToReferrals: _drop, ...rest } 
 const DIRECTORY: CompanyDirectoryResponse = { companies: LAUNCH_COMPANY_SEED.map(seed => company(seed.slug)), openCount: LAUNCH_COMPANY_SEED.length };
 const json = (status: number, body: unknown) => ({ ok: status >= 200 && status < 300, status, url: "", json: async () => body });
 
-function stub(search: (q: string) => { status: number; body: unknown }) {
+type SearchAnswer = { status: number; body: unknown };
+function stub(search: (q: string) => SearchAnswer | Promise<SearchAnswer>) {
   const fetchMock = vi.fn(async (input: string) => {
     const path = String(input);
     if (path === "/api/companies") return json(200, DIRECTORY);
     if (path.startsWith("/api/companies/search?")) {
       const q = new URL(path, "http://x").searchParams.get("q") ?? "";
-      const answer = search(q);
+      const answer = await search(q);
       return json(answer.status, answer.body);
     }
     if (path.startsWith("/api/credits/summary")) return json(200, { summary: { totalAvailable: 4 } });
@@ -74,10 +77,19 @@ function stub(search: (q: string) => { status: number; body: unknown }) {
 const searchCalls = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls.map(call => String(call[0])).filter(path => path.startsWith("/api/companies/search"));
 const client = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
 const renderExplore = () => render(<QueryClientProvider client={client()}><Explore /></QueryClientProvider>);
+/** D-176: before sending, no company reads as open or not open, in any typeahead state. */
+const AVAILABILITY = /availab|open to referrals|not open|\bopen now\b|\d+\s+open\b|referrers? (?:is |are )?(?:online|ready|free)|no one (?:is )?(?:here|available)/i;
+const expectNoAvailabilityText = () => expect(document.body.textContent ?? "").not.toMatch(AVAILABILITY);
+/** Events carry names only: no argument may hold the typed query, in any case. */
+const expectNoQueryInEvents = (query: string) => {
+  for (const args of eventArgs) expect(args.toLowerCase()).not.toContain(query.trim().toLowerCase());
+  for (const args of eventArgs) expect(JSON.parse(args)).toHaveLength(1);
+};
 
 beforeEach(() => {
   flag.on = false;
   events.length = 0;
+  eventArgs.length = 0;
   go.mockReset();
   vi.stubGlobal("matchMedia", (query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false }));
 });
@@ -102,6 +114,7 @@ describe("the switch (ruling 8, release row turns it on)", () => {
     expect(searchCalls(fetchMock)).toEqual([]);
     expect(screen.queryByRole("listbox")).toBeNull();
     expect(events).toEqual([]);
+    expectNoAvailabilityText();
   });
 });
 
@@ -181,6 +194,8 @@ describe("switch on: typeahead on /explore", () => {
     fireEvent.keyDown(box, { key: "Enter" });
     expect(go).toHaveBeenCalledWith("/explore/wipro");
     expect(events).toEqual(["journey_company_suggested"]);
+    expectNoAvailabilityText();
+    expectNoQueryInEvents("w");
   });
 
   it("a click on a suggestion opens the company door; Escape closes the list", async () => {
@@ -212,17 +227,116 @@ describe("switch on: typeahead on /explore", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
     expect(events).toEqual(["journey_company_no_match"]);
     expect(events.join(" ")).not.toMatch(/zeta/i);
+    expectNoAvailabilityText();
+    expectNoQueryInEvents("Zeta Labs");
   });
 
-  it("a failed search adds nothing: the client filter still works and no event fires", async () => {
-    stub(() => ({ status: 500, body: { error: "boom" } }));
+  it("loading: while the settled query is in flight a Searching line renders (busy), with no availability text and no event", async () => {
+    let release: (answer: SearchAnswer) => void = () => {};
+    const fetchMock = stub(() => new Promise<SearchAnswer>(resolve => { release = resolve; }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "tata" } });
+    const loading = await screen.findByTestId("company-search-loading");
+    expect(loading.getAttribute("aria-busy")).toBe("true");
+    expect(loading.textContent).toContain("Searching companies");
+    await waitFor(() => expect(searchCalls(fetchMock)).toEqual(["/api/companies/search?q=tata"]));
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expectNoAvailabilityText();
+    expect(events).toEqual([]);
+    await act(async () => { release({ status: 200, body: { companies: [searchRow("tcs")] } }); });
+    await screen.findByRole("option", { name: "TCS" });
+    expect(screen.queryByTestId("company-search-loading")).toBeNull();
+    expectNoAvailabilityText();
+    expectNoQueryInEvents("tata");
+  });
+
+  it("error: a failed search shows a retry line, the client filter still works, no event fires, and Try again re-runs the search", async () => {
+    let fail = true;
+    const fetchMock = stub(() => (fail ? { status: 500, body: { error: "boom" } } : { status: 200, body: { companies: [searchRow("tcs")] } }));
     renderExplore();
     await screen.findByTestId("goal-directory-summary");
     fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "tcs" } });
-    await act(async () => { await new Promise(resolve => setTimeout(resolve, COMPANY_SEARCH_DEBOUNCE_MS + 100)); });
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("We couldn’t search companies.");
+    const retry = within(alert).getByRole("button", { name: "Try again" });
     expect(screen.getByTestId("goal-directory-summary").textContent).toMatch(/^1 company$/);
     expect(screen.queryByRole("listbox")).toBeNull();
     expect(screen.queryByRole("link", { name: /job link to request a referral/ })).toBeNull();
+    expect(screen.queryByTestId("company-search-loading")).toBeNull();
     expect(events).toEqual([]);
+    expectNoAvailabilityText();
+    expect(searchCalls(fetchMock)).toEqual(["/api/companies/search?q=tcs"]);
+    fail = false;
+    fireEvent.click(retry);
+    await screen.findByRole("option", { name: "TCS" });
+    expect(searchCalls(fetchMock)).toEqual(["/api/companies/search?q=tcs", "/api/companies/search?q=tcs"]);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(events).toEqual(["journey_company_suggested"]);
+    expectNoAvailabilityText();
+    expectNoQueryInEvents("tcs");
+  });
+
+  it("empty: a blank box asks nothing and shows no search state; an answer with no company shows the no-match path, with no availability text", async () => {
+    const fetchMock = stub(() => ({ status: 200, body: { companies: [] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    const box = screen.getByRole("combobox", { name: "Search companies" });
+    fireEvent.change(box, { target: { value: "   " } });
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, COMPANY_SEARCH_DEBOUNCE_MS + 100)); });
+    expect(searchCalls(fetchMock)).toEqual([]);
+    expect(screen.queryByTestId("company-search-loading")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+    expect(events).toEqual([]);
+    fireEvent.change(box, { target: { value: "Qwerty Works" } });
+    const empty = await screen.findByTestId("company-search-no-match");
+    expect(within(empty).getByRole("link", { name: "Paste a Qwerty Works job link to request a referral" }).getAttribute("href")).toBe("/ask");
+    expect(screen.queryByTestId("company-search-loading")).toBeNull();
+    expect(events).toEqual(["journey_company_no_match"]);
+    expectNoAvailabilityText();
+    expectNoQueryInEvents("Qwerty Works");
+  });
+});
+
+describe("useCompanySearch states", () => {
+  const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client()}>{children}</QueryClientProvider>;
+
+  it("idle for a blank box, loading while settling and in flight, then ready", async () => {
+    let release: (answer: SearchAnswer) => void = () => {};
+    stub(() => new Promise<SearchAnswer>(resolve => { release = resolve; }));
+    const { result, rerender } = renderHook(({ q }) => useCompanySearch(q, true), { wrapper, initialProps: { q: "" } });
+    expect(result.current.status).toBe("idle");
+    rerender({ q: "wip" });
+    expect(result.current.status).toBe("loading");
+    await waitFor(() => expect(result.current.query).toBe("wip"));
+    expect(result.current.status).toBe("loading");
+    await act(async () => { release({ status: 200, body: { companies: [searchRow("wipro")] } }); });
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.suggestions.map(item => item.slug)).toEqual(["wipro"]);
+  });
+
+  it("error on a failed request; retry re-runs the same query", async () => {
+    let fail = true;
+    const fetchMock = stub(() => (fail ? { status: 503, body: {} } : { status: 200, body: { companies: [] } }));
+    const { result } = renderHook(() => useCompanySearch("zeta", true), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("error"));
+    expect(result.current.suggestions).toEqual([]);
+    expect(result.current.noMatch).toBe(false);
+    fail = false;
+    act(() => { result.current.retry(); });
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.noMatch).toBe(true);
+    expect(searchCalls(fetchMock)).toEqual(["/api/companies/search?q=zeta", "/api/companies/search?q=zeta"]);
+  });
+
+  it("idle and sends nothing when the switch is off", async () => {
+    const fetchMock = stub(() => ({ status: 200, body: { companies: [] } }));
+    const { result } = renderHook(() => useCompanySearch("zeta", false), { wrapper });
+    await new Promise(resolve => setTimeout(resolve, COMPANY_SEARCH_DEBOUNCE_MS + 50));
+    expect(result.current.status).toBe("idle");
+    expect(searchCalls(fetchMock)).toEqual([]);
   });
 });
