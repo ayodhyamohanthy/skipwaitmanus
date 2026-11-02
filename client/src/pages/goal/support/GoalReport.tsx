@@ -19,6 +19,10 @@
 // Review 6565471121: the copy states what the code does (the report is filed
 // with a reference, a block can be placed, the reporter is not named) and makes
 // no operational promise (review, timing, staff, notification, intervention).
+// Review 6566372499: the "Also block this person" toggle is real only on the
+// ?request=<id> branch; no product code builds that URL yet (the conversation
+// pages link to a bare /report), so the no-context note claims no conversation
+// entry and no support-performed block.
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, Ban, Check, ShieldAlert } from "lucide-react";
@@ -44,6 +48,10 @@ const BLOCK_FAILED = "Your report was filed, but the block did not go through. T
 // A rejected block fetch proves neither that the server was unreachable nor
 // that it did not receive the block (review 6565471121); blocks are idempotent,
 // so a block-only retry stays.
+// Review 6566372499: without ?request=<id> there is no block toggle, and no
+// product link (the conversation pages link to a bare /report) supplies one, so
+// this line neither points back to the conversation nor says support will block.
+const NO_CONTEXT_BLOCK_NOTE = "Blocking isn't available on this report. You can still file it, keep the reference it gives you, and contact support with that reference.";
 const BLOCK_NETWORK = "Your report was filed, but we couldn't confirm the block went through. Try blocking again.";
 
 // A fetch that rejected: it may never have reached the server, or the server
@@ -239,7 +247,7 @@ export default function GoalReport() {
             ) : (
               <p className="flex items-start gap-2 border border-g-hairline p-4 text-g-meta text-g-ink-2">
                 <Ban aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
-                To block someone, open Report from your conversation with them and choose “Also block this person”, or contact support from this page after filing.
+                {NO_CONTEXT_BLOCK_NOTE}
               </p>
             )}
             <Toggle pressed={urgent} onToggle={() => setUrgent(!urgent)} icon={ShieldAlert} title="I feel unsafe" hint="Marks your report as urgent." />

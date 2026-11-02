@@ -1,12 +1,18 @@
 // Help and safety answers for the goal /help and /safety (D-048-p3-support).
-// The kit pages keep their own copies (Help.tsx, Safety.tsx); the goal pages
-// may not import a kit page file (goalPagesBoundary), so the answers are
-// mirrored here word for word (except the D-173/D-180 category name "Plans &
-// referrals", review 6563736305, and the answers rewritten by review
-// 6565471121 to drop operational promises: staff, manual review, stepping in),
-// and every money line is imported from
-// shared/moneyCopy.ts, never retyped (D-063, D-134). A copy change to the kit
-// answers ports here through the kit-drift check before release.
+// These answers are goal-owned copy. They started from the kit's Help.tsx and
+// Safety.tsx answers (goalPagesBoundary keeps kit page files out of the goal
+// pages), but they are no longer word-for-word kit copies: reviews 6563736305,
+// 6565471121 and 6566372499 rewrote them. No kit-drift check exists; nothing
+// keeps these answers in step with the kit, and a copy change on either side is
+// a deliberate edit, not an automatic port.
+// A later kit port must not restore the removed operational promises (staff or
+// "a person", manual review, review timing, outcome notification, stepping in),
+// the instruction to open Report from the conversation and choose "Also block
+// this person" (no product link opens Report with that toggle, review
+// 6566372499), or any claim that support will block someone.
+// Money lines follow D-173/D-180: every one with a shared/moneyCopy.ts export is
+// imported, never retyped (D-063, D-134); "Do credits expire?" is mirrored kit
+// money wording kept byte-identical (see the note on it below).
 import { ASK_COST_SENTENCE, CREDIT_RULE, MONEY_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import { FREE_PLAN } from "@shared/planCatalog";
 
@@ -35,7 +41,11 @@ export const HELP_ANSWERS: ReadonlyArray<HelpAnswer> = [
   { category: "Account & privacy", question: "Who can see my resume?", answer: "Only a referrer who accepted your referral request." },
   { category: "Account & privacy", question: "How do I delete my account?", answer: "Settings lets you download your data or request account deletion. A deletion request is recorded and its status shows in Settings; records are not removed instantly." },
   { category: "Safety", question: "Someone asked me for money.", answer: "Don't pay. Use Report on the conversation (the other person isn't told who reported them), or contact support." },
-  { category: "Safety", question: "How do I block someone?", answer: "Open Report from your conversation with them and choose “Also block this person”. Otherwise, contact support." },
+  // Review 6566372499: the conversation pages link to a bare /report, which has
+  // no block toggle, so this answer neither sends people there for it nor says
+  // support will block. It gives the path that exists: file, keep the
+  // reference, contact support.
+  { category: "Safety", question: "How do I block someone?", answer: "You can't block someone from Help. If Report doesn't offer “Also block this person”, file the report anyway, keep the reference it gives you, and contact support with that reference." },
 ];
 
 export const HELP_POLICY_LINKS: ReadonlyArray<readonly [label: string, href: string]> = [

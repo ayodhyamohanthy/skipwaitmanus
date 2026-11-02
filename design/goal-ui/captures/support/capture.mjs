@@ -19,6 +19,8 @@ const scenarios = [
   ["help", "/help", {}],
   ["help-no-match", "/help", { search: "zzz-no-such-topic" }],
   ["help-safety-filter", "/help", { chip: "Safety" }],
+  // Review 6566372499: the block answer opened (no conversation-entry block instruction, no support-will-block claim).
+  ["help-block-open", "/help", { chip: "Safety", steps: ["How do I block someone?"] }],
   ["safety", "/safety", {}],
   ["report-sign-in", "/report", { signedIn: false }],
   ["report-reason", "/report", {}],

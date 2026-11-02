@@ -292,9 +292,9 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
@@ -333,9 +333,9 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
@@ -887,14 +887,13 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
       ]
     },
     {
@@ -1196,6 +1195,102 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: net::ERR_FAILED"
       ]
+    },
+    {
+      "file": "help-block-open-390.png",
+      "route": "/help",
+      "persona": "synthetic seeker",
+      "fixture": {
+        "chip": "Safety",
+        "steps": [
+          "How do I block someone?"
+        ]
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Help and safety",
+        "Get help."
+      ],
+      "primaries": 1,
+      "unmatchedApi": [
+        "GET /api/account/preferences",
+        "GET /api/notifications"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ]
+    },
+    {
+      "file": "help-block-open-1280.png",
+      "route": "/help",
+      "persona": "synthetic seeker",
+      "fixture": {
+        "chip": "Safety",
+        "steps": [
+          "How do I block someone?"
+        ]
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Help and safety",
+        "Get help."
+      ],
+      "primaries": 1,
+      "unmatchedApi": [
+        "GET /api/account/preferences",
+        "GET /api/notifications"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ]
     }
-  ]
+  ],
+  "refreshed": {
+    "source": "8443f52d0eb1da9c7c32ea51f60aad51e98fdf79",
+    "review": "6566372499",
+    "command": "CAPTURE_ONLY=report-details-offline,report-details-unsafe,help-block-open node design/goal-ui/captures/support/capture.mjs",
+    "files": [
+      "help-block-open-390.png",
+      "report-details-offline-390.png",
+      "report-details-unsafe-390.png",
+      "help-block-open-1280.png",
+      "report-details-offline-1280.png",
+      "report-details-unsafe-1280.png"
+    ],
+    "note": "Only the captures whose copy changed were refreshed; the rest keep the source above. Synthetic, mocked API, not end-to-end."
+  }
 }
