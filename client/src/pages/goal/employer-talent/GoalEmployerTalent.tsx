@@ -24,6 +24,10 @@ export const TALENT_UNLOCK_COST = 5;
 // snapshot carry no name or contact field, but the headline is free text the
 // person wrote, so no promise is made about what it contains.
 const PRIVACY_LINE = "No name or contact fields are listed; the headline is in this person's own words. Unlocking shows only the fields they chose to share, and they decide whether to respond.";
+// The subtitle and the SEO description say the same: unlocking does show the
+// fields the person chose to share, so no line claims every profile stays
+// hidden until they respond.
+const SUBTITLE = "Browse opt-in talent. Unlocking shows only the fields they chose to share, and they decide whether to respond.";
 
 type TalentRow = { displayRef: string; headline: string | null; location: string | null; skills: string[]; isUnlocked: boolean };
 // GET /api/employer/talent/:ref returns { profile: { ...talentSnapshot,
@@ -47,7 +51,7 @@ export default function GoalEmployerTalent() {
   const [introSentTo, setIntroSentTo] = useState<string | null>(null);
 
   useEffect(() => {
-    applySeo({ title: "Meet opt-in talent on skipwait.me", description: "Anonymized, opt-in job seekers only. Every profile stays hidden until the person chooses to respond.", path: "/employer/talent" });
+    applySeo({ title: "Meet opt-in talent on skipwait.me", description: SUBTITLE, path: "/employer/talent" });
   }, []);
 
   const loadTalent = async (nextQuery = query, nextLocation = location) => {
@@ -134,7 +138,7 @@ export default function GoalEmployerTalent() {
     <EmployerGoalFrame screen="talent-discovery" page="employer-talent">
       <p className="text-g-meta text-g-ink-3">Employers</p>
       <h1 className="mt-1 text-g-heading text-g-ink">{GOAL_PAGE.goalLine}</h1>
-      <p className="mt-2 max-w-2xl text-g-meta text-g-ink-2">Anonymized, opt-in job seekers only. Every profile stays hidden until the person chooses to respond.</p>
+      <p className="mt-2 max-w-2xl text-g-meta text-g-ink-2">{SUBTITLE}</p>
       <div className="mt-6">
         <GoalNextStep reason="Search by skill, headline or place. You only ever see people who opted in.">
           <form onSubmit={event => { event.preventDefault(); void loadTalent(); }} className="mt-3 grid gap-2 gdesk:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]">
