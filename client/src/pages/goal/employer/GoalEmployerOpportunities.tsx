@@ -17,7 +17,7 @@ import { SPONSOR_TIERS, type SponsorTier } from "./sponsorTiers";
 
 export const GOAL_PAGE = { goalLine: "Sponsor a role." } as const;
 
-type Opportunity = { id: number; companyDomain: string; kind: "hiring_now" | "walk_in"; roleTitle: string; location: string | null; compensation: string | null; isActive: boolean; sponsoredTier: "featured" | "spotlight" | null; sponsoredUntil: string | null; isSponsored: boolean };
+type Opportunity = { id: number; companyDomain: string; kind: "hiring_now" | "walk_in"; roleTitle: string; location: string | null; isActive: boolean; sponsoredTier: "featured" | "spotlight" | null; sponsoredUntil: string | null; isSponsored: boolean };
 
 export default function GoalEmployerOpportunities() {
   const [, go] = useLocation();
