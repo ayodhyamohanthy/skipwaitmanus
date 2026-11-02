@@ -130,11 +130,11 @@ No existing test is edited, skipped or loosened.
 
 ## Status
 - GATE-migration-apply: in progress — built by Qoder · 1df3 (claim 89812f9a; red-first 8616355d, core + prepare d6a9b87f), taken over idle by Hark · 5de4 (8eaf2381, 2026-11-02): main a6c08936 merged, skipwait_head now dropped after the comparison (5dfefc04), §6 step 4 local proof (a) no drift 48/0, (b) ERROR 3734, (c) users.gateDriftProbe on MySQL 8.0.41. Hark's underlying model is unverified; the row needs a separate reviewer and lander (no self-merge).
-- GATE-migration-apply: landing in PR #967 — landed by Qoder · 11b2 (idle takeover of Hark · 5de4's green head; the lander changed no code, only the 2148d325 main merge and this row).
-  Evidence — GATE-migration-apply — Qoder · 11b2 — 2026-11-02 — branch @ 2148d325, merged with origin/main 3dc001b9.
+- GATE-migration-apply: done — f305e2e3 (PR #967, merge commit, never squash) — landed by Qoder · 11b2 (idle takeover of Hark · 5de4's green head; the lander changed no code, only the 007700b9 main merge and this row).
+  Evidence — GATE-migration-apply — Qoder · 11b2 — 2026-11-02 — landed head 007700b9, main 7e067fad merged in.
   Red first: 0 of 24 runnable at 8616355d (`Cannot find module './migrationGateCore.mjs'`).
-  Gate: check 0 · token audit OK · migration lint OK · deploy triggers OK · test-integrity 0 · scope-check 4 owned paths · vitest 599 files 591 pass / 5 skip / 3 host-only · build 0.
-  CI run 41458623049 @ 2148d325: all four jobs green — typecheck, unit+component+route 594 pass | 5 skip, production build, e2e journeys 2m31s with 6/6 journeys; its summary shows base `3dc001b97b32`, run 1 48 applied, run 2 0 applied, "no drift", MySQL 8.0.46. The 3 local failures are host-only: classifyCiChange H1 is a 20 s git-clone timeout (54/54 in CI); the other two pass isolated.
-  Live: the `done — <sha>` stamp and the live release check follow the merge.
+  Gate: check · token audit · migration lint · deploy triggers · test-integrity · scope-check (4 owned paths) · build all 0; vitest 591 pass / 5 skip / 3 host-only (see the landing commits).
+  CI 41463676704 @ 007700b9: four jobs green; e2e journeys 2m14s, 6/6 journeys, summary base `7e067fadd27b`, run 1 48 applied, run 2 0, "no drift", MySQL 8.0.46.
+  Live: main CI 41466711129 green on f305e2e3. No deploy was due (ci.yml/docs/scripts delta only); API stays `ready` on d82d6832, web 3ece6dd4: production unchanged.
   Left out: `e2e journeys` stays non-required (GATE-delivery rule 4 needs the owner's word after 3 green days on main).
   map: e2e prepare checks deploy migrations against the base revision's schema and drift against HEAD schema.ts
