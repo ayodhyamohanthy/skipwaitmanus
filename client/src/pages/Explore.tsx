@@ -197,14 +197,16 @@ export default function Explore() {
  * Ruling 8 typeahead (switch on only): the combobox pattern over the server's
  * suggestions (at most 10); Enter or a click opens the company door. With no
  * suggestion, the paste-a-link path is the primary action and "Request a
- * company" the quiet link. Events carry no query text.
+ * company" the quiet link. Loading shows a Searching line; a failed search shows
+ * the error state's retry line (the client filter below keeps working). Events
+ * carry no query text, and no state reads availability (D-176).
  */
 function CompanyTypeahead({ value, onChange, search, onOpen }: { value: string; onChange(value: string): void; search: CompanySearchState; onOpen(slug: string): void }) {
   const listId = useId();
   const [active, setActive] = useState(-1);
   const [dismissed, setDismissed] = useState(false);
   const tracked = useRef<string | null>(null);
-  const { suggestions, noMatch, query } = search;
+  const { status, suggestions, noMatch, query } = search;
   const open = !dismissed && suggestions.length > 0;
 
   useEffect(() => { setActive(-1); }, [query, suggestions]);
@@ -259,8 +261,14 @@ function CompanyTypeahead({ value, onChange, search, onOpen }: { value: string; 
           ))}
         </ul>
       ) : null}
+      {status === "loading" ? (
+        <p data-testid="company-search-loading" role="status" aria-busy="true" className="mt-3 text-g-meta text-g-ink-3">Searching companies…</p>
+      ) : null}
+      {status === "error" ? (
+        <GoalErrorState className="px-0 py-3" title="We couldn’t search companies." body="Check your connection and try again." retry={{ label: "Try again", onClick: search.retry }} />
+      ) : null}
       {noMatch ? (
-        <div role="status" className="mt-3 grid gap-1">
+        <div data-testid="company-search-no-match" role="status" className="mt-3 grid gap-1">
           <Link href="/ask" className="text-g-label text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">{`Paste a ${query} job link to request a referral`}</Link>
           <p className="text-g-meta text-g-ink-3"><Link href="/invite" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Request a company</Link></p>
         </div>

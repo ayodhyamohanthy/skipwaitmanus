@@ -39,18 +39,24 @@ function useDebounced(value: string, ms: number): string {
   return settled;
 }
 
+/** idle: nothing asked (switch off or a blank box); loading: settling or in flight; error: the request failed; ready: answered. */
+export type CompanySearchStatus = "idle" | "loading" | "error" | "ready";
+
 export interface CompanySearchState {
-  /** The trimmed query the suggestions answer (empty while nothing is asked). */
+  status: CompanySearchStatus;
+  /** The trimmed query the state answers (empty while idle). */
   query: string;
   suggestions: CompanySuggestion[];
   /** The settled query got an answer with no company in it. */
   noMatch: boolean;
+  /** Re-runs the settled query (the error state's retry line). */
+  retry(): void;
 }
 
-/** Debounced 150 ms, at least one non-space character; a failed request adds nothing. */
+/** Debounced 150 ms, at least one non-space character; a failed request is the error state, never a fake empty answer. */
 export function useCompanySearch(input: string, enabled: boolean): CompanySearchState {
-  const query = useDebounced(input.trim(), COMPANY_SEARCH_DEBOUNCE_MS);
-  const active = enabled && query.length >= 1 && query === input.trim();
+  const typed = input.trim();
+  const query = useDebounced(typed, COMPANY_SEARCH_DEBOUNCE_MS);
   const result = useQuery({
     queryKey: ["company-directory", "search", query] as const,
     queryFn: () => fetchCompanySearch(query),
@@ -58,6 +64,10 @@ export function useCompanySearch(input: string, enabled: boolean): CompanySearch
     staleTime: 60_000,
     retry: false,
   });
-  if (!active || !result.isSuccess) return { query: active ? query : "", suggestions: [], noMatch: false };
-  return { query, suggestions: result.data, noMatch: result.data.length === 0 };
+  const retry = () => { void result.refetch(); };
+  const empty = { suggestions: [] as CompanySuggestion[], noMatch: false, retry };
+  if (!enabled || typed.length === 0) return { status: "idle", query: "", ...empty };
+  if (query !== typed || result.isFetching || result.isPending) return { status: "loading", query: typed, ...empty };
+  if (result.isError) return { status: "error", query, ...empty };
+  return { status: "ready", query, suggestions: result.data, noMatch: result.data.length === 0, retry };
 }

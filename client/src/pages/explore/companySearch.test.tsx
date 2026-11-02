@@ -306,12 +306,13 @@ describe("useCompanySearch states", () => {
 
   it("idle for a blank box, loading while settling and in flight, then ready", async () => {
     let release: (answer: SearchAnswer) => void = () => {};
-    stub(() => new Promise<SearchAnswer>(resolve => { release = resolve; }));
+    const fetchMock = stub(() => new Promise<SearchAnswer>(resolve => { release = resolve; }));
     const { result, rerender } = renderHook(({ q }) => useCompanySearch(q, true), { wrapper, initialProps: { q: "" } });
     expect(result.current.status).toBe("idle");
     rerender({ q: "wip" });
     expect(result.current.status).toBe("loading");
-    await waitFor(() => expect(result.current.query).toBe("wip"));
+    await waitFor(() => expect(searchCalls(fetchMock)).toEqual(["/api/companies/search?q=wip"]));
+    expect(result.current.query).toBe("wip");
     expect(result.current.status).toBe("loading");
     await act(async () => { release({ status: 200, body: { companies: [searchRow("wipro")] } }); });
     await waitFor(() => expect(result.current.status).toBe("ready"));
