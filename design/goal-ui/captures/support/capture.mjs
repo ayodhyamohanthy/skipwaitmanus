@@ -21,6 +21,8 @@ const scenarios = [
   ["help-safety-filter", "/help", { chip: "Safety" }],
   // Review 6566372499: the block answer opened (no conversation-entry block instruction, no support-will-block claim).
   ["help-block-open", "/help", { chip: "Safety", steps: ["How do I block someone?"] }],
+  // Review 6566921570: the money answer opened (a generic Report-page entry, no conversation linkage).
+  ["help-money-open", "/help", { chip: "Safety", steps: ["Someone asked me for money."] }],
   ["safety", "/safety", {}],
   ["report-sign-in", "/report", { signedIn: false }],
   ["report-reason", "/report", {}],
@@ -97,8 +99,13 @@ try {
   }
 } finally {
   await browser.close();
-  await writeFile(new URL(`manifest-${process.argv[2] || "all"}.json`, out), JSON.stringify({
-    source: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+  // Review 6566921570: record whether the rendered client/shared tree differed from HEAD,
+  // and let a partial (CAPTURE_ONLY) run write its own manifest instead of replacing the full one.
+  const git = args => execFileSync("git", args, { encoding: "utf8" }).trim();
+  await writeFile(process.env.CAPTURE_MANIFEST || new URL(`manifest-${process.argv[2] || "all"}.json`, out), JSON.stringify({
+    source: git(["rev-parse", "HEAD"]),
+    sourceTreeDirty: git(["status", "--porcelain", "--", "client", "shared"]) !== "",
+    only: process.env.CAPTURE_ONLY || null,
     build: "VITE_GOAL_SURFACES=support (local vite dev server)",
     command: `node design/goal-ui/captures/support/capture.mjs ${process.argv[2] || ""}`.trim(),
     synthetic: true,

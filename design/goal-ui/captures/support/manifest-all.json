@@ -1,8 +1,66 @@
 {
-  "source": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+  "source": "8d433a2b210a3317575f1c18b0f2e697a9ed711f",
+  "sourceNote": "Manifest bound to 8d433a2b, the client/shared source the review-6566921570 captures were rendered from (clean tree). Each result carries its own renderedFrom, currentHeadProof and binding; earlier entries were not recaptured.",
   "build": "VITE_GOAL_SURFACES=support (local vite dev server)",
-  "command": "node design/goal-ui/captures/support/capture.mjs",
+  "command": "CAPTURE_ONLY=report-unreached,help-money-open CAPTURE_MANIFEST=<tmp> node design/goal-ui/captures/support/capture.mjs (merged into this file); earlier entries: see history",
   "synthetic": true,
+  "mockedApi": true,
+  "endToEnd": false,
+  "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+  "history": [
+    {
+      "source": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "command": "node design/goal-ui/captures/support/capture.mjs"
+    },
+    {
+      "source": "8443f52d0eb1da9c7c32ea51f60aad51e98fdf79",
+      "review": "6566372499",
+      "command": "CAPTURE_ONLY=report-details-offline,report-details-unsafe,help-block-open node design/goal-ui/captures/support/capture.mjs",
+      "files": [
+        "help-block-open-390.png",
+        "report-details-offline-390.png",
+        "report-details-unsafe-390.png",
+        "help-block-open-1280.png",
+        "report-details-offline-1280.png",
+        "report-details-unsafe-1280.png",
+        "safety-pay-open-390.png",
+        "safety-pay-open-1280.png"
+      ],
+      "note": "Only the captures whose copy changed were refreshed; the rest keep the source above. Synthetic, mocked API, not end-to-end."
+    },
+    {
+      "source": "200e3ae14fefa94057cab99a69bfea829b626278",
+      "command": "CAPTURE_ONLY=safety-pay-open node design/goal-ui/captures/support/capture.mjs",
+      "files": [
+        "safety-pay-open-390.png",
+        "safety-pay-open-1280.png"
+      ]
+    },
+    {
+      "source": "8d433a2b210a3317575f1c18b0f2e697a9ed711f",
+      "review": "6566921570",
+      "sourceTreeDirty": false,
+      "command": "CAPTURE_ONLY=report-unreached,help-money-open node design/goal-ui/captures/support/capture.mjs",
+      "files": [
+        "help-money-open-390.png",
+        "report-unreached-390.png",
+        "help-money-open-1280.png",
+        "report-unreached-1280.png"
+      ]
+    }
+  ],
+  "notCurrentHeadProof": [
+    "report-details-offline-390.png",
+    "report-details-unsafe-390.png",
+    "safety-pay-open-390.png",
+    "report-refused-390.png",
+    "report-details-offline-1280.png",
+    "report-details-unsafe-1280.png",
+    "safety-pay-open-1280.png",
+    "report-refused-1280.png",
+    "help-block-open-390.png",
+    "help-block-open-1280.png"
+  ],
   "results": [
     {
       "file": "help-390.png",
@@ -38,7 +96,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "help-no-match-390.png",
@@ -76,7 +138,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "help-safety-filter-390.png",
@@ -114,7 +180,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "safety-390.png",
@@ -150,7 +220,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "report-sign-in-390.png",
@@ -181,7 +255,11 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "report-reason-390.png",
@@ -217,7 +295,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "report-details-390.png",
@@ -257,7 +339,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "report-details-offline-390.png",
@@ -298,7 +384,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "8443f52d0eb1da9c7c32ea51f60aad51e98fdf79 (HEAD at render; working-tree state was not recorded)",
+      "currentHeadProof": false,
+      "binding": "Not current-head proof by recorded binding: the committed client at 8443f52d differs from 8d433a2b in what this view renders. Commit ff5635dc states these captures were refreshed with its fix, and git diff ff5635dc 8d433a2b does not touch what this view renders, so the pixels are expected to match head; that is an inference, not re-verified in this patch."
     },
     {
       "file": "report-details-unsafe-390.png",
@@ -339,7 +429,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "8443f52d0eb1da9c7c32ea51f60aad51e98fdf79 (HEAD at render; working-tree state was not recorded)",
+      "currentHeadProof": false,
+      "binding": "Not current-head proof by recorded binding: the committed client at 8443f52d differs from 8d433a2b in what this view renders. Commit ff5635dc states these captures were refreshed with its fix, and git diff ff5635dc 8d433a2b does not touch what this view renders, so the pixels are expected to match head; that is an inference, not re-verified in this patch."
     },
     {
       "file": "safety-pay-open-390.png",
@@ -379,7 +473,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "200e3ae14fefa94057cab99a69bfea829b626278 (HEAD at render; working-tree state was not recorded)",
+      "currentHeadProof": false,
+      "binding": "Not current-head proof by recorded binding: the committed client at 200e3ae1 has the old pay answer. Commit 8d433a2b states these captures were refreshed with its fix (the source of 8d433a2b), so the pixels are expected to match head; that is an inference, not re-verified in this patch."
     },
     {
       "file": "report-refused-390.png",
@@ -422,50 +520,11 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 400 (Bad Request)"
-      ]
-    },
-    {
-      "file": "report-unreached-390.png",
-      "route": "/report",
-      "persona": "synthetic seeker",
-      "fixture": {
-        "steps": [
-          "Continue",
-          "Submit report"
-        ],
-        "report": "abort"
-      },
-      "viewport": {
-        "width": 390,
-        "height": 844,
-        "dpr": 2
-      },
-      "horizontalOverflowPx": 0,
-      "h1": [
-        "skipwait.me",
-        "Report a problem."
       ],
-      "primaries": 1,
-      "unmatchedApi": [
-        "GET /api/account/preferences",
-        "GET /api/notifications"
-      ],
-      "consoleErrors": [
-        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: net::ERR_FAILED"
-      ]
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": false,
+      "binding": "NOT current-head proof. /report step 2 without ?request renders the no-context block note, which git diff 324294a3 8d433a2b changes (the removed 'open Report from your conversation \u2026 Also block this person' line). Not recaptured in this patch (scope of review 6566921570); do not use it as acceptance evidence."
     },
     {
       "file": "report-done-urgent-390.png",
@@ -508,7 +567,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "report-done-block-failed-390.png",
@@ -553,7 +616,11 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "report-done-block-unreached-390.png",
@@ -598,7 +665,11 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: net::ERR_FAILED"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "help-1280.png",
@@ -634,7 +705,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "help-no-match-1280.png",
@@ -672,7 +747,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "help-safety-filter-1280.png",
@@ -710,7 +789,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "safety-1280.png",
@@ -746,7 +829,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "report-sign-in-1280.png",
@@ -777,7 +864,11 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "report-reason-1280.png",
@@ -813,7 +904,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "report-details-1280.png",
@@ -853,7 +948,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "report-details-offline-1280.png",
@@ -894,7 +993,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "8443f52d0eb1da9c7c32ea51f60aad51e98fdf79 (HEAD at render; working-tree state was not recorded)",
+      "currentHeadProof": false,
+      "binding": "Not current-head proof by recorded binding: the committed client at 8443f52d differs from 8d433a2b in what this view renders. Commit ff5635dc states these captures were refreshed with its fix, and git diff ff5635dc 8d433a2b does not touch what this view renders, so the pixels are expected to match head; that is an inference, not re-verified in this patch."
     },
     {
       "file": "report-details-unsafe-1280.png",
@@ -935,7 +1038,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "8443f52d0eb1da9c7c32ea51f60aad51e98fdf79 (HEAD at render; working-tree state was not recorded)",
+      "currentHeadProof": false,
+      "binding": "Not current-head proof by recorded binding: the committed client at 8443f52d differs from 8d433a2b in what this view renders. Commit ff5635dc states these captures were refreshed with its fix, and git diff ff5635dc 8d433a2b does not touch what this view renders, so the pixels are expected to match head; that is an inference, not re-verified in this patch."
     },
     {
       "file": "safety-pay-open-1280.png",
@@ -975,7 +1082,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "200e3ae14fefa94057cab99a69bfea829b626278 (HEAD at render; working-tree state was not recorded)",
+      "currentHeadProof": false,
+      "binding": "Not current-head proof by recorded binding: the committed client at 200e3ae1 has the old pay answer. Commit 8d433a2b states these captures were refreshed with its fix (the source of 8d433a2b), so the pixels are expected to match head; that is an inference, not re-verified in this patch."
     },
     {
       "file": "report-refused-1280.png",
@@ -1018,50 +1129,11 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 400 (Bad Request)"
-      ]
-    },
-    {
-      "file": "report-unreached-1280.png",
-      "route": "/report",
-      "persona": "synthetic seeker",
-      "fixture": {
-        "steps": [
-          "Continue",
-          "Submit report"
-        ],
-        "report": "abort"
-      },
-      "viewport": {
-        "width": 1280,
-        "height": 900,
-        "dpr": 1
-      },
-      "horizontalOverflowPx": 0,
-      "h1": [
-        "skipwait.me",
-        "Report a problem."
       ],
-      "primaries": 1,
-      "unmatchedApi": [
-        "GET /api/account/preferences",
-        "GET /api/notifications"
-      ],
-      "consoleErrors": [
-        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-        "Failed to load resource: net::ERR_FAILED"
-      ]
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": false,
+      "binding": "NOT current-head proof. /report step 2 without ?request renders the no-context block note, which git diff 324294a3 8d433a2b changes (the removed 'open Report from your conversation \u2026 Also block this person' line). Not recaptured in this patch (scope of review 6566921570); do not use it as acceptance evidence."
     },
     {
       "file": "report-done-urgent-1280.png",
@@ -1104,7 +1176,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "report-done-block-failed-1280.png",
@@ -1149,7 +1225,11 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "report-done-block-unreached-1280.png",
@@ -1194,7 +1274,11 @@
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: net::ERR_FAILED"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "324294a36cd90b8cef3ede2b7d2abc4a0d560895",
+      "currentHeadProof": true,
+      "binding": "Re-bound to 8d433a2b without recapture: git diff 324294a3 8d433a2b changes only GoalReport's no-context block note (rendered on /report step 2 without ?request), the Safety pay answer (collapsed here), two Help Safety answers (collapsed here) and code comments, none of which this view renders."
     },
     {
       "file": "help-block-open-390.png",
@@ -1235,7 +1319,11 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "8443f52d0eb1da9c7c32ea51f60aad51e98fdf79 (HEAD at render; working-tree state was not recorded)",
+      "currentHeadProof": false,
+      "binding": "Not current-head proof by recorded binding: the committed client at 8443f52d differs from 8d433a2b in what this view renders. Commit ff5635dc states these captures were refreshed with its fix, and git diff ff5635dc 8d433a2b does not touch what this view renders, so the pixels are expected to match head; that is an inference, not re-verified in this patch."
     },
     {
       "file": "help-block-open-1280.png",
@@ -1276,31 +1364,199 @@
         "Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)",
         "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-      ]
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "8443f52d0eb1da9c7c32ea51f60aad51e98fdf79 (HEAD at render; working-tree state was not recorded)",
+      "currentHeadProof": false,
+      "binding": "Not current-head proof by recorded binding: the committed client at 8443f52d differs from 8d433a2b in what this view renders. Commit ff5635dc states these captures were refreshed with its fix, and git diff ff5635dc 8d433a2b does not touch what this view renders, so the pixels are expected to match head; that is an inference, not re-verified in this patch."
+    },
+    {
+      "file": "report-unreached-390.png",
+      "route": "/report",
+      "persona": "synthetic seeker",
+      "fixture": {
+        "steps": [
+          "Continue",
+          "Submit report"
+        ],
+        "report": "abort"
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "skipwait.me",
+        "Report a problem."
+      ],
+      "primaries": 1,
+      "unmatchedApi": [
+        "GET /api/account/preferences",
+        "GET /api/notifications"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: net::ERR_FAILED"
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "8d433a2b210a3317575f1c18b0f2e697a9ed711f",
+      "sourceTreeDirty": false,
+      "currentHeadProof": true,
+      "binding": "Rendered in this patch (review 6566921570) from a clean tree at 8d433a2b; the commit adding it changes no client/ or shared/ file."
+    },
+    {
+      "file": "report-unreached-1280.png",
+      "route": "/report",
+      "persona": "synthetic seeker",
+      "fixture": {
+        "steps": [
+          "Continue",
+          "Submit report"
+        ],
+        "report": "abort"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "skipwait.me",
+        "Report a problem."
+      ],
+      "primaries": 1,
+      "unmatchedApi": [
+        "GET /api/account/preferences",
+        "GET /api/notifications"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: net::ERR_FAILED"
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "8d433a2b210a3317575f1c18b0f2e697a9ed711f",
+      "sourceTreeDirty": false,
+      "currentHeadProof": true,
+      "binding": "Rendered in this patch (review 6566921570) from a clean tree at 8d433a2b; the commit adding it changes no client/ or shared/ file."
+    },
+    {
+      "file": "help-money-open-390.png",
+      "route": "/help",
+      "persona": "synthetic seeker",
+      "fixture": {
+        "chip": "Safety",
+        "steps": [
+          "Someone asked me for money."
+        ]
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Help and safety",
+        "Get help."
+      ],
+      "primaries": 1,
+      "unmatchedApi": [
+        "GET /api/account/preferences",
+        "GET /api/notifications"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "8d433a2b210a3317575f1c18b0f2e697a9ed711f",
+      "sourceTreeDirty": false,
+      "currentHeadProof": true,
+      "binding": "Rendered in this patch (review 6566921570) from a clean tree at 8d433a2b; the commit adding it changes no client/ or shared/ file."
+    },
+    {
+      "file": "help-money-open-1280.png",
+      "route": "/help",
+      "persona": "synthetic seeker",
+      "fixture": {
+        "chip": "Safety",
+        "steps": [
+          "Someone asked me for money."
+        ]
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Help and safety",
+        "Get help."
+      ],
+      "primaries": 1,
+      "unmatchedApi": [
+        "GET /api/account/preferences",
+        "GET /api/notifications"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "evidence": "synthetic fixture persona (Synthetic Seeker, id 41) with every /api call mocked in the browser by capture.mjs (page.route); local vite dev server, VITE_GOAL_SURFACES=support; not end-to-end, no backend, no real account",
+      "renderedFrom": "8d433a2b210a3317575f1c18b0f2e697a9ed711f",
+      "sourceTreeDirty": false,
+      "currentHeadProof": true,
+      "binding": "Rendered in this patch (review 6566921570) from a clean tree at 8d433a2b; the commit adding it changes no client/ or shared/ file."
     }
-  ],
-  "refreshed": {
-    "source": "8443f52d0eb1da9c7c32ea51f60aad51e98fdf79",
-    "review": "6566372499",
-    "command": "CAPTURE_ONLY=report-details-offline,report-details-unsafe,help-block-open node design/goal-ui/captures/support/capture.mjs",
-    "files": [
-      "help-block-open-390.png",
-      "report-details-offline-390.png",
-      "report-details-unsafe-390.png",
-      "help-block-open-1280.png",
-      "report-details-offline-1280.png",
-      "report-details-unsafe-1280.png",
-      "safety-pay-open-390.png",
-      "safety-pay-open-1280.png"
-    ],
-    "note": "Only the captures whose copy changed were refreshed; the rest keep the source above. Synthetic, mocked API, not end-to-end.",
-    "followUp": {
-      "source": "200e3ae14fefa94057cab99a69bfea829b626278",
-      "command": "CAPTURE_ONLY=safety-pay-open node design/goal-ui/captures/support/capture.mjs",
-      "files": [
-        "safety-pay-open-390.png",
-        "safety-pay-open-1280.png"
-      ]
-    }
-  }
+  ]
 }
