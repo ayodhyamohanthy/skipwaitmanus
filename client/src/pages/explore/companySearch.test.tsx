@@ -301,6 +301,73 @@ describe("switch on: typeahead on /explore", () => {
   });
 });
 
+describe("switch on: search and directory filter stay distinct and truthful", () => {
+  beforeEach(() => { flag.on = true; });
+  const EMPTY_CLAIM = /No matching companies yet|If your company is missing/;
+  const settle = () => act(async () => { await new Promise(resolve => setTimeout(resolve, COMPANY_SEARCH_DEBOUNCE_MS + 150)); });
+
+  it("a function or industry query with matching directory rows is not 'unlisted': no paste-a-link path and no no-match event", async () => {
+    stub(() => ({ status: 200, body: { companies: [] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "Engineering" } });
+    await settle();
+    await settle();
+    expect(screen.getByTestId("goal-directory-summary").textContent).not.toMatch(/^0 /);
+    expect(screen.queryByRole("link", { name: /job link to request a referral/ })).toBeNull();
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+    expect(document.body.textContent ?? "").not.toMatch(EMPTY_CLAIM);
+    expect(events).toEqual([]);
+    expectNoAvailabilityText();
+  });
+
+  it("an alias suggestion (tata -> TCS) with an empty directory filter never shows the empty-directory claim", async () => {
+    stub(() => ({ status: 200, body: { companies: [searchRow("tcs")] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "tata" } });
+    await screen.findByRole("option", { name: "TCS" });
+    expect(document.body.textContent ?? "").not.toMatch(EMPTY_CLAIM);
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+    expect(events).toEqual(["journey_company_suggested"]);
+    expectNoQueryInEvents("tata");
+  });
+
+  it("while the search is in flight the directory makes no empty claim", async () => {
+    stub(() => new Promise<SearchAnswer>(() => {}));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "zzqx" } });
+    await screen.findByTestId("company-search-loading");
+    await settle();
+    expect(screen.getByTestId("company-search-loading")).toBeTruthy();
+    expect(document.body.textContent ?? "").not.toMatch(EMPTY_CLAIM);
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+    expect(events).toEqual([]);
+  });
+
+  it("after a failed search the directory makes no empty claim; only the retry line speaks", async () => {
+    stub(() => ({ status: 500, body: {} }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "zzqx" } });
+    await screen.findByRole("alert");
+    expect(document.body.textContent ?? "").not.toMatch(EMPTY_CLAIM);
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+    expect(events).toEqual([]);
+  });
+
+  it("a real no-match (server empty and directory empty) still offers the paste-a-link path with the directory empty state", async () => {
+    stub(() => ({ status: 200, body: { companies: [] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "zzqx" } });
+    await screen.findByTestId("company-search-no-match");
+    expect(screen.getByText("No matching companies yet")).toBeTruthy();
+    expect(events).toEqual(["journey_company_no_match"]);
+  });
+});
+
 describe("useCompanySearch states", () => {
   const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client()}>{children}</QueryClientProvider>;
 
