@@ -169,17 +169,38 @@ async function prepare() {
   let comparison = null;
   const reference = referenceDatabase(db);
   await resetDatabase(reference, { drop: true });
-  referencePush = pushSchema(reference, join(root, "drizzle", "schema.ts"));
-  if (referencePush.ok) comparison = compareSchemas(await snapshot(db, db.name), await snapshot(reference, reference.name));
-  else console.log(`::warning title=Reference schema push failed::${referencePush.reason}. Drift check skipped (GATE-migration-apply §4 ruling 5).`);
 
-  const verdict = gateVerdict({ baseSha, basePush, deployRuns, referencePush, comparison });
-  for (const line of verdict.summaryLines) {
-    log(line.replace(/^- /, ""));
-    summary(line);
+  // The reference database exists from here on: always attempt its cleanup, never touch the primary,
+  // and never let a failed cleanup replace the gate's own failure (GATE-migration-cleanup, D-283).
+  let verdict = null;
+  let gateError = null;
+  try {
+    referencePush = pushSchema(reference, join(root, "drizzle", "schema.ts"));
+    if (referencePush.ok) comparison = compareSchemas(await snapshot(db, db.name), await snapshot(reference, reference.name));
+    else console.log(`::warning title=Reference schema push failed::${referencePush.reason}. Drift check skipped (GATE-migration-apply §4 ruling 5).`);
+
+    verdict = gateVerdict({ baseSha, basePush, deployRuns, referencePush, comparison });
+    for (const line of verdict.summaryLines) {
+      log(line.replace(/^- /, ""));
+      summary(line);
+    }
+  } catch (error) {
+    gateError = error;
   }
-  await dropDatabase(reference);
-  if (verdict.status === "fail") throw new Error(verdict.summaryLines.find(line => line.includes("FAILED")) ?? "the migration gate failed");
+
+  let cleanupError = null;
+  try {
+    await dropDatabase(reference);
+  } catch (error) {
+    cleanupError = error;
+  }
+
+  const failure = gateError ?? (verdict?.status === "fail" ? new Error(verdict.summaryLines.find(line => line.includes("FAILED")) ?? "the migration gate failed") : null);
+  if (failure) {
+    if (cleanupError) console.error(`[e2e-server] cleanup of ${reference.name} also failed: ${cleanupError?.message ?? cleanupError}`);
+    throw failure;
+  }
+  if (cleanupError) throw cleanupError;
 }
 
 function serverEnv() {
