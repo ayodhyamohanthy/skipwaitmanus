@@ -305,6 +305,11 @@ input, textarea { caret-color: var(--primary); }
 }
 @media (prefers-reduced-motion: reduce) { :root { --g-dur-hover: 0ms; --g-dur-menu: 0ms; --g-dur-drawer-in: 0ms; --g-dur-drawer-out: 0ms; } }
 
+/* Phone goal shell: focus and scrollIntoView stop above the sticky bottom bar (issue 642). */
+@media (width < 40.0625rem) {
+  html:has([data-goal-bottom-bar]) { scroll-padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px)); }
+}
+
 /* Scope: neutralise the unlayered kit/global rules (index.css:167-168,173,182,186; kit.css:9) inside goal UI only.
    Applied by GoalShell's root and by every portalled goal surface (drawer, sheet, popover content) and the dev gallery. */
 .g-scope { color-scheme: light; font-family: var(--g-font-sans); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }

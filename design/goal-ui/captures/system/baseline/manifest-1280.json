@@ -1,0 +1,1018 @@
+{
+  "phase": "baseline",
+  "source": "45892c43f821559accedf5bbc101b73474aac5c0",
+  "command": "node design/goal-ui/captures/system/capture.mjs baseline 1280",
+  "synthetic": true,
+  "results": [
+    {
+      "file": "android-1280.png",
+      "route": "/app-states",
+      "fixture": {},
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "gallery-install-iphone--1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "chip": "Install (iPhone)"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "gallery-push-permission-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "chip": "Push permission"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "gallery-offline-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "chip": "Offline"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": [],
+      "renderedSource": "45892c43f821559accedf5bbc101b73474aac5c0",
+      "sourceNote": "Baseline GoalAppStates restored temporarily in local server; fixed source restored after capture."
+    },
+    {
+      "file": "gallery-slow-connection-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "chip": "Slow connection"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "gallery-not-found-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "chip": "Not found"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": [],
+      "renderedSource": "45892c43f821559accedf5bbc101b73474aac5c0",
+      "sourceNote": "Baseline GoalAppStates restored temporarily in local server; fixed source restored after capture."
+    },
+    {
+      "file": "gallery-something-went-wrong-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "chip": "Something went wrong"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "gallery-payment-failed-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "chip": "Payment failed"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "gallery-loading-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "chip": "Loading"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "parent": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "parent": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "parent": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "parent": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "parent": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "parent": "rgba(0, 0, 0, 0)"
+          }
+        ]
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "android-dismiss-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "action": "Not now"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "android-reopen-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "action": "Not now",
+        "reopen": "Install (Android)"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "iphone-dismiss-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "chip": "Install (iPhone)",
+        "action": "Got it"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": [
+        "missing action Got it"
+      ]
+    },
+    {
+      "file": "iphone-reopen-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "chip": "Install (iPhone)",
+        "action": "Got it",
+        "reopen": "Install (iPhone)"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": [
+        "missing action Got it"
+      ]
+    },
+    {
+      "file": "install-unavailable-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "action": "Install app"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "install-accepted-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "install": "accepted",
+        "action": "Install app"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "install-dismissed-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "install": "dismissed",
+        "action": "Install app"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "install-error-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "install": "error",
+        "action": "Install app"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "push-granted-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "permission": "granted",
+        "chip": "Push permission",
+        "action": "Allow"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "push-denied-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "permission": "denied",
+        "chip": "Push permission",
+        "action": "Allow"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "push-default-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "permission": "default",
+        "chip": "Push permission",
+        "action": "Allow"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "push-error-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "permission": "error",
+        "chip": "Push permission",
+        "action": "Allow"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "push-absent-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "permission": "absent",
+        "chip": "Push permission",
+        "action": "Allow"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "push-later-1280.png",
+      "route": "/app-states",
+      "fixture": {
+        "chip": "Push permission",
+        "action": "Maybe later"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": [
+        "missing action Maybe later"
+      ]
+    },
+    {
+      "file": "offline-1280.png",
+      "route": "/offline",
+      "fixture": {},
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "offline-draft-1280.png",
+      "route": "/offline",
+      "fixture": {
+        "draft": true
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "not-found-1280.png",
+      "route": "/not-a-real-page",
+      "fixture": {},
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "emails-work-email-code-1280.png",
+      "route": "/emails",
+      "fixture": {
+        "template": "Work-email code"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "emails-password-reset-1280.png",
+      "route": "/emails",
+      "fixture": {
+        "template": "Password reset"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "emails-welcome-1280.png",
+      "route": "/emails",
+      "fixture": {
+        "template": "Welcome"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "emails-new-message-1280.png",
+      "route": "/emails",
+      "fixture": {
+        "template": "New message"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "emails-report-outcome-1280.png",
+      "route": "/emails",
+      "fixture": {
+        "template": "Report outcome"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "emails-review-ready-1280.png",
+      "route": "/emails",
+      "fixture": {
+        "template": "Review ready"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "width": 1280,
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "loading": []
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "warnings": []
+    }
+  ],
+  "captureScript": "design/goal-ui/captures/system/capture.mjs",
+  "captureScriptSha256": "671b80de2fb801df1e863a5036429707ea9a8aad3717b5549d1c2f7214a71e82",
+  "recipeHistory": "Original capture recipe at c742a192; additive namespacing/filter/base options fix filename collisions. No UI source change. Four gallery collision images recaptured using corrected script."
+}

@@ -2,6 +2,8 @@
 
 > Read [`docs/BRIEF.md`](../BRIEF.md), [`docs/SKIPPY.md`](../SKIPPY.md) and [`SKIPPY-fix.md`](SKIPPY-fix.md) first. Written by Claude Code as CEO (D-085, D-201) on Oct 23 2026 against `main` `9bd32abf`. These are the CEO's architecture rulings for each step. Rows marked `todo` are built exactly from their section. Rows marked `architect` get their file-level packet written first (any agent, D-109), and that packet may not change a ruling here; a builder who finds a ruling contradicts the code stops and reports with evidence (D-032). Every row waits for SKIPPY-fix. The picker hands out one task at a time; do only the task it prints.
 
+> **Pricing basis changed (D-219, D-221, Oct 26):** legacy credit packs are paused and the D-132 credit model is superseded. `SKIPPY-3` is re-scoped (status `architect`) to per-level extra referrals through the banded checkout once it exists; `SKIPPY-6` states limits and shortfalls in D-219 terms. Where this packet says packs, credits or `/plans#packs`, D-219 wins.
+
 ## Rulings that bind every step
 1. **One front door, the same functions (D-137).** Skippy and agents call the same server functions as the normal pages: `db.createCompanyReferralRequest` for an ask, the quote route's math for a cost, `planCatalogResponse` for prices, and `startKitPackCheckout` for a pack. A second copy of any of them is a defect, not a shortcut (SKIPPY-fix S-1 was one).
 2. **Flags.** Each step has its own off-by-default flag plus an account allow-list (the S-4 helper, `server/skippieAllowList.ts`). Production stays off until the owner's word after the `docs/SKIPPY.md` pre-launch checklist. Real money only on the Chargebee test site until the owner's one-word yes (D-146, D-065).

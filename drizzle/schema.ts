@@ -186,6 +186,46 @@ export const companyDomains = mysqlTable("companyDomains", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("company_domains_domain_unique").on(table.domain), index("company_domains_company_idx").on(table.companyId)]);
 
+// Job catalog (0120, D-174-job-catalog packet section 5.5). Sources are
+// registered by an admin with evidence and verified by a human; the sync job
+// fills catalogJobs from verified boards. Launch-gated: see JOB_CATALOG_ENABLED
+// in shared/jobCatalog.ts.
+export const companyJobSources = mysqlTable("companyJobSources", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 20 }).notNull(), // jobCatalogProviderSchema; "greenhouse" in this row
+  boardToken: varchar("boardToken", { length: 120 }).notNull(),
+  evidenceUrl: varchar("evidenceUrl", { length: 2048 }).notNull(),
+  verifiedAt: timestamp("verifiedAt"),
+  lastFetchedAt: timestamp("lastFetchedAt"),
+  lastCount: int("lastCount"),
+  status: mysqlEnum("status", ["verified", "unverified", "failing"]).default("unverified").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, table => [uniqueIndex("company_job_sources_provider_token_unique").on(table.provider, table.boardToken), index("company_job_sources_company_idx").on(table.companyId)]);
+
+export const catalogJobs = mysqlTable("catalogJobs", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  sourceId: int("sourceId").notNull().references(() => companyJobSources.id, { onDelete: "cascade" }),
+  externalId: varchar("externalId", { length: 190 }).notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  rawLocation: varchar("rawLocation", { length: 300 }),
+  locations: text("locations").notNull(), // JSON array of normalized location labels
+  workMode: mysqlEnum("workMode", ["onsite", "hybrid", "remote", "unknown"]).default("unknown").notNull(),
+  department: varchar("department", { length: 200 }),
+  jobFunction: varchar("jobFunction", { length: 60 }), // classifyJobFunction; null when unknown
+  level: int("level").notNull(), // 1-10 per packet section 4.3 (assignJobLevel)
+  applyUrl: varchar("applyUrl", { length: 2048 }).notNull(),
+  snippet: varchar("snippet", { length: 400 }).notNull().default(""),
+  publishedAt: timestamp("publishedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  firstSeenAt: timestamp("firstSeenAt").defaultNow().notNull(),
+  lastSeenAt: timestamp("lastSeenAt").defaultNow().notNull(),
+  closedAt: timestamp("closedAt"),
+}, table => [uniqueIndex("catalog_jobs_source_external_unique").on(table.sourceId, table.externalId), index("catalog_jobs_company_closed_idx").on(table.companyId, table.closedAt), index("catalog_jobs_company_level_idx").on(table.companyId, table.level)]);
+
 // Scheduled job runs (0078). Contract: shared/scheduledJobs.ts. One row per job
 // per window: the unique (jobName, windowKey) key is the single-flight lock and
 // the row is the idempotent run record. The app writes every timestamp from

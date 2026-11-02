@@ -7,10 +7,14 @@ import { AccountMenu } from "@/components/AccountMenu";
 import { Brand } from "@/components/Brand";
 import { startLogin } from "@/const";
 import { readApiJson } from "@/lib/apiResponse";
+import { lazy, Suspense } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalShareHub = lazy(() => import("./goal/seeker-small/GoalShareHub"));
 
 function open(url: string) { window.open(url, "_blank", "noopener,noreferrer"); }
 
 export default function ShareHub() {
+  if (goalSurfaceOn("share")) return <Suspense fallback={null}><GoalShareHub /></Suspense>;
   const [, go] = useLocation();
   const { isSignedIn } = useAuth();
   const [inviteCode, setInviteCode] = useState(""); const [linkLocked, setLinkLocked] = useState(false); const [email, setEmail] = useState(""); const [loading, setLoading] = useState(false);

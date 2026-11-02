@@ -116,7 +116,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
     >
       {/* Desktop rail */}
       <nav aria-label="Primary" className="max-gdesk:hidden gdesk:sticky gdesk:top-0 gdesk:h-screen gdesk:self-start gdesk:row-span-2 gdesk:col-start-1 gdesk:row-start-1 flex flex-col items-center border-r border-g-hairline bg-g-surface-sunken px-2 pb-5">
-        <span className="flex h-14 items-center"><a href="/" className="text-[16px]/6 font-bold tracking-[-0.02em] text-g-ink">skipwait.me</a></span>
+        <span className="flex h-14 items-center"><a href="/" className="text-[14px]/5 font-bold tracking-[-0.02em] text-g-ink">skipwait.me</a></span>
         <div className="mt-2 flex w-full flex-col items-center gap-1">
           {items.map(item => (
             <a
@@ -171,7 +171,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
 
       {/* Phone bottom bar */}
       {!hideBottomBar ? (
-        <nav aria-label="Primary" className="gdesk:hidden max-gdesk:sticky max-gdesk:bottom-0 max-gdesk:z-20 max-gdesk:col-start-1 max-gdesk:row-start-2 max-gdesk:row-end-[-1] max-gdesk:self-end flex h-14 items-stretch border-t border-g-hairline bg-g-surface">
+        <nav data-goal-bottom-bar="" aria-label="Primary" className="gdesk:hidden max-gdesk:sticky max-gdesk:bottom-0 max-gdesk:z-20 max-gdesk:col-start-1 max-gdesk:row-start-2 max-gdesk:row-end-[-1] max-gdesk:self-end flex h-14 items-stretch border-t border-g-hairline bg-g-surface">
           {items.map(item => (
             <a
               key={item.id}

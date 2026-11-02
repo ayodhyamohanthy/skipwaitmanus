@@ -1,3 +1,5 @@
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+import GoalAssistants from "./goal/assistants/GoalAssistants";
 import { Bot } from "lucide-react";
 import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useCallback, useEffect, useState } from "react";
@@ -13,7 +15,7 @@ const HEADING = { eyebrow: "Settings", title: "Connected assistants", text: "Use
 const TABS = [{ id: "assistants", label: "Assistants" }, { id: "tokens", label: "API tokens" }, { id: "activity", label: "Activity" }] as const;
 type Tab = (typeof TABS)[number]["id"];
 
-export default function Assistants() {
+function LegacyAssistants() {
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [tab, setTab] = useState<Tab>("assistants");
@@ -160,4 +162,8 @@ export default function Assistants() {
       ) : null}
     </main>
   );
+}
+
+export default function Assistants() {
+  return goalSurfaceOn("assistants") ? <GoalAssistants /> : <LegacyAssistants />;
 }

@@ -58,6 +58,8 @@ export type AskDrawerProps = {
   sendBusyLabel: string;
   sending: boolean;
   sendBlocked?: string;
+  sendGuidance?: string | null;
+  creditRecovery?: boolean;
   onSend(): void;
   onSaveDraft: (() => void) | null;
   draftState: "idle" | "saving" | "saved";
@@ -86,6 +88,8 @@ export function AskDrawer(props: AskDrawerProps) {
       <p data-testid="goal-ask-cost" className="text-g-label text-g-ink">{props.cost.line}</p>
       <p className="text-pretty text-g-meta text-g-ink-2">{props.cost.detail}</p>
       <p data-testid="goal-money-sentence" className="text-pretty text-g-meta text-g-ink-3">{MONEY_SENTENCE}</p>
+      {props.sendGuidance ? <p data-testid="ask-send-guidance" role="status" className="mt-2 text-pretty text-g-meta text-g-ink">{props.sendGuidance}</p> : null}
+      {props.creditRecovery ? <Link href="/plans" className="inline-flex min-h-11 items-center text-g-meta text-g-ink underline underline-offset-4">View referral options</Link> : null}
       {props.error ? <div role="alert" className="mt-1 text-pretty text-g-meta text-g-ink">{props.error}</div> : null}
       <div className="mt-4 flex items-center justify-end gap-2 max-gdesk:grid max-gdesk:grid-cols-[1fr_2fr]">
         {props.onSaveDraft ? (

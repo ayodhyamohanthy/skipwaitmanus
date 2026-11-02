@@ -145,6 +145,8 @@ Setup: in a fresh worktree run `pnpm install` before the first `pnpm check` (mis
 6. Step 4 changes a live surface, so this row needs the independent review Tier 1 requires (`docs/DELEGATION.md` §6) on a draft pull request.
 7. Commit: `Shell meta and the one credit balance: no pill on a referrer route, a failed load says so (D-055, D-134)`.
 
+**D-217 (2026-10-27, row unparked).** This row sat `in-review` with no review lock, so the picker could never hand it out and no session could act on it: PR #568 is green at `601a2368` but 481 commits behind. It returns to `todo` with this work list: merge current `main`, keep the matcher for `/referrer-home`, `/referrer-setup`, `/verify` and `/post-opportunity` plus its six-route `appShell.test.tsx` test (with the positive control on a seeker route), then land through the Tier 1 path (D-151; live surface, independent review). `D-048-p3-referrer-home` waits on this row and must not edit `AppShell.tsx` itself.
+
 ### `D-048-F-static-frame`
 1. `GoalStaticFrame.tsx`: the goal frame with no `useAuth`, no `useQuery` and no router state — a header, a footer and children.
 2. `goalStaticFrame.test.tsx`: rendering it with `fetch` spied proves no request; rendering a flag-on surface inside it keeps the same text.

@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/react";
+import { scrubTelemetryUrl } from "@shared/telemetryScrub";
 
 declare global {
   interface Window {
@@ -9,21 +10,10 @@ declare global {
 let initialized = false;
 
 // Single-use links carry secrets in the path (referral review tokens, share
-// cards, fast-track codes). These must never leave the device in an event.
+// cards, fast-track codes, vanity aliases, storage keys), in browser and API
+// URLs alike. These must never leave the device in an event (FND-4).
 export function scrubSentryUrl(value: string, origin: string): string {
-  try {
-    const url = new URL(value, origin);
-    url.pathname = url.pathname
-      .replace(/^\/email-review\/[^/]+/, "/email-review/[redacted]")
-      .replace(/^\/share-card\/[^/]+/, "/share-card/[redacted]")
-      .replace(/^\/fast\/[^/]+/, "/fast/[redacted]")
-      .replace(/^\/refer\/[^/]+\/[^/]+/, "/refer/[redacted]");
-    url.search = "";
-    url.hash = "";
-    return url.pathname;
-  } catch {
-    return "[redacted]";
-  }
+  return scrubTelemetryUrl(value, origin);
 }
 
 export function initClientSentry(): boolean {
