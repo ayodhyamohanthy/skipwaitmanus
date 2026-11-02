@@ -2,10 +2,16 @@
 // These answers are goal-owned copy. They started from the kit's Help.tsx and
 // Safety.tsx answers (goalPagesBoundary keeps kit page files out of the goal
 // pages), but they are no longer word-for-word kit copies: reviews 6563736305,
-// 6565471121 and 6566372499 rewrote them. No kit-drift check exists; nothing
-// keeps these answers in step with the kit, and a copy change on either side is
-// a deliberate edit, not an automatic port.
-// A later kit port must not restore the removed operational promises (staff or
+// 6565471121 and 6566372499 rewrote them, so they are deliberate goal-owned
+// copy, not an automatic mirror of the kit.
+// No automated or implemented kit-drift check exists in code: no test or CI job
+// keeps these answers in step with the kit. The packet's
+// manual kit-drift release check still applies at release
+// (docs/plans/D-048-phase-3-split.md §6: `git log <surface landing
+// SHA>..origin/main -- <kit page + its exclusive files>` must be empty or the
+// change is ported first), and any kit change it finds is ported deliberately.
+// That manual check, or any kit port, must not restore the removed
+// operational promises (staff or
 // "a person", manual review, review timing, outcome notification, stepping in),
 // the instruction to open Report from the conversation and choose "Also block
 // this person" (no product link opens Report with that toggle, review
