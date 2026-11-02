@@ -49,7 +49,11 @@ export default function Explore() {
   // D-174-seeker-journey-build.search: off until the release row; off sends nothing.
   const typeahead = COMPANY_TYPEAHEAD_ENABLED;
   const companySearch = useCompanySearch(query, typeahead);
-  const noMatch = typeahead && companySearch.noMatch;
+  // The server suggests by company name; the directory filter also matches function and industry.
+  // "Unlisted" needs both: an answered search with no company and no directory row for the query.
+  const noMatch = typeahead && Boolean(companies) && companySearch.status === "ready" && companySearch.noMatch && shown.length === 0;
+  // No empty-directory claim while the search is in flight, failed, or suggested a company the filter misses.
+  const searchSpeaks = typeahead && (companySearch.status === "loading" || companySearch.status === "error" || (companySearch.status === "ready" && companySearch.suggestions.length > 0));
 
   useEffect(() => { applySeo({ title: "Find a referral", description: exploreDescription(companies ?? []) ?? publicRoute("/explore")?.description, path: "/explore" }); }, [companies]);
 
@@ -98,6 +102,8 @@ export default function Explore() {
     directoryBody = <GoalErrorState className="px-0" title="We couldn’t load companies." body="Check your connection and try again." retry={{ label: "Try again", onClick: () => { void directory.refetch(); } }} />;
   } else if (!companies) {
     directoryBody = <div className="mt-6"><GoalSkeletonRows density="company" count={6} className="px-0" /></div>;
+  } else if (shown.length === 0 && searchSpeaks) {
+    directoryBody = null;
   } else if (shown.length === 0) {
     directoryBody = (
       <div>
@@ -176,7 +182,7 @@ export default function Explore() {
         <p className="mt-2 text-pretty text-g-body text-g-ink-2">Ask a verified employee. Your name and resume stay private until they accept.</p>
         <div className="mt-6 max-gdesk:mt-5">
           {typeahead ? (
-            <CompanyTypeahead value={query} onChange={setQuery} search={companySearch} onOpen={slug => navigate(`/explore/${slug}`)} />
+            <CompanyTypeahead value={query} onChange={setQuery} search={companySearch} unlisted={noMatch} onOpen={slug => navigate(`/explore/${slug}`)} />
           ) : (
             <GoalSearchInput label="Search companies" placeholder="Company, function or industry…" value={query} onChange={setQuery} />
           )}
@@ -201,12 +207,14 @@ export default function Explore() {
  * the error state's retry line (the client filter below keeps working). Events
  * carry no query text, and no state reads availability (D-176).
  */
-function CompanyTypeahead({ value, onChange, search, onOpen }: { value: string; onChange(value: string): void; search: CompanySearchState; onOpen(slug: string): void }) {
+function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value: string; onChange(value: string): void; search: CompanySearchState; unlisted: boolean; onOpen(slug: string): void }) {
   const listId = useId();
   const [active, setActive] = useState(-1);
   const [dismissed, setDismissed] = useState(false);
   const tracked = useRef<string | null>(null);
-  const { status, suggestions, noMatch, query } = search;
+  const { status, suggestions, query } = search;
+  // Only Explore knows whether the directory also has no row for the query.
+  const noMatch = unlisted;
   const open = !dismissed && suggestions.length > 0;
 
   useEffect(() => { setActive(-1); }, [query, suggestions]);
