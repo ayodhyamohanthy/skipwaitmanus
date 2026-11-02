@@ -5002,7 +5002,7 @@
         "client/src/pages/support.promises.test.tsx",
         "artifacts/support-promises/**"
       ],
-      "note": "D-277: Half A of the #811 packet proposal (comment 6567956835) only. Client copy only: remove the L27, L28, L40, L64, L68 promises (or reword L64 to what exists), update the L29 date; keep L20, L31, L39 and L41 byte-for-byte (L41 legal/business hours are owner-only). Self-serve cards L14-17 out of scope: stop and report if one is false. No server, db.ts or shared file; SUPPORT-B1/B2 and the BYOR edge are not registered. Residual shared/landingContent.ts:63 belongs to PRICING-banded-oct25. Builder: a non-Claude development session through the picker (D-225)."
+      "note": "D-277: Half A of the #811 packet proposal (comment 6567956835) only. Client copy only: apply the packet's byte-exact R1-R5 (L27, L28, L40, L64, L68); keep P1-P9 (L4, L20, L39, L41, PolicyPageShell.tsx:25) and L31 byte-for-byte; L17 and L29 are architect choices, not adopted (L41 legal/business hours are owner-only). Self-serve cards L14-17 out of scope: stop and report if one is false. No server, db.ts or shared file; SUPPORT-B1/B2 and the BYOR edge are not registered. Residuals shared/publicRoutes.ts:48 (D-176-public-claims) and shared/landingContent.ts:63 (PRICING-banded-oct25) are not fixed. Builder: a non-Claude development session through the picker (D-225)."
     }
   ]
 }
