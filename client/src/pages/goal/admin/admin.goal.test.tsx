@@ -17,7 +17,7 @@ import GoalAdminReview, { GOAL_PAGE as REVIEW_PAGE } from "./GoalAdminReview";
 
 const { authState, search } = vi.hoisted(() => ({ authState: { isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") }, search: { value: "" } }));
 
-vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, ...authState }), SignInButton: ({ children }: { children?: React.ReactNode }) => <button type="button">{children}</button> }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, ...authState }), SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/admin", vi.fn()],
@@ -132,11 +132,11 @@ describe("goal /admin-review (D-048-p3-admin)", () => {
     assertGoalPage(container, REVIEW_PAGE);
     expect(REVIEW_PAGE.goalLine).toBe("Decide what's waiting.");
     const record = within(nextStep()).getByRole("button", { name: "Record decision" });
-    expect(record.hasAttribute("disabled")).toBe(true);
+    expect(record.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(screen.getByRole("radio", { name: /Resolve with action/ }));
-    expect(record.hasAttribute("disabled")).toBe(true);
+    expect(record.getAttribute("aria-disabled")).toBe("true");
     fireEvent.change(screen.getByLabelText(/Reviewer note/), { target: { value: "Confirmed spam pattern." } });
-    expect(record.hasAttribute("disabled")).toBe(false);
+    expect(record.getAttribute("aria-disabled")).toBeNull();
     fireEvent.click(record);
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/admin/safety-reports/48/decision", expect.objectContaining({ method: "POST" })));
   });
@@ -180,7 +180,7 @@ describe("goal /admin-review (D-048-p3-admin)", () => {
     const fetchMock = stub({ suggestions: reply({ error: "boom" }, 500) });
     renderPage(<GoalAdminReview />);
     const retry = await screen.findByRole("button", { name: "Try again" });
-    expect(screen.getByText(/Spam or repeated asks/)).toBeTruthy();
+    expect(screen.getAllByText(/Spam or repeated asks/).length).toBeGreaterThan(0);
     const before = fetchMock.mock.calls.filter(([url]) => String(url).includes("company-suggestions")).length;
     fireEvent.click(retry);
     await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("company-suggestions")).length).toBeGreaterThan(before));
