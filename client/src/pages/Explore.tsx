@@ -265,7 +265,7 @@ function CompanyTypeahead({ value, onChange, search, onOpen }: { value: string; 
         <p data-testid="company-search-loading" role="status" aria-busy="true" className="mt-3 text-g-meta text-g-ink-3">Searching companies…</p>
       ) : null}
       {status === "error" ? (
-        <GoalErrorState className="px-0 py-3" title="We couldn’t search companies." body="Check your connection and try again." retry={{ label: "Try again", onClick: search.retry }} />
+        <GoalErrorState className="px-0 py-3 max-gdesk:px-0" title="We couldn’t search companies." body="Check your connection and try again." retry={{ label: "Try again", onClick: search.retry }} />
       ) : null}
       {noMatch ? (
         <div data-testid="company-search-no-match" role="status" className="mt-3 grid gap-1">
