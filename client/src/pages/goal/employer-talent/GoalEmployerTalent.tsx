@@ -124,7 +124,9 @@ export default function GoalEmployerTalent() {
       // refused it (the unlock grant is no longer active), so nothing was sent.
       if (response.status === 200 || response.status === 201) { setIntroSentTo(row.displayRef); return; }
       const payload = await readApiJson<{ error?: string }>(response, "We could not send the intro request").catch(() => ({} as { error?: string }));
-      toast(response.status === 409 ? `Intro not sent. ${payload.error || "Unlock this profile before requesting an intro"}.` : "Intro not sent. We could not send the intro request.");
+      // The 409 body says "Unlock this profile…", which reads wrong on a row
+      // that shows Unlocked; the route returns it when the grant is inactive.
+      toast(response.status === 409 ? "Intro not sent. This unlock may no longer be active." : (payload.error ? `Intro not sent. ${payload.error}.` : "Intro not sent. We could not send the intro request."));
     } catch { toast("Intro not sent. We could not send the intro request."); }
   };
 
@@ -166,7 +168,7 @@ export default function GoalEmployerTalent() {
                 <li key={row.displayRef} aria-label={row.displayRef} className="flex flex-col border border-g-hairline bg-g-surface p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h2 className="text-g-label text-g-ink">{row.displayRef}</h2>
+                      <h2 className="break-all text-g-label text-g-ink">{row.displayRef}</h2>
                       <p className="mt-1 truncate text-g-meta text-g-ink-2">{row.headline || "skipwait.me member"}</p>
                     </div>
                     <GoalStatus className="shrink-0" status={row.isUnlocked && !pending ? "accepted" : "withdrawn"} label={row.isUnlocked && !pending ? "Unlocked" : "Locked"} />
