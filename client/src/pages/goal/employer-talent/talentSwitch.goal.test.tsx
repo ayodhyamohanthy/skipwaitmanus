@@ -18,13 +18,13 @@ const stub = () => vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status:
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); flag.on = false; flag.asked = []; });
 
 describe("employer talent switch (D-048-p3-employer-talent)", () => {
-  it("renders the goal page when the goal flag is on", async () => {
+  it("renders the goal page when the goal flag is on (lazy chunk; first transform is slow)", async () => {
     stub(); flag.on = true;
     const { container } = render(<TalentDiscovery />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Meet opt-in talent." })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Meet opt-in talent." }, { timeout: 15000 })).toBeTruthy();
     expect(container.querySelector("[data-goal-page='employer-talent']")).toBeTruthy();
     expect(flag.asked).toContain("employer-talent");
-  });
+  }, 20000);
 
   it("keeps the kit page when the goal flag is off", async () => {
     stub();
