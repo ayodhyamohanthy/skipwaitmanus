@@ -58,6 +58,10 @@ function stub(overrides: Partial<Record<Key, Reply | (() => Promise<Reply>)>> = 
 
 const renderPage = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
 const nextStep = () => screen.getByRole("region", { name: "Your next step" });
+const decisionCall = (fetchMock: ReturnType<typeof stub>) => {
+  const call = fetchMock.mock.calls.find(([url]) => String(url).includes("/decision"));
+  return call ? { url: String(call[0]), method: (call[1] as RequestInit | undefined)?.method, body: JSON.parse(String((call[1] as RequestInit | undefined)?.body)) } : null;
+};
 
 describe("goal /admin (D-048-p3-admin)", () => {
   it("opens with the goal line and the oldest open case as the one next step", async () => {
@@ -138,7 +142,7 @@ describe("goal /admin-review (D-048-p3-admin)", () => {
     fireEvent.change(screen.getByLabelText(/Reviewer note/), { target: { value: "Confirmed spam pattern." } });
     expect(record.getAttribute("aria-disabled")).toBeNull();
     fireEvent.click(record);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/admin/safety-reports/48/decision", expect.objectContaining({ method: "POST" })));
+    await waitFor(() => expect(decisionCall(fetchMock)).toEqual({ url: "/api/admin/safety-reports/48/decision", method: "POST", body: { status: "resolved", note: "Confirmed spam pattern." } }));
   });
 
   it("records a verification decision through the approval queue with its own body", async () => {
@@ -152,7 +156,7 @@ describe("goal /admin-review (D-048-p3-admin)", () => {
     fireEvent.click(screen.getByRole("radio", { name: /^Approve/ }));
     fireEvent.change(screen.getByLabelText(/Reviewer note/), { target: { value: "Domain belongs to the company." } });
     fireEvent.click(screen.getByRole("button", { name: "Record decision" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/admin/approval-queue/referrer_enrollment/31/decision", expect.objectContaining({ method: "POST" })));
+    await waitFor(() => expect(decisionCall(fetchMock)).toEqual({ url: "/api/admin/approval-queue/referrer_enrollment/31/decision", method: "POST", body: { decision: "approved", note: "Domain belongs to the company." } }));
   });
 
   it("shows a closed case's recorded decision and audit trail instead of decision controls", async () => {
