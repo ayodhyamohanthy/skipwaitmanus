@@ -14,3 +14,7 @@ Tier-1 M built by DeepSeek, fresh pass verdict by reviewer, green open PR, disjo
 ## Acceptance
 
 Write failing tests first for avoided owned land continuation, fresh pass state, done-row control, and preservation of review/landing-slot/blocked-lane exclusions. Select eligible work or honest wait without offering avoided M. No marker override, identity change or silent lock release. Broader own-stage changes need explicit tests/scope and independent review. Run existing picker tests, typecheck and required CI. No product, migration, settings or flag changes.
+
+## Status
+
+- PICKER-avoid-land: in progress — Hark · 5de4 — 2026-11-02 — branch agent/queue/picker-avoid-land
