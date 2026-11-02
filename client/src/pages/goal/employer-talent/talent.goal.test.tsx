@@ -137,6 +137,22 @@ describe("goal /employer/talent (D-048-p3-employer-talent)", () => {
     expect(within(card(REF_A)).getByText(/headline is in this person's own words/)).toBeTruthy();
   });
 
+  it("never says every profile stays hidden until the person responds (untrue once unlocked), in the subtitle or the SEO description", async () => {
+    stub();
+    const { container } = render(<GoalEmployerTalent />);
+    await screen.findByRole("listitem", { name: REF_A });
+    const hidden = /Every profile stays hidden until the person chooses to respond/;
+    const subtitle = screen.getByRole("heading", { level: 1, name: GOAL_PAGE.goalLine }).nextElementSibling;
+    expect(subtitle?.textContent ?? "").not.toMatch(hidden);
+    expect(container.textContent ?? "").not.toMatch(hidden);
+    const description = document.head.querySelector<HTMLMetaElement>('meta[name="description"]')?.content ?? "";
+    expect(description).not.toMatch(hidden);
+    expect(document.head.querySelector<HTMLMetaElement>('meta[property="og:description"]')?.content ?? "").not.toMatch(hidden);
+    const honest = "Browse opt-in talent. Unlocking shows only the fields they chose to share, and they decide whether to respond.";
+    expect(subtitle?.textContent).toBe(honest);
+    expect(description).toBe(honest);
+  });
+
   it("renders the profile the server returns even though it carries no displayRef (bound to the requested row)", async () => {
     stub();
     render(<GoalEmployerTalent />);
