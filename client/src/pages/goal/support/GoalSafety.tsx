@@ -20,7 +20,8 @@ const ROW = "g-hit flex min-h-14 w-full cursor-pointer items-center justify-betw
 
 const rows: ReadonlyArray<{ question: string; answer: ReactNode }> = [
   ...SAFETY_ANSWERS.map(([question, answer]) => ({ question, answer })),
-  { question: SAFETY_PAY_QUESTION, answer: <>Do not pay for a referral or share sensitive financial information. Use <Link href="/report" className="text-g-ink underline underline-offset-4">Report</Link> on the conversation — it&rsquo;s confidential.</> },
+  // Review 6566372499 follow-up: a generic report entry, no thread or request linkage implied.
+  { question: SAFETY_PAY_QUESTION, answer: <>Do not pay for a referral or share sensitive financial information. File a report from the <Link href="/report" className="text-g-ink underline underline-offset-4">Report</Link> page — it&rsquo;s confidential.</> },
 ];
 
 export default function GoalSafety() {

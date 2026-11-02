@@ -40,7 +40,9 @@ export const HELP_ANSWERS: ReadonlyArray<HelpAnswer> = [
   { category: "Plans & referrals", question: "How do I cancel?", answer: "Open Plans and manage your subscription there. You keep access until the period ends." },
   { category: "Account & privacy", question: "Who can see my resume?", answer: "Only a referrer who accepted your referral request." },
   { category: "Account & privacy", question: "How do I delete my account?", answer: "Settings lets you download your data or request account deletion. A deletion request is recorded and its status shows in Settings; records are not removed instantly." },
-  { category: "Safety", question: "Someone asked me for money.", answer: "Don't pay. Use Report on the conversation (the other person isn't told who reported them), or contact support." },
+  // Review 6566372499 follow-up: the conversation's Report link is a bare
+  // /report that binds no thread or request, so this names a generic entry.
+  { category: "Safety", question: "Someone asked me for money.", answer: "Don't pay. File a report from the Report page (the other person isn't told who reported them), or contact support." },
   // Review 6566372499: the conversation pages link to a bare /report, which has
   // no block toggle, so this answer neither sends people there for it nor says
   // support will block. It gives the path that exists: file, keep the
