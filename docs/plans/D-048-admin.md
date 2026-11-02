@@ -85,4 +85,4 @@ Two admin routes have no split row: `/admin/money-check` (read-only money ops re
 
 `D-048-p3-dev`: done — `a199b499` — Gemini 2.5 Pro · 7bb6 — 2026-10-31 — goal `/developers` and `/developer-console` behind `goalSurfaceOn('developers')`: independent Tier 1 delta review pass by Claude · fdc8 on `a199b499` (report `ffff0a75`); 35/35 focused tests, design tokens clean, scope check clean; required CI green.
 
-`D-048-p3-admin`: in progress — Hark · 5de4 — 2026-11-02 — branch agent/queue/d048-p3-admin
+`D-048-p3-admin`: review — Hark · 5de4 — 2026-11-03 — draft PR #978, code at `e343e161` (red `1df5ac21`), switch `goalSurfaceOn('admin')` off; goal `/admin` ("See what needs a decision.", oldest open case as the next step) and `/admin-review` ("Decide what's waiting.", note-gated decision on the kit's exact server call and body), admin goal frame for the sibling rows, 1280+390 captures. `goalSurfaces.ts` maps `/admin-review` to `admin-approvals` (shared file, not edited; flagged in the PR). Needs a separate reviewer and lander; Hark's underlying model unverified, no D-151 independence claim.
