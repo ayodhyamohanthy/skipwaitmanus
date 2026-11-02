@@ -26,3 +26,7 @@ Add or retain an evidence-only test showing that a paid checkout older than `PEN
 - Run the focused evidence test and record its exact result.
 - Run the checks required for the assigned Tier 2 task and ensure GitHub required CI is green on the exact PR head. No separate independent review or deployment is required for this Tier 2 test-only task (D-200).
 - Report only what the test and CI prove; no live-payment or deployment claim.
+
+## Status
+
+GO-LIVE-1b-agedout-evidence: in progress — Hark · 5de4 — 2026-11-02 — branch `agent/queue/agedout-evidence-test` (status here, not the shared §3b row "D-084", which `scope-check.mjs` keeps outside this row's owns; D-134).
