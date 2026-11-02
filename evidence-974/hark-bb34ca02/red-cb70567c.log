@@ -1,0 +1,119 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/workspace/work/skipwaitmanus-2-wt/d174-journey-search[39m
+
+[90mstdout[2m | client/src/pages/explore/companySearch.test.tsx
+[22m[39m[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  override existing env vars with { override: true }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+
+ [31m❯[39m client/src/pages/explore/companySearch.test.tsx [2m([22m[2m21 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[33m 6369[2mms[22m[39m
+     [32m✓[39m ships off[32m 7[2mms[22m[39m
+     [33m[2m✓[22m[39m off: /explore keeps today's searchbox and client filter, and never calls the search route [33m 615[2mms[22m[39m
+     [32m✓[39m asks the route with one q and parses the strict response[32m 4[2mms[22m[39m
+     [32m✓[39m refuses a response that carries availability (D-176) or more than 10 companies[32m 4[2mms[22m[39m
+     [32m✓[39m throws on a failed request[32m 2[2mms[22m[39m
+     [33m[2m✓[22m[39m waits 150 ms, needs one non-space character, and sends only the settled query [33m 372[2mms[22m[39m
+     [32m✓[39m does nothing when disabled[32m 210[2mms[22m[39m
+     [33m[2m✓[22m[39m suggests companies as a combobox; arrow keys move, Enter opens /explore/:slug [33m 319[2mms[22m[39m
+     [33m[2m✓[22m[39m a click on a suggestion opens the company door; Escape closes the list [33m 524[2mms[22m[39m
+     [33m[2m✓[22m[39m no suggestion: the paste-a-link path comes first, Request a company stays the quiet link, and the event has no query text [33m 419[2mms[22m[39m
+     [33m[2m✓[22m[39m loading: while the settled query is in flight a Searching line renders (busy), with no availability text and no event [33m 395[2mms[22m[39m
+     [33m[2m✓[22m[39m error: a failed search shows a retry line, the client filter still works, no event fires, and Try again re-runs the search [33m 462[2mms[22m[39m
+     [33m[2m✓[22m[39m empty: a blank box asks nothing and shows no search state; an answer with no company shows the no-match path, with no availability text [33m 558[2mms[22m[39m
+[31m     [31m×[31m a function or industry query with matching directory rows is not 'unlisted': no paste-a-link path and no no-match event[39m[33m 760[2mms[22m[39m
+[31m     [31m×[31m an alias suggestion (tata -> TCS) with an empty directory filter never shows the empty-directory claim[39m[32m 254[2mms[22m[39m
+[31m     [31m×[31m while the search is in flight the directory makes no empty claim[39m[33m 374[2mms[22m[39m
+[31m     [31m×[31m after a failed search the directory makes no empty claim; only the retry line speaks[39m[32m 267[2mms[22m[39m
+     [32m✓[39m a real no-match (server empty and directory empty) still offers the paste-a-link path with the directory empty state[32m 233[2mms[22m[39m
+     [32m✓[39m idle for a blank box, loading while settling and in flight, then ready[32m 262[2mms[22m[39m
+     [32m✓[39m error on a failed request; retry re-runs the same query[32m 115[2mms[22m[39m
+     [32m✓[39m idle and sends nothing when the switch is off[32m 207[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 4 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/explore/companySearch.test.tsx[2m > [22mswitch on: search and directory filter stay distinct and truthful[2m > [22ma function or industry query with matching directory rows is not 'unlisted': no paste-a-link path and no no-match event
+[31m[1mAssertionError[22m: expected <a href="/ask" …(1)></a> to be null[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+<a
+  class="text-g-label text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink"
+  href="/ask"
+>
+  Paste a Engineering job link to request a referral
+</a>
+
+[36m [2m❯[22m client/src/pages/explore/companySearch.test.tsx:[2m318:84[22m[39m
+    [90m316|[39m     expect(screen.getByTestId("goal-directory-summary").textContent).n…
+    [90m317|[39m     expect(screen.getAllByRole("button").length + screen.getAllByRole(…
+    [90m318|[39m     expect(screen.queryByRole("link", { name: /job link to request a r…
+    [90m   |[39m                                                                                    [31m^[39m
+    [90m319|[39m     [34mexpect[39m(screen[33m.[39m[34mqueryByTestId[39m([32m"company-search-no-match"[39m))[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m320|[39m     [34mexpect[39m(document[33m.[39mbody[33m.[39mtextContent [33m??[39m [32m""[39m)[33m.[39mnot[33m.[39m[34mtoMatch[39m([33mEMPTY_CLAIM[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/explore/companySearch.test.tsx[2m > [22mswitch on: search and directory filter stay distinct and truthful[2m > [22man alias suggestion (tata -> TCS) with an empty directory filter never shows the empty-directory claim
+[31m[1mAssertionError[22m: expected 'skipwait.meFindMy asksInboxMoreGive a…' not to match /No matching companies yet|If your com…/[39m
+
+[32m- Expected:[39m
+/No matching companies yet|If your company is missing/
+
+[31m+ Received:[39m
+"skipwait.meFindMy asksInboxMoreGive a referralWork email onlyABABGive a referralWork email onlyFind a referralBeta4 credits4Where do you want a referral?Ask a verified employee. Your name and resume stay private until they accept.TCSAll companiesEngineeringProductDesignDataMarketingOperationsSalesFinanceHROtherNo matching companies yetTry a wider search. If your company is missing, request it and we’ll open the door.Clear filtersRequest a companyFindMy asksInboxMore"
+
+[36m [2m❯[22m client/src/pages/explore/companySearch.test.tsx:[2m331:49[22m[39m
+    [90m329|[39m     fireEvent.change(screen.getByRole("combobox", { name: "Search comp…
+    [90m330|[39m     [35mawait[39m screen[33m.[39m[34mfindByRole[39m([32m"option"[39m[33m,[39m { name[33m:[39m [32m"TCS"[39m })[33m;[39m
+    [90m331|[39m     [34mexpect[39m(document[33m.[39mbody[33m.[39mtextContent [33m??[39m [32m""[39m)[33m.[39mnot[33m.[39m[34mtoMatch[39m([33mEMPTY_CLAIM[39m)[33m;[39m
+    [90m   |[39m                                                 [31m^[39m
+    [90m332|[39m     [34mexpect[39m(screen[33m.[39m[34mqueryByTestId[39m([32m"company-search-no-match"[39m))[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m333|[39m     [34mexpect[39m(events)[33m.[39m[34mtoEqual[39m([[32m"journey_company_suggested"[39m])[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/explore/companySearch.test.tsx[2m > [22mswitch on: search and directory filter stay distinct and truthful[2m > [22mwhile the search is in flight the directory makes no empty claim
+[31m[1mAssertionError[22m: expected 'skipwait.meFindMy asksInboxMoreGive a…' not to match /No matching companies yet|If your com…/[39m
+
+[32m- Expected:[39m
+/No matching companies yet|If your company is missing/
+
+[31m+ Received:[39m
+"skipwait.meFindMy asksInboxMoreGive a referralWork email onlyABABGive a referralWork email onlyFind a referralBeta4 credits4Where do you want a referral?Ask a verified employee. Your name and resume stay private until they accept.Searching companies…All companiesEngineeringProductDesignDataMarketingOperationsSalesFinanceHROtherNo matching companies yetTry a wider search. If your company is missing, request it and we’ll open the door.Clear filtersRequest a companyFindMy asksInboxMore"
+
+[36m [2m❯[22m client/src/pages/explore/companySearch.test.tsx:[2m345:49[22m[39m
+    [90m343|[39m     [35mawait[39m [34msettle[39m()[33m;[39m
+    [90m344|[39m     [34mexpect[39m(screen[33m.[39m[34mgetByTestId[39m([32m"company-search-loading"[39m))[33m.[39m[34mtoBeTruthy[39m()[33m;[39m
+    [90m345|[39m     [34mexpect[39m(document[33m.[39mbody[33m.[39mtextContent [33m??[39m [32m""[39m)[33m.[39mnot[33m.[39m[34mtoMatch[39m([33mEMPTY_CLAIM[39m)[33m;[39m
+    [90m   |[39m                                                 [31m^[39m
+    [90m346|[39m     [34mexpect[39m(screen[33m.[39m[34mqueryByTestId[39m([32m"company-search-no-match"[39m))[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m347|[39m     [34mexpect[39m(events)[33m.[39m[34mtoEqual[39m([])[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/explore/companySearch.test.tsx[2m > [22mswitch on: search and directory filter stay distinct and truthful[2m > [22mafter a failed search the directory makes no empty claim; only the retry line speaks
+[31m[1mAssertionError[22m: expected 'skipwait.meFindMy asksInboxMoreGive a…' not to match /No matching companies yet|If your com…/[39m
+
+[32m- Expected:[39m
+/No matching companies yet|If your company is missing/
+
+[31m+ Received:[39m
+"skipwait.meFindMy asksInboxMoreGive a referralWork email onlyABABGive a referralWork email onlyFind a referralBeta4 credits4Where do you want a referral?Ask a verified employee. Your name and resume stay private until they accept.We couldn’t search companies.Check your connection and try again.Try againAll companiesEngineeringProductDesignDataMarketingOperationsSalesFinanceHROtherNo matching companies yetTry a wider search. If your company is missing, request it and we’ll open the door.Clear filtersRequest a companyFindMy asksInboxMore"
+
+[36m [2m❯[22m client/src/pages/explore/companySearch.test.tsx:[2m356:49[22m[39m
+    [90m354|[39m     fireEvent.change(screen.getByRole("combobox", { name: "Search comp…
+    [90m355|[39m     [35mawait[39m screen[33m.[39m[34mfindByRole[39m([32m"alert"[39m)[33m;[39m
+    [90m356|[39m     [34mexpect[39m(document[33m.[39mbody[33m.[39mtextContent [33m??[39m [32m""[39m)[33m.[39mnot[33m.[39m[34mtoMatch[39m([33mEMPTY_CLAIM[39m)[33m;[39m
+    [90m   |[39m                                                 [31m^[39m
+    [90m357|[39m     [34mexpect[39m(screen[33m.[39m[34mqueryByTestId[39m([32m"company-search-no-match"[39m))[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m358|[39m     [34mexpect[39m(events)[33m.[39m[34mtoEqual[39m([])[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m4 failed[39m[22m[2m | [22m[1m[32m17 passed[39m[22m[90m (21)[39m
+[2m   Start at [22m 18:32:37
+[2m   Duration [22m 45.41s[2m (transform 2.54s, setup 145ms, import 15.86s, tests 6.37s, environment 22.41s)[22m
+
