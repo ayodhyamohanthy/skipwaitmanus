@@ -20,10 +20,17 @@ export const GOAL_PAGE = { goalLine: "Meet opt-in talent." } as const;
 // server's EMPLOYER_UNLOCK_CREDIT_COST). Never retyped: talent.goal.test.tsx
 // reads the kit source so a price change there fails here instead of drifting.
 export const TALENT_UNLOCK_COST = 5;
-const PRIVACY_LINE = "Shown without a name or contact details. Unlocking shows only what this person chose to share, and they decide whether to respond.";
+// Narrowed to what the structured fields omit: the list and the unlocked
+// snapshot carry no name or contact field, but the headline is free text the
+// person wrote, so no promise is made about what it contains.
+const PRIVACY_LINE = "No name or contact fields are listed; the headline is in this person's own words. Unlocking shows only the fields they chose to share, and they decide whether to respond.";
 
 type TalentRow = { displayRef: string; headline: string | null; location: string | null; skills: string[]; isUnlocked: boolean };
-type UnlockedProfile = { displayRef: string; headline: string | null; location: string | null; skills: string[]; experience: string | null; expertise: string | null };
+// GET /api/employer/talent/:ref returns { profile: { ...talentSnapshot,
+// unlockedAt, expiresAt } }: only the consented keys, expertise as string[],
+// and no displayRef, so the page binds the profile to the row it requested.
+type UnlockedProfile = { headline?: string | null; location?: string | null; skills?: string[]; experience?: string | null; expertise?: string[]; unlockedAt?: string; expiresAt?: string };
+type OpenedProfile = { displayRef: string; profile: UnlockedProfile };
 
 const inputClass = "h-(--g-control-h) w-full rounded-g-control border border-g-control-edge bg-g-surface px-3 text-g-body text-g-ink placeholder:text-g-ink-3";
 
@@ -36,7 +43,7 @@ export default function GoalEmployerTalent() {
   const [error, setError] = useState("");
   const [unlockingId, setUnlockingId] = useState<string | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
-  const [openedProfile, setOpenedProfile] = useState<UnlockedProfile | null>(null);
+  const [openedProfile, setOpenedProfile] = useState<OpenedProfile | null>(null);
   const [introSentTo, setIntroSentTo] = useState<string | null>(null);
 
   useEffect(() => {
@@ -104,7 +111,7 @@ export default function GoalEmployerTalent() {
       const payload = await readApiJson<{ profile?: UnlockedProfile; error?: string }>(response, "We could not load this profile");
       if (response.status === 402) { toast("Unlock this profile first."); return; }
       if (!response.ok || !payload.profile) throw new Error(payload.error || "We could not load this profile");
-      setOpenedProfile(payload.profile);
+      setOpenedProfile({ displayRef: row.displayRef, profile: payload.profile });
     } catch (openError) { toast(openError instanceof Error ? openError.message : "We could not load this profile"); }
   };
 
@@ -113,9 +120,12 @@ export default function GoalEmployerTalent() {
     // explicit intro request through the platform (never a direct email).
     try {
       const response = await fetch(`/api/employer/talent/${encodeURIComponent(row.displayRef)}/intro`, { method: "POST", credentials: "include" });
-      if (response.ok || response.status === 409) setIntroSentTo(row.displayRef);
-      else toast("We could not send the intro request");
-    } catch { toast("We could not send the intro request"); }
+      // 201 = a new intro, 200 = one already on record; 409 = the server
+      // refused it (the unlock grant is no longer active), so nothing was sent.
+      if (response.status === 200 || response.status === 201) { setIntroSentTo(row.displayRef); return; }
+      const payload = await readApiJson<{ error?: string }>(response, "We could not send the intro request").catch(() => ({} as { error?: string }));
+      toast(response.status === 409 ? `Intro not sent. ${payload.error || "Unlock this profile before requesting an intro"}.` : "Intro not sent. We could not send the intro request.");
+    } catch { toast("Intro not sent. We could not send the intro request."); }
   };
 
   return (
@@ -147,7 +157,11 @@ export default function GoalEmployerTalent() {
         ) : (
           <ul className="grid gap-3 gdesk:grid-cols-2">
             {talent.map(row => {
-              const opened = openedProfile && openedProfile.displayRef === row.displayRef ? openedProfile : null;
+              const opened = openedProfile && openedProfile.displayRef === row.displayRef ? openedProfile.profile : null;
+              const expertise = (opened?.expertise ?? []).filter(Boolean);
+              // While the optimistic unlock is pending the server has not
+              // granted anything yet, so no profile or intro action is offered.
+              const pending = unlockingId === row.displayRef;
               return (
                 <li key={row.displayRef} aria-label={row.displayRef} className="flex flex-col border border-g-hairline bg-g-surface p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -155,20 +169,20 @@ export default function GoalEmployerTalent() {
                       <h2 className="text-g-label text-g-ink">{row.displayRef}</h2>
                       <p className="mt-1 truncate text-g-meta text-g-ink-2">{row.headline || "skipwait.me member"}</p>
                     </div>
-                    <GoalStatus className="shrink-0" status={row.isUnlocked ? "accepted" : "withdrawn"} label={row.isUnlocked ? "Unlocked" : "Locked"} />
+                    <GoalStatus className="shrink-0" status={row.isUnlocked && !pending ? "accepted" : "withdrawn"} label={row.isUnlocked && !pending ? "Unlocked" : "Locked"} />
                   </div>
                   {row.skills.length ? <ul aria-label="Skills" className="mt-3 flex flex-wrap gap-1.5">{row.skills.map(skill => <li key={skill} className="rounded-g-control border border-g-hairline px-2 py-0.5 text-g-meta text-g-ink">{skill}</li>)}</ul> : null}
                   {row.location ? <p className="mt-3 text-g-meta text-g-ink-2">{row.location}</p> : null}
                   {opened ? (
-                    <div className="mt-3 border-l-2 border-g-hairline pl-3 text-g-meta text-g-ink">
+                    <div role="group" aria-label="Shared profile" className="mt-3 border-l-2 border-g-hairline pl-3 text-g-meta text-g-ink">
                       {opened.experience ? <p><span className="text-g-label">Experience:</span> {opened.experience}</p> : null}
-                      {opened.expertise ? <p className="mt-1"><span className="text-g-label">Expertise:</span> {opened.expertise}</p> : null}
-                      {!opened.experience && !opened.expertise ? <p>No additional details shared yet.</p> : null}
+                      {expertise.length ? <p className="mt-1"><span className="text-g-label">Expertise:</span> {expertise.join(", ")}</p> : null}
+                      {!opened.experience && !expertise.length ? <p>No additional details shared yet.</p> : null}
                     </div>
                   ) : null}
                   <p className="mt-4 text-g-meta text-g-ink-3">{PRIVACY_LINE}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {row.isUnlocked ? (
+                    {row.isUnlocked && !pending ? (
                       <>
                         <GoalButton variant="outline" size="sm" onClick={() => void openProfile(row)}>View profile</GoalButton>
                         <GoalButton variant="outline" size="sm" leadingIcon={Send} disabledReason={introSentTo === row.displayRef ? "Intro already sent" : undefined} onClick={() => void sendIntroRequest(row)}>

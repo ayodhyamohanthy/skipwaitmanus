@@ -151,8 +151,7 @@ describe("goal /employer/talent (D-048-p3-employer-talent)", () => {
     render(<GoalEmployerTalent />);
     fireEvent.click(await within(await screen.findByRole("listitem", { name: REF_B })).findByRole("button", { name: /View profile/ }));
     const opened = await within(card(REF_B)).findByRole("group", { name: "Shared profile" });
-    const list = within(opened).getByRole("list", { name: "Expertise" });
-    expect(within(list).getAllByRole("listitem").map(item => item.textContent)).toEqual(["Design systems", "Figma"]);
+    expect(within(opened).getByText((_, node) => node?.tagName === "P" && node.textContent === "Expertise: Design systems, Figma")).toBeTruthy();
     expect(opened.textContent).not.toContain("Design systemsFigma");
   });
 
