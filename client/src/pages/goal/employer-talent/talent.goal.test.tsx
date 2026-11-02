@@ -23,15 +23,23 @@ vi.mock("sonner", () => ({ toast }));
 type Reply = { ok: boolean; status: number; headers: Headers; json: () => Promise<unknown> };
 const reply = (body: unknown, status = 200): Reply => ({ ok: status < 400, status, headers: new Headers({ "content-type": "application/json" }), json: async () => body });
 
-const LOCKED = { displayRef: "Talent #A1", headline: "Backend engineer", location: "Pune", skills: ["Go", "Postgres"], isUnlocked: false };
-const UNLOCKED = { displayRef: "Talent #B2", headline: "Product designer", location: null, skills: ["Figma"], isUnlocked: true };
-const PROFILE = { displayRef: "Talent #B2", headline: "Product designer", location: null, skills: ["Figma"], experience: "6 years in fintech", expertise: "Design systems" };
+// Route-shaped fixtures (server/db.ts + server/employerRoutes.ts at main
+// 4d939e8b): displayRef is ensureTalentRef's `tal_` + base64url(18 bytes)
+// (28 chars); the list row is AnonymizedSeekerProfile; GET /talent/:ref
+// returns { profile: { ...talentSnapshot, unlockedAt, expiresAt } } with NO
+// displayRef, only the consented keys, and expertise as string[]
+// (firstSkillKeywords) and experience coarsened ("6-10 years").
+const REF_A = "tal_nfAQM_mhMoW-xVAnLby9eKLM";
+const REF_B = "tal_sj50_1A9Gy4ztL3B_o7TbNls";
+const LOCKED = { displayRef: REF_A, headline: "Backend engineer", location: "Pune", skills: ["Go", "Postgres"], isUnlocked: false };
+const UNLOCKED = { displayRef: REF_B, headline: "Product designer", location: null, skills: ["Figma"], isUnlocked: true };
+const PROFILE = { headline: "Product designer", skills: ["Figma"], experience: "6-10 years", expertise: ["Design systems", "Figma"], unlockedAt: "2026-11-01T10:00:00.000Z", expiresAt: "2026-12-01T10:00:00.000Z" };
 
 type Route = (url: string, init?: RequestInit) => Reply | Promise<Reply>;
 function stub(overrides: { talent?: Route; account?: Route; unlock?: Route; profile?: Route; intro?: Route } = {}) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-    if (url.endsWith("/unlock")) return (overrides.unlock ?? (() => reply({ unlocked: true, remaining: 15 })))(url, init);
-    if (url.endsWith("/intro")) return (overrides.intro ?? (() => reply({ ok: true })))(url, init);
+    if (url.endsWith("/unlock")) return (overrides.unlock ?? (() => reply({ unlocked: true, remaining: 15 }, 201)))(url, init);
+    if (url.endsWith("/intro")) return (overrides.intro ?? (() => reply({ requested: true }, 201)))(url, init);
     if (url.startsWith("/api/employer/talent/")) return (overrides.profile ?? (() => reply({ profile: PROFILE })))(url, init);
     if (url.startsWith("/api/employer/talent")) return (overrides.talent ?? (() => reply({ talent: [LOCKED, UNLOCKED] })))(url, init);
     if (url === "/api/employer/account") return (overrides.account ?? (() => reply({ account: { credits: 20 } })))(url, init);
@@ -50,22 +58,22 @@ describe("goal /employer/talent (D-048-p3-employer-talent)", () => {
   it("opens with the goal line, the balance in plain words and anonymization beside every profile action", async () => {
     stub();
     const { container } = render(<GoalEmployerTalent />);
-    expect(await screen.findByRole("listitem", { name: "Talent #A1" })).toBeTruthy();
+    expect(await screen.findByRole("listitem", { name: REF_A })).toBeTruthy();
     assertGoalPage(container, GOAL_PAGE);
     expect(GOAL_PAGE.goalLine).toBe("Meet opt-in talent.");
     expect(container.querySelector("[data-goal-page='employer-talent']")).toBeTruthy();
     expect(screen.getByText(/Talent unlock balance/).textContent).toContain("20");
-    for (const ref of ["Talent #A1", "Talent #B2"]) expect(within(card(ref)).getByText(/without a name or contact details/i)).toBeTruthy();
-    expect(within(card("Talent #A1")).getByText("Locked")).toBeTruthy();
-    expect(within(card("Talent #B2")).getByText("Unlocked")).toBeTruthy();
-    expect(within(card("Talent #A1")).queryByRole("button", { name: /View profile/ })).toBeNull();
-    expect(within(card("Talent #A1")).getByRole("button", { name: `Unlock profile · costs ${TALENT_UNLOCK_COST}` })).toBeTruthy();
+    for (const ref of [REF_A, REF_B]) expect(within(card(ref)).getByText(/No name or contact fields are listed/)).toBeTruthy();
+    expect(within(card(REF_A)).getByText("Locked")).toBeTruthy();
+    expect(within(card(REF_B)).getByText("Unlocked")).toBeTruthy();
+    expect(within(card(REF_A)).queryByRole("button", { name: /View profile/ })).toBeNull();
+    expect(within(card(REF_A)).getByRole("button", { name: `Unlock profile · costs ${TALENT_UNLOCK_COST}` })).toBeTruthy();
   });
 
   it("never says credit or credits to an employer (rule 1a)", async () => {
     stub();
     const { container } = render(<GoalEmployerTalent />);
-    await screen.findByRole("listitem", { name: "Talent #A1" });
+    await screen.findByRole("listitem", { name: REF_A });
     expect(container.textContent ?? "").not.toMatch(/\bcredits?\b/i);
   });
 
@@ -78,8 +86,8 @@ describe("goal /employer/talent (D-048-p3-employer-talent)", () => {
     const fetchMock = stub();
     render(<GoalEmployerTalent />);
     fireEvent.click(await screen.findByRole("button", { name: `Unlock profile · costs ${TALENT_UNLOCK_COST}` }));
-    await waitFor(() => expect(calls(fetchMock)).toContain("POST /api/employer/talent/Talent%20%23A1/unlock"));
-    await waitFor(() => expect(within(card("Talent #A1")).getByText("Unlocked")).toBeTruthy());
+    await waitFor(() => expect(calls(fetchMock)).toContain("POST /api/employer/talent/tal_nfAQM_mhMoW-xVAnLby9eKLM/unlock"));
+    await waitFor(() => expect(within(card(REF_A)).getByText("Unlocked")).toBeTruthy());
     expect(screen.getByText(/Talent unlock balance/).textContent).toContain("15");
   });
 
@@ -88,7 +96,7 @@ describe("goal /employer/talent (D-048-p3-employer-talent)", () => {
     render(<GoalEmployerTalent />);
     fireEvent.click(await screen.findByRole("button", { name: `Unlock profile · costs ${TALENT_UNLOCK_COST}` }));
     await waitFor(() => expect(go).toHaveBeenCalledWith("/employer/billing"));
-    expect(within(card("Talent #A1")).getByText("Locked")).toBeTruthy();
+    expect(within(card(REF_A)).getByText("Locked")).toBeTruthy();
     expect(screen.getByText(/Talent unlock balance/).textContent).toContain("20");
     expect(String(toast.mock.calls.at(-1)?.[0])).not.toMatch(/\bcredits?\b/i);
   });
@@ -96,28 +104,112 @@ describe("goal /employer/talent (D-048-p3-employer-talent)", () => {
   it("opens an unlocked profile only through the profile endpoint and shows only the fields it returns", async () => {
     const fetchMock = stub();
     render(<GoalEmployerTalent />);
-    fireEvent.click(await within(await screen.findByRole("listitem", { name: "Talent #B2" })).findByRole("button", { name: /View profile/ }));
-    expect(await within(card("Talent #B2")).findByText(/6 years in fintech/)).toBeTruthy();
-    expect(calls(fetchMock)).toContain("GET /api/employer/talent/Talent%20%23B2");
-    expect(calls(fetchMock).some(line => line.includes("Talent%20%23A1") && !line.endsWith("/unlock"))).toBe(false);
+    fireEvent.click(await within(await screen.findByRole("listitem", { name: REF_B })).findByRole("button", { name: /View profile/ }));
+    expect(await within(card(REF_B)).findByText(/6-10 years/)).toBeTruthy();
+    expect(calls(fetchMock)).toContain("GET /api/employer/talent/tal_sj50_1A9Gy4ztL3B_o7TbNls");
+    expect(calls(fetchMock).some(line => line.includes("tal_nfAQM_mhMoW-xVAnLby9eKLM") && !line.endsWith("/unlock"))).toBe(false);
   });
 
   it("sends the intro through the platform and marks it sent", async () => {
     const fetchMock = stub();
     render(<GoalEmployerTalent />);
-    fireEvent.click(await within(await screen.findByRole("listitem", { name: "Talent #B2" })).findByRole("button", { name: /Send intro request/ }));
-    await waitFor(() => expect(calls(fetchMock)).toContain("POST /api/employer/talent/Talent%20%23B2/intro"));
-    expect(await within(card("Talent #B2")).findByText("Intro sent")).toBeTruthy();
+    fireEvent.click(await within(await screen.findByRole("listitem", { name: REF_B })).findByRole("button", { name: /Send intro request/ }));
+    await waitFor(() => expect(calls(fetchMock)).toContain("POST /api/employer/talent/tal_sj50_1A9Gy4ztL3B_o7TbNls/intro"));
+    expect(await within(card(REF_B)).findByText("Intro sent")).toBeTruthy();
   });
 
   it("searches with the same query parameters", async () => {
     const fetchMock = stub();
     render(<GoalEmployerTalent />);
-    await screen.findByRole("listitem", { name: "Talent #A1" });
+    await screen.findByRole("listitem", { name: REF_A });
     fireEvent.change(screen.getByLabelText("Search talent"), { target: { value: "go" } });
     fireEvent.change(screen.getByLabelText("Filter by location"), { target: { value: "Pune" } });
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
     await waitFor(() => expect(calls(fetchMock)).toContain("GET /api/employer/talent?query=go&location=Pune"));
+  });
+
+  it("narrows the anonymity line to what the structured fields omit (the headline is free text)", async () => {
+    stub();
+    const { container } = render(<GoalEmployerTalent />);
+    await screen.findByRole("listitem", { name: REF_A });
+    const text = container.textContent ?? "";
+    expect(text).not.toMatch(/Shown without a name or contact details/);
+    expect(within(card(REF_A)).getByText(/headline is in this person's own words/)).toBeTruthy();
+  });
+
+  it("renders the profile the server returns even though it carries no displayRef (bound to the requested row)", async () => {
+    stub();
+    render(<GoalEmployerTalent />);
+    fireEvent.click(await within(await screen.findByRole("listitem", { name: REF_B })).findByRole("button", { name: /View profile/ }));
+    const opened = await within(card(REF_B)).findByRole("group", { name: "Shared profile" });
+    expect(opened.textContent).toContain("6-10 years");
+    expect(within(card(REF_A)).queryByRole("group", { name: "Shared profile" })).toBeNull();
+  });
+
+  it("shows expertise values separately, never concatenated", async () => {
+    stub();
+    render(<GoalEmployerTalent />);
+    fireEvent.click(await within(await screen.findByRole("listitem", { name: REF_B })).findByRole("button", { name: /View profile/ }));
+    const opened = await within(card(REF_B)).findByRole("group", { name: "Shared profile" });
+    const list = within(opened).getByRole("list", { name: "Expertise" });
+    expect(within(list).getAllByRole("listitem").map(item => item.textContent)).toEqual(["Design systems", "Figma"]);
+    expect(opened.textContent).not.toContain("Design systemsFigma");
+  });
+
+  it("an empty expertise array or an undisclosed field adds no empty heading", async () => {
+    stub({ profile: () => reply({ profile: { headline: "Product designer", expertise: [], unlockedAt: PROFILE.unlockedAt, expiresAt: PROFILE.expiresAt } }) });
+    render(<GoalEmployerTalent />);
+    fireEvent.click(await within(await screen.findByRole("listitem", { name: REF_B })).findByRole("button", { name: /View profile/ }));
+    const opened = await within(card(REF_B)).findByRole("group", { name: "Shared profile" });
+    expect(opened.textContent).not.toMatch(/Expertise/);
+    expect(opened.textContent).not.toMatch(/Experience/);
+    expect(opened.textContent).toContain("No additional details shared yet.");
+  });
+
+  it("marks a repeated intro (200) as sent", async () => {
+    stub({ intro: () => reply({ requested: true }, 200) });
+    render(<GoalEmployerTalent />);
+    fireEvent.click(await within(await screen.findByRole("listitem", { name: REF_B })).findByRole("button", { name: /Send intro request/ }));
+    expect(await within(card(REF_B)).findByText("Intro sent")).toBeTruthy();
+  });
+
+  it("does not claim an intro was sent when the server refuses it (409) and keeps retry available", async () => {
+    const fetchMock = stub({ intro: () => reply({ error: "Unlock this profile before requesting an intro" }, 409) });
+    render(<GoalEmployerTalent />);
+    fireEvent.click(await within(await screen.findByRole("listitem", { name: REF_B })).findByRole("button", { name: /Send intro request/ }));
+    await waitFor(() => expect(toast).toHaveBeenCalled());
+    expect(within(card(REF_B)).queryByText("Intro sent")).toBeNull();
+    expect(String(toast.mock.calls.at(-1)?.[0])).toMatch(/not sent/i);
+    const retry = within(card(REF_B)).getByRole("button", { name: /Send intro request/ });
+    expect(retry.getAttribute("aria-disabled")).not.toBe("true");
+    expect((retry as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(retry);
+    await waitFor(() => expect(calls(fetchMock).filter(line => line === `POST /api/employer/talent/${REF_B}/intro`).length).toBe(2));
+  });
+
+  it("offers no profile or intro action while an unlock is still pending", async () => {
+    let release: (value: Reply) => void = () => {};
+    const fetchMock = stub({ unlock: () => new Promise<Reply>(resolve => { release = resolve; }) });
+    render(<GoalEmployerTalent />);
+    fireEvent.click(await screen.findByRole("button", { name: `Unlock profile · costs ${TALENT_UNLOCK_COST}` }));
+    await waitFor(() => expect(calls(fetchMock)).toContain(`POST /api/employer/talent/${REF_A}/unlock`));
+    expect(within(card(REF_A)).queryByRole("button", { name: /View profile/ })).toBeNull();
+    expect(within(card(REF_A)).queryByRole("button", { name: /Send intro request/ })).toBeNull();
+    release(reply({ unlocked: true, remaining: 15 }, 201));
+    expect(await within(card(REF_A)).findByRole("button", { name: /View profile/ })).toBeTruthy();
+    expect(calls(fetchMock).some(line => line.includes(REF_A) && !line.endsWith("/unlock"))).toBe(false);
+  });
+
+  it("a pending unlock that ends in 402 never exposed the profile actions and restores the row", async () => {
+    let release: (value: Reply) => void = () => {};
+    stub({ unlock: () => new Promise<Reply>(resolve => { release = resolve; }) });
+    render(<GoalEmployerTalent />);
+    fireEvent.click(await screen.findByRole("button", { name: `Unlock profile · costs ${TALENT_UNLOCK_COST}` }));
+    expect(within(card(REF_A)).queryByRole("button", { name: /View profile/ })).toBeNull();
+    release(reply({ error: "Not enough unlock credits", credits: 3 }, 402));
+    await waitFor(() => expect(go).toHaveBeenCalledWith("/employer/billing"));
+    expect(within(card(REF_A)).getByText("Locked")).toBeTruthy();
+    expect(screen.getByText(/Talent unlock balance/).textContent).toContain("20");
   });
 
   it("shows a loading state without claiming an empty list", () => {
@@ -138,10 +230,10 @@ describe("goal /employer/talent (D-048-p3-employer-talent)", () => {
     const fetchMock = stub({ talent: () => (fail ? reply({ error: "Employer access is required" }, 403) : reply({ talent: [LOCKED] })) });
     render(<GoalEmployerTalent />);
     expect(await screen.findByText("Employer access is required")).toBeTruthy();
-    expect(screen.queryByRole("listitem", { name: "Talent #A1" })).toBeNull();
+    expect(screen.queryByRole("listitem", { name: REF_A })).toBeNull();
     fail = false;
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByRole("listitem", { name: "Talent #A1" })).toBeTruthy();
+    expect(await screen.findByRole("listitem", { name: REF_A })).toBeTruthy();
     expect(calls(fetchMock).filter(line => line.startsWith("GET /api/employer/talent")).length).toBeGreaterThanOrEqual(2);
   });
 });
