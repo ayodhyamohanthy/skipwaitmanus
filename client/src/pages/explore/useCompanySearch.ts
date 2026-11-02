@@ -55,6 +55,9 @@ function useDebounced(value: string, ms: number): string {
 /** idle: nothing asked (switch off or a blank box); loading: settling or in flight; error: the request failed (retryable);
  * invalid: the route's contract refuses the query (400, never retried); ready: answered. */
 export type CompanySearchStatus = "idle" | "loading" | "error" | "invalid" | "ready";
+/** Why a query is invalid: "too-long" when the shared schema refuses it (over its 80-character limit after trim,
+ * never sent, never truncated); "refused" when the route answered 400 to a query the schema accepts (cause unknown). */
+export type CompanySearchInvalidReason = "too-long" | "refused";
 
 export interface CompanySearchState {
   status: CompanySearchStatus;
@@ -63,6 +66,8 @@ export interface CompanySearchState {
   suggestions: CompanySuggestion[];
   /** The settled query got an answer with no company in it. */
   noMatch: boolean;
+  /** Set only while status is "invalid". */
+  invalidReason?: CompanySearchInvalidReason;
   /** Re-runs the settled query (the error state's retry line). */
   retry(): void;
 }
@@ -81,9 +86,9 @@ export function useCompanySearch(input: string, enabled: boolean): CompanySearch
   const retry = () => { void result.refetch(); };
   const empty = { suggestions: [] as CompanySuggestion[], noMatch: false, retry };
   if (!enabled || typed.length === 0) return { status: "idle", query: "", ...empty };
-  if (query === typed && !acceptedByRoute(query)) return { status: "invalid", query, ...empty };
+  if (query === typed && !acceptedByRoute(query)) return { status: "invalid", invalidReason: "too-long", query, ...empty };
   if (query !== typed || result.isFetching || result.isPending) return { status: "loading", query: typed, ...empty };
-  if (result.isError && isCompanySearchInvalid(result.error)) return { status: "invalid", query, ...empty };
+  if (result.isError && isCompanySearchInvalid(result.error)) return { status: "invalid", invalidReason: "refused", query, ...empty };
   if (result.isError) return { status: "error", query, ...empty };
   return { status: "ready", query, suggestions: result.data, noMatch: result.data.length === 0, retry };
 }

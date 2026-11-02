@@ -57,7 +57,8 @@ export default function Explore() {
   const noMatch = typeahead && Boolean(companies) && companySearch.status === "ready" && companySearch.noMatch && !queryMatched;
   // No empty-directory claim while the search is in flight, failed, or suggested a company the filter misses.
   // When the query does match rows the chip hides, the filter empty state is the truthful line and stays.
-  const searchSpeaks = typeahead && !queryMatched && (companySearch.status === "loading" || companySearch.status === "error" || (companySearch.status === "ready" && companySearch.suggestions.length > 0));
+  // Invalid input speaks for itself (the typeahead's invalid line), so the directory never claims the company is missing.
+  const searchSpeaks = typeahead && (companySearch.status === "invalid" || (!queryMatched && (companySearch.status === "loading" || companySearch.status === "error" || (companySearch.status === "ready" && companySearch.suggestions.length > 0))));
 
   useEffect(() => { applySeo({ title: "Find a referral", description: exploreDescription(companies ?? []) ?? publicRoute("/explore")?.description, path: "/explore" }); }, [companies]);
 
@@ -203,6 +204,11 @@ export default function Explore() {
   );
 }
 
+// Invalid input, by cause: the shared schema's 80-character limit, or a 400 the route gave for a query
+// the schema accepts (cause unknown, so this line does not claim length). Neither offers a retry.
+const INVALID_TOO_LONG = "Use 80 characters or fewer to search companies.";
+const INVALID_REFUSED = "We couldn’t use that search. Try a different company name.";
+
 /**
  * Ruling 8 typeahead (switch on only): the combobox pattern over the server's
  * suggestions (at most 10); Enter or a click opens the company door. With no
@@ -278,6 +284,9 @@ function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value
       ) : null}
       {status === "error" ? (
         <GoalErrorState className="px-0 py-3 max-gdesk:px-0" title="We couldn’t search companies." body="Check your connection and try again." retry={{ label: "Try again", onClick: search.retry }} />
+      ) : null}
+      {status === "invalid" ? (
+        <p data-testid="company-search-invalid" role="status" className="mt-3 text-g-meta text-g-ink-2">{search.invalidReason === "too-long" ? INVALID_TOO_LONG : INVALID_REFUSED}</p>
       ) : null}
       {noMatch ? (
         <div data-testid="company-search-no-match" role="status" className="mt-3 grid gap-1">
