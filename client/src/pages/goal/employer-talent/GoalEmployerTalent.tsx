@@ -6,7 +6,7 @@
 // renders only the fields the server returns and never relaxes a state.
 // Display copy names what the money buys (a talent unlock) and never says
 // "credit(s)" (rule 1a); internal field names stay unchanged.
-import { BadgeCheck, Lock, Send, Unlock } from "lucide-react";
+import { Send, Unlock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -121,7 +121,7 @@ export default function GoalEmployerTalent() {
   return (
     <EmployerGoalFrame screen="talent-discovery" page="employer-talent">
       <p className="text-g-meta text-g-ink-3">Employers</p>
-      <h1 className="mt-1 text-g-title text-g-ink">{GOAL_PAGE.goalLine}</h1>
+      <h1 className="mt-1 text-g-heading text-g-ink">{GOAL_PAGE.goalLine}</h1>
       <p className="mt-2 max-w-2xl text-g-meta text-g-ink-2">Anonymized, opt-in job seekers only. Every profile stays hidden until the person chooses to respond.</p>
       <div className="mt-6">
         <GoalNextStep reason="Search by skill, headline or place. You only ever see people who opted in.">
@@ -155,9 +155,7 @@ export default function GoalEmployerTalent() {
                       <h2 className="text-g-label text-g-ink">{row.displayRef}</h2>
                       <p className="mt-1 truncate text-g-meta text-g-ink-2">{row.headline || "skipwait.me member"}</p>
                     </div>
-                    {row.isUnlocked
-                      ? <span className="inline-flex shrink-0 items-center gap-1 text-g-meta text-g-ink"><BadgeCheck aria-hidden="true" className="size-4" strokeWidth={1.75} /><GoalStatus status="accepted" label="Unlocked" /></span>
-                      : <span className="inline-flex shrink-0 items-center gap-1 text-g-meta text-g-ink-2"><Lock aria-hidden="true" className="size-4" strokeWidth={1.75} /><GoalStatus status="waiting" label="Locked" /></span>}
+                    <GoalStatus className="shrink-0" status={row.isUnlocked ? "accepted" : "withdrawn"} label={row.isUnlocked ? "Unlocked" : "Locked"} />
                   </div>
                   {row.skills.length ? <ul aria-label="Skills" className="mt-3 flex flex-wrap gap-1.5">{row.skills.map(skill => <li key={skill} className="rounded-g-control border border-g-hairline px-2 py-0.5 text-g-meta text-g-ink">{skill}</li>)}</ul> : null}
                   {row.location ? <p className="mt-3 text-g-meta text-g-ink-2">{row.location}</p> : null}
