@@ -1,0 +1,398 @@
+
+ RUN  v4.1.11 /workspace/work/skipwaitmanus-2-wt/d174-journey-search
+
+stdout | client/src/pages/explore/companySearch.test.tsx
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+
+ ❯ client/src/pages/explore/companySearch.test.tsx (33 tests | 7 failed) 16151ms
+     ✓ ships off 7ms
+     ✓ off: /explore keeps today's searchbox and client filter, and never calls the search route  528ms
+     ✓ asks the route with one q and parses the strict response 3ms
+     ✓ refuses a response that carries availability (D-176) or more than 10 companies 3ms
+     ✓ throws on a failed request 2ms
+     ✓ waits 150 ms, needs one non-space character, and sends only the settled query  411ms
+     ✓ does nothing when disabled 205ms
+     ✓ suggests companies as a combobox; arrow keys move, Enter opens /explore/:slug 293ms
+     ✓ a click on a suggestion opens the company door; Escape closes the list  462ms
+     ✓ no suggestion: the paste-a-link path comes first, Request a company stays the quiet link, and the event has no query text  328ms
+     ✓ loading: while the settled query is in flight a Searching line renders (busy), with no availability text and no event 294ms
+     ✓ error: a failed search shows a retry line, the client filter still works, no event fires, and Try again re-runs the search 284ms
+     ✓ empty: a blank box asks nothing and shows no search state; an answer with no company shows the no-match path, with no availability text  494ms
+     ✓ a function or industry query with matching directory rows is not 'unlisted': no paste-a-link path and no no-match event  686ms
+     ✓ an alias suggestion (tata -> TCS) with an empty directory filter never shows the empty-directory claim 221ms
+     ✓ while the search is in flight the directory makes no empty claim  354ms
+     ✓ after a failed search the directory makes no empty claim; only the retry line speaks 214ms
+     ✓ a real no-match (server empty and directory empty) still offers the paste-a-link path with the directory empty state 225ms
+     ✓ idle for a blank box, loading while settling and in flight, then ready 257ms
+     ✓ error on a failed request; retry re-runs the same query 107ms
+     ✓ idle and sends nothing when the switch is off 203ms
+     × a query that matches directory rows the active chip hides is not 'unlisted': no paste-a-link, no no-match event, the filter empty state speaks 679ms
+     × a suggestion the chip hides keeps the truthful filter empty state beside the suggestion 251ms
+     ✓ a real no-match under a chip (no directory row for the query at all) is still 'unlisted' 239ms
+     ✓ while the directory is still loading, an empty search answer is not 'unlisted'  631ms
+     ✓ when the directory failed to load, an empty search answer is not 'unlisted' and the directory error speaks  1668ms
+     × fetchCompanySearch marks the route's 400 as invalid input and a 5xx or a dropped connection as retryable 1ms
+     × the hook: a q the route contract refuses (over 80 characters after trim) is 'invalid' and sends nothing; 80 is sent 309ms
+     × the hook: an actual 400 from the route is 'invalid', asked once, and never re-asked 5005ms
+     ✓ the hook: a dropped connection is the retryable error state 106ms
+     × switch on, /explore: an actual 400 shows no retry line, no paste-a-link, no event, and the client filter keeps working 655ms
+     × switch on, /explore: an 81-character query sends nothing, offers no retry or paste-a-link, fires no event, and the directory states its truthful empty filter 660ms
+     ✓ switch off: the same 81-character query keeps today's client filter and never calls the search route  363ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  client/src/pages/explore/companySearch.test.tsx > switch on: the function chip never makes a company 'unlisted' > a query that matches directory rows the active chip hides is not 'unlisted': no paste-a-link, no no-match event, the filter empty state speaks
+AssertionError: expected <div …(3)><a …(2)></a>
+…(1)</div> to be null
+
+- Expected:
+null
+
++ Received:
+<div
+  class="mt-3 grid gap-1"
+  data-testid="company-search-no-match"
+  role="status"
+>
+  <a
+    class="text-g-label text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink"
+    href="/ask"
+  >
+    Paste a Technology services job link to request a referral
+  </a>
+  <p
+    class="text-g-meta text-g-ink-3"
+  >
+    <a
+      class="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink"
+      href="/invite"
+    >
+      Request a company
+    </a>
+  </p>
+</div>
+
+ ❯ client/src/pages/explore/companySearch.test.tsx:427:61
+    425|     await settle();
+    426|     await settle();
+    427|     expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+       |                                                             ^
+    428|     expect(screen.queryByRole("link", { name: /job link to request a r…
+    429|     expect(events).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  client/src/pages/explore/companySearch.test.tsx > switch on: the function chip never makes a company 'unlisted' > a suggestion the chip hides keeps the truthful filter empty state beside the suggestion
+TestingLibraryElementError: Unable to find an element with the text: No matching companies yet. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="g-scope grid min-h-screen gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)] gdesk:grid-rows-[var(--g-topbar-h)_minmax(0,1fr)] max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px-56px),auto)_56px]"
+      data-testid="goal-shell"
+    >
+      <nav
+        aria-label="Primary"
+        class="max-gdesk:hidden gdesk:sticky gdesk:top-0 gdesk:h-screen gdesk:self-start gdesk:row-span-2 gdesk:col-start-1 gdesk:row-start-1 flex flex-col items-center border-r border-g-hairline bg-g-surface-sunken px-2 pb-5"
+      >
+        <span
+          class="flex h-14 items-center"
+        >
+          <a
+            class="text-[14px]/5 font-bold tracking-[-0.02em] text-g-ink"
+            href="/"
+          >
+            skipwait.me
+          </a>
+        </span>
+        <div
+          class="mt-2 flex w-full flex-col items-center gap-1"
+        >
+          <a
+            aria-current="page"
+            class="flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink bg-g-surface-selected font-semibold text-g-ink"
+            href="/explore"
+          >
+            <svg
+              aria-hidden="true"
+              class="lucide lucide-search size-5"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="8"
+              />
+              <path
+                d="m21 21-4.3-4.3"
+              />
+            </svg>
+            Find
+          </a>
+          <a
+            class="flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink"
+            href="/requests"
+          >
+            <svg
+              aria-hidden="true"
+              class="lucide lucide-send size-5"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"
+              />
+              <path
+                d="m21.854 2.147-10.94 10.939"
+              />
+            </svg>
+            My asks
+          </a>
+          <a
+            class="flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink"
+            href="/inbox"
+          >
+            <svg
+              aria-hidden="true"
+              class="lucide lucide-messages-square size-5"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"
+              />
+              <path
+                d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"
+              />
+            </svg>
+            Inbox
+          </a>
+        </div>
+        <div
+          class="mt-auto flex w-full flex-col items-center gap-4"
+        >
+          <div
+            class="relative"
+          >
+            <button
+              aria-expanded="false"
+              aria-haspopup="menu"
+              class="text-g-badge text-g-ink-3 transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink flex size-[88px] h-14 flex-col items-center justify-center gap-1 rounded-g-tile"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="lucide lucide-ellipsis size-5"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="1"
+                />
+                <circle
+                  cx[39...
+ ❯ Object.getElementError ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ client/src/pages/explore/companySearch.test.tsx:447:19
+    445|     fireEvent.change(screen.getByRole("combobox", { name: "Search comp…
+    446|     await screen.findByRole("option", { name: "TCS" });
+    447|     expect(screen.getByText("No matching companies yet")).toBeTruthy();
+       |                   ^
+    448|     expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+    449|     expect(events).toEqual(["journey_company_suggested"]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  client/src/pages/explore/companySearch.test.tsx > invalid input (route 400) is not a connection failure > fetchCompanySearch marks the route's 400 as invalid input and a 5xx or a dropped connection as retryable
+Error: [vitest] No "isCompanySearchInvalid" export is defined on the "./useCompanySearch" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("./useCompanySearch"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ client/src/pages/explore/companySearch.test.tsx:500:12
+    498|     stub(() => ({ status: 400, body: { error: "Invalid search" } }));
+    499|     const invalid = await fetchCompanySearch("wip").catch((error: unkn…
+    500|     expect(isCompanySearchInvalid(invalid)).toBe(true);
+       |            ^
+    501|     stub(() => ({ status: 503, body: {} }));
+    502|     const failed = await fetchCompanySearch("wip").catch((error: unkno…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  client/src/pages/explore/companySearch.test.tsx > invalid input (route 400) is not a connection failure > the hook: a q the route contract refuses (over 80 characters after trim) is 'invalid' and sends nothing; 80 is sent
+AssertionError: expected 'ready' to be 'invalid' // Object.is equality
+
+Expected: "invalid"
+Received: "ready"
+
+ ❯ client/src/pages/explore/companySearch.test.tsx:515:35
+    513|     const { result, rerender } = renderHook(({ q }) => useCompanySearc…
+    514|     await wait();
+    515|     expect(result.current.status).toBe("invalid");
+       |                                   ^
+    516|     expect(result.current.noMatch).toBe(false);
+    517|     expect(result.current.suggestions).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  client/src/pages/explore/companySearch.test.tsx > invalid input (route 400) is not a connection failure > the hook: an actual 400 from the route is 'invalid', asked once, and never re-asked
+AssertionError: expected 'error' to be 'invalid' // Object.is equality
+
+Ignored nodes: comments, script, style
+<html>
+  <head>
+    <title>
+      Find a referral · skipwait.me
+    </title>
+    <meta
+      content="Find people open to referral requests at skipwait.me, Wipro, Neutrinos, TCS, and Merkle."
+      name="description"
+    />
+    <meta
+      content="Find people open to referral requests at skipwait.me, Wipro, Neutrinos, TCS, and Merkle."
+      property="og:description"
+    />
+    <meta
+      content="Find a referral · skipwait.me"
+      property="og:title"
+    />
+    <meta
+      content="https://skipwait.me/explore"
+      property="og:url"
+    />
+    <link
+      href="https://skipwait.me/explore"
+      rel="canonical"
+    />
+  </head>
+  <body>
+    <div />
+  </body>
+</html>
+
+Expected: "invalid"
+Received: "error"
+
+ ❯ client/src/pages/explore/companySearch.test.tsx:527:55
+    525|     const fetchMock = stub(() => ({ status: 400, body: { error: "Inval…
+    526|     const { result } = renderHook(() => useCompanySearch("zeta", true)…
+    527|     await waitFor(() => expect(result.current.status).toBe("invalid"));
+       |                                                       ^
+    528|     expect(result.current.noMatch).toBe(false);
+    529|     await wait();
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  client/src/pages/explore/companySearch.test.tsx > invalid input (route 400) is not a connection failure > switch on, /explore: an actual 400 shows no retry line, no paste-a-link, no event, and the client filter keeps working
+AssertionError: expected <div …(3)><p …(1)></p>
+…(2)</div> to be null
+
+- Expected:
+null
+
++ Received:
+<div
+  class="px-0 py-3 max-gdesk:px-0"
+  data-testid="goal-error-state"
+  role="alert"
+>
+  <p
+    class="text-g-label text-g-ink"
+  >
+    We couldn’t search companies.
+  </p>
+  <p
+    class="mt-1 text-g-meta text-g-ink-2"
+  >
+    Check your connection and try again.
+  </p>
+  <button
+    class="inline-flex items-center justify-center gap-2 rounded-g-control border border-transparent text-g-label whitespace-nowrap transition-colors duration-(--g-dur-hover) ease-g-out select-none h-9 px-3 max-gdesk:h-11 -ml-[13px] text-g-ink hover:bg-g-surface-hover aria-expanded:bg-g-surface-hover mt-3"
+    data-testid="goal-button"
+    type="button"
+  >
+    Try again
+  </button>
+</div>
+
+ ❯ client/src/pages/explore/companySearch.test.tsx:558:41
+    556|     await wait();
+    557|     await wait();
+    558|     expect(screen.queryByRole("alert")).toBeNull();
+       |                                         ^
+    559|     expect(screen.queryByRole("button", { name: "Try again" })).toBeNu…
+    560|     expect(screen.queryByTestId("company-search-loading")).toBeNull();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  client/src/pages/explore/companySearch.test.tsx > invalid input (route 400) is not a connection failure > switch on, /explore: an 81-character query sends nothing, offers no retry or paste-a-link, fires no event, and the directory states its truthful empty filter
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "/api/companies/search?q=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
++ ]
+
+ ❯ client/src/pages/explore/companySearch.test.tsx:576:36
+    574|     await wait();
+    575|     await wait();
+    576|     expect(searchCalls(fetchMock)).toEqual([]);
+       |                                    ^
+    577|     expect(screen.queryByRole("alert")).toBeNull();
+    578|     expect(screen.queryByTestId("company-search-loading")).toBeNull();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 26 passed (33)
+   Start at  20:33:27
+   Duration  36.88s (transform 4.15s, setup 244ms, import 9.92s, tests 16.15s, environment 10.12s)
+

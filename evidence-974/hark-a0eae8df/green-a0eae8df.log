@@ -1,0 +1,31 @@
+
+ RUN  v4.1.11 /workspace/work/skipwaitmanus-2-wt/d174-journey-search
+
+stdout | client/src/pages/explore/companySearch.test.tsx
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+
+ ✓ client/src/pages/explore/companySearch.test.tsx (33 tests) 12189ms
+     ✓ off: /explore keeps today's searchbox and client filter, and never calls the search route  545ms
+     ✓ waits 150 ms, needs one non-space character, and sends only the settled query  412ms
+     ✓ suggests companies as a combobox; arrow keys move, Enter opens /explore/:slug  325ms
+     ✓ a click on a suggestion opens the company door; Escape closes the list  498ms
+     ✓ no suggestion: the paste-a-link path comes first, Request a company stays the quiet link, and the event has no query text  317ms
+     ✓ error: a failed search shows a retry line, the client filter still works, no event fires, and Try again re-runs the search  306ms
+     ✓ empty: a blank box asks nothing and shows no search state; an answer with no company shows the no-match path, with no availability text  486ms
+     ✓ a function or industry query with matching directory rows is not 'unlisted': no paste-a-link path and no no-match event  689ms
+     ✓ while the search is in flight the directory makes no empty claim  361ms
+     ✓ a query that matches directory rows the active chip hides is not 'unlisted': no paste-a-link, no no-match event, the filter empty state speaks  735ms
+     ✓ while the directory is still loading, an empty search answer is not 'unlisted'  642ms
+     ✓ when the directory failed to load, an empty search answer is not 'unlisted' and the directory error speaks  1665ms
+     ✓ the hook: a q the route contract refuses (over 80 characters after trim) is 'invalid' and sends nothing; 80 is sent  507ms
+     ✓ the hook: an actual 400 from the route is 'invalid', asked once, and never re-asked  655ms
+     ✓ switch on, /explore: an actual 400 shows no retry line, no paste-a-link, no event, and the client filter keeps working  679ms
+     ✓ switch on, /explore: an 81-character query sends nothing, offers no retry or paste-a-link, fires no event, and the directory states its truthful empty filter  666ms
+     ✓ switch off: the same 81-character query keeps today's client filter and never calls the search route  356ms
+
+ Test Files  1 passed (1)
+      Tests  33 passed (33)
+   Start at  20:34:30
+   Duration  18.57s (transform 1.11s, setup 100ms, import 2.87s, tests 12.19s, environment 3.12s)
+

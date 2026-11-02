@@ -1,0 +1,162 @@
+
+ RUN  v4.1.11 /workspace/work/skipwaitmanus-2-wt/d174-journey-search
+
+stdout | client/src/pages/explore/companySearch.test.tsx
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+
+ ❯ client/src/pages/explore/companySearch.test.tsx (33 tests | 3 failed) 16416ms
+     ✓ ships off 5ms
+     ✓ off: /explore keeps today's searchbox and client filter, and never calls the search route  515ms
+     ✓ asks the route with one q and parses the strict response 3ms
+     ✓ refuses a response that carries availability (D-176) or more than 10 companies 3ms
+     ✓ throws on a failed request 2ms
+     ✓ waits 150 ms, needs one non-space character, and sends only the settled query  410ms
+     ✓ does nothing when disabled 204ms
+     ✓ suggests companies as a combobox; arrow keys move, Enter opens /explore/:slug 295ms
+     ✓ a click on a suggestion opens the company door; Escape closes the list  470ms
+     ✓ no suggestion: the paste-a-link path comes first, Request a company stays the quiet link, and the event has no query text  324ms
+     ✓ loading: while the settled query is in flight a Searching line renders (busy), with no availability text and no event 299ms
+     ✓ error: a failed search shows a retry line, the client filter still works, no event fires, and Try again re-runs the search 295ms
+     ✓ empty: a blank box asks nothing and shows no search state; an answer with no company shows the no-match path, with no availability text  485ms
+     ✓ a function or industry query with matching directory rows is not 'unlisted': no paste-a-link path and no no-match event  692ms
+     ✓ an alias suggestion (tata -> TCS) with an empty directory filter never shows the empty-directory claim 222ms
+     ✓ while the search is in flight the directory makes no empty claim  356ms
+     ✓ after a failed search the directory makes no empty claim; only the retry line speaks 221ms
+     ✓ a real no-match (server empty and directory empty) still offers the paste-a-link path with the directory empty state 223ms
+     ✓ idle for a blank box, loading while settling and in flight, then ready 256ms
+     ✓ error on a failed request; retry re-runs the same query 106ms
+     ✓ idle and sends nothing when the switch is off 203ms
+     ✓ a query that matches directory rows the active chip hides is not 'unlisted': no paste-a-link, no no-match event, the filter empty state speaks  737ms
+     ✓ a suggestion the chip hides keeps the truthful filter empty state beside the suggestion 243ms
+     ✓ a real no-match under a chip (no directory row for the query at all) is still 'unlisted' 235ms
+     ✓ while the directory is still loading, an empty search answer is not 'unlisted'  628ms
+     ✓ when the directory failed to load, an empty search answer is not 'unlisted' and the directory error speaks  1667ms
+     × fetchCompanySearch marks the route's 400 as invalid input and a 5xx or a dropped connection as retryable 12ms
+     ✓ the hook: a q the route contract refuses (over 80 characters after trim) is 'invalid' and sends nothing; 80 is sent  508ms
+     × the hook: an actual 400 from the route is 'invalid', asked once, and never re-asked 5008ms
+     ✓ the hook: a dropped connection is the retryable error state 109ms
+     × switch on, /explore: an actual 400 shows no retry line, no paste-a-link, no event, and the client filter keeps working 657ms
+     ✓ switch on, /explore: an 81-character query sends nothing, offers no retry or paste-a-link, fires no event, and the directory states its truthful empty filter  663ms
+     ✓ switch off: the same 81-character query keeps today's client filter and never calls the search route  354ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  client/src/pages/explore/companySearch.test.tsx > invalid input (route 400) is not a connection failure > fetchCompanySearch marks the route's 400 as invalid input and a 5xx or a dropped connection as retryable
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ client/src/pages/explore/companySearch.test.tsx:500:45
+    498|     stub(() => ({ status: 400, body: { error: "Invalid search" } }));
+    499|     const invalid = await fetchCompanySearch("wip").catch((error: unkn…
+    500|     expect(isCompanySearchInvalid(invalid)).toBe(true);
+       |                                             ^
+    501|     stub(() => ({ status: 503, body: {} }));
+    502|     const failed = await fetchCompanySearch("wip").catch((error: unkno…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  client/src/pages/explore/companySearch.test.tsx > invalid input (route 400) is not a connection failure > the hook: an actual 400 from the route is 'invalid', asked once, and never re-asked
+AssertionError: expected 'error' to be 'invalid' // Object.is equality
+
+Ignored nodes: comments, script, style
+<html>
+  <head>
+    <title>
+      Find a referral · skipwait.me
+    </title>
+    <meta
+      content="Find people open to referral requests at skipwait.me, Wipro, Neutrinos, TCS, and Merkle."
+      name="description"
+    />
+    <meta
+      content="Find people open to referral requests at skipwait.me, Wipro, Neutrinos, TCS, and Merkle."
+      property="og:description"
+    />
+    <meta
+      content="Find a referral · skipwait.me"
+      property="og:title"
+    />
+    <meta
+      content="https://skipwait.me/explore"
+      property="og:url"
+    />
+    <link
+      href="https://skipwait.me/explore"
+      rel="canonical"
+    />
+  </head>
+  <body>
+    <div />
+  </body>
+</html>
+
+Expected: "invalid"
+Received: "error"
+
+ ❯ client/src/pages/explore/companySearch.test.tsx:527:55
+    525|     const fetchMock = stub(() => ({ status: 400, body: { error: "Inval…
+    526|     const { result } = renderHook(() => useCompanySearch("zeta", true)…
+    527|     await waitFor(() => expect(result.current.status).toBe("invalid"));
+       |                                                       ^
+    528|     expect(result.current.noMatch).toBe(false);
+    529|     await wait();
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../architect-d174-seeker-journey/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  client/src/pages/explore/companySearch.test.tsx > invalid input (route 400) is not a connection failure > switch on, /explore: an actual 400 shows no retry line, no paste-a-link, no event, and the client filter keeps working
+AssertionError: expected <div …(3)><p …(1)></p>
+…(2)</div> to be null
+
+- Expected:
+null
+
++ Received:
+<div
+  class="px-0 py-3 max-gdesk:px-0"
+  data-testid="goal-error-state"
+  role="alert"
+>
+  <p
+    class="text-g-label text-g-ink"
+  >
+    We couldn’t search companies.
+  </p>
+  <p
+    class="mt-1 text-g-meta text-g-ink-2"
+  >
+    Check your connection and try again.
+  </p>
+  <button
+    class="inline-flex items-center justify-center gap-2 rounded-g-control border border-transparent text-g-label whitespace-nowrap transition-colors duration-(--g-dur-hover) ease-g-out select-none h-9 px-3 max-gdesk:h-11 -ml-[13px] text-g-ink hover:bg-g-surface-hover aria-expanded:bg-g-surface-hover mt-3"
+    data-testid="goal-button"
+    type="button"
+  >
+    Try again
+  </button>
+</div>
+
+ ❯ client/src/pages/explore/companySearch.test.tsx:558:41
+    556|     await wait();
+    557|     await wait();
+    558|     expect(screen.queryByRole("alert")).toBeNull();
+       |                                         ^
+    559|     expect(screen.queryByRole("button", { name: "Try again" })).toBeNu…
+    560|     expect(screen.queryByTestId("company-search-loading")).toBeNull();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 30 passed (33)
+   Start at  20:38:28
+   Duration  22.23s (transform 1.05s, setup 99ms, import 2.62s, tests 16.42s, environment 2.76s)
+

@@ -1,0 +1,91 @@
+
+ RUN  v4.1.11 /workspace/work/skipwaitmanus-2-wt/d174-journey-search
+
+stdout | client/src/pages/explore/companySearch.test.tsx
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+
+ ❯ client/src/pages/explore/companySearch.test.tsx (33 tests | 1 failed) 12460ms
+     ✓ ships off 6ms
+     ✓ off: /explore keeps today's searchbox and client filter, and never calls the search route  529ms
+     ✓ asks the route with one q and parses the strict response 2ms
+     ✓ refuses a response that carries availability (D-176) or more than 10 companies 3ms
+     ✓ throws on a failed request 2ms
+     ✓ waits 150 ms, needs one non-space character, and sends only the settled query  409ms
+     ✓ does nothing when disabled 204ms
+     ✓ suggests companies as a combobox; arrow keys move, Enter opens /explore/:slug 292ms
+     ✓ a click on a suggestion opens the company door; Escape closes the list  462ms
+     ✓ no suggestion: the paste-a-link path comes first, Request a company stays the quiet link, and the event has no query text  367ms
+     ✓ loading: while the settled query is in flight a Searching line renders (busy), with no availability text and no event  307ms
+     ✓ error: a failed search shows a retry line, the client filter still works, no event fires, and Try again re-runs the search  355ms
+     ✓ empty: a blank box asks nothing and shows no search state; an answer with no company shows the no-match path, with no availability text  508ms
+     ✓ a function or industry query with matching directory rows is not 'unlisted': no paste-a-link path and no no-match event  708ms
+     ✓ an alias suggestion (tata -> TCS) with an empty directory filter never shows the empty-directory claim 252ms
+     ✓ while the search is in flight the directory makes no empty claim  363ms
+     ✓ after a failed search the directory makes no empty claim; only the retry line speaks 226ms
+     ✓ a real no-match (server empty and directory empty) still offers the paste-a-link path with the directory empty state 246ms
+     ✓ idle for a blank box, loading while settling and in flight, then ready 208ms
+     ✓ error on a failed request; retry re-runs the same query 106ms
+     ✓ idle and sends nothing when the switch is off 205ms
+     × a query that matches directory rows the active chip hides is not 'unlisted': no paste-a-link, no no-match event, the filter empty state speaks 753ms
+     ✓ a suggestion the chip hides keeps the truthful filter empty state beside the suggestion  309ms
+     ✓ a real no-match under a chip (no directory row for the query at all) is still 'unlisted' 270ms
+     ✓ while the directory is still loading, an empty search answer is not 'unlisted'  670ms
+     ✓ when the directory failed to load, an empty search answer is not 'unlisted' and the directory error speaks  1667ms
+     ✓ fetchCompanySearch marks the route's 400 as invalid input and a 5xx or a dropped connection as retryable 1ms
+     ✓ the hook: a q the route contract refuses (over 80 characters after trim) is 'invalid' and sends nothing; 80 is sent  507ms
+     ✓ the hook: an actual 400 from the route is 'invalid', asked once, and never re-asked  656ms
+     ✓ the hook: a dropped connection is the retryable error state 109ms
+     ✓ switch on, /explore: an actual 400 shows no retry line, no paste-a-link, no event, and the client filter keeps working  687ms
+     ✓ switch on, /explore: an 81-character query sends nothing, offers no retry or paste-a-link, fires no event, and the directory states its truthful empty filter  695ms
+     ✓ switch off: the same 81-character query keeps today's client filter and never calls the search route  370ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  client/src/pages/explore/companySearch.test.tsx > switch on: the function chip never makes a company 'unlisted' > a query that matches directory rows the active chip hides is not 'unlisted': no paste-a-link, no no-match event, the filter empty state speaks
+AssertionError: expected <div …(3)><a …(2)></a>
+…(1)</div> to be null
+
+- Expected:
+null
+
++ Received:
+<div
+  class="mt-3 grid gap-1"
+  data-testid="company-search-no-match"
+  role="status"
+>
+  <a
+    class="text-g-label text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink"
+    href="/ask"
+  >
+    Paste a Technology services job link to request a referral
+  </a>
+  <p
+    class="text-g-meta text-g-ink-3"
+  >
+    <a
+      class="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink"
+      href="/invite"
+    >
+      Request a company
+    </a>
+  </p>
+</div>
+
+ ❯ client/src/pages/explore/companySearch.test.tsx:427:61
+    425|     await settle();
+    426|     await settle();
+    427|     expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+       |                                                             ^
+    428|     expect(screen.queryByRole("link", { name: /job link to request a r…
+    429|     expect(events).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 32 passed (33)
+   Start at  20:38:05
+   Duration  17.71s (transform 1.06s, setup 96ms, import 2.42s, tests 12.46s, environment 2.45s)
+
