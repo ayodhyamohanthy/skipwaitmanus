@@ -9,7 +9,7 @@ import { ArrowLeft, Sparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { GoalButton, GoalEmptyState, GoalErrorState, GoalNum, GoalSkeletonRows } from "@/components/goal";
+import { GoalButton, GoalEmptyState, GoalErrorState, GoalNextStep, GoalNum, GoalSkeletonRows } from "@/components/goal";
 import { readApiJson } from "@/lib/apiResponse";
 import { applySeo } from "@/lib/seo";
 import { EmployerGoalFrame } from "./EmployerGoalFrame";
@@ -71,7 +71,7 @@ export default function GoalEmployerOpportunities() {
           <GoalButton size="sm" variant="ghost" flush leadingIcon={ArrowLeft} onClick={() => go("/employer")}>Back to overview</GoalButton>
         </header>
         <section className="mt-4">
-          <h1 className="text-g-heading text-g-ink">Sponsor a role.</h1>
+          <h1 className="text-g-heading text-g-ink">{GOAL_PAGE.goalLine}</h1>
           <p className="mt-2 text-g-meta text-g-ink-2">A featured listing is labeled as paid and sits in its own slot — never above employee posts, and never inside a referral request.</p>
         </section>
         {error ? (
@@ -99,6 +99,20 @@ export default function GoalEmployerOpportunities() {
           </ul>
         )}
       </div>
+      {!sponsorFor && !loading && !error ? (
+        <GoalNextStep reason={opportunities.length
+          ? "Pick a role above; the cost is stated in the dialog before anything is deducted."
+          : "Verify a work email and post an opening first — sponsorship is one tap after that."}>
+          <GoalButton
+            variant="primary"
+            touch="large"
+            className="w-full gdesk:w-auto"
+            {...(opportunities.length ? { disabledReason: "Pick a role from the list first" } : { asChild: true })}
+          >
+            {opportunities.length ? "Sponsor this role" : <a href="/employer">Back to overview</a>}
+          </GoalButton>
+        </GoalNextStep>
+      ) : null}
       {sponsorFor && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 gdesk:items-center">
           <div role="dialog" aria-modal="true" aria-label={`Sponsor ${sponsorFor.roleTitle}`} className="w-full max-w-md border border-g-hairline bg-g-surface p-5">

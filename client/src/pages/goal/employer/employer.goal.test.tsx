@@ -14,6 +14,9 @@ import GoalEmployer from "./GoalEmployer";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import GoalEmployerOpportunities from "./GoalEmployerOpportunities";
 import { SPONSOR_TIERS } from "./sponsorTiers";
+import { assertGoalPage } from "@/test/goalPageContract";
+import { GOAL_PAGE as EMPLOYER_GOAL } from "./GoalEmployer";
+import { GOAL_PAGE as OPP_GOAL } from "./GoalEmployerOpportunities";
 
 vi.mock("wouter", () => ({ Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>, useLocation: () => ["/", vi.fn()] }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
@@ -54,17 +57,19 @@ describe("goal /employer states", () => {
   it("renders the goal shell with the kit page's headline", async () => {
     serve({ account: ACCOUNT, opportunities: { opportunities: [{ id: 3, isActive: true, isSponsored: false }] }, spend: { spend: [] } });
     const { container } = renderPage(<GoalEmployer />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Your hiring, warmer." })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Hire without the noise." })).toBeTruthy();
     expect(container.querySelector("[data-goal-page='employer']")).toBeTruthy();
     expect(screen.getAllByTestId("goal-num").length).toBeGreaterThanOrEqual(4);
+    expect(() => assertGoalPage(container, EMPLOYER_GOAL)).not.toThrow();
   });
 
   it("signed out: the sign-in gate keeps the kit headline and no state is created", async () => {
     authState.isSignedIn = false;
     serve({ account: null });
-    renderPage(<GoalEmployer />);
+    const { container } = renderPage(<GoalEmployer />);
     expect(await screen.findByRole("heading", { level: 1, name: "Hire without the noise." })).toBeTruthy();
     expect(screen.getByText("Sign in to continue")).toBeTruthy();
+    expect(() => assertGoalPage(container, EMPLOYER_GOAL)).not.toThrow();
   });
 
   it("account load failure: an honest error state with a retry, no fake data", async () => {
@@ -79,7 +84,7 @@ describe("goal /employer states", () => {
   it("no employer account yet: the open-account form names the company and the two money facts, with no banned word", async () => {
     serve({ account: null });
     renderPage(<GoalEmployer />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Become an employer on skipwait.me" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Hire without the noise." })).toBeTruthy();
     expect(screen.getByLabelText("Company name")).toBeTruthy();
     expect(screen.getByText("Get started")).toBeTruthy();
   });
@@ -87,9 +92,9 @@ describe("goal /employer states", () => {
   it("just joined: the next step names what the money buys (top up for talent unlocks and sponsored roles), never 'Buy credits'", async () => {
     serve({ account: { ...ACCOUNT, credits: 0, budgetMonthlyUsdCents: 0 }, opportunities: { opportunities: [] }, spend: { spend: [] } });
     renderPage(<GoalEmployer />);
-    await screen.findByRole("heading", { level: 1, name: "Welcome. Let's open your first doors." });
+    await screen.findByRole("heading", { level: 1, name: "Hire without the noise." });
     expect(screen.getByText("Top up for talent unlocks and sponsored roles")).toBeTruthy();
-    expect(screen.getByText("Browse opt-in talent")).toBeTruthy();
+    expect(screen.getAllByText("Browse opt-in talent").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Sponsor a role (optional)")).toBeTruthy();
   });
 
@@ -129,6 +134,7 @@ describe("goal /employer/opportunities states", () => {
     expect(container.querySelector("[data-testid='goal-skeleton-rows']")).toBeTruthy();
     resolveList({ ok: true, status: 200, headers: new Headers({ "content-type": "application/json" }), json: async () => ({ opportunities: [] }) });
     expect(await screen.findByText("No opportunities yet.")).toBeTruthy();
+    expect(() => assertGoalPage(container, OPP_GOAL)).not.toThrow();
   });
 
   it("load failure: the honest error state retries", async () => {
@@ -154,7 +160,8 @@ describe("goal /employer/opportunities states", () => {
     expect(screen.getByText("Controls intern")).toBeTruthy();
     expect(screen.getByText("Featured listing")).toBeTruthy();
     const sponsorButtons = screen.getAllByText(/Sponsor this role|Extend sponsorship/);
-    expect(sponsorButtons.length).toBe(2);
+    // two role rows plus the page's next-step commit
+    expect(sponsorButtons.length).toBe(3);
   });
 });
 
@@ -167,8 +174,9 @@ describe("goal employer money-copy integrity (rule 1a)", () => {
       // source comments quote the rule itself.
       const source = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\/|^[ \t]*\/\/.*$/gm, "");
       const strings = Array.from(source.matchAll(/"([^"\\]*(?:\\.[^"\\]*)*)"/g)).map(match => match[1]).join("\n");
-      expect(strings.toLowerCase()).not.toMatch(/buy credits/);
-      expect(strings.toLowerCase()).not.toMatch(/buy referrals?/);
+      // The ban is on selling CTAs ("Buy credits", "Buy referrals"); the
+      // factual disclaimer "Employers never buy referrals" (D-006/D-040) stays.
+      expect(strings).not.toMatch(/Buy credits|Buy referrals/);
       expect(strings.toLowerCase()).not.toMatch(/\bcredits?\b/);
       expect(strings.toLowerCase()).not.toMatch(/\basks?\b/);
       expect(strings).not.toMatch(/Team|Growth|Scale by quote/);

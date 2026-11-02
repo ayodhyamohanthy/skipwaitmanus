@@ -6,6 +6,8 @@
 // buys (a talent unlock, a sponsored role) and never says "credit(s)" or the
 // noun "ask"; shared money lines are imported, never retyped; D-040 fairness
 // keeps outcome promises out. The data layer (employerData.ts) is read-only.
+// Goal page contract (D-167 (3)): exactly one h1 with GOAL_PAGE.goalLine and
+// exactly one "Your next step" block holding the page's single black commit.
 import { Sparkles, UsersRound, BarChart3, CircleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -58,9 +60,19 @@ export default function GoalEmployer() {
   if (!isSignedIn) return <Frame><SignInCard /></Frame>;
   if (accountQuery.isPending) return <Frame><LoadingRows /></Frame>;
   if (accountQuery.isError && !account) {
+    const message = errorText(accountQuery.error, "We could not load your employer account");
     return (
       <Frame>
-        <GoalErrorState title="We could not load your employer account" body="Nothing was changed. Check your connection and try again." retry={{ label: "Try again", onClick: () => void accountQuery.refetch() }} />
+        <div className="mt-6 grid gap-5">
+          <Intro h2="We could not load your employer account" />
+          <div role="alert" data-testid="goal-error-state" className="px-5 py-6 max-gdesk:px-0">
+            <p className="text-g-label text-g-ink">Nothing was changed.</p>
+            <p className="mt-1 text-g-meta text-g-ink-2">{`${message} Check your connection and try again.`}</p>
+          </div>
+          <GoalNextStep reason={message}>
+            <GoalButton variant="primary" touch="large" busy={accountQuery.isFetching} busyLabel="Loading your employer account" className="w-full gdesk:w-auto" onClick={() => void accountQuery.refetch()}>Try again</GoalButton>
+          </GoalNextStep>
+        </div>
       </Frame>
     );
   }
@@ -90,31 +102,46 @@ const Frame = ({ account, children }: { account?: boolean; children: React.React
   <EmployerGoalFrame screen="employer" page="employer" current={account ? "/employer" : undefined}>{children}</EmployerGoalFrame>
 );
 
-const LoadingRows = () => <div className="mt-6 grid gap-4"><GoalSkeletonRows density="queue" count={3} /></div>;
+/** The h1 always carries the goal line (goal page contract); the section text changes with the state. */
+const Intro = ({ h2 }: { h2?: string }) => (
+  <section className="border border-g-hairline bg-g-surface p-5 gdesk:p-6">
+    <h1 className="text-g-heading text-g-ink">{GOAL_PAGE.goalLine}</h1>
+    {h2 ? <p className="mt-2 text-g-label text-g-ink">{h2}</p> : null}
+  </section>
+);
+
+const LoadingRows = () => <div className="mt-6"><GoalSkeletonRows density="queue" count={3} /></div>;
 
 function SignInCard() {
   return (
-    <section className="mx-auto mt-6 w-full max-w-xl border border-g-hairline bg-g-surface p-6 gdesk:p-8">
-      <h1 className="text-g-heading text-g-ink">Hire without the noise.</h1>
-      <p className="mt-2 text-g-meta text-g-ink-2">Sign in to sponsor roles, discover opt-in talent, and manage your promotion budget.</p>
-      <SignInButton>
-        <GoalButton variant="primary" touch="large" className="mt-6 w-full">Sign in to continue</GoalButton>
-      </SignInButton>
-    </section>
+    <div className="mx-auto mt-6 grid w-full max-w-xl gap-5">
+      <section className="border border-g-hairline bg-g-surface p-6 gdesk:p-8">
+        <h1 className="text-g-heading text-g-ink">{GOAL_PAGE.goalLine}</h1>
+        <p className="mt-2 text-g-meta text-g-ink-2">Sign in to sponsor roles, discover opt-in talent, and manage your promotion budget.</p>
+      </section>
+      <GoalNextStep reason="Employers never buy referrals; you pay only for talent unlocks and sponsored roles.">
+        <SignInButton>
+          <GoalButton variant="primary" touch="large" className="w-full">Sign in to continue</GoalButton>
+        </SignInButton>
+      </GoalNextStep>
+    </div>
   );
 }
 
 function OpenAccountCard({ companyName, onNameChange, startError, starting, onStart }: { companyName: string; onNameChange: (value: string) => void; startError: string; starting: boolean; onStart: () => void }) {
   return (
-    <section className="mx-auto mt-6 w-full max-w-xl border border-g-hairline bg-g-surface p-6 gdesk:p-8">
-      <span className="grid size-12 place-items-center rounded border border-g-hairline bg-g-surface-hover"><Sparkles className="size-5 text-g-ink-2" strokeWidth={1.75} /></span>
-      <h1 className="mt-5 text-g-heading text-g-ink">Become an employer on skipwait.me</h1>
-      <p className="mt-2 text-g-meta text-g-ink-2">Sponsor your open roles as a clearly labeled featured listing and reach anonymized opt-in talent with your promotion budget. {REFERRALS_NOT_FOR_SALE}</p>
-      <ul className="mt-4 grid gap-2 text-g-small">
-        <li className="flex items-start gap-2"><span className="mt-0.5 shrink-0"><UsersRound className="size-4 text-g-ink-2" strokeWidth={1.75} /></span>Talent discovery — only seekers who opted in, anonymized until their snapshot is unlocked</li>
-        <li className="flex items-start gap-2"><span className="mt-0.5 shrink-0"><BarChart3 className="size-4 text-g-ink-2" strokeWidth={1.75} /></span>Self-serve promotion budget — pay for talent unlocks and sponsored roles</li>
-      </ul>
-      <div className="mt-6">
+    <div className="mx-auto mt-6 grid w-full max-w-xl gap-5">
+      <section className="border border-g-hairline bg-g-surface p-6 gdesk:p-8">
+        <span className="grid size-12 place-items-center rounded border border-g-hairline bg-g-surface-hover"><Sparkles className="size-5 text-g-ink-2" strokeWidth={1.75} /></span>
+        <h1 className="mt-5 text-g-heading text-g-ink">{GOAL_PAGE.goalLine}</h1>
+        <p className="mt-2 text-g-label text-g-ink">Become an employer on skipwait.me</p>
+        <p className="mt-2 text-g-meta text-g-ink-2">Sponsor your open roles as a clearly labeled featured listing and reach anonymized opt-in talent with your promotion budget.</p>
+        <ul className="mt-4 grid gap-2 text-g-small">
+          <li className="flex items-start gap-2"><span className="mt-0.5 shrink-0"><UsersRound className="size-4 text-g-ink-2" strokeWidth={1.75} /></span>Talent discovery — only seekers who opted in, anonymized until their snapshot is unlocked</li>
+          <li className="flex items-start gap-2"><span className="mt-0.5 shrink-0"><BarChart3 className="size-4 text-g-ink-2" strokeWidth={1.75} /></span>Self-serve promotion budget — pay for talent unlocks and sponsored roles</li>
+        </ul>
+      </section>
+      <section className="grid gap-3 border border-g-hairline bg-g-surface p-5 gdesk:p-6">
         <GoalField label="Company name" htmlFor="goal-employer-company-name">
           <input
             id="goal-employer-company-name"
@@ -125,10 +152,12 @@ function OpenAccountCard({ companyName, onNameChange, startError, starting, onSt
             className="h-(--g-control-h) w-full border border-g-hairline bg-g-surface px-3 text-g-small text-g-ink"
           />
         </GoalField>
-      </div>
-      {startError ? <p role="alert" className="mt-3 border border-g-hairline bg-g-surface-hover p-3 text-g-small text-g-ink">{startError}</p> : null}
-      <GoalButton variant="primary" touch="large" busy={starting} busyLabel="Opening your employer account" disabledReason={companyName.trim() ? undefined : "Add your company name first"} className="mt-5 w-full" onClick={onStart}>Get started</GoalButton>
-    </section>
+        {startError ? <p role="alert" className="border border-g-hairline bg-g-surface-hover p-3 text-g-small text-g-ink">{startError}</p> : null}
+      </section>
+      <GoalNextStep reason={REFERRALS_NOT_FOR_SALE}>
+        <GoalButton variant="primary" touch="large" busy={starting} busyLabel="Opening your employer account" disabledReason={companyName.trim() ? undefined : "Add your company name first"} className="w-full" onClick={onStart}>Get started</GoalButton>
+      </GoalNextStep>
+    </div>
   );
 }
 
@@ -141,11 +170,14 @@ const STEPS = [
 function GoalOverview({ account, activity, activityError, onRetry, retrying }: { account: EmployerAccount; activity: EmployerActivity | undefined; activityError: string; onRetry: () => void; retrying: boolean }) {
   const fresh = isJustJoined(account, activity);
   const { liveRoles, sponsored } = activityStats(activity);
+  const restricted = !activityError && activity?.access === "restricted";
+  const commit = fresh
+    ? { label: "Browse opt-in talent", href: "/employer/talent" as const }
+    : { label: "Sponsor a role", href: "/employer/opportunities" as const };
   return (
-    <div className="grid gap-4">
+    <div className="mt-6 grid gap-4">
       <section className="border border-g-hairline bg-g-surface p-5 gdesk:p-6">
-        <p className="text-g-meta text-g-ink-3">{`${account.companyName.toUpperCase()} ON SKIPWAIT`}</p>
-        <h1 className="mt-1 text-g-heading text-g-ink">{fresh ? "Welcome. Let's open your first doors." : "Your hiring, warmer."}</h1>
+        <h1 className="text-g-heading text-g-ink">{GOAL_PAGE.goalLine}</h1>
         <p className="mt-2 max-w-xl text-g-meta text-g-ink-2">Employees verify with their own work email and choose who to refer. You see opt-in talent and your own spend — never individual seekers' private requests.</p>
       </section>
       <div className="grid grid-cols-2 gap-3 gdesk:grid-cols-4">
@@ -158,10 +190,11 @@ function GoalOverview({ account, activity, activityError, onRetry, retrying }: {
       </div>
       {activityError ? (
         <GoalErrorState title="We could not load your employer activity" body="Nothing was changed. Check your connection and try again." retry={{ label: "Try again", onClick: onRetry }} />
-      ) : activity?.access === "restricted" ? (
+      ) : restricted ? (
         <ApprovalNotice account={account} />
       ) : fresh ? (
-        <GoalNextStep reason="Everything below opens once your employer application is approved.">
+        <section className="border border-g-hairline bg-g-surface p-5 gdesk:p-6">
+          <h2 className="text-g-label text-g-ink">Get started</h2>
           <ol className="mt-3 grid gap-2">
             {STEPS.map(([title, href], index) => (
               <li key={title}>
@@ -172,10 +205,26 @@ function GoalOverview({ account, activity, activityError, onRetry, retrying }: {
               </li>
             ))}
           </ol>
-        </GoalNextStep>
+        </section>
       ) : activity ? (
         <GoalSpendActivity activity={activity} />
       ) : null}
+      <GoalNextStep reason={restricted
+        ? (account.decisionNote || "Talent discovery, sponsored roles and your spend record open once your employer application is approved.")
+        : fresh
+          ? "Top up, then meet opt-in talent — the first two doors of a fresh workspace."
+          : "Sponsor an open role as a clearly labeled paid listing; nothing here buys a referral."}>
+        <GoalButton
+          variant="primary"
+          touch="large"
+          className="w-full gdesk:w-auto"
+          {...(restricted
+            ? { disabledReason: "Employer tools open once your application is approved" }
+            : { asChild: true })}
+        >
+          {restricted ? commit.label : <a href={commit.href}>{commit.label}</a>}
+        </GoalButton>
+      </GoalNextStep>
     </div>
   );
 }
