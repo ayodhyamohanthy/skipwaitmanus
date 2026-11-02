@@ -1,6 +1,6 @@
 # Packet CONV-report-entry: the seeker conversation's "Report or block" link carries the ask only when it is accepted (D-278)
 
-Tier 2 (client page + its tests + one new e2e journey; the tier classifier `scripts/tierClassifyCore.mjs` computes Tier 2 for the three owned paths, see §7.4) · lane `conv-report-entry` · branch `agent/queue/conv-report-entry` · waits for `D-048-p3-live-review-conversation` · builder: a non-Claude development session through the picker (D-225) · registered by D-278 on 2026-11-02 at `main` `27dac5f9`, checked against the register through D-276 (D-277 is held by open PR #962).
+Tier 1 (privacy/safety; declared above the Tier 2 that `scripts/tierClassifyCore.mjs` computes for the three owned paths, which GATE-tier-floor (D-212) allows, see §7.4) · lane `conv-report-entry` · branch `agent/queue/conv-report-entry` · waits for `D-048-p3-live-review-conversation` · builder: a non-Claude development session through the picker (D-225) · registered by D-278 on 2026-11-02 at `main` `27dac5f9`, checked against the register through D-276 (D-277 is held by open PR #962).
 
 Source and authority:
 - Route **R-B-min** and the corrected rule from correction **E** on #831, comment [6568171751](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/831#issuecomment-6568171751) (bound to `origin/main` `27dac5f9`, #831 head `d5c76594`). E is authoritative.
@@ -152,7 +152,7 @@ No URL carries a user id. The page gains no data beyond the id already in its ow
 So, locally, the seeded admin cookie passes `requireAdmin` and a non-admin is refused. This is not a journey and not production proof; §5.3 stays an acceptance item for the builder, inside `e2e/report-from-conversation.e2e.ts`, on CI.
 
 ### 7.4 Tier
-`classifyTier` over the three owned paths returns `{ tier: 2, reason: "Tier 2 paths" }`: none is on a Tier 1 list (the e2e file and the test file never raise the tier; `SeekerConversation.tsx` is a `client/src/` Tier 2 path). The row is registered at the computed Tier 2. Packet A proposed Tier 1, and whether the gap is a D-019 broken basic (A open item (c)) is Instinct's classification, not decided here; a later register entry may raise the tier.
+`classifyTier` over the three owned paths returns `{ tier: 2, reason: "Tier 2 paths" }`: none is on a Tier 1 path list (the e2e file and the test file never raise the tier; `SeekerConversation.tsx` is a `client/src/` Tier 2 path). That is a floor, not a ceiling: GATE-tier-floor (D-212, `scripts/review-gate.mjs`) refuses a declared tier below the computed one and allows a higher one. **The row is declared Tier 1** (corrected 2026-11-02 on #963, per #963 comment 6568702221) because the AGENTS.md Tier 1 classes (money, sign-in, identity, privacy, migrations) plausibly apply on substance, not by path: (1) the href decides when a safety report carries `referralRequestId`, and with it the server copies up to 50 message bodies of the pair into `moderationEvidence` for admins (`server/db.ts:968-979`), a privacy act; (2) it decides when "Also block this person" (`Report.tsx:59-68,111`) is offered, and blocks are on the Tier 1 privacy list (`server/blockedPairs.ts` in `TIER1_PRIVACY`); the rejected §2.1 rule shows a wrong gate here exposes a block against a referrer the seeker has never seen; (3) packet A proposed Tier 1 for this route (#831 comment 6567957088), and the sibling filing-reliability remedy B2 is Tier 1 for its private evidence (#811 comment 6567956835). So the build needs an independent Tier 1 review (D-151) by a model that neither built nor fixed it, on a draft PR, before `main`. Whether the gap is a D-019 broken basic (A open item (c)) stays Instinct's classification. **A docs landing does not lower the runtime independent-review bar:** this packet's registration or correction landing on docs-only checks changes nothing about the Tier 1 review the build must pass.
 
 ## 8. Residuals: named, NOT adopted
 
@@ -173,10 +173,10 @@ Nothing in this packet edits #831's row. If and when #831 (`D-048-p3-conversatio
 
 ## 10. Stop and ask (builder) / open architect items
 
-- **A1 (architect, precondition):** reconcile `D-048-p3-live-review-conversation`'s record (status `done` with the landing evidence in §7.1, or a recorded reason it stays open) before #786 leaves the picker's 100-PR closed window; otherwise this row waits under D-134 although the code is on `main`. Not done here; no status is flipped by this registration.
-- **A2 (Instinct):** D-019 classification / tier (§7.4).
+- **A1 (architect, precondition) — done on #963 (2026-11-02):** `D-048-p3-live-review-conversation` is recorded `done` (seeker side, not moved; signed-in live behaviour unverified) per #963 comment 6568695667, so this row no longer depends on #786 staying in the picker's 100-PR closed window.
+- **A2 (Instinct):** D-019 classification (§7.4); the tier is now declared Tier 1.
 - Builder: if `isAccepted` at `threadModel.ts:36-38` has changed shape, if `:223` is no longer the only Report link on the seeker page, or if any step would need an edit outside §4, stop and report on #811.
 - Builder: if the admin read in §5.3 cannot be made green with the seeded admin cookie, stop and report; do not change `server/safetyRoutes.ts` or the seeder.
 
 ## Status
-Registered 2026-11-02 (D-278), docs only. No code written. Not built, not reviewed.
+Registered 2026-11-02 (D-278), docs only; tier corrected to Tier 1 on #963. No code written. Not built, not reviewed. A docs landing does not lower the runtime independent-review bar: the build still needs its independent Tier 1 review (D-151).
