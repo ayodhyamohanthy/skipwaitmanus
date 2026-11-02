@@ -2554,7 +2554,7 @@
       "lane": "d048-admin",
       "branch": "agent/queue/d048-p3-admin",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-284",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2567,9 +2567,12 @@
         "client/src/pages/AdminReview.tsx",
         "client/src/pages/goal/admin/**",
         "scripts/kit-screens/fixtures/*__goal-admin-*.json",
-        "design/goal-ui/captures/admin/**"
+        "design/goal-ui/captures/admin/**",
+        "client/src/test/goalPagesBoundary.test.ts",
+        "client/src/lib/goalSurfaces.ts",
+        "client/src/components/goal/wrapper/appWrapper.goal.test.tsx"
       ],
-      "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin'); read-only: components/admin/adminApi.ts. Waits for D-048-p3-employer: same fixture-glob overlap; the internal admin surface goes last (landing of the lane packets, Oct 25).",
+      "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin'); read-only: components/admin/adminApi.ts. Waits for D-048-p3-employer: same fixture-glob overlap; the internal admin surface goes last (landing of the lane packets, Oct 25). D-284 clears its boundary block: the boundary test, the flag module's /admin-review line and the wrapper route pin are now owned, and components/admin/adminApi.ts + reviewCases.ts are admitted to the D-241 audited list as behavior-only on the row's branch.",
       "epic": "D-048-p3"
     },
     {
