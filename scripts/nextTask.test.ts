@@ -48,6 +48,43 @@ const decisionEntry = (id: string, affects: string[] | null = null): RegisterEnt
   ({ id, number: Number(id.slice(2)), date: "2026-11-01", title: `${id} fixture`, affects });
 
 /**
+ * D-202's staleness rule, restated from the prose rather than imported (owner finite acceptance findings, PR #952,
+ * 2026-11-02, gap 1): a row is stale when a decision newer than its `syncedTo` stamp names it, and the newest such
+ * decision is the one it must be re-synced to. `core.outOfSyncOf` answers the same question, so calling it here would
+ * let one production mistake satisfy both the picker and its expectation — measured: an inclusive-stamp mutation made
+ * the picker and its imported oracle answer `resync` together and the live check still passed.
+ */
+const newestAffectingDecision = (t: { id: string; syncedTo?: string }, register: RegisterEntry[]): string | null => {
+  if (!register.length || !t.syncedTo) return null;
+  const at = register.findIndex(e => e.id === t.syncedTo);
+  if (at < 0) return null;
+  for (let i = register.length - 1; i > at; i -= 1) if (register[i].affects?.includes(t.id)) return register[i].id;
+  return null;
+};
+
+/** One `owns` entry as the overlap rule reads it: the literal prefix of the pattern, and whether it is switch-only. */
+const ownsLiteral = (raw: unknown) => {
+  const text = String(raw ?? "").trim();
+  const switchOnly = text.endsWith(" (switch only)");
+  const bare = (switchOnly ? text.slice(0, -" (switch only)".length) : text).trim().replace(/^\.\//, "");
+  const cut = bare.indexOf("*");
+  return { prefix: (cut === -1 ? bare : bare.slice(0, cut)).replace(/\/$/, ""), switchOnly };
+};
+
+/**
+ * The `owns` overlap rule, restated from the prose rather than imported (same finding, gap 1): two claims share a
+ * file when the literal prefix of one pattern is the other or sits above it, except that two switch-only claims on one
+ * file are a few wiring lines each and never wait (D-200). `core.ownsOverlap` answers the same question.
+ */
+const ownsOverlapHere = (a: unknown[], b: unknown[]) =>
+  a.some(x => b.some(y => {
+    const l = ownsLiteral(x), r = ownsLiteral(y);
+    if (l.switchOnly && r.switchOnly) return false;
+    const under = (child: string, parent: string) => !parent || child === parent || child.startsWith(`${parent}/`);
+    return under(l.prefix, r.prefix) || under(r.prefix, l.prefix);
+  }));
+
+/**
  * D-272's empty-board eligibility property, restated independently (owner finite acceptance findings, PR #952,
  * 2026-11-02). This is written from the picker's contract in prose, not from its code, so it is a real cross-check:
  * on a green main with no branches, no pull requests and no reports, the picker hands the first row in order whose
@@ -59,7 +96,8 @@ const decisionEntry = (id: string, affects: string[] | null = null): RegisterEnt
  * The first version of this property returned early on `stop`/`wait` (zero assertions), asserted `build`
  * unconditionally (so a legitimate architect-first registry failed) and let a `resync`/`architect` re-hand of a
  * closed row through. This restatement has no early return, treats every handable kind as first-class, and is
- * pinned by 13 fixed boards and an assertion count.
+ * pinned by 14 fixed boards and an assertion count. It imports nothing from the picker: the staleness and `owns`
+ * rules below are restated from their prose, so a production mistake cannot satisfy both sides of the comparison.
  */
 const emptyBoardEligibleRow = (tasks: ReturnType<typeof task>[], register: RegisterEntry[] = []): Outcome => {
   const doneIds = new Set(tasks.filter(t => t.status === "done").map(t => t.id));
@@ -67,7 +105,7 @@ const emptyBoardEligibleRow = (tasks: ReturnType<typeof task>[], register: Regis
   const depends = (from: string, id: string, seen = new Set<string>()): boolean =>
     (byId.get(from)?.dependsOn ?? []).some(d => d === id || (!seen.has(d) && seen.add(d) && byId.has(d) && depends(d, id, seen)));
   const unmet = (t: ReturnType<typeof task>) => (t.dependsOn ?? []).filter(d => !doneIds.has(d));
-  const stale = (t: ReturnType<typeof task>) => Boolean(core.outOfSyncOf({ task: t }, register));
+  const stale = (t: ReturnType<typeof task>) => newestAffectingDecision(t, register) !== null;
   const holds = (o: ReturnType<typeof task>, t: ReturnType<typeof task>) => !depends(o.id, t.id) && !unmet(o).length && !stale(o);
   const waiting = tasks.filter(t => t.status === "in-review");
   for (const t of tasks) {
@@ -76,7 +114,7 @@ const emptyBoardEligibleRow = (tasks: ReturnType<typeof task>[], register: Regis
     if (t.status === "architect") return { kind: "architect", id: t.id };
     if (t.status !== "todo") continue;
     const laneHeld = waiting.some(o => o !== t && o.lane === t.lane && holds(o, t));
-    const filesHeld = Boolean(t.owns?.length) && waiting.some(o => o !== t && Boolean(o.owns?.length) && holds(o, t) && core.ownsOverlap(t.owns ?? [], o.owns ?? []));
+    const filesHeld = Boolean(t.owns?.length) && waiting.some(o => o !== t && Boolean(o.owns?.length) && holds(o, t) && ownsOverlapHere(t.owns ?? [], o.owns ?? []));
     if (laneHeld || filesHeld) continue;
     return { kind: "build", id: t.id };
   }
@@ -103,44 +141,51 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
     const emptyBoard = { mainCi: green, branches: new Map(), openPrs: new Map(), now: NOW, claimant: null };
     const first = pickNextTask({ tasks: real.tasks, register: realRegister, ...emptyBoard });
     const oracle = emptyBoardEligibleRow(real.tasks, realRegister);
-    const checks: string[] = [];
+    // A real assertion counter (finding 3): `check` *is* the assertion, so the pin below counts assertions that
+    // actually executed, not labels pushed onto an array. Every line below is unconditional — there is no early return.
+    let ran = 0;
+    const check = <T,>(actual: T) => { ran += 1; return expect(actual); };
     // 1. The pick and the independently restated oracle agree — row and kind. A picker answering `none` or `wait`
-    //    while a row is eligible, or returning any other row, fails here, before a branch below can skip the check.
-    checks.push(outcomeOf(first).kind);
-    expect(outcomeOf(first)).toEqual(oracle);
-    // 2. A pick that carries a task hands a row the picker may hand: never closed, dependencies all done, and a
-    //    `resync` exactly when a newer decision names the row (D-202), so the resync badge cannot be dropped.
-    if (oracle.kind !== "none") {
-      const picked = (first as { task: { id: string; status: string; dependsOn?: string[] } }).task;
-      checks.push("task");
-      expect(picked.status).not.toBe("done");
-      const doneIds = new Set(real.tasks.filter((t: { status?: string }) => t.status === "done").map(t => t.id));
-      for (const dep of picked.dependsOn ?? []) expect(doneIds.has(dep)).toBe(true);
-      const staleBy = core.outOfSyncOf({ task: picked }, realRegister);
-      if (oracle.kind === "resync") expect(staleBy).not.toBe(null);
-      else expect(staleBy).toBe(null);
-    }
-    // 3. Done-closure for every task-carrying kind: closing the handed row never hands that row again, and the next
+    //    while a row is eligible, or returning any other row, fails here, before any phase below can be skipped.
+    check(outcomeOf(first)).toEqual(oracle);
+    // 2. The live registry always has work, so every phase below runs and the count pin is a fixed number.
+    check(oracle.kind).not.toBe("none");
+    const picked = (first as { task: { id: string; status: string; dependsOn?: string[]; syncedTo?: string } }).task;
+    // 3. A pick that carries a task hands a row the picker may hand: never closed, and every dependency done.
+    check(picked.status).not.toBe("done");
+    const doneIds = new Set(real.tasks.filter((t: { status?: string }) => t.status === "done").map(t => t.id));
+    check((picked.dependsOn ?? []).filter(d => !doneIds.has(d))).toEqual([]);
+    // 4. A `resync` exactly when a newer decision names the row (D-202), so the resync badge cannot be dropped.
+    check(newestAffectingDecision(picked, realRegister) === null).toBe(oracle.kind !== "resync");
+    // 5. Done-closure for every task-carrying kind: closing the handed row never hands that row again, and the next
     //    pick still agrees with the oracle recomputed on the closed registry.
-    if (oracle.kind !== "none") {
-      const closed = real.tasks.map((t: { id?: string }) => (t.id === oracle.id ? { ...t, status: "done" } : t));
-      const after = pickNextTask({ tasks: closed, register: realRegister, ...emptyBoard });
-      expect(outcomeOf(after).id).not.toBe(oracle.id);
-      expect(outcomeOf(after)).toEqual(emptyBoardEligibleRow(closed, realRegister));
-      checks.push("closed");
-    }
-    // 4. Unconditional assertion-count pin: nothing above returns before this line, so the property always runs its
-    //    checks. A property that exits with zero assertions cannot satisfy a fixed count.
-    expect(checks.length).toBe(oracle.kind === "none" ? 1 : 3);
+    const closed = real.tasks.map((t: { id?: string }) => (t.id === oracle.id ? { ...t, status: "done" } : t));
+    const after = pickNextTask({ tasks: closed, register: realRegister, ...emptyBoard });
+    check(outcomeOf(after).id).not.toBe(oracle.id);
+    check(outcomeOf(after)).toEqual(emptyBoardEligibleRow(closed, realRegister));
+    // 6. Restamp closure on the live registry (finding 2). A row stamped behind a decision that names it is handed as
+    //    `resync`; stamping it at that decision clears the badge, and the very next pick is a `build` of that same
+    //    row. A synthetic board cannot show this: it runs the real ordering, lane and `owns` rules over the real rows.
+    const firstId = oracle.id as string;
+    const stamped = [decisionEntry("D-1"), decisionEntry("D-2", [firstId])];
+    const behind = real.tasks.map((t: { id?: string }) => (t.id === firstId ? { ...t, syncedTo: "D-1" } : t));
+    check(outcomeOf(pickNextTask({ tasks: behind, register: stamped, ...emptyBoard }))).toEqual({ kind: "resync", id: firstId });
+    const cleared = real.tasks.map((t: { id?: string }) => (t.id === firstId ? { ...t, syncedTo: "D-2" } : t));
+    const clearedPick = pickNextTask({ tasks: cleared, register: stamped, ...emptyBoard });
+    check(outcomeOf(clearedPick)).toEqual({ kind: "build", id: firstId });
+    check(outcomeOf(clearedPick)).toEqual(emptyBoardEligibleRow(cleared, stamped));
+    // 7. Unconditional assertion-count pin: nothing above returns early, so the property always runs exactly these
+    //    ten assertions. A property that exits with zero assertions, or silently skips a phase, cannot satisfy it.
+    expect(ran).toBe(10);
   });
 
-  it("restates the first-pick property on 13 fixed boards, each rejecting a specific wrong picker", () => {
+  it("restates the first-pick property on 14 fixed boards, each rejecting a specific wrong picker", () => {
     // The wrong pickers the first version of the property let through (owner findings, PR #952, 2026-11-02):
     // returning the second or the last eligible row, handing a closed, `in-review` or `owner` row, handing a row
     // whose dependency is not done, answering `none`/`wait` while work is outstanding, never answering `architect`,
     // and re-handing a closed row. Every board below fixes one exact answer, so a wrong picker disagrees with at
-    // least one of them. `staleOne` is one register used twice; only the row's `syncedTo` differs between those two
-    // boards, which is what makes the D-202 resync badge testable at all.
+    // least one of them. `staleOne` is one register used three times; only the row's `status` and `syncedTo` differ
+    // between those boards, which is what makes the D-202 resync badge testable at all.
     const staleOne = [decisionEntry("D-1"), decisionEntry("D-2", ["A"])];
     const boards: { name: string; tasks: ReturnType<typeof task>[]; register?: RegisterEntry[]; expect: Outcome }[] = [
       { name: "empty registry", tasks: [], expect: { kind: "none", id: null } },
@@ -155,6 +200,9 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
       { name: "architect row alone", tasks: [task("A", { status: "architect" })], expect: { kind: "architect", id: "A" } },
       { name: "architect row before a todo row", tasks: [task("A", { status: "architect" }), task("B")], expect: { kind: "architect", id: "A" } },
       { name: "stale row is handed as resync", tasks: [task("A", { syncedTo: "D-1" })], register: staleOne, expect: { kind: "resync", id: "A" } },
+      // MS4, which survived every mutant before this board existed: a stale row the owner holds is never handed —
+      // not even as a `resync`, because the badge is a hand-out and an `owner` row is not handed at all.
+      { name: "stale owner row is never handed as resync", tasks: [task("A", { status: "owner", syncedTo: "D-1" })], register: staleOne, expect: { kind: "none", id: null } },
       { name: "row stamped at the newest decision is a build", tasks: [task("A", { syncedTo: "D-2" })], register: staleOne, expect: { kind: "build", id: "A" } },
     ];
     const answers = boards.map(board => {
@@ -164,8 +212,8 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
       return `${actual.kind}:${actual.id}`;
     });
     // The boards pin every handable kind and are not one repeated answer, so a property that answered a constant —
-    // `none`, `wait`, or always the first or the last row — cannot satisfy all 13 lines above.
-    expect(answers).toHaveLength(13);
+    // `none`, `wait`, or always the first or the last row — cannot satisfy all 14 lines above.
+    expect(answers).toHaveLength(14);
     expect(new Set(answers).size).toBeGreaterThanOrEqual(6);
     for (const kind of ["none", "build", "architect", "resync"]) expect(answers.some(a => a.startsWith(`${kind}:`))).toBe(true);
   });
@@ -174,11 +222,14 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
   it("does not let a later row's status move the first pick", () => {
     // A guard against a picker that scans rows in another order or leans on a row it never hands: moving a row that
     // sits strictly after the handed one out of contention (`owner`) must leave the first pick exactly where it was.
+    // The target is a `todo` row only (owner finding, PR #952, 2026-11-02): a `todo` row holds no lane and no files,
+    // so moving it to `owner` can only remove a candidate. An `in-review` row does hold its lane and its files, so
+    // moving one to `owner` can legitimately free an *earlier* row — asserting an unchanged pick there is a false red.
     const first = outcomeOf(pick(real.tasks, { register: realRegister }));
     expect(first.kind).not.toBe("none");
     expect(first.id).not.toBe(null);
     const at = real.tasks.findIndex((t: { id?: string }) => t.id === first.id);
-    const target = real.tasks.slice(at + 1).find((t: { status?: string }) => t.status === "todo" || t.status === "in-review");
+    const target = real.tasks.slice(at + 1).find((t: { status?: string }) => t.status === "todo");
     expect(target).toBeTruthy();
     const moved = real.tasks.map((t: { id?: string }) => (t.id === target?.id ? { ...t, status: "owner" } : t));
     expect(outcomeOf(pick(moved, { register: realRegister }))).toEqual(first);
