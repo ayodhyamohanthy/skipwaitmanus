@@ -1134,7 +1134,7 @@
       "tier": 1,
       "lane": "d048-seeker-thread",
       "branch": "agent/queue/d048-live-review-conversation",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-038-reconcile",
@@ -2511,7 +2511,7 @@
       "tier": 2,
       "lane": "d048-support",
       "branch": "agent/queue/d048-p3-support",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-harness",
@@ -3073,8 +3073,8 @@
       "tier": 1,
       "lane": "demand-count",
       "branch": "agent/queue/d086-count",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-279",
       "epic": "D-086-demand-list",
       "dependsOn": [
         "D-174-company-search"
@@ -3088,7 +3088,7 @@
         "server/companyDemandRoutes.test.ts",
         "server/companyDirectoryRoutes.ts (switch only)"
       ],
-      "note": "D-086 packet §5.1. Liveness is status pending plus the imported isAskExpired (no age cutoff of its own; follows D-174-expiry-clock-removal with no change; awaiting-reconfirm requests count). Coverage-neutral (reads no referrer or availability table), listed companies only in public, distinct canonical people, never companySuggestions votes. The admin queue lists unowned corporate domains by people, private, no-store. Mounts inside registerCompanyDirectoryRoutes (D-223 (6)), so it waits for D-174-company-search, which owns that file. Both switches stay false."
+      "note": "D-086 packet §5.1. Liveness is status pending plus the imported isAskExpired (no age cutoff of its own; follows D-174-expiry-clock-removal with no change; awaiting-reconfirm requests count). Coverage-neutral (reads no referrer or availability table), listed companies only in public, distinct canonical people, never companySuggestions votes. The admin queue lists unowned corporate domains by people, private, no-store. Mounts inside registerCompanyDirectoryRoutes (D-223 (6)), so it waits for D-174-company-search, which owns that file. Both switches stay false. D-279 (2026-11-02): the row is parked at owner because its MAKE GREEN hand-out has nothing to fix - the deliverable is complete on PR #955 (head 4700fc10, 949 insertions across the 7 owned paths plus the packet Status line) and the only red required job is the review gate: typecheck fails at step 11 Scope check -> review-gate while the job's own Typecheck, Design tokens and Deploy trigger coverage steps and the unit + component + route tests, production build and e2e journeys jobs are all green on that head. The review lock agent/review/d086-count has never existed on origin, so no session was ever handed the review that would clear the gate; nextTaskCore.mjs:573-584 can only answer fix or green while CI is red and reaches review only below that guard, so the promised second review is unreachable by construction. No manual Review claim, preselected pass, gate edit or no-code Fixed is taken (D-251, D-253). The nextTask.test.ts:47-62 first-pick pin that blocked D-273's park does not reach this row (index 157 of 248, and no test or script reads it), so the standard D-254 park applies; D-254's existing qualification is extended to name this row as its eighth member, and no new question is asked. Do not rebuild: the row lands unchanged once a review route exists, and both switches stay false. Its dependents D-086.ui, D-086.admit and D-086-demand-list wait on it under D-134 either way. Sessions that cannot complete it should run the picker with --avoid D-086.count rather than burn a run."
     },
     {
       "id": "D-086.ui",
@@ -4985,6 +4985,44 @@
         "scripts/nextTaskLandingWaitFallthrough.test.ts"
       ],
       "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
+    },
+    {
+      "id": "SUPPORT-A",
+      "title": "Kit /support page promises only what works today: remove the unbacked person, response-time, triage, pause and notification promises (D-153)",
+      "row": "D-153",
+      "packet": "docs/plans/SUPPORT-A.md",
+      "tier": 2,
+      "lane": "support-promises",
+      "branch": "agent/queue/support-a",
+      "status": "todo",
+      "syncedTo": "D-277",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/Support.tsx",
+        "client/src/pages/support.promises.test.tsx",
+        "artifacts/support-promises/**"
+      ],
+      "note": "D-277: Half A of the #811 packet proposal (comment 6567956835) only. Client copy only: apply the packet's byte-exact R1-R5 (L27, L28, L40, L64, L68); keep P1-P9 (L4, L20, L39, L41, PolicyPageShell.tsx:25) and L31 byte-for-byte; L17 and L29 are architect choices, not adopted (L41 legal/business hours are owner-only). Self-serve cards L14-17 out of scope: stop and report if one is false. No server, db.ts or shared file; SUPPORT-B1/B2 and the BYOR edge are not registered. Residuals shared/publicRoutes.ts:48 (D-176-public-claims) and shared/landingContent.ts:63 (PRICING-banded-oct25) are not fixed. Builder: a non-Claude development session through the picker (D-225)."
+    },
+    {
+      "id": "CONV-report-entry",
+      "title": "Seeker conversation \"Report or block\" link carries the ask only when it is accepted (R-B-min, seeker side)",
+      "row": "D-048",
+      "packet": "docs/plans/CONV-report-entry.md",
+      "tier": 1,
+      "lane": "conv-report-entry",
+      "branch": "agent/queue/conv-report-entry",
+      "status": "todo",
+      "syncedTo": "D-278",
+      "dependsOn": [
+        "D-048-p3-live-review-conversation"
+      ],
+      "owns": [
+        "client/src/pages/conversation/SeekerConversation.tsx",
+        "client/src/pages/conversation/reportEntry.test.tsx",
+        "e2e/report-from-conversation.e2e.ts"
+      ],
+      "note": "D-278: correction E on #831 (comment 6568171751), route R-B-min, seeker side S only. Rule at SeekerConversation.tsx:223: href = (!passed && isAccepted(request)) ? \"/report?request=\" + request.id : \"/report\" (passed is always false on the seeker page), reusing threadModel.ts:36-38 (not edited). Packet A's referrerId !== null rule is rejected and not buildable. Acceptance (packet section 5): red-first reportEntry.test.tsx; e2e/report-from-conversation.e2e.ts targets its own ask id, reads e2e/.auth/seed.json itself (no e2e/fixtures.ts edit), block LAST; admin read of /api/admin/safety-reports proved red-first; K/G hrefs not asserted. No #831 edge, owns or status change; residuals S-g, R-f, S-l, R-k, block-stalls-accepted-ask and G pre-acceptance linkage not adopted. Dependency done: #786 landed 99f8a1f2 and the seeker row is recorded done (seeker side, not moved; #963). Tier 1 (privacy/safety: the href decides when the block toggle and the referralRequestId evidence snapshot of message bodies attach to a safety report); declared above the computed Tier 2, which D-212 allows; needs an independent different-model review (D-151) at build time. Builder: a non-Claude development session through the picker (D-225)."
     }
   ]
 }
