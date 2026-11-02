@@ -4511,7 +4511,7 @@
         "D-174-company-search",
         "D-174-ask-from-job"
       ],
-      "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-189: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176. Packet written Nov 1 (docs/plans/D-174-seeker-journey-build.md): this row is the D-223 release row of six pieces (door-neutral, composer-neutral, public-payload, search, jobs-list, job-ask); it flips COMPANY_TYPEAHEAD_ENABLED and COMPANY_JOBS_ENABLED only, never JOB_CATALOG_ENABLED. Lane moved off d048-foundation so unrelated holds there do not hold the release.",
+      "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-189: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176. Packet written Nov 1 (docs/plans/D-174-seeker-journey-build.md): this row is the D-223 release row of six pieces (door-neutral, composer-neutral, public-payload, search, jobs-list, job-ask); it flips COMPANY_TYPEAHEAD_ENABLED and COMPANY_JOBS_ENABLED only, never JOB_CATALOG_ENABLED. Lane moved off d048-foundation so unrelated holds there do not hold the release; that move also changes the computed role from CDO to CTO (scripts/nextTaskCore.mjs ROLE_BY_LANE).",
       "epic": "D-174",
       "owns": [
         "client/src/pages/explore/useCompanySearch.ts (switch only)",
@@ -4523,7 +4523,7 @@
       "title": "Company door, drawer and /ask show the same state for every company before sending (D-176 drift fix)",
       "row": "D-174",
       "packet": "docs/plans/D-174-seeker-journey-build.md",
-      "tier": 2,
+      "tier": 1,
       "lane": "d174-journey-door",
       "branch": "agent/queue/d174-journey-door",
       "status": "todo",
@@ -4532,7 +4532,7 @@
         "D-174-fix-post-binding",
         "D-176-public-claims"
       ],
-      "note": "Packet section 6.1, rulings 1, 3 and 4: no open/not-open header, one primary commit, one verified-mark line, the not-open block and its alert control removed, sent headline in D-180 words. No switch: the live door contradicts D-176. Re-pins only the listed D-176 assertions.",
+      "note": "Packet section 6.1, rulings 1, 3 and 4: no open/not-open header, one primary commit, one verified-mark line, the not-open block and its alert control removed, sent headline in D-180 words. No switch: the live door contradicts D-176. Re-pins only the listed D-176 assertions. Tier 1 at the existing machine floor: owns client/src/pages/Ask.tsx, listed in TIER1_CLIENT (scripts/tierClassifyCore.mjs, GATE-tier-floor D-212), so it needs an independent review (D-151).",
       "epic": "D-174-seeker-journey-build",
       "owns": [
         "client/src/pages/ExploreCompany.tsx",
@@ -4573,7 +4573,7 @@
       "title": "GET /api/companies stops sending openToReferrals and openCount; /plans coverage block reads only the seeker's own requests",
       "row": "D-174",
       "packet": "docs/plans/D-174-seeker-journey-build.md",
-      "tier": 2,
+      "tier": 1,
       "lane": "d174-journey-payload",
       "branch": "agent/queue/d174-journey-payload",
       "status": "todo",
@@ -4582,7 +4582,7 @@
         "D-174-seeker-journey-build.composer-neutral",
         "D-174-company-search"
       ],
-      "note": "Packet section 6.3, ruling 5 (D-193 (5)): expand-then-contract, keys optional for one release, admin schema keeps availability, companyClaim reads an internal getter, CoverageBlock lists no directory companies. Fixture cleanup is a later row (packet section 9).",
+      "note": "Packet section 6.3, ruling 5 (D-193 (5)): expand-then-contract, keys optional for one release, admin schema keeps availability, companyClaim reads an internal getter, CoverageBlock lists no directory companies. Fixture cleanup is a later row (packet section 9). Tier 1 at the existing machine floor: owns client/src/components/plans/PlansKitSections.tsx, matched by client/src/components/plans/** in TIER1_CLIENT (scripts/tierClassifyCore.mjs, GATE-tier-floor D-212), so it needs an independent review (D-151).",
       "epic": "D-174-seeker-journey-build",
       "owns": [
         "shared/companies.ts",
