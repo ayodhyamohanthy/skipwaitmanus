@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useSearch } from "wouter";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { GoalButton } from "@/components/goal/GoalButton";
+import { GoalFilterChip } from "@/components/goal/GoalFilterChip";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { GoalEmptyState, GoalErrorState, GoalSkeletonRows } from "@/components/goal/GoalStates";
 import { GoalStatus } from "@/components/goal/GoalStatus";
@@ -44,7 +45,7 @@ function CaseDetail({ item, choice, onChoice, note, onNote, deciding, error, onR
               <legend className="sr-only">Decision</legend>
               {item.decisions.map(decision => (
                 <label key={decision.value} className={cn("flex cursor-pointer items-start gap-3 border p-3", choice === decision.value ? "border-g-ink" : "border-g-hairline", decision.danger ? "text-g-crimson" : "text-g-ink")}>
-                  <input type="radio" name={`decision-${item.key}`} value={decision.value} checked={choice === decision.value} onChange={() => onChoice(decision.value)} className="mt-1" />
+                  <input type="radio" name={`decision-${item.key}`} value={decision.value} checked={choice === decision.value} onChange={() => onChoice(decision.value)} className="mt-1 size-4 shrink-0 accent-g-ink" />
                   <span><span className="block text-g-label">{decision.label}</span><span className="block text-g-meta text-g-ink-2">{decision.detail}</span></span>
                 </label>
               ))}
@@ -131,12 +132,9 @@ export default function GoalAdminReview() {
       <AdminGoalHeading goalLine={GOAL_PAGE.goalLine} body={BODY} />
       <div className="grid gap-6 gdesk:grid-cols-[340px_minmax(0,1fr)]">
         <section aria-label="Cases" className="min-w-0 border border-g-hairline bg-g-surface">
-          <div role="tablist" aria-label="Review kinds" className="flex flex-wrap gap-1 border-b border-g-hairline p-2">
+          <div role="group" aria-label="Review kinds" className="flex flex-wrap gap-2 border-b border-g-hairline p-3">
             {ADMIN_REVIEW_TABS.map(([id, label]) => (
-              <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => { setTab(id); reset(); }}
-                className={cn("h-9 shrink-0 rounded-g-control px-3 text-g-meta", tab === id ? "bg-g-primary text-g-on-primary" : "text-g-ink-2 hover:bg-g-surface-hover")}>
-                {label} <span className="opacity-60">{count(id)}</span>
-              </button>
+              <GoalFilterChip key={id} label={label} count={count(id)} pressed={tab === id} onPressedChange={() => { setTab(id); reset(); }} />
             ))}
           </div>
           {loading ? <GoalSkeletonRows density="queue" count={3} className="py-3" /> : null}

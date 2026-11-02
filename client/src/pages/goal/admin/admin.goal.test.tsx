@@ -160,8 +160,8 @@ describe("goal /admin-review (D-048-p3-admin)", () => {
     expect(within(kinds).getByRole("button", { name: /^Reports/ }).getAttribute("aria-pressed")).toBe("false");
     const radio = await screen.findByRole("radio", { name: /^Approve/ });
     expect(radio.className).toMatch(/\baccent-g-ink\b/);
-    const filled = [...container.querySelectorAll("[class*='bg-g-primary']")];
-    expect(filled.map(node => node.textContent?.trim())).toEqual(["Record decision"]);
+    expect([...container.querySelectorAll("[data-g-primary]")].map(node => node.textContent?.trim())).toEqual(["Record decision"]);
+    for (const node of container.querySelectorAll("[class*='bg-g-primary']")) expect(node.closest("[data-g-primary]")).not.toBeNull();
   });
 
   it("records a verification decision through the approval queue with its own body", async () => {
