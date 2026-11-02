@@ -116,11 +116,11 @@ describe("ask selection contract", () => {
 describe("opportunity clocks", () => {
   const now = new Date("2026-10-16T00:00:00.000Z");
 
-  it("publishes for 30 days and holds the first look for 48 hours", () => {
+  it("publishes for 30 days and holds the first look for 24 hours (owner rule, Oct 25 2026)", () => {
     expect(opportunityExpiresAtFrom(now).getTime() - now.getTime()).toBe(OPPORTUNITY_TTL_MS);
     expect(OPPORTUNITY_TTL_MS).toBe(30 * 24 * 60 * 60 * 1000);
     expect(firstLookUntilFrom(now).getTime() - now.getTime()).toBe(OPPORTUNITY_FIRST_LOOK_MS);
-    expect(OPPORTUNITY_FIRST_LOOK_MS).toBe(48 * 60 * 60 * 1000);
+    expect(OPPORTUNITY_FIRST_LOOK_MS).toBe(24 * 60 * 60 * 1000);
   });
 
   it("hides only known past expiries, never missing ones", () => {
