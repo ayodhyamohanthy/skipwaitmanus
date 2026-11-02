@@ -2554,7 +2554,7 @@
       "lane": "d048-admin",
       "branch": "agent/queue/d048-p3-admin",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-284",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2567,9 +2567,12 @@
         "client/src/pages/AdminReview.tsx",
         "client/src/pages/goal/admin/**",
         "scripts/kit-screens/fixtures/*__goal-admin-*.json",
-        "design/goal-ui/captures/admin/**"
+        "design/goal-ui/captures/admin/**",
+        "client/src/test/goalPagesBoundary.test.ts",
+        "client/src/lib/goalSurfaces.ts",
+        "client/src/components/goal/wrapper/appWrapper.goal.test.tsx"
       ],
-      "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin'); read-only: components/admin/adminApi.ts. Waits for D-048-p3-employer: same fixture-glob overlap; the internal admin surface goes last (landing of the lane packets, Oct 25).",
+      "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin'); read-only: components/admin/adminApi.ts. Waits for D-048-p3-employer: same fixture-glob overlap; the internal admin surface goes last (landing of the lane packets, Oct 25). D-284 clears its boundary block: the boundary test, the flag module's /admin-review line and the wrapper route pin are now owned, and components/admin/adminApi.ts + reviewCases.ts are admitted to the D-241 audited list as behavior-only on the row's branch.",
       "epic": "D-048-p3"
     },
     {
@@ -2716,7 +2719,7 @@
       "tier": 2,
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-276",
       "dependsOn": [
         "D-048-F-harness",
@@ -5006,6 +5009,73 @@
       "note": "Headline-only slice of D-180: free monthly allowance says referrals (owner headline decision Oct 23). Paid-unit credits and the ASK_COST tail stay with D-180-referral-words; no behavior or eligibility change. Depends on the active owners of the touched files so their in-flight edits land first; rebase the test expectations forward on any conflict. Oct 27 (Claude Code, landing review): also waits for PRICING-banded-oct25 (PR #666), which owns PlansV2.tsx, PlansV2.test.tsx and policyPages.test.tsx too; #666 rewrites PlansV2 with referral wording, so this slice drops its PlansV2 hunks when it rebases."
     },
     {
+      "id": "D-173-referral-words-goal-ui",
+      "title": "Buyer-facing 'referral' wording across the goal UI (PR #598): asks deliver to verified employees, no outcome promise",
+      "row": "D-173",
+      "packet": "docs/plans/D-173-referral-words-goal-ui.md",
+      "tier": 2,
+      "lane": "d048-foundation",
+      "branch": "agent/queue/ayo-referral-words",
+      "status": "in-review",
+      "dependsOn": [
+        "D-222-referral-count-shell"
+      ],
+      "note": "Preserved catch-up registration for existing PR 598 fb4b6374, not takeover consent or adoption. Owns reflect its eleven actual non-registry files. Wait for D-222 count output; adapt old pill/test assertions forward without replacing current count states, visible noun, no-icon or plain-text referrer boundary. Current packet preserves original wording/card-truth findings. Branch/commits/captures remain untouched; implementation only through normal holder/picker route.",
+      "syncedTo": "D-281",
+      "owns": [
+        "client/src/components/appShell.test.tsx",
+        "client/src/components/goal/GoalInfoNote.tsx",
+        "client/src/components/goal/GoalShell.tsx",
+        "client/src/components/goal/goalComposites.test.tsx",
+        "client/src/components/goal/goalInfoNote.test.tsx",
+        "client/src/pages/myRequests.goal.test.tsx",
+        "client/src/test/goalShellHarness.test.tsx",
+        "design/goal-ui/captures/alerts/default-1280.png",
+        "design/goal-ui/captures/alerts/default-390.png",
+        "design/goal-ui/captures/alerts/note-open-1280.png",
+        "design/goal-ui/captures/alerts/note-open-390.png"
+      ]
+    },
+    {
+      "id": "D-180-referral-words",
+      "title": "Referral-only wording sweep: shared money copy, plan-gate errors, goal nav and requests labels",
+      "row": "D-180",
+      "packet": "docs/plans/D-180-referral-words.md",
+      "epic": "D-180",
+      "tier": 1,
+      "lane": "referral-words",
+      "branch": "agent/queue/referral-words-sweep",
+      "status": "todo",
+      "syncedTo": "D-281",
+      "dependsOn": [
+        "D-174-held-ask-reconfirm",
+        "D-048-F-credits",
+        "D-099-bonus-pages",
+        "PRICING-banded-oct25",
+        "D-180-a-free-asks-chip",
+        "D-222-referral-count-shell",
+        "D-094-ai-in-ui.status-help",
+        "D-173-referral-words-goal-ui"
+      ],
+      "owns": [
+        "shared/moneyCopy.ts",
+        "shared/moneyCopy.test.ts",
+        "shared/moneyCopy.item7.test.ts",
+        "server/moneyCopy.test.ts",
+        "server/planGates.ts",
+        "server/planGates.test.ts",
+        "client/src/components/goal/nav.ts",
+        "client/src/pages/goal/onboarding/GoalOnboarding.tsx",
+        "client/src/pages/MyRequests.tsx",
+        "client/src/components/goal/useGoalShellMeta.ts",
+        "client/src/components/goal/nav.test.ts",
+        "client/src/pages/myRequests.goal.test.tsx",
+        "client/src/components/appShell.test.tsx",
+        "design/goal-ui/captures/referral-words/**"
+      ],
+      "note": "Presentation-only shared referral wording; original moneyCopy/planGates/GoalOnboarding scope preserved. My referrals changes nav and shell/page titles only, keeping id asks, /requests and request stages. Current packet documents exact ownership serialization after PRICING, D-180-a-free-asks-chip, D-222, D-173 and only the D-094 status-help piece. No existing queued row waits changed. Capture and test owns declared. No price, charge, eligibility, availability, release or implementation acceptance change."
+    },
+    {
       "id": "D-048-copy-goal-twins",
       "title": "Referral-only wording correction on the goal landed/share twins (6 retired-term lines)",
       "row": "D-048",
@@ -5276,6 +5346,26 @@
         "e2e/report-from-conversation.e2e.ts"
       ],
       "note": "D-278: correction E on #831 (comment 6568171751), route R-B-min, seeker side S only. Rule at SeekerConversation.tsx:223: href = (!passed && isAccepted(request)) ? \"/report?request=\" + request.id : \"/report\" (passed is always false on the seeker page), reusing threadModel.ts:36-38 (not edited). Packet A's referrerId !== null rule is rejected and not buildable. Acceptance (packet section 5): red-first reportEntry.test.tsx; e2e/report-from-conversation.e2e.ts targets its own ask id, reads e2e/.auth/seed.json itself (no e2e/fixtures.ts edit), block LAST; admin read of /api/admin/safety-reports proved red-first; K/G hrefs not asserted. No #831 edge, owns or status change; residuals S-g, R-f, S-l, R-k, block-stalls-accepted-ask and G pre-acceptance linkage not adopted. Dependency done: #786 landed 99f8a1f2 and the seeker row is recorded done (seeker side, not moved; #963). Tier 1 (privacy/safety: the href decides when the block toggle and the referralRequestId evidence snapshot of message bodies attach to a safety report); declared above the computed Tier 2, which D-212 allows; needs an independent different-model review (D-151) at build time. Builder: a non-Claude development session through the picker (D-225)."
+    },
+    {
+      "id": "GATE-migration-cleanup",
+      "title": "After the drift reference database exists, an S1/S2 snapshot or step-summary failure still attempts its cleanup, the primary is never dropped, and a failed cleanup no longer hides a FAILED verdict (D-212, D-283)",
+      "row": "D-212",
+      "packet": "docs/plans/GATE-migration-cleanup.md",
+      "tier": 2,
+      "lane": "ci-checks",
+      "branch": "agent/queue/gate-migration-cleanup",
+      "status": "todo",
+      "syncedTo": "D-283",
+      "dependsOn": [
+        "GATE-migration-apply"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "scripts/e2e-server.mjs",
+        "scripts/migrationGateCleanup.test.ts"
+      ],
+      "note": "D-283: follow-up to the landed GATE-migration-apply (f305e2e3, PR #967) by the route in #967 comment 6581005262: CLI + owned regression test + packet, ci-checks serialization, no workflow, settings or DB schema change. Scope: after skipwait_head is created, the S1, S2 and summary-throw paths make at least one cleanup attempt, the normal paths keep exactly one drop, the primary is never dropped, and the raised error keeps the FAILED verdict when cleanup fails (CL-1 to CL-3c, ER-3a/b; the other settled items stay green). U1-U11 stay unsettled and undecided: no warning or fallback policy is added. prepare() only; the test is a Vitest .test.ts adapted from the W5 candidate (#967 comment 6579717344), with no committed skip; the H-2 and K controls run as red-first evidence. migrationGate.test.ts (24 tests) and ci.yml are unchanged. Builder: a non-Claude development session through the picker (D-225). Tier 2 is not a waiver: a separate independent final-head review and a separate lander are required before landing (packet section 9; prose, not machine-enforced). Probe for overlapping e2e-server.mjs work at claim time (Qoder 11b2 availability unconfirmed)."
     }
   ]
 }
