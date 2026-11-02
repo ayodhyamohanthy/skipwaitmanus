@@ -1,6 +1,6 @@
 # Packet GATE-migration-cleanup: once the drift reference database exists, a snapshot or summary failure still attempts its cleanup, and a failed cleanup no longer hides a FAILED verdict (D-212, D-283)
 
-Tier 2 (computed: `scripts/e2e-server.mjs`, one new `scripts/` test and this packet; nothing under `drizzle/**` or `.github/workflows/**`, so `classifyTier` gives "Tier 2 paths", GATE-tier-floor) · lane `ci-checks` (the same serialization as `GATE-migration-apply`) · branch `agent/queue/gate-migration-cleanup` · depends on `GATE-migration-apply` (done, merge commit `f305e2e3`, PR #967) · registered by D-283 · written on 2026-11-02 at `main` `a650b615`, checked against the register through D-283.
+Tier 2 (declared, and *projected* from the row's `owns`: `scripts/e2e-server.mjs`, one new `scripts/` test and this packet, with nothing under `drizzle/**` or `.github/workflows/**`, which `classifyTier` would class as "Tier 2 paths" (GATE-tier-floor). No runtime diff exists yet, so this is a projection, not a computed tier; it is rechecked against the actual runtime diff, §9) · lane `ci-checks` (the same serialization as `GATE-migration-apply`) · branch `agent/queue/gate-migration-cleanup` · depends on `GATE-migration-apply` (done, merge commit `f305e2e3`, PR #967) · registered by D-283 · written on 2026-11-02 at `main` `a650b615`, checked against the register through D-283.
 
 **Author of record.** This packet, its D-283 entry and its queue row were written by one Claude Code session (cloud session `session_01X6drxy28JfPDsxa4yHiMNW`, branch `claude/affectionate-gates-gb3vt7`). That session is the author. It does not review, approve or land the registration pull request or the runtime row, and the authorship is not relabeled (for example as "preparer, not writer of record") to make a self-review or self-landing eligible (D-190). Under D-225 a non-Claude development session builds the runtime row through the picker.
 
@@ -10,7 +10,7 @@ Read [`docs/BRIEF.md`](../BRIEF.md), [`GATE-delivery.md`](GATE-delivery.md) "Rul
 An earlier, unregistered draft of this packet was corrected before registration. Each correction is marked in the text as **[C1]** to **[C5]**.
 - **[C1] Contract source.** The earlier draft called the contract unknown or unavailable (its §4Uf and §9b). That was wrong. The contract of record is the coordinator-qualified W5 contract, "PR #967 cleanup contract: derived desired behaviour for the red-first candidate" (§2 below). Its CL, ER and U items are mapped in §4. The contract's desired behaviour is a *derived test interpretation*. It is not an owner ruling, and this packet never cites it as one.
 - **[C1] No 11b2 cleanup ACK.** The earlier draft said an 11b2 ACK "is reported to exist". That was false. No cleanup acknowledgement from `Qoder · 11b2` is known. The latest 11b2 comment, PR #967 comment 6581117289, is a landed-row handover, not a cleanup ACK. 11b2's availability, and any unpublished overlapping work, stay **unconfirmed**. Registration does not wait for silence. Any real overlap is protected when an implementation claim is made (§10).
-- **[C2] Scope.** "Every exit path" overstated the scope. The finite scope is: *after the reference database has been created successfully*, the S1, S2 and summary-throw paths, plus the normal paths. Reference-creation failure (U7), a killed process, and the migration-base file (U11) are out of scope. On the failure paths (CL-1 to CL-3) the requirement is **at least one cleanup attempt**, not exactly one. "Exactly once" applies only to the normal paths (CL-5), and it rests on preserving the measured normal-path drop. Retry and second-drop treatment stay **unsettled** (U6).
+- **[C2] Scope.** "Every exit path" overstated the scope. The finite scope is: *after the reference database has been created successfully*, the S1, S2 and summary-throw paths, plus the normal paths. Reference-creation failure (U7), a killed process, and the migration-base file (U11) are out of scope. On the failure paths (CL-1 to CL-3) the requirement is **at least one cleanup attempt**, not exactly one. "Exactly once" applies only to the normal paths (CL-5). There it is **preserved**: it keeps the measured normal-path drop, and any relaxation needs an actual owner ruling, which this packet does not assume. The number of attempts on the failure paths stays **unsettled** (U6).
 - **[C3] Raised-error wording.** The settled claims leave out U3 (which error is raised when the summary write fails under a fail verdict) and U9/R15 precedence (a deploy failure followed by an S2 exception). The S2 and EISDIR raised items are recorded exactly as the contract maps them (R15 under U9, R09 under U3). ER-7 settles only two things: the FAILED line is visible, and the exit is non-zero.
 - **[C4] Registration qualification.** This revision was re-qualified against a fresh `main` and a fresh scan of open pull requests and branch tips, recorded in the D-283 entry's evidence. D-283 was the next free decision ID on `main` and on every open head scanned. That is a scan result at one point in time, not a global reservation.
 - **[C5] Review and landing.** The row stays Tier 2. That is not a waiver, and the row is not relabeled Tier 1. The registration and the runtime change each need a separate independent final-head review before any landing. §9 names the route. This is prose, not machine enforcement: for a Tier 2 row, `scripts/review-gate.mjs` passes without a review.
@@ -27,7 +27,9 @@ After this row, the following hold once `CREATE DATABASE skipwait_head` has succ
 
 The scope is the finite list in §4. It is not "every exit path" [C2].
 
-How this moves the goal: the PR gate that catches broken deploy migrations before production must report its real verdict and leave no state behind when part of it breaks. A gate that masks its own FAILED verdict can let a migration production would refuse look like a tool error.
+How this moves the goal: the PR gate that catches broken deploy migrations before production must report its real verdict and leave no state behind when part of it breaks.
+- **Today.** Every failure case in §4 already exits non-zero, so the gate does not pass a failed migration. The defects are that the scratch database is left behind, and that a failed drop names itself instead of the FAILED verdict in the raised error.
+- **After the runtime row lands.** These are future runtime effects, not effects of registration. The raised error keeps the real verdict, and the scratch database is cleaned up.
 
 ## 2. Contract of record and provenance [C1]
 - **Contract.** "PR #967 cleanup contract: derived desired behaviour for the red-first candidate" (the W5 contract). Qualified by the coordinator from its bundle; the original 11-file manifest and the W8 28-file manifest were verified by the coordinator, not re-verified by this packet's author. The contract binds `10e9737e` (tree `c28f6c76`, byte-identical to `ebae6110`). It proposes no implementation, warning policy or fallback policy.
@@ -38,7 +40,7 @@ How this moves the goal: the PR gate that catches broken deploy migrations befor
   - Coordinator, scratch feasibility: 43 cases, 34 green, 9 bounds-mutants skipped, 0 fail (1.70 s).
   - Re-run by this packet's author at `main` `a650b615` with `LANE_REQUIRE_BOUND=1` (Node v22.23.4): 43 cases, 36 pass, 7 fail, 0 skipped (14.8 s). The 7 failures are exactly CL-1, CL-2, CL-3a, CL-3b, CL-3c, ER-3a and ER-3b.
   - That run is preparation evidence only. It is not a writer PASS, not a review, and not DB proof: the candidate uses fakes, never real MySQL.
-- **Source comments.** These are PR #967 issue comments. All were authored through the owner's account, author association OWNER.
+- **Source comments.** These are PR #967 issue comments. GitHub shows them under the repository owner's account (association OWNER), but that association is not evidence of human approval. They are coordinator comments. With the derived contract interpretation, they are the source here. Nothing in them is treated as an owner grant or an owner ruling.
   - **C-A** 6577133271: "Cleanup is still not in finally …", "add a genuine assertion for cleanup", and "Do not turn unchanged warning/fallback behavior into a new owner ruling".
   - **C-B** 6578601856: "Measured: normal pass/warn/fail each drops the reference exactly once …", and "No swallowing a genuine failure or replacing it with success".
   - 6581005262: the follow-up route this row follows. Its words are "CLI+owned regression test+packet, same ci-checks serialization, dependent on the landed row, no workflow/settings/DB schema changes", and "unsettled cleanup-error exits stay out of this finite repair".
@@ -69,7 +71,7 @@ The "Head" column is the direction at `main` `a650b615`, which is identical to t
 | CL-3a / CL-3b | The same, when the summary write throws, with verdict pass (3a) or verdict fail (3b). | same | red (R08, R09) |
 | CL-3c | S1 throws, then the cleanup DROP throws. A cleanup attempt is still issued, the primary is kept, and both the S1 error and the cleanup error are visible on stdout or stderr. Which of the two is *raised* is not settled (U4). | C-A, C-B, AG-101 | red (R14) |
 | CL-4 | In every run, cleanup never drops the primary database after the reference exists, and the primary is present at exit. | P-R3 | green (R01-R15) |
-| CL-5a-e | Normal paths (pass, warn, fail-drift, fail-deploy, failed reference push): **exactly one** cleanup DROP, and `skipwait_head` is absent at exit. This rests on preserving the measured normal-path drop (C-A, C-B "exactly once" and "preserve … the new normal-path drop"). No ruling states it outright. If the owner or holder treats a second idempotent DROP as acceptable, CL-5 relaxes to "at least one" (contract §2). Second-drop treatment is otherwise unsettled [C2]. | C-A, C-B, P-R3 | green |
+| CL-5a-e | Normal paths (pass, warn, fail-drift, fail-deploy, failed reference push): **exactly one** cleanup DROP, and `skipwait_head` is absent at exit. **Preserve.** This keeps the measured normal-path drop (C-A, C-B "exactly once" and "preserve … the new normal-path drop"). Any relaxation, such as accepting a second idempotent DROP, needs an actual owner ruling. None is assumed, and no holder or builder may relax it on its own [C2]. | C-A, C-B, P-R3 | green |
 
 ### 4b. Settled error-preservation items (contract §2, Item 2)
 | ID | Desired observable (derived) | Sources | Head |
@@ -154,13 +156,16 @@ After each step, run `pnpm vitest run scripts/migrationGateCleanup.test.ts scrip
 - The row lands by merge commit (never squash or rebase, D-134 (6)). In the landing PR, set `status` to `done` and add the DELEGATION §5 evidence block below.
 - No U item is decided. A "done" here closes CL-1 to CL-3c and ER-3a/b only. It does not close the Nov 1 findings, the ERROR 3734 summary detail, the base-file destination, or the unretrieved local MySQL 8.0.41 probe logs from PR #967, which stay separate.
 
-## 9. Review and landing (Tier 2 as computed; prose, not machine enforcement) [C5]
-- **Tier.** Declared Tier 2, and Tier 2 as computed by `scripts/tierClassifyCore.mjs` for both the registration diff and the runtime diff. This is not a waiver. If either pull request ever computes Tier 1, stop and report: Tier 1 brings in the D-151 model-independence rule, and the reviewer's eligibility then has to be checked again.
+## 9. Review and landing (Tier 2: computed for the registration diff, projected for the runtime row; prose, not machine enforcement) [C5]
+- **Tier.** Declared Tier 2. This is not a waiver.
+  - **Registration diff:** Tier 2 as computed by `scripts/tierClassifyCore.mjs` on the actual diff.
+  - **Runtime row:** Tier 2 is *projected* from its `owns`, because no runtime diff exists yet. Recheck `classifyTier` against the actual runtime diff when one exists.
+  - If either pull request ever computes Tier 1, stop and report: Tier 1 brings in the D-151 model-independence rule, and the reviewer's eligibility then has to be checked again.
 - **What is enforced, and what is prose.** For a Tier 2 row, `scripts/review-gate.mjs` passes with no review, and the queue gate admits a docs-only registration from any branch. The review and landing requirements below are prose obligations, recorded in the register and here. No machine check enforces them.
 - **Registration pull request (D-283; `DECISIONS.md`, `assignments.json`, this packet).**
   - **Reviewer:** a separate, read-only reviewer seat. It is not this packet's author session, and it is allocated through the coordinator (Instinct, #811).
     - It reviews the exact final head: the diff, `validateAssignments` (`[]`), the decision-id result against current `main`, and the required-CI run on that head.
-    - It posts a scoped conclusion on the pull request, naming that head SHA.
+    - It reports a head-scoped conclusion that names that SHA. It is not required to post the conclusion itself. The write-capable seat records it on the pull request with the reviewer's original attribution, and does not reword it as its own.
     - A different model is required only where Tier 1 or current rules require it. It is not stated here as a blanket rule.
   - **Lander:** a separate, write-capable session. It is neither the author nor the read-only reviewer seat.
     - It re-fetches `main`, merges it (never rebase), and re-checks that D-283 is still free with `node scripts/decision-id-check.mjs`.
@@ -168,9 +173,9 @@ After each step, run `pnpm vitest run scripts/migrationGateCleanup.test.ts scrip
     - If D-283 has been taken, it renumbers to the next free ID and gets a fresh delta review. It never keeps a placeholder.
 - **Runtime pull request (`agent/queue/gate-migration-cleanup`).**
   - **Builder:** a non-Claude development session through the picker (D-225).
-  - **Reviewer:** a separate, eligible reviewer who neither built nor fixed the row, reviewing the exact final head before landing. Its scope is the source diff, the red-first and green evidence, the H-2/K output, the required-CI execution proof on that head, and currency with `main`.
+  - **Reviewer:** a separate, eligible reviewer who neither built nor fixed the row, reviewing the exact final head before landing. Its scope is the source diff, the red-first and green evidence, the H-2/K output, the required-CI execution proof on that head, and currency with `main`. It reports a head-scoped conclusion. If the reviewer is read-only, a write-capable seat records it with the reviewer's original attribution.
   - **Lander:** a separate, write-capable session. It goes through the landing slot (`Land claim GATE-migration-cleanup: <name>` on `agent/queue/landing`), with the merge-commit button.
-  - **The runtime floor.** It stays as recorded, currently Tier 2, and gets its own check at that time. It is not relabeled to a blanket Tier 1.
+  - **The runtime floor.** It stays as recorded: Tier 2, projected from `owns`. It gets its own `classifyTier` check on the actual runtime diff at that time, and it is not relabeled to a blanket Tier 1.
 - **Barred on both pull requests:**
   - no admin bypass;
   - no self-review or self-landing;
