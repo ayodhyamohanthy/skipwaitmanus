@@ -4985,6 +4985,26 @@
         "scripts/nextTaskLandingWaitFallthrough.test.ts"
       ],
       "note": "Registration only; normal picker assignment after dependencies. No implementation or completion asserted by registration; no cleanup, release, activation or policy change."
+    },
+    {
+      "id": "CONV-report-entry",
+      "title": "Seeker conversation \"Report or block\" link carries the ask only when it is accepted (R-B-min, seeker side)",
+      "row": "D-048",
+      "packet": "docs/plans/CONV-report-entry.md",
+      "tier": 2,
+      "lane": "conv-report-entry",
+      "branch": "agent/queue/conv-report-entry",
+      "status": "todo",
+      "syncedTo": "D-278",
+      "dependsOn": [
+        "D-048-p3-live-review-conversation"
+      ],
+      "owns": [
+        "client/src/pages/conversation/SeekerConversation.tsx",
+        "client/src/pages/conversation/reportEntry.test.tsx",
+        "e2e/report-from-conversation.e2e.ts"
+      ],
+      "note": "D-278: correction E on #831 (comment 6568171751), route R-B-min, seeker side S only. Rule at SeekerConversation.tsx:223: href = (!passed && isAccepted(request)) ? \"/report?request=\" + request.id : \"/report\" (passed is always false on the seeker page), reusing threadModel.ts:36-38 (not edited). Packet A's referrerId !== null rule is rejected and not buildable. Acceptance (packet section 5): red-first reportEntry.test.tsx; e2e/report-from-conversation.e2e.ts targets its own ask id, reads e2e/.auth/seed.json itself (no e2e/fixtures.ts edit), block LAST; admin read of /api/admin/safety-reports proved red-first; K/G hrefs not asserted. No #831 edge, owns or status change; residuals S-g, R-f, S-l, R-k, block-stalls-accepted-ask and G pre-acceptance linkage not adopted. Dependency met through landed #786 (99f8a1f2); reconciling that row's record is an architect item (packet section 10 A1). Builder: a non-Claude development session through the picker (D-225)."
     }
   ]
 }
