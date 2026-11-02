@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { pickNextTask } from "./nextTaskCore.mjs";
 
-const NOW = Date.parse("Tue 2026-10-20 5:30 PM IST (UTC+05:30)");
+const NOW = Date.parse("2026-10-20T12:00:00Z");
 const HOUR = 3_600_000;
 const green = { state: "green", sha: "a".repeat(40), url: "https://ci/run/1" };
 
