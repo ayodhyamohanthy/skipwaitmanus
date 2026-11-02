@@ -820,13 +820,20 @@ describe("review 6566372499: owned block instructions match the path that exists
     }
   });
 
-  it("the supportContent header states goal-owned copy, no kit-drift check, and no restoring removed promises", () => {
+  it("the supportContent header states goal-owned copy, no automated kit-drift check but the packet's manual release check, and no restoring removed promises", () => {
+    // Review 6566979984: docs/plans/D-048-phase-3-split.md §6 requires a
+    // manual kit-drift check at release, so the header may only say that no
+    // automated/implemented check exists in code, and must name the manual one.
     const source = ownedSources.find(([file]) => file === "./supportContent.ts")?.[1] ?? "";
     const header = source.slice(0, source.indexOf("import "));
     expect(header).not.toMatch(/mirrored here word for word/);
     expect(header).not.toMatch(/ports here through the kit-drift check/);
     expect(header).toMatch(/goal-owned copy/);
-    expect(header).toMatch(/No kit-drift check exists/);
+    expect(header).not.toMatch(/No kit-drift check exists/);
+    expect(header).not.toMatch(/nothing\s+(?:\/\/\s*)?keeps these answers in step/);
+    expect(header).toMatch(/No automated or implemented kit-drift check exists in code/);
+    expect(header).toMatch(/manual kit-drift release check/);
+    expect(header).toMatch(/D-048-phase-3-split\.md §6/);
     expect(header).toMatch(/must not restore/);
     expect(header).toMatch(/D-173\/D-180/);
   });
