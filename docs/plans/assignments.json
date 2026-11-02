@@ -4298,12 +4298,12 @@
       "tier": 1,
       "lane": "d174-jobs",
       "branch": "agent/queue/d174-job-sources-more",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-282",
       "dependsOn": [
         "D-174-job-catalog"
       ],
-      "note": "D-193 packet section 5.7. provider is a varchar: no migration. Respect Lever's Crawl-delay.",
+      "note": "D-193 packet section 5.7. provider is a varchar: no migration. Respect Lever's Crawl-delay. D-282 (2026-11-02): the row is parked at owner because its MAKE GREEN hand-out has nothing to fix - the deliverable is complete on PR #938 (head 645f64db, 646 insertions across the 8 owned paths plus the packet Status line: the Ashby adapter and its tests, the Lever adapter and its tests, the two-provider enum in shared/jobCatalog.ts, the multi-host allowlist in server/jobSources/fetch.ts and the provider dispatch in server/jobSources/greenhouse.ts) and the only red required job is the review gate: typecheck fails at step 11 Scope check -> review-gate while the job's own Typecheck, Design tokens and Deploy trigger coverage steps and the unit + component + route tests, production build and e2e journeys jobs are all green on that head. The review lock agent/review/d174-job-sources-more has never existed on origin (it has no agent/heartbeat/ branch either), so no session was ever handed the review that would clear the gate; nextTaskCore.mjs:573-584 can only answer fix or green while CI is red and reaches review only below that guard, so the promised second review is unreachable by construction. The branch already said it was ready: commit 1c39921a wrote 'review - agent/queue/d174-job-sources-more - 7a8dfecc' into the packet Status section on 2026-11-01 18:06:15Z while the registry stayed todo, so for about 25 hours the row was ready-for-review in the packet and make-it-green to every dispatched session. No manual Review claim, preselected pass, gate edit or no-code Fixed is taken (D-251, D-253). The nextTask.test.ts:47-62 first-pick pin that blocked D-273's park does not reach this row (index 212 of 249, no test or script reads it, and it has no dependents), so the standard D-254 park applies; D-254's existing qualification is extended to name this row as its ninth member, and no new question is asked. Each wasted MAKE GREEN adds a builder model - this row's builders already span Antigravity, SKIPPY-fix, GATE-migration-apply and DeepSeek V4.1 Flash Free, so any review the qualification authorises must come from a fifth model. Do not rebuild: the row lands unchanged once a review route exists, and JOB_CATALOG_ENABLED stays false (shared/jobCatalog.ts:11). Sessions that cannot complete it should run the picker with --avoid D-174-job-sources-more rather than burn a run.",
       "epic": "D-174",
       "owns": [
         "server/jobSources/**",
