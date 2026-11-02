@@ -4499,7 +4499,7 @@
       "lane": "d174-journey",
       "branch": "agent/queue/d174-seeker-journey",
       "status": "todo",
-      "syncedTo": "D-266",
+      "syncedTo": "D-281",
       "dependsOn": [
         "D-166-journey-decisions-sync",
         "D-174-seeker-journey-build.door-neutral",
@@ -4527,7 +4527,7 @@
       "lane": "d174-journey-door",
       "branch": "agent/queue/d174-journey-door",
       "status": "todo",
-      "syncedTo": "D-266",
+      "syncedTo": "D-281",
       "dependsOn": [
         "D-174-fix-post-binding",
         "D-176-public-claims"
@@ -4553,7 +4553,7 @@
       "lane": "d174-journey-composer",
       "branch": "agent/queue/d174-journey-composer",
       "status": "todo",
-      "syncedTo": "D-266",
+      "syncedTo": "D-281",
       "dependsOn": [
         "D-174-seeker-journey-build.door-neutral"
       ],
@@ -4577,7 +4577,7 @@
       "lane": "d174-journey-payload",
       "branch": "agent/queue/d174-journey-payload",
       "status": "todo",
-      "syncedTo": "D-266",
+      "syncedTo": "D-281",
       "dependsOn": [
         "D-174-seeker-journey-build.composer-neutral",
         "D-174-company-search"
@@ -4605,7 +4605,7 @@
       "lane": "d174-journey-search",
       "branch": "agent/queue/d174-journey-search",
       "status": "todo",
-      "syncedTo": "D-266",
+      "syncedTo": "D-281",
       "dependsOn": [
         "D-174-company-search"
       ],
@@ -4626,7 +4626,7 @@
       "lane": "d174-journey-jobs",
       "branch": "agent/queue/d174-journey-jobs",
       "status": "todo",
-      "syncedTo": "D-266",
+      "syncedTo": "D-281",
       "dependsOn": [
         "D-174-job-catalog",
         "D-174-seeker-journey-build.door-neutral"
@@ -4649,7 +4649,7 @@
       "lane": "d174-journey-composer",
       "branch": "agent/queue/d174-journey-job-ask",
       "status": "todo",
-      "syncedTo": "D-266",
+      "syncedTo": "D-281",
       "dependsOn": [
         "D-174-ask-from-job",
         "D-174-seeker-journey-build.jobs-list",
