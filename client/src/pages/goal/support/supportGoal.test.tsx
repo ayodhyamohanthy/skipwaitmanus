@@ -831,3 +831,60 @@ describe("review 6566372499: owned block instructions match the path that exists
     expect(header).toMatch(/D-173\/D-180/);
   });
 });
+
+describe("review 6566372499 (follow-up): report copy is a generic entry, with no thread or request linkage implied", () => {
+  // The conversation pages link to a bare /report, which binds no
+  // referralRequestId and no thread-evidence snapshot. So owned copy names
+  // Report only as a generic entry ("file a report from the Report page").
+  const THREAD_LINKED = /Report on (?:the|your) conversation|Report from (?:the|your) conversation|on the conversation|thread (?:evidence|snapshot)|(?:conversation|messages|thread)(?: is| are| gets?)? (?:attached|included|linked)|attach(?:es|ed)? (?:the |your )?(?:conversation|thread|messages|request)/i;
+  const userStrings = (source: string) => (source.match(/"[^"\n]*"|`[^`]*`|>[^<>{}\n]+</g) ?? []).join("\n");
+
+  it("help, safety and report content has no thread-linked report wording", () => {
+    const owned = [
+      ...HELP_ANSWERS.flatMap(({ question, answer }) => [question, answer]),
+      ...SAFETY_ANSWERS.flatMap(([question, answer]) => [question, answer]),
+      ...REPORT_REASONS.flatMap(([label, hint]) => [label, hint]),
+    ];
+    expect(owned.filter(text => THREAD_LINKED.test(text))).toEqual([]);
+  });
+
+  it("the money answer sends people to a generic report entry", () => {
+    expect(HELP_ANSWERS.find(({ question }) => question === "Someone asked me for money.")?.answer)
+      .toBe("Don't pay. File a report from the Report page (the other person isn't told who reported them), or contact support.");
+  });
+
+  it("owned page sources carry no thread-linked report wording in any user-facing string", () => {
+    for (const file of ["./supportContent.ts", "./GoalReport.tsx", "./GoalHelp.tsx", "./GoalSafety.tsx"]) {
+      const strings = userStrings(readFileSync(new URL(file, import.meta.url), "utf8"));
+      expect([file, strings.match(THREAD_LINKED)?.[0] ?? null]).toEqual([file, null]);
+    }
+  });
+
+  it("rendered /help (every answer open), /safety (every answer open) and /report without context: none", async () => {
+    const help = render(<Help />);
+    await screen.findByRole("heading", { level: 1, name: HELP_LINE });
+    for (const { question } of HELP_ANSWERS) {
+      const button = screen.getByRole("button", { name: question });
+      if (button.getAttribute("aria-expanded") !== "true") fireEvent.click(button);
+    }
+    const seen = [help.container.textContent ?? ""];
+    help.unmount();
+    const safety = render(<Safety />);
+    await screen.findByRole("heading", { level: 1, name: SAFETY_LINE });
+    for (const row of within(screen.getByRole("region", { name: "Safety questions" })).getAllByRole("button")) {
+      if (row.getAttribute("aria-expanded") !== "true") fireEvent.click(row);
+    }
+    seen.push(safety.container.textContent ?? "");
+    expect(screen.getByRole("link", { name: "Report" }).getAttribute("href")).toBe("/report");
+    safety.unmount();
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ report: { id: 72, reference: "R-1072" } })));
+    const report = render(<Report />);
+    seen.push(report.container.textContent ?? "");
+    fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
+    seen.push(report.container.textContent ?? "");
+    fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
+    await screen.findByRole("heading", { level: 2, name: DONE_HEADING });
+    seen.push(report.container.textContent ?? "");
+    expect(seen.flatMap(text => text.match(new RegExp(THREAD_LINKED.source, "gi")) ?? [])).toEqual([]);
+  });
+});
