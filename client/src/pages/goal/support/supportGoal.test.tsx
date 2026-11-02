@@ -7,6 +7,7 @@
 // money lines come from shared/moneyCopy.ts; a failed report or block says so
 // and never shows as filed; offline, the report's commit names why it waits.
 // Flag off, the kit pages render unchanged.
+import { readFileSync } from "node:fs";
 import React from "react";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -70,6 +71,17 @@ function offline() {
   Object.defineProperty(window.navigator, "onLine", { configurable: true, get: () => false });
   return () => Object.defineProperty(window.navigator, "onLine", { configurable: true, get: () => true });
 }
+// Review 6566372499: ?request=42 is a SYNTHETIC context fixture. The live
+// conversation pages (SeekerConversation.tsx, ReferralConversation.tsx) link to
+// a bare /report, and no product code builds /report?request=<id>, so a test
+// that starts here proves only GoalReport's own ?request= branch, not the
+// journey from a conversation. Keep it labelled so until the real entry exists.
+const SYNTHETIC_CONTEXT_URL = "https://skipwait.me/report?request=42";
+// Review 6566372499: the owned no-context block lines. No conversation-entry
+// claim, no claim that support will block; the truthful path is file, keep the
+// reference, contact support.
+const NO_CONTEXT_BLOCK_NOTE = "Blocking isn't available on this report. You can still file it, keep the reference it gives you, and contact support with that reference.";
+const HELP_BLOCK_ANSWER = "You can't block someone from Help. If Report doesn't offer “Also block this person”, file the report anyway, keep the reference it gives you, and contact support with that reference.";
 const primary = (container: HTMLElement) => container.querySelector("[data-g-primary]") as HTMLElement | null;
 
 // The page files load their goal versions lazily; warm those chunks once so a
@@ -188,8 +200,8 @@ describe("goal /report", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Add details" })).toBeTruthy();
   });
 
-  it("from a conversation: blocks the other person after filing, and a failed block keeps the report", async () => {
-    const restore = at("https://skipwait.me/report?request=42");
+  it("synthetic ?request=42 context fixture (not journey proof): blocks the other person after filing, and a failed block keeps the report", async () => {
+    const restore = at(SYNTHETIC_CONTEXT_URL);
     try {
       const fetchMock = vi.fn(async (url: string) => (String(url).startsWith("/api/blocks") ? fail(500, { error: "boom" }) : ok({ report: { id: 48, reference: "R-1048" } })));
       vi.stubGlobal("fetch", fetchMock);
@@ -214,7 +226,7 @@ describe("goal /report", () => {
     render(<Report />);
     fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
     expect(screen.queryByRole("button", { name: /Also block this person/ })).toBeNull();
-    expect(screen.getByText(/open Report from your conversation with them/)).toBeTruthy();
+    expect(screen.getByText(NO_CONTEXT_BLOCK_NOTE)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
     expect((await screen.findByRole("link", { name: "Contact support" })).getAttribute("href")).toBe("/support");
     expect(screen.queryByRole("link", { name: "Manage blocked people" })).toBeNull();
@@ -273,8 +285,8 @@ async function fileWithBlock(fetchMock: ReturnType<typeof vi.fn>) {
 }
 
 describe("review 6562676959: failed block recovery (finding 1)", () => {
-  it("offers a block-only retry and support, never a Settings block, a second report or a false 'blocked'", async () => {
-    const restore = at("https://skipwait.me/report?request=42");
+  it("synthetic ?request=42 context fixture: offers a block-only retry and support, never a Settings block, a second report or a false 'blocked'", async () => {
+    const restore = at(SYNTHETIC_CONTEXT_URL);
     try {
       let blockAttempts = 0;
       const fetchMock = vi.fn(async (url: string) => {
@@ -300,8 +312,8 @@ describe("review 6562676959: failed block recovery (finding 1)", () => {
     }
   });
 
-  it("a retry that fails again keeps the filed report and the recovery, and files nothing twice", async () => {
-    const restore = at("https://skipwait.me/report?request=42");
+  it("synthetic ?request=42 context fixture: a retry that fails again keeps the filed report and the recovery, and files nothing twice", async () => {
+    const restore = at(SYNTHETIC_CONTEXT_URL);
     try {
       const fetchMock = vi.fn(async (url: string) => (String(url).startsWith("/api/blocks") ? fail(500, {}) : ok({ report: { id: 48, reference: "R-1048" } })));
       await fileWithBlock(fetchMock);
@@ -330,8 +342,8 @@ describe("review 6562676959: rejected fetch while navigator.onLine is true (find
     expect(screen.getByRole("heading", { level: 2, name: "Add details" })).toBeTruthy();
   });
 
-  it("block: the report stays filed, a fixed plain line with a next step, never 'Failed to fetch'", async () => {
-    const restore = at("https://skipwait.me/report?request=42");
+  it("block (synthetic ?request=42 context fixture): the report stays filed, a fixed plain line with a next step, never 'Failed to fetch'", async () => {
+    const restore = at(SYNTHETIC_CONTEXT_URL);
     try {
       const fetchMock = vi.fn(async (url: string) => {
         if (String(url).startsWith("/api/blocks")) throw new TypeError("Failed to fetch");
@@ -534,8 +546,8 @@ describe("review 6563729015: owned UI fixes", () => {
     }
   });
 
-  it("4. unselected report tiles and off toggles use the control-edge token, not the hairline divider", async () => {
-    const restore = at("https://skipwait.me/report?request=42");
+  it("4. unselected report tiles and off toggles use the control-edge token, not the hairline divider (synthetic ?request=42 context fixture)", async () => {
+    const restore = at(SYNTHETIC_CONTEXT_URL);
     try {
       vi.stubGlobal("fetch", vi.fn());
       render(<Report />);
@@ -607,8 +619,8 @@ describe("review 6563736305: owned non-money wording is referral-only, and no un
 
 // Corrections for review comment 6565471121 on PR #954 (red first).
 describe("review 6565471121 (1): a rejected block fetch claims neither unreachability nor non-receipt", () => {
-  it("says the block could not be confirmed, offers a block-only retry, and never says the server couldn't be reached", async () => {
-    const restore = at("https://skipwait.me/report?request=42");
+  it("synthetic ?request=42 context fixture: says the block could not be confirmed, offers a block-only retry, and never says the server couldn't be reached", async () => {
+    const restore = at(SYNTHETIC_CONTEXT_URL);
     try {
       let blockAttempts = 0;
       const fetchMock = vi.fn(async (url: string) => {
@@ -690,7 +702,7 @@ describe("review 6565471121 (3): owned goal copy makes no unsupported operationa
     expect(seen.flatMap(offending)).toEqual([]);
   });
 
-  it("every report state (signed out, each step, done with and without a conversation, block failure) has none", async () => {
+  it("every report state (signed out, each step, done without context and with the synthetic ?request=42 context fixture, block failure) has none", async () => {
     const seen: string[] = [];
     authState.isSignedIn = false;
     vi.stubGlobal("fetch", vi.fn());
@@ -711,7 +723,7 @@ describe("review 6565471121 (3): owned goal copy makes no unsupported operationa
     seen.push(plain.container.textContent ?? "");
     plain.unmount();
 
-    const restore = at("https://skipwait.me/report?request=42");
+    const restore = at(SYNTHETIC_CONTEXT_URL);
     try {
       const fetchMock = vi.fn(async (url: string) => (String(url).startsWith("/api/blocks") ? fail(500, {}) : ok({ report: { id: 61, reference: "R-1061" } })));
       vi.stubGlobal("fetch", fetchMock);
@@ -726,5 +738,96 @@ describe("review 6565471121 (3): owned goal copy makes no unsupported operationa
       restore();
     }
     expect(seen.flatMap(offending)).toEqual([]);
+  });
+});
+
+describe("review 6566372499: owned block instructions match the path that exists", () => {
+  // The conversation pages link to a bare /report, which never shows the block
+  // toggle. So no owned copy may tell people to open Report from the
+  // conversation to block, and none may say support will block someone.
+  const CONVERSATION_BLOCK = /Report from (?:your|the) conversation|from your conversation[^.]*block|conversation[^.]*Also block this person/i;
+  const SUPPORT_BLOCKS = /support (?:will|can|could|'ll|’ll) (?:block|place a block|add a block)|support blocks|ask support to block|we(?: will|'ll|’ll) block/i;
+  const ownedText = () => [
+    ...HELP_ANSWERS.flatMap(({ question, answer }) => [question, answer]),
+    ...SAFETY_ANSWERS.flatMap(([question, answer]) => [question, answer]),
+    ...REPORT_REASONS.flatMap(([label, hint]) => [label, hint]),
+  ];
+  const ownedSources = ["./supportContent.ts", "./GoalReport.tsx", "./GoalHelp.tsx", "./GoalSafety.tsx"]
+    .map(file => [file, readFileSync(new URL(file, import.meta.url), "utf8")] as const);
+  const userStrings = (source: string) => (source.match(/"[^"\n]*"|`[^`]*`|>[^<>{}\n]+</g) ?? []).join("\n");
+
+  it("help, safety and report content: no conversation-entry block instruction and no support-will-block claim", () => {
+    const owned = ownedText();
+    expect(owned.filter(text => CONVERSATION_BLOCK.test(text))).toEqual([]);
+    expect(owned.filter(text => SUPPORT_BLOCKS.test(text))).toEqual([]);
+  });
+
+  it("the help block answer gives the truthful path: file, keep the reference, contact support", () => {
+    const answer = HELP_ANSWERS.find(({ question }) => question === "How do I block someone?")?.answer;
+    expect(answer).toBe(HELP_BLOCK_ANSWER);
+  });
+
+  it("owned page sources carry neither phrase in any user-facing string", () => {
+    for (const [file, source] of ownedSources) {
+      const strings = userStrings(source);
+      expect([file, strings.match(CONVERSATION_BLOCK)?.[0] ?? null]).toEqual([file, null]);
+      expect([file, strings.match(SUPPORT_BLOCKS)?.[0] ?? null]).toEqual([file, null]);
+    }
+  });
+
+  it("rendered /report without context: no toggle, the honest note, and neither phrase in any step", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ report: { id: 70, reference: "R-1070" } })));
+    const view = render(<Report />);
+    fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
+    expect(screen.queryByRole("button", { name: /Also block this person/ })).toBeNull();
+    expect(screen.getByText(NO_CONTEXT_BLOCK_NOTE)).toBeTruthy();
+    const details = view.container.textContent ?? "";
+    fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
+    await screen.findByRole("heading", { level: 2, name: DONE_HEADING });
+    const done = view.container.textContent ?? "";
+    expect([details, done].filter(text => CONVERSATION_BLOCK.test(text) || SUPPORT_BLOCKS.test(text))).toEqual([]);
+  });
+
+  it("rendered /help with every answer opened and /safety: neither phrase", async () => {
+    const help = render(<Help />);
+    await screen.findByRole("heading", { level: 1, name: HELP_LINE });
+    for (const { question } of HELP_ANSWERS) {
+      const button = screen.getByRole("button", { name: question });
+      if (button.getAttribute("aria-expanded") !== "true") fireEvent.click(button);
+    }
+    const helpText = help.container.textContent ?? "";
+    help.unmount();
+    const safety = render(<Safety />);
+    await screen.findByRole("heading", { level: 1, name: SAFETY_LINE });
+    for (const row of within(screen.getByRole("region", { name: "Safety questions" })).getAllByRole("button")) {
+      if (row.getAttribute("aria-expanded") !== "true") fireEvent.click(row);
+    }
+    const seen = [helpText, safety.container.textContent ?? ""];
+    expect(seen.filter(text => CONVERSATION_BLOCK.test(text))).toEqual([]);
+    expect(seen.filter(text => SUPPORT_BLOCKS.test(text))).toEqual([]);
+  });
+
+  it("the block toggle text stays on GoalReport's own ?request= branch (synthetic context fixture, not journey proof)", async () => {
+    const restore = at(SYNTHETIC_CONTEXT_URL);
+    try {
+      vi.stubGlobal("fetch", vi.fn(async () => ok({ report: { id: 71, reference: "R-1071" } })));
+      render(<Report />);
+      fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
+      expect(screen.getByRole("button", { name: /Also block this person/ })).toBeTruthy();
+      expect(screen.queryByText(NO_CONTEXT_BLOCK_NOTE)).toBeNull();
+    } finally {
+      restore();
+    }
+  });
+
+  it("the supportContent header states goal-owned copy, no kit-drift check, and no restoring removed promises", () => {
+    const source = ownedSources.find(([file]) => file === "./supportContent.ts")?.[1] ?? "";
+    const header = source.slice(0, source.indexOf("import "));
+    expect(header).not.toMatch(/mirrored here word for word/);
+    expect(header).not.toMatch(/ports here through the kit-drift check/);
+    expect(header).toMatch(/goal-owned copy/);
+    expect(header).toMatch(/No kit-drift check exists/);
+    expect(header).toMatch(/must not restore/);
+    expect(header).toMatch(/D-173\/D-180/);
   });
 });
