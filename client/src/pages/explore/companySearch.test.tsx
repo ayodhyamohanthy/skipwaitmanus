@@ -565,7 +565,7 @@ describe("invalid input (route 400) is not a connection failure", () => {
     expectNoQueryInEvents("tcs");
   });
 
-  it("switch on, /explore: an 81-character query sends nothing, offers no retry or paste-a-link, fires no event, and the directory states its truthful empty filter", async () => {
+  it("switch on, /explore: an 81-character query sends nothing, offers no retry or paste-a-link, fires no event, and makes no missing-company claim", async () => {
     flag.on = true;
     const fetchMock = stub(() => ({ status: 200, body: { companies: [] } }));
     renderExplore();
@@ -577,7 +577,8 @@ describe("invalid input (route 400) is not a connection failure", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByTestId("company-search-loading")).toBeNull();
     expect(screen.queryByTestId("company-search-no-match")).toBeNull();
-    expect(screen.getByText("No matching companies yet")).toBeTruthy();
+    expect(screen.queryByText("No matching companies yet")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Request a company" })).toBeNull();
     expect(events).toEqual([]);
     expectNoQueryInEvents(LONG);
   });
@@ -593,5 +594,99 @@ describe("invalid input (route 400) is not a connection failure", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getByText("No matching companies yet")).toBeTruthy();
     expect(events).toEqual([]);
+  });
+});
+
+// Invalid input is shown, honestly, by its cause: the shared schema's 80-character
+// limit (never sent, never truncated) or a 400 the route gave for a query the schema
+// accepts (cause unknown, so the line does not claim length). While either shows,
+// the directory makes no missing-company / Request-a-company claim, and there is no
+// retry, no paste-a-link and no no-match event.
+describe("switch on: invalid input says why, and nothing claims the company is missing", () => {
+  const TOO_LONG = "Use 80 characters or fewer to search companies.";
+  const REFUSED = "We couldn’t use that search. Try a different company name.";
+  const wait = () => act(async () => { await new Promise(resolve => setTimeout(resolve, COMPANY_SEARCH_DEBOUNCE_MS + 150)); });
+  const expectNoMissingClaim = () => {
+    expect(screen.queryByText("No matching companies yet")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Request a company" })).toBeNull();
+    expect(document.body.textContent ?? "").not.toMatch(/company is missing/i);
+  };
+  const expectNoRetryNoPasteNoEvent = (query: string) => {
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+    expect(screen.queryByText(/Paste a .* job link/)).toBeNull();
+    expect(events).toEqual([]);
+    expectNoQueryInEvents(query);
+  };
+
+  it("the hook names the cause: 'too-long' for an 81-character query (not sent), 'refused' for a route 400 on a schema-valid query", async () => {
+    const fetchMock = stub(() => ({ status: 400, body: { error: "Invalid search" } }));
+    const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client()}>{children}</QueryClientProvider>;
+    const { result, rerender } = renderHook(({ q }) => useCompanySearch(q, true), { initialProps: { q: "a".repeat(81) }, wrapper });
+    await wait();
+    expect(result.current.status).toBe("invalid");
+    expect(result.current.invalidReason).toBe("too-long");
+    expect(searchCalls(fetchMock)).toEqual([]);
+    rerender({ q: "zzqq" });
+    await waitFor(() => expect(result.current.status).toBe("invalid"));
+    expect(result.current.invalidReason).toBe("refused");
+    expect(searchCalls(fetchMock)).toEqual(["/api/companies/search?q=zzqq"]);
+  });
+
+  it("over 80 characters: the length line shows, the query is not sent or truncated, and the directory makes no missing-company claim", async () => {
+    flag.on = true;
+    const fetchMock = stub(() => ({ status: 200, body: { companies: [] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    const LONG = "b".repeat(81);
+    const box = screen.getByRole("combobox", { name: "Search companies" }) as HTMLInputElement;
+    fireEvent.change(box, { target: { value: LONG } });
+    await wait();
+    expect(screen.getByTestId("company-search-invalid").textContent).toBe(TOO_LONG);
+    expect(screen.queryByText(REFUSED)).toBeNull();
+    expect(box.value).toBe(LONG);
+    expect(searchCalls(fetchMock)).toEqual([]);
+    expectNoMissingClaim();
+    expectNoRetryNoPasteNoEvent(LONG);
+    expectNoAvailabilityText();
+  });
+
+  it("a route 400 on a schema-valid query: the generic line shows (no length claim), no missing-company claim, no retry, no paste-a-link, no event", async () => {
+    flag.on = true;
+    const fetchMock = stub(() => ({ status: 400, body: { error: "Invalid search" } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "zzqq" } });
+    await wait();
+    await wait();
+    expect(screen.getByTestId("company-search-invalid").textContent).toBe(REFUSED);
+    expect(screen.queryByText(TOO_LONG)).toBeNull();
+    expect(searchCalls(fetchMock)).toEqual(["/api/companies/search?q=zzqq"]);
+    expectNoMissingClaim();
+    expectNoRetryNoPasteNoEvent("zzqq");
+    expectNoAvailabilityText();
+  });
+
+  it("a route 400 on a query the directory matches: the generic line shows and the matching rows stay", async () => {
+    flag.on = true;
+    stub(() => ({ status: 400, body: { error: "Invalid search" } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "tcs" } });
+    await wait();
+    await wait();
+    expect(screen.getByTestId("company-search-invalid").textContent).toBe(REFUSED);
+    expect(screen.getByTestId("goal-directory-summary").textContent).toMatch(/^1 company$/);
+    expectNoRetryNoPasteNoEvent("tcs");
+  });
+
+  it("an invalid line never shows with the switch off (off-switch parity)", async () => {
+    stub(() => ({ status: 400, body: { error: "Invalid search" } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search companies" }), { target: { value: "c".repeat(81) } });
+    await wait();
+    expect(screen.queryByTestId("company-search-invalid")).toBeNull();
+    expect(screen.getByText("No matching companies yet")).toBeTruthy();
   });
 });
