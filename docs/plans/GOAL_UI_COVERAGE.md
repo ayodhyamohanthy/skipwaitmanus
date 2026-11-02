@@ -75,8 +75,8 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/reset-password` | `pages/ResetPassword` | `D-048-p3-signin` | D-048-p3-signin: to be added by its lane packet |
 | `/wallet` | — | none: redirect to /plans | — |
 | `/thread` | `ThreadListAlias` | `D-048-p3-inbox` | D-048-p3-inbox: todo |
-| `/thread/:requestId` | `ThreadDetailAlias` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: todo |
-| `/conversation/:requestId` | `pages/ReferralConversation` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: todo |
+| `/thread/:requestId` | `ThreadDetailAlias` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: done (seeker side) — landed `99f8a1f2` (#786); not moved (§1.6 states and §1.7 not claimed) |
+| `/conversation/:requestId` | `pages/ReferralConversation` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: done (seeker side) — landed `99f8a1f2` (#786); not moved (§1.6 states and §1.7 not claimed) |
 | `/messages` | `pages/Messages` | `D-048-p3-messages` | D-048-p3-messages: to be added by its lane packet |
 | `/share` | `pages/ShareHub` | `D-048-p3-seeker-small` | D-048-p3-seeker-small: todo |
 | `/inbox` | `pages/UnifiedInbox` | `D-048-p3-inbox` | D-048-p3-inbox: todo |
