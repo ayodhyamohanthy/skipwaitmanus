@@ -145,6 +145,25 @@ describe("goal /admin-review (D-048-p3-admin)", () => {
     await waitFor(() => expect(decisionCall(fetchMock)).toEqual({ url: "/api/admin/safety-reports/48/decision", method: "POST", body: { status: "resolved", note: "Confirmed spam pattern." } }));
   });
 
+  it("keeps \"Record decision\" the only filled control: kind tabs are goal filter chips and the decision radio uses the goal ink accent", async () => {
+    stub();
+    search.value = "tab=reports";
+    const { container } = renderPage(<GoalAdminReview />);
+    expect(await screen.findByRole("heading", { level: 2, name: "Spam or repeated asks" })).toBeTruthy();
+    const kinds = screen.getByRole("group", { name: "Review kinds" });
+    const chips = within(kinds).getAllByTestId("goal-filter-chip");
+    expect(chips.map(chip => chip.textContent?.replace(/\d+$/, "").trim())).toEqual(["All", "Reports", "Verifications", "Companies"]);
+    expect(chips.map(chip => chip.getAttribute("aria-pressed"))).toEqual(["false", "true", "false", "false"]);
+    for (const chip of chips) expect(chip.className).not.toMatch(/bg-g-primary/);
+    fireEvent.click(within(kinds).getByRole("button", { name: /^Verifications/ }));
+    expect(within(kinds).getByRole("button", { name: /^Verifications/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(within(kinds).getByRole("button", { name: /^Reports/ }).getAttribute("aria-pressed")).toBe("false");
+    const radio = await screen.findByRole("radio", { name: /^Approve/ });
+    expect(radio.className).toMatch(/\baccent-g-ink\b/);
+    const filled = [...container.querySelectorAll("[class*='bg-g-primary']")];
+    expect(filled.map(node => node.textContent?.trim())).toEqual(["Record decision"]);
+  });
+
   it("records a verification decision through the approval queue with its own body", async () => {
     const fetchMock = stub({}, (_url, init) => {
       expect(JSON.parse(String(init?.body))).toEqual({ decision: "approved", note: "Domain belongs to the company." });
