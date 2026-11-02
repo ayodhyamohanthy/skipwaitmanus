@@ -3737,7 +3737,7 @@
       "status": "owner",
       "syncedTo": "D-274",
       "dependsOn": [],
-      "note": "D-274: the packet is written and lands with this row, but its six rows (packet sections 5.1-5.6) and this row's promotion to the Tier 1 release row are held by the owner's Oct 31 \"new rows paused\" restriction, so nothing here is buildable yet. Parked at owner with the batched question in docs/DECISIONS.md (Open owner questions). When the pause lifts, one docs-only PR adds the six rows exactly as packet section 9.1 gives them and sets packet/status todo/tier 1/dependsOn/owns per section 5.7."
+      "note": "D-274: the packet landed with this row (PR #891), but its six rows (packet sections 5.1-5.6) and this row's promotion to the Tier 1 release row are not registered, so nothing here is buildable yet. Corrected Nov 2: the Oct 31 \"new rows paused\" premise was the coordinator's recommendation, not an owner restriction (docs/BUILD_CONTINUITY.md, provenance correction); the six rows, with corrections C1-C7, are routine decomposition (coordinator qualification, PR #891 comment 6563726334) and are registered through the normal architect/reviewer route; no owner pause-lift question is pending. The other BUILD_CONTINUITY restriction clauses still stand pending their own qualification. Status owner is unchanged by the correction; owner-only items are packet section 8 Q1-Q3."
     },
     {
       "id": "D-094-ai-in-ui",
