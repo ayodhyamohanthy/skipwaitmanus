@@ -3901,15 +3901,106 @@
     },
     {
       "id": "D-094-ai-in-ui",
-      "title": "AI-in-UI wave 1: the reasons coach in the ask drawer and the rest of D-094",
+      "title": "Release D-094 wave 1: switch on the job-link line and the status help after QA, review and the CEO's sign-off; the reasons coach stays off",
       "row": "D-094",
-      "packet": null,
-      "tier": 2,
+      "packet": "docs/plans/D-094-ai-in-ui.md",
+      "tier": 1,
       "lane": "ai",
       "branch": "agent/claude/d094-ai-in-ui",
-      "status": "architect",
-      "syncedTo": "D-227",
-      "dependsOn": []
+      "status": "todo",
+      "syncedTo": "D-279",
+      "dependsOn": [
+        "D-094-ai-in-ui.job-link",
+        "D-094-ai-in-ui.status-help",
+        "D-094-ai-in-ui.coach"
+      ],
+      "note": "D-264 (packet docs/plans/D-094-ai-in-ui.md §14): the D-223 release row of three pieces (job-link, status-help, coach). It flips JOB_LINK_PREFILL_ENABLED and STATUS_HELP_ENABLED only, after QA on the preview, captures at 1280 and 390, a review and the CEO's sign-off; STATUS_HELP_ENABLED also needs the catalogue and localisation acceptance (packet §4.9-4.10). REASONS_COACH_ENABLED is never set here: switching the coach on is the owner question in packet §13, after the §12 enablement gates.",
+      "epic": "D-094",
+      "owns": [
+        "client/src/pages/explore/jobLinkPrefill.ts (switch only)",
+        "client/src/components/requests/statusHelp.ts (switch only)"
+      ]
+    },
+    {
+      "id": "D-094-ai-in-ui.job-link",
+      "title": "The ask drawer and /ask show the company and role a pasted job link is for, and a link of another company is caught before Send (switch off)",
+      "row": "D-094",
+      "packet": "docs/plans/D-094-ai-in-ui.md",
+      "tier": 1,
+      "lane": "ai-job-link",
+      "branch": "agent/queue/d094-job-link",
+      "status": "todo",
+      "syncedTo": "D-279",
+      "dependsOn": [
+        "D-174-fix-post-binding",
+        "D-048-p3-live-review-find",
+        "D-099-bonus-line"
+      ],
+      "note": "Packet §4.1-4.6 and §6.1 (D-264 (2)): previewJobLink adds optional roleTitle and fetched (additive, no extra request); the composer calls the existing POST /api/job-link/preview behind JOB_LINK_PREFILL_ENABLED = false; F1 (another company's preview disables Send), F2 (no line for a link that was never fetched), F4 (/ask's local match counts only a company's own domains) and the §16 empty-field case are rulings here. Tier 1: owns client/src/pages/Ask.tsx (TIER1_CLIENT). The send body, askSend.ts and the server's employer resolution are untouched.",
+      "epic": "D-094-ai-in-ui",
+      "owns": [
+        "server/jobLinkPreview.ts",
+        "server/jobLinkPreview.roleTitle.test.ts",
+        "client/src/pages/explore/jobLinkPrefill.ts",
+        "client/src/pages/explore/JobLinkFromPosting.tsx",
+        "client/src/pages/explore/jobLinkPrefill.test.tsx",
+        "client/src/pages/explore/useAskComposer.tsx",
+        "client/src/pages/explore/AskDrawer.tsx",
+        "client/src/pages/Ask.tsx",
+        "client/src/pages/askHostedLink.test.tsx"
+      ]
+    },
+    {
+      "id": "D-094-ai-in-ui.status-help",
+      "title": "'What this means' on every ask in My asks, retrieved from a status catalogue keyed by what the seeker sees (switch off)",
+      "row": "D-094",
+      "packet": "docs/plans/D-094-ai-in-ui.md",
+      "tier": 1,
+      "lane": "ai-status-help",
+      "branch": "agent/queue/d094-status-help",
+      "status": "todo",
+      "syncedTo": "D-279",
+      "dependsOn": [
+        "D-090-BYOR",
+        "D-174-held-ask-reconfirm"
+      ],
+      "note": "Packet §4.7-4.10 and §6.2 (D-264 (3)): STATUS_HELP keyed by the askView label plus the pending queueStatus (F3); held_for_credit has no entry and keeps requestNote's money line; no entry states a credit movement; STATUS_HELP_ENABLED = false. The builder drafts candidate entries with their sources; the row stops before landing until the catalogue and localisation questions (§4.9-4.10) are accepted through Instinct. Declared Tier 1 above its Tier 2 floor per the Nov 1 coordinator tier ruling (packet §12).",
+      "epic": "D-094-ai-in-ui",
+      "owns": [
+        "client/src/components/requests/statusHelp.ts",
+        "client/src/components/requests/statusHelp.test.ts",
+        "client/src/pages/MyRequests.tsx",
+        "client/src/pages/myRequests.statusHelp.test.tsx"
+      ]
+    },
+    {
+      "id": "D-094-ai-in-ui.coach",
+      "title": "Reasons coach in the ask drawer and /ask, built behind REASONS_COACH_ENABLED = false (asks questions, never writes facts)",
+      "row": "D-094",
+      "packet": "docs/plans/D-094-ai-in-ui.md",
+      "tier": 1,
+      "lane": "ai-coach",
+      "branch": "agent/queue/d094-coach",
+      "status": "todo",
+      "syncedTo": "D-279",
+      "dependsOn": [
+        "D-094-ai-in-ui.job-link",
+        "DEPLOY-gate-docs-sync"
+      ],
+      "note": "Packet §4.11-4.16 and §6.3 (D-264 (1)): POST /api/ask/reasons-coach answers 404 while the switch is false; in-process caps are not the D-138 hard stop; routeChat's Forge fall-through is an enablement blocker; nothing but the reasons, role title and company name reaches the provider (D-139). Owns one AGENTS.md living-map row for the new route (waits for DEPLOY-gate-docs-sync, the other open AGENTS.md owner). No env key, provider, account, migration or spend; switching on is the owner question in packet §13, never this row. Tier 1: owns client/src/pages/Ask.tsx and sends seeker text to a provider once on.",
+      "epic": "D-094-ai-in-ui",
+      "owns": [
+        "shared/reasonsCoach.ts",
+        "shared/reasonsCoach.test.ts",
+        "server/reasonsCoachRoutes.ts",
+        "server/reasonsCoachRoutes.test.ts",
+        "server/_core/index.ts (switch only)",
+        "client/src/pages/explore/ReasonsCoach.tsx",
+        "client/src/pages/explore/reasonsCoach.test.tsx",
+        "client/src/pages/explore/AskDrawer.tsx",
+        "client/src/pages/Ask.tsx",
+        "AGENTS.md"
+      ]
     },
     {
       "id": "D-065-B",
