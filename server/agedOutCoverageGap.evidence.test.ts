@@ -110,3 +110,63 @@ describe("aged-out paid checkout (GO-LIVE-1b-agedout-evidence, D-084)", () => {
     expect(output).toEqual({ processed: 0, failed: 0 });
   });
 });
+
+// #973 review (2026-11-03): the behaviour oracle must not be the query's text. The fixture engine reads
+// the rendered SQL by its semantics, so a dropped or flipped clause changes which rows are re-read
+// (a behaviour failure), while an equivalent reorder returns the same rows. The text pin above stays
+// separate as the shape pin.
+describe("the fixture engine reads the query's semantics, not its text (#973 review)", () => {
+  beforeEach(() => { state.rows = []; state.queries = []; });
+  const params = (nowMs: number) => [
+    "chargebee", "pending", "pending:%",
+    new Date(nowMs - PENDING_GRACE_MS).toISOString().replace("T", " ").replace("Z", ""),
+    new Date(nowMs - PENDING_MAX_AGE_MS).toISOString().replace("T", " ").replace("Z", ""),
+    new Date(nowMs - PENDING_RECHECK_MS).toISOString().replace("T", " ").replace("Z", ""),
+    50,
+  ];
+  const AGED = "`paymentFulfillments`.`createdAt` > ?";
+  const ids = (rows: unknown[][]) => rows.map(row => row[0]);
+
+  it("an equivalent reorder of the where clause returns the same rows as the real query", () => {
+    state.rows = [pendingRow(71, new Date(NOW.getTime() - PENDING_MAX_AGE_MS - DAY)), pendingRow(72, new Date(NOW.getTime() - PENDING_MAX_AGE_MS + DAY))];
+    // Swap the two createdAt bounds; the params swap with them, as drizzle numbers them by position.
+    const reordered = PENDING_QUERY.replace("`paymentFulfillments`.`createdAt` < ? and `paymentFulfillments`.`createdAt` > ?", "`paymentFulfillments`.`createdAt` > ? and `paymentFulfillments`.`createdAt` < ?");
+    expect(reordered).not.toBe(PENDING_QUERY);
+    const p = params(NOW.getTime());
+    const swapped = [...p.slice(0, 3), p[4], p[3], ...p.slice(5)];
+    expect(ids(evaluate(reordered, swapped))).toEqual(ids(evaluate(PENDING_QUERY, p)));
+    expect(ids(evaluate(PENDING_QUERY, p))).toEqual([72]);
+  });
+
+  it("dropping the createdAt lower bound re-reads the aged-out row; flipping it keeps only the aged-out row", () => {
+    state.rows = [pendingRow(71, new Date(NOW.getTime() - PENDING_MAX_AGE_MS - DAY)), pendingRow(72, new Date(NOW.getTime() - PENDING_MAX_AGE_MS + DAY))];
+    const p = params(NOW.getTime());
+    const dropped = PENDING_QUERY.replace(` and ${AGED}`, "");
+    expect(ids(evaluate(dropped, [...p.slice(0, 4), ...p.slice(5)]))).toEqual([71, 72]);
+    const flipped = PENDING_QUERY.replace(AGED, "`paymentFulfillments`.`createdAt` < ?");
+    expect(ids(evaluate(flipped, p))).toEqual([71]);
+  });
+});
+
+// Boundary controls at the age limit, in the job's own constant (no new literal age pin): the lower
+// bound is strict, so a row exactly PENDING_MAX_AGE_MS old is already out, one second younger is in.
+describe("aged-out boundary controls (#973 review)", () => {
+  beforeAll(() => { process.env.DATABASE_URL = "mysql://fixture:fixture@localhost/fixture"; });
+  beforeEach(() => { state.rows = []; state.queries = []; });
+  const reread = async (ageMs: number) => {
+    state.rows = [pendingRow(80, new Date(NOW.getTime() - ageMs))];
+    const deps = makeDeps();
+    const output = await runAt(deps, NOW.getTime());
+    return { pages: deps.retrieveHostedPage.mock.calls, output, alerted: deps.alert.mock.calls.length };
+  };
+
+  it("exactly PENDING_MAX_AGE_MS old: not re-read, no alert", async () => {
+    expect(await reread(PENDING_MAX_AGE_MS)).toEqual({ pages: [], output: { processed: 0, failed: 0 }, alerted: 0 });
+  });
+  it("one second older than PENDING_MAX_AGE_MS: not re-read, no alert", async () => {
+    expect(await reread(PENDING_MAX_AGE_MS + 1_000)).toEqual({ pages: [], output: { processed: 0, failed: 0 }, alerted: 0 });
+  });
+  it("one second younger than PENDING_MAX_AGE_MS: re-read and credited", async () => {
+    expect(await reread(PENDING_MAX_AGE_MS - 1_000)).toEqual({ pages: [["hp_80"]], output: { processed: 1, failed: 0 }, alerted: 0 });
+  });
+});
