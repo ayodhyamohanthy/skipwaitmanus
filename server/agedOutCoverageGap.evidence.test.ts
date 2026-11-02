@@ -70,11 +70,43 @@ describe("aged-out paid checkout (GO-LIVE-1b-agedout-evidence, D-084)", () => {
   beforeAll(() => { process.env.DATABASE_URL = "mysql://fixture:fixture@localhost/fixture"; });
   beforeEach(() => { state.rows = []; state.queries = []; });
 
-  it("a paid checkout older than PENDING_MAX_AGE_MS is re-read and credited by the reconcile job", async () => {
-    state.rows = [pendingRow(71, new Date(NOW.getTime() - PENDING_MAX_AGE_MS - DAY))];
+  it("the job's real query bounds createdAt below by now - PENDING_MAX_AGE_MS, inside an all-AND where clause", async () => {
+    await runAt(makeDeps(), NOW.getTime());
+    expect(state.queries).toHaveLength(1);
+    const [{ sql, params }] = state.queries;
+    expect(sql).toBe(PENDING_QUERY);
+    expect(sql).toContain("`paymentFulfillments`.`createdAt` > ?");
+    expect(asDate(params[3]).getTime()).toBe(NOW.getTime() - PENDING_GRACE_MS);
+    expect(asDate(params[4]).getTime()).toBe(NOW.getTime() - PENDING_MAX_AGE_MS);
+    expect(asDate(params[5]).getTime()).toBe(NOW.getTime() - PENDING_RECHECK_MS);
+  });
+
+  it("a paid checkout older than PENDING_MAX_AGE_MS is never re-read, credited, parked or alerted; an in-window one is credited", async () => {
+    state.rows = [
+      pendingRow(71, new Date(NOW.getTime() - PENDING_MAX_AGE_MS - DAY)), // aged out: paid at the provider
+      pendingRow(72, new Date(NOW.getTime() - PENDING_MAX_AGE_MS + DAY)), // control: same row, inside the window
+    ];
     const deps = makeDeps();
     const output = await runAt(deps, NOW.getTime());
-    expect(deps.retrieveHostedPage).toHaveBeenCalledWith("hp_71");
-    expect(output.processed).toBe(1);
+
+    expect(deps.retrieveHostedPage.mock.calls).toEqual([["hp_72"]]);
+    expect(deps.fulfill).toHaveBeenCalledTimes(1);
+    expect(deps.fulfill).toHaveBeenCalledWith(expect.objectContaining({ hostedPageId: "hp_72", passThruContent: "ci_72" }));
+    expect(deps.touch).not.toHaveBeenCalled();
+    expect(deps.markReview).not.toHaveBeenCalled();
+    expect(deps.alert).not.toHaveBeenCalled();
+    expect(output).toEqual({ processed: 1, failed: 0 });
+  });
+
+  it("the in-window checkout ages out the same way once PENDING_MAX_AGE_MS has passed, with no failure and no alert", async () => {
+    const createdAt = new Date(NOW.getTime() - PENDING_MAX_AGE_MS + DAY);
+    state.rows = [pendingRow(72, createdAt)];
+    const deps = makeDeps();
+    const output = await runAt(deps, createdAt.getTime() + PENDING_MAX_AGE_MS + 60_000);
+
+    expect(deps.retrieveHostedPage).not.toHaveBeenCalled();
+    expect(deps.fulfill).not.toHaveBeenCalled();
+    expect(deps.alert).not.toHaveBeenCalled();
+    expect(output).toEqual({ processed: 0, failed: 0 });
   });
 });
