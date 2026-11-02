@@ -3073,8 +3073,8 @@
       "tier": 1,
       "lane": "demand-count",
       "branch": "agent/queue/d086-count",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-279",
       "epic": "D-086-demand-list",
       "dependsOn": [
         "D-174-company-search"
@@ -3088,7 +3088,7 @@
         "server/companyDemandRoutes.test.ts",
         "server/companyDirectoryRoutes.ts (switch only)"
       ],
-      "note": "D-086 packet §5.1. Liveness is status pending plus the imported isAskExpired (no age cutoff of its own; follows D-174-expiry-clock-removal with no change; awaiting-reconfirm requests count). Coverage-neutral (reads no referrer or availability table), listed companies only in public, distinct canonical people, never companySuggestions votes. The admin queue lists unowned corporate domains by people, private, no-store. Mounts inside registerCompanyDirectoryRoutes (D-223 (6)), so it waits for D-174-company-search, which owns that file. Both switches stay false."
+      "note": "D-086 packet §5.1. Liveness is status pending plus the imported isAskExpired (no age cutoff of its own; follows D-174-expiry-clock-removal with no change; awaiting-reconfirm requests count). Coverage-neutral (reads no referrer or availability table), listed companies only in public, distinct canonical people, never companySuggestions votes. The admin queue lists unowned corporate domains by people, private, no-store. Mounts inside registerCompanyDirectoryRoutes (D-223 (6)), so it waits for D-174-company-search, which owns that file. Both switches stay false. D-279 (2026-11-02): the row is parked at owner because its MAKE GREEN hand-out has nothing to fix - the deliverable is complete on PR #955 (head 4700fc10, 949 insertions across the 7 owned paths plus the packet Status line) and the only red required job is the review gate: typecheck fails at step 11 Scope check -> review-gate while the job's own Typecheck, Design tokens and Deploy trigger coverage steps and the unit + component + route tests, production build and e2e journeys jobs are all green on that head. The review lock agent/review/d086-count has never existed on origin, so no session was ever handed the review that would clear the gate; nextTaskCore.mjs:573-584 can only answer fix or green while CI is red and reaches review only below that guard, so the promised second review is unreachable by construction. No manual Review claim, preselected pass, gate edit or no-code Fixed is taken (D-251, D-253). The nextTask.test.ts:47-62 first-pick pin that blocked D-273's park does not reach this row (index 157 of 248, and no test or script reads it), so the standard D-254 park applies; D-254's existing qualification is extended to name this row as its eighth member, and no new question is asked. Do not rebuild: the row lands unchanged once a review route exists, and both switches stay false. Its dependents D-086.ui, D-086.admit and D-086-demand-list wait on it under D-134 either way. Sessions that cannot complete it should run the picker with --avoid D-086.count rather than burn a run."
     },
     {
       "id": "D-086.ui",
