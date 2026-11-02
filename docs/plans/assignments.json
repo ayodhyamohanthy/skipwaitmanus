@@ -1134,7 +1134,7 @@
       "tier": 1,
       "lane": "d048-seeker-thread",
       "branch": "agent/queue/d048-live-review-conversation",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-038-reconcile",
@@ -5003,6 +5003,26 @@
         "artifacts/support-promises/**"
       ],
       "note": "D-277: Half A of the #811 packet proposal (comment 6567956835) only. Client copy only: apply the packet's byte-exact R1-R5 (L27, L28, L40, L64, L68); keep P1-P9 (L4, L20, L39, L41, PolicyPageShell.tsx:25) and L31 byte-for-byte; L17 and L29 are architect choices, not adopted (L41 legal/business hours are owner-only). Self-serve cards L14-17 out of scope: stop and report if one is false. No server, db.ts or shared file; SUPPORT-B1/B2 and the BYOR edge are not registered. Residuals shared/publicRoutes.ts:48 (D-176-public-claims) and shared/landingContent.ts:63 (PRICING-banded-oct25) are not fixed. Builder: a non-Claude development session through the picker (D-225)."
+    },
+    {
+      "id": "CONV-report-entry",
+      "title": "Seeker conversation \"Report or block\" link carries the ask only when it is accepted (R-B-min, seeker side)",
+      "row": "D-048",
+      "packet": "docs/plans/CONV-report-entry.md",
+      "tier": 1,
+      "lane": "conv-report-entry",
+      "branch": "agent/queue/conv-report-entry",
+      "status": "todo",
+      "syncedTo": "D-278",
+      "dependsOn": [
+        "D-048-p3-live-review-conversation"
+      ],
+      "owns": [
+        "client/src/pages/conversation/SeekerConversation.tsx",
+        "client/src/pages/conversation/reportEntry.test.tsx",
+        "e2e/report-from-conversation.e2e.ts"
+      ],
+      "note": "D-278: correction E on #831 (comment 6568171751), route R-B-min, seeker side S only. Rule at SeekerConversation.tsx:223: href = (!passed && isAccepted(request)) ? \"/report?request=\" + request.id : \"/report\" (passed is always false on the seeker page), reusing threadModel.ts:36-38 (not edited). Packet A's referrerId !== null rule is rejected and not buildable. Acceptance (packet section 5): red-first reportEntry.test.tsx; e2e/report-from-conversation.e2e.ts targets its own ask id, reads e2e/.auth/seed.json itself (no e2e/fixtures.ts edit), block LAST; admin read of /api/admin/safety-reports proved red-first; K/G hrefs not asserted. No #831 edge, owns or status change; residuals S-g, R-f, S-l, R-k, block-stalls-accepted-ask and G pre-acceptance linkage not adopted. Dependency done: #786 landed 99f8a1f2 and the seeker row is recorded done (seeker side, not moved; #963). Tier 1 (privacy/safety: the href decides when the block toggle and the referralRequestId evidence snapshot of message bodies attach to a safety report); declared above the computed Tier 2, which D-212 allows; needs an independent different-model review (D-151) at build time. Builder: a non-Claude development session through the picker (D-225)."
     }
   ]
 }
